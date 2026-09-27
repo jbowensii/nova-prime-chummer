@@ -23,8 +23,9 @@ Every file has the same root:
   - `id`: lowercase kebab-case, pattern `[a-z0-9][a-z0-9.-]*`, unique within
     its kind. References always use ids, never names.
   - `source`: a book code. `CRB` is the Anarchy 2.0 core rulebook v1.8,
-    `DHSA` is Daegann's Holostreets Shadow Amps list, and `CUSTOM` is your
-    own content.
+    `CG` is the CGL Conversion Guide v1.1 (technomancers), `DHSA` is
+    Daegann's Holostreets Shadow Amps Expanded List v3.4b, and `CUSTOM` is
+    your own content.
   - `page`: the printed page number.
 - **Derived numbers are never stored.** An amp lists its type and effects,
   and the engine computes its rating, cost and Essence. `printedRating` on
@@ -45,8 +46,9 @@ Every file has the same root:
 | ampeffects | ampeffects.xml | `<effect>` | ampeffects.xsd |
 | packages | packages.xml | `<package>` | packages.xsd |
 | vehicles | vehicles.xml | `<vehicle>` | vehicles.xsd |
-| gear / weapons / armor / spells | gear.xml … | `<item>` | items.xsd |
+| gear / weapons / armor / spells / complexforms | gear.xml … | `<item>` | items.xsd |
 | amps | amps.xml | `<amp>` | amps.xsd |
+| lifestyles | lifestyles.xml | `<lifestyle>` | lifestyles.xsd |
 
 ### levels
 
@@ -73,7 +75,7 @@ All caps apply during creation only.
 `<skill id attr alt? requires?><name/><spec id attr>Display name</spec>*</skill>`
 
 - `attr` is the default linked attribute, and `alt` the other listed option.
-- `requires` is `awakened` or `cyberdeck`.
+- `requires` is `awakened`, `cyberdeck` or `emerged` (Tasking).
 - Spec ids are `<skill>.<spec>`, for example `stealth.physical-sneaking`.
 
 ### pricing
@@ -86,7 +88,7 @@ One `<pricing>` element. All values are in nuyen.
 | skillLow / skillLowMax / skillHigh | skill points up to `skillLowMax` cost `skillLow`, higher points cost `skillHigh` |
 | spec, knowledge | per specialization and per knowledge skill |
 | ampPoint | cost per Shadow Amp rating point |
-| equipment, weaponStandard, weaponSpecialist, armorPoint, spell | item prices |
+| equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
 | refundEffectRemoval | `true` refunds rating lost when an amp effect is removed |
 
 ### amptypes
@@ -101,7 +103,7 @@ One `<pricing>` element. All values are in nuyen.
 
 ### ampeffects
 
-`<effect id category rating types max? requires? excludes? param? gmApproval?><name/></effect>`
+`<effect id category rating types max? requires? excludes? param? gmApproval? essence?><name/></effect>`
 
 - `rating` is added to the amp's rating (it can be negative).
 - `types` is a space-separated list of the amptype ids that may take the
@@ -112,6 +114,8 @@ One `<pricing>` element. All values are in nuyen.
   `realm`, `text`, or `value`. For the `negative` effect, `value` (1–5) is
   subtracted.
 - `gmApproval="true"` means using the effect always needs a GM override.
+- `essence` changes the amp's Essence cost (implant grades: delta −0.5,
+  omega +0.5, cultivated bioware −0.25).
 
 ### packages
 
@@ -125,18 +129,19 @@ level's `nuyen`.
 `<vehicle id pilot body handling speed flyingSpeed? armor mount><name/></vehicle>`.
 These are the base chassis for vehicle amps.
 
-### items (gear, weapons, armor, spells)
+### items (gear, weapons, armor, spells, complex forms)
 
 `<item id kind specialist? armor? dv? ranges? category?><name/><text/></item>`
 
-- `kind` is `gear|weapon|armor|spell`.
+- `kind` is `gear|weapon|armor|spell|complex-form`.
+- `dv` may be Strength-based (`STR+2`); the app works out the number.
 - `specialist="true"` marks sniper rifles, grenade launchers, machine guns
   and heavier weapons (priced at `weaponSpecialist`).
 - `armor` is the armor rating (priced per point).
 
 ### amps
 
-`<amp id type printedRating? vehicle?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note?/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note?/>*<narrative/></amp>`
 
 - `<item>` (equipment amps only) is the base item bought with the amp, priced
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
@@ -149,6 +154,14 @@ These are the base chassis for vehicle amps.
 - Each `effect ref` is an ampeffect id, and `param` fills its parameter (a
   skill id, spec id, attribute id, realm, or free text).
 - `vehicle` names the chassis for vehicle amps.
+- `mod="true"` marks an add-on (ammo, accessory, vehicle or deck mod,
+  implant grade). It has no base rating: the Amp Builder appends its
+  effects to an existing amp of the same `type`.
+
+### lifestyles
+
+`<lifestyle id perRun><name/><text/></lifestyle>`. Lifestyle is a Keyword,
+not a purchase (CRB p.165). `perRun` is added to each run's earnings.
 
 ## Overlays (`custom/`)
 
