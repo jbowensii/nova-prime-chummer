@@ -18,7 +18,21 @@ export function ampRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
   return base + amp.effects.reduce((s, e) => s + effectRating(c, e), 0)
 }
 
-export const ampEssence = (c: Catalog, amp: AmpEntry) => c.ampTypes.get(amp.type)?.essence ?? 0
+/** Essence lost to an amp: its type's cost, adjusted by implant grades (delta, omega, cultivated). */
+export function ampEssence(c: Catalog, amp: AmpEntry): number {
+  const base = c.ampTypes.get(amp.type)?.essence ?? 0
+  if (!base) return 0
+  return Math.max(0, base + amp.effects.reduce((s, e) => s + (c.ampEffects.get(e.ref)?.essence ?? 0), 0))
+}
+
+/** Apply a book add-on (mod="true" template) to an amp: its effects and story text are appended. */
+export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
+  return {
+    ...amp,
+    effects: [...amp.effects, ...mod.effects.map(e => ({ ...e, note: mod.name }))],
+    narrative: [amp.narrative, mod.narrative ? `${mod.name}: ${mod.narrative}` : mod.name].filter(Boolean).join(' '),
+  }
+}
 
 export const firstQualityUid = (b: Build) => b.amps.find(a => a.type === 'quality')?.uid
 
@@ -51,7 +65,8 @@ export function ampFromTemplate(t: AmpTemplate, uid: () => string): { amp: AmpEn
   const amp: AmpEntry = { uid: uid(), catalogId: t.id, type: t.type, name: t.name, narrative: t.narrative,
     effects: t.effects.map(e => ({ ...e })), vehicle: t.vehicle, snapshot: t }
   if (!t.item) return { amp }
-  const item: ItemEntry = { uid: uid(), kind: t.item.kind, name: t.name, specialist: t.item.specialist, armor: t.item.armor }
+  const item: ItemEntry = { uid: uid(), kind: t.item.kind, name: t.name, specialist: t.item.specialist, armor: t.item.armor,
+    dv: t.item.dv, ranges: t.item.ranges }
   amp.linkedItem = item.uid
   return { amp, item }
 }

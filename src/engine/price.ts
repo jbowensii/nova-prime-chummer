@@ -25,6 +25,7 @@ export function itemCost(p: Pricing, i: ItemEntry): number {
     case 'armor': return (i.armor ?? 0) * p.armorPoint
     case 'weapon': return i.specialist ? p.weaponSpecialist : p.weaponStandard
     case 'spell': return p.spell
+    case 'complex-form': return p.complexForm
     default: return p.equipment
   }
 }
@@ -41,8 +42,9 @@ export function priceBuild(c: Catalog, b: Build, metatype: string): Breakdown {
   const skills = b.skills.reduce((s, sk) => s + skillCost(p, 0, sk.rating) + sk.specs.length * p.spec, 0)
     + b.knowledge.length * p.knowledge
   const amps = b.amps.reduce((s, a) => s + ampRating(c, a, ampCtx(b, a)) * p.ampPoint, 0)
-  const gear = b.items.filter(i => i.kind !== 'spell').reduce((s, i) => s + itemCost(p, i), 0)
-  const spells = b.items.filter(i => i.kind === 'spell').reduce((s, i) => s + itemCost(p, i), 0)
+  const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
+  const gear = b.items.filter(i => !magic(i)).reduce((s, i) => s + itemCost(p, i), 0)
+  const spells = b.items.filter(magic).reduce((s, i) => s + itemCost(p, i), 0)
   return { attributes, skills, amps, gear, spells }
 }
 

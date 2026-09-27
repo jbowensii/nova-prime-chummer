@@ -1,6 +1,6 @@
 // XML element -> typed catalog record. One function per data kind (docs/data-format.md).
 import type {
-  AmpEffect, AmpTemplate, AmpType, AttrId, Attribute, EffectParam, Item, ItemKind, Level, LoadError,
+  AmpEffect, AmpTemplate, AmpType, AttrId, Attribute, EffectParam, Item, ItemKind, Level, Lifestyle, LoadError,
   Metatype, Package, Pricing, Ref, Skill, TemplateItem, VehicleBase,
 } from '../model/types'
 
@@ -33,7 +33,8 @@ export const toPricing = (el: Element): Pricing => ({ attrPoint: req(el, 'attrPo
   skillLow: req(el, 'skillLow'), skillLowMax: req(el, 'skillLowMax'), skillHigh: req(el, 'skillHigh'),
   spec: req(el, 'spec'), knowledge: req(el, 'knowledge'), ampPoint: req(el, 'ampPoint'), equipment: req(el, 'equipment'),
   weaponStandard: req(el, 'weaponStandard'), weaponSpecialist: req(el, 'weaponSpecialist'),
-  armorPoint: req(el, 'armorPoint'), spell: req(el, 'spell'), refundEffectRemoval: bool(el, 'refundEffectRemoval') })
+  armorPoint: req(el, 'armorPoint'), spell: req(el, 'spell'), complexForm: num(el, 'complexForm') ?? req(el, 'spell'),
+  refundEffectRemoval: bool(el, 'refundEffectRemoval') })
 
 export const toAmpType = (el: Element): AmpType => ({ ...ref(el), name: child(el, 'name'), base: req(el, 'base'),
   baseAfterFirst: num(el, 'baseAfterFirst'), essence: req(el, 'essence'), requires: str(el, 'requires') })
@@ -42,13 +43,14 @@ export const toAmpEffect = (el: Element): AmpEffect => ({ ...ref(el), name: chil
   category: el.getAttribute('category')!, rating: req(el, 'rating'),
   types: el.getAttribute('types')!.split(/\s+/).filter(Boolean), max: num(el, 'max'),
   requires: str(el, 'requires'), excludes: str(el, 'excludes'),
-  param: str(el, 'param') as EffectParam | undefined, gmApproval: bool(el, 'gmApproval') || undefined })
+  param: str(el, 'param') as EffectParam | undefined, gmApproval: bool(el, 'gmApproval') || undefined,
+  essence: num(el, 'essence') })
 
 export const toAmp = (el: Element): AmpTemplate => {
   const it = el.getElementsByTagName('item')[0]
   const item: TemplateItem | undefined = it && { kind: it.getAttribute('kind') as TemplateItem['kind'],
     specialist: bool(it, 'specialist') || undefined, armor: num(it, 'armor'), dv: str(it, 'dv'), ranges: str(it, 'ranges') }
-  return { ...ref(el), name: child(el, 'name'), type: el.getAttribute('type')!, item,
+  return { ...ref(el), name: child(el, 'name'), type: el.getAttribute('type')!, item, mod: bool(el, 'mod') || undefined,
     effects: [...el.getElementsByTagName('effect')].map(e => ({ ref: e.getAttribute('ref')!, param: str(e, 'param'),
       value: num(e, 'value'), note: str(e, 'note') })),
     narrative: child(el, 'narrative'), printedRating: num(el, 'printedRating'), vehicle: str(el, 'vehicle') }
@@ -63,6 +65,8 @@ export const toPackage = (el: Element): Package => ({ ...ref(el), name: child(el
   skillPoints: req(el, 'skillPoints'), skillsAtSix: req(el, 'skillsAtSix'), ampPoints: req(el, 'ampPoints'),
   armor: req(el, 'armor'), standardWeapons: req(el, 'standardWeapons'), specialistWeapons: req(el, 'specialistWeapons'),
   equipment: req(el, 'equipment'), spells: req(el, 'spells') })
+
+export const toLifestyle = (el: Element): Lifestyle => ({ ...ref(el), name: child(el, 'name'), perRun: req(el, 'perRun'), text: child(el, 'text') })
 
 export const toItem = (el: Element): Item => ({ ...ref(el), name: child(el, 'name'), kind: el.getAttribute('kind') as ItemKind,
   specialist: bool(el, 'specialist') || undefined, armor: num(el, 'armor'), dv: str(el, 'dv'), ranges: str(el, 'ranges'),

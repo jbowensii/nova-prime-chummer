@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
-import { ampChangeCost, ampCtx, ampEssence, ampRating, legalEffects } from '../../src/engine/amps'
+import { ampChangeCost, ampCtx, ampEssence, ampRating, effectRating, legalEffects } from '../../src/engine/amps'
 import type { AmpEntry } from '../../src/model/types'
 import { cat, sample } from '../helpers'
 
@@ -50,8 +50,11 @@ test("Hercules' amps (CRB p.88)", () => {
 test('catalog amps reproduce their printed rating unless listed as a book discrepancy', () => {
   const listed = new Set([...readFileSync('docs/book-discrepancies.md', 'utf8')
     .matchAll(/^\| ([a-z0-9-]+) \| (?:CRB|DHSA) p\./gm)].map(m => m[1]))
-  const bad = [...cat.amps.values()].filter(t => !listed.has(t.id) &&
-    ampRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first) !== t.printedRating)
+  // a mod has no base rating of its own: it adds its effects to an existing amp
+  const rating = (t: typeof cat.amps extends Map<string, infer V> ? V : never) => t.mod
+    ? t.effects.reduce((n, e) => n + effectRating(cat, e), 0)
+    : ampRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)
+  const bad = [...cat.amps.values()].filter(t => !listed.has(t.id) && rating(t) !== t.printedRating)
   expect(bad.map(t => t.id)).toEqual([])
 })
 

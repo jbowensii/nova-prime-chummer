@@ -2,24 +2,25 @@
 // Same id replaces, <remove id> deletes, new id adds (docs/data-format.md).
 import type { AttrId, Catalog, Pricing } from '../model/types'
 import {
-  parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toMetatype, toPackage, toPricing, toSkill, toVehicle,
+  parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPricing, toSkill, toVehicle,
 } from './parse'
 
 export const DATA_FILES = ['levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
-  'packages', 'vehicles', 'gear', 'weapons', 'armor', 'spells', 'amps']
+  'packages', 'vehicles', 'gear', 'weapons', 'armor', 'spells', 'complexforms', 'amps', 'lifestyles']
 
 export interface SourceFile { file: string; xml: string; overlay: boolean }
 
 export function buildCatalog(files: SourceFile[]): Catalog {
   const c: Catalog = { levels: new Map(), metatypes: new Map(), attributes: new Map(), skills: new Map(),
     pricing: undefined as unknown as Pricing, ampTypes: new Map(), ampEffects: new Map(), amps: new Map(),
-    vehicles: new Map(), packages: new Map(), items: new Map(), files: [], errors: [] }
+    vehicles: new Map(), packages: new Map(), items: new Map(), lifestyles: new Map(), files: [], errors: [] }
   const targets: Record<string, [Map<string, unknown>, (el: Element) => unknown]> = {
     levels: [c.levels, toLevel], metatypes: [c.metatypes, toMetatype],
     attributes: [c.attributes as Map<AttrId, unknown>, toAttribute], skills: [c.skills, toSkill],
     amptypes: [c.ampTypes, toAmpType], ampeffects: [c.ampEffects, toAmpEffect], amps: [c.amps, toAmp],
     vehicles: [c.vehicles, toVehicle], packages: [c.packages, toPackage],
     gear: [c.items, toItem], weapons: [c.items, toItem], armor: [c.items, toItem], spells: [c.items, toItem],
+    complexforms: [c.items, toItem], lifestyles: [c.lifestyles, toLifestyle],
   }
   const ordered = [...files.filter(f => !f.overlay), ...files.filter(f => f.overlay)]
   for (const f of ordered) {

@@ -27,6 +27,7 @@
     <xs:attribute name="requires" type="ca2:Id"/>
     <xs:attribute name="excludes" type="ca2:Id"/>
     <xs:attribute name="gmApproval" type="xs:boolean"/>
+    <xs:attribute name="essence" type="xs:decimal"/>
     <xs:attribute name="param">
       <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="skill"/><xs:enumeration value="spec"/><xs:enumeration value="attribute"/><xs:enumeration value="realm"/><xs:enumeration value="text"/><xs:enumeration value="value"/></xs:restriction></xs:simpleType>
     </xs:attribute>
