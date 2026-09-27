@@ -9,5 +9,6 @@
   <amptype id="equipment" base="0" essence="0" source="CRB" page="60"><name>Equipment</name></amptype>
   <amptype id="cyberdeck" base="1" essence="0" source="CRB" page="60"><name>Cyberdeck</name></amptype>
   <amptype id="vehicle" base="1" essence="0" source="CRB" page="60"><name>Vehicle or drone</name></amptype>
+  <amptype id="emerged" base="7" essence="0" source="CG" page="8"><name>Emerged</name></amptype>
   <amptype id="contact" base="0" essence="0" source="CRB" page="60"><name>Contact</name></amptype>
 </ca2:data>

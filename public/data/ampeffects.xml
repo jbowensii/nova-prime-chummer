@@ -36,6 +36,12 @@
   <effect id="auto-medkit" category="vehicle" rating="1" types="vehicle" max="1" source="CRB" page="63"><name>Autonomous medkit</name></effect>
   <effect id="narrative" category="misc" rating="1" types="quality cyberware bioware adept equipment cyberdeck vehicle contact" param="text" source="CRB" page="63"><name>Additional narrative effect</name></effect>
   <effect id="negative" category="misc" rating="-1" types="quality awakened cyberware bioware adept equipment cyberdeck vehicle contact" param="value" gmApproval="true" source="CRB" page="63"><name>Negative effect</name></effect>
+  <!-- Mental protection: armor against spells, astral and biofeedback damage (CRB p.68, 190, 211). -->
+  <effect id="mental-armor" category="physical" rating="1" types="quality cyberware bioware adept equipment cyberdeck" max="1" source="CRB" page="190"><name>Armor +1 against mental damage (spells, astral, biofeedback)</name></effect>
+  <!-- Implant grades from Daegann's expanded list: change the amp's Essence cost. -->
+  <effect id="grade-delta" category="grade" rating="1" types="cyberware" max="1" excludes="grade-omega" essence="-0.5" source="DHSA" page="29"><name>Delta grade (Essence 1 → 0.5)</name></effect>
+  <effect id="grade-omega" category="grade" rating="-1" types="cyberware" max="1" excludes="grade-delta" essence="0.5" source="DHSA" page="29"><name>Omega grade (Essence 1 → 1.5, social Disadvantage)</name></effect>
+  <effect id="grade-cultivated" category="grade" rating="1" types="bioware" max="1" essence="-0.25" source="DHSA" page="29"><name>Cultivated bioware (Essence 0.5 → 0.25)</name></effect>
   <effect id="awk-astral-perception" category="awakened" rating="1" types="awakened" max="1" excludes="awk-astral-projection" source="CRB" page="58"><name>Astral perception</name></effect>
   <effect id="awk-astral-projection" category="awakened" rating="2" types="awakened" max="1" excludes="awk-astral-perception" source="CRB" page="58"><name>Astral perception and projection</name></effect>
   <effect id="awk-sorcery" category="awakened" rating="1" types="awakened" max="1" source="CRB" page="58"><name>Sorcery</name></effect>

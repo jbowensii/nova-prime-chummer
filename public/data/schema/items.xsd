@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Schema for kind="gear|weapons|armor|spells". See docs/data-format.md. -->
+<!-- Schema for kind="gear|weapons|armor|spells|complexforms". See docs/data-format.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:ca2="urn:chummer-anarchy2:data:1"
            targetNamespace="urn:chummer-anarchy2:data:1"
@@ -12,7 +12,7 @@
         <xs:element name="remove" type="ca2:Remove"/>
       </xs:choice>
       <xs:attribute name="kind" use="required">
-        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="gear|weapons|armor|spells"/></xs:restriction></xs:simpleType>
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="gear|weapons|armor|spells|complexforms"/></xs:restriction></xs:simpleType>
       </xs:attribute>
       <xs:attributeGroup ref="ca2:root"/>
     </xs:complexType>
@@ -24,7 +24,7 @@
     </xs:sequence>
     <xs:attributeGroup ref="ca2:ref"/>
     <xs:attribute name="kind" use="required">
-      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/><xs:enumeration value="spell"/></xs:restriction></xs:simpleType>
+      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/><xs:enumeration value="spell"/><xs:enumeration value="complex-form"/></xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="specialist" type="xs:boolean"/>
     <xs:attribute name="armor" type="xs:positiveInteger"/>

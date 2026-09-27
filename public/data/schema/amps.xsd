@@ -48,5 +48,6 @@
     <xs:attribute name="type" type="ca2:Id" use="required"/>
     <xs:attribute name="printedRating" type="xs:integer"/>
     <xs:attribute name="vehicle" type="ca2:Id"/>
+    <xs:attribute name="mod" type="xs:boolean"/>
   </xs:complexType>
 </xs:schema>

@@ -1,10 +1,13 @@
 // Derived values shown on the sheet (CRB p.52, 60, 61, 67-68, 77).
-import type { AttrId, Build, Catalog, Character } from '../model/types'
+import type { AmpEntry, AttrId, Build, Catalog, Character } from '../model/types'
 import { ATTRS } from '../model/types'
 import { ampEssence } from './amps'
 import { currentBuild } from './career'
 
 export type Thresholds = [number, number, number]
+export interface Weapon { uid: string; name: string; dv: string; ranges: string; specialist?: boolean; note?: string }
+export interface VehicleStats { uid: string; name: string; chassis: string; pilot: number; body: number; handling: number;
+  speed: number; flying: boolean; armor: number; count: number; mount: string; thresholds: Thresholds }
 export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number }
 export interface Derived {
   build: Build
@@ -14,6 +17,12 @@ export interface Derived {
   monitor: { light: number; serious: number; incap: 1 }
   armor: { none: number; main: number; alt: number }
   thresholds: { physicalNone: Thresholds; physicalMain: Thresholds; physicalAlt: Thresholds; mental: Thresholds; matrix?: Thresholds }
+  /** armor against mental damage (spells, astral, biofeedback) */
+  mentalProtection: number
+  weapons: Weapon[]
+  vehicles: VehicleStats[]
+  /** technomancer: living persona Firewall = WIL, Attack = CHA (Conversion Guide p.8) */
+  emerged: boolean
   pools: Pool[]
   rrAttr: Record<AttrId, number>
   initiative?: { level: number; realm?: string; source: string }
@@ -25,6 +34,29 @@ export interface Derived {
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)
 const t3 = (x: number): Thresholds => [x, x + 3, x + 6]
+
+/** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles base Speed. */
+export function vehicleStats(c: Catalog, a: AmpEntry): VehicleStats | undefined {
+  const ch = a.vehicle ? c.vehicles.get(a.vehicle) : undefined
+  if (!ch) return undefined
+  const n = (ref: string) => a.effects.filter(e => e.ref === ref).length
+  const flying = n('flying') > 0
+  const fixed = n('fixed') > 0
+  const ground = ch.speed + n('speed-plus')
+  const speed = fixed ? 0 : flying ? (n('speed-plus') === 0 && ch.flyingSpeed != null ? ch.flyingSpeed : Math.max(1, ground * 2)) : ground
+  const armor = ch.armor + n('vehicle-armor')
+  return { uid: a.uid, name: a.name, chassis: ch.name, pilot: ch.pilot + n('pilot-plus'), body: ch.body, handling: ch.handling + n('handling-plus'),
+    speed, flying, armor, count: 1 + n('extra-drone'), mount: ch.mount,
+    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor] }
+}
+
+/** "STR+1", "S+2", "STR", "5", "12 (anti-vehicle 16)" -> damage value with this Strength. */
+export function weaponDV(dv: string, str: number, plus = 0): string {
+  const m = dv.trim().match(/^(?:STR|S)(?=\s*\+|\s*$)(?:\s*\+\s*(\d+))?(.*)$/i)
+  if (m) return `${str + Number(m[1] ?? 0) + plus}${m[2]}`
+  const k = dv.trim().match(/^(\d+)(.*)$/)
+  return k ? `${Number(k[1]) + plus}${k[2]}` : dv
+}
 
 export function derive(c: Catalog, ch: Character): Derived {
   const b = ch.finalizedAt ? currentBuild(ch) : ch.build
@@ -46,6 +78,8 @@ export function derive(c: Catalog, ch: Character): Derived {
     return (it.armor ?? 0) + linked
   }
   const alwaysOn = picks.filter(p => p.e.ref === 'armor-plus' && p.amp.type !== 'equipment').length
+  // mental protection from Astral/Mystic Armor, biofeedback filters, code shells...: always on
+  const mentalProtection = picks.filter(p => p.e.ref === 'mental-armor').length
   const armor = { none: alwaysOn, main: itemArmor(b.mainArmor) + alwaysOn, alt: itemArmor(b.altArmor) + alwaysOn }
 
   // Risk Reduction from amps
@@ -89,9 +123,25 @@ export function derive(c: Catalog, ch: Character): Derived {
       initiative = { level, realm: a.effects.find(e => e.ref === 'init-realm')?.param, source: a.name }
   }
 
+  const emerged = b.amps.some(a => a.type === 'emerged')
   const deck = b.amps.find(a => a.type === 'cyberdeck')
-  const firewall = deck ? 1 + deck.effects.filter(e => e.ref === 'firewall-plus').length : undefined
-  const attack = deck ? deck.effects.filter(e => e.ref === 'attack-plus').length : undefined
+  const firewall = emerged ? attr('wil') : deck ? 1 + deck.effects.filter(e => e.ref === 'firewall-plus').length : undefined
+  const attack = emerged ? attr('cha') : deck ? deck.effects.filter(e => e.ref === 'attack-plus').length : undefined
+
+  // Weapons with damage worked out: unarmed is STR (CRB p.142) plus DV bonuses from implants and
+  // adept powers; a weapon's own Equipment amp adds its DV bonuses, unless the book already printed
+  // the final DV on the item (named book weapons).
+  const unarmedPlus = picks.filter(p => p.e.ref === 'dv-plus' && p.amp.type !== 'equipment').length
+  const weapons: Weapon[] = [{ uid: 'unarmed', name: 'Unarmed', dv: weaponDV('STR', attr('str'), unarmedPlus), ranges: 'OK/–/–/–' }]
+  for (const it of b.items.filter(i => i.kind === 'weapon')) {
+    const cat = (it.catalogId ? c.items.get(it.catalogId) : undefined) ?? it.snapshot
+    const amp = b.amps.find(a => a.type === 'equipment' && a.linkedItem === it.uid)
+    const plus = it.dv ? 0 : amp?.effects.filter(e => e.ref === 'dv-plus').length ?? 0
+    const range = amp?.effects.find(e => e.ref === 'range-improve')?.param
+    weapons.push({ uid: it.uid, name: it.name, dv: weaponDV(it.dv ?? cat?.dv ?? '?', attr('str'), plus),
+      ranges: it.ranges ?? cat?.ranges ?? '', specialist: it.specialist, note: range ? `range improved: ${range}` : undefined })
+  }
+  const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a)).filter((x): x is VehicleStats => !!x)
 
   const knowledge = [...b.knowledge, ...ch.narrative.keywords.filter(Boolean),
     ...b.skills.filter(s => s.rating >= 4).map(s => c.skills.get(s.id)?.name ?? s.id)]
@@ -110,7 +160,7 @@ export function derive(c: Catalog, ch: Character): Derived {
     armor,
     thresholds: {
       physicalNone: t3(attr('str') + armor.none), physicalMain: t3(attr('str') + armor.main),
-      physicalAlt: t3(attr('str') + armor.alt), mental: t3(attr('wil')),
+      physicalAlt: t3(attr('str') + armor.alt), mental: t3(attr('wil') + mentalProtection),
       matrix: firewall != null ? t3(firewall) : undefined,
     },
     pools,
@@ -121,5 +171,9 @@ export function derive(c: Catalog, ch: Character): Derived {
       sorcery: has('awk-sorcery'), conjuring: has('awk-conjuring'), adept: has('awk-adept') },
     firewall,
     attack,
+    mentalProtection,
+    weapons,
+    vehicles,
+    emerged,
   }
 }

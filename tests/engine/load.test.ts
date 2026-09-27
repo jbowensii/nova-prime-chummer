@@ -6,12 +6,12 @@ test('base catalog loads without errors', () => {
   expect(cat.errors).toEqual([])
   expect(cat.levels.get('runner')!.nuyen).toBe(375000)
   expect(cat.metatypes.get('troll')!.ranges.str).toEqual([1, 6])
-  expect(cat.skills.size).toBe(14)
+  expect(cat.skills.size).toBe(15) // 14 core skills + Tasking (Conversion Guide)
   expect(cat.pricing.attrLastPoint).toBe(20000)
   expect(cat.ampEffects.get('init-2')!.requires).toBe('init-1')
   expect(cat.amps.get('ares-predator-iv-heavy-pistol')!.item!.kind).toBe('weapon')
   expect(cat.items.get('light-armor')!.armor).toBe(3)
-  expect(cat.files.length).toBe(14)
+  expect(cat.files.length).toBe(16)
 })
 
 test('overlay replaces, removes, adds by id', () => {

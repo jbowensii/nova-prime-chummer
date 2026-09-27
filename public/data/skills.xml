@@ -106,6 +106,12 @@
     <spec id="stealth.palming" attr="agi">Palming</spec>
     <spec id="stealth.lockpicking" attr="agi">Lockpicking</spec>
   </skill>
+  <!-- Technomancy is not in the core book; Tasking comes from the CGL Conversion Guide v1.1 (CG) p.5, 9-10. -->
+  <skill id="tasking" attr="log" requires="emerged" source="CG" page="5"><name>Tasking</name>
+    <spec id="tasking.complex-forms" attr="log">Complex forms</spec>
+    <spec id="tasking.compiling" attr="log">Compiling</spec>
+    <spec id="tasking.decompiling" attr="log">Decompiling</spec>
+  </skill>
   <skill id="survival" attr="log" alt="wil" source="CRB" page="57"><name>Survival</name>
     <spec id="survival.animals" attr="cha">Animals</spec>
     <spec id="survival.composure" attr="wil">Composure</spec>
