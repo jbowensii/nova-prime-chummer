@@ -47,7 +47,8 @@ export function Receipt() {
             Cancels {d.essenceEffects.magicHitsCancelled} hit on magic Tests{d.essenceEffects.healingHitsCancelled ? `, ${d.essenceEffects.healingHitsCancelled} on healing` : ''}
           </div>}
           {d.initiative && <Line label="Initiative" amount={`${d.initiative.level}${d.initiative.realm ? ` (${d.initiative.realm})` : ''}`} />}
-          {d.firewall != null && <Line label="Firewall / Attack" amount={`${d.firewall} / ${d.attack}`} />}
+          {d.firewall != null && <Line label={d.emerged ? 'Living persona FW / Att' : 'Firewall / Attack'} amount={`${d.firewall} / ${d.attack}`} />}
+          {d.mentalProtection > 0 && <Line label="Mental armor" amount={d.mentalProtection} />}
         </div>
 
         <div className="block">

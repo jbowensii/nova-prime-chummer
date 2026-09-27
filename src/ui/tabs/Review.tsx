@@ -67,7 +67,7 @@ export function ReviewTab() {
       <Modal open={finalizing} onClose={() => setFinalizing(false)} title={`Finalize ${ch.identity.streetName || ch.identity.name || 'this runner'}?`}
         actions={<><button className="btn" onClick={() => setFinalizing(false)}>Not yet</button>
           <button className="btn primary" onClick={() => { replace(finalize(c, ch)); setFinalizing(false); location.hash = `#/c/${ch.id}/ledger` }}>Finalize</button></>}>
-        <p>Creation choices become the baseline. You can still undo this right away with Undo.</p>
+        <p>Your creation choices become the baseline. Until you record something in the ledger, you can reopen creation from the Ledger tab.</p>
       </Modal>
     </div>
   )

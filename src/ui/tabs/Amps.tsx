@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ampCtx, ampEssence, ampFromTemplate, ampRating, currentBuild, makeAmpAdd, makeAmpModify, makeBuy } from '../../engine'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating, currentBuild, makeAmpAdd, makeAmpModify, makeBuy, vehicleStats } from '../../engine'
 import type { AmpEntry, ItemEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
@@ -68,13 +68,14 @@ export function AmpsTab() {
         return (
           <section key={t.id}>
             <h3>{t.id === 'contact' ? 'Contacts' : t.name}</h3>
-            <table className="data fixed"><colgroup><col /><col style={{ width: '6.5rem' }} /><col style={{ width: '7rem' }} /><col style={{ width: '5.5rem' }} /><col style={{ width: '9.5rem' }} /></colgroup><tbody>
+            <div className="scroll-x"><table className="data fixed"><colgroup><col /><col style={{ width: '6.5rem' }} /><col style={{ width: '7rem' }} /><col style={{ width: '5.5rem' }} /><col style={{ width: '9.5rem' }} /></colgroup><tbody>
               {list.map(a => {
                 const r = ampRating(c, a, ampCtx(b, a))
                 const probs = problems(a)
                 return (
                   <tr key={a.uid}>
                     <td><b>{a.name}</b>
+                      {a.type === 'vehicle' && (() => { const s = vehicleStats(c, a); return s && <div style={{ fontSize: '0.88rem' }}>{s.count > 1 ? `${s.count}× ` : ''}{s.chassis}: Pilot {s.pilot}, Body {s.body}, Handling {s.handling}, Speed {s.speed}{s.flying ? ' (flying)' : ''}, Armor {s.armor}</div> })()}
                       <div className="muted" style={{ fontSize: '0.88rem' }}>{describe(a) || a.narrative || 'Narrative effect only'}</div>
                       {probs.map((p, i) => <div key={i} className={p.severity === 'error' ? 'err' : 'warn'} style={{ fontSize: '0.88rem' }}>{p.message}</div>)}
                     </td>
@@ -88,7 +89,7 @@ export function AmpsTab() {
                   </tr>
                 )
               })}
-            </tbody></table>
+            </tbody></table></div>
           </section>
         )
       })}
@@ -100,7 +101,7 @@ export function AmpsTab() {
           </div>
           <Picker onPick={startFromCatalog} placeholder="Search the book’s amps"
             groups={types.map(t => t.name)}
-            items={[...c.amps.values()].map(a => ({
+            items={[...c.amps.values()].filter(a => !a.mod).map(a => ({
               id: a.id, name: a.name, group: c.ampTypes.get(a.type)?.name,
               meta: `${c.ampTypes.get(a.type)?.name}, ${a.source} p.${a.page}`,
               price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative,

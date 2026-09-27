@@ -48,8 +48,8 @@ export function SkillsTab() {
         2,500¥ a point up to 5, then 5,000¥ a point up to 8. Specializations and knowledge skills cost 2,500¥ each and add +2 to the pool (CRB p.52, 83).
         {!career && level && ` ${level.name} caps skills at ${level.skillCap} during creation.`}
       </p>
-      <table className="data">
-        <thead><tr><th>Skill</th><th>Rating</th><th>Attr.</th><th className="num">Dice</th><th className="num">RR</th><th className="num">Next point</th></tr></thead>
+      <div className="scroll-x"><table className="data">
+        <thead><tr><th>Skill</th><th>Rating</th><th>Attr.</th><th className="num">Dice</th><th className="num">RR</th><th className="num hide-sm">Next point</th></tr></thead>
         <tbody>
           {[...c.skills.values()].map(sk => {
             const e = entry(sk.id)
@@ -65,7 +65,7 @@ export function SkillsTab() {
                 <td>{sk.attr.toUpperCase()}{sk.alt && <span className="muted">/{sk.alt.toUpperCase()}</span>}</td>
                 <td className="num">{base.map(p => p.dp).join(' / ')}</td>
                 <td className="num">{main?.rr || ''}</td>
-                <td className="num">{r < 8 ? fmt(skillCost(c.pricing, r, r + 1)) : ''}</td>
+                <td className="num hide-sm">{r < 8 ? fmt(skillCost(c.pricing, r, r + 1)) : ''}</td>
               </tr>,
               (e?.specs.length || r > 0) ? (
                 <tr key={`${sk.id}-specs`} className="sub">
@@ -93,7 +93,7 @@ export function SkillsTab() {
             ]
           })}
         </tbody>
-      </table>
+      </table></div>
 
       <hr className="sep" />
       <h2>Knowledge</h2>
