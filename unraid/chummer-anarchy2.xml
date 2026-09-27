@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>chummer-anarchy2</Name>
+  <Repository>chummer-anarchy2:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/jbowensii/chummer-anarchy2</Support>
+  <Project>https://github.com/jbowensii/chummer-anarchy2</Project>
+  <Overview>Character generator and career tracker for Shadowrun: Anarchy 2.0. A static web app: characters are kept in your browser and exported as .ca2.json files. Put overlay XML (house rules, extra gear) in the Custom data folder and list it in custom/index.xml.</Overview>
+  <Category>Tools: Other:</Category>
+  <WebUI>http://[IP]:[PORT:80]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/jbowensii/chummer-anarchy2/main/unraid/icon.png</Icon>
+  <Config Name="WebUI Port" Target="80" Default="8480" Mode="tcp" Description="Port for the web interface" Type="Port" Display="always" Required="true" Mask="false">8480</Config>
+  <Config Name="Custom data" Target="/usr/share/nginx/html/custom" Default="/mnt/user/appdata/chummer-anarchy2/custom" Mode="rw" Description="House-rule and extra-content XML overlays (list them in index.xml)" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/chummer-anarchy2/custom</Config>
+</Container>
