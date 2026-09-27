@@ -31,21 +31,26 @@ Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
 
 ## Run it
 
-Characters are stored in the browser that uses the app. **Export** writes a
-`.ca2.json` file, which is the copy to keep.
+Served by its own small Node server (Docker / Unraid), the app saves every
+runner as an XML file in the `characters` folder, shared by every browser on
+your LAN. Runners already saved in a browser move there on first load. With
+no server (`npm run dev`, a plain static host), runners stay in the browser.
+**Export** writes the same XML file. See
+[docs/character-format.md](docs/character-format.md).
 
 ### Locally
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173 (runners saved in the browser)
+npm run serve      # build + server on :80 (set PORT, CHAR_DIR, CUSTOM_DIR)
 ```
 
 ### Docker
 
 ```bash
 docker build -t chummer-anarchy2:latest .
-docker run -d -p 8480:80 -v /path/to/custom:/usr/share/nginx/html/custom chummer-anarchy2:latest
+docker run -d -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom chummer-anarchy2:latest
 ```
 
 ### Unraid

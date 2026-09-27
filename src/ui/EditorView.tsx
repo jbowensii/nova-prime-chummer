@@ -4,7 +4,8 @@ import type { CareerEvent, Catalog, Character } from '../model/types'
 import { fmt, Modal } from './bits'
 import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
-import { getCharacter, saveCharacter } from './storage'
+import { useRepo } from './repo'
+import { newId } from '../model/types'
 import { Receipt } from './Receipt'
 import { SettingsButton } from './settings'
 import { AmpsTab } from './tabs/Amps'
@@ -22,21 +23,78 @@ const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attrib
 interface Pending { ev: CareerEvent; summary: string; cost: number; after: number; resolve: (ok: boolean) => void }
 
 export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string }) {
-  const [ch, setCh] = useState<Character | undefined>(() => getCharacter(id))
+  const repo = useRepo()
+  const [ch, setCh] = useState<Character | undefined>()
+  const [loaded, setLoaded] = useState(false)
   const hist = useRef<{ past: Character[]; future: Character[] }>({ past: [], future: [] })
   const [, bump] = useState(0)
-  const [storageOk, setStorageOk] = useState(true)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const [conflict, setConflict] = useState<{ rev: number; file: string; updatedAt?: string } | null>(null)
+  const [copyName, setCopyName] = useState('')
+  // saving: one request at a time; the latest unsaved state follows when it finishes
+  const sync = useRef({ rev: undefined as number | undefined, loaded: undefined as Character | undefined, saved: undefined as Character | undefined,
+    latest: undefined as Character | undefined, busy: false, queued: undefined as Character | undefined, paused: false })
 
   useEffect(() => {
-    if (!ch) return
-    const t = setTimeout(() => setStorageOk(saveCharacter(ch).ok), 400)
+    repo.get(id).then(s => { sync.current.rev = s?.rev; sync.current.loaded = s?.ch; setCh(s?.ch); setLoaded(true) },
+      e => { setSaveError(String(e)); setLoaded(true) })
+  }, [repo, id])
+
+  const persist = async (next: Character, keepalive = false) => {
+    const st = sync.current
+    if (st.paused || next === st.saved) return
+    if (st.busy) { st.queued = next; return }
+    st.busy = true
+    const r = await repo.save(next, st.rev, { keepalive })
+    st.busy = false
+    if (r.ok) { st.rev = r.rev; st.saved = next; setSaveError(null) }
+    else if (r.conflict) { st.paused = true; setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
+    else setSaveError(r.error ?? 'Saving failed.')
+    const q = st.queued
+    st.queued = undefined
+    if (q && !st.paused) void persist(q)
+  }
+
+  useEffect(() => {
+    sync.current.latest = ch
+    if (!ch || ch === sync.current.loaded) return
+    const t = setTimeout(() => void persist(ch), 400)
     return () => clearTimeout(t)
-  }, [ch])
+  }, [ch]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leaving the editor (another runner, the library, closing the tab) must not drop the last change.
+  useEffect(() => {
+    const flush = () => {
+      const st = sync.current
+      if (st.latest && st.latest !== st.loaded && st.latest !== st.saved) void persist(st.latest, true)
+    }
+    addEventListener('pagehide', flush)
+    return () => { removeEventListener('pagehide', flush); flush() }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resolveConflict = async (how: 'overwrite' | 'copy' | 'reload') => {
+    if (!ch) return
+    if (how === 'overwrite') {
+      const r = await repo.save(ch, undefined, { force: true })
+      if (r.ok) sync.current.rev = r.rev
+    } else if (how === 'copy') {
+      const copy = { ...ch, id: newId(), identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
+      const r = await repo.save(copy, undefined, { filename: copyName.trim() })
+      if (r.ok) location.hash = `#/c/${copy.id}/${tab}`
+    } else {
+      const s = await repo.get(ch.id)
+      sync.current.rev = s?.rev; sync.current.loaded = s?.ch
+      setCh(s?.ch)
+    }
+    sync.current.paused = false
+    setConflict(null)
+  }
 
   const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch])
 
-  if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted from this browser. <a href="#/">Back to your runners</a></p></main>
+  if (!loaded) return <main className="lib"><p className="muted">Loading runner…</p></main>
+  if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on tower04' : ' from this browser'}. <a href="#/">Back to your runners</a></p></main>
 
   const career = !!ch.finalizedAt
   const commit = (next: Character, undoable: boolean) => {
@@ -96,7 +154,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           </a>
         ))}
       </nav>
-      {!storageOk && <p className="banner" style={{ margin: '1rem 1.25rem 0' }}>This browser isn’t saving changes. Use Export file before you close the tab.</p>}
+      {saveError && <p className="banner" style={{ margin: '1rem 1.25rem 0' }}>{saveError} Changes are kept in this tab; use Export file if you need to close it.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
         <main className="work">
@@ -110,6 +168,17 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
         </main>
         <Receipt />
       </div>
+      <Modal open={!!conflict} onClose={() => void resolveConflict('reload')} title="Saved elsewhere"
+        actions={<>
+          <button className="btn" onClick={() => void resolveConflict('reload')}>Discard mine, load theirs</button>
+          <button className="btn" onClick={() => void resolveConflict('copy')}>Save mine as a new file</button>
+          <button className="btn primary" onClick={() => void resolveConflict('overwrite')}>Overwrite with mine</button>
+        </>}>
+        {conflict && <div className="stack">
+          <p>{name} was saved on tower04 from another browser{conflict.updatedAt ? ` (${new Date(conflict.updatedAt).toLocaleString()})` : ''}, after you opened it. File: <code>{conflict.file}</code>.</p>
+          <label>File name if you save yours as a new file<input value={copyName} onChange={e => setCopyName(e.target.value)} /></label>
+        </div>}
+      </Modal>
       <Modal open={!!pending} onClose={() => settle(false)} title="Confirm"
         actions={<><button className="btn" onClick={() => settle(false)}>Cancel</button><button className="btn primary" onClick={() => settle(true)}>Record it</button></>}>
         {pending && <div className="stack">
