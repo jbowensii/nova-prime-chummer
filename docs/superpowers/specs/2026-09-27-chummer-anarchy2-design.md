@@ -127,7 +127,7 @@ module or a CLI without changes.
 | `levels.xml` | Levels of play: starting nuyen, number of attributes allowed at max, skill rating cap, number of skills allowed at a higher cap, RR caps (attribute / skill / specialization) |
 | `metatypes.xml` | Attribute min/max per metatype, starting Edge, racial quality (narrative only) |
 | `attributes.xml` | STR, AGI, WIL, LOG, CHA: id, abbreviation, name |
-| `skills.xml` | The 11 skills: linked attribute(s), restrictions (Conjuring and Sorcery need Awakened, Cracking needs a cyberdeck), and specializations with their attribute |
+| `skills.xml` | The 14 skills: linked attribute(s), restrictions (Conjuring and Sorcery need Awakened, Cracking needs a cyberdeck), and specializations with their attribute |
 | `pricing.xml` | The price list (CRB p.83): per-point costs and breakpoints, as data, so house rules can change them |
 | `amptypes.xml` | Quality, Awakened, Cyberware, Bioware, Adept power, Equipment, Cyberdeck, Vehicle/Drone, Contact: base rating, Essence cost, and requirements (Adept power needs Awakened with the Adept option) |
 | `ampeffects.xml` | The Shadow Amp effect table (CRB p.61–63): rating, allowed types, max, prerequisite chain, parameter kind, stacking scope |
@@ -345,7 +345,7 @@ Review.
 | **Library** | Character cards (portrait, street name, metatype, level, Creation or Career badge). New / Open / Duplicate / Import / Export / Delete (with confirmation). Reminds you to export a character changed more than 7 days after its last export. |
 | **Concept** | Identity, metatype (ranges shown), level of play, package, 5 Keywords / 4 Dispositions / 4 Cues (with hints from CRB p.50–51), background. |
 | **Attributes** | Stepper per attribute: min/max, cost of the next point, at-max slots used against the level allowance. |
-| **Skills** | The 11 skills: rating stepper, linked attribute, live dice pool and RR. Specialization chips (book list or custom, which is flagged). Knowledge skills list. |
+| **Skills** | The 14 skills: rating stepper, linked attribute, live dice pool and RR. Specialization chips (book list or custom, which is flagged). Knowledge skills list. |
 | **Shadow Amps** | Amps grouped by type. **Amp Builder** dialog: start from a catalog amp or a bare type → add the effects legal for that type (rating, max and prerequisite shown) → fill parameters → optional narrative or negative effects → live rating, cost and Essence (in career mode, the cost of the change). **Contacts** is a sub-view. |
 | **Gear & Spells** | Armor, weapons (standard or specialist), equipment and spells from the catalog, or custom at a GM-set price. "Convert to Amp" on equipment. Vehicles and drones start from a chassis in `vehicles.xml`. |
 | **Review** | All violations with citations; for each, *Fix* (jump to it) or *GM approve* (needs a note). **Finalize** button. |
@@ -405,7 +405,30 @@ plan (writing-plans).
 
 ---
 
-## 11. Sources on disk (not committed)
+## 11. Deployment
+
+The app is static, so the three ways to deploy it all serve the same
+`dist/` folder:
+
+1. **Any static host:** copy `dist/` anywhere.
+2. **Docker:** a `Dockerfile` builds the app (a Node build stage) and serves
+   it with `nginx:alpine` on port 80. `/usr/share/nginx/html/custom` is a
+   volume, so the host's overlay XML replaces the image's empty
+   `custom/index.xml`.
+3. **Unraid template:** `unraid/chummer-anarchy2.xml` is a Community-Apps
+   style template with a WebUI link, a port mapping (default 8480 → 80),
+   and the path `/mnt/user/appdata/chummer-anarchy2/custom` →
+   `/usr/share/nginx/html/custom`. The template ships as an option; Docker
+   and plain static hosting remain supported.
+
+**First deployment is tower04**, done through the Unraid template, so it
+shows up as a managed container (Autostart and Edit work) rather than a
+"3rd Party" one. How the image reaches tower04 (built on the tower, or
+pulled from GHCR) is decided in the plan, because the repo is private.
+
+---
+
+## 12. Sources on disk (not committed)
 
 - `Downloads\Shadowrun Anachy 2.0\Shadowrun Anarchy 2.0 v1.8.md`: the core
   book as markdown, the primary source
