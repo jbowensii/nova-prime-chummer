@@ -136,7 +136,14 @@ These are the base chassis for vehicle amps.
 
 ### amps
 
-`<amp id type printedRating? vehicle?><name/><effect ref param? value? note?/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note?/>*<narrative/></amp>`
+
+- `<item>` (equipment amps only) is the base item bought with the amp, priced
+  from `pricing.xml`. Book price = item price + rating × `ampPoint`.
+- An effect without `param` is an open pick: the player chooses it in the Amp
+  Builder (mentor spirits' "choose two RR").
+- `note="balances printed rating"` / `note="book drawback"` mark effects added
+  to reconcile with the book's printed rating (see `docs/book-discrepancies.md`).
 
 - `type` is an amptype id.
 - Each `effect ref` is an ampeffect id, and `param` fills its parameter (a

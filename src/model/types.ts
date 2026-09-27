@@ -23,7 +23,10 @@ export type EffectParam = 'skill' | 'spec' | 'attribute' | 'realm' | 'text' | 'v
 export interface AmpEffect extends Ref { name: string; category: string; rating: number;
   types: string[]; max?: number; requires?: string; excludes?: string;
   param?: EffectParam; gmApproval?: boolean }
-export interface AmpTemplate extends Ref { name: string; type: string;
+/** base item bought with an equipment amp; priced from pricing.xml */
+export interface TemplateItem { kind: 'gear' | 'weapon' | 'armor'; specialist?: boolean;
+  armor?: number; dv?: string; ranges?: string }
+export interface AmpTemplate extends Ref { name: string; type: string; item?: TemplateItem;
   effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string }
 export interface VehicleBase extends Ref { name: string; pilot: number; body: number;
   handling: number; speed: number; flyingSpeed?: number; armor: number; mount: string }

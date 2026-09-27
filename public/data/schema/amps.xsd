@@ -20,6 +20,20 @@
   <xs:complexType name="Amp">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
+      <!-- equipment amps: the base item bought with the amp (priced from pricing.xml) -->
+      <xs:element name="item" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="kind" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="specialist" type="xs:boolean"/>
+          <xs:attribute name="armor" type="xs:positiveInteger"/>
+          <xs:attribute name="dv" type="xs:string"/>
+          <xs:attribute name="ranges" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
       <xs:element name="effect" minOccurs="0" maxOccurs="unbounded">
         <xs:complexType>
           <xs:attribute name="ref" type="ca2:Id" use="required"/>
