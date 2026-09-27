@@ -9,11 +9,14 @@ import { JSDOM } from 'jsdom';
 const DATA = 'public/data';
 const SCHEMA = join(DATA, 'schema');
 const schemaFor = kind => (['gear', 'weapons', 'armor', 'spells', 'complexforms'].includes(kind) ? 'items' : kind);
+// private book text (not in the repo): validated too when present locally
+for (const p of ['public/custom/texts.xml', '.extract/private/texts.xml']) if (existsSync(p)) process.argv.push('--texts=' + p);
 const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
 
 // base files, then overlays listed in each overlay dir's index.xml
 const files = readdirSync(DATA).filter(f => f.endsWith('.xml')).map(f => join(DATA, f));
-for (const dir of ['public/custom', ...process.argv.slice(2)]) {
+for (const t of process.argv.filter(a => a.startsWith('--texts='))) files.push(t.slice(8));
+for (const dir of ['public/custom', ...process.argv.slice(2).filter(a => !a.startsWith('--'))]) {
   const idx = join(dir, 'index.xml');
   if (!existsSync(idx)) continue;
   for (const m of readFileSync(idx, 'utf8').replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)) files.push(join(dir, m[1]));

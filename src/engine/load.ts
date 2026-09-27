@@ -28,6 +28,13 @@ export function buildCatalog(files: SourceFile[]): Catalog {
     if (p.error) { c.errors.push(p.error); continue }
     if (p.kind === 'pricing') {
       if (p.entries[0]) c.pricing = toPricing(p.entries[0])
+    } else if (p.kind === 'texts') {
+      // private descriptions merged by id (docs/data-format.md)
+      for (const el of p.entries) {
+        const id = el.getAttribute('id')!, text = el.textContent ?? ''
+        if (el.getAttribute('of') === 'amps') { const a = c.amps.get(id); if (a) a.narrative = text }
+        else { const i = c.items.get(id); if (i) i.text = text }
+      }
     } else {
       const t = targets[p.kind]
       if (!t) { c.errors.push({ file: f.file, message: `unknown kind "${p.kind}"` }); continue }
@@ -57,6 +64,9 @@ export async function loadCatalog(baseUrl = './'): Promise<Catalog> {
   }))
   files.sort((a, b) => DATA_FILES.indexOf(a.file.replace('.xml', '')) - DATA_FILES.indexOf(b.file.replace('.xml', '')))
   const index = await get('custom/index.xml').catch(() => null)
+  // private book text, kept out of the repository; loaded by convention when present
+  const texts = await get('custom/texts.xml').catch(() => null)
+  if (texts) files.push({ file: 'custom/texts.xml', xml: texts, overlay: true })
   if (index) {
     const hrefs = [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
     for (const href of hrefs) {
