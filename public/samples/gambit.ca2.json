@@ -1,0 +1,225 @@
+{
+  "formatVersion": 1,
+  "id": "sample-gambit",
+  "identity": {
+    "name": "Gambit",
+    "streetName": "Gambit",
+    "metatype": "human",
+    "background": "Book pregen, CRB p.94.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Human",
+      "London",
+      "Decker",
+      "India",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Ambitious",
+      "Vindictive",
+      "Spiteful",
+      "Planner"
+    ],
+    "cues": [
+      "There are times when you have to lose a piece to win the game.",
+      "In chess as in the Matrix, I prefer to attack.",
+      "My name is Gambit, not Gandhi. Get that through your head.",
+      "A goal without a plan is just a fraggin’ wish."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 3,
+      "log": 4,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "cracking",
+        "rating": 5,
+        "specs": [
+          "cracking.brute-force"
+        ]
+      },
+      {
+        "id": "electronics",
+        "rating": 3,
+        "specs": [
+          "electronics.matrix-search"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 3,
+        "specs": [
+          "network.matrix"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 3,
+        "specs": [
+          "perception.matrix"
+        ]
+      },
+      {
+        "id": "piloting",
+        "rating": 2,
+        "specs": [
+          "piloting.bikes"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 2,
+        "specs": [
+          "ranged-weapons.pistols"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 3,
+        "specs": [
+          "stealth.matrix-sneaking"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "cyberware",
+        "name": "Cyberjack MCT Decker-Pro",
+        "narrative": "Direct neural interface.",
+        "effects": [
+          {
+            "ref": "vr-cold"
+          },
+          {
+            "ref": "vr-hot"
+          },
+          {
+            "ref": "init-1"
+          },
+          {
+            "ref": "init-2"
+          },
+          {
+            "ref": "init-realm",
+            "param": "vr"
+          },
+          {
+            "ref": "init-realm",
+            "param": "vr"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "cyberdeck",
+        "name": "MCT 260",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "attack-plus"
+          },
+          {
+            "ref": "attack-plus"
+          },
+          {
+            "ref": "rr-skill",
+            "param": "cracking"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "cracking.brute-force"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "contact",
+        "name": "Markus “The Finnish” Laitinen, Matrix supplier",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.matrix"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "contact",
+        "name": "ShadowSea, Seattle data haven",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.matrix"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "electronics.matrix-search"
+          }
+        ]
+      },
+      {
+        "uid": "amp-5",
+        "type": "vehicle",
+        "name": "Suzuki Mirage",
+        "narrative": "",
+        "effects": [],
+        "vehicle": "race-motorbike"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-coat",
+        "kind": "armor",
+        "name": "Lined coat",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-pistol",
+        "kind": "weapon",
+        "name": "Fichetti Security 600",
+        "catalogId": "light-pistol"
+      },
+      {
+        "uid": "it-jammer",
+        "kind": "gear",
+        "name": "Signal jammer"
+      },
+      {
+        "uid": "it-tags",
+        "kind": "gear",
+        "name": "Stealth tags"
+      }
+    ],
+    "mainArmor": "it-coat"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

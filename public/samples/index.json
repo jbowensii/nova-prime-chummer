@@ -1,0 +1,185 @@
+[
+  {
+    "file": "lightning.ca2.json",
+    "name": "Lightning",
+    "role": "Shaman, male elf (creation example)",
+    "page": 85
+  },
+  {
+    "file": "hercules.ca2.json",
+    "name": "Hercules",
+    "role": "",
+    "page": 88
+  },
+  {
+    "file": "wild-jane.ca2.json",
+    "name": "Wild Jane",
+    "role": "",
+    "page": 90
+  },
+  {
+    "file": "trash.ca2.json",
+    "name": "Trash",
+    "role": "",
+    "page": 92
+  },
+  {
+    "file": "gambit.ca2.json",
+    "name": "Gambit",
+    "role": "",
+    "page": 94
+  },
+  {
+    "file": "charon.ca2.json",
+    "name": "Charon",
+    "role": "",
+    "page": 96
+  },
+  {
+    "file": "luna.ca2.json",
+    "name": "Luna",
+    "role": "",
+    "page": 98
+  },
+  {
+    "file": "casper.ca2.json",
+    "name": "Casper",
+    "role": "",
+    "page": 100
+  },
+  {
+    "file": "echo.ca2.json",
+    "name": "Echo",
+    "role": "",
+    "page": 102
+  },
+  {
+    "file": "drakk.ca2.json",
+    "name": "Drakk",
+    "role": "",
+    "page": 104
+  },
+  {
+    "file": "white-rabbit.ca2.json",
+    "name": "White_Rabbit",
+    "role": "",
+    "page": 106
+  },
+  {
+    "file": "mictlan.ca2.json",
+    "name": "Mictlan",
+    "role": "",
+    "page": 108
+  },
+  {
+    "file": "capitan.ca2.json",
+    "name": "Capitán",
+    "role": "",
+    "page": 110
+  },
+  {
+    "file": "noonchi.ca2.json",
+    "name": "Noonchi",
+    "role": "",
+    "page": 5,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "ty.ca2.json",
+    "name": "Ty",
+    "role": "",
+    "page": 7,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "spectrum.ca2.json",
+    "name": "Spectrum",
+    "role": "",
+    "page": 9,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "barry-bullet.ca2.json",
+    "name": "Barry Bullet",
+    "role": "",
+    "page": 11,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "kuz.ca2.json",
+    "name": "Kuz",
+    "role": "",
+    "page": 13,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "klee.ca2.json",
+    "name": "Klee",
+    "role": "",
+    "page": 15,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "shayanne.ca2.json",
+    "name": "Shayanne",
+    "role": "",
+    "page": 17,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "lipsync.ca2.json",
+    "name": "Lipsync",
+    "role": "",
+    "page": 19,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "aponi.ca2.json",
+    "name": "Aponi",
+    "role": "",
+    "page": 21,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "ricky-lean.ca2.json",
+    "name": "Ricky Lean",
+    "role": "",
+    "page": 23,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "pixel-glitch.ca2.json",
+    "name": "Pixel Glitch",
+    "role": "",
+    "page": 25,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "h4yn.ca2.json",
+    "name": "H4yn",
+    "role": "",
+    "page": 27,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "keran.ca2.json",
+    "name": "Keran",
+    "role": "",
+    "page": 29,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "peace-b.ca2.json",
+    "name": "Peace B",
+    "role": "",
+    "page": 31,
+    "source": "SRA2 Pregens v1.0f"
+  },
+  {
+    "file": "neon-ivy.ca2.json",
+    "name": "Neon Ivy",
+    "role": "",
+    "page": 33,
+    "source": "SRA2 Pregens v1.0f"
+  }
+]

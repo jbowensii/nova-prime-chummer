@@ -1,0 +1,235 @@
+{
+  "formatVersion": 1,
+  "id": "sample-klee",
+  "identity": {
+    "name": "Klee",
+    "streetName": "Klee",
+    "metatype": "ork",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.15.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Ork lakota",
+      "Oceti Sakowin, NAN",
+      "Former OMI scout",
+      "Hunter’s Way adept",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Always observes before acting.",
+      "Taciturn: speaks only if necessary.",
+      "A hunter, not a killer: tracks relentlessly, but sometimes hesitates when it is time to strike.",
+      "Refuses to be indebted, but recognizes those who have lent him a hand."
+    ],
+    "cues": [
+      "The wind leaves no traces. Neither do I.",
+      "What I don’t see, I sense.",
+      "Everyone is hunting something. I’m just trying to avoid being the prey.",
+      "Every debt is a chain."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 4,
+      "agi": 4,
+      "wil": 2,
+      "log": 3,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 5,
+        "specs": [
+          "stealth.physical-sneaking",
+          "stealth.lockpicking"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 5,
+        "specs": [
+          "perception.physical"
+        ]
+      },
+      {
+        "id": "survival",
+        "rating": 4,
+        "specs": [
+          "survival.wilderness",
+          "survival.navigation"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 3,
+        "specs": [
+          "ranged-weapons.rifles"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "network",
+        "rating": 2,
+        "specs": []
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Hunter’s Way",
+        "narrative": "Advantage on Stealth (Physical sneaking) tests for 1 Edge point.",
+        "effects": []
+      },
+      {
+        "uid": "amp-2",
+        "type": "awakened",
+        "name": "Adept",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-adept"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "adept",
+        "name": "Traceless walk",
+        "narrative": "Leaves no trace on dust, snow or pressure sensors.",
+        "effects": []
+      },
+      {
+        "uid": "amp-4",
+        "type": "adept",
+        "name": "Freefall",
+        "narrative": "+3 meters to a safe jump height.",
+        "effects": []
+      },
+      {
+        "uid": "amp-5",
+        "type": "adept",
+        "name": "Danger sense",
+        "narrative": "Sense imminent danger without a Perception test.",
+        "effects": []
+      },
+      {
+        "uid": "amp-6",
+        "type": "adept",
+        "name": "Agility boost",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-attr",
+            "param": "agi"
+          }
+        ]
+      },
+      {
+        "uid": "amp-7",
+        "type": "equipment",
+        "name": "Adaptive camouflage suit",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "stealth.physical-sneaking"
+          }
+        ],
+        "linkedItem": "it-suit"
+      },
+      {
+        "uid": "amp-8",
+        "type": "equipment",
+        "name": "Steyr AUG",
+        "narrative": "Smartlink.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.rifles"
+          },
+          {
+            "ref": "narrative",
+            "param": "easily-disassembled"
+          },
+          {
+            "ref": "narrative",
+            "param": "multiple-configurations"
+          },
+          {
+            "ref": "narrative",
+            "param": "silencer"
+          }
+        ],
+        "linkedItem": "it-aug"
+      },
+      {
+        "uid": "amp-9",
+        "type": "equipment",
+        "name": "ETC Galaxy",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "firewall-plus"
+          }
+        ],
+        "linkedItem": "it-galaxy"
+      },
+      {
+        "uid": "amp-10",
+        "type": "contact",
+        "name": "Ghost Wolf",
+        "narrative": "Former Wildcat and mentor.",
+        "effects": []
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-suit",
+        "kind": "armor",
+        "name": "Adaptive camouflage suit",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-aug",
+        "kind": "weapon",
+        "name": "Steyr AUG",
+        "catalogId": "assault-rifle"
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-galaxy",
+        "kind": "gear",
+        "name": "ETC Galaxy (high-end commlink)"
+      },
+      {
+        "uid": "it-lockpick",
+        "kind": "gear",
+        "name": "Electronic lockpick kit"
+      }
+    ],
+    "mainArmor": "it-suit"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

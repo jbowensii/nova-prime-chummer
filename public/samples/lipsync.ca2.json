@@ -1,0 +1,269 @@
+{
+  "formatVersion": 1,
+  "id": "sample-lipsync",
+  "identity": {
+    "name": "Lipsync",
+    "streetName": "Lipsync",
+    "metatype": "human",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.19.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Human",
+      "Renton, Seattle Metroplex",
+      "Jaded ex-cop mage",
+      "Private investigator",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Will never betray his current team.",
+      "Cannot lie.",
+      "Doesn’t hesitate to use brutal methods against corps and criminals.",
+      "Automatically reads everyone’s lips."
+    ],
+    "cues": [
+      "Look, I know what you’re asking yourself, and… [the answer is no. / it’s entirely possible. / I don’t even know myself.]",
+      "Trust me, I don’t let go of a case that easily.",
+      "The corps don’t hesitate.",
+      "The amount of bullshit people spout, I swear…"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 4,
+      "log": 3,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 4,
+        "specs": [
+          "stealth.physical-sneaking"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "piloting",
+        "rating": 1,
+        "specs": [
+          "piloting.cars"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 2,
+        "specs": [
+          "ranged-weapons.pistols"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 1,
+        "specs": [
+          "close-combat.astral-combat"
+        ]
+      },
+      {
+        "id": "electronics",
+        "rating": 1,
+        "specs": [
+          "electronics.matrix-search"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 2,
+        "specs": [
+          "influence.etiquette"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 5,
+        "specs": [
+          "network.government"
+        ]
+      },
+      {
+        "id": "sorcery",
+        "rating": 5,
+        "specs": [
+          "sorcery.detection-spells"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Observer",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "perception.physical"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "awakened",
+        "name": "Sorcerer",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-sorcery"
+          },
+          {
+            "ref": "awk-astral-projection"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "equipment",
+        "name": "Sorcery focus",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "sorcery"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "sorcery.detection-spells"
+          }
+        ],
+        "linkedItem": "it-focus"
+      },
+      {
+        "uid": "amp-4",
+        "type": "contact",
+        "name": "Nephiraël Bonner",
+        "narrative": "Elf, former colleague now working at Lone Star.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.government"
+          }
+        ]
+      },
+      {
+        "uid": "amp-5",
+        "type": "equipment",
+        "name": "Franchi SPAS 22",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "narrative",
+            "param": "gel-rounds"
+          }
+        ],
+        "linkedItem": "it-spas"
+      },
+      {
+        "uid": "amp-6",
+        "type": "vehicle",
+        "name": "Ford Americar",
+        "narrative": "",
+        "effects": [],
+        "vehicle": "sedan"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Concealable armor vest",
+        "armor": 2,
+        "catalogId": "armored-clothes-coat"
+      },
+      {
+        "uid": "it-coat",
+        "kind": "armor",
+        "name": "Lined coat",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-predator",
+        "kind": "weapon",
+        "name": "Ares Predator II",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-spas",
+        "kind": "weapon",
+        "name": "Franchi SPAS 22",
+        "catalogId": "shotgun"
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-commlink",
+        "kind": "gear",
+        "name": "Commlink"
+      },
+      {
+        "uid": "it-focus",
+        "kind": "gear",
+        "name": "Sorcery focus"
+      },
+      {
+        "uid": "it-tag",
+        "kind": "gear",
+        "name": "Stealth tag"
+      },
+      {
+        "uid": "it-sp-manabolt",
+        "kind": "spell",
+        "name": "Manabolt",
+        "catalogId": "spell-manabolt"
+      },
+      {
+        "uid": "it-sp-clairvoyance",
+        "kind": "spell",
+        "name": "Clairvoyance",
+        "catalogId": "spell-clairvoyance"
+      },
+      {
+        "uid": "it-sp-mind-probe",
+        "kind": "spell",
+        "name": "Mind Probe",
+        "catalogId": "spell-mind-probe"
+      },
+      {
+        "uid": "it-sp-confusion",
+        "kind": "spell",
+        "name": "Confusion",
+        "catalogId": "spell-confusion"
+      }
+    ],
+    "mainArmor": "it-vest",
+    "altArmor": "it-coat"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

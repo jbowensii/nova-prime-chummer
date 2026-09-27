@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="levels". See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="level" type="ca2:Level"/>
+        <xs:element name="remove" type="ca2:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="levels"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="Level">
+    <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="nuyen" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="attrAtMax" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="skillCap" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="rrAttr" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="rrSkill" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="rrSpec" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+</xs:schema>

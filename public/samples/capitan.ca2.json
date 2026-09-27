@@ -1,0 +1,196 @@
+{
+  "formatVersion": 1,
+  "id": "sample-capitan",
+  "identity": {
+    "name": "Capitán",
+    "streetName": "Capitán",
+    "metatype": "dwarf",
+    "background": "Book pregen, CRB p.110.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Dwarf",
+      "Amazonia",
+      "Combat face",
+      "Mercenary",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cues": [
+      "The end does not justify the means.",
+      "I am sure we can settle this like civilized people.",
+      "How do we get out of this mess?",
+      "Close ranks and focus fire!"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 3,
+      "agi": 3,
+      "wil": 3,
+      "log": 2,
+      "cha": 4
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "influence",
+        "rating": 4,
+        "specs": [
+          "influence.negotiation"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 5,
+        "specs": []
+      },
+      {
+        "id": "network",
+        "rating": 3,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 4,
+        "specs": [
+          "stealth.physical-sneaking"
+        ]
+      },
+      {
+        "id": "survival",
+        "rating": 5,
+        "specs": []
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "awakened",
+        "name": "Awakened (adept)",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-adept"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "quality",
+        "name": "Capybara mentor spirit",
+        "narrative": "Social (disposition).",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "survival.composure"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "stealth.physical-sneaking"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "adept",
+        "name": "Vocal Control",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "influence"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "influence.impersonation"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "adept",
+        "name": "Combat Sense",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "close-combat"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "athletics.ranged-defense"
+          }
+        ]
+      },
+      {
+        "uid": "amp-5",
+        "type": "equipment",
+        "name": "AK-97 with detachable bayonet",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "narrative",
+            "param": "detachable-bayonet"
+          }
+        ],
+        "linkedItem": "it-ak"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Kevlar vest",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-manhunter",
+        "kind": "weapon",
+        "name": "Colt Manhunter",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-ak",
+        "kind": "weapon",
+        "name": "AK-97",
+        "catalogId": "assault-rifle"
+      },
+      {
+        "uid": "it-medkit",
+        "kind": "gear",
+        "name": "Medkit"
+      }
+    ],
+    "mainArmor": "it-vest"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

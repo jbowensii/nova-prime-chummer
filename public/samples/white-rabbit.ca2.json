@@ -1,0 +1,235 @@
+{
+  "formatVersion": 1,
+  "id": "sample-white-rabbit",
+  "identity": {
+    "name": "Dennis Freeman",
+    "streetName": "White_Rabbit",
+    "metatype": "human",
+    "background": "Book pregen, CRB p.106.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Human",
+      "Seattle / Underground",
+      "Combat decker",
+      "Ork poser",
+      "High lifestyle"
+    ],
+    "dispositions": [
+      "Loyal",
+      "Unstable identity",
+      "Reckless",
+      "Rejecting his past"
+    ],
+    "cues": [
+      "I’ve gained admin access on my own life.",
+      "If you touch them, I’ll reformat you.",
+      "Orks, like myself, can …",
+      "What do you want? A decker or a miracle?"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 1,
+      "log": 4,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 2,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "cracking",
+        "rating": 5,
+        "specs": [
+          "cracking.brute-force",
+          "cracking.cybercombat"
+        ]
+      },
+      {
+        "id": "electronics",
+        "rating": 4,
+        "specs": [
+          "electronics.matrix-search"
+        ]
+      },
+      {
+        "id": "engineering",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "network",
+        "rating": 2,
+        "specs": [
+          "network.criminal"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 1,
+        "specs": [
+          "perception.matrix"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 5,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 2,
+        "specs": []
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "cyberware",
+        "name": "Cyberjack MCT Decker-Pro",
+        "narrative": "Direct neural interface.",
+        "effects": [
+          {
+            "ref": "vr-cold"
+          },
+          {
+            "ref": "vr-hot"
+          },
+          {
+            "ref": "init-1"
+          },
+          {
+            "ref": "init-2"
+          },
+          {
+            "ref": "init-realm",
+            "param": "vr"
+          },
+          {
+            "ref": "init-realm",
+            "param": "vr"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "cyberware",
+        "name": "Ares ProShooter cybernetic eyes",
+        "narrative": "Visual interface; camera.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.pistols"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.pistols"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "cyberware",
+        "name": "Aluminum bone lacing",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "dv-plus"
+          },
+          {
+            "ref": "wound-light"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "cyberdeck",
+        "name": "MCT 360",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "attack-plus"
+          },
+          {
+            "ref": "attack-plus"
+          },
+          {
+            "ref": "attack-plus"
+          },
+          {
+            "ref": "rr-skill",
+            "param": "cracking"
+          },
+          {
+            "ref": "narrative",
+            "param": "biofeedback"
+          }
+        ]
+      },
+      {
+        "uid": "amp-5",
+        "type": "contact",
+        "name": "Duke, ganger",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.criminal"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Kevlar vest",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-browning",
+        "kind": "weapon",
+        "name": "Browning Ultra Power",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-t250",
+        "kind": "weapon",
+        "name": "Defiance T-250",
+        "catalogId": "shotgun"
+      },
+      {
+        "uid": "it-stims",
+        "kind": "gear",
+        "name": "Stim patches"
+      },
+      {
+        "uid": "it-relay",
+        "kind": "gear",
+        "name": "Satellite relay"
+      }
+    ],
+    "mainArmor": "it-vest"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

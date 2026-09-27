@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="attributes" version="1">
+  <attribute id="str" abbr="STR" source="CRB" page="52"><name>Strength</name></attribute>
+  <attribute id="agi" abbr="AGI" source="CRB" page="52"><name>Agility</name></attribute>
+  <attribute id="wil" abbr="WIL" source="CRB" page="52"><name>Willpower</name></attribute>
+  <attribute id="log" abbr="LOG" source="CRB" page="52"><name>Logic</name></attribute>
+  <attribute id="cha" abbr="CHA" source="CRB" page="52"><name>Charisma</name></attribute>
+</ca2:data>

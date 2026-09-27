@@ -1,0 +1,60 @@
+{
+  "formatVersion": 1,
+  "id": "sample-lightning",
+  "identity": {
+    "name": "Lightning",
+    "streetName": "Lightning",
+    "metatype": "elf",
+    "background": "Elf shaman following Cat, newly arrived in Seattle from the Native American Nations; a strong advocate of metahuman rights. CRB p.85 character creation example.",
+    "notes": "The book does not list his 4 Cues."
+  },
+  "narrative": {
+    "keywords": ["Elf", "Cat shaman", "NAN", "Low lifestyle", "Pro-metahuman activist"],
+    "dispositions": ["Discreet", "Cunning", "Cocky", "Stubborn"],
+    "cues": ["", "", "", ""]
+  },
+  "level": "runner",
+  "package": "runner-magician",
+  "build": {
+    "attributes": { "str": 2, "agi": 2, "wil": 4, "log": 2, "cha": 4 },
+    "skills": [
+      { "id": "sorcery", "rating": 5, "specs": ["sorcery.illusion-spells"] },
+      { "id": "conjuring", "rating": 4, "specs": [] },
+      { "id": "close-combat", "rating": 3, "specs": ["close-combat.astral-combat"] },
+      { "id": "perception", "rating": 4, "specs": ["perception.astral"] },
+      { "id": "athletics", "rating": 3, "specs": ["athletics.ranged-defense"] },
+      { "id": "influence", "rating": 4, "specs": ["influence.bluff"] },
+      { "id": "stealth", "rating": 5, "specs": [] },
+      { "id": "network", "rating": 2, "specs": ["network.street"] }
+    ],
+    "knowledge": [],
+    "amps": [
+      { "uid": "amp-awk", "type": "awakened", "name": "Awakened (shaman)", "narrative": "",
+        "effects": [{ "ref": "awk-astral-projection" }, { "ref": "awk-sorcery" }, { "ref": "awk-conjuring" }] },
+      { "uid": "amp-cat", "catalogId": "cat-mentor-spirit-mystery-secret", "type": "quality", "name": "Cat mentor spirit", "narrative": "",
+        "effects": [{ "ref": "rr-spec", "param": "sorcery.illusion-spells" }, { "ref": "rr-spec", "param": "sorcery.illusion-spells" },
+                    { "ref": "rr-spec", "param": "stealth.physical-sneaking" }] },
+      { "uid": "amp-focus", "type": "equipment", "name": "Sustaining focus", "narrative": "Sustains up to 2 additional spells.",
+        "effects": [{ "ref": "sustain-spell" }, { "ref": "sustain-spell" }], "linkedItem": "it-focus" },
+      { "uid": "amp-feathers", "type": "contact", "name": "Sparkling Feathers, Salish fixer", "narrative": "",
+        "effects": [{ "ref": "rr-spec", "param": "network.street" }] }
+    ],
+    "items": [
+      { "uid": "it-armor", "catalogId": "light-armor", "kind": "armor", "name": "Armor jacket", "armor": 3 },
+      { "uid": "it-knife", "catalogId": "short-weapon", "kind": "weapon", "name": "Traditional knife" },
+      { "uid": "it-focus", "kind": "gear", "name": "Sustaining focus" },
+      { "uid": "it-reagents", "kind": "gear", "name": "Reagents" },
+      { "uid": "sp-lightning-bolt", "catalogId": "spell-lightning-bolt", "kind": "spell", "name": "Lightning Bolt" },
+      { "uid": "sp-heal", "catalogId": "spell-heal", "kind": "spell", "name": "Heal" },
+      { "uid": "sp-invisibility", "catalogId": "spell-invisibility", "kind": "spell", "name": "Invisibility" },
+      { "uid": "sp-mask", "catalogId": "spell-mask", "kind": "spell", "name": "Mask" },
+      { "uid": "sp-phantasm", "catalogId": "spell-phantasm", "kind": "spell", "name": "Phantasm" },
+      { "uid": "sp-confusion", "catalogId": "spell-confusion", "kind": "spell", "name": "Confusion" },
+      { "uid": "sp-detect-enemies", "catalogId": "spell-detect-enemies", "kind": "spell", "name": "Detect Enemies" }
+    ],
+    "mainArmor": "it-armor"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

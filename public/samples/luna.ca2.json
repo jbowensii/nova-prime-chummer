@@ -1,0 +1,216 @@
+{
+  "formatVersion": 1,
+  "id": "sample-luna",
+  "identity": {
+    "name": "Luna",
+    "streetName": "Luna",
+    "metatype": "ork",
+    "background": "Book pregen, CRB p.98.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Ork",
+      "Seattle / Snohomish",
+      "Occult investigator (shaman)",
+      "Aztlan",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Wary of Aztechnology",
+      "Sea Dragon fan",
+      "Creative artist",
+      "Stubborn"
+    ],
+    "cues": [
+      "Stay calm until the time for calm is over.",
+      "I can handle everything.",
+      "It’s me, with my own two hands and two or three friends.",
+      "I am going to tattoo that thing on you!"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 2,
+      "wil": 4,
+      "log": 3,
+      "cha": 3
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 2,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 2,
+        "specs": [
+          "close-combat.astral-combat"
+        ]
+      },
+      {
+        "id": "conjuring",
+        "rating": 3,
+        "specs": [
+          "conjuring.banishing"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 3,
+        "specs": [
+          "influence.negotiation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 4,
+        "specs": [
+          "network.magic"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 4,
+        "specs": [
+          "perception.astral"
+        ]
+      },
+      {
+        "id": "sorcery",
+        "rating": 5,
+        "specs": [
+          "sorcery.detection-spells"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 2,
+        "specs": [
+          "stealth.astral-sneaking"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "awakened",
+        "name": "Awakened (shaman)",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-astral-projection"
+          },
+          {
+            "ref": "awk-sorcery"
+          },
+          {
+            "ref": "awk-conjuring"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "quality",
+        "name": "Quetzalcoatl mentor spirit",
+        "narrative": "Stubborn (disposition).",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "sorcery.detection-spells"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "quality",
+        "name": "Mystic tattoo focus",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "perception.astral"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "perception.astral"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "stealth.astral-sneaking"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "close-combat.astral-combat"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "conjuring.banishing"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "contact",
+        "name": "Faba, owner of Good Vibes",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.magic"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-coat",
+        "kind": "armor",
+        "name": "Lined coat",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-s1",
+        "kind": "spell",
+        "name": "Mask",
+        "catalogId": "spell-mask"
+      },
+      {
+        "uid": "it-s2",
+        "kind": "spell",
+        "name": "Chimera",
+        "catalogId": "spell-chimera"
+      },
+      {
+        "uid": "it-s3",
+        "kind": "spell",
+        "name": "Detect Magic",
+        "catalogId": "spell-detect-magic"
+      },
+      {
+        "uid": "it-s4",
+        "kind": "spell",
+        "name": "Analyze Magic",
+        "catalogId": "spell-analyze-magic"
+      },
+      {
+        "uid": "it-s5",
+        "kind": "spell",
+        "name": "Heal",
+        "catalogId": "spell-heal"
+      }
+    ],
+    "mainArmor": "it-coat"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

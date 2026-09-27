@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lifestyles, CRB p.165-166. Lifestyle is a Keyword, not a purchase: it changes what each run pays.
+     perRun is added to every run's earnings (Squatter keeps more, High spends more). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="lifestyles" version="1">
+  <lifestyle id="squatter" perRun="1000" source="CRB" page="165"><name>Squatter</name><text>+1,000¥ per run. Disadvantage on most Influence Tests (GM's call).</text></lifestyle>
+  <lifestyle id="low" perRun="0" source="CRB" page="165"><name>Low</name><text>The default. No rules effect.</text></lifestyle>
+  <lifestyle id="middle" perRun="-1000" source="CRB" page="166"><name>Middle</name><text>−1,000¥ per run. Advantage on most Influence Tests (GM's call).</text></lifestyle>
+  <lifestyle id="high" perRun="-2500" source="CRB" page="166"><name>High</name><text>−2,500¥ per run. Advantage on most Influence and Network Tests; no Edge needed for temporary items outside action; 1 Edge for a temporary weapon or vehicle.</text></lifestyle>
+</ca2:data>

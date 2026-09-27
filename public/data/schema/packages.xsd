@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="packages". See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="package" type="ca2:Package"/>
+        <xs:element name="remove" type="ca2:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="packages"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="Package">
+    <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="level" type="ca2:Id" use="required"/>
+    <xs:attribute name="archetype" type="xs:string" use="required"/>
+    <xs:attribute name="attrPoints" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="attrAtMax" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="skillPoints" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="skillsAtSix" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="ampPoints" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="armor" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="standardWeapons" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="specialistWeapons" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="equipment" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="spells" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+</xs:schema>

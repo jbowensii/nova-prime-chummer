@@ -1,0 +1,262 @@
+{
+  "formatVersion": 1,
+  "id": "sample-noonchi",
+  "identity": {
+    "name": "A-mi (Amy Kang)",
+    "streetName": "Noonchi",
+    "metatype": "elf",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.5.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Korean elf",
+      "Tacoma, Seattle Metroplex",
+      "Social adept",
+      "Infiltration specialist",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Makes sure people remember her smile, not her name.",
+      "Quick to act on a whim once an idea takes root in her mind.",
+      "Constantly improvising: highly adaptable, but difficult to pin down.",
+      "Visibly uncomfortable when her past is mentioned."
+    ],
+    "cues": [
+      "A smile can open more doors than a maglock pass… though a pass is still useful sometimes.",
+      "There’s no better place to lay low than a Noraebang!",
+      "Okay, okay… I might have pressed that button by accident.",
+      "Geurae, gaja! (Okay, let’s go!)"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 3,
+      "log": 3,
+      "cha": 4
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 4,
+        "specs": [
+          "stealth.physical-sneaking",
+          "stealth.lockpicking"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 3,
+        "specs": [
+          "perception.social"
+        ]
+      },
+      {
+        "id": "survival",
+        "rating": 2,
+        "specs": [
+          "survival.composure"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 3,
+        "specs": [
+          "ranged-weapons.pistols"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 1,
+        "specs": []
+      },
+      {
+        "id": "electronics",
+        "rating": 1,
+        "specs": [
+          "electronics.matrix-search"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 5,
+        "specs": [
+          "influence.bluff",
+          "influence.etiquette",
+          "influence.impersonation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 5,
+        "specs": [
+          "network.street"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Perfect Vocals",
+        "narrative": "Gain an Advantage when singing or mimicking a voice.",
+        "effects": []
+      },
+      {
+        "uid": "amp-2",
+        "type": "awakened",
+        "name": "Adept",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-adept"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "adept",
+        "name": "Enthralling Charm",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-attr",
+            "param": "cha"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "adept",
+        "name": "Linguist",
+        "narrative": "Absorb a language for the scene for one Edge point.",
+        "effects": []
+      },
+      {
+        "uid": "amp-5",
+        "type": "adept",
+        "name": "Danger Sense",
+        "narrative": "Sense an imminent threat without a Perception test, with no further details.",
+        "effects": []
+      },
+      {
+        "uid": "amp-6",
+        "type": "adept",
+        "name": "Veil",
+        "narrative": "Disadvantage on anyone reading her aura.",
+        "effects": []
+      },
+      {
+        "uid": "amp-7",
+        "type": "cyberware",
+        "name": "Samyung Cyber memory",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "grade-delta"
+          }
+        ]
+      },
+      {
+        "uid": "amp-8",
+        "type": "equipment",
+        "name": "Well-stocked closet",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "influence.etiquette"
+          }
+        ],
+        "linkedItem": "it-closet"
+      },
+      {
+        "uid": "amp-9",
+        "type": "equipment",
+        "name": "Ares Predator IV",
+        "narrative": "Smartlink.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.pistols"
+          }
+        ],
+        "linkedItem": "it-predator"
+      },
+      {
+        "uid": "amp-10",
+        "type": "equipment",
+        "name": "Yang-su Essential Infiltration kit",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "stealth.lockpicking"
+          }
+        ],
+        "linkedItem": "it-kit"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-jacket",
+        "kind": "armor",
+        "name": "Reinforced jacket",
+        "armor": 2,
+        "catalogId": "armored-clothes-coat"
+      },
+      {
+        "uid": "it-predator",
+        "kind": "weapon",
+        "name": "Ares Predator IV",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-commlink",
+        "kind": "gear",
+        "name": "Commlink"
+      },
+      {
+        "uid": "it-kit",
+        "kind": "gear",
+        "name": "Yang-su Essential Intrusion kit"
+      },
+      {
+        "uid": "it-closet",
+        "kind": "gear",
+        "name": "Well-stocked closet"
+      },
+      {
+        "uid": "it-makeup",
+        "kind": "gear",
+        "name": "LaNeige makeup kit"
+      },
+      {
+        "uid": "it-pa",
+        "kind": "gear",
+        "name": "Personal Assistant software"
+      }
+    ],
+    "mainArmor": "it-jacket"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

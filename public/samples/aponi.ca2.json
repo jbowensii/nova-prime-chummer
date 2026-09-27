@@ -1,0 +1,232 @@
+{
+  "formatVersion": 1,
+  "id": "sample-aponi",
+  "identity": {
+    "name": "Aponi",
+    "streetName": "Aponi",
+    "metatype": "elf",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.21.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Elf",
+      "Tarislar, Seattle Metroplex",
+      "Shamanic healer",
+      "Puyallup lookout",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "High-energy: can’t sit still.",
+      "Mischievous and curious.",
+      "Can’t aim: dangerous to everyone with a gun in her hands.",
+      "Uncaged: avoids commitments, situations that deprive her of freedom, and confined spaces."
+    ],
+    "cues": [
+      "I want to do this, and this… and that too!",
+      "I’m not alone, you know… the spirits are with me!",
+      "When I was a kid playing lookout for the Ancients, that’s where I would have hidden.",
+      "I don’t heal bad decisions, only their consequences."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 3,
+      "log": 3,
+      "cha": 3
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "perception",
+        "rating": 5,
+        "specs": [
+          "perception.physical"
+        ]
+      },
+      {
+        "id": "survival",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "close-combat",
+        "rating": 4,
+        "specs": [
+          "close-combat.astral-combat"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 3,
+        "specs": []
+      },
+      {
+        "id": "network",
+        "rating": 4,
+        "specs": [
+          "network.street"
+        ]
+      },
+      {
+        "id": "sorcery",
+        "rating": 5,
+        "specs": [
+          "sorcery.health-spells"
+        ]
+      },
+      {
+        "id": "conjuring",
+        "rating": 5,
+        "specs": [
+          "conjuring.spirits-of-beasts"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "awakened",
+        "name": "Sorcerer",
+        "narrative": "Shamanic mask.",
+        "effects": [
+          {
+            "ref": "awk-sorcery"
+          },
+          {
+            "ref": "awk-conjuring"
+          },
+          {
+            "ref": "awk-astral-perception"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "quality",
+        "name": "Friend of spirits",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "conjuring"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "quality",
+        "name": "Wild horse mentor spirit",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "sorcery.health-spells"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "conjuring.spirits-of-beasts"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "equipment",
+        "name": "Minor health focus",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "sorcery.health-spells"
+          }
+        ],
+        "linkedItem": "it-focus"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-jacket",
+        "kind": "armor",
+        "name": "Reinforced jacket",
+        "armor": 2,
+        "catalogId": "armored-clothes-coat"
+      },
+      {
+        "uid": "it-colt",
+        "kind": "weapon",
+        "name": "Colt America L36",
+        "catalogId": "light-pistol"
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-commlink",
+        "kind": "gear",
+        "name": "Commlink"
+      },
+      {
+        "uid": "it-focus",
+        "kind": "gear",
+        "name": "Minor health focus"
+      },
+      {
+        "uid": "it-fetishes",
+        "kind": "gear",
+        "name": "Reusable fetishes"
+      },
+      {
+        "uid": "it-sp-heal",
+        "kind": "spell",
+        "name": "Heal",
+        "catalogId": "spell-heal"
+      },
+      {
+        "uid": "it-sp-triggers-allergy",
+        "kind": "spell",
+        "name": "Triggers Allergy",
+        "catalogId": "spell-triggers-allergy"
+      },
+      {
+        "uid": "it-sp-healthy-glow",
+        "kind": "spell",
+        "name": "Healthy Glow",
+        "catalogId": "spell-healthy-glow"
+      },
+      {
+        "uid": "it-sp-increase-reflexes",
+        "kind": "spell",
+        "name": "Increase Reflexes",
+        "catalogId": "spell-increase-reflexes"
+      },
+      {
+        "uid": "it-sp-manabolt",
+        "kind": "spell",
+        "name": "Manabolt",
+        "catalogId": "spell-manabolt"
+      }
+    ],
+    "mainArmor": "it-jacket"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}
