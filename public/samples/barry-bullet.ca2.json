@@ -1,0 +1,246 @@
+{
+  "formatVersion": 1,
+  "id": "sample-barry-bullet",
+  "identity": {
+    "name": "Barry Bullet",
+    "streetName": "Barry Bullet",
+    "metatype": "ork",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.11.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Ork cliché",
+      "Underground ork, Seattle Metroplex",
+      "Tough as Nails",
+      "Easy to please",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Stands firmly against all forms of profiling and bias.",
+      "Is naturally contrarian and enjoys arguing opposing points of view.",
+      "Loves to brag about the merits of the latest NERPS he’s bought.",
+      "Fiercely loyal to his teammates."
+    ],
+    "cues": [
+      "So, just because I’m an ork, I’m supposed to be the ‘muscle’ of the team, is that it?",
+      "My specialty? Well… combat. But I could’ve easily done something else, you know.",
+      "Check it out—thanks to my latest NERPS, my gun is spotless!",
+      "You, you’re not a cliché. You’re cool."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 5,
+      "agi": 3,
+      "wil": 2,
+      "log": 2,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 2,
+        "specs": [
+          "stealth.physical-sneaking"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "survival",
+        "rating": 3,
+        "specs": [
+          "survival.composure"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 4,
+        "specs": [
+          "ranged-weapons.rifles",
+          "ranged-weapons.heavy-weapons"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 5,
+        "specs": [
+          "close-combat.unarmed"
+        ]
+      },
+      {
+        "id": "engineering",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "influence",
+        "rating": 2,
+        "specs": [
+          "influence.intimidation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 2,
+        "specs": []
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Tough",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "wound-light"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "cyberware",
+        "name": "Titanium bone lacing",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "wound-serious"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "cyberware",
+        "name": "Goliath Cyberarms",
+        "narrative": "Implanted brass knuckles (DV Str+1).",
+        "effects": [
+          {
+            "ref": "dv-plus"
+          },
+          {
+            "ref": "narrative",
+            "param": "implanted-brass-knuckles"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "cyberware",
+        "name": "Cybereyes",
+        "narrative": "Visual interface with camera and smartlink; low-light vision.",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "ranged-weapons"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.rifles"
+          }
+        ]
+      },
+      {
+        "uid": "amp-5",
+        "type": "equipment",
+        "name": "Panther assault cannon",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "narrative",
+            "param": "heavy-weapon"
+          },
+          {
+            "ref": "narrative",
+            "param": "+4-dv-against-vehicles"
+          }
+        ],
+        "linkedItem": "it-panther"
+      },
+      {
+        "uid": "amp-6",
+        "type": "contact",
+        "name": "Ragnar",
+        "narrative": "Underground fixer and Viking enthusiast.",
+        "effects": []
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-coat",
+        "kind": "armor",
+        "name": "Lined coat",
+        "armor": 2,
+        "catalogId": "armored-clothes-coat"
+      },
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Kevlar vest",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-knuckles",
+        "kind": "weapon",
+        "name": "Implanted brass knuckles",
+        "catalogId": "short-weapon"
+      },
+      {
+        "uid": "it-manhunter",
+        "kind": "weapon",
+        "name": "Colt Manhunter",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-ak",
+        "kind": "weapon",
+        "name": "AK-97",
+        "catalogId": "assault-rifle"
+      },
+      {
+        "uid": "it-panther",
+        "kind": "weapon",
+        "name": "Panther assault cannon",
+        "specialist": true
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-commlink",
+        "kind": "gear",
+        "name": "Commlink"
+      },
+      {
+        "uid": "it-stims",
+        "kind": "gear",
+        "name": "Stim patch"
+      },
+      {
+        "uid": "it-nerps",
+        "kind": "gear",
+        "name": "Assorted NERPS"
+      }
+    ],
+    "mainArmor": "it-vest",
+    "altArmor": "it-coat"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

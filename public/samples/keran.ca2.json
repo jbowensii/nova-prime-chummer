@@ -1,0 +1,286 @@
+{
+  "formatVersion": 1,
+  "id": "sample-keran",
+  "identity": {
+    "name": "Keran",
+    "streetName": "Keran",
+    "metatype": "human",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.29.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Seattle’s Indian community",
+      "Seattle’s Algerian community",
+      "Drone rigger",
+      "Ex-bounty hunter",
+      "Squatter lifestyle"
+    ],
+    "dispositions": [
+      "Nuyen before comfort: willing to do anything to get rich.",
+      "Greedy: doesn’t know when to stop.",
+      "Infallible surveillance: capable of staying focused for hours without losing sight of a target.",
+      "Occupational hazard: instinctively spots where a surveillance drone could be hiding."
+    ],
+    "cues": [
+      "I’ve done worse for less.",
+      "This drone might be an antique, but it gets the job done.",
+      "One sting from the Hornet and it’s lights out…",
+      "If they have a drone, it’ll be perched there… or there."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 3,
+      "agi": 3,
+      "wil": 3,
+      "log": 3,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 3,
+        "specs": [
+          "stealth.physical-sneaking"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 4,
+        "specs": [
+          "perception.matrix"
+        ]
+      },
+      {
+        "id": "piloting",
+        "rating": 5,
+        "specs": [
+          "piloting.flying-drones"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "close-combat",
+        "rating": 1,
+        "specs": []
+      },
+      {
+        "id": "electronics",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "cracking",
+        "rating": 2,
+        "specs": [
+          "cracking.cybercombat"
+        ]
+      },
+      {
+        "id": "engineering",
+        "rating": 5,
+        "specs": [
+          "engineering.remote-controlled-weapons",
+          "engineering.electronic-warfare"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 1,
+        "specs": [
+          "network.engineering"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Born pilot",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "piloting.flying-drones"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "cyberware",
+        "name": "ETC CyberSpider cyberjack",
+        "narrative": "Direct neural interface.",
+        "effects": [
+          {
+            "ref": "vr-cold"
+          },
+          {
+            "ref": "vr-hot"
+          },
+          {
+            "ref": "init-1"
+          },
+          {
+            "ref": "init-2"
+          },
+          {
+            "ref": "init-realm",
+            "param": "vr"
+          },
+          {
+            "ref": "init-realm",
+            "param": "vr"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "cyberware",
+        "name": "Cyberarm with integrated RCC",
+        "narrative": "Integrated Ares SkyOp RCC.",
+        "effects": [
+          {
+            "ref": "rcc",
+            "value": 2
+          },
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "piloting.flying-drones"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "engineering.remote-controlled-weapons"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "vehicle",
+        "name": "Ford Canada-Bison III",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "narrative",
+            "param": "living-amenities"
+          },
+          {
+            "ref": "narrative",
+            "param": "drone-racks"
+          }
+        ],
+        "vehicle": "van"
+      },
+      {
+        "uid": "amp-5",
+        "type": "vehicle",
+        "name": "MCT Hornet",
+        "narrative": "Winged insectoid; injection dart with Gamma-Scopolamine.",
+        "effects": [
+          {
+            "ref": "flying"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "stealth.physical-sneaking"
+          },
+          {
+            "ref": "narrative",
+            "param": "injection-dart"
+          }
+        ],
+        "vehicle": "microdrone"
+      },
+      {
+        "uid": "amp-6",
+        "type": "vehicle",
+        "name": "2x Refurbished Lone Star Strato-9",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "flying"
+          },
+          {
+            "ref": "weapon-mount",
+            "param": "m23a4"
+          },
+          {
+            "ref": "extra-drone"
+          }
+        ],
+        "vehicle": "medium-drone"
+      },
+      {
+        "uid": "amp-7",
+        "type": "contact",
+        "name": "James Edwards",
+        "narrative": "Corrupt probation officer on the run.",
+        "effects": []
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-clothing",
+        "kind": "armor",
+        "name": "Armored clothing with heavy coat",
+        "armor": 2,
+        "catalogId": "armored-clothes-coat"
+      },
+      {
+        "uid": "it-browning",
+        "kind": "weapon",
+        "name": "Browning Max Power",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-m23a",
+        "kind": "weapon",
+        "name": "Colt M23a4 (on Strato-9 #1)",
+        "catalogId": "assault-rifle"
+      },
+      {
+        "uid": "it-m23b",
+        "kind": "weapon",
+        "name": "Colt M23a4 (on Strato-9 #2)",
+        "catalogId": "assault-rifle"
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-commlink",
+        "kind": "gear",
+        "name": "Commlink"
+      },
+      {
+        "uid": "it-scopolamine",
+        "kind": "gear",
+        "name": "Gamma-Scopolamine"
+      }
+    ],
+    "mainArmor": "it-clothing"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

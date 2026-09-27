@@ -56,6 +56,39 @@ reproduce.
 |---|---|---|---|---|
 | hercules | amp-2 | 2 | 3 | Well-Stocked Closet: equipment 0 + Armor +1 (1) + RR 1 Influence (etiquette) (2) = 3. DHSA lists the same amp at 2 *without* the Armor +1, so the pregen gets the armor point free. |
 | echo | amp-3 | 2 | 3 | Same Well-Stocked Closet as Hercules. |
+| ty | amp-5 | 0 | 2 | Rachel Ortega: the booklet gives RR 1 on Network (Engineering) but rates the contact 0, like its story-only contacts. |
+| spectrum | amp-4 | 7 | 8 | S-K Fata Morgana: Firewall 3 (+2), RCC for 2 drones (+2), jammer and white noise generator (+1 each), RR 1 Electronic warfare (+2) = 8. |
+| spectrum | amp-6 | 5 | 6 | Esprit Chaperone: the booklet doesn't charge Flying on a rotorcraft drone (CRB Casper does). |
+| barry-bullet | amp-3 | 5 | 3 | Goliath Cyberarms: cyberware 1 + DV +1 + implanted brass knuckles (1) = 3; the booklet doesn't say what the other 2 points buy. |
+| ricky-lean | amp-1 | 4 | 1 | Famous Matrix Icon: an Edge mechanic only (one narrative effect). |
+| ricky-lean | amp-3 | 18 | 16 | Jury-rigged Fuchi Cyber-4: printed as a Quality. As a cyberdeck, Firewall 2, Attack 3, biofeedback filter, three program RRs and the response increase (as a narrative, since cyberdecks can't take initiative effects) come to 16. |
+| pixel-glitch | amp-4 | 2 | 3 | Fly Spy: Flying not charged (see the Chaperone). |
+| h4yn | amp-2 | 9 | 11 | Hyundai anyRace VCR: the same VCR as Charon (CRB, 9) plus RR 1 Piloting (Cars) is 11. |
+| keran | amp-2 | 5 | 7 | ETC CyberSpider: the same cyberjack as Gambit (CRB, 7). |
+| keran | amp-5 | 4 | 5 | MCT Hornet: Flying not charged. |
+| keran | amp-6 | 4 | 5 | Strato-9: Flying not charged. |
+
+## Daegann pregens (SRA2 Pregens v1.0f)
+
+The booklet prints no attribute row, so attributes are back-computed from the
+dice pools, unarmed DV and thresholds. Where the sheet contradicts itself the
+majority wins and the odd number is left out of the tests:
+
+- **Intimidation with Strength** (Barry Bullet 9, Kuz 7): the booklet rolls
+  Intimidation with STR; our catalog has it on CHA only. Not tested.
+- **Kuz**: Intimidation STR 7 also disagrees with his Athletics STR 7 (STR 4).
+- **Ricky Lean**: Stealth 4 AGI 8 disagrees with every other AGI pool (AGI 3).
+  Mental 2 is printed without the biofeedback filter, which the booklet lists
+  as a separate Matrix row; the engine counts the filter as mental armor.
+- **Keran**: Athletics STR 5 and unarmed DV 3 say STR 3; the armor rows (2 and
+  4) say STR 2. Cybercombat WIL 6 says WIL 2; the mental row says WIL 3. STR 3
+  and WIL 3 are used; physical thresholds and Cybercombat aren't tested.
+- **Peace B**: Engineering (Arts) is rolled with CHA; a custom specialization
+  uses the skill's attribute. Not tested.
+- **Aponi's minor health focus** is printed as a Quality; it's built as
+  Equipment like every other focus, which matches its printed 2.
+- **Matrix thresholds** aren't tested: Peace B's "+1 matrix armor" from her
+  data structure has no effect the engine applies to a living persona.
 
 ## Pregen totals
 

@@ -1,4 +1,4 @@
-// Build the book pregens (CRB p.88-111) as sample characters, plus a fixture of every
+// Build the book pregens (CRB p.88-111, plus Daegann's pregen booklet) as sample characters, plus a fixture of every
 // number the book prints for them (amp ratings, dice pools, thresholds, Essence).
 // The sample files are what the app loads; tests/engine/pregens.test.ts checks the
 // engine reproduces the printed numbers.   Usage: node tools/build-samples.mjs
@@ -17,11 +17,11 @@ const fromCatalog = id => {
 /** "rr-spec:perception.social*2 init-realm:vr rcc=3" -> EffectPick[] */
 const fx = dsl => (dsl ? dsl.split(/\s+/) : []).flatMap(tok => {
   const [, ref, param, value, n] = tok.match(/^([a-z0-9-]+)(?::([^=*]+))?(?:=(\d+))?(?:\*(\d+))?$/)
-  return Array.from({ length: Number(n ?? 1) }, () => ({ ref, ...(param ? { param } : {}), ...(value ? { value: Number(value) } : {}) }))
+  return Array.from({ length: Number(n ?? 1) }, () => ({ ref, ...(param ? { param: param.replace(/_/g, ' ') } : {}), ...(value ? { value: Number(value) } : {}) }))
 })
 /** "athletics 3 ranged-defense; close-combat 5 custom:Whips" -> SkillEntry[] */
 const skills = dsl => dsl.split(';').map(s => s.trim().split(/\s+/)).map(([id, r, ...specs]) =>
-  ({ id, rating: Number(r), specs: specs.map(x => (x.startsWith('custom:') ? x : `${id}.${x}`)) }))
+  ({ id, rating: Number(r), specs: specs.map(x => (x.startsWith('custom:') ? x.replace(/_/g, ' ') : `${id}.${x}`)) }))
 const attrs = s => { const [str, agi, wil, log, cha] = s.split(' ').map(Number); return { str, agi, wil, log, cha } }
 
 const PREGENS = [
@@ -259,12 +259,14 @@ const PREGENS = [
     thresholds: { physicalNone: 3, physicalMain: 6, mental: 3 } },
 ]
 
+PREGENS.push(...(await import('./daegann-pregens.mjs')).DAEGANN)
+
 const printed = {}
 const index = [{ file: 'lightning.ca2.json', name: 'Lightning', role: 'Shaman, male elf (creation example)', page: 85 }]
 for (const p of PREGENS) {
   const ch = {
     formatVersion: 1, id: `sample-${p.id}`,
-    identity: { name: p.name, streetName: p.street, metatype: p.meta, background: `Book pregen, CRB p.${p.page}.`, notes: '' },
+    identity: { name: p.name, streetName: p.street, metatype: p.meta, background: `Book pregen, ${p.source ?? 'CRB'} p.${p.page}.`, notes: '' },
     narrative: { keywords: p.keywords, dispositions: p.dispositions, cues: p.cues },
     level: 'runner', package: 'free',
     build: {
@@ -282,16 +284,16 @@ for (const p of PREGENS) {
   }
   writeFileSync(`public/samples/${p.id}.ca2.json`, JSON.stringify(ch, null, 2) + '\n')
   printed[p.id] = {
-    page: p.page, essence: p.essence, thresholds: p.thresholds,
+    page: p.page, ...(p.source ? { source: p.source } : {}), essence: p.essence, thresholds: p.thresholds,
     amps: Object.fromEntries(p.amps.map(([, , rating], i) => [`amp-${i + 1}`, rating])),
     pools: p.pools.split(/\s+/).map(tok => {
       const [, key, attr, dp] = tok.match(/^(.+)@(\w+)=(\d+)$/)
       const skill = key.split('.')[0]
       const rest = key.slice(skill.length + 1)
-      return { skill, spec: rest ? (rest.startsWith('custom:') ? rest : key) : null, attr, dp: Number(dp) }
+      return { skill, spec: rest ? (rest.startsWith('custom:') ? rest.replace(/_/g, ' ') : key) : null, attr, dp: Number(dp) }
     }),
   }
-  index.push({ file: `${p.id}.ca2.json`, name: p.street, role: '', page: p.page })
+  index.push({ file: `${p.id}.ca2.json`, name: p.street, role: '', page: p.page, ...(p.source ? { source: p.source } : {}) })
 }
 writeFileSync('public/samples/index.json', JSON.stringify(index, null, 2) + '\n')
 writeFileSync('tests/fixtures/pregens-printed.json', JSON.stringify(printed, null, 2) + '\n')

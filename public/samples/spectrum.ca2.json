@@ -1,0 +1,247 @@
+{
+  "formatVersion": 1,
+  "id": "sample-spectrum",
+  "identity": {
+    "name": "Spectrum",
+    "streetName": "Spectrum",
+    "metatype": "human",
+    "background": "Book pregen, SRA2 Pregens v1.0f p.9.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Human",
+      "Redmond, Seattle Metroplex",
+      "Field technician",
+      "Mercenary",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Capable of jury-rigging anything with whatever is at hand… though don’t expect it to last forever.",
+      "Uses his drones as autonomous “guardian angels.” Easily gets his wires crossed when trying to give them precise orders.",
+      "Follows orders without question, even when he thinks they are bad… except when it comes to tech matters.",
+      "Judges people by how well they maintain their gear."
+    ],
+    "cues": [
+      "Aaaaand… done. They’re blind. Their comms are completely jammed.",
+      "Tchh, a Model 4 Maglock? I can crack that with a paperclip…",
+      "Chaperone 1, open fire. Chaperone 2… shit, why the hell did it go post itself over there?!",
+      "Don’t touch my tools if you want to keep your fingers."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 3,
+      "agi": 3,
+      "wil": 2,
+      "log": 4,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 4,
+        "specs": [
+          "stealth.lockpicking"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 2,
+        "specs": [
+          "perception.physical"
+        ]
+      },
+      {
+        "id": "piloting",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "close-combat",
+        "rating": 3,
+        "specs": []
+      },
+      {
+        "id": "electronics",
+        "rating": 4,
+        "specs": [
+          "electronics.matrix-protection"
+        ]
+      },
+      {
+        "id": "engineering",
+        "rating": 5,
+        "specs": [
+          "engineering.electronic-warfare",
+          "engineering.demolitions"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 1,
+        "specs": []
+      },
+      {
+        "id": "network",
+        "rating": 3,
+        "specs": [
+          "network.engineering"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Analytical Mind",
+        "narrative": "Advantage to analyze patterns or solve pure logic puzzles, for an Edge point.",
+        "effects": []
+      },
+      {
+        "uid": "amp-2",
+        "type": "cyberware",
+        "name": "Evo S460 Cybereyes",
+        "narrative": "Image link, camera and smartlink.",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "ranged-weapons"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "cyberware",
+        "name": "Datajack",
+        "narrative": "Direct neural interface.",
+        "effects": [
+          {
+            "ref": "vr-cold"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "equipment",
+        "name": "S-K Fata Morgana",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "firewall-plus"
+          },
+          {
+            "ref": "rcc",
+            "value": 2
+          },
+          {
+            "ref": "narrative",
+            "param": "selective-jammer"
+          },
+          {
+            "ref": "narrative",
+            "param": "white-noise-generator"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "engineering.electronic-warfare"
+          }
+        ],
+        "linkedItem": "it-console"
+      },
+      {
+        "uid": "amp-5",
+        "type": "equipment",
+        "name": "Akafunken Pro Electronics Kit",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "stealth.lockpicking"
+          }
+        ],
+        "linkedItem": "it-kit"
+      },
+      {
+        "uid": "amp-6",
+        "type": "vehicle",
+        "name": "Esprit Chaperone",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "flying"
+          },
+          {
+            "ref": "weapon-mount",
+            "param": "hk-d5"
+          },
+          {
+            "ref": "safety-override"
+          }
+        ],
+        "vehicle": "small-drone"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Kevlar vest",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-lightfire",
+        "kind": "weapon",
+        "name": "Ares Light Fire",
+        "catalogId": "light-pistol"
+      },
+      {
+        "uid": "it-d5",
+        "kind": "weapon",
+        "name": "H&K D5 (on the Chaperone)",
+        "catalogId": "submachine-gun"
+      },
+      {
+        "uid": "it-sin",
+        "kind": "gear",
+        "name": "Fake SIN"
+      },
+      {
+        "uid": "it-commlink",
+        "kind": "gear",
+        "name": "Commlink"
+      },
+      {
+        "uid": "it-console",
+        "kind": "gear",
+        "name": "S-K Fata Morgana electronic warfare cyberconsole"
+      },
+      {
+        "uid": "it-kit",
+        "kind": "gear",
+        "name": "Akafunken Pro Electronics Kit with sequencer"
+      }
+    ],
+    "mainArmor": "it-vest"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}
