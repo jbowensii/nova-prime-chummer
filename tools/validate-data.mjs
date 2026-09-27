@@ -8,7 +8,7 @@ import { JSDOM } from 'jsdom';
 
 const DATA = 'public/data';
 const SCHEMA = join(DATA, 'schema');
-const schemaFor = kind => (['gear', 'weapons', 'armor', 'spells'].includes(kind) ? 'items' : kind);
+const schemaFor = kind => (['gear', 'weapons', 'armor', 'spells', 'complexforms'].includes(kind) ? 'items' : kind);
 const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
 
 // base files, then overlays listed in each overlay dir's index.xml

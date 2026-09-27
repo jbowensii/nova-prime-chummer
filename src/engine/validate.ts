@@ -67,7 +67,8 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       if (!eff) { add('ref.unknown', 'warning', ep, `${a.name}: unknown effect "${e.ref}".`); return }
       // The book's own catalog amps sometimes break the effect table (combat drugs are
       // Equipment with initiative); an effect exactly as the book printed it is sanctioned.
-      const fromBook = template?.type === a.type && template.effects.some(t => t.ref === e.ref)
+      const fromMod = e.note ? [...c.amps.values()].find(t => t.mod && t.name === e.note && t.effects.some(x => x.ref === e.ref)) : undefined
+      const fromBook = (template?.type === a.type && template.effects.some(t => t.ref === e.ref)) || !!fromMod
       if (!eff.types.includes(a.type) && !fromBook) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
       if (eff.requires && !a.effects.some(x => x.ref === eff.requires))
         add('amp.requires', 'error', ep, `${a.name}: "${eff.name}" requires "${c.ampEffects.get(eff.requires)?.name}".`, eff.page)
@@ -79,6 +80,7 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId)) add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
       if (e.ref === 'negative') {
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
+          || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 63)
       }
     })
@@ -103,7 +105,11 @@ export function validate(c: Catalog, ch: Character): Violation[] {
   const rating = (id: string) => b.skills.find(s => s.id === id)?.rating ?? 0
   if (rating('sorcery') > 0 && !allRefs.has('awk-sorcery')) add('skill.requiresAwakened', 'error', 'skills.sorcery', 'Sorcery needs the Awakened amp with Sorcery.', 57)
   if (rating('conjuring') > 0 && !allRefs.has('awk-conjuring')) add('skill.requiresAwakened', 'error', 'skills.conjuring', 'Conjuring needs the Awakened amp with Conjuring.', 54)
-  if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck')) add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck.', 54)
+  const emerged = b.amps.some(a => a.type === 'emerged')
+  if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck') && !emerged) add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck (or the Emerged amp).', 54)
+  if (rating('tasking') > 0 && !emerged) add('skill.requiresEmerged', 'error', 'skills.tasking', 'Tasking needs the Emerged amp.', 8, 'CG')
+  if (emerged && b.amps.some(a => a.type === 'awakened')) add('amp.emergedAwakened', 'error', 'amps', 'A character cannot be both Awakened and Emerged.', 8, 'CG')
+  if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'warning', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'warning', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
   // Risk Reduction caps

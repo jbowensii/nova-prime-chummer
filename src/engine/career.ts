@@ -55,6 +55,13 @@ export function finalize(c: Catalog, ch: Character): Character {
   return { ...ch, finalizedAt: new Date().toISOString(), finalRemaining: price(c, ch).remaining }
 }
 
+/** Undo Finalize: only while the ledger has no entries, so no recorded history is lost. */
+export function reopen(ch: Character): Character {
+  if (ch.career.length) throw new Error('the ledger already has entries')
+  const { finalizedAt: _f, finalRemaining: _r, ...rest } = ch
+  return rest as Character
+}
+
 export const makeEarn = (amount: number, run: string, date: string) => stamp({ type: 'earn', amount, run, date })
 export const makeNote = (text: string) => stamp({ type: 'note', text })
 

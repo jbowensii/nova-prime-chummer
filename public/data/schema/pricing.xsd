@@ -32,6 +32,7 @@
     <xs:attribute name="weaponSpecialist" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="armorPoint" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="spell" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="complexForm" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="refundEffectRemoval" type="xs:boolean" use="required"/>
   </xs:complexType>
 </xs:schema>
