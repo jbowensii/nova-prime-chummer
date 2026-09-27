@@ -30,7 +30,7 @@ export interface AmpTemplate extends Ref { name: string; type: string; item?: Te
   effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string }
 export interface VehicleBase extends Ref { name: string; pilot: number; body: number;
   handling: number; speed: number; flyingSpeed?: number; armor: number; mount: string }
-export interface Package extends Ref { level: string; archetype: string;
+export interface Package extends Ref { name: string; level: string; archetype: string;
   attrPoints: number; attrAtMax: number; skillPoints: number; skillsAtSix: number;
   ampPoints: number; armor: number; standardWeapons: number; specialistWeapons: number;
   equipment: number; spells: number }
@@ -83,3 +83,7 @@ export interface Character { formatVersion: 1; id: string;
 export type Severity = 'error' | 'warning';
 export interface Violation { code: string; severity: Severity; path: string;
   message: string; source?: string; page?: number; approved?: boolean }
+
+/** crypto.randomUUID only exists in secure contexts; plain-http LAN hosting needs a fallback. */
+export const newId = (): string =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`

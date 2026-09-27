@@ -1,11 +1,12 @@
 // Career mode: the finalized build is the baseline; the current character is the
 // baseline with every non-voided event applied in order.
 import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Character, ItemEntry } from '../model/types'
+import { newId } from '../model/types'
 import { ampChangeCost, ampCtx, ampRating } from './amps'
 import { attrCost, attrMax, itemCost, price, skillCost } from './price'
 
 type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, 'id' | 'at'> : never) : never
-const stamp = (e: NewEvent): CareerEvent => ({ id: crypto.randomUUID(), at: new Date().toISOString(), ...e }) as CareerEvent
+const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISOString(), ...e }) as CareerEvent
 
 export const voidedIds = (ch: Character) => new Set(ch.career.filter(e => e.type === 'void').map(e => (e as { eventId: string }).eventId))
 export const activeEvents = (ch: Character) => { const v = voidedIds(ch); return ch.career.filter(e => e.type !== 'void' && !v.has(e.id)) }

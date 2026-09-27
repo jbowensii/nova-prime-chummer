@@ -58,7 +58,7 @@ export const toVehicle = (el: Element): VehicleBase => ({ ...ref(el), name: chil
   body: req(el, 'body'), handling: req(el, 'handling'), speed: req(el, 'speed'), flyingSpeed: num(el, 'flyingSpeed'),
   armor: req(el, 'armor'), mount: el.getAttribute('mount')! })
 
-export const toPackage = (el: Element): Package => ({ ...ref(el), level: el.getAttribute('level')!,
+export const toPackage = (el: Element): Package => ({ ...ref(el), name: child(el, 'name'), level: el.getAttribute('level')!,
   archetype: el.getAttribute('archetype')!, attrPoints: req(el, 'attrPoints'), attrAtMax: req(el, 'attrAtMax'),
   skillPoints: req(el, 'skillPoints'), skillsAtSix: req(el, 'skillsAtSix'), ampPoints: req(el, 'ampPoints'),
   armor: req(el, 'armor'), standardWeapons: req(el, 'standardWeapons'), specialistWeapons: req(el, 'specialistWeapons'),
