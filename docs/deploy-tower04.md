@@ -51,3 +51,14 @@ Apply enables), then Apply. That recreates the container on the new image.
 - Drakk initially showed 2 errors (Jazz grants initiative as an Equipment
   amp). The book makes that exception for its own drugs, so catalog
   effects are now sanctioned; redeployed, only a note remains.
+
+## Redeploy 2026-09-27 (fix-everything pass)
+
+Rebuilt and recreated via Edit → Apply; previous image removed. On the
+deployed container: 16 data files load cleanly (554 amps including 84
+mods, 77 spells, 31 complex forms, 4 lifestyles); Drakk's Gear shows
+Unarmed DV 5, Swords 7, Throwing knife 6; Charon's Amps shows the
+Northstar (Pilot 6, Body 7, Handling 1, Speed 4, Armor 1) and the
+Quadrotor (Speed 4, flying); his sheet has the Vehicles section. The
+container is reported healthy. The browser library was untouched by the
+rebuild.
