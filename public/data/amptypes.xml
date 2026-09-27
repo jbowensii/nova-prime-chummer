@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shadow Amp types and base ratings, CRB p.58-60. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amptypes" version="1">
+  <amptype id="quality" base="0" baseAfterFirst="3" essence="0" source="CRB" page="58"><name>Quality</name></amptype>
+  <amptype id="awakened" base="0" essence="0" source="CRB" page="58"><name>Awakened</name></amptype>
+  <amptype id="cyberware" base="1" essence="1" source="CRB" page="58"><name>Cyberware</name></amptype>
+  <amptype id="bioware" base="2" essence="0.5" source="CRB" page="58"><name>Bioware</name></amptype>
+  <amptype id="adept" base="1" essence="0" requires="awk-adept" source="CRB" page="58"><name>Adept power</name></amptype>
+  <amptype id="equipment" base="0" essence="0" source="CRB" page="60"><name>Equipment</name></amptype>
+  <amptype id="cyberdeck" base="1" essence="0" source="CRB" page="60"><name>Cyberdeck</name></amptype>
+  <amptype id="vehicle" base="1" essence="0" source="CRB" page="60"><name>Vehicle or drone</name></amptype>
+  <amptype id="contact" base="0" essence="0" source="CRB" page="60"><name>Contact</name></amptype>
+</ca2:data>
