@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="skills". See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="skill" type="ca2:Skill"/>
+        <xs:element name="remove" type="ca2:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="skills"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="Skill">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="spec" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+          <xs:attribute name="id" type="ca2:Id" use="required"/>
+          <xs:attribute name="attr" type="ca2:Attr" use="required"/>
+        </xs:extension></xs:simpleContent></xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="attr" type="ca2:Attr" use="required"/>
+    <xs:attribute name="alt" type="ca2:Attr"/>
+    <xs:attribute name="requires">
+      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="awakened"/><xs:enumeration value="cyberdeck"/></xs:restriction></xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+</xs:schema>

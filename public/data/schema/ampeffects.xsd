@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="ampeffects". See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="effect" type="ca2:AmpEffect"/>
+        <xs:element name="remove" type="ca2:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="ampeffects"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="AmpEffect">
+    <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="category" type="xs:string" use="required"/>
+    <xs:attribute name="rating" type="xs:integer" use="required"/>
+    <xs:attribute name="types" type="ca2:IdList" use="required"/>
+    <xs:attribute name="max" type="xs:positiveInteger"/>
+    <xs:attribute name="requires" type="ca2:Id"/>
+    <xs:attribute name="excludes" type="ca2:Id"/>
+    <xs:attribute name="gmApproval" type="xs:boolean"/>
+    <xs:attribute name="param">
+      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="skill"/><xs:enumeration value="spec"/><xs:enumeration value="attribute"/><xs:enumeration value="realm"/><xs:enumeration value="text"/><xs:enumeration value="value"/></xs:restriction></xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+</xs:schema>

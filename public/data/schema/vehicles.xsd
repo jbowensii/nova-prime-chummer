@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="vehicles". See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="vehicle" type="ca2:Vehicle"/>
+        <xs:element name="remove" type="ca2:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="vehicles"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="Vehicle">
+    <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="pilot" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="body" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="handling" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="speed" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="flyingSpeed" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="armor" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="mount" type="xs:string" use="required"/>
+  </xs:complexType>
+</xs:schema>
