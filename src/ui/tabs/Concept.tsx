@@ -53,6 +53,11 @@ export function ConceptTab() {
             {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </label>
+        <label>Lifestyle
+          <select value={ch.identity.lifestyle ?? 'low'} onChange={e => update(d => { d.identity.lifestyle = e.target.value })}>
+            {[...c.lifestyles.values()].map(l => <option key={l.id} value={l.id}>{l.name}{l.perRun ? ` (${l.perRun > 0 ? '+' : '−'}${Math.abs(l.perRun).toLocaleString('en-US')}¥ per run)` : ''}</option>)}
+          </select>
+        </label>
         <label>Portrait
           <input type="file" accept="image/*" onChange={async e => { const f = e.target.files?.[0]; if (f) { const url = await portrait(f); update(d => { d.identity.portrait = url }) } }} />
         </label>
@@ -60,6 +65,7 @@ export function ConceptTab() {
       {meta && <p className="muted">
         {meta.name}: {ATTRS.map(a => `${a.toUpperCase()} ${meta.ranges[a][0]}–${meta.ranges[a][1]}`).join(', ')}; Edge {meta.edge}{meta.racialQuality ? `; ${meta.racialQuality}` : ''}.
         {ch.package !== 'free' && ' The package only guides spending: nuyen can move between categories.'}
+        {' '}{c.lifestyles.get(ch.identity.lifestyle ?? 'low')?.text}
       </p>}
       <hr className="sep" />
       <div className="grid2">{list('keywords')}{list('dispositions')}{list('cues')}</div>

@@ -19,8 +19,7 @@ export function Sheet() {
     if (ref === 'negative') return `Drawback (−${value ?? 1})`
     return `${def?.name ?? ref}${param && ref !== 'narrative' ? `: ${param}` : ''}`
   }
-  const weapons = b.items.filter(i => i.kind === 'weapon')
-  const spells = b.items.filter(i => i.kind === 'spell')
+  const spells = b.items.filter(i => i.kind === 'spell' || i.kind === 'complex-form')
   const gear = b.items.filter(i => i.kind === 'gear' || (i.kind === 'armor' && i.uid !== b.mainArmor && i.uid !== b.altArmor))
 
   return (
@@ -72,8 +71,8 @@ export function Sheet() {
                 <tr><td>No armor</td>{d.thresholds.physicalNone.map((x, i) => <td key={i}>{x}</td>)}</tr>
                 {b.mainArmor && <tr><td>Main armor ({item(b.mainArmor)?.name} {d.armor.main})</td>{d.thresholds.physicalMain.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                 {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {d.armor.alt})</td>{d.thresholds.physicalAlt.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                <tr><td>Mental</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                {d.thresholds.matrix && <tr><td>Matrix (Firewall {d.firewall})</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                <tr><td>Mental{d.mentalProtection ? ` (armor ${d.mentalProtection})` : ''}</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
+                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall})</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
               </tbody>
             </table>
 
@@ -110,12 +109,23 @@ export function Sheet() {
           </table>
         </section>
 
+        {d.vehicles.length > 0 && (
+          <section>
+            <h2>Vehicles & drones</h2>
+            <table>
+              <thead><tr><th>Vehicle</th><th>Pilot</th><th>Body</th><th>Handling</th><th>Speed</th><th>Armor</th><th>Damage L/S/I</th></tr></thead>
+              <tbody>{d.vehicles.map(v => <tr key={v.uid}><td><b>{v.count > 1 ? `${v.count}× ` : ''}{v.name}</b> <span className="s-small">({v.chassis}{v.flying ? ', flying' : ''})</span></td>
+                <td>{v.pilot}</td><td>{v.body}</td><td>{v.handling}</td><td>{v.speed}</td><td>{v.armor}</td><td>{v.thresholds.join(' / ')}</td></tr>)}</tbody>
+            </table>
+          </section>
+        )}
+
         <div className="s-cols">
           <section>
             <h2>Weapons & spells</h2>
             <table><tbody>
-              {weapons.map(w => { const cat = c.items.get(w.catalogId ?? '') ?? w.snapshot; return <tr key={w.uid}><td><b>{w.name}</b>{cat?.dv && <> DV {cat.dv} [{cat.ranges}]</>}</td><td>{w.specialist ? 'Spec. weapon' : 'Weapon'}</td></tr> })}
-              {spells.map(s => { const cat = c.items.get(s.catalogId ?? '') ?? s.snapshot; return <tr key={s.uid}><td><b>{s.name}</b>{cat?.category && <span className="s-small"> ({cat.category})</span>}</td><td>Spell</td></tr> })}
+              {d.weapons.map(w => <tr key={w.uid}><td><b>{w.name}</b> DV {w.dv} [{w.ranges}]{w.note && <span className="s-small"> ({w.note})</span>}</td><td>{w.specialist ? 'Spec. weapon' : 'Weapon'}</td></tr>)}
+              {spells.map(s => { const cat = c.items.get(s.catalogId ?? '') ?? s.snapshot; return <tr key={s.uid}><td><b>{s.name}</b>{cat?.category && <span className="s-small"> ({cat.category})</span>}</td><td>{s.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
             </tbody></table>
             <h2>Equipment</h2>
             <p>Fake SIN, commlink{gear.map(g => `, ${g.name}`).join('')}.</p>
@@ -125,6 +135,7 @@ export function Sheet() {
           <section>
             <h2>Keywords</h2>
             <p>{ch.narrative.keywords.filter(Boolean).join(', ') || '—'}</p>
+            <p className="s-small">Lifestyle: {c.lifestyles.get(ch.identity.lifestyle ?? 'low')?.name ?? 'Low'}</p>
             <h2>Dispositions</h2>
             <ul>{ch.narrative.dispositions.filter(Boolean).map((x, i) => <li key={i}>{x}</li>)}</ul>
             <h2>Cues</h2>

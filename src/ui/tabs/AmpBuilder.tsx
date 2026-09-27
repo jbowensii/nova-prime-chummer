@@ -1,6 +1,6 @@
 // Build or change a Shadow Amp: type + effects -> rating, cost, Essence (CRB p.58-63).
 import { useState } from 'react'
-import { ampChangeCost, ampCtx, ampEssence, ampRating, effectRating, legalEffects } from '../../engine'
+import { ampChangeCost, ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, vehicleStats } from '../../engine'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
 import { fmt, signed } from '../bits'
@@ -21,6 +21,8 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
   const setFx = (i: number, patch: Partial<EffectPick>) => set({ effects: amp.effects.map((e, j) => (j === i ? { ...e, ...patch } : e)) })
   const addFx = (ref: string) => { if (ref) set({ effects: [...amp.effects, { ref }] }); setPickFx('') }
   const change = before ? ampChangeCost(c, before, amp, ctx) : 0
+  const mods = [...c.amps.values()].filter(t => t.mod && t.type === amp.type)
+  const vs = amp.type === 'vehicle' ? vehicleStats(c, amp) : undefined
 
   const paramInput = (e: EffectPick, i: number) => {
     const def = c.ampEffects.get(e.ref)
@@ -104,6 +106,13 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
         ))}
       </select>
 
+      {mods.length > 0 && (
+        <select value="" onChange={e => { const m = c.amps.get(e.target.value); if (m) setAmp(a => applyMod(a, m)) }} aria-label="Apply a book add-on">
+          <option value="">+ Apply a book add-on ({mods.length})…</option>
+          {mods.map(m => <option key={m.id} value={m.id}>{m.name} ({m.printedRating != null && m.printedRating >= 0 ? '+' : ''}{m.printedRating}){m.narrative ? `: ${m.narrative.slice(0, 70)}` : ''}</option>)}
+        </select>
+      )}
+      {vs && <p style={{ margin: 0 }}>{vs.count > 1 ? `${vs.count}× ` : ''}{vs.chassis}: Pilot {vs.pilot}, Body {vs.body}, Handling {vs.handling}, Speed {vs.speed}{vs.flying ? ' (flying)' : ''}, Armor {vs.armor}. Weapon mount: {vs.mount}.</p>}
       <div className="ampfoot">
         <span>Rating <b>{rating}</b></span>
         <span>Cost <b>{fmt(rating * c.pricing.ampPoint)}</b></span>

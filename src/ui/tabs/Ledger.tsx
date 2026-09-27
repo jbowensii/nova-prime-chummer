@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { makeEarn, makeNote, voidEvent, voidedIds } from '../../engine'
+import { makeEarn, makeNote, reopen, voidEvent, voidedIds } from '../../engine'
 import type { CareerEvent } from '../../model/types'
 import { fmt } from '../bits'
 import { useEditor } from '../editor'
 
 export function LedgerTab() {
-  const { c, ch, balance, record, update } = useEditor()
+  const { c, ch, balance, record, update, replace } = useEditor()
+  const life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
+  const [withLife, setWithLife] = useState(true)
   const today = new Date().toISOString().slice(0, 10)
   const [amount, setAmount] = useState('')
   const [run, setRun] = useState('')
@@ -14,9 +16,12 @@ export function LedgerTab() {
   const voided = voidedIds(ch)
 
   const earn = async () => {
-    const n = Number(amount)
-    if (!n || n <= 0) return
-    if (await record(makeEarn(n, run.trim() || 'Run', date), `Earned ${fmt(n)}${run.trim() ? ` from ${run.trim()}` : ''}`)) { setAmount(''); setRun('') }
+    const pay = Number(amount)
+    if (!pay || pay <= 0) return
+    const adj = withLife && life ? life.perRun : 0
+    const n = Math.max(0, pay + adj)
+    const label = `${run.trim() || 'Run'}${adj ? ` (${life!.name} lifestyle ${adj > 0 ? '+' : '−'}${fmt(Math.abs(adj))})` : ''}`
+    if (await record(makeEarn(n, label, date), `Earned ${fmt(n)}${run.trim() ? ` from ${run.trim()}` : ''}${adj ? `: ${fmt(pay)} pay, ${adj > 0 ? '+' : '−'}${fmt(Math.abs(adj))} for ${life!.name} lifestyle` : ''}`)) { setAmount(''); setRun('') }
   }
   const describe = (e: CareerEvent): string => {
     switch (e.type) {
@@ -47,18 +52,28 @@ export function LedgerTab() {
     <div className="stack">
       <h2>Ledger</h2>
       <p className="muted">In Anarchy 2.0, nuyen is experience too: runs pay out, and you spend it to improve the runner at the creation prices (CRB p.83).</p>
+      {ch.career.length === 0 && (
+        <p>Finalized by mistake? <button className="btn small" onClick={() => { replace(reopen(ch)); location.hash = `#/c/${ch.id}/review` }}>Reopen creation</button>
+          <span className="muted"> Available until the first ledger entry.</span></p>
+      )}
       <div className="row">
         <label>Nuyen earned<input type="number" min={0} step={1000} value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '9rem' }} /></label>
         <label style={{ flex: 1 }}>Run<input value={run} onChange={e => setRun(e.target.value)} placeholder="e.g. Renraku extraction" /></label>
         <label>Date<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
         <button className="btn primary" style={{ alignSelf: 'end' }} disabled={!(Number(amount) > 0)} onClick={earn}>Record earnings</button>
       </div>
+      {life && life.perRun !== 0 && (
+        <label className="row" style={{ display: 'flex' }}>
+          <input type="checkbox" checked={withLife} onChange={e => setWithLife(e.target.checked)} />
+          Apply {life.name} lifestyle: {life.perRun > 0 ? '+' : '−'}{fmt(Math.abs(life.perRun))} per run (CRB p.{life.page})
+        </label>
+      )}
       <div className="row">
         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note to the history" aria-label="Note" style={{ flex: 1 }} />
         <button className="btn small" disabled={!note.trim()} onClick={() => { update(d => { d.career.push(makeNote(note.trim())) }); setNote('') }}>Add note</button>
       </div>
 
-      <table className="data">
+      <div className="scroll-x"><table className="data">
         <thead><tr><th>When</th><th>What</th><th className="num">Nuyen</th><th className="num">Balance</th><th /></tr></thead>
         <tbody>
           <tr><td className="muted">{ch.finalizedAt?.slice(0, 10)}</td><td>Finalized; left over from creation</td><td className="num">{fmt(ch.finalRemaining ?? 0)}</td><td className="num">{fmt(ch.finalRemaining ?? 0)}</td><td /></tr>
@@ -76,7 +91,7 @@ export function LedgerTab() {
           ))}
         </tbody>
         <tfoot><tr><td /><td><b>Balance</b></td><td /><td className={`num ${balance < 0 ? 'err' : ''}`}><b>{fmt(balance)}</b></td><td /></tr></tfoot>
-      </table>
+      </table></div>
     </div>
   )
 }
