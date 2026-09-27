@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="metatypes". See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="metatype" type="ca2:Metatype"/>
+        <xs:element name="remove" type="ca2:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="metatypes"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="Metatype">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="racialQuality" type="xs:string"/>
+      <xs:element name="range" minOccurs="5" maxOccurs="5">
+        <xs:complexType>
+          <xs:attribute name="attr" type="ca2:Attr" use="required"/>
+          <xs:attribute name="min" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="max" type="xs:positiveInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="edge" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+</xs:schema>
