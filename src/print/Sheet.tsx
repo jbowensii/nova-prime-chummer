@@ -31,7 +31,8 @@ export function Sheet() {
       <article className="sheet">
         <header className="s-head">
           <div><div className="s-label">Street name</div><h1>{name}</h1>
-            <div>{c.metatypes.get(ch.identity.metatype)?.name}{ch.identity.name && ch.identity.name !== name ? `, ${ch.identity.name}` : ''}</div></div>
+            <div className="s-role">{c.metatypes.get(ch.identity.metatype)?.name}{ch.narrative.keywords[2] ? `, ${ch.narrative.keywords[2]}` : ''}</div>
+            {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
           {ch.identity.portrait && <img src={ch.identity.portrait} alt="" />}
         </header>
 

@@ -61,14 +61,21 @@ test('phone width: the receipt collapses to a bar and opens on tap', async ({ pa
   }
 })
 
-test('light and dark themes both apply', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'light' })
+test('Settings: theme, texture and print style apply and persist', async ({ page }) => {
   await page.goto('/')
-  const light = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  await page.emulateMedia({ colorScheme: 'dark' })
-  const dark = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  expect(light).toBe('rgb(214, 216, 210)')
-  expect(dark).toBe('rgb(27, 30, 33)')
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  const attr = (k: string) => page.evaluate(n => document.documentElement.dataset[n], k)
+  expect(await bg()).toBe('rgb(245, 244, 240)') // book paper
+  expect(await attr('texture')).toBe('accents')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByLabel('Indigo (dark)').check()
+  await page.getByLabel('Full book').check()
+  await page.getByLabel('Full color').check()
+  expect(await bg()).toBe('rgb(29, 25, 54)')
+  await page.reload()
+  expect(await bg()).toBe('rgb(29, 25, 54)')
+  expect(await attr('texture')).toBe('full')
+  expect(await attr('print')).toBe('color')
 })
 
 test('Finalize can be undone from the ledger until the first entry', async ({ page }) => {

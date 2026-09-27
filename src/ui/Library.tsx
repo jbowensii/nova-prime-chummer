@@ -3,6 +3,7 @@ import { blankCharacter, parseCharacterFile, serialize, snapshotEntries } from '
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { Modal } from './bits'
+import { SettingsButton } from './settings'
 import { deleteCharacter, listCharacters, needsExportReminder, saveCharacter } from './storage'
 
 export function exportCharacter(c: Catalog, ch: Character) {
@@ -81,6 +82,7 @@ export function Library({ c }: { c: Catalog }) {
           <input ref={file} type="file" accept=".json,.ca2.json,application/json" multiple hidden onChange={e => { importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={loadSamples}>Load rulebook characters</button>
           <a className="btn quiet" href="#/data">Game data</a>
+          <SettingsButton />
         </div>
       </header>
       {msg && <p className="banner" role="status">{msg}</p>}
