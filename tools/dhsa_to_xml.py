@@ -10,7 +10,10 @@ narrative text. The computed rating is reconciled with the printed one:
 Entries printed in black are core-book (CRB) content: their page is looked up in the core
 book markdown. Rust entries are Daegann's (DHSA) and cite the DHSA page.
 
-Usage: python tools/dhsa_to_xml.py <dhsa rows.json> <public/data> <report.md> <CRB .md>
+Book-derived descriptions are written to a separate private file (default
+.extract/private/texts.xml), never to the committed data.
+
+Usage: python tools/dhsa_to_xml.py <dhsa rows.json> <public/data> <report.md> <CRB .md> [texts.xml]
 """
 import json
 import re
@@ -297,12 +300,19 @@ def reconcile(fx, narrative, base, rating, negative_ok=False):
     return computed
 
 
-def build(rows, data_dir, report_path, crb_path):
+def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/texts.xml"):
     for r in rows:  # DHSA v3.2 mixes '-' and '–' in headings; v3.4 uses '–'
         r["section"] = r["section"].replace(" - ", " – ")
     book = CoreBook(crb_path)
     mapper = Mapper(load_specs(data_dir))
     amps, gear, spells, forms, report, ids = [], [], [], [], [], set()
+    texts = []  # (of, id, text): book-derived descriptions, written to a private file
+
+    def private(of, eid, s):
+        s = (s or "").strip()
+        if s:
+            texts.append(f'  <text of="{of}" id="{eid}">{escape(s)}</text>')
+        return ""  # the committed file keeps an empty element
 
     def uid(base):
         i, s = 1, base
@@ -328,7 +338,7 @@ def build(rows, data_dir, report_path, crb_path):
     def amp_xml(aid, atype, rating, src, page, name, item, fx, narrative, vehicle=None, mod=False):
         fx_xml = "".join(f'<effect ref="{f[0]}"{attr("param", f[1])}{attr("value", f[2])}{attr("note", f[3])}/>' for f in fx)
         amps.append(f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""} source="{src}" page="{page}">'
-                    f'<name>{escape(name)}</name>{item}{fx_xml}<narrative>{escape(" ".join(narrative).strip())}</narrative></amp>')
+                    f'<name>{escape(name)}</name>{item}{fx_xml}<narrative>{private("amps", aid, " ".join(narrative))}</narrative></amp>')
 
     def map_lines(lines):
         fx, narrative = [], []
@@ -359,8 +369,9 @@ def build(rows, data_dir, report_path, crb_path):
         name = clean_name(r["name"])
         src, page = cite(r, name, 8093, 8420)
         text = f'{base["type"]}. Threshold/target: {base["cost"]}. ' + " ".join(base["effects"])
-        spells.append(f'  <item id="{uid("spell-" + slug(name))}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{src}" page="{page}">'
-                      f'<name>{escape(name)}</name><text>{escape(text[:300])}</text></item>')
+        sid = uid("spell-" + slug(name))
+        spells.append(f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{src}" page="{page}">'
+                      f'<name>{escape(name)}</name><text>{private("items", sid, text[:300])}</text></item>')
 
     # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules)
     for r in rows:
@@ -373,8 +384,9 @@ def build(rows, data_dir, report_path, crb_path):
         thr_m = re.match(r"(\d\+?|\d to \d|Firewall(?:\+\d)?|Area-based|Variable)\s*(.*)", r["cost"])
         threshold = r["type"] or (thr_m.group(1) if thr_m else "")
         text = " ".join(([thr_m.group(2)] if thr_m and thr_m.group(2) else [] if thr_m else [r["cost"]]) + r["effects"]).strip()
-        forms.append(f'  <item id="{uid("cf-" + slug(name))}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="DHSA" page="{r["page"]}">'
-                     f'<name>{escape(name)}</name><text>{escape(f"{dur}. Threshold: {threshold}. {text}"[:300])}</text></item>')
+        cid = uid("cf-" + slug(name))
+        forms.append(f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="DHSA" page="{r["page"]}">'
+                     f'<name>{escape(name)}</name><text>{private("items", cid, f"{dur}. Threshold: {threshold}. {text}"[:300])}</text></item>')
 
     # ---- contacts: rated templates (CONTACTS section)
     contact_rows = [r for r in rows if r["section"] == "CONTACTS" and re.search(r"Amp\s*\d", r["name"])]
@@ -386,8 +398,8 @@ def build(rows, data_dir, report_path, crb_path):
             fx += mapper.effects(m.group(0)) or []
         narrative = [re.split(r"\s*RR\s*\d", text)[0]]
         reconcile(fx, [], BASE["contact"], rating)
-        amp_xml(uid(slug(CONTACT_NAMES[i] if i < len(CONTACT_NAMES) else f"contact-{rating}")), "contact", rating, "DHSA", r["page"],
-                CONTACT_NAMES[i] if i < len(CONTACT_NAMES) else f"Contact (rating {rating})", "", fx, narrative)
+        cname = CONTACT_NAMES[i] if i < len(CONTACT_NAMES) else f"Contact (rating {rating})"
+        amp_xml(uid(slug(cname)), "contact", rating, "DHSA", r["page"], cname, "", fx, narrative)
 
     for r in merge_wrapped(rows):
         sec = r["section"]
@@ -427,8 +439,9 @@ def build(rows, data_dir, report_path, crb_path):
         cost = cost_value(r["cost"])
         if rating is None:  # plain equipment, not an amp
             if sec in EQUIPMENT_SECTIONS and r["type"].startswith("Equipment") and sec not in ("ARMORY – WEAPONS", "ARMORY – ARMORS"):
-                gear.append(f'  <item id="{uid("gear-" + slug(name))}" kind="gear" category="{escape(r["subsection"].title())}" source="{src}" page="{page}">'
-                            f'<name>{escape(name)}</name><text>{escape(" ".join(effects_lines)[:240])}</text></item>')
+                gid = uid("gear-" + slug(name))
+                gear.append(f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{src}" page="{page}">'
+                            f'<name>{escape(name)}</name><text>{private("items", gid, " ".join(effects_lines)[:240])}</text></item>')
             continue
 
         atype = SECTION_TYPE.get(sec, "equipment")
@@ -501,6 +514,12 @@ def build(rows, data_dir, report_path, crb_path):
     write("spells.xml", "spells", "Spells. source CRB = core-book page; DHSA = Daegann addition.", spells)
     write("complexforms.xml", "complexforms", "Technomancer complex forms, 5,000 nuyen each (rules: CGL Conversion Guide p.9).", forms)
     write("gear.xml", "gear", "Plain equipment (not Amps), 2,500 nuyen each unless the GM says otherwise.", gear)
+    import os
+    os.makedirs(os.path.dirname(text_path), exist_ok=True)
+    with open(text_path, "w", encoding="utf8", newline="\n") as f:
+        f.write(f'{head}<!-- PRIVATE: book-derived descriptions. Not committed to the repository.\n'
+                '     Install as custom/texts.xml (tower04: /mnt/user/appdata/chummer-anarchy2/custom/). -->\n'
+                '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">\n' + "\n".join(texts) + "\n</ca2:data>\n")
     with open(report_path, "w", encoding="utf8") as f:
         f.write(f"amps {len(amps)}, spells {len(spells)}, complex forms {len(forms)}, gear {len(gear)}, mismatches {len(report)}\n\n")
         f.write("| amp | source | type | printed | computed | effects |\n|---|---|---|---|---|---|\n" + "\n".join(report) + "\n\n")
@@ -510,4 +529,4 @@ def build(rows, data_dir, report_path, crb_path):
 
 
 if __name__ == "__main__":
-    build(json.load(open(sys.argv[1], encoding="utf8")), sys.argv[2], sys.argv[3], sys.argv[4])
+    build(json.load(open(sys.argv[1], encoding="utf8")), sys.argv[2], sys.argv[3], sys.argv[4], *sys.argv[5:6])

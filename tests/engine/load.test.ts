@@ -33,3 +33,14 @@ test('bad overlay is skipped and reported, base still loads', () => {
   expect(c.errors[0].file).toBe('broken.xml')
   expect(c.levels.get('runner')!.nuyen).toBe(375000)
 })
+
+test('private texts merge by id; the committed data carries none', () => {
+  expect([...cat.amps.values()].filter(a => a.narrative).length).toBe(0)
+  expect([...cat.items.values()].filter(i => i.kind === 'spell' && i.text).length).toBe(0)
+  const texts = `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">
+    <text of="amps" id="ares-wired-reflexes">Reflex boosters wired into the spine.</text>
+    <text of="items" id="spell-heal">Heals one wound.</text></ca2:data>`
+  const c = buildCatalog([...base, { file: 'custom/texts.xml', xml: texts, overlay: true }])
+  expect(c.amps.get('ares-wired-reflexes')!.narrative).toBe('Reflex boosters wired into the spine.')
+  expect(c.items.get('spell-heal')!.text).toBe('Heals one wound.')
+})
