@@ -1,0 +1,226 @@
+{
+  "formatVersion": 1,
+  "id": "sample-wild-jane",
+  "identity": {
+    "name": "Wild Jane",
+    "streetName": "Wild Jane",
+    "metatype": "ork",
+    "background": "Book pregen, CRB p.90.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Ork",
+      "Austin, CAS",
+      "Street samurai",
+      "Lone Star",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Woman of principle",
+      "Polite",
+      "Short fuse",
+      "Purposeful"
+    ],
+    "cues": [
+      "As long as I have somewhere to hang my hat, I’ll be fine.",
+      "You’re really starting to get on my nerves, boy.",
+      "Strangely, people are much more polite when I am armed.",
+      "Trust me, sir. I’ll get to the bottom of this."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 3,
+      "agi": 4,
+      "wil": 2,
+      "log": 2,
+      "cha": 3
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 3,
+        "specs": [
+          "close-combat.unarmed"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 3,
+        "specs": [
+          "influence.intimidation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 3,
+        "specs": [
+          "network.government"
+        ]
+      },
+      {
+        "id": "perception",
+        "rating": 4,
+        "specs": [
+          "perception.physical"
+        ]
+      },
+      {
+        "id": "piloting",
+        "rating": 2,
+        "specs": [
+          "piloting.cars"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 5,
+        "specs": [
+          "ranged-weapons.rifles"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 2,
+        "specs": [
+          "stealth.physical-sneaking"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "cyberware",
+        "name": "Cybernetic eyes",
+        "narrative": "Visual interface, camera, low-light vision, smartlink.",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "ranged-weapons"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "perception.physical"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "cyberware",
+        "name": "Wired reflexes",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "init-1"
+          },
+          {
+            "ref": "init-2"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "bioware",
+        "name": "Reflex recorders",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "close-combat.unarmed"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "contact",
+        "name": "Casey Bernardini, Lone Star inspector",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.government"
+          }
+        ]
+      },
+      {
+        "uid": "amp-5",
+        "type": "equipment",
+        "name": "Defiance T-250 (customized stock)",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.rifles"
+          }
+        ],
+        "linkedItem": "it-t250"
+      },
+      {
+        "uid": "amp-6",
+        "type": "vehicle",
+        "name": "Reinforced Ford Americar",
+        "narrative": "Front-facing weapon mount.",
+        "effects": [
+          {
+            "ref": "vehicle-armor"
+          }
+        ],
+        "vehicle": "sedan"
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Kevlar vest",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-gloves",
+        "kind": "weapon",
+        "name": "Stun gloves",
+        "catalogId": "advanced-close-quarter"
+      },
+      {
+        "uid": "it-manhunter",
+        "kind": "weapon",
+        "name": "Colt Manhunter",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-t250",
+        "kind": "weapon",
+        "name": "Defiance T-250",
+        "catalogId": "shotgun"
+      },
+      {
+        "uid": "it-mgl",
+        "kind": "weapon",
+        "name": "ArmTech MGL-12",
+        "catalogId": "grenade-launcher",
+        "specialist": true
+      },
+      {
+        "uid": "it-stims",
+        "kind": "gear",
+        "name": "Stim patches"
+      }
+    ],
+    "mainArmor": "it-vest"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

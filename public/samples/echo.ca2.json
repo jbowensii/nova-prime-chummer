@@ -1,0 +1,241 @@
+{
+  "formatVersion": 1,
+  "id": "sample-echo",
+  "identity": {
+    "name": "Echo",
+    "streetName": "Echo",
+    "metatype": "human",
+    "background": "Book pregen, CRB p.102.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Boston bourgeoisie",
+      "Seattle",
+      "Face",
+      "Former CIA agent (UCAS)",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Idealist",
+      "Protector of the people",
+      "Avoids violence as much as possible",
+      "Seeks attention"
+    ],
+    "cues": [
+      "I’m sure we can come to an arrangement; tell me everything.",
+      "There’s always a way. I just need to find the right person who knows it.",
+      "I know someone who knows someone.",
+      "Adaptation is the key to survive in the field."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 3,
+      "log": 3,
+      "cha": 4
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 3,
+        "specs": [
+          "close-combat.clubs"
+        ]
+      },
+      {
+        "id": "electronics",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "influence",
+        "rating": 5,
+        "specs": [
+          "influence.impersonation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 5,
+        "specs": []
+      },
+      {
+        "id": "perception",
+        "rating": 5,
+        "specs": [
+          "perception.social"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 4,
+        "specs": [
+          "ranged-weapons.pistols"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 5,
+        "specs": []
+      },
+      {
+        "id": "survival",
+        "rating": 2,
+        "specs": [
+          "survival.composure"
+        ]
+      }
+    ],
+    "knowledge": [
+      "Politics",
+      "Sociology"
+    ],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "cyberware",
+        "name": "Cross Biomedical Angel Eyes",
+        "narrative": "Visual interface; camera.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "perception.physical"
+          },
+          {
+            "ref": "narrative",
+            "param": "thermographic-vision"
+          },
+          {
+            "ref": "narrative",
+            "param": "customizable-irises"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "equipment",
+        "name": "Nanopaste makeup",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "influence.impersonation"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "influence.impersonation"
+          }
+        ],
+        "linkedItem": "it-makeup"
+      },
+      {
+        "uid": "amp-3",
+        "type": "equipment",
+        "name": "Well-Stocked Closet",
+        "narrative": "Always have the appropriate apparel.",
+        "effects": [
+          {
+            "ref": "armor-plus"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "influence.etiquette"
+          }
+        ],
+        "linkedItem": "it-clothes"
+      },
+      {
+        "uid": "amp-4",
+        "type": "equipment",
+        "name": "HK P60 Tactical",
+        "narrative": "Dismountable; smartgun.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "stealth.physical-sneaking"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.pistols"
+          }
+        ],
+        "linkedItem": "it-p60"
+      },
+      {
+        "uid": "amp-5",
+        "type": "contact",
+        "name": "Vincent Terranova, undercover cop",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.government"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-vest",
+        "kind": "armor",
+        "name": "Kevlar vest",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-clothes",
+        "kind": "gear",
+        "name": "Clothes"
+      },
+      {
+        "uid": "it-baton",
+        "kind": "weapon",
+        "name": "Extendable baton",
+        "catalogId": "long-weapon"
+      },
+      {
+        "uid": "it-p60",
+        "kind": "weapon",
+        "name": "HK P60 Tactical",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-makeup",
+        "kind": "gear",
+        "name": "Nanopaste makeup"
+      },
+      {
+        "uid": "it-infil",
+        "kind": "gear",
+        "name": "Small infiltration kit"
+      },
+      {
+        "uid": "it-tags",
+        "kind": "gear",
+        "name": "Stealth tags"
+      },
+      {
+        "uid": "it-sweeper",
+        "kind": "gear",
+        "name": "Bug sweeper"
+      }
+    ],
+    "mainArmor": "it-vest",
+    "altArmor": "it-clothes"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

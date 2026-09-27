@@ -1,0 +1,80 @@
+[
+  {
+    "file": "lightning.ca2.json",
+    "name": "Lightning",
+    "role": "Shaman, male elf (creation example)",
+    "page": 85
+  },
+  {
+    "file": "hercules.ca2.json",
+    "name": "Hercules",
+    "role": "",
+    "page": 88
+  },
+  {
+    "file": "wild-jane.ca2.json",
+    "name": "Wild Jane",
+    "role": "",
+    "page": 90
+  },
+  {
+    "file": "trash.ca2.json",
+    "name": "Trash",
+    "role": "",
+    "page": 92
+  },
+  {
+    "file": "gambit.ca2.json",
+    "name": "Gambit",
+    "role": "",
+    "page": 94
+  },
+  {
+    "file": "charon.ca2.json",
+    "name": "Charon",
+    "role": "",
+    "page": 96
+  },
+  {
+    "file": "luna.ca2.json",
+    "name": "Luna",
+    "role": "",
+    "page": 98
+  },
+  {
+    "file": "casper.ca2.json",
+    "name": "Casper",
+    "role": "",
+    "page": 100
+  },
+  {
+    "file": "echo.ca2.json",
+    "name": "Echo",
+    "role": "",
+    "page": 102
+  },
+  {
+    "file": "drakk.ca2.json",
+    "name": "Drakk",
+    "role": "",
+    "page": 104
+  },
+  {
+    "file": "white-rabbit.ca2.json",
+    "name": "White_Rabbit",
+    "role": "",
+    "page": 106
+  },
+  {
+    "file": "mictlan.ca2.json",
+    "name": "Mictlan",
+    "role": "",
+    "page": 108
+  },
+  {
+    "file": "capitan.ca2.json",
+    "name": "Capitán",
+    "role": "",
+    "page": 110
+  }
+]

@@ -201,11 +201,11 @@ class Mapper:
         if re.search(r"sustain (one|an|1) (additional|more|extra) spell", low):
             return [("sustain-spell", None, None, None)]
         if re.search(r"^\+1 edge (point )?per (action |cracking )?scene", low) and "+2" not in low:
-            return [("init-1", None, None, None)] + ([("init-realm", "vr" if "vr" in low else "astral", None, None)]
-                                                      if ("vr" in low or "astral" in low) else [])
+            return [("init-1", None, None, None)] + ([("init-realm", "astral" if "astral" in low else "vr", None, None)]
+                                                      if ("vr" in low or "astral" in low or "jump" in low) else [])
         if re.search(r"^\+1 action (in astral or vr |in astral |in vr )?per narration", low):
-            return [("init-2", None, None, None)] + ([("init-realm", "vr" if "vr" in low else "astral", None, None)]
-                                                      if ("vr" in low or "astral" in low) else [])
+            return [("init-2", None, None, None)] + ([("init-realm", "astral" if "astral" in low else "vr", None, None)]
+                                                      if ("vr" in low or "astral" in low or "jump" in low) else [])
         if re.search(r"^\+2 edges? (points? )?per action scene", low):
             return [("init-3", None, None, None)]
         return None
@@ -260,6 +260,9 @@ def build(rows, data_dir, report_path):
     for r in rows:
         if r["section"] != "MAGIC – SPELLS":
             continue
+        m = re.match(r"(.+?)\s+Manip\.?\s*\(([^)]+)\)", r["name"])
+        if m and not r["type"]:  # manipulation spells carry their type inside the name column
+            r = {**r, "name": m.group(1), "type": f"Manipulation ({m.group(2)})"}
         if r["type"][:1].isupper():
             prev = dict(r)
             spell_rows.append(prev)
@@ -268,7 +271,7 @@ def build(rows, data_dir, report_path):
             spell_rows.append({**r, "type": prev["type"], "cost": prev["cost"], "shared": prev})
     for r in spell_rows:
         base = r.get("shared", r)
-        name = clean_name(r["name"])
+        name = re.sub(r"\s*\((?:manip|Manip)[^)]*\)\s*$", "", clean_name(r["name"]))
         cat = base["type"].split()[0].lower()
         text = f'{base["type"]}. Threshold/target: {base["cost"]}. ' + " ".join(base["effects"])
         spells.append(f'  <item id="{uid("spell-" + slug(name))}" kind="spell" category="{escape(cat)}" source="{"DHSA" if r["added"] else "CRB"}" page="{r["page"]}">'

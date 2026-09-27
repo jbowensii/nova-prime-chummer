@@ -1,0 +1,296 @@
+{
+  "formatVersion": 1,
+  "id": "sample-drakk",
+  "identity": {
+    "name": "Drakk",
+    "streetName": "Drakk",
+    "metatype": "troll",
+    "background": "Book pregen, CRB p.104.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Troll",
+      "Seattle / Underground",
+      "Street samurai",
+      "Enforcer",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Theatrical chivalry",
+      "Brutal dreamer",
+      "Obsessed with a quest",
+      "Seeking to socialize"
+    ],
+    "cues": [
+      "Another deed they will sing tales of in taverns.",
+      "You will taste my blade, miserable felon.",
+      "Sorcerers of the Matrix, bless me with your wisdom.",
+      "Fumbling valiantly toward victory!"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 5,
+      "agi": 3,
+      "wil": 3,
+      "log": 2,
+      "cha": 2
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 4,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 5,
+        "specs": [
+          "close-combat.blades",
+          "close-combat.unarmed"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 4,
+        "specs": [
+          "influence.intimidation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "perception",
+        "rating": 3,
+        "specs": []
+      },
+      {
+        "id": "piloting",
+        "rating": 2,
+        "specs": [
+          "piloting.bikes"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 1,
+        "specs": []
+      },
+      {
+        "id": "survival",
+        "rating": 4,
+        "specs": [
+          "survival.navigation"
+        ]
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "quality",
+        "name": "Two weapon combat style",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "close-combat.blades"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "equipment",
+        "name": "Bliss",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "narrative",
+            "note": "balances printed rating"
+          }
+        ],
+        "catalogId": "bliss",
+        "linkedItem": "it-bliss"
+      },
+      {
+        "uid": "amp-3",
+        "type": "equipment",
+        "name": "Jazz",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "init-1"
+          },
+          {
+            "ref": "init-2"
+          },
+          {
+            "ref": "negative",
+            "value": 2,
+            "note": "book drawback"
+          }
+        ],
+        "catalogId": "jazz",
+        "linkedItem": "it-jazz"
+      },
+      {
+        "uid": "amp-4",
+        "type": "equipment",
+        "name": "Berserker (BTL)",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "dv-plus"
+          },
+          {
+            "ref": "rr-skill",
+            "param": "close-combat"
+          },
+          {
+            "ref": "negative",
+            "value": 2,
+            "note": "book drawback"
+          }
+        ],
+        "catalogId": "berserker-btl",
+        "linkedItem": "it-berserker"
+      },
+      {
+        "uid": "amp-5",
+        "type": "cyberware",
+        "name": "Auto-injector",
+        "narrative": "",
+        "effects": []
+      },
+      {
+        "uid": "amp-6",
+        "type": "cyberware",
+        "name": "Synthetic cyberarm with heavy pistol",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "ranged-weapons.pistols"
+          },
+          {
+            "ref": "narrative",
+            "param": "integrated-pistol"
+          }
+        ]
+      },
+      {
+        "uid": "amp-7",
+        "type": "cyberware",
+        "name": "Counterfeit datajack",
+        "narrative": "Direct neural interface.",
+        "effects": [
+          {
+            "ref": "narrative",
+            "param": "btl-only-hot-sim"
+          }
+        ]
+      },
+      {
+        "uid": "amp-8",
+        "type": "vehicle",
+        "name": "Combat bike",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "narrative",
+            "param": "looks-like-a-unicorn"
+          }
+        ],
+        "vehicle": "chopper"
+      },
+      {
+        "uid": "amp-9",
+        "type": "contact",
+        "name": "Herwick Strauber, antiquarian",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.street"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-armor",
+        "kind": "armor",
+        "name": "Custom-made armor",
+        "armor": 4,
+        "catalogId": "heavy-armor"
+      },
+      {
+        "uid": "it-sword1",
+        "kind": "weapon",
+        "name": "Sword",
+        "catalogId": "long-weapon"
+      },
+      {
+        "uid": "it-sword2",
+        "kind": "weapon",
+        "name": "Sword",
+        "catalogId": "long-weapon"
+      },
+      {
+        "uid": "it-manhunter",
+        "kind": "weapon",
+        "name": "Colt Manhunter",
+        "catalogId": "heavy-pistol"
+      },
+      {
+        "uid": "it-knife",
+        "kind": "weapon",
+        "name": "Throwing knife",
+        "catalogId": "throwing-weapon"
+      },
+      {
+        "uid": "it-m23",
+        "kind": "weapon",
+        "name": "Colt M23",
+        "catalogId": "assault-rifle"
+      },
+      {
+        "uid": "it-bliss",
+        "kind": "gear",
+        "name": "Bliss"
+      },
+      {
+        "uid": "it-jazz",
+        "kind": "gear",
+        "name": "Jazz"
+      },
+      {
+        "uid": "it-berserker",
+        "kind": "gear",
+        "name": "Berserker (BTL)"
+      },
+      {
+        "uid": "it-rpg",
+        "kind": "gear",
+        "name": "Role-playing kit"
+      }
+    ],
+    "mainArmor": "it-armor"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

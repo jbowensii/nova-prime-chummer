@@ -1,0 +1,251 @@
+{
+  "formatVersion": 1,
+  "id": "sample-trash",
+  "identity": {
+    "name": "Trash",
+    "streetName": "Trash",
+    "metatype": "elf",
+    "background": "Book pregen, CRB p.92.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Elf",
+      "Seattle",
+      "Shaman",
+      "Noble of Tír Tairngire",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Dilettante",
+      "Instinctive",
+      "Curious",
+      "Idealist"
+    ],
+    "cues": [
+      "You can lose everything but your refinement.",
+      "Raccoon says, ‘if it’s poorly protected, it’s a gift.’",
+      "A plan doesn’t go wrong; it’s just an ongoing improvisation.",
+      "Why run when you can just disappear?"
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 4,
+      "log": 2,
+      "cha": 4
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 0,
+        "specs": []
+      },
+      {
+        "id": "conjuring",
+        "rating": 5,
+        "specs": [
+          "conjuring.spirits-of-beasts"
+        ]
+      },
+      {
+        "id": "influence",
+        "rating": 4,
+        "specs": [
+          "influence.impersonation",
+          "influence.etiquette"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "perception",
+        "rating": 3,
+        "specs": [
+          "perception.astral"
+        ]
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "stealth",
+        "rating": 3,
+        "specs": [
+          "stealth.palming"
+        ]
+      },
+      {
+        "id": "sorcery",
+        "rating": 5,
+        "specs": [
+          "sorcery.manipulation-spells"
+        ]
+      },
+      {
+        "id": "survival",
+        "rating": 3,
+        "specs": []
+      }
+    ],
+    "knowledge": [],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "awakened",
+        "name": "Awakened (shaman)",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-astral-projection"
+          },
+          {
+            "ref": "awk-sorcery"
+          },
+          {
+            "ref": "awk-conjuring"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "quality",
+        "name": "Raccoon mentor spirit",
+        "narrative": "Curious (disposition).",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "stealth.palming"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "sorcery.manipulation-spells"
+          }
+        ]
+      },
+      {
+        "uid": "amp-3",
+        "type": "equipment",
+        "name": "Infiltration kit",
+        "narrative": "Autopicker, maglock passkey and magnetic card copier.",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "stealth.lockpicking"
+          }
+        ],
+        "linkedItem": "it-kit"
+      },
+      {
+        "uid": "amp-4",
+        "type": "equipment",
+        "name": "Sustaining focus",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "sustain-spell"
+          }
+        ],
+        "linkedItem": "it-focus"
+      },
+      {
+        "uid": "amp-5",
+        "type": "contact",
+        "name": "Sarah Carpenter, street doc",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.medical"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-coat",
+        "kind": "armor",
+        "name": "Lined coat",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-taser",
+        "kind": "weapon",
+        "name": "Defiance Super Shock",
+        "catalogId": "taser"
+      },
+      {
+        "uid": "it-kit",
+        "kind": "gear",
+        "name": "Infiltration kit"
+      },
+      {
+        "uid": "it-focus",
+        "kind": "gear",
+        "name": "Sustaining focus"
+      },
+      {
+        "uid": "it-lodge",
+        "kind": "gear",
+        "name": "Magic lodge"
+      },
+      {
+        "uid": "it-s1",
+        "kind": "spell",
+        "name": "Lightning",
+        "catalogId": "spell-lightning-bolt"
+      },
+      {
+        "uid": "it-s2",
+        "kind": "spell",
+        "name": "Detect Life",
+        "catalogId": "spell-detect-life"
+      },
+      {
+        "uid": "it-s3",
+        "kind": "spell",
+        "name": "Phantasm",
+        "catalogId": "spell-phantasm"
+      },
+      {
+        "uid": "it-s4",
+        "kind": "spell",
+        "name": "Control Thoughts",
+        "catalogId": "spell-control-thoughts"
+      },
+      {
+        "uid": "it-s5",
+        "kind": "spell",
+        "name": "Shaping",
+        "catalogId": "spell-shaping"
+      },
+      {
+        "uid": "it-s6",
+        "kind": "spell",
+        "name": "Magic Fingers",
+        "catalogId": "spell-magic-fingers"
+      }
+    ],
+    "mainArmor": "it-coat"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

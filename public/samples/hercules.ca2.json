@@ -1,0 +1,243 @@
+{
+  "formatVersion": 1,
+  "id": "sample-hercules",
+  "identity": {
+    "name": "Arthur Pitchford",
+    "streetName": "Hercules",
+    "metatype": "dwarf",
+    "background": "Book pregen, CRB p.88.",
+    "notes": ""
+  },
+  "narrative": {
+    "keywords": [
+      "Dwarf",
+      "Seattle / Downtown",
+      "Face adept",
+      "Player",
+      "Low lifestyle"
+    ],
+    "dispositions": [
+      "Veteran sweet talker",
+      "Reckless arrogance",
+      "Lucky",
+      "Opportunistic"
+    ],
+    "cues": [
+      "Every failure brings me closer to success. It’s a proven fact.",
+      "If we can’t beat them, we can convince them.",
+      "I’ve seen worse. Once …",
+      "Nothing is lost. Nothing is created. Everything is transformed."
+    ]
+  },
+  "level": "runner",
+  "package": "free",
+  "build": {
+    "attributes": {
+      "str": 2,
+      "agi": 3,
+      "wil": 2,
+      "log": 3,
+      "cha": 4
+    },
+    "skills": [
+      {
+        "id": "athletics",
+        "rating": 3,
+        "specs": [
+          "athletics.ranged-defense"
+        ]
+      },
+      {
+        "id": "close-combat",
+        "rating": 1,
+        "specs": []
+      },
+      {
+        "id": "influence",
+        "rating": 5,
+        "specs": [
+          "influence.bluff",
+          "influence.negotiation"
+        ]
+      },
+      {
+        "id": "network",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "perception",
+        "rating": 4,
+        "specs": []
+      },
+      {
+        "id": "piloting",
+        "rating": 2,
+        "specs": []
+      },
+      {
+        "id": "ranged-weapons",
+        "rating": 5,
+        "specs": [
+          "ranged-weapons.pistols"
+        ]
+      },
+      {
+        "id": "stealth",
+        "rating": 5,
+        "specs": []
+      },
+      {
+        "id": "survival",
+        "rating": 2,
+        "specs": []
+      }
+    ],
+    "knowledge": [
+      "Language: Japanese",
+      "Pueblo Corporate Council"
+    ],
+    "amps": [
+      {
+        "uid": "amp-1",
+        "type": "awakened",
+        "name": "Awakened (adept)",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "awk-adept"
+          }
+        ]
+      },
+      {
+        "uid": "amp-2",
+        "type": "equipment",
+        "name": "Well-Stocked Closet",
+        "narrative": "Always have the appropriate apparel.",
+        "effects": [
+          {
+            "ref": "armor-plus"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "influence.etiquette"
+          }
+        ],
+        "linkedItem": "it-clothes"
+      },
+      {
+        "uid": "amp-3",
+        "type": "adept",
+        "name": "Vocal Control",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "influence.impersonation"
+          }
+        ]
+      },
+      {
+        "uid": "amp-4",
+        "type": "adept",
+        "name": "Danger Sense",
+        "narrative": "Sense an imminent threat without a Perception Test, with no further details.",
+        "effects": []
+      },
+      {
+        "uid": "amp-5",
+        "type": "adept",
+        "name": "Empathic Sense",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "perception.social"
+          },
+          {
+            "ref": "rr-spec",
+            "param": "perception.social"
+          }
+        ]
+      },
+      {
+        "uid": "amp-6",
+        "type": "adept",
+        "name": "Flashing Smile",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "influence.bluff"
+          }
+        ]
+      },
+      {
+        "uid": "amp-7",
+        "type": "adept",
+        "name": "Concealment",
+        "narrative": "Blend into the crowd during a scene.",
+        "effects": []
+      },
+      {
+        "uid": "amp-8",
+        "type": "contact",
+        "name": "Elton Hutchinson, lawyer",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-skill",
+            "param": "network"
+          }
+        ]
+      },
+      {
+        "uid": "amp-9",
+        "type": "contact",
+        "name": "Alicia Francetti, journalist",
+        "narrative": "",
+        "effects": [
+          {
+            "ref": "rr-spec",
+            "param": "network.media"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "uid": "it-coat",
+        "kind": "armor",
+        "name": "Lined coat",
+        "armor": 3,
+        "catalogId": "light-armor"
+      },
+      {
+        "uid": "it-clothes",
+        "kind": "gear",
+        "name": "Clothes"
+      },
+      {
+        "uid": "it-pistol",
+        "kind": "weapon",
+        "name": "Ares Light Fire",
+        "catalogId": "light-pistol"
+      },
+      {
+        "uid": "it-medkit",
+        "kind": "gear",
+        "name": "Medkit"
+      },
+      {
+        "uid": "it-infil",
+        "kind": "gear",
+        "name": "Small infiltration kit"
+      }
+    ],
+    "mainArmor": "it-coat",
+    "altArmor": "it-clothes"
+  },
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-09-27T00:00:00.000Z"
+}

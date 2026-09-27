@@ -67,12 +67,16 @@ export function derive(c: Catalog, ch: Character): Derived {
       for (const a of [sk.attr, ...(sk.alt ? [sk.alt] : [])])
         pools.push({ skill: s.id, label: sk.name, rating: s.rating, attr: a, dp: s.rating + attr(a), rr: Math.min(RR_CAP, skRR + rrAttr[a]) })
     }
+    // Where every spec uses the skill's attribute and the skill has an alternative
+    // (Conjuring: Logic for mages, Charisma for shamans), specs get a row for both.
+    const specAlt = sk.alt && sk.specs.every(x => x.attr === sk.attr) ? sk.alt : undefined
     for (const specId of s.specs) {
       const spec = sk.specs.find(x => x.id === specId)
-      const a = spec?.attr ?? sk.attr
       const name = spec?.name ?? specId.replace(/^custom:/, '')
-      pools.push({ skill: s.id, spec: specId, label: `${sk.name} (${name})`, rating: s.rating, attr: a,
-        dp: s.rating + 2 + attr(a), rr: Math.min(RR_CAP, skRR + (rrSpec.get(specId) ?? 0) + rrAttr[a]) })
+      const first = spec?.attr ?? sk.attr
+      for (const a of [first, ...(specAlt && first === sk.attr ? [specAlt] : [])])
+        pools.push({ skill: s.id, spec: specId, label: `${sk.name} (${name})`, rating: s.rating, attr: a,
+          dp: s.rating + 2 + attr(a), rr: Math.min(RR_CAP, skRR + (rrSpec.get(specId) ?? 0) + rrAttr[a]) })
     }
   }
 
