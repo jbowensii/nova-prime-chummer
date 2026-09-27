@@ -68,6 +68,7 @@ for (const { file, kind, doc } of docs) {
       for (const e of el.querySelectorAll('effect')) {
         const ref = e.getAttribute('ref'), param = e.getAttribute('param');
         need(file, has('ampeffects', ref), `effect ref="${ref}" on ${id}`);
+        if (param == null) continue; // open pick: the player chooses in the Amp Builder
         if (ref === 'rr-skill') need(file, has('skills', param), `rr-skill param="${param}" on ${id}`);
         if (ref === 'rr-spec') need(file, specIds.has(param), `rr-spec param="${param}" on ${id}`);
         if (ref === 'rr-attr') need(file, has('attributes', param), `rr-attr param="${param}" on ${id}`);

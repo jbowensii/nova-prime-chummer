@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Weapon types, CRB p.142. Ranges: close / short / medium / long. Named models with extra
+     features are equipment Amps in amps.xml (base item price + rating x 5,000). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="weapons" version="1">
+  <item id="short-weapon" kind="weapon" dv="STR+1" ranges="OK/-/-/-" category="Close combat" source="CRB" page="142"><name>Short weapon</name><text>Knife, brass knuckles, cyber claws and blades.</text></item>
+  <item id="long-weapon" kind="weapon" dv="STR+2" ranges="OK/-/-/-" category="Close combat" source="CRB" page="142"><name>Long weapon</name><text>Sword, rapier, katana, combat axe, polearm, nightstick, extendable baton, baseball bat.</text></item>
+  <item id="advanced-close-quarter" kind="weapon" dv="5" ranges="OK/-/-/-" category="Close combat" source="CRB" page="142"><name>Advanced close-quarter weapon</name><text>Stun baton, stun gloves.</text></item>
+  <item id="throwing-weapon" kind="weapon" dv="STR+1" ranges="OK/OK/Dis/-" category="Throwing" source="CRB" page="142"><name>Throwing weapon</name><text>Throwing knives, shuriken, chakram, tomahawk.</text></item>
+  <item id="bow" kind="weapon" dv="STR+1" ranges="OK/OK/OK/-" category="Archery" source="CRB" page="142"><name>Bow</name><text>Bows.</text></item>
+  <item id="crossbow" kind="weapon" dv="4" ranges="OK/OK/OK/-" category="Archery" source="CRB" page="142"><name>Crossbow</name><text>Crossbows.</text></item>
+  <item id="taser" kind="weapon" dv="5" ranges="OK/OK/-/-" category="Pistols" source="CRB" page="142"><name>Taser</name><text>Defiance Super Shock.</text></item>
+  <item id="hold-out-pistol" kind="weapon" dv="3" ranges="OK/OK/Dis/-" category="Pistols" source="CRB" page="142"><name>Hold-out pistol</name><text>Fichetti Tiffani Needler, Streetline Special, Walther Palm Pistol.</text></item>
+  <item id="light-pistol" kind="weapon" dv="4" ranges="OK/OK/Dis/-" category="Pistols" source="CRB" page="142"><name>Light pistol</name><text>Ares Light Fire, Beretta 101T, Colt America L36, Fichetti Security 600, Ruger Redhawk.</text></item>
+  <item id="machine-pistol" kind="weapon" dv="4" ranges="OK/OK/Dis/-" category="Pistols" source="CRB" page="142"><name>Machine pistol</name><text>Ares Crusader II, Ceska Black Scorpion, Steyr TMP, Ares Super Squirt (toxins).</text></item>
+  <item id="heavy-pistol" kind="weapon" dv="5" ranges="OK/OK/Dis/-" category="Pistols" source="CRB" page="142"><name>Heavy pistol</name><text>Ares Viper Slivergun, Browning Ultra Power, Colt Manhunter.</text></item>
+  <item id="submachine-gun" kind="weapon" dv="5" ranges="Dis/OK/OK/-" category="Submachine guns" source="CRB" page="142"><name>Submachine gun</name><text>Colt Cobra, HK-227, FN P93 Praetor, Uzi V.</text></item>
+  <item id="assault-rifle" kind="weapon" dv="7" ranges="Dis/OK/OK/Dis" category="Rifles" source="CRB" page="142"><name>Assault rifle</name><text>AK-97, Colt M23, FN HAR, Parashield DART rifle (toxins).</text></item>
+  <item id="shotgun" kind="weapon" dv="8" ranges="Dis/OK/Dis/-" category="Rifles" source="CRB" page="142"><name>Shotgun</name><text>Defiance T-250, Mossberg CMDT, Remington Roomsweeper.</text></item>
+  <item id="sniper-rifle" kind="weapon" specialist="true" dv="10" ranges="-/Dis/Dis/OK" category="Rifles" source="CRB" page="142"><name>Sniper rifle</name><text>Ares Desert Strike, Remington 900. Specialist weapon.</text></item>
+  <item id="machine-gun" kind="weapon" specialist="true" dv="9" ranges="-/OK/OK/OK" category="Heavy weapons" source="CRB" page="142"><name>Machine gun</name><text>Ingram Valiant, Stoner-Ares M202. Specialist weapon.</text></item>
+  <item id="grenade" kind="weapon" dv="7" ranges="OK/OK/Dis/-" category="Throwing" source="CRB" page="142"><name>Grenade</name><text>Area damage.</text></item>
+  <item id="gas-grenade" kind="weapon" dv="toxin" ranges="OK/OK/Dis/-" category="Throwing" source="CRB" page="142"><name>Gas grenade</name><text>Damage depends on the toxin (CRB p.152).</text></item>
+  <item id="grenade-launcher" kind="weapon" specialist="true" dv="7" ranges="-/Dis/OK/OK" category="Grenade launchers" source="CRB" page="142"><name>Grenade launcher</name><text>Ares Antioch II, ArmTech MGL-6 and MGL-12. Specialist weapon.</text></item>
+  <item id="rocket-launcher" kind="weapon" specialist="true" dv="12 (anti-vehicle 16)" ranges="-/-/Dis/OK" category="Heavy weapons" source="CRB" page="142"><name>Rocket launcher</name><text>Aztechnology Striker, Onotari Interceptor. Specialist weapon.</text></item>
+</ca2:data>
