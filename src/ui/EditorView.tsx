@@ -6,6 +6,7 @@ import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { getCharacter, saveCharacter } from './storage'
 import { Receipt } from './Receipt'
+import { SettingsButton } from './settings'
 import { AmpsTab } from './tabs/Amps'
 import { AttributesTab } from './tabs/Attributes'
 import { ConceptTab } from './tabs/Concept'
@@ -85,6 +86,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           <button className="btn quiet" disabled={!ctx.canUndo} onClick={ctx.undo}>Undo</button>
           <button className="btn quiet" disabled={!ctx.canRedo} onClick={ctx.redo}>Redo</button>
         </>}
+        <SettingsButton />
         <button className="btn" onClick={() => setCh(exportCharacter(c, ch))}>Export file</button>
       </header>
       <nav className="tabs" aria-label="Character sections">
@@ -96,6 +98,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       </nav>
       {!storageOk && <p className="banner" style={{ margin: '1rem 1.25rem 0' }}>This browser isn’t saving changes. Use Export file before you close the tab.</p>}
       <div className="layout">
+        <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
         <main className="work">
           {tab === 'concept' && <ConceptTab />}
           {tab === 'attributes' && <AttributesTab />}
