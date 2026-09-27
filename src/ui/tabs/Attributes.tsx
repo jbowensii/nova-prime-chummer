@@ -24,7 +24,7 @@ export function AttributesTab() {
         {!career && level && <> {level.name} allows {level.attrAtMax} at maximum: <b className={atMax > level.attrAtMax ? 'err' : ''}>{atMax} of {level.attrAtMax} used</b>.</>}
         {career && ' In career mode each raise is recorded in the ledger.'}
       </p>
-      <table className="data">
+      <div className="scroll-x"><table className="data">
         <thead><tr><th>Attribute</th><th>Range</th><th>Rating</th><th className="num">Next point</th><th className="num">RR</th></tr></thead>
         <tbody>
           {ATTRS.map(a => {
@@ -41,7 +41,7 @@ export function AttributesTab() {
             )
           })}
         </tbody>
-      </table>
+      </table></div>
     </div>
   )
 }

@@ -10,10 +10,11 @@ const SECTIONS: [ItemKind, string, string][] = [
   ['weapon', 'Weapons', '2,500¥ each; specialist weapons (sniper rifles, machine guns, launchers) 5,000¥.'],
   ['gear', 'Equipment', '2,500¥ each unless the GM sets a higher price. Commlink and fake SIN are free.'],
   ['spell', 'Spells', '5,000¥ each. Casting needs the Sorcery option on the Awakened amp.'],
+  ['complex-form', 'Complex forms', '5,000¥ each. Technomancers only: threading needs the Emerged amp (Conversion Guide p.9).'],
 ]
 
 export function GearTab() {
-  const { c, ch, edit, update, record, career } = useEditor()
+  const { c, ch, d, edit, update, record, career } = useEditor()
   const b = career ? currentBuild(ch) : ch.build
   const [adding, setAdding] = useState<ItemKind | null>(null)
   const [custom, setCustom] = useState<ItemEntry | null>(null)
@@ -52,7 +53,7 @@ export function GearTab() {
     <div className="stack">
       <h2>Gear & spells</h2>
       <p className="muted">Named gear with extra features, like an Ares Predator with a smartgun, is an Equipment Shadow Amp: add it on the Shadow Amps tab and it brings its base item along.</p>
-      {SECTIONS.map(([kind, title, hint]) => {
+      {SECTIONS.filter(([kind]) => kind !== 'complex-form' || d.emerged || b.items.some(i => i.kind === kind)).map(([kind, title, hint]) => {
         const items = b.items.filter(i => i.kind === kind)
         return (
           <section key={kind} className="stack">
@@ -61,8 +62,9 @@ export function GearTab() {
               <button className="btn small quiet" onClick={() => setCustom({ uid: newId(), kind, name: '', price: undefined })}>Custom</button>
             </div>
             <p className="muted" style={{ margin: 0 }}>{hint}</p>
+            {kind === 'weapon' && <p style={{ margin: 0 }}>Unarmed: DV {d.weapons[0].dv} [{d.weapons[0].ranges}] <span className="muted">(Strength{d.weapons[0].dv !== String(ch.build.attributes.str) ? ' plus implant or adept bonuses' : ''})</span></p>}
             {items.length > 0 && (
-              <table className="data">
+              <div className="scroll-x"><table className="data">
                 <tbody>
                   {items.map(i => {
                     const cat = i.catalogId ? c.items.get(i.catalogId) ?? i.snapshot : undefined
@@ -72,8 +74,8 @@ export function GearTab() {
                         <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}
                           <div className="muted" style={{ fontSize: '0.88rem' }}>
                             {i.kind === 'armor' && `Armor ${i.armor ?? 0}`}
-                            {i.kind === 'weapon' && cat?.dv && `DV ${cat.dv} [${cat.ranges}]${i.specialist ? ', specialist' : ''}`}
-                            {i.kind === 'spell' && cat?.category}
+                            {i.kind === 'weapon' && (() => { const w = d.weapons.find(x => x.uid === i.uid); return w && `DV ${w.dv} [${w.ranges}]${i.specialist ? ', specialist' : ''}${w.note ? `, ${w.note}` : ''}` })()}
+                            {(i.kind === 'spell' || i.kind === 'complex-form') && cat?.category}
                             {amp && ` Shadow Amp: ${amp.name}`}
                           </div>
                         </td>
@@ -90,14 +92,14 @@ export function GearTab() {
                         </td>}
                         <td className="num">{fmt(itemCost(c.pricing, i))}</td>
                         <td className="num">
-                          {kind !== 'spell' && !amp && <button className="btn small quiet" onClick={() => toAmp(i)}>Make it an amp</button>}
+                          {kind !== 'spell' && kind !== 'complex-form' && !amp && <button className="btn small quiet" onClick={() => toAmp(i)}>Make it an amp</button>}
                           <button className="btn small quiet" onClick={() => remove(i)}>{career ? 'Sell' : 'Remove'}</button>
                         </td>
                       </tr>
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </section>
         )
