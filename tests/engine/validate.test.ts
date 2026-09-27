@@ -76,3 +76,13 @@ test('a GM override approves the violation and unblocks Finalize', () => {
   expect(v.find(x => x.code === 'attr.maxCount')!.approved).toBe(true)
   expect(canFinalize(v)).toBe(true)
 })
+
+test('effects a book catalog amp carries are sanctioned even when the effect table forbids them (Jazz)', () => {
+  const ch = base()
+  const jazz = cat.amps.get('jazz')!
+  ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Jazz' }]
+  ch.build.amps = [amp('d', 'equipment', jazz.effects, { catalogId: 'jazz', linkedItem: 'i' })]
+  expect(codes(ch)).not.toContain('amp.typeIllegal')
+  ch.build.amps[0].catalogId = undefined // the same effects on a home-made amp are not
+  expect(codes(ch)).toContain('amp.typeIllegal')
+})

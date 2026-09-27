@@ -65,7 +65,10 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       const ep = `${path}.effects.${i}`
       const eff = c.ampEffects.get(e.ref)
       if (!eff) { add('ref.unknown', 'warning', ep, `${a.name}: unknown effect "${e.ref}".`); return }
-      if (!eff.types.includes(a.type)) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
+      // The book's own catalog amps sometimes break the effect table (combat drugs are
+      // Equipment with initiative); an effect exactly as the book printed it is sanctioned.
+      const fromBook = template?.type === a.type && template.effects.some(t => t.ref === e.ref)
+      if (!eff.types.includes(a.type) && !fromBook) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
       if (eff.requires && !a.effects.some(x => x.ref === eff.requires))
         add('amp.requires', 'error', ep, `${a.name}: "${eff.name}" requires "${c.ampEffects.get(eff.requires)?.name}".`, eff.page)
       if (eff.excludes && a.effects.some(x => x.ref === eff.excludes))

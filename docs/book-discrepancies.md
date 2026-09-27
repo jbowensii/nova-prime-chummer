@@ -59,3 +59,11 @@ Gambit, Charon, Luna, Casper, Drakk, White_Rabbit and Mictlan come to
 free Armor point on their Well-Stocked Closet (1 rating × 5,000¥). Capitán is
 372,500¥, 2,500¥ under: one piece of gear, specialization or knowledge skill
 the book doesn't list.
+
+## Effect-table exceptions the book makes
+
+The effect table (CRB p.61) limits initiative enhancements to Qualities,
+cyberware/bioware and adept powers, but the combat drugs (Jazz, Cram,
+Kamikaze, Nitro) are Equipment amps that grant initiative. Effects carried
+by a catalog amp exactly as the book prints them are treated as
+book-sanctioned; the same effects on a home-made amp are flagged.
