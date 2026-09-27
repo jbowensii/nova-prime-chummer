@@ -15,6 +15,15 @@ Characters live in the browser that uses the app (localStorage, per
 origin), not on the server. Rebuilding the container doesn't touch them.
 Export `.ca2.json` files to keep them.
 
+## "Force update" on the Docker page is safe
+
+The image is built on the tower and exists in no registry, so Unraid shows
+the update status as "not available". Pressing **force update** tries to
+pull `chummer-anarchy2:latest` from Docker Hub, which fails. Unraid's
+`CreateDocker.php` (line 261) then skips the container (`continue`)
+without stopping or removing it, so it keeps running. Verified by reading
+dockerMan's code on tower04 on 2026-09-27.
+
 ## Redeploy after changes
 
 From the PC, in the repo:

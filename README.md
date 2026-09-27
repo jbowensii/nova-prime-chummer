@@ -8,10 +8,21 @@ Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
   book package. A live nuyen receipt, with every rule checked and cited to its
   page. A GM can approve any exception.
 - **Shadow Amp builder.** An amp type plus effects from the effect table gives
-  its rating, cost and Essence automatically. 426 prebuilt amps come from the
-  core book and Daegann’s expanded list.
+  its rating, cost and Essence automatically. There are 470 prebuilt amps from
+  the core book and Daegann’s expanded list v3.4b (core-book entries cite their
+  core-book page), plus 84 add-ons you can apply: ammo, accessories, vehicle
+  and deck mods, and implant grades.
+- **Weapons, vehicles, mental armor.** Weapon damage is worked out from
+  Strength and bonuses. Vehicles and drones show Pilot, Body, Handling, Speed,
+  Armor and damage thresholds. Astral Armor, Mystic Armor and biofeedback
+  filters raise the mental thresholds.
+- **Technomancers** (from the CGL Conversion Guide): the Emerged amp, the
+  Tasking skill, a living persona (Firewall = Willpower, Attack = Charisma),
+  and 31 complex forms.
+- **Lifestyles** (CRB p.165) adjust what each run pays.
 - **Career ledger.** After Finalize, record earnings and spend them at the
   creation prices. History is append-only, and an entry is undone by voiding it.
+  Creation can be reopened until the first ledger entry.
 - **Printable sheet** laid out like the official one. Your browser’s “Save as
   PDF” makes the PDF.
 - **The 13 rulebook characters** (Lightning plus the 12 pregens) load with one
@@ -70,7 +81,7 @@ The app’s **Game data** page shows what loaded and any errors.
 ```bash
 npm test                 # engine + data tests (Vitest)
 npm run validate:data    # XSD + reference checks
-npm run build && npm run e2e   # Playwright smoke test
+npm run build && npm run e2e   # Playwright: smoke, import/export, phone, themes, technomancer, mods
 ```
 
 `tools/` holds the one-off extractors that produced the catalog:
