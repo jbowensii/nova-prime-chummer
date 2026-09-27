@@ -8,20 +8,24 @@ async function newRunner(page: Page, name: string) {
   await page.getByLabel('Street name').fill(name)
 }
 
-test('export a runner, delete it, import the file back', async ({ page }) => {
+test('export a runner as XML, delete it, import the file back', async ({ page }) => {
   await newRunner(page, 'Roundtrip')
   await page.getByRole('link', { name: 'Attributes' }).click()
   await page.getByRole('button', { name: 'Raise Agility' }).click()
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export file' }).click()
-  const file = await (await download).path()
-  expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ formatVersion: 1, identity: { streetName: 'Roundtrip' }, build: { attributes: { agi: 2 } } })
+  const dl = await download
+  expect(dl.suggestedFilename()).toBe('Roundtrip.xml')
+  const file = await dl.path()
+  const xml = readFileSync(file, 'utf8')
+  expect(xml).toContain('streetName="Roundtrip"')
+  expect(xml).toMatch(/<attributes str="1" agi="2"/)
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'Delete' }).first().click()
-  await page.getByRole('button', { name: 'Delete from this browser' }).click()
-  await expect(page.getByText('Roundtrip')).toHaveCount(0)
-  await page.locator('input[type=file]').setInputFiles({ name: 'Roundtrip.ca2.json', mimeType: 'application/json', buffer: readFileSync(file) })
+  await page.locator('.dossier', { hasText: 'Roundtrip' }).getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete runner' }).click()
+  await expect(page.getByRole('link', { name: 'Roundtrip' })).toHaveCount(0)
+  await page.locator('input[type=file]').setInputFiles({ name: 'Roundtrip.xml', mimeType: 'application/xml', buffer: readFileSync(file) })
   await expect(page.getByRole('status')).toContainText('Imported Roundtrip')
   await expect(page.getByRole('link', { name: 'Roundtrip' })).toBeVisible()
 })
@@ -117,4 +121,35 @@ test('Amp Builder: apply a book add-on to a vehicle', async ({ page }) => {
   const after = await page.locator('.ampfoot b').first().textContent()
   expect(Number(after)).toBe(Number(before) + 1)
   await expect(page.getByText(/\(flying\)/)).toBeVisible()
+})
+
+test('a runner saved from two browsers: conflict dialog, save mine as a new file', async ({ browser }) => {
+  const a = await browser.newPage(), b = await browser.newPage()
+  await newRunner(a, 'Twice')
+  await a.waitForTimeout(700) // autosave
+  const url = a.url()
+  await b.goto(url)
+  await b.getByLabel('Street name').fill('Twice (from B)')
+  await b.waitForTimeout(700)
+  await a.getByLabel('Real name').fill('Saved from A')
+  await expect(a.getByRole('heading', { name: 'Saved elsewhere' })).toBeVisible()
+  await a.getByLabel('File name if you save yours as a new file').fill('Twice A copy')
+  await a.getByRole('button', { name: 'Save mine as a new file' }).click()
+  await expect(a).not.toHaveURL(url)
+  await a.goto('/')
+  await expect(a.getByRole('link', { name: 'Twice (from B)' })).toBeVisible()
+  await expect(a.getByRole('link', { name: 'Twice A copy' })).toBeVisible()
+})
+
+test('runners saved in the browser move to tower04 on first load', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.setItem('ca2.library.v1', JSON.stringify([{ formatVersion: 1, id: 'legacy-1',
+    identity: { name: '', streetName: 'Old Timer', metatype: 'human', background: '', notes: '' },
+    narrative: { keywords: [], dispositions: [], cues: [] }, level: 'runner', package: 'free',
+    build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
+    career: [], overrides: [], updatedAt: '2026-09-01T00:00:00Z' }])))
+  await page.reload()
+  await expect(page.getByRole('status').first()).toContainText('Moved 1 runner from this browser to tower04')
+  await expect(page.getByRole('link', { name: 'Old Timer' })).toBeVisible()
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ca2.library.v1') ?? '[]').length)).toBe(0)
 })

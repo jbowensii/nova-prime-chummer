@@ -10,7 +10,8 @@
     "test": "vitest run",
     "validate:data": "node tools/validate-data.mjs",
     "e2e": "playwright test",
-    "check": "tsc -b && npm run validate:data && npm test"
+    "check": "tsc -b && npm run validate:data && npm test",
+    "serve": "npm run build && node server/server.mjs"
   },
   "dependencies": {
     "@fontsource/crimson-pro": "^5.3.0",
