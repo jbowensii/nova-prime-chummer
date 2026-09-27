@@ -32,7 +32,6 @@ reproduced in DHSA.
 | sawn-off-defiance-t-250-shotgun | DHSA p.10 | equipment | 1 | 2 | range change priced at +1 instead of +2 |
 | m79b1-rocket-launchers | DHSA p.11 | equipment | 1 | 2 | range change priced at +1 instead of +2 |
 | eastern-tiger-gwishin | DHSA p.20 | cyberdeck | 10 | 11 | DHSA priced below the effect table |
-| dassault-milrig-vcr | CRB p.29 | cyberware | 9 | 11 | VCR + hot-sim + vehicle initiative priced below the effect table |
 | phoenix-mentor-spirit-rebirth | DHSA p.35 | quality | 5 | 7 | DHSA priced below the effect table |
 | missile-parry | DHSA p.46 | adept | 3 | 5 | situational RR priced as a specialization |
 | seadoo-bolt-jet-ski | DHSA p.54 | vehicle | 1 | 2 | chassis not in the CRB table (water craft, minidrone); nearest chassis used |
@@ -49,3 +48,14 @@ reproduce.
 
 | sample | amp | printed | computed | why |
 |---|---|---|---|---|
+| hercules | amp-2 | 2 | 3 | Well-Stocked Closet: equipment 0 + Armor +1 (1) + RR 1 Influence (etiquette) (2) = 3. DHSA lists the same amp at 2 *without* the Armor +1, so the pregen gets the armor point free. |
+| echo | amp-3 | 2 | 3 | Same Well-Stocked Closet as Hercules. |
+
+## Pregen totals
+
+Priced by the engine at Runner level (budget 375,000¥): Wild Jane, Trash,
+Gambit, Charon, Luna, Casper, Drakk, White_Rabbit and Mictlan come to
+**exactly 375,000¥**. Hercules and Echo are 380,000¥, which is exactly the
+free Armor point on their Well-Stocked Closet (1 rating × 5,000¥). Capitán is
+372,500¥, 2,500¥ under: one piece of gear, specialization or knowledge skill
+the book doesn't list.
