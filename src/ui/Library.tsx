@@ -67,7 +67,7 @@ export function Library({ c }: { c: Catalog }) {
         const r = parseCharacterFile(await (await fetch(`./samples/${file}`)).text())
         if (r.ok && !have.has(r.character.id) && await store({ ...r.character, lastExportedAt: r.character.updatedAt })) n++
       }
-      setMsg(n ? `Added ${n} characters from the rulebook.` : 'The rulebook characters are already in your library.')
+      setMsg(n ? `Added ${n} sample characters.` : 'The sample characters are already in your library.')
       void refresh()
     } catch (e) {
       setMsg(`Couldn’t load the samples: ${e}`)
@@ -90,7 +90,7 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn primary" onClick={() => setCreating(true)}>New runner</button>
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
-          <button className="btn quiet" onClick={loadSamples}>Load rulebook characters</button>
+          <button className="btn quiet" onClick={loadSamples}>Load sample characters</button>
           <a className="btn quiet" href="#/data">Game data</a>
           <SettingsButton />
         </div>
@@ -100,7 +100,7 @@ export function Library({ c }: { c: Catalog }) {
 
       {list === null ? <p className="muted">Loading runners…</p> : list.length === 0 ? (
         <div className="empty">
-          <p>No runners yet. Start a new one, import a character file, or load the 13 characters from the rulebook to look around.</p>
+          <p>No runners yet. Start a new one, import a character file, or load the 28 sample characters from the rulebook and Daegann’s pregen booklet to look around.</p>
         </div>
       ) : list.map(({ ch, rev }) => (
         <div className="dossier" key={ch.id}>
