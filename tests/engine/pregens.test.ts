@@ -1,4 +1,5 @@
-// The engine must reproduce every number the book prints for its pregens (CRB p.88-111):
+// The engine must reproduce every number the books print for their pregens (CRB p.88-111,
+// Daegann's pregen booklet):
 // amp ratings, dice pools, wound thresholds and Essence. A printed amp rating the rules
 // can't reproduce must be listed in docs/book-discrepancies.md (Pregens table).
 import { readFileSync } from 'node:fs'
@@ -9,11 +10,11 @@ import { price } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
 import { cat, sample } from '../helpers'
 
-type Printed = Record<string, { page: number; essence: number; thresholds: Record<string, number>;
+type Printed = Record<string, { page: number; source?: string; essence: number; thresholds: Record<string, number>;
   amps: Record<string, number>; pools: { skill: string; spec: string | null; attr: string; dp: number }[] }>
 const printed: Printed = JSON.parse(readFileSync('tests/fixtures/pregens-printed.json', 'utf8'))
 const listed = new Set([...readFileSync('docs/book-discrepancies.md', 'utf8')
-  .matchAll(/^\| ([a-z-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`))
+  .matchAll(/^\| ([a-z0-9-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`))
 
 describe.each(Object.keys(printed))('%s', id => {
   const ch = sample(id)
@@ -24,7 +25,7 @@ describe.each(Object.keys(printed))('%s', id => {
     expect(validate(cat, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
   })
 
-  test(`amp ratings match CRB p.${p.page}`, () => {
+  test(`amp ratings match ${p.source ?? 'CRB'} p.${p.page}`, () => {
     const b = ch.build
     const wrong = b.amps.filter(a => !listed.has(`${id}/${a.uid}`) && ampRating(cat, a, ampCtx(b, a)) !== p.amps[a.uid])
       .map(a => `${a.name}: printed ${p.amps[a.uid]}, computed ${ampRating(cat, a, ampCtx(b, a))}`)

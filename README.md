@@ -25,8 +25,9 @@ Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
   Creation can be reopened until the first ledger entry.
 - **Printable sheet** laid out like the official one. Your browser’s “Save as
   PDF” makes the PDF.
-- **The 13 rulebook characters** (Lightning plus the 12 pregens) load with one
-  click. The engine reproduces every number the book prints for them; see
+- **28 sample characters** load with one click: the rulebook's 13 (Lightning
+  plus the 12 pregens) and the 15 from Daegann's pregen booklet (SRA2 Pregens
+  v1.0f). The engine reproduces every number the books print for them; see
   [docs/book-discrepancies.md](docs/book-discrepancies.md).
 
 ## Run it
