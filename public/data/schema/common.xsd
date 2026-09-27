@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shared types for every Chummer Anarchy 2.0 data file. See docs/data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+
+  <xs:simpleType name="Id">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[a-z0-9][a-z0-9.\-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="IdList">
+    <xs:list itemType="ca2:Id"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="Attr">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="str"/><xs:enumeration value="agi"/><xs:enumeration value="wil"/>
+      <xs:enumeration value="log"/><xs:enumeration value="cha"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- id + citation carried by every entry -->
+  <xs:attributeGroup name="ref">
+    <xs:attribute name="id" type="ca2:Id" use="required"/>
+    <xs:attribute name="source" type="xs:string" use="required"/>
+    <xs:attribute name="page" type="xs:positiveInteger" use="required"/>
+  </xs:attributeGroup>
+
+  <!-- overlay files delete a base entry with <remove id="..."/> -->
+  <xs:complexType name="Remove">
+    <xs:attribute name="id" type="ca2:Id" use="required"/>
+  </xs:complexType>
+
+  <xs:attributeGroup name="root">
+    <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+  </xs:attributeGroup>
+</xs:schema>

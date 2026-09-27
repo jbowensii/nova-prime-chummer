@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The 14 Skills with linked Attributes and specializations, CRB p.53-57.
+     attr = default linked Attribute; alt = the other listed option. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">
+  <skill id="athletics" attr="str" alt="agi" source="CRB" page="53"><name>Athletics</name>
+    <spec id="athletics.climbing" attr="str">Climbing</spec>
+    <spec id="athletics.parkour" attr="agi">Parkour</spec>
+    <spec id="athletics.ranged-defense" attr="agi">Ranged defense</spec>
+    <spec id="athletics.running" attr="str">Running</spec>
+    <spec id="athletics.swimming" attr="str">Swimming</spec>
+  </skill>
+  <skill id="close-combat" attr="agi" alt="wil" source="CRB" page="53"><name>Close Combat</name>
+    <spec id="close-combat.unarmed" attr="agi">Unarmed</spec>
+    <spec id="close-combat.blades" attr="agi">Blades</spec>
+    <spec id="close-combat.clubs" attr="agi">Clubs</spec>
+    <spec id="close-combat.defense" attr="agi">Defense</spec>
+    <spec id="close-combat.astral-combat" attr="wil">Astral combat</spec>
+  </skill>
+  <skill id="conjuring" attr="log" alt="cha" requires="awakened" source="CRB" page="54"><name>Conjuring</name>
+    <spec id="conjuring.spirits-of-air" attr="log">Spirits of air</spec>
+    <spec id="conjuring.spirits-of-beasts" attr="log">Spirits of beasts</spec>
+    <spec id="conjuring.spirits-of-earth" attr="log">Spirits of earth</spec>
+    <spec id="conjuring.spirits-of-fire" attr="log">Spirits of fire</spec>
+    <spec id="conjuring.spirits-of-kin" attr="log">Spirits of kin</spec>
+    <spec id="conjuring.spirits-of-plants" attr="log">Spirits of plants</spec>
+    <spec id="conjuring.spirits-of-water" attr="log">Spirits of water</spec>
+    <spec id="conjuring.banishing" attr="log">Banishing</spec>
+  </skill>
+  <skill id="cracking" attr="log" alt="wil" requires="cyberdeck" source="CRB" page="54"><name>Cracking</name>
+    <spec id="cracking.backdoor" attr="log">Backdoor</spec>
+    <spec id="cracking.brute-force" attr="log">Brute force</spec>
+    <spec id="cracking.cybercombat" attr="wil">Cybercombat</spec>
+  </skill>
+  <skill id="electronics" attr="log" source="CRB" page="55"><name>Electronics</name>
+    <spec id="electronics.matrix-protection" attr="log">Matrix protection</spec>
+    <spec id="electronics.matrix-search" attr="log">Matrix search</spec>
+    <spec id="electronics.personal-electronics" attr="log">Personal electronics</spec>
+  </skill>
+  <skill id="engineering" attr="log" source="CRB" page="55"><name>Engineering</name>
+    <spec id="engineering.cybernetics-br" attr="log">Cybernetics B&amp;R</spec>
+    <spec id="engineering.drones-br" attr="log">Drones B&amp;R</spec>
+    <spec id="engineering.electronics-br" attr="log">Electronics B&amp;R</spec>
+    <spec id="engineering.mechanical-br" attr="log">Mechanical B&amp;R</spec>
+    <spec id="engineering.vehicles-br" attr="log">Vehicles B&amp;R</spec>
+    <spec id="engineering.electronic-warfare" attr="log">Electronic warfare</spec>
+    <spec id="engineering.demolitions" attr="log">Demolitions</spec>
+    <spec id="engineering.remote-controlled-weapons" attr="log">Remote-controlled weapons</spec>
+  </skill>
+  <skill id="influence" attr="cha" source="CRB" page="55"><name>Influence</name>
+    <spec id="influence.bluff" attr="cha">Bluff</spec>
+    <spec id="influence.etiquette" attr="cha">Etiquette</spec>
+    <spec id="influence.impersonation" attr="cha">Impersonation</spec>
+    <spec id="influence.intimidation" attr="cha">Intimidation</spec>
+    <spec id="influence.negotiation" attr="cha">Negotiation</spec>
+  </skill>
+  <skill id="network" attr="cha" source="CRB" page="55"><name>Network</name>
+    <spec id="network.academic" attr="cha">Academic</spec>
+    <spec id="network.corporate" attr="cha">Corporate</spec>
+    <spec id="network.criminal" attr="cha">Criminal</spec>
+    <spec id="network.engineering" attr="cha">Engineering</spec>
+    <spec id="network.government" attr="cha">Government</spec>
+    <spec id="network.magic" attr="cha">Magic</spec>
+    <spec id="network.matrix" attr="cha">Matrix</spec>
+    <spec id="network.media" attr="cha">Media</spec>
+    <spec id="network.medical" attr="cha">Medical</spec>
+    <spec id="network.street" attr="cha">Street</spec>
+  </skill>
+  <skill id="perception" attr="log" source="CRB" page="56"><name>Perception</name>
+    <spec id="perception.astral" attr="log">Astral</spec>
+    <spec id="perception.matrix" attr="log">Matrix</spec>
+    <spec id="perception.physical" attr="log">Physical</spec>
+    <spec id="perception.social" attr="log">Social</spec>
+  </skill>
+  <skill id="piloting" attr="agi" source="CRB" page="56"><name>Piloting</name>
+    <spec id="piloting.bikes" attr="agi">Bikes</spec>
+    <spec id="piloting.cars" attr="agi">Cars</spec>
+    <spec id="piloting.trucks" attr="agi">Trucks</spec>
+    <spec id="piloting.water-vehicles" attr="agi">Water vehicles</spec>
+    <spec id="piloting.flying-vehicles" attr="agi">Flying vehicles</spec>
+    <spec id="piloting.ground-drones" attr="agi">Ground drones</spec>
+    <spec id="piloting.water-drones" attr="agi">Water drones</spec>
+    <spec id="piloting.flying-drones" attr="agi">Flying drones</spec>
+  </skill>
+  <skill id="ranged-weapons" attr="agi" source="CRB" page="56"><name>Ranged Weapons</name>
+    <spec id="ranged-weapons.throwing-weapons" attr="agi">Throwing weapons</spec>
+    <spec id="ranged-weapons.archery" attr="agi">Archery</spec>
+    <spec id="ranged-weapons.pistols" attr="agi">Pistols</spec>
+    <spec id="ranged-weapons.submachine-guns" attr="agi">Submachine guns</spec>
+    <spec id="ranged-weapons.rifles" attr="agi">Rifles</spec>
+    <spec id="ranged-weapons.grenade-launchers" attr="agi">Grenade launchers</spec>
+    <spec id="ranged-weapons.heavy-weapons" attr="agi">Heavy weapons</spec>
+    <spec id="ranged-weapons.mounted-weapons" attr="agi">Mounted weapons</spec>
+  </skill>
+  <skill id="sorcery" attr="wil" requires="awakened" source="CRB" page="57"><name>Sorcery</name>
+    <spec id="sorcery.counterspelling" attr="wil">Counterspelling</spec>
+    <spec id="sorcery.combat-spells" attr="wil">Combat spells</spec>
+    <spec id="sorcery.detection-spells" attr="wil">Detection spells</spec>
+    <spec id="sorcery.health-spells" attr="wil">Health spells</spec>
+    <spec id="sorcery.illusion-spells" attr="wil">Illusion spells</spec>
+    <spec id="sorcery.manipulation-spells" attr="wil">Manipulation spells</spec>
+  </skill>
+  <skill id="stealth" attr="agi" alt="log" source="CRB" page="57"><name>Stealth</name>
+    <spec id="stealth.astral-sneaking" attr="agi">Astral sneaking</spec>
+    <spec id="stealth.matrix-sneaking" attr="log">Matrix sneaking</spec>
+    <spec id="stealth.physical-sneaking" attr="agi">Physical sneaking</spec>
+    <spec id="stealth.palming" attr="agi">Palming</spec>
+    <spec id="stealth.lockpicking" attr="agi">Lockpicking</spec>
+  </skill>
+  <!-- Technomancy is not in the core book; Tasking comes from the CGL Conversion Guide v1.1 (CG) p.5, 9-10. -->
+  <skill id="tasking" attr="log" requires="emerged" source="CG" page="5"><name>Tasking</name>
+    <spec id="tasking.complex-forms" attr="log">Complex forms</spec>
+    <spec id="tasking.compiling" attr="log">Compiling</spec>
+    <spec id="tasking.decompiling" attr="log">Decompiling</spec>
+  </skill>
+  <skill id="survival" attr="log" alt="wil" source="CRB" page="57"><name>Survival</name>
+    <spec id="survival.animals" attr="cha">Animals</spec>
+    <spec id="survival.composure" attr="wil">Composure</spec>
+    <spec id="survival.first-aid" attr="log">First aid</spec>
+    <spec id="survival.navigation" attr="log">Navigation</spec>
+    <spec id="survival.wilderness" attr="log">Wilderness</spec>
+  </skill>
+</ca2:data>

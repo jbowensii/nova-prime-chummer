@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.pdf
 .env
+.extract/
+test-results/
+playwright-report/
+public/custom/texts.xml

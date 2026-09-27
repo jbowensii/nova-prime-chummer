@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A saved runner (.xml). See docs/character-format.md.
+     Children are unqualified; <snapshot> holds a copy of the catalog entry in the data files' own format. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:c="urn:chummer-anarchy2:character:1"
+           targetNamespace="urn:chummer-anarchy2:character:1"
+           elementFormDefault="unqualified">
+
+  <xs:element name="character">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="portrait" type="xs:string" minOccurs="0"/>
+        <xs:element name="background" type="xs:string" minOccurs="0"/>
+        <xs:element name="notes" type="xs:string" minOccurs="0"/>
+        <xs:element name="keyword" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="disposition" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="cue" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="build" type="c:Build"/>
+        <xs:element name="career" minOccurs="0">
+          <xs:complexType><xs:sequence><xs:element name="event" type="c:Event" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+        </xs:element>
+        <xs:element name="override" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+            <xs:attribute name="code" type="xs:string" use="required"/>
+            <xs:attribute name="path" type="xs:string" use="required"/>
+          </xs:extension></xs:simpleContent></xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="formatVersion" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="rev" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="streetName" type="xs:string"/>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="metatype" type="xs:string" use="required"/>
+      <xs:attribute name="level" type="xs:string" use="required"/>
+      <xs:attribute name="package" type="xs:string"/>
+      <xs:attribute name="lifestyle" type="xs:string"/>
+      <xs:attribute name="finalizedAt" type="xs:string"/>
+      <xs:attribute name="finalRemaining" type="xs:integer"/>
+      <xs:attribute name="updatedAt" type="xs:string" use="required"/>
+      <xs:attribute name="lastExportedAt" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="Build">
+    <xs:sequence>
+      <xs:element name="attributes">
+        <xs:complexType>
+          <xs:attribute name="str" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="agi" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="wil" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="log" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="cha" type="xs:nonNegativeInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="skill" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence><xs:element name="spec" type="xs:string" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="rating" type="xs:nonNegativeInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="knowledge" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="amp" type="c:Amp" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="item" type="c:Item" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="mainArmor" type="xs:string"/>
+    <xs:attribute name="altArmor" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="Effect">
+    <xs:attribute name="ref" type="xs:string" use="required"/>
+    <xs:attribute name="param" type="xs:string"/>
+    <xs:attribute name="value" type="xs:integer"/>
+    <xs:attribute name="note" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="Snapshot">
+    <xs:sequence><xs:any processContents="skip" namespace="##any"/></xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Amp">
+    <xs:sequence>
+      <xs:element name="narrative" type="xs:string" minOccurs="0"/>
+      <xs:element name="effect" type="c:Effect" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="snapshot" type="c:Snapshot" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="type" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="catalogId" type="xs:string"/>
+    <xs:attribute name="linkedItem" type="xs:string"/>
+    <xs:attribute name="vehicle" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="Item">
+    <xs:sequence><xs:element name="snapshot" type="c:Snapshot" minOccurs="0"/></xs:sequence>
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/>
+        <xs:enumeration value="spell"/><xs:enumeration value="complex-form"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="catalogId" type="xs:string"/>
+    <xs:attribute name="specialist" type="xs:boolean"/>
+    <xs:attribute name="armor" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="dv" type="xs:string"/>
+    <xs:attribute name="ranges" type="xs:string"/>
+    <xs:attribute name="price" type="xs:nonNegativeInteger"/>
+  </xs:complexType>
+
+  <xs:complexType name="Event">
+    <xs:choice minOccurs="0">
+      <xs:element name="item" type="c:Item"/>
+      <xs:element name="amp" type="c:Amp"/>
+      <xs:sequence>
+        <xs:element name="before"><xs:complexType><xs:sequence><xs:element name="amp" type="c:Amp"/></xs:sequence></xs:complexType></xs:element>
+        <xs:element name="after"><xs:complexType><xs:sequence><xs:element name="amp" type="c:Amp"/></xs:sequence></xs:complexType></xs:element>
+      </xs:sequence>
+      <xs:element name="text" type="xs:string"/>
+    </xs:choice>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="at" type="xs:string" use="required"/>
+    <xs:attribute name="type" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="earn"/><xs:enumeration value="advance"/><xs:enumeration value="buy"/>
+        <xs:enumeration value="sell"/><xs:enumeration value="amp-add"/><xs:enumeration value="amp-modify"/>
+        <xs:enumeration value="spec-add"/><xs:enumeration value="knowledge-add"/><xs:enumeration value="note"/>
+        <xs:enumeration value="void"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="amount" type="xs:integer"/>
+    <xs:attribute name="run" type="xs:string"/>
+    <xs:attribute name="date" type="xs:string"/>
+    <xs:attribute name="path" type="xs:string"/>
+    <xs:attribute name="from" type="xs:integer"/>
+    <xs:attribute name="to" type="xs:integer"/>
+    <xs:attribute name="cost" type="xs:integer"/>
+    <xs:attribute name="itemUid" type="xs:string"/>
+    <xs:attribute name="ampUid" type="xs:string"/>
+    <xs:attribute name="skill" type="xs:string"/>
+    <xs:attribute name="spec" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="eventId" type="xs:string"/>
+    <xs:attribute name="reason" type="xs:string"/>
+  </xs:complexType>
+</xs:schema>

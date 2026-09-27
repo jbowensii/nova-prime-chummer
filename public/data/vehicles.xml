@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vehicle and drone chassis (base rating 1), CRB p.60. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="vehicles" version="1">
+  <vehicle id="microdrone" pilot="6" body="0" handling="10" speed="0" flyingSpeed="1" armor="0" mount="none (Advantage on physical sneaking)" source="CRB" page="60"><name>Microdrone</name></vehicle>
+  <vehicle id="small-drone" pilot="6" body="1" handling="9" speed="2" flyingSpeed="4" armor="0" mount="up to submachine guns" source="CRB" page="60"><name>Small drone</name></vehicle>
+  <vehicle id="medium-drone" pilot="6" body="2" handling="7" speed="3" flyingSpeed="6" armor="0" mount="up to assault rifles" source="CRB" page="60"><name>Medium drone</name></vehicle>
+  <vehicle id="large-drone" pilot="6" body="4" handling="4" speed="4" flyingSpeed="8" armor="0" mount="any" source="CRB" page="60"><name>Large drone</name></vehicle>
+  <vehicle id="race-motorbike" pilot="6" body="4" handling="2" speed="6" armor="0" mount="up to assault rifles" source="CRB" page="60"><name>Race motorbike</name></vehicle>
+  <vehicle id="allterrain-motorbike" pilot="6" body="4" handling="3" speed="5" armor="0" mount="up to assault rifles" source="CRB" page="60"><name>All-terrain motorbike</name></vehicle>
+  <vehicle id="chopper" pilot="6" body="5" handling="2" speed="5" armor="0" mount="up to assault rifles" source="CRB" page="60"><name>Chopper</name></vehicle>
+  <vehicle id="sports-car" pilot="6" body="5" handling="2" speed="5" armor="0" mount="any" source="CRB" page="60"><name>Sports car</name></vehicle>
+  <vehicle id="sedan" pilot="6" body="6" handling="2" speed="4" armor="0" mount="any" source="CRB" page="60"><name>Sedan</name></vehicle>
+  <vehicle id="suv" pilot="6" body="7" handling="1" speed="4" armor="0" mount="any" source="CRB" page="60"><name>SUV/pick-up</name></vehicle>
+  <vehicle id="van" pilot="6" body="8" handling="1" speed="3" armor="0" mount="any" source="CRB" page="60"><name>Van</name></vehicle>
+  <vehicle id="bus" pilot="6" body="10" handling="0" speed="2" armor="0" mount="any" source="CRB" page="60"><name>Bus/trailer</name></vehicle>
+</ca2:data>

@@ -1,0 +1,60 @@
+/* Printed sheet in the book's style (docs/design-system.md).
+   Printer-friendly (default): book colors as lines and type only, no fills or textures.
+   Full color (Settings): filled indigo bands, cream zebra rows, paper grain and paint. */
+.sheet-wrap { padding: 1rem; }
+.sheet-tools { display: flex; gap: 0.6rem; justify-content: center; margin-bottom: 1rem; }
+.sheet {
+  --s-ink: #12120c; --s-ink-2: #4a4a44; --s-line: #b9b6ab; --s-rust: #7b361e; --s-yellow: #f1bb00;
+  --s-indigo: #36305b; --s-cream: #fcf1d1;
+  background: #fff; color: var(--s-ink); max-width: 52rem; margin: 0 auto; padding: 1.6rem 1.8rem;
+  font: 10.5pt/1.35 var(--sans); box-shadow: 0 0 0 1px var(--s-line);
+}
+.sheet h1 { font-family: var(--display); font-size: 24pt; margin: 0.1rem 0; color: var(--s-rust); text-transform: uppercase; }
+.sheet h2 {
+  font-family: var(--display); font-size: 11.5pt; color: var(--s-indigo); margin: 0.9rem 0 0.3rem;
+  text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 2px solid var(--s-indigo); padding-bottom: 0.1rem; display: block;
+}
+.sheet h3 { font-size: 10pt; font-weight: 700; margin: 0.6rem 0 0.2rem; font-family: var(--sans); color: var(--s-rust); text-transform: uppercase; }
+.sheet p { margin: 0 0 0.3rem; max-width: none; }
+.sheet ul { margin: 0; padding-left: 1.1rem; }
+.sheet li::marker { color: var(--s-yellow); }
+.sheet table { width: 100%; border-collapse: collapse; }
+.sheet th { text-align: left; font-weight: 700; font-size: 8pt; color: var(--s-indigo); text-transform: uppercase; border-bottom: 1.5px solid var(--s-indigo); padding: 0.1rem 0.25rem; }
+.sheet td { padding: 0.12rem 0.25rem; border-bottom: 1px solid #e3e1da; vertical-align: top; }
+.sheet tr.spec td:first-child { padding-left: 1rem; color: var(--s-ink-2); }
+.s-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; border-bottom: 4px solid var(--s-yellow); padding-bottom: 0.4rem; }
+.s-head img { width: 5.5rem; height: 5.5rem; object-fit: cover; }
+.s-label { font-size: 8pt; color: var(--s-ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.s-role { display: inline-block; background: none; color: var(--s-rust); font-family: var(--display); text-transform: uppercase; font-size: 9pt; letter-spacing: 0.05em; }
+.s-attrs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; margin: 0.8rem 0 0.2rem; }
+.s-attrs div { border: 1.5px solid var(--s-indigo); text-align: center; padding: 0.2rem; }
+.s-attrs span { display: block; font-size: 7.5pt; color: var(--s-indigo); text-transform: uppercase; font-family: var(--display); letter-spacing: 0.04em; }
+.s-attrs b { font-family: var(--display); font-size: 17pt; font-weight: 400; color: var(--s-rust); }
+.s-cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 1.2rem; }
+.s-boxes { display: flex; gap: 0.25rem; margin: 0.2rem 0 0.4rem; }
+.s-boxes span { width: 1.1rem; height: 1.1rem; border: 1.5px solid var(--s-ink); }
+.s-boxes span.s { border-color: var(--s-yellow); border-width: 2.5px; }
+.s-boxes span.i { border-color: var(--s-rust); background: repeating-linear-gradient(45deg, transparent 0 3px, var(--s-rust) 3px 4px); }
+.s-risk td, .s-risk th { text-align: center; }
+.s-small { font-size: 8.5pt; color: var(--s-ink-2); }
+.sheet section { break-inside: avoid; }
+
+/* ---- full color: the page as printed in the PDF ---- */
+:root[data-print='color'] .sheet {
+  background: #f5f4f0 var(--grain); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+:root[data-print='color'] .sheet h2 { background: var(--s-indigo); color: #fff; border: 0; padding: 0.2rem 0.4rem; }
+:root[data-print='color'] .sheet th { background: var(--s-yellow); color: var(--s-ink); border: 0; }
+:root[data-print='color'] .sheet tbody tr:nth-child(even) td { background: var(--s-cream); }
+:root[data-print='color'] .s-head { background: var(--stroke) right top / 42% 2.2rem no-repeat; }
+:root[data-print='color'] .s-role { background: var(--s-rust); color: #fff; padding: 0.05rem 0.4rem; }
+:root[data-print='color'] .s-attrs div { background: #fff; }
+
+@media (max-width: 700px) { .s-cols { grid-template-columns: 1fr; } .s-attrs { grid-template-columns: repeat(3, 1fr); } }
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff !important; }
+  .sheet-tools { display: none; }
+  .sheet-wrap { padding: 0; }
+  .sheet { box-shadow: none; padding: 0; max-width: none; }
+}
