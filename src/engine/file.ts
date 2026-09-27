@@ -1,11 +1,12 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
 import type { Catalog, Character } from '../model/types'
+import { newId } from '../model/types'
 
 export const FORMAT_VERSION = 1
 
 export function blankCharacter(level = 'runner', metatype = 'human'): Character {
   return {
-    formatVersion: 1, id: crypto.randomUUID(),
+    formatVersion: 1, id: newId(),
     identity: { name: '', streetName: '', metatype, background: '', notes: '' },
     narrative: { keywords: ['', '', '', '', ''], dispositions: ['', '', '', ''], cues: ['', '', '', ''] },
     level, package: 'free',
