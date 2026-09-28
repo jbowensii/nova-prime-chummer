@@ -4,6 +4,8 @@
 // custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml, and the edits layer
 // (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
 // Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr.
+// backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
+// anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts).
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
@@ -134,6 +136,50 @@ if (cmd === 'run') {
     writeFileSync(join(dir, 'edits.xml'), drop(edits, entryRe))
     writeFileSync(join(dir, 'texts.xml'), drop(texts, textRe))
     console.log(`<result removed="${entryRe.test(edits) || textRe.test(texts)}" />`)
+  }
+} else if (cmd === 'backup' || cmd === 'restore') {
+  const args = [target, ...rest], flag = f => args[args.indexOf(f) + 1]
+  const dirs = { characters: flag('--characters'), custom: flag('--custom'), library: flag('--library') }
+  const KEYS = 'library/.config/ai-keys.xml', MAGIC = 'PK\x03\x04\n'
+  const walk = (root, rel = '') => !existsSync(join(root, rel)) ? [] : readdirSync(join(root, rel), { withFileTypes: true }).flatMap(d =>
+    d.isDirectory() ? (rel === '' && d.name === '.backups' ? [] : walk(root, `${rel}${d.name}/`)) : d.name.endsWith('.tmp') ? [] : [rel + d.name])
+  const zip = (out, keys) => {
+    const files = {}, folders = {}
+    for (const [f, root] of Object.entries(dirs)) {
+      const names = walk(root).filter(n => keys || `${f}/${n}` !== KEYS)
+      for (const n of names) files[`${f}/${n}`] = readFileSync(join(root, n)).toString('base64')
+      folders[f] = names.length
+    }
+    mkdirSync(dirname(out), { recursive: true })
+    writeFileSync(out, MAGIC + JSON.stringify({ app: flag('--version') ?? 'unknown', created: new Date().toISOString(), keys, folders, files }))
+  }
+  const read = file => {
+    try { return JSON.parse(readFileSync(file, 'utf8').slice(MAGIC.length)) } catch { /* below */ }
+    process.stderr.write('this isn’t a readable zip file (stub)\n')
+    process.exit(3)
+  }
+  if (cmd === 'backup') zip(flag('--out'), args.includes('--keys'))
+  else if (args.includes('--check')) {
+    const z = read(flag('--check')), n = Object.values(z.folders).reduce((a, b) => a + b, 0)
+    console.log(`<backup format="1" app="${z.app}" created="${z.created}" keys="${z.keys ? 'yes' : 'no'}" files="${n}" bytes="0">${
+      Object.entries(z.folders).map(([f, c]) => `<folder name="${f}" files="${c}" bytes="0"/>`).join('')}</backup>`)
+  } else {
+    const z = read(flag('--apply'))
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400) // a window for the "nothing writes during a restore" tests
+    zip(join(dirs.library, '.backups', `${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}_000000Z.zip`), true)
+    const keysFile = join(dirs.library, '.config', 'ai-keys.xml')
+    const kept = !z.keys && existsSync(keysFile) ? readFileSync(keysFile) : null // a backup without keys keeps the server's
+    for (const [f, root] of Object.entries(dirs)) {
+      mkdirSync(root, { recursive: true })
+      for (const n of readdirSync(root)) if (!(f === 'library' && n === '.backups')) rmSync(join(root, n), { recursive: true, force: true })
+    }
+    for (const [name, b64] of Object.entries(z.files)) {
+      const [f, ...rel] = name.split('/'), path = join(dirs[f], ...rel)
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, Buffer.from(b64, 'base64'))
+    }
+    if (kept) { mkdirSync(dirname(keysFile), { recursive: true }); writeFileSync(keysFile, kept) }
+    console.log('<result state="restored" safety="stub.zip" />')
   }
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)
