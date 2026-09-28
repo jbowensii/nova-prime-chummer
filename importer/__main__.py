@@ -1,7 +1,7 @@
 """CLI for the importer package.
   python -m importer convert <pdf> <md> [--pages A-B]
   python -m importer run <library/book-id> --custom <custom dir> [--md] [--file NAME]
-  python -m importer propose <library/book-id> --library <library dir> [--dry-run]
+  python -m importer propose <library/book-id> --library <library dir> [--dry-run] [--fresh]
   python -m importer remove <library/book-id> --custom <custom dir> [--files]
   python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
   python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
@@ -232,8 +232,8 @@ def _cmd_run(argv):
 def _cmd_propose(argv):
     """AI proposals for a needs-ai book into its review.xml, through the provider library/.config chooses."""
     from importer.ai import propose, providers, schema  # the anthropic SDK only loads for AI work
-    dry = "--dry-run" in argv
-    argv = [a for a in argv if a != "--dry-run"]
+    dry, fresh = "--dry-run" in argv, "--fresh" in argv
+    argv = [a for a in argv if a not in ("--dry-run", "--fresh")]
     if len(argv) != 3 or argv[1] != "--library":
         print(USAGE, file=sys.stderr)
         return 2
@@ -243,7 +243,7 @@ def _cmd_propose(argv):
         n = propose.count_chunks(os.path.join(argv[0], "book.md"))
         print(f"<result parts={quoteattr(str(n))} provider={quoteattr(use or '')} />")
         return 0
-    n = propose.propose(argv[0], lambda s, u: providers.call(config, s, u, schema.SCHEMA), provider=use)
+    n = propose.propose(argv[0], lambda s, u: providers.call(config, s, u, schema.SCHEMA), provider=use, fresh=fresh)
     print(f'<result state="review" proposals="{n}" />')
     return 0
 

@@ -209,12 +209,26 @@ def _resume(path, sha, parts):
     return int(root.get("done") or 0), rows, skips, {p.get("id") for p in root.findall("proposal")}
 
 
-def propose(book_dir, ask, provider=None, data_dir=DATA):
+def _finished(path):
+    """The proposal count of a finished review.xml (every part done), else None."""
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return None
+    return len(root.findall("proposal")) if root.get("done") and root.get("done") == root.get("parts") else None
+
+
+def propose(book_dir, ask, provider=None, data_dir=DATA, fresh=False):
     """Run `ask(system, user) -> str` over book.md's chunks and write review.xml; returns the proposal count.
     review.xml is rewritten after every chunk (done="n" of parts="N"), so a failure keeps the work paid
     for and a re-run of the same book.md resumes after the last finished chunk. A chunk whose reply is
-    cut off or has no JSON is skipped with a <skip> note; any other ProviderError fails the book."""
+    cut off or has no JSON is skipped with a <skip> note; any other ProviderError fails the book.
+    A finished review.xml holds paid-for proposals and the user's decisions: it is kept, and nothing sent,
+    unless `fresh` asks to replace it."""
     path = os.path.join(book_dir, "review.xml")
+    if not fresh and (n := _finished(path)) is not None:
+        xmlio.write_status(book_dir, "review", "Proposals from an earlier run are waiting for review; nothing was sent")
+        return n
     try:
         m = mechanics(data_dir)
         with open(os.path.join(book_dir, "book.md"), encoding="utf8") as f:
@@ -223,7 +237,7 @@ def propose(book_dir, ask, provider=None, data_dir=DATA):
         book = os.path.basename(os.path.normpath(book_dir))
         source = book.upper()  # provisional; the review screen sets it
         system, parts = system_prompt(m), chunks(md)
-        done, rows, skips, seen = _resume(path, sha, len(parts))
+        done, rows, skips, seen = (0, [], [], set()) if fresh else _resume(path, sha, len(parts))
         created = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
         def save(n):
