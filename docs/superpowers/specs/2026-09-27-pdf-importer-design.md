@@ -165,7 +165,7 @@ Initial recipes, ported from today's tools:
 | `qref` | QREF | tools/qref_to_xml.py |
 | `pregens` | PREGENS | new stat-block parser; today's samples were typed in by hand (tools/daegann-pregens.mjs) and can't ship |
 | `cg` | CG | Emerged amp type, Tasking skill, complex forms |
-| `crb` | CRB | new: amps (qualities, cyberware, bioware, adept powers, equipment, vehicles), spells, gear, and the 12 pregens + Lightning. Today these came in through DHSA's rows and hand-written files. |
+| `crb` | CRB | new: amps (qualities, cyberware, bioware, adept powers, equipment, vehicles; from the boxes, plus those only a pregen sheet prints), spells, gear, and the 12 pregens + Lightning. Today these came in through DHSA's rows and hand-written files. |
 
 The core-rulebook recipe is the largest piece of work. The DHSA list
 reprints 148 core-rulebook amps; the DHSA recipe imports them as DHSA

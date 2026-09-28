@@ -288,6 +288,30 @@ class PregensTest(unittest.TestCase):
             "Old Pal, made-up fixer": (["rr-spec:network.street"], None),
         })
 
+    def test_sheet_only_amps(self):
+        # an amp no box prints (by type and name) joins the catalog from its sheet, with the sample's effects; the
+        # box's Owl covers "Owl mentor spirit"; the Awakened amp and contacts are the runner's own; no sheet text
+        # reaches the overlay
+        res = crb.extract(AMPS_MD + PREGEN_MD)
+        amps = {a.get("id"): a for a in ET.fromstring(res.files["amps.xml"]) if a.get("page") in ("85", "88")}
+        self.assertEqual([(i, a.get("type"), a.get("printedRating"), a.get("page"), a.get("source"), a.get("vehicle"))
+                          for i, a in amps.items()], [
+            ("sustaining-focus", "equipment", "2", "85", "CRB", None),
+            ("toy-jack", "cyberware", "4", "88", "CRB", None),
+            ("toy-arm-with-a-heavy-pistol", "cyberware", "4", "88", "CRB", None),
+            ("rusty-sedan", "vehicle", "2", "88", "CRB", "sedan"),
+            ("buzz-copter", "vehicle", "4", "88", "CRB", "small-drone"),
+            ("jolt", "equipment", "1", "88", "CRB", None)])
+        arm = amps["toy-arm-with-a-heavy-pistol"]
+        self.assertEqual([(f.get("ref"), f.get("param"), f.get("note")) for f in arm.findall("effect")],
+                         [("rr-spec", "ranged-weapons.pistols", None), ("narrative", None, "balances printed rating")])
+        self.assertIsNone(arm.find("narrative").text)
+        self.assertIn('<text of="amps" id="toy-jack">Direct neural interface; Cold-sim and hot-sim VR</text>', res.texts)
+        # the same words in another order or number are the box's amp
+        rows = [{"type": "cyberware", "name": "Jacks toy", "id": "jacks-toy"}, {"type": "vehicle", "name": "Rusty Sedan Deluxe", "id": "x"}]
+        got = crb.sheet_amps([(88, self.block)], rows, statblock.load_rules())
+        self.assertEqual([a["id"] for a in got], ["toy-arm-with-a-heavy-pistol", "buzz-copter", "jolt"])
+
     def test_creation_example(self):
         root = self.xml["crb.spark.xml"]
         self.assertEqual((root.get("metatype"), [k.text for k in root.iter("keyword")], [d.text for d in root.iter("disposition")]),
@@ -500,14 +524,16 @@ RENAMED = {
     "yamaha-pulsar-tasers": "yamaha-pulsar-taser",
     "gear-stim-patch": "gear-stim-patches", "gear-trauma-patch": "gear-trauma-patches",
 }
-# - not in any v1.8 box: the Concealment adept power (only a pregen lists it), the flying variants of the
-#   base drones (v1.8 prints "Speed N (Flying M)" on the base drone), cyberdeck Attack/Firewall add-ons and
-#   the vehicle Flying add-on (v1.8's boxes list none).
-UNREACHABLE = {"concealment", "flying-microdrone", "small-flying-drone", "medium-flying-drones",
-               "mod-attack", "mod-firewall", "mod-flying"}
+# - not rulebook entries (owner's rule: an oracle amp the rulebook doesn't print stays non-canon; these are
+#   Daegann's editing and import as DHSA entries only): the three flying drones are the base microdrone, small
+#   and medium drone of the DRONES box (p.241), which print "Speed N (flying M)" on the base drone (the flying
+#   names only describe NPCs' drones); the deck Attack/Firewall and vehicle Flying add-ons are rows of the
+#   SHADOW AMP EFFECTS table (pp.61-63), shipped as the effects attack-plus, firewall-plus and flying.
+#   (Concealment was here too: the rulebook prints it only on Hercules' pregen sheet, p.88; see sheet_amps.)
+UNREACHABLE = {"flying-microdrone", "small-flying-drone", "medium-flying-drones", "mod-attack", "mod-firewall", "mod-flying"}
 # - page: the box, not a prose mention (Actioneer on p.149, bioware muscle on p.159, the patches on p.160;
-#   every mentor spirit is in the p.174 box).
-AMP_PAGES = {"actioneer-business-suit": ("148", "149"), "muscle-replacement-2": ("158", "159"),
+#   every mentor spirit is in the p.174 box); Concealment: the Hercules pregen sheet (p.88).
+AMP_PAGES = {"actioneer-business-suit": ("148", "149"), "concealment": ("143", "88"), "muscle-replacement-2": ("158", "159"),
              "gear-stim-patch": ("158", "160"), "gear-trauma-patch": ("158", "160"),
              **{f"{m}-mentor-spirit-{a}": ("175", "174") for m, a in (
                  ("coyote", "deceit-mischief"), ("dog", "friendship-loyalty"), ("raccoon", "cat-burglar"),
@@ -535,8 +561,10 @@ AMP_ITEMS = {
     "docwagon-pro-autonomous-medkit": None,
 }
 # v1.8 prints Amps DHSA doesn't reprint in black (contacts, vehicle control rigs, eyes and ears, bone lacing,
-# base vehicles, more weapons, drugs and drones): counted by type, no names.
-EXTRA_BY_TYPE = {"bioware": 1, "contact": 16, "cyberdeck": 1, "cyberware": 15, "equipment": 4, "quality": 1, "vehicle": 10}
+# base vehicles, more weapons, drugs and drones): counted by type, no names. Of these, 22 are printed only on the
+# pregen sheets (adept 2, cyberdeck 1, cyberware 5, equipment 5, quality 4, vehicle 5).
+EXTRA_BY_TYPE = {"adept": 2, "bioware": 1, "contact": 16, "cyberdeck": 2, "cyberware": 20, "equipment": 9, "quality": 5,
+                 "vehicle": 15}
 
 
 def _fx(e):
@@ -586,9 +614,11 @@ class AmpsParityTest(unittest.TestCase):
 
     def test_report(self):
         # the whip's printed rating is 1 for DV 7 (+2 over the base): the old catalog listed it as a book
-        # discrepancy too; the jet-ski has no boat chassis. The RCC's "choose 1 specialization" stays open.
+        # discrepancy too; the jet-ski has no boat chassis; Luna's tattoo focus prints 13 for effects worth 10 (the
+        # sample runner reports it too). The RCC's "choose 1 specialization" stays open.
         self.assertEqual(sorted((r["kind"], r.get("id") or r.get("spec")) for r in self.report if not r.get("sample")),
                          [("rating-mismatch", "jet-ski"), ("rating-mismatch", "monofilament-whip"),
+                          ("rating-mismatch", "mystic-tattoo-focus"),
                           ("unresolved-spec", "piloting (choose 1 specialization)")])
 
 
