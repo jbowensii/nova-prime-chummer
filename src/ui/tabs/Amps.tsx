@@ -105,7 +105,7 @@ export function AmpsTab() {
             groups={types.map(t => t.name)}
             items={[...c.amps.values()].filter(a => !a.mod).map(a => ({
               id: a.id, name: a.name, group: c.ampTypes.get(a.type)?.name,
-              meta: c.ampTypes.get(a.type)?.name, label: <SourceLabel c={c} source={a.source} page={a.page} id={a.id} />,
+              meta: c.ampTypes.get(a.type)?.name, label: <SourceLabel c={c} source={a.source} page={a.page} id={a.id} />, search: `${a.source} ${c.sources.get(a.source)?.name ?? ''} p.${a.page}`,
               price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative,
             }))} />
           <p className="muted">Source DHSA is Daegann’s Holostreets expanded amp list; its page numbers are that document’s.</p>
