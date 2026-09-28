@@ -1534,7 +1534,7 @@
       },
       {
         "skill": "close-combat",
-        "spec": "custom:Firearms in melee",
+        "spec": "close-combat.firearms",
         "attr": "agi",
         "dp": 11
       },
@@ -3182,7 +3182,7 @@
       },
       {
         "skill": "close-combat",
-        "spec": "custom:Firearms in melee",
+        "spec": "close-combat.firearms",
         "attr": "agi",
         "dp": 8
       },

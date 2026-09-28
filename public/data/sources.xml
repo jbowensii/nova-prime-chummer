@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Where the data comes from. Every entry's source="" names one of these. canon="true": the game's
+     official rules (Catalyst Game Labs). canon="false": published material that isn't official rules;
+     the app badges it and a runner can be set to flag it. texts: the private description file for
+     that source, in custom/ (never committed; loaded when present). See docs/data-format.md. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">
+  <source id="CRB" publisher="Catalyst Game Labs" canon="true"><name>Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8</name></source>
+  <source id="CG" publisher="Catalyst Game Labs" canon="true"><name>Shadowrun Anarchy 2.0 Conversion Guide v1.1</name></source>
+  <source id="DHSA" publisher="Daegann (Holostreets)" canon="false" texts="texts/dhsa.xml"><name>Shadow Amps Expanded List v3.4b</name></source>
+  <source id="PREGENS" publisher="Daegann (Holostreets)" canon="false"><name>SRA2 Pregens v1.0f</name></source>
+  <source id="QREF" publisher="felipedaen" canon="false" texts="texts/qref.xml"><name>Quick reference sheets: Base, Magic, Matrix, Vehicles</name></source>
+</ca2:data>

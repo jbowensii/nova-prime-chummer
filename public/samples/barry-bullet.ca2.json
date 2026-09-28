@@ -31,6 +31,7 @@
   },
   "level": "runner",
   "package": "free",
+  "origin": "PREGENS",
   "build": {
     "attributes": {
       "str": 5,

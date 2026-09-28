@@ -160,6 +160,11 @@ label > input, label > select { color: var(--text); font-size: 1rem; font-weight
 .tabs a:hover { color: var(--rust); }
 .tabs a[aria-current='page'] { color: var(--heading); border-bottom-color: var(--yellow); }
 :root[data-texture='full'] .tabs a { font-family: var(--graffiti); text-transform: none; font-size: 1.05rem; letter-spacing: 0; }
+label.check { display: flex; flex-direction: row; gap: 0.6rem; align-items: flex-start; margin: 0.8rem 0; }
+label.check input { width: auto; margin-top: 0.25rem; }
+.noncanon { display: inline-block; font-size: 0.7rem; line-height: 1.3; padding: 0 0.4rem; border: 1px solid var(--indigo);
+  color: var(--indigo); font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; vertical-align: 0.1em; white-space: nowrap; }
+:root[data-theme='dark'] .noncanon { border-color: var(--yellow); color: var(--yellow); }
 .tabs .badge { font-size: 0.75rem; margin-left: 0.3rem; font-family: var(--sans); }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; align-items: start; position: relative; }
@@ -307,3 +312,11 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .settings .choices { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .settings .choices label { display: flex; gap: 0.4rem; align-items: center; color: var(--text); font-size: 0.95rem; border: 1px solid var(--rule); padding: 0.35rem 0.6rem; cursor: pointer; }
 .settings .choices label:has(input:checked) { border-color: var(--rust); background: var(--zebra); }
+
+/* rules reference */
+.rule-list { margin: 0; }
+.rule-list > div { padding: 0.55rem 0; border-bottom: 1px solid var(--rule); }
+.rule-list dt { font-weight: 700; }
+.rule-list dt .muted { font-weight: 400; font-size: 0.85rem; margin-left: 0.4rem; }
+.rule-list dd { margin: 0.2rem 0 0; max-width: 70ch; }
+.has-help { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }

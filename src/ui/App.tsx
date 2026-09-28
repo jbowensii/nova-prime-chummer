@@ -4,6 +4,7 @@ import { detectRepo, migrateBrowserToServer, RepoContext, type Repo } from './re
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { Library } from './Library'
+import { RulesScreen } from './Rules'
 import { DataScreen } from './tabs/Data'
 import './app.css'
 
@@ -35,7 +36,7 @@ export default function App() {
     <RepoContext.Provider value={repo}>
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to tower04.</p>}
       {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
-        : page === 'data' ? <DataScreen c={catalog} /> : <Library c={catalog} />}
+        : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} /> : <Library c={catalog} />}
     </RepoContext.Provider>
   )
 }

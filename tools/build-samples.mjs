@@ -268,7 +268,7 @@ for (const p of PREGENS) {
     formatVersion: 1, id: `sample-${p.id}`,
     identity: { name: p.name, streetName: p.street, metatype: p.meta, background: `Book pregen, ${p.source ?? 'CRB'} p.${p.page}.`, notes: '' },
     narrative: { keywords: p.keywords, dispositions: p.dispositions, cues: p.cues },
-    level: 'runner', package: 'free',
+    level: 'runner', package: 'free', origin: p.source ? 'PREGENS' : 'CRB',
     build: {
       attributes: attrs(p.attrs), skills: skills(p.skills), knowledge: p.knowledge ?? [],
       amps: p.amps.map(([name, type, , dsl, extra = {}], i) => ({
