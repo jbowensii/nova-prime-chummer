@@ -1,7 +1,7 @@
 // XML element -> typed catalog record. One function per data kind (docs/data-format.md).
 import type {
   AmpEffect, AmpTemplate, AmpType, AttrId, Attribute, EffectParam, Item, ItemKind, Level, Lifestyle, LoadError,
-  Metatype, Package, Pricing, Ref, Skill, TemplateItem, VehicleBase,
+  Metatype, Package, Pricing, Ref, Rule, Skill, Source, TemplateItem, VehicleBase,
 } from '../model/types'
 
 const str = (el: Element, n: string) => el.getAttribute(n) ?? undefined
@@ -27,7 +27,13 @@ export const toSkill = (el: Element): Skill => ({ ...ref(el), name: child(el, 'n
   attr: el.getAttribute('attr') as AttrId, alt: str(el, 'alt') as AttrId | undefined,
   requires: str(el, 'requires') as Skill['requires'],
   specs: [...el.getElementsByTagName('spec')].map(s => ({ id: s.getAttribute('id')!, name: s.textContent!.trim(),
-    attr: s.getAttribute('attr') as AttrId })) })
+    attr: s.getAttribute('attr') as AttrId, source: str(s, 'source'), page: num(s, 'page') })) })
+
+export const toSource = (el: Element): Source => ({ id: el.getAttribute('id')!, name: child(el, 'name'),
+  publisher: el.getAttribute('publisher') ?? '', canon: bool(el, 'canon'), texts: str(el, 'texts') })
+
+export const toRule = (el: Element): Rule => ({ ...ref(el), sheet: el.getAttribute('sheet')!, section: el.getAttribute('section') ?? '',
+  title: child(el, 'title'), effects: (str(el, 'effects') ?? '').split(/\s+/).filter(Boolean), text: child(el, 'text') })
 
 export const toPricing = (el: Element): Pricing => ({ attrPoint: req(el, 'attrPoint'), attrLastPoint: req(el, 'attrLastPoint'),
   skillLow: req(el, 'skillLow'), skillLowMax: req(el, 'skillLowMax'), skillHigh: req(el, 'skillHigh'),

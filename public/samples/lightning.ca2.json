@@ -13,7 +13,7 @@
     "dispositions": ["Discreet", "Cunning", "Cocky", "Stubborn"],
     "cues": ["", "", "", ""]
   },
-  "level": "runner",
+  "origin": "CRB", "level": "runner",
   "package": "runner-magician",
   "build": {
     "attributes": { "str": 2, "agi": 2, "wil": 4, "log": 2, "cha": 4 },

@@ -11,7 +11,7 @@ test('base catalog loads without errors', () => {
   expect(cat.ampEffects.get('init-2')!.requires).toBe('init-1')
   expect(cat.amps.get('ares-predator-iv-heavy-pistol')!.item!.kind).toBe('weapon')
   expect(cat.items.get('light-armor')!.armor).toBe(3)
-  expect(cat.files.length).toBe(16)
+  expect(cat.files.length).toBe(18)
 })
 
 test('overlay replaces, removes, adds by id', () => {

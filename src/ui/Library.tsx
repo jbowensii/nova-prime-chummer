@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { blankCharacter, characterToXml, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
+import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { Modal } from './bits'
+import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
 import { needsExportReminder } from './storage'
@@ -91,6 +91,7 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={loadSamples}>Load sample characters</button>
+          <a className="btn quiet" href="#/rules">Rules</a>
           <a className="btn quiet" href="#/data">Game data</a>
           <SettingsButton />
         </div>
@@ -110,6 +111,7 @@ export function Library({ c }: { c: Catalog }) {
             <div className="meta">
               {c.metatypes.get(ch.identity.metatype)?.name ?? ch.identity.metatype}, {c.levels.get(ch.level)?.name ?? ch.level}
               {' '}<span className={`mode ${ch.finalizedAt ? 'career' : 'creation'}`}>{ch.finalizedAt ? 'Career' : 'Creation'}</span>
+              {ch.origin && !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>}
               {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
             </div>
           </div>

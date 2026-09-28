@@ -2,18 +2,20 @@
 // Same id replaces, <remove id> deletes, new id adds (docs/data-format.md).
 import type { AttrId, Catalog, Pricing } from '../model/types'
 import {
-  parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPricing, toSkill, toVehicle,
+  parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPricing, toRule, toSkill,
+  toSource, toVehicle,
 } from './parse'
 
-export const DATA_FILES = ['levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
-  'packages', 'vehicles', 'gear', 'weapons', 'armor', 'spells', 'complexforms', 'amps', 'lifestyles']
+export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
+  'packages', 'vehicles', 'gear', 'weapons', 'armor', 'spells', 'complexforms', 'amps', 'lifestyles', 'rules']
 
 export interface SourceFile { file: string; xml: string; overlay: boolean }
 
 export function buildCatalog(files: SourceFile[]): Catalog {
   const c: Catalog = { levels: new Map(), metatypes: new Map(), attributes: new Map(), skills: new Map(),
     pricing: undefined as unknown as Pricing, ampTypes: new Map(), ampEffects: new Map(), amps: new Map(),
-    vehicles: new Map(), packages: new Map(), items: new Map(), lifestyles: new Map(), files: [], errors: [] }
+    vehicles: new Map(), packages: new Map(), items: new Map(), lifestyles: new Map(), sources: new Map(), rules: new Map(),
+    files: [], errors: [] }
   const targets: Record<string, [Map<string, unknown>, (el: Element) => unknown]> = {
     levels: [c.levels, toLevel], metatypes: [c.metatypes, toMetatype],
     attributes: [c.attributes as Map<AttrId, unknown>, toAttribute], skills: [c.skills, toSkill],
@@ -21,6 +23,7 @@ export function buildCatalog(files: SourceFile[]): Catalog {
     vehicles: [c.vehicles, toVehicle], packages: [c.packages, toPackage],
     gear: [c.items, toItem], weapons: [c.items, toItem], armor: [c.items, toItem], spells: [c.items, toItem],
     complexforms: [c.items, toItem], lifestyles: [c.lifestyles, toLifestyle],
+    sources: [c.sources, toSource], rules: [c.rules, toRule],
   }
   const ordered = [...files.filter(f => !f.overlay), ...files.filter(f => f.overlay)]
   for (const f of ordered) {
@@ -32,7 +35,9 @@ export function buildCatalog(files: SourceFile[]): Catalog {
       // private descriptions merged by id (docs/data-format.md)
       for (const el of p.entries) {
         const id = el.getAttribute('id')!, text = el.textContent ?? ''
-        if (el.getAttribute('of') === 'amps') { const a = c.amps.get(id); if (a) a.narrative = text }
+        const of = el.getAttribute('of')
+        if (of === 'amps') { const a = c.amps.get(id); if (a) a.narrative = text }
+        else if (of === 'rules') { const r = c.rules.get(id); if (r) r.text = text }
         else { const i = c.items.get(id); if (i) i.text = text }
       }
     } else {
@@ -64,9 +69,14 @@ export async function loadCatalog(baseUrl = './'): Promise<Catalog> {
   }))
   files.sort((a, b) => DATA_FILES.indexOf(a.file.replace('.xml', '')) - DATA_FILES.indexOf(b.file.replace('.xml', '')))
   const index = await get('custom/index.xml').catch(() => null)
-  // private book text, kept out of the repository; loaded by convention when present
-  const texts = await get('custom/texts.xml').catch(() => null)
-  if (texts) files.push({ file: 'custom/texts.xml', xml: texts, overlay: true })
+  // private description files, kept out of the repository: one per source (sources.xml texts="..."),
+  // plus the older single custom/texts.xml; each loads only when present
+  const sourcesXml = files.find(f => f.file === 'sources.xml')?.xml ?? ''
+  const textFiles = [...new Set([...sourcesXml.matchAll(/\btexts="([^"]+)"/g)].map(m => m[1])), 'texts.xml']
+  for (const t of textFiles) {
+    const xml = await get(`custom/${t}`).catch(() => null)
+    if (xml) files.push({ file: `custom/${t}`, xml, overlay: true })
+  }
   if (index) {
     const hrefs = [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
     for (const href of hrefs) {

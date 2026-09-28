@@ -34,12 +34,12 @@ export const DAEGANN = [
     thresholds: { physicalNone: 2, physicalMain: 4, mental: 3 } },
 
   { id: 'ty', name: 'Ty', street: 'Ty', meta: 'elf', page: 7, essence: 4.5, attrs: '3 4 2 2 3',
-    skills: 'athletics 4 ranged-defense parkour; stealth 3 physical-sneaking; perception 2 physical; survival 2 composure; ranged-weapons 5 pistols; close-combat 5 custom:Firearms_in_melee; electronics 1 matrix-search; influence 5 negotiation; network 3 corporate',
+    skills: 'athletics 4 ranged-defense parkour; stealth 3 physical-sneaking; perception 2 physical; survival 2 composure; ranged-weapons 5 pistols; close-combat 5 firearms; electronics 1 matrix-search; influence 5 negotiation; network 3 corporate',
     items: [['coat', 'armor', 'Lined coat', { armor: 3, catalogId: 'light-armor' }], ['lightfire', 'weapon', 'Ares Light Fire', { catalogId: 'light-pistol' }],
       ['predator', 'weapon', 'Ares Predator II', { catalogId: 'heavy-pistol' }], sin, ['securelink', 'gear', 'Ares Securelink (secured commlink)'], ['noise', 'gear', 'White noise generator']],
     main: 'coat',
     amps: [['First impression', 'quality', 4, 'rr-skill:influence negative=1', { narrative: 'First interaction only.' }],
-      ['Ares Firefight Move-by-Wire', 'cyberware', 13, 'init-1 init-2 init-3 rr-spec:athletics.ranged-defense rr-spec:custom:Firearms_in_melee grade-delta'],
+      ['Ares Firefight Move-by-Wire', 'cyberware', 13, 'init-1 init-2 init-3 rr-spec:athletics.ranged-defense rr-spec:close-combat.firearms grade-delta'],
       ['Ares Pro-shooter Cyber-optics', 'cyberware', 5, 'rr-spec:ranged-weapons.pistols*2', { narrative: 'Visual interface with camera; low-light vision.' }],
       ['Ares Securelink', 'equipment', 2, 'firewall-plus*2', { linkedItem: 'securelink' }],
       ['Rachel Ortega', 'contact', 0, 'rr-spec:network.engineering', { narrative: 'Rigger, former Ares test pilot, falsely accused of espionage.' }]],
@@ -47,7 +47,7 @@ export const DAEGANN = [
     dispositions: ['Always ready to help his contacts.', 'At ease when he has directives to follow… or a milkshake in hand.', 'A man of his word.', 'Believes in second chances.'],
     cues: ['No worries, I’ll take care of it.', 'Personally, I want to trust them.', 'Wait, let me grab the receipt for the expense report.',
       'Alright, after this mission, milkshakes for everyone. My treat!'],
-    pools: 'athletics@str=7 athletics.ranged-defense@agi=10 athletics.parkour@agi=10 stealth@agi=7 stealth.physical-sneaking@agi=9 perception@log=4 perception.physical@log=6 survival@log=4 survival.composure@wil=6 ranged-weapons@agi=9 ranged-weapons.pistols@agi=11 close-combat@agi=9 close-combat.custom:Firearms_in_melee@agi=11 electronics@log=3 electronics.matrix-search@log=5 influence@cha=8 influence.negotiation@cha=10 network@cha=6 network.corporate@cha=8',
+    pools: 'athletics@str=7 athletics.ranged-defense@agi=10 athletics.parkour@agi=10 stealth@agi=7 stealth.physical-sneaking@agi=9 perception@log=4 perception.physical@log=6 survival@log=4 survival.composure@wil=6 ranged-weapons@agi=9 ranged-weapons.pistols@agi=11 close-combat@agi=9 close-combat.firearms@agi=11 electronics@log=3 electronics.matrix-search@log=5 influence@cha=8 influence.negotiation@cha=10 network@cha=6 network.corporate@cha=8',
     thresholds: { physicalNone: 3, physicalMain: 6, mental: 2 } },
 
   { id: 'spectrum', name: 'Spectrum', street: 'Spectrum', meta: 'human', page: 9, essence: 4, attrs: '3 3 2 4 2',
@@ -285,7 +285,7 @@ export const DAEGANN = [
     thresholds: { physicalNone: 2, physicalMain: 4, mental: 3 } },
 
   { id: 'neon-ivy', name: 'Neon Ivy', street: 'Neon Ivy', meta: 'elf', page: 33, essence: 6, attrs: '2 3 3 3 3',
-    skills: 'athletics 3 ranged-defense; stealth 3 physical-sneaking; perception 4 matrix; piloting 1 bikes; survival 2 composure; ranged-weapons 4 pistols; close-combat 3 custom:Firearms_in_melee; electronics 3 matrix-protection; cracking 4 cybercombat; tasking 5 complex-forms; influence 2; network 2',
+    skills: 'athletics 3 ranged-defense; stealth 3 physical-sneaking; perception 4 matrix; piloting 1 bikes; survival 2 composure; ranged-weapons 4 pistols; close-combat 3 firearms; electronics 3 matrix-protection; cracking 4 cybercombat; tasking 5 complex-forms; influence 2; network 2',
     items: [['clothes', 'armor', 'Armored clothes', { armor: 1, catalogId: 'armored-clothes' }], ['kevlar', 'armor', 'Kevlar', { armor: 3, catalogId: 'light-armor' }],
       ['predator', 'weapon', 'Ares Predator IV', { catalogId: 'heavy-pistol' }], sin, commlink, ['jazz', 'gear', 'Jazz'],
       ...forms([['Cyber-Saturation'], ['Marionette', 'marionette'], ['Puppeteer', 'puppeteer'], ['Resonance Spike', 'resonance-spike'], ['Disturbed Reality', 'disturbed-reality']])],
@@ -301,6 +301,6 @@ export const DAEGANN = [
       'Pragmatic: no useless chatter. Negotiation isn’t her thing.', 'Paranoid: spots and avoids standing in view of cameras.'],
     cues: ['Corpos love playing with their toys. So do I.', 'The plan is simple. That’s why it works.', 'Either you cooperate, or you lose your network. Up to you.',
       'To them, I’m not a person. Just an anomaly.'],
-    pools: 'athletics@str=5 athletics.ranged-defense@agi=8 stealth@agi=6 stealth.physical-sneaking@agi=8 perception@log=7 perception.matrix@log=9 piloting@agi=4 piloting.bikes@agi=6 survival@log=5 survival.composure@wil=7 ranged-weapons@agi=7 ranged-weapons.pistols@agi=9 close-combat@agi=6 close-combat.custom:Firearms_in_melee@agi=8 electronics@log=6 electronics.matrix-protection@log=8 cracking@log=7 cracking.cybercombat@wil=9 tasking@log=8 tasking.complex-forms@log=10 influence@cha=5 network@cha=5',
+    pools: 'athletics@str=5 athletics.ranged-defense@agi=8 stealth@agi=6 stealth.physical-sneaking@agi=8 perception@log=7 perception.matrix@log=9 piloting@agi=4 piloting.bikes@agi=6 survival@log=5 survival.composure@wil=7 ranged-weapons@agi=7 ranged-weapons.pistols@agi=9 close-combat@agi=6 close-combat.firearms@agi=8 electronics@log=6 electronics.matrix-protection@log=8 cracking@log=7 cracking.cybercombat@wil=9 tasking@log=8 tasking.complex-forms@log=10 influence@cha=5 network@cha=5',
     thresholds: { physicalNone: 2, physicalMain: 5, physicalAlt: 3, mental: 3 } },
 ].map(p => ({ ...p, source: SOURCE }))

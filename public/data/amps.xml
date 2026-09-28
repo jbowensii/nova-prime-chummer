@@ -11,7 +11,7 @@
   <amp id="adrenaline-addict" type="quality" printedRating="0" source="DHSA" page="5"><name>Adrenaline addict</name><narrative></narrative></amp>
   <amp id="allergy" type="quality" printedRating="0" source="DHSA" page="5"><name>Allergy</name><narrative></narrative></amp>
   <amp id="analytical-mind" type="quality" printedRating="0" source="DHSA" page="5"><name>Analytical mind</name><narrative></narrative></amp>
-  <amp id="animal-empathy" type="quality" printedRating="2" source="DHSA" page="5"><name>Animal Empathy</name><effect ref="rr-spec" note="influence (Animals)"/><narrative></narrative></amp>
+  <amp id="animal-empathy" type="quality" printedRating="2" source="DHSA" page="5"><name>Animal Empathy</name><effect ref="rr-spec" param="influence.animals"/><narrative></narrative></amp>
   <amp id="ar-vertigo" type="quality" printedRating="0" source="DHSA" page="5"><name>AR Vertigo</name><narrative></narrative></amp>
   <amp id="asthmatic" type="quality" printedRating="0" source="DHSA" page="5"><name>Asthmatic</name><narrative></narrative></amp>
   <amp id="astral-chameleon" type="quality" printedRating="0" source="DHSA" page="5"><name>Astral chameleon</name><narrative></narrative></amp>
@@ -32,12 +32,12 @@
   <amp id="geas" type="quality" printedRating="1" source="DHSA" page="5"><name>Geas</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="glass-bones" type="quality" printedRating="0" source="DHSA" page="5"><name>Glass Bones</name><narrative></narrative></amp>
   <amp id="gremlins" type="quality" printedRating="0" source="DHSA" page="6"><name>Gremlins</name><narrative></narrative></amp>
-  <amp id="gun-fu" type="quality" printedRating="2" source="DHSA" page="6"><name>Gun fu</name><effect ref="rr-spec" note="close combat (Firearms)"/><narrative></narrative></amp>
+  <amp id="gun-fu" type="quality" printedRating="2" source="DHSA" page="6"><name>Gun fu</name><effect ref="rr-spec" param="close-combat.firearms"/><narrative></narrative></amp>
   <amp id="gunslinger" type="quality" printedRating="2" source="DHSA" page="6"><name>Gunslinger</name><effect ref="rr-spec" param="ranged-weapons.pistols"/><narrative></narrative></amp>
   <amp id="guts" type="quality" printedRating="2" source="DHSA" page="6"><name>Guts</name><effect ref="rr-spec" param="survival.composure"/><narrative></narrative></amp>
   <amp id="hard-boiled" type="quality" printedRating="1" source="DHSA" page="6"><name>Hard-boiled</name><effect ref="armor-plus"/><narrative></narrative></amp>
   <amp id="hardening" type="quality" printedRating="1" source="DHSA" page="6"><name>Hardening</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
-  <amp id="hotshot-pilot" type="quality" printedRating="1" source="DHSA" page="6"><name>Hotshot Pilot</name><effect ref="rr-spec" note="piloting (Risky Maneuver)"/><narrative></narrative></amp>
+  <amp id="hotshot-pilot" type="quality" printedRating="1" source="DHSA" page="6"><name>Hotshot Pilot</name><effect ref="rr-spec" param="piloting.risky-maneuver"/><narrative></narrative></amp>
   <amp id="human-looking" type="quality" printedRating="0" source="DHSA" page="6"><name>Human-looking</name><narrative></narrative></amp>
   <amp id="influential-relatives" type="quality" printedRating="4" source="DHSA" page="6"><name>Influential relatives</name><effect ref="rr-spec" note="network (chosen social sphere)"/><effect ref="rr-spec" note="network (chosen social sphere)"/><narrative></narrative></amp>
   <amp id="intimidating-scars" type="quality" printedRating="0" source="DHSA" page="6"><name>Intimidating scars</name><narrative></narrative></amp>
@@ -53,7 +53,7 @@
   <amp id="online-reputation" type="quality" printedRating="4" source="DHSA" page="6"><name>Online reputation</name><effect ref="rr-skill" param="influence"/><narrative></narrative></amp>
   <amp id="pain-tolerance" type="quality" printedRating="1" source="DHSA" page="6"><name>Pain tolerance</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="paired-pistoleer" type="quality" printedRating="1" source="DHSA" page="6"><name>Paired Pistoleer</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
-  <amp id="perfect-body" type="quality" printedRating="2" source="DHSA" page="6"><name>Perfect body</name><effect ref="rr-spec" note="influence (Seduction)"/><narrative></narrative></amp>
+  <amp id="perfect-body" type="quality" printedRating="2" source="DHSA" page="6"><name>Perfect body</name><effect ref="rr-spec" param="influence.seduction"/><narrative></narrative></amp>
   <amp id="perfect-swing" type="quality" printedRating="2" source="DHSA" page="6"><name>Perfect swing</name><effect ref="rr-spec" param="close-combat.clubs"/><narrative></narrative></amp>
   <amp id="photographic-memory" type="quality" printedRating="0" source="DHSA" page="6"><name>Photographic memory</name><narrative></narrative></amp>
   <amp id="profiler" type="quality" printedRating="0" source="DHSA" page="6"><name>Profiler</name><narrative></narrative></amp>
@@ -196,14 +196,14 @@
   <amp id="code-shell" type="equipment" printedRating="3" source="DHSA" page="24"><name>Code shell</name><item kind="gear"/><effect ref="armor-plus"/><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="sprite-caller" type="equipment" printedRating="2" source="DHSA" page="24"><name>Sprite caller</name><item kind="gear"/><effect ref="rr-spec" param="tasking.compiling"/><narrative></narrative></amp>
   <amp id="resonance-focus" type="equipment" printedRating="5" source="DHSA" page="24"><name>Resonance focus</name><item kind="gear"/><effect ref="rr-skill" param="tasking"/><narrative></narrative></amp>
-  <amp id="drone-whisperer" type="equipment" printedRating="1" source="DHSA" page="24"><name>Drone whisperer</name><item kind="gear"/><effect ref="rr-spec" note="cracking (Complex form targeting a drone)"/><narrative></narrative></amp>
+  <amp id="drone-whisperer" type="equipment" printedRating="1" source="DHSA" page="24"><name>Drone whisperer</name><item kind="gear"/><effect ref="rr-spec" param="custom:Complex form targeting a drone"/><narrative></narrative></amp>
   <amp id="cache-memory" type="equipment" printedRating="2" source="DHSA" page="24"><name>Cache memory</name><item kind="gear"/><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="sprite-construct" type="equipment" printedRating="3" source="DHSA" page="24"><name>Sprite construct</name><item kind="gear"/><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="data-blade" type="equipment" printedRating="2" source="DHSA" page="24"><name>Data blade</name><item kind="gear"/><effect ref="dv-plus"/><effect ref="dv-plus"/><narrative></narrative></amp>
   <amp id="eavesdropper" type="equipment" printedRating="2" source="DHSA" page="24"><name>Eavesdropper</name><item kind="gear"/><effect ref="rr-spec" param="cracking.backdoor"/><narrative></narrative></amp>
   <amp id="oracle" type="equipment" printedRating="4" source="DHSA" page="24"><name>Oracle</name><item kind="gear"/><effect ref="rr-spec" param="perception.matrix"/><effect ref="rr-spec" param="electronics.matrix-search"/><narrative></narrative></amp>
   <amp id="weaver" type="equipment" printedRating="2" source="DHSA" page="24"><name>Weaver</name><item kind="gear"/><effect ref="rr-spec" param="tasking.complex-forms"/><narrative></narrative></amp>
-  <amp id="logic-virus" type="equipment" printedRating="3" source="DHSA" page="24"><name>Logic virus</name><item kind="gear"/><effect ref="rr-spec" note="tasking (Complex form targeting an IC)"/><effect ref="rr-spec" param="cracking.cybercombat"/><narrative></narrative></amp>
+  <amp id="logic-virus" type="equipment" printedRating="3" source="DHSA" page="24"><name>Logic virus</name><item kind="gear"/><effect ref="rr-spec" param="custom:Complex form targeting an IC"/><effect ref="rr-spec" param="cracking.cybercombat"/><narrative></narrative></amp>
   <amp id="betameth" type="equipment" printedRating="6" source="DHSA" page="25"><name>Betameth</name><item kind="gear"/><effect ref="rr-attr" param="agi"/><effect ref="negative" value="4" note="book drawback"/><narrative></narrative></amp>
   <amp id="betel" type="equipment" printedRating="2" source="DHSA" page="25"><name>Betel</name><item kind="gear"/><effect ref="rr-spec" param="perception.physical"/><narrative></narrative></amp>
   <amp id="bliss" type="equipment" printedRating="1" source="CRB" page="150"><name>Bliss</name><item kind="gear"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
@@ -395,7 +395,7 @@
   <amp id="flashing-smile" type="adept" printedRating="3" source="DHSA" page="47"><name>Flashing Smile</name><effect ref="rr-spec" param="influence.bluff"/><narrative></narrative></amp>
   <amp id="flexibility" type="adept" printedRating="1" source="DHSA" page="47"><name>Flexibility</name><narrative></narrative></amp>
   <amp id="freefall" type="adept" printedRating="1" source="DHSA" page="47"><name>Freefall</name><narrative></narrative></amp>
-  <amp id="great-leap" type="adept" printedRating="5" source="DHSA" page="47"><name>Great Leap</name><effect ref="rr-spec" note="athletics (Jumping)"/><effect ref="rr-spec" note="athletics (Jumping)"/><narrative></narrative></amp>
+  <amp id="great-leap" type="adept" printedRating="5" source="DHSA" page="47"><name>Great Leap</name><effect ref="rr-spec" param="athletics.jumping"/><effect ref="rr-spec" param="athletics.jumping"/><narrative></narrative></amp>
   <amp id="improved-ability" type="adept" printedRating="6" source="CRB" page="191"><name>Improved Ability</name><effect ref="rr-skill" note="chosen when buying the Amp"/><narrative></narrative></amp>
   <amp id="improved-accuracy" type="adept" printedRating="3" source="DHSA" page="47"><name>Improved Accuracy</name><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="improved-attribute" type="adept" printedRating="11" source="CRB" page="191"><name>Improved Attribute</name><effect ref="rr-attr" note="attribute of your choice"/><narrative></narrative></amp>
@@ -409,7 +409,7 @@
   <amp id="magic-sense" type="adept" printedRating="1" source="DHSA" page="47"><name>Magic Sense</name><narrative></narrative></amp>
   <amp id="mental-resistance" type="adept" printedRating="2" source="DHSA" page="47"><name>Mental Resistance</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="missile-mastery" type="adept" printedRating="1" source="DHSA" page="47"><name>Missile Mastery</name><narrative></narrative></amp>
-  <amp id="missile-parry" type="adept" printedRating="3" source="DHSA" page="47"><name>Missile Parry</name><effect ref="rr-spec" note="athletics (Defense against throwing weapons)"/><effect ref="rr-spec" note="athletics (Defense against throwing weapons)"/><narrative></narrative></amp>
+  <amp id="missile-parry" type="adept" printedRating="3" source="DHSA" page="47"><name>Missile Parry</name><effect ref="rr-spec" param="custom:Defense against throwing weapons"/><effect ref="rr-spec" param="custom:Defense against throwing weapons"/><narrative></narrative></amp>
   <amp id="navigation-sense" type="adept" printedRating="5" source="DHSA" page="47"><name>Navigation Sense</name><effect ref="rr-spec" param="survival.navigation"/><effect ref="rr-spec" param="survival.navigation"/><narrative></narrative></amp>
   <amp id="nerve-strike" type="adept" printedRating="1" source="DHSA" page="47"><name>Nerve Strike</name><narrative></narrative></amp>
   <amp id="nimble-fingers" type="adept" printedRating="3" source="DHSA" page="47"><name>Nimble fingers</name><effect ref="rr-spec" param="stealth.palming"/><narrative></narrative></amp>
@@ -508,7 +508,7 @@
   <amp id="chrysler-nissan-patrol-patrol-car" type="vehicle" printedRating="8" vehicle="sedan" source="DHSA" page="54"><name>Chrysler-Nissan Patrol (Patrol car)</name><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="speed-plus"/><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="ford-dasher-interceptor-patrol-car" type="vehicle" printedRating="8" vehicle="sedan" source="DHSA" page="54"><name>Ford Dasher Interceptor (Patrol car)</name><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="speed-plus"/><effect ref="speed-plus"/><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="tata-hotspur-off-road-sports-car" type="vehicle" printedRating="5" vehicle="suv" source="DHSA" page="54"><name>Tata Hotspur (Off-Road Sports Car)</name><effect ref="handling-plus"/><effect ref="handling-plus"/><effect ref="speed-plus"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
-  <amp id="mitsubishi-nightsky-stretch-limousine" type="vehicle" printedRating="9" vehicle="suv" source="CRB" page="238"><name>Mitsubishi Nightsky (Stretch Limousine)</name><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="handling-plus"/><effect ref="rr-spec" note="influence (when the vehicle is present)"/><narrative></narrative></amp>
+  <amp id="mitsubishi-nightsky-stretch-limousine" type="vehicle" printedRating="9" vehicle="suv" source="CRB" page="238"><name>Mitsubishi Nightsky (Stretch Limousine)</name><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="vehicle-armor"/><effect ref="handling-plus"/><effect ref="rr-spec" param="custom:When the vehicle is present"/><narrative></narrative></amp>
   <amp id="range-rover-2080-toyota-gopher-ares-humvee-suv-pick-up" type="vehicle" printedRating="1" vehicle="suv" source="DHSA" page="55"><name>Range Rover 2080 Toyota Gopher Ares Humvee (SUV / Pick-up)</name><narrative></narrative></amp>
   <amp id="eurocar-northstar-2-0-suv" type="vehicle" printedRating="2" vehicle="suv" source="DHSA" page="55"><name>Eurocar Northstar 2.0 (SUV)</name><effect ref="speed-plus"/><narrative></narrative></amp>
   <amp id="gmc-bulldog-step-van-renault-fiat-eurovan-van" type="vehicle" printedRating="1" vehicle="van" source="DHSA" page="55"><name>GMC-Bulldog Step-van Renault-Fiat Eurovan (Van)</name><narrative></narrative></amp>
