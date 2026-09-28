@@ -58,12 +58,13 @@ test('edits run one at a time: parallel saves all land', async () => {
 })
 
 test('house-rule sources: checked, created, duplicates refused', async () => {
-  const post = (b: unknown) => fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify(b) })
+  const post = (b: unknown, type = 'application/json') => fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify(b), headers: { 'Content-Type': type } })
+  expect((await post({ id: 'TABLE', name: 'x' }, 'text/plain')).status).toBe(415)
   expect((await post({ id: 'table', name: 'x' })).status).toBe(400)
   expect((await post({ id: 'TABLE' })).status).toBe(400)
-  expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: 'nope' })).status).toBe(400)
-  expect((await post({ id: 'TABLE', name: 'Our table' })).status).toBe(204)
-  expect(read('sources.xml')).toContain('<source id="TABLE" publisher="" canon="false"><name>Our table</name></source>')
+  expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: 'nope', headers: { 'Content-Type': 'application/json' } })).status).toBe(400)
+  expect((await post({ id: 'TABLE', name: '-Our table' })).status).toBe(204)
+  expect(read('sources.xml')).toContain('<source id="TABLE" publisher="" canon="false"><name>-Our table</name></source>')
   const r = await post({ id: 'TABLE', name: 'Again' })
   expect([r.status, (await r.json()).error]).toEqual([400, 'the source id TABLE is already used; pick another'])
 })

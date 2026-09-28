@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { basename, dirname, join } from 'node:path'
 
 const [, , , , cmd, target, ...rest] = process.argv
-const opt = name => rest[rest.indexOf(name) + 1]
+const opt = name => rest.find(a => a.startsWith(`${name}=`))?.slice(name.length + 1) ?? rest[rest.indexOf(name) + 1]
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 const status = (dir, state, msg = '') => writeFileSync(join(dir, 'status.xml'), `<status state="${state}" updated="${now}">${msg}</status>\n`)
 const importXml = (dir, attrs = '', files = '') =>

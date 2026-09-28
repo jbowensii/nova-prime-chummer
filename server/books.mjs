@@ -283,11 +283,12 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     }
     if (p === '/api/edits/sources') {
       if (method !== 'POST') return send(res, 405, { error: 'method not allowed' })
+      if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the source as application/json' })
       let b
       try { b = JSON.parse(await body(req, 4096)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { id, name } as JSON') }
       const name = clean(String(b?.name ?? '')).trim()
       if (!SOURCE_ID.test(b?.id ?? '') || !name || name.length > 120) throw fail(400, 'a source needs an id (A–Z, 0–9, -, starting with a letter) and a name')
-      await edit(['add-source', b.id, '--name', name])
+      await edit(['add-source', b.id, `--name=${name}`]) // one argument: a name starting with "-" isn't an option
       return send(res, 204, '', 'text/plain')
     }
     const m = p.match(/^\/api\/edits\/([a-z]+)\/([^/]+)$/)

@@ -108,9 +108,10 @@ describe.skipIf(!python)('with the real importer', () => {
     r = await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))
     expect(r.status).toBe(400)
     expect((await r.json()).error).toContain('needs a house-rule source')
-    expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify({ id: 'OURS', name: 'Our table' }) })).status).toBe(204)
+    expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify({ id: 'OURS', name: '-Our table' }), headers: { 'Content-Type': 'application/json' } })).status).toBe(204)
     expect((await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))).status).toBe(204)
     expect(edits()).toContain('id="ours.lucky"')
+    expect(readFileSync(join(custom, 'edits', 'sources.xml'), 'utf8')).toContain('<name>-Our table</name>')
 
     expect(await (await fetch(`${base}/api/edits/items/short-weapon`, { method: 'DELETE' })).json()).toEqual({ removed: true })
     expect(edits()).not.toContain('Shiv')
