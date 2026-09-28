@@ -120,6 +120,16 @@ class BackupTest(unittest.TestCase):
             "wrong manifest": bad_zip({}, manifest="<other/>"),
             "counts": bad_zip({"characters/x.xml": b"x"}),
             "not a zip": os.path.join(tempfile.mkdtemp(), "x.zip"),
+            "file and folder": bad_zip({"characters/a": b"x", "characters/a/b": b"y"}),
+            "folder entry and file": bad_zip({"characters/a/": b"", "characters/a/b": b"y", "characters/A": b"x"}),
+            "case duplicate": bad_zip({"characters/A.xml": b"x", "characters/a.xml": b"y"}),
+            "keys folder": bad_zip({backup.KEYS + "/": b""}),
+            "keys under a file": bad_zip({"library/.config": b"x"}),
+            "control character": bad_zip({"characters/a\nb.xml": b"x"}),
+            "reserved name": bad_zip({"characters/con.xml": b"x"}),
+            "trailing dot": bad_zip({"characters/.../x.xml": b"x"}),
+            "trailing space": bad_zip({"characters/.. /x.xml": b"x"}),
+            "forbidden character": bad_zip({"characters/a?.xml": b"x"}),
         }
         Path(cases["not a zip"]).write_text("hello")
         dup = bad_zip({"characters/x.xml": b"x"})
@@ -134,6 +144,10 @@ class BackupTest(unittest.TestCase):
                 with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(main(["restore", "--check", p]), 3)
                 self.assertTrue(err.getvalue().strip())
+
+    def test_entry_limit(self):
+        with unittest.mock.patch("importer.backup.MAX_ENTRIES", 2), self.assertRaisesRegex(backup.RestoreError, "more than"):
+            backup.check(bad_zip({"characters/a": b"x", "characters/b": b"y"}))
 
     def test_total_size_limit(self):
         with unittest.mock.patch("importer.backup.MAX_TOTAL", 1000), self.assertRaisesRegex(backup.RestoreError, "20 GB"):
@@ -193,6 +207,59 @@ class BackupTest(unittest.TestCase):
             backup.apply(z, dst)
         names = os.listdir(os.path.join(dst["library"], ".backups"))
         self.assertEqual(len([n for n in names if backup.STAMP.fullmatch(n)]), 3)
+
+    def _corrupt_zip(self):
+        """Passes check (the headers are fine) but its data fails the CRC when unpacked."""
+        p = bad_zip({"characters/x.xml": b"hello"}, manifest=False)
+        with zipfile.ZipFile(p, "a") as zf:
+            zf.writestr("backup.xml", '<backup format="1" app="t" created="2026-01-01T00:00:00+00:00" keys="no" files="1" '
+                        'bytes="5"><folder name="characters" files="1" bytes="5"/><folder name="custom" files="0" bytes="0"/>'
+                        '<folder name="library" files="0" bytes="0"/></backup>')
+        raw = bytearray(Path(p).read_bytes())
+        raw[raw.find(b"PK") + 16] ^= 0xFF  # the first central-directory entry's CRC
+        Path(p).write_bytes(raw)
+        return p
+
+    def test_unpack_failure_is_refused_and_changes_nothing(self):
+        dst = state(tempfile.mkdtemp())
+        before = tree(dst)
+        p = self._corrupt_zip()
+        backup.check(p)
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(main(["restore", "--apply", p, *[a for f in backup.FOLDERS for a in ("--" + f, dst[f])]]), 3)
+        self.assertIn("nothing was changed", err.getvalue())
+        self.assertEqual(tree(dst), before)
+        self.assertFalse([n for d in dst.values() for n in os.listdir(d) if n.startswith(backup.TEMP)])
+
+    def test_failed_applies_keep_at_most_three_safety_backups(self):
+        dst = state(tempfile.mkdtemp())
+        p = self._corrupt_zip()
+        for _ in range(4):
+            with self.assertRaises(backup.RestoreError):
+                backup.apply(p, dst)
+        self.assertEqual(len([n for n in os.listdir(os.path.join(dst["library"], ".backups")) if backup.STAMP.fullmatch(n)]), 3)
+
+    def test_backups_folder_outside_library_is_ordinary(self):
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root), state(dst_root)
+        for d in (src, dst):
+            os.makedirs(os.path.join(d["characters"], ".backups"))
+        Path(src["characters"], ".backups", "new.xml").write_text("new", encoding="utf8")
+        Path(dst["characters"], ".backups", "old.xml").write_text("old", encoding="utf8")
+        z = os.path.join(src_root, "b.zip")
+        backup.backup(src, z)
+        backup.apply(z, dst)
+        self.assertEqual(os.listdir(os.path.join(dst["characters"], ".backups")), ["new.xml"])
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "FIFOs are POSIX-only")
+    def test_backup_skips_special_files(self):
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        os.mkfifo(os.path.join(dirs["characters"], "pipe"))
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        self.assertNotIn("characters/pipe", zipfile.ZipFile(out).namelist())
 
     def test_refused_zip_changes_nothing(self):
         root = tempfile.mkdtemp()
