@@ -404,6 +404,19 @@ class ProposeTest(unittest.TestCase):
                          ["an effect isn’t an object; dropped", 'printedRating "3" isn’t a whole number; dropped',
                           'unknown effect ref "None"', 'unknown attribute "5" for rr-attr'])
 
+    def test_a_finished_review_is_kept_unless_fresh(self):
+        book = self.book()
+        P.propose(book, lambda s, u: json.dumps(TWO_AMPS))
+        path = os.path.join(book, "review.xml")
+        xmlio.write_file(path, Path(path).read_text(encoding="utf8").replace('state="pending"', 'state="accepted"', 1))
+        asked = []
+        self.assertEqual(P.propose(book, lambda s, u: asked.append(1) or '{"amps": []}'), 4)
+        self.assertEqual(asked, [])  # nothing sent, the decision kept
+        self.assertIn('state="accepted"', Path(path).read_text(encoding="utf8"))
+        self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "review")
+        self.assertEqual(P.propose(book, lambda s, u: asked.append(1) or '{"amps": []}', fresh=True), 0)
+        self.assertEqual((asked, self.review(book).findall("proposal")), ([1], []))
+
     def test_checkpoints_and_resumes_after_a_failure(self):
         md = BOOK + "\n# Second part\n" + ("filler text " * 990) + "\n"
         self.assertEqual(len(P.chunks(md)), 2)
@@ -427,8 +440,8 @@ class ProposeTest(unittest.TestCase):
         root = self.review(book)
         self.assertEqual(root.get("done"), "2")
         self.assertEqual([p.get("id") for p in root.findall("proposal")][-1], "amp.neural-spoon-2")
-        # a finished review starts over when proposed again
-        P.propose(book, lambda s, u: json.dumps({"amps": []}))
+        # a finished review starts over only when asked to
+        P.propose(book, lambda s, u: json.dumps({"amps": []}), fresh=True)
         self.assertEqual(len(self.review(book).findall("proposal")), 0)
 
     def test_provider_error_fails_the_book(self):
