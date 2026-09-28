@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { appendEvent, balance, derive, price, rescope, validate } from '../engine'
 import type { CareerEvent, Catalog, Character } from '../model/types'
-import { AccountMenu, useMe } from './auth'
+import { AccountMenu, session, track, useMe } from './auth'
 import { fmt, Modal } from './bits'
 import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
@@ -57,19 +57,22 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   }, [repo, id])
   useEffect(() => setCh(x => x && rescope(c, x)), [c]) // same object when nothing needs remapping
 
-  const persist = async (next: Character, keepalive = false) => {
+  // the returned promise covers the queued follow-up too; sign-out waits for it (auth.tsx track)
+  const persist = (next: Character, keepalive = false): Promise<void> => {
     const st = sync.current
-    if (st.paused || next === st.saved) return
-    if (st.busy) { st.queued = next; return }
+    if (st.paused || session.held || next === st.saved) return Promise.resolve()
+    if (st.busy) { st.queued = next; return Promise.resolve() }
     st.busy = true
-    const r = await repo.save(next, st.rev, { keepalive })
-    st.busy = false
-    if (r.ok) { st.rev = r.rev; st.saved = next; setSaveError(null) }
-    else if (r.conflict) { st.paused = true; setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
-    else setSaveError(r.error ?? 'Saving failed.')
-    const q = st.queued
-    st.queued = undefined
-    if (q && !st.paused) void persist(q)
+    return track((async () => {
+      const r = await repo.save(next, st.rev, { keepalive })
+      st.busy = false
+      if (r.ok) { st.rev = r.rev; st.saved = next; setSaveError(null) }
+      else if (r.conflict) { st.paused = true; setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
+      else if (!session.held) setSaveError(r.error ?? 'Saving failed.') // a 401: the sign-in form is up, it's sent once back
+      const q = st.queued
+      st.queued = undefined
+      if (q && !st.paused) await persist(q)
+    })())
   }
 
   useEffect(() => {
@@ -86,8 +89,9 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       if (st.latest && st.latest !== st.loaded && st.latest !== st.saved) void persist(st.latest, true)
     }
     addEventListener('pagehide', flush)
-    addEventListener('ca2-signed-in', flush) // signed back in after the session ended: send what didn't save
-    return () => { removeEventListener('pagehide', flush); removeEventListener('ca2-signed-in', flush); flush() }
+    addEventListener('ca2-signed-in', flush) // the same account signed back in after the session ended: send what didn't save
+    addEventListener('ca2-leaving', flush) // signing out: send it before the session ends
+    return () => { for (const e of ['pagehide', 'ca2-signed-in', 'ca2-leaving']) removeEventListener(e, flush); flush() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const resolveConflict = async (how: 'overwrite' | 'copy' | 'reload') => {

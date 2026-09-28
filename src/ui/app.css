@@ -175,7 +175,7 @@ td.hash { font-family: ui-monospace, monospace; font-size: 0.8rem; }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; align-items: start; position: relative; }
 .work { padding: 1.6rem 1.5rem 4rem; max-width: 62rem; min-width: 0; }
-.scroll-x { overflow-x: auto; max-width: 100%; }
+.scroll-x { overflow-x: auto; max-width: 100%; position: relative; } /* relative: holds .sr-only text that would escape the scroll box */
 /* Full: the book's vertical chapter tab on the outer page edge */
 .chapter-tab { display: none; }
 :root[data-texture='full'] .chapter-tab {
@@ -400,7 +400,9 @@ table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-to
 .gate form { margin-top: 1.2rem; }
 .field { display: grid; gap: 0.2rem; }
 .field small { font-size: 0.82rem; }
-.gate-over { position: fixed; inset: 0; z-index: 20; overflow-y: auto; background: var(--bg); }
+dialog.gate-over { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0;
+  border: 0; box-shadow: none; overflow-y: auto; background: var(--bg); }
+dialog.gate-over::backdrop { background: var(--bg); }
 .account { position: relative; }
 .account-panel { position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: 15; min-width: 14rem; display: grid; justify-items: start;
   padding: 0.7rem 0.6rem; background: var(--surface); border: 1px solid var(--rule); border-top: 4px solid var(--yellow); box-shadow: 0 8px 24px rgb(0 0 0 / 0.25); }
@@ -420,3 +422,4 @@ table.users td:last-child { white-space: normal; }
   /* the menu button can sit anywhere in a wrapped header: the panel spans the screen just below it */
   .account-panel { position: fixed; top: auto; left: 1rem; right: 1rem; }
 }
+h1[tabindex="-1"]:focus { outline: none; } /* focused on a page switch (App.tsx) for screen readers, not a control */
