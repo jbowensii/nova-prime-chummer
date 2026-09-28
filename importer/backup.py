@@ -1,7 +1,7 @@
 """Backup and restore of the three data folders (characters, custom, library) as one zip.
 
   backup   characters/…, custom/…, library/… plus a backup.xml manifest (backup.xsd). library/.backups and
-           temp files are skipped; library/.config/ai-keys.xml only with keys=True.
+           temp files are skipped; library/.config/ai-keys.xml and auth-secret.xml only with keys=True.
   check    refuses anything unsafe to extract (paths, links, bombs, a bad manifest); returns the manifest.
   apply    check, a safety backup of the current state to library/.backups (newest 3 kept), then each folder's
            contents are swapped for the zip's.
@@ -25,6 +25,8 @@ from importer import xmlio
 
 FOLDERS = ("characters", "custom", "library")
 KEYS = "library/.config/ai-keys.xml"
+# the Authelia client secret (server/oidc.mjs): like the API keys, only in a backup made with keys
+AUTH_SECRET = "library/.config/auth-secret.xml"
 # never in a backup or restored: session hashes (a restore ends every session), a pending recovery code's hash and the
 # known-device cookie key (server/auth.mjs)
 NEVER = {"library/.config/sessions.xml", "library/.config/reset.xml", "library/.config/device-key.xml"}
@@ -64,7 +66,7 @@ def _files(folder, root, keys):
         dirs.sort()
         for f in sorted(files):
             path, name = os.path.join(dirpath, f), f"{folder}/{rel}{f}"
-            if f.endswith(".tmp") or not stat.S_ISREG(os.lstat(path).st_mode) or (name == KEYS and not keys) or name in NEVER:
+            if f.endswith(".tmp") or not stat.S_ISREG(os.lstat(path).st_mode) or (name in (KEYS, AUTH_SECRET) and not keys) or name in NEVER:
                 continue  # links, FIFOs and devices are never backed up
             yield path, name
 

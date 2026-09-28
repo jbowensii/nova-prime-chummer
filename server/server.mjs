@@ -12,6 +12,7 @@
 //          ?filename=<name>                 file name for a new runner (else from the street name)
 //   DELETE /api/characters/:id           moves the file to .trash/ (never hard-deletes)
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
+//   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
 //                                        edits, backup and restore, data packs (server/books.mjs); LIBRARY_DIR is never served
 //   /custom/*                            house-rule overlays from CUSTOM_DIR
@@ -23,6 +24,7 @@ import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
 import { booksApi } from './books.mjs'
+import { oidcApi } from './oidc.mjs'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.xsd': 'application/xml' }
@@ -53,7 +55,7 @@ const VERSION = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '', accountKeys }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '', accountKeys, oidc: oidcOpts = {} }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
   let auth = null
@@ -123,7 +125,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await rmdir(folder(u)).catch(() => {})
     },
   }
-  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys }) // accountKeys: tests
+  let oidc = null
+  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, oidcOn: () => oidc.enabled() }) // accountKeys: tests
+  oidc = oidcApi({ libraryDir, auth, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-cache' })
@@ -160,6 +164,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
 
   async function api(req, res, url, who) {
     if (url.pathname === '/api/health') return send(res, 200, { ok: true, storage: 'server' })
+    if (await oidc.handle(req, res, url, send) !== false) return
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
     if (url.pathname === '/api/characters' && req.method === 'GET') {

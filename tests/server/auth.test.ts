@@ -82,6 +82,8 @@ describe('with an admin, an editor and a player', () => {
     ['GET', '/api/users', 'admin'], ['POST', '/api/users', 'admin', '{}'], ['PUT', '/api/users/000000000000', 'admin', '{}'],
     ['DELETE', '/api/users/000000000000', 'admin'], ['POST', '/api/users/000000000000/reset-password', 'admin', '{}'],
     ['POST', '/api/users/000000000000/move-runner', 'admin', '{}'],
+    ['GET', '/api/auth/oidc/start', 'public'], ['GET', '/api/auth/oidc/callback?state=x&code=y', 'public'],
+    ['GET', '/api/auth-settings', 'admin'], ['PUT', '/api/auth-settings', 'admin', '{}'], ['POST', '/api/auth-settings/test', 'admin', '{}'],
   ]
   const may = { public: ['admin', 'editor', 'player', ''], user: ['admin', 'editor', 'player'], editor: ['admin', 'editor'], admin: ['admin'] }
   test.each(ROUTES)('%s %s: %s', async (method, path, level, body) => {
@@ -97,7 +99,7 @@ describe('with an admin, an editor and a player', () => {
   test('me says who is signed in, and never a hash', async () => {
     const me = await (await call(s.base, 'GET', '/api/auth/me', { cookie: jar.editor })).json()
     expect(me).toMatchObject({ setup: false, user: { username: 'editor', role: 'editor', method: 'password', enabled: true } })
-    expect(await (await call(s.base, 'GET', '/api/auth/me')).json()).toEqual({ user: null, setup: false })
+    expect(await (await call(s.base, 'GET', '/api/auth/me')).json()).toEqual({ user: null, setup: false, oidc: false })
     const list = await (await call(s.base, 'GET', '/api/users', { cookie: jar.admin })).text()
     expect(list).not.toMatch(/hash|salt|scrypt|"password":/)
     expect(JSON.parse(list).map((u: { username: string }) => u.username).sort()).toEqual(['admin', 'editor', 'player'])
@@ -247,7 +249,7 @@ test('setup: a code logged once per start, single use; the first admin gets the 
   const [old, code] = codes().slice(-2) as string[]
   expect(old).not.toBe(code)
   secrets.add(code)
-  expect(await (await call(s.base, 'GET', '/api/auth/me')).json()).toEqual({ user: null, setup: true })
+  expect(await (await call(s.base, 'GET', '/api/auth/me')).json()).toEqual({ user: null, setup: true, oidc: false })
   expect((await call(s.base, 'GET', '/api/characters')).status).toBe(401)
   expect((await call(s.base, 'GET', '/custom/index.xml')).status).toBe(401)
   const setup = (b: Record<string, string>) => call(s.base, 'POST', '/api/setup', json({ username: 'boss', name: 'The Boss', password: PW.admin, ...b }))
@@ -348,7 +350,7 @@ test('a restore ends every session and brings back the backup’s accounts; one 
   const before = await zip(), z = JSON.parse(before.subarray(5).toString())
   delete z.files['library/.config/users.xml']
   expect((await restore(Buffer.concat([before.subarray(0, 5), Buffer.from(JSON.stringify(z))]))).status).toBe(200)
-  expect(await (await call(s.base, 'GET', '/api/auth/me', { cookie })).json()).toEqual({ user: null, setup: true })
+  expect(await (await call(s.base, 'GET', '/api/auth/me', { cookie })).json()).toEqual({ user: null, setup: true, oidc: false })
   s.srv.close()
 })
 
