@@ -1,11 +1,17 @@
 """Hand-built minimal PDF (1.4) for importer tests.
 
 No content extracted from any real rulebook — every string here is invented
-for the test. `two_page_pdf()` builds a two-page PDF with a 24pt heading,
-10pt body text, and a 2-column x 3-row table drawn with ruling lines, so
-pdfplumber's lattice table detector picks it up. `two_column_page_pdf()`
-builds a one-page PDF with two side-by-side text columns at matching row
-heights, to exercise column-aware reading order.
+for the test.
+
+- `two_page_pdf()`: two-page PDF, 24pt heading, 10pt body text, a 2x3 table
+  drawn with ruling lines so pdfplumber's lattice table detector finds it.
+- `two_column_page_pdf()`: one page, two side-by-side text columns (3 lines
+  each) at matching row heights, to exercise column-aware reading order.
+- `single_column_with_outlier_pdf()`: one page, a normal left-aligned body
+  plus one centered/indented line — should NOT be mistaken for two columns
+  (only one line would fall on the "other side").
+- `two_columns_with_band_pdf()`: one page, two real columns with a
+  full-width line (a heading/note spanning both) partway down.
 """
 
 PAGE1_OPS = """BT /F1 24 Tf 72 720 Td (Shadow Test) Tj ET
@@ -29,13 +35,44 @@ PAGE2_OPS = """BT /F1 18 Tf 72 720 Td (Second Page) Tj ET
 BT /F1 10 Tf 72 700 Td (More invented body copy for the second page of the test document.) Tj ET
 """
 
-# Two columns, left at x=72 and right at x=340 (a >150pt gutter), each with
-# two lines at the same heights so naive top-only grouping would merge
-# "Alpha one" with "Beta one" into a single garbled row.
+# Two columns, left at x=72 and right at x=340 (a >150pt gutter), three
+# lines each at matching heights so naive top-only grouping would merge
+# "Alpha one" with "Beta one" into a single garbled row, and there are
+# enough lines per side to clear the gutter-detection line-count threshold.
 COLUMN_OPS = """BT /F1 10 Tf 72 700 Td (Alpha one) Tj ET
 BT /F1 10 Tf 72 680 Td (Alpha two) Tj ET
+BT /F1 10 Tf 72 660 Td (Alpha three) Tj ET
 BT /F1 10 Tf 340 700 Td (Beta one) Tj ET
 BT /F1 10 Tf 340 680 Td (Beta two) Tj ET
+BT /F1 10 Tf 340 660 Td (Beta three) Tj ET
+"""
+
+# A normal single-column body (left-aligned at x=72) plus one centered line
+# ("Special Note") indented to x=260. Only one line sits on the "other
+# side" of any candidate gutter, so this must NOT be split into columns.
+OUTLIER_OPS = """BT /F1 10 Tf 72 700 Td (Intro one.) Tj ET
+BT /F1 10 Tf 72 685 Td (Intro two.) Tj ET
+BT /F1 10 Tf 260 670 Td (Special Note) Tj ET
+BT /F1 10 Tf 72 655 Td (Intro three.) Tj ET
+BT /F1 10 Tf 72 640 Td (Intro four.) Tj ET
+"""
+
+# Two real columns (left x=72, right x=340), 3 lines each above a
+# full-width line that starts in the left column's space and runs past the
+# gutter into the right column's space, then 2 more lines each column
+# below it. The full-width line must come out between the two column
+# blocks, not filed under one column.
+BAND_OPS = """BT /F1 10 Tf 72 750 Td (Left one) Tj ET
+BT /F1 10 Tf 72 730 Td (Left two) Tj ET
+BT /F1 10 Tf 72 710 Td (Left three) Tj ET
+BT /F1 10 Tf 340 750 Td (Right one) Tj ET
+BT /F1 10 Tf 340 730 Td (Right two) Tj ET
+BT /F1 10 Tf 340 710 Td (Right three) Tj ET
+BT /F1 10 Tf 100 690 Td (Full width heading spans both columns right here now) Tj ET
+BT /F1 10 Tf 72 670 Td (Left four) Tj ET
+BT /F1 10 Tf 72 650 Td (Left five) Tj ET
+BT /F1 10 Tf 340 670 Td (Right four) Tj ET
+BT /F1 10 Tf 340 650 Td (Right five) Tj ET
 """
 
 
@@ -100,3 +137,13 @@ def two_page_pdf() -> bytes:
 def two_column_page_pdf() -> bytes:
     """Return the bytes of a valid one-page PDF with two text columns."""
     return _build_pdf([COLUMN_OPS])
+
+
+def single_column_with_outlier_pdf() -> bytes:
+    """One-page PDF: single column body plus one centered/indented line."""
+    return _build_pdf([OUTLIER_OPS])
+
+
+def two_columns_with_band_pdf() -> bytes:
+    """One-page PDF: two columns with a full-width line partway down."""
+    return _build_pdf([BAND_OPS])
