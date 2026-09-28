@@ -1,8 +1,20 @@
 // Old runners store unscoped catalogIds (spec §4 last bullet). rescope maps an entry whose
 // catalogId isn't in the catalog to `<source>.<id>` using its snapshot's source, falling back
-// to any scoped entry with the same normalized name and type/kind.
+// to any scoped entry with the same normalized name and type/kind. When several books match by
+// name, the canon one wins; among ties (or several non-canon), the lowest source id wins, so the
+// pick never depends on Map iteration order.
+import { isCanon } from './canon'
 import { normalizeName } from './dupes'
 import type { AmpEntry, Catalog, Character, ItemEntry } from '../model/types'
+
+function pickBest<T extends { source: string }>(c: Catalog, matches: T[]): T | undefined {
+  return matches.reduce<T | undefined>((best, m) => {
+    if (!best) return m
+    const mCanon = isCanon(c, m), bCanon = isCanon(c, best)
+    if (mCanon !== bCanon) return mCanon ? m : best
+    return m.source.localeCompare(best.source) < 0 ? m : best
+  }, undefined)
+}
 
 function rescopeAmp(c: Catalog, e: AmpEntry): AmpEntry {
   if (!e.catalogId || c.amps.has(e.catalogId)) return e
@@ -10,7 +22,7 @@ function rescopeAmp(c: Catalog, e: AmpEntry): AmpEntry {
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.amps.has(scoped)) return { ...e, catalogId: scoped }
   const name = normalizeName(e.snapshot?.name ?? e.name)
-  const match = [...c.amps.values()].find(a => a.type === e.type && normalizeName(a.name) === name)
+  const match = pickBest(c, [...c.amps.values()].filter(a => a.type === e.type && normalizeName(a.name) === name))
   return match ? { ...e, catalogId: match.id } : e
 }
 
@@ -20,7 +32,7 @@ function rescopeItem(c: Catalog, e: ItemEntry): ItemEntry {
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.items.has(scoped)) return { ...e, catalogId: scoped }
   const name = normalizeName(e.snapshot?.name ?? e.name)
-  const match = [...c.items.values()].find(i => i.kind === e.kind && normalizeName(i.name) === name)
+  const match = pickBest(c, [...c.items.values()].filter(i => i.kind === e.kind && normalizeName(i.name) === name))
   return match ? { ...e, catalogId: match.id } : e
 }
 
