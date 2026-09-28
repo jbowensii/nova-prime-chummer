@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
+import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, rescope, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { Modal, NonCanon } from './bits'
@@ -103,15 +103,18 @@ export function Library({ c }: { c: Catalog }) {
         <div className="empty">
           <p>No runners yet. Start a new one, import a character file, or load the 28 sample characters from the rulebook and Daegann’s pregen booklet to look around.</p>
         </div>
-      ) : list.map(({ ch, rev }) => (
+      ) : list.map(({ ch, rev }) => {
+        // only for badges below (e.g. duplicate/canon labels keyed off catalog ids); never saved from here
+        const rch = rescope(c, ch)
+        return (
         <div className="dossier" key={ch.id}>
           {ch.identity.portrait ? <img className="face" src={ch.identity.portrait} alt="" /> : <span className="face" aria-hidden>{(ch.identity.streetName || ch.identity.name || '?')[0]}</span>}
           <div>
             <a className="title" href={`#/c/${ch.id}/concept`}>{ch.identity.streetName || ch.identity.name || 'Unnamed runner'}</a>
             <div className="meta">
-              {c.metatypes.get(ch.identity.metatype)?.name ?? ch.identity.metatype}, {c.levels.get(ch.level)?.name ?? ch.level}
-              {' '}<span className={`mode ${ch.finalizedAt ? 'career' : 'creation'}`}>{ch.finalizedAt ? 'Career' : 'Creation'}</span>
-              {ch.origin && !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>}
+              {c.metatypes.get(rch.identity.metatype)?.name ?? rch.identity.metatype}, {c.levels.get(rch.level)?.name ?? rch.level}
+              {' '}<span className={`mode ${rch.finalizedAt ? 'career' : 'creation'}`}>{rch.finalizedAt ? 'Career' : 'Creation'}</span>
+              {rch.origin && !isCanonSource(c, rch.origin) && <> <NonCanon source={c.sources.get(rch.origin)?.name ?? rch.origin} /></>}
               {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
             </div>
           </div>
@@ -121,7 +124,7 @@ export function Library({ c }: { c: Catalog }) {
             <button className="btn small quiet" onClick={() => setToDelete(ch)}>Delete</button>
           </div>
         </div>
-      ))}
+      )})}
 
       <Modal open={creating} onClose={() => setCreating(false)} title="New runner"
         actions={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn primary" onClick={() => void create()}>Create runner</button></>}>

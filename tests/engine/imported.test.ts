@@ -2,8 +2,11 @@
 // source, sources merge across the three sources files, and same-named entries are all kept.
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, test, expect } from 'vitest'
+import { blankCharacter } from '../../src/engine/file'
 import { dupeGroups, dupeLabel } from '../../src/engine/dupes'
 import { buildCatalog, loadCatalog, type SourceFile } from '../../src/engine/load'
+import { rescope } from '../../src/engine/rescope'
+import type { AmpEntry, ItemEntry } from '../../src/model/types'
 import { base, cat } from '../helpers'
 
 const NS = 'xmlns:ca2="urn:chummer-anarchy2:data:1"'
@@ -100,6 +103,36 @@ test('loadCatalog fetches data, sources, imported files, texts, then house rules
     expect(at('custom/house.xml')).toBeGreaterThan(at('custom/texts/house.xml'))
     expect(c.files.map(f => f.file).slice(-3)).toEqual(['custom/imported/testc/items.xml', 'custom/texts/house.xml', 'custom/house.xml'])
   } finally { restore() }
+})
+
+describe('rescope', () => {
+  const ampWith = (patch: Partial<AmpEntry>): AmpEntry =>
+    ({ uid: 'u1', catalogId: 'rush', type: 'equipment', name: 'Rush', narrative: '', effects: [], ...patch })
+
+  test('an old unscoped id is mapped to the scoped entry matching its snapshot source', () => {
+    const ch = blankCharacter()
+    ch.build.amps = [ampWith({ snapshot: { ...cat.amps.get('testc.rush')!, id: 'rush' } })]
+    const out = rescope(cat, ch)
+    expect(out.build.amps[0].catalogId).toBe('testc.rush')
+    expect(out).not.toBe(ch)
+  })
+
+  test('an unknown id with no matching source or name keeps its id and snapshot untouched', () => {
+    const ch = blankCharacter()
+    const amp = ampWith({ catalogId: 'nope', name: 'Nope', snapshot: { ...cat.amps.get('testc.rush')!, id: 'nope', name: 'Nope', source: 'GHOST' } })
+    ch.build.amps = [amp]
+    const out = rescope(cat, ch)
+    expect(out.build.amps[0]).toBe(amp)
+    expect(out).toBe(ch)
+  })
+
+  test('a shipped, unscoped catalogId already in the catalog is left alone', () => {
+    const ch = blankCharacter()
+    const item: ItemEntry = { uid: 'u2', catalogId: 'light-armor', kind: 'armor', name: 'Light armor' }
+    ch.build.items = [item]
+    const out = rescope(cat, ch)
+    expect(out).toBe(ch)
+  })
 })
 
 test('an unreachable server fails the load; an unreachable imports index just means no imports', async () => {
