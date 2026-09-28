@@ -232,3 +232,28 @@ BT /F2 10 Tf 72 640 Td (Note) Tj /F1 10 Tf ( - ) Tj /F2 10 Tf (Topic:) Tj /F1 10
 def bold_label_pdf() -> bytes:
     """One-page PDF: bold run-in labels (Helvetica-Bold) followed by regular text."""
     return _build_pdf([BOLD_OPS])
+
+
+# A 3-row ruled table whose middle row has no column rule (a striped row): pdfplumber's lattice
+# finder returns it as one merged cell. Names are bold (F2); a wrapped effect line in row 3.
+STRIPED_TABLE_OPS = """72 660 m 372 660 l S
+72 640 m 372 640 l S
+72 620 m 372 620 l S
+72 590 m 372 590 l S
+72 590 m 72 660 l S
+372 590 m 372 660 l S
+222 640 m 222 660 l S
+222 590 m 222 620 l S
+BT /F1 10 Tf 80 645 Td (Name) Tj ET
+BT /F1 10 Tf 230 645 Td (Effect) Tj ET
+BT /F2 10 Tf 80 625 Td (Made Up Rig) Tj ET
+BT /F1 10 Tf 230 625 Td (Plus one) Tj ET
+BT /F2 10 Tf 80 607 Td (Toy Kit) Tj ET
+BT /F1 10 Tf 230 607 Td (Line one) Tj ET
+BT /F1 10 Tf 230 595 Td (line two) Tj ET
+"""
+
+
+def striped_table_pdf() -> bytes:
+    """One-page PDF: a table with a merged (unruled) middle row."""
+    return _build_pdf([STRIPED_TABLE_OPS])

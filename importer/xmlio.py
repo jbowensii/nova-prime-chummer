@@ -9,8 +9,11 @@ from xml.sax.saxutils import escape, quoteattr
 NS = "urn:chummer-anarchy2:data:1"
 HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
 # (tag, attribute) pairs that name an entry of the imported file set ("*" = any tag); only values that
-# are ids of that set get scoped. <effect ref> and amp type point at base ampeffects/amptypes: never scoped.
-SCOPED = {("*", "id"), ("*", "linkedItem"), ("amp", "vehicle"), ("package", "level")}
+# are ids of that set get scoped. <effect ref>, amp type and amp vehicle point at base ampeffects, amptypes
+# and vehicles (chassis): never scoped, even when a book entry has the same id (DHSA's "Small drone" amp).
+SCOPED = {("*", "id"), ("*", "linkedItem"), ("package", "level")}
+# a book's <skill> names the base skill its specs are added to (the loader appends them): never scoped
+UNSCOPED_TAGS = {"skill"}
 TAG = re.compile(r"<([A-Za-z][\w:.-]*)([^>]*)>")
 ATTR = re.compile(r'(?<=\s)([\w:.-]+)="([^"]*)"')
 
@@ -33,6 +36,8 @@ def scope(xml, source, ids):
 
     def tag(t):
         name = t.group(1).split(":")[-1]
+        if name in UNSCOPED_TAGS:
+            return t.group(0)
 
         def attr(m):
             if ("*", m.group(1)) not in SCOPED and (name, m.group(1)) not in SCOPED:

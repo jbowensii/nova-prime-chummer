@@ -5,7 +5,7 @@ import statistics
 
 import pdfplumber
 
-CONVERTER_VERSION = "2"  # 2: bold runs wrapped in **…**
+CONVERTER_VERSION = "3"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -54,6 +54,10 @@ def _line_text(line):
         if w is not None:
             out.append(w["text"])
     return " ".join(out)
+
+
+def _inside(a, b):
+    return b[0] <= a[0] and b[1] <= a[1] and a[2] <= b[2] and a[3] <= b[3]
 
 
 def _in_table(w, table_boxes):
@@ -158,6 +162,28 @@ def _kind(x0, x1, mid):
     return "band"
 
 
+def _table_cells(table, words):
+    """Cell texts rebuilt from words on one column grid. pdfplumber's lattice finder merges whole rows
+    into one cell where a table stripes its rows without column rules (the other rows' cells nest and
+    repeat); the grid is the row with the most cells, each word goes to the last row starting above its
+    middle and to the grid column holding its centre. Lines join with "\\n"; bold runs are marked.
+    Columns empty in every row (gaps between rules) are dropped."""
+    grid = [c for c in max(table.rows, key=lambda r: sum(c is not None for c in r.cells)).cells if c]
+    tops = sorted({r.bbox[1] for r in table.rows})
+    x0, top, x1, bottom = table.bbox
+    cells = [[[] for _ in grid] for _ in tops]
+    for w in words:
+        cx, cy = (w["x0"] + w["x1"]) / 2, (w["top"] + w["bottom"]) / 2
+        if not (x0 <= cx <= x1 and top <= cy <= bottom):
+            continue
+        r = max(i for i, t in enumerate(tops) if t <= cy) if cy >= tops[0] else 0
+        c = next((i for i, g in enumerate(grid) if g[0] <= cx < g[2]), len(grid) - 1)
+        cells[r][c].append(w)
+    rows = [["\n".join(_line_text(line) for line in _cluster_lines(ws)) for ws in row] for row in cells]
+    keep = [i for i in range(len(grid)) if any(r[i] for r in rows)]
+    return [[r[i] for i in keep] for r in rows]
+
+
 def _table_md(rows):
     rows = [[(c or "").replace("\n", "<br>").strip() for c in r] for r in rows if any(r)]
     if not rows:
@@ -209,7 +235,9 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
         first, last = pages or (1, len(pdf.pages))
         for n, page in enumerate(pdf.pages[first - 1 : last], first):
             out.append(f"<!-- page {n} -->")
-            tables = page.find_tables()
+            found = page.find_tables()
+            # a table nested in another is a fragment of it (its words are in the outer one's cells)
+            tables = [t for t in found if not any(o is not t and _inside(t.bbox, o.bbox) for o in found)]
             boxes = [t.bbox for t in tables]
             all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
             words = [w for w in all_words if not _in_table(w, boxes)]
@@ -226,7 +254,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
                 x0, x1 = _line_extent(line)
                 blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid), text))
             for t in tables:
-                md = _table_md(t.extract())
+                md = _table_md(_table_cells(t, all_words))
                 if md:
                     blocks.append((t.bbox[1], _kind(t.bbox[0], t.bbox[2], mid), "\n".join(md)))
 
