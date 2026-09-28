@@ -46,6 +46,10 @@
             <xs:attribute name="enabled" type="xs:boolean" use="required"/>
             <xs:attribute name="created" type="xs:dateTime" use="required"/>
             <xs:attribute name="lastLogin" type="xs:dateTime"/>
+            <!-- an Authelia account, once signed in: the issuer and its subject (sub) it is linked to; later sign-ins match these
+                 only (server/oidc.mjs). Cleared by Unlink, a new username/email/method, or a new issuer. -->
+            <xs:attribute name="oidcIss" type="xs:string"/>
+            <xs:attribute name="oidcSub" type="xs:string"/>
           </xs:complexType>
         </xs:element>
       </xs:sequence>

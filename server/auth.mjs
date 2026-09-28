@@ -18,6 +18,7 @@
 //   DELETE /api/users/:id           admin: -> 204; 409 while the user has runners
 //   POST   /api/users/:id/reset-password  admin: { password } -> 204; every session of that user ends
 //   POST   /api/users/:id/move-runner     admin: { file, to: <user id> } -> { file } (its name in the new folder)
+//   POST   /api/users/:id/unlink          admin: -> { user }; the account's link to an Authelia subject goes (server/oidc.mjs)
 // There is always an enabled admin: the last one can't be demoted, disabled or deleted (409).
 import { createHash, createHmac, randomBytes, randomInt, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -108,7 +109,8 @@ export function netKey(ip) {
 const HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
 function usersXml(users) {
   const row = u => `  <user id="${u.id}" username="${u.username}" name="${esc(u.name)}"${u.email ? ` email="${esc(u.email)}"` : ''} role="${u.role
-  }" method="${u.method}" enabled="${u.enabled}" created="${u.created}"${u.lastLogin ? ` lastLogin="${u.lastLogin}"` : ''}${u.password
+  }" method="${u.method}" enabled="${u.enabled}" created="${u.created}"${u.lastLogin ? ` lastLogin="${u.lastLogin}"` : ''}${u.oidcSub
+    ? ` oidcIss="${esc(u.oidcIss)}" oidcSub="${esc(u.oidcSub)}"` : ''}${u.password
     ? `>\n    <password algorithm="scrypt" N="${u.password.N}" r="${u.password.r}" p="${u.password.p}" salt="${u.password.salt}" hash="${u.password.hash}"/>\n  </user>`
     : '/>'}\n`
   return `${HEAD}<!-- Accounts (users.xsd). Written by the server; passwords only as scrypt hashes. -->\n<ca2:users xmlns:ca2="${NS}" version="1">\n${users.map(row).join('')}</ca2:users>\n`
@@ -120,7 +122,7 @@ export function parseUsers(xml) {
     const tag = rootTag(m, 'user'), pw = rootTag(m, 'password'), num = n => Number(attr(pw, n))
     const u = { id: attr(tag, 'id'), username: attr(tag, 'username'), name: attr(tag, 'name') ?? '', email: attr(tag, 'email') ?? '',
       role: attr(tag, 'role'), method: attr(tag, 'method'), enabled: attr(tag, 'enabled') === 'true', created: attr(tag, 'created'),
-      lastLogin: attr(tag, 'lastLogin'), password: pw ? { N: num('N'), r: num('r'), p: num('p'), salt: attr(pw, 'salt'), hash: attr(pw, 'hash') } : null }
+      lastLogin: attr(tag, 'lastLogin'), oidcIss: attr(tag, 'oidcIss') ?? '', oidcSub: attr(tag, 'oidcSub') ?? '', password: pw ? { N: num('N'), r: num('r'), p: num('p'), salt: attr(pw, 'salt'), hash: attr(pw, 'hash') } : null }
     if (!USER_ID.test(u.id ?? '') || !USERNAME.test(u.username ?? '') || !ROLES.includes(u.role) || !METHODS.includes(u.method)
       || (pw && !(u.password.N > 1 && u.password.r > 0 && u.password.p > 0 && u.password.salt && u.password.hash)))
       throw new Error(`a <user> entry isn’t valid: ${m.replace(/\s(salt|hash)="[^"]*"/g, '').slice(0, 200)}`)
@@ -128,7 +130,7 @@ export function parseUsers(xml) {
   })
 }
 const pub = u => ({ id: u.id, username: u.username, name: u.name, email: u.email || null, role: u.role, method: u.method,
-  enabled: u.enabled, created: u.created, lastLogin: u.lastLogin ?? null })
+  enabled: u.enabled, created: u.created, lastLogin: u.lastLogin ?? null, linked: !!u.oidcSub })
 
 /** The recovery code for `username` (server/users.mjs reset): only its hash goes to library/.config/reset.xml (mode 600),
  *  which the running server reads at /api/setup/reset and deletes when used. A new code replaces the old one. */
@@ -173,6 +175,17 @@ const plainIp = a => a?.startsWith('::ffff:') && isIP(a.slice(7)) === 4 ? a.slic
 // a forwarded header's value from the nearest proxy: proxies append, so the last one (the client's own come first)
 const last = h => String(h ?? '').split(',').pop().trim()
 
+/** PUBLIC_URL ("" = none): its origin, e.g. https://chummer.example.com. */
+export function publicOrigin(spec = '') {
+  const v = String(spec).trim()
+  if (!v) return null
+  let u
+  try { u = new URL(v) } catch { throw new Error(`PUBLIC_URL: "${v}" isn’t a web address`) }
+  if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.search || u.hash || u.pathname !== '/')
+    throw new Error(`PUBLIC_URL: "${v}" must be just https://host[:port], without a path`)
+  return u.origin
+}
+
 /** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. */
 export function need(path, method) {
   if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
@@ -184,8 +197,9 @@ export function need(path, method) {
 
 /** `lock`: the characters' write lock (shared with server.mjs); `runners`: runner-folder moves, run under it; `track`:
  *  books.track, so file writes are counted (a restore waits for them, and they are refused while it runs). */
-export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log = console, accountKeys = ACCOUNT_KEYS, oidcOn = () => false }) {
+export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log = console, accountKeys = ACCOUNT_KEYS, oidcOn = () => false, publicUrl = '' }) {
   const config = join(libraryDir, '.config')
+  const pinned = publicOrigin(publicUrl)
   const usersPath = join(config, 'users.xml'), sessionsPath = join(config, 'sessions.xml'), resetPath = join(config, 'reset.xml')
   const proxies = proxyList(trustProxy)
   const trusted = a => isIP(a) > 0 && proxies.check(a, isIP(a) === 4 ? 'ipv4' : 'ipv6')
@@ -277,6 +291,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     }
     let origin = null
     try { origin = new URL(`${https ? 'https' : 'http'}://${host}`).origin } catch { /* a malformed Host matches nothing */ }
+    // PUBLIC_URL: the one public address, whatever Host or X-Forwarded-Host say (Origin check, OIDC redirect URI, cookies)
+    if (pinned) return { ip, https: pinned.startsWith('https:'), origin: pinned }
     return { ip, https, origin }
   }
   function sameOrigin(req, ctx) {
@@ -542,7 +558,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const u = await valid()
       if (!u) throw refuse()
       await rm(resetPath, { force: true })
-      Object.assign(u, { password: pw, method: 'password' })
+      Object.assign(u, { password: pw, method: 'password', oidcIss: '', oidcSub: '' })
       await saveUsers()
       return u
     })
@@ -573,7 +589,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       log.log(`account created: ${u.username} (${u.role}) by ${who.username}`)
       return send(res, 201, { user: pub(u) })
     }
-    const m = p.match(/^\/api\/users\/([0-9a-f]{12})(?:\/(reset-password|move-runner))?$/)
+    const m = p.match(/^\/api\/users\/([0-9a-f]{12})(?:\/(reset-password|move-runner|unlink))?$/)
     if (!m) return send(res, 404, { error: 'not found' })
     const [, id, action] = m
     if (!action && method === 'PUT') {
@@ -584,6 +600,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
         if (f.username && f.username !== u.username) await runners.rename(u.username, f.username)
         const end = after.enabled === false || after.method !== u.method
         if (f.method && f.method !== 'password') f.password = null // an Authelia account has no app password
+        // a new name, email or method: the Authelia link goes, and the next Authelia sign-in matches afresh
+        if (['username', 'email', 'method'].some(k => k in f && f[k] !== u[k])) Object.assign(f, { oidcIss: '', oidcSub: '' })
         Object.assign(u, f)
         await saveUsers()
         if (end) await endSessions(u.id)
@@ -609,7 +627,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const pw = await hashLimited(password((await json(req)).password))
       const u = await lock(async () => {
         const u = byId(id)
-        Object.assign(u, { password: pw, method: 'password' })
+        Object.assign(u, { password: pw, method: 'password', oidcIss: '', oidcSub: '' })
         await saveUsers()
         return u
       })
@@ -617,6 +635,16 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       accountFails.delete(u.username)
       log.log(`password reset: ${u.username} by ${who.username}`)
       return send(res, 204, '', 'text/plain')
+    }
+    if (action === 'unlink' && method === 'POST') {
+      const u = await lock(async () => {
+        const u = byId(id)
+        Object.assign(u, { oidcIss: '', oidcSub: '' })
+        await saveUsers()
+        return u
+      })
+      log.log(`Authelia link removed: ${u.username} by ${who.username}`)
+      return send(res, 200, { user: pub(u) })
     }
     if (action === 'move-runner' && method === 'POST') {
       const b = await json(req)
@@ -668,12 +696,27 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
 
   /** A sign-in through Authelia (server/oidc.mjs), its claims verified: `username` (preferred_username), else `email`, names
    *  an enabled account whose method is authelia -> a session and a known device, like a password sign-in; else null. */
-  async function signInExternal(res, ctx, { username, email, emailVerified }) {
-    const n = oneLine(username).toLowerCase(), e = oneLine(email).toLowerCase()
-    const u = (n && users.find(x => x.username === n)) || (e && emailVerified !== false && users.find(x => x.email === e)) || null
+  async function signInExternal(res, ctx, { iss, sub, username, email, emailVerified }) {
+    if (typeof iss !== 'string' || typeof sub !== 'string' || !iss || !sub || iss.length > 300 || sub.length > 255) return null
+    // an account linked to this Authelia subject is it, whatever the name says now; else a first sign-in names it by
+    // preferred_username only, or by a verified email when there is no username. Only ASCII is compared: toLowerCase()
+    // folds some other letters into ASCII (U+212A KELVIN SIGN -> k)
+    const ascii = v => typeof v === 'string' && /^[\x21-\x7e]{1,254}$/.test(v) ? v.toLowerCase() : ''
+    let u = users.find(x => x.oidcSub === sub && x.oidcIss === iss)
+    if (!u) {
+      const n = ascii(username), e = ascii(email)
+      u = username !== undefined && username !== '' ? n && users.find(x => x.username === n)
+        : e && emailVerified === true && users.find(x => x.email === e)
+      if (u?.oidcSub) return null // linked to another Authelia user: never taken over by a matching name
+    }
     if (!u?.enabled || u.method !== 'authelia') return null
-    log.log(`signed in with Authelia: ${u.username} from ${ctx.ip}`)
-    await lock(async () => { u.lastLogin = iso(); await saveUsers() })
+    const linking = !u.oidcSub
+    log.log(`signed in with Authelia: ${u.username} from ${ctx.ip}${linking ? ' (now linked to that Authelia user)' : ''}`)
+    await lock(async () => {
+      if (linking && users.some(x => x !== u && x.oidcSub === sub && x.oidcIss === iss)) throw fail(409, 'already linked')
+      Object.assign(u, { lastLogin: iso(), ...linking ? { oidcIss: iss, oidcSub: sub } : {} })
+      await saveUsers()
+    })
     await startSession(res, ctx, u)
     setDevice(res, ctx, u.id)
     return u
@@ -681,6 +724,14 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
 
   return {
     gate, handle, session, context, json, signInExternal,
+    /** A new issuer: every account's Authelia link goes (subjects are per issuer). */
+    async unlinkAll() {
+      await lock(async () => {
+        if (!users.some(u => u.oidcSub)) return
+        for (const u of users) Object.assign(u, { oidcIss: '', oidcSub: '' })
+        await saveUsers()
+      })
+    },
     usernames: () => users.map(u => u.username),
     /** An account's display name (the runner list's group headings). */
     nameOf: username => users.find(u => u.username === username)?.name ?? username,

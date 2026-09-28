@@ -8,7 +8,9 @@ import { validateXML } from 'xmllint-wasm'
 // @ts-expect-error plain JS module
 import { createServer } from '../../server/server.mjs'
 // @ts-expect-error plain JS module
-import { usersFile } from '../../server/auth.mjs'
+import { parseUsers, usersFile } from '../../server/auth.mjs'
+// @ts-expect-error plain JS module
+import { checkUrl, insecureAllowed } from '../../server/oidc.mjs'
 // @ts-expect-error plain JS module
 import { fakeIssuer } from '../fixtures/fake-issuer.mjs'
 
@@ -26,23 +28,28 @@ const ACCOUNTS = [
   { username: 'eve', method: 'authelia', role: 'player', email: 'eve@example.test' },
   { username: 'pat', password: 'pat-password-1', role: 'player', email: 'pat@example.test' },
   { username: 'dis', method: 'authelia', role: 'player', enabled: false },
+  { username: 'kai', method: 'authelia', role: 'admin', email: 'kai@example.test' }, // never linked: M1's target
 ]
 
-async function boot(opts: Record<string, unknown> = {}) {
+async function boot(opts: Record<string, unknown> = {}, server: Record<string, unknown> = {}) {
   const f: Fake = await fakeIssuer()
   const dir = mkdtempSync(join(tmpdir(), 'ca2-oidc-')), lib = join(dir, 'library')
   mkdirSync(join(lib, '.config'), { recursive: true })
   writeFileSync(join(lib, '.config', 'users.xml'), await usersFile(ACCOUNTS))
   const srv: Srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: lib,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], oidc: { timeout: 500, jwksGap: 300, ...opts } })
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], oidc: { timeout: 500, jwksGap: 300, starts: 100000, ...opts }, ...server })
   await new Promise<void>(ok => srv.listen(0, '127.0.0.1', ok))
-  const base = `http://127.0.0.1:${srv.address().port}`
+  const base = `http://127.0.0.1:${srv.address().port}`, origin = (server.publicUrl as string) ?? base
   const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: 'admin', password: ADMIN_PW }),
-    headers: { 'Content-Type': 'application/json', Origin: base } })
+    headers: { 'Content-Type': 'application/json', Origin: origin } })
   const admin = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
   const put = (body: unknown, cookie = admin) => fetch(`${base}/api/auth-settings`, { method: 'PUT', body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json', Origin: base, Cookie: cookie } })
-  return { f, srv, base, lib, admin, put, close: () => { srv.close(); f.close() } }
+    headers: { 'Content-Type': 'application/json', Origin: origin, Cookie: cookie } })
+  const post = (path: string, body?: unknown) => fetch(`${base}${path}`, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', Origin: origin, Cookie: admin } })
+  const account = (username: string) => parseUsers(readFileSync(join(lib, '.config', 'users.xml'), 'utf8'))
+    .find((u: { username: string }) => u.username === username)
+  return { f, srv, base, lib, admin, put, post, account, close: () => { srv.close(); f.close() } }
 }
 type Boot = Awaited<ReturnType<typeof boot>>
 const on = (s: Boot) => s.put({ issuer: s.f.base, clientId: s.f.clientId, secret: s.f.secret, enabled: true })
@@ -130,10 +137,16 @@ describe('with a fake issuer', () => {
     const r = await flow(s)
     expect(r.location).toBe('/')
     expect((await me(s, session(r.cookies))).user.username).toBe('kim')
+    // email only when there is no username, and only verified (M2)
     s.f.user = { sub: 'u-eve', preferred_username: 'eve-at-sso', email: 'EVE@example.test', email_verified: true }
-    expect((await me(s, session((await flow(s)).cookies))).user.username).toBe('eve')
-    s.f.user = { ...s.f.user, email_verified: false }
+    expect((await flow(s)).location).toBe('/?signin=no-account') // a username that names no account: no email fallback
+    s.f.user = { sub: 'u-eve', email: 'EVE@example.test' }
+    expect((await flow(s)).location).toBe('/?signin=no-account') // email_verified missing
+    s.f.user = { sub: 'u-eve', email: 'EVE@example.test', email_verified: false }
     expect((await flow(s)).location).toBe('/?signin=no-account')
+    s.f.user = { sub: 'u-eve', email: 'EVE@example.test', email_verified: true }
+    expect((await me(s, session((await flow(s)).cookies))).user.username).toBe('eve')
+    expect(s.account('eve')).toMatchObject({ oidcIss: s.f.base, oidcSub: 'u-eve' })
     s.f.userinfoOnly = false
     s.f.user = { sub: 'u-kim', preferred_username: 'kim', email: 'kim@example.test', email_verified: true }
   })
@@ -214,6 +227,79 @@ describe('with a fake issuer', () => {
     } finally { s.f.user = keep }
   })
 
+  test('M1: only ASCII names match (no Unicode case folding onto an account)', async () => {
+    const keep = s.f.user
+    try {
+      for (const user of [{ sub: 'u-attacker', preferred_username: 'Kai' }, // KELVIN SIGN: 'Kai'.toLowerCase() === 'kai'
+        { sub: 'u-attacker', email: 'Kai@example.test', email_verified: true },
+        { sub: 'u-attacker', preferred_username: 'Ｋａｉ' }]) { // full-width Kai
+        s.f.user = user
+        const r = await flow(s)
+        expect(r.location, JSON.stringify(user)).toBe('/?signin=no-account')
+        expect(session(r.cookies)).toBe('')
+      }
+    } finally { s.f.user = keep }
+    expect(s.account('kai').oidcSub).toBe('')
+  })
+
+  test('M2: an account is linked to its Authelia subject; another subject with its name or email is refused', async () => {
+    const keep = s.f.user
+    try {
+      expect(s.account('kim')).toMatchObject({ oidcIss: s.f.base, oidcSub: 'u-kim' }) // linked at its first sign-in
+      const v = await validateXML({ xml: { fileName: 'users.xml', contents: readFileSync(join(s.lib, '.config', 'users.xml'), 'utf8') },
+        schema: { fileName: 'users.xsd', contents: readFileSync('public/data/schema/users.xsd', 'utf8') } })
+      expect(v.errors).toEqual([])
+      const users = await (await fetch(`${s.base}/api/users`, { headers: { Cookie: s.admin } })).json()
+      const kim = users.find((u: { username: string }) => u.username === 'kim')
+      expect(kim).toMatchObject({ linked: true })
+      expect(JSON.stringify(users)).not.toContain('u-kim') // the subject stays on the server
+      // someone else in the directory now called kim (the old one renamed, or deleted and made again)
+      s.f.user = { sub: 'u-other', preferred_username: 'kim', email: 'kim@example.test', email_verified: true }
+      expect((await flow(s)).location).toBe('/?signin=no-account')
+      s.f.user = { sub: 'u-other', email: 'eve@example.test', email_verified: true }
+      expect((await flow(s)).location).toBe('/?signin=no-account')
+      // the linked subject renamed in Authelia: still kim
+      s.f.user = { sub: 'u-kim', preferred_username: 'kimberly' }
+      expect((await me(s, session((await flow(s)).cookies))).user.username).toBe('kim')
+      // Unlink (admin): the next sign-in by username links afresh
+      expect((await s.post(`/api/users/${kim.id}/unlink`)).status).toBe(200)
+      expect(s.account('kim').oidcSub).toBe('')
+      s.f.user = { sub: 'u-kim', preferred_username: 'kim' }
+      expect((await flow(s)).location).toBe('/')
+      expect(s.account('kim').oidcSub).toBe('u-kim')
+      // a new email for the account drops the link too
+      await fetch(`${s.base}/api/users/${kim.id}`, { method: 'PUT', body: JSON.stringify({ email: 'kim2@example.test' }),
+        headers: { 'Content-Type': 'application/json', Origin: s.base, Cookie: s.admin } })
+      expect(s.account('kim').oidcSub).toBe('')
+      expect((await flow(s)).location).toBe('/')
+      // a new issuer unlinks every account
+      await s.put({ issuer: `${s.f.base}/elsewhere` })
+      expect([s.account('kim').oidcSub, s.account('eve').oidcSub]).toEqual(['', ''])
+      await on(s)
+      expect((await flow(s)).location).toBe('/')
+    } finally { s.f.user = keep }
+  })
+
+  test('M3: nothing is kept per start: a flood of starts doesn’t push out a pending sign-in; a forged cookie is refused', async () => {
+    const start = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })
+    const bind = start.headers.getSetCookie().find(c => c.startsWith('ca2_oidc='))!.split(';')[0]
+    const back = (await fetch(start.headers.get('location')!, { redirect: 'manual' })).headers.get('location')!
+    for (let i = 0; i < 1100; i += 50)
+      await Promise.all(Array.from({ length: 50 }, () => fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' }).then(r => r.arrayBuffer())))
+    const at = bind.length - 10, flipped = bind.slice(0, at) + (bind[at] === 'A' ? 'B' : 'A') + bind.slice(at + 1) // a whole 6 bits (a last char may only carry padding)
+    expect((await fetch(back, { redirect: 'manual', headers: { Cookie: flipped } })).headers.get('location')).toBe('/?signin=expired')
+    expect((await fetch(back, { redirect: 'manual', headers: { Cookie: bind } })).headers.get('location')).toBe('/')
+    // the cookie holds everything, sealed: no state or nonce in the clear
+    const url = new URL(start.headers.get('location')!)
+    expect(bind).not.toContain(url.searchParams.get('state'))
+    expect(bind).not.toContain(url.searchParams.get('nonce'))
+    const key = join(s.lib, '.config', 'oidc-key.xml')
+    const v = await validateXML({ xml: { fileName: 'oidc-key.xml', contents: readFileSync(key, 'utf8') },
+      schema: { fileName: 'auth.xsd', contents: readFileSync('public/data/schema/auth.xsd', 'utf8') } })
+    expect(v.errors).toEqual([])
+    if (process.platform !== 'win32') expect(statSync(key).mode & 0o777).toBe(0o600)
+  })
+
   test('a password account can’t sign in via Authelia, and an Authelia account can’t sign in with a password', async () => {
     const r = await fetch(`${s.base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: 'kim', password: 'anything-at-all' }),
       headers: { 'Content-Type': 'application/json', Origin: s.base } })
@@ -242,13 +328,18 @@ describe('with a fake issuer', () => {
   })
 })
 
-test('discovery: an issuer naming itself differently, or too slow, can’t start a sign-in', async () => {
-  const s = await boot()
+test('discovery: an issuer naming itself differently, endpoints elsewhere, too slow', async () => {
+  const s = await boot({ failTtl: 0 })
   try {
     await on(s)
     s.f.discovery = { issuer: 'https://evil.example' }
     expect((await flow(s)).location).toBe('/?signin=failed')
     expect(logged.some(l => /the issuer calls itself https:\/\/evil\.example/.test(l))).toBe(true)
+    for (const k of ['authorization_endpoint', 'token_endpoint', 'jwks_uri', 'userinfo_endpoint']) {
+      s.f.discovery = { [k]: 'http://localhost:1/x' } // another origin than the issuer's
+      expect((await flow(s)).location, k).toBe('/?signin=failed')
+      expect(logged.some(l => l.includes(`the issuer’s ${k} is on another host`)), k).toBe(true)
+    }
     s.f.discovery = {}
     s.f.delay['/.well-known/openid-configuration'] = 1500
     expect((await flow(s)).location).toBe('/?signin=failed')
@@ -258,4 +349,64 @@ test('discovery: an issuer naming itself differently, or too slow, can’t start
     await s.put({ enabled: false })
     expect((await flow(s)).location).toBe('/?signin=off')
   } finally { s.close() }
+})
+
+test('a failed discovery is remembered: an issuer that is down isn’t asked on every start', async () => {
+  const s = await boot()
+  try {
+    await on(s)
+    s.f.discovery = { issuer: 'https://evil.example' }
+    const before = s.f.hits['/.well-known/openid-configuration'] ?? 0
+    for (let i = 0; i < 5; i++) expect((await flow(s)).location).toBe('/?signin=failed')
+    expect(s.f.hits['/.well-known/openid-configuration'] - before).toBe(1)
+  } finally { s.close() }
+})
+
+test('starts are limited per network', async () => {
+  const s = await boot({ starts: 5 })
+  try {
+    await on(s)
+    const pending = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })
+    const bind = pending.headers.getSetCookie().find(c => c.startsWith('ca2_oidc='))!.split(';')[0]
+    const back = (await fetch(pending.headers.get('location')!, { redirect: 'manual' })).headers.get('location')!
+    const more: (string | null)[] = []
+    for (let i = 0; i < 6; i++) more.push((await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })).headers.get('location'))
+    expect(more.slice(0, 4).every(l => l?.startsWith(s.f.base))).toBe(true)
+    expect(more.slice(4)).toEqual(['/?signin=busy', '/?signin=busy'])
+    expect((await fetch(back, { redirect: 'manual', headers: { Cookie: bind } })).headers.get('location')).toBe('/') // unaffected
+  } finally { s.close() }
+})
+
+test('PUBLIC_URL: the redirect URI and the Origin check use it, not the Host header', async () => {
+  const pub = 'https://chummer.example.com'
+  const s = await boot({}, { publicUrl: pub })
+  try {
+    expect((await on(s)).status).toBe(200) // the admin's requests came with Origin: PUBLIC_URL
+    const start = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual', headers: { Host: 'evil.example' } })
+    expect(new URL(start.headers.get('location')!).searchParams.get('redirect_uri')).toBe(`${pub}/api/auth/oidc/callback`)
+    expect(start.headers.getSetCookie()[0]).toMatch(/^__Host-ca2_oidc=.*; Secure$/)
+    const r = await fetch(`${s.base}/api/auth/login`, { method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', Origin: s.base } })
+    expect(r.status).toBe(403) // the Host's own origin isn't the public one
+    const got = await (await fetch(`${s.base}/api/auth-settings`, { headers: { Cookie: s.admin } })).json()
+    expect(got.redirectUri).toBe(`${pub}/api/auth/oidc/callback`)
+  } finally { s.close() }
+  expect(() => createServer({ staticDir: 'public', charDir: tmpdir(), customDir: tmpdir(), libraryDir: mkdtempSync(join(tmpdir(), 'ca2-pub-')),
+    publicUrl: 'https://x.example/app' })).toThrow(/PUBLIC_URL/)
+})
+
+test('plain http only to this machine, and only in tests or with ALLOW_INSECURE_OIDC', () => {
+  expect(() => checkUrl('http://127.0.0.1:9000', 'x', false)).toThrow(/https/)
+  expect(checkUrl('http://127.0.0.1:9000', 'x', true).origin).toBe('http://127.0.0.1:9000')
+  expect(() => checkUrl('http://auth.localhost', 'x', true)).toThrow(/https/)
+  expect(() => checkUrl('http://auth.example.com', 'x', true)).toThrow(/https/)
+  const env = { NODE_ENV: process.env.NODE_ENV, ALLOW: process.env.ALLOW_INSECURE_OIDC }
+  try {
+    process.env.NODE_ENV = 'production'; delete process.env.ALLOW_INSECURE_OIDC
+    expect(insecureAllowed()).toBe(false)
+    process.env.ALLOW_INSECURE_OIDC = '1'
+    expect(insecureAllowed()).toBe(true)
+  } finally {
+    process.env.NODE_ENV = env.NODE_ENV
+    if (env.ALLOW === undefined) delete process.env.ALLOW_INSECURE_OIDC; else process.env.ALLOW_INSECURE_OIDC = env.ALLOW
+  }
 })

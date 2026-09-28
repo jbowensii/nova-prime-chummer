@@ -55,7 +55,7 @@ const VERSION = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '', accountKeys, oidc: oidcOpts = {} }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '', publicUrl = '', accountKeys, oidc: oidcOpts = {} }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
   let auth = null
@@ -126,7 +126,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     },
   }
   let oidc = null
-  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, oidcOn: () => oidc.enabled() }) // accountKeys: tests
+  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
   oidc = oidcApi({ libraryDir, auth, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
@@ -253,6 +253,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     libraryDir: process.env.LIBRARY_DIR ?? '/data/library',
     python: process.env.PYTHON ?? 'python3',
     trustProxy: process.env.TRUST_PROXY ?? '', // comma-separated IPs or CIDRs of the reverse proxy
+    publicUrl: process.env.PUBLIC_URL ?? '', // the app's one public address (Origin check, Authelia redirect URI)
   })
   server.listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
   // docker stop: end the importer job too (the next start marks its book interrupted); sessions.xml is saved
