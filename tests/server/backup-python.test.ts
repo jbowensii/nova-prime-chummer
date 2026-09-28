@@ -34,7 +34,8 @@ describe.skipIf(!python)('with the real importer', () => {
     await putRunner('Before') // then a book mid-job, as a backup taken during an import has
     mkdirSync(join(library, 'abc-1'), { recursive: true })
     writeFileSync(join(library, 'abc-1', 'status.xml'), '<status state="extracting" updated="2026-09-28T00:00:00Z"></status>')
-    const zip = Buffer.from(await (await fetch(`${base}/api/backup`)).arrayBuffer())
+    const { token: dl } = await (await fetch(`${base}/api/backup`, { method: 'POST' })).json()
+    const zip = Buffer.from(await (await fetch(`${base}/api/backup/${dl}`)).arrayBuffer())
     expect(zip.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
 
     await putRunner('After')

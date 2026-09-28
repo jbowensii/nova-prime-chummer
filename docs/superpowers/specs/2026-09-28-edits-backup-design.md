@@ -55,9 +55,12 @@ UI:
 
 ## 3. Backup and restore
 
-- `GET /api/backup[?keys=1]` → `python -m importer backup --out <tmp.zip>`,
-  streamed as `chummer-anarchy2-backup-<date>.zip`, then the temp file is
-  removed. Layout inside the zip mirrors the three volumes:
+- Two steps, so errors show in the page and the file still streams straight to
+  disk: `POST /api/backup[?keys=1]` → `python -m importer backup --out <tmp.zip>`
+  (one at a time) → `{ token }`; the page then navigates to
+  `GET /api/backup/<token>`, streamed as `chummer-anarchy2-backup-<date>.zip`.
+  The token is single use and expires after 10 minutes; the temp file is
+  removed after the download, on abort, on expiry and on server stop. Layout inside the zip mirrors the three volumes:
   `characters/…`, `custom/…`, `library/…` plus a `backup.xml` manifest
   (app version, date, counts, keys included yes/no). `library/.config/ai-keys.xml`
   only with `keys=1`.
