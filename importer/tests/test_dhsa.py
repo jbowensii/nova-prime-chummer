@@ -102,7 +102,7 @@ def entries(xml):
 
 @unittest.skipUnless(BOOK.exists() and ORACLE.exists(), "owner's converted DHSA book and oracle not present")
 class ParityTest(unittest.TestCase):
-    """Entries by (type, name) against the catalogs tools/dhsa_to_xml.py wrote from the old row JSON."""
+    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump."""
 
     @classmethod
     def setUpClass(cls):

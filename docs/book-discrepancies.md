@@ -6,7 +6,7 @@ of bending the engine to match a printed number.
 
 ## Catalog amps (amps.xml)
 
-`tools/dhsa_to_xml.py` breaks every amp in Daegann's list into rule effects
+The importer's DHSA recipe (`importer/recipes/dhsa.py`) breaks every amp in Daegann's list into rule effects
 and compares the result to the printed rating:
 
 - **Computed below printed:** the difference is filled with *Additional
