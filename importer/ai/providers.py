@@ -89,19 +89,34 @@ def set_settings(config_dir, text):
     that later reads the file for a call decides here. Returns the providers whose keys were cleared."""
     attrs, new = _parse_settings(text)
     path = os.path.join(config_dir, "ai-providers.xml")
-    try:
-        old = read_providers(config_dir)[1] if os.path.exists(path) else {}
-    except ET.ParseError:
-        old = {}  # unreadable, so no key went anywhere by it: any non-empty URL now counts as changed
-    keys = _keys(config_dir)
-    url = lambda ps, p: (ps.get(p) or {}).get("baseUrl") or ""  # noqa: E731
-    cleared = [p for p in PROVIDER_IDS if url(old, p) != url(new, p) and keys.get(p)]
-    for p in cleared:
-        set_key(config_dir, p, "")
+    # saved settings that can't be read count as none: no key went anywhere by them, so any non-empty URL is a change
+    cleared = clear_moved_keys(config_dir, saved_providers(config_dir) or {}, new)
     q = lambda v: '"' + escape(v, {'"': "&quot;"}) + '"'  # noqa: E731
     root = "".join(f" {k}={q(v)}" for k, v in attrs.items())
     rows = "".join("  <provider" + "".join(f" {k}={q(v)}" for k, v in p.items()) + "/>\n" for p in new.values())
     xmlio.write_file(path, f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aiproviders xmlns:ca2="{NS}"{root}>\n{rows}</ca2:aiproviders>\n')
+    return cleared
+
+
+def saved_providers(config_dir):
+    """{id: attributes} from ai-providers.xml: {} when there is none, None when it can't be read."""
+    if not os.path.exists(os.path.join(config_dir, "ai-providers.xml")):
+        return {}
+    try:
+        return read_providers(config_dir)[1]
+    except ET.ParseError:
+        return None
+
+
+def clear_moved_keys(config_dir, old, new):
+    """A key is only sent to the address it was entered for: clear the key of each provider whose base URL differs
+    between `old` and `new` ({id: attributes}; a missing provider or URL counts as empty; new=None, settings that
+    can't be read, clears every key). Used when settings are saved and when a restore keeps this server's keys."""
+    keys = _keys(config_dir)
+    url = lambda ps, p: (ps.get(p) or {}).get("baseUrl") or ""  # noqa: E731
+    cleared = [p for p in PROVIDER_IDS if keys.get(p) and (new is None or url(old, p) != url(new, p))]
+    for p in cleared:
+        set_key(config_dir, p, "")
     return cleared
 
 
