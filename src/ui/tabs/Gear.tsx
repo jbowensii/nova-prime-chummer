@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { currentBuild, isCanon, itemCost, makeAmpAdd, makeBuy, makeSell } from '../../engine'
+import { currentBuild, itemCost, makeAmpAdd, makeBuy, makeSell } from '../../engine'
 import type { ItemEntry, ItemKind } from '../../model/types'
 import { newId } from '../../model/types'
-import { fmt, Modal, NonCanon, Picker } from '../bits'
+import { fmt, Modal, Picker } from '../bits'
+import { SourceLabel } from '../SourceLabel'
 import { useEditor } from '../editor'
 
 const SECTIONS: [ItemKind, string, string][] = [
@@ -69,9 +70,11 @@ export function GearTab() {
                   {items.map(i => {
                     const cat = i.catalogId ? c.items.get(i.catalogId) ?? i.snapshot : undefined
                     const amp = b.amps.find(a => a.linkedItem === i.uid)
+                    // a book amp's base item has no catalog id of its own: it comes from the amp's book
+                    const src = cat ?? (amp?.catalogId ? c.amps.get(amp.catalogId) ?? amp.snapshot : undefined)
                     return (
                       <tr key={i.uid}>
-                        <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{cat && !isCanon(c, cat) && <> <NonCanon source={cat.source} /></>}
+                        <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{' '}{src ? <SourceLabel c={c} source={src.source} page={src.page} id={src.id} /> : <SourceLabel builtByYou />}
                           <div className="muted" style={{ fontSize: '0.88rem' }}>
                             {i.kind === 'armor' && `Armor ${i.armor ?? 0}`}
                             {i.kind === 'weapon' && (() => { const w = d.weapons.find(x => x.uid === i.uid); return w && `DV ${w.dv} [${w.ranges}]${i.specialist ? ', specialist' : ''}${w.note ? `, ${w.note}` : ''}` })()}
@@ -109,8 +112,9 @@ export function GearTab() {
         {adding && <Picker onPick={pick}
           groups={[...new Set([...c.items.values()].filter(i => i.kind === adding).map(i => i.category ?? ''))].filter(Boolean)}
           items={[...c.items.values()].filter(i => i.kind === adding).map(i => ({
-            id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`, `${i.source} p.${i.page}`].filter(Boolean).join(', '),
-            nonCanon: !isCanon(c, i), text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
+            id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`].filter(Boolean).join(', '),
+            label: <SourceLabel c={c} source={i.source} page={i.page} id={i.id} />,
+            text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
           }))} />}
       </Modal>
 
