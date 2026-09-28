@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up specialization a book adds to a shipped skill: the loader appends it to Close Combat. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">
+  <skill id="close-combat" attr="agi" source="TEST" page="4"><name>Close Combat</name><spec id="close-combat.made-up-style" attr="agi" source="TEST" page="4">Made-up style</spec></skill>
+</ca2:data>

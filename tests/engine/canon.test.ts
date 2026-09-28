@@ -26,7 +26,7 @@ describe('sources', () => {
     expect(isCanon(cat, cat.amps.get('test.rush')!)).toBe(false)
   })
   test('a spec carries its own source, else its skill’s', () => {
-    expect(specSource(cat, 'close-combat.firearms')).toBe('DHSA')
+    expect(specSource(cat, 'close-combat.made-up-style')).toBe('TEST')
     expect(specSource(cat, 'close-combat.blades')).toBe('CRB')
     expect(specSource(cat, 'custom:Whips')).toBeUndefined()
   })
