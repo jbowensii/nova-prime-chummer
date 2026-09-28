@@ -13,3 +13,18 @@ __pycache__/
 /custom/
 /library/
 /VERSION
+
+# the core files: built by the core rulebook's import (custom/imported/core/) or a data pack. The owner's local copies
+# stay here, untracked: `npm run dev` serves them and the importer tests use them as the answer key.
+/public/data/ampeffects.xml
+/public/data/amptypes.xml
+/public/data/armor.xml
+/public/data/attributes.xml
+/public/data/levels.xml
+/public/data/lifestyles.xml
+/public/data/metatypes.xml
+/public/data/packages.xml
+/public/data/pricing.xml
+/public/data/skills.xml
+/public/data/vehicles.xml
+/public/data/weapons.xml
