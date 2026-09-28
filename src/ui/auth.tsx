@@ -40,7 +40,7 @@ export async function send(path: string, body?: unknown, method = 'POST'): Promi
   return r
 }
 
-export async function fetchMe(): Promise<{ user: User | null; setup: boolean }> {
+export async function fetchMe(): Promise<{ user: User | null; setup: boolean; oidc?: boolean }> {
   const r = await fetch('./api/auth/me', { cache: 'no-store' }).catch(() => null)
   return r?.ok ? r.json() : { user: null, setup: false }
 }
