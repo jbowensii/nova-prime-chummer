@@ -5,7 +5,8 @@
 // (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
 // Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s.
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
-// anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts).
+// anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts); datapack
+// export/import likewise (importer/datapack.py, run for real in datapack-python.test.ts).
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
@@ -201,6 +202,24 @@ if (cmd === 'run') {
     }
     if (kept) { mkdirSync(dirname(keysFile), { recursive: true }); writeFileSync(keysFile, kept) }
     console.log('<result state="restored" safety="stub.zip" />')
+  }
+} else if (cmd === 'datapack') { // target: export | import; the stub's "zip" is JSON behind a zip header (the real one: datapack-python.test.ts)
+  const MAGIC = 'PK\x03\x04\n', CORE = /^(ampeffects|amptypes|armor|attributes|levels|lifestyles|metatypes|packages|pricing|skills|vehicles|weapons)\.xml$/
+  const core = join(opt('--custom'), 'imported', 'core')
+  if (target === 'export') {
+    const names = existsSync(core) ? readdirSync(core).filter(n => CORE.test(n)) : []
+    if (!names.length) { process.stderr.write('there is no core data to put in a pack: import the core rulebook first\n'); process.exit(3) }
+    writeFileSync(opt('--out'), MAGIC + JSON.stringify({ app: opt('--version'), files: Object.fromEntries(names.map(n => [n, readFileSync(join(core, n), 'utf8')])) }))
+  } else {
+    let pack = null
+    try { pack = JSON.parse(readFileSync(rest[0], 'utf8').slice(MAGIC.length)) } catch { /* below */ }
+    if (!pack?.files) { process.stderr.write('this isn’t a readable zip file (stub)\n'); process.exit(3) }
+    const bad = Object.keys(pack.files).find(n => !CORE.test(n))
+    if (bad) { process.stderr.write(`the pack has a file a data pack can’t hold: ${bad} (only datapack.xml and the core files in core/)\n`); process.exit(3) }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400) // a window for the "nothing else runs meanwhile" tests
+    mkdirSync(core, { recursive: true })
+    for (const [n, text] of Object.entries(pack.files)) writeFileSync(join(core, n), text)
+    console.log(`<result state="imported" files="${Object.keys(pack.files).sort().join(' ')}" />`)
   }
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)

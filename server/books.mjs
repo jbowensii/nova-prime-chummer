@@ -27,6 +27,12 @@
 //   POST   /api/restore?preview=1     body: a backup zip -> { token, manifest }; the zip waits 30 min for its token
 //   POST   /api/restore/:token        replaces all three folders from that zip (a safety backup is kept) -> { ok }
 //                                     409 while a job, a write or a backup runs; every other write gets 409 while it runs
+//   POST   /api/datapack              ADMIN ONLY (Task 3 guards it): makes the data pack of custom/imported/core/ -> { token };
+//                                     the zip waits 10 min for its token; 409 when there is no core data
+//   GET    /api/datapack/:token       ADMIN ONLY: the pack, once, as chummer-anarchy2-datapack-<date>.zip
+//   POST   /api/datapack/import       ADMIN ONLY: body: a data pack zip (50 MB at most) -> { files: [name…] }, the core files it
+//                                     replaced (importer/datapack.py checks it all first); 409 while a job or another pack runs,
+//                                     and jobs wait for it. Both are counted writes (track), so a restore and they exclude each other.
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { createReadStream, createWriteStream, readdirSync, rmSync } from 'node:fs'
@@ -35,10 +41,11 @@ import { join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
 const MAX_PDF = 500 * 1024 * 1024
+const MAX_PACK = 50 * 1024 * 1024
 const MAX_ZIP = 20 * 1024 ** 3 // restore --check's limit on what a zip unpacks to: any backup the app makes fits
 const RESTORE_TIMEOUT = 4 * 3600 * 1000 // the safety backup and the unpack each copy everything
 // ours in library/.backups (a download's folder holds its zip), and a killed restore's safety-backup temp
-const TEMP_ZIP = /^download-[0-9a-f]+$|^upload-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/
+const TEMP_ZIP = /^(download|pack)-[0-9a-f]+$|^(upload|pack)-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/
 const MAX_XML = 5 * 1024 * 1024
 const JOB_TIMEOUT = 6 * 3600 * 1000 // ponytail: one cap for all jobs; an AI run over a big book takes hours (it resumes if cut)
 const BOOK_ID = /^[a-z0-9][a-z0-9-]{0,40}$/
@@ -88,6 +95,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
   const chains = { key: Promise.resolve(), edit: Promise.resolve() }
   let writes = 0, zipping = 0, restoring = false
+  let packing = false // a data pack being made or imported: one at a time, and no job starts meanwhile
   const spawned = new Set() // backup processes, stopped with the server
 
   const bookDir = id => {
@@ -112,7 +120,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         stdio: ['pipe', 'pipe', 'pipe'] })
       if (args[0] === 'list-models') listChild = p
       else if (args[0] === 'backup') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
-      else if (!['set-key', 'set-settings', 'edit', 'restore'].includes(args[0]) && !args.includes('--dry-run')) child = p
+      else if (!['set-key', 'set-settings', 'edit', 'restore', 'datapack'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -143,7 +151,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
 
   async function pump() {
-    if (running || !queue.length) return
+    if (running || packing || !queue.length) return
     running = queue.shift()
     try {
       for (const args of running.steps) {
@@ -353,10 +361,27 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
    *  and whose Library holds the core rulebook re-imports it, then the Conversion Guide and DHSA (their Tasking, Emerged
    *  and implant grades were core data before and now come with their books). Tried once per CRB file and app version
    *  (library/<id>/core-rebuild.xml): a book that can't give the whole core isn't re-imported on every start; a new
-   *  upload, a new version or the admin's Re-import tries again. */
+   *  upload, a new version or the admin's Re-import tries again.
+   *  A data pack's import marks that CRB file done for good (pack=, any version: the core came from the pack), so a
+   *  restart never re-imports the book over the pack; a different CRB file (a new upload) still is. */
   async function rebuildCore() {
     const have = await Promise.all(CORE_FILES.map(n => stat(join(customDir, 'imported', 'core', `${n}.xml`)).then(() => true, () => false)))
     if (have.every(Boolean)) return
+    const books = await coreBooks()
+    const crb = books.find(b => b.order === 0)
+    if (!crb) return
+    const marker = join(libraryDir, crb.id, 'core-rebuild.xml')
+    const tried = rootTag(await readOr(marker), 'rebuild')
+    if (tried && attr(tried, 'sha256') === crb.sha && (attr(tried, 'version') === version || attr(tried, 'pack'))) return
+    await writeAtomic(marker, `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
+    for (const b of books.sort((x, y) => x.order - y.order)) {
+      const dir = join(libraryDir, b.id)
+      await setStatus(b.id, 'queued', 'Re-importing to build the core data')
+      enqueue(b.id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(b.file ? ['--file', b.file] : [])]])
+    }
+  }
+  /** The Library's books whose recipe builds or completes the core (CRB, CG, DHSA), with their order and file. */
+  async function coreBooks() {
     const books = []
     for (const d of await readdir(libraryDir, { withFileTypes: true }).catch(() => [])) {
       if (!d.isDirectory() || !BOOK_ID.test(d.name) || busy(d.name)) continue
@@ -364,17 +389,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       const order = ['crb', 'cg', 'dhsa'].indexOf(attr(imp, 'recipe'))
       if (order >= 0) books.push({ id: d.name, order, file: attr(imp, 'file'), sha: attr(imp, 'sha256') ?? '' })
     }
-    const crb = books.find(b => b.order === 0)
-    if (!crb) return
-    const marker = join(libraryDir, crb.id, 'core-rebuild.xml')
-    const tried = rootTag(await readOr(marker), 'rebuild')
-    if (tried && attr(tried, 'sha256') === crb.sha && attr(tried, 'version') === version) return
-    await writeAtomic(marker, `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
-    for (const b of books.sort((x, y) => x.order - y.order)) {
-      const dir = join(libraryDir, b.id)
-      await setStatus(b.id, 'queued', 'Re-importing to build the core data')
-      enqueue(b.id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(b.file ? ['--file', b.file] : [])]])
-    }
+    return books
   }
   const started = sweep().then(rebuildCore).catch(e => console.error(e.stack))
   // zips left by a stop mid-download, mid-preview or mid-restore
@@ -395,7 +410,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** Tokens for a made backup (downloads) and an uploaded one (uploads): random, single use, and each map holds one at
    *  a time (a new one drops the old). The path is deleted on expiry, on replacement and on stop; on use, by the caller. */
-  const downloads = new Map(), uploads = new Map() // token -> { path, timer }
+  const downloads = new Map(), uploads = new Map(), packs = new Map() // token -> { path, timer }
   const take = (map, token) => {
     const t = map.get(token)
     if (!t) return null
@@ -438,14 +453,15 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 200, { token: await issue(downloads, folder, downloadTtl) })
   }
 
-  /** Step 2: the browser goes here, so the zip streams straight to disk with the browser's own progress. */
-  async function sendBackup(token, res) {
-    const folder = /^[0-9a-f]{32}$/.test(token) ? take(downloads, token) : null
-    if (!folder) throw fail(404, 'this backup has expired; make it again')
+  /** Step 2: the browser goes here, so the zip streams straight to disk with the browser's own progress. `kind`: backup or
+   *  datapack (its token map, its zip's name in the token's folder, the download's name). */
+  async function sendZip(kind, token, res) {
+    const folder = /^[0-9a-f]{32}$/.test(token) ? take(kind === 'backup' ? downloads : packs, token) : null
+    if (!folder) throw fail(404, kind === 'backup' ? 'this backup has expired; make it again' : 'this data pack has expired; make it again')
     res.on('close', () => void rm(folder, { recursive: true, force: true }).catch(() => {}))
-    const out = join(folder, 'backup.zip'), date = new Date().toISOString().slice(0, 10)
+    const out = join(folder, `${kind}.zip`), date = new Date().toISOString().slice(0, 10)
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Length': (await stat(out)).size,
-      'Content-Disposition': `attachment; filename="chummer-anarchy2-backup-${date}.zip"`, 'Cache-Control': 'no-store' })
+      'Content-Disposition': `attachment; filename="chummer-anarchy2-${kind}-${date}.zip"`, 'Cache-Control': 'no-store' })
     await pipeline(createReadStream(out), res).catch(() => {}) // a client that leaves mid-way: 'close' removes the folder
   }
 
@@ -483,6 +499,71 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
   }
 
+  /** Data pack step 1: `datapack export` into its own folder in library/.backups. The request is a counted write (track),
+   *  so no restore runs under it. -> { token } for sendZip('datapack'). */
+  async function makePack(res, send) {
+    if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    packing = true
+    const folder = join(backups, `pack-${randomBytes(12).toString('hex')}`)
+    let r
+    try {
+      await mkdir(folder, { recursive: true })
+      r = await importer(['datapack', 'export', '--custom', customDir, '--out', join(folder, 'datapack.zip'), '--version', version], { timeout: 5 * 60000 })
+    } finally {
+      packing = false
+      pump()
+    }
+    if (r.code !== 0) {
+      await rm(folder, { recursive: true, force: true }).catch(() => {})
+      const why = (await redact(r.err)).trim().split('\n').pop()
+      if (r.code === 3) throw fail(409, why || 'there is no core data to put in a pack')
+      return send(res, 500, { error: 'couldn’t make the data pack: ' + why })
+    }
+    return send(res, 200, { token: await issue(packs, folder, downloadTtl) })
+  }
+
+  /** Upload a data pack and import it: `datapack import` checks everything (names, sizes, manifest, hashes, schemas) before
+   *  it swaps the pack's core files in, all or none. Refused while a job runs; jobs queued meanwhile wait (pump). */
+  async function importPack(req, res, send) {
+    if (Number(req.headers['content-length']) > MAX_PACK) {
+      res.setHeader('Connection', 'close')
+      return send(res, 413, { error: 'the file is larger than 50 MB' })
+    }
+    if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
+    packing = true
+    const file = tempZip('pack')
+    let size = 0
+    try {
+      await mkdir(backups, { recursive: true })
+      await pipeline(req, async function* (src) {
+        for await (const c of src) {
+          if ((size += c.length) > MAX_PACK) throw fail(413, 'the file is larger than 50 MB')
+          yield c
+        }
+      }, createWriteStream(file, { flags: 'wx', mode: 0o600 }))
+      if ((await head(file))?.slice(0, 4) !== 'PK\x03\x04') throw fail(415, 'this file isn’t a data pack (not a zip file)')
+      const r = await importer(['datapack', 'import', file, '--custom', customDir], { timeout: 5 * 60000 })
+      const why = (await redact(r.err)).trim().split('\n').pop()
+      if (r.code === 3) throw fail(400, why || 'this file isn’t a data pack from this app')
+      const out = rootTag(r.out, 'result')
+      if (r.code !== 0 || !out) throw Object.assign(fail(500, 'couldn’t load the data pack: ' + why), { say: true })
+      // the core now comes from the pack: the start-up re-import leaves it alone (rebuildCore)
+      const crb = (await coreBooks()).find(b => b.order === 0)
+      if (crb) await writeAtomic(join(libraryDir, crb.id, 'core-rebuild.xml'),
+        `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" pack="${new Date().toISOString()}"/>\n`)
+      return send(res, 200, { files: (attr(out, 'files') ?? '').split(' ').filter(Boolean) })
+    } catch (e) {
+      if (e.code === 413) res.setHeader('Connection', 'close')
+      if (typeof e.code === 'number' && e.code !== 500) throw e
+      return send(res, 500, { error: e.say ? e.message : 'upload failed' })
+    } finally {
+      packing = false
+      await rm(file, { force: true })
+      pump()
+    }
+  }
+
   async function restore(token, send, res) {
     if (!/^[0-9a-f]{32}$/.test(token)) throw fail(404, 'this restore has expired; choose the file again')
     noRestore()
@@ -511,12 +592,18 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     const p = url.pathname, method = req.method
     if (p === '/api/backup' && method === 'POST') return makeBackup(req, res, url, send)
     const bt = p.match(/^\/api\/backup\/([^/]+)$/)
-    if (bt && method === 'GET') return sendBackup(bt[1], res)
+    if (bt && method === 'GET') return sendZip('backup', bt[1], res)
     if (p === '/api/backup' || bt) return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/restore' && method === 'POST' && url.searchParams.get('preview') === '1') return preview(req, res, send)
     const rt = p.match(/^\/api\/restore\/([^/]+)$/)
     if (rt && method === 'POST') return restore(rt[1], send, res)
     if (p === '/api/restore' || rt) return send(res, 405, { error: 'method not allowed' })
+    // data packs: ADMIN ONLY once accounts exist (Task 3)
+    if (p === '/api/datapack' && method === 'POST') return makePack(res, send)
+    if (p === '/api/datapack/import' && method === 'POST') return importPack(req, res, send)
+    const pt = p.match(/^\/api\/datapack\/([^/]+)$/)
+    if (pt && method === 'GET' && pt[1] !== 'import') return sendZip('datapack', pt[1], res)
+    if (p === '/api/datapack' || pt) return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/books' && method === 'POST') return upload(req, res, send)
     if (p === '/api/books' && method === 'GET') {
       await mkdir(libraryDir, { recursive: true })
@@ -611,7 +698,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const stop = () => {
     child?.kill(); listChild?.kill()
     for (const p of spawned) p.kill()
-    for (const map of [uploads, downloads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
+    for (const map of [uploads, downloads, packs]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
   }
   return { handle, stop, track, started, libraryDir: resolve(libraryDir) }
 }
