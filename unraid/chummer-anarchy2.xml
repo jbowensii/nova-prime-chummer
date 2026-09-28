@@ -6,6 +6,7 @@
   <Network>bridge</Network>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
+  <ExtraParams>--init</ExtraParams>
   <Support>https://github.com/jbowensii/chummer-anarchy2</Support>
   <Project>https://github.com/jbowensii/chummer-anarchy2</Project>
   <Overview>Character generator and career tracker for Shadowrun: Anarchy 2.0. Runners are saved as XML files in the Characters folder (deleted ones go to Characters/.trash). Put overlay XML (house rules, extra gear, private descriptions) in the Custom data folder and list it in custom/index.xml. Upload your PDFs on the Books page: they are kept in the Library folder and imported into Custom data/imported. LAN use: there is no login.</Overview>
