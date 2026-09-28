@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- library/<book-id>/status.xml: the importer's progress, polled by the Books page. Text is a message. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="status">
+    <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="state" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="converting"/><xs:enumeration value="identifying"/><xs:enumeration value="extracting"/>
+          <xs:enumeration value="done"/><xs:enumeration value="failed"/><xs:enumeration value="needs-ai"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="updated" type="xs:dateTime" use="required"/>
+    </xs:extension></xs:simpleContent></xs:complexType>
+  </xs:element>
+</xs:schema>
