@@ -268,7 +268,8 @@ it by hand, re-import instead.
 | `texts/<source>.xml` | its private descriptions |
 
 Load order: the shipped `public/data/`, then `imported/index.xml`, then the
-house rules in `custom/index.xml`, so house rules still win.
+edits layer (`custom/edits/`, below), then the house rules in
+`custom/index.xml`, so house rules still win.
 
 **Scoped ids.** The importer writes every entry's id as `<source>.<id>` in
 lower case (`crb.jazz`, `dhsa.jazz`), and every reference inside the book to
@@ -289,6 +290,28 @@ with each book's rating.
 writes the same files a recipe would, under the source id, title and canon
 status chosen on the review screen. A source id that a recipe, the shipped
 data or the user's `custom/sources.xml` owns can't be taken.
+
+## Edits layer (`custom/edits/`)
+
+Written by `python -m importer edit set|remove|add-source` (the app's Edit
+and Add entry buttons), never by hand:
+
+| file | what |
+|---|---|
+| `edits/edits.xml` | edited or added entries, full entries in the data format (`<amp>`, `<item>`, `<rule>`) |
+| `edits/texts.xml` | edited descriptions, same shape as `custom/texts/` |
+| `edits/sources.xml` | house-rule sources the user created (`canon="false"`) |
+
+An edited entry keeps its scoped id (`crb.jazz`); the edits file's entry
+replaces the imported one with that id at load time. A new entry gets an id
+`<houserule source lower>.<slug>` and needs a house-rule source (from
+`edits/sources.xml`) that exists.
+
+Load order: shipped `public/data/` → `imported/index.xml` → **`custom/edits/`**
+→ `custom/index.xml` house rules, so house rules still win over edits, and
+edits win over the book. The loader marks an edits-layer entry `edited: true`
+and keeps the entry it replaced (`original`) so the app can show "Edited"
+and offer "Restore book version".
 
 ## Overlays (`custom/`)
 
@@ -327,3 +350,34 @@ app's Data screen. The app keeps running on the base data.
   <level id="legend" nuyen="600000" attrAtMax="3" skillCap="7" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Street Legend</name></level>
 </ca2:data>
 ```
+
+## Backup zip
+
+`python -m importer backup` (Settings → **Backup** → "Download backup")
+writes a zip of the three volumes plus a manifest, root entries:
+
+```
+backup.xml
+characters/…
+custom/…
+library/…
+```
+
+- `characters/`, `custom/` and `library/` are copies of the folders those
+  names mount to in Docker; `library/.backups/` (the safety backups below)
+  is skipped so a backup never nests old backups.
+- `library/.config/ai-keys.xml` is included only when the download was made
+  with "Include my API keys" ticked (`?keys=1`); otherwise it's left out and
+  a restore never touches the target server's own key file.
+- `backup.xml`, schema `backup.xsd`: the app version (baked into the image
+  as `/app/VERSION` at build time, from `package.json`), the date it was
+  made, a file count and byte count per folder, and whether keys are
+  included. `restore --check` reads this to show the preview in the UI
+  before anyone confirms.
+
+`restore --apply` refuses a zip whose entries fall outside
+`characters/`, `custom/` or `library/`, or that carries an absolute path,
+`..`, a symlink or a device entry, or whose total uncompressed size is over
+20 GB. Before replacing anything it writes the server's current state as an
+automatic safety backup to `library/.backups/<timestamp>.zip`, keeping only
+the newest 3, then swaps each folder's contents in from the restored zip.

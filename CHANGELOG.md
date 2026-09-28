@@ -1,5 +1,26 @@
 # Release notes
 
+## 0.3.0 — 2026-09-28: edit the catalog, back up the server
+
+**Catalog edits**
+- An **Edit** button on any amp, item or rule (pickers, Game data, the Rules
+  page) opens the Amp Builder in catalog mode, or a form with a Description
+  box. Edits live in their own layer on the server, so a re-import never
+  touches them; an edited entry gets an **Edited** mark and a **Restore
+  book version** button.
+- **Add entry** creates a new amp, item or rule under a house-rule source
+  you name or pick.
+
+**Backup and restore**
+- Settings → **Backup**: **Download backup** zips up everything the server
+  keeps — runners, house rules and edits, imported books, uploaded PDFs and
+  AI settings — with "Include my API keys" left unticked by default.
+- **Restore from backup** uploads a zip, shows what's in it (date, app
+  version, file counts) before anything changes, then replaces the
+  server's data. The server saves its own current state first, to
+  `library/.backups` (newest 3 kept), so a restore can be undone.
+  Restores are capped at 20 GB.
+
 ## 0.2.0 — 2026-09-28: bring your own books
 
 The app no longer ships any book content. You upload the PDFs you own and it
