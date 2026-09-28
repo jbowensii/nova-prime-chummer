@@ -5,7 +5,8 @@ import statistics
 
 import pdfplumber
 
-CONVERTER_VERSION = "3"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid
+CONVERTER_VERSION = "4"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
+# 4: a word outside every grid cell goes to the nearest column (was: the last)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -60,8 +61,13 @@ def _inside(a, b):
     return b[0] <= a[0] and b[1] <= a[1] and a[2] <= b[2] and a[3] <= b[3]
 
 
+def _in_box(w, b):
+    """The word's centre lies in box b: the one test for which table a word belongs to."""
+    return b[0] <= (w["x0"] + w["x1"]) / 2 <= b[2] and b[1] <= (w["top"] + w["bottom"]) / 2 <= b[3]
+
+
 def _in_table(w, table_boxes):
-    return any(b[0] <= w["x0"] <= b[2] and b[1] <= w["top"] <= b[3] for b in table_boxes)
+    return any(_in_box(w, b) for b in table_boxes)
 
 
 def _cluster_lines(words):
@@ -170,14 +176,14 @@ def _table_cells(table, words):
     Columns empty in every row (gaps between rules) are dropped."""
     grid = [c for c in max(table.rows, key=lambda r: sum(c is not None for c in r.cells)).cells if c]
     tops = sorted({r.bbox[1] for r in table.rows})
-    x0, top, x1, bottom = table.bbox
     cells = [[[] for _ in grid] for _ in tops]
     for w in words:
-        cx, cy = (w["x0"] + w["x1"]) / 2, (w["top"] + w["bottom"]) / 2
-        if not (x0 <= cx <= x1 and top <= cy <= bottom):
+        if not _in_box(w, table.bbox):
             continue
+        cx, cy = (w["x0"] + w["x1"]) / 2, (w["top"] + w["bottom"]) / 2
         r = max(i for i, t in enumerate(tops) if t <= cy) if cy >= tops[0] else 0
-        c = next((i for i, g in enumerate(grid) if g[0] <= cx < g[2]), len(grid) - 1)
+        # the column holding the centre, else the nearest one (a word in a gap between cells)
+        c = min(range(len(grid)), key=lambda i: max(grid[i][0] - cx, 0, cx - grid[i][2]))
         cells[r][c].append(w)
     rows = [["\n".join(_line_text(line) for line in _cluster_lines(ws)) for ws in row] for row in cells]
     keep = [i for i in range(len(grid)) if any(r[i] for r in rows)]
@@ -236,8 +242,10 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
         for n, page in enumerate(pdf.pages[first - 1 : last], first):
             out.append(f"<!-- page {n} -->")
             found = page.find_tables()
-            # a table nested in another is a fragment of it (its words are in the outer one's cells)
-            tables = [t for t in found if not any(o is not t and _inside(t.bbox, o.bbox) for o in found)]
+            # a table nested in another is a fragment of it (its words are in the outer one's cells);
+            # of two with the same box, the first is kept
+            tables = [t for i, t in enumerate(found)
+                      if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
             boxes = [t.bbox for t in tables]
             all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
             words = [w for w in all_words if not _in_table(w, boxes)]

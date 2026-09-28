@@ -138,6 +138,7 @@ def rows(md):
             section = line[2:].strip()
         elif not line.startswith("|"):
             cols = None
+        # every table (so every page a list runs onto) repeats the header row; column roles come from it
         elif i + 1 < len(lines) and lines[i + 1].startswith("|---"):  # header row
             head = [_head(c).replace(" ", "").upper() for c in _cells(line)]
             cols = ["name"] + [("type" if h in ("TYPE", "RATING") else "pre" if h in ("RANGE", "ARMOR") else "cost")
