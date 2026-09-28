@@ -16,6 +16,7 @@ test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
 
 test.beforeAll(async () => {
+  process.env.ALLOW_INSECURE_OIDC = '1' // the fake issuer is plain http on 127.0.0.1
   issuer = await fakeIssuer()
   const dir = mkdtempSync(join(tmpdir(), 'ca2-oidc-e2e-'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
@@ -97,5 +98,9 @@ test('Users: an Authelia account shows no password actions', async ({ page }) =>
   await page.goto('/#/users')
   await expect(page.getByRole('button', { name: 'Edit Kim Player' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reset Kim Player’s password' })).toHaveCount(0)
+  await expect(page.getByRole('row', { name: /Kim Player/ })).toContainText('Authelia (linked)') // linked at the sign-in above
+  await page.getByRole('button', { name: 'Unlink Kim Player from Authelia' }).click()
+  await expect(page.getByRole('status')).toHaveText('Kim Player is unlinked from Authelia. The next Authelia sign-in as kim links it again.')
+  await expect(page.getByRole('row', { name: /Kim Player/ })).toContainText('Authelia (not signed in yet)')
   await expect(page.getByRole('button', { name: 'Reset Ada Admin’s password' })).toBeVisible()
 })

@@ -98,6 +98,13 @@ export function UsersScreen() {
     void refresh()
   }
 
+  // the account forgets which Authelia user it belongs to: the next Authelia sign-in with its username links it again
+  const unlink = async (u: Account) => {
+    setMsg(null)
+    try { await send(`users/${u.id}/unlink`); setMsg({ text: `${u.name} is unlinked from Authelia. The next Authelia sign-in as ${u.username} links it again.` }) }
+    catch (e) { setMsg({ text: `Couldn’t unlink ${u.name}. ${(e as Error).message}`, err: true }) }
+    void refresh()
+  }
   const d = dialog
   const theirs = d && d.at !== 'add' ? runners.filter(r => r.owner === d.u.username) : []
   return (
@@ -120,12 +127,13 @@ export function UsersScreen() {
                 <tr key={u.id} className={u.enabled ? undefined : 'off'}>
                   <td><b>{u.name}</b>{u.id === me?.id && <span className="muted"> (you)</span>}</td>
                   <td>{u.username}</td><td>{u.email ?? <span className="muted">None</span>}</td><td>{ROLE_NAMES[u.role]}</td>
-                  <td>{METHOD_NAMES[u.method]}</td><td>{u.enabled ? 'Enabled' : 'Disabled'}</td><td>{when(u.lastLogin)}</td>
+                  <td>{METHOD_NAMES[u.method]}{u.method === 'authelia' && <span className="muted">{u.linked ? ' (linked)' : ' (not signed in yet)'}</span>}</td><td>{u.enabled ? 'Enabled' : 'Disabled'}</td><td>{when(u.lastLogin)}</td>
                   <td className="num">{u.runners}</td>
                   <td><div className="row">
                     <button className="btn small" aria-label={`Edit ${u.name}`} onClick={() => open({ at: 'edit', u })}>Edit</button>
                     {u.method === 'password' && <button className="btn small quiet" aria-label={`Reset ${u.name}’s password`} onClick={() => open({ at: 'reset', u })}>Reset password</button>}
                     <button className="btn small quiet" aria-label={`${u.enabled ? 'Disable' : 'Enable'} ${u.name}`} onClick={() => void toggle(u)}>{u.enabled ? 'Disable' : 'Enable'}</button>
+                    {u.linked && <button className="btn small quiet" aria-label={`Unlink ${u.name} from Authelia`} onClick={() => void unlink(u)}>Unlink Authelia</button>}
                     {u.runners > 0 && <button className="btn small quiet" aria-label={`Move ${u.name}’s runners`} onClick={() => open({ at: 'move', u })}>Move runners</button>}
                     <button className="btn small quiet" aria-label={`Delete ${u.name}`} onClick={() => open({ at: 'delete', u })}>Delete</button>
                   </div></td>
