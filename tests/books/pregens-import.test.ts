@@ -12,13 +12,16 @@ import { ampCtx, ampRating } from '../../src/engine/amps'
 import { xmlToCharacter } from '../../src/engine/charxml'
 import { parseCharacterFile } from '../../src/engine/file'
 import { derive } from '../../src/engine/derive'
+import { buildCatalog } from '../../src/engine/load'
 import { validate } from '../../src/engine/validate'
 import type { Character } from '../../src/model/types'
-import { bookFile, books } from '../helpers'
+import { bookFile, books, loadDir } from '../helpers'
 
 const LIBRARY_DIR = process.env.LIBRARY_DIR ?? '.extract/private/library'
 const CUSTOM_DIR = process.env.CUSTOM_DIR ?? '.extract/private/custom'
 const samplesXml = join(CUSTOM_DIR, 'imported', 'samples.xml')
+// the catalog the app loads with these imports: the samples' catalog ids (crb.spell-…) point into it
+const imported = books && existsSync(join(CUSTOM_DIR, 'imported', 'index.xml')) ? buildCatalog(await loadDir(CUSTOM_DIR)) : null
 
 const doc = (p: string) => new DOMParser().parseFromString(readFileSync(p, 'utf8'), 'text/xml')
 const attrsOf = (e: Element) => Object.fromEntries([...e.attributes].map(a => [a.name, a.value]))
@@ -62,7 +65,7 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         d!.pools.find(q => q.skill === skill && (q.spec ?? null) === spec && q.attr === attr)?.dp
 
       test('every catalog reference resolves', () => {
-        expect(validate(books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
+        expect(validate(imported ?? books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
       })
 
       test('pools, thresholds and Essence the recipe marked ok are what the engine gives', () => {
@@ -101,6 +104,27 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
           matrix: t(d).matrix?.[0], essence: d!.essence })
           .toEqual({ attributes: r.character.build.attributes, pools: [], none: t(o).physicalNone[0], worn: worn(o),
             mental: t(o).mental[0], matrix: t(o).matrix?.[0], essence: o.essence })
+      })
+
+      // Items as the hand encoding has them, as a multiset of (kind, catalog id or name). Allowed differences are
+      // representation only: an equipment Amp the hand also listed as gear, Clothes worn as armor where the hand
+      // kept them as gear, the Fake SIN and Commlink every stat page prints, and a "(…)" note on a name.
+      test.runIf(src === 'CRB')('same items as the hand-encoded runner', () => {
+        const r = parseCharacterFile(readFileSync(bookFile(`samples/${id}.ca2.json`), 'utf8'))
+        if (!r.ok) throw new Error(r.reason)
+        const hand = r.character.build.items
+        const norm = (s: string) => s.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+        const key = (i: { kind: string; name: string; catalogId?: string }) => `${i.kind}:${i.catalogId?.replace(prefix, '') ?? norm(i.name)}`
+        const handGear = new Set(hand.filter(i => i.kind === 'gear').map(i => norm(i.name)))
+        const ampNames = new Set(ch.build.amps.filter(a => a.type === 'equipment').map(a => norm(a.name)))
+        const worn = new Set(ch.build.items.filter(i => i.kind === 'armor').map(i => norm(i.name)))
+        const count = (xs: string[]) => xs.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map<string, number>())
+        const mine = count(ch.build.items.filter(i => !(i.kind === 'gear' && ['fake sin', 'commlink'].includes(norm(i.name)))
+          && !(i.kind === 'armor' && handGear.has(norm(i.name)))).map(key))
+        const theirs = count(hand.filter(i => !(i.kind === 'gear' && (ampNames.has(norm(i.name)) || worn.has(norm(i.name))))).map(key))
+        const diff = [...new Set([...mine.keys(), ...theirs.keys()])].filter(k => mine.get(k) !== theirs.get(k))
+          .map(k => `${k}: generated ${mine.get(k) ?? 0}, hand ${theirs.get(k) ?? 0}`)
+        expect(diff).toEqual([])
       })
 
       test.runIf(!!oracle[id])('every number the hand-encoded runner was tested on', () => {
