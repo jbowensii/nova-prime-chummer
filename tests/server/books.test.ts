@@ -1,6 +1,6 @@
 // @vitest-environment node
 // Books API with a stub worker (tests/fixtures/stub-worker.mjs) in place of `python -m importer`.
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,6 +13,8 @@ const custom = join(dir, 'custom'), library = join(dir, 'library')
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 beforeAll(() => new Promise<void>(ok => {
+  mkdirSync(join(library, 'stale-1'), { recursive: true }) // left mid-import by a restart
+  writeFileSync(join(library, 'stale-1', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
   srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
@@ -94,7 +96,7 @@ test('AI settings: keys are write-only', async () => {
   let x = await (await fetch(`${base}/api/ai-settings`)).text()
   expect(x).toContain('<key provider="anthropic" set="false"/>')
   const providers = '<?xml version="1.0"?>\n<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"/></ca2:aiproviders>'
-  expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers })).status).toBe(204)
+  expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers })).status).toBe(200)
   expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers.replace('</ca2', '<key provider="anthropic">k</key></ca2') })).status).toBe(400)
   const keys = '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-TOPSECRET999</key><key provider="bogus">x</key></ca2:aikeys>'
   expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: keys })).status).toBe(204)
@@ -105,6 +107,28 @@ test('AI settings: keys are write-only', async () => {
   expect(x).toContain('<key provider="anthropic" set="true"/>')
   expect(x).not.toContain('TOPSECRET')
   expect(x).not.toContain('bogus')
+})
+
+test('changing a provider address clears its key', async () => {
+  const providers = (url: string) => `<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"${url}/></ca2:aiproviders>`
+  expect(await (await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers('') })).json()).toEqual({ cleared: [] })
+  expect(await (await fetch(`${base}/api/ai-settings`)).text()).toContain('<key provider="anthropic" set="true"/>')
+  const r = await (await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers(' baseUrl="http://evil.example"') })).json()
+  expect(r).toEqual({ cleared: ['anthropic'], message: 'Key cleared because the address changed — enter it again' })
+  expect(await (await fetch(`${base}/api/ai-settings`)).text()).toContain('<key provider="anthropic" set="false"/>')
+  expect(readFileSync(join(library, '.config', 'ai-keys.xml'), 'utf8')).not.toContain('TOPSECRET')
+})
+
+test('concurrent key saves both land', async () => {
+  const put = (p: string, k: string) => fetch(`${base}/api/ai-keys`, { method: 'PUT', body: `<key provider="${p}">${k}</key>` })
+  const rs = await Promise.all([put('openai', 'k-one-1111'), put('gemini', 'k-two-2222'), put('anythingllm', 'k-three-3333')])
+  expect(rs.map(r => r.status)).toEqual([204, 204, 204])
+  const x = await (await fetch(`${base}/api/ai-settings`)).text()
+  for (const p of ['openai', 'gemini', 'anythingllm']) expect(x).toContain(`<key provider="${p}" set="true"/>`)
+})
+
+test('a book left mid-job by a restart is marked interrupted', async () => {
+  expect(await waitFor('stale-1', 'failed')).toMatchObject({ message: 'Interrupted by a restart — re-import' })
 })
 
 test('AI proposals: dry run, propose, review, apply', async () => {

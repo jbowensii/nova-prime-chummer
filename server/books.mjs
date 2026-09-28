@@ -12,7 +12,7 @@
 //   GET    /api/review/:id            -> review.xml
 //   PUT    /api/review/:id            body: review.xml with decisions; ?apply=1&source=&name=&canon= writes the overlay
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
-//   PUT    /api/ai-settings           body: ai-providers.xml
+//   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed)
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
@@ -56,7 +56,8 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
   const queue = []
-  let running = null
+  let running = null, child = null
+  let keyChain = Promise.resolve() // key writes are read-modify-write in the importer: one at a time
 
   const bookDir = id => {
     if (!BOOK_ID.test(id)) throw fail(400, 'bad book id')
@@ -76,6 +77,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       let out = '', err = ''
       const p = spawn(cmd, [...pre, '-m', 'importer', ...args], { cwd: importerRoot, timeout, windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'] })
+      if (args[0] !== 'set-key' && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -196,11 +198,43 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw fail(400, 'bad keys document')
     const keys = [...text.matchAll(/<key\s+provider="([a-z]+)"\s*(?:\/>|>([^<]*)<\/key>)/g)].filter(m => PROVIDERS.includes(m[1]))
     if (!keys.length) throw fail(400, 'no <key provider="…"> for a known provider')
-    for (const [, provider, value = ''] of keys) {
-      const r = await importer(['set-key', libraryDir, provider], { input: unesc(value).trim(), timeout: 30000 })
+    for (const [, provider, value = ''] of keys) await setKey(provider, unesc(value).trim())
+  }
+
+  function setKey(provider, value) {
+    const run = keyChain.then(async () => {
+      const r = await importer(['set-key', libraryDir, provider], { input: value, timeout: 30000 })
       if (r.code !== 0) throw fail(500, 'couldn’t store the key: ' + (await redact(r.err)).trim().split('\n').pop())
+    })
+    keyChain = run.catch(() => {})
+    return run
+  }
+
+  const baseUrls = xml => Object.fromEntries([...(xml ?? '').matchAll(/<provider\b[^>]*>/g)].map(m => [attr(m[0], 'id'), attr(m[0], 'baseUrl') ?? '']))
+
+  /** Save ai-providers.xml. A key is only sent to the address it was entered for: when a provider's base
+   *  URL changes, its key is cleared first (else an edited URL would carry the stored key to any host). */
+  async function putSettings(xml) {
+    const before = baseUrls(await readOr(join(config, 'ai-providers.xml'))), after = baseUrls(xml)
+    const keys = await readOr(join(config, 'ai-keys.xml'), '')
+    const cleared = PROVIDERS.filter(p => p in after && (before[p] ?? '') !== after[p]
+      && new RegExp(`<key\\s+provider="${p}"\\s*>\\s*[^<\\s]`).test(keys))
+    for (const p of cleared) await setKey(p, '')
+    await mkdir(config, { recursive: true })
+    await writeAtomic(join(config, 'ai-providers.xml'), xml)
+    return cleared
+  }
+
+  /** After a restart no job is running, so a book left mid-job would look stuck forever. */
+  async function sweep() {
+    const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
+    for (const d of await readdir(libraryDir, { withFileTypes: true }).catch(() => [])) {
+      if (!d.isDirectory() || !BOOK_ID.test(d.name) || busy(d.name)) continue
+      const st = attr(rootTag(await readOr(join(libraryDir, d.name, 'status.xml')), 'status'), 'state')
+      if (live.includes(st)) await setStatus(d.name, 'failed', 'Interrupted by a restart — re-import')
     }
   }
+  sweep()
 
   async function handle(req, res, url, send) {
     const p = url.pathname, method = req.method
@@ -214,9 +248,8 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     if (p === '/api/ai-settings' && method === 'PUT') {
       const xml = xmlBody(await body(req), 'ca2:aiproviders')
       if (!xml.includes(`xmlns:ca2="${CONFIG_NS}"`) || /<key\b/.test(xml)) throw fail(400, 'provider settings only; keys go to /api/ai-keys')
-      await mkdir(config, { recursive: true })
-      await writeAtomic(join(config, 'ai-providers.xml'), xml)
-      return send(res, 204, '', 'text/plain')
+      const cleared = await putSettings(xml)
+      return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
     if (p === '/api/ai-keys' && method === 'PUT') {
       await putKeys(req)
@@ -288,5 +321,6 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return send(res, 405, { error: 'method not allowed' })
   }
 
-  return { handle, libraryDir: resolve(libraryDir) }
+  // shutdown: stop the running importer; the next start marks its book interrupted
+  return { handle, stop: () => child?.kill(), libraryDir: resolve(libraryDir) }
 }
