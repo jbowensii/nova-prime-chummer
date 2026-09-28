@@ -6,6 +6,7 @@ from importer.convert import convert
 from importer.tests.minipdf import (
     single_column_with_outlier_pdf,
     two_column_page_pdf,
+    two_columns_uneven_sidebar_pdf,
     two_columns_with_band_pdf,
     two_page_pdf,
 )
@@ -68,6 +69,15 @@ class ConvertTest(unittest.TestCase):
                 "Right four",
                 "Right five",
             ],
+        )
+
+    def test_uneven_sidebar_column_is_not_interleaved_with_main_column(self):
+        # A short sidebar (2 lines) next to a long main column (5 lines) is
+        # still a real gutter and must come out as two blocks, not
+        # interleaved by y with the main column.
+        _, _, lines = _convert_to_lines(two_columns_uneven_sidebar_pdf(), "sidebar")
+        self.assertEqual(
+            lines, ["Left0", "Left1", "Left2", "Left3", "Left4", "Side0", "Side1"]
         )
 
 

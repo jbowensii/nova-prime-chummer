@@ -10,8 +10,7 @@ _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visu
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
 # (k-means on x0) if a 3+ column layout shows up in practice.
 _MIN_GUTTER = 20  # pt; also doubles as "this word gap is a column jump, not word spacing"
-_MIN_LINES_PER_SIDE = 3
-_MIN_SIDE_FRACTION = 0.30
+_MIN_LINES_PER_SIDE = 2
 _MAX_CROSS_FRACTION = 0.10
 
 
@@ -76,11 +75,14 @@ def _find_gutter(words, lines, page_width):
     """Return a column-split x, or None if the page doesn't look 2-column.
 
     A candidate gutter (the biggest x0 gap among words) is only accepted
-    when it actually separates *lines* into two real column clusters: each
-    side needs a handful of lines and a real share of the page's lines, and
-    very few lines may cross it (occasional full-width tables/headings are
-    expected, but if most lines cross it, it isn't a gutter — it's just an
-    indent or a centered line).
+    when it actually separates *lines* into two real column clusters: what
+    marks a real gutter is that body lines' x-extents stop before it on
+    each side (few lines cross it — occasional full-width tables/headings
+    are expected, but if most lines cross it, it's just an indent or a
+    centered line, not a gutter). Each side also needs at least a couple of
+    lines so a single stray line can't manufacture a "column" of its own —
+    but no minimum *share* of the page's lines, so a short sidebar/callout
+    column next to a much longer main column still counts.
     """
     if len(words) < 4 or not lines:
         return None
@@ -99,13 +101,7 @@ def _find_gutter(words, lines, page_width):
         else:
             cross += 1
     total = left + right + cross
-    if (
-        left < _MIN_LINES_PER_SIDE
-        or right < _MIN_LINES_PER_SIDE
-        or left / total < _MIN_SIDE_FRACTION
-        or right / total < _MIN_SIDE_FRACTION
-        or cross / total >= _MAX_CROSS_FRACTION
-    ):
+    if left < _MIN_LINES_PER_SIDE or right < _MIN_LINES_PER_SIDE or cross / total >= _MAX_CROSS_FRACTION:
         return None
     return mid
 
