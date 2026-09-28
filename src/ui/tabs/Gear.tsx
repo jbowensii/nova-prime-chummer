@@ -4,6 +4,7 @@ import type { ItemEntry, ItemKind } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
 import { SourceLabel } from '../SourceLabel'
+import { EditButton } from '../EditEntry'
 import { useEditor } from '../editor'
 
 const SECTIONS: [ItemKind, string, string][] = [
@@ -115,6 +116,7 @@ export function GearTab() {
             id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`].filter(Boolean).join(', '),
             label: <SourceLabel c={c} source={i.source} page={i.page} id={i.id} />, search: `${i.source} ${c.sources.get(i.source)?.name ?? ''} p.${i.page}`,
             text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
+            action: <EditButton kind="items" id={i.id} name={i.name} />,
           }))} />}
       </Modal>
 
