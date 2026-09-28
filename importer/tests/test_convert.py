@@ -4,7 +4,9 @@ import unittest
 
 from importer.convert import convert
 from importer.tests.minipdf import (
+    JUSTIFIED_WORDS,
     bullets_then_indented_block_pdf,
+    justified_paragraph_pdf,
     single_column_with_outlier_pdf,
     two_column_page_pdf,
     two_columns_uneven_sidebar_pdf,
@@ -88,6 +90,12 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(
             lines, [f"- Bullet {i}" for i in range(6)] + ["Indented one", "Indented two", "After one", "After two"]
         )
+
+    def test_justified_wide_word_gaps_keep_lines_intact(self):
+        # Wide justified word gaps (> 1 em) that shift from line to line are
+        # not a gutter, even where a few consecutive lines happen to align.
+        _, _, lines = _convert_to_lines(justified_paragraph_pdf(), "justified")
+        self.assertEqual(lines, [" ".join(ws) for ws in JUSTIFIED_WORDS])
 
 
 if __name__ == "__main__":

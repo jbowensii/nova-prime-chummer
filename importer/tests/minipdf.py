@@ -19,6 +19,10 @@ for the test.
   x=72 followed BELOW them by a 2-line indented block at x=320 — a single
   column (nothing sits side by side), not a two-column page. Body text
   resumes at x=72 after the block.
+- `justified_paragraph_pdf()`: one page, a single justified paragraph whose
+  word gaps are wide (15-30pt, i.e. > 1 em) and fall at different x on
+  each line, except that three consecutive lines happen to share a wide
+  gap near x=232. One column; every line must come out intact.
 """
 
 PAGE1_OPS = """BT /F1 24 Tf 72 720 Td (Shadow Test) Tj ET
@@ -107,6 +111,25 @@ BT /F1 10 Tf 72 570 Td (After one) Tj ET
 BT /F1 10 Tf 72 550 Td (After two) Tj ET
 """
 
+# Word x positions per line (10pt Helvetica, 4-letter words ~22pt wide).
+# Lines 0-2 share a 30pt gap at x~217..247; lines 3-7 have a word over it.
+_JUSTIFIED_XS = [
+    [72, 112, 152, 192, 247, 287, 327],
+    [72, 110, 150, 192, 247, 290, 330],
+    [72, 114, 155, 192, 247, 285, 328],
+    [72, 108, 145, 215, 258, 300, 340],
+    [72, 120, 170, 222, 262, 305, 342],
+    [72, 105, 160, 205, 250, 292, 335],
+    [72, 118, 158, 226, 270, 310, 345],
+    [72, 111, 149, 210, 255, 298, 338],
+]
+JUSTIFIED_WORDS = [[f"w{i}{j}ab" for j in range(len(xs))] for i, xs in enumerate(_JUSTIFIED_XS)]
+JUSTIFIED_OPS = "".join(
+    f"BT /F1 10 Tf {x} {750 - 14 * i} Td ({word}) Tj ET\n"
+    for i, xs in enumerate(_JUSTIFIED_XS)
+    for x, word in zip(xs, JUSTIFIED_WORDS[i])
+)
+
 
 def _content_stream(ops: str) -> bytes:
     data = ops.encode("latin-1")
@@ -189,3 +212,8 @@ def two_columns_uneven_sidebar_pdf() -> bytes:
 def bullets_then_indented_block_pdf() -> bytes:
     """One-page PDF: short bullets, then an indented block below them."""
     return _build_pdf([BULLETS_INDENT_OPS])
+
+
+def justified_paragraph_pdf() -> bytes:
+    """One-page PDF: one justified paragraph with wide, shifting word gaps."""
+    return _build_pdf([JUSTIFIED_OPS])
