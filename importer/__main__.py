@@ -92,9 +92,10 @@ def _same_source(book_dir, source):
     return [i for i in imps if i is not None and (i.get("source") or "").lower() == source.lower()]
 
 
-def remove(book_dir, custom_dir, forget=False):
+def remove(book_dir, custom_dir, forget=False, status=True):
     """Undo a book's import: its overlay files, and (unless another book imports the same source) the
-    source's folder, texts and samples; then its import record (`forget`: the whole library/<id>).
+    source's folder, texts and samples; then its import record (`forget`: the whole library/<id>) and,
+    unless `status` is False (a caller mid-job), status "removed".
     Rebuilds custom/imported/index.xml and sources.xml. A re-import runs this first, so nothing an
     earlier import wrote outlives it."""
     library = os.path.dirname(os.path.normpath(book_dir))
@@ -126,7 +127,8 @@ def remove(book_dir, custom_dir, forget=False):
     else:
         if imp is not None:
             xmlio.write_import(book_dir, **{k: imp.get(k) for k in ("file", "sha256", "converter", "pages", "score")})
-        xmlio.write_status(book_dir, "removed")
+        if status:
+            xmlio.write_status(book_dir, "removed")
     if os.path.isdir(os.path.join(custom_dir, "imported")):
         xmlio.update_index(custom_dir)
         xmlio.update_sources(custom_dir, library)
@@ -183,7 +185,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
                  for (f, kind), r in rows.items()}
         old = xmlio.read_import(book_dir)
         rec = {k: old.get(k) for k in ("file", "sha256", "converter", "pages", "score")} if old is not None else {}
-        remove(book_dir, custom_dir)  # a second apply replaces the first
+        remove(book_dir, custom_dir, status=False)  # a second apply replaces the first; the book stays applying
         out_dir = os.path.join(custom_dir, "imported", source.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in files.values()))
         for f, xml in files.items():
