@@ -251,9 +251,13 @@ def _extract(path, dirs, news):
                     shutil.copyfileobj(src, out, 1024 * 1024)
     keys = os.path.join(news["library"], ".config", "ai-keys.xml")
     old_keys = os.path.join(dirs["library"], ".config", "ai-keys.xml")
-    if not has_keys and os.path.isfile(old_keys):  # a backup without keys keeps the server's keys
+    if not has_keys and os.path.isfile(old_keys):  # a backup without keys keeps the server's keys ...
         os.makedirs(os.path.dirname(keys), exist_ok=True)
         shutil.copy2(old_keys, keys)
+        # ... except where the restored settings send a provider to another address (the rule saving settings keeps)
+        from importer.ai import providers  # here: it needs the AI clients, which backup and check don't
+        providers.clear_moved_keys(os.path.dirname(keys), providers.saved_providers(os.path.dirname(old_keys)) or {},
+                                   providers.saved_providers(os.path.dirname(keys)))
     if os.path.exists(keys):
         os.chmod(keys, 0o600)
 

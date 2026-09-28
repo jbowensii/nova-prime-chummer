@@ -198,6 +198,34 @@ class BackupTest(unittest.TestCase):
         self.assertEqual(Path(dst["library"], ".config", "ai-providers.xml").read_text(encoding="utf8"), "<aiproviders/>")
         self.assertEqual(Path(dst["characters"], "runner-1.xml").read_text(encoding="utf8"), "<runner>Ghost new</runner>")
 
+    def test_kept_keys_never_follow_a_restored_address(self):
+        """A keyless backup whose settings send a provider elsewhere: that provider's key is dropped, the others stay
+        (the rule saving settings keeps: a key only goes to the address it was entered for)."""
+        from importer.ai import providers
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root), state(dst_root)
+        row = lambda p, url: f'<provider id="{p}" enabled="true" baseUrl="{url}"/>'  # noqa: E731
+        settings = lambda *rows: f'<ca2:aiproviders xmlns:ca2="{providers.NS}" version="1">{"".join(rows)}</ca2:aiproviders>'  # noqa: E731
+        Path(src["library"], ".config", "ai-providers.xml").write_text(
+            settings(row("openai", "https://evil.example/v1"), row("gemini", "https://g.example")), encoding="utf8")
+        cfg = os.path.join(dst["library"], ".config")
+        Path(cfg, "ai-providers.xml").write_text(
+            settings(row("openai", "https://api.openai.com/v1"), row("gemini", "https://g.example")), encoding="utf8")
+        os.remove(os.path.join(cfg, "ai-keys.xml"))
+        for p, k in (("openai", "sk-openai-KEPT"), ("gemini", "gm-KEPT"), ("anthropic", "sk-ant-KEPT")):
+            providers.set_key(cfg, p, k)
+        z = os.path.join(src_root, "nokeys.zip")
+        backup.backup(src, z)
+        backup.apply(z, dst)
+        self.assertIn("evil.example", providers.read_providers(cfg)[1]["openai"]["baseUrl"])
+        self.assertIsNone(providers.read_key(cfg, "openai"))
+        self.assertEqual((providers.read_key(cfg, "gemini"), providers.read_key(cfg, "anthropic")), ("gm-KEPT", "sk-ant-KEPT"))
+        # settings that can't be read send nothing anywhere a key was entered for: every kept key goes
+        Path(src["library"], ".config", "ai-providers.xml").write_text("<not closed", encoding="utf8")
+        backup.backup(src, z)
+        backup.apply(z, dst)
+        self.assertEqual([p for p in providers.PROVIDER_IDS if providers.read_key(cfg, p)], [])
+
     def test_backups_pruned_to_three(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root), state(dst_root)
