@@ -1,6 +1,8 @@
 """AI proposals for a book no recipe knows: split book.md by headings, ask the model for each chunk's
 amps, items, spells and complex forms (schema.py), check each against the shipped mechanics with
-the reference rules of tools/validate-data.mjs, and write library/<id>/review.xml for the user."""
+the reference rules of tools/validate-data.mjs, and write library/<id>/review.xml for the user.
+Model output is untrusted: every value is type-checked, cleaned and escaped before it reaches XML."""
+import hashlib
 import json
 import os
 import re
@@ -9,7 +11,7 @@ from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
 from importer import xmlio
-from importer.ai.providers import ProviderError
+from importer.ai.providers import ProviderError, TruncatedReply
 from importer.ai.schema import SCHEMA
 
 DATA = os.path.join(os.path.dirname(__file__), "..", "..", "public", "data")
@@ -17,6 +19,10 @@ LIMIT = 12000
 HEADING = re.compile(r"^#{1,2} ", re.M)
 PAGE = re.compile(r"<!-- page (\d+) -->")
 PREFIX = {"spell": "spell-", "complex-form": "cf-", "gear": "gear-"}  # as the shipped files name them
+ITEM_KINDS = ("gear", "weapon", "armor")
+CATEGORIES = {"spell": ("combat", "detection", "health", "illusion", "manipulation"), "complex-form": ("sustained", "instant")}
+KEYS = ("amps", "items", "spells", "complexForms")
+ILLEGAL = re.compile("[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE000, 0xFFFD, 0x10000, 0x10FFFF))))  # not in XML 1.0
 
 
 def chunks(md, limit=LIMIT):
@@ -46,6 +52,12 @@ def chunks(md, limit=LIMIT):
     return result
 
 
+def count_chunks(book_md):
+    """How many requests proposing this book.md takes (the Books page shows it before the user confirms)."""
+    with open(book_md, encoding="utf8") as f:
+        return len(chunks(f.read()))
+
+
 def mechanics(data_dir=DATA):
     def ids(name, tag):
         return {e.get("id") for e in ET.parse(os.path.join(data_dir, name)).getroot() if e.tag == tag}
@@ -55,8 +67,20 @@ def mechanics(data_dir=DATA):
             "skills": {s.get("id") for s in skills.iter("skill")}, "specs": {s.get("id") for s in skills.iter("spec")}}
 
 
+def _text(v):
+    """A model value as clean text (numbers allowed), or None for null/lists/objects/booleans."""
+    if isinstance(v, bool) or not isinstance(v, (str, int, float)):
+        return None
+    return ILLEGAL.sub("", str(v)).strip() or None
+
+
+def _pos(v):
+    return v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+
+
 def amp_notes(amp, m):
-    """validate-data.mjs's amp checks: the type, each effect ref, and rr-skill/rr-spec/rr-attr params."""
+    """validate-data.mjs's amp checks: the type, each effect ref, and rr-skill/rr-spec/rr-attr params.
+    `amp` holds clean text values (see _amp)."""
     notes = [] if amp.get("type") in m["amptypes"] else [f'unknown amp type "{amp.get("type")}"']
     for e in amp.get("effects") or []:
         ref, param = e.get("ref"), e.get("param")
@@ -66,11 +90,29 @@ def amp_notes(amp, m):
             continue  # an open pick: the player chooses in the Amp Builder
         elif ref == "rr-skill" and param not in m["skills"]:
             notes.append(f'unknown skill "{param}" for rr-skill')
-        elif ref == "rr-spec" and param not in m["specs"] and not str(param).startswith("custom:"):
+        elif ref == "rr-spec" and param not in m["specs"] and not param.startswith("custom:"):
             notes.append(f'unknown specialization "{param}" for rr-spec')
         elif ref == "rr-attr" and param not in m["attributes"]:
             notes.append(f'unknown attribute "{param}" for rr-attr')
     return notes
+
+
+def _amp(a):
+    """(clean amp, shape notes): effects must be a list of objects, printedRating an integer."""
+    notes, effects = [], a.get("effects")
+    if not isinstance(effects, list):
+        notes += [] if effects is None else ["effects isn’t a list; dropped"]
+        effects = []
+    if any(not isinstance(e, dict) for e in effects):
+        notes.append("an effect isn’t an object; dropped")
+    effects = [{"ref": _text(e.get("ref")), "param": _text(e.get("param")), "value": _pos(e.get("value")), "note": _text(e.get("note"))}
+               for e in effects if isinstance(e, dict)]
+    rating = a.get("printedRating")
+    if rating is not None and (isinstance(rating, bool) or not isinstance(rating, int)):
+        shown = ILLEGAL.sub("", str(rating))[:40]
+        notes.append(f'printedRating "{shown}" isn’t a whole number; dropped')
+        rating = None
+    return {"name": _text(a.get("name")), "type": _text(a.get("type")), "printedRating": rating, "effects": effects}, notes
 
 
 def system_prompt(m):
@@ -87,26 +129,27 @@ Amp effects: `ref` is one of these ids; leave `param` null when the player picks
 rr-skill takes a skill id ({" ".join(sorted(m["skills"]))}), rr-attr an attribute id ({" ".join(sorted(m["attributes"]))}),
 rr-spec a specialization id ({" ".join(sorted(m["specs"]))}) or "custom:<name>" for one not listed.
 {effects}
-Spell categories: combat, detection, health, illusion, manipulation. Complex form categories: sustained, instant."""
+Spell categories: {", ".join(CATEGORIES["spell"])}. Complex form categories: {", ".join(CATEGORIES["complex-form"])}."""
 
 
 def parse(text):
-    """The first JSON object in the reply (some servers wrap it in prose despite JSON mode), or None."""
-    for i in [m.start() for m in re.finditer(r"\{", text or "")]:
+    """The first JSON object in the reply with one of our top-level keys (some servers wrap it in prose
+    despite JSON mode), or None."""
+    text, i = text or "", 0
+    while (i := text.find("{", i)) != -1:
         try:
-            obj = json.JSONDecoder().raw_decode(text, i)[0]
-            return obj if isinstance(obj, dict) else None
+            obj, end = json.JSONDecoder().raw_decode(text, i)
         except ValueError:
+            i += 1
             continue
+        if any(isinstance(obj.get(k), list) for k in KEYS):
+            return obj
+        i = end  # never look inside an object that isn't ours
     return None
 
 
 def _slug(name):
-    return re.sub(r"[^a-z0-9]+", "-", str(name or "").lower()).strip("-") or "unnamed"
-
-
-def _pos(v):
-    return v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+    return re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-") or "unnamed"
 
 
 def _unique(seen, kind, i):
@@ -118,49 +161,92 @@ def _unique(seen, kind, i):
     return i
 
 
+def _el(tag, attrs, inner=""):
+    return f"<{tag}{xmlio._attrs(attrs)}>{inner}</{tag}>"
+
+
 def _entries(obj, source, page, m, seen):
     """(kind, entry id, page, entry XML, notes) for each proposed entry of one chunk."""
-    lists = lambda k: [x for x in obj.get(k) or [] if isinstance(x, dict)]
-    for a in lists("amps"):
-        p, i = _pos(a.get("page")) or page, _unique(seen, "amp", _slug(a.get("name")))
-        effects = "".join("<effect" + xmlio._attrs({"ref": e.get("ref"), "param": e.get("param"), "value": _pos(e.get("value")),
-                                                    "note": e.get("note")}) + "/>" for e in a.get("effects") or [] if isinstance(e, dict))
-        rating = a.get("printedRating") if isinstance(a.get("printedRating"), int) else None
-        attrs = xmlio._attrs({"id": i, "type": a.get("type"), "printedRating": rating, "source": source, "page": p})
-        yield "amp", i, p, f"<amp{attrs}><name>{escape(str(a.get('name') or ''))}</name>{effects}<narrative></narrative></amp>", amp_notes(a, m)
-    for k, kind in (("items", None), ("spells", "spell"), ("complexForms", "complex-form")):
-        for it in lists(k):
-            kd = kind or it.get("kind")
-            notes = [] if kd in ("gear", "weapon", "armor", "spell", "complex-form") else [f'unknown item kind "{kd}"']
-            p, i = _pos(it.get("page")) or page, _unique(seen, kd, PREFIX.get(kd, "") + _slug(it.get("name")))
-            attrs = xmlio._attrs({"id": i, "kind": kd, "category": it.get("category"), "dv": it.get("dv"),
-                                  "armor": _pos(it.get("armor")), "ranges": it.get("ranges"), "source": source, "page": p})
-            yield kd, i, p, f"<item{attrs}><name>{escape(str(it.get('name') or ''))}</name><text></text></item>", notes
+    lists = lambda k: [x for x in obj.get(k) if isinstance(x, dict)] if isinstance(obj.get(k), list) else []
+    for raw in lists("amps"):
+        a, notes = _amp(raw)
+        p, i = _pos(raw.get("page")) or page, _unique(seen, "amp", _slug(a["name"]))
+        effects = "".join("<effect" + xmlio._attrs(e) + "/>" for e in a["effects"])
+        xml = _el("amp", {"id": i, "type": a["type"], "printedRating": a["printedRating"], "source": source, "page": p},
+                  f"<name>{escape(a['name'] or '')}</name>{effects}<narrative></narrative>")
+        yield "amp", i, p, xml, notes + amp_notes(a, m)
+    for key, fixed in (("items", None), ("spells", "spell"), ("complexForms", "complex-form")):
+        for it in lists(key):
+            notes, kind, category = [], fixed or _text(it.get("kind")), _text(it.get("category"))
+            if kind not in ITEM_KINDS + tuple(CATEGORIES):
+                notes.append(f'unknown item kind "{kind}"; proposed as gear')
+                kind = "gear"
+            if kind in CATEGORIES and category not in CATEGORIES[kind]:
+                notes.append(f'unknown {kind} category "{category}"')
+            name = _text(it.get("name"))
+            p, i = _pos(it.get("page")) or page, _unique(seen, kind, PREFIX.get(kind, "") + _slug(name))
+            xml = _el("item", {"id": i, "kind": kind, "category": category, "dv": _text(it.get("dv")), "armor": _pos(it.get("armor")),
+                               "ranges": _text(it.get("ranges")), "source": source, "page": p},
+                      f"<name>{escape(name or '')}</name><text></text>")
+            yield kind, i, p, xml, notes
+
+
+def _proposal(kind, i, page, xml, notes):
+    return (f"  <proposal{xmlio._attrs({'id': f'{kind}.{i}', 'kind': kind, 'state': 'pending', 'page': page})}>\n    {xml}\n"
+            + "".join(f"    <note>{escape(t)}</note>\n" for t in notes) + "  </proposal>\n")
+
+
+def _resume(path, sha, parts):
+    """(done, rows, skips, seen) from an unfinished review.xml of the same book.md, else a fresh start."""
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return 0, [], [], set()
+    if root.get("bookSha256") != sha or root.get("parts") != str(parts) or root.get("done") == str(parts):
+        return 0, [], [], set()
+    rows = ["  " + ET.tostring(p, encoding="unicode").strip() + "\n" for p in root.findall("proposal")]
+    skips = ["  " + ET.tostring(s, encoding="unicode").strip() + "\n" for s in root.findall("skip")]
+    return int(root.get("done") or 0), rows, skips, {p.get("id") for p in root.findall("proposal")}
 
 
 def propose(book_dir, ask, provider=None, data_dir=DATA):
     """Run `ask(system, user) -> str` over book.md's chunks and write review.xml; returns the proposal count.
-    A chunk whose reply has no JSON object is skipped and counted; a ProviderError fails the book."""
+    review.xml is rewritten after every chunk (done="n" of parts="N"), so a failure keeps the work paid
+    for and a re-run of the same book.md resumes after the last finished chunk. A chunk whose reply is
+    cut off or has no JSON is skipped with a <skip> note; any other ProviderError fails the book."""
+    path = os.path.join(book_dir, "review.xml")
     try:
         m = mechanics(data_dir)
         with open(os.path.join(book_dir, "book.md"), encoding="utf8") as f:
             md = f.read()
-        source = os.path.basename(os.path.normpath(book_dir)).upper()  # provisional; the review screen sets it
-        system, parts, seen, rows, skipped = system_prompt(m), chunks(md), set(), [], 0
-        for n, chunk in enumerate(parts, 1):
+        sha = hashlib.sha256(md.encode("utf8")).hexdigest()
+        book = os.path.basename(os.path.normpath(book_dir))
+        source = book.upper()  # provisional; the review screen sets it
+        system, parts = system_prompt(m), chunks(md)
+        done, rows, skips, seen = _resume(path, sha, len(parts))
+        created = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+        def save(n):
+            attrs = {"book": book, "source": source, "provider": provider, "created": created, "bookSha256": sha,
+                     "parts": len(parts), "done": n}
+            xmlio.write_file(path, xmlio.HEAD + "<!-- PRIVATE: proposals from a book. Do not commit. -->\n"
+                             f"<review{xmlio._attrs(attrs)}>\n{''.join(skips)}{''.join(rows)}</review>\n")
+
+        for n in range(done + 1, len(parts) + 1):
+            chunk = parts[n - 1]
             xmlio.write_status(book_dir, "proposing", f"part {n} of {len(parts)}")
-            obj = parse(ask(system, chunk))
+            try:
+                obj, why = parse(ask(system, chunk)), "the reply had no JSON with amps, items, spells or complexForms"
+            except TruncatedReply as e:
+                obj, why = None, str(e)
             if obj is None:
-                skipped += 1
-                continue
-            pages = PAGE.findall(chunk)
-            for kind, i, page, xml, notes in _entries(obj, source, int(pages[0]) if pages else 1, m, seen):
-                rows.append(f'  <proposal id="{kind}.{i}" kind="{kind}" state="pending" page="{page}">\n    {xml}\n'
-                            + "".join(f"    <note>{escape(t)}</note>\n" for t in notes) + "  </proposal>\n")
-        attrs = xmlio._attrs({"book": os.path.basename(os.path.normpath(book_dir)), "source": source, "provider": provider,
-                              "created": datetime.now(timezone.utc).isoformat(timespec="seconds"), "skipped": skipped})
-        xmlio.write_file(os.path.join(book_dir, "review.xml"), xmlio.HEAD + "<!-- PRIVATE: proposals from a book. Do not commit. -->\n"
-                         f"<review{attrs}>\n{''.join(rows)}</review>\n")
+                skips.append(f"  {_el('skip', {'part': n}, escape(why))}\n")
+            else:
+                pages = PAGE.findall(chunk)
+                rows += [_proposal(*e) for e in _entries(obj, source, int(pages[0]) if pages else 1, m, seen)]
+            save(n)
+        if not parts:
+            save(0)
         xmlio.write_status(book_dir, "review", f"{len(rows)} proposals to review")
         return len(rows)
     except Exception as e:

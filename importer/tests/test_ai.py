@@ -108,7 +108,7 @@ class ProvidersTest(unittest.TestCase):
         self.assertEqual(b["model"], "claude-opus-5")
         self.assertEqual(b["max_tokens"], 16000)
         self.assertEqual(b["fallbacks"], "default")
-        self.assertEqual(b["system"], "sys")
+        self.assertEqual(b["system"], [{"type": "text", "text": "sys", "cache_control": {"type": "ephemeral"}}])
         self.assertEqual(b["messages"], [{"role": "user", "content": "usr"}])
         self.assertEqual(b["output_config"], {"format": {"type": "json_schema", "schema": SCHEMA}})
 
@@ -117,13 +117,26 @@ class ProvidersTest(unittest.TestCase):
         with self.assertRaisesRegex(AI.ProviderError, "declined"):
             AI.complete({"id": "anthropic", "baseUrl": s.url}, KEY, "s", "u")
 
-    def test_errors_never_show_the_key(self):
-        s = self.stub(lambda p: (401, {"error": {"type": "authentication_error", "message": f"bad key {KEY}"}}))
-        for p in ({"id": "anthropic", "baseUrl": s.url}, {"id": "openai", "baseUrl": s.url, "model": "m"},
-                  {"id": "gemini", "baseUrl": s.url, "model": "g"}, {"id": "anythingllm", "baseUrl": s.url, "workspace": "w"}):
-            with self.assertRaises(AI.ProviderError) as cm:
+    def test_truncated_replies(self):
+        replies = {"/v1/messages?beta=true": {**ANTHROPIC_MSG, "stop_reason": "max_tokens"},
+                   "/v1/chat/completions": {"choices": [{"message": {"content": '{"amps": ['}, "finish_reason": "length"}]},
+                   "/v1beta/models/g:generateContent": {"candidates": [{"content": {"parts": [{"text": "{"}]}, "finishReason": "MAX_TOKENS"}]}}
+        s = self.stub(lambda p: (200, replies[p]))
+        for p in ({"id": "anthropic", "baseUrl": s.url}, {"id": "openai", "baseUrl": s.url + "/v1", "model": "m"},
+                  {"id": "gemini", "baseUrl": s.url, "model": "g"}):
+            with self.assertRaisesRegex(AI.TruncatedReply, "cut off", msg=p["id"]):
                 AI.complete(p, KEY, "s", "u")
-            self.assertNotIn(KEY, str(cm.exception), p["id"])
+
+    def test_errors_never_show_the_key(self):
+        for code in (401, 400):  # 400: a generic status error whose body echoes the key
+            s = self.stub(lambda p: (code, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}}))
+            for p in ({"id": "anthropic", "baseUrl": s.url}, {"id": "openai", "baseUrl": s.url, "model": "m"},
+                      {"id": "gemini", "baseUrl": s.url, "model": "g"}, {"id": "anythingllm", "baseUrl": s.url, "workspace": "w"}):
+                with self.assertRaises(AI.ProviderError) as cm:
+                    AI.complete(p, KEY, "s", "u")
+                self.assertNotIn(KEY, str(cm.exception), p["id"])
+                if code == 400:  # the body is shown, redacted
+                    self.assertIn("bad key [key]", str(cm.exception), p["id"])
         with self.assertRaises(AI.ProviderError) as cm:
             AI.complete({"id": "openai", "baseUrl": "http://127.0.0.1:1", "model": "m"}, KEY, "s", "u")
         self.assertIn("couldn’t reach", str(cm.exception))
@@ -150,7 +163,7 @@ def write_providers(config, use="openai", url="http://127.0.0.1:1/v1", enabled="
 class SettingsTest(unittest.TestCase):
     def test_keys_file_holds_only_keys_and_is_private(self):
         config = tempfile.mkdtemp()
-        AI.set_key(config, "anthropic", KEY)
+        AI.set_key(config, "anthropic", f"  {KEY}\n")  # pasted with whitespace: stored stripped
         AI.set_key(config, "openai", "other")
         AI.set_key(config, "openai", None)  # clearing removes the element
         path = os.path.join(config, "ai-keys.xml")
@@ -159,6 +172,7 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual([(k.tag, k.get("provider"), k.text) for k in root], [("key", "anthropic", KEY)])
         self.assertEqual(AI.read_key(config, "anthropic"), KEY)
         self.assertIsNone(AI.read_key(config, "openai"))
+        self.assertEqual(os.listdir(config), ["ai-keys.xml"])  # no temp file left behind
         if os.name == "posix":
             self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
         r = node("--input-type=module", "-e", XSD_CHECK, path, os.path.join(XSD_DIR, "aikeys.xsd"), os.path.join(XSD_DIR, "common.xsd"))
@@ -272,12 +286,91 @@ class ProposeTest(unittest.TestCase):
         self.assertEqual(notes, ['unknown amp type "nope"', 'unknown specialization "athletics.nope" for rr-spec',
                                  'unknown skill "nope" for rr-skill', 'unknown attribute "nope" for rr-attr'])
 
-    def test_unparsable_chunk_is_skipped_and_counted(self):
-        book = os.path.join(tempfile.mkdtemp(), "b")
-        xmlio.write_file(os.path.join(book, "book.md"), BOOK)
-        P.propose(book, lambda s, u: "no json here")
-        root = ET.parse(os.path.join(book, "review.xml")).getroot()
-        self.assertEqual((root.get("skipped"), len(root)), ("1", 0))
+    def book(self, md=BOOK, name="b"):
+        book = os.path.join(tempfile.mkdtemp(), name)
+        xmlio.write_file(os.path.join(book, "book.md"), md)
+        return book
+
+    def review(self, book):
+        path = os.path.join(book, "review.xml")
+        r = node("--input-type=module", "-e", XSD_CHECK, path, os.path.join(XSD_DIR, "review.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return ET.parse(path).getroot()
+
+    def test_parse_needs_one_of_our_keys(self):
+        self.assertIsNone(P.parse('{"note": {"amps": []}}'))  # no nested dict, no dict without our keys
+        self.assertEqual(P.parse('Here: {"x": {"y": 1}} and {"spells": []}'), {"spells": []})
+
+    def test_unusable_and_cut_off_replies_are_skipped_with_a_note(self):
+        for ask, why in ((lambda s, u: '{"answer": "none"}', "no JSON with amps"),
+                         (lambda s, u: (_ for _ in ()).throw(AI.TruncatedReply("the reply was cut off")), "cut off")):
+            book = self.book()
+            P.propose(book, ask)
+            root = self.review(book)
+            self.assertEqual([(x.tag, x.get("part")) for x in root], [("skip", "1")])
+            self.assertIn(why, root[0].text)
+            self.assertEqual((root.get("parts"), root.get("done")), ("1", "1"))
+
+    def test_hostile_model_values_stay_inert(self):
+        hostile = {"items": [
+            {"name": "R&D <kit>", "kind": 'gear" state="accepted', "category": "A&B", "page": 2},
+            {"name": "Null kind", "kind": None, "page": 2},
+            {"name": ["a", "list"], "kind": ["weapon"], "page": "7", "dv": {"x": 1}},
+            {"name": "Ctl\x00\x1b chars\x08", "kind": "armor", "armor": True, "page": 2}],
+            "spells": [{"name": "Odd", "category": "cooking", "page": 2}],
+            "complexForms": [{"name": "Hum", "category": "instant", "page": 2}],
+            "amps": [{"name": "Bad shapes", "type": "cyberware", "printedRating": True, "page": 2, "effects": "rr-spec"},
+                     {"name": "Mixed", "type": "cyberware", "printedRating": "3", "page": 2,
+                      "effects": [1, {"ref": ["rr-spec"], "param": {"p": 1}}, {"ref": "rr-attr", "param": 5}]}]}
+        book = self.book()
+        P.propose(book, lambda s, u: json.dumps(hostile))
+        root = self.review(book)
+        props = {p.get("id"): p for p in root.findall("proposal")}
+        self.assertEqual(sorted(props), ["amp.bad-shapes", "amp.mixed", "armor.ctl-chars", "complex-form.cf-hum",
+                                         "gear.gear-null-kind", "gear.gear-r-d-kit", "gear.gear-unnamed", "spell.spell-odd"])
+        self.assertTrue(all(p.get("state") == "pending" for p in props.values()))
+        rd = props["gear.gear-r-d-kit"]
+        self.assertEqual((rd.get("kind"), rd[0].get("kind"), rd[0].findtext("name"), rd[0].get("category")), ("gear", "gear", "R&D <kit>", "A&B"))
+        self.assertEqual([n.text for n in rd.findall("note")], ['unknown item kind "gear" state="accepted"; proposed as gear'])
+        self.assertEqual([n.text for n in props["gear.gear-null-kind"].findall("note")], ['unknown item kind "None"; proposed as gear'])
+        lst = props["gear.gear-unnamed"]
+        self.assertEqual((lst.get("page"), lst[0].get("dv")), ("1", None))  # page "7" is text: the part's first page
+        self.assertEqual(props["armor.ctl-chars"][0].findtext("name"), "Ctl chars")
+        self.assertIsNone(props["armor.ctl-chars"][0].get("armor"))
+        self.assertEqual([n.text for n in props["spell.spell-odd"].findall("note")], ['unknown spell category "cooking"'])
+        self.assertEqual(props["complex-form.cf-hum"].findall("note"), [])
+        self.assertEqual([n.text for n in props["amp.bad-shapes"].findall("note")],
+                         ["effects isn’t a list; dropped", 'printedRating "True" isn’t a whole number; dropped'])
+        self.assertEqual([n.text for n in props["amp.mixed"].findall("note")],
+                         ["an effect isn’t an object; dropped", 'printedRating "3" isn’t a whole number; dropped',
+                          'unknown effect ref "None"', 'unknown attribute "5" for rr-attr'])
+
+    def test_checkpoints_and_resumes_after_a_failure(self):
+        md = BOOK + "\n# Second part\n" + ("filler text " * 990) + "\n"
+        self.assertEqual(len(P.chunks(md)), 2)
+        book = self.book(md)
+        self.assertEqual(P.count_chunks(os.path.join(book, "book.md")), 2)
+        calls = []
+
+        def flaky(s, u):
+            calls.append(u)
+            if len(calls) == 2:
+                raise AI.ProviderError("rate limited")
+            return json.dumps(TWO_AMPS)
+        with self.assertRaises(AI.ProviderError):
+            P.propose(book, flaky)
+        root = self.review(book)
+        self.assertEqual((root.get("parts"), root.get("done"), len(root.findall("proposal"))), ("2", "1", 4))
+        calls.clear()
+        P.propose(book, lambda s, u: calls.append(u) or json.dumps({"amps": [TWO_AMPS["amps"][0]]}))
+        self.assertEqual(len(calls), 1)
+        self.assertIn("filler", calls[0])  # only the unfinished part is asked again
+        root = self.review(book)
+        self.assertEqual(root.get("done"), "2")
+        self.assertEqual([p.get("id") for p in root.findall("proposal")][-1], "amp.neural-spoon-2")
+        # a finished review starts over when proposed again
+        P.propose(book, lambda s, u: json.dumps({"amps": []}))
+        self.assertEqual(len(self.review(book).findall("proposal")), 0)
 
     def test_provider_error_fails_the_book(self):
         book = os.path.join(tempfile.mkdtemp(), "b")
@@ -298,6 +391,11 @@ class ProposeTest(unittest.TestCase):
         AI.set_key(os.path.join(lib, ".config"), "openai", KEY)
         book = os.path.join(lib, "made-up")
         xmlio.write_file(os.path.join(book, "book.md"), BOOK)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(main(["propose", book, "--library", lib, "--dry-run"]), 0)
+        self.assertEqual(out.getvalue().strip(), '<result parts="1" provider="openai" />')
+        self.assertEqual(s.requests, [])  # a dry run asks nothing
+        self.assertFalse(os.path.exists(os.path.join(book, "review.xml")))
         with contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(main(["propose", book, "--library", lib]), 0)
         self.assertEqual(out.getvalue().strip(), '<result state="review" proposals="4" />')
