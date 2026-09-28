@@ -82,6 +82,8 @@ def _shape(entry):
     notes += [f'{k} "{a[k]}" isn’t true or false' for k in ("mod", "specialist") if k in a and a[k] not in BOOL]
     if tag == "item" and a.get("kind") and a["kind"] not in ITEM_KINDS:
         notes.append(f'item kind "{a["kind"]}" isn’t one of {", ".join(ITEM_KINDS)}')
+    if tag == "item" and a.get("kind") == "armor" and not a.get("armor"):
+        notes.append("an armor item needs its armor rating")
     if tag == "rule":
         notes += [f'effects "{e}" isn’t an id' for e in a.get("effects", "").split() if not ID.fullmatch(e)]
     if not CHILDREN[tag].fullmatch("".join(c.tag + " " for c in entry)):

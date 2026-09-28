@@ -257,6 +257,10 @@ def _cmd_propose(argv):
 
 
 def _flag(argv, name):
+    """`name value` or `name=value` (the server passes free text as one `--name=…` argument)."""
+    for a in argv:
+        if a.startswith(name + "="):
+            return a[len(name) + 1:]
     return argv[argv.index(name) + 1] if name in argv[:-1] else None
 
 
