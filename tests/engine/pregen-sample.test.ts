@@ -4,11 +4,12 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
 import { ampCtx, ampRating } from '../../src/engine/amps'
-import { xmlToCharacter } from '../../src/engine/charxml'
+import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { derive } from '../../src/engine/derive'
 import { cat } from '../helpers'
 
-const r = xmlToCharacter(readFileSync('tests/fixtures/mini/custom/imported/pregens/samples/pregens.test-face.xml', 'utf8'))
+const golden = readFileSync('tests/fixtures/mini/custom/imported/pregens/samples/pregens.test-face.xml', 'utf8')
+const r = xmlToCharacter(golden)
 
 test('the importer’s sample XML reads as a character', () => {
   expect(r.ok).toBe(true)
@@ -19,6 +20,8 @@ test('the importer’s sample XML reads as a character', () => {
   expect(ch.build.skills.find(s => s.id === 'electronics')?.specs).toEqual(['custom:Mystery trick'])
   expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([{ ref: 'rr-skill', param: 'influence' }, { ref: 'negative', value: 1, note: 'book drawback' }])
   expect(ch.narrative.dispositions).toEqual(['Smiles a lot, and then some more.', 'Never early.'])
+  // the app's writer gives the same bytes: both writers stay pinned to this file
+  expect(characterToXml(ch)).toBe(golden)
 })
 
 test('the engine gives the numbers the recipe computed', () => {

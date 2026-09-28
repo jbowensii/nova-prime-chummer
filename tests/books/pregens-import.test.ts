@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { describe, test, expect } from 'vitest'
 import { ampCtx, ampRating } from '../../src/engine/amps'
 import { xmlToCharacter } from '../../src/engine/charxml'
+import { parseCharacterFile } from '../../src/engine/file'
 import { derive } from '../../src/engine/derive'
 import { validate } from '../../src/engine/validate'
 import type { Character } from '../../src/model/types'
@@ -74,6 +75,22 @@ run('pregen booklet import', () => {
         return got === Number(r.printed) || listed.has(`${id}/${r.key}`) ? [] : [`${a.name}: printed ${r.printed}, engine ${got}`]
       })
       expect(wrong).toEqual([])
+    })
+
+    test('same attributes, pools, thresholds and Essence as the hand-encoded runner', () => {
+      const r = parseCharacterFile(readFileSync(bookFile(`samples/${id}.ca2.json`), 'utf8'))
+      if (!r.ok) throw new Error(r.reason)
+      const o = derive(books!, r.character)
+      const key = (q: { skill: string; spec?: string; attr: string }) => `${q.spec ?? q.skill}@${q.attr}`
+      const theirs = new Map(o.pools.map(q => [key(q), q.dp]))
+      const pools = d!.pools.filter(q => theirs.has(key(q)) && theirs.get(key(q)) !== q.dp)
+        .map(q => `${key(q)}: generated ${q.dp}, hand ${theirs.get(key(q))}`)
+      const t = (x: typeof d) => x!.thresholds
+      const worn = (x: typeof d) => [t(x).physicalMain[0], t(x).physicalAlt[0]].sort((a, b) => a - b) // which is "main" is a choice
+      expect({ attributes: ch.build.attributes, pools, none: t(d).physicalNone[0], worn: worn(d), mental: t(d).mental[0],
+        matrix: t(d).matrix?.[0], essence: d!.essence })
+        .toEqual({ attributes: r.character.build.attributes, pools: [], none: t(o).physicalNone[0], worn: worn(o),
+          mental: t(o).mental[0], matrix: t(o).matrix?.[0], essence: o.essence })
     })
 
     test('every number the hand-encoded runner was tested on', () => {

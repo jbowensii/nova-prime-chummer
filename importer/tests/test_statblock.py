@@ -202,6 +202,23 @@ class RecipeTest(unittest.TestCase):
         root = ET.fromstring(s["xml"])
         self.assertEqual((root.get("id"), root.get("origin"), root.get("streetName")), ("pregens.test-face", "PREGENS", "Test Face"))
 
+    def test_two_runners_with_one_name_get_distinct_ids(self):
+        twin = MD + "<!-- page 6 -->\ndaegann.fr\n# TEST FACE\n(MADE-UP FACE)\n<!-- page 7 -->\n" + STAT
+        ids = [ET.fromstring(s["xml"]).get("id") for s in pregens.extract(twin).samples]
+        self.assertEqual(ids, ["pregens.test-face", "pregens.test-face-2"])
+        self.assertEqual([s["file"] for s in pregens.extract(twin).samples], ["pregens.test-face.xml", "pregens.test-face-2.xml"])
+
+    def test_corrupt_samples_list_fails_before_any_sample_is_written(self):
+        tmp = tempfile.mkdtemp()
+        book, custom = os.path.join(tmp, "library", "pg"), os.path.join(tmp, "custom")
+        os.makedirs(book)
+        Path(book, "book.md").write_text(MD, encoding="utf8")
+        Path(custom, "imported").mkdir(parents=True)
+        Path(custom, "imported", "samples.xml").write_text("<not xml", encoding="utf8")
+        with self.assertRaises(ET.ParseError):
+            run(book, custom, convert_pdf=False)
+        self.assertFalse(Path(custom, "imported", "pregens").exists())
+
     def test_run_writes_samples_and_the_samples_list(self):
         tmp = tempfile.mkdtemp()
         book, custom = os.path.join(tmp, "library", "pg"), os.path.join(tmp, "custom")
