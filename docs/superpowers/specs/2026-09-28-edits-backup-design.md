@@ -61,7 +61,7 @@ UI:
   `characters/…`, `custom/…`, `library/…` plus a `backup.xml` manifest
   (app version, date, counts, keys included yes/no). `library/.config/ai-keys.xml`
   only with `keys=1`.
-- `POST /api/restore?preview=1` (zip streamed to a temp file, cap 5 GB) →
+- `POST /api/restore?preview=1` (zip streamed to a temp file, cap 20 GB: restore --check's own limit, so any backup the app makes can be restored) →
   `restore --check` returns the manifest and counts; the UI shows them.
 - `POST /api/restore/:token` confirms → `restore --apply`: writes an
   automatic backup of the current state to `library/.backups/<date>.zip`
