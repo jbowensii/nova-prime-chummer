@@ -12,7 +12,7 @@ if (cmd !== 'reset' || !username || rest.length) {
 }
 try {
   const code = await issueReset(process.env.LIBRARY_DIR ?? '/data/library', username)
-  console.log(`Recovery code for ${username.toLowerCase()}: ${code}\nEnter it with a new password on the app's reset page within 15 minutes. It works once.`)
+  console.log(`Recovery code for ${username.toLowerCase()}: ${code}\nEnter it with a new password on the app's reset page (<app address>/#/setup/reset) within 15 minutes. It works once.`)
 } catch (e) {
   console.error(e.message)
   process.exit(1)

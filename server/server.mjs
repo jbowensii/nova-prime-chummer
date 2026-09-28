@@ -3,8 +3,8 @@
 // server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/.
 //
 //   GET    /api/health                   -> { ok, storage: "server" }
-//   GET    /api/characters               -> [{ file, rev, xml, owner }] the caller's runners; admin and editors: everyone's
-//                                           (owner: the username). PUT and DELETE act on the caller's own only (403 on
+//   GET    /api/characters               -> [{ file, rev, xml, owner, ownerName }] the caller's runners; admin and editors:
+//                                           everyone's (owner: the username, ownerName: the account's name). PUT and DELETE act on the caller's own only (403 on
 //                                           a runner id another account holds)
 //   PUT    /api/characters/:id           body: character XML
 //          If-Match: <rev>                  refuse with 409 if the stored file has moved on
@@ -165,7 +165,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (url.pathname === '/api/characters' && req.method === 'GET') {
       const owners = [who.username, ...(who.role === 'player' ? [] : auth.usernames().filter(u => u !== who.username))]
       const out = []
-      for (const owner of owners) for (const { file, rev, xml } of await index(folder(owner))) out.push({ file, rev, xml, owner })
+      for (const owner of owners) for (const { file, rev, xml } of await index(folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
       return send(res, 200, out)
     }
     const m = url.pathname.match(/^\/api\/characters\/([^/]+)$/)

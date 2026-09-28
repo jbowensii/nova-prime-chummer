@@ -111,6 +111,9 @@ describe('with an admin, an editor and a player', () => {
       .map((c: { file: string; owner: string }) => `${c.owner}/${c.file}`).sort()
     expect(await list('player')).toEqual(['player/Kim.xml'])
     expect(await list('editor')).toEqual(['admin/Boss.xml', 'player/Kim.xml'])
+    // the account's name travels with each row: the runner list groups and labels others' runners by it
+    expect((await (await call(s.base, 'GET', '/api/characters', { cookie: jar.editor })).json()).map((c: { ownerName: string }) => c.ownerName).sort())
+      .toEqual(['admin', 'player'])
     for (const who of ['admin', 'editor'] as const) {
       expect((await call(s.base, 'PUT', '/api/characters/p1?force=1', { cookie: jar[who], body: runner('p1', 'Hijacked') })).status).toBe(403)
       expect((await call(s.base, 'DELETE', '/api/characters/p1', { cookie: jar[who] })).status).toBe(403)
