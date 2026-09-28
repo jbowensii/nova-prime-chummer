@@ -40,10 +40,10 @@ const VERSION = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
-  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl })
+  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl })
 
   async function index() {
     await mkdir(charDir, { recursive: true })
