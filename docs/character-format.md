@@ -9,7 +9,7 @@ will convert from this format; the format itself is ours and stays stable.
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="…"
-    streetName="Hercules" name="Arthur Pitchford" metatype="dwarf" level="runner" package="free"
+    streetName="Slick" name="Jan Novak" metatype="dwarf" level="runner" package="free"
     lifestyle="low" finalizedAt="…" finalRemaining="0" updatedAt="…">
   <portrait>data:image/jpeg;base64,…</portrait>
   <background>…</background>
@@ -21,7 +21,7 @@ will convert from this format; the format itself is ours and stays stable.
     <attributes str="2" agi="3" wil="2" log="3" cha="4"/>
     <skill id="influence" rating="5"><spec>influence.bluff</spec></skill>
     <knowledge>Language: Japanese</knowledge>
-    <amp uid="amp-3" type="adept" name="Vocal Control" catalogId="…" linkedItem="…" vehicle="…">
+    <amp uid="amp-3" type="adept" name="Silver tongue" catalogId="…" linkedItem="…" vehicle="…">
       <narrative>…</narrative>
       <effect ref="rr-spec" param="influence.impersonation"/>
       <snapshot><amp id="…" type="adept" …>…</amp></snapshot>

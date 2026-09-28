@@ -5,3 +5,8 @@ dist
 test-results
 playwright-report
 *.pdf
+.superpowers
+__pycache__
+**/__pycache__
+public/custom/texts.xml
+public/custom/texts

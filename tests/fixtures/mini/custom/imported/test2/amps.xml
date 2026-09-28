@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test catalog: non-canon TEST2 also has "Keen Eye" (same canon status as TEST's). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">
+  <amp id="test2.keen-eye" type="quality" printedRating="2" source="TEST2" page="1"><name>Keen eye</name><effect ref="rr-spec" param="perception.social"/><narrative></narrative></amp>
+</ca2:data>

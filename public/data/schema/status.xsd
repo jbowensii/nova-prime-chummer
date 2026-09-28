@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- library/<book-id>/status.xml: the importer's progress, polled by the Books page. Text is a message.
+     queued: waiting in the server's one-at-a-time job queue; applying: writing accepted AI proposals;
+     removed: the book's outputs were removed (its PDF and Markdown are kept). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="status">
+    <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="state" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="converting"/><xs:enumeration value="identifying"/><xs:enumeration value="extracting"/>
+          <xs:enumeration value="done"/><xs:enumeration value="failed"/><xs:enumeration value="needs-ai"/>
+          <xs:enumeration value="proposing"/><xs:enumeration value="review"/>
+          <xs:enumeration value="queued"/><xs:enumeration value="applying"/><xs:enumeration value="removed"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="updated" type="xs:dateTime" use="required"/>
+    </xs:extension></xs:simpleContent></xs:complexType>
+  </xs:element>
+</xs:schema>

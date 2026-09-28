@@ -1,6 +1,6 @@
 // Validates every data file against its XSD, then checks that every
 // cross-reference (ref/requires/excludes/types/level/vehicle/param) resolves.
-// Usage: node tools/validate-data.mjs [extra overlay dirs...]
+// Usage: node tools/validate-data.mjs [extra custom dirs...]  (e.g. tests/fixtures/mini/custom)
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateXML } from 'xmllint-wasm';
@@ -15,13 +15,19 @@ for (const dir of ['public/custom/texts', '.extract/private/texts'])
 if (existsSync('public/custom/texts.xml')) process.argv.push('--texts=public/custom/texts.xml');
 const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
 
-// base files, then overlays listed in each overlay dir's index.xml
+// base files, then each custom dir the way the app loads it: imported/sources.xml, sources.xml,
+// the files in imported/index.xml, then the house rules in index.xml
 const files = readdirSync(DATA).filter(f => f.endsWith('.xml')).map(f => join(DATA, f));
 for (const t of process.argv.filter(a => a.startsWith('--texts='))) files.push(t.slice(8));
-for (const dir of ['public/custom', ...process.argv.slice(2).filter(a => !a.startsWith('--'))]) {
+const listed = dir => {
   const idx = join(dir, 'index.xml');
-  if (!existsSync(idx)) continue;
+  if (!existsSync(idx)) return;
   for (const m of readFileSync(idx, 'utf8').replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)) files.push(join(dir, m[1]));
+};
+for (const dir of ['public/custom', ...process.argv.slice(2).filter(a => !a.startsWith('--'))]) {
+  for (const s of [join(dir, 'imported', 'sources.xml'), join(dir, 'sources.xml')]) if (existsSync(s)) files.push(s);
+  listed(join(dir, 'imported'));
+  listed(dir);
 }
 
 const errors = [];

@@ -7,3 +7,8 @@ test-results/
 playwright-report/
 public/custom/texts.xml
 public/custom/texts/
+.superpowers/
+__pycache__/
+
+/custom/
+/library/
