@@ -6,7 +6,7 @@ import { blankCharacter } from '../../src/engine/file'
 import { dupeGroups, dupeLabel } from '../../src/engine/dupes'
 import { buildCatalog, loadCatalog, type SourceFile } from '../../src/engine/load'
 import { rescope } from '../../src/engine/rescope'
-import type { AmpEntry, ItemEntry } from '../../src/model/types'
+import type { AmpEntry, CareerEvent, ItemEntry } from '../../src/model/types'
 import { base, cat } from '../helpers'
 
 const NS = 'xmlns:ca2="urn:chummer-anarchy2:data:1"'
@@ -132,6 +132,42 @@ describe('rescope', () => {
     ch.build.items = [item]
     const out = rescope(cat, ch)
     expect(out).toBe(ch)
+  })
+
+  test('no source match: falls back to the scoped entry with the same normalized name and type', () => {
+    const ch = blankCharacter()
+    ch.build.amps = [ampWith({ catalogId: 'ghost-deck', type: 'cyberdeck', name: 'Ghost Deck',
+      snapshot: { ...cat.amps.get('test.ghost-deck')!, id: 'ghost-deck', source: 'GONE' } })]
+    const out = rescope(cat, ch)
+    expect(out.build.amps[0].catalogId).toBe('test.ghost-deck')
+  })
+
+  test('several books match by name: the canon one wins (fixture’s Nano Tape group)', () => {
+    const ch = blankCharacter()
+    const item: ItemEntry = { uid: 'u3', catalogId: 'nano-tape', kind: 'gear', name: 'Nano Tape',
+      snapshot: { ...cat.items.get('test.nano-tape')!, id: 'nano-tape', source: 'GONE' } }
+    ch.build.items = [item]
+    const out = rescope(cat, ch)
+    expect(out.build.items[0].catalogId).toBe('testc.nano-tape')
+  })
+
+  test('career events: amp-add and amp-modify get rescoped, an unchanged career keeps identity', () => {
+    const ch = blankCharacter()
+    const stale = ampWith({ snapshot: { ...cat.amps.get('testc.rush')!, id: 'rush' } })
+    const fixed = ampWith({ uid: 'u2', catalogId: 'testc.rush', snapshot: cat.amps.get('testc.rush')! })
+    ch.career = [
+      { id: 'e1', at: 't', type: 'amp-add', amp: stale, cost: 1 },
+      { id: 'e2', at: 't', type: 'amp-modify', ampUid: 'u1', before: stale, after: stale, cost: 1 },
+      { id: 'e3', at: 't', type: 'note', text: 'hi' },
+    ] satisfies CareerEvent[]
+    const out = rescope(cat, ch)
+    expect(out.career[0]).toMatchObject({ type: 'amp-add', amp: { catalogId: 'testc.rush' } })
+    expect(out.career[1]).toMatchObject({ type: 'amp-modify', before: { catalogId: 'testc.rush' }, after: { catalogId: 'testc.rush' } })
+    expect(out.career[2]).toBe(ch.career[2])
+
+    const ch2 = blankCharacter()
+    ch2.career = [{ id: 'e1', at: 't', type: 'amp-add', amp: fixed, cost: 1 }] satisfies CareerEvent[]
+    expect(rescope(cat, ch2)).toBe(ch2)
   })
 })
 
