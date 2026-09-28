@@ -81,6 +81,8 @@ class EditsTest(unittest.TestCase):
                  ("items", "test.keen-eye", AMP, "<item>"),
                  ("items", "test.nano-tape", '<item id="test.nano-tape" kind="spell" category="loud" source="TEST" page="9">'
                   "<name>Nano Tape</name><text/></item>", 'unknown spell category "loud"'),
+                 ("items", "test.nano-tape", '<item id="test.nano-tape" kind="armor" source="TEST" page="9">'
+                  "<name>Nano Tape</name><text/></item>", "armor rating"),
                  ("rules", "test.gadget-basics", '<rule id="test.gadget-basics" sheet="test" effects="nope" source="TEST" page="11">'
                   "<title>Risk</title><text/></rule>", 'unknown effect "nope"'),
                  ("amps", "other", AMP, "id"),
@@ -137,9 +139,11 @@ class EditsTest(unittest.TestCase):
         self.assertIn("well-formed", err.getvalue())
         with mock.patch("sys.stdout", io.StringIO()):
             self.assertEqual(main(["edit", "add-source", "HOUSE", "--custom", d, "--name", "Our table"]), 0)
+            self.assertEqual(main(["edit", "add-source", "DASH", "--custom", d, "--name=-leading dash"]), 0)
             self.assertEqual(main(["edit", "remove", "amps", "test.keen-eye", "--custom", d]), 0)
         self.assertEqual(len(read(d, "edits.xml")), 0)
         self.assertIn('id="HOUSE"', Path(d, "edits", "sources.xml").read_text(encoding="utf8"))
+        self.assertIn("<name>-leading dash</name>", Path(d, "edits", "sources.xml").read_text(encoding="utf8"))
 
 
 if __name__ == "__main__":
