@@ -50,11 +50,16 @@
 :root[data-print='color'] .s-role { background: var(--s-rust); color: #fff; padding: 0.05rem 0.4rem; }
 :root[data-print='color'] .s-attrs div { background: #fff; }
 
+/* the sheet is always paper, whatever the app theme */
+.sheet .src, .sheet .booktag { color: var(--s-ink-2); border-color: var(--s-ink-2); }
+.sheet .noncanon, :root[data-theme] .sheet .noncanon { color: var(--s-indigo); border-color: var(--s-indigo); }
+
 @media (max-width: 700px) { .s-cols { grid-template-columns: 1fr; } .s-attrs { grid-template-columns: repeat(3, 1fr); } }
 @media print {
   @page { margin: 12mm; }
   body { background: #fff !important; }
   .sheet-tools { display: none; }
+  .s-src { display: none; }
   .sheet-wrap { padding: 0; }
   .sheet { box-shadow: none; padding: 0; max-width: none; }
 }

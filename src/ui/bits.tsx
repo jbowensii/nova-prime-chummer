@@ -18,7 +18,7 @@ export function Stepper({ value, min, max, onChange, label }: { value: number; m
 export const NonCanon = ({ source }: { source?: string }) =>
   <span className="noncanon" title={`Published, not canon${source ? ` (${source})` : ''}`}>Non-canon</span>
 
-export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; nonCanon?: boolean }
+export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode }
 
 export function Picker({ items, onPick, placeholder = 'Search', groups }: { items: PickItem[]; onPick: (id: string) => void; placeholder?: string; groups?: string[] }) {
   const [q, setQ] = useState('')
@@ -42,7 +42,7 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
       <ul>
         {shown.map(i => (
           <li key={i.id} tabIndex={0} onClick={() => onPick(i.id)} onKeyDown={e => e.key === 'Enter' && onPick(i.id)}>
-            <span><b>{i.name}</b> {i.nonCanon && <NonCanon />} {i.meta && <span className="muted">{i.meta}</span>}</span>
+            <span><b>{i.name}</b> {i.meta && <span className="muted">{i.meta}</span>} {i.label}</span>
             <span className="num">{i.price}</span>
             {i.text && <span className="t">{i.text}</span>}
           </li>
