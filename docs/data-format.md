@@ -1,10 +1,15 @@
 # Chummer Anarchy 2.0 data format
 
-All game data lives in XML files under `public/data/`, and the web app serves
-them unchanged at `/data/`. Any application can read or write them. The
-schemas in `public/data/schema/` are the contract, and
-`npm run validate:data` checks the files against the schemas and checks that
-every cross-reference resolves.
+All game data is XML. The app ships the mechanics only, in `public/data/`
+(served unchanged at `/data/`): sources, levels, metatypes, attributes,
+skills, pricing, amp types and effects, packages, lifestyles, and the generic
+weapons, armor and vehicles. Book content (amps, spells, complex forms, gear,
+rules, sample runners, descriptions) comes from the PDFs the user uploads:
+the importer writes it to `custom/imported/` (see "Imported books" below).
+Any application can read or write these files. The schemas in
+`public/data/schema/` are the contract, and `npm run validate:data` checks
+the files against the schemas and checks that every cross-reference resolves
+(`node tools/validate-data.mjs <custom dir>` checks a custom folder too).
 
 ## Common rules
 
@@ -21,7 +26,8 @@ Every file has the same root:
   version, currently `1`. Child elements are unqualified, with no prefix.
 - Every entry has:
   - `id`: lowercase kebab-case, pattern `[a-z0-9][a-z0-9.-]*`, unique within
-    its kind. References always use ids, never names.
+    its kind. References always use ids, never names. Imported entries are
+    scoped by their book: `crb.jazz`, `dhsa.jazz`.
   - `source`: a source id from `sources.xml` (below). `CRB` is the
     Anarchy 2.0 core rulebook v1.8 and `CG` the CGL Conversion Guide v1.1,
     both canon. `DHSA` (Daegann's Holostreets Shadow Amps Expanded List
@@ -51,11 +57,18 @@ Every file has the same root:
 | ampeffects | ampeffects.xml | `<effect>` | ampeffects.xsd |
 | packages | packages.xml | `<package>` | packages.xsd |
 | vehicles | vehicles.xml | `<vehicle>` | vehicles.xsd |
-| gear / weapons / armor / spells / complexforms | gear.xml … | `<item>` | items.xsd |
-| amps | amps.xml | `<amp>` | amps.xsd |
+| weapons / armor | weapons.xml, armor.xml | `<item>` | items.xsd |
+| gear / spells / complexforms | imported only | `<item>` | items.xsd |
+| amps | imported only | `<amp>` | amps.xsd |
 | lifestyles | lifestyles.xml | `<lifestyle>` | lifestyles.xsd |
 | sources | sources.xml | `<source>` | sources.xsd |
-| rules | rules.xml | `<rule>` | rules.xsd |
+| rules | imported only | `<rule>` | rules.xsd |
+| texts | `custom/texts/<source>.xml` | `<text>` | texts.xsd |
+| samples | `custom/imported/samples.xml` | `<sample>` | samples.xsd |
+
+The importer's own records (`library/<book>/import.xml`, `review.xml`,
+`library/.config/ai-providers.xml`, `ai-keys.xml`) have schemas too:
+`import.xsd`, `review.xsd`, `aiproviders.xsd`, `aikeys.xsd`.
 
 ### levels
 
@@ -88,8 +101,8 @@ All caps apply during creation only.
   `page`. An imported book adds specs with a `<skill>` of the base skill's
   id holding only its new specs (DHSA's `influence.seduction`): the loader
   appends them to that skill, once per spec id. A house-rule `<skill>`
-  still replaces the whole skill. (The six DHSA specs also stay in the
-  shipped skills.xml until the shipped book catalogs that use them go.)
+  still replaces the whole skill. The shipped skills.xml has the core
+  rulebook's specs only.
 - An amp effect may name a custom spec, `param="custom:Defense against
   throwing weapons"`, for a condition that isn't a named specialization.
 
@@ -180,17 +193,29 @@ not a purchase (CRB p.165). `perRun` is added to each run's earnings.
 
 ### sources
 
-`<source id publisher canon texts?><name/></source>`. Every `source="…"` in
-the data names one of these (`npm run validate:data` checks it). `canon` is
-true only for the game's official rules; everything else gets a
-**Non-canon** badge in the app, and a runner set to canon only (Concept tab)
-gets a Review warning for each non-canon amp, item or spec. `texts` names
-that source's private description file in `custom/`.
+`<source id publisher canon texts? file? sha256? imported?><name/></source>`.
+Every `source="…"` in the data names one of these (`npm run validate:data`
+checks it). `canon` is true only for the game's official rules; everything
+else gets a **Non-canon** badge in the app, and a runner set to canon only
+(Concept tab) gets a Review warning for each non-canon amp, item or spec.
+`texts` names that source's private description file in `custom/`.
+
+Sources merge by id across three files, in this order: the shipped
+`public/data/sources.xml` (every book a recipe supports, so the Books page
+can list them before anything is uploaded), the generated
+`custom/imported/sources.xml` (one per imported book, adding `file` = the
+uploaded file name, `sha256` and `imported` = the date; several uploads of
+one source, like the four quick-reference sheets, are `; `- and
+space-separated), and the user's own `custom/sources.xml` for house rules,
+which wins for every attribute it sets. The app shows the source's title
+wherever it shows an entry; hovering shows the publisher and file name.
 
 ### rules
 
 `<rule id sheet section effects? source page><title/><text/></rule>`: the
-Rules page. `sheet` is `base`, `magic`, `matrix` or `vehicles`. `effects`
+Rules page. `sheet` is `base`, `magic`, `matrix` or `vehicles` for the
+quick-reference sheets; other sheets (the Conversion Guide's
+`technomancers`) are listed after them. `effects`
 lists amp effect ids the rule explains (hover help in the Amp Builder and
 on the sheet). Written by the importer's `qref` recipe (one
 `custom/imported/qref/rules-<sheet>.xml` per uploaded sheet, ids scoped
@@ -204,7 +229,7 @@ file (`character.xsd`, `origin` = the source) to
 `custom/imported/<source>/samples/<source>.<name>.xml`, and lists it in the
 generated `custom/imported/samples.xml` (`<sample source href name role page/>`,
 `href` relative to `custom/imported/`; schema `samples.xsd`). "Load sample
-characters" reads that list when it exists, else the bundled `samples/`.
+characters" reads that list; before any import there are none.
 The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
@@ -225,7 +250,45 @@ never committed:
 | `texts/qref.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (one run per sheet; entries merged by id) |
 
 On tower04 they live in `/mnt/user/appdata/chummer-anarchy2/custom/texts/`.
-For local development, copy them to `public/custom/texts/` (gitignored).
+For local development without the server, copy them to `public/custom/texts/`
+(gitignored).
+
+## Imported books (`custom/imported/`)
+
+Everything here is generated by the importer (the Books page, or
+`python -m importer run <library/book-id> --custom <custom dir>`); don't edit
+it by hand, re-import instead.
+
+| file | what |
+|---|---|
+| `imported/index.xml` | the overlay files below, in load order (same `<overlays><file href/>` format as `custom/index.xml`) |
+| `imported/sources.xml` | one `<source>` per imported book (see sources above) |
+| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml` |
+| `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
+| `texts/<source>.xml` | its private descriptions |
+
+Load order: the shipped `public/data/`, then `imported/index.xml`, then the
+house rules in `custom/index.xml`, so house rules still win.
+
+**Scoped ids.** The importer writes every entry's id as `<source>.<id>` in
+lower case (`crb.jazz`, `dhsa.jazz`), and every reference inside the book to
+match; the loader never rewrites ids. So two books can both define Jazz.
+Runners saved before the importer carry unscoped ids (`jazz`): on load each
+is mapped to the scoped entry whose source matches the runner's stored
+snapshot, and the snapshot keeps the runner working either way.
+
+**Duplicates are kept.** Two entries are duplicates when they have the same
+type (amp type, item kind, or rule) and the same name once case, punctuation
+and a "(Type)" suffix are ignored. Both stay and pickers list them together:
+when one is canon and one isn't, the **Non-canon** badge tells them apart;
+when both have the same status, each gets a label with its source id (full
+title on hover). A book's report on the Books page lists the groups it is in,
+with each book's rating.
+
+**AI imports** go through `library/<book>/review.xml` first; accepting
+writes the same files a recipe would, under the source id, title and canon
+status chosen on the review screen. A source id that a recipe, the shipped
+data or the user's `custom/sources.xml` owns can't be taken.
 
 ## Overlays (`custom/`)
 
@@ -241,10 +304,15 @@ Docker, that's the mounted appdata folder). List the overlay files in
 ```
 
 Each overlay file uses the same root and schema as the kind it changes.
-Overlays load after the base files, in the order listed:
+House-rule overlays load after the base files and the imported books, in
+the order listed. Unlike imports they keep "same id replaces" (that is their
+purpose), and their ids aren't scoped:
 
-- An entry whose `id` matches a base entry **replaces** it completely.
-- `<remove id="…"/>` **deletes** the base entry with that id.
+- An entry whose `id` matches an existing entry **replaces** it completely
+  (use the scoped id, `crb.jazz`, to replace an imported one).
+- `<remove id="…"/>` **deletes** the entry with that id.
+- Every entry must cite a source listed in one of the sources files; one
+  that isn't is reported on the Game data page and treated as not canon.
 - An entry with a new `id` is **added**.
 
 A file that fails to parse or fails its schema is skipped and reported on the
