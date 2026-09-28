@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Levels of play, CRB p.84-85. Caps apply during creation only. -->
-<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="levels" version="1">
-  <level id="ganger" nuyen="300000" attrAtMax="0" skillCap="4" rrAttr="1" rrSkill="1" rrSpec="1" source="CRB" page="84"><name>Ganger</name></level>
-  <level id="runner" nuyen="375000" attrAtMax="1" skillCap="5" rrAttr="1" rrSkill="1" rrSpec="2" source="CRB" page="84"><name>Runner</name></level>
-  <level id="prime" nuyen="450000" attrAtMax="2" skillCap="6" rrAttr="2" rrSkill="2" rrSpec="2" source="CRB" page="85"><name>Prime Runner</name></level>
-</ca2:data>

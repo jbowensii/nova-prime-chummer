@@ -1,9 +1,11 @@
 # Chummer Anarchy 2.0 data format
 
-All game data is XML. The app ships the mechanics only, in `public/data/`
-(served unchanged at `/data/`): sources, levels, metatypes, attributes,
-skills, pricing, amp types and effects, packages, lifestyles, and the generic
-weapons, armor and vehicles. Book content (amps, spells, complex forms, gear,
+All game data is XML. The app ships only `public/data/sources.xml` (the books
+a recipe supports) and the schemas. The **core files** (levels, metatypes,
+attributes, skills, pricing, amp types and effects, packages, lifestyles, and
+the generic weapons, armor and vehicles) come from the core rulebook: its
+import writes them to `custom/imported/core/` (see "Core files" below), or the
+admin uploads a data pack. Book content (amps, spells, complex forms, gear,
 rules, sample runners, descriptions) comes from the PDFs the user uploads:
 the importer writes it to `custom/imported/` (see "Imported books" below).
 Any application can read or write these files. The schemas in
@@ -95,13 +97,13 @@ All caps apply during creation only.
 `<skill id attr alt? requires?><name/><spec id attr>Display name</spec>*</skill>`
 
 - `attr` is the default linked attribute, and `alt` the other listed option.
-- `requires` is `awakened`, `cyberdeck` or `emerged` (Tasking).
+- `requires` is `awakened`, `cyberdeck` or `emerged` (Tasking, which the Conversion Guide's import adds).
 - Spec ids are `<skill>.<spec>`, for example `stealth.physical-sneaking`.
 - A spec from another book than its skill carries its own `source` and
   `page`. An imported book adds specs with a `<skill>` of the base skill's
   id holding only its new specs (DHSA's `influence.seduction`): the loader
   appends them to that skill, once per spec id. A house-rule `<skill>`
-  still replaces the whole skill. The shipped skills.xml has the core
+  still replaces the whole skill. The core skills.xml has the core
   rulebook's specs only.
 - An amp effect may name a custom spec, `param="custom:Defense against
   throwing weapons"`, for a condition that isn't a named specialization.
@@ -236,11 +238,11 @@ The numbers the book prints for each runner are report rows in
 
 ## Private descriptions (`custom/texts/`)
 
-`<text of="amps|items|rules" id="…">description</text>` entries, kind
+`<text of="amps|items|rules|lifestyles" id="…">description</text>` entries, kind
 `texts` (schema `texts.xsd`), one file per source: the file each source's
 `texts` attribute names (`texts/crb.xml`, `texts/dhsa.xml`, `texts/qref.xml`), plus the older
 single `custom/texts.xml`. Each is loaded when present and merged into the
-amp's narrative, item's text or rule's text with the same id. They're
+amp's narrative, item's, rule's or lifestyle's text with the same id. They're
 never committed:
 
 | file | written by |
@@ -252,6 +254,31 @@ never committed:
 On tower04 they live in `/mnt/user/appdata/chummer-anarchy2/custom/texts/`.
 For local development without the server, copy them to `public/custom/texts/`
 (gitignored).
+
+## Core files (`custom/imported/core/`)
+
+The twelve core files above (`ampeffects`, `amptypes`, `armor`, `attributes`,
+`levels`, `lifestyles`, `metatypes`, `packages`, `pricing`, `skills`,
+`vehicles`, `weapons`), written by the core rulebook's import (recipe `crb`,
+`importer/recipes/crb_core.py`) with the same schemas as before, ids **not**
+scoped, every entry `source="CRB"` and its page. Their descriptions (weapon
+examples, armor, lifestyle rules) go to `texts/crb.xml`. Values the book
+doesn't print are app defaults kept in the recipe (`DEFAULTS`,
+`EFFECTS`). A table the recipe can't read is left out and the import report
+says so (`kind="core-unread"`).
+
+Load order: `public/data/` (in development also the owner's local copies of
+the core files, gitignored), then `imported/core/`, then the imported books,
+the edits layer and the house rules. With a core file in neither place the
+app opens on a setup screen. A book adds to the core data like any overlay:
+the Conversion Guide's import adds the Tasking skill and the Emerged amp type,
+DHSA's its implant grades (`imported/cg/skills.xml`, `amptypes.xml`,
+`imported/dhsa/ampeffects.xml`; skill, amp type and effect ids stay unscoped). A book can
+add amp types and effects but never replace a core one (the importer drops it, report `kind="core-override"`).
+Without attributes, metatypes, levels, packages, pricing or skills the app opens on its setup screen; another
+missing table shows a banner.
+A server started without `imported/core/` whose Library holds the core
+rulebook re-imports it (then the Conversion Guide and DHSA).
 
 ## Imported books (`custom/imported/`)
 
@@ -267,7 +294,7 @@ it by hand, re-import instead.
 | `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
 | `texts/<source>.xml` | its private descriptions |
 
-Load order: the shipped `public/data/`, then `imported/index.xml`, then the
+Load order: `public/data/`, `imported/core/`, then `imported/index.xml`, then the
 edits layer (`custom/edits/`, below), then the house rules in
 `custom/index.xml`, so house rules still win.
 
@@ -307,7 +334,7 @@ replaces the imported one with that id at load time. A new entry gets an id
 `<houserule source lower>.<slug>` and needs a house-rule source (from
 `edits/sources.xml`) that exists.
 
-Load order: shipped `public/data/` → `imported/index.xml` → **`custom/edits/`**
+Load order: `public/data/` → `imported/core/` → `imported/index.xml` → **`custom/edits/`**
 → `custom/index.xml` house rules, so house rules still win over edits, and
 edits win over the book. The loader marks an edits-layer entry `edited: true`
 and keeps the entry it replaced (`original`) so the app can show "Edited"

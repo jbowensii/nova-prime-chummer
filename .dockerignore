@@ -10,3 +10,16 @@ __pycache__
 **/__pycache__
 public/custom/texts.xml
 public/custom/texts
+# the owner's local core copies: the image never ships core data
+public/data/ampeffects.xml
+public/data/amptypes.xml
+public/data/armor.xml
+public/data/attributes.xml
+public/data/levels.xml
+public/data/lifestyles.xml
+public/data/metatypes.xml
+public/data/packages.xml
+public/data/pricing.xml
+public/data/skills.xml
+public/data/vehicles.xml
+public/data/weapons.xml
