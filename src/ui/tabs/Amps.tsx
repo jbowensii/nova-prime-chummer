@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { ampCtx, ampEssence, ampFromTemplate, ampRating, currentBuild, isCanon, makeAmpAdd, makeAmpModify, makeBuy, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating, currentBuild, makeAmpAdd, makeAmpModify, makeBuy, vehicleStats } from '../../engine'
 import type { AmpEntry, ItemEntry } from '../../model/types'
 import { newId } from '../../model/types'
-import { fmt, Modal, NonCanon, Picker } from '../bits'
+import { fmt, Modal, Picker } from '../bits'
+import { SourceLabel } from '../SourceLabel'
 import { useEditor } from '../editor'
 import { AmpBuilder } from './AmpBuilder'
 
@@ -72,9 +73,10 @@ export function AmpsTab() {
               {list.map(a => {
                 const r = ampRating(c, a, ampCtx(b, a))
                 const probs = problems(a)
+                const tpl = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
                 return (
                   <tr key={a.uid}>
-                    <td><b>{a.name}</b>{(() => { const t = a.catalogId ? c.amps.get(a.catalogId) : undefined; return t && !isCanon(c, t) && <> <NonCanon source={t.source} /></> })()}
+                    <td><b>{a.name}</b> {tpl ? <SourceLabel c={c} source={tpl.source} page={tpl.page} id={tpl.id} /> : <SourceLabel builtByYou />}
                       {a.type === 'vehicle' && (() => { const s = vehicleStats(c, a); return s && <div style={{ fontSize: '0.88rem' }}>{s.count > 1 ? `${s.count}× ` : ''}{s.chassis}: Pilot {s.pilot}, Body {s.body}, Handling {s.handling}, Speed {s.speed}{s.flying ? ' (flying)' : ''}, Armor {s.armor}</div> })()}
                       <div className="muted" style={{ fontSize: '0.88rem' }}>{describe(a) || a.narrative || 'Narrative effect only'}</div>
                       {probs.map((p, i) => <div key={i} className={p.severity === 'error' ? 'err' : 'warn'} style={{ fontSize: '0.88rem' }}>{p.message}</div>)}
@@ -103,8 +105,8 @@ export function AmpsTab() {
             groups={types.map(t => t.name)}
             items={[...c.amps.values()].filter(a => !a.mod).map(a => ({
               id: a.id, name: a.name, group: c.ampTypes.get(a.type)?.name,
-              meta: `${c.ampTypes.get(a.type)?.name}, ${a.source} p.${a.page}`,
-              price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative, nonCanon: !isCanon(c, a),
+              meta: c.ampTypes.get(a.type)?.name, label: <SourceLabel c={c} source={a.source} page={a.page} id={a.id} />,
+              price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative,
             }))} />
           <p className="muted">Source DHSA is Daegann’s Holostreets expanded amp list; its page numbers are that document’s.</p>
         </div>
