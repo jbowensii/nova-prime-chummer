@@ -1,5 +1,5 @@
 // The e2e admin's session: e2e/serve.mjs seeds the account, signin.setup.ts signs in once and saves the cookie to
-// STATE, which every test's browser context starts with (playwright.config.ts). Until the app has a sign-in page.
+// STATE, which every test’s browser context starts with (playwright.config.ts); e2e/accounts.spec.ts drives the sign-in pages.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { APIRequestContext } from '@playwright/test'

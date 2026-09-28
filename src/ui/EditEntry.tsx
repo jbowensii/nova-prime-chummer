@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule } from '../model/types'
+import { canEdit, useMe } from './auth'
 import { Modal } from './bits'
 import { api } from './Books'
 import { Editor, type EditorCtx } from './editor'
@@ -67,6 +68,7 @@ export function EditButton({ kind, id, name }: { kind: EditKind; id: string; nam
 /** Holds the edit dialog for the whole app; `reload` fetches the catalog again after a save. */
 export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () => Promise<void>; children: ReactNode }) {
   const repo = useRepo()
+  const editor = canEdit(useMe()) // players see no Edit or Add buttons (the server refuses their edits too)
   const [target, setTarget] = useState<Target | null>(null)
   const [msg, setMsg] = useState('')
   // the one live region: in the topmost open dialog (a picker the edit was opened from; the page behind it is
@@ -82,7 +84,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
   const entry = target?.id ? c[target.kind].get(target.id) : undefined
   const done = async (text: string) => { await reload(); setTarget(null); setMsg(text) }
   return (
-    <OpenEdit.Provider value={repo.mode === 'server' ? t => { setMsg(''); setTarget(t) } : null}>
+    <OpenEdit.Provider value={repo.mode === 'server' && editor ? t => { setMsg(''); setTarget(t) } : null}>
       {children}
       {/* no role=status: pages keep their own single status region */}
       {(() => { const p = <p className={live.text ? 'toast' : 'sr-only'} aria-live="polite">{live.text}</p>; return live.host?.isConnected ? createPortal(p, live.host) : p })()}

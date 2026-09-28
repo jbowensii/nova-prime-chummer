@@ -4,6 +4,7 @@ import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
 import { NonCanon } from './bits'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
+import { AccountMenu, isAdmin, useMe } from './auth'
 import { SettingsButton } from './settings'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
@@ -12,6 +13,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
   const [q, setQ] = useState('')
   const [sheet, setSheet] = useState('')
   const openEdit = useOpenEdit()
+  const admin = isAdmin(useMe())
   const rules = [...c.rules.values()]
   const hasText = rules.some(r => r.text)
   const shown = useMemo(() => {
@@ -28,15 +30,15 @@ export function RulesScreen({ c }: { c: Catalog }) {
       <header>
         <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Rules reference</h1></div>
         <div className="row">{openEdit && <button className="btn quiet" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>}
-          <a className="btn quiet" href="#/">Your runners</a><SettingsButton /></div>
+          <a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu /></div>
       </header>
-      {rules.length === 0 && <p className="banner">No rules yet. Upload the quick-reference sheets on the <a href="#/books">Books page</a>.</p>}
+      {rules.length === 0 && <p className="banner">No rules yet. {admin ? <>Upload the quick-reference sheets on the <a href="#/books">Books page</a>.</> : 'The admin hasn’t uploaded the quick-reference sheets yet.'}</p>}
       <p className="muted">
         {sources.length > 0 && <>From {sources.map(s => `${s!.name} (${s!.publisher})`).join('; ')}.</>}
         {' '}{rules.length > 0 && !isCanon(c, rules[0]) && <NonCanon />} Page numbers and full rules are in the core rulebook.
       </p>
       {!hasText && rules.length > 0 && <p className="banner" role="status">
-        Only titles are shown: the rules text isn’t installed. Re-import the quick-reference sheets on the <a href="#/books">Books page</a>.</p>}
+        Only titles are shown: the rules text isn’t installed. {admin ? <>Re-import the quick-reference sheets on the <a href="#/books">Books page</a>.</> : 'Ask the admin to import the quick-reference sheets again.'}</p>}
       <div className="row" style={{ margin: '0.8rem 0' }}>
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search the rules" aria-label="Search the rules" style={{ flex: 1 }} />
         <select value={sheet} onChange={e => setSheet(e.target.value)} aria-label="Sheet">
