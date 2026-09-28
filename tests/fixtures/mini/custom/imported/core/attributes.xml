@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="attributes" version="1">
+  <attribute id="str" abbr="BRN" source="CRB" page="7"><name>Brawn</name></attribute>
+  <attribute id="agi" abbr="FIN" source="CRB" page="7"><name>Finesse</name></attribute>
+  <attribute id="wil" abbr="RES" source="CRB" page="7"><name>Resolve</name></attribute>
+  <attribute id="log" abbr="WIT" source="CRB" page="7"><name>Wits</name></attribute>
+  <attribute id="cha" abbr="PRE" source="CRB" page="7"><name>Presence</name></attribute>
+</ca2:data>

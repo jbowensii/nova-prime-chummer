@@ -126,3 +126,35 @@ Datajack 2, Unlocked Datajack 4). Merging any of them would be a judgement about
   line stays text, so the rating is the printed 2 and the armor point sits on the Clothes item); every printed pool,
   threshold and Essence the oracle lists is reproduced. Two printed pools roll with an attribute the rules don't
   give that pool (status "attribute", not tested): Casper's Network (medical) WIL, Mictlan's Stealth (lockpicking) LOG.
+
+## Core files (Task 1 of 0.4.0)
+
+`crb_core.py` reads the rules engine's core files from the book; the owner's local copies (public/data, gitignored) are
+the answer key (`importer/tests/test_crb_core.py`, equal but for the pages listed there). Where each table is:
+
+- Attributes p.52 ("Strength (STR/S) is …"), the metatype table p.52 (rows plain or as pipe rows, the GAME CONCEPTS tab
+  letters glued to the row starts), Racial Qualities pp.50-51 under each metatype heading.
+- Skills: names, specializations and their attribute letters from the SKILLS, SPECIALIZATIONS, AND RELATED ATTRIBUTES box
+  (p.54); linked attributes (first = attr, last = alt; Engineering prints its value before the label) and "Only … can use
+  this Skill" from each Skill's section (pp.53-57), cited to the heading's page.
+- Amp types pp.58-60: a heading in capitals, then "**Base rating N[ then M][, Essence -x]**". The Awakened options are
+  the "• **Name:** rating +N" bullets on p.58.
+- SHADOW AMP EFFECTS pp.61-63: sections as pipe rows ("Magical", "Matrix", the vehicle rows) or with their columns come
+  apart ("Physical", "Virtual reality", "Rigging", "Miscellaneous": the names first, then "+N types" lines in the same
+  order, the Reference column's "Title (p. N)" mixed in; "Adept" and "powers" can be split by it).
+- Vehicles p.60 (bullets; the Large drone's continues after the ESSENCE box and the page number), cost cheat sheet p.83
+  (label, then cost lines), levels pp.84-85, the three package tables p.86 (a row's cells split over lines), the WEAPONS
+  box p.142 (examples or DV wrap; "**" specialist, "*" toxins), the ARMOR box p.148, the LIFESTYLE box p.166.
+
+Named exceptions (values the recipe keeps in code, with the owner's rules for them):
+- `mental-armor`: priced from the Astral Armor power (its rating less the adept base, p.190) with Armor +1's max and types;
+  cyberdecks may take it too (biofeedback, p.211) — that last part is the app's.
+- `init-realm`: read from the initiative rows' notes (the realms listed, the rating reduction per level).
+- Pricing `complexForm`: the CRB has no technomancers; the recipe writes the spell price (the CG p.9 prints the same). The
+  spec wants it "from the CG when imported": not done, since a book can't partly override pricing yet.
+- ids, effect categories and params, "once" maxima for on/off effects, weapon groups, and dropping the "Unarmed" weapon row.
+- `cg.py` TASKING_SPECS and TASKING_ATTR: the Conversion Guide's Tasking specializations, kept as vocabulary.
+
+The other recipes and the importer read every rule value (effect ratings, amp type bases, chassis, pilot, weapon DVs and
+ranges, amp and specialist-weapon prices) from the core files at import time; a book imported before the core data fails
+with "There is no core data yet".

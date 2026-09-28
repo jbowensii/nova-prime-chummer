@@ -7,7 +7,7 @@ import re
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape, quoteattr
 
-from importer import DATA_DIR, xmlio
+from importer import CORE_FILES, DATA_DIR, core_dir, xmlio
 
 TAG = {"amps": "amp", "items": "item", "rules": "rule"}  # edit kind (also texts' of=) → entry tag
 ID = re.compile(r"[a-z0-9][a-z0-9.\-]*")
@@ -43,7 +43,7 @@ def _listed(index):
 def catalog_ids(custom_dir, tag, house=False):
     """Ids of `tag` entries loaded before the edits layer (house: those of the house rules, loaded after it)."""
     files = _listed(os.path.join(custom_dir, "index.xml")) if house else (
-        [os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR) if f.endswith(".xml")] + _listed(os.path.join(custom_dir, "imported", "index.xml")))
+        [os.path.join(core_dir(), f"{n}.xml") for n in CORE_FILES] + _listed(os.path.join(custom_dir, "imported", "index.xml")))
     ids = set()
     for f in files:
         try:
@@ -118,7 +118,7 @@ def _refs(entry):
     from importer.ai import propose
     m = propose.mechanics()
     if entry.tag == "amp":
-        vehicles = {v.get("id") for v in ET.parse(os.path.join(DATA_DIR, "vehicles.xml")).getroot()}
+        vehicles = {v.get("id") for v in ET.parse(os.path.join(core_dir(), "vehicles.xml")).getroot()}
         bad = [f'unknown vehicle "{entry.get("vehicle")}"'] if entry.get("vehicle") and entry.get("vehicle") not in vehicles else []
         return _entry_notes("amp", entry, m) + bad
     if entry.tag == "item":

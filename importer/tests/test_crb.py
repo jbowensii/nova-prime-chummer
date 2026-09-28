@@ -86,13 +86,13 @@ class FurnitureTest(unittest.TestCase):
 AMPS_MD = """<!-- page 140 -->
 | MADE UP GEAR SELECTION |
 |---|
-| A few **examples** of made-up gear�<br>**Glow stick:** (Equipment, 2,500¥) makes a dim light�<br>**Zoom goggles:** (Rating 5 Equipment<br>M<br>Amp, 27,500¥) RR 1 on Perception (physical) and Stealth<br>u (physical) Tests; night vision� |
+| A few **examples** of made-up gear�<br>**Glow stick:** (Equipment, 2,500¥) makes a dim light�<br>**Zoom goggles:** (Rating 9 Equipment<br>M<br>Amp, 27,500¥) RR 1 on Perception (watching) and Stealth<br>u (physical) Tests; night vision� |
 | ZAP GUN AMPS |
 |---|
-| **Zapper X:** (taser, Rating 5 Equipment Amp, 27,500¥) DV 6; range [OK/<br>OK/Dis�/–]; RR 1 on Ranged Weapons (pistols) Tests� N<br>**Buzz blade:** (short weapon, Rating 1 Equipment Amp, 7,500¥) DV (STR+1); range [OK/–/–/–]; glows� |
+| **Zapper X:** (taser, Rating 7 Equipment Amp, 27,500¥) DV 5; range [OK/<br>OK/Dis�/–]; RR 1 on Ranged Weapons (handguns) Tests� N<br>**Buzz blade:** (stun baton, Rating 3 Equipment Amp, 7,500¥) DV 6; range [OK/–/Dis�/–]; glows� |
 | PADDED WEAR AMPS |
 |---|
-| **Padded vest:** (Rating 2 Equipment Amp, 12,500¥) Armor 2, RR 1 on Influence (etiquette) Tests� |
+| **Padded vest:** (Rating 4 Equipment Amp, 12,500¥) Armor 2, RR 1 on Influence (manners) Tests� |
 | MADE UP TOXINS |
 |---|
 | Some prose� **Sleepdust** and **Nod** are always equipment that needs an Edge� |
@@ -100,25 +100,25 @@ AMPS_MD = """<!-- page 140 -->
 <!-- page 157 -->
 | MADE UP HEADWARE |
 |---|
-| **Brain box:** (Rating 11, Cyberware Amp, Essence -1, 55,000 ¥) RR 1 on all Logic-<br>based Tests�<br>**Jack plug:** (Rating 4 Cyberware Amp, Essence -1, 20,000¥) Direct neural interface; cold-<br>sim VR; allows the user to jump into vehicles� |
+| **Brain box:** (Rating 10, Cyberware Amp, Essence -1, 55,000 ¥) RR 1 on all Logic-<br>based Tests�<br>**Jack plug:** (Rating 5 Cyberware Amp, Essence -1, 20,000¥) Direct neural interface; cold-<br>sim VR; allows the user to jump into vehicles� |
 | MADE UP CONTACTS |
 |---|
-| **Fence:** (Rating 2 Contact Amp, 10,000¥) RR 1 on Network (street) Tests�<br>(Rating 4 Contact Amp, 20,000¥) RR 1<br>**Night clerk:**<br>on Network (street and criminal) Tests� |
+| **Fence:** (Rating 4 Contact Amp, 10,000¥) RR 1 on Network (gutter) Tests�<br>(Rating 7 Contact Amp, 20,000¥) RR 1<br>**Night clerk:**<br>on Network (gutter and underworld) Tests� |
 **155**
 <!-- page 176 -->
 | FOLLOWING A MADE UP SPIRIT |
 |---|
-| **Owl:** (Rating 4 Quality Amp, 20,000¥) RR 1 on Perception (physical), Stealth (physical), or Sorcery (detection spells) Tests (choose 2 out of the 3)�<br>**Watchful (disposition):** Made up�<br>**Similar Archetypes:** Night, Wisdom<br>**Glow Fist:** (Rating 3 Adept power Amp, 15,000¥) DV +2 on unarmed attacks� |
+| **Owl:** (Rating 7 Quality Amp, 20,000¥) RR 1 on Perception (watching), Stealth (physical), or Sorcery (glamour) Tests (choose 2 out of the 3)�<br>**Watchful (disposition):** Made up�<br>**Similar Archetypes:** Night, Wisdom<br>**Glow Fist:** (Rating 6 Adept power Amp, 15,000¥) DV +2 on unarmed attacks� |
 **174**
 <!-- page 212 -->
 | CYBERDECKS AND MADE UP PROGRAMS |
 |---|
-| **Echo:** (narrative effect, Amp Rating +1) repeats things�<br>**Toy deck:** (Rating 6 Cyberdeck Amp, 30,000¥)<br>Firewall 2; Attack 2; RR 1 on Cracking (brute force)<br>I Tests� |
+| **Echo:** (narrative effect, Amp Rating +2) repeats things�<br>**Toy deck:** (Rating 11 Cyberdeck Amp, 30,000¥)<br>Firewall 2; Attack 2; RR 1 on Cracking (battering)<br>I Tests� |
 **210**
 <!-- page 240 -->
 | MADE UP VEHICLES |
 |---|
-| **Hover sled:** (Rating 4 Vehicle Amp, 20,000¥) Pilot 6, Body 5, Handling 2, Speed 5, Armor 2; flying�<br>**Sports Car:** (Rating 1 Vehicle Amp, 5,000¥) Pilot 6, Body 5, Handling 2, Speed 5, Armor 0�<br>**Big Van:** Pilot 6, Body 9, Handling 1, Speed 3, Armor 9�<br>**Nurse bot:** (Rating 3 Drone Amp, 15,000¥) Small drone, Pilot 8, stationary�<br>C<br>**Tiny Scout:** (Rating 1 Drone Amp, 5,000¥) Pilot 6, Body 0, Handling 10, Speed 0 (Flying 1), Armor 0; no weapon mount� |
+| **Hover sled:** (Rating 8 Vehicle Amp, 20,000¥) Pilot 5, Body 6, Handling 1, Speed 12, Armor 2; flying�<br>**Sports Car:** (Rating 2 Vehicle Amp, 5,000¥) Pilot 5, Body 4, Handling 3, Speed 7, Armor 0�<br>**Big Van:** Pilot 5, Body 9, Handling 2, Speed 2, Armor 9�<br>**Nurse bot:** (Rating 6 Drone Amp, 15,000¥) Small drone, Pilot 7, stationary�<br>C<br>**Tiny Scout:** (Rating 2 Drone Amp, 5,000¥) Pilot 5, Body 1, Handling 9, Speed 1 (Flying 2), Armor 0; no weapon mount� |
 **238**
 """
 
@@ -132,7 +132,7 @@ AMPS_MD = """<!-- page 140 -->
 PREGEN_MD = """<!-- page 87 -->
 | CHARACTER CREATION EXAMPLE |
 |---|
-| Ann wants Spark, her character, to be a made-up elf mage� She chose as Keywords: Elf, Test mage, and Low life-<br>style� For her Dispositions, she chose: Quiet, Bold, which she gets from Owl, and Kind�<br>She decides to take: Strength 2, Agility 3, Willpower 4 (max rating), Logic 2, Charisma 3� G<br>A<br>She takes Sorcery 5 (illusion spells +2) and Stealth 3, then Network 2 (street +2)�<br>For her Awakened abilities, she spends 3 points (2 for astral perception and projection, 1 for sorcery)� She picks Owl as a mentor spirit at rating 2 (base rating 0 for the first quality, 2 for Risk Reduction 1 on Sorcery (illusion spells) Tests)� She picks a sustaining focus, a rating 2 Amp (0 for the equipment, and 2 to sustain up to 1 additional spells)�<br>The next 2 points are used for one contact: Old Pal, a made-up fixer (Risk Reduction 1 for Network (street) Tests)� She wears an armor jacket (Armor 3) and carries a traditional knife (standard weapon)� She decides to increase Stealth from 3 to 4� Then she adds some reagents� Finally, she picks up her 2 spells: Glimmer, her favorite; and Zap� |
+| Ann wants Spark, her character, to be a made-up elf mage� She chose as Keywords: Elf, Test mage, and Low life-<br>style� For her Dispositions, she chose: Quiet, Bold, which she gets from Owl, and Kind�<br>She decides to take: Strength 2, Agility 3, Willpower 4 (max rating), Logic 2, Charisma 3� G<br>A<br>She takes Sorcery 5 (glamour +2) and Stealth 3, then Network 2 (gutter +2)�<br>For her Awakened abilities, she spends 6 points (3 for astral perception and projection, 2 for sorcery)� She picks Owl as a mentor spirit at rating 4 (base rating 1 for the first quality, 3 for Risk Reduction 1 on Sorcery (glamour) Tests)� She picks a sustaining focus, a rating 2 Amp (0 for the equipment, and 1 to sustain up to 1 additional spells)�<br>The next 4 points are used for one contact: Old Pal, a made-up fixer (Risk Reduction 1 for Network (gutter) Tests)� She wears an armor jacket (Armor 3) and carries a traditional knife (standard weapon)� She decides to increase Stealth from 3 to 4� Then she adds some reagents� Finally, she picks up her 2 spells: Glimmer, her favorite; and Zap� |
 **85**
 <!-- page 90 -->
 **SHADOWRUN**
@@ -156,34 +156,34 @@ STRENGTH 2
 2
 4
 3
-ESSENCE: 4
+ESSENCE: 3.5
 SKILLS RATING +ATT. = DP RR
 **Athletics** 2 STR **5**
-(ranged defense +2) AGI **8**
-| **Close Combat** | 1 | AGI | **5** |
+(dodging +2) WIL **6**
+| **Close Combat** | 1 | STR | **4** |
 |---|---|---|---|
-| (clubs +2) |  | AGI | **7** |
+| (grappling +2) |  | STR | **6** |
 **Engineering** 3 LOG **6**
-(remote-controlled weapons) LOG **6**
+(welding) AGI **7**
 | **Stealth** | 2 | AGI | **6** |
 |---|---|---|---|
-| (lockpicking +2) |  | LOG/AGI | **7/8** |
+| (lock work +2) |  | LOG/AGI | **7/8** |
 **Piloting** 5 AGI **9**
 KNOWLEDGE SKILLS
 Made-up lore, Toy trains
 SHADOW AMPS ESSENCE RATING
-**Toy Jack (cyberware)** 1 4
+**Toy Jack (cyberware)** 1.25 7
 Direct neural interface; cold- and hot-sim VR
-**Toy Arm with a Heavy pistol (cyberware)** 1 4
-RR 1 on Ranged Weapons (pistols) Tests
-**Rusty Sedan (vehicle)** 2
-Sedan: Pilot 6, Body 6, Handling 2, Speed 4, Armor 1
+**Toy Arm with a Heavy pistol (cyberware)** 1.25 7
+RR 1 on Ranged Weapons (handguns) Tests
+**Rusty Sedan (vehicle)** 4
+Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1
 Front-facing weapon mount
-**2 Buzz Copter (drones)** 4
-Flying Drone: Pilot 6, Body 1, Handling 9, Speed 4, Armor 0
-**Old Pal, fixer (contact)** 2
-RR 1 on Tests for Network (street) Tests
-**Jolt (equipment)** 1
+**2 Buzz Copter (drones)** 7
+Flying Drone: Pilot 5, Body 2, Handling 8, Speed 6, Armor 0
+**Old Pal, fixer (contact)** 4
+RR 1 on Tests for Network (gutter) Tests
+**Jolt (equipment)** 3
 BTL: DV +1 in melee� RR 1 on Close Combat Tests
 Must take a High Risk for all their
 Tests
@@ -201,7 +201,7 @@ Toolkit No armor 3 6 9
 Main armor
 6 9 12
 (Padded Coat 3)
-Secondary armor (Clothes 1) 4 7 10
+Secondary armor (Clothes 2) 5 8 11
 Mental 2 5 8
 KEYWORDS
 tRoLl
@@ -229,26 +229,26 @@ class PregensTest(unittest.TestCase):
         self.assertEqual(b["knowledge"], ["Made-up lore", "Toy trains"])
         self.assertEqual([(s["name"], s["rating"], s["attr"], s["dp"], [(x["name"], x["plus2"], x["attr"], x["dp"]) for x in s["specs"]])
                           for s in b["skills"]], [
-            ("Athletics", 2, "str", 5, [("Ranged defense", True, "agi", 8)]),
-            ("Close Combat", 1, "agi", 5, [("Clubs", True, "agi", 7)]),
-            ("Engineering", 3, "log", 6, [("Remote-controlled weapons", False, "log", 6)]),
-            ("Stealth", 2, "agi", 6, [("Lockpicking", True, "log", 7), ("Lockpicking", True, "agi", 8)]),
+            ("Athletics", 2, "str", 5, [("Dodging", True, "wil", 6)]),
+            ("Close Combat", 1, "str", 4, [("Grappling", True, "str", 6)]),
+            ("Engineering", 3, "log", 6, [("Welding", False, "agi", 7)]),
+            ("Stealth", 2, "agi", 6, [("Lock work", True, "log", 7), ("Lock work", True, "agi", 8)]),
             ("Piloting", 5, "agi", 9, []),
         ])
         self.assertEqual([(a["name"], a["type"], a["ess"], a["rating"], a["count"], a["lines"]) for a in b["amps"]], [
-            ("Toy Jack", "cyberware", 1.0, 4, 1, ["Direct neural interface", "Cold-sim and hot-sim VR"]),
-            ("Toy Arm with a Heavy pistol", "cyberware", 1.0, 4, 1, ["Integrated heavy pistol", "RR 1 on Ranged Weapons (pistols) Tests"]),
-            ("Rusty Sedan", "vehicle", None, 2, 1, ["Sedan: Pilot 6, Body 6, Handling 2, Speed 4, Armor 1", "Front-facing weapon mount"]),
-            ("Buzz Copter", "drones", None, 4, 2, ["Flying Drone: Pilot 6, Body 1, Handling 9, Speed 4, Armor 0"]),
-            ("Old Pal, fixer", "contact", None, 2, 1, ["RR 1 on Network (street) Tests"]),
-            ("Jolt", "equipment", None, 1, 1, ["BTL: DV +1 in melee", "RR 1 on Close Combat Tests", "Must take a High Risk for all their Tests"]),
+            ("Toy Jack", "cyberware", 1.25, 7, 1, ["Direct neural interface", "Cold-sim and hot-sim VR"]),
+            ("Toy Arm with a Heavy pistol", "cyberware", 1.25, 7, 1, ["Integrated heavy pistol", "RR 1 on Ranged Weapons (handguns) Tests"]),
+            ("Rusty Sedan", "vehicle", None, 4, 1, ["Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1", "Front-facing weapon mount"]),
+            ("Buzz Copter", "drones", None, 7, 2, ["Flying Drone: Pilot 5, Body 2, Handling 8, Speed 6, Armor 0"]),
+            ("Old Pal, fixer", "contact", None, 4, 1, ["RR 1 on Network (gutter) Tests"]),
+            ("Jolt", "equipment", None, 3, 1, ["BTL: DV +1 in melee", "RR 1 on Close Combat Tests", "Must take a High Risk for all their Tests"]),
         ])
         self.assertEqual([(w["name"], w["kind"], w["dv"], w["count"]) for w in b["weapons"]],
                          [("Unarmed", None, "3", 1), ("Wrench", "club", "5", 2), ("Zap Pistol", "heavy pistol", "5", 1),
                           ("Submachine Gun", None, "5", 2)])
         self.assertEqual(b["spells"], ["Zap", "Fizz"])
         self.assertEqual([(r["name"], r["armor"], r["l"]) for r in b["armor"]],
-                         [("No armor", None, 3), ("Padded Coat", "3", 6), ("Clothes", "1", 4), ("Mental", None, 2)])
+                         [("No armor", None, 3), ("Padded Coat", "3", 6), ("Clothes", "2", 5), ("Mental", None, 2)])
         self.assertEqual(b["equipment"], ["Fake SIN", "Commlink", "Toolkit"])
         self.assertEqual((b["keywords"], b["dispositions"], b["cues"]),
                          (["Troll", "Test city / downtown"], ["Grumpy"], ["I fix it.", "You pay for it."]))
@@ -264,7 +264,7 @@ class PregensTest(unittest.TestCase):
         self.assertEqual([k.text for k in root.iter("knowledge")], ["Made-up lore", "Toy trains"])
         # a pair is two items; a weapon printed without a type is named by it; spells link to the book's catalog
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item") if i.get("kind") != "gear"], [
-            ("armor", "Padded Coat", "light-armor"), ("armor", "Clothes", "armored-clothes"),
+            ("armor", "Padded Coat", "armored-clothes-coat"), ("armor", "Clothes", "armored-clothes"),  # the made-up ratings 3 and 2
             ("weapon", "Wrench", "long-weapon"), ("weapon", "Wrench", "long-weapon"), ("weapon", "Zap Pistol", "heavy-pistol"),
             ("weapon", "Submachine Gun", "submachine-gun"), ("weapon", "Submachine Gun", "submachine-gun"),
             ("spell", "Zap", "crb.spell-zap"), ("spell", "Fizz", None)])
@@ -297,11 +297,11 @@ class PregensTest(unittest.TestCase):
         self.assertEqual([(i, a.get("type"), a.get("printedRating"), a.get("page"), a.get("source"), a.get("vehicle"))
                           for i, a in amps.items()], [
             ("sustaining-focus", "equipment", "2", "85", "CRB", None),
-            ("toy-jack", "cyberware", "4", "88", "CRB", None),
-            ("toy-arm-with-a-heavy-pistol", "cyberware", "4", "88", "CRB", None),
-            ("rusty-sedan", "vehicle", "2", "88", "CRB", "sedan"),
-            ("buzz-copter", "vehicle", "4", "88", "CRB", "small-drone"),
-            ("jolt", "equipment", "1", "88", "CRB", None)])
+            ("toy-jack", "cyberware", "7", "88", "CRB", None),
+            ("toy-arm-with-a-heavy-pistol", "cyberware", "7", "88", "CRB", None),
+            ("rusty-sedan", "vehicle", "4", "88", "CRB", "sedan"),
+            ("buzz-copter", "vehicle", "7", "88", "CRB", "small-drone"),
+            ("jolt", "equipment", "3", "88", "CRB", None)])
         arm = amps["toy-arm-with-a-heavy-pistol"]
         self.assertEqual([(f.get("ref"), f.get("param"), f.get("note")) for f in arm.findall("effect")],
                          [("rr-spec", "ranged-weapons.pistols", None), ("narrative", None, "balances printed rating")])
@@ -320,7 +320,7 @@ class PregensTest(unittest.TestCase):
         self.assertEqual([(s.get("id"), s.get("rating"), [x.text for x in s]) for s in root.iter("skill")], [
             ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
-            ("armor", "Armor jacket", "light-armor"), ("weapon", "Traditional knife", "short-weapon"),
+            ("armor", "Armor jacket", "armored-clothes-coat"), ("weapon", "Traditional knife", "short-weapon"),
             ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None)])
 
     def test_every_printed_number_is_a_report_row(self):
@@ -332,8 +332,8 @@ class PregensTest(unittest.TestCase):
                           ("unmatched-item", "Fizz", None)])  # not in the book's spell boxes
         self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)
         self.assertEqual([(r["key"], r["printed"]) for r in rows if r["kind"] == "threshold"],
-                         [("physicalNone", 3), ("physicalMain", 6), ("physicalAlt", 4), ("mental", 2)])
-        self.assertEqual([(r["printed"], r["computed"]) for r in rows if r["kind"] == "essence"], [(4, 4)])
+                         [("physicalNone", 3), ("physicalMain", 6), ("physicalAlt", 5), ("mental", 2)])
+        self.assertEqual([(r["printed"], r["computed"]) for r in rows if r["kind"] == "essence"], [(3.5, 3.5)])
         self.assertEqual({r["page"] for r in rows}, {85, 88})
 
 
@@ -349,29 +349,29 @@ class AmpsTest(unittest.TestCase):
 
     def test_entries(self):
         self.assertEqual([(i, a.get("type"), a.get("printedRating"), a.get("page"), a.find("name").text) for i, a in self.amps.items()], [
-            ("zoom-goggles", "equipment", "5", "138", "Zoom goggles"),
-            ("zapper-x-taser", "equipment", "5", "138", "Zapper X (Taser)"),
-            ("buzz-blade", "equipment", "1", "138", "Buzz blade"),
-            ("padded-vest", "equipment", "2", "138", "Padded vest"),
-            ("brain-box", "cyberware", "11", "155", "Brain box"),
-            ("jack-plug", "cyberware", "4", "155", "Jack plug"),
-            ("fence", "contact", "2", "155", "Fence"),
-            ("night-clerk", "contact", "4", "155", "Night clerk"),
-            ("owl-mentor-spirit-night-wisdom", "quality", "4", "174", "Owl Mentor Spirit Night Wisdom"),
-            ("glow-fist", "adept", "3", "174", "Glow Fist"),
-            ("mod-echo", "cyberdeck", "1", "210", "Echo"),
-            ("toy-deck", "cyberdeck", "6", "210", "Toy deck"),
-            ("hover-sled", "vehicle", "4", "238", "Hover sled"),
-            ("sports-car", "vehicle", "1", "238", "Sports Car"),
-            ("nurse-bot", "vehicle", "3", "238", "Nurse bot"),
-            ("tiny-scout", "vehicle", "1", "238", "Tiny Scout"),
+            ("zoom-goggles", "equipment", "9", "138", "Zoom goggles"),
+            ("zapper-x-taser", "equipment", "7", "138", "Zapper X (Taser)"),
+            ("buzz-blade", "equipment", "3", "138", "Buzz blade"),
+            ("padded-vest", "equipment", "4", "138", "Padded vest"),
+            ("brain-box", "cyberware", "10", "155", "Brain box"),
+            ("jack-plug", "cyberware", "5", "155", "Jack plug"),
+            ("fence", "contact", "4", "155", "Fence"),
+            ("night-clerk", "contact", "7", "155", "Night clerk"),
+            ("owl-mentor-spirit-night-wisdom", "quality", "7", "174", "Owl Mentor Spirit Night Wisdom"),
+            ("glow-fist", "adept", "6", "174", "Glow Fist"),
+            ("mod-echo", "cyberdeck", "2", "210", "Echo"),
+            ("toy-deck", "cyberdeck", "11", "210", "Toy deck"),
+            ("hover-sled", "vehicle", "8", "238", "Hover sled"),
+            ("sports-car", "vehicle", "2", "238", "Sports Car"),
+            ("nurse-bot", "vehicle", "6", "238", "Nurse bot"),
+            ("tiny-scout", "vehicle", "2", "238", "Tiny Scout"),
         ])
         self.assertEqual(self.amps["mod-echo"].get("mod"), "true")
 
     def test_effects_reproduce_the_printed_rating(self):
         self.assertEqual({i: self.fx(i) for i in self.amps}, {
             "zoom-goggles": ["rr-spec:perception.physical", "rr-spec:stealth.physical-sneaking", "narrative"],
-            "zapper-x-taser": ["dv-plus", "range-improve:OK/OK/-/- -> OK/OK/Dis/-", "rr-spec:ranged-weapons.pistols"],
+            "zapper-x-taser": ["dv-plus", "range-improve:OK/Dis/-/- -> OK/OK/Dis/-", "rr-spec:ranged-weapons.pistols"],
             "buzz-blade": ["narrative"],
             "padded-vest": ["rr-spec:influence.etiquette"],
             "brain-box": ["rr-attr:log"],
@@ -391,8 +391,8 @@ class AmpsTest(unittest.TestCase):
 
     def test_items_and_chassis(self):
         item = {i: dict(a.find("item").attrib) for i, a in self.amps.items() if a.find("item") is not None}
-        self.assertEqual(item["zapper-x-taser"], {"kind": "weapon", "dv": "6", "ranges": "OK/OK/Dis/-"})
-        self.assertEqual(item["buzz-blade"], {"kind": "weapon", "dv": "S+1", "ranges": "OK/-/-/-"})
+        self.assertEqual(item["zapper-x-taser"], {"kind": "weapon", "dv": "5", "ranges": "OK/OK/Dis/-"})
+        self.assertEqual(item["buzz-blade"], {"kind": "weapon", "dv": "6", "ranges": "OK/-/Dis/-"})
         self.assertEqual(item["padded-vest"], {"kind": "armor", "armor": "2"})
         self.assertEqual(item["zoom-goggles"], {"kind": "gear"})
         self.assertEqual({i: a.get("vehicle") for i, a in self.amps.items() if a.get("vehicle")},
@@ -407,7 +407,7 @@ class AmpsTest(unittest.TestCase):
 
     def test_texts_hold_the_entry_without_furniture(self):
         texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
-        self.assertEqual(texts["zoom-goggles"], "RR 1 on Perception (physical) and Stealth (physical) Tests; night vision.")
+        self.assertEqual(texts["zoom-goggles"], "RR 1 on Perception (watching) and Stealth (physical) Tests; night vision.")
         self.assertEqual(texts["jack-plug"], "Direct neural interface; cold-sim VR; allows the user to jump into vehicles.")
         self.assertEqual(texts["gear-glow-stick"], "makes a dim light.")
         for a in self.amps.values():
@@ -543,7 +543,7 @@ AMP_TYPES = {"crashcart-essential-autonomous-medkit": ("equipment", "vehicle"),
              "docwagon-pro-autonomous-medkit": ("equipment", "vehicle")}
 # - effects (new effects pinned, as (ref, param, value)): the old reader missed the Red Dog's 5 vehicles
 #   (read 3), counted "combat" as a club ("bat") for the lethal-toxin knife and couldn't map Novacoke's RRs;
-#   DHSA gives the Ingram RR on pistols (v1.8: submachine guns); the medkits above (Pilot 6 and 9).
+#   DHSA gives the Ingram RR on pistols (v1.8: submachine guns); the medkits above (their Pilot ratings).
 AMP_EFFECTS = {
     "ares-red-dog-series": [("firewall-plus", "", ""), ("firewall-plus", "", ""), ("rcc", "", "5"), ("rr-skill", "piloting", "")],
     "combat-knife-coated-with-a-lethal-toxin": [("dv-plus", "", ""), ("dv-plus", "", "")],

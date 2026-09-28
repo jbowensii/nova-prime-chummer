@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="levels" version="1">
+  <level id="ganger" nuyen="367500" attrAtMax="1" skillCap="3" rrAttr="2" rrSkill="2" rrSpec="3" source="CRB" page="31"><name>Street punk</name></level>
+  <level id="runner" nuyen="455000" attrAtMax="2" skillCap="4" rrAttr="3" rrSkill="2" rrSpec="3" source="CRB" page="31"><name>Pro</name></level>
+  <level id="prime" nuyen="560000" attrAtMax="3" skillCap="7" rrAttr="3" rrSkill="3" rrSpec="4" source="CRB" page="31"><name>Legend</name></level>
+</ca2:data>

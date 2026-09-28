@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 from importer.recipes import dhsa
+from importer.tests import LOCAL_CORE, local_core
 
 # Invented entries, laid out as the converter prints the DHSA tables: "#" sections, small-caps
 # headers ("Q UALITIES"), bold names, wrapped cells as <br> or rows with empty cells, footnote "*"/"**".
@@ -24,7 +25,7 @@ daegann.fr
 Note to keep in mind: an invented note.
 | P ISTOLS | T YPE | C OST | DV | R ANGE | A CCESSORIES / E FFECTS |
 |---|---|---|---|---|---|
-| **Zapper 3000**<br>(Heavy pistol) | Amp 2 | 12 500¥ | 5 | OK/OK/Dis/- | Smartlink: RR 1 Ranged W. (Pist.) |
+| **Zapper 3000**<br>(Heavy pistol) | Amp 2 | 12 500¥ | 5 | OK/OK/Dis/- | Smartlink: RR 1 Ranged W. (Handguns) |
 | **Buzz Mk I** |  |  |  |  |  |
 # CONTACTS
 | C ONTACTS | T YPE | C OST | E FFECTS |
@@ -46,7 +47,7 @@ class RowsTest(unittest.TestCase):
                 ["Gains an Edge point when the habit gets in the way.", "Note: a note."]),
             # DV joins the cost and the range leads the effects, as the old PDF reader had them
             row(6, "ARMORY – WEAPONS", "PISTOLS", "Zapper 3000 (Heavy pistol)", "Amp 2", "12 500¥ 5",
-                ["OK/OK/Dis/-", "Smartlink: RR 1 Ranged W. (Pist.)"]),
+                ["OK/OK/Dis/-", "Smartlink: RR 1 Ranged W. (Handguns)"]),
             row(6, "ARMORY – WEAPONS", "PISTOLS", "Buzz Mk I", "", "", []),
             row(6, "CONTACTS", "CONTACTS", "Contact*", "Amp 2", "10 000¥",
                 ["Knows a person or two.", "RR 1 Network (domain of choice**)"]),
@@ -101,13 +102,15 @@ def entries(xml):
     return Counter((e.get("type") or e.get("kind"), e.find("name").text) for e in ET.fromstring(xml))
 
 
-@unittest.skipUnless(BOOK.exists() and ORACLE.exists(), "owner's converted DHSA book and oracle not present")
+@unittest.skipUnless(LOCAL_CORE and BOOK.exists() and ORACLE.exists(), "owner's core copies, converted DHSA book and oracle not present")
 class ParityTest(unittest.TestCase):
-    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump."""
+    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump, priced with the
+    owner's real core data."""
 
     @classmethod
     def setUpClass(cls):
-        cls.res = dhsa.extract(BOOK.read_text(encoding="utf8"))
+        with local_core():
+            cls.res = dhsa.extract(BOOK.read_text(encoding="utf8"))
 
     def test_counts(self):
         amps = ET.fromstring(self.res.files["amps.xml"])

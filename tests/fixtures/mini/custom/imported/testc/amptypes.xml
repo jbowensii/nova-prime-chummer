@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up amp type a book adds to the core data (as the Conversion Guide adds Emerged). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amptypes" version="1">
+  <amptype id="emerged" base="6" essence="0" source="TESTC" page="12"><name>Emerged</name></amptype>
+</ca2:data>

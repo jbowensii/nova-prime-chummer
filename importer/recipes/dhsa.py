@@ -4,7 +4,7 @@ rows() reads the converter's Markdown: "#" section headings, one pipe table per 
 cell = subsection, small caps split as "Q UALITIES"), bold names; a cell's lines are <br>-separated or
 continue in rows whose name cell is empty. Each amp row is then broken into effects from ampeffects.xml;
 lines we can't map become narrative text. The computed rating is reconciled with the printed one:
-  - printed > computed: the gap becomes "Additional narrative effect" (+1, CRB p.63),
+  - printed > computed: the gap becomes "Additional narrative effect"s, at the core data's rating,
     tagged note="balances printed rating";
   - printed < computed and the text lists a drawback: the gap becomes a book-sanctioned
     "Negative effect", tagged note="book drawback";
@@ -12,16 +12,15 @@ lines we can't map become narrative text. The computed rating is reconciled with
 Every entry cites DHSA and its DHSA page, including the core-book amps the list reprints (they are
 DHSA's text and numbers; the CRB recipe imports the canon ones). Descriptions go to the texts result.
 """
-import os
+import functools
 import re
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
-from importer import DATA_DIR
+from importer import core_dir, core_file, custom_dir, mechanics_roots
 from importer.recipes import Result
 
 ID, NAME, PUBLISHER, CANON = "DHSA", "Shadow Amps Expanded List v3.4b", "Daegann (Holostreets)", False
-SHIPPED_SKILLS = os.path.join(DATA_DIR, "skills.xml")
 
 SKILLS = {
     "athletics": "athletics", "close combat": "close-combat", "conjuring": "conjuring",
@@ -65,41 +64,58 @@ CONTACT_NAMES = ["Contact: part of your network", "Contact: reliable in one doma
                  "Contact: influential and reliable", "Contact: extremely influential", "Contact: knows everyone",
                  "Contact: knows everyone, strong in one field"]
 
-EFFECT_RATING = {"rr-spec": 2, "rr-skill": 5, "rr-attr": 10, "init-1": 2, "init-2": 3, "init-3": 2,
-                 "init-realm": -1, "dv-plus": 1, "range-improve": 2, "armor-plus": 1, "mental-armor": 1,
-                 "wound-light": 3, "wound-serious": 6, "sustain-spell": 2, "summon-spirit": 3, "vr-cold": 1,
-                 "vr-hot": 2, "firewall-plus": 1, "attack-plus": 1, "rcc": 1, "vcr": 2, "narrative": 1,
-                 "pilot-plus": 1, "speed-plus": 1, "handling-plus": 1, "vehicle-armor": 1, "flying": 1,
-                 "fixed": -1, "weapon-mount": 1, "safety-override": 3, "extra-drone": 2, "auto-medkit": 1,
-                 "weapon-focus": 1, "grade-delta": 1, "grade-omega": -1, "grade-cultivated": 1}
-BASE = {"quality": 0, "adept": 1, "cyberware": 1, "bioware": 2, "equipment": 0, "cyberdeck": 1, "vehicle": 1, "contact": 0}
-WEAPON_TYPES = [  # (keywords, dv, ranges) from CRB p.142
-    (("hold-out", "streetline", "palm pistol", "tiffani"), "3", "OK/OK/Dis/-"),
-    (("machine pistol", "crusader", "black scorpion", "steyr tmp", "super squirt"), "4", "OK/OK/Dis/-"),
-    (("light pistol", "light fire", "beretta", "colt america", "fichetti", "puzzler"), "4", "OK/OK/Dis/-"),
-    (("heavy pistol", "predator", "warhawk", "manhunter", "ultra power", "slivergun"), "5", "OK/OK/Dis/-"),
-    (("taser", "super shock", "pulsar"), "5", "OK/OK/-/-"),
-    (("smg", "submachine", "cobra", "uzi", "praetor", "hk 227", "ingram smartgun"), "5", "Dis/OK/OK/-"),
-    (("shotgun", "t-250", "mossberg", "spas", "roomsweeper"), "8", "Dis/OK/Dis/-"),
-    (("sniper", "anti-materiel", "anti-material", "barrett", "desert strike", "sm-6", "gauss", "panther"), "10", "-/Dis/Dis/OK"),
-    (("sport rifle", "remington 750", "ruger 100"), "7", "-/Dis/OK/OK"),
-    (("assault rifle", "ak-97", "alpha", "colt m23", "fn har", "dart"), "7", "Dis/OK/OK/Dis"),
-    (("machine gun", "minigun", "valiant", "m202"), "9", "-/OK/OK/OK"),
-    (("grenade launcher", "antioch", "mgl"), "7", "-/Dis/OK/OK"),
-    (("missile", "rocket", "striker", "interceptor", "m79", "great dragon", "ballista"), "12", "-/-/Dis/OK"),
-    (("grenade",), "7", "OK/OK/Dis/-"),
-    (("crossbow",), "4", "OK/OK/OK/-"),
-    (("bow",), "S+1", "OK/OK/OK/-"),
-    (("throwing", "shuriken"), "S+1", "OK/OK/Dis/-"),
-    (("whip", "stun baton", "stun glove", "shock hand"), "5", "OK/-/-/-"),
-    (("katana", "sword", "bat", "long weapon", "cane"), "S+2", "OK/-/-/-"),
-    (("knife", "short weapon", "claw", "razor", "spur"), "S+1", "OK/-/-/-"),
+# the base weapon type a weapon's name or sub-list names: its DV and ranges are the core weapons file's (weapons.xml)
+WEAPON_KEYS = [
+    (("hold-out", "streetline", "palm pistol", "tiffani"), "hold-out-pistol"),
+    (("machine pistol", "crusader", "black scorpion", "steyr tmp", "super squirt"), "machine-pistol"),
+    (("light pistol", "light fire", "beretta", "colt america", "fichetti", "puzzler"), "light-pistol"),
+    (("heavy pistol", "predator", "warhawk", "manhunter", "ultra power", "slivergun"), "heavy-pistol"),
+    (("taser", "super shock", "pulsar"), "taser"),
+    (("smg", "submachine", "cobra", "uzi", "praetor", "hk 227", "ingram smartgun"), "submachine-gun"),
+    (("shotgun", "t-250", "mossberg", "spas", "roomsweeper"), "shotgun"),
+    (("sniper", "anti-materiel", "anti-material", "barrett", "desert strike", "sm-6", "gauss", "panther"), "sniper-rifle"),
+    (("assault rifle", "ak-97", "alpha", "colt m23", "fn har", "dart", "sport rifle", "remington 750", "ruger 100"), "assault-rifle"),
+    (("machine gun", "minigun", "valiant", "m202"), "machine-gun"),
+    (("grenade launcher", "antioch", "mgl"), "grenade-launcher"),
+    (("missile", "rocket", "striker", "interceptor", "m79", "great dragon", "ballista"), "rocket-launcher"),
+    (("grenade",), "grenade"),
+    (("crossbow",), "crossbow"),
+    (("bow",), "bow"),
+    (("throwing", "shuriken"), "throwing-weapon"),
+    (("whip", "stun baton", "stun glove", "shock hand"), "advanced-close-quarter"),
+    (("katana", "sword", "bat", "long weapon", "cane"), "long-weapon"),
+    (("knife", "short weapon", "claw", "razor", "spur"), "short-weapon"),
 ]
-CHASSIS = {  # id: (body, handling, speed)
-    "microdrone": (0, 10, 0), "small-drone": (1, 9, 2), "medium-drone": (2, 7, 3), "large-drone": (4, 4, 4),
-    "race-motorbike": (4, 2, 6), "allterrain-motorbike": (4, 3, 5), "chopper": (5, 2, 5),
-    "sports-car": (5, 2, 5), "sedan": (6, 2, 4), "suv": (7, 1, 4), "van": (8, 1, 3), "bus": (10, 0, 2),
-}
+
+
+@functools.cache
+def _core(where):
+    """Amp effect ratings, amp type base ratings, vehicle chassis (body, handling, speed) and weapon types (dv, ranges)
+    from the core files (and what imported books add to effects and types): the rules the recipes price amps with."""
+    ratings = {e.get("id"): int(float(e.get("rating"))) for r in mechanics_roots("ampeffects.xml") for e in r if e.tag == "effect"}
+    base = {t.get("id"): int(t.get("base")) for r in mechanics_roots("amptypes.xml") for t in r if t.tag == "amptype"}
+    root = lambda n: ET.parse(core_file(n)).getroot()  # noqa: E731
+    chassis = {v.get("id"): (int(v.get("body")), int(v.get("handling")), int(v.get("speed"))) for v in root("vehicles.xml") if v.tag == "vehicle"}
+    pilot = {v.get("id"): int(v.get("pilot")) for v in root("vehicles.xml") if v.tag == "vehicle"}
+    weapons = {w.get("id"): (w.get("dv", "").replace("STR+", "S+"), w.get("ranges")) for w in root("weapons.xml") if w.tag == "item"}
+    price = next(p for p in root("pricing.xml") if p.tag == "pricing")
+    return {"ratings": ratings, "base": base, "chassis": chassis, "pilot": pilot, "weapons": weapons,
+            "ampPoint": int(price.get("ampPoint")), "specialist": int(price.get("weaponSpecialist"))}
+
+
+def specialist(cost, rating):
+    """A weapon amp whose price, less its rating in amp points, is a specialist weapon's."""
+    c = core()
+    return (cost or 0) - rating * c["ampPoint"] >= c["specialist"]
+
+
+def core():
+    """_core for the core files in use now (importer.core_dir and the custom folder)."""
+    return _core((core_dir(), custom_dir()))
+
+
+def effect_rating(ref):
+    return core()["ratings"].get(ref, 0)
 
 
 # specializations DHSA adds to the core skills: (skill, spec slug, attr, page, name)
@@ -182,9 +198,10 @@ def match(meta, md_head):
 
 def weapon_base(name, sub):
     t = (name + " " + sub).lower()
-    for keys, dv, rng in WEAPON_TYPES:
+    weapons = core()["weapons"]
+    for keys, wid in WEAPON_KEYS:
         if any(k in t for k in keys):
-            return dv, rng
+            return weapons.get(wid, (None, None))
     return None, None
 
 
@@ -196,11 +213,15 @@ def dv_num(dv):
     return ("N", int(m.group(1))) if m else None
 
 
-def load_skills(path=SHIPPED_SKILLS, dhsa_specs=True):
-    """{skill id: (name, attr)} and {(skill id, lowercase spec name): spec id}: the shipped skills plus DHSA's specs."""
-    root = ET.parse(path).getroot()
-    skills = {s.get("id"): (s.findtext("name"), s.get("attr")) for s in root.iter("skill")}
-    specs = {(sp.get("id").split(".")[0], sp.text.strip().lower()): sp.get("id") for sp in root.iter("spec")}
+def load_skills(path=None, dhsa_specs=True):
+    """{skill id: (name, attr)} and {(skill id, lowercase spec name): spec id}: the core skills (`path`, else the core
+    files plus what imported books add) and DHSA's specs."""
+    roots = [ET.parse(path).getroot()] if path else mechanics_roots("skills.xml")
+    skills, specs = {}, {}
+    for root in roots:
+        for s in root.iter("skill"):
+            skills.setdefault(s.get("id"), (s.findtext("name"), s.get("attr")))
+        specs.update({(sp.get("id").split(".")[0], sp.text.strip().lower()): sp.get("id") for sp in root.iter("spec")})
     if dhsa_specs:
         specs.update({(sk, name.lower()): f"{sk}.{s}" for sk, s, _, _, name in DHSA_SPECS})
     return skills, specs
@@ -348,15 +369,18 @@ def attr(k, v):
     return f' {k}="{escape(str(v), {chr(34): "&quot;"})}"' if v not in (None, "") else ""
 
 
-def reconcile(fx, narrative, base, rating, negative_ok=False):
-    """Fill the gap between computed and printed rating (see module docstring). Returns computed rating."""
-    computed = base + sum((-f[2] if f[0] == "negative" else EFFECT_RATING.get(f[0], 0) * (f[2] if f[0] == "rcc" and f[2] else 1)) for f in fx)
+def reconcile(fx, narrative, base, rating, negative_ok=False, ratings=None):
+    """Fill the gap between computed and printed rating (see module docstring). Returns computed rating. `ratings`: effect
+    ratings this book defines itself (its implant grades), over the core's."""
+    rate = lambda ref: (ratings or {}).get(ref, effect_rating(ref))  # noqa: E731
+    computed = base + sum((-f[2] if f[0] == "negative" else rate(f[0]) * (f[2] if f[0] == "rcc" and f[2] else 1)) for f in fx)
     unmapped = [l for l in narrative if l.strip() not in ("", "-") and not l.lower().startswith(("choose", "duration", "- rr"))]
     residual = rating - computed
     drawback = any(re.search(r"disadvantage|wound|must take|once the effects|cannot|can't|increase|forgets|addict|visible|only", l, re.I) for l in unmapped)
-    if residual > 0:
-        fx += [("narrative", "", None, "balances printed rating")] * residual
-        return rating
+    if residual > 0:  # whole narrative effects at the core's price; what's left over stays a mismatch
+        n = residual // max(1, rate("narrative"))
+        fx += [("narrative", "", None, "balances printed rating")] * n
+        return computed + n * rate("narrative")
     if residual < 0 and (drawback or negative_ok):
         left = -residual
         while left:
@@ -372,7 +396,7 @@ def extract(md, ctx=None):
         r["section"] = r["section"].replace(" - ", " – ")
     skills, specs = load_skills()
     mapper = Mapper(specs)
-    amps, gear, spells, forms, report, ids = [], [], [], [], [], set()
+    amps, gear, spells, forms, report, ids, grades = [], [], [], [], [], set(), []
     texts = []  # book descriptions: the texts result, never the overlay files
 
     def private(of, eid, s):
@@ -448,7 +472,7 @@ def extract(md, ctx=None):
         for m in re.finditer(r"RR\s*\d\s*Network(?:\s*\([^)]*\))?", text):
             fx += mapper.effects(m.group(0)) or []
         narrative = [re.split(r"\s*RR\s*\d", text)[0]]
-        reconcile(fx, [], BASE["contact"], rating)
+        reconcile(fx, [], core()["base"]["contact"], rating)
         cname = CONTACT_NAMES[i] if i < len(CONTACT_NAMES) else f"Contact (rating {rating})"
         amp_xml(uid(slug(cname)), "contact", rating, r["page"], cname, "", fx, narrative)
 
@@ -473,12 +497,17 @@ def extract(md, ctx=None):
             grade = next((v for k, v in GRADE_NAMES.items() if k in low), None)
             if grade:
                 fx, narrative = [(grade, None, None, None)], effects_lines
+                ess = re.search(r"(?:reduced|increases) from ([\d.]+) to ([\d.]+)", " ".join(effects_lines))
+                if ess:  # the grade itself, an effect added to the core ones: it changes the amp's Essence cost
+                    note = ", social Disadvantage" if "Disadvantage" in " ".join(effects_lines) else ""
+                    grades.append({"id": grade, "rating": rating, "types": target, "page": page, "essence": float(ess[2]) - float(ess[1]),
+                                   "name": f"{name} (Essence {ess[1]} → {ess[2]}{note})"})
             elif sec == "RIGGERS – VEHICLE MODS":
                 ref = next((v for k, v in VEHICLE_MOD_NAMES if k in low), None)
                 fx, narrative = ([(ref, None, None, None)] * (rating if ref in ("pilot-plus", "speed-plus", "handling-plus", "vehicle-armor") else 1), effects_lines) if ref else map_lines(effects_lines)
             else:
                 fx, narrative = map_lines(effects_lines)
-            computed = reconcile(fx, narrative, 0, rating, negative_ok=rating < 0)
+            computed = reconcile(fx, narrative, 0, rating, negative_ok=rating < 0, ratings={grade: rating} if grade else None)
             aid = uid("mod-" + slug(name))
             if computed != rating:
                 mismatch(aid, page, f"mod ({target})", rating, computed, r)
@@ -502,13 +531,12 @@ def extract(md, ctx=None):
             effects_lines = [e for e in effects_lines if not re.search(r"Firewall \d\s*-\s*Attack \d", e)]
         item, vehicle, vfx = "", None, []
         if atype == "equipment":
-            base_price = (cost or 0) - rating * 5000
             if sec == "ARMORY – WEAPONS":
                 parts = r["cost"].split("¥", 1)
                 dv = parts[1].strip() if len(parts) > 1 else ""
                 rng = effects_lines.pop(0) if effects_lines and re.match(r"^[-–A-Za-zé ]+/", effects_lines[0]) else ""
                 rng = rng.replace(" ", "").replace("–", "-").replace("Dés", "Dis")
-                item = f'<item kind="weapon"{attr("specialist", "true" if base_price >= 5000 else "")}{attr("dv", dv)}{attr("ranges", rng)}/>'
+                item = f'<item kind="weapon"{attr("specialist", "true" if specialist(cost, rating) else "")}{attr("dv", dv)}{attr("ranges", rng)}/>'
                 bdv, brng = weapon_base(name, r["subsection"])
                 a, b = dv_num(dv.split()[0] if dv else ""), dv_num(bdv)
                 if a and b and a[0] == b[0] and a[1] > b[1]:
@@ -531,9 +559,10 @@ def extract(md, ctx=None):
                 p, b, h, s, a = map(int, m.groups())
                 flying = any("flying" in e.lower() for e in effects_lines)
                 ground = s // 2 if flying else s
-                vehicle = min(CHASSIS, key=lambda c: abs(CHASSIS[c][0] - b) * 3 + abs(CHASSIS[c][1] - h) + abs(CHASSIS[c][2] - ground))
-                cb, ch, cs = CHASSIS[vehicle]
-                vfx = [("pilot-plus", None, None, None)] * max(0, p - 6) + [("vehicle-armor", None, None, None)] * a
+                chassis = core()["chassis"]
+                vehicle = min(chassis, key=lambda c: abs(chassis[c][0] - b) * 3 + abs(chassis[c][1] - h) + abs(chassis[c][2] - ground))
+                cb, ch, cs = chassis[vehicle]
+                vfx = [("pilot-plus", None, None, None)] * max(0, p - core()["pilot"][vehicle]) + [("vehicle-armor", None, None, None)] * a
                 vfx += [("handling-plus", None, None, None)] * max(0, h - ch) + [("speed-plus", None, None, None)] * max(0, ground - cs)
                 if flying:
                     vfx.append(("flying", None, None, None))
@@ -549,7 +578,7 @@ def extract(md, ctx=None):
                 refs.insert(0, pre)
         if any(l.lower().startswith("choose two rr") for l in effects_lines):  # mentor spirits / adept ways
             fx = [f for f in fx if f[0] != "rr-spec"] + [("rr-spec", "", None, "choose from the list")] * 2
-        computed = reconcile(fx, narrative, BASE[atype], rating)
+        computed = reconcile(fx, narrative, core()["base"][atype], rating)
         aid = uid(slug(name))
         if computed != rating:
             mismatch(aid, page, atype, rating, computed, r)
@@ -571,8 +600,13 @@ def extract(md, ctx=None):
         "amps.xml": data("amps", 'Prebuilt Shadow Amps and add-on mods (mod="true"); texts in custom/texts/dhsa.xml.', amps),
         "spells.xml": data("spells", "Spells.", spells),
         "complexforms.xml": data("complexforms", "Technomancer complex forms, 5,000 nuyen each (rules: CGL Conversion Guide p.9).", forms),
-        "gear.xml": data("gear", "Plain equipment (not Amps), 2,500 nuyen each unless the GM says otherwise.", gear),
+        "gear.xml": data("gear", "Plain equipment (not Amps), at the equipment price unless the GM says otherwise.", gear),
         "skills.xml": data("skills", "Specializations DHSA adds to the core skills.", skill_xml),
     }
+    if grades:  # grades of one amp type are alternatives: each excludes the others
+        files["ampeffects.xml"] = data("ampeffects", "Implant grades DHSA adds to the core Amp effects.", [
+            f'  <effect id="{g["id"]}" category="grade" rating="{g["rating"]}" types="{g["types"]}" max="1"'
+            + "".join(f' excludes="{o["id"]}"' for o in grades if o["types"] == g["types"] and o is not g)
+            + f' essence="{g["essence"]:g}" source="{ID}" page="{g["page"]}"><name>{escape(g["name"])}</name></effect>' for g in grades])
     return Result(files=files, texts=data("texts", "PRIVATE: book text. Do not commit.", texts), report=report,
                   source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})

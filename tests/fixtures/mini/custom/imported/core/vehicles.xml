@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="vehicles" version="1">
+  <vehicle id="microdrone" pilot="5" body="1" handling="9" speed="1" flyingSpeed="2" armor="1" mount="none" source="CRB" page="61"><name>Gnat</name></vehicle>
+  <vehicle id="small-drone" pilot="5" body="2" handling="8" speed="3" flyingSpeed="5" armor="1" mount="light guns" source="CRB" page="61"><name>Dragonfly</name></vehicle>
+  <vehicle id="medium-drone" pilot="5" body="3" handling="6" speed="4" flyingSpeed="7" armor="1" mount="long guns" source="CRB" page="61"><name>Kite</name></vehicle>
+  <vehicle id="large-drone" pilot="5" body="5" handling="3" speed="5" flyingSpeed="9" armor="1" mount="anything" source="CRB" page="61"><name>Condor</name></vehicle>
+  <vehicle id="race-motorbike" pilot="5" body="3" handling="3" speed="7" armor="1" mount="long guns" source="CRB" page="61"><name>Streak</name></vehicle>
+  <vehicle id="allterrain-motorbike" pilot="5" body="3" handling="4" speed="6" armor="1" mount="long guns" source="CRB" page="61"><name>Mudder</name></vehicle>
+  <vehicle id="chopper" pilot="5" body="6" handling="1" speed="6" armor="1" mount="long guns" source="CRB" page="61"><name>Hog</name></vehicle>
+  <vehicle id="sports-car" pilot="5" body="4" handling="3" speed="7" armor="1" mount="anything" source="CRB" page="61"><name>Dart</name></vehicle>
+  <vehicle id="sedan" pilot="5" body="7" handling="3" speed="3" armor="1" mount="anything" source="CRB" page="61"><name>Commuter</name></vehicle>
+  <vehicle id="suv" pilot="5" body="8" handling="2" speed="3" armor="1" mount="anything" source="CRB" page="61"><name>Hauler</name></vehicle>
+  <vehicle id="van" pilot="5" body="9" handling="2" speed="2" armor="2" mount="anything" source="CRB" page="61"><name>Box van</name></vehicle>
+  <vehicle id="bus" pilot="5" body="11" handling="1" speed="1" armor="2" mount="anything" source="CRB" page="61"><name>Coach</name></vehicle>
+</ca2:data>

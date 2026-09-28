@@ -10,15 +10,16 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
-from importer import DATA_DIR, xmlio
+from importer import core_file, mechanics_roots, xmlio
 from importer.ai.providers import ProviderError, TruncatedReply
 from importer.ai.schema import SCHEMA
 
-DATA = DATA_DIR
 LIMIT = 12000
 HEADING = re.compile(r"^#{1,2} ", re.M)
 PAGE = re.compile(r"<!-- page (\d+) -->")
 PREFIX = {"spell": "spell-", "complex-form": "cf-", "gear": "gear-"}  # as the shipped files name them
+# core files a recipe couldn't read (import.xml rows kind="core-unread") that the AI can propose rows for: the item tables
+CORE_KINDS = {"weapons.xml": "weapon", "armor.xml": "armor"}
 ITEM_KINDS = ("gear", "weapon", "armor")
 CATEGORIES = {"spell": ("combat", "detection", "health", "illusion", "manipulation"), "complex-form": ("sustained", "instant")}
 KEYS = ("amps", "items", "spells", "complexForms")
@@ -58,13 +59,17 @@ def count_chunks(book_md):
         return len(chunks(f.read()))
 
 
-def mechanics(data_dir=DATA):
-    def ids(name, tag):
-        return {e.get("id") for e in ET.parse(os.path.join(data_dir, name)).getroot() if e.tag == tag}
-    effects = {e.get("id"): e for e in ET.parse(os.path.join(data_dir, "ampeffects.xml")).getroot() if e.tag == "effect"}
-    skills = ET.parse(os.path.join(data_dir, "skills.xml")).getroot()
-    return {"effects": effects, "amptypes": ids("amptypes.xml", "amptype"), "attributes": ids("attributes.xml", "attribute"),
-            "skills": {s.get("id") for s in skills.iter("skill")}, "specs": {s.get("id") for s in skills.iter("spec")}}
+def mechanics(data_dir=None):
+    """Ids the proposals are checked against: the core files (`data_dir`, else importer.core_dir) plus what imported
+    books add to skills, amp types and effects."""
+    def roots(name):
+        return [ET.parse(os.path.join(data_dir, name)).getroot()] if data_dir else mechanics_roots(name)
+    effects = {e.get("id"): e for r in roots("ampeffects.xml") for e in r if e.tag == "effect"}
+    skills = roots("skills.xml")
+    attrs = ET.parse(os.path.join(data_dir, "attributes.xml") if data_dir else core_file("attributes.xml")).getroot()
+    return {"effects": effects, "amptypes": {t.get("id") for r in roots("amptypes.xml") for t in r if t.tag == "amptype"},
+            "attributes": {a.get("id") for a in attrs if a.tag == "attribute"},
+            "skills": {s.get("id") for r in skills for s in r.iter("skill")}, "specs": {s.get("id") for r in skills for s in r.iter("spec")}}
 
 
 def _text(v):
@@ -218,13 +223,31 @@ def _finished(path):
     return len(root.findall("proposal")) if root.get("done") and root.get("done") == root.get("parts") else None
 
 
-def propose(book_dir, ask, provider=None, data_dir=DATA, fresh=False):
+def core_unread(book_dir):
+    """{file: book.md pages} of the core tables the recipe couldn't read and the AI can propose rows for."""
+    imp = xmlio.read_import(book_dir)
+    rows = [] if imp is None else [r for r in imp.iter("row") if r.get("kind") == "core-unread" and r.get("file") in CORE_KINDS]
+    out = {}
+    for r in rows:
+        a, b = map(int, (r.get("mdPages") or "0-0").split("-"))
+        out[r.get("file")] = set(range(a, b + 1))
+    return out
+
+
+def core_chunks(md, pages):
+    """The chunks that hold one of `pages` (book.md's page markers)."""
+    return [c for c in chunks(md) if pages & {int(p) for p in PAGE.findall(c)}]
+
+
+def propose(book_dir, ask, provider=None, data_dir=None, fresh=False, core=False):
     """Run `ask(system, user) -> str` over book.md's chunks and write review.xml; returns the proposal count.
     review.xml is rewritten after every chunk (done="n" of parts="N"), so a failure keeps the work paid
     for and a re-run of the same book.md resumes after the last finished chunk. A chunk whose reply is
     cut off or has no JSON is skipped with a <skip> note; any other ProviderError fails the book.
     A finished review.xml holds paid-for proposals and the user's decisions: it is kept, and nothing sent,
-    unless `fresh` asks to replace it."""
+    unless `fresh` asks to replace it.
+    `core`: only the pages of the core tables the book's recipe couldn't read (core_unread), only rows of those tables
+    (weapons, armor), for the core files (review.xml core="true", applied by apply-review --core)."""
     path = os.path.join(book_dir, "review.xml")
     if not fresh and (n := _finished(path)) is not None:
         xmlio.write_status(book_dir, "review", "Proposals from an earlier run are waiting for review; nothing was sent")
@@ -237,12 +260,21 @@ def propose(book_dir, ask, provider=None, data_dir=DATA, fresh=False):
         book = os.path.basename(os.path.normpath(book_dir))
         source = book.upper()  # provisional; the review screen sets it
         system, parts = system_prompt(m), chunks(md)
+        kinds = None
+        if core:
+            unread = core_unread(book_dir)
+            if not unread:
+                raise ValueError("no core table of this book is waiting for the AI")
+            kinds = {CORE_KINDS[f] for f in unread}
+            source = xmlio.read_import(book_dir).get("source")
+            parts = core_chunks(md, set().union(*unread.values()))
+            system += "\nList only the rows of the book's " + " and ".join(sorted(f[:-4] for f in unread)) + " tables, as items."
         done, rows, skips, seen = (0, [], [], set()) if fresh else _resume(path, sha, len(parts))
         created = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
         def save(n):
-            attrs = {"book": book, "source": source, "provider": provider, "created": created, "bookSha256": sha,
-                     "parts": len(parts), "done": n}
+            attrs = {"book": book, "source": source, "core": "true" if core else None, "provider": provider, "created": created,
+                     "bookSha256": sha, "parts": len(parts), "done": n}
             xmlio.write_file(path, xmlio.HEAD + "<!-- PRIVATE: proposals from a book. Do not commit. -->\n"
                              f"<review{xmlio._attrs(attrs)}>\n{''.join(skips)}{''.join(rows)}</review>\n")
 
@@ -257,7 +289,7 @@ def propose(book_dir, ask, provider=None, data_dir=DATA, fresh=False):
                 skips.append(f"  {_el('skip', {'part': n}, escape(why))}\n")
             else:
                 pages = PAGE.findall(chunk)
-                rows += [_proposal(*e) for e in _entries(obj, source, int(pages[0]) if pages else 1, m, seen)]
+                rows += [_proposal(*e) for e in _entries(obj, source, int(pages[0]) if pages else 1, m, seen) if kinds is None or e[0] in kinds]
             save(n)
         if not parts:
             save(0)
