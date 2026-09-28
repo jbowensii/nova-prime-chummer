@@ -92,13 +92,25 @@ def backup(dirs, out, keys=False, version=None):
         raise
 
 
-def _entry_problem(info):
-    name = info.filename
+def unsafe_entry(info):
+    """The checks any uploaded zip's entry gets (backups, data packs): a link, a device, encryption, a zip bomb; or None."""
     kind = stat.S_IFMT(info.external_attr >> 16)
     if kind == stat.S_IFLNK:
         return "has a symbolic link"
     if kind not in (0, stat.S_IFREG, stat.S_IFDIR):
         return "has a device or special file"
+    if info.flag_bits & 1:
+        return "has encrypted files"
+    if info.file_size > RATIO_FROM and (info.compress_size == 0 or info.file_size / info.compress_size > MAX_RATIO):
+        return "has a file that expands too much (a zip bomb?)"
+    return None
+
+
+def _entry_problem(info):
+    name = info.filename
+    problem = unsafe_entry(info)
+    if problem:
+        return problem
     if name.startswith("/") or UNSAFE.search(name):
         return "has an absolute path, a backslash, a drive letter or a character a file name can’t have"
     parts = name[:-1].split("/") if name.endswith("/") else name.split("/")
@@ -110,10 +122,6 @@ def _entry_problem(info):
         return "has files outside characters/, custom/ and library/"
     if parts[:2] == ["library", ".backups"]:
         return "has library/.backups"
-    if info.flag_bits & 1:
-        return "has encrypted files"
-    if info.file_size > RATIO_FROM and (info.compress_size == 0 or info.file_size / info.compress_size > MAX_RATIO):
-        return "has a file that expands too much (a zip bomb?)"
     return None
 
 

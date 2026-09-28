@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 export function findPython() {
   const tries = [process.env.PYTHON?.split(' '), ['py', '-3.12'], ['python3'], ['python']].filter(Boolean)
   return tries.find(([cmd, ...pre]) =>
-    spawnSync(cmd, [...pre, '-c', 'import pdfplumber, pypdfium2, anthropic'], { stdio: 'ignore', windowsHide: true }).status === 0) ?? null
+    spawnSync(cmd, [...pre, '-c', 'import pdfplumber, pypdfium2, anthropic, lxml'], { stdio: 'ignore', windowsHide: true }).status === 0) ?? null
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
