@@ -10,6 +10,9 @@
   python -m importer edit set <amps|items|rules> <id> --custom <custom dir>  (the entry on stdin; exit 3: refused)
   python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
   python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
+  python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
+  python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
+  python -m importer restore --apply F --characters D --custom D --library D [--version V]  (exit 3: refused)
 """
 import hashlib
 import os
@@ -344,11 +347,45 @@ def _cmd_edit(argv):
     return 0
 
 
+def _dirs(argv):
+    dirs = {f: _flag(argv, "--" + f) for f in ("characters", "custom", "library")}
+    return dirs if all(dirs.values()) else None
+
+
+def _cmd_backup(argv):
+    from importer import backup
+    dirs, out = _dirs(argv), _flag(argv, "--out")
+    if not dirs or not out:
+        print(USAGE, file=sys.stderr)
+        return 2
+    backup.backup(dirs, out, keys="--keys" in argv, version=_flag(argv, "--version"))
+    return 0
+
+
+def _cmd_restore(argv):
+    from importer import backup
+    zip_path, dirs = _flag(argv, "--check") or _flag(argv, "--apply"), _dirs(argv)
+    if not zip_path or ("--apply" in argv and not dirs):
+        print(USAGE, file=sys.stderr)
+        return 2
+    try:
+        if "--check" in argv:
+            print(xmlio.ET.tostring(backup.check(zip_path), encoding="unicode"))
+        else:
+            safety = backup.apply(zip_path, dirs, version=_flag(argv, "--version"))
+            print(f'<result state="restored" safety={quoteattr(os.path.basename(safety))} />')
+    except backup.RestoreError as e:
+        print(e, file=sys.stderr)
+        return 3
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
             "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
-            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "edit": _cmd_edit}
+            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "edit": _cmd_edit,
+            "backup": _cmd_backup, "restore": _cmd_restore}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
