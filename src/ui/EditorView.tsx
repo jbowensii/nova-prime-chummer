@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { appendEvent, balance, derive, price, validate } from '../engine'
+import { appendEvent, balance, derive, price, rescope, validate } from '../engine'
 import type { CareerEvent, Catalog, Character } from '../model/types'
 import { fmt, Modal } from './bits'
 import { Editor, type EditorCtx } from './editor'
@@ -37,9 +37,14 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     latest: undefined as Character | undefined, busy: false, queued: undefined as Character | undefined, paused: false })
 
   useEffect(() => {
-    repo.get(id).then(s => { sync.current.rev = s?.rev; sync.current.loaded = s?.ch; setCh(s?.ch); setLoaded(true) },
-      e => { setSaveError(String(e)); setLoaded(true) })
-  }, [repo, id])
+    repo.get(id).then(s => {
+      sync.current.rev = s?.rev
+      sync.current.loaded = s?.ch
+      // old runners can reference unscoped catalog ids; remap them, saved normally when they change
+      setCh(s && rescope(c, s.ch))
+      setLoaded(true)
+    }, e => { setSaveError(String(e)); setLoaded(true) })
+  }, [repo, id, c])
 
   const persist = async (next: Character, keepalive = false) => {
     const st = sync.current

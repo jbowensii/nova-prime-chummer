@@ -8,27 +8,29 @@ import { ampCtx, ampRating } from '../../src/engine/amps'
 import { derive } from '../../src/engine/derive'
 import { price } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
-import { cat, sample } from '../helpers'
+import { bookFile, books, sample } from '../helpers'
+import { describeBooks } from './_gate'
 
 type Printed = Record<string, { page: number; source?: string; essence: number; thresholds: Record<string, number>;
   amps: Record<string, number>; pools: { skill: string; spec: string | null; attr: string; dp: number }[] }>
-const printed: Printed = JSON.parse(readFileSync('tests/fixtures/pregens-printed.json', 'utf8'))
-const listed = new Set([...readFileSync('docs/book-discrepancies.md', 'utf8')
-  .matchAll(/^\| ([a-z0-9-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`))
+const printed: Printed = books ? JSON.parse(readFileSync(bookFile('pregens-printed.json'), 'utf8')) : {}
+const listed = books ? new Set([...readFileSync(bookFile('book-discrepancies.md'), 'utf8')
+  .matchAll(/^\| ([a-z0-9-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`)) : new Set<string>()
 
-describe.each(Object.keys(printed))('%s', id => {
+// wrapped in an outer describeBooks so the file still has a (skipped) suite when there's nothing to enumerate
+describeBooks('pregens', () => describe.each(Object.keys(printed))('%s', id => {
   const ch = sample(id)
   const p = printed[id]
-  const d = derive(cat, ch)
+  const d = derive(books!, ch)
 
   test('every catalog reference resolves', () => {
-    expect(validate(cat, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
+    expect(validate(books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
   })
 
   test(`amp ratings match ${p.source ?? 'CRB'} p.${p.page}`, () => {
     const b = ch.build
-    const wrong = b.amps.filter(a => !listed.has(`${id}/${a.uid}`) && ampRating(cat, a, ampCtx(b, a)) !== p.amps[a.uid])
-      .map(a => `${a.name}: printed ${p.amps[a.uid]}, computed ${ampRating(cat, a, ampCtx(b, a))}`)
+    const wrong = b.amps.filter(a => !listed.has(`${id}/${a.uid}`) && ampRating(books!, a, ampCtx(b, a)) !== p.amps[a.uid])
+      .map(a => `${a.name}: printed ${p.amps[a.uid]}, computed ${ampRating(books!, a, ampCtx(b, a))}`)
     expect(wrong).toEqual([])
   })
 
@@ -45,8 +47,8 @@ describe.each(Object.keys(printed))('%s', id => {
   })
 
   test('price is reported (the book does not say pregens are exactly on budget)', () => {
-    const b = price(cat, ch)
+    const b = price(books!, ch)
     expect(b.total).toBeGreaterThan(0)
     console.info(`${id}: ${b.total.toLocaleString('en-US')} of ${b.budget.toLocaleString('en-US')}`)
   })
-})
+}))

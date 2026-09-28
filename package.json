@@ -1,13 +1,14 @@
 {
   "name": "chummer-anarchy2",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:py": "node tools/python.mjs",
     "validate:data": "node tools/validate-data.mjs",
     "e2e": "playwright test",
     "check": "tsc -b && npm run validate:data && npm test",

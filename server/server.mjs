@@ -8,12 +8,14 @@
 //          ?force=1                         overwrite anyway
 //          ?filename=<name>                 file name for a new runner (else from the street name)
 //   DELETE /api/characters/:id           moves the file to .trash/ (never hard-deletes)
+//   /api/books, /api/review, /api/ai-*   the PDF importer (server/books.mjs); LIBRARY_DIR is never served
 //   /custom/*                            house-rule overlays from CUSTOM_DIR
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
-import { extname, join, resolve, sep } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { dirname, extname, join, resolve, sep } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { booksApi } from './books.mjs'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.xsd': 'application/xml' }
@@ -28,8 +30,13 @@ function setRev(xml, rev) {
     /\srev="[^"]*"/.test(tag) ? tag.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : tag.replace(/\sid="/, ` rev="${rev}" id="`))
 }
 
-export function createServer({ staticDir, charDir, customDir }) {
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..') // where `python -m importer` runs
+const inside = (path, dir) => path === dir || path.startsWith(dir + sep)
+
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3' }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
+  libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
+  const books = booksApi({ customDir, libraryDir, python, importerRoot: ROOT })
 
   async function index() {
     await mkdir(charDir, { recursive: true })
@@ -67,7 +74,8 @@ export function createServer({ staticDir, charDir, customDir }) {
 
   async function serveFile(res, base, rel) {
     const path = resolve(base, '.' + rel)
-    if (path !== base && !path.startsWith(base + sep)) return send(res, 403, { error: 'forbidden' })
+    if (!inside(path, base)) return send(res, 403, { error: 'forbidden' })
+    if (inside(path, libraryDir)) return null // even when the Library is mounted inside a served folder
     try {
       const s = await stat(path)
       if (s.isDirectory()) return serveFile(res, base, rel.replace(/\/?$/, '/index.html'))
@@ -83,6 +91,7 @@ export function createServer({ staticDir, charDir, customDir }) {
 
   async function api(req, res, url) {
     if (url.pathname === '/api/health') return send(res, 200, { ok: true, storage: 'server' })
+    if (await books.handle(req, res, url, send) !== false) return
     if (url.pathname === '/api/characters' && req.method === 'GET')
       return send(res, 200, (await index()).map(({ file, rev, xml }) => ({ file, rev, xml })))
     const m = url.pathname.match(/^\/api\/characters\/([^/]+)$/)
@@ -114,7 +123,7 @@ export function createServer({ staticDir, charDir, customDir }) {
     return send(res, existing ? 200 : 201, { rev, file })
   }
 
-  return httpServer(async (req, res) => {
+  const server = httpServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://x')
       if (url.pathname.startsWith('/api/')) return await api(req, res, url)
@@ -126,16 +135,28 @@ export function createServer({ staticDir, charDir, customDir }) {
       if (!extname(url.pathname) && await serveFile(res, staticDir, '/index.html')) return // SPA
       send(res, 404, 'not found', 'text/plain')
     } catch (e) {
-      send(res, e.code === 413 ? 413 : 500, { error: e.message })
+      if (res.headersSent) return res.destroy()
+      const code = [400, 404, 409, 413, 415, 502].includes(e.code) ? e.code : 500
+      send(res, code, { error: code === 500 ? 'server error' : e.message })
+      if (code === 500) console.error(e.stack) // never a request body
     }
   })
+  server.stopJobs = books.stop
+  return server
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT ?? 80)
-  createServer({
+  const server = createServer({
     staticDir: process.env.STATIC_DIR ?? new URL('../dist', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'),
     charDir: process.env.CHAR_DIR ?? '/data/characters',
     customDir: process.env.CUSTOM_DIR ?? '/data/custom',
-  }).listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
+    libraryDir: process.env.LIBRARY_DIR ?? '/data/library',
+    python: process.env.PYTHON ?? 'python3',
+  })
+  server.listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
+  // docker stop: end the importer job too (the next start marks its book interrupted)
+  const quit = () => { server.stopJobs(); server.close(); setTimeout(() => process.exit(0), 2000).unref() }
+  process.on('SIGTERM', quit)
+  process.on('SIGINT', quit)
 }

@@ -25,35 +25,35 @@ test('health', async () => {
 })
 
 test('create names the file after the street name and starts at rev 1', async () => {
-  const r = await put('a1', xml('a1', 'Wild Jane'))
+  const r = await put('a1', xml('a1', 'Test Runner'))
   expect(r.status).toBe(201)
-  expect(await r.json()).toEqual({ rev: 1, file: 'Wild-Jane.xml' })
-  expect(readFileSync(join(dir, 'chars', 'Wild-Jane.xml'), 'utf8')).toContain('rev="1"')
+  expect(await r.json()).toEqual({ rev: 1, file: 'Test-Runner.xml' })
+  expect(readFileSync(join(dir, 'chars', 'Test-Runner.xml'), 'utf8')).toContain('rev="1"')
 })
 
 test('a save based on an old revision is refused; force or the right rev succeeds', async () => {
-  expect((await put('a1', xml('a1', 'Wild Jane'), { 'If-Match': '1' })).status).toBe(200) // now rev 2
-  const stale = await put('a1', xml('a1', 'Wild Jane'), { 'If-Match': '1' })
+  expect((await put('a1', xml('a1', 'Test Runner'), { 'If-Match': '1' })).status).toBe(200) // now rev 2
+  const stale = await put('a1', xml('a1', 'Test Runner'), { 'If-Match': '1' })
   expect(stale.status).toBe(409)
-  expect(await stale.json()).toMatchObject({ error: 'conflict', rev: 2, file: 'Wild-Jane.xml' })
-  expect(await (await put('a1', xml('a1', 'Wild Jane'), { 'If-Match': '1' }, '?force=1')).json()).toEqual({ rev: 3, file: 'Wild-Jane.xml' })
+  expect(await stale.json()).toMatchObject({ error: 'conflict', rev: 2, file: 'Test-Runner.xml' })
+  expect(await (await put('a1', xml('a1', 'Test Runner'), { 'If-Match': '1' }, '?force=1')).json()).toEqual({ rev: 3, file: 'Test-Runner.xml' })
 })
 
 test('save as a new file name; same street name gets a unique file', async () => {
-  expect(await (await put('a2', xml('a2', 'Wild Jane'), {}, '?filename=Wild Jane copy')).json()).toEqual({ rev: 1, file: 'Wild-Jane-copy.xml' })
-  expect(await (await put('a3', xml('a3', 'Wild Jane'))).json()).toEqual({ rev: 1, file: 'Wild-Jane-2.xml' })
+  expect(await (await put('a2', xml('a2', 'Test Runner'), {}, '?filename=Test Runner copy')).json()).toEqual({ rev: 1, file: 'Test-Runner-copy.xml' })
+  expect(await (await put('a3', xml('a3', 'Test Runner'))).json()).toEqual({ rev: 1, file: 'Test-Runner-2.xml' })
 })
 
 test('list returns every runner with its XML', async () => {
   const list = await (await fetch(`${base}/api/characters`)).json()
-  expect(list.map((c: { file: string }) => c.file).sort()).toEqual(['Wild-Jane-2.xml', 'Wild-Jane-copy.xml', 'Wild-Jane.xml'])
-  expect(list.find((c: { file: string }) => c.file === 'Wild-Jane.xml').rev).toBe(3)
+  expect(list.map((c: { file: string }) => c.file).sort()).toEqual(['Test-Runner-2.xml', 'Test-Runner-copy.xml', 'Test-Runner.xml'])
+  expect(list.find((c: { file: string }) => c.file === 'Test-Runner.xml').rev).toBe(3)
 })
 
 test('delete moves the file to .trash', async () => {
   expect((await fetch(`${base}/api/characters/a3`, { method: 'DELETE' })).status).toBe(204)
-  expect(readdirSync(join(dir, 'chars'))).not.toContain('Wild-Jane-2.xml')
-  expect(readdirSync(join(dir, 'chars', '.trash'))[0]).toMatch(/^Wild-Jane-2-\d+\.xml$/)
+  expect(readdirSync(join(dir, 'chars'))).not.toContain('Test-Runner-2.xml')
+  expect(readdirSync(join(dir, 'chars', '.trash'))[0]).toMatch(/^Test-Runner-2-\d+\.xml$/)
 })
 
 test('trust boundary: bad ids, mismatched bodies and path traversal are refused', async () => {

@@ -110,17 +110,16 @@ test('technomancer: Emerged amp, Tasking skill, living persona', async ({ page }
   await expect(page.getByText('Tasking needs the Emerged amp')).toHaveCount(0)
 })
 
-test('Amp Builder: apply a book add-on to a vehicle', async ({ page }) => {
+test('Amp Builder: apply a book add-on', async ({ page }) => {
   await newRunner(page, 'Rigger')
   await page.getByRole('link', { name: 'Shadow Amps' }).click()
   await page.getByRole('button', { name: 'Add an amp' }).click()
-  await page.getByRole('button', { name: 'Vehicle or drone', exact: true }).click()
-  await page.getByLabel('Name').fill('Drone')
+  await page.getByRole('button', { name: 'Equipment', exact: true }).click()
+  await page.getByLabel('Name').fill('Gadget')
   const before = await page.locator('.ampfoot b').first().textContent()
-  await page.getByLabel('Apply a book add-on').selectOption('mod-flying')
+  await page.getByLabel('Apply a book add-on').selectOption('test.static-shroud')
   const after = await page.locator('.ampfoot b').first().textContent()
-  expect(Number(after)).toBe(Number(before) + 1)
-  await expect(page.getByText(/\(flying\)/)).toBeVisible()
+  expect(Number(after)).toBe(Number(before) - 1) // Static Shroud (made-up TEST book): a −1 drawback
 })
 
 test('a runner saved from two browsers: conflict dialog, save mine as a new file', async ({ browser }) => {
