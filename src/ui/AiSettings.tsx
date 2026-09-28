@@ -69,7 +69,8 @@ export function AiSettings() {
         body: `<keys><key provider="${id}">${esc(value.trim())}</key></keys>` })
       setKeyInput({ ...keyInput, [id]: '' })
       setMsg(value.trim() ? `${PROVIDER_NAMES[id]} key saved.` : `${PROVIDER_NAMES[id]} key removed.`)
-      await load()
+      // only the key flag changes: unsaved provider edits on the page stay
+      setState(s => s && { ...s, keys: { ...s.keys, [id]: !!value.trim() } })
     } catch (e) { setMsg(`Couldn’t save the key: ${(e as Error).message}.`) }
   }
   const enabled = IDS.filter(id => state.providers[id].enabled)
@@ -79,7 +80,7 @@ export function AiSettings() {
       <BooksHeader title="AI settings"><a className="btn quiet" href="#/books">Books</a></BooksHeader>
       <p>An AI reads books the app has no recipe for and proposes their entries; you review them before anything is added.
         You pay the provider for what it reads. Keys are stored on this server in a file of their own and are never shown again.</p>
-      {msg && <p className="banner" role="status">{msg}</p>}
+      <div role="status" aria-live="polite">{msg && <p className="banner">{msg}</p>}</div>
 
       <label className="use">Provider to use
         <select value={enabled.includes(state.use) ? state.use : ''} onChange={e => setState({ ...state, use: e.target.value })}>

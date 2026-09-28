@@ -42,7 +42,7 @@ export default function App() {
       {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'books' && id === 'ai' ? <AiSettings />
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />
-        : page === 'books' ? <BooksScreen c={catalog} reload={() => void reload()} />
+        : page === 'books' ? <BooksScreen c={catalog} reload={() => void loadCatalog('./').then(setCatalog, () => {}) /* a failed reload keeps the loaded catalog */} />
         : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} /> : <Library c={catalog} />}
     </RepoContext.Provider>
   )
