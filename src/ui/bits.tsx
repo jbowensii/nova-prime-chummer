@@ -1,5 +1,5 @@
 // Small shared UI pieces: money format, stepper, catalog picker, dialog, receipt line.
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 
 export const fmt = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('en-US')}¥`
 export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
@@ -18,7 +18,8 @@ export function Stepper({ value, min, max, onChange, label }: { value: number; m
 export const NonCanon = ({ source }: { source?: string }) =>
   <span className="noncanon" title={`Published, not canon${source ? ` (${source})` : ''}`}>Non-canon</span>
 
-export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string }
+/** action: a control in the row (an Edit button) that doesn't pick it */
+export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string; action?: ReactNode }
 
 export function Picker({ items, onPick, placeholder = 'Search', groups }: { items: PickItem[]; onPick: (id: string) => void; placeholder?: string; groups?: string[] }) {
   const [q, setQ] = useState('')
@@ -43,7 +44,7 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
         {shown.map(i => (
           <li key={i.id} tabIndex={0} onClick={() => onPick(i.id)} onKeyDown={e => e.key === 'Enter' && onPick(i.id)}>
             <span><b>{i.name}</b> {i.meta && <span className="muted">{i.meta}</span>} {i.label}</span>
-            <span className="num">{i.price}</span>
+            <span className="num">{i.price}{i.action && <span onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}> {i.action}</span>}</span>
             {i.text && <span className="t">{i.text}</span>}
           </li>
         ))}
@@ -56,6 +57,7 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
 /** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose. */
 export function Modal({ open, onClose, title, children, actions }: { open: boolean; onClose: () => void; title: string; children: ReactNode; actions?: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const tid = useId() // two dialogs can be open at once (an edit over a picker)
   useEffect(() => {
     const d = ref.current
     if (!d) return
@@ -63,10 +65,10 @@ export function Modal({ open, onClose, title, children, actions }: { open: boole
     if (!open && d.open) d.close()
   }, [open])
   return (
-    <dialog ref={ref} onClose={onClose} onCancel={e => { e.preventDefault(); onClose() }} aria-labelledby="dlg-title">
+    <dialog ref={ref} onClose={onClose} onCancel={e => { e.preventDefault(); onClose() }} aria-labelledby={tid}>
       {open && (
         <>
-          <h2 id="dlg-title">{title}</h2>
+          <h2 id={tid}>{title}</h2>
           {children}
           <div className="actions">{actions ?? <button className="btn" onClick={onClose}>Close</button>}</div>
         </>

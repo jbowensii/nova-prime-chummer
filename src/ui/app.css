@@ -366,3 +366,11 @@ table.proposals tr.dropped b { text-decoration: line-through; color: var(--text-
 table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-top: 0.2rem; }
 .supported li > span:last-child { white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- catalog edits (EditEntry.tsx) ---- */
+.edited { display: inline-block; font-size: 0.7rem; line-height: 1.3; padding: 0 0.4rem; background: var(--yellow); color: var(--ink);
+  font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+.editstate { padding: 0.4rem 0.6rem; background: var(--zebra); border-left: 4px solid var(--yellow); }
+.toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 10; max-width: calc(100vw - 2rem);
+  margin: 0; padding: 0.6rem 1rem; background: var(--panel); color: var(--panel-text); border-left: 4px solid var(--yellow); box-shadow: 0 6px 20px rgb(0 0 0 / 0.3); }
+.picker li:hover .edited, .picker li:focus-visible .edited { background: var(--ink); color: var(--yellow); }

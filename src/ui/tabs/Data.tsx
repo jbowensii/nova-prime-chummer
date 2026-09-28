@@ -1,5 +1,9 @@
 import type { Catalog } from '../../model/types'
 import { NonCanon } from '../bits'
+import { EditButton, editState, STATE_TEXT, useOpenEdit, type EditKind } from '../EditEntry'
+import { SourceLabel } from '../SourceLabel'
+
+const KINDS: [EditKind, string][] = [['amps', 'Amp'], ['items', 'Item'], ['rules', 'Rule']]
 
 /** entries per source across the catalog (amps, items, skills, their own-cited specs, rules) */
 function counts(c: Catalog) {
@@ -12,6 +16,9 @@ function counts(c: Catalog) {
 
 export function DataScreen({ c }: { c: Catalog }) {
   const count = counts(c)
+  const openEdit = useOpenEdit()
+  const edits = KINDS.flatMap(([kind, label]) => [...(c[kind] as Map<string, { id: string; source: string; page: number; edited?: boolean; name?: string; title?: string }>).values()]
+    .filter(e => e.edited).map(e => ({ kind, label, e, name: e.name ?? e.title ?? e.id, state: editState(c, kind, e as never) })))
   return (
     <main className="lib">
       <header><div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Game data</h1></div></header>
@@ -28,14 +35,32 @@ export function DataScreen({ c }: { c: Catalog }) {
             <td>{!s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/${s.texts}`) ? 'installed' : <span className="muted">not installed</span>}</td>
             <td>{s.file}</td><td className="hash" title={s.sha256}>{s.sha256?.split(' ').map(h => `${h.slice(0, 12)}…`).join(' ')}</td></tr>
         ))}</tbody></table></div>
+      {openEdit && <>
+        <h2 style={{ marginTop: '1.5rem' }}>Your catalog edits</h2>
+        <p>Fix a book entry with its Edit button (amp and gear pickers, the Rules reference), or add your own under a house-rule source.
+          Edits are kept apart from the imported books, so a re-import never touches them; Restore book version drops one.</p>
+        <div className="row" style={{ marginBottom: '0.6rem' }}>
+          <button className="btn small" onClick={() => openEdit({ kind: 'amps' })}>Add an amp</button>
+          <button className="btn small" onClick={() => openEdit({ kind: 'items' })}>Add an item</button>
+          <button className="btn small" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>
+        </div>
+        {edits.length === 0 ? <p className="muted">No edits yet.</p> : (
+          <div className="scroll-x"><table className="data edits"><thead><tr><th>Entry</th><th>Kind</th><th>Status</th><th /></tr></thead>
+            <tbody>{edits.map(({ kind, label, e, name, state }) => (
+              <tr key={`${kind} ${e.id}`}><td><b>{name}</b> <SourceLabel c={c} source={e.source} page={e.page} id={e.id} /></td><td>{label}</td>
+                <td className={state === 'orphan' ? 'warn' : undefined}>{STATE_TEXT[state]}</td>
+                <td className="num"><EditButton kind={kind} id={e.id} name={name} /></td></tr>
+            ))}</tbody></table></div>
+        )}
+      </>}
       <h2 style={{ marginTop: '1.5rem' }}>Problems</h2>
       {c.errors.length === 0 ? <p className="ok">Every file loaded cleanly.</p> : (
-        <table className="data"><thead><tr><th>File</th><th>Line</th><th>Problem</th></tr></thead>
-          <tbody>{c.errors.map((e, i) => <tr key={i}><td>{e.file}</td><td className="num">{e.line ?? ''}</td><td className="err">{e.message}</td></tr>)}</tbody></table>
+        <div className="scroll-x"><table className="data"><thead><tr><th>File</th><th>Line</th><th>Problem</th></tr></thead>
+          <tbody>{c.errors.map((e, i) => <tr key={i}><td>{e.file}</td><td className="num">{e.line ?? ''}</td><td className="err">{e.message}</td></tr>)}</tbody></table></div>
       )}
       <h2 style={{ marginTop: '1.5rem' }}>Loaded files</h2>
-      <table className="data"><thead><tr><th>File</th><th>Kind</th><th className="num">Entries</th><th>From</th></tr></thead>
-        <tbody>{c.files.map(f => <tr key={f.file}><td>{f.file}</td><td>{f.kind}</td><td className="num">{f.entries}</td><td>{f.overlay ? 'custom overlay' : 'base data'}</td></tr>)}</tbody></table>
+      <div className="scroll-x"><table className="data"><thead><tr><th>File</th><th>Kind</th><th className="num">Entries</th><th>From</th></tr></thead>
+        <tbody>{c.files.map(f => <tr key={f.file}><td>{f.file}</td><td>{f.kind}</td><td className="num">{f.entries}</td><td>{f.overlay ? 'custom overlay' : 'base data'}</td></tr>)}</tbody></table></div>
       <p className="muted" style={{ marginTop: '1rem' }}>The file format and schemas are documented in <code>docs/data-format.md</code> and <code>data/schema/</code>.</p>
     </main>
   )

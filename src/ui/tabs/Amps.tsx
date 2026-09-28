@@ -4,6 +4,7 @@ import type { AmpEntry, ItemEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
 import { SourceLabel } from '../SourceLabel'
+import { EditButton } from '../EditEntry'
 import { useEditor } from '../editor'
 import { AmpBuilder } from './AmpBuilder'
 
@@ -106,7 +107,7 @@ export function AmpsTab() {
             items={[...c.amps.values()].filter(a => !a.mod).map(a => ({
               id: a.id, name: a.name, group: c.ampTypes.get(a.type)?.name,
               meta: c.ampTypes.get(a.type)?.name, label: <SourceLabel c={c} source={a.source} page={a.page} id={a.id} />, search: `${a.source} ${c.sources.get(a.source)?.name ?? ''} p.${a.page}`,
-              price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative,
+              price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative, action: <EditButton kind="amps" id={a.id} name={a.name} />,
             }))} />
           <p className="muted">Source DHSA is Daegann’s Holostreets expanded amp list; its page numbers are that document’s.</p>
         </div>
