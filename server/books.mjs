@@ -345,6 +345,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     for (const f of readdirSync(backups, { withFileTypes: true }))
       if (TEMP_ZIP.test(f.name)) rmSync(join(backups, f.name), { recursive: true, force: true })
   } catch { /* no .backups yet */ }
+  // a killed restore's unpack and swap folders, at the top of each data folder (importer/backup.py; the safety backup
+  // in library/.backups holds everything the old ones did)
+  for (const d of [charDir, customDir, libraryDir]) {
+    try {
+      for (const f of readdirSync(d)) if (/^\.restore-(old|new)-/.test(f)) rmSync(join(d, f), { recursive: true, force: true })
+    } catch { /* no folder yet */ }
+  }
 
   const dirArgs = () => ['--characters', charDir, '--custom', customDir, '--library', libraryDir, '--version', version]
   const tempZip = kind => join(backups, `${kind}-${randomBytes(12).toString('hex')}.zip`)
@@ -368,7 +375,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** Step 1 of a download: make the zip in its own folder in library/.backups (never backed up itself). One at a time
    *  (each is a full copy of the Library on its disk), counted in `zipping` from the first line so a restore can't start
-   *  under it. A client that leaves stops it; the folder goes with a killed backup's partial .tmp. -> { token } */
+   *  under it. A client that leaves stops it; the folder goes with a killed backup's partial .tmp. -> { token }
+   *  ponytail: not a point-in-time snapshot. Saves and imports may run meanwhile; each file is written atomically, so
+   *  every file is whole but two files can be from different moments. Refuse while `writes`/`running` if that matters. */
   async function makeBackup(req, res, url, send) {
     noRestore()
     if (zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
