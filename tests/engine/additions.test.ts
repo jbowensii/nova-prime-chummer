@@ -22,29 +22,29 @@ test('weapon damage: STR-based and fixed DVs', () => {
   expect(weaponDV('Spe.', 3)).toBe('Spe.')
 })
 
-test('mental protection raises mental thresholds (Astral/Mystic Armor, CRB p.190)', () => {
+test('mental protection raises mental thresholds', () => {
   const ch = blankCharacter()
   ch.build.attributes.wil = 3
   expect(derive(cat, ch).thresholds.mental).toEqual([3, 6, 9])
-  expect(ampRating(cat, amp('m', 'adept', ['armor-plus', 'mental-armor']), first)).toBe(3)
+  expect(ampRating(cat, amp('m', 'adept', ['armor-plus', 'mental-armor']), first)).toBe(2 + 2 + 3) // made-up base and ratings
   ch.build.amps = [amp('m', 'adept', ['armor-plus', 'mental-armor'])]
   const d = derive(cat, ch)
   expect(d.thresholds.mental).toEqual([4, 7, 10])
   expect(d.thresholds.physicalNone[0]).toBe(1 + 1)
 })
 
-test('technomancer: Emerged costs 35,000; persona FW = WIL, Attack = CHA (Conversion Guide p.8)', () => {
+test('technomancer (a book adds Tasking and Emerged; made-up base 6): Emerged costs 36,000; persona FW = WIL, Attack = CHA', () => {
   const ch = blankCharacter()
   ch.build.attributes = { str: 2, agi: 2, wil: 4, log: 4, cha: 3 }
   ch.build.amps = [amp('e', 'emerged', [])]
   ch.build.skills = [{ id: 'tasking', rating: 3, specs: ['tasking.compiling'] }, { id: 'cracking', rating: 2, specs: [] }]
   ch.build.items = [{ uid: 'cf', kind: 'complex-form', name: 'Editor' }]
-  expect(ampRating(cat, ch.build.amps[0], first) * cat.pricing.ampPoint).toBe(35000)
-  expect(itemCost(cat.pricing, ch.build.items[0])).toBe(5000)
+  expect(ampRating(cat, ch.build.amps[0], first) * cat.pricing.ampPoint).toBe(36000)
+  expect(itemCost(cat.pricing, ch.build.items[0])).toBe(6500)
   const d = derive(cat, ch)
   expect(d).toMatchObject({ emerged: true, firewall: 4, attack: 3 })
   expect(d.thresholds.matrix).toEqual([4, 7, 10])
-  expect(d.pools.find(p => p.spec === 'tasking.compiling')!.dp).toBe(3 + 2 + 4)
+  expect(d.pools.find(p => p.spec === 'tasking.compiling')!.dp).toBe(3 + 2 + 3) // the made-up spec uses CHA
   const c = codes(ch)
   expect(c).not.toContain('skill.requiresEmerged')
   expect(c).not.toContain('skill.requiresDeck')
@@ -54,11 +54,11 @@ test('technomancer: Emerged costs 35,000; persona FW = WIL, Attack = CHA (Conver
   expect(codes(ch)).toEqual(expect.arrayContaining(['skill.requiresEmerged', 'skill.requiresDeck', 'complexForm.noEmerged']))
 })
 
-test('implant grades change Essence (DHSA p.29)', () => {
-  expect(ampEssence(cat, amp('d', 'cyberware', ['grade-delta']))).toBe(0.5)
-  expect(ampEssence(cat, amp('o', 'cyberware', ['grade-omega']))).toBe(1.5)
-  expect(ampEssence(cat, amp('c', 'bioware', ['grade-cultivated']))).toBe(0.25)
-  expect(ampRating(cat, amp('d', 'cyberware', ['grade-delta']), first)).toBe(2)
+test('implant grades a book adds change Essence', () => {
+  expect(ampEssence(cat, amp('d', 'cyberware', ['grade-delta']))).toBe(0.75)
+  expect(ampEssence(cat, amp('o', 'cyberware', ['grade-omega']))).toBe(1.75)
+  expect(ampEssence(cat, amp('c', 'bioware', ['grade-cultivated']))).toBe(0.125)
+  expect(ampRating(cat, amp('d', 'cyberware', ['grade-delta']), first)).toBe(2 + 2)
 })
 
 test('mods add their printed rating, and their effects need no GM approval', () => {
@@ -73,8 +73,8 @@ test('mods add their printed rating, and their effects need no GM approval', () 
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
-test('lifestyles load with their per-run adjustments (CRB p.165)', () => {
-  expect([...cat.lifestyles.values()].map(l => [l.id, l.perRun])).toEqual([['squatter', 1000], ['low', 0], ['middle', -1000], ['high', -2500]])
+test('lifestyles load with their per-run adjustments', () => {
+  expect([...cat.lifestyles.values()].map(l => [l.id, l.perRun])).toEqual([['squatter', 1500], ['low', 0], ['middle', -1500], ['high', -3000]])
 })
 
 test('catalog entries cite their source and page', () => {

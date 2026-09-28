@@ -29,8 +29,8 @@ test('the engine gives the numbers the recipe computed', () => {
   const ch = r.character
   const d = derive(cat, ch)
   const dp = (skill: string, spec: string | null, attr: string) => d.pools.find(p => p.skill === skill && (p.spec ?? null) === spec && p.attr === attr)?.dp
-  expect([dp('athletics', 'athletics.ranged-defense', 'agi'), dp('influence', 'influence.bluff', 'cha'), dp('electronics', 'custom:Mystery trick', 'log')]).toEqual([8, 11, 6])
-  expect([d.thresholds.physicalNone[0], d.thresholds.physicalMain[0], d.thresholds.physicalAlt[0], d.thresholds.mental[0], d.essence]).toEqual([2, 4, 5, 3, 5.5])
-  // printed 4, 5, 2, 3, 0: the contact's RR costs 2 in the rules (the recipe reports it)
-  expect(ch.build.amps.map(a => ampRating(cat, a, ampCtx(ch.build, a)))).toEqual([4, 5, 2, 3, 2])
+  expect([dp('athletics', 'athletics.ranged-defense', 'wil'), dp('influence', 'influence.bluff', 'log'), dp('electronics', 'custom:Mystery trick', 'wil')]).toEqual([8, 10, 6])
+  expect([d.thresholds.physicalNone[0], d.thresholds.physicalMain[0], d.thresholds.physicalAlt[0], d.thresholds.mental[0], d.essence]).toEqual([2, 4, 5, 3, 5.25])
+  // printed 4, 9, 4, 6, 0: the contact's RR costs rating in the rules (the recipe reports it)
+  expect(ch.build.amps.map(a => ampRating(cat, a, ampCtx(ch.build, a)))).toEqual([4, 9, 4, 6, 4])
 })

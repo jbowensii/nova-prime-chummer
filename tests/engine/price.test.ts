@@ -4,15 +4,16 @@ import { cat } from '../helpers'
 
 const P = cat.pricing
 
+// made-up prices (tests/fixtures/mini/custom/imported/core/pricing.xml): 12,000 a point, 24,000 the last; skills 3,000 to 4, then 6,000
 test('attribute last point surcharge', () => {
-  expect(attrCost(P, 0, 2, 4)).toBe(20000)
-  expect(attrCost(P, 0, 4, 4)).toBe(50000) // 3 x 10,000 + 20,000
-  expect(attrCost(P, 0, 4, 5)).toBe(40000) // elf CHA 4 is not the max
+  expect(attrCost(P, 0, 2, 4)).toBe(24000)
+  expect(attrCost(P, 0, 4, 4)).toBe(60000) // 3 x 12,000 + 24,000
+  expect(attrCost(P, 0, 4, 5)).toBe(48000) // 4 isn't the max here
 })
 
-test('skill breakpoint at rating 5 (CRB p.83 examples)', () => {
-  expect(skillCost(P, 0, 2)).toBe(5000)
-  expect(skillCost(P, 4, 6)).toBe(7500)
+test('skill breakpoint after skillLowMax', () => {
+  expect(skillCost(P, 0, 2)).toBe(6000)
+  expect(skillCost(P, 4, 6)).toBe(12000)
 })
 
 test.each(['ganger', 'runner', 'prime'].flatMap(l => ['balanced', 'magician', 'fighter'].map(a => `${l}-${a}`)))(

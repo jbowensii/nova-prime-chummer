@@ -61,6 +61,8 @@ export interface Catalog {
   original: { amps: Map<string, AmpTemplate>; items: Map<string, Item>; rules: Map<string, Rule> };
   files: { file: string; kind: string; entries: number; overlay: boolean }[];
   errors: LoadError[];
+  /** core files found neither in data/ nor custom/imported/core/ (loadCatalog): the app opens on its setup screen */
+  coreMissing: string[];
 }
 
 // ---- character ----

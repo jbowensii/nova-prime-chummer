@@ -27,8 +27,8 @@ test('bad files are rejected with a reason, never thrown', () => {
 
 test('snapshots keep an entry printable after its catalog data disappears, flagged ref.unknown', () => {
   const ch = snapshotEntries(cat, testChar())
-  expect(ch.build.items.find(i => i.catalogId === 'light-armor')!.snapshot!.armor).toBe(3)
-  const noArmor = base.map(f => f.file === 'armor.xml'
+  expect(ch.build.items.find(i => i.catalogId === 'light-armor')!.snapshot!.armor).toBe(4)
+  const noArmor = base.map(f => f.file === 'custom/imported/core/armor.xml'
     ? { ...f, xml: f.xml.replace(/<item id="light-armor"[\s\S]*?<\/item>/, '') } : f)
   const reduced = buildCatalog(noArmor)
   expect(reduced.items.has('light-armor')).toBe(false)

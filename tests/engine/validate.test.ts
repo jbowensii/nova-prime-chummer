@@ -17,12 +17,12 @@ const base = () => {
 
 test.each<[string, (ch: Character) => void]>([
   ['budget.over', ch => { ch.build.attributes = { str: 4, agi: 4, wil: 4, log: 4, cha: 4 }; ch.build.skills = ['athletics', 'stealth', 'perception', 'influence', 'network', 'survival', 'piloting', 'electronics', 'engineering', 'close-combat', 'ranged-weapons'].map(id => ({ id, rating: 5, specs: [] })); ch.level = 'ganger' }],
-  ['attr.range', ch => { ch.build.attributes.str = 5 }],
-  ['attr.maxCount', ch => { ch.build.attributes.str = 4; ch.build.attributes.agi = 4 }],
+  ['attr.range', ch => { ch.build.attributes.str = 6 }], // made-up human max 5
+  ['attr.maxCount', ch => { ch.build.attributes.str = 5; ch.build.attributes.agi = 5; ch.build.attributes.wil = 5 }], // made-up runner: 2 at max
   ['skill.cap', ch => { ch.build.skills = [{ id: 'stealth', rating: 6, specs: [] }] }],
   ['spec.noSkill', ch => { ch.build.skills = [{ id: 'stealth', rating: 0, specs: ['stealth.palming'] }] }],
-  ['rr.cap', ch => { ch.build.skills = [{ id: 'stealth', rating: 2, specs: [] }]; ch.build.amps = [amp('q', 'quality', [{ ref: 'rr-skill', param: 'stealth' }]), amp('c', 'cyberware', [{ ref: 'rr-skill', param: 'stealth' }])] }],
-  ['amp.effectMax', ch => { ch.build.amps = [amp('c', 'cyberware', [{ ref: 'dv-plus' }, { ref: 'dv-plus' }, { ref: 'dv-plus' }])] }],
+  ['rr.cap', ch => { ch.build.skills = [{ id: 'stealth', rating: 2, specs: [] }]; ch.build.amps = ['q', 'c', 'b'].map(u => amp(u, u === 'q' ? 'quality' : u === 'c' ? 'cyberware' : 'bioware', [{ ref: 'rr-skill', param: 'stealth' }])) }], // made-up runner: RR 2 on a Skill
+  ['amp.effectMax', ch => { ch.build.amps = [amp('c', 'cyberware', [{ ref: 'armor-plus' }, { ref: 'armor-plus' }, { ref: 'armor-plus' }])] }],
   ['amp.requires', ch => { ch.build.amps = [amp('c', 'cyberware', [{ ref: 'init-2' }])] }],
   ['amp.typeIllegal', ch => { ch.build.amps = [amp('c', 'contact', [{ ref: 'vcr' }])] }],
   ['amp.negative', ch => { ch.build.amps = [amp('c', 'cyberware', [{ ref: 'negative', value: 2 }])] }],
@@ -32,7 +32,7 @@ test.each<[string, (ch: Character) => void]>([
   ['skill.requiresAwakened', ch => { ch.build.skills = [{ id: 'sorcery', rating: 1, specs: [] }] }],
   ['skill.requiresDeck', ch => { ch.build.skills = [{ id: 'cracking', rating: 1, specs: [] }] }],
   ['essence.dead', ch => { ch.build.amps = [1, 2, 3, 4, 5, 6].map(i => amp(`c${i}`, 'cyberware', [])) }],
-  ['vehicle.armor', ch => { ch.build.amps = [amp('v', 'vehicle', [{ ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }], { vehicle: 'small-drone' })] }],
+  ['vehicle.armor', ch => { ch.build.amps = [amp('v', 'vehicle', [{ ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }], { vehicle: 'small-drone' })] }], // made-up body 2
   ['ref.unknown', ch => { ch.build.items = [{ uid: 'x', catalogId: 'no-such-thing', kind: 'gear', name: 'Ghost' }] }],
   ['custom.content', ch => { ch.build.items = [{ uid: 'x', kind: 'gear', name: 'Ferrari', price: 50000 }] }],
 ])('%s', (code, mutate) => {
@@ -64,8 +64,9 @@ test('catalog-sanctioned negative effects need no approval', () => {
 
 test('a GM override approves the violation and unblocks Finalize', () => {
   const ch = base()
-  ch.build.attributes.str = 4
-  ch.build.attributes.agi = 4
+  ch.build.attributes.str = 5
+  ch.build.attributes.agi = 5
+  ch.build.attributes.wil = 5
   expect(canFinalize(validate(cat, ch))).toBe(false)
   ch.overrides = [{ code: 'attr.maxCount', path: 'attributes', note: 'GM: street legend campaign' }]
   const v = validate(cat, ch)

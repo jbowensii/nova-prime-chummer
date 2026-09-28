@@ -1,9 +1,9 @@
-// Weapons and armor are shipped mechanics that outlive the book catalogs (docs/data-format.md);
+// Weapons and armor are core files (the made-up ones here; the real ones come from the core rulebook's import);
 // book-catalog checks (gear/spells/amps content) live in tests/books/catalog.test.ts.
 import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
 
-const doc = (f: string) => new DOMParser().parseFromString(readFileSync(`public/data/${f}`, 'utf8'), 'text/xml')
+const doc = (f: string) => new DOMParser().parseFromString(readFileSync(`tests/fixtures/mini/custom/imported/core/${f}`, 'utf8'), 'text/xml')
 const entries = (f: string) => [...doc(f).documentElement.children]
 
 test('weapons and armor catalogs are non-empty', () => {

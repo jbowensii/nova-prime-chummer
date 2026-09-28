@@ -54,12 +54,12 @@ describe('edits layer', () => {
       file('custom/texts/test.xml', 'texts', '<text of="items" id="test.nano-tape">Heals one wound.</text>'
         + '<text of="amps" id="test.keen-eye">Sharp.</text><text of="rules" id="test.gadget-basics">Roll less.</text>'),
       file('custom/edits/edits.xml', 'edits', gear('test.nano-tape', 'Nano Tape+')
-        + '<amp id="test.keen-eye" type="quality" printedRating="4" source="TEST" page="1"><name>Keen Eye</name><narrative></narrative></amp>'
+        + '<amp id="test.keen-eye" type="quality" printedRating="5" source="TEST" page="1"><name>Keen Eye</name><narrative></narrative></amp>'
         + '<rule id="test.gadget-basics" sheet="test" source="TEST" page="11"><title>Risk</title><text></text></rule>')])
     expect(c.errors).toEqual([])
     expect(c.items.get('test.nano-tape')).toMatchObject({ name: 'Nano Tape+', text: 'Heals one wound.', edited: true })
-    expect(c.amps.get('test.keen-eye')).toMatchObject({ printedRating: 4, narrative: 'Sharp.', edited: true })
-    expect(c.original.amps.get('test.keen-eye')!.printedRating).toBe(2)
+    expect(c.amps.get('test.keen-eye')).toMatchObject({ printedRating: 5, narrative: 'Sharp.', edited: true })
+    expect(c.original.amps.get('test.keen-eye')!.printedRating).toBe(4)
     expect(c.rules.get('test.gadget-basics')).toMatchObject({ title: 'Risk', text: 'Roll less.', edited: true })
     expect(c.original.rules.get('test.gadget-basics')!.title).toBe('Risk Reduction (spec)')
   })
