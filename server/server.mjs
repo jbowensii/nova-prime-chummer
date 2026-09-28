@@ -40,10 +40,10 @@ const VERSION = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3' }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
-  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION })
+  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl })
 
   async function index() {
     await mkdir(charDir, { recursive: true })
@@ -108,7 +108,6 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     const existing = (await index()).find(c => c.id === id)
 
     if (req.method === 'DELETE') {
-      if (books.restoring()) return send(res, 409, { error: 'a restore is running; try again when it’s done' })
       if (!existing) return send(res, 404, { error: 'no such runner' })
       await mkdir(join(charDir, '.trash'), { recursive: true })
       await rename(join(charDir, existing.file), join(charDir, '.trash', `${existing.file.replace(/\.xml$/, '')}-${Date.now()}.xml`))
@@ -125,7 +124,6 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       return send(res, 409, { error: 'conflict', rev: existing.rev, file: existing.file, updatedAt: rootAttr(existing.xml, 'updatedAt') })
     const rev = (existing?.rev ?? 0) + 1
     const file = existing?.file ?? await freeName(slug(url.searchParams.get('filename') || rootAttr(xml, 'streetName') || rootAttr(xml, 'name')))
-    if (books.restoring()) return send(res, 409, { error: 'a restore is running; try again when it’s done' }) // checked after the body arrived
     const tmp = join(charDir, `.${file}.tmp`)
     await writeFile(tmp, setRev(xml, rev), 'utf8')
     await rename(tmp, join(charDir, file))
@@ -135,7 +133,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   const server = httpServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://x')
-      if (url.pathname.startsWith('/api/')) return await api(req, res, url)
+      // every write except backup and restore themselves is counted for its whole life: a restore waits for it, and it
+      // is refused while a restore runs
+      if (url.pathname.startsWith('/api/')) return await (req.method === 'GET' || /^\/api\/(backup|restore)(\/|$)/.test(url.pathname)
+        ? api(req, res, url) : books.track(() => api(req, res, url)))
       if (url.pathname.startsWith('/custom/')) {
         if (await serveFile(res, customDir, url.pathname.slice('/custom'.length))) return
         return send(res, 404, 'not found', 'text/plain')
@@ -150,7 +151,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (code === 500) console.error(e.stack) // never a request body
     }
   })
-  server.requestTimeout = 3600 * 1000 // a 5 GB backup upload over a slow network (Node's default is 5 min)
+  server.requestTimeout = 3600 * 1000 // a 20 GB backup upload over a slow network (Node's default is 5 min)
   server.stopJobs = books.stop
   return server
 }

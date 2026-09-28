@@ -54,12 +54,40 @@ test('API keys are in a backup only when asked for', async () => {
   expect((await download('?keys=1')).bytes.toString()).toContain('library/.config/ai-keys.xml')
 })
 
-test('a client that leaves mid-download leaves no temp file', async () => {
+test('a client that leaves mid-download or while the zip is made leaves no temp file', async () => {
   const ac = new AbortController()
   const r = await fetch(`${base}/api/backup`, { signal: ac.signal })
   ac.abort()
   expect(r.status).toBe(200)
   await vi.waitFor(() => expect(temps()).toEqual([]))
+  const early = new AbortController()
+  const gone = fetch(`${base}/api/backup`, { signal: early.signal }).catch(e => e.name)
+  await vi.waitFor(() => expect(temps()).toHaveLength(1)) // the zip's folder, the stub's partial .tmp in it
+  early.abort()
+  expect(await gone).toBe('AbortError')
+  await vi.waitFor(() => expect(temps()).toEqual([]))
+  expect((await download()).r.status).toBe(200) // and the next backup isn't blocked
+})
+
+test('one backup at a time, and no restore while one is made', async () => {
+  const { token } = await (await preview((await download()).bytes)).json()
+  const first = download()
+  await vi.waitFor(() => expect(temps().filter(f => f.startsWith('download-'))).toHaveLength(1))
+  const second = await fetch(`${base}/api/backup`)
+  expect([second.status, await second.json()]).toEqual([409, { error: 'A backup is already being made. Wait for it to finish.' }])
+  const refused = await apply(token)
+  expect([refused.status, (await refused.json()).error]).toEqual([409, 'a backup is being made; try again when it’s done'])
+  expect((await first).r.status).toBe(200)
+  expect((await apply(token)).status).toBe(200)
+})
+
+test('a restore is refused while an import is queued or running', async () => {
+  const { token } = await (await preview((await download()).bytes)).json()
+  expect((await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7 slow', headers: { 'Content-Type': 'application/pdf' } })).status).toBe(202)
+  const r = await apply(token)
+  expect([r.status, (await r.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
+  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).some((b: { busy: boolean }) => b.busy)).toBe(false), { timeout: 5000 })
+  expect((await apply(token)).status).toBe(200)
 })
 
 test('a preview refuses files that aren’t backups', async () => {
@@ -67,7 +95,7 @@ test('a preview refuses files that aren’t backups', async () => {
   expect([notZip.status, await notZip.json()]).toEqual([415, { error: 'this file isn’t a backup (not a zip file)' }])
   const badZip = await preview('PK\x03\x04 not really')
   expect([badZip.status, await badZip.json()]).toEqual([400, { error: 'this isn’t a readable zip file (stub)' }])
-  const big = await fetch(`${base}/api/restore?preview=1`, { method: 'POST', body: 'x', headers: { 'Content-Length': String(6 * 1024 ** 3) } }).catch(() => null)
+  const big = await fetch(`${base}/api/restore?preview=1`, { method: 'POST', body: 'x', headers: { 'Content-Length': String(21 * 1024 ** 3) } }).catch(() => null)
   if (big) expect(big.status).toBe(413) // some fetch versions refuse to send a wrong length at all
   expect(temps()).toEqual([])
 })
@@ -98,12 +126,14 @@ test('a restore is refused while a write runs, and nothing writes while a restor
   await new Promise(r => setTimeout(r, 100))
   const refused = await apply(token)
   expect(refused.status).toBe(409)
-  expect((await refused.json()).error).toMatch(/save or a backup is running/)
+  expect((await refused.json()).error).toBe('a save or an upload is running; try again when it’s done')
   await writing
   const restoring = apply(token) // the refusal didn't use up the token; the stub's apply takes 400 ms
   await new Promise(r => setTimeout(r, 150))
   for (const r of [await putRunner('During'), await setKey('sk-test-DURING1234'), await fetch(`${base}/api/backup`),
-    await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7', headers: { 'Content-Type': 'application/pdf' } })])
+    await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7', headers: { 'Content-Type': 'application/pdf' } }),
+    await fetch(`${base}/api/edits/items/x`, { method: 'PUT', body: '<edit/>' }), await fetch(`${base}/api/review/abc-1`, { method: 'PUT', body: '<review/>' }),
+    await fetch(`${base}/api/characters/r1`, { method: 'DELETE' })])
     expect(r.status).toBe(409)
   expect((await restoring).status).toBe(200)
   expect(readdirSync(chars).map(f => readFileSync(join(chars, f), 'utf8')).join()).not.toContain('During')
@@ -118,4 +148,18 @@ test('a new preview replaces the pending one; stopping the server deletes it', a
   srv.stopJobs()
   expect(temps()).toEqual([])
   expect((await apply(second)).status).toBe(404)
+})
+
+test('an unused preview expires and its upload is deleted', async () => {
+  const short = createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: library,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], restoreTtl: 300 })
+  await new Promise<void>(ok => short.listen(0, ok))
+  const at = `http://127.0.0.1:${short.address().port}`
+  try {
+    const zip = Buffer.from(await (await fetch(`${at}/api/backup`)).arrayBuffer())
+    const { token } = await (await fetch(`${at}/api/restore?preview=1`, { method: 'POST', body: zip })).json()
+    expect(temps()).toHaveLength(1)
+    await vi.waitFor(() => expect(temps()).toEqual([]))
+    expect((await fetch(`${at}/api/restore/${token}`, { method: 'POST' })).status).toBe(404)
+  } finally { short.close() }
 })
