@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { attrCost, packageGuide, price, skillCost } from '../../src/engine/price'
-import { cat, sample } from '../helpers'
+import { attrCost, packageGuide, skillCost } from '../../src/engine/price'
+import { cat } from '../helpers'
 
 const P = cat.pricing
 
@@ -21,10 +21,3 @@ test.each(['ganger', 'runner', 'prime'].flatMap(l => ['balanced', 'magician', 'f
     const level = cat.levels.get(cat.packages.get(id)!.level)!
     expect(g.attributes + g.skills + g.amps + g.gear + g.spells).toBe(level.nuyen)
   })
-
-test('Lightning prices to exactly 375,000 (CRB p.85)', () => {
-  const b = price(cat, sample('lightning'))
-  expect(b).toMatchObject({ attributes: 150000, skills: 90000, amps: 85000, gear: 15000, spells: 35000 })
-  expect(b.total).toBe(375000)
-  expect(b.remaining).toBe(0)
-})

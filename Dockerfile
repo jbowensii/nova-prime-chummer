@@ -1,5 +1,6 @@
-# Build the app, then serve it with the small Node server that also stores runners as XML.
-# Volumes: /data/characters (saved runners), /data/custom (house-rule overlays).
+# Build the app, then serve it with the small Node server that also stores runners as XML and runs the
+# PDF importer (Python). Volumes: /data/characters (saved runners), /data/custom (house-rule overlays and
+# imported books' data), /data/library (uploaded PDFs, their Markdown, reports and AI settings; never served).
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -8,11 +9,21 @@ COPY . .
 RUN npm run build
 
 FROM node:22-alpine
+# OCR=1 adds Tesseract for scanned books
+ARG OCR=0
 WORKDIR /app
+COPY importer/requirements.txt ./importer/requirements.txt
+RUN apk add --no-cache python3 py3-pip \
+ && if [ "$OCR" = "1" ]; then apk add --no-cache tesseract-ocr; fi \
+ && pip install --no-cache-dir --break-system-packages -r /app/importer/requirements.txt
 COPY --from=build /app/dist ./dist
-COPY server/server.mjs ./server/server.mjs
-ENV PORT=80 STATIC_DIR=/app/dist CHAR_DIR=/data/characters CUSTOM_DIR=/data/custom
-VOLUME ["/data/characters", "/data/custom"]
+COPY server/server.mjs server/books.mjs ./server/
+COPY importer ./importer
+RUN rm -rf ./importer/tests && find ./importer -name __pycache__ -prune -exec rm -rf {} +
+# the importer reads the shipped mechanics (skills, amp effects, amp types …) from the built app's data
+ENV PORT=80 STATIC_DIR=/app/dist CHAR_DIR=/data/characters CUSTOM_DIR=/data/custom LIBRARY_DIR=/data/library \
+    PYTHON=python3 CA2_DATA_DIR=/app/dist/data PYTHONDONTWRITEBYTECODE=1
+VOLUME ["/data/characters", "/data/custom", "/data/library"]
 EXPOSE 80
 HEALTHCHECK CMD wget -qO- http://127.0.0.1/api/health > /dev/null || exit 1
 CMD ["node", "server/server.mjs"]

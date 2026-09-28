@@ -1,5 +1,6 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
 import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
+import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
 import './sheet.css'
@@ -94,7 +95,7 @@ export function Sheet() {
         <section>
           <h2>Shadow Amps</h2>
           <table>
-            <thead><tr><th>Amp</th><th>Essence</th><th>Rating</th></tr></thead>
+            <thead><tr><th>Amp</th><th className="s-src">Source</th><th>Essence</th><th>Rating</th></tr></thead>
             <tbody>
               {b.amps.map(a => (
                 <tr key={a.uid}>
@@ -103,6 +104,7 @@ export function Sheet() {
                     {[...a.effects.filter(e => e.ref !== 'narrative' || e.param).reduce((m, e) => { const k = `${e.ref}|${e.param}|${e.value}`; m.set(k, [e, (m.get(k)?.[1] ?? 0) + 1]); return m }, new Map<string, [typeof a.effects[number], number]>()).values()]
                       .map(([e, n], i) => <div key={i} className="s-small" title={ruleHelp(c, e.ref)}>{effectText(e.ref, e.param, e.value, n)}{!e.ref.startsWith('rr-') && n > 1 ? ` ×${n}` : ''}</div>)}
                   </td>
+                  <td className="s-src">{(t => t ? <SourceLabel c={c} source={t.source} page={t.page} id={t.id} /> : <SourceLabel builtByYou />)(a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined)}</td>
                   <td>{ampEssence(c, a) || ''}</td><td><b>{ampRating(c, a, ampCtx(b, a))}</b></td>
                 </tr>
               ))}

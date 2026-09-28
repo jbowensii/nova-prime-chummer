@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { buildCatalog } from '../../src/engine/load'
-import { base, cat } from '../helpers'
+import { base, cat, catFiles } from '../helpers'
 
 test('base catalog loads without errors', () => {
   expect(cat.errors).toEqual([])
@@ -9,9 +9,13 @@ test('base catalog loads without errors', () => {
   expect(cat.skills.size).toBe(15) // 14 core skills + Tasking (Conversion Guide)
   expect(cat.pricing.attrLastPoint).toBe(20000)
   expect(cat.ampEffects.get('init-2')!.requires).toBe('init-1')
-  expect(cat.amps.get('ares-predator-iv-heavy-pistol')!.item!.kind).toBe('weapon')
+  expect(cat.amps.get('test.trick-shot-rig')!.item!.kind).toBe('weapon')
   expect(cat.items.get('light-armor')!.armor).toBe(3)
-  expect(cat.files.length).toBe(18)
+  expect(cat.items.get('test.nano-tape')!.kind).toBe('gear')
+  expect(cat.files.length).toBe(22) // public/data minus the book catalogs, plus tests/fixtures/mini/custom (sources + 8 files)
+  // duplicate names across non-canon sources (TEST, TEST2) both load fine
+  expect(cat.amps.get('test.keen-eye')!.source).toBe('TEST')
+  expect(cat.amps.get('test2.keen-eye')!.source).toBe('TEST2')
 })
 
 test('overlay replaces, removes, adds by id', () => {
@@ -38,9 +42,9 @@ test('private texts merge by id; the committed data carries none', () => {
   expect([...cat.amps.values()].filter(a => a.narrative).length).toBe(0)
   expect([...cat.items.values()].filter(i => i.kind === 'spell' && i.text).length).toBe(0)
   const texts = `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">
-    <text of="amps" id="ares-wired-reflexes">Reflex boosters wired into the spine.</text>
-    <text of="items" id="spell-heal">Heals one wound.</text></ca2:data>`
-  const c = buildCatalog([...base, { file: 'custom/texts.xml', xml: texts, overlay: true }])
-  expect(c.amps.get('ares-wired-reflexes')!.narrative).toBe('Reflex boosters wired into the spine.')
-  expect(c.items.get('spell-heal')!.text).toBe('Heals one wound.')
+    <text of="amps" id="test.chrome-spine">Reflex boosters wired into the spine.</text>
+    <text of="items" id="test.nano-tape">Heals one wound.</text></ca2:data>`
+  const c = buildCatalog([...catFiles, { file: 'custom/texts.xml', xml: texts, overlay: true }])
+  expect(c.amps.get('test.chrome-spine')!.narrative).toBe('Reflex boosters wired into the spine.')
+  expect(c.items.get('test.nano-tape')!.text).toBe('Heals one wound.')
 })

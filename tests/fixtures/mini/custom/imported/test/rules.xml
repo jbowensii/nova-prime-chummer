@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test rules reference (docs/superpowers/sdd/2026-09-27-pdf-importer/task-1-brief.md).
+     The text is private; a custom/texts overlay fills it by id (see tests/engine/canon.test.ts). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">
+  <rule id="test.gadget-basics" sheet="test" section="Basics" effects="rr-spec" source="TEST" page="11"><title>Risk Reduction (spec)</title><text></text></rule>
+</ca2:data>

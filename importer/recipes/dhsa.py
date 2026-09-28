@@ -1,24 +1,27 @@
-"""Turn DHSA rows (tools/dhsa_rows.py output) into amps.xml, gear.xml, spells.xml and complexforms.xml.
+"""Daegann's Holostreets Shadow Amps Expanded List (DHSA) -> amps, spells, complex forms, gear, skill specs.
 
-Each amp row is broken into effects from ampeffects.xml; lines we can't map become
-narrative text. The computed rating is reconciled with the printed one:
+rows() reads the converter's Markdown: "#" section headings, one pipe table per sub-list (first header
+cell = subsection, small caps split as "Q UALITIES"), bold names; a cell's lines are <br>-separated or
+continue in rows whose name cell is empty. Each amp row is then broken into effects from ampeffects.xml;
+lines we can't map become narrative text. The computed rating is reconciled with the printed one:
   - printed > computed: the gap becomes "Additional narrative effect" (+1, CRB p.63),
     tagged note="balances printed rating";
   - printed < computed and the text lists a drawback: the gap becomes a book-sanctioned
     "Negative effect", tagged note="book drawback";
-  - anything else goes to the mismatch report (docs/book-discrepancies.md).
-Entries printed in black are core-book (CRB) content: their page is looked up in the core
-book markdown. Rust entries are Daegann's (DHSA) and cite the DHSA page.
-
-Book-derived descriptions are written to a separate private file (default
-.extract/private/texts/dhsa.xml: all of it is DHSA's text), never to the committed data.
-
-Usage: python tools/dhsa_to_xml.py <dhsa rows.json> <public/data> <report.md> <CRB .md> [texts.xml]
+  - anything else is a report row (kind="rating-mismatch").
+Every entry cites DHSA and its DHSA page, including the core-book amps the list reprints (they are
+DHSA's text and numbers; the CRB recipe imports the canon ones). Descriptions go to the texts result.
 """
-import json
+import os
 import re
-import sys
+import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
+
+from importer import DATA_DIR
+from importer.recipes import Result
+
+ID, NAME, PUBLISHER, CANON = "DHSA", "Shadow Amps Expanded List v3.4b", "Daegann (Holostreets)", False
+SHIPPED_SKILLS = os.path.join(DATA_DIR, "skills.xml")
 
 SKILLS = {
     "athletics": "athletics", "close combat": "close-combat", "conjuring": "conjuring",
@@ -99,32 +102,82 @@ CHASSIS = {  # id: (body, handling, speed)
 }
 
 
-class CoreBook:
-    """Printed page lookup in the core-book markdown: a page's number is the **N** footer after it."""
+# specializations DHSA adds to the core skills: (skill, spec slug, attr, page, name)
+DHSA_SPECS = [("athletics", "jumping", "str", 47, "Jumping"), ("close-combat", "firearms", "agi", 6, "Firearms"),
+              ("influence", "animals", "cha", 5, "Animals"), ("influence", "seduction", "cha", 6, "Seduction"),
+              ("piloting", "risky-maneuver", "agi", 6, "Risky maneuver"), ("sorcery", "enchanting", "wil", 33, "Enchanting")]
 
-    def __init__(self, path):
-        lines = open(path, encoding="utf8").read().split("\n")
-        self.low = [l.lower() for l in lines]
-        self.page, nxt = [None] * len(lines), None
-        for i in range(len(lines) - 1, -1, -1):
-            m = re.fullmatch(r"\*\*(\d{1,3})\*\*", lines[i].strip())
-            if m:
-                nxt = int(m.group(1))
-            self.page[i] = nxt
+BOLD = re.compile(r"(?<![\w*])\*\*(\S(?:.*?\S)?)\*\*")  # a bold run; "choice**" (footnote mark on a word) is not one
+# a wrapped effect line starts lowercase or follows a line ending mid-sentence
+CONTINUES = re.compile(r"(?:[,(]|\b(?:and|or|the|a|of))$")
 
-    def find(self, name, start=5180, end=None):
-        key = re.sub(r"\s*\(.*$", "", name).replace("’", "'").lower().strip(" *")
-        if len(key) < 4:
-            return None
-        end = end or len(self.low)
-        hits = [i for i in range(start, end) if key in self.low[i].replace("’", "'")]
-        # the book's own catalog entries read "**Name:** (Rating N ... Amp" or "**Name** (..." or a table row "|**Name**"
-        entry = [i for i in hits if re.search(r"\*\*" + re.escape(key) + r"[:*]", self.low[i].replace("’", "'"))]
-        best = ([i for i in entry if "rating" in self.low[i]] or [i for i in entry if self.low[i].startswith("|")] or entry
-                or [i for i in hits if "rating" in self.low[i]] or [i for i in hits if self.low[i].startswith("|")])
-        if not best and len(key) >= 8:
-            best = hits
-        return self.page[best[0]] if best else None
+
+def _unbold(s):
+    return BOLD.sub(r"\1", s).strip()
+
+
+def _cells(line):
+    return [c.strip() for c in line.strip()[1:-1].split("|")]
+
+
+def _head(s):
+    """Small caps come out as a capital and the rest: "C LOSE CONTACT" -> "CLOSE CONTACT"."""
+    return re.sub(r"\s+\.", ".", re.sub(r"\b([A-Z]) (?=[A-Z])", r"\1", s)).strip()
+
+
+def rows(md):
+    """Table rows as {page, section, subsection, name, type, cost, effects[], added}. A bold line in the
+    name column starts a row, a plain one continues its name. Columns: name, type, cost (+ DV and
+    threshold columns, joined), range/armor (lead the effects, as the PDF reader had them), effects.
+    `added` (printed in rust) isn't in the Markdown: None."""
+    out, page, section, cur, cols, lines = [], 0, "", None, None, md.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"<!-- page (\d+) -->", line)
+        if m:
+            page = int(m.group(1))
+        elif line.startswith("# "):
+            section = line[2:].strip()
+        elif not line.startswith("|"):
+            cols = None
+        # every table (so every page a list runs onto) repeats the header row; column roles come from it
+        elif i + 1 < len(lines) and lines[i + 1].startswith("|---"):  # header row
+            head = [_head(c).replace(" ", "").upper() for c in _cells(line)]
+            cols = ["name"] + [("type" if h in ("TYPE", "RATING") else "pre" if h in ("RANGE", "ARMOR") else "cost")
+                               for h in head[1:-1]] + ["effects"]
+            sub = _head(_cells(line)[0])
+        elif cols and not line.startswith("|---"):
+            cells = dict.fromkeys(("type", "cost"), "")
+            pre, effects, first = [], [], None
+            for role, c in zip(cols, _cells(line)):
+                parts = [p for p in c.split("<br>") if p.strip()]
+                if role == "name":
+                    for p in parts:
+                        if re.match(r"(•\s*)?\*\*(?!\*)", p):
+                            cur = {"page": page, "section": section, "subsection": sub, "name": _unbold(p),
+                                   "type": "", "cost": "", "effects": [], "added": None}
+                            out.append(cur)
+                            first = first or cur
+                        elif cur:
+                            cur["name"] += " " + _unbold(p)
+                elif role in ("type", "cost"):
+                    cells[role] = " ".join(filter(None, [cells[role], *map(_unbold, parts)]))
+                else:
+                    (pre if role == "pre" else effects).extend(_unbold(p) for p in parts)
+            r = first or cur
+            if r is None:
+                continue
+            for k in ("type", "cost"):
+                r[k] = " ".join(filter(None, [r[k], cells[k]]))
+            for t in pre + effects:
+                if r["effects"] and (t[:1].islower() or CONTINUES.search(r["effects"][-1])):
+                    r["effects"][-1] += " " + t
+                else:
+                    r["effects"].append(t)
+    return out
+
+
+def match(meta, md_head):
+    return 0.9 if re.search(r"daegann", md_head, re.I) and re.search(r"shadow amps base", md_head, re.I) else 0.0
 
 
 def weapon_base(name, sub):
@@ -143,10 +196,14 @@ def dv_num(dv):
     return ("N", int(m.group(1))) if m else None
 
 
-def load_specs(data_dir):
-    xml = open(f"{data_dir}/skills.xml", encoding="utf8").read()
-    return {(sid.split(".")[0], name.replace("&amp;", "&").lower()): sid
-            for sid, name in re.findall(r'<spec id="([^"]+)"[^>]*>([^<]+)</spec>', xml)}
+def load_skills(path=SHIPPED_SKILLS, dhsa_specs=True):
+    """{skill id: (name, attr)} and {(skill id, lowercase spec name): spec id}: the shipped skills plus DHSA's specs."""
+    root = ET.parse(path).getroot()
+    skills = {s.get("id"): (s.findtext("name"), s.get("attr")) for s in root.iter("skill")}
+    specs = {(sp.get("id").split(".")[0], sp.text.strip().lower()): sp.get("id") for sp in root.iter("spec")}
+    if dhsa_specs:
+        specs.update({(sk, name.lower()): f"{sk}.{s}" for sk, s, _, _, name in DHSA_SPECS})
+    return skills, specs
 
 
 def slug(s):
@@ -223,7 +280,7 @@ class Mapper:
             return [("wound-light", None, None, None)]
         if "serious wound box" in low or re.match(r"^\+1 serious wound", low):
             return [("wound-serious", None, None, None)]
-        m = re.search(r"(?:^|\b)(?:unarmed )?dv \+(\d)|^\+(\d) dv|^dv to unarmed attack \+(\d)", low)
+        m = re.search(r"(?:^|\b)(?:unarmed )?dv \+(\d)|^\+(\d) (?:unarmed )?dv|^dv to unarmed attack \+(\d)", low)
         if m:
             return [("dv-plus", None, None, None)] * int(m.group(1) or m.group(2) or m.group(3))
         # mental protection (CRB p.190, 211): spells, astral, biofeedback
@@ -238,17 +295,18 @@ class Mapper:
         m = re.search(r"^\+(\d) (attack|firewall)", low)
         if m:
             return [("attack-plus" if m.group(2) == "attack" else "firewall-plus", None, None, None)] * int(m.group(1))
-        m = re.fullmatch(r"firewall (\d)", low.strip(". "))
-        if m:
-            return [("firewall-plus", None, None, None)] * (int(m.group(1)) - 1)  # base Firewall 1 is free
+        m = re.fullmatch(r"(firewall|attack) (\d)", low.strip(". "))
+        if m:  # a deck's printed stats: base Firewall 1 is free, Attack starts at 0
+            n = int(m.group(2))
+            return [("firewall-plus", None, None, None)] * (n - 1) if m.group(1) == "firewall" else [("attack-plus", None, None, None)] * n
         if re.search(r"(maintain|sustain) (one|an|1) (additional|more|extra) (spell|complex form)", low):
             return [("sustain-spell", None, None, None)]
-        if re.search(r"control two spirits", low):
+        if re.search(r"control (up to )?two spirits", low):
             return [("summon-spirit", None, None, None)]
         m = re.search(r"control of (\d) drones", low)
         if m:
             return [("rcc", None, int(m.group(1)), None)]
-        if "jump into a vehicle" in low:
+        if re.search(r"jump into (a vehicle|vehicles)", low):
             return [("vcr", None, None, None)]
         realm = [("init-realm", "astral" if "astral" in low else "vr", None, None)] if re.search(r"\bvr\b|astral|jump", low) else []
         if re.search(r"^\+1 edge (point )?per (action |cracking )?scene", low) and "+2" not in low:
@@ -308,19 +366,20 @@ def reconcile(fx, narrative, base, rating, negative_ok=False):
     return computed
 
 
-def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/texts/dhsa.xml"):
-    for r in rows:  # DHSA v3.2 mixes '-' and '–' in headings; v3.4 uses '–'
+def extract(md, ctx=None):
+    rs = rows(md)
+    for r in rs:  # DHSA v3.2 mixes '-' and '–' in headings; v3.4 uses '–'
         r["section"] = r["section"].replace(" - ", " – ")
-    book = CoreBook(crb_path)
-    mapper = Mapper(load_specs(data_dir))
+    skills, specs = load_skills()
+    mapper = Mapper(specs)
     amps, gear, spells, forms, report, ids = [], [], [], [], [], set()
-    texts = []  # (of, id, text): book-derived descriptions, written to a private file
+    texts = []  # book descriptions: the texts result, never the overlay files
 
     def private(of, eid, s):
         s = (s or "").strip()
         if s:
             texts.append(f'  <text of="{of}" id="{eid}">{escape(s)}</text>')
-        return ""  # the committed file keeps an empty element
+        return ""  # the overlay keeps an empty element
 
     def uid(base):
         i, s = 1, base
@@ -330,22 +389,13 @@ def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/tex
         ids.add(s)
         return s
 
-    def cite(r, name, start=5180, end=None):
-        """CRB page for core-book entries, else the DHSA page."""
-        if not r["added"]:
-            m = re.match(r"(\w+) Mentor Spirit", name)  # the book lists mentors under a bare heading ("###### CAT")
-            if m:
-                i = next((i for i in range(7890, 8000) if book.low[i].strip() == f"###### {m.group(1).lower()}"), None)
-                if i is not None:
-                    return "CRB", book.page[i]
-            p = book.find(name, start, end)
-            if p:
-                return "CRB", p
-        return "DHSA", r["page"]
+    def mismatch(aid, page, atype, rating, computed, r):
+        report.append({"kind": "rating-mismatch", "id": aid, "page": page, "type": atype, "printed": rating,
+                       "computed": computed, "effects": " // ".join(r["effects"])[:160]})
 
-    def amp_xml(aid, atype, rating, src, page, name, item, fx, narrative, vehicle=None, mod=False):
+    def amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle=None, mod=False):
         fx_xml = "".join(f'<effect ref="{f[0]}"{attr("param", f[1])}{attr("value", f[2])}{attr("note", f[3])}/>' for f in fx)
-        amps.append(f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""} source="{src}" page="{page}">'
+        amps.append(f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""} source="{ID}" page="{page}">'
                     f'<name>{escape(name)}</name>{item}{fx_xml}<narrative>{private("amps", aid, " ".join(narrative))}</narrative></amp>')
 
     def map_lines(lines):
@@ -360,12 +410,11 @@ def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/tex
 
     # ---- spells: an empty-type row is a sibling spell sharing the previous row's rules (Confusion/Blind/Stink)
     spell_rows, prev = [], None
-    for r in rows:
+    for r in rs:
         if r["section"] != "MAGIC – SPELLS":
             continue
-        m = re.match(r"(.+?)\s+Manip\.?\s*\(([^)]+)\)", r["name"])
-        if m and not r["type"]:  # manipulation spells carry their type inside the name column
-            r = {**r, "name": m.group(1), "type": f"Manipulation ({m.group(2)})"}
+        if r["type"].startswith("Manip "):
+            r = {**r, "type": "Manipulation " + r["type"][6:]}
         if r["type"][:1].isupper():
             prev = dict(r)
             spell_rows.append(prev)
@@ -375,48 +424,42 @@ def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/tex
     for r in spell_rows:
         base = r.get("shared", r)
         name = clean_name(r["name"])
-        src, page = cite(r, name, 8093, 8420)
         text = f'{base["type"]}. Threshold/target: {base["cost"]}. ' + " ".join(base["effects"])
         sid = uid("spell-" + slug(name))
-        spells.append(f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{src}" page="{page}">'
+        spells.append(f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{ID}" page="{r["page"]}">'
                       f'<name>{escape(name)}</name><text>{private("items", sid, text[:300])}</text></item>')
 
-    # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules)
-    for r in rows:
-        if r["section"] != "RESONANCE – COMPLEX FORMS":
+    # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules): type = duration, cost = threshold
+    for r in rs:
+        if r["section"] != "RESONANCE – COMPLEX FORMS" or not re.fullmatch(r"I/S|S|I|P", r["type"]):
             continue
-        m = re.match(r"(.+?)\s+(I/S|S|I|P)$", clean_name(r["name"]))
-        if not m:
-            continue
-        name, dur = m.group(1), m.group(2)
-        thr_m = re.match(r"(\d\+?|\d to \d|Firewall(?:\+\d)?|Area-based|Variable)\s*(.*)", r["cost"])
-        threshold = r["type"] or (thr_m.group(1) if thr_m else "")
-        text = " ".join(([thr_m.group(2)] if thr_m and thr_m.group(2) else [] if thr_m else [r["cost"]]) + r["effects"]).strip()
+        name, dur = clean_name(r["name"]), r["type"]
         cid = uid("cf-" + slug(name))
-        forms.append(f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="DHSA" page="{r["page"]}">'
-                     f'<name>{escape(name)}</name><text>{private("items", cid, f"{dur}. Threshold: {threshold}. {text}"[:300])}</text></item>')
+        text = f"{dur}. Threshold: {r['cost']}. " + " ".join(r["effects"])
+        forms.append(f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="{ID}" page="{r["page"]}">'
+                     f'<name>{escape(name)}</name><text>{private("items", cid, text[:300])}</text></item>')
 
     # ---- contacts: rated templates (CONTACTS section)
-    contact_rows = [r for r in rows if r["section"] == "CONTACTS" and re.search(r"Amp\s*\d", r["name"])]
+    contact_rows = [r for r in rs if r["section"] == "CONTACTS" and printed(r["type"]) is not None]
     for i, r in enumerate(contact_rows):
-        rating = int(re.search(r"Amp\s*(\d)", r["name"]).group(1))
-        text = re.sub(r"^[\d ]+¥\s*", "", r["cost"]).replace("**", "")
+        rating = printed(r["type"])
+        text = " ".join(r["effects"]).replace("**", "")
         fx = []
         for m in re.finditer(r"RR\s*\d\s*Network(?:\s*\([^)]*\))?", text):
             fx += mapper.effects(m.group(0)) or []
         narrative = [re.split(r"\s*RR\s*\d", text)[0]]
         reconcile(fx, [], BASE["contact"], rating)
         cname = CONTACT_NAMES[i] if i < len(CONTACT_NAMES) else f"Contact (rating {rating})"
-        amp_xml(uid(slug(cname)), "contact", rating, "DHSA", r["page"], cname, "", fx, narrative)
+        amp_xml(uid(slug(cname)), "contact", rating, r["page"], cname, "", fx, narrative)
 
-    for r in merge_wrapped(rows):
+    for r in merge_wrapped(rs):
         sec = r["section"]
         name = clean_name(r["name"])
         if sec in ("MAGIC – SPELLS", "RESONANCE – COMPLEX FORMS", "CONTACTS", "SHADOW AMPS BASE"):
             continue
         rating = printed(r["type"])
         effects_lines = list(r["effects"])
-        src, page = cite(r, name)
+        page = r["page"]
 
         # ---- add-on mods ("Amp +N"): applied to an existing amp in the Amp Builder
         if r["type"].startswith(("Amp +", "Amp -")) and rating is not None:
@@ -438,8 +481,8 @@ def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/tex
             computed = reconcile(fx, narrative, 0, rating, negative_ok=rating < 0)
             aid = uid("mod-" + slug(name))
             if computed != rating:
-                report.append(f"| {aid} | {src} p.{page} | mod ({target}) | {rating} | {computed} | {' // '.join(r['effects'])[:160].replace('|', '/')} |")
-            amp_xml(aid, target, rating, src, page, name, "", fx, narrative, mod=True)
+                mismatch(aid, page, f"mod ({target})", rating, computed, r)
+            amp_xml(aid, target, rating, page, name, "", fx, narrative, mod=True)
             continue
 
         if sec not in SECTION_TYPE and sec not in EQUIPMENT_SECTIONS:
@@ -448,7 +491,7 @@ def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/tex
         if rating is None:  # plain equipment, not an amp
             if sec in EQUIPMENT_SECTIONS and r["type"].startswith("Equipment") and sec not in ("ARMORY – WEAPONS", "ARMORY – ARMORS"):
                 gid = uid("gear-" + slug(name))
-                gear.append(f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{src}" page="{page}">'
+                gear.append(f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{ID}" page="{page}">'
                             f'<name>{escape(name)}</name><text>{private("items", gid, " ".join(effects_lines)[:240])}</text></item>')
             continue
 
@@ -509,32 +552,27 @@ def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/tex
         computed = reconcile(fx, narrative, BASE[atype], rating)
         aid = uid(slug(name))
         if computed != rating:
-            report.append(f"| {aid} | {src} p.{page} | {atype} | {rating} | {computed} | {' // '.join(r['effects'])[:160].replace('|', '/')} |")
-        amp_xml(aid, atype, rating, src, page, name, item, fx, narrative, vehicle)
+            mismatch(aid, page, atype, rating, computed, r)
+        amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle)
 
-    head = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    # DHSA's specs, added to the shipped skills (the loader appends an imported skill's specs to the base one)
+    added = {}
+    for sk, s, a, p, n in DHSA_SPECS:
+        added.setdefault(sk, (p, []))[1].append(f'<spec id="{sk}.{s}" attr="{a}" source="{ID}" page="{p}">{escape(n)}</spec>')
+    skill_xml = [f'  <skill id="{sk}" attr="{skills[sk][1]}" source="{ID}" page="{p}"><name>{escape(skills[sk][0])}</name>{"".join(sp)}</skill>'
+                 for sk, (p, sp) in added.items()]
+    report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
 
-    def write(file, kind, comment, entries):
-        with open(f"{data_dir}/{file}", "w", encoding="utf8", newline="\n") as f:
-            f.write(f'{head}<!-- {comment} Generated by tools/dhsa_to_xml.py from Daegann\'s Holostreets Shadow Amps Expanded List. -->\n'
-                    f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n' + "\n".join(entries) + "\n</ca2:data>\n")
-    write("amps.xml", "amps", "Prebuilt Shadow Amps and add-on mods (mod=\"true\"). source CRB = core-book page; DHSA = Daegann addition, DHSA page.", amps)
-    write("spells.xml", "spells", "Spells. source CRB = core-book page; DHSA = Daegann addition.", spells)
-    write("complexforms.xml", "complexforms", "Technomancer complex forms, 5,000 nuyen each (rules: CGL Conversion Guide p.9).", forms)
-    write("gear.xml", "gear", "Plain equipment (not Amps), 2,500 nuyen each unless the GM says otherwise.", gear)
-    import os
-    os.makedirs(os.path.dirname(text_path), exist_ok=True)
-    with open(text_path, "w", encoding="utf8", newline="\n") as f:
-        f.write(f'{head}<!-- PRIVATE: book-derived descriptions. Not committed to the repository.\n'
-                '     Install as custom/texts.xml (tower04: /mnt/user/appdata/chummer-anarchy2/custom/). -->\n'
-                '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">\n' + "\n".join(texts) + "\n</ca2:data>\n")
-    with open(report_path, "w", encoding="utf8") as f:
-        f.write(f"amps {len(amps)}, spells {len(spells)}, complex forms {len(forms)}, gear {len(gear)}, mismatches {len(report)}\n\n")
-        f.write("| amp | source | type | printed | computed | effects |\n|---|---|---|---|---|---|\n" + "\n".join(report) + "\n\n")
-        f.write("unresolved specs:\n" + "\n".join(sorted(set(mapper.unresolved))) + "\n")
-    print(f"amps {len(amps)} (mods {sum(' mod=' in a for a in amps)}), spells {len(spells)}, complex forms {len(forms)}, gear {len(gear)}, "
-          f"CRB-cited {sum('source=\"CRB\"' in a for a in amps)}, mismatches {len(report)}, unresolved specs {len(set(mapper.unresolved))}")
-
-
-if __name__ == "__main__":
-    build(json.load(open(sys.argv[1], encoding="utf8")), sys.argv[2], sys.argv[3], sys.argv[4], *sys.argv[5:6])
+    def data(kind, comment, entries):
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                f"<!-- {comment} Generated by the importer (recipe dhsa) from Daegann's Holostreets Shadow Amps Expanded List. -->\n"
+                f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n' + "\n".join(entries) + "\n</ca2:data>\n")
+    files = {
+        "amps.xml": data("amps", 'Prebuilt Shadow Amps and add-on mods (mod="true"); texts in custom/texts/dhsa.xml.', amps),
+        "spells.xml": data("spells", "Spells.", spells),
+        "complexforms.xml": data("complexforms", "Technomancer complex forms, 5,000 nuyen each (rules: CGL Conversion Guide p.9).", forms),
+        "gear.xml": data("gear", "Plain equipment (not Amps), 2,500 nuyen each unless the GM says otherwise.", gear),
+        "skills.xml": data("skills", "Specializations DHSA adds to the core skills.", skill_xml),
+    }
+    return Result(files=files, texts=data("texts", "PRIVATE: book text. Do not commit.", texts), report=report,
+                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
