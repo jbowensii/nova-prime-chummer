@@ -10,7 +10,7 @@ import {
 } from './parse'
 
 export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
-  'packages', 'vehicles', 'gear', 'weapons', 'armor', 'spells', 'complexforms', 'amps', 'lifestyles', 'rules']
+  'packages', 'vehicles', 'weapons', 'armor', 'lifestyles']
 
 export interface SourceFile { file: string; xml: string; overlay: boolean }
 

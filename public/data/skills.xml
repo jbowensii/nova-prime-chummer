@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The 14 Skills with linked Attributes and specializations, CRB p.53-57.
      attr = default linked Attribute; alt = the other listed option.
-     A spec with its own source/page comes from another book (sources.xml). -->
+     Imported books add their own specializations (custom/imported/<source>/skills.xml). -->
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">
   <skill id="athletics" attr="str" alt="agi" source="CRB" page="53"><name>Athletics</name>
     <spec id="athletics.climbing" attr="str">Climbing</spec>
-    <spec id="athletics.jumping" attr="str" source="DHSA" page="47">Jumping</spec>
     <spec id="athletics.parkour" attr="agi">Parkour</spec>
     <spec id="athletics.ranged-defense" attr="agi">Ranged defense</spec>
     <spec id="athletics.running" attr="str">Running</spec>
@@ -16,7 +15,6 @@
     <spec id="close-combat.blades" attr="agi">Blades</spec>
     <spec id="close-combat.clubs" attr="agi">Clubs</spec>
     <spec id="close-combat.defense" attr="agi">Defense</spec>
-    <spec id="close-combat.firearms" attr="agi" source="DHSA" page="6">Firearms</spec>
     <spec id="close-combat.astral-combat" attr="wil">Astral combat</spec>
   </skill>
   <skill id="conjuring" attr="log" alt="cha" requires="awakened" source="CRB" page="54"><name>Conjuring</name>
@@ -54,9 +52,7 @@
     <spec id="influence.etiquette" attr="cha">Etiquette</spec>
     <spec id="influence.impersonation" attr="cha">Impersonation</spec>
     <spec id="influence.intimidation" attr="cha">Intimidation</spec>
-    <spec id="influence.animals" attr="cha" source="DHSA" page="5">Animals</spec>
     <spec id="influence.negotiation" attr="cha">Negotiation</spec>
-    <spec id="influence.seduction" attr="cha" source="DHSA" page="6">Seduction</spec>
   </skill>
   <skill id="network" attr="cha" source="CRB" page="55"><name>Network</name>
     <spec id="network.academic" attr="cha">Academic</spec>
@@ -85,7 +81,6 @@
     <spec id="piloting.ground-drones" attr="agi">Ground drones</spec>
     <spec id="piloting.water-drones" attr="agi">Water drones</spec>
     <spec id="piloting.flying-drones" attr="agi">Flying drones</spec>
-    <spec id="piloting.risky-maneuver" attr="agi" source="DHSA" page="6">Risky maneuver</spec>
   </skill>
   <skill id="ranged-weapons" attr="agi" source="CRB" page="56"><name>Ranged Weapons</name>
     <spec id="ranged-weapons.throwing-weapons" attr="agi">Throwing weapons</spec>
@@ -104,7 +99,6 @@
     <spec id="sorcery.health-spells" attr="wil">Health spells</spec>
     <spec id="sorcery.illusion-spells" attr="wil">Illusion spells</spec>
     <spec id="sorcery.manipulation-spells" attr="wil">Manipulation spells</spec>
-    <spec id="sorcery.enchanting" attr="wil" source="DHSA" page="33">Enchanting</spec>
   </skill>
   <skill id="stealth" attr="agi" alt="log" source="CRB" page="57"><name>Stealth</name>
     <spec id="stealth.astral-sneaking" attr="agi">Astral sneaking</spec>
