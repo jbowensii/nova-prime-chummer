@@ -101,7 +101,7 @@ npm run validate:data    # XSD + reference checks
 npm run build && npm run e2e   # Playwright: smoke, import/export, phone, themes, technomancer, mods
 ```
 
-`importer/` turns book PDFs into catalogs (`python -m importer`; recipe `dhsa` reads Daegann’s amp list).
+`importer/` turns book PDFs into catalogs (`python -m importer`; recipe `dhsa` reads Daegann’s amp list, `pregens` his pregen booklet into sample runners).
 `tools/build-samples.mjs` builds the pregens.
 
 Design: [spec](docs/superpowers/specs/2026-09-27-chummer-anarchy2-design.md),
