@@ -43,9 +43,10 @@ def _core(custom):
 def export(custom, out, version=None):
     """Write the pack of `custom`'s core files to `out` (atomically). Returns the manifest text."""
     core = _core(custom)
+    recover(core)
     names = [f"{n}.xml" for n in CORE_FILES if os.path.isfile(os.path.join(core, f"{n}.xml"))]
     if not names:
-        raise PackError("there is no core data to put in a pack: import the core rulebook first")
+        raise PackError("there is no core data to put in a pack. Import the core rulebook first")
     data = {n: Path(core, n).read_bytes() for n in names}
     rows = "".join(f'  <file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>\n' for n, b in data.items())
     manifest = (xmlio.HEAD + f'<datapack format="1" app={quoteattr(app_version(version))} '
@@ -70,12 +71,22 @@ def _schema(name):
 
 
 def _parse(name, b):
-    if b"<!DOCTYPE" in b.upper() or b"<!ENTITY" in b.upper():
-        raise PackError(f"{name} has a DOCTYPE, which a data pack never does")
+    """The root of `b`, which must be UTF-8 (the app reads core files as UTF-8) with no DOCTYPE (checked on the parsed
+    document, so no encoding hides one)."""
     try:
-        return etree.fromstring(b, PARSER)
+        b.decode("utf-8")
+    except UnicodeDecodeError:
+        raise PackError(f"{name} isn’t UTF-8, which every file the app writes is")
+    try:
+        el = etree.fromstring(b, PARSER)
     except etree.XMLSyntaxError as e:
         raise PackError(f"{name} isn’t readable XML ({e})")
+    info = el.getroottree().docinfo
+    if (info.encoding or "UTF-8").upper() not in ("UTF-8", "UTF8"):
+        raise PackError(f"{name} isn’t UTF-8, which every file the app writes is")
+    if info.doctype or info.internalDTD is not None:
+        raise PackError(f"{name} has a DOCTYPE, which a data pack never does")
+    return el
 
 
 def _valid(name, root, schema):
@@ -131,15 +142,30 @@ def check(path):
     return root, data
 
 
+def recover(core):
+    """Finish what a killed import left in core/: a .restore-old-* folder holds files the swap had moved aside before it
+    committed, so they go back (a pack file that replaced nothing may stay: it passed the check); .restore-new-* and
+    .restore-done-* folders are deleted."""
+    if not os.path.isdir(core):
+        return
+    for n in sorted(os.listdir(core)):
+        if n.startswith(TEMP + "old-"):
+            old = os.path.join(core, n)
+            for f in os.listdir(old):
+                os.replace(os.path.join(old, f), os.path.join(core, f))
+            os.rmdir(old)
+    for n in os.listdir(core):
+        if n.startswith(TEMP):
+            shutil.rmtree(os.path.join(core, n), ignore_errors=True)
+
+
 def import_pack(path, custom):
     """Check `path`, then swap its files into custom/imported/core/. Returns the file names written."""
     _, data = check(path)
     files = {n[5:]: b for n, b in data.items() if n != MANIFEST}
     core = _core(custom)
     os.makedirs(core, exist_ok=True)
-    for n in os.listdir(core):  # a killed import's folders
-        if n.startswith(TEMP):
-            shutil.rmtree(os.path.join(core, n), ignore_errors=True)
+    recover(core)  # a killed import's leftovers
     new = tempfile.mkdtemp(dir=core, prefix=TEMP + "new-")
     try:
         for n, b in files.items():

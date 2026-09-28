@@ -17,6 +17,7 @@
   python -m importer datapack export --custom D --out F [--version V]  (exit 3: no core data)
   python -m importer datapack check F                    (the manifest on stdout; exit 3: refused, the reason on stderr)
   python -m importer datapack import F --custom D        (exit 3: refused, nothing changed)
+  python -m importer datapack recover --custom D          (puts back what a killed import had moved aside)
 """
 import contextlib
 import hashlib
@@ -454,6 +455,9 @@ def _cmd_restore(argv):
 def _cmd_datapack(argv):
     from importer import datapack  # lxml: only for data packs
     sub, custom, out = (argv[0] if argv else None), _flag(argv, "--custom"), _flag(argv, "--out")
+    if sub == "recover" and custom:
+        datapack.recover(os.path.join(custom, "imported", "core"))
+        return 0
     if not ((sub == "export" and custom and out) or (sub == "check" and len(argv) == 2) or (sub == "import" and len(argv) == 4 and custom)):
         print(USAGE, file=sys.stderr)
         return 2
