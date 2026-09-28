@@ -1,0 +1,121 @@
+// @vitest-environment node
+// Backup and restore API with the stub worker (tests/fixtures/stub-worker.mjs); backup-python.test.ts runs the real importer.
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, beforeAll, expect, test, vi } from 'vitest'
+// @ts-expect-error plain JS module
+import { createServer } from '../../server/server.mjs'
+
+vi.setConfig({ testTimeout: 30000 })
+
+const dir = mkdtempSync(join(tmpdir(), 'ca2-backup-'))
+const chars = join(dir, 'chars'), library = join(dir, 'library'), backups = join(library, '.backups')
+const version = JSON.parse(readFileSync('package.json', 'utf8')).version
+let base = ''
+let srv: { close: () => void; stopJobs: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
+beforeAll(() => new Promise<void>(ok => {
+  mkdirSync(join(dir, 'custom', 'edits'), { recursive: true })
+  writeFileSync(join(dir, 'custom', 'edits', 'edits.xml'), '<edits/>')
+  srv = createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: library,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
+}))
+afterAll(() => srv.close())
+
+const runner = (street: string) =>
+  `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="r1" streetName="${street}" metatype="ork" level="runner" updatedAt="2026-09-27"><build/></ca2:character>`
+const putRunner = (street: string) => fetch(`${base}/api/characters/r1?force=1`, { method: 'PUT', body: runner(street) })
+const temps = () => existsSync(backups) ? readdirSync(backups).filter(f => /^(download|upload)-/.test(f)) : []
+const download = async (q = '') => {
+  const r = await fetch(`${base}/api/backup${q}`)
+  return { r, bytes: Buffer.from(await r.arrayBuffer()) }
+}
+const preview = (body: Buffer | string) => fetch(`${base}/api/restore?preview=1`, { method: 'POST', body, headers: { 'Content-Type': 'application/zip' } })
+const apply = (token: string) => fetch(`${base}/api/restore/${token}`, { method: 'POST' })
+const setKey = (value: string) => fetch(`${base}/api/ai-keys`, { method: 'PUT', body: `<keys><key provider="openai">${value}</key></keys>` })
+
+test('a backup downloads as a dated zip and its temp file is gone afterwards', async () => {
+  await putRunner('Before')
+  const { r, bytes } = await download()
+  expect(r.status).toBe(200)
+  expect(r.headers.get('content-type')).toBe('application/zip')
+  expect(r.headers.get('content-disposition')).toBe(`attachment; filename="chummer-anarchy2-backup-${new Date().toISOString().slice(0, 10)}.zip"`)
+  expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
+  expect(bytes.toString()).toContain(`"app":"${version}"`) // --version from package.json (the image: /app/VERSION)
+  await vi.waitFor(() => expect(temps()).toEqual([]))
+})
+
+test('API keys are in a backup only when asked for', async () => {
+  expect((await setKey('sk-test-KEEPOUT1234')).status).toBe(204)
+  const plain = (await download()).bytes.toString()
+  expect(plain).toContain('"keys":false')
+  expect(plain).not.toContain('ai-keys.xml')
+  expect((await download('?keys=1')).bytes.toString()).toContain('library/.config/ai-keys.xml')
+})
+
+test('a client that leaves mid-download leaves no temp file', async () => {
+  const ac = new AbortController()
+  const r = await fetch(`${base}/api/backup`, { signal: ac.signal })
+  ac.abort()
+  expect(r.status).toBe(200)
+  await vi.waitFor(() => expect(temps()).toEqual([]))
+})
+
+test('a preview refuses files that aren’t backups', async () => {
+  const notZip = await preview('%PDF-1.7 hello')
+  expect([notZip.status, await notZip.json()]).toEqual([415, { error: 'this file isn’t a backup (not a zip file)' }])
+  const badZip = await preview('PK\x03\x04 not really')
+  expect([badZip.status, await badZip.json()]).toEqual([400, { error: 'this isn’t a readable zip file (stub)' }])
+  const big = await fetch(`${base}/api/restore?preview=1`, { method: 'POST', body: 'x', headers: { 'Content-Length': String(6 * 1024 ** 3) } }).catch(() => null)
+  if (big) expect(big.status).toBe(413) // some fetch versions refuse to send a wrong length at all
+  expect(temps()).toEqual([])
+})
+
+test('backup → change → preview → restore brings the runner back; the token is single use', async () => {
+  await putRunner('Before')
+  const { bytes } = await download()
+  await putRunner('After')
+  const p = await preview(bytes)
+  expect(p.status).toBe(200)
+  const { token, manifest } = await p.json()
+  expect(token).toMatch(/^[0-9a-f]{32}$/)
+  expect(manifest).toMatchObject({ app: version, keys: false, folders: { characters: { files: 1 }, custom: { files: 1 } } })
+  expect(temps()).toHaveLength(1) // the upload waits for its token
+  const r = await apply(token)
+  expect([r.status, await r.json()]).toEqual([200, { ok: true }])
+  expect(readdirSync(chars).map(f => readFileSync(join(chars, f), 'utf8')).join()).toContain('streetName="Before"')
+  expect(readFileSync(join(library, '.config', 'ai-keys.xml'), 'utf8')).toContain('KEEPOUT') // a backup without keys keeps the server's
+  expect(readdirSync(backups).some(f => /^\d{14}_\d{6}Z\.zip$/.test(f))).toBe(true) // the safety backup
+  expect(temps()).toEqual([])
+  expect((await apply(token)).status).toBe(404)
+  expect((await apply('nonsense')).status).toBe(404)
+})
+
+test('a restore is refused while a write runs, and nothing writes while a restore runs', async () => {
+  const { token } = await (await preview((await download()).bytes)).json()
+  const writing = setKey('sk-test-SLOW12345') // the stub's set-key takes 300 ms
+  await new Promise(r => setTimeout(r, 100))
+  const refused = await apply(token)
+  expect(refused.status).toBe(409)
+  expect((await refused.json()).error).toMatch(/save or a backup is running/)
+  await writing
+  const restoring = apply(token) // the refusal didn't use up the token; the stub's apply takes 400 ms
+  await new Promise(r => setTimeout(r, 150))
+  for (const r of [await putRunner('During'), await setKey('sk-test-DURING1234'), await fetch(`${base}/api/backup`),
+    await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7', headers: { 'Content-Type': 'application/pdf' } })])
+    expect(r.status).toBe(409)
+  expect((await restoring).status).toBe(200)
+  expect(readdirSync(chars).map(f => readFileSync(join(chars, f), 'utf8')).join()).not.toContain('During')
+})
+
+test('a new preview replaces the pending one; stopping the server deletes it', async () => {
+  const { bytes } = await download()
+  const first = (await (await preview(bytes)).json()).token
+  const second = (await (await preview(bytes)).json()).token
+  expect(temps()).toHaveLength(1)
+  expect((await apply(first)).status).toBe(404)
+  srv.stopJobs()
+  expect(temps()).toEqual([])
+  expect((await apply(second)).status).toBe(404)
+})

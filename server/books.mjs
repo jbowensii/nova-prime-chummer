@@ -19,14 +19,22 @@
 //   PUT    /api/edits/:kind/:id       body: <edit><amp|item|rule …/><description>…</description></edit> -> 204; 400 { error: why }
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
+//   GET    /api/backup[?keys=1]       -> the zip of characters/, custom/ and library/ (keys=1: with the API keys)
+//   POST   /api/restore?preview=1     body: a backup zip -> { token, manifest }; the zip waits 30 min for its token
+//   POST   /api/restore/:token        replaces all three folders from that zip (a safety backup is kept) -> { ok }
+//                                     409 while a job or a write runs; nothing else writes while it runs
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { createWriteStream } from 'node:fs'
-import { mkdir, open, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { createReadStream, createWriteStream, readdirSync, rmSync } from 'node:fs'
+import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
 const MAX_PDF = 500 * 1024 * 1024
+const MAX_ZIP = 5 * 1024 ** 3
+const TOKEN_TTL = 30 * 60 * 1000
+const RESTORE_TIMEOUT = 4 * 3600 * 1000 // the safety backup and the unpack each copy everything
+const TEMP_ZIP = /^(download|upload)-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/ // ours and a killed backup's, in library/.backups
 const MAX_XML = 5 * 1024 * 1024
 const JOB_TIMEOUT = 6 * 3600 * 1000 // ponytail: one cap for all jobs; an AI run over a big book takes hours (it resumes if cut)
 const BOOK_ID = /^[a-z0-9][a-z0-9-]{0,40}$/
@@ -60,14 +68,18 @@ async function writeAtomic(path, text) {
   await rename(tmp, path)
 }
 
-export function booksApi({ customDir, libraryDir, python = 'python3', importerRoot }) {
+export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown' }) {
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
+  const backups = join(libraryDir, '.backups')
   const queue = []
   let running = null, child = null, listChild = null
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
-  let keyChain = Promise.resolve() // key writes are read-modify-write in the importer: one at a time
-  let editChain = Promise.resolve() // edits files are read-modify-write through one fixed .tmp name: one at a time
+  // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
+  const chains = { key: Promise.resolve(), edit: Promise.resolve() }
+  let writes = 0, zipping = 0, restoring = false
+  const tokens = new Map() // restore token -> { file, timer }
+  const spawned = new Set() // backup processes, stopped with the server
 
   const bookDir = id => {
     if (!BOOK_ID.test(id)) throw fail(400, 'bad book id')
@@ -82,14 +94,15 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return text.replace(/\b(sk-|AIza|xai-|gsk_)[\w-]{6,}/g, '[key]').replace(/(Bearer|x-api-key:?|api[_-]?key[=:])\s*\S+/gi, '$1 [key]')
   }
 
-  function importer(args, { input, timeout = JOB_TIMEOUT } = {}) {
+  function importer(args, { input, timeout = JOB_TIMEOUT, tag } = {}) {
     return new Promise(done => {
       let out = '', err = ''
       const p = spawn(cmd, [...pre, '-m', 'importer', ...args], { cwd: importerRoot, timeout, windowsHide: true,
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // else Windows' code page mangles the ’ in messages
         stdio: ['pipe', 'pipe', 'pipe'] })
       if (args[0] === 'list-models') listChild = p
-      else if (!['set-key', 'set-settings', 'edit'].includes(args[0]) && !args.includes('--dry-run')) child = p
+      else if (args[0] === 'backup') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
+      else if (!['set-key', 'set-settings', 'edit', 'restore'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -104,7 +117,10 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     await writeAtomic(join(libraryDir, id, 'status.xml'), text).catch(() => {}) // the folder may be gone (delete with files)
   }
 
+  const noRestore = () => { if (restoring) throw fail(409, 'a restore is running; try again when it’s done') }
+
   function enqueue(id, steps) {
+    noRestore()
     queue.push({ id, steps })
     pump()
   }
@@ -224,20 +240,27 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     for (const [, provider, value = ''] of keys) await setKey(provider, unesc(value).trim())
   }
 
+  /** `fn` after the chain's previous call; counted as a write, so a restore waits for it and it can't start during one. */
+  function serial(chain, fn) {
+    noRestore()
+    writes++
+    const run = chains[chain].then(fn).finally(() => { writes-- })
+    chains[chain] = run.catch(() => {})
+    return run
+  }
+
   function setKey(provider, value) {
-    const run = keyChain.then(async () => {
+    return serial('key', async () => {
       const r = await importer(['set-key', libraryDir, provider], { input: value, timeout: 30000 })
       if (r.code !== 0) throw fail(500, 'couldn’t store the key: ' + (await redact(r.err)).trim().split('\n').pop())
     })
-    keyChain = run.catch(() => {})
-    return run
   }
 
   /** Save ai-providers.xml through the importer: the parser that later reads the file for a call is the one that
    *  checks it and compares base URLs (a provider whose address changed has its key cleared first; a key is only
    *  sent to the address it was entered for). Queued with the key writes, which it may make. */
   function putSettings(xml) {
-    const run = keyChain.then(async () => {
+    return serial('key', async () => {
       const r = await importer(['set-settings', '--library', libraryDir], { input: xml, timeout: 30000 })
       const why = (await redact(r.err)).trim().split('\n').pop()
       if (r.code === 3) throw fail(400, why || 'these aren’t provider settings')
@@ -245,8 +268,6 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       if (r.code !== 0 || !out) throw fail(500, 'couldn’t save the settings: ' + why)
       return (attr(out, 'cleared') ?? '').split(' ').filter(Boolean)
     })
-    keyChain = run.catch(() => {})
-    return run
   }
 
   /** The provider's model ids. Read-only, so outside the job queue and the key chain but one at a time; the importer
@@ -263,15 +284,13 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
 
   /** One `importer edit …` call after the previous one; exit 3 is a refusal whose reason goes back as a 400. */
   function edit(args, input) {
-    const run = editChain.then(async () => {
+    return serial('edit', async () => {
       const r = await importer(['edit', ...args, '--custom', customDir], { input, timeout: 60000 })
       const why = (await redact(r.err)).trim().split('\n').pop()
       if (r.code === 3) throw fail(400, why || 'the importer refused the edit')
       if (r.code !== 0) throw fail(500, 'couldn’t save the edit: ' + why)
       return r.out
     })
-    editChain = run.catch(() => {})
-    return run
   }
 
   async function edits(req, res, url, send) {
@@ -315,9 +334,114 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     }
   }
   sweep()
+  // zips left by a stop mid-download or mid-preview
+  try {
+    for (const f of readdirSync(backups, { withFileTypes: true }))
+      if (f.isFile() && TEMP_ZIP.test(f.name)) rmSync(join(backups, f.name), { force: true })
+  } catch { /* no .backups yet */ }
+
+  const dirArgs = () => ['--characters', charDir, '--custom', customDir, '--library', libraryDir, '--version', version]
+  const tempZip = kind => join(backups, `${kind}-${randomBytes(12).toString('hex')}.zip`)
+
+  /** The zip is made in library/.backups (never backed up itself), streamed, then removed, also when the client goes. */
+  async function download(req, res, url, send) {
+    noRestore()
+    await mkdir(backups, { recursive: true })
+    const out = tempZip('download')
+    let gone = false
+    const drop = () => rm(out, { force: true })
+    res.on('close', () => { gone = true; for (const p of spawned) if (p.tag === out) p.kill(); void drop() })
+    zipping++
+    let r
+    try {
+      r = await importer(['backup', ...dirArgs(), '--out', out, ...(url.searchParams.get('keys') === '1' ? ['--keys'] : [])],
+        { timeout: RESTORE_TIMEOUT, tag: out })
+    } finally { zipping-- }
+    if (gone) return drop()
+    if (r.code !== 0) {
+      await drop()
+      return send(res, 500, { error: 'couldn’t make the backup: ' + (await redact(r.err)).trim().split('\n').pop() })
+    }
+    const date = new Date().toISOString().slice(0, 10)
+    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Length': (await stat(out)).size,
+      'Content-Disposition': `attachment; filename="chummer-anarchy2-backup-${date}.zip"`, 'Cache-Control': 'no-store' })
+    await pipeline(createReadStream(out), res).catch(() => {}) // a client that leaves mid-way: 'close' removes the file
+  }
+
+  const forget = token => {
+    const t = tokens.get(token)
+    if (!t) return null
+    tokens.delete(token)
+    clearTimeout(t.timer)
+    return t.file
+  }
+
+  /** The upload to a temp zip, checked by `restore --check`; one pending restore at a time (a new preview drops the old). */
+  async function preview(req, res, send) {
+    noRestore()
+    if (Number(req.headers['content-length']) > MAX_ZIP) {
+      res.setHeader('Connection', 'close')
+      return send(res, 413, { error: 'the file is larger than 5 GB' })
+    }
+    await mkdir(backups, { recursive: true })
+    const file = tempZip('upload')
+    let size = 0
+    try {
+      await pipeline(req, async function* (src) {
+        for await (const c of src) {
+          if ((size += c.length) > MAX_ZIP) throw fail(413, 'the file is larger than 5 GB')
+          yield c
+        }
+      }, createWriteStream(file, { flags: 'wx', mode: 0o600 }))
+      if ((await head(file))?.slice(0, 4) !== 'PK\x03\x04') throw fail(415, 'this file isn’t a backup (not a zip file)')
+      const r = await importer(['restore', '--check', file], { timeout: 10 * 60000 })
+      if (r.code === 3) throw fail(400, (await redact(r.err)).trim().split('\n').pop() || 'this file isn’t a backup from this app')
+      const m = rootTag(r.out, 'backup')
+      if (r.code !== 0 || !m) throw Object.assign(fail(500, 'couldn’t check the file: ' + (await redact(r.err)).trim().split('\n').pop()), { say: true })
+      const folders = Object.fromEntries([...r.out.matchAll(/<folder\b[^>]*>/g)].map(f => [attr(f[0], 'name'), { files: Number(attr(f[0], 'files')), bytes: Number(attr(f[0], 'bytes')) }]))
+      await Promise.all([...tokens.keys()].map(t => rm(forget(t), { force: true })))
+      const token = randomBytes(16).toString('hex')
+      tokens.set(token, { file, timer: setTimeout(() => void rm(forget(token) ?? file, { force: true }), TOKEN_TTL).unref() })
+      return send(res, 200, { token, manifest: { app: attr(m, 'app'), created: attr(m, 'created'), keys: attr(m, 'keys') === 'yes',
+        files: Number(attr(m, 'files')), bytes: Number(attr(m, 'bytes')), folders } })
+    } catch (e) {
+      await rm(file, { force: true })
+      if (e.code === 413) res.setHeader('Connection', 'close')
+      if (typeof e.code === 'number' && e.code !== 500) throw e
+      return send(res, 500, { error: e.say ? e.message : 'upload failed' })
+    }
+  }
+
+  async function restore(token, send, res) {
+    if (!/^[0-9a-f]{32}$/.test(token)) throw fail(404, 'this restore has expired; choose the file again')
+    noRestore()
+    if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
+    if (writes || zipping) throw fail(409, 'a save or a backup is running; try again in a moment')
+    const file = forget(token)
+    if (!file) throw fail(404, 'this restore has expired; choose the file again')
+    restoring = true
+    let r
+    try {
+      r = await importer(['restore', '--apply', file, ...dirArgs()], { timeout: RESTORE_TIMEOUT })
+    } finally {
+      restoring = false
+      await rm(file, { force: true })
+    }
+    await sweep()
+    const why = (await redact(r.err)).trim().split('\n').pop()
+    if (r.code === 3) throw fail(400, why || 'the backup was refused')
+    if (r.code !== 0) return send(res, 500, { error: `the restore failed (${why || `exit code ${r.code}`}); the server’s earlier data is in its safety backup in library/.backups` })
+    return send(res, 200, { ok: true })
+  }
 
   async function handle(req, res, url, send) {
     const p = url.pathname, method = req.method
+    if (p === '/api/backup' && method === 'GET') return download(req, res, url, send)
+    if (p === '/api/restore' && method === 'POST' && url.searchParams.get('preview') === '1') return preview(req, res, send)
+    const rt = p.match(/^\/api\/restore\/([^/]+)$/)
+    if (rt && method === 'POST') return restore(rt[1], send, res)
+    if (p === '/api/restore' || rt) return send(res, 405, { error: 'method not allowed' })
+    if (restoring && method !== 'GET') throw fail(409, 'a restore is running; try again when it’s done')
     if (p === '/api/books' && method === 'POST') return upload(req, res, send)
     if (p === '/api/books' && method === 'GET') {
       await mkdir(libraryDir, { recursive: true })
@@ -403,5 +527,11 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
   }
 
   // shutdown: stop the running importer (the next start marks its book interrupted) and any model list
-  return { handle, stop: () => { child?.kill(); listChild?.kill() }, libraryDir: resolve(libraryDir) }
+  // and backups being made; pending restore uploads are deleted
+  const stop = () => {
+    child?.kill(); listChild?.kill()
+    for (const p of spawned) p.kill()
+    for (const t of [...tokens.keys()]) rmSync(forget(t), { force: true })
+  }
+  return { handle, stop, restoring: () => restoring, libraryDir: resolve(libraryDir) }
 }
