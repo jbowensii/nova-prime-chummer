@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from importer import xmlio
-from importer.__main__ import run
+from importer.__main__ import main, remove, run
 from importer.recipes import qref
 from importer.tests.test_qref import MD
 
@@ -122,6 +122,55 @@ class RunTest(unittest.TestCase):
         run(book, os.path.join(tmp, "custom"), convert_pdf=False)
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "needs-ai")
         self.assertFalse(os.path.exists(os.path.join(tmp, "custom", "imported", "qref")))
+
+
+class RemoveTest(unittest.TestCase):
+    def _run(self, tmp, name):
+        book = os.path.join(tmp, "library", name)
+        os.makedirs(book)
+        Path(os.path.join(book, "book.md")).write_text(encoding="utf8", data=MD)
+        run(book, os.path.join(tmp, "custom"), convert_pdf=False, file_name=f"{name}.pdf")
+        return book
+
+    def test_remove_clears_the_book_outputs_and_records(self):
+        tmp = tempfile.mkdtemp()
+        book, custom = self._run(tmp, "b1"), os.path.join(tmp, "custom")
+        imported = os.path.join(custom, "imported")
+        Path(imported, "qref", "rules-gone.xml").write_text("<x/>", encoding="utf8")  # an overlay the recipe no longer emits
+        imp = Path(book, "import.xml").read_text(encoding="utf8").replace("<files>", '<files><file name="rules-gone.xml" entries="0"/>')
+        Path(book, "import.xml").write_text(imp, encoding="utf8")
+        self.assertEqual(main(["remove", book, "--custom", custom]), 0)
+        self.assertFalse(os.path.exists(os.path.join(imported, "qref")))
+        self.assertFalse(os.path.exists(os.path.join(custom, "texts", "qref.xml")))
+        self.assertNotIn("qref/", Path(imported, "index.xml").read_text(encoding="utf8"))
+        self.assertNotIn('id="QREF"', Path(imported, "sources.xml").read_text(encoding="utf8"))
+        imp = ET.parse(os.path.join(book, "import.xml")).getroot()
+        self.assertEqual((imp.get("file"), imp.get("source")), ("b1.pdf", None))
+        self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "removed")
+        self.assertTrue(os.path.exists(os.path.join(book, "book.md")))
+        for f, xsd in [(os.path.join(book, "import.xml"), "import.xsd"), (os.path.join(book, "status.xml"), "status.xsd")]:
+            r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd"))
+            self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
+        run(book, custom, convert_pdf=False)  # re-import after a remove
+        self.assertTrue(os.path.exists(os.path.join(imported, "qref", "rules-matrix.xml")))
+        self.assertFalse(os.path.exists(os.path.join(imported, "qref", "rules-gone.xml")))
+
+    def test_a_source_shared_with_another_book_keeps_its_files(self):
+        tmp = tempfile.mkdtemp()
+        b1, _ = self._run(tmp, "b1"), self._run(tmp, "b2")
+        custom = os.path.join(tmp, "custom")
+        remove(b1, custom, forget=True)
+        self.assertFalse(os.path.exists(b1))
+        self.assertTrue(os.path.exists(os.path.join(custom, "imported", "qref", "rules-matrix.xml")))
+        self.assertIn('file="b2.pdf"', Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))
+        self.assertNotIn("b1.pdf", Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))
+
+    def test_remove_of_a_book_never_imported(self):
+        tmp = tempfile.mkdtemp()
+        book = os.path.join(tmp, "library", "b3")
+        os.makedirs(book)
+        remove(book, os.path.join(tmp, "custom"), forget=True)
+        self.assertFalse(os.path.exists(book))
 
 
 if __name__ == "__main__":

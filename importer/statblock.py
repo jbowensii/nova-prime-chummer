@@ -29,9 +29,10 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from collections import Counter
 
+from importer import DATA_DIR
 from importer.recipes.dhsa import DHSA_SPECS, Mapper
 
-DATA = os.path.join(os.path.dirname(__file__), "..", "public", "data")
+DATA = DATA_DIR
 ATTRS = ("str", "agi", "wil", "log", "cha")
 ANCHORS = ("KEYWORDS", "SKILLS", "WEAPONS", "ARMOR", "WOUNDS", "DISPOSITIONS", "CUES", "SPELLS", "COMPLEX FORMS",
            "SHADOW AMPS", "EQUIPMENT")
