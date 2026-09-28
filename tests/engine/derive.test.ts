@@ -7,7 +7,8 @@ import { cat } from '../helpers'
 const amp = (uid: string, type: string, refs: string[]): AmpEntry =>
   ({ uid, type, name: uid, narrative: '', effects: refs.map(ref => ({ ref })) })
 
-function hercules(): Character {
+/** A made-up dwarf face: armor 3 main, a closet amp adding 1 to the alternate. */
+function face(): Character {
   const ch = blankCharacter('runner', 'dwarf')
   ch.build.attributes = { str: 2, agi: 3, wil: 2, log: 3, cha: 4 }
   ch.build.skills = [
@@ -33,16 +34,16 @@ test('ork STR 4 with armor 2 has physical thresholds 6/9/12 (CRB p.70)', () => {
   expect(derive(cat, ch).thresholds.physicalMain).toEqual([6, 9, 12])
 })
 
-test("Hercules' thresholds (CRB p.88)", () => {
-  const t = derive(cat, hercules()).thresholds
+test('thresholds with no armor, main armor, alternate armor, and mental', () => {
+  const t = derive(cat, face()).thresholds
   expect(t.physicalNone).toEqual([2, 5, 8])
   expect(t.physicalMain).toEqual([5, 8, 11])
   expect(t.physicalAlt).toEqual([3, 6, 9])
   expect(t.mental).toEqual([2, 5, 8])
 })
 
-test("Hercules' dice pools (CRB p.88)", () => {
-  const pools = derive(cat, hercules()).pools
+test('dice pools: attribute + skill, +2 per specialization', () => {
+  const pools = derive(cat, face()).pools
   const dp = (skill: string, attr: string, spec?: string) => pools.find(p => p.skill === skill && p.attr === attr && p.spec === spec)!.dp
   expect(dp('athletics', 'str')).toBe(5)
   expect(dp('athletics', 'agi', 'athletics.ranged-defense')).toBe(8)

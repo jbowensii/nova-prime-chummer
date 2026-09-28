@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Weapon types, CRB p.142. Ranges: close / short / medium / long. Named models with extra
-     features are equipment Amps in amps.xml (base item price + rating x 5,000). -->
+     features are equipment Amps from imported books (base item price + rating x 5,000). -->
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="weapons" version="1">
   <item id="short-weapon" kind="weapon" dv="STR+1" ranges="OK/-/-/-" category="Close combat" source="CRB" page="142"><name>Short weapon</name><text>Knife, brass knuckles, cyber claws and blades.</text></item>
   <item id="long-weapon" kind="weapon" dv="STR+2" ranges="OK/-/-/-" category="Close combat" source="CRB" page="142"><name>Long weapon</name><text>Sword, rapier, katana, combat axe, polearm, nightstick, extendable baton, baseball bat.</text></item>
