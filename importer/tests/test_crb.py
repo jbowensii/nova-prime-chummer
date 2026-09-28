@@ -61,6 +61,17 @@ class SpellsTest(unittest.TestCase):
         self.assertEqual(self.res.source, {"id": "CRB", "name": crb.NAME, "publisher": "Catalyst Game Labs", "canon": True})
 
 
+class FurnitureTest(unittest.TestCase):
+    def test_real_words_survive(self):
+        lines = ["Oracle of the made-up kind", "Lore about nothing", "A spell of invented use", "I made this up",
+                 "Detection 4 An invented note", "Eerie hum"]
+        self.assertEqual(crb._furniture(lines), lines)
+
+    def test_tab_letters_go(self):
+        self.assertEqual(crb._furniture(["W", "d Odd Hunch Detection 0", "A * Made-up footnote", "Some notes N"]),
+                         ["Odd Hunch Detection 0", "* Made-up footnote", "Some notes"])
+
+
 class MatchTest(unittest.TestCase):
     def test_known_file(self):
         self.assertEqual(crb.match({"sha256": crb.SHA256[0], "title": ""}, ""), 1.0)
@@ -85,6 +96,26 @@ KNOWN_PAGES = {"spell-increase-reflexes": ("179", "182"), "spell-heal": ("184", 
                "spell-control-thoughts": ("184", "183")}
 KNOWN_NAMES = {"spell-magic-fingers": ("Magic fingers", "Magic Fingers")}
 KNOWN_EXTRA = {"spell-elemental-aura"}
+
+
+LIBRARY = ROOT / ".extract/private/library"
+OWN = {"crb": "CRB", "dhsa": "DHSA", "pregens": "PREGENS"}  # qref-* -> QREF
+
+
+@unittest.skipUnless(BOOK.exists(), "owner's converted books not present")
+class IdentifyBooksTest(unittest.TestCase):
+    """Every recipe's match() on each converted book's head: only the book's own recipe reaches the threshold."""
+
+    def test_each_book_has_one_recipe(self):
+        from importer.recipes import RECIPES, THRESHOLD
+        books = sorted(p for p in LIBRARY.glob("*/book.md"))
+        self.assertGreaterEqual(len(books), 3)
+        for b in books:
+            own = OWN.get(b.parent.name, "QREF" if b.parent.name.startswith("qref") else None)
+            head = b.read_text(encoding="utf8")[:4000]
+            scores = {r.ID: r.match({"sha256": "", "title": ""}, head) for r in RECIPES}
+            self.assertEqual({i for i, s in scores.items() if s >= THRESHOLD}, {own}, (b.parent.name, scores))
+            self.assertEqual(identify({"sha256": "", "title": ""}, head)[0].ID, own)
 
 
 @unittest.skipUnless(BOOK.exists() and ORACLE.exists(), "owner's converted CRB book and oracle not present")
