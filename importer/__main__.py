@@ -1,7 +1,7 @@
 """CLI for the importer package.
   python -m importer convert <pdf> <md> [--pages A-B]
   python -m importer run <library/book-id> --custom <custom dir> [--md] [--file NAME]
-  python -m importer propose <library/book-id> --library <library dir>
+  python -m importer propose <library/book-id> --library <library dir> [--dry-run]
 """
 import hashlib
 import os
@@ -105,11 +105,17 @@ def _cmd_run(argv):
 def _cmd_propose(argv):
     """AI proposals for a needs-ai book into its review.xml, through the provider library/.config chooses."""
     from importer.ai import propose, providers, schema  # the anthropic SDK only loads for AI work
+    dry = "--dry-run" in argv
+    argv = [a for a in argv if a != "--dry-run"]
     if len(argv) != 3 or argv[1] != "--library":
         print(USAGE, file=sys.stderr)
         return 2
     config = os.path.join(argv[2], ".config")
     use = providers.read_providers(config)[0] if os.path.exists(os.path.join(config, "ai-providers.xml")) else None
+    if dry:  # how many requests, and to whom, before the user confirms sending the book
+        n = propose.count_chunks(os.path.join(argv[0], "book.md"))
+        print(f"<result parts={quoteattr(str(n))} provider={quoteattr(use or '')} />")
+        return 0
     n = propose.propose(argv[0], lambda s, u: providers.call(config, s, u, schema.SCHEMA), provider=use)
     print(f'<result state="review" proposals="{n}" />')
     return 0
