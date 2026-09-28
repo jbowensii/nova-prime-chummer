@@ -466,6 +466,32 @@ class ApplyReviewTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._apply(book, custom, "../x")
 
+    def test_entries_failing_the_checks_are_skipped_and_reported(self):
+        lib, book, custom, path = self._reviewed()
+        tree = ET.parse(path)
+        root = tree.getroot()
+        root.find("proposal[@id='amp.glitter-gland']").set("state", "accepted")  # unknown effect ref "sparkle-boost"
+        spell = root.find("proposal[@id='spell.spell-stir']")
+        spell.set("state", "edited")
+        spell.find("item").set("category", "cooking")
+        tree.write(path, encoding="utf8")
+        self.assertEqual(self._apply(book, custom), 0)
+        amps = Path(custom, "imported", "made", "amps.xml").read_text(encoding="utf8")
+        self.assertIn("made.neural-spoon", amps)
+        self.assertNotIn("glitter", amps)
+        self.assertFalse(os.path.exists(os.path.join(custom, "imported", "made", "spells.xml")))
+        rows = {r.get("proposal"): r.get("problem") for r in ET.parse(os.path.join(book, "import.xml")).getroot().iter("row")}
+        self.assertEqual(rows, {"amp.glitter-gland": 'unknown effect ref "sparkle-boost"',
+                                "spell.spell-stir": 'unknown spell category "cooking"'})
+        self.assertIn("2 skipped", ET.parse(os.path.join(book, "status.xml")).getroot().text)
+
+    def test_a_source_id_in_the_users_own_sources_is_refused(self):
+        lib, book, custom, _ = self._reviewed()
+        xmlio.write_file(os.path.join(custom, "sources.xml"), '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">'
+                         '<source id="HOUSE" publisher="Me" canon="false"><name>House rules</name></source></ca2:data>')
+        with self.assertRaises(ValueError):
+            self._apply(book, custom, "HOUSE")
+
     def test_cli_set_key_reads_the_key_from_stdin(self):
         lib = tempfile.mkdtemp()
         with unittest.mock.patch("sys.stdin", io.StringIO(KEY + "\n")):
