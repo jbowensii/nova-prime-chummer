@@ -24,8 +24,6 @@ EFFECTS = {
     "firewall": "firewall-plus", "risk reduction (rr)": "rr-skill rr-spec rr-attr",
     "extra action": "init-1 init-2 init-3",
 }
-# the shipped rules reference (hand-run qref_to_xml.py output); titles are compared against it for the report
-SHIPPED = os.path.join(os.path.dirname(__file__), "..", "..", "public", "data", "rules.xml")
 TITLE_RE = re.compile(r"#\s*(\w+)\s+quick\s+reference", re.I)
 BULLET = re.compile(r"[•\-]\s+(.*)")
 # a rule starts with a bold run-in title: "• **Title:** text" (numbered steps "**1. Step:**" are not titles)
@@ -98,19 +96,22 @@ def extract_sheet(sheet, md):
     return rules
 
 
-def title_report(sheet, titles, shipped=SHIPPED):
-    """Report rows for titles that differ from the shipped rules reference of the same sheet."""
-    if not os.path.exists(shipped):
+def title_report(sheet, titles, previous):
+    """Report rows for titles that differ from the previous import of this sheet (`previous`: its
+    rules-<sheet>.xml path, or None). First import: no rows."""
+    if not previous or not os.path.exists(previous):
         return []
-    known = [r.findtext("title") for r in ET.parse(shipped).getroot() if r.get("sheet") == sheet]
+    known = [r.findtext("title") for r in ET.parse(previous).getroot() if r.tag == "rule"]
     rows = [{"kind": "title-missing", "sheet": sheet, "title": t} for t in known if t not in titles]
     return rows + [{"kind": "title-new", "sheet": sheet, "title": t} for t in titles if t not in known]
 
 
-def extract(md):
+def extract(md, ctx=None):
+    """ctx: optional {"previous_dir": custom/imported/qref/} so a re-import reports changed titles."""
     sheet = sheet_of(md)
     rules = extract_sheet(sheet, md)
-    report = title_report(sheet, [r["title"] for r in rules])
+    prev_dir = (ctx or {}).get("previous_dir")
+    report = title_report(sheet, [r["title"] for r in rules], prev_dir and os.path.join(prev_dir, f"rules-{sheet}.xml"))
     entries = [f'  <rule id={quoteattr(r["id"])} sheet={quoteattr(sheet)} section={quoteattr(r["section"])}'
                + (f' effects={quoteattr(r["effects"])}' if r["effects"] else "")
                + f' source="{ID}" page="{r["page"]}"><title>{escape(r["title"])}</title><text></text></rule>' for r in rules]

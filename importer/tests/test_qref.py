@@ -61,16 +61,16 @@ class QrefTest(unittest.TestCase):
         self.assertIn('<text of="rules" id="matrix-bricking">damages a device.', res.texts)
         self.assertEqual(res.source["id"], "QREF")
 
-    def test_title_report_against_shipped_rules(self):
-        p = os.path.join(tempfile.mkdtemp(), "rules.xml")
-        with open(p, "w", encoding="utf8") as f:
-            f.write('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">'
-                    '<rule id="matrix-a" sheet="matrix" source="QREF" page="1"><title>Kept</title><text/></rule>'
-                    '<rule id="matrix-b" sheet="matrix" source="QREF" page="1"><title>Gone</title><text/></rule>'
-                    '<rule id="base-c" sheet="base" source="QREF" page="1"><title>Other sheet</title><text/></rule></ca2:data>')
-        self.assertEqual(qref.title_report("matrix", ["Kept", "Fresh"], p), [
+    def test_report_compares_titles_with_previous_import(self):
+        d = tempfile.mkdtemp()  # custom/imported/qref/ of an earlier import
+        ctx = {"previous_dir": d}
+        self.assertEqual(qref.extract(MD, ctx).report, [])  # first import: nothing to compare
+        prev = qref.extract(MD).files["rules-matrix.xml"].replace("<title>Alpha</title>", "<title>Gone</title>")
+        with open(os.path.join(d, "rules-matrix.xml"), "w", encoding="utf8") as f:
+            f.write(prev.replace('id="matrix-', 'id="qref.matrix-'))  # stored files carry scoped ids
+        self.assertEqual(qref.extract(MD, ctx).report, [
             {"kind": "title-missing", "sheet": "matrix", "title": "Gone"},
-            {"kind": "title-new", "sheet": "matrix", "title": "Fresh"}])
+            {"kind": "title-new", "sheet": "matrix", "title": "Alpha"}])
 
     def test_sheet_from_heading(self):
         self.assertEqual(qref.sheet_of("# Rules QUICK REFEReNCE"), "base")

@@ -42,9 +42,9 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             return None
 
         xmlio.write_status(book_dir, "extracting")
-        res = recipe.extract(md)
+        out_dir = os.path.join(custom_dir, "imported", recipe.ID.lower())
+        res = recipe.extract(md, {"previous_dir": out_dir})  # the previous import, still in place
         src = res.source["id"]
-        out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
         texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
         # merge texts first: a corrupt texts file fails the import before any overlay is replaced
