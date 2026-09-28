@@ -3,6 +3,7 @@
 // the Amp Builder in catalog mode; items and rules a form. The Description box is always sent: empty (or
 // the book's own text, unchanged) means "use the book's text".
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule } from '../model/types'
 import { Modal } from './bits'
@@ -23,7 +24,8 @@ const ITEM_KINDS: [ItemKind, string][] = [['gear', 'Gear'], ['weapon', 'Weapon']
 const CATEGORIES: Partial<Record<ItemKind, string[]>> = { spell: ['combat', 'detection', 'health', 'illusion', 'manipulation'], 'complex-form': ['sustained', 'instant'] }
 const NOUN: Record<EditKind, string> = { amps: 'amp', items: 'item', rules: 'rule' }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+// eslint-disable-next-line no-control-regex
+const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const attrs = (o: Record<string, string | number | boolean | undefined>) =>
   Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
 const nameOf = (e: Entry) => 'title' in e ? e.title : e.name
@@ -67,14 +69,23 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
   const repo = useRepo()
   const [target, setTarget] = useState<Target | null>(null)
   const [msg, setMsg] = useState('')
-  useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(''), 5000); return () => clearTimeout(t) }, [msg])
+  // the one live region: in the topmost open dialog (a picker the edit was opened from; the page behind it is
+  // inert), else on the page. Placed empty first, then filled, so the move doesn't swallow the announcement.
+  const [live, setLive] = useState<{ host: Element | null; text: string }>({ host: null, text: '' })
+  useEffect(() => { // runs after the edit dialog's own effect has closed it
+    if (!msg) return setLive(l => ({ ...l, text: '' }))
+    const host = [...document.querySelectorAll('dialog[open]')].pop() ?? null
+    setLive({ host, text: '' })
+    const show = setTimeout(() => setLive({ host, text: msg }), 50), hide = setTimeout(() => setMsg(''), 5000)
+    return () => { clearTimeout(show); clearTimeout(hide) }
+  }, [msg])
   const entry = target?.id ? c[target.kind].get(target.id) : undefined
   const done = async (text: string) => { await reload(); setTarget(null); setMsg(text) }
   return (
     <OpenEdit.Provider value={repo.mode === 'server' ? t => { setMsg(''); setTarget(t) } : null}>
       {children}
       {/* no role=status: pages keep their own single status region */}
-      <p className={msg ? 'toast' : 'sr-only'} aria-live="polite">{msg}</p>
+      {(() => { const p = <p className={live.text ? 'toast' : 'sr-only'} aria-live="polite">{live.text}</p>; return live.host?.isConnected ? createPortal(p, live.host) : p })()}
       <Modal open={!!target} onClose={() => setTarget(null)} actions={<></>}
         title={entry ? `Edit ${nameOf(entry)}` : target ? `Add ${target.kind === 'items' ? 'an' : 'a'} ${NOUN[target.kind]}` : ''}>
         {target && <EntryForm key={`${target.kind} ${target.id}`} c={c} kind={target.kind} entry={entry} onDone={done} onCancel={() => setTarget(null)} />}
@@ -83,7 +94,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
   )
 }
 
-const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'entry'
+const slug = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'entry'
 
 function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: EditKind; entry?: Entry; onDone: (msg: string) => Promise<void>; onCancel: () => void }) {
   const house = [...c.sources.values()].filter(s => s.origin === 'user' && !s.canon)
@@ -126,7 +137,7 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
         body: `<edit>${entryXml(kind, e)}<description>${esc(desc)}</description></edit>` })
       await onDone(`${adding ? 'Added' : 'Saved'} ${nameOf(e)}.`)
     } catch (x) {
-      setErr(`Couldn’t save: ${(x as Error).message}. Fix it and save again.`)
+      setErr(`Couldn’t save: ${(x as Error).message.replace(/\.$/, '')}. Fix it and save again.`)
       setBusy(false)
     }
   }
@@ -138,10 +149,11 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
     try {
       await api(`edits/${kind}/${encodeURIComponent(entry!.id)}`, { method: 'DELETE' })
       await onDone(state === 'changed' ? `Restored the book’s version of ${nameOf(entry!)}.` : `Removed ${nameOf(entry!)}.`)
-    } catch (x) { setErr(`Couldn’t remove it: ${(x as Error).message}.`); setBusy(false) }
+    } catch (x) { setErr(`Couldn’t remove it: ${(x as Error).message.replace(/\.$/, '')}.`); setBusy(false) }
   }
 
-  const sourceOk = !adding || (source === '+' ? /^[A-Z][A-Z0-9-]{0,19}$/.test(newSource.id) && !c.sources.has(newSource.id) && !!newSource.name.trim() : !!source)
+  const idOk = /^[A-Z][A-Z0-9-]{0,19}$/.test(newSource.id) && !c.sources.has(newSource.id)
+  const sourceOk = !adding || (source === '+' ? idOk && !!newSource.name.trim() : !!source)
   const canSave = !busy && state !== 'orphan' && sourceOk && page >= 1
 
   const head = (
@@ -162,18 +174,22 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
             </select>
           </label>
           {source === '+' && <>
-            <label>Source id<input value={newSource.id} maxLength={20} placeholder="TABLE" onChange={e => setNewSource({ ...newSource, id: e.target.value.toUpperCase() })} /></label>
+            <label>Source id<input value={newSource.id} maxLength={20} placeholder="TABLE" aria-invalid={!!newSource.id && !idOk}
+              aria-describedby={newSource.id && !idOk ? 'src-id-err' : undefined} onChange={e => setNewSource({ ...newSource, id: e.target.value.toUpperCase() })} /></label>
             <label>Source name<input value={newSource.name} maxLength={120} placeholder="Our table’s house rules" onChange={e => setNewSource({ ...newSource, name: e.target.value })} /></label>
           </>}
           <label>Page<input type="number" min={1} value={page} onChange={e => setPage(Math.max(1, Number(e.target.value) || 1))} /></label>
         </div>
       )}
-      {adding && source === '+' && newSource.id && !sourceOk && <p className="err">
-        {c.sources.has(newSource.id) ? `${newSource.id} is already a source; choose another id.` : 'A source id starts with a letter and uses only A–Z, 0–9 and hyphens; the name is needed too.'}</p>}
+      {adding && source === '+' && newSource.id && !idOk && <p className="err" id="src-id-err">
+        {c.sources.has(newSource.id) ? `${newSource.id} is already a source; choose another id.` : 'A source id starts with a letter and uses only A–Z, 0–9 and hyphens.'}</p>}
       {adding && <p className="muted">New entries are house rules: marked Non-canon and cited as {src || 'the source'} p.{page}.</p>}
     </>
   )
-  const foot = <div role="alert">{err && <p className="err">{err}</p>}</div>
+  // why Save is off (an orphan says so above)
+  const why = busy || state === 'orphan' ? '' : !sourceOk ? (source === '+' ? 'Give the new source a valid id and a name to save.' : 'Choose a house-rule source to save.')
+    : kind !== 'amps' && !(kind === 'items' ? item.name : rule.title).trim() ? `Enter a ${kind === 'items' ? 'name' : 'title'} to save.` : ''
+  const foot = <>{why && <p className="muted">{why}</p>}<div role="alert">{err && <p className="err">{err}</p>}</div></>
 
   if (kind === 'amps') {
     const tpl = entry as AmpTemplate | undefined
@@ -205,7 +221,7 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
   const name = kind === 'items' ? item.name : rule.title
   const submit = () => {
     const ref = { id: entry?.id ?? newId(name), source: src, page: entry?.page ?? page }
-    void save(kind === 'items' ? { ...item, ...ref, name: item.name.trim(), text: '' }
+    void save(kind === 'items' ? { ...item, ...ref, name: item.name.trim(), text: '', armor: item.kind === 'armor' ? item.armor ?? 1 : item.armor }
       : { ...rule, ...ref, title: rule.title.trim(), effects: effectsText.split(/\s+/).filter(Boolean), text: '' }, desc)
   }
   const cats = CATEGORIES[item.kind]
@@ -215,7 +231,8 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
       {kind === 'items' ? (
         <div className="grid2">
           <label>Name<input autoFocus value={item.name} onChange={e => setItem({ ...item, name: e.target.value })} /></label>
-          {adding && <label>Kind<select value={item.kind} onChange={e => setItem({ ...item, kind: e.target.value as ItemKind, category: undefined })}>
+          {adding && <label>Kind<select value={item.kind} onChange={e => { const k = e.target.value as ItemKind
+            setItem({ ...item, kind: k, category: undefined, dv: undefined, ranges: undefined, specialist: undefined, armor: k === 'armor' ? 1 : undefined }) }}>
             {ITEM_KINDS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select></label>}
           {cats ? <label>Category<select value={item.category ?? ''} onChange={e => setItem({ ...item, category: e.target.value || undefined })}>
             <option value="">Choose…</option>{cats.map(x => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}</select></label>

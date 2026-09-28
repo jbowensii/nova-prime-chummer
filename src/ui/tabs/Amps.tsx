@@ -103,10 +103,10 @@ export function AmpsTab() {
             {types.map(t => <button key={t.id} className="btn small" onClick={() => startBlank(t.id)}>{t.name}</button>)}
           </div>
           <Picker onPick={startFromCatalog} placeholder="Search the book’s amps"
-            groups={types.map(t => t.name)}
-            items={[...c.amps.values()].filter(a => !a.mod).map(a => ({
-              id: a.id, name: a.name, group: c.ampTypes.get(a.type)?.name,
-              meta: c.ampTypes.get(a.type)?.name, label: <SourceLabel c={c} source={a.source} page={a.page} id={a.id} />, search: `${a.source} ${c.sources.get(a.source)?.name ?? ''} p.${a.page}`,
+            groups={[...types.map(t => t.name), 'Add-ons']}
+            items={[...c.amps.values()].map(a => ({ // add-ons (mod) are applied in the Amp Builder; listed here to be edited
+              id: a.id, name: a.name, group: a.mod ? 'Add-ons' : c.ampTypes.get(a.type)?.name, disabled: a.mod,
+              meta: a.mod ? `Add-on for ${c.ampTypes.get(a.type)?.name ?? a.type} (apply it in the Amp Builder)` : c.ampTypes.get(a.type)?.name, label: <SourceLabel c={c} source={a.source} page={a.page} id={a.id} />, search: `${a.source} ${c.sources.get(a.source)?.name ?? ''} p.${a.page}`,
               price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative, action: <EditButton kind="amps" id={a.id} name={a.name} />,
             }))} />
           <p className="muted">Source DHSA is Daegann’s Holostreets expanded amp list; its page numbers are that document’s.</p>
