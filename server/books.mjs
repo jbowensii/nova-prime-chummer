@@ -3,11 +3,12 @@
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
 //   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import
-//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy }]
+//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy, review }]
 //   GET    /api/books/:id/report      -> import.xml
 //   POST   /api/books/:id/reimport    clears the book's outputs, then imports again
 //   DELETE /api/books/:id[?files=1]   clears the book's outputs (files=1: also its Library folder)
-//   POST   /api/books/:id/ai[?dryRun=1]  AI proposals for a needs-ai book (dryRun: { parts, provider }, sends nothing)
+//   POST   /api/books/:id/ai[?dryRun=1|fresh=1]  AI proposals for a needs-ai book (dryRun: { parts, provider }, sends
+//                                     nothing; fresh: replace finished proposals, which are otherwise kept)
 //   GET    /api/review/:id            -> review.xml
 //   PUT    /api/review/:id            body: review.xml with decisions; ?apply=1&source=&name=&canon= writes the overlay
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
@@ -115,9 +116,19 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     }
   }
 
+  /** The first KB of a file (review.xml can be large; its root tag is all the list needs), or null. */
+  async function head(path) {
+    const fh = await open(path).catch(() => null)
+    if (!fh) return null
+    const buf = Buffer.alloc(1024)
+    const { bytesRead } = await fh.read(buf, 0, 1024, 0).finally(() => fh.close())
+    return buf.subarray(0, bytesRead).toString('utf8')
+  }
+
   async function book(id) {
     const dir = join(libraryDir, id)
-    const [imp, status, upload] = await Promise.all(['import.xml', 'status.xml', 'upload.xml'].map(f => readOr(join(dir, f))))
+    const [imp, status, upload, reviewHead] = await Promise.all([...['import.xml', 'status.xml', 'upload.xml'].map(f => readOr(join(dir, f))), head(join(dir, 'review.xml'))])
+    const rv = rootTag(reviewHead, 'review')
     const it = rootTag(imp, 'import'), st = rootTag(status, 'status')
     const counts = Object.fromEntries([...(imp ?? '').matchAll(/<file\b[^>]*>/g)].map(m => [attr(m[0], 'name'), Number(attr(m[0], 'entries'))]))
     return {
@@ -125,6 +136,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       message: status ? unesc(status.replace(/^[\s\S]*?<status\b[^>]*>|<\/status>[\s\S]*$/g, '')) : '',
       source: attr(it, 'source'), name: attr(it, 'name'), canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
       recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id),
+      review: rv ? (attr(rv, 'done') === attr(rv, 'parts') ? 'done' : 'partial') : undefined,
     }
   }
 
@@ -290,6 +302,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       return imp ? send(res, 200, await readFile(join(dir, 'import.xml'), 'utf8'), 'application/xml; charset=utf-8') : send(res, 404, { error: 'not imported yet' })
     if (action === 'reimport' && method === 'POST') {
       needsQuiet()
+      if (attr(imp, 'recipe') === 'ai') throw fail(409, 'a book read by AI can’t be re-imported; remove it, or apply its review again')
       const file = attr(imp, 'file') ?? attr(rootTag(hasUpload, 'upload'), 'file')
       await setStatus(id, 'queued')
       enqueue(id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(file ? ['--file', file] : [])]])
@@ -299,7 +312,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       needsQuiet()
       if (attr(imp, 'source') || !['needs-ai', 'failed', 'review'].includes(state))
         throw fail(409, 'AI proposals are for books no recipe knows')
-      const args = ['propose', dir, '--library', libraryDir]
+      const args = ['propose', dir, '--library', libraryDir, ...(url.searchParams.get('fresh') === '1' ? ['--fresh'] : [])]
       if (url.searchParams.get('dryRun') === '1') {
         const r = await importer([...args, '--dry-run'], { timeout: 120000 })
         const res0 = rootTag(r.out, 'result')
