@@ -90,10 +90,22 @@ Mechanical World 230-242.
 Against the oracle's 148 source="CRB" amps and 13 gear items (the old catalog's DHSA rows printed in black):
 141 amps and all 13 gear items found, every printed rating equal. 27 are renamed (25 amps + 2 gear; v1.8 prints the model name
 without DHSA's added type, or a different name), 7 aren't in any v1.8 box (Concealment, the three flying
-drone variants, the deck Attack/Firewall and vehicle Flying add-ons). Pages move to the box for 10,
+drone variants, the deck Attack/Firewall and vehicle Flying add-ons). Concealment is printed on the Hercules pregen
+sheet (p.88) and comes from there (F1, below). The other 6 aren't rulebook entries (owner's rule: they stay non-canon
+DHSA entries): the flying drones are the DRONES box's base micro/small/medium drones (p.241), which print
+"Speed N (flying M)"; the flying names only describe NPCs' drones. The add-ons are rows of the SHADOW AMP EFFECTS table
+(pp.61-63). Pages move to the box for 10,
 the two autonomous medkits are Drone Amps in v1.8, 6 entries' effects and 4 items' descriptors differ with a cause. The ids and
-causes are listed in `importer/tests/test_crb.py`. v1.8 also prints 48 Amps the oracle lacks (contacts,
+causes are listed in `importer/tests/test_crb.py`. v1.8's boxes also print 48 Amps the oracle lacks (contacts,
 control rigs, eyes and ears, bone lacing, base vehicles, weapons, drugs, drones).
+
+**Sheet-only amps (F1).** An amp on a pregen sheet or in the Lightning example whose type and name no box amp has
+(exact, unique prefix as `statblock.catalog_id` matches, or the same words in any order and number) is a catalog amp
+too: source CRB, the sheet's page and printed rating, the sample runner's effects (narrative effects without the line
+text), the sheet's lines in the texts only; an equipment amp named after a sheet weapon gets it as its weapon item.
+The Awakened amp, contacts (named people of the runner's story) and metatype traits are skipped. 23 in v1.8:
+Concealment plus 22 (adept 2, cyberdeck 1, cyberware 5, equipment 5, quality 4, vehicle 5); names in the F1 report.
+Luna's tattoo focus prints 13 for effects worth 10 (a rating-mismatch row).
 
 ## Sample runners (9c)
 

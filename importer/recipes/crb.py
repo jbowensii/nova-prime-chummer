@@ -18,7 +18,8 @@ Mapper after the CRB's phrasing is brought to its shape ("RR 1 on Stealth (physi
 
 Sample runners: the 12 pregens (a story page, then a stat page; printed pp.88-111) go through importer.statblock's
 CRB layout path; the character creation example box (p.85) builds its runner from the prose. Every printed
-number goes to the report, as the pregen booklet's do.
+number goes to the report, as the pregen booklet's do. An amp printed only on those sheets (no box has its type and
+name: Concealment on Hercules', the pregens' brand-name gear) is the rulebook's too, so it joins the catalog amps.
 """
 import functools
 import re
@@ -434,7 +435,7 @@ def sample_runners(md, spell_names):
     rules = statblock.load_rules()
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     spell_ids = {statblock._norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in spell_names}  # scoped as run() scopes them
-    samples, report = [], []
+    samples, report, sheets = [], [], []
     for page, title, body in boxes(md):
         example = creation_example(_join(body), rules, spell_names) if title == "CHARACTER CREATION EXAMPLE" else None
         if example:
@@ -442,17 +443,60 @@ def sample_runners(md, spell_names):
             s, rows = statblock.sample(block, rules, ID, name, "Character creation example", page,
                                        f"Character creation example. CRB p.{page}.", updated, samples, spell_ids)
             samples.append(s)
+            sheets.append((page, block))
             report += [r for r in rows if r["kind"] in ("amp", "unmatched-item")]  # no pools, thresholds or Essence printed
     for n, text in sorted(pages.items()):
         if not re.search(r"^SHADOW AMPS ESSENCE RATING", text, re.M):
             continue
         name, role = _story(pages.get(n - 1, ""))
         page = n - 1 - PAGE_OFFSET
-        s, rows = statblock.sample(statblock.crb_statblock(text), rules, ID, name, role, page, f"{role}. CRB p.{page}.",
-                                   updated, samples, spell_ids)
+        block = statblock.crb_statblock(text)
+        s, rows = statblock.sample(block, rules, ID, name, role, page, f"{role}. CRB p.{page}.", updated, samples, spell_ids)
         samples.append(s)
+        sheets.append((page, block))
         report += rows
-    return samples, report
+    return samples, report, sheets
+
+
+def sheet_amps(sheets, rows, rules):
+    """Amps the rulebook prints only on a runner's sheet (a pregen or the creation example; Concealment on Hercules'):
+    each one whose type and name no box amp has becomes a catalog amp in build_amp's shape, from its first sheet, with
+    the effects the sample runner gets. Names match as statblock.catalog_id matches them ("Raccoon mentor spirit" is
+    the box's Raccoon entry) or as the same words in any order, plural or not ("Aluminum Bone Lacings"; a "Cybernetic
+    Arm" is a cyberarm). Skipped: metatype traits, the Awakened amp and contacts (the runner's own magic and people,
+    not catalog entries)."""
+    mapper = Mapper({**rules["specs"], **statblock.SPEC_NAMES})
+    known, bags, out = {}, set(), []
+
+    def bag(atype, name):
+        return atype, frozenset(w.rstrip("s") for w in statblock._norm(name).replace("cybernetic arm", "cyberarm").split()
+                                if w not in ("a", "an", "the"))
+    for r in rows:
+        known.setdefault(r["type"], {})[statblock._norm(r["name"])] = r["id"]
+        bags.add(bag(r["type"], r["name"]))
+    for page, block in sheets:
+        for a in block["amps"]:
+            if a["type"].lower() in statblock.METATYPES:
+                continue
+            atype, fx, _, vehicle, computed = statblock.map_amp(a, rules, mapper, True)
+            if atype in (None, "awakened", "contact") or bag(atype, a["name"]) in bags \
+                    or statblock.catalog_id(a["name"], known.get(atype, {})):
+                continue
+            known.setdefault(atype, {})[statblock._norm(a["name"])] = a["name"]
+            bags.add(bag(atype, a["name"]))
+            # the sheet's line text stays out of the overlay: a narrative effect balances the printed rating
+            fx = [("narrative", "", None, "balances printed rating") if f[0] == "narrative" else
+                  ("weapon-mount", "", *f[2:]) if f[0] == "weapon-mount" else f for f in fx]
+            item = ""
+            if atype == "equipment":  # a sheet weapon the amp's name starts or ends with is its base item
+                n = statblock._norm(a["name"])
+                w = next((w for w in block["weapons"] if w["kind"] and (n.startswith(statblock._norm(w["name"]) + " ")
+                                                                         or n.endswith(" " + statblock._norm(w["name"])))), None)
+                rng = re.sub(r"[�–—]", "-", w["ranges"]).replace("Dis.", "Dis") if w else ""
+                item = f'<item kind="weapon"{attr("dv", w["dv"])}{attr("ranges", rng)}/>' if w else '<item kind="gear"/>'
+            out.append({"id": slug(a["name"]), "name": a["name"], "type": atype, "rating": a["rating"], "page": page,
+                        "item": item, "vehicle": vehicle, "mod": False, "text": "; ".join(a["lines"]), "computed": computed, "fx": fx})
+    return out
 
 
 def extract(md, ctx=None):
@@ -475,6 +519,8 @@ def extract(md, ctx=None):
 
     mapper = Mapper(load_skills(dhsa_specs=False)[1])
     rows, items = amps_and_gear(md, mapper)
+    samples, sample_rows, sheets = sample_runners(md, [n for r in spell_list for n in r[2]])
+    rows += sheet_amps(sheets, rows, statblock.load_rules())
     for r in rows:
         aid = uid(r["id"])
         if r["computed"] != r["rating"]:
@@ -493,7 +539,6 @@ def extract(md, ctx=None):
         if g["text"]:
             texts.append(f'  <text of="items" id="{gid}">{escape(g["text"])}</text>')
     report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
-    samples, sample_rows = sample_runners(md, [n for r in spell_list for n in r[2]])
     report += sample_rows
 
     def data(kind, comment, entries):

@@ -38,6 +38,17 @@ runner keeps the computed rating. Where a stat block contradicts itself
 majority wins and the odd number isn't tested. A custom specialization rolls
 with its skill's attribute.
 
+## Expanded-list entries the rulebook doesn't print
+
+The owner's rule: an amp the expanded list (DHSA) cites to the core rulebook
+but the rulebook doesn't print stays non-canon. Six are Daegann's splits, not
+rulebook entries, and import only as non-canon DHSA entries: the flying
+microdrone, small and medium drones (the rulebook folds flight into its base
+drones' Speed) and the deck Attack, deck Firewall and vehicle Flying mods
+(rows of the Shadow Amp effects table, which the app ships as effects).
+Concealment is printed, on a pregen sheet, so it is a canon CRB amp; so is
+every other amp only a rulebook sheet prints.
+
 ## Effect-table exceptions the book makes
 
 The effect table (CRB p.61) limits initiative enhancements to Qualities,
