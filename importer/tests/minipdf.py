@@ -257,3 +257,29 @@ BT /F1 10 Tf 230 595 Td (line two) Tj ET
 def striped_table_pdf() -> bytes:
     """One-page PDF: a table with a merged (unruled) middle row."""
     return _build_pdf([STRIPED_TABLE_OPS])
+
+
+# A 2-row ruled table with a small ruled box drawn inside its bottom-right cell (not touching the
+# cell's rules, split by one line): pdfplumber finds the box as a second table nested in the first.
+NESTED_TABLE_OPS = """72 660 m 372 660 l S
+72 640 m 372 640 l S
+72 590 m 372 590 l S
+72 590 m 72 660 l S
+222 590 m 222 660 l S
+372 590 m 372 660 l S
+230 630 m 360 630 l S
+230 615 m 360 615 l S
+230 600 m 360 600 l S
+230 600 m 230 630 l S
+360 600 m 360 630 l S
+BT /F1 10 Tf 80 645 Td (Name) Tj ET
+BT /F1 10 Tf 230 645 Td (Effect) Tj ET
+BT /F2 10 Tf 80 620 Td (Made Up Rig) Tj ET
+BT /F1 10 Tf 240 619 Td (Boxed) Tj ET
+BT /F1 10 Tf 240 604 Td (Inner) Tj ET
+"""
+
+
+def nested_table_pdf() -> bytes:
+    """One-page PDF: a table with a ruled box inside one of its cells."""
+    return _build_pdf([NESTED_TABLE_OPS])

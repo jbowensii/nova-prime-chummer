@@ -92,7 +92,8 @@ BOOK = ROOT / ".extract/private/library/dhsa/book.md"
 ORACLE = ROOT / ".extract/private/oracle"
 # (file, type or kind, name) the old tool had and this recipe does not, or the other way. The old PDF reader
 # appended the Contacts section's opening paragraph (the next page's first lines) to the last Everyday life row.
-KNOWN_MISSING = {("gear.xml", "gear", "Mage License Contacts are part")}  # names over 80 characters are cut to 30
+# Matched on the entry's own name as a prefix, so no book text is committed here.
+KNOWN_MISSING_PREFIX = ("gear.xml", "gear", "Mage License ")
 KNOWN_EXTRA = {("gear.xml", "gear", "Mage License")}
 
 
@@ -120,9 +121,9 @@ class ParityTest(unittest.TestCase):
         missing, extra = set(), set()
         for f in ("amps.xml", "spells.xml", "complexforms.xml", "gear.xml"):
             old, new = entries((ORACLE / f).read_text(encoding="utf8")), entries(self.res.files[f])
-            missing |= {(f, t, n if len(n) < 80 else n[:30]) for t, n in old - new}
+            missing |= {(f, t, n) for t, n in old - new if (f, t) != KNOWN_MISSING_PREFIX[:2] or not n.startswith(KNOWN_MISSING_PREFIX[2])}
             extra |= {(f, *k) for k in new - old}
-        self.assertEqual((missing - KNOWN_MISSING, extra - KNOWN_EXTRA), (set(), set()))
+        self.assertEqual((missing, extra - KNOWN_EXTRA), (set(), set()))
 
     def test_every_entry_is_dhsa(self):
         for f in ("amps.xml", "spells.xml", "complexforms.xml", "gear.xml"):

@@ -8,6 +8,7 @@ from importer.tests.minipdf import (
     bold_label_pdf,
     bullets_then_indented_block_pdf,
     justified_paragraph_pdf,
+    nested_table_pdf,
     single_column_with_outlier_pdf,
     striped_table_pdf,
     two_column_page_pdf,
@@ -36,7 +37,7 @@ class ConvertTest(unittest.TestCase):
     def test_pages_headings_tables(self):
         meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
         self.assertEqual(meta["pages"], 2)
-        self.assertEqual(meta["converter"], "3")
+        self.assertEqual(meta["converter"], "4")
         self.assertIn("<!-- page 1 -->", text)
         self.assertIn("<!-- page 2 -->", text)
         self.assertRegex(text, r"(?m)^# Shadow Test$")
@@ -48,6 +49,10 @@ class ConvertTest(unittest.TestCase):
         _, _, lines = _convert_to_lines(striped_table_pdf(), "striped")
         self.assertEqual(lines, ["| Name | Effect |", "|---|---|", "| **Made Up Rig** | Plus one |",
                                  "| **Toy Kit** | Line one<br>line two |"])
+
+    def test_table_nested_in_a_cell_is_part_of_the_outer_table(self):
+        _, _, lines = _convert_to_lines(nested_table_pdf(), "nested")
+        self.assertEqual(lines, ["| Name | Effect |", "|---|---|", "| **Made Up Rig** | Boxed<br>Inner |"])
 
     def test_two_columns_read_top_to_bottom_then_next_column(self):
         _, _, lines = _convert_to_lines(two_column_page_pdf(), "cols")
