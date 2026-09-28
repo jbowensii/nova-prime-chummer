@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 
-// Create a Runner, finalize, earn, advance, print. Budget math:
-// attributes 5 x 3 = 150,000; skills 5 x 2 = 25,000; light armor 7,500 -> 192,500 left.
-// + 50,000 earned - 2,500 (Stealth 2 -> 3) = 240,000.
+// Create a Runner, finalize, earn, advance, print. Budget math on the made-up core data (455,000 for a runner):
+// attributes 5 x 3 x 12,000 = 180,000; skills 5 x 2 x 3,000 = 30,000; the Vest 4 x 3,000 = 12,000 -> 233,000 left.
+// + 50,000 earned - 3,000 (Stealth 2 -> 3) = 280,000.
 test('create, finalize, earn, advance, print', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New runner' }).click()
@@ -10,7 +10,7 @@ test('create, finalize, earn, advance, print', async ({ page }) => {
   await page.getByLabel('Street name').fill('Smoke Test')
 
   await page.getByRole('link', { name: 'Attributes' }).click()
-  for (const a of ['Strength', 'Agility', 'Willpower', 'Logic', 'Charisma'])
+  for (const a of ['Brawn', 'Finesse', 'Resolve', 'Wits', 'Presence'])
     for (let i = 0; i < 2; i++) await page.getByRole('button', { name: `Raise ${a}` }).click()
 
   await page.getByRole('link', { name: 'Skills', exact: true }).click()
@@ -19,9 +19,9 @@ test('create, finalize, earn, advance, print', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Gear & spells' }).click()
   await page.getByRole('button', { name: 'Add from the book' }).first().click()
-  await page.getByRole('listitem').filter({ hasText: 'Light armor' }).click()
+  await page.getByRole('listitem').filter({ hasText: 'Vest' }).click()
 
-  await expect(page.locator('.receipt .left')).toHaveText('192,500¥')
+  await expect(page.locator('.receipt .left')).toHaveText('233,000¥')
 
   await page.getByRole('link', { name: 'Review' }).click()
   await page.getByRole('button', { name: 'Finalize runner' }).click()
@@ -36,7 +36,7 @@ test('create, finalize, earn, advance, print', async ({ page }) => {
   await page.getByRole('link', { name: 'Skills', exact: true }).click()
   await page.getByRole('button', { name: 'Raise Stealth' }).click()
   await page.getByRole('button', { name: 'Record it' }).click()
-  await expect(page.locator('.receipt .left')).toHaveText('240,000¥')
+  await expect(page.locator('.receipt .left')).toHaveText('280,000¥')
 
   await page.getByRole('link', { name: 'Print' }).click()
   for (const h of ['Skills', 'Shadow Amps', 'Keywords', 'Wounds']) await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible()
