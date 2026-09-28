@@ -2,12 +2,41 @@
 
 First deployed 2026-09-27.
 
+## Install
+
+**(a) Unraid** — Docker tab → **Template repositories** → add
+`https://github.com/jbowensii/unraid-templates` → Save. Then **Add
+Container** → pick *chummer-anarchy2* → Apply.
+
+**(b) Plain docker / any other dashboard:**
+
+```bash
+docker run -d --init -p 8480:80 \
+  -v /path/to/characters:/data/characters \
+  -v /path/to/custom:/data/custom \
+  -v /path/to/library:/data/library \
+  ghcr.io/jbowensii/chummer-anarchy2:latest
+```
+
+**(c) One-time owner step after the first publish:** the GHCR package is
+created private by default. Go to GitHub → the account's **Packages** tab →
+**chummer-anarchy2** → **Package settings** → **Change visibility** → Public.
+Until that's done, pulls from Unraid or any other host will fail with
+"unauthorized".
+
+### Build it yourself
+
+```bash
+docker build -t chummer-anarchy2:latest .
+docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library chummer-anarchy2:latest
+```
+
 | | |
 |---|---|
 | URL | http://10.47.40.44:8480/ |
 | Container | `chummer-anarchy2`, bridge network, 8480 → 80, Autostart on. Runs `server/server.mjs` (Node), health check `/api/health` |
-| Template | `/boot/config/plugins/dockerMan/templates-user/my-chummer-anarchy2.xml`; created through **Add Container**, so Unraid manages it |
-| Image | `chummer-anarchy2:latest`, built on the tower from `/mnt/user/appdata/chummer-anarchy2/src` |
+| Template | Added via the `jbowensii/unraid-templates` template repository (see Install above); Unraid manages it |
+| Image | `ghcr.io/jbowensii/chummer-anarchy2:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) on every push to `main` |
 | Characters | `/mnt/user/appdata/chummer-anarchy2/characters` → `/data/characters`: one XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/.trash/` |
 | House rules | `/mnt/user/appdata/chummer-anarchy2/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
 | Library | `/mnt/user/appdata/chummer-anarchy2/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600). Never served over HTTP; back it up with the rest of appdata |
@@ -19,36 +48,21 @@ appdata folder as usual. Browsers that saved runners before server storage
 move them to tower04 on first load (done 2026-09-27: 15 runners moved,
 the 2 empty "Unnamed runner" files deleted to `.trash`).
 
-## "Force update" on the Docker page is safe
+## "Force update" on the Docker page
 
-The image is built on the tower and exists in no registry, so Unraid shows
-the update status as "not available". Pressing **force update** tries to
-pull `chummer-anarchy2:latest` from Docker Hub, which fails. Unraid's
-`CreateDocker.php` (line 261) then skips the container (`continue`)
-without stopping or removing it, so it keeps running. Verified by reading
-dockerMan's code on tower04 on 2026-09-27.
+Now that the image is published to GHCR and tagged `latest`, **force update**
+on the Docker page works normally: it pulls the newest `latest` build pushed
+by the `publish.yml` workflow. (Historical note: before this image was
+published, the tag existed only as a tower-local build and force update
+failed — Unraid's `CreateDocker.php` skipped the container without stopping
+it, so it kept running on the old image. That no longer applies.)
 
 ## Redeploy after changes
 
-From the PC, in the repo:
-
-```bash
-git archive --format=tar -o "$TEMP/chummer-anarchy2.tar" main
-cp "$TEMP/chummer-anarchy2.tar" //tower04/temp/chummer-anarchy2.tar
-cp unraid/chummer-anarchy2.xml //tower04/temp/my-chummer-anarchy2.xml
-```
-
-On tower04 (the web terminal at http://tower04/webterminal/ttyd/):
-`bash /mnt/user/temp/ca2-rebuild.sh`. It unpacks the source, installs the
-template, creates the characters folder if missing, rebuilds the image and
-reinstalls the icon, and logs to `/mnt/user/temp/ca2-rebuild.log`.
-Descriptions are no longer copied by hand (`ca2-texts`): the importer writes
-them when the books are uploaded, so the script's texts step has nothing to
-do and can be dropped. Create the Library folder once
-(`mkdir -p /mnt/user/appdata/chummer-anarchy2/library`) and add the
-**Library** path from the updated template.
-Then go to Docker → chummer-anarchy2 → Edit, make any edit and undo it (so
-Apply enables), then Apply. That recreates the container on the new image.
+Push (or merge) to `main`; the `publish.yml` workflow builds and pushes
+`ghcr.io/jbowensii/chummer-anarchy2:latest`. On tower04: Docker →
+chummer-anarchy2 → **force update** (or Edit → Apply). No local build, no
+file copy to the tower.
 
 ## Books after a deploy
 
