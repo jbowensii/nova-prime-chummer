@@ -5,6 +5,7 @@ Anthropic goes through the official SDK; the others are plain HTTP with urllib.
 Errors raise ProviderError with a plain message that never contains a key."""
 import json
 import os
+import re
 import tempfile
 import urllib.error
 import urllib.parse
@@ -13,6 +14,8 @@ import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape, quoteattr
 
 import anthropic
+
+from importer import xmlio
 
 NS = "urn:chummer-anarchy2:config:1"
 TIMEOUT = 120
@@ -33,6 +36,71 @@ def read_providers(config_dir):
     """(use, {id: attributes}) from ai-providers.xml."""
     root = ET.parse(os.path.join(config_dir, "ai-providers.xml")).getroot()
     return root.get("use"), {p.get("id"): dict(p.attrib) for p in root.findall("provider")}
+
+
+PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm")
+PROVIDER_ATTRS = {"id", "enabled", "baseUrl", "model", "workspace"}
+
+
+class SettingsError(ValueError):
+    """The ai-providers.xml a client sent is not one this app writes."""
+
+
+def _parse_settings(text):
+    """(root attributes, {id: attributes}) of an ai-providers.xml body, checked as aiproviders.xsd would; else SettingsError."""
+    if re.search(r"<!DOCTYPE|<!ENTITY", text, re.I):
+        raise SettingsError("a DTD isn’t allowed in the provider settings")
+    try:
+        root = ET.fromstring(text.encode("utf8"))
+    except ET.ParseError as e:
+        raise SettingsError(f"the provider settings aren’t well-formed XML ({e})") from None
+    if root.tag != f"{{{NS}}}aiproviders":
+        raise SettingsError("body is not a ca2:aiproviders document")
+    if set(root.attrib) - {"version", "use"} or not (root.get("version") or "").isdigit() or int(root.get("version")) < 1:
+        raise SettingsError("aiproviders takes version (a positive number) and use only")
+    if root.get("use") is not None and root.get("use") not in PROVIDER_IDS:
+        raise SettingsError(f"use “{root.get('use')}” isn’t a known provider")
+    if (root.text or "").strip():
+        raise SettingsError("aiproviders holds provider elements only")
+    out = {}
+    for p in root:
+        if p.tag == "key" or p.tag.endswith("}key"):
+            raise SettingsError("provider settings only; keys go to /api/ai-keys")
+        if p.tag != "provider" or len(p) or (p.text or "").strip() or (p.tail or "").strip():
+            raise SettingsError("aiproviders holds empty provider elements only")
+        if set(p.attrib) - PROVIDER_ATTRS:
+            raise SettingsError(f"unknown provider attribute “{sorted(set(p.attrib) - PROVIDER_ATTRS)[0]}”")
+        pid = p.get("id")
+        if pid not in PROVIDER_IDS:
+            raise SettingsError(f"“{pid}” isn’t a known provider")
+        if pid in out:
+            raise SettingsError(f"provider “{pid}” is listed twice")
+        if p.get("enabled") not in ("true", "false", "1", "0"):
+            raise SettingsError(f"provider “{pid}” needs enabled=\"true\" or \"false\"")
+        out[pid] = dict(p.attrib)
+    return dict(root.attrib), out
+
+
+def set_settings(config_dir, text):
+    """Check and save ai-providers.xml. A key is only sent to the address it was entered for: a provider
+    whose base URL differs from the saved one (missing = empty) has its key cleared first. The same parser
+    that later reads the file for a call decides here. Returns the providers whose keys were cleared."""
+    attrs, new = _parse_settings(text)
+    path = os.path.join(config_dir, "ai-providers.xml")
+    try:
+        old = read_providers(config_dir)[1] if os.path.exists(path) else {}
+    except ET.ParseError:
+        old = {}  # unreadable, so no key went anywhere by it: any non-empty URL now counts as changed
+    keys = _keys(config_dir)
+    url = lambda ps, p: (ps.get(p) or {}).get("baseUrl") or ""  # noqa: E731
+    cleared = [p for p in PROVIDER_IDS if url(old, p) != url(new, p) and keys.get(p)]
+    for p in cleared:
+        set_key(config_dir, p, "")
+    q = lambda v: '"' + escape(v, {'"': "&quot;"}) + '"'  # noqa: E731
+    root = "".join(f" {k}={q(v)}" for k, v in attrs.items())
+    rows = "".join("  <provider" + "".join(f" {k}={q(v)}" for k, v in p.items()) + "/>\n" for p in new.values())
+    xmlio.write_file(path, f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aiproviders xmlns:ca2="{NS}"{root}>\n{rows}</ca2:aiproviders>\n')
+    return cleared
 
 
 def _keys(config_dir):
