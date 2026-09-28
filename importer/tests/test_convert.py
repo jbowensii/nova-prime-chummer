@@ -13,6 +13,7 @@ from importer.tests.minipdf import (
     justified_paragraph_pdf,
     nested_table_pdf,
     single_column_with_outlier_pdf,
+    tilted_line_pdf,
     striped_table_pdf,
     two_column_page_pdf,
     two_columns_uneven_sidebar_pdf,
@@ -40,7 +41,7 @@ class ConvertTest(unittest.TestCase):
     def test_pages_headings_tables(self):
         meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
         self.assertEqual(meta["pages"], 2)
-        self.assertEqual(meta["converter"], "5")
+        self.assertEqual(meta["converter"], "6")
         self.assertIn("<!-- page 1 -->", text)
         self.assertIn("<!-- page 2 -->", text)
         self.assertRegex(text, r"(?m)^# Shadow Test$")
@@ -130,6 +131,10 @@ class ConvertTest(unittest.TestCase):
         _, _, lines = _convert_to_lines(boxed_table_pdf(), "boxtable")
         cell = "<br>".join(f"left words on line {i} right words on line {i}" for i in range(5))
         self.assertEqual(lines[2], f"| {cell}<br>Row label that runs long enough to cross the middle 7 |")
+
+    def test_tilted_line_keeps_its_words(self):
+        _, _, lines = _convert_to_lines(tilted_line_pdf(), "tilted")
+        self.assertEqual(lines, ["Made up tilted words", "M ADE UP"])
 
 if __name__ == "__main__":
     unittest.main()
