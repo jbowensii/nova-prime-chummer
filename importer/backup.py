@@ -25,8 +25,9 @@ from importer import xmlio
 
 FOLDERS = ("characters", "custom", "library")
 KEYS = "library/.config/ai-keys.xml"
-# never in a backup: session hashes (a restore ends every session) and a pending recovery code's hash (server/auth.mjs)
-NEVER = {"library/.config/sessions.xml", "library/.config/reset.xml"}
+# never in a backup or restored: session hashes (a restore ends every session), a pending recovery code's hash and the
+# known-device cookie key (server/auth.mjs)
+NEVER = {"library/.config/sessions.xml", "library/.config/reset.xml", "library/.config/device-key.xml"}
 MAX_TOTAL = 20 * 1024 ** 3
 MAX_RATIO, RATIO_FROM = 200, 1024 ** 2  # zip-bomb guard: files over 1 MB may not expand more than 200 times
 MAX_MANIFEST = 1024 ** 2
