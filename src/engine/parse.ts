@@ -30,7 +30,8 @@ export const toSkill = (el: Element): Skill => ({ ...ref(el), name: child(el, 'n
     attr: s.getAttribute('attr') as AttrId, source: str(s, 'source'), page: num(s, 'page') })) })
 
 export const toSource = (el: Element): Source => ({ id: el.getAttribute('id')!, name: child(el, 'name'),
-  publisher: el.getAttribute('publisher') ?? '', canon: bool(el, 'canon'), texts: str(el, 'texts') })
+  publisher: el.getAttribute('publisher') ?? '', canon: bool(el, 'canon'), texts: str(el, 'texts'),
+  file: str(el, 'file'), sha256: str(el, 'sha256'), imported: str(el, 'imported'), origin: 'shipped' })
 
 export const toRule = (el: Element): Rule => ({ ...ref(el), sheet: el.getAttribute('sheet')!, section: el.getAttribute('section') ?? '',
   title: child(el, 'title'), effects: (str(el, 'effects') ?? '').split(/\s+/).filter(Boolean), text: child(el, 'text') })
