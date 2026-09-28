@@ -1,5 +1,6 @@
-// Per-browser display settings: theme, texture level, print style (docs/design-system.md).
+// Per-browser display settings: theme, texture level, print style (docs/design-system.md); on a server, also Backup.
 import { useState } from 'react'
+import { BackupSettings } from './Backup'
 import { Modal } from './bits'
 
 export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' }
@@ -52,6 +53,7 @@ export function SettingsButton() {
             </fieldset>
           ))}
           <p className="muted">Saved in this browser only.</p>
+          <BackupSettings />
         </div>
       </Modal>
     </>
