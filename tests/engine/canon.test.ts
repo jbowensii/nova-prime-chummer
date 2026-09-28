@@ -69,3 +69,24 @@ describe('private texts and rules', () => {
     expect(c.amps.get('gun-fu')!.narrative).toBe('Martial art.')
   })
 })
+
+describe('loadCatalog fetches each source’s private texts file', () => {
+  test('texts named in sources.xml are loaded from custom/', async () => {
+    const { readFileSync, existsSync } = await import('node:fs')
+    const { loadCatalog } = await import('../../src/engine/load')
+    const extra: Record<string, string> = {
+      'custom/texts/qref.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="matrix-vr-hot-sim">Full immersion.</text></ca2:data>`,
+    }
+    const real = globalThis.fetch
+    globalThis.fetch = (async (url: string) => {
+      const path = String(url).replace(/^\.\//, '')
+      const body = extra[path] ?? (path.startsWith('data/') && existsSync(`public/${path}`) ? readFileSync(`public/${path}`, 'utf8') : null)
+      return { ok: body != null, text: async () => body ?? '' }
+    }) as typeof fetch
+    try {
+      const c = await loadCatalog('./')
+      expect(c.rules.get('matrix-vr-hot-sim')!.text).toBe('Full immersion.')
+      expect(c.files.some(f => f.file === 'custom/texts/qref.xml')).toBe(true)
+    } finally { globalThis.fetch = real }
+  })
+})
