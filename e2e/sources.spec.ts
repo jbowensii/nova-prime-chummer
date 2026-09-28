@@ -27,6 +27,9 @@ test('amp picker: every entry shows its source; duplicates are told apart', asyn
   await expect(rush.filter({ has: page.locator('.noncanon') }).locator('.src'))
     .toHaveAttribute('title', 'Test Book One — Test Publisher — file test-book.pdf')
 
+  await search.fill('TESTC')
+  await expect(page.locator('.picker li .src')).toHaveText(['TESTC p.8'])
+
   await search.fill('Keen eye')
   const keen = rows(page, /^Keen eye$/i)
   await expect(keen).toHaveCount(2)
