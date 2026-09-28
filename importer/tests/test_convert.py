@@ -9,6 +9,7 @@ from importer.tests.minipdf import (
     bullets_then_indented_block_pdf,
     justified_paragraph_pdf,
     single_column_with_outlier_pdf,
+    striped_table_pdf,
     two_column_page_pdf,
     two_columns_uneven_sidebar_pdf,
     two_columns_with_band_pdf,
@@ -35,13 +36,18 @@ class ConvertTest(unittest.TestCase):
     def test_pages_headings_tables(self):
         meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
         self.assertEqual(meta["pages"], 2)
-        self.assertEqual(meta["converter"], "2")
+        self.assertEqual(meta["converter"], "3")
         self.assertIn("<!-- page 1 -->", text)
         self.assertIn("<!-- page 2 -->", text)
         self.assertRegex(text, r"(?m)^# Shadow Test$")
         self.assertRegex(text, r"(?m)^\| Name \| Rating \|$")
         self.assertIn("|---|---|", text)
         self.assertEqual(len(meta["sha256"]), 64)
+
+    def test_merged_table_row_is_split_on_the_column_grid(self):
+        _, _, lines = _convert_to_lines(striped_table_pdf(), "striped")
+        self.assertEqual(lines, ["| Name | Effect |", "|---|---|", "| **Made Up Rig** | Plus one |",
+                                 "| **Toy Kit** | Line one<br>line two |"])
 
     def test_two_columns_read_top_to_bottom_then_next_column(self):
         _, _, lines = _convert_to_lines(two_column_page_pdf(), "cols")

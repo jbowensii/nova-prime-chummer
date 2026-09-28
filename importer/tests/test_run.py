@@ -36,7 +36,8 @@ class XmlioTest(unittest.TestCase):
                '<amp id="rush" type="equipment" source="DHSA" page="1"><effect ref="dv-plus"/></amp>'
                '<amp id="kit" linkedItem="rush" type="equipment" source="DHSA" page="2"/>'
                # same names as entries of the set, but these attributes point at base data: never scoped
-               '<amp id="equipment" type="equipment" source="DHSA" page="3"><effect ref="rush"/></amp></ca2:data>')
+               '<amp id="equipment" type="equipment" source="DHSA" page="3"><effect ref="rush"/></amp>'
+               '<amp id="small-drone" type="vehicle" vehicle="small-drone" source="DHSA" page="4"/></ca2:data>')
         xmlio.write_overlay(d, "amps.xml", xml)
         out = Path(os.path.join(d, "amps.xml")).read_text(encoding="utf8")
         self.assertIn('<amp id="dhsa.rush"', out)
@@ -44,7 +45,16 @@ class XmlioTest(unittest.TestCase):
         self.assertIn('ref="dv-plus"', out)
         self.assertIn('<amp id="dhsa.equipment" type="equipment"', out)
         self.assertIn('<effect ref="rush"/>', out)
+        self.assertIn('<amp id="dhsa.small-drone" type="vehicle" vehicle="small-drone"', out)
         self.assertIn('source="DHSA"', out)
+
+    def test_skill_additions_keep_the_base_skill_id(self):
+        d = os.path.join(tempfile.mkdtemp(), "DHSA")
+        xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">'
+               '<skill id="influence" attr="cha" source="DHSA" page="5"><name>Influence</name>'
+               '<spec id="influence.made-up" attr="cha">Made up</spec></skill></ca2:data>')
+        xmlio.write_overlay(d, "skills.xml", xml)
+        self.assertIn('<skill id="influence"', Path(os.path.join(d, "skills.xml")).read_text(encoding="utf8"))
 
     def test_write_texts_merges_by_id(self):
         p = os.path.join(tempfile.mkdtemp(), "texts", "qref.xml")
