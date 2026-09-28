@@ -4,6 +4,7 @@ import unittest
 
 from importer.convert import convert
 from importer.tests.minipdf import (
+    bullets_then_indented_block_pdf,
     single_column_with_outlier_pdf,
     two_column_page_pdf,
     two_columns_uneven_sidebar_pdf,
@@ -78,6 +79,14 @@ class ConvertTest(unittest.TestCase):
         _, _, lines = _convert_to_lines(two_columns_uneven_sidebar_pdf(), "sidebar")
         self.assertEqual(
             lines, ["Left0", "Left1", "Left2", "Left3", "Left4", "Side0", "Side1"]
+        )
+
+    def test_indented_block_below_bullets_is_not_a_second_column(self):
+        # The indented block sits below the bullets, not beside them: no
+        # vertical overlap between the two sides, so it's one column.
+        _, _, lines = _convert_to_lines(bullets_then_indented_block_pdf(), "indent")
+        self.assertEqual(
+            lines, [f"- Bullet {i}" for i in range(6)] + ["Indented one", "Indented two", "After one", "After two"]
         )
 
 
