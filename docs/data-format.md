@@ -85,7 +85,11 @@ All caps apply during creation only.
 - `requires` is `awakened`, `cyberdeck` or `emerged` (Tasking).
 - Spec ids are `<skill>.<spec>`, for example `stealth.physical-sneaking`.
 - A spec from another book than its skill carries its own `source` and
-  `page` (the six DHSA specs, such as `influence.seduction`).
+  `page`. An imported book adds specs with a `<skill>` of the base skill's
+  id holding only its new specs (DHSA's `influence.seduction`): the loader
+  appends them to that skill, once per spec id. A house-rule `<skill>`
+  still replaces the whole skill. (The six DHSA specs also stay in the
+  shipped skills.xml until the shipped book catalogs that use them go.)
 - An amp effect may name a custom spec, `param="custom:Defense against
   throwing weapons"`, for a condition that isn't a named specialization.
 

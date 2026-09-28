@@ -7,7 +7,7 @@ import { dupeGroups, dupeLabel } from '../../src/engine/dupes'
 import { buildCatalog, loadCatalog, type SourceFile } from '../../src/engine/load'
 import { rescope } from '../../src/engine/rescope'
 import type { AmpEntry, CareerEvent, ItemEntry } from '../../src/model/types'
-import { base, cat } from '../helpers'
+import { base, cat, catFiles } from '../helpers'
 
 const NS = 'xmlns:ca2="urn:chummer-anarchy2:data:1"'
 const sources = (file: string, body: string): SourceFile =>
@@ -63,6 +63,28 @@ describe('sources', () => {
     expect(c.errors).toEqual([{ file: 'custom/house.xml', message: 'source "HOUSE" isn’t listed in any sources file; treated as not canon' }])
     const listed = buildCatalog([...base, sources('custom/sources.xml', '<source id="HOUSE" publisher="Me" canon="false"><name>House</name></source>'), ov])
     expect(listed.errors).toEqual([])
+  })
+})
+
+describe('skill additions', () => {
+  const skills = (file: string, body: string): SourceFile =>
+    ({ file, xml: `<ca2:data ${NS} kind="skills" version="1">${body}</ca2:data>`, overlay: true })
+  const cc = (specs: string) => `<skill id="close-combat" attr="agi" source="X" page="1"><name>Mine</name>${specs}</skill>`
+  const spec = (id: string) => `<spec id="close-combat.${id}" attr="agi">${id}</spec>`
+
+  test('an imported book’s specs are added to the shipped skill, which keeps everything else', () => {
+    const s = cat.skills.get('close-combat')!
+    expect(s).toMatchObject({ name: 'Close Combat', source: 'CRB' })
+    expect(s.specs.map(x => x.id)).toEqual(expect.arrayContaining(['close-combat.blades', 'close-combat.made-up-style']))
+    expect(s.specs.find(x => x.id === 'close-combat.made-up-style')).toMatchObject({ source: 'TEST', page: 4 })
+  })
+  test('a spec two books add is listed once', () => {
+    const c = buildCatalog([...catFiles, skills('custom/imported/test2/skills.xml', cc(spec('made-up-style') + spec('blades')))])
+    expect(c.skills.get('close-combat')!.specs.filter(x => ['close-combat.made-up-style', 'close-combat.blades'].includes(x.id))).toHaveLength(2)
+  })
+  test('a house-rule skill still replaces the shipped one', () => {
+    const c = buildCatalog([...catFiles, skills('custom/house.xml', cc(spec('whips')))])
+    expect(c.skills.get('close-combat')).toMatchObject({ name: 'Mine', specs: [{ id: 'close-combat.whips' }] })
   })
 })
 
