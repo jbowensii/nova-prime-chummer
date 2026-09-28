@@ -1,4 +1,4 @@
-"""Shadowrun Anarchy 2.0 Alternative Core Rulebook (CRB) -> spells, Shadow Amps and plain gear (pregens: later).
+"""Shadowrun Anarchy 2.0 Alternative Core Rulebook (CRB) -> spells, Shadow Amps, plain gear and sample runners.
 
 Layout notes (page ranges, box shapes, converter quirks) are in crb.md next to this file. In short: every
 rules box is a one-cell table titled in capitals; its lines are <br>-separated (a box set in two text
@@ -15,11 +15,17 @@ Amps and gear are the boxes' bold entries, "**Name:** (<weapon type>, Rating N <
 effects" or "**Name:** (Equipment, cost¥) text" (pp.136-241). Effects are read with the DHSA recipe's
 Mapper after the CRB's phrasing is brought to its shape ("RR 1 on Stealth (physical) and Perception
 (physical) Tests" -> one RR per skill/spec); the rating is reconciled with the printed one the same way.
+
+Sample runners: the 12 pregens (a story page, then a stat page; printed pp.88-111) go through importer.statblock's
+CRB layout path; the character creation example box (p.85) builds its runner from the prose. Every printed
+number goes to the report, as the pregen booklet's do.
 """
 import functools
 import re
+from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
+from importer import statblock
 from importer.recipes import Result
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
     BASE, CHASSIS, SKILLS, ATTRS, Mapper, attr, dv_num, load_skills, reconcile, slug, weapon_base)
@@ -31,7 +37,8 @@ FAMILIES = ("Combat", "Detection", "Health", "Illusion", "Manipulation")
 
 TAB = "AWKENdOrL"  # letters of the margin tab (AWAKENED WORLD, lower-case d and r as printed)
 # the chapters' margin tabs by printed page: MUNDANE / AWAKENED / VIRTUAL / MECHANICAL WORLD, as printed
-TABS = ((133, 167, "MuNdAEWOrL"), (169, 199, TAB), (202, 228, "vIrTuALWOd"), (230, 242, "MEChANICLWOrLd"))
+# (and GAME CONCEPTS beside the character creation example box, p.85)
+TABS = ((85, 85, "GAMECONPTS"), (133, 167, "MuNdAEWOrL"), (169, 199, TAB), (202, 228, "vIrTuALWOd"), (230, 242, "MEChANICLWOrLd"))
 BOX = re.compile(rf"^\| (?:[{TAB}] )?({'|'.join(f.upper() for f in FAMILIES)}) SPELLS \|$")
 CHAIN = re.compile(r"^([A-Z][A-Za-z ]*?)(\*| /)")
 
@@ -332,9 +339,117 @@ def amps_and_gear(md, mapper):
     return amps, gear
 
 
+def _story(text):
+    """(name, role) from a pregen's story page: the name line in small caps ("TeST RiGGER"), then the role in bold
+    on one or two lines."""
+    m = re.search(r"^([^\W\d][\w ]+)\n((?:\*\*.+\*\*\n)+)", text, re.M)
+    if not m:
+        return "Runner", ""
+    return m.group(1).strip().title(), " ".join(re.findall(r"\*\*(.+?)\*\*", m.group(2)))
+
+
+def _paren(text, i):
+    """The balanced "(…)" opening at text[i], without its parentheses."""
+    depth = 0
+    for k in range(i, len(text)):
+        depth += (text[k] == "(") - (text[k] == ")")
+        if depth == 0:
+            return text[i + 1:k]
+    return text[i + 1:]
+
+
+def _priced(paren):
+    """"0 for the base, 4 for Risk Reduction 2 on A (x) Tests, and 2 to sustain …" -> the parts that cost
+    points, as effect lines ("RR 2 on A (x) Tests", "sustain …")."""
+    out = []
+    for part in _parts(paren):
+        m = re.match(r"([1-9]\d*) (?:for|to) (.+)", part)
+        if m:
+            out.append(re.sub(r"\bRR (\d) for\b", r"RR \1 on", m.group(2).replace("Risk Reduction", "RR")))
+    return out
+
+
+def creation_example(text, rules, spell_names):
+    """The character creation example box -> (name, block in parse_statblock's shape), or None when the prose
+    doesn't name the runner and all five attributes. It prints the attributes, skills, each Amp's rating with
+    what its points buy, armor, weapon and spells; no pools."""
+    who = re.search(r"wants (\w+), (?:his|her|their) character", text)
+    words = {"str": "Strength", "agi": "Agility", "wil": "Willpower", "log": "Logic", "cha": "Charisma"}
+    attrs = {k: int(m.group(1)) for k, w in words.items() if (m := re.search(rf"\b{w} (\d)\b", text))}
+    if not who or len(attrs) < len(words):
+        return None
+    skills = []
+    for info in rules["skills"].values():
+        m = re.search(rf"\b{re.escape(info['name'])} (\d)(?: \(([^()]+?) \+2\))?", text, re.I)
+        if not m:
+            continue
+        up = re.search(rf"increase {re.escape(info['name'])} from \d to (\d)", text, re.I)
+        r, a = int(up.group(1) if up else m.group(1)), info["attr"]
+        spec = [{"name": m.group(2), "plus2": True, "attr": a, "dp": r + 2 + attrs[a], "rr": None}] if m.group(2) else []
+        skills.append((m.start(), {"name": info["name"], "rating": r, "attr": a, "dp": r + attrs[a], "rr": None, "specs": spec}))
+
+    amps = []
+
+    def amp(nm, atype, rating, lines):
+        amps.append({"name": nm, "type": atype, "ess": None, "rating": int(rating), "count": 1, "lines": lines})
+    m = re.search(r"Awakened abilities.*?spends (\d+) points \(", text)
+    if m:
+        amp("Awakened", "Awakened", m.group(1), [_paren(text, m.end() - 1)])
+    m = re.search(r"picks (\w+) as a mentor spirit at rating (\d+) \(", text)
+    if m:
+        amp(f"{m.group(1)} mentor spirit", "Quality", m.group(2), _priced(_paren(text, m.end() - 1)))
+    for m in re.finditer(r"picks an? ([a-z ]+?), an? rating (\d+) Amp \(", text):
+        amp(m.group(1).capitalize(), "Equipment", m.group(2), _priced(_paren(text, m.end() - 1)))
+    m = re.search(r"(\d+) points are used for one contact: ([^(]+?) \(", text)
+    if m:
+        amp(re.sub(r", an? ", ", ", m.group(2)), "Contact", m.group(1), _priced("1 for " + _paren(text, m.end() - 1)))
+
+    armor = [{"name": a.capitalize(), "armor": n, "l": 0} for a, n in re.findall(r"\ban? ([a-z ]+?) \(Armor (\d)\)", text)]
+    weapons = [{"name": w.capitalize(), "kind": w.split()[-1], "dv": "", "ranges": "", "count": 1, "notes": []}
+               for w in re.findall(r"\ban? ([a-z ]+?) \(standard weapon\)", text)]
+    picks = text[text.find(" spells:"):] if " spells:" in text else ""  # the spells are listed after "… spells:"
+    spells = sorted((m.start(), n) for n in spell_names if (m := re.search(rf"\b{re.escape(n)}\b", picks)))
+
+    def listed(label):  # "Keywords: A, B, and C." / "Dispositions, he chose: A, B, which …, and C."
+        m = re.search(rf"{label}[^:.]*: (.+?)\.", text)
+        return [p[:1].upper() + p[1:] for p in _parts(m.group(1)) if not p.startswith("which")] if m else []
+    return who.group(1), {"keywords": listed("Keywords"), "skills": [x for _, x in sorted(skills, key=lambda t: t[0])],
+                  "weapons": weapons, "armor": armor, "dispositions": listed("Dispositions"), "cues": [],
+                  "spells": [n for _, n in spells], "forms": [], "amps": amps, "equipment": [], "attributes": attrs, "knowledge": []}
+
+
+def sample_runners(md, spell_names):
+    """(samples, report rows): the character creation example box, then each pregen's stat page (the page with the
+    SHADOW AMPS header; the story page before it gives the name and role, and the page the runner is cited to)."""
+    parts = re.split(r"<!-- page (\d+) -->", md)
+    pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
+    rules = statblock.load_rules()
+    updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    samples, report = [], []
+    for page, title, body in boxes(md):
+        example = creation_example(_join(body), rules, spell_names) if title == "CHARACTER CREATION EXAMPLE" else None
+        if example:
+            name, block = example
+            s, rows = statblock.sample(block, rules, ID, name, "Character creation example", page,
+                                       f"Character creation example. CRB p.{page}.", updated, samples)
+            samples.append(s)
+            report += [r for r in rows if r["kind"] == "amp"]  # the prose prints no pools, thresholds or Essence
+    for n, text in sorted(pages.items()):
+        if not re.search(r"^SHADOW AMPS ESSENCE RATING", text, re.M):
+            continue
+        name, role = _story(pages.get(n - 1, ""))
+        page = n - 1 - PAGE_OFFSET
+        s, rows = statblock.sample(statblock.crb_statblock(text), rules, ID, name, role, page, f"{role}. CRB p.{page}.",
+                                   updated, samples)
+        samples.append(s)
+        report += rows
+    return samples, report
+
+
 def extract(md, ctx=None):
     spells, amps, gear, texts, report, ids = [], [], [], [], [], set()
-    for page, fam, names, text in spell_rows(md):
+    spell_list = spell_rows(md)
+    for page, fam, names, text in spell_list:
         for name in names:
             sid = "spell-" + slug(name)
             spells.append(f'  <item id="{sid}" kind="spell" category="{fam}" source="{ID}" page="{page}">'
@@ -369,6 +484,8 @@ def extract(md, ctx=None):
         if g["text"]:
             texts.append(f'  <text of="items" id="{gid}">{escape(g["text"])}</text>')
     report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
+    samples, sample_rows = sample_runners(md, [n for r in spell_list for n in r[2]])
+    report += sample_rows
 
     def data(kind, comment, entries):
         return ('<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -377,5 +494,5 @@ def extract(md, ctx=None):
     files = {"spells.xml": data("spells", "Spells.", spells),
              "amps.xml": data("amps", 'Prebuilt Shadow Amps and add-on mods (mod="true"); texts in custom/texts/crb.xml.', amps),
              "gear.xml": data("gear", "Plain equipment (not Amps).", gear)}
-    return Result(files=files, texts=data("texts", "PRIVATE: book text. Do not commit.", texts), report=report,
+    return Result(files=files, texts=data("texts", "PRIVATE: book text. Do not commit.", texts), samples=samples, report=report,
                   source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
