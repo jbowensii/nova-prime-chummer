@@ -37,7 +37,8 @@ let oidcNote = (() => {
   return OIDC_ERRORS[key] ?? OIDC_ERRORS.failed
 })()
 
-export function SignIn({ onSignedIn, note, oidc }: { onSignedIn: (u: User) => void; note?: ReactNode; oidc?: boolean }) {
+/** `over`: shown over a page whose session ended (the default when there is a `note`). */
+export function SignIn({ onSignedIn, note, oidc, over = !!note }: { onSignedIn: (u: User) => void; note?: ReactNode; oidc?: boolean; over?: boolean }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
   const [err, setErr] = useState(() => oidcNote), [busy, setBusy] = useState(false)
   useEffect(() => { oidcNote = '' }, []) // shown once
@@ -60,11 +61,11 @@ export function SignIn({ onSignedIn, note, oidc }: { onSignedIn: (u: User) => vo
       intro={note && <p className="banner" role="status">{note}</p>}
       after={<>
         {oidc && <div className="row oidc">
-          <a className="btn" href="./api/auth/oidc/start" {...note ? { target: '_blank', rel: 'noopener' } : {}}>Sign in with Authelia</a>
-          {note && <button type="button" className="btn quiet" onClick={() => void back()}>I’ve signed in with Authelia</button>}
+          <a className="btn" href="./api/auth/oidc/start" {...over ? { target: '_blank', rel: 'noopener' } : {}}>Sign in with Authelia</a>
+          {over && <button type="button" className="btn quiet" onClick={() => void back()}>I’ve signed in with Authelia</button>}
         </div>}
         <p className="muted">Forgot your password? Ask the admin to reset it, or use a <a href="#/setup/reset"
-          {...note ? { target: '_blank', rel: 'noopener' } : {}}>recovery code</a>{note ? ' (opens a new tab, so this page stays as it is)' : ''}.</p>
+          {...over ? { target: '_blank', rel: 'noopener' } : {}}>recovery code</a>{over ? ' (opens a new tab, so this page stays as it is)' : ''}.</p>
       </>}>
       <label>Username<input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none"
         spellCheck={false} required autoFocus /></label>

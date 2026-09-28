@@ -12,6 +12,7 @@ import { BookReview } from './Review'
 import { RulesScreen } from './Rules'
 import { Setup } from './Setup'
 import { Recover, SignIn } from './SignIn'
+import { RESTORED } from './Backup'
 import { DataScreen } from './tabs/Data'
 import { UsersScreen } from './Users'
 import './app.css'
@@ -106,6 +107,8 @@ export default function App() {
   // server: the signed-in account (null: sign in) and whether no account exists yet; browser storage: no accounts at all
   const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean } | null>(null)
   const [ended, setEnded] = useState(false)
+  // the reload after a restore (Backup.tsx): the sign-in page says why everyone was signed out, once
+  const [restored] = useState(() => { try { const r = sessionStorage.getItem(RESTORED); sessionStorage.removeItem(RESTORED); return !!r } catch { return false } })
 
   useEffect(() => {
     detectRepo().then(async r => {
@@ -128,7 +131,8 @@ export default function App() {
   if (!repo || !me) return <main className="lib"><p className="muted">Loading…</p></main>
   if (route[0] === 'setup' && route[1] === 'reset') return <Recover />
   if (repo.mode === 'server' && me.setup) return <Setup onDone={u => { location.hash = '#/'; setMe({ user: u, setup: false }) }} />
-  if (repo.mode === 'server' && !user) return <SignIn oidc={me.oidc} onSignedIn={u => setMe({ user: u, setup: false, oidc: me.oidc })} />
+  if (repo.mode === 'server' && !user) return <SignIn oidc={me.oidc} onSignedIn={u => setMe({ user: u, setup: false, oidc: me.oidc })} over={false}
+    note={restored ? 'The server was restored from a backup. Sign in with the accounts in that backup.' : undefined} />
 
   const back = (u: User) => {
     if (u.id !== user?.id) return location.reload() // saving stays held: the old account's changes are never sent
