@@ -8,13 +8,13 @@ import { ampCtx, ampRating } from '../../src/engine/amps'
 import { derive } from '../../src/engine/derive'
 import { price } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
-import { books, sample } from '../helpers'
+import { bookFile, books, sample } from '../helpers'
 import { describeBooks } from './_gate'
 
 type Printed = Record<string, { page: number; source?: string; essence: number; thresholds: Record<string, number>;
   amps: Record<string, number>; pools: { skill: string; spec: string | null; attr: string; dp: number }[] }>
-const printed: Printed = books ? JSON.parse(readFileSync('tests/fixtures/pregens-printed.json', 'utf8')) : {}
-const listed = books ? new Set([...readFileSync('docs/book-discrepancies.md', 'utf8')
+const printed: Printed = books ? JSON.parse(readFileSync(bookFile('pregens-printed.json'), 'utf8')) : {}
+const listed = books ? new Set([...readFileSync(bookFile('book-discrepancies.md'), 'utf8')
   .matchAll(/^\| ([a-z0-9-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`)) : new Set<string>()
 
 // wrapped in an outer describeBooks so the file still has a (skipped) suite when there's nothing to enumerate
