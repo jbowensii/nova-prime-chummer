@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 // Books → Core data against the e2e server's stub worker (its "zip" is JSON behind a zip header; the real one is exercised
-// in tests/server/datapack-python.test.ts). The core files are moved away on the server's own folder (e2e/serve.mjs says
+// in tests/server/datapack-python.test.ts). The core files are moved away on the server's own folder (playwright.config.ts sets
 // where) and the pack brings them back; the moved copy is put back if the test fails half-way.
 test('download a data pack, lose the core data, upload the pack from the setup screen, build a runner', async ({ page }, info) => {
-  const core = join(readFileSync(join(tmpdir(), 'ca2-e2e-dir'), 'utf8'), 'custom', 'imported', 'core'), away = `${core}-away`
+  const core = join(process.env.CA2_E2E_DIR!, 'custom', 'imported', 'core'), away = `${core}-away`
   await page.goto('/#/books')
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download data pack' }).click()])
   expect(download.suggestedFilename()).toMatch(/^chummer-anarchy2-datapack-\d{4}-\d{2}-\d{2}\.zip$/)

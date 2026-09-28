@@ -57,18 +57,26 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   expect([r.status, await r.json()]).toEqual([200, { files: ['skills.xml'] }])
   expect(readFileSync(join(core, 'skills.xml'), 'utf8')).toContain('from the pack')
   expect(existsSync(join(core, 'lifestyles.xml'))).toBe(false) // a partial pack: the core is still missing a table ...
-  expect(readFileSync(join(library, 'crb-1', 'core-rebuild.xml'), 'utf8')).toMatch(/<rebuild sha256="abc" version="[^"]+" pack="/)
+  expect(readFileSync(join(library, 'crb-1', 'core-rebuild.xml'), 'utf8')).toMatch(/<rebuild sha256="abc" pack="[^"]+" files="skills.xml"\/>/) // no version: the book itself wasn't tried
   // ... and a restart doesn't re-import the core rulebook over the pack
-  const log = join(dir, 'calls.log')
-  writeFileSync(log, '')
-  vi.stubEnv('STUB_LOG', log)
-  const again = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  await again.started
-  await new Promise(r => setTimeout(r, 300))
-  again.stopJobs()
-  vi.unstubAllEnvs()
-  expect(readFileSync(log, 'utf8')).toBe('')
+  const restart = async () => {
+    const log = join(dir, 'calls.log')
+    writeFileSync(log, '')
+    vi.stubEnv('STUB_LOG', log)
+    const again = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
+      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+    await again.started
+    await new Promise(r => setTimeout(r, 300))
+    again.stopJobs()
+    vi.unstubAllEnvs()
+    return readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))
+  }
+  expect(await restart()).toEqual([])
+  // once the pack's files are gone, the mark no longer holds: the core rulebook is re-imported
+  const saved = readFileSync(join(core, 'skills.xml'))
+  rmSync(join(core, 'skills.xml'))
+  expect(await restart()).toContain('remove crb-1')
+  writeFileSync(join(core, 'skills.xml'), saved)
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
   rmSync(join(library, 'crb-1'), { recursive: true })
 })
@@ -108,6 +116,8 @@ test('one pack at a time; not while a book imports; a job waits for the pack; no
   expect(slow.status).toBe(202)
   const busy = await upload(bytes)
   expect([busy.status, (await busy.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
+  const made = await fetch(`${base}/api/datapack`, { method: 'POST' }) // nor made: it could mix old and new tables
+  expect([made.status, (await made.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
   await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
   // a pack import is a counted write: a restore can't start under it
   const pending = upload(bytes)
@@ -115,6 +125,12 @@ test('one pack at a time; not while a book imports; a job waits for the pack; no
   const restore = await fetch(`${base}/api/restore/${'0'.repeat(32)}`, { method: 'POST' })
   expect(restore.status).toBe(409)
   expect((await pending).status).toBe(200)
+  // nor while a backup is being made (the stub's takes 300 ms)
+  const zipping = fetch(`${base}/api/backup`, { method: 'POST' })
+  await vi.waitFor(() => expect(readdirSync(backups).some(f => f.startsWith('download-'))).toBe(true))
+  const during = await upload(bytes)
+  expect([during.status, (await during.json()).error]).toEqual([409, 'a backup is being made; try again when it’s done'])
+  await zipping
 })
 
 test('no core data: the pack is refused with the reason', async () => {
@@ -124,6 +140,6 @@ test('no core data: the pack is refused with the reason', async () => {
   await new Promise<void>(ok => s.listen(0, ok))
   try {
     const r = await fetch(`http://127.0.0.1:${s.address().port}/api/datapack`, { method: 'POST' })
-    expect([r.status, (await r.json()).error]).toEqual([409, 'there is no core data to put in a pack: import the core rulebook first'])
+    expect([r.status, (await r.json()).error]).toEqual([409, 'there is no core data to put in a pack. Import the core rulebook first'])
   } finally { s.stopJobs(); s.close() }
 })

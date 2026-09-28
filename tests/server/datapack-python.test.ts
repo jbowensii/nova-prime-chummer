@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Data packs with the real `python -m importer` (skipped when no Python with the importer's requirements is found):
 // download the made-up core files as a pack, lose them, upload the pack, get them back.
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
@@ -48,5 +48,17 @@ describe.skipIf(!python)('with the real importer', () => {
     expect((await r.json()).error).toMatch(/can’t hold: core\/skilLs\.xml|isn’t a readable zip/)
     expect(files(core)).toEqual(files(FIXTURE))
     await vi.waitFor(() => expect(readdirSync(join(dir, 'library', '.backups'))).toEqual([]))
+  }, 60000)
+
+  test('a pack import killed mid-swap: the next start puts the moved-aside files back', async () => {
+    const other = mkdtempSync(join(tmpdir(), 'ca2-pack-kill-')), otherCore = join(other, 'custom', 'imported', 'core')
+    cpSync(FIXTURE, otherCore, { recursive: true })
+    mkdirSync(join(otherCore, '.restore-old-x'))
+    renameSync(join(otherCore, 'skills.xml'), join(otherCore, '.restore-old-x', 'skills.xml'))
+    writeFileSync(join(otherCore, 'skills.xml'), 'half swapped')
+    const s = createServer({ staticDir: 'public', charDir: join(other, 'chars'), customDir: join(other, 'custom'), libraryDir: join(other, 'library'), python })
+    await s.started
+    s.stopJobs()
+    expect(files(otherCore)).toEqual(files(FIXTURE))
   }, 60000)
 })

@@ -362,23 +362,33 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
    *  and implant grades were core data before and now come with their books). Tried once per CRB file and app version
    *  (library/<id>/core-rebuild.xml): a book that can't give the whole core isn't re-imported on every start; a new
    *  upload, a new version or the admin's Re-import tries again.
-   *  A data pack's import marks that CRB file done for good (pack=, any version: the core came from the pack), so a
-   *  restart never re-imports the book over the pack; a different CRB file (a new upload) still is. */
+   *  A data pack's import marks that CRB file (pack=, files= the pack's files, no version: the book wasn't tried; the core came from the
+   *  pack), so a restart doesn't re-import the book over the pack while those files are all there; once one is gone the
+   *  mark no longer counts and the usual rule applies. A different CRB file (a new upload) is re-imported regardless. */
   async function rebuildCore() {
-    const have = await Promise.all(CORE_FILES.map(n => stat(join(customDir, 'imported', 'core', `${n}.xml`)).then(() => true, () => false)))
-    if (have.every(Boolean)) return
+    const present = new Set(await readdir(join(customDir, 'imported', 'core')).catch(() => []))
+    if (CORE_FILES.every(n => present.has(`${n}.xml`))) return
     const books = await coreBooks()
     const crb = books.find(b => b.order === 0)
     if (!crb) return
     const marker = join(libraryDir, crb.id, 'core-rebuild.xml')
     const tried = rootTag(await readOr(marker), 'rebuild')
-    if (tried && attr(tried, 'sha256') === crb.sha && (attr(tried, 'version') === version || attr(tried, 'pack'))) return
+    const packed = !!attr(tried, 'pack') && (attr(tried, 'files') ?? '').split(' ').filter(Boolean).every(f => present.has(f))
+    if (tried && attr(tried, 'sha256') === crb.sha && (attr(tried, 'version') === version || (packed && present.size > 0))) return
     await writeAtomic(marker, `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
     for (const b of books.sort((x, y) => x.order - y.order)) {
       const dir = join(libraryDir, b.id)
       await setStatus(b.id, 'queued', 'Re-importing to build the core data')
       enqueue(b.id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(b.file ? ['--file', b.file] : [])]])
     }
+  }
+  /** A pack import killed mid-swap leaves the files it had moved aside in core/.restore-old-*: put them back before
+   *  anything reads the core (importer/datapack.py recover). */
+  async function recoverCore() {
+    const left = await readdir(join(customDir, 'imported', 'core')).catch(() => [])
+    if (!left.some(n => n.startsWith('.restore-'))) return
+    const r = await importer(['datapack', 'recover', '--custom', customDir], { timeout: 60000 })
+    if (r.code !== 0) console.error(`couldn’t recover custom/imported/core after an interrupted data pack: ${(await redact(r.err)).trim()}`)
   }
   /** The Library's books whose recipe builds or completes the core (CRB, CG, DHSA), with their order and file. */
   async function coreBooks() {
@@ -391,7 +401,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     return books
   }
-  const started = sweep().then(rebuildCore).catch(e => console.error(e.stack))
+  const started = sweep().then(recoverCore).then(rebuildCore).catch(e => console.error(e.stack))
   // zips left by a stop mid-download, mid-preview or mid-restore
   try {
     for (const f of readdirSync(backups, { withFileTypes: true }))
@@ -401,7 +411,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   // in library/.backups holds everything the old ones did)
   for (const d of [charDir, customDir, libraryDir]) {
     try {
-      for (const f of readdirSync(d)) if (/^\.restore-(old|new)-/.test(f)) rmSync(join(d, f), { recursive: true, force: true })
+      for (const f of readdirSync(d)) if (/^\.restore-(old|new|done)-/.test(f)) rmSync(join(d, f), { recursive: true, force: true })
     } catch { /* no folder yet */ }
   }
 
@@ -503,6 +513,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
    *  so no restore runs under it. -> { token } for sendZip('datapack'). */
   async function makePack(res, send) {
     if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    // a book's import rewrites the core files one by one: a pack made meanwhile could mix old and new tables
+    if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     packing = true
     const folder = join(backups, `pack-${randomBytes(12).toString('hex')}`)
     let r
@@ -531,6 +543,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
     if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
+    if (zipping) throw fail(409, 'a backup is being made; try again when it’s done') // it would copy the swap's folders
     packing = true
     const file = tempZip('pack')
     let size = 0
@@ -549,10 +562,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       const out = rootTag(r.out, 'result')
       if (r.code !== 0 || !out) throw Object.assign(fail(500, 'couldn’t load the data pack: ' + why), { say: true })
       // the core now comes from the pack: the start-up re-import leaves it alone (rebuildCore)
-      const crb = (await coreBooks()).find(b => b.order === 0)
-      if (crb) await writeAtomic(join(libraryDir, crb.id, 'core-rebuild.xml'),
-        `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" pack="${new Date().toISOString()}"/>\n`)
-      return send(res, 200, { files: (attr(out, 'files') ?? '').split(' ').filter(Boolean) })
+      const files = (attr(out, 'files') ?? '').split(' ').filter(Boolean)
+      try { // the pack is in: a failed mark is logged, not reported as a failed upload
+        const crb = (await coreBooks()).find(b => b.order === 0)
+        if (crb) await writeAtomic(join(libraryDir, crb.id, 'core-rebuild.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${
+          esc(crb.sha)}" pack="${new Date().toISOString()}" files="${esc(files.join(' '))}"/>\n`)
+      } catch (e) { console.error(`the data pack is loaded, but the start-up re-import mark wasn’t written: ${e.message}`) }
+      return send(res, 200, { files })
     } catch (e) {
       if (e.code === 413) res.setHeader('Connection', 'close')
       if (typeof e.code === 'number' && e.code !== 500) throw e

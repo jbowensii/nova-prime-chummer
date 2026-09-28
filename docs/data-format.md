@@ -280,9 +280,11 @@ missing table shows a banner.
 A server started without `imported/core/` whose Library holds the core
 rulebook re-imports it (then the Conversion Guide and DHSA).
 It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`).
-After a [data pack](#data-pack) is loaded, the marker records `pack=` and
-that CRB file is never re-imported at start-up again, whatever the version: the
-core came from the pack. A different CRB file (a new upload) is, and any
+After a [data pack](#data-pack) is loaded, the marker records `pack=` and the
+pack's files (`files=`); while all of those files are there, that CRB file isn't
+re-imported at start-up, whatever the version: the core came from the pack. Once
+one of them is gone the mark no longer counts and the usual rule applies. A
+different CRB file (a new upload) is re-imported regardless, and any
 import of the core rulebook (upload, **Re-import**) writes the core files over
 the pack's as usual.
 
@@ -402,11 +404,14 @@ core/<name>.xml   (each of the twelve core files present)
 `datapack import <zip> --custom <dir>` ("Upload data pack", 50 MB at most)
 first checks it all (`datapack check`): nothing but `datapack.xml` and
 `core/<core file>.xml`, no link, device, encrypted or oversized entry, a
-manifest that lists exactly the zip's files with matching sizes and hashes,
-and every file valid against its schema (`items.xsd` for weapons and armor)
-with the kind its name says. Then the pack's files replace those in
+manifest that lists exactly the zip's files with matching sizes and hashes
+(these catch damage, not tampering: anyone can recompute them), and every file
+UTF-8 with no DOCTYPE, valid against its schema (`items.xsd` for weapons and
+armor), with the kind its name says. Then the pack's files replace those in
 `custom/imported/core/` in one swap (all or none); core files the pack
-doesn't hold are kept.
+doesn't hold are kept. The files it replaces wait in `core/.restore-old-*`
+until the new ones are in; if the import is killed meanwhile, the next import,
+export or server start (`datapack recover`) puts them back.
 
 ## Backup zip
 
