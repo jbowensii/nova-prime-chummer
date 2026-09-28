@@ -207,7 +207,7 @@ never committed:
 
 | file | written by |
 |---|---|
-| `texts/dhsa.xml` | `python tools/dhsa_to_xml.py .extract/dhsa34.json public/data .extract/report.md "<CRB md>"` → `.extract/private/texts/dhsa.xml` |
+| `texts/dhsa.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (recipe `dhsa`) |
 | `texts/qref.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (one run per sheet; entries merged by id) |
 
 On tower04 they live in `/mnt/user/appdata/chummer-anarchy2/custom/texts/`.
