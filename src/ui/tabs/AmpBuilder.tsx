@@ -1,6 +1,6 @@
 // Build or change a Shadow Amp: type + effects -> rating, cost, Essence (CRB p.58-63).
 import { useState } from 'react'
-import { ampChangeCost, ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, vehicleStats } from '../../engine'
+import { ampChangeCost, ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
 import { fmt, signed } from '../bits'
@@ -86,7 +86,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
           const def = c.ampEffects.get(e.ref)
           return (
             <div className="fx" key={i}>
-              <span>{def?.name ?? e.ref} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}</span>
+              <span title={ruleHelp(c, e.ref)} className={ruleHelp(c, e.ref) ? 'has-help' : undefined}>{def?.name ?? e.ref} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}</span>
               <span className="row">{paramInput(e, i)}{rccValue(e, i)}<button className="btn small quiet" onClick={() => set({ effects: amp.effects.filter((_, j) => j !== i) })} aria-label={`Remove ${def?.name}`}>Remove</button></span>
               <span className="r">{signed(effectRating(c, e)).replace('¥', '')}</span>
             </div>

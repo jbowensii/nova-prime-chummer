@@ -10,7 +10,9 @@ const DATA = 'public/data';
 const SCHEMA = join(DATA, 'schema');
 const schemaFor = kind => (['gear', 'weapons', 'armor', 'spells', 'complexforms'].includes(kind) ? 'items' : kind);
 // private book text (not in the repo): validated too when present locally
-for (const p of ['public/custom/texts.xml', '.extract/private/texts.xml']) if (existsSync(p)) process.argv.push('--texts=' + p);
+for (const dir of ['public/custom/texts', '.extract/private/texts'])
+  if (existsSync(dir)) for (const f of readdirSync(dir).filter(f => f.endsWith('.xml'))) process.argv.push('--texts=' + join(dir, f));
+if (existsSync('public/custom/texts.xml')) process.argv.push('--texts=public/custom/texts.xml');
 const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
 
 // base files, then overlays listed in each overlay dir's index.xml
@@ -59,6 +61,10 @@ for (const { file, kind, doc } of docs) {
   for (const el of doc.documentElement.children) {
     const a = n => el.getAttribute(n);
     const id = a('id');
+    // every citation names a source listed in sources.xml (specs may cite their own)
+    for (const x of [el, ...el.querySelectorAll('spec[source]')])
+      if (x.getAttribute('source') && kind !== 'sources') need(file, has('sources', x.getAttribute('source')), `source="${x.getAttribute('source')}" on ${x.getAttribute('id')}`);
+    if (kind === 'rules') for (const e of (a('effects') ?? '').split(/\s+/).filter(Boolean)) need(file, has('ampeffects', e), `effects "${e}" on ${id}`);
     if (kind === 'amptypes' && a('requires')) need(file, has('ampeffects', a('requires')), `requires="${a('requires')}" on ${id}`);
     if (kind === 'ampeffects') {
       for (const n of ['requires', 'excludes']) if (a(n)) need(file, has('ampeffects', a(n)), `${n}="${a(n)}" on ${id}`);
@@ -73,7 +79,7 @@ for (const { file, kind, doc } of docs) {
         need(file, has('ampeffects', ref), `effect ref="${ref}" on ${id}`);
         if (param == null) continue; // open pick: the player chooses in the Amp Builder
         if (ref === 'rr-skill') need(file, has('skills', param), `rr-skill param="${param}" on ${id}`);
-        if (ref === 'rr-spec') need(file, specIds.has(param), `rr-spec param="${param}" on ${id}`);
+        if (ref === 'rr-spec') need(file, specIds.has(param) || param.startsWith('custom:'), `rr-spec param="${param}" on ${id}`);
         if (ref === 'rr-attr') need(file, has('attributes', param), `rr-attr param="${param}" on ${id}`);
       }
     }
