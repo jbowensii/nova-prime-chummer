@@ -72,11 +72,16 @@ export function Library({ c }: { c: Catalog }) {
     try {
       const have = new Set((list ?? []).map(s => s.ch.id))
       let n = 0
+      const bad: string[] = []
       for (const url of await sampleUrls()) {
-        const r = readCharacterFile(await (await fetch(url)).text())
-        if (r.ok && !have.has(r.character.id) && await store({ ...r.character, lastExportedAt: r.character.updatedAt })) n++
+        const file = url.split('/').pop()
+        const res = await fetch(url).catch(() => null)
+        if (!res?.ok) { bad.push(`${file}: couldn’t be fetched.`); continue }
+        const r = readCharacterFile(await res.text())
+        if (!r.ok) { bad.push(`${file}: ${r.reason}`); continue }
+        if (!have.has(r.character.id) && await store({ ...r.character, lastExportedAt: r.character.updatedAt })) n++
       }
-      setMsg(n ? `Added ${n} sample characters.` : 'The sample characters are already in your library.')
+      setMsg([n ? `Added ${n} sample characters.` : bad.length ? '' : 'The sample characters are already in your library.', ...bad].filter(Boolean).join(' '))
       void refresh()
     } catch (e) {
       setMsg(`Couldn’t load the samples: ${e}`)

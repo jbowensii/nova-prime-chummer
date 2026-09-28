@@ -25,7 +25,6 @@ import os
 import re
 import xml.etree.ElementTree as ET
 from collections import Counter
-from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes.dhsa import DHSA_SPECS, Mapper
 
@@ -481,35 +480,41 @@ def to_character(block, rules, sid, name, role, origin, background, updated):
 CHAR_NS = "urn:chummer-anarchy2:character:1"
 
 
+def _esc(s):
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
 def _el(name, attrs, children=""):
-    a = "".join(f" {k}={quoteattr(str(v).lower() if isinstance(v, bool) else str(v))}" for k, v in attrs.items() if v not in (None, ""))
+    a = "".join(f' {k}="{_esc(str(v).lower() if isinstance(v, bool) else v)}"' for k, v in attrs.items() if v not in (None, ""))
     return f"<{name}{a}>{children}</{name}>" if children else f"<{name}{a}/>"
 
 
 def _text(name, s):
-    return f"<{name}>{escape(s)}</{name}>" if s else ""
+    return f"<{name}>{_esc(s)}</{name}>" if s else ""
 
 
 def character_xml(ch):
-    """The same XML characterToXml writes (formatVersion 1), for a character without career or snapshots."""
+    """Byte for byte what characterToXml writes (formatVersion 1), for a character without career or snapshots
+    (tests/engine/pregen-sample.test.ts holds both writers to the same file)."""
     b = ch["build"]
     fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note")})
     amp = lambda a: _el("amp", {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},
                         _text("narrative", a.get("narrative")) + "".join(map(fx, a["effects"])))
     item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price")})
-    body = [_text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
-            *(f"<keyword>{escape(k)}</keyword>" for k in ch["narrative"]["keywords"]),
-            *(f"<disposition>{escape(k)}</disposition>" for k in ch["narrative"]["dispositions"]),
-            *(f"<cue>{escape(k)}</cue>" for k in ch["narrative"]["cues"]),
+    body = [_text("portrait", ch["identity"].get("portrait")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
+            *(f"<keyword>{_esc(k)}</keyword>" for k in ch["narrative"]["keywords"]),
+            *(f"<disposition>{_esc(k)}</disposition>" for k in ch["narrative"]["dispositions"]),
+            *(f"<cue>{_esc(k)}</cue>" for k in ch["narrative"]["cues"]),
             _el("build", {"mainArmor": b.get("mainArmor"), "altArmor": b.get("altArmor")},
                 _el("attributes", {a: b["attributes"][a] for a in ATTRS})
-                + "".join(_el("skill", {"id": s["id"], "rating": s["rating"]}, "".join(f"<spec>{escape(x)}</spec>" for x in s["specs"])) for s in b["skills"])
-                + "".join(f"<knowledge>{escape(k)}</knowledge>" for k in b["knowledge"])
-                + "".join(map(amp, b["amps"])) + "".join(map(item, b["items"])))]
+                + "".join(_el("skill", {"id": s["id"], "rating": s["rating"]}, "".join(f"<spec>{_esc(x)}</spec>" for x in s["specs"])) for s in b["skills"])
+                + "".join(f"<knowledge>{_esc(k)}</knowledge>" for k in b["knowledge"])
+                + "".join(map(amp, b["amps"])) + "".join(map(item, b["items"]))),
+            ""]  # no career, no overrides
     idn = ch["identity"]
     root = {"formatVersion": ch["formatVersion"], "id": ch["id"], "streetName": idn.get("streetName"), "name": idn.get("name"),
             "metatype": idn["metatype"], "level": ch["level"], "package": ch["package"], "origin": ch.get("origin"),
             "updatedAt": ch["updatedAt"]}
-    a = "".join(f" {k}={quoteattr(str(v))}" for k, v in root.items() if v not in (None, ""))
+    a = "".join(f' {k}="{_esc(v)}"' for k, v in root.items() if v not in (None, ""))
     return (f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="{CHAR_NS}"{a}>\n  '
-            + "\n  ".join(x for x in body if x) + "\n</ca2:character>\n")
+            + "\n  ".join(body) + "\n</ca2:character>\n")
