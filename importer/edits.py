@@ -19,6 +19,7 @@ ATTRS = {"amp": {"type", "printedRating", "vehicle", "mod"}, "item": {"kind", "s
 REQUIRED = {"amp": "type", "item": "kind", "rule": "sheet"}
 CHILDREN = {"amp": re.compile(r"name (item )?(effect )*narrative "), "item": re.compile("name text "), "rule": re.compile("title text ")}
 ITEM_KINDS = ("gear", "weapon", "armor", "spell", "complex-form")
+MAX_BODY = 1024 * 1024  # one entry and its description; the server caps the request body too
 
 
 class EditError(ValueError):
@@ -86,10 +87,16 @@ def _shape(entry):
     if not CHILDREN[tag].fullmatch("".join(c.tag + " " for c in entry)):
         want = {"amp": "<name>, <item>?, <effect>…, <narrative>", "item": "<name>, <text>", "rule": "<title>, <text>"}[tag]
         notes.append(f"its elements must be {want} in that order")
+    if (entry.text or "").strip() or any((c.tail or "").strip() for c in entry):
+        notes.append(f"text outside the elements of <{tag}>")
     for c in entry:
-        if c.tag in ("name", "narrative", "text", "title") and len(c):
-            notes.append(f"<{c.tag}> holds only text")
-        elif c.tag == "item":
+        if c.tag in ("name", "narrative", "text", "title"):
+            notes += [f"<{c.tag}> holds only text"] if len(c) else []
+            notes += [f"<{c.tag}> takes no attributes"] if c.attrib else []
+            continue
+        if c.tag in ("item", "effect") and (len(c) or (c.text or "").strip()):
+            notes.append(f"<{c.tag}> holds no elements or text")
+        if c.tag == "item":
             k = c.attrib
             notes += [f'unknown attribute "{x}" on <item>' for x in k if x not in ("kind", "specialist", "armor", "dv", "ranges")]
             if k.get("kind") not in ("gear", "weapon", "armor"):
@@ -122,8 +129,13 @@ def parse_edit(kind, id, body):
     """(entry, description or None) from `body`: one entry, or <edit> holding one entry and an optional <description>."""
     if kind not in TAG:
         raise EditError(f'unknown kind "{kind}" (amps, items or rules)')
+    body = body.encode("utf8") if isinstance(body, str) else body
+    if len(body) > MAX_BODY:
+        raise EditError(f"the edit is too large (over {MAX_BODY // 1024} KB); shorten the description")
+    if b"<!DOCTYPE" in body.upper():
+        raise EditError("the edit may not contain a DOCTYPE")
     try:
-        root = ET.fromstring(body.encode("utf8") if isinstance(body, str) else body)
+        root = ET.fromstring(body)
     except ET.ParseError as e:
         raise EditError(f"the entry isn’t well-formed XML: {e}") from None
     kids = list(root) if root.tag == "edit" else [root]
@@ -133,7 +145,9 @@ def parse_edit(kind, id, body):
         raise EditError(f"an edit of {kind} needs one <{TAG[kind]}> entry and at most one <description>")
     if entries[0].get("id") != id:
         raise EditError(f'the entry’s id "{entries[0].get("id")}" isn’t "{id}"')
-    text = desc[0].text if desc and not len(desc[0]) else None
+    if desc and (len(desc[0]) or desc[0].attrib):
+        raise EditError("<description> holds only text")
+    text = desc[0].text if desc else None
     return entries[0], (text if text and text.strip() else None)
 
 

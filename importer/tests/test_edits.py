@@ -83,12 +83,31 @@ class EditsTest(unittest.TestCase):
                   "<name>Nano Tape</name><text/></item>", 'unknown spell category "loud"'),
                  ("rules", "test.gadget-basics", '<rule id="test.gadget-basics" sheet="test" effects="nope" source="TEST" page="11">'
                   "<title>Risk</title><text/></rule>", 'unknown effect "nope"'),
-                 ("amps", "other", AMP, "id")]
+                 ("amps", "other", AMP, "id"),
+                 ("amps", "test.keen-eye", AMP.replace("<name>", "junk<name>"), "text outside"),
+                 ("amps", "test.keen-eye", AMP.replace("</name>", "</name>junk"), "text outside"),
+                 ("amps", "test.keen-eye", AMP.replace("<name>", '<name x="1">'), "<name> takes no attributes"),
+                 ("amps", "test.keen-eye", AMP.replace('param="perception.physical"/>', 'param="perception.physical"><x/></effect>'),
+                  "<effect> holds no elements"),
+                 ("amps", "test.keen-eye", AMP.replace("<narrative>", '<item kind="gear"><x/></item><narrative>'), "<item> holds no elements"),
+                 ("amps", "test.keen-eye", f"<edit>{AMP}<description>a<b/></description></edit>", "<description> holds only text"),
+                 ("amps", "test.keen-eye", '<!DOCTYPE amp [<!ENTITY x "y">]>' + AMP, "DOCTYPE"),
+                 ("amps", "test.keen-eye", AMP.replace("<narrative>", "<narrative>" + "x" * edits.MAX_BODY), "too large")]
         for kind, i, body, reason in cases:
             with self.subTest(reason=reason):
                 with self.assertRaisesRegex(edits.EditError, reason):
                     edits.set_entry(d, kind, i, body)
         self.assertFalse(os.path.exists(os.path.join(d, "edits", "edits.xml")))
+
+    def test_written_file_passes_validate_data(self):
+        d = custom()
+        edits.add_source(d, "TABLE", "Our table")
+        edits.set_entry(d, "amps", "test.keen-eye", f"<edit>{AMP}<description>Sharp.</description></edit>")
+        edits.set_entry(d, "items", "table.charm", '<item id="table.charm" kind="gear" source="TABLE" page="1"><name>Charm</name><text/></item>')
+        edits.set_entry(d, "rules", "test.gadget-basics", '<rule id="test.gadget-basics" sheet="test" effects="rr-spec" source="TEST" page="11">'
+                        "<title>Risk</title><text/></rule>")
+        r = node("tools/validate-data.mjs", d)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_house_rule_ids_are_edited_in_the_house_rules(self):
         d = custom()
