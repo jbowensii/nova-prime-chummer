@@ -18,7 +18,7 @@ export function Stepper({ value, min, max, onChange, label }: { value: number; m
 export const NonCanon = ({ source }: { source?: string }) =>
   <span className="noncanon" title={`Published, not canon${source ? ` (${source})` : ''}`}>Non-canon</span>
 
-export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode }
+export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string }
 
 export function Picker({ items, onPick, placeholder = 'Search', groups }: { items: PickItem[]; onPick: (id: string) => void; placeholder?: string; groups?: string[] }) {
   const [q, setQ] = useState('')
@@ -26,7 +26,7 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
     return items.filter(i => (!group || i.group === group) &&
-      (!t || i.name.toLowerCase().includes(t) || i.text?.toLowerCase().includes(t) || i.meta?.toLowerCase().includes(t))).slice(0, 300)
+      (!t || i.name.toLowerCase().includes(t) || i.text?.toLowerCase().includes(t) || i.meta?.toLowerCase().includes(t) || i.search?.toLowerCase().includes(t))).slice(0, 300)
   }, [items, q, group])
   return (
     <div className="picker">

@@ -113,7 +113,7 @@ export function GearTab() {
           groups={[...new Set([...c.items.values()].filter(i => i.kind === adding).map(i => i.category ?? ''))].filter(Boolean)}
           items={[...c.items.values()].filter(i => i.kind === adding).map(i => ({
             id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`].filter(Boolean).join(', '),
-            label: <SourceLabel c={c} source={i.source} page={i.page} id={i.id} />,
+            label: <SourceLabel c={c} source={i.source} page={i.page} id={i.id} />, search: `${i.source} ${c.sources.get(i.source)?.name ?? ''} p.${i.page}`,
             text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
           }))} />}
       </Modal>
