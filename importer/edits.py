@@ -19,6 +19,7 @@ ATTRS = {"amp": {"type", "printedRating", "vehicle", "mod"}, "item": {"kind", "s
 REQUIRED = {"amp": "type", "item": "kind", "rule": "sheet"}
 CHILDREN = {"amp": re.compile(r"name (item )?(effect )*narrative "), "item": re.compile("name text "), "rule": re.compile("title text ")}
 ITEM_KINDS = ("gear", "weapon", "armor", "spell", "complex-form")
+USERNAME = re.compile(r"[a-z0-9][a-z0-9._\-]{1,31}")  # server/auth.mjs USERNAME
 MAX_BODY = 1024 * 1024  # one entry and its description; the server caps the request body too
 
 
@@ -167,11 +168,15 @@ def _entries(custom_dir):
     return [] if root is None else list(root)
 
 
-def set_entry(custom_dir, kind, id, body):
+def set_entry(custom_dir, kind, id, body, by=None):
     """Validate one edited or new entry and write it into custom/edits/ (replacing the same id).
     An id the catalog doesn't have is a new entry: its source must be a house-rule source and its id
-    `<source lower>.<slug>`. Without a description, any edited description for the id is dropped."""
+    `<source lower>.<slug>`. Without a description, any edited description for the id is dropped.
+    `by`: the account that saved it (by="<username>" on the entry; the server passes it, never the client)."""
+    if by is not None and not USERNAME.fullmatch(by):
+        raise EditError(f'"{by}" isn’t a username')
     entry, desc = parse_edit(kind, id, body)
+    entry.attrib.pop("by", None)  # only the server says who saved it
     notes = _shape(entry)
     if not notes:
         src = entry.get("source")
@@ -185,6 +190,8 @@ def set_entry(custom_dir, kind, id, body):
         notes += _refs(entry)
     if notes:
         raise EditError("; ".join(notes))
+    if by:
+        entry.set("by", by)
     entries = _entries(custom_dir)
     at = next((i for i, e in enumerate(entries) if e.tag == entry.tag and e.get("id") == id), None)
     if at is None:

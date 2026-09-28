@@ -1,17 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Schema for kind="edits" (custom/edits/edits.xml): catalog entries the user edited or added in the app,
-     full entries in the data format. Each replaces the loaded entry with the same id. See docs/data-format.md. -->
+     full entries in the data format, each with by="<username>" (who saved it). Each replaces the loaded entry with the same id. See docs/data-format.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:ca2="urn:chummer-anarchy2:data:1"
            targetNamespace="urn:chummer-anarchy2:data:1"
            elementFormDefault="unqualified">
   <xs:include schemaLocation="common.xsd"/>
+  <!-- by: the account that last saved the entry (its username; the server sets it) -->
+  <xs:attributeGroup name="by">
+    <xs:attribute name="by"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:pattern value="[a-z0-9][a-z0-9._\-]{1,31}"/></xs:restriction></xs:simpleType></xs:attribute>
+  </xs:attributeGroup>
   <xs:element name="data">
     <xs:complexType>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="amp" type="ca2:Amp"/>
-        <xs:element name="item" type="ca2:Item"/>
-        <xs:element name="rule" type="ca2:Rule"/>
+        <xs:element name="amp"><xs:complexType><xs:complexContent><xs:extension base="ca2:Amp">
+          <xs:attributeGroup ref="ca2:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="item"><xs:complexType><xs:complexContent><xs:extension base="ca2:Item">
+          <xs:attributeGroup ref="ca2:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="rule"><xs:complexType><xs:complexContent><xs:extension base="ca2:Rule">
+          <xs:attributeGroup ref="ca2:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
       </xs:choice>
       <xs:attribute name="kind" use="required">
         <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="edits"/></xs:restriction></xs:simpleType>
