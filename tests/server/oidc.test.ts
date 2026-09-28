@@ -37,7 +37,7 @@ async function boot(opts: Record<string, unknown> = {}, server: Record<string, u
   mkdirSync(join(lib, '.config'), { recursive: true })
   writeFileSync(join(lib, '.config', 'users.xml'), await usersFile(ACCOUNTS))
   const srv: Srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: lib,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], oidc: { timeout: 500, jwksGap: 300, starts: 100000, ...opts }, ...server })
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], oidc: { timeout: 500, jwksGap: 300, ...opts }, ...server })
   await new Promise<void>(ok => srv.listen(0, '127.0.0.1', ok))
   const base = `http://127.0.0.1:${srv.address().port}`, origin = (server.publicUrl as string) ?? base
   const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: 'admin', password: ADMIN_PW }),
@@ -242,6 +242,19 @@ describe('with a fake issuer', () => {
     expect(s.account('kai').oidcSub).toBe('')
   })
 
+  test('N3: a sub that isn’t printable ASCII (or too long) is never stored; the sign-in is refused', async () => {
+    const keep = s.f.user
+    try {
+      for (const sub of ['bad\u0001sub', 'with space', 'x'.repeat(256), 'caf\u00e9']) {
+        s.f.user = { sub, preferred_username: 'kai' }
+        const r = await flow(s)
+        expect(r.location, JSON.stringify(sub)).toBe('/?signin=no-account')
+        expect(session(r.cookies)).toBe('')
+        expect(s.account('kai').oidcSub).toBe('')
+      }
+    } finally { s.f.user = keep }
+  })
+
   test('M2: an account is linked to its Authelia subject; another subject with its name or email is refused', async () => {
     const keep = s.f.user
     try {
@@ -359,21 +372,6 @@ test('a failed discovery is remembered: an issuer that is down isn’t asked on 
     const before = s.f.hits['/.well-known/openid-configuration'] ?? 0
     for (let i = 0; i < 5; i++) expect((await flow(s)).location).toBe('/?signin=failed')
     expect(s.f.hits['/.well-known/openid-configuration'] - before).toBe(1)
-  } finally { s.close() }
-})
-
-test('starts are limited per network', async () => {
-  const s = await boot({ starts: 5 })
-  try {
-    await on(s)
-    const pending = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })
-    const bind = pending.headers.getSetCookie().find(c => c.startsWith('ca2_oidc='))!.split(';')[0]
-    const back = (await fetch(pending.headers.get('location')!, { redirect: 'manual' })).headers.get('location')!
-    const more: (string | null)[] = []
-    for (let i = 0; i < 6; i++) more.push((await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })).headers.get('location'))
-    expect(more.slice(0, 4).every(l => l?.startsWith(s.f.base))).toBe(true)
-    expect(more.slice(4)).toEqual(['/?signin=busy', '/?signin=busy'])
-    expect((await fetch(back, { redirect: 'manual', headers: { Cookie: bind } })).headers.get('location')).toBe('/') // unaffected
   } finally { s.close() }
 })
 

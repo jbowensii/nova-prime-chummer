@@ -3,7 +3,7 @@
 //
 //   GET  /api/auth/oidc/start       public: -> 302 to the issuer. State, nonce and PKCE verifier live only in a 10-minute
 //                                   cookie, sealed with AES-256-GCM (library/.config/oidc-key.xml): nothing is kept here
-//                                   per start, so a flood of starts can't push anyone's sign-in out; limited per network
+//                                   per start, so a flood of starts can't push anyone's sign-in out (and needs no limit)
 //   GET  /api/auth/oidc/callback    public: code + state -> the ID token checked, the account matched -> 302 to / with a
 //                                   session, or to /?signin=<no-account|expired|denied|failed|off> (no details in the URL)
 //   GET  /api/auth-settings         admin: -> { issuer, clientId, tokenAuth, enabled, secretSet, redirectUri } (never the secret)
@@ -18,14 +18,11 @@ import { createCipheriv, createDecipheriv, createHash, createPublicKey, randomBy
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { chmod, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { netKey } from './auth.mjs'
 import { attr, esc, rootTag, writeAtomic } from './books.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
 const MINUTE = 60e3
 const STATE_TTL = 10 * MINUTE
-// sign-in starts per client network (IPv4 address or IPv6 /64) in a window
-const STARTS = 30, START_WINDOW = 10 * MINUTE
 const FAIL_TTL = MINUTE // a failed discovery is remembered this long: an issuer that's down isn't asked on every start
 const MAX_USED = 10000 // nonces already used (single use), kept until their cookie would have expired
 const AAD = Buffer.from('ca2-oidc-state-1')
@@ -83,16 +80,15 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
 }
 
 /** `auth`: server/auth.mjs's authApi (json(), signInExternal(), unlinkAll()). Options for tests: fetch timeout, answer size cap,
- *  the shortest gap between two key-set fetches for an unknown kid, how long a failed discovery is remembered, starts per
- *  network, whether plain http to this machine is allowed. */
+ *  the shortest gap between two key-set fetches for an unknown kid, how long a failed discovery is remembered, whether plain
+ *  http to this machine is allowed. */
 export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE, failTtl = FAIL_TTL,
-  starts: startLimit = STARTS, insecure = insecureAllowed() }) {
+  insecure = insecureAllowed() }) {
   const config = join(libraryDir, '.config')
   const settingsPath = join(config, 'auth.xml'), secretPath = join(config, 'auth-secret.xml'), keyPath = join(config, 'oidc-key.xml')
   const discovered = new Map() // issuer -> { doc, at } or { error, at }
   const keySets = new Map() // jwks_uri -> { keys, at }
   const used = new Map() // nonce -> when its cookie expires: a state is taken once, oldest first
-  const startsBy = new Map() // netKey(ip) -> { n, since }
   const opts = what => ({ timeout, max: maxBytes, what, insecure })
   const check = (u, what) => checkUrl(u, what, insecure)
 
@@ -298,22 +294,9 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
     `${cookieName(ctx)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
   const go = (res, where) => { res.writeHead(302, { Location: where, 'Cache-Control': 'no-store' }); res.end() }
 
-  /** Too many starts from this client's network lately? (in memory; pruned when big) */
-  function tooMany(ip) {
-    const now = Date.now(), k = netKey(ip), e = startsBy.get(k)
-    if (startsBy.size > 10000) for (const [x, v] of startsBy) if (now - v.since >= START_WINDOW) startsBy.delete(x)
-    const n = e && now - e.since < START_WINDOW ? { n: e.n + 1, since: e.since } : { n: 1, since: now }
-    startsBy.set(k, n)
-    return n.n > startLimit
-  }
-
   async function start(req, res) {
     const ctx = req.ctx, s = settings()
     if (!s.on) return go(res, '/?signin=off')
-    if (tooMany(ctx.ip)) {
-      log.log(`Authelia sign-in starts paused for ${netKey(ctx.ip)}: too many`)
-      return go(res, '/?signin=busy')
-    }
     let d
     try {
       if (!ctx.origin) throw refuse('failed', 'the request has no usable Host')

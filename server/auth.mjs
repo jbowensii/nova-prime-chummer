@@ -697,7 +697,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   /** A sign-in through Authelia (server/oidc.mjs), its claims verified: `username` (preferred_username), else `email`, names
    *  an enabled account whose method is authelia -> a session and a known device, like a password sign-in; else null. */
   async function signInExternal(res, ctx, { iss, sub, username, email, emailVerified }) {
-    if (typeof iss !== 'string' || typeof sub !== 'string' || !iss || !sub || iss.length > 300 || sub.length > 255) return null
+    // both go into users.xml: printable ASCII only (Authelia's sub is a UUID), never a control character
+    if (!/^[\x21-\x7e]{1,300}$/.test(iss) || !/^[\x21-\x7e]{1,255}$/.test(sub)) return null
     // an account linked to this Authelia subject is it, whatever the name says now; else a first sign-in names it by
     // preferred_username only, or by a verified email when there is no username. Only ASCII is compared: toLowerCase()
     // folds some other letters into ASCII (U+212A KELVIN SIGN -> k)
