@@ -1,6 +1,6 @@
 # CRB recipe: layout survey
 
-Survey of the owner's *Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8* PDF as the converter prints it (v4 for 9a; v5 from 9b).
+Survey of the owner's *Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8* PDF as the converter prints it (v4 for 9a; v5 from 9b; v6 from 9c).
 Page ranges and layout only, no book text. Target list proceeds without owner sign-off (controller
 ruling); the parity oracle is the acceptance target and the owner can adjust the list later.
 
@@ -40,8 +40,11 @@ ruling); the parity oracle is the acceptance target and the owner can adjust the
    (p.235-236, p.240) and the running header on p.238 come out as pipe tables with letter-spaced
    bold cells ("**T y p i c a l**"). The recipe only reads boxes it recognises by title, so these are
    treated as prose and ignored. p.145 in particular is prose, not a table.
-3. **Letter-spaced bold** (pregen stat pages, art captions): "E SS E N C E", "W I LL P O W E R".
-   Matters for the pregens (Task 9c), not spells.
+3. **Letter-spaced text** (pregen stat pages, art captions): "E SS E N C E", "W I LL P O W E R", keywords and cues
+   one letter a word. The stat pages' lines are set with a slight tilt, so each letter measured a few hundredths of a
+   point apart in size and pdfplumber split every letter off. Converter v6 treats such size noise on tilted lines as
+   one size (other books convert byte-identical, except a rotated name in the pregen booklet). The small caps still
+   come out in mixed case ("grumPy OLd mAn"); the recipe lower-cases them.
 
 ## Target chapters
 
@@ -91,3 +94,19 @@ drone variants, the deck Attack/Firewall and vehicle Flying add-ons). Pages move
 the two autonomous medkits are Drone Amps in v1.8, 6 entries' effects and 4 items' descriptors differ with a cause. The ids and
 causes are listed in `importer/tests/test_crb.py`. v1.8 also prints 48 Amps the oracle lacks (contacts,
 control rigs, eyes and ears, bone lacing, base vehicles, weapons, drugs, drones).
+
+## Sample runners (9c)
+
+- **Pregens** pp.88-111: story page (even; name in small caps, role in bold on one or two lines), stat page (odd)
+  read by `statblock.crb_statblock`: attribute labels stacked with the values detached (the first two values sit on
+  the AGILITY and STRENGTH lines; order EDGE, CHA, LOG, WIL, AGI, STR), skill rows plain or as 4-cell pipe rows,
+  "LOG/AGI 9/11" for a spec with two attributes, "KNOWLEDGE SKILLS", amps "**Name (type)** [Essence] Rating" with
+  one effect a line, weapons and spells in one list ("… Weapon" / "… Spell"), equipment and threshold rows on shared
+  lines, small-caps keywords, dispositions and cues (their line breaks don't always follow the items: a wrapped
+  disposition comes out as two, and cues are split at sentence ends).
+- **Lightning** p.85: the CHARACTER CREATION EXAMPLE box, prose; the GAME CONCEPTS margin tab is stripped.
+- Parity with the 13 hand-encoded runners: derive() gives the same attributes, pools, thresholds and Essence for all
+  13; every printed amp rating equals the engine's (Hercules' and Echo's Well-Stocked Closet included: the Armor 1
+  line stays text, so the rating is the printed 2 and the armor point sits on the Clothes item); every printed pool,
+  threshold and Essence the oracle lists is reproduced. Two printed pools roll with an attribute the rules don't
+  give that pool (status "attribute", not tested): Casper's Network (medical) WIL, Mictlan's Stealth (lockpicking) LOG.

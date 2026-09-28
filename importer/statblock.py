@@ -1,15 +1,17 @@
 """Runner stat blocks in the converter's Markdown -> sample characters, plus every number the block prints.
 
-parse_statblock(page) reads one stat page: section anchors (KEYWORDS, SKILLS, WEAPONS, ARMOR, WOUNDS,
-DISPOSITIONS, CUES, SPELLS, COMPLEX FORMS, SHADOW AMPS, EQUIPMENT), bold skill rows "Name R ATT DP [RR]"
-(R "-" = unrated) with "(Spec +2) ATT DP [RR]" rows under them ("+2" = an owned specialization; without it,
-a pool of the skill with another attribute or an RR condition), bold weapon, armor and amp names.
+parse_statblock(page) reads one stat page of the pregen booklet: section anchors (KEYWORDS, SKILLS, WEAPONS,
+ARMOR, WOUNDS, DISPOSITIONS, CUES, SPELLS, COMPLEX FORMS, SHADOW AMPS, EQUIPMENT), bold skill rows
+"Name R ATT DP [RR]" (R "-" = unrated) with "(Spec +2) ATT DP [RR]" rows under them ("+2" = an owned
+specialization; without it, a pool of the skill with another attribute or an RR condition), bold weapon, armor
+and amp names. crb_statblock(page) reads the core rulebook's layout into the same shape, plus the printed
+attributes and knowledge skills.
 
 to_character(block, rules, ...) builds the runner (the .ca2.json shape; character_xml() writes it as our
 character XML) and the report rows. Rules, applied the same way to every block:
-  - Attributes: no attribute row is printed, so each is the most common value implied by the printed
-    pools (DP - rating, -2 for a specialization), the unarmed DV (STR) and the bare "No armor" and "Mental"
-    rows (STR, WIL); on a tie the armor row wins.
+  - Attributes: the printed row (the core rulebook); where none is printed (the booklet), each is the most
+    common value implied by the printed pools (DP - rating, -2 for a specialization), the unarmed DV (STR) and
+    the bare "No armor" and "Mental" rows (STR, WIL); on a tie the armor row wins.
   - Amp effects come from the effect lines (DHSA's Mapper plus the booklet's shorthands); an effect the
     amp type can't take is dropped. Then the computed rating meets the printed one:
       printed higher: unmapped lines become narrative effects (+1 each), as many as the gap;
@@ -23,6 +25,7 @@ character XML) and the report rows. Rules, applied the same way to every block:
 """
 import os
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 from collections import Counter
 
@@ -48,15 +51,18 @@ AMP_TYPES = {"quality": "quality", "awakened": "awakened", "adept power": "adept
 VEHICLE = re.compile(r"vehicle|drone", re.I)
 # weapon type as printed -> shipped weapon type (weapons.xml ids)
 WEAPON_ALIASES = {"smg": "submachine-gun", "hand taser": "taser", "stun gloves": "advanced-close-quarter",
-                  "mounted assault rifles": "assault-rifle"}
+                  "mounted assault rifles": "assault-rifle", "blades": "long-weapon", "club": "long-weapon", "knife": "short-weapon"}
 # spec names the booklet uses for a shipped specialization (DHSA's aliases also apply)
 SPEC_NAMES = {("engineering", "explosives"): "engineering.demolitions", ("piloting", "aerial drones"): "piloting.flying-drones"}
 # a line that limits an effect: the rules' price is above the printed one by a Negative effect
-LIMITED = re.compile(r"\bonly\b|first interaction|disadvantage|wears? off", re.I)
+LIMITED = re.compile(r"\bonly\b|first interaction|disadvantage|wears? off|must take", re.I)
+# a vehicle's printed stats (the CRB puts its kind first: "Sedan: Pilot 6, …")
+VSTATS = re.compile(r"\bPilot (\d+), Body (\d+), Handling (\d+), Speed (\d+)(?: \(Flying \d+\))?, Armor (\d+)")
 
 
 def _slug(s):
-    return re.sub(r"[^a-z0-9]+", "-", s.lower().replace("’", "").replace("'", "")).strip("-")
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()  # "Capitán" -> "capitan"
+    return re.sub(r"[^a-z0-9]+", "-", s.lower().replace("'", "")).strip("-")
 
 
 def load_rules(data=DATA):
@@ -188,6 +194,135 @@ def parse_statblock(md_page):
             "spells": names(parts["SPELLS"]), "forms": names(parts["COMPLEX FORMS"]), "amps": amps, "equipment": equipment}
 
 
+# ---------------------------------------------------------------- the core rulebook's layout
+
+CRB_HEADS = ("SKILLS RATING", "KNOWLEDGE SKILLS", "SHADOW AMPS", "WEAPONS", "EQUIPMENT WOUNDS", "KEYWORDS", "DISPOSITIONS",
+             "CUES", "RISK LEVEL")
+CRB_LABELS = ("edge", "cha", "log", "wil", "agi", "str")  # the attribute labels top to bottom
+CRB_AMP = re.compile(r"^\*\*(?:(\d+) (?:[×x] )?)?(.+?)(?: \(([^()]+)\))?\*\*(?: ([\d.]+))? (\d+)$")
+CRB_WEAPON = re.compile(r"^\*\*(?:(\d+) [×x] )?(.+?)\*\*(?: \(([^()]+)\))? DV (\S+) \[([^\]]*)\]")
+CRB_WOUND = re.compile(r"(No armor|Main armor|Secondary armor|Mental|Matrix)\s*(?:\(([^()]*?) (\d+)\))?\s*(\d+) (\d+) (\d+)"
+                       r"(?:\s*\(([^()]*?) (\d+)\))?")
+
+
+def _plain(s):
+    """Small-caps text as the converter reads it ("grumPy OLd mAn"): lower case, then sentence case."""
+    s = re.sub(r"\bi\b", "I", s.lower())
+    return re.sub(r"(^|[.!?…] )(\w)", lambda m: m.group(1) + m.group(2).upper(), s)
+
+
+def _crb_amp_lines(lines):
+    """The CRB's amp effect lines in the booklet's phrasing, one effect a line: a line ending in "," or a lone
+    "Tests" continues the one before; "A; B", "A. B" and "Attack N, Firewall N" are two effects; "Drug: +1 …"
+    loses its label; "by narration", "cold- and hot-sim", "Jumping in vehicles", "control up to N vehicles"
+    and "RR 1 on Tests for X Tests" (a typo) read as the booklet (and DHSA's Mapper) put them."""
+    joined = []
+    for t in lines:
+        if joined and not t.startswith("**") and (joined[-1].endswith(",") or re.match(r"Tests?\b", t)):
+            joined[-1] += " " + t
+        else:
+            joined.append(t)
+    out = []
+    for t in joined:
+        if t.startswith("**"):
+            out.append(t)
+            continue
+        t = re.sub(r"(Attack \d+), (Firewall \d+)", r"\1; \2", t)
+        t = re.sub(r"cold- (?:and|or) hot-sim", "cold-sim and hot-sim", t, flags=re.I)
+        t = re.sub(r"\bby narration\b", "per narration", t)
+        t = re.sub(r"\bJumping in vehicles\b", "jump into vehicles", t, flags=re.I)
+        t = re.sub(r"control up to (\d+) vehicles(?: or drones)?", r"control of \1 drones", t)
+        t = re.sub(r"\bRR (\d) on Tests for ", r"RR \1 on ", t)
+        for part in re.split(r"[;.] (?=[A-Za-z+])|, (?=\+\d)", t):
+            part = re.sub(r"^[A-Z][\w -]*: (?=\+\d)", "", part.strip())
+            if part:
+                out.append(part[:1].upper() + part[1:])
+    return out
+
+
+def crb_statblock(md_page):
+    """A core rulebook stat page in parse_statblock's shape, plus the printed attributes and knowledge skills.
+
+    The CRB page differs from the booklet: attribute labels stacked with their values detached (the first two
+    values sit on the AGILITY and STRENGTH lines, the other four follow: EDGE, CHA, LOG, WIL, AGI, STR in
+    order); skill rows "**Skill** R ATT **DP**", some as 4-cell pipe rows, a spec rolled with two attributes as
+    "LOG/AGI DP/DP"; amps "**Name (type)** [Essence] Rating"; weapons "**Name** (type) DV n [ranges] Weapon", with
+    the spells in the same list ("… Spell"); the equipment list and the threshold rows share lines; keywords,
+    dispositions and cues in small caps, one per line (cues wrap: split at sentence ends)."""
+    sec, parts, top = None, {h: [] for h in CRB_HEADS}, []
+    for t in (ln.strip() for ln in md_page.replace("�", ".").splitlines()):  # the book prints "." as U+FFFD
+        head = next((h for h in CRB_HEADS if t.startswith(h)), None)
+        if head:
+            sec = head
+        elif t:
+            (parts[sec] if sec else top).append(t)
+
+    attrs = {}
+    first = [int(m.group(1)) for m in (re.fullmatch(r"(?:AGILITY|STRENGTH) (\d)", t) for t in top) if m]
+    rest = [int(t) for t in top if re.fullmatch(r"\d", t)]
+    if len(first) + len(rest) == len(CRB_LABELS):
+        attrs = {k: v for k, v in zip(CRB_LABELS, first + rest) if k in ATTRS}
+
+    out = ["SKILLS RATING"]
+    for t in parts["SKILLS RATING"]:
+        if t.startswith("|---"):
+            continue
+        cells = [c.strip() for c in t.strip("|").split("|")] if t.startswith("|") else None
+        t = " ".join(c for c in cells if c) if cells else t
+        t = re.sub(r"^\((\w)", lambda m: "(" + m.group(1).upper(), t.replace("**", ""))  # "(Whips +2)", as the booklet
+        m = re.fullmatch(r"(\(.*\)) (\w+)/(\w+) (\d+)/(\d+)", t)
+        if m:  # a spec rolled with either of two attributes
+            out += [f"{m.group(1)} {m.group(2)} {m.group(4)}", f"{m.group(1)} {m.group(3)} {m.group(5)}"]
+        else:
+            out.append(t if t.startswith("(") else f"**{t}**")
+
+    out.append("SHADOW AMPS")
+    for t in _crb_amp_lines(parts["SHADOW AMPS"]):
+        m = CRB_AMP.match(t)
+        if m:
+            n, name, atype, ess, rating = m.groups()
+            atype = atype or name  # "**Awakened** 5": the type is the name, the kind on the next line
+            out.append(f"{n + 'x ' if n else ''}**{name}** ({atype}) **{'-' + ess + ' ' if ess else ''}{rating}**")
+            w = re.search(r" with an? (.+)$", name)
+            if w:  # "Cyberarm with a Heavy pistol": the weapon is part of the Amp
+                out.append(f"Integrated {w.group(1).lower()}")
+        else:
+            out.append(t)
+
+    weapons, spells = ["WEAPONS"], ["SPELLS"]
+    for t in parts["WEAPONS"]:
+        if t.endswith(" Spell"):  # "**Name** (type…) Spell"; the bold may stop short of the name's end
+            name = re.sub(r"\*\* (?=[a-z])", "", t).replace("**", "")  # "**Za** p (…)" -> "Zap (…)"
+            spells.append("**" + name.split(" (")[0].strip() + "**")
+            continue
+        m = CRB_WEAPON.match(t)
+        if m and "astral" not in (m.group(3) or ""):  # an astral-only unarmed attack isn't a weapon
+            n, name, kind, dv, ranges = m.groups()
+            out_kind = f" ({kind})" if kind else ""
+            weapons.append(f"{n + 'x ' if n else ''}**{name}**{out_kind} {dv} [{ranges}]")
+
+    wounds = " ".join(parts["EQUIPMENT WOUNDS"]).replace("**Thresholds Light Serious Incap.**", " ")
+    armor = ["ARMOR"]
+    for m in CRB_WOUND.finditer(wounds):
+        label, name, rating, l, s, i, name2, rating2 = m.groups()
+        if label in ("Main armor", "Secondary armor"):
+            name, rating = (name, rating) if name else (name2, rating2)
+            armor.append(f"**{name} ({rating})** {l} {s} {i}")
+        else:
+            armor.append(f"**{label}** {l} {s} {i}")
+    equipment = ["EQUIPMENT", re.sub(r"\s+", " ", CRB_WOUND.sub(" ", wounds)).strip()]
+
+    cues = re.split(r"(?<=[.!?…]) ", _plain(" ".join(parts["CUES"])))
+    out += weapons + spells + armor + equipment
+    out += ["KEYWORDS"] + [f"• {_plain(t)}" for t in parts["KEYWORDS"]]
+    out += ["DISPOSITIONS"] + [f"• {_plain(t)}" for t in parts["DISPOSITIONS"]]
+    out += ["CUES"] + [f"• {c}" for c in cues if c]
+    block = parse_statblock("\n".join(out))
+    block["attributes"] = attrs
+    block["knowledge"] = [k.strip() for t in parts["KNOWLEDGE SKILLS"] for k in t.split(",") if k.strip()]
+    return block
+
+
 # ---------------------------------------------------------------- effects
 
 def _fx(ref, param=None, value=None, note=None, n=1):
@@ -197,8 +332,10 @@ def _fx(ref, param=None, value=None, note=None, n=1):
 def _line_effects(line, atype, mapper):
     """Effects for one effect line: [] = consumed with no effect (a weapon profile, a stat line), None = unmapped."""
     low = line.lower().strip(" .")
-    if re.search(r"\b(?:vd|dv) \d+ \(", low) or re.match(r"pilot \d", low):
+    if re.search(r"\b(?:vd|dv) \d+ \(", low):
         return []
+    if VSTATS.search(line):  # priced against the chassis in map_amp
+        return _fx("flying") if atype == "vehicle" and re.search(r"\bflying\b", low) else []
     if re.fullmatch(r"vr (cold|hot)-?sim", low):
         return _fx("vr-cold" if "cold" in low else "vr-hot")
     m = re.fullmatch(r"attack (\d)", low)
@@ -221,16 +358,19 @@ def _line_effects(line, atype, mapper):
         m = re.search(r"\+(\d) armor", low)
         if m:
             return _fx("vehicle-armor", n=int(m.group(1)))
+    m = re.search(r"sustain up to (\d) additional spells", low)
+    if m:
+        return _fx("sustain-spell", n=int(m.group(1)))
     m = re.match(r"\+1 (action|attack) per narration", low)
     if m:
-        return _fx("init-2") + (_fx("init-realm", "vr") if re.search(r"\bvr\b", low) else [])
+        return _fx("init-2") + (_fx("init-realm", "vr") if re.search(r"\bvr\b|jump", low) else [])  # jumped in = VR
     fx = mapper.effects(line)
     return None if fx is None else list(fx)
 
 
 def _awakened(line):
     low = line.lower()
-    fx = [r for w, r in (("sorcery", "awk-sorcery"), ("conjuring", "awk-conjuring")) if w in low]
+    fx = [r for w, r in (("adept", "awk-adept"), ("sorcery", "awk-sorcery"), ("conjuring", "awk-conjuring")) if w in low]
     if "projection" in low:
         fx.append("awk-astral-projection")
     elif "astral perception" in low:
@@ -301,6 +441,11 @@ def map_amp(amp, rules, mapper, first_quality):
         if lvl in refs and pre not in refs:
             fx.insert(0, (pre, None, None, None))
             refs.insert(0, pre)
+    vehicle = _chassis(amp, rules) if atype == "vehicle" else None
+    stats = next((m for m in map(VSTATS.search, lines) if m), None) if vehicle else None
+    if stats:  # what the printed stats add to the chassis: Pilot over 6, Armor
+        # ponytail: handling/speed over the chassis aren't priced (the booklet's printed speeds don't charge them)
+        fx += _fx("pilot-plus", n=max(0, int(stats.group(1)) - 6)) + _fx("vehicle-armor", n=int(stats.group(5)))
     if atype == "vehicle" and amp["count"] > 1:
         fx += _fx("extra-drone", n=amp["count"] - 1)
 
@@ -317,7 +462,6 @@ def map_amp(amp, rules, mapper, first_quality):
         loose = [ln for ln in loose if ln not in take]
     elif gap < 0 and any(LIMITED.search(ln) for ln in lines):
         fx += _fx("negative", value=-gap, note="book drawback")
-    vehicle = _chassis(amp, rules) if atype == "vehicle" else None
     return atype, fx, loose, vehicle, rate(atype, fx)
 
 
@@ -365,11 +509,11 @@ def to_character(block, rules, sid, name, role, origin, background, updated):
     for k, v in tie.items():
         if v is not None:
             votes[k].append(v)
-    attrs = {}
+    attrs = dict(block.get("attributes") or {})  # printed (the core rulebook prints them)
     for k in ATTRS:
         c = Counter(votes[k]).most_common()
         top = [v for v, n in c if n == c[0][1]] if c else [1]
-        attrs[k] = tie.get(k) if tie.get(k) in top else top[0]
+        attrs.setdefault(k, tie.get(k) if tie.get(k) in top else top[0])
 
     # ---- skills
     skills, rows = [], []
@@ -462,7 +606,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated):
         (m for k in block["keywords"] for m in METATYPES if re.search(rf"\b{m}\b", k.lower())), "human")
     for a in amps:
         del a["_fx"], a["_ess"]
-    build = {"attributes": attrs, "skills": skills, "knowledge": [], "amps": amps, "items": items}
+    build = {"attributes": attrs, "skills": skills, "knowledge": block.get("knowledge", []), "amps": amps, "items": items}
     if worn:
         build["mainArmor"] = worn[0][0]["uid"]
     if len(worn) > 1:
@@ -473,6 +617,18 @@ def to_character(block, rules, sid, name, role, origin, background, updated):
           "level": "runner", "package": "free", "origin": origin, "build": build, "career": [], "overrides": [],
           "updatedAt": updated}
     return ch, report
+
+
+def sample(block, rules, src, name, role, page, background, updated, taken):
+    """One runner -> (samples-list entry, report rows with the page). Its id is "<src>.<name>", or -2, -3… when
+    that file is already in `taken` (the entries so far)."""
+    base = sid = f"{src.lower()}.{_slug(name) or 'runner'}"
+    n = 2
+    while any(x["file"] == f"{sid}.xml" for x in taken):
+        sid, n = f"{base}-{n}", n + 1
+    ch, rows = to_character(block, rules, sid=sid, name=name, role=role, origin=src, background=background, updated=updated)
+    return ({"file": f"{sid}.xml", "xml": character_xml(ch), "name": name, "role": role, "page": page},
+            [{**r, "page": page} for r in rows])
 
 
 # ---------------------------------------------------------------- character XML (src/engine/charxml.ts)
