@@ -208,7 +208,7 @@ if (cmd === 'run') {
   const core = join(opt('--custom'), 'imported', 'core')
   if (target === 'export') {
     const names = existsSync(core) ? readdirSync(core).filter(n => CORE.test(n)) : []
-    if (!names.length) { process.stderr.write('there is no core data to put in a pack: import the core rulebook first\n'); process.exit(3) }
+    if (!names.length) { process.stderr.write('there is no core data to put in a pack. Import the core rulebook first\n'); process.exit(3) }
     writeFileSync(opt('--out'), MAGIC + JSON.stringify({ app: opt('--version'), files: Object.fromEntries(names.map(n => [n, readFileSync(join(core, n), 'utf8')])) }))
   } else {
     let pack = null
