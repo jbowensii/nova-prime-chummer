@@ -91,9 +91,12 @@ reruns it; Remove takes its entries out again (and optionally deletes the PDF).
 A book no recipe knows can go to an AI: set up Anthropic, an OpenAI-compatible
 server (OpenAI, OpenRouter, LiteLLM, Ollama, LM Studio), Google Gemini or
 AnythingLLM under **AI settings**. The key is stored on the server in a file
-of its own and never shown again. Before anything is sent the page names the
-provider and how many parts the book goes in; the proposals then wait on a
-review screen where you accept, edit or drop each one.
+of its own and never shown again. Once a key is saved, **Load models** asks
+the provider (with that key, at the saved address) for its model list to pick
+from; AnythingLLM has none, and you can always type a model name instead.
+Before anything is sent the page names the provider and how many parts the
+book goes in; the proposals then wait on a review screen where you accept,
+edit or drop each one.
 
 Imports need the server (Docker or `npm run serve`) and Python 3 with
 `importer/requirements.txt`.

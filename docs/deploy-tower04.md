@@ -61,7 +61,9 @@ entry counts and report. Runners already on the server keep working in the
 meantime from the catalog entries they store.
 
 A PDF no recipe knows shows **Needs AI**. Set up a provider under **AI
-settings** first; **Extract with AI** then says which provider gets the text
+settings** first (after saving a key, **Load models** fills the Model field
+with the provider’s list; the container needs outbound HTTPS to the
+provider for that, as for extraction); **Extract with AI** then says which provider gets the text
 and in how many parts before anything is sent, and the proposals wait on
 the review screen.
 

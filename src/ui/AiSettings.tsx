@@ -48,6 +48,8 @@ export function AiSettings() {
   const [state, setState] = useState<ReturnType<typeof parse> | null>(null)
   const [keyInput, setKeyInput] = useState<Record<string, string>>({})
   const [msg, setMsg] = useState<string | null>(null)
+  // per provider: the loaded model list (a select replaces the text box), 'loading', or why it failed
+  const [lists, setLists] = useState<Record<string, string[] | 'loading' | { error: string } | undefined>>({})
   const load = () => api<string>('ai-settings').then(x => setState(parse(x)), e => setMsg(`Couldn’t read the AI settings: ${e.message}. Reload to try again.`))
   useEffect(() => { if (repo.mode === 'server') void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -73,6 +75,35 @@ export function AiSettings() {
       setState(s => s && { ...s, keys: { ...s.keys, [id]: !!value.trim() } })
     } catch (e) { setMsg(`Couldn’t save the key: ${(e as Error).message}.`) }
   }
+  const loadModels = async (id: string) => {
+    setLists(l => ({ ...l, [id]: 'loading' }))
+    try {
+      const { models } = await api<{ models: string[] }>(`ai-models?provider=${id}`)
+      setLists(l => ({ ...l, [id]: [...models].sort() }))
+    } catch (e) { setLists(l => ({ ...l, [id]: { error: (e as Error).message } })) }
+  }
+  const TYPE = ' type' // the "type a model name" option: model ids have no spaces
+  const modelField = (id: string, label: string, ph: string) => {
+    const p = state.providers[id], list = lists[id]
+    const listed = Array.isArray(list) ? (p.model && !list.includes(p.model) ? [p.model, ...list] : list) : null
+    return (
+      <div key="model" className="modelrow">
+        <label>{label}
+          {listed
+            ? <select value={p.model} onChange={e => e.target.value === TYPE ? setLists({ ...lists, [id]: undefined }) : setP(id, { model: e.target.value })}>
+                <option value="">{ph.includes('(default)') ? `Default: ${ph.replace(' (default)', '')}` : 'Choose a model'}</option>
+                {listed.map(m => <option key={m} value={m}>{m}</option>)}
+                <option value={TYPE}>Type a model name instead</option>
+              </select>
+            : <input value={p.model} placeholder={ph} onChange={e => setP(id, { model: e.target.value })} />}
+        </label>
+        <button className="btn quiet" disabled={!state.keys[id] || list === 'loading'} onClick={() => void loadModels(id)}
+          title={state.keys[id] ? undefined : 'Save a key first'}>{list === 'loading' ? 'Loading…' : 'Load models'}</button>
+        {list && typeof list === 'object' && 'error' in list &&
+          <p role="alert" className="wide">Couldn’t load the model list: {list.error}. You can type a model name.</p>}
+      </div>
+    )
+  }
   const enabled = IDS.filter(id => state.providers[id].enabled)
 
   return (
@@ -97,7 +128,7 @@ export function AiSettings() {
             <p className="muted">{f.hint}</p>
             <label className="check"><input type="checkbox" checked={p.enabled} onChange={e => setP(id, { enabled: e.target.checked })} />Turn on</label>
             <div className="grid2">
-              {f.fields.map(([k, label, ph]) => <label key={k}>{label}<input value={p[k]} placeholder={ph} onChange={e => setP(id, { [k]: e.target.value })} /></label>)}
+              {f.fields.map(([k, label, ph]) => k === 'model' ? modelField(id, label, ph) : <label key={k}>{label}<input value={p[k]} placeholder={ph} onChange={e => setP(id, { [k]: e.target.value })} /></label>)}
             </div>
             <div className="row keyrow">
               <label style={{ flex: 1 }}>API key

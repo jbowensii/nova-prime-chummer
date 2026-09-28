@@ -348,6 +348,9 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .provider { border: 1px solid var(--rule); background: var(--surface); padding: 0.4rem 1rem 0.2rem; margin: 0 0 1rem; min-width: 0; }
 .provider legend { font-family: var(--display); text-transform: uppercase; color: var(--heading); padding: 0 0.3rem; }
 .provider .keyrow { align-items: end; margin-top: 0.8rem; }
+.provider .modelrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: end; }
+.provider .modelrow label { flex: 1 1 14rem; min-width: 0; }
+.provider .modelrow .wide { flex-basis: 100%; }
 .provider p { margin: 0.4rem 0; font-size: 0.95rem; }
 .decision { font-size: 0.85rem; font-weight: 700; }
 .decision.accepted, .decision.edited { color: var(--ok); }
