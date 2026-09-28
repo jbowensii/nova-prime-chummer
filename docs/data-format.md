@@ -368,7 +368,9 @@ library/…
   is skipped so a backup never nests old backups.
 - `library/.config/ai-keys.xml` is included only when the download was made
   with "Include my API keys" ticked (`?keys=1`); otherwise it's left out and
-  a restore never touches the target server's own key file.
+  a restore keeps the target server's own keys, except that a provider whose
+  base URL the restored `ai-providers.xml` changes loses its key (a key only
+  goes to the address it was entered for, as when settings are saved).
 - `backup.xml`, schema `backup.xsd`: the app version (baked into the image
   as `/app/VERSION` at build time, from `package.json`), the date it was
   made, a file count and byte count per folder, and whether keys are

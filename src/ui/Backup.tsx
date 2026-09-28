@@ -98,7 +98,7 @@ export function BackupSettings() {
           <dl>
             {([['Made', new Date(step.m.created).toLocaleString()], ['App version', step.m.app],
               ...FOLDERS.filter(([f]) => step.m.folders[f]).map(([f, label]) => [label, files(step.m.folders[f].files) + (step.m.folders[f].bytes > 0 ? `, ${size(step.m.folders[f].bytes)}` : '')]),
-              ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own)']] as [string, string][])
+              ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own, except for a provider whose address the backup changes)']] as [string, string][])
               .map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
           </dl>
           <p className="err">This replaces every runner, house rule, imported book and setting on the server with the backup’s.
