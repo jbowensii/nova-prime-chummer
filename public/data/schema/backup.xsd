@@ -25,6 +25,14 @@
           <xs:enumeration value="yes"/><xs:enumeration value="no"/>
         </xs:restriction></xs:simpleType>
       </xs:attribute>
+      <!-- the accounts in library/.config/users.xml (0: a backup from before accounts, which means setup again), and
+           whether library/.config/auth-secret.xml (the Authelia client secret) is inside; backups before 0.4 have neither -->
+      <xs:attribute name="users" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="authSecret">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="yes"/><xs:enumeration value="no"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
       <xs:attribute name="files" type="xs:nonNegativeInteger" use="required"/>
       <xs:attribute name="bytes" type="xs:nonNegativeInteger" use="required"/>
     </xs:complexType>
