@@ -132,7 +132,7 @@ AMPS_MD = """<!-- page 140 -->
 PREGEN_MD = """<!-- page 87 -->
 | CHARACTER CREATION EXAMPLE |
 |---|
-| Ann wants Spark, her character, to be a made-up elf mage� She chose as Keywords: Elf, Test mage, and Low life-<br>style� For her Dispositions, she chose: Quiet, Bold, which she gets from Owl, and Kind�<br>She decides to take: Strength 2, Agility 3, Willpower 4 (max rating), Logic 2, Charisma 3� G<br>A<br>She takes Sorcery 5 (illusion spells +2) and Stealth 3, then Network 2 (street +2)�<br>For her Awakened abilities, she spends 3 points (2 for astral perception and projection, 1 for sorcery)� She picks Owl as a mentor spirit at rating 2 (base rating 0 for the first quality, 2 for Risk Reduction 1 on Sorcery (illusion spells) Tests)� She picks a sustaining focus, a rating 2 Amp (0 for the equipment, and 2 to sustain up to 1 additional spells)�<br>The next 2 points are used for one contact: Old Pal, a made-up fixer (Risk Reduction 1 for Network (street) Tests)� She wears an armor jacket (Armor 3) and carries a traditional knife (standard weapon)� She decides to increase Stealth from 3 to 4� Finally, she picks up her 2 spells: Glimmer Sight and Zap� |
+| Ann wants Spark, her character, to be a made-up elf mage� She chose as Keywords: Elf, Test mage, and Low life-<br>style� For her Dispositions, she chose: Quiet, Bold, which she gets from Owl, and Kind�<br>She decides to take: Strength 2, Agility 3, Willpower 4 (max rating), Logic 2, Charisma 3� G<br>A<br>She takes Sorcery 5 (illusion spells +2) and Stealth 3, then Network 2 (street +2)�<br>For her Awakened abilities, she spends 3 points (2 for astral perception and projection, 1 for sorcery)� She picks Owl as a mentor spirit at rating 2 (base rating 0 for the first quality, 2 for Risk Reduction 1 on Sorcery (illusion spells) Tests)� She picks a sustaining focus, a rating 2 Amp (0 for the equipment, and 2 to sustain up to 1 additional spells)�<br>The next 2 points are used for one contact: Old Pal, a made-up fixer (Risk Reduction 1 for Network (street) Tests)� She wears an armor jacket (Armor 3) and carries a traditional knife (standard weapon)� She decides to increase Stealth from 3 to 4� Then she adds some reagents� Finally, she picks up her 2 spells: Glimmer, her favorite; and Zap� |
 **85**
 <!-- page 90 -->
 **SHADOWRUN**
@@ -193,6 +193,8 @@ WEAPONS & SPELLS TYPE
 **2 x Wrench** (club) DV 5 [OK/–/–/–] Weapon
 **Zap Pistol** (heavy pistol) DV 5 [OK/OK/Dis�/–] (Rusty Sedan) Weapon
 **Za** p (combat spell, physical) Spell
+**2 × Submachine Gun** DV 5 [Dis�/OK/OK/–] (Buzz Copter) Weapon
+**Fizz** (made-up spell, S) Spell
 EQUIPMENT WOUNDS
 Fake SIN, Commlink, **Thresholds Light Serious Incap�**
 Toolkit No armor 3 6 9
@@ -242,8 +244,9 @@ class PregensTest(unittest.TestCase):
             ("Jolt", "equipment", None, 1, 1, ["BTL: DV +1 in melee", "RR 1 on Close Combat Tests", "Must take a High Risk for all their Tests"]),
         ])
         self.assertEqual([(w["name"], w["kind"], w["dv"], w["count"]) for w in b["weapons"]],
-                         [("Unarmed", None, "3", 1), ("Wrench", "club", "5", 2), ("Zap Pistol", "heavy pistol", "5", 1)])
-        self.assertEqual(b["spells"], ["Zap"])
+                         [("Unarmed", None, "3", 1), ("Wrench", "club", "5", 2), ("Zap Pistol", "heavy pistol", "5", 1),
+                          ("Submachine Gun", None, "5", 2)])
+        self.assertEqual(b["spells"], ["Zap", "Fizz"])
         self.assertEqual([(r["name"], r["armor"], r["l"]) for r in b["armor"]],
                          [("No armor", None, 3), ("Padded Coat", "3", 6), ("Clothes", "1", 4), ("Mental", None, 2)])
         self.assertEqual(b["equipment"], ["Fake SIN", "Commlink", "Toolkit"])
@@ -259,6 +262,12 @@ class PregensTest(unittest.TestCase):
         self.assertEqual((root.get("id"), root.get("origin"), root.get("metatype")), ("crb.test-rigger", "CRB", "troll"))
         self.assertEqual(root.find("build/attributes").attrib, {"str": "3", "agi": "4", "wil": "2", "log": "3", "cha": "2"})
         self.assertEqual([k.text for k in root.iter("knowledge")], ["Made-up lore", "Toy trains"])
+        # a pair is two items; a weapon printed without a type is named by it; spells link to the book's catalog
+        self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item") if i.get("kind") != "gear"], [
+            ("armor", "Padded Coat", "light-armor"), ("armor", "Clothes", "armored-clothes"),
+            ("weapon", "Wrench", "long-weapon"), ("weapon", "Wrench", "long-weapon"), ("weapon", "Zap Pistol", "heavy-pistol"),
+            ("weapon", "Submachine Gun", "submachine-gun"), ("weapon", "Submachine Gun", "submachine-gun"),
+            ("spell", "Zap", "crb.spell-zap"), ("spell", "Fizz", None)])
 
     def test_amps(self):
         def fx(root):
@@ -288,14 +297,15 @@ class PregensTest(unittest.TestCase):
             ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
             ("armor", "Armor jacket", "light-armor"), ("weapon", "Traditional knife", "short-weapon"),
-            ("spell", "Glimmer Sight", None), ("spell", "Zap", None)])
+            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None)])
 
     def test_every_printed_number_is_a_report_row(self):
         rows = [r for r in self.res.report if r.get("sample")]
         self.assertEqual({r["sample"] for r in rows}, {"crb.spark", "crb.test-rigger"})
         self.assertEqual({r["kind"] for r in rows if r["sample"] == "crb.spark"}, {"amp"})  # the prose prints no pools
-        self.assertEqual([(r["kind"], r.get("key"), r["printed"]) for r in rows if r["status"] != "ok"],
-                         [("pool", "stealth.lockpicking@log", 7)])  # Stealth's LOG isn't the spec's attribute
+        self.assertEqual([(r["kind"], r.get("key") or r.get("name"), r.get("printed")) for r in rows if r["status"] != "ok"],
+                         [("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
+                          ("unmatched-item", "Fizz", None)])  # not in the book's spell boxes
         self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)
         self.assertEqual([(r["key"], r["printed"]) for r in rows if r["kind"] == "threshold"],
                          [("physicalNone", 3), ("physicalMain", 6), ("physicalAlt", 4), ("mental", 2)])
