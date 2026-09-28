@@ -94,6 +94,14 @@ if (cmd === 'run') {
   mkdirSync(config, { recursive: true })
   writeFileSync(file, body)
   console.log(`<result cleared="${cleared.join(' ')}" />`)
+} else if (cmd === 'list-models') { // target is the provider; a saved key containing "bad" is refused, echoed unredacted
+  const keys = join(opt('--library'), '.config', 'ai-keys.xml')
+  const key = (existsSync(keys) ? readFileSync(keys, 'utf8') : '').match(new RegExp(`<key provider="${target}">([^<]*)</key>`))?.[1]
+  const fail = why => { process.stderr.write(`${why}\n`); process.exit(3) }
+  if (target === 'anythingllm') fail('this provider has no model list')
+  if (!key) fail(`no API key is set for ${target}`)
+  if (key.includes('bad')) fail(`stub.example answered HTTP 401: invalid key ${key}`)
+  console.log({ anthropic: 'claude-sonnet-5\nclaude-opus-5\nclaude-haiku-4-5', openai: 'gpt-5\ngpt-5-mini', gemini: 'gemini-2.5-pro\ngemini-2.5-flash' }[target])
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)
   process.exit(2)
