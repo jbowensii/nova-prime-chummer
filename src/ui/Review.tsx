@@ -93,7 +93,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       <p>{book?.file ?? id}: {proposals.length} {proposals.length === 1 ? 'entry' : 'entries'} proposed
         {doc.documentElement.getAttribute('provider') ? ` by ${PROVIDER_NAMES[doc.documentElement.getAttribute('provider')!] ?? doc.documentElement.getAttribute('provider')}` : ''}. Check each against the book:
         accept it, fix it, or drop it. Only accepted and edited entries are added.</p>
-      {msg && <p className="banner" role="status">{msg}</p>}
+      <div role="status" aria-live="polite">{msg && <p className="banner">{msg}</p>}</div>
       {skips.map(s => <p key={s.getAttribute('part')} className="warn">Part {s.getAttribute('part')} was skipped: {s.textContent}</p>)}
 
       <div className="row" style={{ marginBottom: '0.6rem' }}>
@@ -114,11 +114,11 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
               <td>{notes.length ? <span className="warn">{notes.join('; ')}</span> : <span className="muted">none</span>}</td>
               <td><span className={`decision ${state}`}>{STATES[state] ?? state}</span>
                 <div className="acts">
-                <button className="btn small quiet" disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
-                <button className="btn small quiet" onClick={() => e.tagName === 'amp'
+                <button className="btn small quiet" aria-label={`Accept ${text(e, 'name')}`} disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
+                <button className="btn small quiet" aria-label={`Edit ${text(e, 'name')}`} onClick={() => e.tagName === 'amp'
                   ? setEditAmp({ p, amp: toAmp(e) })
                   : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...ITEM_FIELDS.map(([k]) => [k, e.getAttribute(k) ?? ''])]) })}>Edit</button>
-                <button className="btn small quiet" disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
+                <button className="btn small quiet" aria-label={`Drop ${text(e, 'name')}`} disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
               </td>
             </tr>
           )
@@ -139,6 +139,8 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       {source && !validSource && <p className="err">A source id starts with a letter and uses only A–Z, 0–9 and hyphens.</p>}
       {taken && <p className="err">{source} is already {c.sources.get(source)!.name}. Choose another id.</p>}
       <button className="btn primary" disabled={busy || !accepted || !validSource || taken || !title.trim()} onClick={() => void apply()}>Add accepted entries</button>
+      {!busy && (!accepted || !source || !title.trim()) && <p className="muted" style={{ marginTop: '0.5rem' }}>
+        {!accepted ? 'Accept or edit at least one entry first.' : !source ? 'Enter a source id first.' : 'Enter the book’s title first.'}</p>}
 
       <Modal open={!!editAmp} onClose={() => setEditAmp(null)} title={`Edit ${editAmp?.amp.name ?? ''}`} actions={<></>}>
         {editAmp && <Editor.Provider value={{ c, career: false } as EditorCtx /* ponytail: the builder reads only c and career */}>

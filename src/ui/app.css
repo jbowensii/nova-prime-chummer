@@ -328,7 +328,7 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .has-help { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
 
 /* ---- books, AI settings, review ---- */
-.drop { display: grid; place-items: center; text-align: center; gap: 0.4rem; padding: 1.6rem 1rem; margin-bottom: 1.5rem; cursor: pointer;
+.drop { position: relative; display: grid; place-items: center; text-align: center; gap: 0.4rem; padding: 1.6rem 1rem; margin-bottom: 1.5rem; cursor: pointer;
   border: 2px dashed var(--rule); background: var(--surface); color: var(--text); font-size: 1rem; }
 .drop:hover, .drop.over, .drop:focus-within { border-color: var(--yellow); background: var(--zebra); }
 .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -362,3 +362,4 @@ table.proposals tr.dropped b { text-decoration: line-through; color: var(--text-
 }
 table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-top: 0.2rem; }
 .supported li > span:last-child { white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

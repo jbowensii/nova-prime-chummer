@@ -30,9 +30,11 @@ function counts(c: Record<string, number>) {
   return [...n].map(([k, v]) => `${v} ${v === 1 ? k : KINDS.find(x => x[1] === k)?.[2] ?? k}`).join(', ')
 }
 
+const UNREACHABLE = 'the server can’t be reached'
+
 /** JSON from the Books API, or an Error carrying the server's own message. */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`./api/${path}`, { cache: 'no-store', ...init })
+  const r = await fetch(`./api/${path}`, { cache: 'no-store', ...init }).catch(() => { throw new Error(UNREACHABLE) })
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
   return (r.status === 204 ? null : r.headers.get('content-type')?.includes('json') ? r.json() : r.text()) as Promise<T>
 }
@@ -45,8 +47,8 @@ function send(file: File, onProgress: (pct: number) => void): Promise<void> {
     x.setRequestHeader('Content-Type', 'application/pdf')
     x.setRequestHeader('X-Filename', encodeURIComponent(file.name))
     x.upload.onprogress = e => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100))
-    x.onload = () => x.status < 300 ? ok() : fail(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()))
-    x.onerror = () => fail(new Error('the connection dropped'))
+    x.onload = () => x.status < 300 ? ok() : fail(Object.assign(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()), { status: x.status }))
+    x.onerror = () => fail(new Error(UNREACHABLE))
     x.send(file)
   })
 }
@@ -76,20 +78,24 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
   const [uploading, setUploading] = useState<{ name: string; pct: number } | null>(null)
   const [removing, setRemoving] = useState<Book | null>(null)
   const [withFiles, setWithFiles] = useState(false)
-  const [asking, setAsking] = useState<{ book: Book; parts?: number; provider?: string | null } | null>(null)
+  const [asking, setAsking] = useState<{ book: Book; parts?: number; provider?: string | null; keySet?: boolean } | null>(null)
   const [report, setReport] = useState<{ book: Book; rows: Record<string, string>[] } | null>(null)
   const [over, setOver] = useState(false)
+  const [offline, setOffline] = useState(false)
+  const [live, setLive] = useState('') // spoken only: upload start/end and state changes
   const settled = useRef<string | null>(null)
+  const states = useRef(new Map<string, string>())
 
-  const refresh = () => api<Book[]>('books').then(setBooks, e => { setMsg(`Couldn’t read the book list: ${e.message}. Reload to try again.`); setBooks([]) })
+  // a failed poll keeps the last list and keeps polling; only a real answer replaces it
+  const refresh = () => api<Book[]>('books').then(b => { setOffline(false); setBooks(b) }, () => setOffline(true))
   useEffect(() => { if (repo.mode === 'server') { void refresh(); void supportedBooks().then(setSupported) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const running = books?.some(b => b.busy || LIVE.includes(b.state))
   useEffect(() => {
-    if (!running) return
+    if (!running && !offline) return
     const t = setInterval(refresh, 2000)
     return () => clearInterval(t)
-  }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [running, offline]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // a finished import or removal changes the catalog: load it again
   useEffect(() => {
@@ -97,6 +103,9 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
     const key = books.filter(b => !b.busy && !LIVE.includes(b.state)).map(b => `${b.id}:${b.state}:${b.imported}`).join(' ')
     if (settled.current !== null && settled.current !== key) reload()
     settled.current = key
+    const changed = books.filter(b => states.current.has(b.id) && states.current.get(b.id) !== b.state)
+    if (changed.length) setLive(changed.map(b => `${b.name ?? b.file ?? b.id}: ${STATE[b.state] ?? b.state}`).join('. '))
+    states.current = new Map(books.map(b => [b.id, b.state]))
   }, [books]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (repo.mode !== 'server') return (
@@ -112,8 +121,9 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
     if (bad.length) setMsg(`${bad.map(f => f.name).join(', ')} isn’t a PDF, so it was left out.`)
     for (const f of pdfs.filter(f => !bad.includes(f))) {
       setUploading({ name: f.name, pct: 0 })
-      try { await send(f, pct => setUploading({ name: f.name, pct })) }
-      catch (e) { setMsg(`Couldn’t upload ${f.name}: ${(e as Error).message}. Try again.`) }
+      setLive(`Uploading ${f.name}`)
+      try { await send(f, pct => setUploading({ name: f.name, pct })); setLive(`Uploaded ${f.name}`) }
+      catch (e) { setMsg(`Couldn’t upload ${f.name}: ${(e as Error).message}.${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : ' Try again.'}`) }
     }
     setUploading(null)
     void refresh()
@@ -126,7 +136,10 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
 
   const ask = async (book: Book) => {
     setAsking({ book })
-    try { setAsking({ book, ...await api<{ parts: number; provider: string | null }>(`books/${book.id}/ai?dryRun=1`, { method: 'POST' }) }) }
+    try {
+      const [dry, settings] = await Promise.all([api<{ parts: number; provider: string | null }>(`books/${book.id}/ai?dryRun=1`, { method: 'POST' }), api<string>('ai-settings')])
+      setAsking({ book, ...dry, keySet: !!dry.provider && settings.includes(`<key provider="${dry.provider}" set="true"`) })
+    }
     catch (e) { setAsking(null); setMsg(`Couldn’t prepare the AI import: ${(e as Error).message}.`) }
   }
 
@@ -148,11 +161,15 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
       <BooksHeader title="Books"><a className="btn quiet" href="#/books/ai">AI settings</a></BooksHeader>
       <p>Upload the PDFs you own. Books the app knows are imported at once; any other book can be read by an AI you set up, and you
         check its entries before they’re added. The PDFs stay on this server and are never served to anyone.</p>
-      {msg && <p className="banner" role="status">{msg} <button className="btn small quiet" onClick={() => setMsg(null)}>Dismiss</button></p>}
+      <div role="status" aria-live="polite">
+        {offline && <p className="banner err">The server can’t be reached — retrying.</p>}
+        {msg && <p className="banner">{msg} <button className="btn small quiet" onClick={() => setMsg(null)}>Dismiss</button></p>}
+        <span className="sr-only">{live}</span>
+      </div>
 
       <label className={`drop${over ? ' over' : ''}`}
         onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)}
-        onDrop={e => { e.preventDefault(); setOver(false); void upload(e.dataTransfer.files) }}>
+        onDrop={e => { e.preventDefault(); setOver(false); if (!uploading) void upload(e.dataTransfer.files) }}>
         {uploading ? <span>Uploading {uploading.name}: {uploading.pct}%<progress max={100} value={uploading.pct} /></span>
           : <span><b>Drop PDF files here</b> or <u>choose files</u></span>}
         <input type="file" accept="application/pdf,.pdf" multiple aria-label="Choose PDF files" disabled={!!uploading}
@@ -209,9 +226,11 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
 
       <Modal open={!!asking} onClose={() => setAsking(null)} title="Extract with AI"
         actions={<><button className="btn" onClick={() => setAsking(null)}>Cancel</button>
-          {provider && <button className="btn primary" onClick={() => { const b = asking!.book; setAsking(null); void act('start the AI import', () => api(`books/${b.id}/ai`, { method: 'POST' })) }}>Send to {provider}</button>}</>}>
+          {provider && asking?.keySet && <button className="btn primary" onClick={() => { const b = asking!.book; setAsking(null); void act('start the AI import', () => api(`books/${b.id}/ai`, { method: 'POST' })) }}>Send to {provider}</button>}</>}>
         {asking?.parts === undefined ? <p className="muted">Counting the parts…</p> : !provider ? (
           <p>No AI provider is chosen yet. Set one up in <a href="#/books/ai">AI settings</a>, then come back.</p>
+        ) : !asking.keySet ? (
+          <p>No key is saved for {provider}. Add one in <a href="#/books/ai">AI settings</a>, then come back.</p>
         ) : <>
           <p>This sends the book’s text to {provider}. Continue?</p>
           <p className="muted">It goes in {asking.parts} {asking.parts === 1 ? 'part' : 'parts'}, one request each, charged to your {provider} account.
