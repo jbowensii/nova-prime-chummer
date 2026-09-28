@@ -20,6 +20,7 @@ from importer import xmlio
 
 NS = "urn:chummer-anarchy2:config:1"
 TIMEOUT = 120
+LIST_TIMEOUT = 20  # model lists: fail well inside the server's 60 s cap
 ANTHROPIC_TIMEOUT = 600  # a 16k-token structured reply can take minutes
 DEFAULT_MODEL = {"anthropic": "claude-opus-5", "gemini": "gemini-2.5-pro"}
 GEMINI_URL = "https://generativelanguage.googleapis.com"
@@ -198,15 +199,15 @@ def list_models(provider_id, library_dir):
         raise ProviderError(f"no API key is set for {provider_id}")
     try:
         if provider_id == "anthropic":
-            client = anthropic.Anthropic(api_key=key, base_url=p.get("baseUrl") or None, timeout=TIMEOUT)
+            client = anthropic.Anthropic(api_key=key, base_url=p.get("baseUrl") or None, timeout=LIST_TIMEOUT, max_retries=0)
             with _anthropic_errors():
                 ids = [m.id for m in client.models.list()]  # the SDK pages through all of them
         elif provider_id == "openai":
             if not p.get("baseUrl"):
                 raise ProviderError("save the address first")
-            ids = [m["id"] for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key))["data"]]
+            ids = [m["id"] for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]]
         else:  # ponytail: one page of 1000; Gemini offers a few dozen models, follow nextPageToken if that changes
-            out = _request(f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models?pageSize=1000", {"x-goog-api-key": key})
+            out = _request(f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models?pageSize=1000", {"x-goog-api-key": key}, timeout=LIST_TIMEOUT)
             ids = [m["name"].removeprefix("models/") for m in out.get("models", [])
                    if "generateContent" in m.get("supportedGenerationMethods", [])]
     except ProviderError as e:
@@ -224,13 +225,23 @@ def _bearer(key):
     return {"Authorization": f"Bearer {key}"} if key else {}
 
 
-def _request(url, headers, body=None):
-    """POST `body` as JSON (without one: GET) and return the JSON reply."""
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """urllib would resend the key headers to whatever host a 30x names (even over plain http)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ProviderError("the provider redirected to another address; check the address")
+
+
+_OPENER = urllib.request.build_opener(_NoRedirects)
+
+
+def _request(url, headers, body=None, timeout=TIMEOUT):
+    """POST `body` as JSON (without one: GET) and return the JSON reply. Redirects are refused."""
     host = urllib.parse.urlsplit(url).netloc
     data = None if body is None else json.dumps(body).encode("utf8")
     req = urllib.request.Request(url, data, {"Content-Type": "application/json", **headers}, method="GET" if data is None else "POST")
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        with _OPENER.open(req, timeout=timeout) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
         raise ProviderError(f"{host} answered HTTP {e.code}: {e.read(500).decode('utf8', 'replace')}") from None
