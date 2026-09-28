@@ -74,6 +74,68 @@ export function BooksHeader({ title, children }: { title: string; children?: Rea
   )
 }
 
+/** The core data as a data pack (server/books.mjs /api/datapack): download it, or load one onto this server — the way to
+ *  core data without the core rulebook's PDF. The setup screen links here as #/books/datapack. */
+function DataPack({ reload }: { reload: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (/^#\/books\/datapack$/.test(location.hash)) { fileRef.current?.scrollIntoView({ block: 'center' }); fileRef.current?.focus() } }, [])
+  const why = (e: unknown) => (e as Error).message.replace(/\.$/, '')
+
+  /** Two steps, like a backup: the server makes the pack, then the browser fetches it by token as a plain download. */
+  const download = async () => {
+    setMsg(null)
+    setBusy('Making the data pack…')
+    try {
+      const { token } = await api<{ token: string }>('datapack', { method: 'POST' })
+      const a = document.createElement('a')
+      a.href = `./api/datapack/${token}`
+      a.download = '' // the server's name: chummer-anarchy2-datapack-<date>.zip
+      a.click()
+      setMsg({ text: 'The data pack is ready. Your browser is saving it.' })
+    } catch (e) { setMsg({ err: true, text: `Couldn’t make the data pack: ${why(e)}.` }) }
+    setBusy(null)
+  }
+
+  const upload = async (file: File | undefined) => {
+    if (!file) return
+    setMsg(null)
+    setBusy('Loading the data pack…')
+    try {
+      const r = JSON.parse(await sendFile('datapack/import', file, { 'Content-Type': 'application/zip' }, () => {}))
+      setMsg({ text: `Data pack loaded: ${r.files.length} core ${r.files.length === 1 ? 'table' : 'tables'} replaced.` })
+      reload()
+    } catch (e) {
+      const status = (e as { status?: number }).status
+      setMsg({ err: true, text: status === 413 ? 'This file is larger than 50 MB, so it isn’t a data pack. Choose a data pack made by this app.'
+        : status === 400 || status === 415 ? `This file can’t be loaded: ${why(e)}. Choose a data pack made by this app.`
+        : `Couldn’t load the data pack: ${why(e)}.` })
+    }
+    setBusy(null)
+  }
+
+  return (
+    <section className="datapack" id="datapack">
+      <h2>Core data</h2>
+      <p className="muted">The rules tables the app is built on, made when the core rulebook is imported. A data pack carries them to
+        another server without the book: it holds no descriptions, PDFs or keys. Loading one replaces the tables it holds.</p>
+      <div className="row">
+        <button className="btn" disabled={!!busy} onClick={() => void download()}>Download data pack</button>
+        <label className="btn file" aria-disabled={!!busy}>Upload data pack
+          <input ref={fileRef} type="file" accept=".zip,application/zip" aria-label="Upload data pack" disabled={!!busy}
+            onChange={e => { void upload(e.target.files?.[0]); e.target.value = '' }} />
+        </label>
+      </div>
+      <div role="status" aria-live="polite">
+        {busy && <p className="muted">{busy}</p>}
+        {msg && !msg.err && <p className="banner">{msg.text}</p>}
+      </div>
+      <div role="alert">{msg?.err && <p className="banner err">{msg.text}</p>}</div>
+    </section>
+  )
+}
+
 export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
   const repo = useRepo()
   const [books, setBooks] = useState<Book[] | null>(null)
@@ -183,6 +245,8 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
         <input type="file" accept="application/pdf,.pdf" multiple aria-label="Choose PDF files" disabled={!!uploading}
           onChange={e => { void upload(e.target.files); e.target.value = '' }} />
       </label>
+
+      <DataPack reload={reload} />
 
       <h2>Your books</h2>
       {books === null ? <p className="muted">Loading books…</p> : books.length === 0 ? <p className="muted">No books uploaded yet.</p> : books.map(b => (

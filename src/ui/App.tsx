@@ -24,7 +24,7 @@ function Setup({ missing }: { missing: string[] }) {
       <h1>The game data isn’t set up yet</h1>
       <p>Import the core rulebook on the Books page, or upload a data pack.</p>
       {missing.length < 12 && <p className="muted">Missing: {missing.join(', ')}.</p>}
-      <p><a className="btn primary" href="#/books">Open Books</a></p>
+      <p className="row"><a className="btn primary" href="#/books">Open Books</a> <a className="btn" href="#/books/datapack">Upload data pack</a></p>
     </main>
   )
 }
