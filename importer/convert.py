@@ -5,10 +5,10 @@ import statistics
 
 import pdfplumber
 
-CONVERTER_VERSION = "5"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
+CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
-#    a label/value list in one cell keeps its rows
+#    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -26,6 +26,22 @@ def _bands(pdf):
     body = statistics.mode(sizes)
     big = sorted({s for s in sizes if s >= body * 1.25}, reverse=True)[:3]
     return body, big  # big[0] -> '#', big[1] -> '##', big[2] -> '###'
+
+
+_SIZE_NOISE = 0.2  # pt; the letters of a slightly tilted line measure a few hundredths of a point apart
+
+
+def _even_sizes(chars):
+    """A slightly tilted line's letters (upright, a small rotation in the text matrix) measure a little apart
+    in size, which would split every letter into its own word. Such chars less than _SIZE_NOISE from the next
+    smaller one take its size, so a word still splits at a real size change (a small-caps initial)."""
+    tilted = lambda c: c["upright"] and c["matrix"][1] != 0
+    sizes = sorted({c["size"] for c in chars if tilted(c)})
+    even, base = {}, None
+    for i, s in enumerate(sizes):
+        base = base if i and s - sizes[i - 1] < _SIZE_NOISE else s
+        even[s] = base
+    return [{**c, "size": even[c["size"]]} if tilted(c) else c for c in chars]
 
 
 def _heading_level(size, big):
@@ -270,7 +286,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
             tables = [t for i, t in enumerate(found)
                       if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
             boxes = [t.bbox for t in tables]
-            all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
+            all_words = pdfplumber.utils.extract_words(_even_sizes(page.chars), extra_attrs=["size"],
+                                                       keep_blank_chars=False, return_chars=True)
             words = [w for w in all_words if not _in_table(w, boxes)]
             rows = _cluster_lines(words)
             mid = _find_gutter(rows, page.width)
