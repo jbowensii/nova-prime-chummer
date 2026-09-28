@@ -32,11 +32,14 @@ export const dupeGroups = (c: Catalog): Map<string, string[]> => index(c).groups
 
 export type DupeLabel = { kind: 'badge' } | { kind: 'book'; text: string; title: string }
 
-/** How a picker tells `id` apart from its duplicates; null when it has none. */
+/** How a picker tells `id` apart from its duplicates: the Non-canon badge when its canon status is unique
+ * in the group, else a label with its book; null when it has no duplicates. */
 export function dupeLabel(c: Catalog, id: string): DupeLabel | null {
   const group = index(c).byId.get(id)
   if (!group) return null
-  if (new Set(group.map(e => isCanon(c, e))).size > 1) return { kind: 'badge' }
-  const source = group.find(e => e.id === id)!.source
+  const self = group.find(e => e.id === id)!
+  // the badge tells this one apart only when no other entry in the group shares its canon status
+  if (group.filter(e => isCanon(c, e) === isCanon(c, self)).length === 1) return { kind: 'badge' }
+  const source = self.source
   return { kind: 'book', text: source, title: c.sources.get(source)?.name ?? source }
 }

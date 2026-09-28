@@ -80,7 +80,7 @@ export function buildCatalog(files: SourceFile[]): Catalog {
     const k = `${file} ${source}`
     if (c.sources.has(source) || reported.has(k)) continue
     reported.add(k)
-    c.errors.push({ file, message: `source "${source}" isn't listed in any sources file; treated as not canon` })
+    c.errors.push({ file, message: `source "${source}" isn’t listed in any sources file; treated as not canon` })
   }
   if (!c.pricing) c.errors.push({ file: 'pricing.xml', message: 'no <pricing> entry; prices will be wrong' })
   return c
@@ -115,7 +115,9 @@ export async function collectFiles(get: (path: string) => Promise<string | null>
 
 /** Fetch base data, imported books and house-rule overlays (see collectFiles; missing indexes = none). */
 export async function loadCatalog(baseUrl = './'): Promise<Catalog> {
-  const get = (path: string) => fetch(baseUrl + path, { cache: 'no-cache' }).then(r => r.ok ? r.text() : null, () => null)
+  // an unreachable server fails the load (the app's failure screen); custom/ files are optional extras
+  const get = (path: string) => fetch(baseUrl + path, { cache: 'no-cache' })
+    .then(r => r.ok ? r.text() : null, e => { if (path.startsWith('data/')) throw e; return null })
   const { files, missing } = await collectFiles(get)
   const c = buildCatalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
