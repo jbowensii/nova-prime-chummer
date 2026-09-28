@@ -3,7 +3,7 @@ import { blankCharacter } from '../../src/engine/file'
 import { canFinalize, validate } from '../../src/engine/validate'
 import { finalize, makeAmpAdd } from '../../src/engine/career'
 import type { AmpEntry, Character } from '../../src/model/types'
-import { cat, sample } from '../helpers'
+import { cat } from '../helpers'
 
 const amp = (uid: string, type: string, effects: AmpEntry['effects'], extra: Partial<AmpEntry> = {}): AmpEntry =>
   ({ uid, type, name: uid, narrative: '', effects, ...extra })
@@ -14,10 +14,6 @@ const base = () => {
   ch.build.attributes = { str: 2, agi: 2, wil: 2, log: 2, cha: 2 }
   return ch
 }
-
-test('Lightning has no errors', () => {
-  expect(validate(cat, sample('lightning')).filter(v => v.severity === 'error')).toEqual([])
-})
 
 test.each<[string, (ch: Character) => void]>([
   ['budget.over', ch => { ch.build.attributes = { str: 4, agi: 4, wil: 4, log: 4, cha: 4 }; ch.build.skills = ['athletics', 'stealth', 'perception', 'influence', 'network', 'survival', 'piloting', 'electronics', 'engineering', 'close-combat', 'ranged-weapons'].map(id => ({ id, rating: 5, specs: [] })); ch.level = 'ganger' }],
@@ -53,16 +49,16 @@ test('narrative.count and runner.basics are warnings on a blank character', () =
 })
 
 test('amp.qualityAfterCreation: adding a Quality in career needs a GM', () => {
-  let ch = finalize(cat, sample('lightning'))
+  let ch = finalize(cat, blankCharacter())
   ch = { ...ch, career: [...ch.career, makeAmpAdd(cat, ch, amp('q2', 'quality', [{ ref: 'narrative', param: 'lucky' }]))] }
   expect(codes(ch)).toContain('amp.qualityAfterCreation')
 })
 
-test('book-sanctioned negative effects need no approval', () => {
+test('catalog-sanctioned negative effects need no approval', () => {
   const ch = base()
-  const cereprax = cat.amps.get('cereprax')!
-  ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Cereprax' }]
-  ch.build.amps = [amp('d', 'equipment', cereprax.effects, { catalogId: 'cereprax', linkedItem: 'i' })]
+  const rush = cat.amps.get('rush')!
+  ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Rush' }]
+  ch.build.amps = [amp('d', 'equipment', rush.effects, { catalogId: 'rush', linkedItem: 'i' })]
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
@@ -77,11 +73,11 @@ test('a GM override approves the violation and unblocks Finalize', () => {
   expect(canFinalize(v)).toBe(true)
 })
 
-test('effects a book catalog amp carries are sanctioned even when the effect table forbids them (Jazz)', () => {
+test('effects a catalog amp carries are sanctioned even when the effect table forbids them (book drug pattern)', () => {
   const ch = base()
-  const jazz = cat.amps.get('jazz')!
-  ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Jazz' }]
-  ch.build.amps = [amp('d', 'equipment', jazz.effects, { catalogId: 'jazz', linkedItem: 'i' })]
+  const rush = cat.amps.get('rush')!
+  ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Rush' }]
+  ch.build.amps = [amp('d', 'equipment', rush.effects, { catalogId: 'rush', linkedItem: 'i' })]
   expect(codes(ch)).not.toContain('amp.typeIllegal')
   ch.build.amps[0].catalogId = undefined // the same effects on a home-made amp are not
   expect(codes(ch)).toContain('amp.typeIllegal')

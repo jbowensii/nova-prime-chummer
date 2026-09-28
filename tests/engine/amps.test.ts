@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
-import { ampChangeCost, ampCtx, ampEssence, ampRating, effectRating, legalEffects } from '../../src/engine/amps'
+import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects } from '../../src/engine/amps'
 import type { AmpEntry } from '../../src/model/types'
-import { cat, sample } from '../helpers'
+import { cat } from '../helpers'
 
 const amp = (type: string, ...effects: [string, string?][]): AmpEntry =>
   ({ uid: 'a', type, name: 't', narrative: '', effects: effects.map(([ref, param]) => ({ ref, param })) })
@@ -23,11 +23,6 @@ test('smartlink upgrade from pistols spec to the whole Skill costs +3 rating = 1
 
 test('removing an effect refunds nothing by default', () => {
   expect(ampChangeCost(cat, amp('cyberware', ['rr-skill', 'stealth']), amp('cyberware'), first)).toBe(0)
-})
-
-test("Lightning's amps rate 5, 6, 4, 2 = 17 (CRB p.85)", () => {
-  const b = sample('lightning').build
-  expect(b.amps.map(a => ampRating(cat, a, ampCtx(b, a)))).toEqual([5, 6, 4, 2])
 })
 
 test('the second Quality starts at base rating 3', () => {

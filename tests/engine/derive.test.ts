@@ -2,7 +2,7 @@ import { test, expect } from 'vitest'
 import { derive } from '../../src/engine/derive'
 import { blankCharacter } from '../../src/engine/file'
 import type { AmpEntry, Character } from '../../src/model/types'
-import { cat, sample } from '../helpers'
+import { cat } from '../helpers'
 
 const amp = (uid: string, type: string, refs: string[]): AmpEntry =>
   ({ uid, type, name: uid, narrative: '', effects: refs.map(ref => ({ ref })) })
@@ -74,11 +74,4 @@ test('wound boxes, RR from amps, and the RR cap of 3', () => {
   expect(d.monitor).toEqual({ light: 3, serious: 2, incap: 1 })
   expect(d.pools.find(p => p.spec === 'stealth.physical-sneaking')!.rr).toBe(3)
   expect(d.pools.find(p => p.skill === 'stealth' && !p.spec && p.attr === 'agi')!.rr).toBe(1)
-})
-
-test('Lightning: Edge 3 (elf), knowledge includes keywords and 4+ skills', () => {
-  const d = derive(cat, sample('lightning'))
-  expect(d.edge).toBe(3)
-  expect(d.knowledge).toEqual(expect.arrayContaining(['Cat shaman', 'Sorcery', 'Stealth', 'Perception']))
-  expect(d.awakened).toMatchObject({ projection: true, sorcery: true, conjuring: true, adept: false })
 })

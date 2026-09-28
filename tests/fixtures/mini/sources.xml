@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test sources (docs/superpowers/sdd/2026-09-27-pdf-importer/task-1-brief.md):
+     TEST/TEST2 are non-canon, TESTC is canon, exercising duplicate ids across sources. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">
+  <source id="TEST" publisher="Test Publisher" canon="false"><name>Test Book One</name></source>
+  <source id="TESTC" publisher="Test Publisher" canon="true"><name>Test Book Canon</name></source>
+  <source id="TEST2" publisher="Test Publisher" canon="false"><name>Test Book Two</name></source>
+</ca2:data>
