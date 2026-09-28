@@ -56,8 +56,8 @@ def _files(folder, root, keys):
     for dirpath, dirs, files in os.walk(root):
         rel = os.path.relpath(dirpath, root).replace(os.sep, "/")
         rel = "" if rel == "." else rel + "/"
-        if not rel:
-            dirs[:] = [d for d in dirs if not d.startswith(TEMP) and not (folder == "library" and d == ".backups")]
+        # a swap's temp folders at any depth (a data pack's are in custom/imported/core): never backed up
+        dirs[:] = [d for d in dirs if not d.startswith(TEMP) and not (not rel and folder == "library" and d == ".backups")]
         dirs.sort()
         for f in sorted(files):
             path, name = os.path.join(dirpath, f), f"{folder}/{rel}{f}"
@@ -122,6 +122,8 @@ def _entry_problem(info):
         return "has files outside characters/, custom/ and library/"
     if parts[:2] == ["library", ".backups"]:
         return "has library/.backups"
+    if any(p.startswith(TEMP) for p in parts):  # a swap's leftovers: restored, recover would put them back over live files
+        return "has a restore or data pack temp folder (.restore-…)"
     return None
 
 
