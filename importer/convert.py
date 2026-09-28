@@ -9,7 +9,7 @@ CONVERTER_VERSION = "1"
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
 # (k-means on x0) if a 3+ column layout shows up in practice.
-_MIN_GUTTER = 20  # pt; min gap between word x0s for a candidate column gutter
+_GUTTER_HALF = 5  # pt; a gutter is a clear strip >= 10pt (~1 em at body size) wide
 _MIN_LINES_PER_SIDE = 2
 _MAX_CROSS_FRACTION = 0.10
 
@@ -32,92 +32,90 @@ def _in_table(w, table_boxes):
 
 
 def _cluster_lines(words):
-    """Group words into visual lines.
+    """Group words into visual rows by y-proximity only.
 
-    First cluster by y-proximity, anchored to the first word's top in the
-    cluster (tolerant of small baseline jitter between regular and bold
-    runs on what is visually one line). Then split a cluster at any
-    horizontal gap wider than one em (far bigger than a word gap) — this is what keeps two
-    side-by-side column lines that happen to sit at the same height from
-    being read as one garbled line.
+    Anchored to the first word's top in the row (tolerant of small baseline
+    jitter between regular and bold runs on one visual line). Rows are NOT
+    split at wide word gaps here — justified text has those everywhere.
+    Two columns sharing a row are split later, only at an accepted gutter.
     """
     words = sorted(words, key=lambda w: w["top"])
-    raw, cur, anchor = [], [], None
+    rows, cur, anchor = [], [], None
     for w in words:
         if anchor is not None and abs(w["top"] - anchor) > _LINE_TOLERANCE:
-            raw.append(cur)
+            rows.append(cur)
             cur = []
             anchor = None
         cur.append(w)
         if anchor is None:
             anchor = w["top"]
     if cur:
-        raw.append(cur)
-
-    lines = []
-    for cluster in raw:
-        cluster = sorted(cluster, key=lambda w: w["x0"])
-        seg = [cluster[0]]
-        for prev, w in zip(cluster, cluster[1:]):
-            # > 1 em: justified word spacing stays well under it (~2-4pt at
-            # 10pt body), a narrow column gutter (~17pt in real books) doesn't.
-            if w["x0"] - prev["x1"] > max(prev["size"], w["size"]):
-                lines.append(seg)
-                seg = []
-            seg.append(w)
-        lines.append(seg)
-    return lines
+        rows.append(cur)
+    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
 
 
 def _line_extent(line):
     return min(w["x0"] for w in line), max(w["x1"] for w in line)
 
 
-def _find_gutter(words, lines, page_width):
-    """Return a column-split x, or None if the page doesn't look 2-column.
+def _split_at(row, x):
+    """Split a row at gutter x, unless a word runs through the gutter strip."""
+    if any(w["x0"] < x + _GUTTER_HALF and w["x1"] > x - _GUTTER_HALF for w in row):
+        return [row]
+    return [part for part in ([w for w in row if w["x1"] <= x], [w for w in row if w["x0"] >= x]) if part]
 
-    A candidate gutter (the biggest x0 gap among words) is only accepted
-    when it actually separates *lines* into two real column clusters: what
-    marks a real gutter is that body lines' x-extents stop before it on
-    each side (few lines cross it — occasional full-width tables/headings
-    are expected, but if most lines cross it, it's just an indent or a
-    centered line, not a gutter). Each side also needs at least a couple of
-    lines so a single stray line can't manufacture a "column" of its own —
-    but no minimum *share* of the page's lines, so a short sidebar/callout
-    column next to a much longer main column still counts. Finally, the two
-    sides must actually sit side by side: at least a couple of right-side
+
+def _gutter_crossings(rows, x):
+    """Crossing-line count if x is a real gutter, else None.
+
+    With rows split at x: what marks a real gutter is that lines stop
+    before it on each side (few cross it: occasional full-width headings
+    or tables are expected, but if many do, it's a coincidental gap in
+    justified text, an indent, or a centered line). Each side needs at
+    least a couple of lines so a stray line can't make a "column", but no
+    minimum *share*, so a short sidebar next to a long column still counts.
+    And the sides must sit side by side: at least a couple of right-side
     lines must vertically overlap a left-side line, so an indented block
     that merely follows the body (below it) isn't mistaken for a column.
     """
-    if len(words) < 4 or not lines:
-        return None
-    xs = sorted(w["x0"] for w in words)
-    # Biggest gap in the middle of the page — edge furniture (e.g. vertical
-    # tab letters in the margin) can make a bigger gap near the page edge.
-    gaps = [(b - a, (a + b) / 2) for a, b in zip(xs, xs[1:])]
-    gap, mid = max((g for g in gaps if page_width * 0.25 < g[1] < page_width * 0.75), default=(0, 0))
-    if gap < _MIN_GUTTER:
-        return None
-
     left, right, cross = [], [], 0
-    for line in lines:
-        x0, x1 = _line_extent(line)
-        span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
-        if x1 <= mid:
-            left.append(span)
-        elif x0 >= mid:
-            right.append(span)
-        else:
-            cross += 1
+    for row in rows:
+        for line in _split_at(row, x):
+            x0, x1 = _line_extent(line)
+            span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
+            if x1 <= x:
+                left.append(span)
+            elif x0 >= x:
+                right.append(span)
+            else:
+                cross += 1
     total = len(left) + len(right) + cross
     if len(left) < _MIN_LINES_PER_SIDE or len(right) < _MIN_LINES_PER_SIDE or cross / total >= _MAX_CROSS_FRACTION:
         return None
-    # Columns sit side by side: enough right-side lines must share a vertical
-    # band with some left-side line. An indented block *below* the body shares none.
     beside = sum(any(t < lb and lt < b for lt, lb in left) for t, b in right)
-    if beside < _MIN_LINES_PER_SIDE:
-        return None
-    return mid
+    return cross if beside >= _MIN_LINES_PER_SIDE else None
+
+
+def _find_gutter(rows, page_width):
+    """Return a column-split x, or None if the page doesn't look 2-column.
+
+    Candidates are the centres of whitespace gaps (a strip >= 2*_GUTTER_HALF
+    wide) between words on one row, in the middle band of the page only —
+    margin furniture like vertical tab letters makes big gaps near the
+    edges. A real gutter is a whitespace river: the same strip stays clear
+    down many rows. Justified text's wide gaps move from row to row, so
+    most rows have a word through any one of them and the crossing gate in
+    `_gutter_crossings` rejects it. The accepted candidate with the fewest
+    crossing lines wins.
+    """
+    cands = {
+        round((a["x1"] + b["x0"]) / 2)
+        for row in rows
+        for a, b in zip(row, row[1:])
+        if b["x0"] - a["x1"] >= 2 * _GUTTER_HALF and page_width * 0.25 < (a["x1"] + b["x0"]) / 2 < page_width * 0.75
+    }
+    scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x)) is not None]
+    return min(scored)[1] if scored else None
 
 
 def _kind(x0, x1, mid):
@@ -186,8 +184,9 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
             boxes = [t.bbox for t in tables]
             all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False)
             words = [w for w in all_words if not _in_table(w, boxes)]
-            lines = _cluster_lines(words)
-            mid = _find_gutter(words, lines, page.width)
+            rows = _cluster_lines(words)
+            mid = _find_gutter(rows, page.width)
+            lines = [part for row in rows for part in _split_at(row, mid)] if mid else rows
 
             blocks = []
             for line in lines:
