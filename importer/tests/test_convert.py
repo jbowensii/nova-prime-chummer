@@ -3,16 +3,27 @@ import tempfile
 import unittest
 
 from importer.convert import convert
-from importer.tests.minipdf import two_column_page_pdf, two_page_pdf
+from importer.tests.minipdf import (
+    single_column_with_outlier_pdf,
+    two_column_page_pdf,
+    two_columns_with_band_pdf,
+    two_page_pdf,
+)
+
+
+def _convert_to_lines(pdf_bytes, tmp_name):
+    d = tempfile.mkdtemp()
+    pdf, md = os.path.join(d, f"{tmp_name}.pdf"), os.path.join(d, f"{tmp_name}.md")
+    open(pdf, "wb").write(pdf_bytes)
+    meta = convert(pdf, md)
+    text = open(md, encoding="utf8").read()
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.startswith("<!--")]
+    return meta, text, lines
 
 
 class ConvertTest(unittest.TestCase):
     def test_pages_headings_tables(self):
-        d = tempfile.mkdtemp()
-        pdf, md = os.path.join(d, "t.pdf"), os.path.join(d, "t.md")
-        open(pdf, "wb").write(two_page_pdf())
-        meta = convert(pdf, md)
-        text = open(md, encoding="utf8").read()
+        meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
         self.assertEqual(meta["pages"], 2)
         self.assertEqual(meta["converter"], "1")
         self.assertIn("<!-- page 1 -->", text)
@@ -23,21 +34,41 @@ class ConvertTest(unittest.TestCase):
         self.assertEqual(len(meta["sha256"]), 64)
 
     def test_two_columns_read_top_to_bottom_then_next_column(self):
-        d = tempfile.mkdtemp()
-        pdf, md = os.path.join(d, "cols.pdf"), os.path.join(d, "cols.md")
-        open(pdf, "wb").write(two_column_page_pdf())
-        convert(pdf, md)
-        text = open(md, encoding="utf8").read()
-        lines = [ln for ln in text.splitlines() if ln.strip()]
-        self.assertIn("Alpha one", lines)
-        self.assertIn("Alpha two", lines)
-        self.assertIn("Beta one", lines)
-        self.assertIn("Beta two", lines)
-        self.assertLess(lines.index("Alpha one"), lines.index("Alpha two"))
-        self.assertLess(lines.index("Alpha two"), lines.index("Beta one"))
-        self.assertLess(lines.index("Beta one"), lines.index("Beta two"))
+        _, _, lines = _convert_to_lines(two_column_page_pdf(), "cols")
+        self.assertEqual(
+            lines, ["Alpha one", "Alpha two", "Alpha three", "Beta one", "Beta two", "Beta three"]
+        )
         for ln in lines:
             self.assertFalse("Alpha" in ln and "Beta" in ln, f"columns merged in line: {ln!r}")
+
+    def test_single_column_with_outlier_is_not_split_into_columns(self):
+        # One centered/indented line among left-aligned body text must not
+        # trick the gutter detector into treating the page as 2-column
+        # (only one line would ever land on the "other side").
+        _, _, lines = _convert_to_lines(single_column_with_outlier_pdf(), "outlier")
+        self.assertEqual(
+            lines,
+            ["Intro one.", "Intro two.", "Special Note", "Intro three.", "Intro four."],
+        )
+
+    def test_full_width_band_splits_two_column_page_into_segments(self):
+        _, _, lines = _convert_to_lines(two_columns_with_band_pdf(), "band")
+        self.assertEqual(
+            lines,
+            [
+                "Left one",
+                "Left two",
+                "Left three",
+                "Right one",
+                "Right two",
+                "Right three",
+                "Full width heading spans both columns right here now",
+                "Left four",
+                "Left five",
+                "Right four",
+                "Right five",
+            ],
+        )
 
 
 if __name__ == "__main__":
