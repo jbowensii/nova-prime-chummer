@@ -54,7 +54,7 @@ Apply enables), then Apply. That recreates the container on the new image.
 
 The image ships the rules engine only. To get the amps, spells, gear, rules
 text and sample runners back, open **Books** from the library and upload
-the PDFs from `DownloadsShadowrun Anachy 2.0` (the core rulebook, the
+the PDFs from `Downloads\Shadowrun Anachy 2.0` (the folder's real name, typo included; the core rulebook, the
 Conversion Guide, Daegann's amp list and pregen booklet, the four
 quick-reference sheets). Each one shows its progress and, when done, its
 entry counts and report. Runners already on the server keep working in the
@@ -68,7 +68,8 @@ the review screen.
 ## Verification on the deployed container (2026-09-27)
 
 - The Game data page: 14 files, "Every file loaded cleanly" (with the empty
-  custom mount).
+  custom mount). Historical: that image still shipped the catalogs; the
+  count now depends on which books have been imported.
 - Plain-http context (`isSecureContext` false, no `crypto.randomUUID`):
   creating a runner works through the `newId()` fallback.
 - The rulebook's sample runners loaded and priced as the book prints them
