@@ -374,3 +374,6 @@ table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-to
 .toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 10; max-width: calc(100vw - 2rem);
   margin: 0; padding: 0.6rem 1rem; background: var(--panel); color: var(--panel-text); border-left: 4px solid var(--yellow); box-shadow: 0 6px 20px rgb(0 0 0 / 0.3); }
 .picker li:hover .edited, .picker li:focus-visible .edited { background: var(--ink); color: var(--yellow); }
+.picker li.off { cursor: default; }
+.picker li.off:hover { background: inherit; color: inherit; }
+.picker li.off:hover .t, .picker li.off:hover .muted { color: var(--text-2); }
