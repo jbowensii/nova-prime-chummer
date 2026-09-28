@@ -16,6 +16,7 @@ import shutil
 import stat
 import tempfile
 import zipfile
+import zlib
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from xml.sax.saxutils import quoteattr
@@ -27,6 +28,10 @@ KEYS = "library/.config/ai-keys.xml"
 MAX_TOTAL = 20 * 1024 ** 3
 MAX_RATIO, RATIO_FROM = 200, 1024 ** 2  # zip-bomb guard: files over 1 MB may not expand more than 200 times
 MAX_MANIFEST = 1024 ** 2
+MAX_ENTRIES = 200_000
+# Windows can't hold these names; a zip made elsewhere could still carry them
+RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"{p}{i}" for p in ("COM", "LPT") for i in range(1, 10))}
+UNSAFE = re.compile(r'[\x00-\x1f\x7f\\:*?"<>|]')  # control characters, backslash, drive colon, Windows-forbidden
 KEEP = 3
 STAMP = re.compile(r"\d{8}T\d{6}_\d{6}Z\.zip")  # safety backups; other files in .backups are left alone
 TEMP = ".restore-"  # apply's temp folders inside each target; never backed up
@@ -56,8 +61,8 @@ def _files(folder, root, keys):
         dirs.sort()
         for f in sorted(files):
             path, name = os.path.join(dirpath, f), f"{folder}/{rel}{f}"
-            if f.endswith(".tmp") or os.path.islink(path) or (name == KEYS and not keys):
-                continue
+            if f.endswith(".tmp") or not stat.S_ISREG(os.lstat(path).st_mode) or (name == KEYS and not keys):
+                continue  # links, FIFOs and devices are never backed up
             yield path, name
 
 
@@ -94,11 +99,13 @@ def _entry_problem(info):
         return "has a symbolic link"
     if kind not in (0, stat.S_IFREG, stat.S_IFDIR):
         return "has a device or special file"
-    if name.startswith("/") or "\\" in name or ":" in name or "\0" in name:
-        return "has an absolute or Windows-style path"
+    if name.startswith("/") or UNSAFE.search(name):
+        return "has an absolute path, a backslash, a drive letter or a character a file name can’t have"
     parts = name[:-1].split("/") if name.endswith("/") else name.split("/")
     if any(p in ("", ".", "..") for p in parts):
         return "has a path with .. or an empty part"
+    if any(p[-1] in ". " or p.split(".")[0].upper() in RESERVED for p in parts):
+        return "has a name Windows can’t hold (ending in a dot or space, or a reserved name like CON)"
     if name != "backup.xml" and (parts[0] not in FOLDERS or (len(parts) == 1 and not name.endswith("/"))):
         return "has files outside characters/, custom/ and library/"
     if parts[:2] == ["library", ".backups"]:
@@ -118,18 +125,31 @@ def check(path):
         raise RestoreError(f"this isn’t a readable zip file ({e})")
     with zf:
         infos, names, total = zf.infolist(), set(), 0
+        if len(infos) > MAX_ENTRIES:
+            raise RestoreError(f"the zip has more than {MAX_ENTRIES:,} files")
         counts = {f: [0, 0] for f in FOLDERS}
+        files, folders = set(), {KEYS.rsplit("/", 1)[0].casefold()}  # the keys' folder must stay a folder
         for info in infos:
             problem = _entry_problem(info)
             if problem:
                 raise RestoreError(f"the zip {problem}: {info.filename}")
-            if info.filename in names:
-                raise RestoreError(f"the zip has the same file twice: {info.filename}")
-            names.add(info.filename)
+            key = info.filename.rstrip("/").casefold()
+            if key in names:
+                raise RestoreError(f"the zip has the same name twice (letter case aside): {info.filename}")
+            names.add(key)
+            parts = key.split("/")
+            folders.update("/".join(parts[:i]) for i in range(1, len(parts) + info.is_dir()))
             total += info.file_size
-            if not info.is_dir() and info.filename != "backup.xml":
-                c = counts[info.filename.split("/", 1)[0]]
-                c[0], c[1] = c[0] + 1, c[1] + info.file_size
+            if not info.is_dir():
+                files.add(key)
+                if key != "backup.xml":
+                    c = counts[parts[0]]
+                    c[0], c[1] = c[0] + 1, c[1] + info.file_size
+        clash = files & folders
+        if clash:
+            raise RestoreError(f"the zip has a name that is both a file and a folder: {min(clash)}")
+        if KEYS.casefold() in folders:
+            raise RestoreError(f"the zip has a folder where {KEYS} should be a file")
         if total > MAX_TOTAL:
             raise RestoreError("the zip unpacks to more than 20 GB")
         if "backup.xml" not in names:
@@ -141,7 +161,7 @@ def check(path):
             root = ET.fromstring(zf.read(info))
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
             raise RestoreError(f"backup.xml can’t be read ({e})")
-        _check_manifest(root, counts, KEYS in names)
+        _check_manifest(root, counts, KEYS.casefold() in files)
     return root
 
 
@@ -161,11 +181,11 @@ def _check_manifest(root, counts, has_keys):
         raise RestoreError("the zip has API keys its backup.xml doesn’t list")
 
 
-def _swap(target, new):
+def _swap(target, new, keep=()):
     """Move `target`'s contents aside, `new`'s in, then delete the old ones; on a failure put the old ones back.
-    library/.backups and `new` itself stay."""
+    `keep` (library's .backups) and `new` itself stay."""
     old = tempfile.mkdtemp(dir=target, prefix=TEMP + "old-")
-    stay = {os.path.basename(old), os.path.basename(new), ".backups"}
+    stay = {os.path.basename(old), os.path.basename(new), *keep}
     moved, came = [], []
     try:
         for n in os.listdir(target):
@@ -195,37 +215,45 @@ def apply(path, dirs, version=None):
     backup(dirs, safety, keys=True, version=version)  # never leaves the server, so keys included
     news = {}
     try:
-        with zipfile.ZipFile(path) as zf:
-            has_keys = KEYS in zf.namelist()
-            for folder in FOLDERS:
-                os.makedirs(dirs[folder], exist_ok=True)
-                news[folder] = new = tempfile.mkdtemp(dir=dirs[folder], prefix=TEMP + "new-")
-                for info in zf.infolist():
-                    if not info.filename.startswith(folder + "/"):
-                        continue
-                    dst = os.path.join(new, *info.filename[len(folder) + 1:].split("/"))
-                    if info.is_dir():
-                        os.makedirs(dst, exist_ok=True)
-                        continue
-                    os.makedirs(os.path.dirname(dst), exist_ok=True)
-                    with zf.open(info) as src, open(dst, "wb") as out:
-                        shutil.copyfileobj(src, out, 1024 * 1024)
-        keys = os.path.join(news["library"], ".config", "ai-keys.xml")
-        old_keys = os.path.join(dirs["library"], ".config", "ai-keys.xml")
-        if not has_keys and os.path.exists(old_keys):  # a backup without keys keeps the server's keys
-            os.makedirs(os.path.dirname(keys), exist_ok=True)
-            shutil.copy2(old_keys, keys)
-        if os.path.exists(keys):
-            os.chmod(keys, 0o600)
+        try:
+            _extract(path, dirs, news)
+        except (OSError, zipfile.BadZipFile, zlib.error, EOFError) as e:
+            raise RestoreError(f"the zip couldn’t be unpacked, so nothing was changed ({type(e).__name__}: {e})")
         # ponytail: the zip is closed before the swap (Windows can't move a folder holding an open file, and the
         # applied zip may itself sit in library/.backups); a killed process can leave a folder half swapped
         # (its old files in .restore-old-*); the safety backup covers that.
         for folder in FOLDERS:
-            _swap(dirs[folder], news.pop(folder))
+            _swap(dirs[folder], news.pop(folder), (".backups",) if folder == "library" else ())
     finally:
         for new in news.values():
             shutil.rmtree(new, ignore_errors=True)
-    for old in sorted(n for n in os.listdir(backups) if STAMP.fullmatch(n))[:-KEEP]:
-        os.remove(os.path.join(backups, old))
+        for old in sorted(n for n in os.listdir(backups) if STAMP.fullmatch(n))[:-KEEP]:  # failed applies too
+            os.remove(os.path.join(backups, old))
     return safety
+
+
+def _extract(path, dirs, news):
+    """Unpack each folder of the zip into a temp folder inside its target, recorded in `news` ({folder: temp})."""
+    with zipfile.ZipFile(path) as zf:
+        has_keys = KEYS in zf.namelist()
+        for folder in FOLDERS:
+            os.makedirs(dirs[folder], exist_ok=True)
+            news[folder] = new = tempfile.mkdtemp(dir=dirs[folder], prefix=TEMP + "new-")
+            for info in zf.infolist():
+                if not info.filename.startswith(folder + "/"):
+                    continue
+                dst = os.path.join(new, *info.filename[len(folder) + 1:].split("/"))
+                if info.is_dir():
+                    os.makedirs(dst, exist_ok=True)
+                    continue
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with zf.open(info) as src, open(dst, "wb") as out:
+                    shutil.copyfileobj(src, out, 1024 * 1024)
+    keys = os.path.join(news["library"], ".config", "ai-keys.xml")
+    old_keys = os.path.join(dirs["library"], ".config", "ai-keys.xml")
+    if not has_keys and os.path.isfile(old_keys):  # a backup without keys keeps the server's keys
+        os.makedirs(os.path.dirname(keys), exist_ok=True)
+        shutil.copy2(old_keys, keys)
+    if os.path.exists(keys):
+        os.chmod(keys, 0o600)
 
