@@ -10,11 +10,11 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
-from importer import xmlio
+from importer import DATA_DIR, xmlio
 from importer.ai.providers import ProviderError, TruncatedReply
 from importer.ai.schema import SCHEMA
 
-DATA = os.path.join(os.path.dirname(__file__), "..", "..", "public", "data")
+DATA = DATA_DIR
 LIMIT = 12000
 HEADING = re.compile(r"^#{1,2} ", re.M)
 PAGE = re.compile(r"<!-- page (\d+) -->")

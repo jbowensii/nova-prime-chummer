@@ -17,10 +17,11 @@ import re
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
+from importer import DATA_DIR
 from importer.recipes import Result
 
 ID, NAME, PUBLISHER, CANON = "DHSA", "Shadow Amps Expanded List v3.4b", "Daegann (Holostreets)", False
-SHIPPED_SKILLS = os.path.join(os.path.dirname(__file__), "..", "..", "public", "data", "skills.xml")
+SHIPPED_SKILLS = os.path.join(DATA_DIR, "skills.xml")
 
 SKILLS = {
     "athletics": "athletics", "close combat": "close-combat", "conjuring": "conjuring",

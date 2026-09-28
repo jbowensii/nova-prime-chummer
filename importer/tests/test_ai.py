@@ -6,6 +6,7 @@ import stat
 import tempfile
 import threading
 import unittest
+import unittest.mock
 import xml.etree.ElementTree as ET
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -402,6 +403,79 @@ class ProposeTest(unittest.TestCase):
         self.assertEqual(len(ET.parse(os.path.join(book, "review.xml")).getroot()), 4)
         self.assertEqual(ET.parse(os.path.join(book, "review.xml")).getroot().get("provider"), "openai")
         self.assertNotIn(KEY, Path(book, "review.xml").read_text(encoding="utf8"))
+
+
+class ApplyReviewTest(unittest.TestCase):
+    def _reviewed(self):
+        lib = tempfile.mkdtemp()
+        book, custom = os.path.join(lib, "made-up"), os.path.join(tempfile.mkdtemp(), "custom")
+        xmlio.write_file(os.path.join(book, "book.md"), BOOK)
+        xmlio.write_import(book, file="made-up.pdf", sha256="ab" * 32, converter="6", pages=1, score="0.00")
+        P.propose(book, lambda s, u: json.dumps(TWO_AMPS))
+        path = os.path.join(book, "review.xml")
+        tree = ET.parse(path)
+        states = {"amp.neural-spoon": "accepted", "amp.glitter-gland": "dropped", "gear.gear-tin-spoon": "edited"}
+        for p in tree.getroot().findall("proposal"):
+            p.set("state", states.get(p.get("id"), "pending"))
+            if p.get("id") == "gear.gear-tin-spoon":
+                p.find("item/name").text = "Tin Spoon (edited)"
+        tree.write(path, encoding="utf8")
+        return lib, book, custom, path
+
+    def _apply(self, book, custom, source="MADE"):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return main(["apply-review", book, "--custom", custom, "--source", source, "--name", "Made-up Gear", "--canon", "false"])
+
+    def test_accepted_and_edited_proposals_become_the_overlay(self):
+        lib, book, custom, path = self._reviewed()
+        self.assertEqual(self._apply(book, custom), 0)
+        imported = os.path.join(custom, "imported")
+        amps = Path(imported, "made", "amps.xml").read_text(encoding="utf8")
+        self.assertIn('<amp id="made.neural-spoon"', amps)
+        self.assertIn('source="MADE"', amps)
+        self.assertNotIn("glitter", amps)
+        self.assertIn("Tin Spoon (edited)", Path(imported, "made", "gear.xml").read_text(encoding="utf8"))
+        self.assertFalse(os.path.exists(os.path.join(imported, "made", "spells.xml")))  # still pending
+        self.assertIn("made/amps.xml", Path(imported, "index.xml").read_text(encoding="utf8"))
+        src = ET.parse(os.path.join(imported, "sources.xml")).getroot()[0]
+        self.assertEqual((src.get("id"), src.get("canon"), src.findtext("name"), src.get("file")), ("MADE", "false", "Made-up Gear", "made-up.pdf"))
+        imp = ET.parse(os.path.join(book, "import.xml")).getroot()
+        self.assertEqual((imp.get("recipe"), imp.get("source")), ("ai", "MADE"))
+        self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
+        r = node("tools/validate-data.mjs", imported)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for f, xsd in [(os.path.join(imported, "sources.xml"), "sources.xsd"), (os.path.join(book, "import.xml"), "import.xsd")]:
+            r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(XSD_DIR, xsd), os.path.join(XSD_DIR, "common.xsd"))
+            self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
+
+        # a second apply replaces the first: the gear dropped now, its file goes
+        tree = ET.parse(path)
+        tree.getroot().find("proposal[@id='gear.gear-tin-spoon']").set("state", "dropped")
+        tree.write(path, encoding="utf8")
+        self.assertEqual(self._apply(book, custom), 0)
+        self.assertFalse(os.path.exists(os.path.join(imported, "made", "gear.xml")))
+        self.assertTrue(os.path.exists(os.path.join(imported, "made", "amps.xml")))
+
+    def test_a_source_id_another_book_uses_is_refused(self):
+        lib, book, custom, _ = self._reviewed()
+        xmlio.write_import(os.path.join(lib, "other"), file="o.pdf", sha256="cd", converter="6", pages=1, score="1.00", source="CRB")
+        with self.assertRaises(ValueError):
+            self._apply(book, custom, "CRB")
+        self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "failed")
+        self.assertFalse(os.path.exists(os.path.join(custom, "imported", "crb")))
+        with self.assertRaises(ValueError):
+            self._apply(book, custom, "../x")
+
+    def test_cli_set_key_reads_the_key_from_stdin(self):
+        lib = tempfile.mkdtemp()
+        with unittest.mock.patch("sys.stdin", io.StringIO(KEY + "\n")):
+            self.assertEqual(main(["set-key", lib, "anthropic"]), 0)
+        self.assertEqual(AI.read_key(os.path.join(lib, ".config"), "anthropic"), KEY)
+        with unittest.mock.patch("sys.stdin", io.StringIO("")):
+            self.assertEqual(main(["set-key", lib, "anthropic"]), 0)
+        self.assertIsNone(AI.read_key(os.path.join(lib, ".config"), "anthropic"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(main(["set-key", lib, "evil"]), 2)
 
 
 if __name__ == "__main__":
