@@ -506,6 +506,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       const folders = Object.fromEntries([...r.out.matchAll(/<folder\b[^>]*>/g)].map(f => [attr(f[0], 'name'), { files: Number(attr(f[0], 'files')), bytes: Number(attr(f[0], 'bytes')) }]))
       const token = await issue(uploads, file, restoreTtl)
       return send(res, 200, { token, manifest: { app: attr(m, 'app'), created: attr(m, 'created'), keys: attr(m, 'keys') === 'yes',
+        users: Number(attr(m, 'users') ?? 0), authSecret: attr(m, 'authSecret') === 'yes',
         files: Number(attr(m, 'files')), bytes: Number(attr(m, 'bytes')), folders } })
     } catch (e) {
       await rm(file, { force: true })

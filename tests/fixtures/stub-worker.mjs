@@ -157,13 +157,13 @@ if (cmd === 'run') {
 } else if (cmd === 'backup' || cmd === 'restore') {
   const args = [target, ...rest], flag = f => args[args.indexOf(f) + 1]
   const dirs = { characters: flag('--characters'), custom: flag('--custom'), library: flag('--library') }
-  const KEYS = 'library/.config/ai-keys.xml', MAGIC = 'PK\x03\x04\n'
+  const KEYS = 'library/.config/ai-keys.xml', MAGIC = 'PK\x03\x04\n', NEVER = /^library\/\.config\/(sessions|reset|device-key|oidc-key)\.xml$/
   const walk = (root, rel = '') => !existsSync(join(root, rel)) ? [] : readdirSync(join(root, rel), { withFileTypes: true }).flatMap(d =>
     d.isDirectory() ? (rel === '' && d.name === '.backups' ? [] : walk(root, `${rel}${d.name}/`)) : d.name.endsWith('.tmp') ? [] : [rel + d.name])
   const zip = (out, keys) => {
     const files = {}, folders = {}
     for (const [f, root] of Object.entries(dirs)) {
-      const names = walk(root).filter(n => keys || `${f}/${n}` !== KEYS)
+      const names = walk(root).filter(n => (keys || `${f}/${n}` !== KEYS) && !NEVER.test(`${f}/${n}`))
       for (const n of names) files[`${f}/${n}`] = readFileSync(join(root, n)).toString('base64')
       folders[f] = names.length
     }
@@ -184,7 +184,9 @@ if (cmd === 'run') {
   }
   else if (args.includes('--check')) {
     const z = read(flag('--check')), n = Object.values(z.folders).reduce((a, b) => a + b, 0)
-    console.log(`<backup format="1" app="${z.app}" created="${z.created}" keys="${z.keys ? 'yes' : 'no'}" files="${n}" bytes="0">${
+    const users = Buffer.from(z.files['library/.config/users.xml'] ?? '', 'base64').toString().match(/<user\b/g)?.length ?? 0
+    console.log(`<backup format="1" app="${z.app}" created="${z.created}" keys="${z.keys ? 'yes' : 'no'}" users="${users}" authSecret="${
+      'library/.config/auth-secret.xml' in z.files ? 'yes' : 'no'}" files="${n}" bytes="0">${
       Object.entries(z.folders).map(([f, c]) => `<folder name="${f}" files="${c}" bytes="0"/>`).join('')}</backup>`)
   } else {
     const z = read(flag('--apply'))

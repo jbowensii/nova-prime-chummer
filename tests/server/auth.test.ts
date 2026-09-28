@@ -342,15 +342,51 @@ test('a restore ends every session and brings back the backup’s accounts; one 
     const { token } = await (await call(s.base, 'POST', '/api/restore?preview=1', { cookie, body: bytes })).json()
     return call(s.base, 'POST', `/api/restore/${token}`, { cookie })
   }
-  expect((await restore(await zip())).status).toBe(200)
-  expect((await call(s.base, 'GET', '/api/characters', { cookie })).status).toBe(401)
+  const other = (await login(s.base, 'admin', PW.admin)).cookie // a second session: it ends too
+  const preview = await (await call(s.base, 'POST', '/api/restore?preview=1', { cookie, body: await zip() })).json()
+  expect(preview.manifest).toMatchObject({ users: 1, authSecret: false })
+  expect((await call(s.base, 'POST', `/api/restore/${preview.token}`, { cookie })).status).toBe(200)
+  for (const c of [cookie, other]) expect((await call(s.base, 'GET', '/api/characters', { cookie: c })).status).toBe(401)
+  expect(readFileSync(join(s.lib, '.config', 'sessions.xml'), 'utf8')).not.toMatch(/<session\b/)
   cookie = (await login(s.base, 'admin', PW.admin)).cookie
   expect(cookie).toBeTruthy()
-  // a backup from before accounts: the stub's zip is JSON behind a zip header
-  const before = await zip(), z = JSON.parse(before.subarray(5).toString())
-  delete z.files['library/.config/users.xml']
-  expect((await restore(Buffer.concat([before.subarray(0, 5), Buffer.from(JSON.stringify(z))]))).status).toBe(200)
+
+  // the stub's zip is JSON behind a zip header: edit what the backup holds
+  const edited = async (edit: (files: Record<string, string>) => void) => {
+    const bytes = await zip(), z = JSON.parse(bytes.subarray(5).toString())
+    edit(z.files)
+    z.folders = Object.fromEntries(['characters', 'custom', 'library'].map(f => [f, Object.keys(z.files).filter(n => n.startsWith(`${f}/`)).length]))
+    return Buffer.concat([bytes.subarray(0, 5), Buffer.from(JSON.stringify(z))])
+  }
+  const b64 = (t: string) => Buffer.from(t).toString('base64'), text = (b: string) => Buffer.from(b, 'base64').toString()
+  // Authelia links for an issuer other than the restored auth.xml's go (subjects belong to their issuer); its own stay
+  const linked = await edited(files => {
+    const users = text(files['library/.config/users.xml'])
+    files['library/.config/users.xml'] = b64(users.replace(/<user\b([^>]*?)(\/?>)/, '<user$1 oidcIss="https://old.example" oidcSub="sub-1"$2')
+      .replace('</ca2:users>', '  <user id="0123456789ab" username="kim" name="Kim" role="player" method="authelia" enabled="true" created="2026-09-28T00:00:00Z" oidcIss="https://auth.example" oidcSub="sub-2"/>\n</ca2:users>'))
+    files['library/.config/auth.xml'] = b64('<?xml version="1.0" encoding="UTF-8"?>\n<ca2:auth xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">\n  <oidc enabled="false" issuer="https://auth.example" client="app" tokenAuth="client_secret_basic"/>\n</ca2:auth>\n')
+  })
+  expect((await restore(linked)).status).toBe(200)
+  const users = readFileSync(join(s.lib, '.config', 'users.xml'), 'utf8')
+  expect(users).not.toContain('old.example')
+  expect(users).toMatch(/username="kim"[^>]*oidcIss="https:\/\/auth.example" oidcSub="sub-2"/)
+  await valid(join(s.lib, '.config', 'users.xml'))
+  cookie = (await login(s.base, 'admin', PW.admin)).cookie
+
+  // a backup from before accounts: setup again, and its top-level runners go to the new admin
+  const code = () => logged.map(l => l.match(/Setup code for the first admin: (\S+)/)?.[1]).filter(Boolean).pop()!
+  const old = await edited(files => {
+    delete files['library/.config/users.xml']
+    files['characters/Old-Timer.xml'] = b64(runner('r-old', 'Old Timer'))
+  })
+  const pre = await (await call(s.base, 'POST', '/api/restore?preview=1', { cookie, body: old })).json()
+  expect(pre.manifest.users).toBe(0)
+  expect((await call(s.base, 'POST', `/api/restore/${pre.token}`, { cookie })).status).toBe(200)
   expect(await (await call(s.base, 'GET', '/api/auth/me', { cookie })).json()).toEqual({ user: null, setup: true, oidc: false })
+  secrets.add(code())
+  const r = await call(s.base, 'POST', '/api/setup', json({ username: 'boss', name: 'The Boss', password: PW.admin, code: code() }))
+  expect(r.status).toBe(201)
+  expect(readdirSync(join(s.chars, 'boss'))).toContain('Old-Timer.xml')
   s.srv.close()
 })
 
