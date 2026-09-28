@@ -212,13 +212,14 @@ The numbers the book prints for each runner are report rows in
 
 `<text of="amps|items|rules" id="…">description</text>` entries, kind
 `texts` (schema `texts.xsd`), one file per source: the file each source's
-`texts` attribute names (`texts/dhsa.xml`, `texts/qref.xml`), plus the older
+`texts` attribute names (`texts/crb.xml`, `texts/dhsa.xml`, `texts/qref.xml`), plus the older
 single `custom/texts.xml`. Each is loaded when present and merged into the
 amp's narrative, item's text or rule's text with the same id. They're
 never committed:
 
 | file | written by |
 |---|---|
+| `texts/crb.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (recipe `crb`) |
 | `texts/dhsa.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (recipe `dhsa`) |
 | `texts/qref.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (one run per sheet; entries merged by id) |
 
