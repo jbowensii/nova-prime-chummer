@@ -8,6 +8,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 NS = "urn:chummer-anarchy2:data:1"
 HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
+ILLEGAL = re.compile("[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE000, 0xFFFD, 0x10000, 0x10FFFF))))  # not in XML 1.0
 # (tag, attribute) pairs that name an entry of the imported file set ("*" = any tag); only values that
 # are ids of that set get scoped. <effect ref>, amp type and amp vehicle point at base ampeffects, amptypes
 # and vehicles (chassis): never scoped, even when a book entry has the same id (DHSA's "Small drone" amp).
@@ -83,7 +84,7 @@ def _attrs(d):
 
 def write_status(book_dir, state, message=""):
     write_file(os.path.join(book_dir, "status.xml"),
-           HEAD + f'<status state="{state}" updated="{_now()}">{escape(message)}</status>\n')
+           HEAD + f'<status state="{state}" updated="{_now()}">{escape(ILLEGAL.sub("", message))}</status>\n')
 
 
 def read_import(book_dir):

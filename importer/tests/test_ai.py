@@ -527,6 +527,14 @@ class ApplyReviewTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(imported, "made", "gear.xml")))
         self.assertTrue(os.path.exists(os.path.join(imported, "made", "amps.xml")))
 
+    def test_a_second_apply_never_shows_removed_midway(self):
+        lib, book, custom, _ = self._reviewed()
+        self.assertEqual(self._apply(book, custom), 0)
+        seen, write = [], xmlio.write_status
+        with unittest.mock.patch.object(xmlio, "write_status", lambda d, s, m="": seen.append(s) or write(d, s, m)):
+            self.assertEqual(self._apply(book, custom), 0)
+        self.assertEqual(seen, ["applying", "done"])
+
     def test_a_source_id_another_book_uses_is_refused(self):
         lib, book, custom, _ = self._reviewed()
         xmlio.write_import(os.path.join(lib, "other"), file="o.pdf", sha256="cd", converter="6", pages=1, score="1.00", source="CRB")

@@ -56,6 +56,11 @@ class XmlioTest(unittest.TestCase):
         xmlio.write_overlay(d, "skills.xml", xml)
         self.assertIn('<skill id="influence"', Path(os.path.join(d, "skills.xml")).read_text(encoding="utf8"))
 
+    def test_status_drops_characters_xml_cannot_hold(self):
+        d = tempfile.mkdtemp()
+        xmlio.write_status(d, "failed", "HTTP 500: bad\x00\x1b[31m body\ufffe <b>")
+        self.assertEqual(ET.parse(os.path.join(d, "status.xml")).getroot().text, "HTTP 500: bad[31m body <b>")
+
     def test_write_texts_merges_by_id(self):
         p = os.path.join(tempfile.mkdtemp(), "texts", "qref.xml")
         xmlio.write_texts(p, [("rules", "qref.a", "one"), ("rules", "qref.b", "two")])
