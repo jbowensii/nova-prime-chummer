@@ -417,7 +417,7 @@ KNOWN_EXTRA = {"spell-elemental-aura"}
 
 
 LIBRARY = ROOT / ".extract/private/library"
-OWN = {"crb": "CRB", "dhsa": "DHSA", "pregens": "PREGENS"}  # qref-* -> QREF
+OWN = {"crb": "CRB", "dhsa": "DHSA", "pregens": "PREGENS", "cg": "CG"}  # qref-* -> QREF
 
 
 @unittest.skipUnless(BOOK.exists(), "owner's converted books not present")
