@@ -64,5 +64,5 @@
 
 - [ ] README (accounts, reverse proxy, Authelia client snippet with `two_factor`, core data: import CRB or data pack), data-format, deploy doc, CHANGELOG 0.4.0, version bump, template field in both template copies.
 - [ ] Final whole-branch review; PR; merge.
-- [ ] Purge the 12 core files from all GitHub history (fresh mirror clone + git filter-repo, bundle backup first; local project untouched, branches re-pointed), force-push, tag v0.4.0, release, publish.
+- [ ] Purge the 12 core files from all GitHub history, and scrub the historical blobs of the docs that quoted core values (docs/superpowers/plans/2026-09-27-chummer-anarchy2-v1.md, docs/superpowers/specs/2026-09-27-chummer-anarchy2-design.md, docs/character-format.md) and of importer/recipes/dhsa.py and tools/* (they held core tables) (fresh mirror clone + git filter-repo, bundle backup first; local project untouched, branches re-pointed), force-push, tag v0.4.0, release, publish.
 - [ ] tower04: pull, Apply template (Trusted proxy field), read setup code from the log, core data rebuilt from the CRB (auto re-import), check health, books, runners moved to the admin.

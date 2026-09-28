@@ -32,8 +32,8 @@ will convert from this format; the format itself is ours and stays stable.
   </build>
   <career>
     <event id="…" at="…" type="earn" amount="50000" run="…" date="2086-03-01"/>
-    <event … type="advance" path="skills.stealth" from="5" to="6" cost="5000"/>
-    <event … type="amp-modify" ampUid="…" cost="15000"><before><amp …/></before><after><amp …/></after></event>
+    <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>
+    <event … type="amp-modify" ampUid="…" cost="12000"><before><amp …/></before><after><amp …/></after></event>
     <event … type="void" eventId="…" reason="misclick"/>
   </career>
   <override code="attr.maxCount" path="attributes">GM: street legend campaign</override>
