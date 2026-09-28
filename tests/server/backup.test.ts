@@ -178,12 +178,18 @@ test('an unused preview or backup expires and its file is deleted', async () => 
   } finally { short.close() }
 })
 
-test('start-up removes temp files a stop left in library/.backups, and keeps safety backups', () => {
+test('start-up removes temp files a stop left (library/.backups, restore swap folders), and keeps safety backups', () => {
   const lib = join(dir, 'lib-sweep'), bk = join(lib, '.backups')
   mkdirSync(join(bk, 'download-abc123'), { recursive: true })
   for (const f of ['upload-abc123.zip', '.backup.x1y2.tmp', 'download-abc123/backup.zip', '20260928T000000_000000Z.zip', 'mine.zip'])
     writeFileSync(join(bk, f), 'x')
-  createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: lib,
+  const ch = join(dir, 'chars-sweep'), cu = join(dir, 'custom-sweep') // and a killed restore's swap folders
+  for (const d of [join(ch, '.restore-old-a1'), join(cu, '.restore-new-b2'), join(lib, '.restore-old-c3'), join(ch, 'keep')]) {
+    mkdirSync(d, { recursive: true })
+    writeFileSync(join(d, 'x.xml'), 'x')
+  }
+  createServer({ staticDir: 'public', charDir: ch, customDir: cu, libraryDir: lib,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   expect(readdirSync(bk).sort()).toEqual(['20260928T000000_000000Z.zip', 'mine.zip'])
+  expect([readdirSync(ch), readdirSync(cu), readdirSync(lib)]).toEqual([['keep'], [], ['.backups']])
 })
