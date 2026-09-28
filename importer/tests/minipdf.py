@@ -15,6 +15,10 @@ for the test.
 - `two_columns_uneven_sidebar_pdf()`: one page, a long left column (5
   lines) next to a short right sidebar/callout (2 lines) — a real gutter
   even though the columns are very unequal in length.
+- `bullets_then_indented_block_pdf()`: one page, 6 short bullet lines at
+  x=72 followed BELOW them by a 2-line indented block at x=320 — a single
+  column (nothing sits side by side), not a two-column page. Body text
+  resumes at x=72 after the block.
 """
 
 PAGE1_OPS = """BT /F1 24 Tf 72 720 Td (Shadow Test) Tj ET
@@ -89,6 +93,18 @@ BT /F1 10 Tf 72 690 Td (Left3) Tj ET
 BT /F1 10 Tf 72 670 Td (Left4) Tj ET
 BT /F1 10 Tf 340 750 Td (Side0) Tj ET
 BT /F1 10 Tf 340 730 Td (Side1) Tj ET
+"""
+
+# Six short bullet lines (x=72) and, entirely below them, a 2-line block
+# indented to x=320. Clean x-gap and 2+ lines per side, but the two sides
+# never share a vertical band, so it is one column read top to bottom.
+# Two body lines follow the block so a false split would reorder them.
+BULLETS_INDENT_OPS = "".join(
+    f"BT /F1 10 Tf 72 {750 - 20 * i} Td (- Bullet {i}) Tj ET\n" for i in range(6)
+) + """BT /F1 10 Tf 320 610 Td (Indented one) Tj ET
+BT /F1 10 Tf 320 590 Td (Indented two) Tj ET
+BT /F1 10 Tf 72 570 Td (After one) Tj ET
+BT /F1 10 Tf 72 550 Td (After two) Tj ET
 """
 
 
@@ -168,3 +184,8 @@ def two_columns_with_band_pdf() -> bytes:
 def two_columns_uneven_sidebar_pdf() -> bytes:
     """One-page PDF: a long left column next to a short right sidebar."""
     return _build_pdf([SIDEBAR_OPS])
+
+
+def bullets_then_indented_block_pdf() -> bytes:
+    """One-page PDF: short bullets, then an indented block below them."""
+    return _build_pdf([BULLETS_INDENT_OPS])

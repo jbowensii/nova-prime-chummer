@@ -9,7 +9,7 @@ CONVERTER_VERSION = "1"
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
 # (k-means on x0) if a 3+ column layout shows up in practice.
-_MIN_GUTTER = 20  # pt; also doubles as "this word gap is a column jump, not word spacing"
+_MIN_GUTTER = 20  # pt; min gap between word x0s for a candidate column gutter
 _MIN_LINES_PER_SIDE = 2
 _MAX_CROSS_FRACTION = 0.10
 
@@ -37,7 +37,7 @@ def _cluster_lines(words):
     First cluster by y-proximity, anchored to the first word's top in the
     cluster (tolerant of small baseline jitter between regular and bold
     runs on what is visually one line). Then split a cluster at any
-    horizontal gap bigger than a normal word gap — this is what keeps two
+    horizontal gap wider than one em (far bigger than a word gap) — this is what keeps two
     side-by-side column lines that happen to sit at the same height from
     being read as one garbled line.
     """
@@ -59,7 +59,9 @@ def _cluster_lines(words):
         cluster = sorted(cluster, key=lambda w: w["x0"])
         seg = [cluster[0]]
         for prev, w in zip(cluster, cluster[1:]):
-            if w["x0"] - prev["x1"] > _MIN_GUTTER:
+            # > 1 em: justified word spacing stays well under it (~2-4pt at
+            # 10pt body), a narrow column gutter (~17pt in real books) doesn't.
+            if w["x0"] - prev["x1"] > max(prev["size"], w["size"]):
                 lines.append(seg)
                 seg = []
             seg.append(w)
@@ -82,26 +84,38 @@ def _find_gutter(words, lines, page_width):
     centered line, not a gutter). Each side also needs at least a couple of
     lines so a single stray line can't manufacture a "column" of its own —
     but no minimum *share* of the page's lines, so a short sidebar/callout
-    column next to a much longer main column still counts.
+    column next to a much longer main column still counts. Finally, the two
+    sides must actually sit side by side: at least a couple of right-side
+    lines must vertically overlap a left-side line, so an indented block
+    that merely follows the body (below it) isn't mistaken for a column.
     """
     if len(words) < 4 or not lines:
         return None
     xs = sorted(w["x0"] for w in words)
-    gap, mid = max(((xs[i + 1] - xs[i], (xs[i] + xs[i + 1]) / 2) for i in range(len(xs) - 1)))
-    if gap < _MIN_GUTTER or not (page_width * 0.25 < mid < page_width * 0.75):
+    # Biggest gap in the middle of the page — edge furniture (e.g. vertical
+    # tab letters in the margin) can make a bigger gap near the page edge.
+    gaps = [(b - a, (a + b) / 2) for a, b in zip(xs, xs[1:])]
+    gap, mid = max((g for g in gaps if page_width * 0.25 < g[1] < page_width * 0.75), default=(0, 0))
+    if gap < _MIN_GUTTER:
         return None
 
-    left = right = cross = 0
+    left, right, cross = [], [], 0
     for line in lines:
         x0, x1 = _line_extent(line)
+        span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
         if x1 <= mid:
-            left += 1
+            left.append(span)
         elif x0 >= mid:
-            right += 1
+            right.append(span)
         else:
             cross += 1
-    total = left + right + cross
-    if left < _MIN_LINES_PER_SIDE or right < _MIN_LINES_PER_SIDE or cross / total >= _MAX_CROSS_FRACTION:
+    total = len(left) + len(right) + cross
+    if len(left) < _MIN_LINES_PER_SIDE or len(right) < _MIN_LINES_PER_SIDE or cross / total >= _MAX_CROSS_FRACTION:
+        return None
+    # Columns sit side by side: enough right-side lines must share a vertical
+    # band with some left-side line. An indented block *below* the body shares none.
+    beside = sum(any(t < lb and lt < b for lt, lb in left) for t, b in right)
+    if beside < _MIN_LINES_PER_SIDE:
         return None
     return mid
 
@@ -158,13 +172,15 @@ def _reading_order(blocks, mid):
     return out
 
 
-def convert(pdf_path: str, md_path: str) -> dict:
+def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -> dict:
+    """pages: optional 1-based inclusive (first, last) range to convert."""
     with open(pdf_path, "rb") as f:
         sha = hashlib.sha256(f.read()).hexdigest()
     out = []
     with pdfplumber.open(pdf_path) as pdf:
         _, big = _bands(pdf)
-        for n, page in enumerate(pdf.pages, 1):
+        first, last = pages or (1, len(pdf.pages))
+        for n, page in enumerate(pdf.pages[first - 1 : last], first):
             out.append(f"<!-- page {n} -->")
             tables = page.find_tables()
             boxes = [t.bbox for t in tables]
