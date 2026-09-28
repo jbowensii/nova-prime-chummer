@@ -272,6 +272,91 @@ class BackupTest(unittest.TestCase):
         backup.apply(z, dst)
         self.assertEqual([p for p in providers.PROVIDER_IDS if providers.read_key(cfg, p)], [])
 
+    def _accounts(self, dirs, issuer=None, secret=None, users=2):
+        """users.xml with `users` accounts; auth.xml naming `issuer` and auth-secret.xml given for `secret` (None: no file)."""
+        cfg = os.path.join(dirs["library"], ".config")
+        ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
+        rows = "".join(f'<user id="u{i}" username="user{i}" role="admin" method="password" enabled="true"/>' for i in range(users))
+        Path(cfg, "users.xml").write_text(f"<ca2:users {ns}>{rows}</ca2:users>", encoding="utf8")
+        for name, text in (("auth.xml", issuer is not None and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c"/></ca2:auth>'),
+                           ("auth-secret.xml", secret is not None and f'<ca2:authsecret {ns} issuer="{secret}" secret="s3cret-{secret}"/>')):
+            if text:
+                Path(cfg, name).write_text(text, encoding="utf8")
+            elif os.path.exists(os.path.join(cfg, name)):
+                os.remove(os.path.join(cfg, name))
+        return cfg
+
+    def test_accounts_always_travel_the_authelia_secret_only_with_keys(self):
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        self._accounts(dirs, "https://auth.example", "https://auth.example", users=3)
+        out = os.path.join(root, "b.zip")
+        for keys in (False, True):
+            backup.backup(dirs, out, keys=keys)
+            with zipfile.ZipFile(out) as zf:
+                self.assertTrue({backup.USERS, "library/.config/auth.xml", "characters/runner-1.xml", "characters/.trash/old.xml"}
+                                <= set(zf.namelist()))
+                self.assertEqual(backup.AUTH_SECRET in zf.namelist(), keys)
+                written = backup.ET.fromstring(zf.read("backup.xml"))
+            m = backup.check(out)
+            for r in (written, m):
+                self.assertEqual((r.get("users"), r.get("authSecret")), ("3", "yes" if keys else "no"))
+
+    def test_the_servers_authelia_secret_stays_for_the_same_issuer_only(self):
+        """A restore without keys keeps the server's client secret when the restored auth.xml names the issuer it was
+        given for; another issuer, or no auth.xml, drops it (like the API keys and their addresses)."""
+        for restored, kept in (("https://auth.example", True), ("https://other.example", False), (None, False)):
+            with self.subTest(restored=restored):
+                src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+                src, dst = state(src_root), state(dst_root)
+                self._accounts(src, restored)
+                cfg = self._accounts(dst, "https://auth.example", "https://auth.example")
+                z = os.path.join(src_root, "nokeys.zip")
+                backup.backup(src, z)
+                backup.apply(z, dst)
+                path = os.path.join(cfg, "auth-secret.xml")
+                self.assertEqual(os.path.exists(path), kept)
+                if kept:
+                    self.assertIn("s3cret-https://auth.example", Path(path).read_text(encoding="utf8"))
+                    if os.name != "nt":
+                        self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
+        # a backup with keys brings its own secret, whatever the server had
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root), state(dst_root)
+        self._accounts(src, "https://other.example", "https://other.example")
+        cfg = self._accounts(dst, "https://auth.example", "https://auth.example")
+        z = os.path.join(src_root, "keys.zip")
+        backup.backup(src, z, keys=True)
+        backup.apply(z, dst)
+        self.assertIn("s3cret-https://other.example", Path(cfg, "auth-secret.xml").read_text(encoding="utf8"))
+
+    def test_the_servers_cookie_keys_stay(self):
+        """device-key.xml and oidc-key.xml are this server's: a zip's copies never land, the server's stay."""
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root), state(dst_root)
+        for name in backup.NEVER_KEPT:
+            Path(src["library"], ".config", name).write_text("<zip/>", encoding="utf8")
+            Path(dst["library"], ".config", name).write_text("<server/>", encoding="utf8")
+        z = os.path.join(src_root, "carries.zip")
+        with mock.patch.object(backup, "NEVER", set()):
+            backup.backup(src, z)
+        backup.apply(z, dst)
+        for name in backup.NEVER_KEPT:
+            self.assertEqual(Path(dst["library"], ".config", name).read_text(encoding="utf8"), "<server/>")
+
+    def test_a_backup_from_before_accounts_says_so(self):
+        """No users.xml: the manifest says 0 accounts (the server goes back to setup); an unreadable one is refused."""
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        self.assertEqual(backup.check(out).get("users"), "0")
+        self._accounts(dirs)
+        Path(dirs["library"], ".config", "users.xml").write_text("<ca2:users", encoding="utf8")
+        backup.backup(dirs, out)  # a broken server can still be backed up ...
+        with self.assertRaisesRegex(backup.RestoreError, "accounts file"):  # ... but that isn't restored
+            backup.check(out)
+
     def test_backups_pruned_to_three(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root), state(dst_root)

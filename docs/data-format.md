@@ -437,10 +437,20 @@ library/…
   a restore keeps the target server's own keys, except that a provider whose
   base URL the restored `ai-providers.xml` changes loses its key (a key only
   goes to the address it was entered for, as when settings are saved).
+- `library/.config/users.xml` and `auth.xml` (the accounts and sign-in settings)
+  are always included; `auth-secret.xml` (the Authelia client secret) only with
+  keys. Without it a restore keeps the server's own secret when the restored
+  `auth.xml` names the issuer the secret was given for, and drops it otherwise.
+  `sessions.xml`, `reset.xml`, `device-key.xml` and `oidc-key.xml` are never
+  included; a restore ends every session and keeps the server's own cookie keys.
+  After a restore the server clears Authelia links to any issuer other than the
+  restored `auth.xml`'s. No `users.xml` (a backup from before accounts): setup
+  mode, and the first admin gets the top-level runners.
 - `backup.xml`, schema `backup.xsd`: the app version (baked into the image
   as `/app/VERSION` at build time, from `package.json`), the date it was
   made, a file count and byte count per folder, and whether keys are
-  included. `restore --check` reads this to show the preview in the UI
+  included, the number of accounts (`users`) and whether the Authelia secret is
+  inside (`authSecret`; `restore --check` sets both from the zip itself). `restore --check` reads this to show the preview in the UI
   before anyone confirms.
 
 `restore --apply` refuses a zip whose entries fall outside
