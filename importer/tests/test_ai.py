@@ -25,7 +25,7 @@ ANTHROPIC_MSG = {"id": "msg_1", "type": "message", "role": "assistant", "model":
 
 
 class Stub:
-    """A local HTTP server that records each POST or GET and answers with `reply(path) -> (code, dict)`."""
+    """A local HTTP server that records each POST or GET and answers with `reply(path) -> (code, dict[, headers])`."""
 
     def __init__(self, reply):
         self.requests = []
@@ -36,9 +36,11 @@ class Stub:
                 n = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(n)) if n else None
                 stub.requests.append({"method": self.command, "path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "body": body})
-                code, out = reply(self.path)
+                code, out, *extra = reply(self.path)
                 data = json.dumps(out).encode()
                 self.send_response(code)
+                for k, v in (extra[0] if extra else {}).items():
+                    self.send_header(k, v)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
@@ -145,6 +147,16 @@ class ProvidersTest(unittest.TestCase):
             AI.complete({"id": "openai", "baseUrl": "http://127.0.0.1:1", "model": "m"}, KEY, "s", "u")
         self.assertIn("couldn’t reach", str(cm.exception))
 
+    def test_a_redirect_never_carries_the_key_elsewhere(self):
+        elsewhere = self.stub(lambda p: (200, {"data": [], "choices": [{"message": {"content": "x"}}]}))
+        s = self.stub(lambda p: (302, {}, {"Location": elsewhere.url + p}))
+        for call in (lambda: AI.complete({"id": "openai", "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u"),
+                     lambda: AI.complete({"id": "gemini", "baseUrl": s.url, "model": "g"}, KEY, "s", "u")):
+            with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):
+                call()
+        self.assertEqual(len(s.requests), 2)
+        self.assertEqual(elsewhere.requests, [])
+
     def test_unknown_provider(self):
         with self.assertRaisesRegex(AI.ProviderError, "unknown provider"):
             AI.complete({"id": "nope"}, KEY, "s", "u")
@@ -204,6 +216,14 @@ class ListModelsTest(unittest.TestCase):
         s = self.stub(lambda p: (200, pages[p]))
         self.assertEqual(AI.list_models("anthropic", self.library(s.url)), ["claude-haiku-4-5", "claude-opus-5"])
         self.assertEqual([r["headers"]["x-api-key"] for r in s.requests], [KEY, KEY])
+
+    def test_a_redirected_list_is_refused(self):
+        elsewhere = self.stub(lambda p: (200, {"data": [{"id": "x"}]}))
+        s = self.stub(lambda p: (301, {}, {"Location": elsewhere.url + p}))
+        for p in ("openai", "gemini"):
+            with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):
+                AI.list_models(p, self.library(s.url))
+        self.assertEqual(elsewhere.requests, [])
 
     def test_errors_never_show_the_key(self):
         s = self.stub(lambda p: (400, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}}))
