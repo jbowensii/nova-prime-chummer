@@ -3,14 +3,16 @@
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
 //   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import
-//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy, review }]
+//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy, review, coreUnread }]
 //   GET    /api/books/:id/report      -> import.xml
 //   POST   /api/books/:id/reimport    clears the book's outputs, then imports again
 //   DELETE /api/books/:id[?files=1]   clears the book's outputs (files=1: also its Library folder)
-//   POST   /api/books/:id/ai[?dryRun=1|fresh=1]  AI proposals for a needs-ai book (dryRun: { parts, provider }, sends
-//                                     nothing; fresh: replace finished proposals, which are otherwise kept)
+//   POST   /api/books/:id/ai[?dryRun=1|fresh=1]  AI proposals for a needs-ai book, or for the weapons/armor tables a recipe
+//                                     couldn't read (dryRun: { parts, provider }, sends nothing; fresh: replace finished
+//                                     proposals, which are otherwise kept)
 //   GET    /api/review/:id            -> review.xml
 //   PUT    /api/review/:id            body: review.xml with decisions; ?apply=1&source=&name=&canon= writes the overlay
+//                                     (a review of core tables, core="true": ?apply=1 writes custom/imported/core/)
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
@@ -54,6 +56,12 @@ const clean = s => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/g, '')
 const attr = (tag, name) => { const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]; return v == null ? undefined : unesc(v) }
 const rootTag = (xml, name) => xml?.match(new RegExp(`<${name}\\b[^>]*>`))?.[0]
 const readOr = (path, fallback = null) => readFile(path, 'utf8').catch(() => fallback)
+/** The core files a recipe couldn't read (import.xml rows kind="core-unread"); the AI can read the weapons and armor tables. */
+const coreUnread = imp => [...(imp ?? '').matchAll(/<row\b[^>]*\skind="core-unread"[^>]*>/g)].map(m => attr(m[0], 'file'))
+const CORE_AI = ['weapons.xml', 'armor.xml']
+// the core files (as src/engine/load.ts CORE_FILES, importer/__init__.py CORE_FILES)
+const CORE_FILES = ['ampeffects', 'amptypes', 'armor', 'attributes', 'levels', 'lifestyles', 'metatypes', 'packages', 'pricing', 'skills',
+  'vehicles', 'weapons']
 const fail = (code, message) => Object.assign(new Error(message), { code })
 
 /** The uploaded file name without any path, safe to show and pass as an argument. */
@@ -99,7 +107,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return new Promise(done => {
       let out = '', err = ''
       const p = spawn(cmd, [...pre, '-m', 'importer', ...args], { cwd: importerRoot, timeout, windowsHide: true,
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // else Windows' code page mangles the ’ in messages
+        // PYTHONIOENCODING: else Windows' code page mangles the ’ in messages; CA2_CUSTOM_DIR: where the core files are
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8', CA2_CUSTOM_DIR: customDir },
         stdio: ['pipe', 'pipe', 'pipe'] })
       if (args[0] === 'list-models') listChild = p
       else if (args[0] === 'backup') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
@@ -173,6 +182,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       source: attr(it, 'source'), name: attr(it, 'name'), canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
       recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id),
       review: rv ? (attr(rv, 'done') === attr(rv, 'parts') ? 'done' : 'partial') : undefined,
+      coreUnread: coreUnread(imp),
     }
   }
 
@@ -339,7 +349,34 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (live.includes(st)) await setStatus(d.name, 'failed', 'Interrupted by a restart — re-import')
     }
   }
-  sweep()
+  /** The upgrade path to core data built by the import: a server whose custom/imported/core/ lacks any of the 12 core files
+   *  and whose Library holds the core rulebook re-imports it, then the Conversion Guide and DHSA (their Tasking, Emerged
+   *  and implant grades were core data before and now come with their books). Tried once per CRB file and app version
+   *  (library/<id>/core-rebuild.xml): a book that can't give the whole core isn't re-imported on every start; a new
+   *  upload, a new version or the admin's Re-import tries again. */
+  async function rebuildCore() {
+    const have = await Promise.all(CORE_FILES.map(n => stat(join(customDir, 'imported', 'core', `${n}.xml`)).then(() => true, () => false)))
+    if (have.every(Boolean)) return
+    const books = []
+    for (const d of await readdir(libraryDir, { withFileTypes: true }).catch(() => [])) {
+      if (!d.isDirectory() || !BOOK_ID.test(d.name) || busy(d.name)) continue
+      const imp = rootTag(await readOr(join(libraryDir, d.name, 'import.xml')), 'import')
+      const order = ['crb', 'cg', 'dhsa'].indexOf(attr(imp, 'recipe'))
+      if (order >= 0) books.push({ id: d.name, order, file: attr(imp, 'file'), sha: attr(imp, 'sha256') ?? '' })
+    }
+    const crb = books.find(b => b.order === 0)
+    if (!crb) return
+    const marker = join(libraryDir, crb.id, 'core-rebuild.xml')
+    const tried = rootTag(await readOr(marker), 'rebuild')
+    if (tried && attr(tried, 'sha256') === crb.sha && attr(tried, 'version') === version) return
+    await writeAtomic(marker, `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
+    for (const b of books.sort((x, y) => x.order - y.order)) {
+      const dir = join(libraryDir, b.id)
+      await setStatus(b.id, 'queued', 'Re-importing to build the core data')
+      enqueue(b.id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(b.file ? ['--file', b.file] : [])]])
+    }
+  }
+  const started = sweep().then(rebuildCore).catch(e => console.error(e.stack))
   // zips left by a stop mid-download, mid-preview or mid-restore
   try {
     for (const f of readdirSync(backups, { withFileTypes: true }))
@@ -463,6 +500,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       await rm(file, { force: true })
     }
     await sweep()
+    void rebuildCore().catch(e => console.error(e.stack)) // a backup from before the core data was imported
     const why = (await redact(r.err)).trim().split('\n').pop()
     if (r.code === 3) throw fail(400, why || 'the backup was refused')
     if (r.code !== 0) return send(res, 500, { error: `the restore failed (${why || `exit code ${r.code}`}); the server’s earlier data is in its safety backup in library/.backups` })
@@ -519,13 +557,16 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       needsQuiet()
       const q = url.searchParams, apply = q.get('apply') === '1'
       const source = q.get('source') ?? '', name = (q.get('name') ?? '').trim(), canon = q.get('canon')
-      if (apply && (!SOURCE_ID.test(source) || !name || name.length > 120 || !['true', 'false'].includes(canon)))
+      const old = await readOr(join(dir, 'review.xml'))
+      if (old == null) return send(res, 404, { error: 'no proposals for this book' })
+      const core = attr(rootTag(old, 'review'), 'core') === 'true' // rows for the core tables a recipe couldn't read
+      if (apply && !core && (!SOURCE_ID.test(source) || !name || name.length > 120 || !['true', 'false'].includes(canon)))
         throw fail(400, 'apply needs source (A–Z, 0–9, -), name and canon=true|false')
-      if (await readOr(join(dir, 'review.xml')) == null) return send(res, 404, { error: 'no proposals for this book' })
       await writeAtomic(join(dir, 'review.xml'), xmlBody(await body(req), 'review'))
       if (!apply) return send(res, 204, '', 'text/plain')
       await setStatus(id, 'queued')
-      enqueue(id, [['apply-review', dir, '--custom', customDir, '--source', source, '--name', clean(name), '--canon', canon]])
+      enqueue(id, [core ? ['apply-review', dir, '--custom', customDir, '--core']
+        : ['apply-review', dir, '--custom', customDir, '--source', source, '--name', clean(name), '--canon', canon]])
       return send(res, 202, { id })
     }
 
@@ -541,9 +582,11 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (action === 'ai' && method === 'POST') {
       needsQuiet()
-      if (attr(imp, 'source') || !['needs-ai', 'failed', 'review'].includes(state))
-        throw fail(409, 'AI proposals are for books no recipe knows')
-      const args = ['propose', dir, '--library', libraryDir, ...(url.searchParams.get('fresh') === '1' ? ['--fresh'] : [])]
+      // a recipe's book only for the core tables it couldn't read
+      const core = !!attr(imp, 'source') && coreUnread(await readOr(join(dir, 'import.xml'))).some(f => CORE_AI.includes(f))
+      if (core ? !['done', 'failed', 'review'].includes(state) : attr(imp, 'source') || !['needs-ai', 'failed', 'review'].includes(state))
+        throw fail(409, 'AI proposals are for books no recipe knows, or core tables a recipe couldn’t read')
+      const args = ['propose', dir, '--library', libraryDir, ...(url.searchParams.get('fresh') === '1' ? ['--fresh'] : []), ...(core ? ['--core'] : [])]
       if (url.searchParams.get('dryRun') === '1') {
         const r = await importer([...args, '--dry-run'], { timeout: 120000 })
         const res0 = rootTag(r.out, 'result')
@@ -570,5 +613,5 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     for (const p of spawned) p.kill()
     for (const map of [uploads, downloads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
   }
-  return { handle, stop, track, libraryDir: resolve(libraryDir) }
+  return { handle, stop, track, started, libraryDir: resolve(libraryDir) }
 }

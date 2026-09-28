@@ -2,7 +2,7 @@
 // Books API with the real `python -m importer` (skipped when no Python with the importer's requirements is found),
 // so the stub worker the other server tests and e2e use can't drift from the files the importer really writes.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
@@ -14,6 +14,8 @@ import { findPython } from '../../tools/python.mjs'
 const python: string[] | null = findPython()
 const dir = mkdtempSync(join(tmpdir(), 'ca2-books-py-'))
 const custom = join(dir, 'custom'), library = join(dir, 'library')
+// the made-up core files, as the core rulebook's import leaves them
+cpSync('tests/fixtures/mini/custom/imported/core', join(custom, 'imported', 'core'), { recursive: true })
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 

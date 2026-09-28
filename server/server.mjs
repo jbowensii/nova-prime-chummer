@@ -153,6 +153,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   })
   server.requestTimeout = 3600 * 1000 // a 20 GB backup upload over a slow network (Node's default is 5 min)
   server.stopJobs = books.stop
+  server.started = books.started // the start-up checks (interrupted jobs, core data re-import) have queued their jobs
   return server
 }
 

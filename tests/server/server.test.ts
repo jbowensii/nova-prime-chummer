@@ -64,7 +64,7 @@ test('trust boundary: bad ids, mismatched bodies and path traversal are refused'
 })
 
 test('serves the app and data files', async () => {
-  const r = await fetch(`${base}/data/levels.xml`)
+  const r = await fetch(`${base}/data/sources.xml`)
   expect(r.status).toBe(200)
-  expect(await r.text()).toContain('kind="levels"')
+  expect(await r.text()).toContain('kind="sources"')
 })

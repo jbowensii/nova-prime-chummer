@@ -6,10 +6,12 @@
 // Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s.
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
 // anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts).
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
 const [, , , , cmd, target, ...rest] = process.argv
+// STUB_LOG: one line per call, "<command> <book folder> <CA2_CUSTOM_DIR>" (tests of the job order)
+if (process.env.STUB_LOG) appendFileSync(process.env.STUB_LOG, `${cmd} ${basename(target ?? '')} ${process.env.CA2_CUSTOM_DIR ?? ''}\n`)
 const opt = name => rest.find(a => a.startsWith(`${name}=`))?.slice(name.length + 1) ?? rest[rest.indexOf(name) + 1]
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 const status = (dir, state, msg = '') => writeFileSync(join(dir, 'status.xml'), `<status state="${state}" updated="${now}">${msg}</status>\n`)
@@ -63,13 +65,25 @@ if (cmd === 'run') {
 } else if (cmd === 'propose') {
   if (rest.includes('--dry-run')) console.log('<result parts="4" provider="anthropic" />')
   else if (existsSync(join(target, 'review.xml')) && !rest.includes('--fresh')) status(target, 'review', 'Proposals from an earlier run are waiting for review; nothing was sent')
-  else {
+  else if (rest.includes('--core')) { // rows for a weapons table the recipe couldn't read
+    writeFileSync(join(target, 'review.xml'), `<review book="${basename(target)}" source="CRB" core="true" provider="anthropic" created="${now}" bookSha256="00" parts="1" done="1">
+  <proposal id="weapon.pea-shooter" kind="weapon" state="pending" page="142"><item id="pea-shooter" kind="weapon" dv="2" ranges="OK/OK/-/-" source="CRB" page="142"><name>Pea Shooter</name><text></text></item></proposal>
+</review>\n`)
+    status(target, 'review', '1 proposal to review')
+  } else {
     writeFileSync(join(target, 'review.xml'), `<review book="${basename(target)}" source="X" provider="anthropic" created="${now}" bookSha256="00" parts="4" done="4">
   <proposal id="amp.a" kind="amp" state="pending" page="3"><amp id="a" type="quality" printedRating="0" source="X" page="3"><name>Lucky Charm</name><narrative></narrative></amp></proposal>
   <proposal id="gear.tin-spoon" kind="gear" state="pending" page="4"><item id="tin-spoon" kind="gear" source="X" page="4"><name>Tin Spoon</name><text></text></item><note>no price given</note></proposal>
 </review>\n`)
     status(target, 'review', '2 proposals to review')
   }
+} else if (cmd === 'apply-review' && rest.includes('--core')) {
+  const review = readFileSync(join(target, 'review.xml'), 'utf8')
+  const items = [...review.matchAll(/<proposal\b[^>]*state="(?:accepted|edited)"[^>]*>\s*(<item\b[\s\S]*?<\/item>)/g)].map(m => m[1])
+  mkdirSync(join(opt('--custom'), 'imported', 'core'), { recursive: true })
+  writeFileSync(join(opt('--custom'), 'imported', 'core', 'weapons.xml'), `<ca2:data ${NS} kind="weapons" version="1">${items.join('')}</ca2:data>\n`)
+  writeFileSync(join(target, 'import.xml'), readFileSync(join(target, 'import.xml'), 'utf8').replace(/<row kind="core-unread" file="weapons.xml"[^>]*\/>/, ''))
+  status(target, 'done', `${items.length} rows added to the core data`)
 } else if (cmd === 'apply-review') {
   const src = opt('--source'), review = readFileSync(join(target, 'review.xml'), 'utf8')
   const amps = [...review.matchAll(/<proposal\b[^>]*state="(?:accepted|edited)"[^>]*>\s*(<amp\b[\s\S]*?<\/amp>)/g)]
