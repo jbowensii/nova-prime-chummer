@@ -1,4 +1,6 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
+// Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
+// edits (admin and editors; GET /api/edits: anyone signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -19,6 +21,7 @@
 //   GET    /api/ai-models?provider=   -> { models: [id…] }, asked with the saved key and address; 400 bad provider, 502 { error }
 //   GET    /api/edits                 -> [{ kind, id }] the entries in custom/edits/edits.xml
 //   PUT    /api/edits/:kind/:id       body: <edit><amp|item|rule …/><description>…</description></edit> -> 204; 400 { error: why }
+//                                     the entry is saved with by="<username>"
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
 //   POST   /api/backup[?keys=1]       makes the zip of characters/, custom/ and library/ (keys=1: with the API keys) -> { token };
@@ -27,10 +30,10 @@
 //   POST   /api/restore?preview=1     body: a backup zip -> { token, manifest }; the zip waits 30 min for its token
 //   POST   /api/restore/:token        replaces all three folders from that zip (a safety backup is kept) -> { ok }
 //                                     409 while a job, a write or a backup runs; every other write gets 409 while it runs
-//   POST   /api/datapack              ADMIN ONLY (Task 3 guards it): makes the data pack of custom/imported/core/ -> { token };
+//   POST   /api/datapack              makes the data pack of custom/imported/core/ -> { token };
 //                                     the zip waits 10 min for its token; 409 when there is no core data
-//   GET    /api/datapack/:token       ADMIN ONLY: the pack, once, as chummer-anarchy2-datapack-<date>.zip
-//   POST   /api/datapack/import       ADMIN ONLY: body: a data pack zip (50 MB at most) -> { files: [name…] }, the core files it
+//   GET    /api/datapack/:token       the pack, once, as chummer-anarchy2-datapack-<date>.zip
+//   POST   /api/datapack/import       body: a data pack zip (50 MB at most) -> { files: [name…] }, the core files it
 //                                     replaced (importer/datapack.py checks it all first); 409 while a job or another pack runs,
 //                                     and jobs wait for it. Both are counted writes (track), so a restore and they exclude each other.
 import { spawn } from 'node:child_process'
@@ -56,12 +59,12 @@ const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its d
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
 
-const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
+export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
 // eslint-disable-next-line no-control-regex
 const clean = s => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/g, '')
-const attr = (tag, name) => { const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]; return v == null ? undefined : unesc(v) }
-const rootTag = (xml, name) => xml?.match(new RegExp(`<${name}\\b[^>]*>`))?.[0]
+export const attr = (tag, name) => { const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]; return v == null ? undefined : unesc(v) }
+export const rootTag = (xml, name) => xml?.match(new RegExp(`<${name}\\b[^>]*>`))?.[0]
 const readOr = (path, fallback = null) => readFile(path, 'utf8').catch(() => fallback)
 /** The core files a recipe couldn't read (import.xml rows kind="core-unread"); the AI can read the weapons and armor tables. */
 const coreUnread = imp => [...(imp ?? '').matchAll(/<row\b[^>]*\skind="core-unread"[^>]*>/g)].map(m => attr(m[0], 'file'))
@@ -79,13 +82,14 @@ export function safeName(header) {
   return name || 'book.pdf'
 }
 
-async function writeAtomic(path, text) {
+export async function writeAtomic(path, text) {
   const tmp = `${path}.${randomBytes(4).toString('hex')}.tmp`
   await writeFile(tmp, text, { encoding: 'utf8', flag: 'wx' })
   await rename(tmp, path)
 }
 
-export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000 }) {
+export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000,
+  onRestore = async () => {} }) {
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
   const backups = join(libraryDir, '.backups')
@@ -317,7 +321,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     })
   }
 
-  async function edits(req, res, url, send) {
+  async function edits(req, res, url, send, who) {
     const p = url.pathname, method = req.method
     if (p === '/api/edits' && method === 'GET') {
       const xml = (await readOr(join(customDir, 'edits', 'edits.xml'), '')).replace(/<!--[\s\S]*?-->/g, '')
@@ -341,7 +345,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (!EDIT_KINDS[m[1]]) throw fail(400, 'kind is amps, items or rules')
     if (!ENTRY_ID.test(id)) throw fail(400, 'bad entry id')
     if (method === 'PUT') {
-      await edit(['set', m[1], id], xmlBody(await body(req, MAX_EDIT), 'edit'))
+      await edit(['set', m[1], id, '--by', who.username], xmlBody(await body(req, MAX_EDIT), 'edit'))
       return send(res, 204, '', 'text/plain')
     }
     if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id]), 'result'), 'removed') === 'true' })
@@ -597,6 +601,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     } finally {
       restoring = false
       await rm(file, { force: true })
+      await onRestore().catch(e => console.error(e.stack)) // the accounts come from the restored users.xml; every session ends
     }
     await sweep()
     void rebuildCore().catch(e => console.error(e.stack)) // a backup from before the core data was imported
@@ -606,7 +611,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 200, { ok: true })
   }
 
-  async function handle(req, res, url, send) {
+  async function handle(req, res, url, send, who) {
     const p = url.pathname, method = req.method
     if (p === '/api/backup' && method === 'POST') return makeBackup(req, res, url, send)
     const bt = p.match(/^\/api\/backup\/([^/]+)$/)
@@ -616,7 +621,6 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     const rt = p.match(/^\/api\/restore\/([^/]+)$/)
     if (rt && method === 'POST') return restore(rt[1], send, res)
     if (p === '/api/restore' || rt) return send(res, 405, { error: 'method not allowed' })
-    // data packs: ADMIN ONLY once accounts exist (Task 3)
     if (p === '/api/datapack' && method === 'POST') return makePack(res, send)
     if (p === '/api/datapack/import' && method === 'POST') return importPack(req, res, send)
     const pt = p.match(/^\/api\/datapack\/([^/]+)$/)
@@ -634,7 +638,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
     if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
-    if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send)
+    if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/ai-keys' && method === 'PUT') {
       await putKeys(req)
       return send(res, 204, '', 'text/plain')

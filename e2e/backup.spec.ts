@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { signIn, STATE } from './session'
 
 /** Type the street name, wait for the server save, then go back to the runner list. */
 async function rename(page: Page, name: string) {
@@ -42,6 +43,11 @@ test('download a backup, change a runner, restore, see it back', async ({ page }
   await expect(page.locator('.restore-preview')).toContainText('API keysNot included')
   await page.getByRole('button', { name: 'Replace everything on the server' }).click()
   await expect(page.getByText('Restored. Reloading the app…')).toBeVisible()
+  // a restore ends every session: sign in again (the app's sign-in page comes with the accounts UI), and the tests after
+  // this one start with the new session
+  await signIn(page.request)
+  await page.context().storageState({ path: STATE })
+  await page.reload()
   await expect(page.getByRole('link', { name: 'Backed Up' })).toBeVisible({ timeout: 15000 }) // after the reload
   await expect(page.getByRole('link', { name: 'Changed Since' })).toHaveCount(0)
 })

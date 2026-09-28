@@ -1,7 +1,7 @@
 # Character file format
 
 A runner is one XML file. That's what the server stores in
-`characters/` (on Unraid: `/mnt/user/appdata/chummer-anarchy2/characters`) and
+`characters/<username>/`, one folder per account (on Unraid: `/mnt/user/appdata/chummer-anarchy2/characters`), and
 what **Export** downloads. The schema is `public/data/schema/character.xsd`
 (namespace `urn:chummer-anarchy2:character:1`). A later Foundry VTT export
 will convert from this format; the format itself is ours and stays stable.
@@ -63,11 +63,14 @@ will convert from this format; the format itself is ours and stays stable.
 | Request | Result |
 |---|---|
 | `GET /api/health` | `{ ok: true, storage: "server" }` |
-| `GET /api/characters` | `[{ file, rev, xml }]` |
+| `GET /api/characters` | `[{ file, rev, xml, owner }]`: your runners; an admin or editor also gets everyone else's (read only) |
 | `PUT /api/characters/:id` (body: XML, `If-Match: rev`) | `201`/`200 { rev, file }`, or `409 { rev, file, updatedAt }` |
 | `PUT …?force=1` | overwrite regardless of `rev` |
 | `PUT …?filename=Name` | file name for a new runner (default: its street name) |
-| `DELETE /api/characters/:id` | `204`; the file moves to `characters/.trash/` |
+| `DELETE /api/characters/:id` | `204`; the file moves to `characters/<username>/.trash/` |
+
+Every request needs a signed-in session (`server/auth.mjs`). `PUT` and `DELETE` act on your own runners only: a
+runner id another account holds is refused with `403`.
 
 Writes go to a temporary file and are renamed into place, so a crash never
 leaves a half-written runner.

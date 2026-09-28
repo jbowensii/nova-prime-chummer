@@ -11,4 +11,9 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:4173/', viewport: { width: 1400, height: 900 } },
   webServer: { command: 'node e2e/serve.mjs', port: 4173, reuseExistingServer: false, env: { CA2_E2E_DIR: process.env.CA2_E2E_DIR } },
   workers: 1,
+  // every test starts signed in as the admin the e2e server seeds (e2e/session.ts)
+  projects: [
+    { name: 'signin', testMatch: /signin\.setup\.ts/ },
+    { name: 'app', dependencies: ['signin'], use: { storageState: join(process.env.CA2_E2E_DIR, 'e2e-state.json') } },
+  ],
 })
