@@ -334,9 +334,9 @@ KNOWN = {
     ("skills.xml", "electronics", "page"): ("55", "54"), ("skills.xml", "network", "page"): ("55", "56"),  # the Skills' headings
     # the recipe cites the Astral Armor power it prices mental armor from; the owner's copy cites the rules on p.190
     ("ampeffects.xml", "mental-armor", "page"): ("190", "191"),
-    # the owner's copy shortens the row's wording; the recipe keeps the row as printed
-    ("ampeffects.xml", "init-1", "name"): ("Initiative: +1 Edge per action scene, additional actions for 1 Edge each",
-                                          "Initiative: +1 Edge per action scene, unlimited additional actions for one Edge each"),
+    # the owner's copy shortens the row's wording; the recipe keeps the row as printed (compared by length, so no book
+    # wording is committed here)
+    ("ampeffects.xml", "init-1", "name"): "row as printed",
 }
 
 
@@ -367,6 +367,14 @@ def differences(files, source="CRB"):
     return out
 
 
+def known(diff):
+    """`differences` with the init-1 name difference as KNOWN writes it: the recipe's printed row is the longer one."""
+    k = ("ampeffects.xml", "init-1", "name")
+    if k in diff and len(diff[k][1]) > len(diff[k][0]):
+        diff[k] = "row as printed"
+    return diff
+
+
 @unittest.skipUnless(LOCAL_CORE and BOOK.exists(), "the owner's local core copies and converted CRB are not present")
 class AnswerKeyTest(unittest.TestCase):
     @classmethod
@@ -378,7 +386,7 @@ class AnswerKeyTest(unittest.TestCase):
         self.assertEqual(set(self.files), {f"{n}.xml" for n in CORE_FILES})
 
     def test_names_and_attributes_equal_the_local_copies(self):
-        self.assertEqual(differences(self.files), KNOWN)
+        self.assertEqual(known(differences(self.files)), KNOWN)
 
     def test_texts_describe_core_entries_only(self):
         ids = {i for xml in self.files.values() for i in by_id(xml)}
@@ -419,4 +427,4 @@ class FromThePdfTest(unittest.TestCase):
             convert(os.environ["CRB_PDF"], md)
             files, _, report = crb_core.build(Path(md).read_text(encoding="utf8"))
         self.assertEqual(report, [])
-        self.assertEqual(differences(files), KNOWN)
+        self.assertEqual(known(differences(files)), KNOWN)

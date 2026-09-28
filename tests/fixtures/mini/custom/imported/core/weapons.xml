@@ -12,7 +12,7 @@
   <item id="light-pistol" kind="weapon" dv="3" ranges="OK/OK/-/-" category="Handguns" source="CRB" page="70"><name>Popgun</name><text>A made-up weapon.</text></item>
   <item id="machine-pistol" kind="weapon" dv="5" ranges="OK/OK/-/-" category="Handguns" source="CRB" page="70"><name>Buzz pistol</name><text>A made-up weapon.</text></item>
   <item id="heavy-pistol" kind="weapon" dv="6" ranges="OK/OK/Dis/Dis" category="Handguns" source="CRB" page="70"><name>Hand cannon</name><text>A made-up weapon.</text></item>
-  <item id="submachine-gun" kind="weapon" dv="6" ranges="OK/OK/Dis/-" category="Automatics" source="CRB" page="70"><name>Chopper gun</name><text>A made-up weapon.</text></item>
+  <item id="submachine-gun" kind="weapon" dv="6" ranges="OK/OK/Dis/-" category="Automatics" source="CRB" page="70"><name>Spray gun</name><text>A made-up weapon.</text></item>
   <item id="assault-rifle" kind="weapon" dv="8" ranges="Dis/OK/OK/OK" category="Longarms" source="CRB" page="70"><name>Battle rifle</name><text>A made-up weapon.</text></item>
   <item id="shotgun" kind="weapon" specialist="true" dv="9" ranges="OK/Dis/-/-" category="Longarms" source="CRB" page="70"><name>Scattergun</name><text>A made-up weapon.</text></item>
   <item id="sniper-rifle" kind="weapon" specialist="true" dv="11" ranges="-/-/OK/OK" category="Longarms" source="CRB" page="70"><name>Marksman rifle</name><text>A made-up weapon.</text></item>

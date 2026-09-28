@@ -173,77 +173,9 @@ export interface Violation { code: string; severity: Severity; path: string;
 
 **Produces:** the files the Task 4 loader parses. Every file has the root `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="K" version="1">`. Child elements are unqualified (`elementFormDefault="unqualified"`).
 
-Exact content (checked against the CRB):
-
-- **`levels.xml`** (CRB p.84–85):
-  ```xml
-  <level id="ganger" nuyen="300000" attrAtMax="0" skillCap="4" rrAttr="1" rrSkill="1" rrSpec="1" source="CRB" page="84"><name>Ganger</name></level>
-  <level id="runner" nuyen="375000" attrAtMax="1" skillCap="5" rrAttr="1" rrSkill="1" rrSpec="2" source="CRB" page="84"><name>Runner</name></level>
-  <level id="prime" nuyen="450000" attrAtMax="2" skillCap="6" rrAttr="2" rrSkill="2" rrSpec="2" source="CRB" page="85"><name>Prime Runner</name></level>
-  ```
-- **`metatypes.xml`** (p.52): attribute elements `<range attr="str" min="1" max="4"/>` for each attribute. Human: all 4, edge 4. Elf: cha 5, low-light vision. Dwarf: wil 5, thermographic. Ork: str 5, low-light. Troll: str 6, thermographic. Every non-human has edge 3.
-- **`attributes.xml`:** str "Strength" STR, agi "Agility" AGI, wil "Willpower" WIL, log "Logic" LOG, cha "Charisma" CHA.
-- **`pricing.xml`** (p.83): one `<pricing>` element with the attributes `attrPoint="10000" attrLastPoint="20000" skillLow="2500" skillLowMax="5" skillHigh="5000" spec="2500" knowledge="2500" ampPoint="5000" equipment="2500" weaponStandard="2500" weaponSpecialist="5000" armorPoint="2500" spell="5000" refundEffectRemoval="false"`.
-- **`skills.xml`** (p.53–57, specializations list p.54): all 14 skills. Default `attr` is the skill's "Linked Attribute" line. `alt` is the second attribute where the line says "X or Y". Conjuring is `attr="log" alt="cha"`; Cracking is `attr="log" alt="wil"`. `requires`: conjuring and sorcery → `awakened`, cracking → `cyberdeck`. Specializations exactly as listed under *Skills, Specializations, and Related Attributes* with their (+X) attribute. Ids are `<skill>.<spec-kebab>`, for example `athletics.ranged-defense` attr agi and `athletics.climbing` attr str. Sorcery and Conjuring specs come from their skill sections (p.56–57: combat, detection, health, illusion, manipulation spells, counterspelling; spirits of air/beasts/earth/fire/kin/plants/water, banishing).
-- **`amptypes.xml`** (p.58–60):
-
-  | id | base | baseAfterFirst | essence | requires |
-  |---|---|---|---|---|
-  | quality | 0 | 3 | 0 | |
-  | awakened | 0 | | 0 | |
-  | cyberware | 1 | | 1 | |
-  | bioware | 2 | | 0.5 | |
-  | adept | 1 | | 0 | awakened.adept |
-  | equipment | 0 | | 0 | item |
-  | cyberdeck | 1 | | 0 | |
-  | vehicle | 1 | | 0 | |
-  | contact | 0 | | 0 | |
-
-- **`ampeffects.xml`** (p.58, 61–63). `types` uses the ids above.
-
-  | id | cat | rating | types | max | requires/excludes | param |
-  |---|---|---|---|---|---|---|
-  | rr-spec | risk | 2 | all but awakened | – | | spec |
-  | rr-skill | risk | 5 | all but awakened | 1 | | skill |
-  | rr-attr | risk | 10 | all but awakened | 1 | | attribute |
-  | init-1 | initiative | 2 | quality cyberware bioware adept | 1 | | |
-  | init-2 | initiative | 3 | same | 1 | requires init-1 | |
-  | init-3 | initiative | 2 | same | 1 | requires init-2 | |
-  | init-realm | initiative | -1 | same | 3 | requires init-1 | realm |
-  | dv-plus | physical | 1 | cyberware bioware adept equipment | 2 | | |
-  | range-improve | physical | 2 | adept equipment | – | | text |
-  | armor-plus | physical | 1 | quality cyberware bioware adept equipment | 1 | | |
-  | wound-light | physical | 3 | quality cyberware bioware adept cyberdeck vehicle | 1 | | |
-  | wound-serious | physical | 6 | same | 1 | | |
-  | sustain-spell | magical | 2 | quality equipment | 2 | | |
-  | summon-spirit | magical | 3 | quality equipment | 1 | | |
-  | weapon-focus | magical | 1 | equipment | 1 | | |
-  | vr-cold | vr | 1 | cyberware | 1 | | |
-  | vr-hot | vr | 2 | cyberware | 1 | requires vr-cold | |
-  | firewall-plus | matrix | 1 | cyberdeck equipment cyberware | 5 | | |
-  | attack-plus | matrix | 1 | cyberdeck | 5 | | |
-  | rcc | rigging | 1 | cyberware equipment | – | | |
-  | vcr | rigging | 2 | cyberware | 1 | | |
-  | pilot-plus | vehicle | 1 | vehicle | 6 | | |
-  | speed-plus | vehicle | 1 | vehicle | 3 | | |
-  | handling-plus | vehicle | 1 | vehicle | 3 | | |
-  | vehicle-armor | vehicle | 1 | vehicle | – (max = Body, checked in validate) | | |
-  | fixed | vehicle | -1 | vehicle | 1 | | |
-  | flying | vehicle | 1 | vehicle | 1 | | |
-  | weapon-mount | vehicle | 1 | vehicle | – | | text |
-  | safety-override | vehicle | 3 | vehicle | 1 | | |
-  | extra-drone | vehicle | 2 | vehicle | 2 | | |
-  | auto-medkit | vehicle | 1 | vehicle | 1 | | |
-  | narrative | misc | 1 | all but awakened | – | | text |
-  | negative | misc | -1 | all | – | gmApproval | value (1–5; rating = −value) |
-  | awk-astral-perception | awakened | 1 | awakened | 1 | excludes awk-astral-projection | |
-  | awk-astral-projection | awakened | 2 | awakened | 1 | excludes awk-astral-perception | |
-  | awk-sorcery | awakened | 1 | awakened | 1 | | |
-  | awk-conjuring | awakened | 2 | awakened | 1 | | |
-  | awk-adept | awakened | 1 | awakened | 1 | | |
-
-- **`packages.xml`** (p.85–86): 9 packages with ids `<level>-<archetype>`. Attributes on each: `attrPoints attrAtMax skillPoints skillsAtSix ampPoints armor standardWeapons specialistWeapons equipment spells`. Values straight from the three tables. Every package has armor 3; Prime has `skillsAtSix="2"`.
-- **`vehicles.xml`** (p.60): the 12 chassis, with their stats and `mount` = the max weapon size text.
+Content: the values come from the core rulebook; see docs/data-format.md, "Core files" (the CRB import builds them,
+`importer/recipes/crb_core.py`). Ids are the app's vocabulary: levels, metatypes, attributes and skills by name, specs
+`<skill>.<spec-kebab>`, packages `<level>-<archetype>`; amp effects carry their amp types, max, requires/excludes and param.
 
 - [ ] **Step 1:** Write `common.xsd` defining `attributeGroup name="ref"` (`id` xs:ID-like pattern `[a-z0-9][a-z0-9.-]*`, `source` xs:string required, `page` xs:positiveInteger required), plus one XSD per kind that includes it. Unknown attributes are rejected.
 - [ ] **Step 2:** Write the 9 XML files above.
@@ -296,14 +228,14 @@ Exact content (checked against the CRB):
   test('base catalog loads without errors', () => {
     const c = buildCatalog(base);
     expect(c.errors).toEqual([]);
-    expect(c.levels.get('runner')!.nuyen).toBe(375000);
-    expect(c.metatypes.get('troll')!.ranges.str).toEqual([1, 6]);
+    expect(c.levels.get('runner')!.nuyen).toBe(/* the runner level's budget */);
+    expect(c.metatypes.get('troll')!.ranges.str).toEqual(/* the troll's STR range */);
     expect(c.skills.size).toBe(14);
-    expect(c.pricing.attrLastPoint).toBe(20000);
+    expect(c.pricing.attrLastPoint).toBe(/* the last attribute point's price */);
   });
   test('overlay replaces, removes, adds by id', () => {
     const ov = `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="levels" version="1">
-      <level id="runner" nuyen="400000" attrAtMax="1" skillCap="5" rrAttr="1" rrSkill="1" rrSpec="2" source="CUSTOM" page="1"><name>Runner+</name></level>
+      <level id="runner" nuyen="400000" attrAtMax="2" skillCap="6" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Runner+</name></level>
       <level id="ganger" remove="true" source="CUSTOM" page="1"/>
       <level id="legend" nuyen="600000" attrAtMax="3" skillCap="7" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Legend</name></level>
     </ca2:data>`;
@@ -315,7 +247,7 @@ Exact content (checked against the CRB):
   test('bad overlay is skipped and reported, base still loads', () => {
     const c = buildCatalog([...base, { file: 'broken.xml', xml: '<ca2:data', overlay: true }]);
     expect(c.errors[0].file).toBe('broken.xml');
-    expect(c.levels.get('runner')!.nuyen).toBe(375000);
+    expect(c.levels.get('runner')!.nuyen).toBe(/* the runner level's budget */);
   });
   ```
 - [ ] **Step 2:** `npm test -- load`: it fails because the module is missing.
@@ -357,39 +289,19 @@ Rules:
 
 - [ ] **Step 1:** Write the failing tests:
   ```ts
-  test('attribute last point surcharge', () => {
-    expect(attrCost(P, 0, 2, 4)).toBe(20000);
-    expect(attrCost(P, 0, 4, 4)).toBe(50000);   // 3×10k + 20k
-    expect(attrCost(P, 0, 4, 5)).toBe(40000);   // elf CHA 4 is not max
-  });
-  test('skill breakpoint at 5', () => {
-    expect(skillCost(P, 0, 2)).toBe(5000);
-    expect(skillCost(P, 4, 6)).toBe(7500);      // CRB p.83 example
-  });
+  // values come from the core rulebook; see docs/data-format.md, core data
+  test('attribute last point surcharge', () => { /* the point reaching the metatype max costs attrLastPoint */ });
+  test('skill breakpoint at skillLowMax', () => { /* skillLow up to skillLowMax, then skillHigh */ });
   test.each(['ganger','runner','prime'].flatMap(l =>
     ['balanced','magician','fighter'].map(a => `${l}-${a}`)))
   ('%s package totals its level budget', id => {
     const g = packageGuide(cat, id); const lvl = cat.levels.get(cat.packages.get(id)!.level)!;
     expect(g.attributes + g.skills + g.amps + g.gear + g.spells).toBe(lvl.nuyen);
   });
-  test('Lightning prices to exactly 375,000', () => {
-    const ch = JSON.parse(readFileSync('public/samples/lightning.ca2.json','utf8'));
-    const b = price(cat, ch);
-    expect(b.total).toBe(375000); expect(b.remaining).toBe(0);
-  });
+  test('the book's creation example prices to exactly its level budget', () => { /* remaining 0 */ });
   ```
   `P` = `cat.pricing`; `cat` = `buildCatalog(base)`, via a shared helper `tests/helpers.ts` exporting `cat` and `base`.
-- [ ] **Step 2:** Create `public/samples/lightning.ca2.json` (CRB p.85). The build must have:
-  - elf, level runner, package runner-magician
-  - Attributes: STR 2, AGI 2, WIL 4, LOG 2, CHA 4
-  - Skills: Sorcery 5 [illusion], Conjuring 4, Close Combat 3 [astral combat], Perception 4 [astral], Athletics 3 [ranged defense], Influence 4 [bluff], Stealth 5, Network 2 [street]
-  - Amps:
-    - Awakened [awk-astral-projection, awk-sorcery, awk-conjuring]
-    - Quality "Cat mentor spirit" [rr-spec×2 sorcery.illusion-spells, rr-spec stealth.physical-sneaking]
-    - Equipment "Sustaining focus" [sustain-spell×2], linkedItem = the focus gear uid
-    - Contact "Sparkling Feathers" [rr-spec network.street]
-  - Items: armor jacket (armor 3), knife (weapon), sustaining focus (gear), reagents (gear), and the spells Lightning Bolt, Heal, Invisibility, Mask, Phantasm, Confusion, Detect Enemies
-  - The narrative fields from the book
+- [ ] **Step 2:** Create the creation example's sample runner (CRB p.85) from the book: its attributes, skills, amps, items and narrative.
 - [ ] **Step 3:** Run it: fails. Step 4: implement `price.ts` (with a stub `ampRating` import from Task 6; do Task 6 first if you're executing sequentially). Step 5: it passes.
 - [ ] **Step 6:** Commit `Nuyen pricing and package guide budgets`.
 
@@ -409,12 +321,10 @@ Rules:
 - Change cost = `max(0, rating(after) − rating(before)) × ampPoint`. When the rating goes down and `refundEffectRemoval` is true, it's negative.
 
 - [ ] **Step 1:** Failing tests:
-  - smartlink = cyberware + rr-skill ranged-weapons → rating 6, cost 30,000.
-  - Smartlink with rr-spec ranged-weapons.pistols (rating 3) → rr-skill (rating 6): change cost 15,000 (CRB p.83).
-  - Lightning's amps: 5, 6, 4, 2 (total 17).
-  - The second quality in a build gets base 3.
-  - A cyberware amp costs Essence 1, bioware 0.5.
-  - Hercules (CRB p.88): Empathic Sense (adept + rr-spec×2 perception.social) = 5; Vocal Control = 3; Elton Hutchinson contact rr-skill network = 5; Awakened [awk-adept] = 1.
+  - cyberware + rr-skill ranged-weapons → base + the effect's rating, cost × ampPoint.
+  - An upgrade from rr-spec to rr-skill costs the rating difference × ampPoint.
+  - The creation example's and a pregen's amps rate as printed; the second quality gets baseAfterFirst; Essence per type.
+  (values come from the core rulebook; see docs/data-format.md, core data)
 - [ ] **Steps 2–5:** Run it (fails), implement, run it (passes), then commit `Shadow Amp rating, Essence and change cost`.
 
 ### Task 7: Derived values
@@ -518,9 +428,9 @@ The codes (all from spec §5.6). Paths look like `attributes.str`, `skills.steal
 - [ ] **Step 1:** Failing tests:
   - Finalize Lightning → balance 0.
   - `earn` 50,000 → balance 50,000.
-  - Advance Stealth 5→6 costs 5,000 → balance 45,000, and `currentBuild` shows stealth 6.
+  - Advance Stealth 5→6 costs skillHigh → balance 50,000 − skillHigh, and `currentBuild` shows stealth 6.
   - Void the advance → balance 50,000 and stealth 5.
-  - Amp-modify smartlink rr-spec→rr-skill costs 15,000.
+  - Amp-modify smartlink rr-spec→rr-skill costs the rating difference × ampPoint.
   - Selling an item removes it from `currentBuild` and costs 0.
   - A second void of the same event is rejected (it throws).
 - [ ] **Steps 2–5:** fail / implement / pass / commit `Career event log: earn, advance, amp changes, void`.
@@ -608,7 +518,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 **Files:** Create `src/ui/tabs/Attributes.tsx` and `src/ui/tabs/Skills.tsx`.
 
-- Attributes: a row per attribute with − / value / +, `min–max`, and "next point: 10,000¥ / 20,000¥" (from `attrCost(p, v, v+1, max)`). There's an at-max counter "1 / 1". Buttons are disabled only at the hard metatype bounds; level-cap problems show as violations, not disabled buttons.
+- Attributes: a row per attribute with − / value / +, `min–max`, and "next point: <price>" (from `attrCost(p, v, v+1, max)`). There's an at-max counter "1 / 1". Buttons are disabled only at the hard metatype bounds; level-cap problems show as violations, not disabled buttons.
 - Skills: the 14 rows with a rating stepper (0–8), the linked attribute, the DP and RR from `derive().pools`, and "next point" cost. Spec chips come from `skill.specs`, plus "custom…" (stored as `custom:Name`). The knowledge list has add and remove, with a note listing the automatic knowledge from `derive().knowledge`.
 - [ ] **Step 1:** Implement. Check with the Lightning sample: the DPs match the engine tests.
 - [ ] **Step 2:** Commit `Attributes and Skills tabs`.
@@ -621,7 +531,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 - Choose main armor and alternate armor.
 - An "Convert to amp" button on gear/weapons creates an equipment `AmpEntry` with `linkedItem`, then opens the Amp Builder (Task 17; until then it just adds the amp).
 - Vehicles and drones are **not** items. They're vehicle amps (Task 17).
-- [ ] **Step 1:** Implement. Check: adding armor 3 costs 7,500¥ in the panel, and a specialist weapon costs 5,000¥.
+- [ ] **Step 1:** Implement. Check: adding armor costs its points × armorPoint in the panel, and a specialist weapon costs weaponSpecialist.
 - [ ] **Step 2:** Commit `Gear and Spells tab`.
 
 ### Task 16: Review tab and Finalize
@@ -653,7 +563,7 @@ theme with a light option. It must work at 1280px and down to 768px.
   2. Name and narrative.
   3. The effect picker from `legalEffects`; disabled entries show their reason.
   4. Each added effect row has a param input: a skill select, a spec select, an attribute select, a realm select, text, or a value (1–5).
-  5. A live footer: "Rating N · N×5,000¥ · Essence −X". In career mode it shows "Change: +N rating · Z¥".
+  5. A live footer: "Rating N · N × amp point price · Essence −X". In career mode it shows "Change: +N rating · Z¥".
   6. Save runs `validate` on just that amp. Errors are shown inline, but saving is still allowed (they become violations).
 - [ ] **Step 1:** Failing tests for `legalEffects`:
   - awk options only on the awakened type;
@@ -669,7 +579,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 **Files:** Modify `src/ui/tabs/{Attributes,Skills,Gear,Amps}.tsx` and `src/ui/App.tsx`. Create `src/ui/tabs/Ledger.tsx`.
 
-- When `ch.finalizedAt` is set, every edit becomes a `make*` event behind a confirm dialog ("Stealth 5 → 6 · 5,000¥ · balance after: 45,000¥"). Direct edits of `build` are disabled. Undo/redo are hidden, and Void on the ledger replaces them.
+- When `ch.finalizedAt` is set, every edit becomes a `make*` event behind a confirm dialog ("Stealth 5 → 6 · <price> · balance after: <balance>"). Direct edits of `build` are disabled. Undo/redo are hidden, and Void on the ledger replaces them.
 - Balance < 0 after an event is allowed but shown red (it raises `budget.over`).
 - Ledger tab: an "Earn" form (amount, run name, date defaulting to today), a history table (date, description, ±nuyen, running balance), voided rows struck through, and Void (with a reason prompt).
 - [ ] **Step 1:** Implement. Check with Lightning: finalize, earn 50,000, raise Stealth, void it, and the balance returns to 50,000.
@@ -776,7 +686,7 @@ Because the repo is private, `Repository` is a local image tag built on the towe
 - [ ] **Step 4:** Open `http://<tower04-ip>:8480/` in the browser pane, then:
   1. The Data screen shows 14 files and 0 errors.
   2. Load book samples → 13 characters appear.
-  3. Open each sample: the panel shows no `ref.unknown`. For Lightning, the total is 375,000¥ and remaining is 0.
+  3. Open each sample: the panel shows no `ref.unknown`. For the creation example, remaining is 0.
   4. Hercules' print sheet shows the thresholds 2/5/8, 5/8/11, 3/6/9 and 2/5/8.
   5. Build a new Runner Balanced character from scratch following the book package, finalize, earn, advance.
   6. Record the results in `docs/deploy-tower04.md`.

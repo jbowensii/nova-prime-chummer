@@ -372,7 +372,7 @@ app's Data screen. The app keeps running on the base data.
 
 ```xml
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="levels" version="1">
-  <level id="runner" nuyen="400000" attrAtMax="1" skillCap="5" rrAttr="1" rrSkill="1" rrSpec="2" source="CUSTOM" page="1"><name>Runner (house)</name></level>
+  <level id="runner" nuyen="400000" attrAtMax="2" skillCap="6" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Runner (house)</name></level>
   <remove id="ganger"/>
   <level id="legend" nuyen="600000" attrAtMax="3" skillCap="7" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Street Legend</name></level>
 </ca2:data>

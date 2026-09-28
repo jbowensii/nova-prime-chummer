@@ -98,10 +98,10 @@ module or a CLI without changes.
 
 ```xml
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="ampeffects" version="1">
-  <effect id="rr-skill" category="risk" rating="5" max="1" maxScope="amp"
-          types="quality cyberware bioware adept equipment cyberdeck vehicle contact"
-          source="CRB" page="61">
-    <name>Risk Reduction 1 for a Skill</name>
+  <effect id="rr-skill" category="risk" rating="N" max="M" maxScope="amp"
+          types="quality cyberware …"
+          source="CRB" page="P">
+    <name>…</name>
     <param kind="skill"/>
   </effect>
 </ca2:data>
@@ -167,44 +167,28 @@ review. There is no permanent extraction pipeline.
 
 ### 5.1 Pricing (CRB p.83)
 
-Creation and advancement use the same prices:
-
-| Trait | Cost |
-|---|---|
-| Attribute | 10,000¥ per point; the point that reaches the metatype max costs 20,000¥ |
-| Skill | 2,500¥ per point up to rating 5; 5,000¥ per point for ratings 6–8 |
-| Specialization | 2,500¥ (needs skill ≥ 1; any number per skill) |
-| Knowledge skill | 2,500¥ |
-| Shadow Amp | 5,000¥ × rating |
-| Equipment | 2,500¥ (the GM may set it higher) |
-| Weapon | 2,500¥ standard (melee, or ranged up to rifle); 5,000¥ specialist |
-| Armor | 2,500¥ per armor point |
-| Spell | 5,000¥ |
-| Commlink (with trodes) + fake SIN | free at creation |
+Creation and advancement use the same prices. Every trait has a price: attributes (the point that reaches the metatype max costs more), skills (cheaper up to a
+breakpoint), specializations, knowledge skills, Shadow Amps (per rating point), equipment, weapons (standard and
+specialist), armor (per point) and spells. The commlink and fake SIN are free at creation. Values come from the core rulebook; see docs/data-format.md, "Core files".
 
 Attributes and skills start at 0. Attributes must end within the metatype
 range (minimum 1).
 
-Modifying an amp costs the **rating difference** × 5,000¥. That covers
+Modifying an amp costs the **rating difference** × the amp point price. That covers
 adding an effect or swapping one effect for another (CRB p.83). Removing an
 effect gives no refund. The book says nothing about refunds, so this is
 our ruling, and it goes in `pricing.xml` so a table can change it.
 
 ### 5.2 Levels of play (CRB p.84–85)
 
-| Level | Nuyen | Attributes at max | Skill cap | Risk Reduction cap |
-|---|---|---|---|---|
-| Ganger | 300,000¥ | 0 | 4 | 1 (total, including stacking) |
-| Runner | 375,000¥ | 1 | 5 | 1 for attributes and skills, 2 for specializations |
-| Prime Runner | 450,000¥ | 2 | 6 (the book's package table shows "2 at rating 6") | 2 (total, including stacking) |
+Each level sets a nuyen budget, how many attributes may be at max, a skill cap and Risk Reduction caps (attributes,
+skills, specializations). Values come from the core rulebook; see docs/data-format.md, "Core files".
 
 The caps apply **during creation only**. The book says they "may be
 overcome later, during character advancement."
 
-**Open data point:** the text says Prime Runner's skill cap is 6. The
-Prime package table shows 40 skill points with "2 at rating 6". v1
-encodes the cap as rating 6 for all skills, and the package's "2 at 6" as
-guidance only. This goes in `levels.xml` so it can be changed.
+**Open data point:** the Prime Runner text and its package table disagree on the skill cap; v1 encodes the text's cap
+and treats the package's note as guidance only. This goes in `levels.xml` so it can be changed.
 
 ### 5.3 Packages
 
@@ -213,42 +197,39 @@ from one category to another one, as long as the total amount remains the
 same." The UI shows guide against actual per category. Picking **Free**
 shows no guides.
 
-Worked check, Runner Balanced: attributes 14 points with 1 at max
-(14 × 10,000¥ + 10,000¥ surcharge = 150,000¥), skills 35 × 2,500¥
-= 87,500¥, amps 24 × 5,000¥ = 120,000¥, armor 3 = 7,500¥, 2 weapons
-= 5,000¥, 2 equipment = 5,000¥. Total **375,000¥**, which equals the Runner
-budget. All 9 packages must total their level's budget exactly. This is a
-test.
+Worked check: each package's categories, priced with the pricing above, total its level's budget exactly. All 9
+packages must; this is a test.
 
 ### 5.4 Shadow Amps
 
 - Rating = the type's base rating + the sum of its effect ratings
   (negative effects included).
-- The first **Quality** has base rating 0, every later Quality has base
-  rating 3. The racial quality doesn't count and costs nothing.
-- **Awakened** starts at rating 0. Its options: astral perception +1,
-  astral perception and projection +2, sorcery +1, conjuring +2, adept +1.
-- **Essence cost:** Cyberware −1 per amp, Bioware −0.5 per amp. Essence
-  starts at 6. Essence ≤ 0 is an error.
+- The first **Quality** has one base rating, every later Quality another. The racial quality doesn't count and
+  costs nothing.
+- **Awakened** starts at its base rating and grows with its options (astral perception, astral perception and
+  projection, sorcery, conjuring, adept).
+- **Essence cost:** each Cyberware and Bioware amp costs its type's Essence. Essence ≤ 0 is an error.
 - Effects give a legal set of types, a max (per amp or per character), and
   an optional `requires` prerequisite (initiative level 2 needs level 1).
 - **Initiative enhancements from different sources don't stack.** Only the
   best one applies. Each level can be limited to one realm (astral,
-  physical or VR) for −1 rating per level.
-- An **additional narrative effect** is +1. A **negative effect** is −1 to
-  −5 and always raises a GM-approval violation.
+  physical or VR) for a rating reduction.
+- An **additional narrative effect** raises the rating. A **negative effect** lowers it and always raises a
+  GM-approval violation.
 - Qualities can only be bought during creation. In career mode, adding a
   new Quality raises a GM-approval violation ("after a major event"), but
   upgrading an existing one is normal.
 - Equipment must be bought first before it can be converted into an
   Equipment amp.
 
+Values come from the core rulebook; see docs/data-format.md, "Core files".
+
 ### 5.5 Derived values
 
 | Value | Rule |
 |---|---|
-| Edge (starting, per adventure) | From the metatype: 4 for humans, 3 for others |
-| Essence | 6 − cyberware − 0.5 × bioware; penalty tiers from the Essence table (CRB p.60) |
+| Edge (starting, per adventure) | From the metatype |
+| Essence | The starting Essence less each implant amp's Essence; penalty tiers from the Essence table (CRB p.60) |
 | Condition monitor | 2 light, 1 serious, 1 incapacitated; +1 light and/or +1 serious from amp effects |
 | Physical thresholds | STR + Armor / +3 / +6, computed for No armor, Main armor and Alternate armor |
 | Mental thresholds | WIL + Protection / +3 / +6 |
@@ -373,10 +354,9 @@ Review.
 
 - **Engine (Vitest)**
   - All 9 package tables total exactly their level budget.
-  - Lightning (CRB p.85) prices to 375,000¥.
-  - Smartlink: rating 6, 30,000¥. Upgrading its RR from the pistols
-    specialization to the Ranged Weapons skill costs +3 rating, 15,000¥.
-  - Thresholds example: an ork with STR 4 and Armor 2 → 6/9/12.
+  - The book's character creation example (CRB p.85) prices to exactly its level's budget.
+  - Upgrading an amp's RR from a specialization to the whole skill costs the rating difference.
+  - The book's thresholds example.
   - One test per violation code.
   - Pricing edges: the last attribute point, a skill crossing rating 5, an
     amp effect swap, initiative non-stacking.
