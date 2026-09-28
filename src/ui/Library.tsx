@@ -20,14 +20,12 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
 /** A character file: our XML, or the older .ca2.json. */
 export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
 
-/** The sample runners: the ones imported books brought (custom/imported/samples.xml), else the bundled set. */
+/** The sample runners the imported books brought (custom/imported/samples.xml); none before any import. */
 async function sampleUrls(): Promise<string[]> {
   const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
   const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
-  if (xml?.documentElement.localName === 'samples')
-    return [...xml.documentElement.getElementsByTagName('sample')].map(s => `./custom/imported/${s.getAttribute('href')}`)
-  const index: { file: string }[] = await (await fetch('./samples/index.json')).json()
-  return index.map(({ file }) => `./samples/${file}`)
+  return xml?.documentElement.localName === 'samples'
+    ? [...xml.documentElement.getElementsByTagName('sample')].map(s => `./custom/imported/${s.getAttribute('href')}`) : []
 }
 
 export function Library({ c }: { c: Catalog }) {
@@ -39,6 +37,12 @@ export function Library({ c }: { c: Catalog }) {
   const [meta, setMeta] = useState('human')
   const [toDelete, setToDelete] = useState<Character | null>(null)
   const file = useRef<HTMLInputElement>(null)
+  const [noBooks, setNoBooks] = useState(false)
+  // a fresh install: no book uploaded (server), or no amps at all (a static host has no Books page)
+  useEffect(() => {
+    if (repo.mode !== 'server') { setNoBooks(c.amps.size === 0); return }
+    fetch('./api/books', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => setNoBooks(Array.isArray(b) && b.length === 0), () => {})
+  }, [repo.mode, c])
   const refresh = () => repo.list().then(setList, e => { setMsg(`Couldn’t load your runners: ${e}`); setList([]) })
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const where = repo.mode === 'server' ? 'tower04' : 'this browser'
@@ -73,7 +77,9 @@ export function Library({ c }: { c: Catalog }) {
       const have = new Set((list ?? []).map(s => s.ch.id))
       let n = 0
       const bad: string[] = []
-      for (const url of await sampleUrls()) {
+      const urls = await sampleUrls()
+      if (!urls.length) return setMsg('No sample characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet).')
+      for (const url of urls) {
         const file = url.split('/').pop()
         const res = await fetch(url).catch(() => null)
         if (!res?.ok) { bad.push(`${file}: couldn’t be fetched.`); continue }
@@ -105,17 +111,19 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={loadSamples}>Load sample characters</button>
+          <a className="btn quiet" href="#/books">Books</a>
           <a className="btn quiet" href="#/rules">Rules</a>
           <a className="btn quiet" href="#/data">Game data</a>
           <SettingsButton />
         </div>
       </header>
       <p className="muted">Saved on {where}{repo.mode === 'server' ? ' (appdata/chummer-anarchy2/characters)' : '. Export files to keep them safe.'}</p>
+      {noBooks && <p className="banner">Upload your books to add amps, spells and gear. <a href="#/books">Open the Books page</a></p>}
       {msg && <p className="banner" role="status">{msg}</p>}
 
       {list === null ? <p className="muted">Loading runners…</p> : list.length === 0 ? (
         <div className="empty">
-          <p>No runners yet. Start a new one, import a character file, or load the 28 sample characters from the rulebook and Daegann’s pregen booklet to look around.</p>
+          <p>No runners yet. Start a new one, import a character file, or load the sample characters your imported books bring to look around.</p>
         </div>
       ) : list.map(({ ch, rev }) => {
         // only for badges below (e.g. duplicate/canon labels keyed off catalog ids); never saved from here
