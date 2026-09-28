@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test catalog gear (docs/superpowers/sdd/2026-09-27-pdf-importer/task-1-brief.md). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="gear" version="1">
+  <item id="nano-tape" kind="gear" source="TEST" page="9"><name>Nano Tape</name><text></text></item>
+  <item id="signal-jammer" kind="gear" source="TEST" page="10"><name>Signal Jammer</name><text></text></item>
+</ca2:data>
