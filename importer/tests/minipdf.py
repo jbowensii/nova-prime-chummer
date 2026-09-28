@@ -283,3 +283,33 @@ BT /F1 10 Tf 240 604 Td (Inner) Tj ET
 def nested_table_pdf() -> bytes:
     """One-page PDF: a table with a ruled box inside one of its cells."""
     return _build_pdf([NESTED_TABLE_OPS])
+
+
+# A boxed sidebar: a ruled title row over one ruled body cell (72..472) whose text is set in two
+# columns (x=80 and x=280), five lines each at matching heights. Read line by line, each row would mix
+# "left" and "right" words.
+_BOX_RULES = """72 700 m 472 700 l S
+72 680 m 472 680 l S
+72 560 m 472 560 l S
+72 560 m 72 700 l S
+472 560 m 472 700 l S
+BT /F1 10 Tf 80 685 Td (MADE UP BOX) Tj ET
+"""
+BOXED_COLUMNS_OPS = _BOX_RULES + "".join(
+    f"BT /F1 10 Tf {x} {665 - 15 * i} Td ({side} line {i}) Tj ET\n" for x, side in ((80, "left"), (280, "right")) for i in range(5)
+)
+# The same box with a table row under the text that runs across the gutter (1 line in 11, under the
+# page-level 10% crossing allowance): rows stay rows.
+BOXED_TABLE_OPS = BOXED_COLUMNS_OPS + """BT /F1 10 Tf 80 575 Td (Row label that runs long enough to cross the middle) Tj ET
+BT /F1 10 Tf 420 575 Td (7) Tj ET
+"""
+
+
+def boxed_columns_pdf() -> bytes:
+    """One-page PDF: a one-cell box whose text is set in two columns."""
+    return _build_pdf([BOXED_COLUMNS_OPS])
+
+
+def boxed_table_pdf() -> bytes:
+    """One-page PDF: the two-column box with a table row across the gutter below the text."""
+    return _build_pdf([BOXED_TABLE_OPS])

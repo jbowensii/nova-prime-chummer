@@ -6,6 +6,8 @@ from importer.convert import convert
 from importer.tests.minipdf import (
     JUSTIFIED_WORDS,
     bold_label_pdf,
+    boxed_columns_pdf,
+    boxed_table_pdf,
     bullets_then_indented_block_pdf,
     justified_paragraph_pdf,
     nested_table_pdf,
@@ -37,7 +39,7 @@ class ConvertTest(unittest.TestCase):
     def test_pages_headings_tables(self):
         meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
         self.assertEqual(meta["pages"], 2)
-        self.assertEqual(meta["converter"], "4")
+        self.assertEqual(meta["converter"], "5")
         self.assertIn("<!-- page 1 -->", text)
         self.assertIn("<!-- page 2 -->", text)
         self.assertRegex(text, r"(?m)^# Shadow Test$")
@@ -114,6 +116,15 @@ class ConvertTest(unittest.TestCase):
         _, _, lines = _convert_to_lines(justified_paragraph_pdf(), "justified")
         self.assertEqual(lines, [" ".join(ws) for ws in JUSTIFIED_WORDS])
 
+    def test_box_in_two_columns_is_read_column_by_column(self):
+        _, _, lines = _convert_to_lines(boxed_columns_pdf(), "boxcols")
+        cell = "<br>".join(f"{side} line {i}" for side in ("left", "right") for i in range(5))
+        self.assertEqual(lines, ["| MADE UP BOX |", "|---|", f"| {cell} |"])
+
+    def test_box_with_a_row_across_the_gutter_keeps_its_rows(self):
+        _, _, lines = _convert_to_lines(boxed_table_pdf(), "boxtable")
+        cell = "<br>".join(f"left line {i} right line {i}" for i in range(5))
+        self.assertEqual(lines[2], f"| {cell}<br>Row label that runs long enough to cross the middle 7 |")
 
 if __name__ == "__main__":
     unittest.main()
