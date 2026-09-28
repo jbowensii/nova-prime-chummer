@@ -1,7 +1,8 @@
 // Stand-in for `python -m importer …` in server tests and e2e (books-python.test.ts runs the real one). Invoked as
 // `node stub-worker.mjs -m importer <command> …`. It fakes each command's files just enough for the
 // server's routes and the app: status.xml, import.xml, a one-entry overlay listed in
-// custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml.
+// custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml, and the edits layer
+// (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
 // Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
@@ -102,6 +103,38 @@ if (cmd === 'run') {
   if (!key) fail(`no API key is set for ${target}`)
   if (key.includes('bad')) fail(`stub.example answered HTTP 401: invalid key ${key}`)
   console.log({ anthropic: 'claude-sonnet-5\nclaude-opus-5\nclaude-haiku-4-5', openai: 'gpt-5\ngpt-5-mini', gemini: 'gemini-2.5-pro\ngemini-2.5-flash' }[target])
+} else if (cmd === 'edit') { // target: set | remove | add-source; the real checks are importer/edits.py's (books-python.test.ts)
+  const dir = join(opt('--custom'), 'edits'), [kind, id] = rest
+  const tag = { amps: 'amp', items: 'item', rules: 'rule' }[kind]
+  const read = (f, root) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), 'utf8') : `<ca2:data ${NS} kind="${root}" version="1">\n</ca2:data>\n`
+  const refuse = why => { process.stderr.write(`${why}\n`); process.exit(3) }
+  mkdirSync(dir, { recursive: true })
+  const drop = (xml, re) => xml.replace(re, '')
+  const entryRe = new RegExp(`  <${tag} id="${id?.replace(/\./g, '\\.')}"[\\s\\S]*?</${tag}>\\n`)
+  const textRe = new RegExp(`  <text of="${kind}" id="${id?.replace(/\./g, '\\.')}">[^<]*</text>\\n`)
+  if (target === 'add-source') {
+    const sources = read('sources.xml', 'sources')
+    if (sources.includes(`id="${kind}"`) || ['TEST', 'TEST2', 'TESTC', 'CRB'].includes(kind)) refuse(`the source id ${kind} is already used; pick another`)
+    writeFileSync(join(dir, 'sources.xml'), sources.replace('</ca2:data>', `  <source id="${kind}" publisher="" canon="false"><name>${opt('--name')}</name></source>\n</ca2:data>`))
+    console.log('<result state="saved" />')
+  } else if (target === 'set') {
+    const body = readFileSync(0, 'utf8')
+    const entry = body.match(new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>`))?.[0]
+    const desc = body.match(/<description>([^<]*)<\/description>/)?.[1] ?? ''
+    if (!entry || !entry.includes(`id="${id}"`)) refuse(`an edit of ${kind} needs one <${tag}> entry with id "${id}"`)
+    if (/<name>\s*<\/name>/.test(entry)) refuse('no id or name')
+    if (entry.includes('<name>REFUSE')) refuse('unknown effect ref "stub-refusal"')
+    const edits = drop(read('edits.xml', 'edits'), entryRe), texts = drop(read('texts.xml', 'texts'), textRe)
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 150) // widen the read-modify-write window
+    writeFileSync(join(dir, 'edits.xml'), edits.replace('</ca2:data>', `  ${entry}\n</ca2:data>`))
+    writeFileSync(join(dir, 'texts.xml'), desc.trim() ? texts.replace('</ca2:data>', `  <text of="${kind}" id="${id}">${desc}</text>\n</ca2:data>`) : texts)
+    console.log('<result state="saved" />')
+  } else if (target === 'remove') {
+    const edits = read('edits.xml', 'edits'), texts = read('texts.xml', 'texts')
+    writeFileSync(join(dir, 'edits.xml'), drop(edits, entryRe))
+    writeFileSync(join(dir, 'texts.xml'), drop(texts, textRe))
+    console.log(`<result removed="${entryRe.test(edits) || textRe.test(texts)}" />`)
+  }
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)
   process.exit(2)

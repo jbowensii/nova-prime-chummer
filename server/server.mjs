@@ -8,7 +8,7 @@
 //          ?force=1                         overwrite anyway
 //          ?filename=<name>                 file name for a new runner (else from the street name)
 //   DELETE /api/characters/:id           moves the file to .trash/ (never hard-deletes)
-//   /api/books, /api/review, /api/ai-*   the PDF importer (server/books.mjs); LIBRARY_DIR is never served
+//   /api/books, /api/review, /api/ai-*, /api/edits   the PDF importer and catalog edits (server/books.mjs); LIBRARY_DIR is never served
 //   /custom/*                            house-rule overlays from CUSTOM_DIR
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
