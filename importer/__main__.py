@@ -6,6 +6,7 @@
   python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
   python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
   python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
+  python -m importer list-models <provider> --library <library dir>  (one model id per line; exit 3: the reason on stderr)
 """
 import hashlib
 import os
@@ -297,11 +298,26 @@ def _cmd_set_settings(argv):
     return 0
 
 
+def _cmd_list_models(argv):
+    """The provider's models, asked with the saved key and address. Read-only; exit 3 with the reason on stderr."""
+    if len(argv) != 3 or argv[0] not in PROVIDER_IDS or argv[1] != "--library":
+        print(USAGE, file=sys.stderr)
+        return 2
+    from importer.ai import providers
+    try:
+        ids = providers.list_models(argv[0], argv[2])
+    except providers.ProviderError as e:
+        print(e, file=sys.stderr)
+        return 3
+    print("\n".join(ids))
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
             "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
-            "set-settings": _cmd_set_settings}
+            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2

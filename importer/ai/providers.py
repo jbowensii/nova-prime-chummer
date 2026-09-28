@@ -3,6 +3,7 @@
   ai-keys.xml       the API keys and nothing else (mode 600), read only at call time
 Anthropic goes through the official SDK; the others are plain HTTP with urllib.
 Errors raise ProviderError with a plain message that never contains a key."""
+import contextlib
 import json
 import os
 import re
@@ -159,7 +160,7 @@ def complete(provider, key, system, user, schema=None):
         if pid == "openai":
             body = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                     "response_format": {"type": "json_object"}}  # servers without JSON mode ignore it; propose tolerates prose
-            out = _post(provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body)
+            out = _request(provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body)
             if out["choices"][0].get("finish_reason") == "length":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return out["choices"][0]["message"]["content"]
@@ -167,18 +168,52 @@ def complete(provider, key, system, user, schema=None):
             url = f"{(provider.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models/{urllib.parse.quote(model)}:generateContent"
             body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"role": "user", "parts": [{"text": user}]}],
                     "generationConfig": {"responseMimeType": "application/json"}}
-            out = _post(url, {"x-goog-api-key": key}, body)  # header, not ?key=: URLs end up in logs
+            out = _request(url, {"x-goog-api-key": key}, body)  # header, not ?key=: URLs end up in logs
             if out["candidates"][0].get("finishReason") == "MAX_TOKENS":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return "".join(p.get("text", "") for p in out["candidates"][0]["content"]["parts"])
         if pid == "anythingllm":
             url = f"{provider['baseUrl'].rstrip('/')}/api/v1/workspace/{urllib.parse.quote(provider['workspace'])}/chat"
-            return _post(url, _bearer(key), {"message": f"{system}\n\n{user}", "mode": "chat"})["textResponse"]
+            return _request(url, _bearer(key), {"message": f"{system}\n\n{user}", "mode": "chat"})["textResponse"]
     except ProviderError as e:
         raise type(e)(_redact(str(e), key)) from None
     except (KeyError, IndexError, TypeError) as e:
         raise ProviderError(f"{pid} sent an answer in an unexpected shape (missing {e})") from None
     raise ProviderError(f"unknown provider “{pid}”")
+
+
+def list_models(provider_id, library_dir):
+    """The model ids a provider offers, sorted. Asked with the saved key at the saved address only: an address
+    from a request could send the key anywhere. The providers file is read before the key, so a settings save
+    that changes the address (it clears the key first) never pairs the new address with the old key."""
+    config = os.path.join(library_dir, ".config")
+    if provider_id == "anythingllm":
+        raise ProviderError("this provider has no model list")
+    if provider_id not in PROVIDER_IDS:
+        raise ProviderError(f"unknown provider “{provider_id}”")
+    saved = read_providers(config)[1] if os.path.exists(os.path.join(config, "ai-providers.xml")) else {}
+    p = saved.get(provider_id) or {}
+    key = read_key(config, provider_id) or ""
+    if not key and provider_id != "openai":  # a local OpenAI-compatible server may need none
+        raise ProviderError(f"no API key is set for {provider_id}")
+    try:
+        if provider_id == "anthropic":
+            client = anthropic.Anthropic(api_key=key, base_url=p.get("baseUrl") or None, timeout=TIMEOUT)
+            with _anthropic_errors():
+                ids = [m.id for m in client.models.list()]  # the SDK pages through all of them
+        elif provider_id == "openai":
+            if not p.get("baseUrl"):
+                raise ProviderError("save the address first")
+            ids = [m["id"] for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key))["data"]]
+        else:  # ponytail: one page of 1000; Gemini offers a few dozen models, follow nextPageToken if that changes
+            out = _request(f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models?pageSize=1000", {"x-goog-api-key": key})
+            ids = [m["name"].removeprefix("models/") for m in out.get("models", [])
+                   if "generateContent" in m.get("supportedGenerationMethods", [])]
+    except ProviderError as e:
+        raise ProviderError(_redact(str(e), key)) from None
+    except (KeyError, IndexError, TypeError, AttributeError) as e:
+        raise ProviderError(f"{provider_id} sent a model list in an unexpected shape (missing {e})") from None
+    return sorted(set(ids))
 
 
 def _redact(text, key):
@@ -189,9 +224,11 @@ def _bearer(key):
     return {"Authorization": f"Bearer {key}"} if key else {}
 
 
-def _post(url, headers, body):
+def _request(url, headers, body=None):
+    """POST `body` as JSON (without one: GET) and return the JSON reply."""
     host = urllib.parse.urlsplit(url).netloc
-    req = urllib.request.Request(url, json.dumps(body).encode("utf8"), {"Content-Type": "application/json", **headers}, method="POST")
+    data = None if body is None else json.dumps(body).encode("utf8")
+    req = urllib.request.Request(url, data, {"Content-Type": "application/json", **headers}, method="GET" if data is None else "POST")
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
             return json.load(r)
@@ -203,14 +240,10 @@ def _post(url, headers, body):
         raise ProviderError(f"{host} didn’t answer with JSON") from None
 
 
-def _anthropic(provider, key, model, system, user, schema):
-    client = anthropic.Anthropic(api_key=key, base_url=provider.get("baseUrl") or None, timeout=ANTHROPIC_TIMEOUT)
-    extra = {"output_config": {"format": {"type": "json_schema", "schema": schema}}} if schema else {}
+@contextlib.contextmanager
+def _anthropic_errors():
     try:
-        resp = client.beta.messages.create(
-            model=model, max_tokens=16000, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
-            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],  # same for every chunk
-            messages=[{"role": "user", "content": user}], **extra)
+        yield
     except anthropic.AuthenticationError:
         raise ProviderError("Anthropic didn’t accept the API key") from None
     except anthropic.RateLimitError:
@@ -219,6 +252,16 @@ def _anthropic(provider, key, model, system, user, schema):
         raise ProviderError(f"Anthropic answered HTTP {e.status_code}: {e.message}") from None
     except anthropic.APIConnectionError:
         raise ProviderError("couldn’t reach Anthropic") from None
+
+
+def _anthropic(provider, key, model, system, user, schema):
+    client = anthropic.Anthropic(api_key=key, base_url=provider.get("baseUrl") or None, timeout=ANTHROPIC_TIMEOUT)
+    extra = {"output_config": {"format": {"type": "json_schema", "schema": schema}}} if schema else {}
+    with _anthropic_errors():
+        resp = client.beta.messages.create(
+            model=model, max_tokens=16000, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],  # same for every chunk
+            messages=[{"role": "user", "content": user}], **extra)
     if resp.stop_reason == "refusal":
         raise ProviderError("declined: the model refused this part of the book")
     if resp.stop_reason == "max_tokens":
