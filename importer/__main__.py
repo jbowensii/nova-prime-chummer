@@ -131,11 +131,27 @@ def remove(book_dir, custom_dir, forget=False):
         xmlio.update_sources(custom_dir, library)
 
 
-def _reserved_sources():
-    """Source ids a recipe or the shipped data own; an AI import may not take them."""
-    shipped = os.path.join(DATA_DIR, "sources.xml")
-    ids = {s.get("id") for s in xmlio.ET.parse(shipped).getroot()} if os.path.exists(shipped) else set()
-    return {i.upper() for i in ids | {r.ID for r in RECIPES} if i}
+def _reserved_sources(custom_dir):
+    """Source ids a recipe, the shipped data or the user's own custom/sources.xml own; an AI import may not take them."""
+    ids = {r.ID for r in RECIPES}
+    for path in (os.path.join(DATA_DIR, "sources.xml"), os.path.join(custom_dir, "sources.xml")):
+        if os.path.exists(path):
+            ids |= {s.get("id") for s in xmlio.ET.parse(path).getroot()}
+    return {i.upper() for i in ids if i}
+
+
+def _entry_notes(kind, entry, m):
+    """propose's checks on one reviewed entry (the user may have edited it): what is wrong, or []."""
+    from importer.ai import propose
+    notes = [] if (entry.get("id") or "").strip() and (entry.findtext("name") or "").strip() else ["no id or name"]
+    if kind == "amp":
+        effects = [{"ref": e.get("ref"), "param": e.get("param")} for e in entry.findall("effect")]
+        return notes + propose.amp_notes({"type": entry.get("type"), "effects": effects}, m)
+    if entry.get("kind") != kind:
+        notes.append(f'item kind "{entry.get("kind")}" isn’t the proposal’s "{kind}"')
+    if kind in propose.CATEGORIES and entry.get("category") not in propose.CATEGORIES[kind]:
+        notes.append(f'unknown {kind} category "{entry.get("category")}"')
+    return notes
 
 
 def apply_review(book_dir, custom_dir, source, name, canon):
@@ -144,14 +160,20 @@ def apply_review(book_dir, custom_dir, source, name, canon):
     try:
         if not SOURCE_ID.fullmatch(source or "") or not (name or "").strip() or canon not in ("true", "false"):
             raise ValueError("apply-review needs a source id (A-Z, 0-9, -), a name and canon true|false")
-        if source in _reserved_sources() or _same_source(book_dir, source):
+        if source in _reserved_sources(custom_dir) or _same_source(book_dir, source):
             raise ValueError(f"the source id {source} is already used by another book")
         xmlio.write_status(book_dir, "applying")
-        rows = {}
+        from importer.ai import propose  # loads the AI SDK: only for AI work
+        m = propose.mechanics()
+        rows, report = {}, []
         for p in xmlio.ET.parse(os.path.join(book_dir, "review.xml")).getroot().findall("proposal"):
             kind = p.get("kind")
             entry = next((e for e in p if e.tag == ("amp" if kind == "amp" else "item")), None)
             if p.get("state") in ("accepted", "edited") and kind in REVIEW_FILES and entry is not None:
+                notes = _entry_notes(kind, entry, m)
+                if notes:  # an edit can break what propose checked: the entry stays out, the report says why
+                    report.append({"proposal": p.get("id"), "page": p.get("page"), "problem": "; ".join(notes)})
+                    continue
                 entry.set("source", source)
                 entry.tail = None
                 rows.setdefault(REVIEW_FILES[kind], []).append("  " + xmlio.ET.tostring(entry, encoding="unicode"))
@@ -165,13 +187,14 @@ def apply_review(book_dir, custom_dir, source, name, canon):
         ids = set().union(*(xmlio.top_ids(x) for x in files.values()))
         for f, xml in files.items():
             xmlio.write_overlay(out_dir, f, xml, ids)
-        xmlio.write_import(book_dir, files={f: len(xmlio.top_ids(x)) for f, x in files.items()}, recipe="ai", source=source,
+        xmlio.write_import(book_dir, report=report, files={f: len(xmlio.top_ids(x)) for f, x in files.items()}, recipe="ai", source=source,
                            name=name.strip(), publisher="", canon=canon,
                            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
         os.makedirs(os.path.join(custom_dir, "imported"), exist_ok=True)
         xmlio.update_index(custom_dir)
         xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
-        xmlio.write_status(book_dir, "done", f"{sum(map(len, rows.values()))} entries applied")
+        skipped = f", {len(report)} skipped (see the report)" if report else ""
+        xmlio.write_status(book_dir, "done", f"{sum(map(len, rows.values()))} entries applied{skipped}")
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
