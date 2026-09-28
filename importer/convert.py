@@ -5,8 +5,9 @@ import statistics
 
 import pdfplumber
 
-CONVERTER_VERSION = "4"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
-# 4: a word outside every grid cell goes to the nearest column (was: the last)
+CONVERTER_VERSION = "5"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
+# 4: a word outside every grid cell goes to the nearest column (was: the last);
+# 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -135,11 +136,11 @@ def _gutter_crossings(rows, x):
     return cross if beside >= _MIN_LINES_PER_SIDE else None
 
 
-def _find_gutter(rows, page_width):
+def _find_gutter(rows, right, left=0):
     """Return a column-split x, or None if the page doesn't look 2-column.
 
     Candidates are the centres of whitespace gaps (a strip >= 2*_GUTTER_HALF
-    wide) between words on one row, in the middle band of the page only —
+    wide) between words on one row, in the middle band of [left, right] (the page, or a table cell) only —
     margin furniture like vertical tab letters makes big gaps near the
     edges. A real gutter is a whitespace river: the same strip stays clear
     down many rows. Justified text's wide gaps move from row to row, so
@@ -147,11 +148,12 @@ def _find_gutter(rows, page_width):
     `_gutter_crossings` rejects it. The accepted candidate with the fewest
     crossing lines wins.
     """
+    lo, hi = left + (right - left) * 0.25, left + (right - left) * 0.75
     cands = {
         round((a["x1"] + b["x0"]) / 2)
         for row in rows
         for a, b in zip(row, row[1:])
-        if b["x0"] - a["x1"] >= 2 * _GUTTER_HALF and page_width * 0.25 < (a["x1"] + b["x0"]) / 2 < page_width * 0.75
+        if b["x0"] - a["x1"] >= 2 * _GUTTER_HALF and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
     scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x)) is not None]
     return min(scored)[1] if scored else None
@@ -185,9 +187,21 @@ def _table_cells(table, words):
         # the column holding the centre, else the nearest one (a word in a gap between cells)
         c = min(range(len(grid)), key=lambda i: max(grid[i][0] - cx, 0, cx - grid[i][2]))
         cells[r][c].append(w)
-    rows = [["\n".join(_line_text(line) for line in _cluster_lines(ws)) for ws in row] for row in cells]
+    rows = [["\n".join(_line_text(line) for line in _cell_lines(ws, g)) for ws, g in zip(row, grid)] for row in cells]
     keep = [i for i in range(len(grid)) if any(r[i] for r in rows)]
     return [[r[i] for i in keep] for r in rows]
+
+
+def _cell_lines(words, cell):
+    """A cell's visual lines. A boxed sidebar set in two text columns is read left column, then right, but
+    only when no line runs across the gutter: a table under or inside the text (rows crossing it) keeps
+    its rows, as does any cell where the split isn't clean."""
+    rows = _cluster_lines(words)
+    mid = _find_gutter(rows, cell[2], cell[0])
+    if mid is None or _gutter_crossings(rows, mid):
+        return rows
+    parts = [p for r in rows for p in _split_at(r, mid)]
+    return [p for p in parts if _line_extent(p)[1] <= mid] + [p for p in parts if _line_extent(p)[0] >= mid]
 
 
 def _table_md(rows):
