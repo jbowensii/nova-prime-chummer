@@ -8,7 +8,7 @@ import { useRepo } from './repo'
 import { SettingsButton } from './settings'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
-  recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean }
+  recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial' }
 
 const STATE: Record<string, string> = { queued: 'Waiting', converting: 'Reading the PDF', identifying: 'Recognizing the book',
   extracting: 'Extracting entries', 'needs-ai': 'Needs AI', proposing: 'Asking the AI', review: 'Ready to review',
@@ -78,7 +78,7 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
   const [uploading, setUploading] = useState<{ name: string; pct: number } | null>(null)
   const [removing, setRemoving] = useState<Book | null>(null)
   const [withFiles, setWithFiles] = useState(false)
-  const [asking, setAsking] = useState<{ book: Book; parts?: number; provider?: string | null; keySet?: boolean } | null>(null)
+  const [asking, setAsking] = useState<{ book: Book; fresh: boolean; parts?: number; provider?: string | null; keySet?: boolean } | null>(null)
   const [report, setReport] = useState<{ book: Book; rows: Record<string, string>[] } | null>(null)
   const [over, setOver] = useState(false)
   const [offline, setOffline] = useState(false)
@@ -134,11 +134,12 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
     void refresh()
   }
 
-  const ask = async (book: Book) => {
-    setAsking({ book })
+  /** `fresh`: finished proposals exist; sending again replaces them and the decisions made on them. */
+  const ask = async (book: Book, fresh = false) => {
+    setAsking({ book, fresh })
     try {
       const [dry, settings] = await Promise.all([api<{ parts: number; provider: string | null }>(`books/${book.id}/ai?dryRun=1`, { method: 'POST' }), api<string>('ai-settings')])
-      setAsking({ book, ...dry, keySet: !!dry.provider && settings.includes(`<key provider="${dry.provider}" set="true"`) })
+      setAsking({ book, fresh, ...dry, keySet: !!dry.provider && settings.includes(`<key provider="${dry.provider}" set="true"`) })
     }
     catch (e) { setAsking(null); setMsg(`Couldn’t prepare the AI import: ${(e as Error).message}.`) }
   }
@@ -195,8 +196,10 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
             {b.state === 'done' && b.message && <div className="muted">{b.message}</div>}
           </div>
           <div className="row">
-            {b.state === 'needs-ai' && <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Extract with AI</button>}
-            {b.state === 'review' && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
+            {b.state === 'needs-ai' && (b.review === 'done'
+              ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Extract with AI again</button>
+              : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Extract with AI</button>)}
+            {b.review && !b.source && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
             {b.state === 'done' && <button className="btn small quiet" onClick={() => void openReport(b)}>Report</button>}
             {['done', 'failed', 'removed', 'needs-ai'].includes(b.state) && b.recipe !== 'ai' &&
               <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`books/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}
@@ -226,12 +229,13 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
 
       <Modal open={!!asking} onClose={() => setAsking(null)} title="Extract with AI"
         actions={<><button className="btn" onClick={() => setAsking(null)}>Cancel</button>
-          {provider && asking?.keySet && <button className="btn primary" onClick={() => { const b = asking!.book; setAsking(null); void act('start the AI import', () => api(`books/${b.id}/ai`, { method: 'POST' })) }}>Send to {provider}</button>}</>}>
+          {provider && asking?.keySet && <button className="btn primary" onClick={() => { const b = asking!.book; setAsking(null); void act('start the AI import', () => api(`books/${b.id}/ai${asking!.fresh ? '?fresh=1' : ''}`, { method: 'POST' })) }}>Send to {provider}</button>}</>}>
         {asking?.parts === undefined ? <p className="muted">Counting the parts…</p> : !provider ? (
           <p>No AI provider is chosen yet. Set one up in <a href="#/books/ai">AI settings</a>, then come back.</p>
         ) : !asking.keySet ? (
           <p>No key is saved for {provider}. Add one in <a href="#/books/ai">AI settings</a>, then come back.</p>
         ) : <>
+          {asking.fresh && <p className="err">This book’s proposals are already waiting for review. Sending it again replaces them, and the decisions you made on them are lost.</p>}
           <p>This sends the book’s text to {provider}. Continue?</p>
           <p className="muted">It goes in {asking.parts} {asking.parts === 1 ? 'part' : 'parts'}, one request each, charged to your {provider} account.
             The entries it finds wait for your review before anything is added.</p>
