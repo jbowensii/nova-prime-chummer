@@ -8,3 +8,5 @@ playwright-report/
 public/custom/texts.xml
 public/custom/texts/
 .superpowers/
+__pycache__/
+
