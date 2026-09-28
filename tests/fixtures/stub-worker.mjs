@@ -1,13 +1,16 @@
 // Stand-in for `python -m importer …` in server tests and e2e (books-python.test.ts runs the real one). Invoked as
 // `node stub-worker.mjs -m importer <command> …`. It fakes each command's files just enough for the
 // server's routes and the app: status.xml, import.xml, a one-entry overlay listed in
-// custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml.
-// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr.
+// custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml, and the edits layer
+// (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
+// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s.
+// backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
+// anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts).
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
 const [, , , , cmd, target, ...rest] = process.argv
-const opt = name => rest[rest.indexOf(name) + 1]
+const opt = name => rest.find(a => a.startsWith(`${name}=`))?.slice(name.length + 1) ?? rest[rest.indexOf(name) + 1]
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 const status = (dir, state, msg = '') => writeFileSync(join(dir, 'status.xml'), `<status state="${state}" updated="${now}">${msg}</status>\n`)
 const importXml = (dir, attrs = '', files = '') =>
@@ -34,6 +37,7 @@ const overlay = (custom, src, name, entries) => {
 
 if (cmd === 'run') {
   const pdf = readFileSync(join(target, 'original.pdf'), 'latin1')
+  if (pdf.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500)
   if (pdf.includes('crash')) {
     process.stderr.write('Traceback: boom, key sk-ant-SECRETSTUBKEY123\n')
     process.exit(1)
@@ -102,6 +106,88 @@ if (cmd === 'run') {
   if (!key) fail(`no API key is set for ${target}`)
   if (key.includes('bad')) fail(`stub.example answered HTTP 401: invalid key ${key}`)
   console.log({ anthropic: 'claude-sonnet-5\nclaude-opus-5\nclaude-haiku-4-5', openai: 'gpt-5\ngpt-5-mini', gemini: 'gemini-2.5-pro\ngemini-2.5-flash' }[target])
+} else if (cmd === 'edit') { // target: set | remove | add-source; the real checks are importer/edits.py's (books-python.test.ts)
+  const dir = join(opt('--custom'), 'edits'), [kind, id] = rest
+  const tag = { amps: 'amp', items: 'item', rules: 'rule' }[kind]
+  const read = (f, root) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), 'utf8') : `<ca2:data ${NS} kind="${root}" version="1">\n</ca2:data>\n`
+  const refuse = why => { process.stderr.write(`${why}\n`); process.exit(3) }
+  mkdirSync(dir, { recursive: true })
+  const drop = (xml, re) => xml.replace(re, '')
+  const entryRe = new RegExp(`  <${tag} id="${id?.replace(/\./g, '\\.')}"[\\s\\S]*?</${tag}>\\n`)
+  const textRe = new RegExp(`  <text of="${kind}" id="${id?.replace(/\./g, '\\.')}">[^<]*</text>\\n`)
+  if (target === 'add-source') {
+    const sources = read('sources.xml', 'sources')
+    if (sources.includes(`id="${kind}"`) || ['TEST', 'TEST2', 'TESTC', 'CRB'].includes(kind)) refuse(`the source id ${kind} is already used; pick another`)
+    writeFileSync(join(dir, 'sources.xml'), sources.replace('</ca2:data>', `  <source id="${kind}" publisher="" canon="false"><name>${opt('--name')}</name></source>\n</ca2:data>`))
+    console.log('<result state="saved" />')
+  } else if (target === 'set') {
+    const body = readFileSync(0, 'utf8')
+    const entry = body.match(new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>`))?.[0]
+    const desc = body.match(/<description>([^<]*)<\/description>/)?.[1] ?? ''
+    if (!entry || !entry.includes(`id="${id}"`)) refuse(`an edit of ${kind} needs one <${tag}> entry with id "${id}"`)
+    if (/<name>\s*<\/name>/.test(entry)) refuse('no id or name')
+    if (entry.includes('<name>REFUSE')) refuse('unknown effect ref "stub-refusal"')
+    const edits = drop(read('edits.xml', 'edits'), entryRe), texts = drop(read('texts.xml', 'texts'), textRe)
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 150) // widen the read-modify-write window
+    writeFileSync(join(dir, 'edits.xml'), edits.replace('</ca2:data>', `  ${entry}\n</ca2:data>`))
+    writeFileSync(join(dir, 'texts.xml'), desc.trim() ? texts.replace('</ca2:data>', `  <text of="${kind}" id="${id}">${desc}</text>\n</ca2:data>`) : texts)
+    console.log('<result state="saved" />')
+  } else if (target === 'remove') {
+    const edits = read('edits.xml', 'edits'), texts = read('texts.xml', 'texts')
+    writeFileSync(join(dir, 'edits.xml'), drop(edits, entryRe))
+    writeFileSync(join(dir, 'texts.xml'), drop(texts, textRe))
+    console.log(`<result removed="${entryRe.test(edits) || textRe.test(texts)}" />`)
+  }
+} else if (cmd === 'backup' || cmd === 'restore') {
+  const args = [target, ...rest], flag = f => args[args.indexOf(f) + 1]
+  const dirs = { characters: flag('--characters'), custom: flag('--custom'), library: flag('--library') }
+  const KEYS = 'library/.config/ai-keys.xml', MAGIC = 'PK\x03\x04\n'
+  const walk = (root, rel = '') => !existsSync(join(root, rel)) ? [] : readdirSync(join(root, rel), { withFileTypes: true }).flatMap(d =>
+    d.isDirectory() ? (rel === '' && d.name === '.backups' ? [] : walk(root, `${rel}${d.name}/`)) : d.name.endsWith('.tmp') ? [] : [rel + d.name])
+  const zip = (out, keys) => {
+    const files = {}, folders = {}
+    for (const [f, root] of Object.entries(dirs)) {
+      const names = walk(root).filter(n => keys || `${f}/${n}` !== KEYS)
+      for (const n of names) files[`${f}/${n}`] = readFileSync(join(root, n)).toString('base64')
+      folders[f] = names.length
+    }
+    mkdirSync(dirname(out), { recursive: true })
+    writeFileSync(out, MAGIC + JSON.stringify({ app: flag('--version') ?? 'unknown', created: new Date().toISOString(), keys, folders, files }))
+  }
+  const read = file => {
+    try { return JSON.parse(readFileSync(file, 'utf8').slice(MAGIC.length)) } catch { /* below */ }
+    process.stderr.write('this isn’t a readable zip file (stub)\n')
+    process.exit(3)
+  }
+  if (cmd === 'backup') { // a partial temp next to the zip for 300 ms, like the real backup's mkstemp .tmp
+    const tmp = join(dirname(flag('--out')), '.backup.stub.tmp')
+    writeFileSync(tmp, 'partial')
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300)
+    zip(flag('--out'), args.includes('--keys'))
+    rmSync(tmp)
+  }
+  else if (args.includes('--check')) {
+    const z = read(flag('--check')), n = Object.values(z.folders).reduce((a, b) => a + b, 0)
+    console.log(`<backup format="1" app="${z.app}" created="${z.created}" keys="${z.keys ? 'yes' : 'no'}" files="${n}" bytes="0">${
+      Object.entries(z.folders).map(([f, c]) => `<folder name="${f}" files="${c}" bytes="0"/>`).join('')}</backup>`)
+  } else {
+    const z = read(flag('--apply'))
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400) // a window for the "nothing writes during a restore" tests
+    zip(join(dirs.library, '.backups', `${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}_000000Z.zip`), true)
+    const keysFile = join(dirs.library, '.config', 'ai-keys.xml')
+    const kept = !z.keys && existsSync(keysFile) ? readFileSync(keysFile) : null // a backup without keys keeps the server's
+    for (const [f, root] of Object.entries(dirs)) {
+      mkdirSync(root, { recursive: true })
+      for (const n of readdirSync(root)) if (!(f === 'library' && n === '.backups')) rmSync(join(root, n), { recursive: true, force: true })
+    }
+    for (const [name, b64] of Object.entries(z.files)) {
+      const [f, ...rel] = name.split('/'), path = join(dirs[f], ...rel)
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, Buffer.from(b64, 'base64'))
+    }
+    if (kept) { mkdirSync(dirname(keysFile), { recursive: true }); writeFileSync(keysFile, kept) }
+    console.log('<result state="restored" safety="stub.zip" />')
+  }
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)
   process.exit(2)

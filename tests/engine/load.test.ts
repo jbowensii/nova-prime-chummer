@@ -12,7 +12,7 @@ test('base catalog loads without errors', () => {
   expect(cat.amps.get('test.trick-shot-rig')!.item!.kind).toBe('weapon')
   expect(cat.items.get('light-armor')!.armor).toBe(3)
   expect(cat.items.get('test.nano-tape')!.kind).toBe('gear')
-  expect(cat.files.length).toBe(22) // public/data minus the book catalogs, plus tests/fixtures/mini/custom (sources + 8 files)
+  expect(cat.files.length).toBe(25) // public/data minus the book catalogs, plus tests/fixtures/mini/custom (sources + 8 files + 3 edits files)
   // duplicate names across non-canon sources (TEST, TEST2) both load fine
   expect(cat.amps.get('test.keen-eye')!.source).toBe('TEST')
   expect(cat.amps.get('test2.keen-eye')!.source).toBe('TEST2')

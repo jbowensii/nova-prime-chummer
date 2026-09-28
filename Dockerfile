@@ -6,7 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run build \
+ && node -p "require('./package.json').version" > VERSION
 
 FROM node:22-alpine
 # OCR=1 adds Tesseract for scanned books
@@ -17,6 +18,8 @@ RUN apk add --no-cache python3 py3-pip \
  && if [ "$OCR" = "1" ]; then apk add --no-cache tesseract-ocr; fi \
  && pip install --no-cache-dir --break-system-packages -r /app/importer/requirements.txt
 COPY --from=build /app/dist ./dist
+# the app version backups record (package.json isn't in this image)
+COPY --from=build /app/VERSION ./VERSION
 COPY server/server.mjs server/books.mjs ./server/
 COPY importer ./importer
 RUN rm -rf ./importer/tests && find ./importer -name __pycache__ -prune -exec rm -rf {} +

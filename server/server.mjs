@@ -8,10 +8,12 @@
 //          ?force=1                         overwrite anyway
 //          ?filename=<name>                 file name for a new runner (else from the street name)
 //   DELETE /api/characters/:id           moves the file to .trash/ (never hard-deletes)
-//   /api/books, /api/review, /api/ai-*   the PDF importer (server/books.mjs); LIBRARY_DIR is never served
+//   /api/books, /api/review, /api/ai-*, /api/edits, /api/backup, /api/restore   the PDF importer, catalog edits, backup
+//                                        and restore (server/books.mjs); LIBRARY_DIR is never served
 //   /custom/*                            house-rule overlays from CUSTOM_DIR
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
+import { readFileSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -32,11 +34,16 @@ function setRev(xml, rev) {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..') // where `python -m importer` runs
 const inside = (path, dir) => path === dir || path.startsWith(dir + sep)
+// the app version for backups: VERSION (written by the Dockerfile, which ships no package.json), else package.json
+const VERSION = (() => {
+  try { return readFileSync(join(ROOT, 'VERSION'), 'utf8').trim() } catch { /* not in the image */ }
+  try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
+})()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3' }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
-  const books = booksApi({ customDir, libraryDir, python, importerRoot: ROOT })
+  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl })
 
   async function index() {
     await mkdir(charDir, { recursive: true })
@@ -126,7 +133,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   const server = httpServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://x')
-      if (url.pathname.startsWith('/api/')) return await api(req, res, url)
+      // every write except backup and restore themselves is counted for its whole life: a restore waits for it, and it
+      // is refused while a restore runs
+      if (url.pathname.startsWith('/api/')) return await (req.method === 'GET' || /^\/api\/(backup|restore)(\/|$)/.test(url.pathname)
+        ? api(req, res, url) : books.track(() => api(req, res, url)))
       if (url.pathname.startsWith('/custom/')) {
         if (await serveFile(res, customDir, url.pathname.slice('/custom'.length))) return
         return send(res, 404, 'not found', 'text/plain')
@@ -141,6 +151,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (code === 500) console.error(e.stack) // never a request body
     }
   })
+  server.requestTimeout = 3600 * 1000 // a 20 GB backup upload over a slow network (Node's default is 5 min)
   server.stopJobs = books.stop
   return server
 }

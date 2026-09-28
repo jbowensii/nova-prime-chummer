@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
 import { NonCanon } from './bits'
+import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
 import { SettingsButton } from './settings'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
@@ -10,6 +11,7 @@ const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], 
 export function RulesScreen({ c }: { c: Catalog }) {
   const [q, setQ] = useState('')
   const [sheet, setSheet] = useState('')
+  const openEdit = useOpenEdit()
   const rules = [...c.rules.values()]
   const hasText = rules.some(r => r.text)
   const shown = useMemo(() => {
@@ -25,7 +27,8 @@ export function RulesScreen({ c }: { c: Catalog }) {
     <main className="lib rules">
       <header>
         <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Rules reference</h1></div>
-        <div className="row"><a className="btn quiet" href="#/">Your runners</a><SettingsButton /></div>
+        <div className="row">{openEdit && <button className="btn quiet" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>}
+          <a className="btn quiet" href="#/">Your runners</a><SettingsButton /></div>
       </header>
       {rules.length === 0 && <p className="banner">No rules yet. Upload the quick-reference sheets on the <a href="#/books">Books page</a>.</p>}
       <p className="muted">
@@ -47,7 +50,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
           <dl className="rule-list">
             {shown.filter(r => r.sheet === id).map(r => (
               <div key={r.id} id={r.id}>
-                <dt>{r.title} <span className="muted">{r.section}</span></dt>
+                <dt>{r.title} <span className="muted">{r.section}</span> {r.edited && <EditedMark />} <EditButton kind="rules" id={r.id} name={r.title} /></dt>
                 {r.text && <dd>{r.text}</dd>}
               </div>
             ))}

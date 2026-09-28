@@ -1,4 +1,5 @@
 // Build or change a Shadow Amp: type + effects -> rating, cost, Essence (CRB p.58-63).
+// catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
 import { useState } from 'react'
 import { ampChangeCost, ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
@@ -6,8 +7,8 @@ import { ATTRS } from '../../model/types'
 import { fmt, signed } from '../bits'
 import { useEditor } from '../editor'
 
-export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
-  initial: AmpEntry; before?: AmpEntry; build: Build; onSave: (a: AmpEntry) => void; onCancel: () => void
+export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, saveDisabled }: {
+  initial: AmpEntry; before?: AmpEntry; build: Build; onSave: (a: AmpEntry) => void; onCancel: () => void; catalog?: boolean; saveDisabled?: boolean
 }) {
   const { c, career } = useEditor()
   const [amp, setAmp] = useState<AmpEntry>(initial)
@@ -68,7 +69,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
             </select>
           </label>
         )}
-        {amp.type === 'equipment' && (
+        {amp.type === 'equipment' && !catalog && (
           <label>Item it upgrades
             <select value={amp.linkedItem ?? ''} onChange={e => set({ linkedItem: e.target.value || undefined })}>
               <option value="">Choose an item you own…</option>
@@ -77,7 +78,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
           </label>
         )}
       </div>
-      <label>What it looks like and does in the story<textarea value={amp.narrative} onChange={e => set({ narrative: e.target.value })} /></label>
+      <label>{catalog ? 'Description' : 'What it looks like and does in the story'}<textarea value={amp.narrative} onChange={e => set({ narrative: e.target.value })} /></label>
 
       <h3>Effects</h3>
       <div className="fxlist">
@@ -121,7 +122,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel }: {
       </div>
       <div className="actions" style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
         <button className="btn" onClick={onCancel}>Cancel</button>
-        <button className="btn primary" disabled={!amp.name.trim()} onClick={() => onSave({ ...amp, name: amp.name.trim() })}>{before ? 'Save changes' : 'Add amp'}</button>
+        <button className="btn primary" disabled={!amp.name.trim() || saveDisabled} onClick={() => onSave({ ...amp, name: amp.name.trim() })}>{catalog ? 'Save to the catalog' : before ? 'Save changes' : 'Add amp'}</button>
       </div>
     </div>
   )

@@ -48,6 +48,26 @@ appdata folder as usual. Browsers that saved runners before server storage
 move them to tower04 on first load (done 2026-09-27: 15 runners moved,
 the 2 empty "Unnamed runner" files deleted to `.trash`).
 
+## Backup and restore
+
+Settings → **Backup** downloads a zip of all three mounted volumes
+(`characters`, `custom`, `library`) plus a manifest; see
+[data-format.md](data-format.md#backup-zip) for its layout. A restore
+uploads a zip, previews its manifest, then on confirm replaces each of the
+three volumes' contents **entry-by-entry**: the zip is unpacked into a temp
+folder *inside* each volume (`.restore-new-*`), then the top-level entries
+are swapped by renames (the old ones through `.restore-old-*`). A swap that
+fails puts that volume back, but volumes already swapped stay swapped, and
+a restore killed mid-swap (container stop) can leave a volume partly
+swapped; the next start removes leftover `.restore-*` folders. Before any
+of that the server saves the tower's current state to
+`library/.backups/<timestamp>.zip` (newest 3 kept): if a restore fails or
+is cut off partway, restore that safety backup (copy it off the volume and
+use Settings → Backup → Restore) to get back to where you were. Without
+"Include my API keys" a backup has no `ai-keys.xml`, and a restore keeps
+tower04's own keys, except for a provider whose address the backup's AI
+settings change (that key is dropped, so it's never sent somewhere new).
+
 ## "Force update" on the Docker page
 
 Now that the image is published to GHCR and tagged `latest`, **force update**

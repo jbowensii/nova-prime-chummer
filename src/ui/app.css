@@ -318,6 +318,21 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .settings .choices { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .settings .choices label { display: flex; gap: 0.4rem; align-items: center; color: var(--text); font-size: 0.95rem; border: 1px solid var(--rule); padding: 0.35rem 0.6rem; cursor: pointer; }
 .settings .choices label:has(input:checked) { border-color: var(--rust); background: var(--zebra); }
+.backup { border-top: 1px solid var(--rule) !important; }
+.backup p { margin: 0.5rem 0; }
+.backup label.check { margin: 0; color: var(--text); }
+.backup .small { font-size: 0.9rem; }
+.backup .file { position: relative; display: inline-block; margin-top: 0.8rem; }
+.backup .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.backup .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.backup progress { vertical-align: middle; accent-color: var(--yellow); }
+.restore-preview { margin-top: 0.8rem; padding: 0.8rem; border: 1px solid var(--rule); background: var(--zebra); }
+.restore-preview h3 { margin: 0 0 0.5rem; }
+.restore-preview dl { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 0.25rem 1rem; margin: 0 0 0.6rem; }
+.restore-preview dl div { display: contents; }
+.restore-preview dt { color: var(--text-3); }
+.restore-preview dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .restore-preview dl { grid-template-columns: minmax(0, 1fr); gap: 0; } .restore-preview dd { margin-bottom: 0.35rem; } }
 
 /* rules reference */
 .rule-list { margin: 0; }
@@ -366,3 +381,14 @@ table.proposals tr.dropped b { text-decoration: line-through; color: var(--text-
 table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-top: 0.2rem; }
 .supported li > span:last-child { white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- catalog edits (EditEntry.tsx) ---- */
+.edited { display: inline-block; font-size: 0.7rem; line-height: 1.3; padding: 0 0.4rem; background: var(--yellow); color: var(--ink);
+  font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+.editstate { padding: 0.4rem 0.6rem; background: var(--zebra); border-left: 4px solid var(--yellow); }
+.toast { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 10; max-width: calc(100vw - 2rem);
+  margin: 0; padding: 0.6rem 1rem; background: var(--panel); color: var(--panel-text); border-left: 4px solid var(--yellow); box-shadow: 0 6px 20px rgb(0 0 0 / 0.3); }
+.picker li:hover .edited, .picker li:focus-visible .edited { background: var(--ink); color: var(--yellow); }
+.picker li.off { cursor: default; }
+.picker li.off:hover { background: inherit; color: inherit; }
+.picker li.off:hover .t, .picker li.off:hover .muted { color: var(--text-2); }
