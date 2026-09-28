@@ -22,6 +22,12 @@ describe('duplicates', () => {
     expect(dupeLabel(cat, 'test.keen-eye')).toEqual({ kind: 'book', text: 'TEST', title: 'Test Book One' })
     expect(dupeLabel(cat, 'test2.keen-eye')).toEqual({ kind: 'book', text: 'TEST2', title: 'Test Book Two' })
   })
+  test('three of a kind: the lone canon one gets the badge, the two non-canon ones their books', () => {
+    expect(dupeGroups(cat).get('gear|nano tape')).toHaveLength(3)
+    expect(dupeLabel(cat, 'testc.nano-tape')).toEqual({ kind: 'badge' })
+    expect(dupeLabel(cat, 'test.nano-tape')).toEqual({ kind: 'book', text: 'TEST', title: 'Test Book One' })
+    expect(dupeLabel(cat, 'test2.nano-tape')).toEqual({ kind: 'book', text: 'TEST2', title: 'Test Book Two' })
+  })
   test('an entry without a duplicate gets no label', () => expect(dupeLabel(cat, 'test.ghost-deck')).toBeNull())
   test('normalization ignores case, punctuation and "(Type)" suffixes', () => {
     expect([...dupeGroups(cat).values()].some(g => g.includes('test.rush') && g.includes('testc.rush'))).toBe(true)
@@ -51,29 +57,35 @@ describe('sources', () => {
       <item id="a" kind="gear" source="HOUSE" page="1"><name>A</name></item>
       <item id="b" kind="gear" source="HOUSE" page="1"><name>B</name></item></ca2:data>` }
     const c = buildCatalog([...base, ov])
-    expect(c.errors).toEqual([{ file: 'custom/house.xml', message: 'source "HOUSE" isn\'t listed in any sources file; treated as not canon' }])
+    expect(c.errors).toEqual([{ file: 'custom/house.xml', message: 'source "HOUSE" isn’t listed in any sources file; treated as not canon' }])
     const listed = buildCatalog([...base, sources('custom/sources.xml', '<source id="HOUSE" publisher="Me" canon="false"><name>House</name></source>'), ov])
     expect(listed.errors).toEqual([])
   })
 })
 
+/** fetch served from public/ (data/) and the fixture (custom/), with `extra` overrides; `offline` throws. */
+function stubFetch(extra: Record<string, string>, offline?: string) {
+  const fetched: string[] = []
+  const real = globalThis.fetch
+  globalThis.fetch = (async (url: string) => {
+    const path = String(url).replace(/^\.\//, '')
+    fetched.push(path)
+    if (path === offline) throw new TypeError('offline')
+    const disk = path.startsWith('data/') ? `public/${path}` : `tests/fixtures/mini/${path}`
+    const body = extra[path] ?? (existsSync(disk) ? readFileSync(disk, 'utf8') : null)
+    return { ok: body != null, text: async () => body ?? '' }
+  }) as typeof fetch
+  return { fetched, restore: () => { globalThis.fetch = real } }
+}
+
 test('loadCatalog fetches data, sources, imported files, texts, then house rules, in that order', async () => {
-  const fixture = 'tests/fixtures/mini/'
   const extra: Record<string, string> = {
     'custom/sources.xml': `<ca2:data ${NS} kind="sources" version="1"><source id="HOUSE" publisher="Me" canon="false" texts="texts/house.xml"><name>House</name></source></ca2:data>`,
     'custom/texts/house.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="amps" id="test.rush">Fast.</text></ca2:data>`,
     'custom/index.xml': '<overlays><file href="house.xml"/></overlays>',
     'custom/house.xml': `<ca2:data ${NS} kind="amps" version="1"><remove id="test2.keen-eye"/></ca2:data>`,
   }
-  const fetched: string[] = []
-  const real = globalThis.fetch
-  globalThis.fetch = (async (url: string) => {
-    const path = String(url).replace(/^\.\//, '')
-    fetched.push(path)
-    const disk = path.startsWith('data/') ? `public/${path}` : fixture + path
-    const body = extra[path] ?? (existsSync(disk) ? readFileSync(disk, 'utf8') : null)
-    return { ok: body != null, text: async () => body ?? '' }
-  }) as typeof fetch
+  const { fetched, restore } = stubFetch(extra)
   try {
     const c = await loadCatalog('./')
     expect(c.amps.get('test.rush')!.narrative).toBe('Fast.')
@@ -84,8 +96,20 @@ test('loadCatalog fetches data, sources, imported files, texts, then house rules
     expect(at('custom/sources.xml')).toBeGreaterThan(at('custom/imported/sources.xml'))
     expect(at('custom/imported/index.xml')).toBeGreaterThan(at('custom/sources.xml'))
     expect(at('custom/imported/testc/amps.xml')).toBeGreaterThan(at('custom/imported/index.xml'))
-    expect(at('custom/texts/house.xml')).toBeGreaterThan(at('custom/imported/testc/amps.xml'))
+    expect(at('custom/texts/house.xml')).toBeGreaterThan(at('custom/imported/testc/items.xml'))
     expect(at('custom/house.xml')).toBeGreaterThan(at('custom/texts/house.xml'))
-    expect(c.files.map(f => f.file).slice(-3)).toEqual(['custom/imported/testc/amps.xml', 'custom/texts/house.xml', 'custom/house.xml'])
-  } finally { globalThis.fetch = real }
+    expect(c.files.map(f => f.file).slice(-3)).toEqual(['custom/imported/testc/items.xml', 'custom/texts/house.xml', 'custom/house.xml'])
+  } finally { restore() }
+})
+
+test('an unreachable server fails the load; an unreachable imports index just means no imports', async () => {
+  const down = stubFetch({}, 'data/levels.xml')
+  try { await expect(loadCatalog('./')).rejects.toThrow('offline') } finally { down.restore() }
+  const noIndex = stubFetch({}, 'custom/imported/index.xml')
+  try {
+    const c = await loadCatalog('./')
+    expect(c.levels.size).toBeGreaterThan(0)
+    expect(c.amps.has('test.rush')).toBe(false)
+    expect(c.sources.get('TEST')!.origin).toBe('imported')
+  } finally { noIndex.restore() }
 })

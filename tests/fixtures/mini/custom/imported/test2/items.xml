@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test catalog: "Nano Tape" in three books (TEST and TEST2 non-canon, TESTC canon). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="gear" version="1">
+  <item id="test2.nano-tape" kind="gear" source="TEST2" page="9"><name>Nano Tape</name><text></text></item>
+</ca2:data>
