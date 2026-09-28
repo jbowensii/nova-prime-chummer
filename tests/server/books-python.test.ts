@@ -93,4 +93,26 @@ describe.skipIf(!python)('with the real importer', () => {
       expect((await r.json()).error).toBeTruthy()
     }
   }, 30000)
+  test('edits go through the real importer: saved, refused with the reason, removed', async () => {
+    const put = (kind: string, id: string, body: string) => fetch(`${base}/api/edits/${kind}/${id}`, { method: 'PUT', body })
+    const edits = () => readFileSync(join(custom, 'edits', 'edits.xml'), 'utf8')
+    const knife = (name: string, desc: string) => `<edit><item id="short-weapon" kind="weapon" dv="STR+1" ranges="OK/-/-/-" category="Close combat" source="CRB" page="142"><name>${name}</name><text></text></item><description>${desc}</description></edit>`
+    expect((await put('items', 'short-weapon', knife('Shiv', 'Made-up words.'))).status).toBe(204)
+    expect(edits()).toContain('<name>Shiv</name>')
+    expect(readFileSync(join(custom, 'edits', 'texts.xml'), 'utf8')).toContain('Made-up words.')
+    expect(await (await fetch(`${base}/api/edits`)).json()).toEqual([{ kind: 'items', id: 'short-weapon' }])
+
+    let r = await put('items', 'short-weapon', knife('Shiv', '').replace('page="142"', 'page="0"'))
+    expect([r.status, (await r.json()).error]).toEqual([400, 'page "0" isn’t a whole number above 0'])
+    const amp = (id: string, src: string) => `<edit><amp id="${id}" type="quality" printedRating="2" source="${src}" page="1"><name>Lucky</name><narrative></narrative></amp><description></description></edit>`
+    r = await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))
+    expect(r.status).toBe(400)
+    expect((await r.json()).error).toContain('needs a house-rule source')
+    expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify({ id: 'OURS', name: 'Our table' }) })).status).toBe(204)
+    expect((await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))).status).toBe(204)
+    expect(edits()).toContain('id="ours.lucky"')
+
+    expect(await (await fetch(`${base}/api/edits/items/short-weapon`, { method: 'DELETE' })).json()).toEqual({ removed: true })
+    expect(edits()).not.toContain('Shiv')
+  }, 60000)
 })

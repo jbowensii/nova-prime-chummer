@@ -15,6 +15,10 @@
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
 //   GET    /api/ai-models?provider=   -> { models: [id…] }, asked with the saved key and address; 400 bad provider, 502 { error }
+//   GET    /api/edits                 -> [{ kind, id }] the entries in custom/edits/edits.xml
+//   PUT    /api/edits/:kind/:id       body: <edit><amp|item|rule …/><description>…</description></edit> -> 204; 400 { error: why }
+//   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
+//   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
@@ -27,6 +31,9 @@ const MAX_XML = 5 * 1024 * 1024
 const JOB_TIMEOUT = 6 * 3600 * 1000 // ponytail: one cap for all jobs; an AI run over a big book takes hours (it resumes if cut)
 const BOOK_ID = /^[a-z0-9][a-z0-9-]{0,40}$/
 const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
+const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }
+const ENTRY_ID = /^[a-z0-9][a-z0-9.-]{0,99}$/ // importer/edits.py's ID, bounded
+const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its description, plus the <edit> wrapper
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
 
@@ -60,6 +67,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
   let running = null, child = null, listChild = null
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let keyChain = Promise.resolve() // key writes are read-modify-write in the importer: one at a time
+  let editChain = Promise.resolve() // edits files are read-modify-write through one fixed .tmp name: one at a time
 
   const bookDir = id => {
     if (!BOOK_ID.test(id)) throw fail(400, 'bad book id')
@@ -81,7 +89,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // else Windows' code page mangles the ’ in messages
         stdio: ['pipe', 'pipe', 'pipe'] })
       if (args[0] === 'list-models') listChild = p
-      else if (!['set-key', 'set-settings'].includes(args[0]) && !args.includes('--dry-run')) child = p
+      else if (!['set-key', 'set-settings', 'edit'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -253,6 +261,49 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t ask the provider' + (why ? `: ${why}` : ''))
   }
 
+  /** One `importer edit …` call after the previous one; exit 3 is a refusal whose reason goes back as a 400. */
+  function edit(args, input) {
+    const run = editChain.then(async () => {
+      const r = await importer(['edit', ...args, '--custom', customDir], { input, timeout: 60000 })
+      const why = (await redact(r.err)).trim().split('\n').pop()
+      if (r.code === 3) throw fail(400, why || 'the importer refused the edit')
+      if (r.code !== 0) throw fail(500, 'couldn’t save the edit: ' + why)
+      return r.out
+    })
+    editChain = run.catch(() => {})
+    return run
+  }
+
+  async function edits(req, res, url, send) {
+    const p = url.pathname, method = req.method
+    if (p === '/api/edits' && method === 'GET') {
+      const xml = (await readOr(join(customDir, 'edits', 'edits.xml'), '')).replace(/<!--[\s\S]*?-->/g, '')
+      const kind = Object.fromEntries(Object.entries(EDIT_KINDS).map(([k, t]) => [t, k]))
+      return send(res, 200, [...xml.matchAll(/<(amp|item|rule)\b[^>]*>/g)].map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })))
+    }
+    if (p === '/api/edits/sources') {
+      if (method !== 'POST') return send(res, 405, { error: 'method not allowed' })
+      let b
+      try { b = JSON.parse(await body(req, 4096)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { id, name } as JSON') }
+      const name = clean(String(b?.name ?? '')).trim()
+      if (!SOURCE_ID.test(b?.id ?? '') || !name || name.length > 120) throw fail(400, 'a source needs an id (A–Z, 0–9, -, starting with a letter) and a name')
+      await edit(['add-source', b.id, '--name', name])
+      return send(res, 204, '', 'text/plain')
+    }
+    const m = p.match(/^\/api\/edits\/([a-z]+)\/([^/]+)$/)
+    if (!m) return send(res, 404, { error: 'not found' })
+    let id
+    try { id = decodeURIComponent(m[2]) } catch { throw fail(400, 'bad entry id') }
+    if (!EDIT_KINDS[m[1]]) throw fail(400, 'kind is amps, items or rules')
+    if (!ENTRY_ID.test(id)) throw fail(400, 'bad entry id')
+    if (method === 'PUT') {
+      await edit(['set', m[1], id], xmlBody(await body(req, MAX_EDIT), 'edit'))
+      return send(res, 204, '', 'text/plain')
+    }
+    if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id]), 'result'), 'removed') === 'true' })
+    return send(res, 405, { error: 'method not allowed' })
+  }
+
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
   async function sweep() {
     const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
@@ -278,6 +329,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
     if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
+    if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send)
     if (p === '/api/ai-keys' && method === 'PUT') {
       await putKeys(req)
       return send(res, 204, '', 'text/plain')
