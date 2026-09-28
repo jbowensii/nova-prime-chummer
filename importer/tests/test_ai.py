@@ -25,7 +25,7 @@ ANTHROPIC_MSG = {"id": "msg_1", "type": "message", "role": "assistant", "model":
 
 
 class Stub:
-    """A local HTTP server that records each POST and answers with `reply(path) -> (code, dict)`."""
+    """A local HTTP server that records each POST or GET and answers with `reply(path) -> (code, dict)`."""
 
     def __init__(self, reply):
         self.requests = []
@@ -33,8 +33,9 @@ class Stub:
 
         class H(BaseHTTPRequestHandler):
             def do_POST(self):
-                body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-                stub.requests.append({"path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "body": body})
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(n)) if n else None
+                stub.requests.append({"method": self.command, "path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "body": body})
                 code, out = reply(self.path)
                 data = json.dumps(out).encode()
                 self.send_response(code)
@@ -42,6 +43,8 @@ class Stub:
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
+
+            do_GET = do_POST
 
             def log_message(self, *a):
                 pass
@@ -145,6 +148,91 @@ class ProvidersTest(unittest.TestCase):
     def test_unknown_provider(self):
         with self.assertRaisesRegex(AI.ProviderError, "unknown provider"):
             AI.complete({"id": "nope"}, KEY, "s", "u")
+
+
+class ListModelsTest(unittest.TestCase):
+    """Model lists come from the saved address with the saved key; the request only names the provider."""
+
+    def library(self, stub_url, key=KEY):
+        lib = tempfile.mkdtemp()
+        config = os.path.join(lib, ".config")
+        xmlio.write_file(os.path.join(config, "ai-providers.xml"),
+                         '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
+                         f'<provider id="anthropic" enabled="true" baseUrl="{stub_url}"/>'
+                         f'<provider id="openai" enabled="true" baseUrl="{stub_url}/v1"/>'
+                         f'<provider id="gemini" enabled="true" baseUrl="{stub_url}"/>'
+                         '<provider id="anythingllm" enabled="true" baseUrl="http://127.0.0.1:1" workspace="w"/></ca2:aiproviders>')
+        for p in AI.PROVIDER_IDS:
+            if key:
+                AI.set_key(config, p, key)
+        return lib
+
+    def stub(self, reply):
+        s = Stub(reply)
+        self.addCleanup(s.close)
+        return s
+
+    def test_openai_lists_data_ids_with_the_bearer_key(self):
+        s = self.stub(lambda p: (200, {"object": "list", "data": [{"id": "gpt-5"}, {"id": "gpt-4.1"}, {"id": "gpt-5"}]}))
+        self.assertEqual(AI.list_models("openai", self.library(s.url)), ["gpt-4.1", "gpt-5"])
+        r = s.requests[0]
+        self.assertEqual((r["method"], r["path"]), ("GET", "/v1/models"))
+        self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
+
+    def test_openai_without_a_key_asks_anyway(self):  # Ollama, LM Studio
+        s = self.stub(lambda p: (200, {"data": [{"id": "llama3.1"}]}))
+        self.assertEqual(AI.list_models("openai", self.library(s.url, key="")), ["llama3.1"])
+        self.assertNotIn("authorization", s.requests[0]["headers"])
+
+    def test_gemini_keeps_generate_content_models_and_sends_the_key_in_a_header(self):
+        s = self.stub(lambda p: (200, {"models": [
+            {"name": "models/gemini-2.5-pro", "supportedGenerationMethods": ["generateContent", "countTokens"]},
+            {"name": "models/text-embedding-004", "supportedGenerationMethods": ["embedContent"]},
+            {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]}]}))
+        self.assertEqual(AI.list_models("gemini", self.library(s.url)), ["gemini-2.5-flash", "gemini-2.5-pro"])
+        r = s.requests[0]
+        self.assertEqual((r["method"], r["path"]), ("GET", "/v1beta/models?pageSize=1000"))
+        self.assertEqual(r["headers"]["x-goog-api-key"], KEY)
+        self.assertNotIn(KEY, r["path"])
+
+    def test_anthropic_pages_through_the_sdk(self):
+        pages = {"/v1/models": {"data": [{"id": "claude-opus-5", "type": "model", "display_name": "Opus", "created_at": "2026-01-01T00:00:00Z"}],
+                                "has_more": True, "first_id": "claude-opus-5", "last_id": "claude-opus-5"},
+                 "/v1/models?after_id=claude-opus-5": {"data": [{"id": "claude-haiku-4-5", "type": "model", "display_name": "Haiku",
+                                                                 "created_at": "2025-01-01T00:00:00Z"}],
+                                                        "has_more": False, "first_id": "claude-haiku-4-5", "last_id": "claude-haiku-4-5"}}
+        s = self.stub(lambda p: (200, pages[p]))
+        self.assertEqual(AI.list_models("anthropic", self.library(s.url)), ["claude-haiku-4-5", "claude-opus-5"])
+        self.assertEqual([r["headers"]["x-api-key"] for r in s.requests], [KEY, KEY])
+
+    def test_errors_never_show_the_key(self):
+        s = self.stub(lambda p: (400, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}}))
+        lib = self.library(s.url)
+        for p in ("anthropic", "openai", "gemini"):
+            with self.assertRaises(AI.ProviderError) as cm:
+                AI.list_models(p, lib)
+            self.assertNotIn(KEY, str(cm.exception), p)
+            self.assertIn("bad key [key]", str(cm.exception), p)
+
+    def test_what_has_no_list_or_no_key_says_so(self):
+        with self.assertRaisesRegex(AI.ProviderError, "no model list"):
+            AI.list_models("anythingllm", tempfile.mkdtemp())
+        with self.assertRaisesRegex(AI.ProviderError, "no API key is set for gemini"):
+            AI.list_models("gemini", tempfile.mkdtemp())
+        s = self.stub(lambda p: (200, {"data": "nope"}))
+        with self.assertRaisesRegex(AI.ProviderError, "unexpected shape"):
+            AI.list_models("openai", self.library(s.url))
+
+    def test_cli_prints_one_id_per_line_or_the_reason(self):
+        s = self.stub(lambda p: (200, {"data": [{"id": "b"}, {"id": "a"}]}))
+        lib, out, err = self.library(s.url), io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(main(["list-models", "openai", "--library", lib]), 0)
+        self.assertEqual(out.getvalue(), "a\nb\n")
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(main(["list-models", "anythingllm", "--library", lib]), 3)
+            self.assertEqual(main(["list-models", "evil", "--library", lib]), 2)
+        self.assertIn("no model list", err.getvalue())
 
 
 PROVIDERS_XML = """<?xml version="1.0" encoding="UTF-8"?>
