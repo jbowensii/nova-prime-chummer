@@ -29,6 +29,12 @@ Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
   plus the 12 pregens) and the 15 from Daegann's pregen booklet (SRA2 Pregens
   v1.0f). The engine reproduces every number the books print for them; see
   [docs/book-discrepancies.md](docs/book-discrepancies.md).
+- **Canon and non-canon.** The core rulebook and Conversion Guide are canon.
+  Published material that isn't official rules (Daegann's expanded amp list
+  and pregens, the quick-reference sheets) carries a **Non-canon** badge, and
+  a runner can be set to canon only, which flags any on the Review tab.
+- **Rules reference** from the Base, Magic, Matrix and Vehicles quick
+  reference sheets: a searchable page plus hover help on matching effects.
 
 ## Run it
 
@@ -80,7 +86,12 @@ Unraid), listed in `custom/index.xml`:
 - `<remove id="…"/>` deletes one;
 - a new `id` adds one.
 
-The app’s **Game data** page shows what loaded and any errors.
+Descriptions (amp, spell and gear text, rules text) are private: one file
+per source in `custom/texts/`, never in this repository. Without them the
+app works with names and numbers only.
+
+The app’s **Game data** page shows each source and whether it's canon, what
+loaded, and any errors.
 
 ## Develop
 

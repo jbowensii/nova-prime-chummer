@@ -1,5 +1,5 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
-import { ampCtx, ampEssence, ampRating } from '../engine'
+import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
 import './sheet.css'
@@ -101,7 +101,7 @@ export function Sheet() {
                   <td><b>{a.name}</b> {!a.name.toLowerCase().includes(a.type) && <span className="s-small">({c.ampTypes.get(a.type)?.name.toLowerCase()})</span>}
                     {a.narrative && <div className="s-small">{a.narrative}</div>}
                     {[...a.effects.filter(e => e.ref !== 'narrative' || e.param).reduce((m, e) => { const k = `${e.ref}|${e.param}|${e.value}`; m.set(k, [e, (m.get(k)?.[1] ?? 0) + 1]); return m }, new Map<string, [typeof a.effects[number], number]>()).values()]
-                      .map(([e, n], i) => <div key={i} className="s-small">{effectText(e.ref, e.param, e.value, n)}{!e.ref.startsWith('rr-') && n > 1 ? ` ×${n}` : ''}</div>)}
+                      .map(([e, n], i) => <div key={i} className="s-small" title={ruleHelp(c, e.ref)}>{effectText(e.ref, e.param, e.value, n)}{!e.ref.startsWith('rr-') && n > 1 ? ` ×${n}` : ''}</div>)}
                   </td>
                   <td>{ampEssence(c, a) || ''}</td><td><b>{ampRating(c, a, ampCtx(b, a))}</b></td>
                 </tr>
