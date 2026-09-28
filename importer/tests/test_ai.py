@@ -200,6 +200,64 @@ class SettingsTest(unittest.TestCase):
         AI.call(config, "s", "u")
         self.assertEqual([r["headers"]["authorization"] for r in s.requests], ["Bearer first", "Bearer second"])
 
+    def test_set_settings_clears_the_key_when_the_address_changes(self):
+        config = tempfile.mkdtemp()
+        body = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="openai">{}</ca2:aiproviders>'
+        self.assertEqual(AI.set_settings(config, body.format('<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/>')), [])
+        AI.set_key(config, "openai", KEY)
+        AI.set_key(config, "anthropic", "a-key")
+        same = '<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/><provider id="anthropic" enabled="false"/>'
+        self.assertEqual(AI.set_settings(config, body.format(same)), [])
+        self.assertEqual(AI.read_key(config, "openai"), KEY)
+        # the parse differentials that fooled the old regex check: single quotes, a commented-out copy, a char reference
+        for evil in ["<provider id=\"openai\" enabled=\"true\" baseUrl='https://evil.example'/>"
+                     '<!-- <provider id="openai" baseUrl="https://api.openai.com/v1"/> -->',
+                     '<provider id="&#111;penai" enabled="true" baseUrl="https://evil.example"/>']:
+            AI.set_settings(config, body.format(same))
+            AI.set_key(config, "openai", KEY)
+            self.assertEqual(AI.set_settings(config, body.format(evil)), ["openai"])
+            self.assertIsNone(AI.read_key(config, "openai"))
+            self.assertEqual(AI.read_providers(config)[1]["openai"]["baseUrl"], "https://evil.example")
+        self.assertEqual(AI.read_key(config, "anthropic"), "a-key")
+        AI.set_key(config, "openai", KEY)  # dropping the address (back to the default host) is a change too
+        self.assertEqual(AI.set_settings(config, body.format('<provider id="openai" enabled="true"/>')), ["openai"])
+        r = node("--input-type=module", "-e", XSD_CHECK, os.path.join(config, "ai-providers.xml"),
+                 os.path.join(XSD_DIR, "aiproviders.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_set_settings_refuses_what_the_app_never_writes(self):
+        config = tempfile.mkdtemp()
+        ok = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"{}>{}</ca2:aiproviders>'
+        for root, rows in [("", '<provider id="openai" enabled="true"/><provider id="openai" enabled="true" baseUrl="https://x"/>'),
+                           ("", '<provider id="evil" enabled="true"/>'),
+                           ("", '<provider id="openai" enabled="yes"/>'),
+                           ("", '<provider id="openai" enabled="true" apiBase="https://x"/>'),
+                           ("", '<key provider="openai">k</key>'),
+                           ("", '<provider id="openai" enabled="true">text</provider>'),
+                           (' use="evil"', ""), (' version="0"', "")]:
+            with self.assertRaises(AI.SettingsError, msg=rows or root):
+                AI.set_settings(config, ok.format(root, rows).replace('version="1" version="0"', 'version="0"'))
+        for bad in ['<!DOCTYPE x [<!ENTITY a "b">]><ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"/>',
+                    '<aiproviders version="1"/>', "<not xml"]:
+            with self.assertRaises(AI.SettingsError, msg=bad):
+                AI.set_settings(config, bad)
+        self.assertFalse(os.path.exists(os.path.join(config, "ai-providers.xml")))
+
+    def test_cli_set_settings(self):
+        lib = tempfile.mkdtemp()
+        body = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="gemini" enabled="true"{}/></ca2:aiproviders>'
+        out = io.StringIO()
+        with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format("").encode()))), contextlib.redirect_stdout(out):
+            self.assertEqual(main(["set-settings", "--library", lib]), 0)
+        AI.set_key(os.path.join(lib, ".config"), "gemini", KEY)
+        with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format(' baseUrl="https://x"').encode()))), contextlib.redirect_stdout(out):
+            self.assertEqual(main(["set-settings", "--library", lib]), 0)
+        self.assertIn('<result cleared="gemini" />', out.getvalue())
+        err = io.StringIO()
+        with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(b"<x/>"))), contextlib.redirect_stderr(err):
+            self.assertEqual(main(["set-settings", "--library", lib]), 3)
+        self.assertIn("aiproviders", err.getvalue())
+
     def test_call_refuses_a_disabled_provider(self):
         config = tempfile.mkdtemp()
         write_providers(config, enabled="false")

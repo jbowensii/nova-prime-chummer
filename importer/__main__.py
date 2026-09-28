@@ -5,6 +5,7 @@
   python -m importer remove <library/book-id> --custom <custom dir> [--files]
   python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
   python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
+  python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
 """
 import hashlib
 import os
@@ -278,10 +279,27 @@ def _cmd_set_key(argv):
     return 0
 
 
+def _cmd_set_settings(argv):
+    """Check and save ai-providers.xml from stdin, clearing the key of any provider whose address changed.
+    Prints <result cleared="…"/>; a refused body exits 3 with the reason on stderr."""
+    if len(argv) != 2 or argv[0] != "--library":
+        print(USAGE, file=sys.stderr)
+        return 2
+    from importer.ai import providers
+    try:
+        cleared = providers.set_settings(os.path.join(argv[1], ".config"), sys.stdin.buffer.read().decode("utf8", "replace"))
+    except providers.SettingsError as e:
+        print(e, file=sys.stderr)
+        return 3
+    print(f"<result cleared={quoteattr(' '.join(cleared))} />")
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
-            "apply-review": _cmd_apply_review, "set-key": _cmd_set_key}
+            "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
+            "set-settings": _cmd_set_settings}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
