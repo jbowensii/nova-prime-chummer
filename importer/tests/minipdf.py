@@ -12,6 +12,9 @@ for the test.
   (only one line would fall on the "other side").
 - `two_columns_with_band_pdf()`: one page, two real columns with a
   full-width line (a heading/note spanning both) partway down.
+- `two_columns_uneven_sidebar_pdf()`: one page, a long left column (5
+  lines) next to a short right sidebar/callout (2 lines) — a real gutter
+  even though the columns are very unequal in length.
 """
 
 PAGE1_OPS = """BT /F1 24 Tf 72 720 Td (Shadow Test) Tj ET
@@ -73,6 +76,19 @@ BT /F1 10 Tf 72 670 Td (Left four) Tj ET
 BT /F1 10 Tf 72 650 Td (Left five) Tj ET
 BT /F1 10 Tf 340 670 Td (Right four) Tj ET
 BT /F1 10 Tf 340 650 Td (Right five) Tj ET
+"""
+
+
+# A long left column (5 lines, x=72) next to a short right sidebar/callout
+# (2 lines, x=340), with the sidebar's two lines at the same heights as the
+# left column's first two lines. A real gutter, just an uneven one.
+SIDEBAR_OPS = """BT /F1 10 Tf 72 750 Td (Left0) Tj ET
+BT /F1 10 Tf 72 730 Td (Left1) Tj ET
+BT /F1 10 Tf 72 710 Td (Left2) Tj ET
+BT /F1 10 Tf 72 690 Td (Left3) Tj ET
+BT /F1 10 Tf 72 670 Td (Left4) Tj ET
+BT /F1 10 Tf 340 750 Td (Side0) Tj ET
+BT /F1 10 Tf 340 730 Td (Side1) Tj ET
 """
 
 
@@ -147,3 +163,8 @@ def single_column_with_outlier_pdf() -> bytes:
 def two_columns_with_band_pdf() -> bytes:
     """One-page PDF: two columns with a full-width line partway down."""
     return _build_pdf([BAND_OPS])
+
+
+def two_columns_uneven_sidebar_pdf() -> bytes:
+    """One-page PDF: a long left column next to a short right sidebar."""
+    return _build_pdf([SIDEBAR_OPS])
