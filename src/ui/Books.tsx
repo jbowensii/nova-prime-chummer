@@ -39,15 +39,14 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return (r.status === 204 ? null : r.headers.get('content-type')?.includes('json') ? r.json() : r.text()) as Promise<T>
 }
 
-/** Upload one PDF with upload progress (fetch can't report it; a book can be hundreds of MB). */
-function send(file: File, onProgress: (pct: number) => void): Promise<void> {
+/** POST one file with upload progress (fetch can't report it; a book can be hundreds of MB, a backup GBs); the response text. */
+export function sendFile(path: string, file: File, headers: Record<string, string>, onProgress: (pct: number) => void): Promise<string> {
   return new Promise((ok, fail) => {
     const x = new XMLHttpRequest()
-    x.open('POST', './api/books')
-    x.setRequestHeader('Content-Type', 'application/pdf')
-    x.setRequestHeader('X-Filename', encodeURIComponent(file.name))
+    x.open('POST', `./api/${path}`)
+    for (const [k, v] of Object.entries(headers)) x.setRequestHeader(k, v)
     x.upload.onprogress = e => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100))
-    x.onload = () => x.status < 300 ? ok() : fail(Object.assign(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()), { status: x.status }))
+    x.onload = () => x.status < 300 ? ok(x.responseText) : fail(Object.assign(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()), { status: x.status }))
     x.onerror = () => fail(new Error(UNREACHABLE))
     x.send(file)
   })
@@ -122,7 +121,10 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
     for (const f of pdfs.filter(f => !bad.includes(f))) {
       setUploading({ name: f.name, pct: 0 })
       setLive(`Uploading ${f.name}`)
-      try { await send(f, pct => setUploading({ name: f.name, pct })); setLive(`Uploaded ${f.name}`) }
+      try {
+        await sendFile('books', f, { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(f.name) }, pct => setUploading({ name: f.name, pct }))
+        setLive(`Uploaded ${f.name}`)
+      }
       catch (e) { setMsg(`Couldn’t upload ${f.name}: ${(e as Error).message}.${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : ' Try again.'}`) }
     }
     setUploading(null)
