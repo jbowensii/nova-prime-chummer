@@ -322,10 +322,12 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .backup p { margin: 0.5rem 0; }
 .backup label.check { margin: 0; color: var(--text); }
 .backup .small { font-size: 0.9rem; }
-.backup .file { position: relative; display: inline-block; margin-top: 0.8rem; }
-.backup .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.backup .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.backup .file, .datapack .file { position: relative; display: inline-block; margin-top: 0.8rem; }
+.backup .file input, .datapack .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.backup .file:focus-within, .datapack .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .backup progress { vertical-align: middle; accent-color: var(--yellow); }
+.datapack { margin-bottom: 1.5rem; }
+.datapack .row label.file { margin-top: 0; font-size: 1rem; } /* a button beside a button */
 .restore-preview { margin-top: 0.8rem; padding: 0.8rem; border: 1px solid var(--rule); background: var(--zebra); }
 .restore-preview h3 { margin: 0 0 0.5rem; }
 .restore-preview dl { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 0.25rem 1rem; margin: 0 0 0.6rem; }
