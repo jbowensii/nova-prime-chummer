@@ -51,13 +51,14 @@ AMP_TYPES = {"quality": "quality", "awakened": "awakened", "adept power": "adept
 VEHICLE = re.compile(r"vehicle|drone", re.I)
 # weapon type as printed -> shipped weapon type (weapons.xml ids)
 WEAPON_ALIASES = {"smg": "submachine-gun", "hand taser": "taser", "stun gloves": "advanced-close-quarter",
-                  "mounted assault rifles": "assault-rifle", "blades": "long-weapon", "club": "long-weapon", "knife": "short-weapon"}
+                  "mounted assault rifles": "assault-rifle", "blades": "long-weapon", "club": "long-weapon", "knife": "short-weapon",
+                  "whip": "advanced-close-quarter"}  # a monofilament whip (CRB p.144)
 # spec names the booklet uses for a shipped specialization (DHSA's aliases also apply)
 SPEC_NAMES = {("engineering", "explosives"): "engineering.demolitions", ("piloting", "aerial drones"): "piloting.flying-drones"}
 # a line that limits an effect: the rules' price is above the printed one by a Negative effect
 LIMITED = re.compile(r"\bonly\b|first interaction|disadvantage|wears? off|must take", re.I)
 # a vehicle's printed stats (the CRB puts its kind first: "Sedan: Pilot 6, …")
-VSTATS = re.compile(r"\bPilot (\d+), Body (\d+), Handling (\d+), Speed (\d+)(?: \(Flying \d+\))?, Armor (\d+)")
+VSTATS = re.compile(r"\bPilot (\d+),? Body (\d+),? Handling (\d+),? Speed (\d+)(?: \(Flying \d+\))?,? Armor (\d+)")
 
 
 def _slug(s):
@@ -471,8 +472,26 @@ def _num(x):
     return int(x) if float(x).is_integer() else x
 
 
-def to_character(block, rules, sid, name, role, origin, background, updated):
-    """-> (character dict in the .ca2.json shape, report rows)."""
+def _weapon_id(rules, kind):
+    k = kind.lower()
+    return rules["weapons"].get(WEAPON_ALIASES.get(k, k).replace("-", " ")) or rules["weapons"].get(k)
+
+
+def _norm(s):
+    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
+
+
+def catalog_id(name, ids):
+    """The id of the catalog entry `name` names: the same normalized name, or the only entry whose name starts
+    with it ("Lightning" -> Lightning bolt). ids: normalized name -> id."""
+    n = _norm(name)
+    hits = [v for k, v in ids.items() if k.startswith(n + " ")]
+    return ids.get(n) or (hits[0] if len(hits) == 1 else None)
+
+
+def to_character(block, rules, sid, name, role, origin, background, updated, spell_ids=None):
+    """-> (character dict in the .ca2.json shape, report rows). spell_ids (normalized name -> catalog id) links the
+    spells to the book's catalog; one that doesn't resolve is reported."""
     mapper = Mapper({**rules["specs"], **SPEC_NAMES})
 
     def spec_id(skill, text):
@@ -555,13 +574,21 @@ def to_character(block, rules, sid, name, role, origin, background, updated):
         prev = v
         worn.append((item("armor", r["name"], armor=v, catalogId=rules["armor"].get(v)), r))
     for w in block["weapons"]:
-        if w["kind"] is None or w["name"] in (i["name"] for i in items):  # unarmed, astral, matrix attacks; repeats
+        # no type printed: a weapon named by its type ("Stun Gloves", "Submachine Gun"), else an attack (unarmed, astral)
+        kind = w["kind"] or (w["name"] if _weapon_id(rules, w["name"]) else None)
+        if kind is None or w["name"] in (i["name"] for i in items):  # repeats
             continue
-        k = w["kind"].lower()
-        cid = rules["weapons"].get(WEAPON_ALIASES.get(k, k).replace("-", " ")) or rules["weapons"].get(k)
-        item("weapon", w["name"], catalogId=cid, specialist=None if cid else True)
+        cid = _weapon_id(rules, kind)
+        for _ in range(w["count"]):  # "2x Sword": two items
+            item("weapon", w["name"], catalogId=cid, specialist=None if cid else True)
+        if not cid:
+            report.append({"kind": "unmatched-item", "sample": sid, "item": "weapon", "name": w["name"], "printed": kind,
+                           "status": "unmatched"})
     for n in block["spells"]:
-        item("spell", n)
+        cid = catalog_id(n, spell_ids) if spell_ids is not None else None
+        item("spell", n, catalogId=cid)
+        if spell_ids is not None and not cid:
+            report.append({"kind": "unmatched-item", "sample": sid, "item": "spell", "name": n, "status": "unmatched"})
     for n in block["forms"]:
         item("complex-form", n)
     for n in block["equipment"]:
@@ -619,14 +646,15 @@ def to_character(block, rules, sid, name, role, origin, background, updated):
     return ch, report
 
 
-def sample(block, rules, src, name, role, page, background, updated, taken):
+def sample(block, rules, src, name, role, page, background, updated, taken, spell_ids=None):
     """One runner -> (samples-list entry, report rows with the page). Its id is "<src>.<name>", or -2, -3… when
     that file is already in `taken` (the entries so far)."""
     base = sid = f"{src.lower()}.{_slug(name) or 'runner'}"
     n = 2
     while any(x["file"] == f"{sid}.xml" for x in taken):
         sid, n = f"{base}-{n}", n + 1
-    ch, rows = to_character(block, rules, sid=sid, name=name, role=role, origin=src, background=background, updated=updated)
+    ch, rows = to_character(block, rules, sid=sid, name=name, role=role, origin=src, background=background,
+                            updated=updated, spell_ids=spell_ids)
     return ({"file": f"{sid}.xml", "xml": character_xml(ch), "name": name, "role": role, "page": page},
             [{**r, "page": page} for r in rows])
 

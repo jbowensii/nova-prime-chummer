@@ -22,6 +22,7 @@ number goes to the report, as the pregen booklet's do.
 """
 import functools
 import re
+from collections import Counter
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 
@@ -47,7 +48,6 @@ PAREN = re.compile(r"^:?\s*\(([^()]*)\)\s*:?")
 AMP = re.compile(r"(?:(?P<wtype>[^,]+), )?Rating (?P<rating>\d+)\+?,? (?P<kind>[A-Za-z ]+?) Amp")
 KIND = {"equipment": "equipment", "cyberware": "cyberware", "bioware": "bioware", "adept power": "adept",
         "quality": "quality", "vehicle": "vehicle", "drone": "vehicle", "contact": "contact", "cyberdeck": "cyberdeck"}
-VSTATS = re.compile(r"Pilot (\d+), Body (\d+), Handling (\d+), Speed (\d+)(?: \(Flying \d+\))?, Armor (\d+)")
 DRONE_SIZES = {"microdrone": "microdrone", "small drone": "small-drone", "medium drone": "medium-drone", "large drone": "large-drone"}
 RANGES = re.compile(r"((?:OK|Dis\.?|[–—-])(?:\s*/\s*(?:OK|Dis\.?|[–—-])){3})")
 
@@ -269,7 +269,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
         else:
             item = '<item kind="gear"/>'
     if atype == "vehicle":
-        m = VSTATS.search(text)
+        m = statblock.VSTATS.search(text)  # shared with the stat blocks (read at call time: statblock imports dhsa)
         if m:
             p, b, h, s, a = map(int, m.groups())
             text = text[:m.start()] + text[m.end():]
@@ -408,14 +408,22 @@ def creation_example(text, rules, spell_names):
     weapons = [{"name": w.capitalize(), "kind": w.split()[-1], "dv": "", "ranges": "", "count": 1, "notes": []}
                for w in re.findall(r"\ban? ([a-z ]+?) \(standard weapon\)", text)]
     picks = text[text.find(" spells:"):] if " spells:" in text else ""  # the spells are listed after "… spells:"
-    spells = sorted((m.start(), n) for n in spell_names if (m := re.search(rf"\b{re.escape(n)}\b", picks)))
+    firsts = Counter(n.split()[0] for n in spell_names)
+    spells = set()
+    for n in spell_names:  # a spell by its name, or by a first word no other spell starts with ("Lightning,")
+        w = n.split()[0]
+        m = re.search(rf"\b{re.escape(n)}\b", picks) or (
+            re.search(rf"\b{re.escape(w)}(?=[,;.])", picks) if " " in n and firsts[w] == 1 else None)
+        if m:
+            spells.add((m.start(), m.group(0)))
+    gear = [g[:1].upper() + g[1:] for g in re.findall(r"\badds some ([a-z ]+?)\.", text)]  # "adds some reagents"
 
     def listed(label):  # "Keywords: A, B, and C." / "Dispositions, he chose: A, B, which …, and C."
         m = re.search(rf"{label}[^:.]*: (.+?)\.", text)
         return [p[:1].upper() + p[1:] for p in _parts(m.group(1)) if not p.startswith("which")] if m else []
     return who.group(1), {"keywords": listed("Keywords"), "skills": [x for _, x in sorted(skills, key=lambda t: t[0])],
                   "weapons": weapons, "armor": armor, "dispositions": listed("Dispositions"), "cues": [],
-                  "spells": [n for _, n in spells], "forms": [], "amps": amps, "equipment": [], "attributes": attrs, "knowledge": []}
+                  "spells": [n for _, n in sorted(spells)], "forms": [], "amps": amps, "equipment": gear, "attributes": attrs, "knowledge": []}
 
 
 def sample_runners(md, spell_names):
@@ -425,22 +433,23 @@ def sample_runners(md, spell_names):
     pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
     rules = statblock.load_rules()
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    spell_ids = {statblock._norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in spell_names}  # scoped as run() scopes them
     samples, report = [], []
     for page, title, body in boxes(md):
         example = creation_example(_join(body), rules, spell_names) if title == "CHARACTER CREATION EXAMPLE" else None
         if example:
             name, block = example
             s, rows = statblock.sample(block, rules, ID, name, "Character creation example", page,
-                                       f"Character creation example. CRB p.{page}.", updated, samples)
+                                       f"Character creation example. CRB p.{page}.", updated, samples, spell_ids)
             samples.append(s)
-            report += [r for r in rows if r["kind"] == "amp"]  # the prose prints no pools, thresholds or Essence
+            report += [r for r in rows if r["kind"] in ("amp", "unmatched-item")]  # no pools, thresholds or Essence printed
     for n, text in sorted(pages.items()):
         if not re.search(r"^SHADOW AMPS ESSENCE RATING", text, re.M):
             continue
         name, role = _story(pages.get(n - 1, ""))
         page = n - 1 - PAGE_OFFSET
         s, rows = statblock.sample(statblock.crb_statblock(text), rules, ID, name, role, page, f"{role}. CRB p.{page}.",
-                                   updated, samples)
+                                   updated, samples, spell_ids)
         samples.append(s)
         report += rows
     return samples, report
