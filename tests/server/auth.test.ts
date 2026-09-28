@@ -81,7 +81,7 @@ describe('with an admin, an editor and a player', () => {
     ['POST', '/api/datapack', 'admin'], ['GET', '/api/datapack/nope', 'admin'], ['POST', '/api/datapack/import', 'admin', 'not a zip'],
     ['GET', '/api/users', 'admin'], ['POST', '/api/users', 'admin', '{}'], ['PUT', '/api/users/000000000000', 'admin', '{}'],
     ['DELETE', '/api/users/000000000000', 'admin'], ['POST', '/api/users/000000000000/reset-password', 'admin', '{}'],
-    ['POST', '/api/users/000000000000/move-runner', 'admin', '{}'],
+    ['POST', '/api/users/000000000000/move-runner', 'admin', '{}'], ['POST', '/api/users/000000000000/unlink', 'admin'],
     ['GET', '/api/auth/oidc/start', 'public'], ['GET', '/api/auth/oidc/callback?state=x&code=y', 'public'],
     ['GET', '/api/auth-settings', 'admin'], ['PUT', '/api/auth-settings', 'admin', '{}'], ['POST', '/api/auth-settings/test', 'admin', '{}'],
   ]

@@ -28,8 +28,9 @@ KEYS = "library/.config/ai-keys.xml"
 # the Authelia client secret (server/oidc.mjs): like the API keys, only in a backup made with keys
 AUTH_SECRET = "library/.config/auth-secret.xml"
 # never in a backup or restored: session hashes (a restore ends every session), a pending recovery code's hash and the
-# known-device cookie key (server/auth.mjs)
-NEVER = {"library/.config/sessions.xml", "library/.config/reset.xml", "library/.config/device-key.xml"}
+# known-device cookie key (server/auth.mjs) and the Authelia state cookie key (server/oidc.mjs)
+NEVER = {"library/.config/sessions.xml", "library/.config/reset.xml", "library/.config/device-key.xml",
+         "library/.config/oidc-key.xml"}
 MAX_TOTAL = 20 * 1024 ** 3
 MAX_RATIO, RATIO_FROM = 200, 1024 ** 2  # zip-bomb guard: files over 1 MB may not expand more than 200 times
 MAX_MANIFEST = 1024 ** 2

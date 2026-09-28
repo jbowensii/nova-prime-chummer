@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- library/.config/auth.xml (Sign in with Authelia: issuer, client id, on/off) and auth-secret.xml (the client secret, mode 600,
+<!-- library/.config/auth.xml (Sign in with Authelia: issuer, client id, on/off), oidc-key.xml and auth-secret.xml (the client secret, mode 600,
      with the issuer it was given for: a new issuer drops it). Written by the server (server/oidc.mjs); never served; the secret is
      never returned by the API or logged, and goes into a backup only with "Include my API keys". -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
@@ -25,6 +25,14 @@
         </xs:element>
       </xs:sequence>
       <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- oidc-key.xml (mode 600, never backed up): the AES-256-GCM key sealing the sign-in state cookie -->
+  <xs:element name="oidckey">
+    <xs:complexType>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="key" type="xs:base64Binary" use="required"/>
     </xs:complexType>
   </xs:element>
 

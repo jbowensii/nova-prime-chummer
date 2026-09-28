@@ -21,6 +21,7 @@ export async function fakeIssuer({ clientId = 'chummer', secret = 'fake-client-s
     userinfoOnly: false, // preferred_username and email only at /userinfo (as Authelia does by default)
     tokenAuth: 'client_secret_basic', discovery: {}, deny: false, corrupt: false,
     delay: {}, huge: {}, // path -> ms before answering / path -> answer 100 KB
+    hits: {}, // path -> requests seen
     issued: [], // every token and code handed out: none may reach a log
     codes: new Map(),
   }
@@ -39,6 +40,7 @@ export async function fakeIssuer({ clientId = 'chummer', secret = 'fake-client-s
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, f.base), p = url.pathname
+    f.hits[p] = (f.hits[p] ?? 0) + 1
     if (f.delay[p]) await new Promise(ok => setTimeout(ok, f.delay[p]))
     if (res.destroyed) return
     if (f.huge[p]) return answer(res, 200, JSON.stringify({ pad: 'x'.repeat(100 * 1024) }))

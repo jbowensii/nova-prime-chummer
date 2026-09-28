@@ -96,7 +96,7 @@ class BackupTest(unittest.TestCase):
     def test_contents_without_and_with_keys(self):
         root = tempfile.mkdtemp()
         dirs = state(root)
-        for never in ("sessions.xml", "reset.xml", "device-key.xml"):  # session hashes and a recovery code's hash: never backed up
+        for never in ("sessions.xml", "reset.xml", "device-key.xml", "oidc-key.xml"):  # session hashes and a recovery code's hash: never backed up
             Path(dirs["library"], ".config", never).write_text("<x/>", encoding="utf8")
         out = os.path.join(root, "b.zip")
         backup.backup(dirs, out, version="9.9.9")
@@ -224,7 +224,7 @@ class BackupTest(unittest.TestCase):
         """A zip made elsewhere (or edited) carrying sessions.xml or reset.xml: a standing recovery code must not land."""
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root, " new"), state(dst_root, " old")
-        for never in ("sessions.xml", "reset.xml", "device-key.xml"):
+        for never in ("sessions.xml", "reset.xml", "device-key.xml", "oidc-key.xml"):
             Path(src["library"], ".config", never).write_text("<x/>", encoding="utf8")
         z = os.path.join(src_root, "carries.zip")
         with mock.patch.object(backup, "NEVER", set()):

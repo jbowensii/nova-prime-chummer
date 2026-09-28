@@ -1,8 +1,9 @@
 // Sign in with Authelia (OpenID Connect): authorization code + PKCE (S256), the ID token verified here with node:crypto.
 // See docs/superpowers/specs/2026-09-28-accounts-design.md §3. No dependencies: node:crypto and the built-in fetch.
 //
-//   GET  /api/auth/oidc/start       public: -> 302 to the issuer (state, nonce, PKCE kept here for 10 minutes, single use;
-//                                   a short cookie ties them to this browser)
+//   GET  /api/auth/oidc/start       public: -> 302 to the issuer. State, nonce and PKCE verifier live only in a 10-minute
+//                                   cookie, sealed with AES-256-GCM (library/.config/oidc-key.xml): nothing is kept here
+//                                   per start, so a flood of starts can't push anyone's sign-in out; limited per network
 //   GET  /api/auth/oidc/callback    public: code + state -> the ID token checked, the account matched -> 302 to / with a
 //                                   session, or to /?signin=<no-account|expired|denied|failed|off> (no details in the URL)
 //   GET  /api/auth-settings         admin: -> { issuer, clientId, tokenAuth, enabled, secretSet, redirectUri } (never the secret)
@@ -10,16 +11,24 @@
 //                                   drops the stored secret unless a new one comes with it
 //   POST /api/auth-settings/test    admin: { issuer } -> { ok, message }: fetches the discovery document
 // library/.config/auth.xml: issuer, client id, enabled (auth.xsd); auth-secret.xml (0600): the client secret and the issuer it
-// belongs to (a secret never goes to another issuer). Tokens are never logged or put in a URL.
-import { createHash, createPublicKey, randomBytes, timingSafeEqual, verify } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+// belongs to (a secret never goes to another issuer); oidc-key.xml (0600, never backed up): the state cookie's key.
+// Tokens are never logged or put in a URL. Accounts are linked to their Authelia subject at the first sign-in
+// (server/auth.mjs signInExternal); a new issuer unlinks them all.
+import { createCipheriv, createDecipheriv, createHash, createPublicKey, randomBytes, timingSafeEqual, verify } from 'node:crypto'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { chmod, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { netKey } from './auth.mjs'
 import { attr, esc, rootTag, writeAtomic } from './books.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
 const MINUTE = 60e3
-const STATE_TTL = 10 * MINUTE, MAX_STATES = 1000
+const STATE_TTL = 10 * MINUTE
+// sign-in starts per client network (IPv4 address or IPv6 /64) in a window
+const STARTS = 30, START_WINDOW = 10 * MINUTE
+const FAIL_TTL = MINUTE // a failed discovery is remembered this long: an issuer that's down isn't asked on every start
+const MAX_USED = 10000 // nonces already used (single use), kept until their cookie would have expired
+const AAD = Buffer.from('ca2-oidc-state-1')
 const LEEWAY = 60 // seconds, for exp / iat / nbf
 const DISCOVERY_TTL = 60 * MINUTE, JWKS_TTL = 60 * MINUTE
 const SCOPE = 'openid profile email'
@@ -37,19 +46,21 @@ const fail = (code, message) => Object.assign(new Error(message), { code })
 const refuse = (key, message) => Object.assign(new Error(message), { key })
 
 const LOCAL = ['localhost', '127.0.0.1', '[::1]']
-/** https, or http to this machine (tests); no user:password@, no fragment. */
-export function checkUrl(u, what = 'the address') {
+/** Plain http to this machine: only for tests (NODE_ENV=test) or with ALLOW_INSECURE_OIDC set. */
+export const insecureAllowed = () => process.env.NODE_ENV === 'test' || /^(1|true|yes)$/i.test(process.env.ALLOW_INSECURE_OIDC ?? '')
+/** https (or, when `insecure`, http to localhost / 127.0.0.1 / [::1]); no user:password@, no fragment. */
+export function checkUrl(u, what = 'the address', insecure = false) {
   let url
   try { url = new URL(u) } catch { throw refuse('failed', `${what} isn’t a web address`) }
-  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && (LOCAL.includes(url.hostname) || url.hostname.endsWith('.localhost')))))
+  if (!(url.protocol === 'https:' || (insecure && url.protocol === 'http:' && LOCAL.includes(url.hostname))))
     throw refuse('failed', `${what} must start with https://`)
   if (url.username || url.password || url.hash) throw refuse('failed', `${what} can’t hold a user name, password or #fragment`)
   return url
 }
 
 /** JSON from `url`: `timeout` ms for the whole answer, `max` bytes at most, redirects not followed. -> { status, type, body } */
-export async function fetchJson(url, { method = 'GET', headers = {}, body, timeout = 5000, max = 64 * 1024, what = 'the issuer' } = {}) {
-  checkUrl(url, `${what}’s address`)
+export async function fetchJson(url, { method = 'GET', headers = {}, body, timeout = 5000, max = 64 * 1024, what = 'the issuer', insecure = false } = {}) {
+  checkUrl(url, `${what}’s address`, insecure)
   let r, text = ''
   try {
     r = await fetch(url, { method, headers: { Accept: 'application/json', ...headers }, body, redirect: 'error', signal: AbortSignal.timeout(timeout) })
@@ -71,15 +82,47 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
   return { status: r.status, type: String(r.headers.get('content-type') ?? ''), body: json && typeof json === 'object' && !Array.isArray(json) ? json : null }
 }
 
-/** `auth`: server/auth.mjs's authApi (json(), signInExternal(), context). Options for tests: fetch timeout, answer size cap, the
- *  shortest gap between two key-set fetches for an unknown kid. */
-export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE }) {
+/** `auth`: server/auth.mjs's authApi (json(), signInExternal(), unlinkAll()). Options for tests: fetch timeout, answer size cap,
+ *  the shortest gap between two key-set fetches for an unknown kid, how long a failed discovery is remembered, starts per
+ *  network, whether plain http to this machine is allowed. */
+export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE, failTtl = FAIL_TTL,
+  starts: startLimit = STARTS, insecure = insecureAllowed() }) {
   const config = join(libraryDir, '.config')
-  const settingsPath = join(config, 'auth.xml'), secretPath = join(config, 'auth-secret.xml')
-  const states = new Map() // state -> { nonce, verifier, bind: sha256(cookie), redirectUri, issuer, clientId, created }, oldest first
-  const discovered = new Map() // issuer -> { doc, at }
+  const settingsPath = join(config, 'auth.xml'), secretPath = join(config, 'auth-secret.xml'), keyPath = join(config, 'oidc-key.xml')
+  const discovered = new Map() // issuer -> { doc, at } or { error, at }
   const keySets = new Map() // jwks_uri -> { keys, at }
-  const opts = what => ({ timeout, max: maxBytes, what })
+  const used = new Map() // nonce -> when its cookie expires: a state is taken once, oldest first
+  const startsBy = new Map() // netKey(ip) -> { n, since }
+  const opts = what => ({ timeout, max: maxBytes, what, insecure })
+  const check = (u, what) => checkUrl(u, what, insecure)
+
+  // ---- the state cookie's key: made on first use, 0600, never in a backup ----
+  let stateKey = null
+  function sealKey() {
+    if (stateKey) return stateKey
+    try { stateKey = Buffer.from(attr(rootTag(readFileSync(keyPath, 'utf8'), 'ca2:oidckey'), 'key') ?? '', 'base64') } catch { /* below */ }
+    if (stateKey?.length !== 32) {
+      stateKey = randomBytes(32)
+      mkdirSync(config, { recursive: true })
+      const tmp = `${keyPath}.${randomBytes(4).toString('hex')}.tmp`
+      writeFileSync(tmp, `${HEAD}<ca2:oidckey xmlns:ca2="${NS}" version="1" key="${stateKey.toString('base64')}"/>\n`, { flag: 'wx', mode: SECRET_MODE })
+      renameSync(tmp, keyPath)
+    }
+    return stateKey
+  }
+  const seal = obj => {
+    const iv = randomBytes(12), c = createCipheriv('aes-256-gcm', sealKey(), iv).setAAD(AAD)
+    const ct = Buffer.concat([c.update(JSON.stringify(obj)), c.final()])
+    return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64url')
+  }
+  const unseal = text => {
+    try {
+      const b = Buffer.from(text, 'base64url'), d = createDecipheriv('aes-256-gcm', sealKey(), b.subarray(0, 12)).setAAD(AAD)
+      d.setAuthTag(b.subarray(12, 28))
+      const v = JSON.parse(Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8'))
+      return v && typeof v === 'object' ? v : null
+    } catch { return null }
+  }
 
   // ---- settings ----
   const read = path => { try { return readFileSync(path, 'utf8') } catch { return '' } }
@@ -101,7 +144,7 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
     if ('issuer' in b) {
       const v = oneLine(b.issuer)
       if (v.length > 300) throw fail(400, 'the issuer address is too long')
-      if (v) try { const u = checkUrl(v, 'the issuer address'); if (u.search) throw refuse('failed', 'the issuer address can’t have a ?query') } catch (e) { throw fail(400, e.message) }
+      if (v) try { const u = check(v, 'the issuer address'); if (u.search) throw refuse('failed', 'the issuer address can’t have a ?query') } catch (e) { throw fail(400, e.message) }
       s.issuer = v
     }
     if ('clientId' in b) {
@@ -130,6 +173,7 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
       await writeAtomic(secretPath, `${HEAD}<ca2:authsecret xmlns:ca2="${NS}" version="1" issuer="${esc(s.issuer)}" secret="${esc(secret)}"/>\n`, SECRET_MODE)
       await chmod(secretPath, SECRET_MODE).catch(() => {})
     } else if (s.issuer !== old.issuer) await rm(secretPath, { force: true }) // a secret never follows a new issuer
+    if (s.issuer !== old.issuer) await auth.unlinkAll() // subjects belong to their issuer
     const now = settings()
     log.log(`sign-in settings changed: Authelia ${now.on ? 'on' : 'off'}, issuer ${now.issuer || 'none'}${secret ? ', new client secret' : ''}`)
     return now
@@ -139,19 +183,27 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
   /** The issuer's discovery document, checked (cached an hour; `fresh` skips the cache). */
   async function discover(issuer, fresh = false) {
     const hit = discovered.get(issuer)
-    if (!fresh && hit && Date.now() - hit.at < DISCOVERY_TTL) return hit.doc
+    if (!fresh && hit?.doc && Date.now() - hit.at < DISCOVERY_TTL) return hit.doc
+    if (!fresh && hit?.error && Date.now() - hit.at < failTtl) throw hit.error
+    try { return await discoverNow(issuer) } catch (e) {
+      discovered.set(issuer, { error: e, at: Date.now() })
+      throw e
+    }
+  }
+  async function discoverNow(issuer) {
     const url = `${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`
-    checkUrl(issuer, 'the issuer address')
+    const origin = check(issuer, 'the issuer address').origin
     const r = await fetchJson(url, opts('the issuer'))
     if (r.status !== 200) throw refuse('failed', `the issuer answered ${r.status} for its discovery document (${url})`)
     const d = r.body
     if (!d) throw refuse('failed', 'the issuer’s discovery document isn’t JSON')
     if (d.issuer !== issuer) throw refuse('failed', `the issuer calls itself ${oneLine(d.issuer).slice(0, 200) || 'nothing'}: enter exactly that address`)
-    for (const k of ['authorization_endpoint', 'token_endpoint', 'jwks_uri']) {
+    // every endpoint on the issuer's own origin (Authelia serves them all there): the client secret and tokens go nowhere else
+    for (const k of ['authorization_endpoint', 'token_endpoint', 'jwks_uri', 'userinfo_endpoint']) {
+      if (k === 'userinfo_endpoint' && d[k] == null) continue
       if (typeof d[k] !== 'string') throw refuse('failed', `the issuer’s discovery document has no ${k}`)
-      checkUrl(d[k], `the issuer’s ${k}`)
+      if (check(d[k], `the issuer’s ${k}`).origin !== origin) throw refuse('failed', `the issuer’s ${k} is on another host`)
     }
-    if (d.userinfo_endpoint != null) checkUrl(String(d.userinfo_endpoint), 'the issuer’s userinfo_endpoint')
     if (Array.isArray(d.code_challenge_methods_supported) && !d.code_challenge_methods_supported.includes('S256'))
       throw refuse('failed', 'the issuer doesn’t offer PKCE with S256')
     discovered.set(issuer, { doc: d, at: Date.now() })
@@ -246,9 +298,22 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
     `${cookieName(ctx)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
   const go = (res, where) => { res.writeHead(302, { Location: where, 'Cache-Control': 'no-store' }); res.end() }
 
+  /** Too many starts from this client's network lately? (in memory; pruned when big) */
+  function tooMany(ip) {
+    const now = Date.now(), k = netKey(ip), e = startsBy.get(k)
+    if (startsBy.size > 10000) for (const [x, v] of startsBy) if (now - v.since >= START_WINDOW) startsBy.delete(x)
+    const n = e && now - e.since < START_WINDOW ? { n: e.n + 1, since: e.since } : { n: 1, since: now }
+    startsBy.set(k, n)
+    return n.n > startLimit
+  }
+
   async function start(req, res) {
     const ctx = req.ctx, s = settings()
     if (!s.on) return go(res, '/?signin=off')
+    if (tooMany(ctx.ip)) {
+      log.log(`Authelia sign-in starts paused for ${netKey(ctx.ip)}: too many`)
+      return go(res, '/?signin=busy')
+    }
     let d
     try {
       if (!ctx.origin) throw refuse('failed', 'the request has no usable Host')
@@ -257,28 +322,34 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
       log.error(`Authelia sign-in couldn’t start: ${e.key ? e.message : 'error'} (from ${ctx.ip})`)
       return go(res, '/?signin=failed')
     }
-    const now = Date.now()
-    // ponytail: one bounded map; a flood of starts pushes out the oldest waiting ones (those people just try again)
-    for (const [k, v] of states) if (now - v.created > STATE_TTL || states.size >= MAX_STATES) states.delete(k); else break
-    const state = rand(), bind = rand(), verifier = rand(), nonce = rand()
+    const state = rand(), verifier = rand(), nonce = rand()
     const redirectUri = `${ctx.origin}/api/auth/oidc/callback`
-    states.set(state, { nonce, verifier, bind: sha256(bind), redirectUri, issuer: s.issuer, clientId: s.clientId, created: now })
-    cookie(res, ctx, bind, STATE_TTL / 1000)
+    cookie(res, ctx, seal({ s: state, n: nonce, v: verifier, r: redirectUri, i: s.issuer, c: s.clientId, e: Date.now() + STATE_TTL }), STATE_TTL / 1000)
     const u = new URL(d.authorization_endpoint)
     for (const [k, v] of Object.entries({ response_type: 'code', client_id: s.clientId, redirect_uri: redirectUri, scope: SCOPE, state, nonce,
       code_challenge: sha256(verifier).toString('base64url'), code_challenge_method: 'S256' })) u.searchParams.set(k, v)
     return go(res, u.href)
   }
 
+  /** The state this browser's cookie holds, if it's the one the issuer sent back, unexpired and not used yet; then used. */
+  function take(req, ctx, state) {
+    const raw = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${cookieName(ctx)}=([A-Za-z0-9_-]{40,3000})(?:;|$)`))?.[1]
+    const c = raw && unseal(raw), now = Date.now()
+    if (!c || typeof c.s !== 'string' || typeof c.n !== 'string' || typeof c.e !== 'number') throw refuse('expired', 'no state cookie from this browser')
+    if (!(c.e > now && c.e <= now + STATE_TTL)) throw refuse('expired', 'an expired state')
+    if (!timingSafeEqual(sha256(state), sha256(c.s))) throw refuse('expired', 'the state doesn’t match this browser’s')
+    if (used.has(c.n)) throw refuse('expired', 'a state that was already used')
+    // ponytail: past MAX_USED the oldest are forgotten; a replay then still fails at the issuer (a code works once)
+    for (const [k, e] of used) if (e <= now || used.size >= MAX_USED) used.delete(k); else break
+    used.set(c.n, c.e)
+    return { nonce: c.n, verifier: c.v, redirectUri: c.r, issuer: c.i, clientId: c.c }
+  }
+
   async function callback(req, res, url) {
     const ctx = req.ctx, q = url.searchParams
-    const state = q.get('state') ?? '', entry = states.get(state)
-    if (entry) states.delete(state) // single use, whatever happens next
-    const bound = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${cookieName(ctx)}=([A-Za-z0-9_-]{43})(?:;|$)`))?.[1]
-    cookie(res, ctx, '', 0)
+    cookie(res, ctx, '', 0) // single use: the cookie goes whatever happens next
     try {
-      if (!entry || Date.now() - entry.created > STATE_TTL) throw refuse('expired', 'an unknown, used or expired state')
-      if (!bound || !timingSafeEqual(sha256(bound), entry.bind)) throw refuse('expired', 'the state was started in another browser')
+      const entry = take(req, ctx, q.get('state') ?? '')
       if (q.get('error')) throw refuse('denied', `the issuer said ${oneLine(q.get('error')).slice(0, 60)}`)
       const code = q.get('code') ?? ''
       if (!code || code.length > 2048) throw refuse('failed', 'the issuer sent no code')
@@ -289,10 +360,9 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
       let claims = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
       if (claims.preferred_username === undefined && claims.email === undefined && d.userinfo_endpoint && typeof tokens.access_token === 'string')
         claims = { ...await userinfo(d, tokens.access_token, claims.sub), sub: claims.sub }
-      const who = { username: typeof claims.preferred_username === 'string' ? claims.preferred_username : '',
-        email: typeof claims.email === 'string' ? claims.email : '', emailVerified: claims.email_verified }
-      const u = await auth.signInExternal(res, ctx, who)
-      if (!u) throw refuse('no-account', `no enabled Authelia account here for "${oneLine(who.username || who.email).slice(0, 80)}"`)
+      const u = await auth.signInExternal(res, ctx, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
+        emailVerified: claims.email_verified })
+      if (!u) throw refuse('no-account', `no Authelia account here for "${oneLine(claims.preferred_username ?? claims.email).slice(0, 80)}" (sub ${oneLine(claims.sub).slice(0, 80)})`)
       return go(res, '/')
     } catch (e) {
       log.log(`Authelia sign-in refused from ${ctx.ip}: ${e.key ? e.message : 'an error'}`)
