@@ -2,11 +2,13 @@ import os
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from importer import xmlio
 from importer.__main__ import run
+from importer.recipes import qref
 from importer.tests.test_qref import MD
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,12 +34,16 @@ class XmlioTest(unittest.TestCase):
         d = os.path.join(tempfile.mkdtemp(), "DHSA")
         xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">'
                '<amp id="rush" type="equipment" source="DHSA" page="1"><effect ref="dv-plus"/></amp>'
-               '<amp id="kit" linkedItem="rush" type="equipment" source="DHSA" page="2"/></ca2:data>')
+               '<amp id="kit" linkedItem="rush" type="equipment" source="DHSA" page="2"/>'
+               # same names as entries of the set, but these attributes point at base data: never scoped
+               '<amp id="equipment" type="equipment" source="DHSA" page="3"><effect ref="rush"/></amp></ca2:data>')
         xmlio.write_overlay(d, "amps.xml", xml)
         out = Path(os.path.join(d, "amps.xml")).read_text(encoding="utf8")
         self.assertIn('<amp id="dhsa.rush"', out)
         self.assertIn('linkedItem="dhsa.rush"', out)
-        self.assertIn('ref="dv-plus"', out)  # not an entry of this file set: untouched
+        self.assertIn('ref="dv-plus"', out)
+        self.assertIn('<amp id="dhsa.equipment" type="equipment"', out)
+        self.assertIn('<effect ref="rush"/>', out)
         self.assertIn('source="DHSA"', out)
 
     def test_write_texts_merges_by_id(self):
@@ -72,6 +78,31 @@ class RunTest(unittest.TestCase):
                        (os.path.join(book, "status.xml"), "status.xsd")]:
             r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd"))
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
+
+    def _book(self):
+        tmp = tempfile.mkdtemp()
+        book = os.path.join(tmp, "library", "b1")
+        os.makedirs(book)
+        Path(os.path.join(book, "book.md")).write_text(encoding="utf8", data=MD)
+        return book, os.path.join(tmp, "custom")
+
+    def test_failed_extract_writes_failed_status_and_no_overlay(self):
+        book, custom = self._book()
+        with mock.patch.object(qref, "extract", side_effect=RuntimeError("boom")):
+            with self.assertRaises(RuntimeError):
+                run(book, custom, convert_pdf=False)
+        st = ET.parse(os.path.join(book, "status.xml")).getroot()
+        self.assertEqual((st.get("state"), st.text), ("failed", "RuntimeError: boom"))
+        self.assertFalse(os.path.exists(os.path.join(custom, "imported")))
+
+    def test_corrupt_texts_file_fails_before_any_overlay_is_written(self):
+        book, custom = self._book()
+        Path(custom, "texts").mkdir(parents=True)
+        Path(custom, "texts", "qref.xml").write_text("<not xml", encoding="utf8")
+        with self.assertRaises(ET.ParseError):
+            run(book, custom, convert_pdf=False)
+        self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "failed")
+        self.assertFalse(os.path.exists(os.path.join(custom, "imported")))
 
     def test_unknown_book_needs_ai(self):
         tmp = tempfile.mkdtemp()

@@ -1,30 +1,31 @@
+import os
+import tempfile
 import unittest
 
 from importer.recipes import identify, qref
 
 # Made-up text in the converter's real shape: "#" only for the big page title, sub-heads are
-# all-caps plain lines (sometimes "##"), bullets start with "•", no bold markers.
+# all-caps plain lines (sometimes "##"), bullets start with "•", bold runs are **wrapped**.
 MD = """<!-- page 1 -->
 # Matrix Quick REFerENCe
 ACTIONS
-• Bricking: damages a device. Test text.
+• **Bricking:** damages a device. Test text.
 Roll a thing + LOG
-• Brute Force: direct hack. Test text.
+• **Brute Force:** direct hack. Test text **with bold** inside.
 Common Test Options:
 • Sub One: not a rule on its own
 • Sub Two: also folded into Brute Force
 ## CONNECTION MODES
-• VR hot-sim: full immersion. Test text.
-• Long Note: a bullet whose sentence wraps onto
-the next line.
+• **VR hot-sim:** full immersion. Test text.
+• **Long Note – Aside:** a title with a dash and no final period
 <!-- page 2 -->
 # Matrix Quick REFerENCe
 STEPS AND TURNS
-1. First: numbered steps have no bullet title
-2. Second: they become one rule named after the section
+**1. First:** numbered steps are not titles
+**2. Second:** they become one rule named after the section
 LABELS
-Grouped Effects:
-• Alpha: first grouped rule.
+**Grouped Effects:**
+• **Alpha:** first grouped rule.
 design by someone
 """
 
@@ -39,15 +40,17 @@ class QrefTest(unittest.TestCase):
     def test_titles_sections_pages_text(self):
         r = qref.extract_sheet("matrix", MD)
         self.assertEqual([x["title"] for x in r], [
-            "Bricking", "Brute Force", "VR hot-sim", "Long Note", "Steps And Turns", "Grouped Effects", "Alpha"])
+            "Bricking", "Brute Force", "VR hot-sim", "Long Note – Aside", "Steps And Turns", "Grouped Effects", "Alpha"])
         self.assertEqual([x["section"] for x in r][:3], ["Actions", "Actions", "Connection Modes"])
         self.assertEqual([x["page"] for x in r], [1, 1, 1, 1, 2, 2, 2])
         self.assertIn("Sub Two: also folded", r[1]["text"])
+        self.assertIn("Test text with bold inside.", r[1]["text"])
+        self.assertEqual(r[4]["text"], "1. First: numbered steps are not titles 2. Second: they become one rule named after the section")
         self.assertEqual(r[0]["text"], "damages a device. Test text. Roll a thing + LOG")
         self.assertNotIn("design by", " ".join(x["text"] for x in r))
 
     def test_ids_deduplicate(self):
-        md = "<!-- page 1 -->\nSECTION\n• Same: one.\n• Same: two.\n"
+        md = "<!-- page 1 -->\nSECTION\n• **Same:** one.\n• **Same:** two.\n"
         self.assertEqual([x["id"] for x in qref.extract_sheet("base", md)], ["base-same", "base-same-2"])
 
     def test_extract_result(self):
@@ -57,6 +60,17 @@ class QrefTest(unittest.TestCase):
         self.assertIn('<rule id="matrix-vr-hot-sim" sheet="matrix" section="Connection Modes" effects="vr-hot" source="QREF" page="1">', xml)
         self.assertIn('<text of="rules" id="matrix-bricking">damages a device.', res.texts)
         self.assertEqual(res.source["id"], "QREF")
+
+    def test_title_report_against_shipped_rules(self):
+        p = os.path.join(tempfile.mkdtemp(), "rules.xml")
+        with open(p, "w", encoding="utf8") as f:
+            f.write('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">'
+                    '<rule id="matrix-a" sheet="matrix" source="QREF" page="1"><title>Kept</title><text/></rule>'
+                    '<rule id="matrix-b" sheet="matrix" source="QREF" page="1"><title>Gone</title><text/></rule>'
+                    '<rule id="base-c" sheet="base" source="QREF" page="1"><title>Other sheet</title><text/></rule></ca2:data>')
+        self.assertEqual(qref.title_report("matrix", ["Kept", "Fresh"], p), [
+            {"kind": "title-missing", "sheet": "matrix", "title": "Gone"},
+            {"kind": "title-new", "sheet": "matrix", "title": "Fresh"}])
 
     def test_sheet_from_heading(self):
         self.assertEqual(qref.sheet_of("# Rules QUICK REFEReNCE"), "base")

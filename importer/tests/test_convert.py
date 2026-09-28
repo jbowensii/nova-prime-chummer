@@ -5,6 +5,7 @@ import unittest
 from importer.convert import convert
 from importer.tests.minipdf import (
     JUSTIFIED_WORDS,
+    bold_label_pdf,
     bullets_then_indented_block_pdf,
     justified_paragraph_pdf,
     single_column_with_outlier_pdf,
@@ -26,10 +27,15 @@ def _convert_to_lines(pdf_bytes, tmp_name):
 
 
 class ConvertTest(unittest.TestCase):
+    def test_bold_runs_are_marked(self):
+        _, _, lines = _convert_to_lines(bold_label_pdf(), "bold")
+        self.assertEqual(lines, ["**Made Up Label:** some regular words.", "A plain line with no label.",
+                                 "x **Solo:** more words.", "**Note - Topic:** words."])
+
     def test_pages_headings_tables(self):
         meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
         self.assertEqual(meta["pages"], 2)
-        self.assertEqual(meta["converter"], "1")
+        self.assertEqual(meta["converter"], "2")
         self.assertIn("<!-- page 1 -->", text)
         self.assertIn("<!-- page 2 -->", text)
         self.assertRegex(text, r"(?m)^# Shadow Test$")

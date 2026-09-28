@@ -2,12 +2,13 @@
 
 Each sheet is its own PDF, so each upload yields rules-<sheet>.xml; the texts go to the shared
 texts file. Reads the converter's Markdown: "#" page titles, sub-heads as "##" or all-caps lines,
-"•" bullets, no bold. A bullet "Title: text" starts a rule when its sentence ends with "." (the
-sheets' sub-bullets, printed regular rather than bold, end without one); a "Label:" line that
-introduces such bullets is a rule too; untitled lines under a sub-head form one rule named after it.
+"•" bullets, bold runs as **…**. A line opening with a bold "Title:" starts a rule (sub-bullets are
+printed regular); untitled lines under a sub-head form one rule named after it.
 """
+import os
 import re
-from xml.sax.saxutils import escape
+import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 
@@ -23,8 +24,12 @@ EFFECTS = {
     "firewall": "firewall-plus", "risk reduction (rr)": "rr-skill rr-spec rr-attr",
     "extra action": "init-1 init-2 init-3",
 }
+# the shipped rules reference (hand-run qref_to_xml.py output); titles are compared against it for the report
+SHIPPED = os.path.join(os.path.dirname(__file__), "..", "..", "public", "data", "rules.xml")
 TITLE_RE = re.compile(r"#\s*(\w+)\s+quick\s+reference", re.I)
 BULLET = re.compile(r"[•\-]\s+(.*)")
+# a rule starts with a bold run-in title: "• **Title:** text" (numbered steps "**1. Step:**" are not titles)
+TITLED = re.compile(r"(?:[•\-]\s+)?\*\*(?!\d+\.)([^*]+?):?\*\*:?\s*(.*)")
 
 
 def slug(s):
@@ -50,19 +55,11 @@ def _subhead(t):
     return None
 
 
-def _titled(line, nxt):
-    """(title, rest) when a bullet line starts a rule, else None. A lower-case next line continues the sentence."""
-    m = BULLET.match(line)
-    if not m or ":" not in m.group(1):
-        return None
-    title, rest = (x.strip() for x in m.group(1).split(":", 1))
-    sentence = rest + (" " + nxt if nxt and nxt[0].islower() else "")
-    return (title, rest) if sentence.endswith(".") else None
+def clean(s):
+    return re.sub(r"\s+", " ", s.replace("**", "")).strip()
 
 
 def extract_sheet(sheet, md):
-    lines = [ln.strip() for ln in md.splitlines()]
-    lines = [ln for ln in lines if ln and not ln.lower().startswith(("design by", "- design by", "• design by"))]
     rules, ids, section, page, cur = [], set(), "", 1, None
 
     def add(title, text):
@@ -71,48 +68,57 @@ def extract_sheet(sheet, md):
         while rid in ids:
             rid, n = f"{base}-{n}", n + 1
         ids.add(rid)
-        fx = EFFECTS.get(title.lower())
-        r = {"id": rid, "title": title, "section": section, "page": page, "effects": fx, "lines": [text] if text else []}
+        r = {"id": rid, "title": title, "section": section, "page": page, "effects": EFFECTS.get(title.lower()),
+             "lines": [text] if text else []}
         rules.append(r)
         return r
 
-    for i, t in enumerate(lines):
-        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+    for t in (ln.strip() for ln in md.splitlines()):
+        if not t or clean(t).lower().lstrip("•- ").startswith("design by"):
+            continue
         m = re.match(r"<!-- page (\d+) -->", t)
         if m:
             page = int(m.group(1))
             continue
         if re.match(r"# (?!#)", t):  # each printed page repeats the sheet title
             continue
-        head = _subhead(t)
+        head = _subhead(clean(t))
         if head:
             section, cur = head.title(), None
             continue
-        titled = _titled(t, nxt)
-        if titled:
-            cur = add(*titled)
-        elif t.endswith(":") and not BULLET.match(t) and _titled(nxt, lines[i + 2] if i + 2 < len(lines) else ""):
-            cur = add(t[:-1].strip(), "")  # a label introducing titled bullets
+        m = TITLED.match(t)
+        if m:
+            cur = add(clean(m.group(1)).rstrip(":"), clean(m.group(2)))
         elif cur is not None:  # sub-bullet or continuation of the current rule
-            cur["lines"].append(t)
+            cur["lines"].append(clean(t))
         else:  # untitled lines under a sub-head (numbered steps): one rule named after the section
-            cur = add(section, t)
+            cur = add(section, clean(t))
     for r in rules:
         r["text"] = " ".join(r.pop("lines"))
     return rules
 
 
+def title_report(sheet, titles, shipped=SHIPPED):
+    """Report rows for titles that differ from the shipped rules reference of the same sheet."""
+    if not os.path.exists(shipped):
+        return []
+    known = [r.findtext("title") for r in ET.parse(shipped).getroot() if r.get("sheet") == sheet]
+    rows = [{"kind": "title-missing", "sheet": sheet, "title": t} for t in known if t not in titles]
+    return rows + [{"kind": "title-new", "sheet": sheet, "title": t} for t in titles if t not in known]
+
+
 def extract(md):
     sheet = sheet_of(md)
     rules = extract_sheet(sheet, md)
-    entries = [f'  <rule id="{r["id"]}" sheet="{sheet}" section="{escape(r["section"])}"'
-               + (f' effects="{r["effects"]}"' if r["effects"] else "")
+    report = title_report(sheet, [r["title"] for r in rules])
+    entries = [f'  <rule id={quoteattr(r["id"])} sheet={quoteattr(sheet)} section={quoteattr(r["section"])}'
+               + (f' effects={quoteattr(r["effects"])}' if r["effects"] else "")
                + f' source="{ID}" page="{r["page"]}"><title>{escape(r["title"])}</title><text></text></rule>' for r in rules]
-    texts = [f'  <text of="rules" id="{r["id"]}">{escape(r["text"])}</text>' for r in rules if r["text"]]
+    texts = [f'  <text of="rules" id={quoteattr(r["id"])}>{escape(r["text"])}</text>' for r in rules if r["text"]]
     head = '<?xml version="1.0" encoding="UTF-8"?>\n'
     rules_xml = (head + f"<!-- Rules reference from the {sheet} quick-reference sheet. Generated by the importer (recipe qref);\n"
                  "     the text is private (custom/texts/qref.xml); effects= links a rule to the amp effects it explains. -->\n"
                  '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">\n' + "\n".join(entries) + "\n</ca2:data>\n")
     texts_xml = (head + '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">\n'
                  + "\n".join(texts) + "\n</ca2:data>\n")
-    return Result(files={f"rules-{sheet}.xml": rules_xml}, texts=texts_xml, source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+    return Result(files={f"rules-{sheet}.xml": rules_xml}, texts=texts_xml, report=report, source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
