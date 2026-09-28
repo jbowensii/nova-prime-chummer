@@ -32,6 +32,13 @@ const ID = /^[A-Za-z0-9._-]{1,80}$/
 const rootAttr = (xml, name) => xml.match(new RegExp(`<ca2:character\\b[^>]*\\s${name}="([^"]*)"`))?.[1]
 const slug = s => (s || '').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'runner'
 const fail = (code, message) => Object.assign(new Error(message), { code })
+// on every response. The built app loads only its own scripts, styles and fonts; inline style attributes (React) and
+// data:/blob: images (portraits) are allowed; nothing may frame it.
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+    "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY',
+}
 
 function setRev(xml, rev) {
   return xml.replace(/<ca2:character\b[^>]*>/, tag =>
@@ -85,6 +92,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   /** Runner folders for auth.mjs, which calls these under `lock`. */
   const runners = {
     count: async u => (await readdir(folder(u)).catch(() => [])).filter(f => f.endsWith('.xml')).length,
+    /** A new account's folder must not exist yet: runners left there would silently become the new account's. */
+    async free(u) {
+      if (await exists(folder(u))) throw fail(409, `characters/${u} already exists; move it away first`)
+    },
     async rename(from, to) {
       if (!await exists(folder(from))) return
       if (await exists(folder(to))) throw fail(409, `characters/${to} already exists; move it away first`)
@@ -165,11 +176,14 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     const xml = req.method === 'PUT' ? await readBody(req) : null
     if (xml != null && (!/<ca2:character\b[^>]*xmlns:ca2="urn:chummer-anarchy2:character:1"/.test(xml) || rootAttr(xml, 'id') !== id))
       return send(res, 400, { error: 'body is not a character file for this id' })
-    const dir = folder(who.username)
     return lock(async () => {
+      // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
+      const me = auth.current(who.id)
+      if (!me) return send(res, 401, { error: 'sign in first' })
+      const dir = folder(me.username)
       const existing = (await index(dir)).find(c => c.id === id)
       if (!existing) for (const u of auth.usernames())
-        if (u !== who.username && (await index(folder(u))).some(c => c.id === id))
+        if (u !== me.username && (await index(folder(u))).some(c => c.id === id))
           return send(res, 403, { error: 'this runner belongs to another account; only its owner can change it' })
       if (req.method === 'DELETE') {
         if (!existing) return send(res, 404, { error: 'no such runner' })
@@ -192,6 +206,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   }
 
   const server = httpServer(async (req, res) => {
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v)
     try {
       const url = new URL(req.url, 'http://x')
       if (url.pathname.startsWith('/api/')) {
@@ -213,6 +228,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     } catch (e) {
       if (res.headersSent) return res.destroy()
       const code = [400, 401, 403, 404, 409, 413, 415, 429, 502].includes(e.code) ? e.code : 500
+      if (e.retryAfter) res.setHeader('Retry-After', String(e.retryAfter))
       send(res, code, { error: code === 500 ? 'server error' : e.message })
       if (code === 500) console.error(e.stack) // never a request body
     }

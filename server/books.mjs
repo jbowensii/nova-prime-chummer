@@ -82,9 +82,9 @@ export function safeName(header) {
   return name || 'book.pdf'
 }
 
-export async function writeAtomic(path, text) {
+export async function writeAtomic(path, text, mode = 0o666) {
   const tmp = `${path}.${randomBytes(4).toString('hex')}.tmp`
-  await writeFile(tmp, text, { encoding: 'utf8', flag: 'wx' })
+  await writeFile(tmp, text, { encoding: 'utf8', flag: 'wx', mode })
   await rename(tmp, path)
 }
 
