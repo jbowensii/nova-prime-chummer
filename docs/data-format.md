@@ -279,6 +279,12 @@ Without attributes, metatypes, levels, packages, pricing or skills the app opens
 missing table shows a banner.
 A server started without `imported/core/` whose Library holds the core
 rulebook re-imports it (then the Conversion Guide and DHSA).
+It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`).
+After a [data pack](#data-pack) is loaded, the marker records `pack=` and
+that CRB file is never re-imported at start-up again, whatever the version: the
+core came from the pack. A different CRB file (a new upload) is, and any
+import of the core rulebook (upload, **Re-import**) writes the core files over
+the pack's as usual.
 
 ## Imported books (`custom/imported/`)
 
@@ -377,6 +383,30 @@ app's Data screen. The app keeps running on the base data.
   <level id="legend" nuyen="600000" attrAtMax="3" skillCap="7" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Street Legend</name></level>
 </ca2:data>
 ```
+
+## Data pack
+
+`python -m importer datapack export --custom <dir> --out <zip>` (Books →
+**Core data** → "Download data pack") writes the core files of
+`custom/imported/core/` as one zip:
+
+```
+datapack.xml
+core/<name>.xml   (each of the twelve core files present)
+```
+
+- `datapack.xml`, schema `datapack.xsd`: the app version, the date, and one
+  `<file name bytes sha256>` per core file in the zip.
+- Only the core files: never descriptions (`texts/`), PDFs or keys.
+
+`datapack import <zip> --custom <dir>` ("Upload data pack", 50 MB at most)
+first checks it all (`datapack check`): nothing but `datapack.xml` and
+`core/<core file>.xml`, no link, device, encrypted or oversized entry, a
+manifest that lists exactly the zip's files with matching sizes and hashes,
+and every file valid against its schema (`items.xsd` for weapons and armor)
+with the kind its name says. Then the pack's files replace those in
+`custom/imported/core/` in one swap (all or none); core files the pack
+doesn't hold are kept.
 
 ## Backup zip
 
