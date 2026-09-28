@@ -326,3 +326,37 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .rule-list dt .muted { font-weight: 400; font-size: 0.85rem; margin-left: 0.4rem; }
 .rule-list dd { margin: 0.2rem 0 0; max-width: 70ch; }
 .has-help { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
+
+/* ---- books, AI settings, review ---- */
+.drop { display: grid; place-items: center; text-align: center; gap: 0.4rem; padding: 1.6rem 1rem; margin-bottom: 1.5rem; cursor: pointer;
+  border: 2px dashed var(--rule); background: var(--surface); color: var(--text); font-size: 1rem; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--yellow); background: var(--zebra); }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop progress { display: block; width: min(20rem, 100%); margin: 0.5rem auto 0; accent-color: var(--yellow); }
+.book { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.4rem 1rem; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }
+.book .title { font-family: var(--display); font-size: 1.1rem; color: var(--heading); text-transform: uppercase; overflow-wrap: anywhere; }
+.book .meta { color: var(--text-2); font-size: 0.92rem; overflow-wrap: anywhere; }
+.book .err, .book .muted { font-size: 0.9rem; overflow-wrap: anywhere; }
+.state { font-size: 0.75rem; padding: 0.05rem 0.45rem; text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--display); color: #fff; background: var(--grey); }
+.state.done { background: var(--ok); }
+.state.failed { background: var(--err); }
+.state.needs-ai, .state.review { background: var(--yellow); color: var(--ink); }
+.state.removed { background: transparent; color: var(--text-3); border: 1px solid var(--rule); }
+.supported { list-style: none; margin: 0; padding: 0; }
+.supported li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid var(--rule); }
+.ai .use { max-width: 20rem; margin-bottom: 1rem; }
+.provider { border: 1px solid var(--rule); background: var(--surface); padding: 0.4rem 1rem 0.2rem; margin: 0 0 1rem; min-width: 0; }
+.provider legend { font-family: var(--display); text-transform: uppercase; color: var(--heading); padding: 0 0.3rem; }
+.provider .keyrow { align-items: end; margin-top: 0.8rem; }
+.provider p { margin: 0.4rem 0; font-size: 0.95rem; }
+.decision { font-size: 0.85rem; font-weight: 700; }
+.decision.accepted, .decision.edited { color: var(--ok); }
+.decision.dropped { color: var(--text-3); }
+table.proposals tr.dropped b { text-decoration: line-through; color: var(--text-3); }
+.review .canon { border: 0; padding: 0; margin: 0.8rem 0; }
+.review .canon label.check { margin: 0.3rem 0; color: var(--text); font-size: 0.95rem; }
+@media (max-width: 600px) {
+  .lib { padding-inline: 1rem; }
+  .book { grid-template-columns: minmax(0, 1fr); }
+  .lib h1 { font-size: 1.9rem; }
+}
