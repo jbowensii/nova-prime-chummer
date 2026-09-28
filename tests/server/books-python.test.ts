@@ -2,18 +2,19 @@
 // Books API with the real `python -m importer` (skipped when no Python with the importer's requirements is found),
 // so the stub worker the other server tests and e2e use can't drift from the files the importer really writes.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-// @ts-expect-error plain JS module
-import { createServer } from '../../server/server.mjs'
+import { createServer } from './_signin'
 // @ts-expect-error plain JS module
 import { findPython } from '../../tools/python.mjs'
 
 const python: string[] | null = findPython()
 const dir = mkdtempSync(join(tmpdir(), 'ca2-books-py-'))
 const custom = join(dir, 'custom'), library = join(dir, 'library')
+// the made-up core files, as the core rulebook's import leaves them
+cpSync('tests/fixtures/mini/custom/imported/core', join(custom, 'imported', 'core'), { recursive: true })
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 
@@ -93,4 +94,27 @@ describe.skipIf(!python)('with the real importer', () => {
       expect((await r.json()).error).toBeTruthy()
     }
   }, 30000)
+  test('edits go through the real importer: saved, refused with the reason, removed', async () => {
+    const put = (kind: string, id: string, body: string) => fetch(`${base}/api/edits/${kind}/${id}`, { method: 'PUT', body })
+    const edits = () => readFileSync(join(custom, 'edits', 'edits.xml'), 'utf8')
+    const knife = (name: string, desc: string) => `<edit><item id="short-weapon" kind="weapon" dv="STR+2" ranges="OK/Dis/-/-" category="Melee" source="CRB" page="70"><name>${name}</name><text></text></item><description>${desc}</description></edit>`
+    expect((await put('items', 'short-weapon', knife('Shiv', 'Made-up words.'))).status).toBe(204)
+    expect(edits()).toContain('<name>Shiv</name>')
+    expect(readFileSync(join(custom, 'edits', 'texts.xml'), 'utf8')).toContain('Made-up words.')
+    expect(await (await fetch(`${base}/api/edits`)).json()).toEqual([{ kind: 'items', id: 'short-weapon' }])
+
+    let r = await put('items', 'short-weapon', knife('Shiv', '').replace('page="70"', 'page="0"'))
+    expect([r.status, (await r.json()).error]).toEqual([400, 'page "0" isn’t a whole number above 0'])
+    const amp = (id: string, src: string) => `<edit><amp id="${id}" type="quality" printedRating="2" source="${src}" page="1"><name>Lucky</name><narrative></narrative></amp><description></description></edit>`
+    r = await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))
+    expect(r.status).toBe(400)
+    expect((await r.json()).error).toContain('needs a house-rule source')
+    expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify({ id: 'OURS', name: '-Our table' }), headers: { 'Content-Type': 'application/json' } })).status).toBe(204)
+    expect((await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))).status).toBe(204)
+    expect(edits()).toContain('id="ours.lucky"')
+    expect(readFileSync(join(custom, 'edits', 'sources.xml'), 'utf8')).toContain('<name>-Our table</name>')
+
+    expect(await (await fetch(`${base}/api/edits/items/short-weapon`, { method: 'DELETE' })).json()).toEqual({ removed: true })
+    expect(edits()).not.toContain('Shiv')
+  }, 60000)
 })
