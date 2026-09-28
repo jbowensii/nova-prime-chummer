@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { blankCharacter } from '../engine'
 import type { AmpEntry, Catalog } from '../model/types'
 import { Modal } from './bits'
-import { api, BooksHeader, type Book } from './Books'
+import { api, BooksHeader, PROVIDER_NAMES, type Book } from './Books'
 import { Editor, type EditorCtx } from './editor'
 import { AmpBuilder } from './tabs/AmpBuilder'
 
@@ -91,7 +91,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
     <main className="lib review">
       <BooksHeader title="Review"><a className="btn quiet" href="#/books">Books</a></BooksHeader>
       <p>{book?.file ?? id}: {proposals.length} {proposals.length === 1 ? 'entry' : 'entries'} proposed
-        {doc.documentElement.getAttribute('provider') ? ` by ${doc.documentElement.getAttribute('provider')}` : ''}. Check each against the book:
+        {doc.documentElement.getAttribute('provider') ? ` by ${PROVIDER_NAMES[doc.documentElement.getAttribute('provider')!] ?? doc.documentElement.getAttribute('provider')}` : ''}. Check each against the book:
         accept it, fix it, or drop it. Only accepted and edited entries are added.</p>
       {msg && <p className="banner" role="status">{msg}</p>}
       {skips.map(s => <p key={s.getAttribute('part')} className="warn">Part {s.getAttribute('part')} was skipped: {s.textContent}</p>)}
@@ -101,7 +101,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
         {pending.length > 0 && <button className="btn small" onClick={() => void save(() => pending.forEach(p => p.setAttribute('state', 'accepted')))}>Accept the rest</button>}
       </div>
       <div className="scroll-x"><table className="data proposals">
-        <thead><tr><th>Name</th><th>Kind</th><th className="num">Rating</th><th>Notes</th><th>Decision</th><th /></tr></thead>
+        <thead><tr><th>Name</th><th>Kind</th><th className="num">Rating</th><th>Notes</th><th>Decision</th></tr></thead>
         <tbody>{proposals.map(p => {
           const e = entryOf(p), state = p.getAttribute('state')!
           const notes = [...p.getElementsByTagName('note')].map(n => n.textContent)
@@ -112,13 +112,13 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
                 {e.getAttribute('category') && <span className="muted"> {e.getAttribute('category')}</span>}</td>
               <td className="num">{e.getAttribute('printedRating') ?? e.getAttribute('dv') ?? e.getAttribute('armor') ?? ''}</td>
               <td>{notes.length ? <span className="warn">{notes.join('; ')}</span> : <span className="muted">none</span>}</td>
-              <td><span className={`decision ${state}`}>{STATES[state] ?? state}</span></td>
-              <td className="num">
+              <td><span className={`decision ${state}`}>{STATES[state] ?? state}</span>
+                <div className="acts">
                 <button className="btn small quiet" disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
                 <button className="btn small quiet" onClick={() => e.tagName === 'amp'
                   ? setEditAmp({ p, amp: toAmp(e) })
                   : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...ITEM_FIELDS.map(([k]) => [k, e.getAttribute(k) ?? ''])]) })}>Edit</button>
-                <button className="btn small quiet" disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button>
+                <button className="btn small quiet" disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
               </td>
             </tr>
           )
