@@ -37,7 +37,18 @@ const SCRYPT = { N: 2 ** 15, r: 8, p: 1 }
 const MIN_PASSWORD = 10, MAX_PASSWORD = 1024
 const MINUTE = 60e3, DAY = 24 * 60 * MINUTE
 const TTL = 30 * DAY, LOCK = 15 * MINUTE, TRIES = 5, RESET_TTL = 15 * MINUTE
-const COOKIE = 'ca2_session'
+// on https the __Host- name: only this host, over https, can set it (no cookie tossing from a sibling subdomain)
+const COOKIE = 'ca2_session', HOST_COOKIE = '__Host-ca2_session'
+// failed sign-ins per client network (an IPv4 address or an IPv6 /64) in a window, whatever the username
+const NET_FAILS = 20, NET_WINDOW = 10 * MINUTE
+// failures for one account across all addresses: past ACCOUNT_FREE each one doubles a wait (1 s, 2 s, … 15 min);
+// forgotten after an hour without failures, cleared by a success
+const ACCOUNT_FREE = 10, ACCOUNT_MAX_WAIT = 15 * MINUTE, ACCOUNT_FORGET = 60 * MINUTE
+// scrypt (32 MB, tens of ms each) runs on the libuv threadpool, which file reads share: a few at a time, a short queue,
+// the rest refused (UV_THREADPOOL_SIZE=16 in the image keeps threads for files)
+const MAX_HASHING = 4, MAX_WAITING = 8
+const BODY_TIMEOUT = 10e3, MAX_JSON = 4096
+const SECRET = 0o600 // users.xml, sessions.xml, reset.xml
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O, 1/I
 // eslint-disable-next-line no-control-regex
 const oneLine = s => String(s ?? '').replace(/[\x00-\x1f\x7f]/g, '').trim()
@@ -45,6 +56,7 @@ const iso = (t = Date.now()) => new Date(t).toISOString().replace(/\.\d+Z$/, 'Z'
 const sha256 = s => createHash('sha256').update(s).digest()
 const same = (a, b) => timingSafeEqual(sha256(String(a)), sha256(String(b)))
 const fail = (code, message) => Object.assign(new Error(message), { code })
+const wait = (ms, message) => Object.assign(fail(429, message), { retryAfter: Math.max(1, Math.ceil(ms / 1000)) })
 const code = () => Array.from({ length: 3 }, () => Array.from({ length: 4 }, () => CODE_CHARS[randomInt(CODE_CHARS.length)]).join('')).join('-')
 
 export async function hashPassword(password, { N, r, p } = SCRYPT) {
@@ -59,6 +71,31 @@ async function passwordIs(password, h) {
 }
 let dummy // an unknown username costs the same scrypt as a known one
 const checkPassword = async (password, h) => h ? passwordIs(password, h) : (await passwordIs(password, dummy ??= await hashPassword('x'.repeat(MIN_PASSWORD))), false)
+
+// every scrypt the routes run goes through here: MAX_HASHING at once, MAX_WAITING queued, more refused with 429
+let hashing = 0
+const queued = []
+async function limited(fn) {
+  if (hashing >= MAX_HASHING) {
+    if (queued.length >= MAX_WAITING) throw wait(1000, 'the server is busy: try again in a moment')
+    await new Promise(ok => queued.push(ok))
+  }
+  hashing++
+  try { return await fn() } finally {
+    hashing--
+    queued.shift()?.()
+  }
+}
+const hashLimited = pw => limited(() => hashPassword(pw))
+const checkLimited = (pw, h) => limited(() => checkPassword(pw, h))
+
+/** The key a client's failures count under: its IPv4 address, or its IPv6 /64 (one host usually holds a whole /64). */
+export function netKey(ip) {
+  if (isIP(ip) !== 6) return ip
+  const [head, tail] = ip.split('::'), part = s => s ? s.split(':') : []
+  const groups = tail === undefined ? part(head) : [...part(head), ...Array(8 - part(head).length - part(tail).length).fill('0'), ...part(tail)]
+  return `${groups.slice(0, 4).map(g => parseInt(g, 16).toString(16)).join(':')}::/64`
+}
 
 // ---- the files ----
 const HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -96,8 +133,8 @@ export async function issueReset(libraryDir, username) {
   }
   if (!users.some(u => u.username === name)) throw new Error(`there is no account "${name}"`)
   const c = code(), path = join(libraryDir, '.config', 'reset.xml')
-  await writeAtomic(path, `${HEAD}<ca2:reset xmlns:ca2="${NS}" version="1" user="${name}" hash="${sha256(c).toString('hex')}" expires="${iso(Date.now() + RESET_TTL)}"/>\n`)
-  await chmod(path, 0o600).catch(() => {})
+  await writeAtomic(path, `${HEAD}<ca2:reset xmlns:ca2="${NS}" version="1" user="${name}" hash="${sha256(c).toString('hex')}" expires="${iso(Date.now() + RESET_TTL)}"/>\n`, SECRET)
+  await chmod(path, SECRET).catch(() => {}) // a file already there keeps its mode through rename on some systems
   return c
 }
 
@@ -125,7 +162,8 @@ export function proxyList(spec = '') {
   return list
 }
 const plainIp = a => a?.startsWith('::ffff:') && isIP(a.slice(7)) === 4 ? a.slice(7) : a ?? ''
-const first = h => String(h ?? '').split(',')[0].trim()
+// a forwarded header's value from the nearest proxy: proxies append, so the last one (the client's own come first)
+const last = h => String(h ?? '').split(',').pop().trim()
 
 /** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. */
 export function need(path, method) {
@@ -147,6 +185,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   const sessions = new Map() // sha256(token) hex -> { user: id, created, seen } (ms)
   let dirty = false, persisting = Promise.resolve()
   const fails = new Map() // "<key>|<ip>" -> { n, until }
+  const netFails = new Map() // netKey(ip) -> { n, since }
+  const accountFails = new Map() // username -> { n, last, until }
 
   function load() {
     users = []; broken = false; setupCode = null
@@ -185,14 +225,14 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
         await track(async () => {
           dirty = false
           await mkdir(config, { recursive: true })
-          await writeAtomic(sessionsPath, sessionsXml())
+          await writeAtomic(sessionsPath, sessionsXml(), SECRET)
         })
       } catch (e) { dirty = true; if (e.code !== 409) log.error(`couldn’t save sessions.xml: ${e.message}`) }
     })
     return persisting
   }
   const timer = setInterval(() => { if (dirty) void persist() }, MINUTE).unref() // last-seen times: at most once a minute
-  const saveUsers = async () => { await mkdir(config, { recursive: true }); await writeAtomic(usersPath, usersXml(users)) }
+  const saveUsers = async () => { await mkdir(config, { recursive: true }); await writeAtomic(usersPath, usersXml(users), SECRET) }
   function endSessions(userId, keep) {
     for (const [h, s] of sessions) if (s.user === userId && h !== keep) sessions.delete(h)
     return persist()
@@ -208,9 +248,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       // the nearest address the trusted proxies didn't add themselves is the client's
       const chain = String(req.headers['x-forwarded-for'] ?? '').split(',').map(s => plainIp(s.trim())).filter(s => isIP(s))
       for (let i = chain.length - 1; i >= 0; i--) { ip = chain[i]; if (!trusted(ip)) break }
-      const proto = first(req.headers['x-forwarded-proto']).toLowerCase()
+      const proto = last(req.headers['x-forwarded-proto']).toLowerCase()
       if (proto === 'https' || proto === 'http') https = proto === 'https'
-      if (first(req.headers['x-forwarded-host'])) host = first(req.headers['x-forwarded-host'])
+      if (last(req.headers['x-forwarded-host'])) host = last(req.headers['x-forwarded-host'])
     }
     let origin = null
     try { origin = new URL(`${https ? 'https' : 'http'}://${host}`).origin } catch { /* a malformed Host matches nothing */ }
@@ -221,11 +261,15 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (!o && req.headers.referer) try { o = new URL(req.headers.referer).origin } catch { return false }
     return !!o && !!ctx.origin && o.toLowerCase() === ctx.origin.toLowerCase()
   }
-  const cookieOf = req => String(req.headers.cookie ?? '').match(/(?:^|;\s*)ca2_session=([A-Za-z0-9_-]{20,100})(?:;|$)/)?.[1]
+  const cookieName = ctx => ctx.https ? HOST_COOKIE : COOKIE
+  const cookieOf = (req, ctx) => String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${cookieName(ctx)}=([A-Za-z0-9_-]{20,100})(?:;|$)`))?.[1]
   const setCookie = (res, ctx, token, age = TTL / 1000) => res.setHeader('Set-Cookie',
-    `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`)
+    `${cookieName(ctx)}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`)
+  const SESSIONS_PER_USER = 20
   function startSession(res, ctx, u) {
     const token = randomBytes(32).toString('base64url')
+    const mine = [...sessions].filter(([, s]) => s.user === u.id).sort(([, a], [, b]) => a.seen - b.seen)
+    for (const [h] of mine.slice(0, Math.max(0, mine.length - SESSIONS_PER_USER + 1))) sessions.delete(h) // the oldest go
     sessions.set(sha256(token).toString('hex'), { user: u.id, created: Date.now(), seen: Date.now() })
     setCookie(res, ctx, token)
     return persist()
@@ -233,7 +277,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
 
   /** The signed-in user (null: none), sliding the session's 30 days; the cookie is renewed when an hour has passed. */
   function session(req, res, ctx = context(req)) {
-    const token = cookieOf(req)
+    const token = cookieOf(req, ctx)
     if (!token) return null
     const h = sha256(token).toString('hex'), s = sessions.get(h), now = Date.now()
     const u = s && users.find(x => x.id === s.user)
@@ -269,15 +313,35 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   }
 
   // ---- lockout ----
-  function locked(key, ip) {
-    const f = fails.get(`${key}|${ip}`)
-    if (f?.until > Date.now()) throw fail(429, 'too many tries: paused for 15 minutes')
+  // three counts, all checked before any hashing: `key` (a username, or setup/reset) + address: 5 → 15 min; the client's
+  // network, any key: NET_FAILS in NET_WINDOW; an existing account across all addresses: a growing wait
+  function locked(key, ip, account) {
+    const now = Date.now(), f = fails.get(`${key}|${ip}`), n = netFails.get(netKey(ip)), a = account && accountFails.get(account)
+    if (f?.until > now) throw wait(f.until - now, 'too many tries: paused for 15 minutes')
+    if (n && now - n.since < NET_WINDOW && n.n >= NET_FAILS) throw wait(n.since + NET_WINDOW - now, 'too many failed tries from your network: try again later')
+    if (a?.until > now) throw wait(a.until - now, 'too many failed sign-ins for this account: try again in a little while')
   }
-  function failed(key, ip) {
-    if (fails.size > 10000) for (const [k, f] of fails) if (!(f.until > Date.now())) fails.delete(k) // ponytail: in memory, pruned when big
+  function failed(key, ip, account) {
+    const now = Date.now()
+    // ponytail: in memory, pruned when big (O(n) then)
+    if (fails.size + netFails.size + accountFails.size > 10000) {
+      for (const [k, f] of fails) if (!(f.until > now)) fails.delete(k)
+      for (const [k, f] of netFails) if (now - f.since >= NET_WINDOW) netFails.delete(k)
+      for (const [k, f] of accountFails) if (now - f.last >= ACCOUNT_FORGET) accountFails.delete(k)
+    }
     const k = `${key}|${ip}`, f = fails.get(k)
-    const n = f?.until && f.until <= Date.now() ? 1 : (f?.n ?? 0) + 1 // after a pause, counting starts again
-    fails.set(k, { n, until: n >= TRIES ? Date.now() + LOCK : 0 })
+    const count = f?.until && f.until <= now ? 1 : (f?.n ?? 0) + 1 // after a pause, counting starts again
+    fails.set(k, { n: count, until: count >= TRIES ? now + LOCK : 0 })
+    const nk = netKey(ip), n = netFails.get(nk)
+    netFails.set(nk, n && now - n.since < NET_WINDOW ? { n: n.n + 1, since: n.since } : { n: 1, since: now })
+    if (account) {
+      const a = accountFails.get(account), c = a && now - a.last < ACCOUNT_FORGET ? a.n + 1 : 1
+      accountFails.set(account, { n: c, last: now, until: c > ACCOUNT_FREE ? now + Math.min(ACCOUNT_MAX_WAIT, 1000 * 2 ** (c - ACCOUNT_FREE - 1)) : 0 })
+    }
+  }
+  function succeeded(key, ip, account) {
+    fails.delete(`${key}|${ip}`)
+    if (account) accountFails.delete(account)
   }
 
   // ---- checks ----
@@ -285,10 +349,16 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) throw fail(415, 'send JSON (application/json)')
     const chunks = []
     let size = 0
-    for await (const c of req) {
-      if ((size += c.length) > 16384) throw fail(413, 'too large')
-      chunks.push(c)
-    }
+    // a slow body holds a socket: 10 s for these few bytes, then the connection goes
+    const timer = setTimeout(() => req.destroy(), BODY_TIMEOUT)
+    try {
+      for await (const c of req) {
+        if ((size += c.length) > MAX_JSON) throw fail(413, 'too large')
+        chunks.push(c)
+      }
+    } catch (e) {
+      throw e.code === 413 ? e : fail(400, 'the request body didn’t arrive in time')
+    } finally { clearTimeout(timer) }
     try {
       const v = JSON.parse(Buffer.concat(chunks).toString('utf8'))
       if (v && typeof v === 'object' && !Array.isArray(v)) return v
@@ -351,16 +421,17 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   async function login(req, res, send) {
     const ctx = req.ctx, b = await json(req)
     const name = oneLine(b.username).toLowerCase().slice(0, 64)
-    locked(name, ctx.ip)
     const u = users.find(x => x.username === name)
+    locked(name, ctx.ip, u?.username)
     const usable = u?.enabled && u.method === 'password' && u.password
-    const ok = await checkPassword(String(b.password ?? '').slice(0, MAX_PASSWORD), usable ? u.password : null) && usable
+    const ok = await checkLimited(String(b.password ?? '').slice(0, MAX_PASSWORD), usable ? u.password : null) && usable
     if (!ok) {
-      failed(name, ctx.ip)
-      log.log(`sign-in failed: "${name}" from ${ctx.ip}`)
+      failed(name, ctx.ip, u?.username)
+      // an unknown name isn't logged: it may be a password typed into the wrong field
+      log.log(`sign-in failed: ${u ? `"${u.username}"` : 'an unknown username'} from ${ctx.ip}`)
       throw fail(401, 'wrong username or password')
     }
-    fails.delete(`${name}|${ctx.ip}`)
+    succeeded(name, ctx.ip, u.username)
     log.log(`signed in: ${u.username} from ${ctx.ip}`)
     await lock(async () => { u.lastLogin = iso(); await saveUsers() })
     await startSession(res, ctx, u)
@@ -376,9 +447,10 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       throw fail(403, 'that setup code is wrong: use the one in the server log')
     }
     const f = fields({ ...b, role: 'admin', method: 'password' })
-    const pw = await hashPassword(password(b.password))
+    const pw = await hashLimited(password(b.password))
     const u = await lock(async () => {
       if (users.length || !setupCode) throw fail(404, 'not found')
+      await runners.free(f.username)
       setupCode = null // single use
       const u = { id: randomBytes(6).toString('hex'), email: '', ...f, enabled: true, created: iso(), lastLogin: iso(), password: pw }
       users = [u]
@@ -394,20 +466,28 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   async function recover(req, res, send) {
     const ctx = req.ctx, b = await json(req)
     locked('reset', ctx.ip)
-    const tag = rootTag(await readFile(resetPath, 'utf8').catch(() => ''), 'ca2:reset')
-    const name = oneLine(b.username).toLowerCase()
-    const u = users.find(x => x.username === name)
-    const ok = tag && u && attr(tag, 'user') === name && Date.parse(attr(tag, 'expires')) > Date.now()
-      && same(sha256(oneLine(b.code).toUpperCase()).toString('hex'), attr(tag, 'hash'))
-    if (!ok) {
-      failed('reset', ctx.ip)
-      throw fail(403, 'that recovery code is wrong or has expired: run users.mjs reset again')
+    const name = oneLine(b.username).toLowerCase(), given = sha256(oneLine(b.code).toUpperCase()).toString('hex')
+    // the code's file: for this user, not expired, and never valid for longer than a code is issued for (a file from a
+    // restored or edited Library can't make a standing code)
+    const valid = async () => {
+      const tag = rootTag(await readFile(resetPath, 'utf8').catch(() => ''), 'ca2:reset'), expires = Date.parse(attr(tag, 'expires'))
+      const u = users.find(x => x.username === name)
+      return tag && u && attr(tag, 'user') === name && expires > Date.now() && expires <= Date.now() + RESET_TTL
+        && same(given, attr(tag, 'hash')) ? u : null
     }
-    const pw = await hashPassword(password(b.password))
-    await lock(async () => {
+    const refuse = () => {
+      failed('reset', ctx.ip)
+      return fail(403, 'that recovery code is wrong or has expired: run users.mjs reset again')
+    }
+    if (!await valid()) throw refuse()
+    const pw = await hashLimited(password(b.password))
+    const u = await lock(async () => { // checked again and used up under the lock: two requests can't both succeed
+      const u = await valid()
+      if (!u) throw refuse()
+      await rm(resetPath, { force: true })
       Object.assign(u, { password: pw, method: 'password' })
       await saveUsers()
-      await rm(resetPath, { force: true }) // single use
+      return u
     })
     await endSessions(u.id)
     log.log(`password reset with a recovery code: ${u.username} from ${ctx.ip}`)
@@ -423,9 +503,10 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     }
     if (p === '/api/users' && method === 'POST') {
       const b = await json(req), f = fields(b)
-      const pw = f.method === 'password' ? await hashPassword(password(b.password)) : null
+      const pw = f.method === 'password' ? await hashLimited(password(b.password)) : null
       const u = await lock(async () => {
         fields(f) // still free after the hash
+        await runners.free(f.username) // no leftover characters/<username>/ someone else's runners could be in
         const u = { id: randomBytes(6).toString('hex'), email: '', ...f, enabled: true, created: iso(), password: pw }
         users.push(u)
         await saveUsers()
@@ -467,7 +548,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       return send(res, 204, '', 'text/plain')
     }
     if (action === 'reset-password' && method === 'POST') {
-      const pw = await hashPassword(password((await json(req)).password))
+      const pw = await hashLimited(password((await json(req)).password))
       const u = await lock(async () => {
         const u = byId(id)
         Object.assign(u, { password: pw, method: 'password' })
@@ -508,12 +589,13 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const b = await json(req)
       const u = users.find(x => x.id === who.id)
       if (u.method !== 'password') throw fail(400, 'this account signs in with Authelia')
-      locked(u.username, req.ctx.ip)
-      if (!await checkPassword(String(b.current ?? '').slice(0, MAX_PASSWORD), u.password)) {
-        failed(u.username, req.ctx.ip)
+      locked(u.username, req.ctx.ip, u.username)
+      if (!await checkLimited(String(b.current ?? '').slice(0, MAX_PASSWORD), u.password)) {
+        failed(u.username, req.ctx.ip, u.username)
         throw fail(400, 'your current password is wrong')
       }
-      const pw = await hashPassword(password(b.password))
+      succeeded(u.username, req.ctx.ip, u.username)
+      const pw = await hashLimited(password(b.password))
       await lock(async () => { u.password = pw; await saveUsers() })
       await endSessions(u.id, who.session) // every other session
       log.log(`password changed: ${u.username}`)
@@ -527,6 +609,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   return {
     gate, handle, session, context,
     usernames: () => users.map(u => u.username),
+    /** The account as it is now (renamed, disabled or deleted since the request began): null when it can't act. */
+    current: id => users.find(u => u.id === id && u.enabled) ?? null,
     /** After a restore: the restored accounts; every session ends. No users.xml (a backup from before accounts): setup mode. */
     async reload() {
       load()
@@ -539,7 +623,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       if (!dirty) return
       try {
         const tmp = `${sessionsPath}.${randomBytes(4).toString('hex')}.tmp`
-        writeFileSync(tmp, sessionsXml(), { encoding: 'utf8', flag: 'wx' })
+        writeFileSync(tmp, sessionsXml(), { encoding: 'utf8', flag: 'wx', mode: SECRET })
         renameSync(tmp, sessionsPath)
         dirty = false
       } catch (e) { log.error(`couldn’t save sessions.xml: ${e.message}`) }

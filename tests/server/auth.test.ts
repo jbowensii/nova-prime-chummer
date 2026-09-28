@@ -2,7 +2,8 @@
 // Accounts (server/auth.mjs): roles on every route, sign-in and lockout, sessions, setup and recovery codes, the Origin
 // check, the trusted proxy, runner folders. Plain fetch here: every request says who it is.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
@@ -10,7 +11,7 @@ import { validateXML } from 'xmllint-wasm'
 // @ts-expect-error plain JS module
 import { createServer } from '../../server/server.mjs'
 // @ts-expect-error plain JS module
-import { issueReset, usersFile } from '../../server/auth.mjs'
+import { issueReset, netKey, usersFile } from '../../server/auth.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
 const PW = { admin: 'admin-password-1', editor: 'editor-password-1', player: 'player-password-1' }
@@ -296,7 +297,16 @@ test('trusted proxy: forwarded headers count only from TRUST_PROXY peers', async
   const fwd = (ip: string) => ({ 'X-Forwarded-For': `${ip}, 10.1.2.3`, 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'app.example', Origin: 'https://app.example' })
   const ok = await login(t.base, 'admin', PW.admin, fwd('203.0.113.5'))
   expect(ok.r.status).toBe(200)
-  expect(ok.set).toMatch(/; Secure$/)
+  expect(ok.set).toMatch(/^__Host-ca2_session=[\w-]{43}; Path=\/; HttpOnly; SameSite=Lax; Max-Age=2592000; Secure$/) // no Domain
+  const https = { ...fwd('203.0.113.5'), Cookie: ok.cookie }
+  expect((await call(t.base, 'GET', '/api/characters', { headers: https })).status).toBe(200)
+  // the plain name isn't read over https (a sibling subdomain could have set it), the __Host- one not over http
+  expect((await call(t.base, 'GET', '/api/characters', { headers: { ...https, Cookie: ok.cookie.replace('__Host-', '') } })).status).toBe(401)
+  expect((await call(t.base, 'GET', '/api/characters', { cookie: ok.cookie })).status).toBe(401)
+  // -Proto and -Host: the value the nearest proxy appended (the last); earlier ones may be the client's
+  const appended = await login(t.base, 'admin', PW.admin, { 'X-Forwarded-For': '203.0.113.5', 'X-Forwarded-Proto': 'https, http',
+    'X-Forwarded-Host': 'evil.example, app.example', Origin: 'http://app.example' })
+  expect([appended.r.status, appended.set]).toEqual([200, expect.not.stringMatching(/Secure/)])
   expect((await login(t.base, 'admin', PW.admin, { 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'app.example' })).r.status).toBe(403) // Origin: the bare address
   for (let i = 0; i < 5; i++) await login(t.base, 'admin', 'wrong-password', fwd('203.0.113.5'))
   expect((await login(t.base, 'admin', PW.admin, fwd('203.0.113.5'))).r.status).toBe(429)
@@ -334,6 +344,112 @@ test('a restore ends every session and brings back the backup’s accounts; one 
   delete z.files['library/.config/users.xml']
   expect((await restore(Buffer.concat([before.subarray(0, 5), Buffer.from(JSON.stringify(z))]))).status).toBe(200)
   expect(await (await call(s.base, 'GET', '/api/auth/me', { cookie })).json()).toEqual({ user: null, setup: true })
+  s.srv.close()
+})
+
+test('sign-in limits: 20 failures per network whatever the username (IPv6 by /64), and a growing wait per account', async () => {
+  expect([netKey('203.0.113.5'), netKey('2001:db8:1:2::5'), netKey('2001:db8:1:2:ffff:0:0:1'), netKey('2001:DB8:1:3::1'), netKey('::1')])
+    .toEqual(['203.0.113.5', '2001:db8:1:2::/64', '2001:db8:1:2::/64', '2001:db8:1:3::/64', '0:0:0:0::/64'])
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player }, { trustProxy: '127.0.0.1' })
+  const from = (ip: string) => ({ 'X-Forwarded-For': ip })
+  for (let i = 0; i < 20; i++) expect((await login(s.base, `nobody${i}`, 'wrong-password', from(`2001:db8:0:1::${i + 1}`))).r.status).toBe(401)
+  const paused = await login(s.base, 'admin', PW.admin, from('2001:db8:0:1:abcd::9')) // the same /64, a right password
+  expect([paused.r.status, (await paused.r.json()).error]).toEqual([429, 'too many failed tries from your network: try again later'])
+  expect(Number(paused.r.headers.get('retry-after'))).toBeGreaterThan(500)
+  expect((await login(s.base, 'admin', PW.admin, from('2001:db8:0:2::1'))).r.status).toBe(200) // the next /64
+
+  // one account, from many addresses: 10 failures are free, then each doubles a wait; a success clears it
+  for (let i = 0; i < 10; i++) await login(s.base, 'player', 'wrong-password', from(`198.51.100.${i}`))
+  expect((await login(s.base, 'player', PW.player, from('198.51.100.200'))).r.status).toBe(200)
+  for (let i = 0; i < 11; i++) await login(s.base, 'player', 'wrong-password', from(`192.0.2.${i}`))
+  const slow = await login(s.base, 'player', PW.player, from('192.0.2.200'))
+  expect([slow.r.status, slow.r.headers.get('retry-after')]).toEqual([429, '1'])
+  expect((await login(s.base, 'admin', PW.admin, from('192.0.2.201'))).r.status).toBe(200) // other accounts aren't slowed
+  await new Promise(r => setTimeout(r, 1100))
+  expect((await login(s.base, 'player', PW.player, from('192.0.2.200'))).r.status).toBe(200)
+  expect(logged.some(l => l === 'sign-in failed: an unknown username from 2001:db8:0:1::1')).toBe(true)
+  expect(logged.some(l => l.includes('nobody'))).toBe(false) // an unknown name may be a password typed in the wrong field
+  s.srv.close()
+})
+
+test('password hashing: a few at a time, a short queue, the rest refused before hashing', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1' })
+  const rs = await Promise.all(Array.from({ length: 40 }, (_, i) => login(s.base, `nobody${i}`, 'wrong-password', { 'X-Forwarded-For': `198.51.100.${i}` })))
+  const busy = rs.filter(x => x.r.status === 429)
+  expect(rs.filter(x => x.r.status === 401).length).toBeGreaterThanOrEqual(12) // 4 hashing + 8 waiting
+  expect(busy.length).toBeGreaterThan(0)
+  expect([await busy[0].r.json(), busy[0].r.headers.get('retry-after')]).toEqual([{ error: 'the server is busy: try again in a moment' }, '1'])
+  expect((await login(s.base, 'admin', PW.admin)).r.status).toBe(200) // and it recovers
+  s.srv.close()
+})
+
+test('runners: a save waiting while its account is renamed lands in the new folder; a new account can’t take an old folder', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player })
+  const admin = (await login(s.base, 'admin', PW.admin)).cookie, player = (await login(s.base, 'player', PW.player)).cookie
+  const id = (await (await call(s.base, 'GET', '/api/auth/me', { cookie: player })).json()).user.id
+  const body = runner('late', 'Late')
+  const saved = new Promise<number>((ok, no) => {
+    const req = request(`${s.base}/api/characters/late`, { method: 'PUT', headers: { Origin: s.base, Cookie: player, 'Content-Length': Buffer.byteLength(body) } },
+      res => { res.resume(); ok(res.statusCode ?? 0) })
+    req.on('error', no)
+    req.write(body.slice(0, 20))
+    setTimeout(async () => { // the account is renamed while the body is still coming
+      expect((await call(s.base, 'PUT', `/api/users/${id}`, { cookie: admin, ...json({ username: 'kim' }) })).status).toBe(200)
+      req.end(body.slice(20))
+    }, 200)
+  })
+  expect(await saved).toBe(201)
+  expect(readdirSync(s.chars).sort()).toEqual(['kim'])
+  expect(readdirSync(join(s.chars, 'kim'))).toEqual(['Late.xml'])
+  mkdirSync(join(s.chars, 'leftover'))
+  const add = await call(s.base, 'POST', '/api/users', { cookie: admin, ...json({ username: 'leftover', name: 'L', role: 'player', password: 'long-enough-1' }) })
+  expect([add.status, (await add.json()).error]).toEqual([409, 'characters/leftover already exists; move it away first'])
+  s.srv.close()
+})
+
+test('sessions: at most 20 per account (the oldest goes); files with secrets are private (0600)', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin })
+  const cookies: string[] = []
+  for (let i = 0; i < 21; i++) cookies.push((await login(s.base, 'admin', PW.admin)).cookie)
+  expect((await call(s.base, 'GET', '/api/users', { cookie: cookies[0] })).status).toBe(401)
+  expect((await call(s.base, 'GET', '/api/users', { cookie: cookies[1] })).status).toBe(200)
+  expect((await call(s.base, 'GET', '/api/users', { cookie: cookies[20] })).status).toBe(200)
+  await issueReset(s.lib, 'admin')
+  if (process.platform !== 'win32')
+    for (const f of ['users.xml', 'sessions.xml', 'reset.xml']) expect(statSync(join(s.lib, '.config', f)).mode & 0o777, f).toBe(0o600)
+  s.srv.close()
+})
+
+test('recovery: a code used twice at once works once; a file claiming a longer life is refused', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player })
+  const code = await issueReset(s.lib, 'player')
+  secrets.add(code)
+  const reset = () => call(s.base, 'POST', '/api/setup/reset', json({ username: 'player', code, password: 'player-password-7' }))
+  expect((await Promise.all([reset(), reset()])).map(r => r.status).sort()).toEqual([204, 403])
+  const late = await issueReset(s.lib, 'player')
+  secrets.add(late)
+  const file = join(s.lib, '.config', 'reset.xml')
+  writeFileSync(file, readFileSync(file, 'utf8').replace(/expires="[^"]+"/, `expires="${new Date(Date.now() + 3600e3).toISOString()}"`))
+  expect((await call(s.base, 'POST', '/api/setup/reset', json({ username: 'player', code: late, password: 'player-password-8' }))).status).toBe(403)
+  s.srv.close()
+})
+
+test('a slow sign-in body is cut off after 10 s; every response carries the security headers', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin })
+  const t0 = Date.now()
+  const closed = await new Promise<string>(ok => {
+    const req = request(`${s.base}/api/auth/login`, { method: 'POST', headers: { Origin: s.base, 'Content-Type': 'application/json', 'Content-Length': 100 } },
+      res => { res.resume(); res.on('end', () => ok(`status ${res.statusCode}`)) })
+    req.on('error', () => ok('closed'))
+    req.write('{"username"')
+  })
+  expect(closed).toBe('closed')
+  expect(Date.now() - t0).toBeGreaterThanOrEqual(9500)
+  for (const path of ['/', '/api/health', '/api/characters', '/data/sources.xml']) {
+    const h = (await fetch(`${s.base}${path}`)).headers
+    expect([h.get('x-content-type-options'), h.get('referrer-policy'), h.get('x-frame-options')], path).toEqual(['nosniff', 'same-origin', 'DENY'])
+    expect(h.get('content-security-policy'), path).toContain("frame-ancestors 'none'")
+  }
   s.srv.close()
 })
 

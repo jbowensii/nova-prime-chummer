@@ -88,6 +88,20 @@ docker build -t chummer-anarchy2:latest .
 docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library chummer-anarchy2:latest
 ```
 
+### Behind a reverse proxy (TRUST_PROXY)
+
+Set `TRUST_PROXY` (template: **Trusted proxy**) to the address of the proxy that talks to the container, e.g.
+`192.168.1.10`. Only requests from these addresses may set `X-Forwarded-For`, `-Proto` and `-Host`, which decide the
+client's address (sign-in limits, logs), whether the request came over https (the secure cookie) and the public address.
+
+- List **every hop** that adds `X-Forwarded-For`: with Cloudflare in front of NGINX Proxy Manager, list NPM's address
+  *and* Cloudflare's published ranges (<https://www.cloudflare.com/ips/>), or have NPM restore the real address
+  (`real_ip_header CF-Connecting-IP`). Otherwise every visitor looks like a few Cloudflare addresses, and one person's
+  failed sign-ins slow down everyone's.
+- Don't list a whole subnet or the Docker gateway (`172.17.0.1`) while the app's port is published: anything that can
+  reach the port from there could claim any client address.
+- Empty (the default): no forwarded header is believed.
+
 ### Any static host
 
 `npm run build` and serve `dist/`.
