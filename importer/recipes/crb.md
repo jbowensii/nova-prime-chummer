@@ -1,11 +1,11 @@
 # CRB recipe: layout survey
 
-Survey of the owner's *Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8* PDF as converter v4 prints it.
+Survey of the owner's *Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8* PDF as the converter prints it (v4 for 9a; v5 from 9b).
 Page ranges and layout only, no book text. Target list proceeds without owner sign-off (controller
 ruling); the parity oracle is the acceptance target and the owner can adjust the list later.
 
 - File: 322 PDF pages, 106 MB, SHA-256 `4ae357ad…707a95` (full hash in `crb.py`). PDF metadata has no title.
-- Conversion (converter v4, `py -3.12 -m importer convert`): about 30 s wall time, 1.3 MB Markdown.
+- Conversion (converter v5, `py -3.12 -m importer convert`): about 30 s wall time, 1.3 MB Markdown.
 - Page numbers: two cover pages come before printed page 1, so **printed = PDF − 2**. Every page ends
   with its printed number as a bold line (`**180**`). Pages below are printed numbers (PDF in brackets
   where it helps).
@@ -16,8 +16,10 @@ ruling); the parity oracle is the acceptance target and the owner can adjust the
 
 - Body text: two columns, read column by column. Sidebar quotes start with `>`.
 - **Rules boxes**: each box is a one-column pipe table: the header row is the box title in capitals,
-  the single body cell holds the whole box, lines joined by `<br>`. A box's own two text columns come
-  out interleaved on each line (left words, then right words). Tables inside a box (spell lists,
+  the single body cell holds the whole box, lines joined by `<br>`. A box set in two text columns
+  (drugs, toxins, mentor spirits, adept powers, vehicles, drones, the Lightning example) came out
+  interleaved line by line in v4; v5 reads such a cell column by column when no line crosses its gutter
+  (a box with a table under the text, like the weapons table p.142, keeps its rows). Tables inside a box (spell lists,
   cost sheets) are flattened to text lines under a capitals header line ("SPELL TYPE THRESHOLD NOTES").
 - A few small real tables come out as proper pipe tables (skills cheat sheets p.61-63, risk dice p.70,
   glitch examples p.74-76, character cost cheat sheet p.83, level tables p.86, NPC attribute rows
@@ -74,3 +76,18 @@ Differences, each with its cause:
 - Name: Magic fingers → Magic Fingers (the box's capitalisation).
 - Extra: Elemental Aura (manipulation, 183). CRB v1.8 prints it in the box; the old catalog listed it
   as DHSA only.
+
+## Amps and gear parity (9b)
+
+Entries are the boxes' bold run-in names with a "(…Rating N <Kind> Amp…)" or "(Equipment, cost)" paren, pp.136-241
+(plus two substances the toxins box rules "always equipment", and the deck add-ons "(…, Amp Rating +1)").
+Margin tabs per chapter: Mundane World pp.133-167, Awakened World 169-199, Virtual World 202-228,
+Mechanical World 230-242.
+
+Against the oracle's 148 source="CRB" amps and 13 gear items (the old catalog's DHSA rows printed in black):
+141 amps and all 13 gear items found, every printed rating equal. 25 are renamed (v1.8 prints the model name
+without DHSA's added type, or a different name), 7 aren't in any v1.8 box (Concealment, the three flying
+drone variants, the deck Attack/Firewall and vehicle Flying add-ons). Pages move to the box for 10,
+the two autonomous medkits are Drone Amps in v1.8, and 8 entries' effects differ with a cause. The ids and
+causes are listed in `importer/tests/test_crb.py`. v1.8 also prints 48 Amps the oracle lacks (contacts,
+control rigs, eyes and ears, bone lacing, base vehicles, weapons, drugs, drones).

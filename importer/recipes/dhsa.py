@@ -195,12 +195,13 @@ def dv_num(dv):
     return ("N", int(m.group(1))) if m else None
 
 
-def load_skills(path=SHIPPED_SKILLS):
+def load_skills(path=SHIPPED_SKILLS, dhsa_specs=True):
     """{skill id: (name, attr)} and {(skill id, lowercase spec name): spec id}: the shipped skills plus DHSA's specs."""
     root = ET.parse(path).getroot()
     skills = {s.get("id"): (s.findtext("name"), s.get("attr")) for s in root.iter("skill")}
     specs = {(sp.get("id").split(".")[0], sp.text.strip().lower()): sp.get("id") for sp in root.iter("spec")}
-    specs.update({(sk, name.lower()): f"{sk}.{s}" for sk, s, _, _, name in DHSA_SPECS})
+    if dhsa_specs:
+        specs.update({(sk, name.lower()): f"{sk}.{s}" for sk, s, _, _, name in DHSA_SPECS})
     return skills, specs
 
 
@@ -278,7 +279,7 @@ class Mapper:
             return [("wound-light", None, None, None)]
         if "serious wound box" in low or re.match(r"^\+1 serious wound", low):
             return [("wound-serious", None, None, None)]
-        m = re.search(r"(?:^|\b)(?:unarmed )?dv \+(\d)|^\+(\d) dv|^dv to unarmed attack \+(\d)", low)
+        m = re.search(r"(?:^|\b)(?:unarmed )?dv \+(\d)|^\+(\d) (?:unarmed )?dv|^dv to unarmed attack \+(\d)", low)
         if m:
             return [("dv-plus", None, None, None)] * int(m.group(1) or m.group(2) or m.group(3))
         # mental protection (CRB p.190, 211): spells, astral, biofeedback
@@ -293,17 +294,18 @@ class Mapper:
         m = re.search(r"^\+(\d) (attack|firewall)", low)
         if m:
             return [("attack-plus" if m.group(2) == "attack" else "firewall-plus", None, None, None)] * int(m.group(1))
-        m = re.fullmatch(r"firewall (\d)", low.strip(". "))
-        if m:
-            return [("firewall-plus", None, None, None)] * (int(m.group(1)) - 1)  # base Firewall 1 is free
+        m = re.fullmatch(r"(firewall|attack) (\d)", low.strip(". "))
+        if m:  # a deck's printed stats: base Firewall 1 is free, Attack starts at 0
+            n = int(m.group(2))
+            return [("firewall-plus", None, None, None)] * (n - 1) if m.group(1) == "firewall" else [("attack-plus", None, None, None)] * n
         if re.search(r"(maintain|sustain) (one|an|1) (additional|more|extra) (spell|complex form)", low):
             return [("sustain-spell", None, None, None)]
-        if re.search(r"control two spirits", low):
+        if re.search(r"control (up to )?two spirits", low):
             return [("summon-spirit", None, None, None)]
         m = re.search(r"control of (\d) drones", low)
         if m:
             return [("rcc", None, int(m.group(1)), None)]
-        if "jump into a vehicle" in low:
+        if re.search(r"jump into (a vehicle|vehicles)", low):
             return [("vcr", None, None, None)]
         realm = [("init-realm", "astral" if "astral" in low else "vr", None, None)] if re.search(r"\bvr\b|astral|jump", low) else []
         if re.search(r"^\+1 edge (point )?per (action |cracking )?scene", low) and "+2" not in low:
