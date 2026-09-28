@@ -19,6 +19,8 @@ for the test.
   x=72 followed BELOW them by a 2-line indented block at x=320 — a single
   column (nothing sits side by side), not a two-column page. Body text
   resumes at x=72 after the block.
+- `bold_label_pdf()`: one page, lines opening with a bold run-in label (F2 =
+  Helvetica-Bold) followed by regular text, plus one plain line.
 - `justified_paragraph_pdf()`: one page, a single justified paragraph whose
   word gaps are wide (15-30pt, i.e. > 1 em) and fall at different x on
   each line, except that three consecutive lines happen to share a wide
@@ -143,7 +145,7 @@ def _build_pdf(pages_ops: list[str]) -> bytes:
     pages_id = 2
     page_ids = list(range(3, 3 + n_pages))
     font_id = page_ids[-1] + 1
-    content_ids = list(range(font_id + 1, font_id + 1 + n_pages))
+    content_ids = list(range(font_id + 2, font_id + 2 + n_pages))  # F1 then F2 (bold)
 
     objects = [
         b"<< /Type /Catalog /Pages %d 0 R >>" % pages_id,
@@ -154,11 +156,12 @@ def _build_pdf(pages_ops: list[str]) -> bytes:
         objects.append(
             (
                 b"<< /Type /Page /Parent %d 0 R /MediaBox [0 0 612 792] "
-                b"/Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>"
+                b"/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> >> /Contents %d 0 R >>"
             )
-            % (pages_id, font_id, content_id)
+            % (pages_id, font_id, font_id + 1, content_id)
         )
     objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
     for ops in pages_ops:
         objects.append(_content_stream(ops))
 
@@ -217,3 +220,15 @@ def bullets_then_indented_block_pdf() -> bytes:
 def justified_paragraph_pdf() -> bytes:
     """One-page PDF: one justified paragraph with wide, shifting word gaps."""
     return _build_pdf([JUSTIFIED_OPS])
+
+
+BOLD_OPS = """BT /F2 10 Tf 72 700 Td (Made Up Label:) Tj /F1 10 Tf ( some regular words.) Tj ET
+BT /F1 10 Tf 72 680 Td (A plain line with no label.) Tj ET
+BT /F1 10 Tf 72 660 Td (x ) Tj /F2 10 Tf (Solo:) Tj /F1 10 Tf ( more words.) Tj ET
+BT /F2 10 Tf 72 640 Td (Note) Tj /F1 10 Tf ( - ) Tj /F2 10 Tf (Topic:) Tj /F1 10 Tf ( words.) Tj ET
+"""
+
+
+def bold_label_pdf() -> bytes:
+    """One-page PDF: bold run-in labels (Helvetica-Bold) followed by regular text."""
+    return _build_pdf([BOLD_OPS])

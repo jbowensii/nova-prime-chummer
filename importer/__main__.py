@@ -8,6 +8,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.sax.saxutils import quoteattr
 
 from importer import xmlio
 from importer.convert import CONVERTER_VERSION, convert
@@ -45,11 +46,13 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         src = res.source["id"]
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
+        texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
+        # merge texts first: a corrupt texts file fails the import before any overlay is replaced
+        texts = xmlio.merged_texts(texts_path, xmlio.texts_entries(xmlio.scope(res.texts, src, ids))) if res.texts else None
         for name, xml in res.files.items():
             xmlio.write_overlay(out_dir, name, xml, ids)
-        if res.texts:
-            entries = xmlio.texts_entries(xmlio.scope(res.texts, src, ids))
-            xmlio.write_texts(os.path.join(custom_dir, "texts", f"{src.lower()}.xml"), entries)
+        if texts:
+            xmlio.write_file(texts_path, texts)
         for name, content in res.samples.items():
             xmlio.write_file(os.path.join(out_dir, "samples", name), content)
         xmlio.write_import(book_dir, report=res.report, files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
@@ -77,7 +80,7 @@ def _cmd_convert(argv):
         return 2
     pdf_path, md_path = argv
     meta = convert(pdf_path, md_path, pages)
-    attrs = " ".join(f'{k}="{v}"' for k, v in meta.items())
+    attrs = " ".join(f"{k}={quoteattr(str(v))}" for k, v in meta.items())
     print(f"<result {attrs} />")
     return 0
 
@@ -89,7 +92,8 @@ def _cmd_run(argv):
     file_name = argv[argv.index("--file") + 1] if "--file" in argv else None
     res = run(argv[0], argv[2], convert_pdf="--md" not in argv, file_name=file_name)
     state = xmlio.ET.parse(os.path.join(argv[0], "status.xml")).getroot().get("state")
-    print(f'<result state="{state}"' + (f' source="{res.source["id"]}" files="{" ".join(res.files)}"' if res else "") + " />")
+    extra = f" source={quoteattr(res.source['id'])} files={quoteattr(' '.join(res.files))}" if res else ""
+    print(f"<result state={quoteattr(state)}{extra} />")
     return 0
 
 

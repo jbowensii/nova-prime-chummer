@@ -1,10 +1,11 @@
 """PDF -> Markdown for recipes. pdfplumber (MIT). Output only has to be consistent, not pretty."""
 import hashlib
+import re
 import statistics
 
 import pdfplumber
 
-CONVERTER_VERSION = "1"
+CONVERTER_VERSION = "2"  # 2: bold runs wrapped in **…**
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -25,6 +26,34 @@ def _bands(pdf):
 
 def _heading_level(size, big):
     return next((i + 1 for i, s in enumerate(big) if abs(size - s) < 0.6), 0)
+
+
+_BOLD = re.compile(r"bold|black|heavy", re.I)
+
+
+def _is_bold(word):
+    """Most of the word's letters/digits are set in a bold face (the bullet glyph and punctuation don't count)."""
+    chars = [c for c in word["chars"] if c["text"].isalnum()]
+    return bool(chars) and sum(bool(_BOLD.search(c["fontname"])) for c in chars) * 2 > len(chars)
+
+
+def _line_text(line):
+    """Words joined by spaces, adjacent bold words merged into one **run**. A punctuation-only word
+    ("–") between two bold words stays inside the run."""
+    bold = [_is_bold(w) for w in line]
+    bold = [b or (0 < i < len(line) - 1 and bold[i - 1] and bold[i + 1] and not any(c.isalnum() for c in line[i]["text"]))
+            for i, b in enumerate(bold)]
+    out, run = [], []
+    for w, b in zip(line + [None], bold + [False]):
+        if b:
+            run.append(w["text"])
+            continue
+        if run:
+            out.append("**" + " ".join(run) + "**")
+            run = []
+        if w is not None:
+            out.append(w["text"])
+    return " ".join(out)
 
 
 def _in_table(w, table_boxes):
@@ -182,7 +211,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
             out.append(f"<!-- page {n} -->")
             tables = page.find_tables()
             boxes = [t.bbox for t in tables]
-            all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False)
+            all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
             words = [w for w in all_words if not _in_table(w, boxes)]
             rows = _cluster_lines(words)
             mid = _find_gutter(rows, page.width)
@@ -190,10 +219,10 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -
 
             blocks = []
             for line in lines:
-                text = " ".join(w["text"] for w in line)
                 size = round(max(w["size"] for w in line), 1)
                 level = _heading_level(size, big)
-                text = ("#" * level + " " + text) if level else text
+                # headings stay unmarked (their size already says it); bold only matters in body lines
+                text = ("#" * level + " " + " ".join(w["text"] for w in line)) if level else _line_text(line)
                 x0, x1 = _line_extent(line)
                 blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid), text))
             for t in tables:
