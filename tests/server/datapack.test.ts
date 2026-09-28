@@ -77,6 +77,12 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   rmSync(join(core, 'skills.xml'))
   expect(await restart()).toContain('remove crb-1')
   writeFileSync(join(core, 'skills.xml'), saved)
+  // the admin's Re-import of the core rulebook drops its pack mark: the book was chosen over the pack
+  const mark = join(library, 'crb-1', 'core-rebuild.xml')
+  writeFileSync(mark, '<rebuild sha256="abc" pack="2026-09-28T00:00:00Z" files="skills.xml"/>\n')
+  expect((await fetch(`${base}/api/books/crb-1/reimport`, { method: 'POST' })).status).toBe(202)
+  expect(existsSync(mark)).toBe(false)
+  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
   rmSync(join(library, 'crb-1'), { recursive: true })
 })
@@ -122,6 +128,8 @@ test('one pack at a time; not while a book imports; a job waits for the pack; no
   // a pack import is a counted write: a restore can't start under it
   const pending = upload(bytes)
   await vi.waitFor(() => expect(temps()).toHaveLength(1))
+  const backup = await fetch(`${base}/api/backup`, { method: 'POST' }) // nor a backup: it would copy the swap's folders
+  expect([backup.status, (await backup.json()).error]).toEqual([409, 'a data pack is being made or loaded; try again when it’s done'])
   const restore = await fetch(`${base}/api/restore/${'0'.repeat(32)}`, { method: 'POST' })
   expect(restore.status).toBe(409)
   expect((await pending).status).toBe(200)

@@ -66,6 +66,31 @@ def bad_zip(entries, manifest=True, attrs=None):
 
 
 class BackupTest(unittest.TestCase):
+    def test_a_swaps_temp_folders_never_travel_in_a_backup(self):
+        """A backup made while a data pack swaps would carry core/.restore-old-*; restored, `recover` would put those stale
+        tables back over the live ones. The backup skips them at any depth, and check refuses a zip that has them."""
+        from importer import datapack
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        core = os.path.join(dirs["custom"], "imported", "core")
+        os.makedirs(os.path.join(core, ".restore-old-abc"))
+        Path(core, "skills.xml").write_text("current")
+        Path(core, ".restore-old-abc", "skills.xml").write_text("STALE")
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        with zipfile.ZipFile(out) as zf:
+            self.assertIn("custom/imported/core/skills.xml", zf.namelist())
+            self.assertFalse([n for n in zf.namelist() if ".restore-" in n])
+        backup.check(out)
+        restored = {f: os.path.join(root, "restored", f) for f in backup.FOLDERS}
+        backup.apply(out, restored)
+        datapack.recover(os.path.join(restored["custom"], "imported", "core"))
+        self.assertEqual(Path(restored["custom"], "imported", "core", "skills.xml").read_text(), "current")
+        planted = bad_zip({"custom/imported/core/.restore-old-abc/skills.xml": b"STALE"})
+        with self.assertRaises(backup.RestoreError) as e:
+            backup.check(planted)
+        self.assertIn(".restore-", str(e.exception))
+
     def test_contents_without_and_with_keys(self):
         root = tempfile.mkdtemp()
         dirs = state(root)

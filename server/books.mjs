@@ -373,7 +373,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (!crb) return
     const marker = join(libraryDir, crb.id, 'core-rebuild.xml')
     const tried = rootTag(await readOr(marker), 'rebuild')
-    const packed = !!attr(tried, 'pack') && (attr(tried, 'files') ?? '').split(' ').filter(Boolean).every(f => present.has(f))
+    const packFiles = (attr(tried, 'files') ?? '').split(' ').filter(Boolean)
+    const packed = !!attr(tried, 'pack') && packFiles.length > 0 && packFiles.every(f => present.has(f))
     if (tried && attr(tried, 'sha256') === crb.sha && (attr(tried, 'version') === version || (packed && present.size > 0))) return
     await writeAtomic(marker, `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
     for (const b of books.sort((x, y) => x.order - y.order)) {
@@ -443,6 +444,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   async function makeBackup(req, res, url, send) {
     noRestore()
     if (zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
+    if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
     zipping++
     const folder = join(backups, `download-${randomBytes(12).toString('hex')}`), out = join(folder, 'backup.zip')
     let gone = false, r
@@ -679,6 +681,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       needsQuiet()
       if (attr(imp, 'recipe') === 'ai') throw fail(409, 'a book read by AI can’t be re-imported; remove it, or apply its review again')
       const file = attr(imp, 'file') ?? attr(rootTag(hasUpload, 'upload'), 'file')
+      // the admin chose the book over a loaded data pack: its pack mark goes, so the start-up rule is the usual one again
+      if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
       await setStatus(id, 'queued')
       enqueue(id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(file ? ['--file', file] : [])]])
       return send(res, 202, { id })

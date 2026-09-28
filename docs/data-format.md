@@ -283,7 +283,8 @@ It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`).
 After a [data pack](#data-pack) is loaded, the marker records `pack=` and the
 pack's files (`files=`); while all of those files are there, that CRB file isn't
 re-imported at start-up, whatever the version: the core came from the pack. Once
-one of them is gone the mark no longer counts and the usual rule applies. A
+one of them is gone the mark no longer counts and the usual rule applies; a
+**Re-import** of that CRB drops it. A
 different CRB file (a new upload) is re-imported regardless, and any
 import of the core rulebook (upload, **Re-import**) writes the core files over
 the pack's as usual.
