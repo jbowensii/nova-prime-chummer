@@ -124,7 +124,7 @@ loaded, and any errors.
 ```bash
 npm test                 # engine tests on a made-up catalog (Vitest); book tests need your own imports
 npm run validate:data    # XSD + reference checks
-npm run test:py          # importer tests (Python 3.12)
+npm run test:py          # importer tests: Python 3.12 with importer/requirements.txt ($PYTHON, py -3.12, python3 or python)
 npm run build && npm run e2e   # Playwright, with a stub importer: smoke, books, AI review, themes…
 ```
 
