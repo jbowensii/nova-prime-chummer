@@ -327,7 +327,7 @@ def _cmd_edit(argv):
         return 2
     try:
         if sub == "set":
-            edits.set_entry(custom, argv[1], argv[2], sys.stdin.buffer.read())
+            edits.set_entry(custom, argv[1], argv[2], sys.stdin.buffer.read(edits.MAX_BODY + 1))
             print('<result state="saved" />')
         elif sub == "remove":
             print(f'<result removed="{str(edits.remove_entry(custom, argv[1], argv[2])).lower()}" />')
