@@ -59,22 +59,32 @@ npm run dev        # http://localhost:5173 (runners saved in the browser)
 npm run serve      # build + server on :80 (set PORT, CHAR_DIR, CUSTOM_DIR, LIBRARY_DIR, PYTHON)
 ```
 
-### Docker
+### Unraid
+
+1. **Docker** tab → **Template repositories** → add
+   `https://github.com/jbowensii/unraid-templates` → **Save**.
+2. **Add Container** → pick *chummer-anarchy2* from the template list → Apply.
+   The web UI is on port 8480.
+
+This pulls the published image `ghcr.io/jbowensii/chummer-anarchy2:latest` —
+no build step on the server.
+
+### Docker / any dashboard (Portainer, Dockge, Yacht, …)
+
+```bash
+docker run -d --init -p 8480:80 \
+  -v /path/to/characters:/data/characters \
+  -v /path/to/custom:/data/custom \
+  -v /path/to/library:/data/library \
+  ghcr.io/jbowensii/chummer-anarchy2:latest
+```
+
+### Build it yourself
 
 ```bash
 docker build -t chummer-anarchy2:latest .
-docker run -d -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom   -v /path/to/library:/data/library chummer-anarchy2:latest
+docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library chummer-anarchy2:latest
 ```
-
-### Unraid
-
-1. Build the image on the server (the repo is private, so there is no public
-   registry image yet):
-   `docker build -t chummer-anarchy2:latest /mnt/user/appdata/chummer-anarchy2/src`
-2. Copy `unraid/chummer-anarchy2.xml` to
-   `/boot/config/plugins/dockerMan/templates-user/my-chummer-anarchy2.xml`.
-3. Docker tab → **Add Container** → pick *chummer-anarchy2* → Apply. The web
-   UI is on port 8480.
 
 ### Any static host
 
