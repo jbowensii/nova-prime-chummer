@@ -38,3 +38,7 @@ const loadBooks = (): Catalog | null => {
 export const books: Catalog | null = loadBooks()
 
 export const sample = (name: string): Character => JSON.parse(readFileSync(join(BOOKS_DIR, 'samples', `${name}.ca2.json`), 'utf8'))
+
+/** Path under the oracle root for any other private book file a books-only test needs
+ * (e.g. pregens-printed.json, book-discrepancies.md) — never the committed copy. */
+export const bookFile = (name: string): string => join(BOOKS_DIR, name)
