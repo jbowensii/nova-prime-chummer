@@ -128,9 +128,17 @@ CF-Connecting-IP` with Cloudflare's ranges in `set_real_ip_from`), or use a Clou
 ### Sign in with Authelia (OpenID Connect)
 
 Accounts can sign in through [Authelia](https://www.authelia.com/) instead of an app password, with Authelia's
-two-factor. Each person still needs an account on the **Users** page with *Signs in with: Authelia*; they're matched by
-their Authelia username (`preferred_username`), else their email. Nobody is created automatically: anyone else is told
-to ask the admin for an account. An Authelia account can't use an app password, and a password account can't use Authelia.
+two-factor. Each person still needs an account on the **Users** page with *Signs in with: Authelia*. Nobody is created
+automatically: anyone else is told to ask the admin for an account. An Authelia account can't use an app password, and a
+password account can't use Authelia.
+
+- The first Authelia sign-in matches the Authelia username (`preferred_username`) to the account's username; only when
+  Authelia sends no username, a verified email (`email_verified: true`) to the account's email. Only plain ASCII names
+  match. Keep directory usernames and emails unique.
+- That sign-in **links** the account to the Authelia user's `sub` (a stable, opaque id). From then on only that Authelia
+  user gets in, even if the names change on either side. **Unlink Authelia** on the Users page undoes it (e.g. when the
+  person's directory account was deleted and made again); so does changing the account's username, email or sign-in
+  method, and a new issuer address unlinks every account.
 
 1. Register the app as a client in Authelia's `configuration.yml` (Authelia 4.39 and later). The redirect
    URI is your public address + `/api/auth/oidc/callback`; **Settings → Sign-in** shows it.
@@ -165,10 +173,16 @@ to ask the admin for an account. An Authelia account can't use an app password, 
    “Sign in with Authelia”* and **Save**. The secret is stored in `library/.config/auth-secret.xml` (readable by the
    server only), is never shown again, and is dropped when the issuer address changes. A backup carries it only with
    *Include my API keys*.
-3. The app must see its public https address (see *Behind a reverse proxy*): the redirect URI is built from it.
+3. The app must know its public https address: set `PUBLIC_URL` (template: **Public address**, e.g.
+   `https://chummer.example.com`, no path), or pass the proxy's `X-Forwarded-Proto`/`-Host` from a `TRUST_PROXY` peer.
+   The redirect URI is built from it. With `PUBLIC_URL` set, the app works only at that address (the sign-in and write
+   checks compare against it rather than the Host header).
 
 The app checks the ID token itself (RS256 or ES256 signature against Authelia's published keys, issuer, audience,
-expiry, nonce) and uses PKCE and a one-time state tied to the browser; it logs who signed in, never a token.
+expiry, nonce) and uses PKCE and a one-time state sealed in a 10-minute browser cookie; it logs who signed in, never a
+token. The issuer must be https, and its authorization, token, key-set and userinfo endpoints must be on the issuer's own
+host (Authelia's are). Plain http to `localhost`/`127.0.0.1` is only allowed for development, with `ALLOW_INSECURE_OIDC=1`.
+Signing out of the app doesn't sign you out of Authelia.
 
 ### Any static host
 
