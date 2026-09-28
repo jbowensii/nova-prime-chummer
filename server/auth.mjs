@@ -44,7 +44,8 @@ const NET_FAILS = 20, NET_WINDOW = 10 * MINUTE
 // failures for one account across all addresses: past ACCOUNT_FREE each one doubles a wait (1 s, 2 s, … 15 min);
 // forgotten after an hour without failures, cleared by a success
 const ACCOUNT_FREE = 10, ACCOUNT_MAX_WAIT = 15 * MINUTE, ACCOUNT_FORGET = 60 * MINUTE
-// counted for any name typed (existing or not, so a 429 says nothing about which accounts exist), the oldest dropped
+// counted for any name typed (existing or not, so a 429 says nothing about which accounts exist); when full, the least
+// recently failed name whose wait is over makes room, and while every one is still waiting new names aren't counted
 const ACCOUNT_KEYS = 10000
 // known devices (OWASP device cookies): a browser that signed in as a user carries an HMAC of that username and a nonce
 // for a year; the account's wait doesn't apply to it, unless the device itself has failed DEVICE_TRIES times meanwhile
@@ -181,7 +182,7 @@ export function need(path, method) {
 
 /** `lock`: the characters' write lock (shared with server.mjs); `runners`: runner-folder moves, run under it; `track`:
  *  books.track, so file writes are counted (a restore waits for them, and they are refused while it runs). */
-export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log = console }) {
+export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log = console, accountKeys = ACCOUNT_KEYS }) {
   const config = join(libraryDir, '.config')
   const usersPath = join(config, 'users.xml'), sessionsPath = join(config, 'sessions.xml'), resetPath = join(config, 'reset.xml')
   const proxies = proxyList(trustProxy)
@@ -206,7 +207,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     }
     return deviceSecret
   }
-  const deviceMac = (name, nonce) => createHmac('sha256', deviceKey()).update(`${name}\n${nonce}`).digest()
+  const deviceMac = (subject, nonce) => createHmac('sha256', deviceKey()).update(`${subject}\n${nonce}`).digest()
 
   function load() {
     users = []; broken = false; setupCode = null
@@ -287,16 +288,18 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
   const setCookie = (res, ctx, token, age = TTL / 1000) => addCookie(res, ctx, cookieName(ctx), token, age)
   const deviceName = ctx => ctx.https ? HOST_DEVICE_COOKIE : DEVICE_COOKIE
-  /** Mark this browser as a known device of `username`. */
-  function setDevice(res, ctx, username) {
+  // a device cookie names the account by its id: a deleted account's username made again doesn't accept its old cookies
+  /** Mark this browser as a known device of the account `id`. */
+  function setDevice(res, ctx, id) {
     const nonce = randomBytes(16).toString('base64url')
-    addCookie(res, ctx, deviceName(ctx), `${nonce}.${deviceMac(username, nonce).toString('base64url')}`, DEVICE_TTL / 1000)
+    addCookie(res, ctx, deviceName(ctx), `${nonce}.${deviceMac(`id:${id}`, nonce).toString('base64url')}`, DEVICE_TTL / 1000)
   }
-  /** The nonce of the request's device cookie when it was issued for `name`, else null. */
-  function deviceOf(req, ctx, name) {
+  /** The nonce of the request's device cookie when it was issued for the account `id`, else null. For a name with no
+   *  account, `id` is that name: the same HMAC work, and never a match. */
+  function deviceOf(req, ctx, id) {
     const m = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${deviceName(ctx)}=([A-Za-z0-9_-]{22})\\.([A-Za-z0-9_-]{43})(?:;|$)`))
-    if (!m || !USERNAME.test(name)) return null
-    return timingSafeEqual(Buffer.from(m[2], 'base64url'), deviceMac(name, m[1])) ? m[1] : null
+    if (!m) return null
+    return timingSafeEqual(Buffer.from(m[2], 'base64url'), deviceMac(`id:${id}`, m[1])) ? m[1] : null
   }
   const SESSIONS_PER_USER = 20
   function startSession(res, ctx, u) {
@@ -368,6 +371,11 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     fails.set(k, { n: count, until: count >= TRIES ? now + LOCK : 0 })
     const nk = netKey(ip), n = netFails.get(nk)
     netFails.set(nk, n && now - n.since < NET_WINDOW ? { n: n.n + 1, since: n.since } : { n: 1, since: now })
+    if (account && !accountFails.has(account) && accountFails.size >= accountKeys && !makeRoom(now)) {
+      if (!warnedFull) log.error(`sign-in failures: ${accountKeys} usernames are waiting out failures; new names aren’t counted until one is done`)
+      warnedFull = true
+      account = null // still limited per address and network, and by the hash cap
+    }
     if (account) {
       const a = accountFails.get(account), fresh = !a || now - a.last >= ACCOUNT_FORGET, c = fresh ? 1 : a.n + 1
       const devices = fresh ? new Map() : a.devices
@@ -375,8 +383,14 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       accountFails.delete(account) // re-inserted last: the map's order is least recently failed first
       accountFails.set(account, { n: c, last: now, devices,
         until: c > ACCOUNT_FREE ? now + Math.min(ACCOUNT_MAX_WAIT, 1000 * 2 ** (c - ACCOUNT_FREE - 1)) : 0 })
-      if (accountFails.size > ACCOUNT_KEYS) accountFails.delete(accountFails.keys().next().value)
     }
+  }
+  let warnedFull = false
+  /** Drop the least recently failed name whose wait is over (an active wait is never dropped: that would lift it).
+   *  ponytail: a scan from the oldest when full; fine at this size */
+  function makeRoom(now) {
+    for (const [k, a] of accountFails) if (!(a.until > now)) { accountFails.delete(k); warnedFull = false; return true }
+    return false
   }
   function succeeded(key, ip, account) {
     fails.delete(`${key}|${ip}`)
@@ -460,7 +474,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   async function login(req, res, send) {
     const ctx = req.ctx, b = await json(req)
     const name = oneLine(b.username).toLowerCase().slice(0, 64)
-    const u = users.find(x => x.username === name), device = deviceOf(req, ctx, name)
+    const u = users.find(x => x.username === name), device = deviceOf(req, ctx, u?.id ?? name)
     locked(name, ctx.ip, name, device) // `name`, not u?.username: an unknown name is counted and refused alike
     const usable = u?.enabled && u.method === 'password' && u.password
     const ok = await checkLimited(String(b.password ?? '').slice(0, MAX_PASSWORD), usable ? u.password : null) && usable
@@ -474,7 +488,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     log.log(`signed in: ${u.username} from ${ctx.ip}`)
     await lock(async () => { u.lastLogin = iso(); await saveUsers() })
     await startSession(res, ctx, u)
-    setDevice(res, ctx, u.username)
+    setDevice(res, ctx, u.id)
     return send(res, 200, { user: pub(u) })
   }
 
@@ -500,7 +514,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     })
     log.log(`first admin created: ${u.username} from ${ctx.ip}`)
     await startSession(res, ctx, u)
-    setDevice(res, ctx, u.username)
+    setDevice(res, ctx, u.id)
     return send(res, 201, { user: pub(u) })
   }
 
@@ -632,9 +646,10 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const b = await json(req)
       const u = users.find(x => x.id === who.id)
       if (u.method !== 'password') throw fail(400, 'this account signs in with Authelia')
-      locked(u.username, req.ctx.ip, u.username)
+      const device = deviceOf(req, req.ctx, u.id) // a known device passes the account's wait here too
+      locked(u.username, req.ctx.ip, u.username, device)
       if (!await checkLimited(String(b.current ?? '').slice(0, MAX_PASSWORD), u.password)) {
-        failed(u.username, req.ctx.ip, u.username)
+        failed(u.username, req.ctx.ip, u.username, device)
         throw fail(400, 'your current password is wrong')
       }
       succeeded(u.username, req.ctx.ip, u.username)

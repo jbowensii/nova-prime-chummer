@@ -426,6 +426,48 @@ test('the account wait counts any typed name: an unknown one is refused exactly 
   s.srv.close()
 })
 
+test('the account-wait table only drops names whose wait is over; while all are waiting, new names aren’t counted', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1', accountKeys: 3 })
+  let ip = 0
+  const fail11 = async (name: string) => { for (let i = 0; i < 11; i++) await login(s.base, name, 'wrong-password', { 'X-Forwarded-For': `192.0.2.${++ip % 250}` }) }
+  const next = async (name: string) => (await login(s.base, name, 'wrong-password', { 'X-Forwarded-For': `198.18.0.${++ip % 250}` })).r.status
+  vi.useFakeTimers({ toFake: ['Date'] }) // time stands still: every wait stays active until it's moved on
+  for (const n of ['aa', 'bb', 'cc']) await fail11(n)
+  const warnings = () => logged.filter(l => l.includes('usernames are waiting out failures')).length
+  const before = warnings()
+  await fail11('dd') // the table is full of active waits: dd isn't counted, and nobody's wait was lifted
+  expect([await next('aa'), await next('dd')]).toEqual([429, 401])
+  expect(warnings()).toBe(before + 1) // logged once
+  vi.setSystemTime(Date.now() + 2000) // the waits are over
+  await fail11('ee') // makes room by dropping an expired name
+  expect(await next('ee')).toBe(429)
+  vi.useRealTimers()
+  s.srv.close()
+})
+
+test('device cookies belong to the account, not its name; changing a password honours them', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player }, { trustProxy: '127.0.0.1' })
+  let ip = 0
+  const from = (extra: Record<string, string> = {}) => ({ 'X-Forwarded-For': `198.51.100.${++ip}`, ...extra })
+  const lockOut = async (name: string) => { for (let i = 0; i < 11; i++) await login(s.base, name, 'wrong-password', from()) }
+  const p = await login(s.base, 'player', PW.player, from())
+  await lockOut('player')
+  const change = (extra: Record<string, string>) => call(s.base, 'POST', '/api/auth/password', { ...json({ current: PW.player, password: 'player-password-4' }),
+    headers: { 'Content-Type': 'application/json', ...extra } })
+  expect((await change({ Cookie: p.cookie })).status).toBe(429)
+  expect((await change({ Cookie: `${p.cookie}; ${p.device}` })).status).toBe(204)
+
+  // the account goes; a new one with the same username doesn't take the old device
+  const admin = (await login(s.base, 'admin', PW.admin, from())).cookie
+  const users = await (await call(s.base, 'GET', '/api/users', { cookie: admin })).json()
+  const pid = users.find((u: { username: string }) => u.username === 'player').id
+  expect((await call(s.base, 'DELETE', `/api/users/${pid}`, { cookie: admin })).status).toBe(204)
+  expect((await call(s.base, 'POST', '/api/users', { cookie: admin, ...json({ username: 'player', name: 'New', role: 'player', password: 'new-player-pass-1' }) })).status).toBe(201)
+  await lockOut('player')
+  expect((await login(s.base, 'player', 'new-player-pass-1', from({ Cookie: p.device }))).r.status).toBe(429)
+  s.srv.close()
+})
+
 test('password hashing: a few at a time, a short queue, the rest refused before hashing', async () => {
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1' })
   const rs = await Promise.all(Array.from({ length: 40 }, (_, i) => login(s.base, `nobody${i}`, 'wrong-password', { 'X-Forwarded-For': `198.51.100.${i}` })))
