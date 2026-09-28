@@ -10,3 +10,5 @@ public/custom/texts/
 .superpowers/
 __pycache__/
 
+/custom/
+/library/
