@@ -102,6 +102,29 @@ client's address (sign-in limits, logs), whether the request came over https (th
   reach the port from there could claim any client address.
 - Empty (the default): no forwarded header is believed.
 
+The app limits sign-in tries itself (per address and network, per account, and a few password checks at a time), but
+a flood from many addresses can still keep the sign-in queue full. Rate-limit `/api/auth/login` at the proxy too. In
+NGINX Proxy Manager: **Advanced** tab of the proxy host (or plain nginx: the `server` block), with the zone in the
+`http` context (NPM: `/data/nginx/custom/http_top.conf`):
+
+```nginx
+# http context
+limit_req_zone $binary_remote_addr zone=ca2_login:10m rate=10r/m;
+
+# server block
+location = /api/auth/login {
+    limit_req zone=ca2_login burst=5 nodelay;
+    limit_req_status 429;
+    proxy_pass $forward_scheme://$server:$port;   # NPM's variables; plain nginx: your upstream
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Behind Cloudflare, key the zone on the real client address (`$http_cf_connecting_ip`, or `real_ip_header
+CF-Connecting-IP` with Cloudflare's ranges in `set_real_ip_from`), or use a Cloudflare rate-limiting rule instead.
+
 ### Any static host
 
 `npm run build` and serve `dist/`.

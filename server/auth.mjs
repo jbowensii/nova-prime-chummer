@@ -18,8 +18,8 @@
 //   POST   /api/users/:id/reset-password  admin: { password } -> 204; every session of that user ends
 //   POST   /api/users/:id/move-runner     admin: { file, to: <user id> } -> { file } (its name in the new folder)
 // There is always an enabled admin: the last one can't be demoted, disabled or deleted (409).
-import { createHash, randomBytes, randomInt, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { createHash, createHmac, randomBytes, randomInt, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { chmod, mkdir, readFile, rm } from 'node:fs/promises'
 import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
@@ -44,6 +44,11 @@ const NET_FAILS = 20, NET_WINDOW = 10 * MINUTE
 // failures for one account across all addresses: past ACCOUNT_FREE each one doubles a wait (1 s, 2 s, … 15 min);
 // forgotten after an hour without failures, cleared by a success
 const ACCOUNT_FREE = 10, ACCOUNT_MAX_WAIT = 15 * MINUTE, ACCOUNT_FORGET = 60 * MINUTE
+// counted for any name typed (existing or not, so a 429 says nothing about which accounts exist), the oldest dropped
+const ACCOUNT_KEYS = 10000
+// known devices (OWASP device cookies): a browser that signed in as a user carries an HMAC of that username and a nonce
+// for a year; the account's wait doesn't apply to it, unless the device itself has failed DEVICE_TRIES times meanwhile
+const DEVICE_COOKIE = 'ca2_device', HOST_DEVICE_COOKIE = '__Host-ca2_device', DEVICE_TTL = 365 * DAY, DEVICE_TRIES = 5
 // scrypt (32 MB, tens of ms each) runs on the libuv threadpool, which file reads share: a few at a time, a short queue,
 // the rest refused (UV_THREADPOOL_SIZE=16 in the image keeps threads for files)
 const MAX_HASHING = 4, MAX_WAITING = 8
@@ -186,7 +191,22 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   let dirty = false, persisting = Promise.resolve()
   const fails = new Map() // "<key>|<ip>" -> { n, until }
   const netFails = new Map() // netKey(ip) -> { n, since }
-  const accountFails = new Map() // username -> { n, last, until }
+  const accountFails = new Map() // typed username -> { n, last, until, devices: Map(nonce -> failures) }, oldest first
+  let deviceSecret = null // library/.config/device-key.xml, made on first use
+  function deviceKey() {
+    if (deviceSecret) return deviceSecret
+    const path = join(config, 'device-key.xml')
+    try { deviceSecret = Buffer.from(attr(rootTag(readFileSync(path, 'utf8'), 'ca2:devicekey'), 'key') ?? '', 'base64') } catch { /* below */ }
+    if (!(deviceSecret?.length >= 32)) {
+      deviceSecret = randomBytes(32)
+      mkdirSync(config, { recursive: true })
+      const tmp = `${path}.${randomBytes(4).toString('hex')}.tmp`
+      writeFileSync(tmp, `${HEAD}<ca2:devicekey xmlns:ca2="${NS}" version="1" key="${deviceSecret.toString('base64')}"/>\n`, { flag: 'wx', mode: SECRET })
+      renameSync(tmp, path)
+    }
+    return deviceSecret
+  }
+  const deviceMac = (name, nonce) => createHmac('sha256', deviceKey()).update(`${name}\n${nonce}`).digest()
 
   function load() {
     users = []; broken = false; setupCode = null
@@ -263,8 +283,21 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   }
   const cookieName = ctx => ctx.https ? HOST_COOKIE : COOKIE
   const cookieOf = (req, ctx) => String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${cookieName(ctx)}=([A-Za-z0-9_-]{20,100})(?:;|$)`))?.[1]
-  const setCookie = (res, ctx, token, age = TTL / 1000) => res.setHeader('Set-Cookie',
-    `${cookieName(ctx)}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`)
+  const addCookie = (res, ctx, name, value, age) => res.setHeader('Set-Cookie', [...[].concat(res.getHeader('Set-Cookie') ?? []),
+    `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
+  const setCookie = (res, ctx, token, age = TTL / 1000) => addCookie(res, ctx, cookieName(ctx), token, age)
+  const deviceName = ctx => ctx.https ? HOST_DEVICE_COOKIE : DEVICE_COOKIE
+  /** Mark this browser as a known device of `username`. */
+  function setDevice(res, ctx, username) {
+    const nonce = randomBytes(16).toString('base64url')
+    addCookie(res, ctx, deviceName(ctx), `${nonce}.${deviceMac(username, nonce).toString('base64url')}`, DEVICE_TTL / 1000)
+  }
+  /** The nonce of the request's device cookie when it was issued for `name`, else null. */
+  function deviceOf(req, ctx, name) {
+    const m = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${deviceName(ctx)}=([A-Za-z0-9_-]{22})\\.([A-Za-z0-9_-]{43})(?:;|$)`))
+    if (!m || !USERNAME.test(name)) return null
+    return timingSafeEqual(Buffer.from(m[2], 'base64url'), deviceMac(name, m[1])) ? m[1] : null
+  }
   const SESSIONS_PER_USER = 20
   function startSession(res, ctx, u) {
     const token = randomBytes(32).toString('base64url')
@@ -314,20 +347,21 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
 
   // ---- lockout ----
   // three counts, all checked before any hashing: `key` (a username, or setup/reset) + address: 5 → 15 min; the client's
-  // network, any key: NET_FAILS in NET_WINDOW; an existing account across all addresses: a growing wait
-  function locked(key, ip, account) {
+  // network, any key: NET_FAILS in NET_WINDOW; a typed username across all addresses: a growing wait, which a known
+  // device of that account (`device`: its nonce) skips while it hasn't failed DEVICE_TRIES times itself
+  function locked(key, ip, account, device) {
     const now = Date.now(), f = fails.get(`${key}|${ip}`), n = netFails.get(netKey(ip)), a = account && accountFails.get(account)
     if (f?.until > now) throw wait(f.until - now, 'too many tries: paused for 15 minutes')
     if (n && now - n.since < NET_WINDOW && n.n >= NET_FAILS) throw wait(n.since + NET_WINDOW - now, 'too many failed tries from your network: try again later')
-    if (a?.until > now) throw wait(a.until - now, 'too many failed sign-ins for this account: try again in a little while')
+    if (a?.until > now && !(device && (a.devices.get(device) ?? 0) < DEVICE_TRIES))
+      throw wait(a.until - now, 'too many failed sign-ins for this account: try again in a little while')
   }
-  function failed(key, ip, account) {
+  function failed(key, ip, account, device) {
     const now = Date.now()
     // ponytail: in memory, pruned when big (O(n) then)
-    if (fails.size + netFails.size + accountFails.size > 10000) {
+    if (fails.size + netFails.size > 10000) {
       for (const [k, f] of fails) if (!(f.until > now)) fails.delete(k)
       for (const [k, f] of netFails) if (now - f.since >= NET_WINDOW) netFails.delete(k)
-      for (const [k, f] of accountFails) if (now - f.last >= ACCOUNT_FORGET) accountFails.delete(k)
     }
     const k = `${key}|${ip}`, f = fails.get(k)
     const count = f?.until && f.until <= now ? 1 : (f?.n ?? 0) + 1 // after a pause, counting starts again
@@ -335,8 +369,13 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     const nk = netKey(ip), n = netFails.get(nk)
     netFails.set(nk, n && now - n.since < NET_WINDOW ? { n: n.n + 1, since: n.since } : { n: 1, since: now })
     if (account) {
-      const a = accountFails.get(account), c = a && now - a.last < ACCOUNT_FORGET ? a.n + 1 : 1
-      accountFails.set(account, { n: c, last: now, until: c > ACCOUNT_FREE ? now + Math.min(ACCOUNT_MAX_WAIT, 1000 * 2 ** (c - ACCOUNT_FREE - 1)) : 0 })
+      const a = accountFails.get(account), fresh = !a || now - a.last >= ACCOUNT_FORGET, c = fresh ? 1 : a.n + 1
+      const devices = fresh ? new Map() : a.devices
+      if (device) devices.set(device, (devices.get(device) ?? 0) + 1)
+      accountFails.delete(account) // re-inserted last: the map's order is least recently failed first
+      accountFails.set(account, { n: c, last: now, devices,
+        until: c > ACCOUNT_FREE ? now + Math.min(ACCOUNT_MAX_WAIT, 1000 * 2 ** (c - ACCOUNT_FREE - 1)) : 0 })
+      if (accountFails.size > ACCOUNT_KEYS) accountFails.delete(accountFails.keys().next().value)
     }
   }
   function succeeded(key, ip, account) {
@@ -421,20 +460,21 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   async function login(req, res, send) {
     const ctx = req.ctx, b = await json(req)
     const name = oneLine(b.username).toLowerCase().slice(0, 64)
-    const u = users.find(x => x.username === name)
-    locked(name, ctx.ip, u?.username)
+    const u = users.find(x => x.username === name), device = deviceOf(req, ctx, name)
+    locked(name, ctx.ip, name, device) // `name`, not u?.username: an unknown name is counted and refused alike
     const usable = u?.enabled && u.method === 'password' && u.password
     const ok = await checkLimited(String(b.password ?? '').slice(0, MAX_PASSWORD), usable ? u.password : null) && usable
     if (!ok) {
-      failed(name, ctx.ip, u?.username)
+      failed(name, ctx.ip, name, device)
       // an unknown name isn't logged: it may be a password typed into the wrong field
       log.log(`sign-in failed: ${u ? `"${u.username}"` : 'an unknown username'} from ${ctx.ip}`)
       throw fail(401, 'wrong username or password')
     }
-    succeeded(name, ctx.ip, u.username)
+    succeeded(name, ctx.ip, name)
     log.log(`signed in: ${u.username} from ${ctx.ip}`)
     await lock(async () => { u.lastLogin = iso(); await saveUsers() })
     await startSession(res, ctx, u)
+    setDevice(res, ctx, u.username)
     return send(res, 200, { user: pub(u) })
   }
 
@@ -460,6 +500,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     })
     log.log(`first admin created: ${u.username} from ${ctx.ip}`)
     await startSession(res, ctx, u)
+    setDevice(res, ctx, u.username)
     return send(res, 201, { user: pub(u) })
   }
 
@@ -490,6 +531,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       return u
     })
     await endSessions(u.id)
+    accountFails.delete(u.username) // the documented way back in: the account's wait goes too
     log.log(`password reset with a recovery code: ${u.username} from ${ctx.ip}`)
     return send(res, 204, '', 'text/plain')
   }
@@ -556,6 +598,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
         return u
       })
       await endSessions(u.id)
+      accountFails.delete(u.username)
       log.log(`password reset: ${u.username} by ${who.username}`)
       return send(res, 204, '', 'text/plain')
     }
@@ -614,6 +657,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     /** After a restore: the restored accounts; every session ends. No users.xml (a backup from before accounts): setup mode. */
     async reload() {
       load()
+      deviceSecret = null // the Library was replaced: its key (a restore never brings one), or a new one
       sessions.clear()
       await persist()
     },

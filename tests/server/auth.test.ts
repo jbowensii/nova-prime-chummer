@@ -43,9 +43,11 @@ function call(base: string, method: string, path: string, { cookie = '', body, h
 }
 async function login(base: string, username: string, password: string, headers: Record<string, string> = {}) {
   const r = await call(base, 'POST', '/api/auth/login', { ...json({ username, password }), headers: { 'Content-Type': 'application/json', ...headers } })
-  const set = r.headers.get('set-cookie') ?? ''
+  const all = r.headers.getSetCookie(), set = all.find(c => /session=/.test(c)) ?? ''
+  const device = all.find(c => /device=/.test(c))?.split(';')[0] ?? ''
   if (set) secrets.add(set.split(';')[0].split('=')[1])
-  return { r, set, cookie: set.split(';')[0] }
+  if (device) secrets.add(device.split('=')[1])
+  return { r, set, cookie: set.split(';')[0], device, deviceSet: all.find(c => /device=/.test(c)) ?? '' }
 }
 const runner = (id: string, street: string) =>
   `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="${id}" streetName="${street}" metatype="ork" level="runner" updatedAt="2026-09-27"><build/></ca2:character>`
@@ -372,6 +374,58 @@ test('sign-in limits: 20 failures per network whatever the username (IPv6 by /64
   s.srv.close()
 })
 
+test('known devices: a browser that signed in skips its account’s wait until it fails itself; resets clear the wait', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player }, { trustProxy: '127.0.0.1' })
+  let ip = 0
+  const from = (extra: Record<string, string> = {}) => ({ 'X-Forwarded-For': `198.51.100.${++ip}`, ...extra })
+  const lockOut = async (name = 'player') => { for (let i = 0; i < 11; i++) await login(s.base, name, 'wrong-password', from()) }
+  const first = await login(s.base, 'player', PW.player, from())
+  expect(first.deviceSet).toMatch(/^ca2_device=[\w-]{22}\.[\w-]{43}; Path=\/; HttpOnly; SameSite=Lax; Max-Age=31536000$/)
+  const device = first.device, other = (await login(s.base, 'admin', PW.admin, from())).device
+  const https = await login(s.base, 'admin', PW.admin, from({ 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'app.example', Origin: 'https://app.example' }))
+  expect(https.deviceSet).toMatch(/^__Host-ca2_device=.*; Path=\/; .*; Secure$/)
+
+  await lockOut()
+  expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(429)
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: other }))).r.status).toBe(429) // another account's device
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: device.replace(/.$/, c => c === 'A' ? 'B' : 'A') }))).r.status).toBe(429) // forged
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: device }))).r.status).toBe(200) // and that clears the wait
+  expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(200)
+
+  // a device that keeps failing loses its pass for the rest of the wait
+  await lockOut()
+  for (let i = 0; i < 5; i++) expect((await login(s.base, 'player', 'wrong-password', from({ Cookie: device }))).r.status).toBe(401)
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: device }))).r.status).toBe(429)
+
+  // an admin's reset or a recovery code clears the wait
+  const adminCookie = (await login(s.base, 'admin', PW.admin, from())).cookie
+  const users = await (await call(s.base, 'GET', '/api/users', { cookie: adminCookie })).json()
+  const pid = users.find((u: { username: string }) => u.username === 'player').id
+  expect((await call(s.base, 'POST', `/api/users/${pid}/reset-password`, { cookie: adminCookie, ...json({ password: 'player-password-5' }) })).status).toBe(204)
+  expect((await login(s.base, 'player', 'player-password-5', from())).r.status).toBe(200)
+  await lockOut()
+  const code = await issueReset(s.lib, 'player')
+  secrets.add(code)
+  expect((await call(s.base, 'POST', '/api/setup/reset', json({ username: 'player', code, password: 'player-password-6' }))).status).toBe(204)
+  expect((await login(s.base, 'player', 'player-password-6', from())).r.status).toBe(200)
+  await valid(join(s.lib, '.config', 'device-key.xml'))
+  s.srv.close()
+})
+
+test('the account wait counts any typed name: an unknown one is refused exactly like a real one', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { player: PW.player }, { trustProxy: '127.0.0.1' })
+  let ip = 0
+  const answers = []
+  for (const name of ['player', 'zzzed']) {
+    for (let i = 0; i < 11; i++) await login(s.base, name, 'wrong-password', { 'X-Forwarded-For': `203.0.113.${++ip}` })
+    const r = (await login(s.base, name, 'wrong-password', { 'X-Forwarded-For': `203.0.113.${++ip}` })).r
+    answers.push([r.status, await r.json(), r.headers.get('retry-after')])
+  }
+  expect(answers[0]).toEqual([429, { error: 'too many failed sign-ins for this account: try again in a little while' }, '1'])
+  expect(answers[1]).toEqual(answers[0])
+  s.srv.close()
+})
+
 test('password hashing: a few at a time, a short queue, the rest refused before hashing', async () => {
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1' })
   const rs = await Promise.all(Array.from({ length: 40 }, (_, i) => login(s.base, `nobody${i}`, 'wrong-password', { 'X-Forwarded-For': `198.51.100.${i}` })))
@@ -416,7 +470,7 @@ test('sessions: at most 20 per account (the oldest goes); files with secrets are
   expect((await call(s.base, 'GET', '/api/users', { cookie: cookies[20] })).status).toBe(200)
   await issueReset(s.lib, 'admin')
   if (process.platform !== 'win32')
-    for (const f of ['users.xml', 'sessions.xml', 'reset.xml']) expect(statSync(join(s.lib, '.config', f)).mode & 0o777, f).toBe(0o600)
+    for (const f of ['users.xml', 'sessions.xml', 'reset.xml', 'device-key.xml']) expect(statSync(join(s.lib, '.config', f)).mode & 0o777, f).toBe(0o600)
   s.srv.close()
 })
 
