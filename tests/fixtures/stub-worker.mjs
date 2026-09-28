@@ -3,7 +3,7 @@
 // server's routes and the app: status.xml, import.xml, a one-entry overlay listed in
 // custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml, and the edits layer
 // (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
-// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr.
+// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s.
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
 // anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts).
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -37,6 +37,7 @@ const overlay = (custom, src, name, entries) => {
 
 if (cmd === 'run') {
   const pdf = readFileSync(join(target, 'original.pdf'), 'latin1')
+  if (pdf.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500)
   if (pdf.includes('crash')) {
     process.stderr.write('Traceback: boom, key sk-ant-SECRETSTUBKEY123\n')
     process.exit(1)
@@ -158,7 +159,13 @@ if (cmd === 'run') {
     process.stderr.write('this isn’t a readable zip file (stub)\n')
     process.exit(3)
   }
-  if (cmd === 'backup') zip(flag('--out'), args.includes('--keys'))
+  if (cmd === 'backup') { // a partial temp next to the zip for 300 ms, like the real backup's mkstemp .tmp
+    const tmp = join(dirname(flag('--out')), '.backup.stub.tmp')
+    writeFileSync(tmp, 'partial')
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300)
+    zip(flag('--out'), args.includes('--keys'))
+    rmSync(tmp)
+  }
   else if (args.includes('--check')) {
     const z = read(flag('--check')), n = Object.values(z.folders).reduce((a, b) => a + b, 0)
     console.log(`<backup format="1" app="${z.app}" created="${z.created}" keys="${z.keys ? 'yes' : 'no'}" files="${n}" bytes="0">${
