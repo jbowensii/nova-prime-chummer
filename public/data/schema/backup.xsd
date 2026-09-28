@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- backup.xml: the manifest at the root of a backup zip (importer/backup.py). app: the app version that wrote it;
+     keys: whether library/.config/ai-keys.xml is inside; files/bytes: totals, and per folder below. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="backup">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="folder" minOccurs="3" maxOccurs="3">
+          <xs:complexType>
+            <xs:attribute name="name" use="required">
+              <xs:simpleType><xs:restriction base="xs:string">
+                <xs:enumeration value="characters"/><xs:enumeration value="custom"/><xs:enumeration value="library"/>
+              </xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="files" type="xs:nonNegativeInteger" use="required"/>
+            <xs:attribute name="bytes" type="xs:nonNegativeInteger" use="required"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="format" type="xs:string" fixed="1" use="required"/>
+      <xs:attribute name="app" type="xs:string" use="required"/>
+      <xs:attribute name="created" type="xs:dateTime" use="required"/>
+      <xs:attribute name="keys" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="yes"/><xs:enumeration value="no"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="files" type="xs:nonNegativeInteger" use="required"/>
+      <xs:attribute name="bytes" type="xs:nonNegativeInteger" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
