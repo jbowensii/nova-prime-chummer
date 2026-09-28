@@ -21,7 +21,7 @@ beforeAll(() => new Promise<void>(ok => {
 }))
 afterAll(() => srv.close())
 
-type Book = { id: string; file: string; state: string; message: string; source?: string; counts: Record<string, number>; busy: boolean }
+type Book = { id: string; file: string; state: string; message: string; source?: string; counts: Record<string, number>; busy: boolean; review?: string }
 const list = async (): Promise<Book[]> => (await fetch(`${base}/api/books`)).json()
 async function waitFor(id: string, state: string): Promise<Book | undefined> {
   for (let i = 0; i < 200; i++) {
@@ -143,12 +143,21 @@ test('AI proposals: dry run, propose, review, apply', async () => {
   const accepted = review.replace('state="pending"', 'state="accepted"')
   expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: accepted })).status).toBe(204)
   expect(readFileSync(join(library, id, 'review.xml'), 'utf8')).toContain('state="accepted"')
+  expect((await list()).find(b => b.id === id)).toMatchObject({ review: 'done' })
+  expect((await fetch(`${base}/api/books/${id}/ai`, { method: 'POST' })).status).toBe(202) // finished proposals are kept
+  await waitFor(id, 'review')
+  expect(readFileSync(join(library, id, 'review.xml'), 'utf8')).toContain('state="accepted"')
+  expect((await fetch(`${base}/api/books/${id}/ai?fresh=1`, { method: 'POST' })).status).toBe(202) // unless asked
+  await waitFor(id, 'review')
+  expect(readFileSync(join(library, id, 'review.xml'), 'utf8')).not.toContain('state="accepted"')
+  expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: accepted })).status).toBe(204)
   expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: '<!DOCTYPE x [<!ENTITY a "b">]><review/>' })).status).toBe(400)
   expect((await fetch(`${base}/api/review/${id}?apply=1&source=../x&name=A&canon=false`, { method: 'PUT', body: accepted })).status).toBe(400)
   const r = await fetch(`${base}/api/review/${id}?apply=1&source=MYBOOK&name=My%20Book&canon=false`, { method: 'PUT', body: accepted })
   expect(r.status).toBe(202)
   expect(await waitFor(id, 'done')).toMatchObject({ source: 'MYBOOK' })
   expect(existsSync(join(custom, 'imported', 'mybook', 'amps.xml'))).toBe(true)
+  expect((await fetch(`${base}/api/books/${id}/reimport`, { method: 'POST' })).status).toBe(409) // would drop the applied review
 })
 
 test('re-import clears and rebuilds; delete removes outputs, and with files=1 the book', async () => {
