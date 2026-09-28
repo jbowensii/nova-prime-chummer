@@ -5,5 +5,7 @@
   <file href="test/items.xml"/>
   <file href="test/rules.xml"/>
   <file href="test2/amps.xml"/>
+  <file href="test2/items.xml"/>
   <file href="testc/amps.xml"/>
+  <file href="testc/items.xml"/>
 </overlays>
