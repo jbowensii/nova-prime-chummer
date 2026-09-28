@@ -53,7 +53,7 @@ const VERSION = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '' }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '', accountKeys }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
   let auth = null
@@ -123,7 +123,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await rmdir(folder(u)).catch(() => {})
     },
   }
-  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners })
+  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys }) // accountKeys: tests
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-cache' })
