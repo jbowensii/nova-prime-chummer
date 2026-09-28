@@ -7,6 +7,7 @@
         <xs:simpleType><xs:restriction base="xs:string">
           <xs:enumeration value="converting"/><xs:enumeration value="identifying"/><xs:enumeration value="extracting"/>
           <xs:enumeration value="done"/><xs:enumeration value="failed"/><xs:enumeration value="needs-ai"/>
+          <xs:enumeration value="proposing"/><xs:enumeration value="review"/>
         </xs:restriction></xs:simpleType>
       </xs:attribute>
       <xs:attribute name="updated" type="xs:dateTime" use="required"/>
