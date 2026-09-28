@@ -5,7 +5,7 @@ import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
-import { AccountMenu } from './auth'
+import { AccountMenu, sessionEnded } from './auth'
 import { SettingsButton } from './settings'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
@@ -52,7 +52,13 @@ export function sendFile(path: string, file: File, headers: Record<string, strin
     x.open('POST', `./api/${path}`)
     for (const [k, v] of Object.entries(headers)) x.setRequestHeader(k, v)
     x.upload.onprogress = e => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100))
-    x.onload = () => x.status < 300 ? ok(x.responseText) : fail(Object.assign(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()), { status: x.status }))
+    x.onload = () => {
+      if (x.status === 401) { // the sign-in form comes up over the page
+        sessionEnded()
+        return fail(Object.assign(new Error('you were signed out: sign in again, then send it again'), { status: 401 }))
+      }
+      return x.status < 300 ? ok(x.responseText) : fail(Object.assign(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()), { status: x.status }))
+    }
     x.onerror = () => fail(new Error(UNREACHABLE))
     x.send(file)
   })
@@ -193,7 +199,7 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
         await sendFile('books', f, { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(f.name) }, pct => setUploading({ name: f.name, pct }))
         setLive(`Uploaded ${f.name}`)
       }
-      catch (e) { setMsg(`Couldn’t upload ${f.name}: ${(e as Error).message}.${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : ' Try again.'}`) }
+      catch (e) { setMsg(`Couldn’t upload ${f.name}: ${(e as Error).message}.${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : (e as { status?: number }).status === 401 ? '' : ' Try again.'}`) }
     }
     setUploading(null)
     void refresh()

@@ -46,8 +46,23 @@ export async function fetchMe(): Promise<{ user: User | null; setup: boolean }> 
 }
 
 // Every request goes through fetch: a 401 from /api or /custom (other than a wrong password at sign-in) means the session
-// ended (expired, signed out elsewhere, disabled). ponytail: wraps window.fetch once; XHR uploads just show their error.
+// ended (expired, signed out elsewhere, disabled). ponytail: wraps window.fetch once; XHR uploads call sessionEnded().
 let expired: (() => void) | null = null
+/** held: no session to save under. Set the moment a 401 is seen (or on sign-out); only the same account signing back in
+ *  clears it, so an unsaved change is never sent under someone else's session. */
+export const session = { held: false }
+/** Runner saves in flight: sign-out waits for them before ending the session. */
+const saving = new Set<Promise<unknown>>()
+export function track<T>(p: Promise<T>): Promise<T> {
+  saving.add(p)
+  void p.finally(() => saving.delete(p)).catch(() => {})
+  return p
+}
+export function sessionEnded() {
+  if (!expired) return
+  session.held = true
+  expired()
+}
 export function onSessionEnd(fn: (() => void) | null) {
   expired = fn
   const w = window as typeof window & { ca2Fetch?: typeof fetch }
@@ -57,17 +72,20 @@ export function onSessionEnd(fn: (() => void) | null) {
     const r = await orig(input, init)
     if (r.status === 401 && expired) {
       const path = new URL(r.url || String(input instanceof Request ? input.url : input), location.href).pathname
-      if (/\/(api|custom)\//.test(path) && !path.endsWith('/api/auth/login')) expired()
+      if (/\/(api|custom)\//.test(path) && !path.endsWith('/api/auth/login')) sessionEnded()
     }
     return r
   }
 }
 
-/** Sign out: leave the runner first (its last change is sent), end the session, then reload so nothing stays in memory. */
+/** Sign out: the open runner sends its last change and every save finishes, then the session ends (nothing is sent after
+ *  it), then a reload so nothing stays in memory. */
 export async function signOut() {
-  location.hash = '#/'
-  await new Promise(ok => setTimeout(ok, 100))
+  dispatchEvent(new Event('ca2-leaving'))
+  while (saving.size) await Promise.allSettled([...saving])
+  session.held = true
   await fetch('./api/auth/logout', { method: 'POST' }).catch(() => {})
+  location.hash = '#/'
   location.reload()
 }
 

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { loadCatalog } from '../engine'
 import { detectRepo, migrateBrowserToServer, RepoContext, type Repo } from './repo'
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'
-import { AccountMenu, fetchMe, isAdmin, Me, onSessionEnd, useMe, type User } from './auth'
+import { AccountMenu, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
@@ -74,6 +74,32 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   )
 }
 
+/** The sign-in form over everything, open dialogs included: a modal <dialog> shown last is the top of the top layer and
+ *  the only thing not inert. It can't be dismissed (Escape, or Chrome's close on a repeated Escape, opens it again). */
+function Over({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const d = ref.current
+    if (d && !d.open) { d.showModal(); d.querySelector('input')?.focus() } // React's autoFocus ran while it was still closed
+  }, [])
+  return <dialog ref={ref} className="gate-over" aria-label="Sign in again" onCancel={e => e.preventDefault()}
+    onClose={() => ref.current?.isConnected && ref.current.showModal()}>{children}</dialog>
+}
+
+/** A new page (not a tab switch inside the runner): focus its title, so a screen reader starts there. */
+function useFocusTitle(key: string) {
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) { first.current = false; return }
+    const t = setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) return // the page put focus somewhere itself
+      const h = document.querySelector<HTMLElement>('main h1')
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }) }
+    }, 0)
+    return () => clearTimeout(t)
+  }, [key])
+}
+
 export default function App() {
   const [route, setRoute] = useState(parseHash)
   const [repo, setRepo] = useState<Repo | null>(null)
@@ -91,6 +117,7 @@ export default function App() {
     return () => removeEventListener('hashchange', on)
   }, [])
   const user = me?.user
+  useFocusTitle(`${route[0] ?? ''}/${route[0] === 'c' ? route[1] : ''}/${me?.setup}/${!!user}`)
   // a session that ends while the app is open: the sign-in form goes over the page, which keeps its state (unsaved
   // runner edits are sent again once signed back in); someone else signing in there starts afresh
   useEffect(() => {
@@ -104,7 +131,8 @@ export default function App() {
   if (repo.mode === 'server' && !user) return <SignIn onSignedIn={u => setMe({ user: u, setup: false })} />
 
   const back = (u: User) => {
-    if (u.id !== user?.id) return location.reload()
+    if (u.id !== user?.id) return location.reload() // saving stays held: the old account's changes are never sent
+    session.held = false
     setMe({ user: u, setup: false })
     setEnded(false)
     dispatchEvent(new Event('ca2-signed-in'))
@@ -112,7 +140,8 @@ export default function App() {
   return (
     <Me.Provider value={user ?? null}>
       <div inert={ended} aria-hidden={ended || undefined}><Main repo={repo} route={route} /></div>
-      {ended && <div className="gate-over"><SignIn onSignedIn={back} note="You were signed out (the session ended or was ended elsewhere). Sign in again to carry on; nothing on this page is lost." /></div>}
+      {ended && <Over><SignIn onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to
+        carry on, and unsaved changes on this page are saved then. <b>Signing in as someone else discards this page’s unsaved changes.</b></>} /></Over>}
     </Me.Provider>
   )
 }

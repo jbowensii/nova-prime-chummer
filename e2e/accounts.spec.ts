@@ -7,12 +7,12 @@ import { createServer } from '../server/server.mjs'
 // Accounts end to end, on a server of its own that starts with no accounts (the shared e2e server already has its admin):
 // setup makes the first admin, who adds a player and an editor; each role sees what it should. The tests run in order and
 // build on each other; every one starts signed out.
-const PORT = 4190 // 127.0.0.1 only: a dev tool may hold the same port on ::1, where "localhost" would go
 const PW = { ada: 'ada-password-1', pat: 'pat-password-1', eve: 'eve-password-1', pat2: 'pat-password-2' }
-let server: ReturnType<typeof createServer>, code = ''
+let server: ReturnType<typeof createServer>, code = '', base = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: `http://127.0.0.1:${PORT}/`, storageState: { cookies: [], origins: [] } })
+// a free port on 127.0.0.1 (a dev tool may hold one on ::1, where "localhost" would go), known once beforeAll has run
+test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-accounts-'))
@@ -23,7 +23,8 @@ test.beforeAll(async () => {
     server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
       python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   } finally { console.log = log }
-  await new Promise<void>((ok, fail) => server.once('error', fail).listen(PORT, '127.0.0.1', ok))
+  await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
+  base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
 test.afterAll(() => { server.stopJobs(); server.close() })
 
@@ -45,11 +46,19 @@ async function newRunner(page: Page, name: string) {
 }
 
 const menu = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
+const PHONE = { width: 390, height: 844 }
+/** No sideways scrolling of the page itself. */
+async function fits(page: Page, what: string) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${what} scrolls sideways`).toBeLessThanOrEqual(0)
+}
 
 test('setup makes the first admin, who is signed in', async ({ page }) => {
   expect(code).toMatch(/^\w{4}-\w{4}-\w{4}$/)
+  await page.setViewportSize(PHONE)
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Set up the first admin' })).toBeVisible()
+  await fits(page, 'the setup page')
+  await page.setViewportSize({ width: 1400, height: 900 })
   await page.getByLabel('Setup code').fill('AAAA-BBBB-CCCC')
   await page.getByLabel('Your name').fill('Ada Admin')
   await page.getByLabel('Username').fill('ada')
@@ -131,12 +140,17 @@ test('an editor edits an entry and reads the player’s runner read-only', async
   await expect(page.getByRole('heading', { name: 'My runners' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pat Player’s runners' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ada Admin’s runners' })).toBeVisible()
+  const puts: string[] = []
+  page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()) })
   await page.getByRole('link', { name: 'Pat Runner' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Read only' })).toContainText('Read only — Pat Player’s runner.')
   await expect(page.getByLabel('Street name')).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0)
   await page.getByRole('link', { name: 'Print', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
+  await page.goto('/') // leaving flushes an editor's last change: someone else's runner has none
+  await expect(page.getByRole('heading', { name: 'My runners' })).toBeVisible()
+  expect(puts).toEqual([])
 
   await page.goto('/#/rules')
   const rule = page.locator('.rule-list > div', { hasText: 'Risk Reduction (spec)' })
@@ -158,6 +172,9 @@ test('change password, sign out, sign in with the new one', async ({ page }) => 
   await d.getByRole('button', { name: 'Change password' }).click()
   await expect(d.getByRole('status')).toContainText('Password changed.')
   await d.getByRole('button', { name: 'Done' }).click()
+  // signing out straight after a change: it is saved before the session ends
+  await page.getByRole('link', { name: 'Pat Runner' }).click()
+  await page.getByLabel('Street name').fill('Pat Runner One')
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
@@ -167,17 +184,18 @@ test('change password, sign out, sign in with the new one', async ({ page }) => 
   await expect(page.getByRole('alert')).toHaveText('Wrong username or password.')
   await page.getByLabel('Password', { exact: true }).fill(PW.pat2)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByRole('link', { name: 'Pat Runner' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Pat Runner One' })).toBeVisible()
 })
 
 test('an ended session asks to sign in again over the page and keeps the unsaved change', async ({ page, context }) => {
   await signIn(page, 'pat', PW.pat2)
-  await page.getByRole('link', { name: 'Pat Runner' }).click()
-  await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner')
+  await page.getByRole('link', { name: 'Pat Runner One' }).click()
+  await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner One')
   await context.clearCookies()
   await page.getByLabel('Street name').fill('Pat Runner Two')
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByText('You were signed out')).toBeVisible()
+  await expect(page.getByText('Signing in as someone else discards this page’s unsaved changes.')).toBeVisible()
   const saved = page.waitForResponse(r => r.request().method() === 'PUT' && !!r.request().postData()?.includes('streetName="Pat Runner Two"') && r.ok())
   await page.getByLabel('Username').fill('pat')
   await page.getByLabel('Password', { exact: true }).fill(PW.pat2)
@@ -185,6 +203,85 @@ test('an ended session asks to sign in again over the page and keeps the unsaved
   await saved
   await expect(page.getByRole('heading', { name: 'Sign in' })).toHaveCount(0)
   await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
+})
+
+test('someone else signing in over the page: the unsaved change is never sent', async ({ page, context }) => {
+  await signIn(page, 'pat', PW.pat2)
+  await page.getByRole('link', { name: 'Pat Runner Two' }).click()
+  await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
+  await context.clearCookies()
+  const sent: string[] = []
+  page.on('request', r => { if (r.method() === 'PUT' && r.postData()?.includes('Pat Unsaved')) sent.push(r.url()) })
+  await page.getByLabel('Street name').fill('Pat Unsaved')
+  await expect(page.getByText('Signing in as someone else discards this page’s unsaved changes.')).toBeVisible()
+  expect(sent).toHaveLength(1) // the one that found the session gone (401)
+  await page.getByLabel('Username').fill('ada')
+  await page.getByLabel('Password', { exact: true }).fill(PW.ada)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  // a fresh page, as Ada: Pat's runner, read-only, as it was saved
+  await expect(page.getByText('Read only — Pat Player’s runner.')).toBeVisible()
+  await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
+  await page.waitForTimeout(500)
+  expect(sent).toHaveLength(1)
+})
+
+test('the sign-in form comes up over an open dialog; keyboard and phone both get through', async ({ page, context }) => {
+  for (const size of [{ width: 1400, height: 900 }, PHONE]) {
+    await page.setViewportSize(size)
+    await context.clearCookies() // signed out from the round before
+    await signIn(page, 'pat', PW.pat2)
+    await menu(page, 'Pat Player').click()
+    await page.getByRole('button', { name: 'Change password' }).click()
+    const d = page.getByRole('dialog', { name: 'Change password' })
+    await d.getByLabel('Current password').fill(PW.pat2)
+    await d.getByLabel('New password', { exact: true }).fill('pat-password-3')
+    await d.getByLabel('New password again').fill('pat-password-3')
+    await context.clearCookies()
+    await d.getByRole('button', { name: 'Change password' }).click()
+    const over = page.getByRole('dialog', { name: 'Sign in again' })
+    await expect(over.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+    await expect(over.getByLabel('Username')).toBeFocused()
+    if (size === PHONE) {
+      await fits(page, 'the sign-in form over the page')
+      await page.keyboard.press('Escape') // it can't be dismissed
+      await expect(over).toBeVisible()
+      await over.getByLabel('Username').click()
+      await over.getByLabel('Username').fill('pat')
+      await over.getByLabel('Password', { exact: true }).fill(PW.pat2)
+      await over.getByRole('button', { name: 'Sign in' }).click()
+    } else {
+      await page.keyboard.type('pat')
+      await page.keyboard.press('Tab')
+      await page.keyboard.type(PW.pat2)
+      await page.keyboard.press('Enter')
+    }
+    await expect(over).toHaveCount(0)
+    await expect(d.getByRole('alert')).toBeVisible() // the refused change is still there to try again
+    await d.getByRole('button', { name: 'Cancel' }).click()
+    await expect(d).toHaveCount(0)
+  }
+})
+
+test('phone width: the accounts screens don’t scroll sideways', async ({ page }) => {
+  await page.setViewportSize(PHONE)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  await fits(page, 'sign-in')
+  await page.goto('/#/setup/reset')
+  await expect(page.getByRole('heading', { name: 'Reset a password' })).toBeVisible()
+  await fits(page, 'recovery')
+  await signIn(page, 'ada', PW.ada)
+  await menu(page, 'Ada Admin').click()
+  await fits(page, 'the account menu')
+  await page.getByRole('link', { name: 'Users' }).click()
+  await expect(page.getByRole('cell', { name: 'Pat Player', exact: true })).toBeVisible()
+  await fits(page, 'Users')
+  await page.getByRole('button', { name: 'Edit Pat Player' }).click()
+  await fits(page, 'the edit dialog')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Pat Runner Two' }).click()
+  await expect(page.getByText('Read only —')).toBeVisible()
+  await fits(page, 'a read-only runner')
 })
 
 test('too many wrong passwords pause sign-in', async ({ page }) => {

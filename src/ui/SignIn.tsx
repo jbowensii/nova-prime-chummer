@@ -14,14 +14,14 @@ export function GatePage({ title, intro, err, onSubmit, busy, action, children, 
       <form className="stack" onSubmit={e => { e.preventDefault(); if (!busy) onSubmit() }}>
         {children}
         {err && <p className="err" role="alert">{err}</p>}
-        <p><button className="btn primary" aria-disabled={busy}>{busy ? 'One moment…' : action}</button></p>
+        <div><button className="btn primary" aria-disabled={busy}>{busy ? 'One moment…' : action}</button></div>
       </form>
       {after}
     </main>
   )
 }
 
-export function SignIn({ onSignedIn, note }: { onSignedIn: (u: User) => void; note?: string }) {
+export function SignIn({ onSignedIn, note }: { onSignedIn: (u: User) => void; note?: ReactNode }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
   const submit = async () => {
@@ -37,7 +37,8 @@ export function SignIn({ onSignedIn, note }: { onSignedIn: (u: User) => void; no
       intro={note && <p className="banner" role="status">{note}</p>}
       after={<>
         {/* Task 5: "Sign in with Authelia" goes here when Settings → Sign-in has an issuer. */}
-        <p className="muted">Forgot your password? Ask the admin to reset it, or use a <a href="#/setup/reset">recovery code</a>.</p>
+        <p className="muted">Forgot your password? Ask the admin to reset it, or use a <a href="#/setup/reset"
+          {...note ? { target: '_blank', rel: 'noopener' } : {}}>recovery code</a>{note ? ' (opens a new tab, so this page stays as it is)' : ''}.</p>
       </>}>
       <label>Username<input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none"
         spellCheck={false} required autoFocus /></label>
@@ -61,7 +62,7 @@ export function Recover() {
       <div><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a></div>
       <h1>Password set</h1>
       <p role="status">Your new password works now, and every other device was signed out.</p>
-      <p><a className="btn primary" href="#/" autoFocus>Sign in</a></p>
+      <div><a className="btn primary" href="#/" autoFocus>Sign in</a></div>
     </main>
   )
   return (
