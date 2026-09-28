@@ -31,7 +31,7 @@ export interface TemplateItem { kind: 'gear' | 'weapon' | 'armor'; specialist?: 
   armor?: number; dv?: string; ranges?: string }
 /** mod: an add-on applied to an existing amp of `type` (ammo, accessories, vehicle mods, grades) */
 export interface AmpTemplate extends Ref { name: string; type: string; item?: TemplateItem; mod?: boolean;
-  effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string }
+  effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string; edited?: boolean }
 export interface VehicleBase extends Ref { name: string; pilot: number; body: number;
   handling: number; speed: number; flyingSpeed?: number; armor: number; mount: string }
 export interface Package extends Ref { name: string; level: string; archetype: string;
@@ -40,7 +40,7 @@ export interface Package extends Ref { name: string; level: string; archetype: s
   equipment: number; spells: number }
 export type ItemKind = 'gear' | 'weapon' | 'armor' | 'spell' | 'complex-form';
 export interface Item extends Ref { name: string; kind: ItemKind; specialist?: boolean;
-  armor?: number; dv?: string; ranges?: string; category?: string; text: string }
+  armor?: number; dv?: string; ranges?: string; category?: string; text: string; edited?: boolean }
 export interface Lifestyle extends Ref { name: string; perRun: number; text: string }
 /** a book or document the data comes from; canon = the game's official rules (sources.xml) */
 /** origin: which sources file defined it last (shipped public/data, generated custom/imported, the user's custom).
@@ -48,7 +48,7 @@ export interface Lifestyle extends Ref { name: string; perRun: number; text: str
 export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string;
   file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user' }
 /** rules reference entry (quick-reference sheets); effects = amp effects it explains */
-export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string }
+export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string; edited?: boolean }
 export interface LoadError { file: string; line?: number; message: string }
 export interface Catalog {
   levels: Map<string, Level>; metatypes: Map<string, Metatype>;
@@ -57,6 +57,8 @@ export interface Catalog {
   amps: Map<string, AmpTemplate>; vehicles: Map<string, VehicleBase>;
   packages: Map<string, Package>; items: Map<string, Item>; lifestyles: Map<string, Lifestyle>;
   sources: Map<string, Source>; rules: Map<string, Rule>;
+  /** the entries the edits layer (custom/edits/edits.xml) replaced, by id; the replacements carry edited: true */
+  original: { amps: Map<string, AmpTemplate>; items: Map<string, Item>; rules: Map<string, Rule> };
   files: { file: string; kind: string; entries: number; overlay: boolean }[];
   errors: LoadError[];
 }

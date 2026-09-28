@@ -103,7 +103,7 @@ function stubFetch(extra: Record<string, string>, offline?: string) {
   return { fetched, restore: () => { globalThis.fetch = real } }
 }
 
-test('loadCatalog fetches data, sources, imported files, texts, then house rules, in that order', async () => {
+test('loadCatalog fetches data, sources, imported files, texts, edits, then house rules, in that order', async () => {
   const extra: Record<string, string> = {
     'custom/sources.xml': `<ca2:data ${NS} kind="sources" version="1"><source id="HOUSE" publisher="Me" canon="false" texts="texts/house.xml"><name>House</name></source></ca2:data>`,
     'custom/texts/house.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="amps" id="test.rush">Fast.</text></ca2:data>`,
@@ -123,7 +123,8 @@ test('loadCatalog fetches data, sources, imported files, texts, then house rules
     expect(at('custom/imported/testc/amps.xml')).toBeGreaterThan(at('custom/imported/index.xml'))
     expect(at('custom/texts/house.xml')).toBeGreaterThan(at('custom/imported/testc/items.xml'))
     expect(at('custom/house.xml')).toBeGreaterThan(at('custom/texts/house.xml'))
-    expect(c.files.map(f => f.file).slice(-3)).toEqual(['custom/imported/testc/items.xml', 'custom/texts/house.xml', 'custom/house.xml'])
+    expect(c.files.map(f => f.file).slice(-6)).toEqual(['custom/imported/testc/items.xml', 'custom/texts/house.xml',
+      'custom/edits/sources.xml', 'custom/edits/edits.xml', 'custom/edits/texts.xml', 'custom/house.xml'])
   } finally { restore() }
 })
 
