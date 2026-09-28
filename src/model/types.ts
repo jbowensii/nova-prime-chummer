@@ -43,7 +43,10 @@ export interface Item extends Ref { name: string; kind: ItemKind; specialist?: b
   armor?: number; dv?: string; ranges?: string; category?: string; text: string }
 export interface Lifestyle extends Ref { name: string; perRun: number; text: string }
 /** a book or document the data comes from; canon = the game's official rules (sources.xml) */
-export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string }
+/** origin: which sources file defined it last (shipped public/data, generated custom/imported, the user's custom).
+ * Imported sources also carry the uploaded file name(s) ("; "-separated), SHA-256(s) (space-separated) and import date. */
+export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string;
+  file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user' }
 /** rules reference entry (quick-reference sheets); effects = amp effects it explains */
 export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string }
 export interface LoadError { file: string; line?: number; message: string }

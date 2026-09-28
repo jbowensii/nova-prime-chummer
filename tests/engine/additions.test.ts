@@ -63,7 +63,7 @@ test('implant grades change Essence (DHSA p.29)', () => {
 
 test('mods add their printed rating, and their effects need no GM approval', () => {
   const deck = amp('k', 'cyberdeck', [])
-  const filter = cat.amps.get('static-shroud')!
+  const filter = cat.amps.get('test.static-shroud')!
   expect(filter.mod).toBe(true)
   const withFilter = applyMod(deck, filter)
   expect(ampRating(cat, withFilter, first) - ampRating(cat, deck, first)).toBe(filter.printedRating)
@@ -78,6 +78,6 @@ test('lifestyles load with their per-run adjustments (CRB p.165)', () => {
 })
 
 test('catalog entries cite their source and page', () => {
-  expect(cat.amps.get('rush')).toMatchObject({ source: 'TEST', page: 8 })
-  expect(cat.amps.get('rush-c')).toMatchObject({ source: 'TESTC', page: 8 })
+  expect(cat.amps.get('test.rush')).toMatchObject({ source: 'TEST', page: 8 })
+  expect(cat.amps.get('testc.rush')).toMatchObject({ source: 'TESTC', page: 8 })
 })

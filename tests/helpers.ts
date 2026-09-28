@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildCatalog, type SourceFile } from '../src/engine/load'
+import { buildCatalog, collectFiles, type SourceFile } from '../src/engine/load'
 import type { Catalog, Character } from '../src/model/types'
 
 const dir = (d: string, overlay: boolean): SourceFile[] => readdirSync(d).filter(f => f.endsWith('.xml'))
@@ -13,13 +13,27 @@ export const BOOK_CATALOG_FILES = ['amps.xml', 'spells.xml', 'complexforms.xml',
  * still want the real book catalogs while they exist in public/data). */
 export const base: SourceFile[] = dir('public/data', false)
 
-/** The made-up test catalog (tests/fixtures/mini), as an overlay for buildCatalog. */
-export const mini: SourceFile[] = dir('tests/fixtures/mini', true)
+/** Every file loadCatalog would load from public/data (book catalogs left out) and a custom root laid out
+ * as the app's custom/ folder (imported/index.xml, imported/sources.xml, sources.xml, texts/, index.xml),
+ * in the same order. Missing data files are the removed book catalogs; a listed file missing is an error. */
+export async function loadDir(customRoot: string): Promise<SourceFile[]> {
+  const read = (p: string) => existsSync(p) ? readFileSync(p, 'utf8') : null
+  const { files, missing } = await collectFiles(async path => path.startsWith('data/')
+    ? (BOOK_CATALOG_FILES.includes(path.slice(5)) ? null : read(join('public', path)))
+    : read(join(customRoot, path.replace(/^custom\//, ''))))
+  const bad = missing.filter(m => m.startsWith('custom/'))
+  if (bad.length) throw new Error(`${customRoot}: listed but missing: ${bad.join(', ')}`)
+  return files
+}
+
+/** The made-up test catalog (tests/fixtures/mini/custom), laid out as imported books with scoped ids. */
+export const MINI = 'tests/fixtures/mini/custom'
 
 /** The engine catalog: shipped mechanics (levels, skills, pricing, amp types/effects, weapons,
- * armor, lifestyles, sources...) plus the made-up test catalog. Never the book catalogs, so
+ * armor, lifestyles, sources...) plus the made-up imported books. Never the book catalogs, so
  * engine tests keep working after they're removed. */
-export const cat: Catalog = buildCatalog([...base.filter(f => !BOOK_CATALOG_FILES.includes(f.file)), ...mini])
+export const catFiles: SourceFile[] = await loadDir(MINI)
+export const cat: Catalog = buildCatalog(catFiles)
 
 /** Where the owner's private book imports live: BOOKS_DIR, else the oracle captured by /task-1
  * before public/data's book catalogs are touched. Same flat layout as public/data + a samples/ dir. */

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test catalog: the canon book TESTC prints its own "Rush" (a duplicate of TEST's, kept). -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">
+  <amp id="testc.rush" type="equipment" printedRating="3" source="TESTC" page="8"><name>Rush (Equipment)</name><item kind="gear"/><effect ref="init-1"/><effect ref="init-2"/><effect ref="negative" value="2" note="book drawback"/><narrative></narrative></amp>
+</ca2:data>
