@@ -21,6 +21,9 @@ configures with their own API key, followed by a review.
 | Fresh install | Rules engine only. No book catalogs, descriptions or samples. |
 | When data goes live | Recipe imports: at once, with a report. AI imports: after review. |
 | PDF library | pdfplumber (MIT) on pdfminer.six (MIT), pypdfium2 (Apache-2.0/BSD). No AGPL or GPL components. Optional OCR with Tesseract (Apache-2.0). |
+| Settings and keys | Always XML. API keys in their own file; every set of user-configurable settings in its own file, separate from the keys. |
+| Duplicate entries | Two books defining the same thing are both kept and both listed. Canon vs non-canon shows as the badge; when both have the same status, each is labeled with its book. |
+| Where an entry comes from | Every entry carries `source` + `page`. The source resolves to the book's full title, and for imports to the uploaded file's name and checksum. Shown wherever an entry is shown. |
 
 ## 2. What ships
 
@@ -56,7 +59,7 @@ Node server (server.mjs) ── spawns ──► python -m importer <library/id>
 ```
 
 - One import at a time (a queue in the Node server); progress is written
-  to `library/<id>/status.json` and polled by the page.
+  to `library/<id>/status.xml` and polled by the page.
 - The Python worker is a package `importer/` in the repo with no network
   access except the AI step.
 
@@ -65,18 +68,67 @@ Node server (server.mjs) ── spawns ──► python -m importer <library/id>
 ```
 library/<book-id>/original.pdf     the upload, kept
 library/<book-id>/book.md          our converter's Markdown, kept
-library/<book-id>/import.json      recipe, source id, checksums, dates, report, counts
+library/<book-id>/import.xml       recipe, source id, file name, SHA-256, dates, report, counts
+library/<book-id>/review.xml       AI proposals and the user's accept/edit/drop decisions
 custom/imported/index.xml          generated list of imported overlay files
+custom/imported/sources.xml        generated: one <source> per imported book (title, file, checksum, canon)
 custom/imported/<source>/*.xml     data (kinds amps, items, rules, skills, samples…)
 custom/texts/<source>.xml          private descriptions for that source
-library/.config/ai.json            provider settings (never served over HTTP)
+custom/sources.xml                 user-defined sources for house rules (user-editable)
+library/.config/ai-keys.xml        API keys only (mode 600)
+library/.config/ai-providers.xml   provider choices: enabled, base URL, model, workspace
 ```
+
+Every file the app writes or the user configures is XML, one concern per
+file: keys never share a file with settings, and generated files never
+share one with user-edited ones. The Library folder is never served over
+HTTP. Schemas: `aikeys.xsd`, `aiproviders.xsd`, `import.xsd`, `review.xsd`,
+alongside the data schemas.
 
 `loadCatalog` loads `custom/imported/index.xml` after the base data and
 before the user's own `custom/index.xml`, so house rules still win.
 Samples are served from `custom/imported/<source>/samples/`.
 
-## 4. Converter
+## 4. Sources and duplicates
+
+### Every entry says where it comes from
+
+- Every catalog entry keeps `source` (an id) and `page`. The id resolves
+  through three files, merged in this order: the shipped
+  `public/data/sources.xml` (supported books), the generated
+  `custom/imported/sources.xml`, and the user's `custom/sources.xml`.
+- A `<source>` has `id`, `canon`, `publisher`, `<name>` (full title) and,
+  for imports, `file` (uploaded file name), `sha256` and `imported` (date).
+- The app shows the source's title wherever it shows an entry: pickers,
+  runner rows, the sheet's footnotes, Game data, Books. Hovering shows the
+  publisher and file name.
+- Entries built in the Amp Builder or as custom items have no book; they
+  show "Built by you".
+- House-rule overlays must cite a source; one not listed in any sources
+  file is reported on Game data and treated as not canon.
+
+### Duplicates are kept, not replaced
+
+Today an overlay entry with the same id replaces the base one. For
+imported books that would silently drop one book's version, so:
+
+- Imported entries get ids scoped by source: `<source>.<id>` in lower case
+  (`crb.jazz`, `dhsa.jazz`). House-rule overlays keep the old rule (same id
+  replaces), because replacing is their purpose.
+- Two entries are duplicates when they have the same type and the same
+  normalized name (case, punctuation and "(Type)" suffixes ignored).
+  The loader groups them; nothing is removed.
+- Pickers list both, next to each other:
+  - one canon and one not: the **Non-canon** badge tells them apart;
+  - both canon or both not: each gets a label with its book's short
+    title (for example "CRB" and "DHSA"), with the full title on hover.
+- The Books page report lists every duplicate group with both ratings, so
+  differences (DHSA's Jazz vs the CRB's) are visible.
+- Existing runners reference unscoped ids (`jazz`). On load, an unscoped
+  `catalogId` is mapped to the scoped entry whose source matches the
+  runner's stored snapshot; the snapshot keeps it working either way.
+
+## 5. Converter
 
 `importer/convert.py`: pdfplumber per page → Markdown.
 - Headings from font size and weight bands measured per document.
@@ -87,10 +139,10 @@ Samples are served from `custom/imported/<source>/samples/`.
 
 The recipes parse this converter's output, not any other tool's, so the
 Markdown only has to be consistent, not pretty. A converter change that
-alters output bumps a converter version stored in `import.json`; re-import
+alters output bumps a converter version stored in `import.xml`; re-import
 reruns from `original.pdf`.
 
-## 5. Recipes
+## 6. Recipes
 
 `importer/recipes/<id>.py`, each with:
 
@@ -115,26 +167,29 @@ Initial recipes, ported from today's tools:
 | `cg` | CG | Emerged amp type, Tasking skill, complex forms |
 | `crb` | CRB | new: amps (qualities, cyberware, bioware, adept powers, equipment, vehicles), spells, gear, and the 12 pregens + Lightning. Today these came in through DHSA's rows and hand-written files. |
 
-The core-rulebook recipe is the largest piece of work. The DHSA recipe
-emits the 148 amps it cites to the CRB only if no CRB import exists, so
-installing both doesn't duplicate them.
+The core-rulebook recipe is the largest piece of work. The DHSA list
+reprints 148 core-rulebook amps; the DHSA recipe imports them as DHSA
+entries (DHSA's text and numbers, not canon). With both books imported
+they show as duplicates (section 4), the canon CRB version first.
 
-## 6. AI fallback
+## 7. AI fallback
 
 - Settings: one block per provider (Anthropic, OpenAI-compatible with base
   URL, Gemini, AnythingLLM with URL and workspace). The PUT accepts keys;
-  GET returns only whether each key is set. Stored in `library/.config/ai.json`
-  with file mode 600; the server never serves the Library folder.
+  GET returns only whether each key is set. Keys are stored in
+  `library/.config/ai-keys.xml` (mode 600) and nothing else goes in that
+  file; provider choices (enabled, base URL, model, workspace) go in
+  `library/.config/ai-providers.xml`.
 - Before sending anything, the page says which provider will receive the
   book's text and asks to confirm.
 - The worker splits `book.md` by headings, asks the model to fill a JSON
   schema derived from our XSDs (amps, items, spells, complex forms, rules),
   and validates every proposal with the same checks as `validate:data`.
-- Proposals land in `library/<id>/review.json`. The review screen lists
+- Proposals land in `library/<id>/review.xml`. The review screen lists
   them with accept, edit and drop, plus a source id and a canon choice for
   the book. Accepting writes the overlay exactly as a recipe would.
 
-## 7. UI
+## 8. UI
 
 A **Books** page (link in the library header):
 - a drag-and-drop upload, with progress;
@@ -147,7 +202,7 @@ A **Books** page (link in the library header):
 A fresh install's library shows "Upload your books to add amps, spells and
 gear" with a link to the Books page.
 
-## 8. Tests
+## 9. Tests
 
 - Engine tests move to a small made-up catalog committed in
   `tests/fixtures/` (no book data).
@@ -159,7 +214,7 @@ gear" with a link to the Books page.
 - e2e: upload a small generated PDF matching a test recipe; AI review with
   a stubbed provider.
 
-## 9. Deployment (tower04)
+## 10. Deployment (tower04)
 
 - The Unraid template gains the Library path. The image grows by Python 3
   and pdfplumber (tens of MB).
@@ -167,7 +222,7 @@ gear" with a link to the Books page.
   the Books page to get back today's catalogs, descriptions and samples.
 - Runners on the server are untouched.
 
-## 10. Later (to-do)
+## 11. Later (to-do)
 
 - User accounts: each person logs in and has their own books, keys and
   runners. Needed before tower04 is reachable from outside the LAN.
