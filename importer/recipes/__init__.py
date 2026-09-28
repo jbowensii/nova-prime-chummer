@@ -10,14 +10,14 @@ THRESHOLD = 0.6
 class Result:
     files: dict            # overlay file name -> XML text (ids unscoped; xmlio scopes them on write)
     texts: str | None      # kind="texts" XML (same unscoped ids) or None
-    samples: dict = field(default_factory=dict)   # sample file name -> content
+    samples: list = field(default_factory=list)   # {"file", "xml", "name", "role", "page"}: sample runners
     report: list = field(default_factory=list)    # dict rows: what didn't match
     source: dict = field(default_factory=dict)    # {"id","name","publisher","canon"}
 
 
-from importer.recipes import dhsa, qref  # noqa: E402  (recipes import Result from here)
+from importer.recipes import dhsa, pregens, qref  # noqa: E402  (recipes import Result from here)
 
-RECIPES = [qref, dhsa]
+RECIPES = [qref, dhsa, pregens]
 
 
 def identify(meta, md_head):

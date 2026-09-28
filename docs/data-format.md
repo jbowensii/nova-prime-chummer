@@ -196,6 +196,18 @@ on the sheet). Written by the importer's `qref` recipe (one
 `custom/imported/qref/rules-<sheet>.xml` per uploaded sheet, ids scoped
 `qref.<sheet>-<title>`); `<text>` stays empty, the text is private.
 
+## Imported sample runners
+
+A recipe that reads stat blocks (`pregens`) writes each runner as a character
+file (`character.xsd`, `origin` = the source) to
+`custom/imported/<source>/samples/<source>.<name>.xml`, and lists it in the
+generated `custom/imported/samples.xml` (`<sample source href name role page/>`,
+`href` relative to `custom/imported/`; schema `samples.xsd`). "Load sample
+characters" reads that list when it exists, else the bundled `samples/`.
+The numbers the book prints for each runner are report rows in
+`library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
+`status`).
+
 ## Private descriptions (`custom/texts/`)
 
 `<text of="amps|items|rules" id="…">description</text>` entries, kind
