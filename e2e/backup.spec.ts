@@ -25,6 +25,7 @@ test('download a backup, change a runner, restore, see it back', async ({ page }
   expect(download.suggestedFilename()).toMatch(/^chummer-anarchy2-backup-\d{4}-\d{2}-\d{2}\.zip$/)
   const zip = info.outputPath('backup.zip')
   await download.saveAs(zip)
+  await expect(page.getByRole('status')).toContainText('Backup saved as chummer-anarchy2-backup-')
   await page.getByRole('button', { name: 'Close' }).click()
 
   await page.getByRole('link', { name: 'Backed Up' }).click()
@@ -33,10 +34,11 @@ test('download a backup, change a runner, restore, see it back', async ({ page }
 
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByLabel('Restore from backup').setInputFiles({ name: 'notes.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') })
-  await expect(page.getByText('This file can’t be restored: this file isn’t a backup (not a zip file).')).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveText('This file can’t be restored: this file isn’t a backup (not a zip file).')
+  await expect(page.getByLabel('Restore from backup')).toBeFocused()
 
   await page.getByLabel('Restore from backup').setInputFiles(zip)
-  await expect(page.getByRole('heading', { name: 'Restore this backup?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Restore this backup?' })).toBeFocused()
   await expect(page.locator('.restore-preview')).toContainText('API keysNot included')
   await page.getByRole('button', { name: 'Replace everything on the server' }).click()
   await expect(page.getByText('Restored. Reloading the app…')).toBeVisible()

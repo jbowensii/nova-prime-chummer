@@ -1,6 +1,6 @@
 // Settings → Backup (server only): download everything the server keeps as one zip, or replace it all from one.
 // Restore is two steps: upload + check (a preview with a token), then apply; the page reloads after (server/books.mjs).
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, sendFile } from './Books'
 import { useRepo } from './repo'
 
@@ -11,23 +11,41 @@ const UNREACHABLE = 'the server can’t be reached'
 const FOLDERS: [string, string][] = [['characters', 'Runners'], ['custom', 'House rules, edits and imported books'], ['library', 'Uploaded PDFs and AI settings']]
 const size = (b: number) => b < 1024 ** 2 ? `${Math.max(1, Math.round(b / 1024))} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`
 const files = (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`
-const plain = (why: string) => why === UNREACHABLE ? 'The server can’t be reached. Check it’s running, then try again.' : `${why[0].toUpperCase()}${why.slice(1).replace(/\.$/, '')}.`
+const plain = (why?: string) => !why ? 'Something went wrong. Try again.'
+  : why === UNREACHABLE ? 'The server can’t be reached. Check it’s running, then try again.' : `${why[0].toUpperCase()}${why.slice(1).replace(/\.$/, '')}.`
 
 export function BackupSettings() {
   const repo = useRepo()
   const [keys, setKeys] = useState(false)
   const [step, setStep] = useState<Step>({ at: 'idle' })
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
+  const [zipping, setZipping] = useState<'making' | 'saving' | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null), headRef = useRef<HTMLHeadingElement>(null), prev = useRef(step.at)
+  // the focused picker or button unmounts as the step changes: focus the preview's heading, or the picker again
+  useEffect(() => {
+    if (step.at === 'preview') headRef.current?.focus()
+    else if (step.at === 'idle' && prev.current !== 'idle') fileRef.current?.focus()
+    prev.current = step.at
+  }, [step.at])
   if (repo.mode !== 'server') return null
 
+  /** Fetched rather than linked, so a refusal or failure shows here instead of as a broken file in the browser's downloads. */
   const download = async () => {
     setMsg(null)
-    try { await api('health') } catch (e) { return setMsg({ text: plain((e as Error).message), err: true }) }
-    const a = document.createElement('a')
-    a.href = `./api/backup${keys ? '?keys=1' : ''}`
-    a.download = ''
-    a.click()
-    setMsg({ text: 'Making the backup. Your browser saves it when it’s ready; a big library takes a while.' })
+    setZipping('making')
+    try {
+      const r = await fetch(`./api/backup${keys ? '?keys=1' : ''}`, { cache: 'no-store' }).catch(() => { throw new Error(UNREACHABLE) })
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
+      setZipping('saving')
+      const blob = await r.blob().catch(() => { throw new Error('the download was cut off; try again') })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'chummer-anarchy2-backup.zip'
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000)
+      setMsg({ text: `Backup saved as ${a.download}.` })
+    } catch (e) { setMsg({ text: `Couldn’t make the backup. ${plain((e as Error).message)}`, err: true }) }
+    setZipping(null)
   }
 
   const pick = async (file: File | undefined) => {
@@ -40,8 +58,8 @@ export function BackupSettings() {
     } catch (e) {
       setStep({ at: 'idle' })
       const why = (e as Error).message, status = (e as { status?: number }).status
-      setMsg({ err: true, text: status === 413 ? 'This file is larger than 5 GB, so it can’t be a backup from this app.'
-        : status === 400 || status === 415 ? `This file can’t be restored: ${why.replace(/\.$/, '')}.` : plain(why) })
+      setMsg({ err: true, text: status === 413 ? 'This file is larger than 20 GB, the most a restore can take. Choose a backup made by this app.'
+        : (status === 400 || status === 415) && why ? `This file can’t be restored: ${why.replace(/\.$/, '')}.` : plain(why) })
     }
   }
 
@@ -53,7 +71,9 @@ export function BackupSettings() {
       setTimeout(() => location.reload(), 1500) // the catalog, the runner list and any open runner all come from the server again
     } catch (e) {
       setStep({ at: 'idle' })
-      setMsg({ text: `The restore didn’t run: ${plain((e as Error).message)}`, err: true })
+      const why = (e as Error).message // a lost connection doesn't stop the server's restore
+      setMsg({ err: true, text: why === UNREACHABLE ? 'Lost contact with the server. The restore may still be running — reload in a minute to check.'
+        : `The restore didn’t run: ${plain(why)}` })
     }
   }
 
@@ -62,20 +82,22 @@ export function BackupSettings() {
       <legend>Backup</legend>
       <p className="muted">Everything this server keeps: runners, house rules and edits, imported books, uploaded PDFs and AI settings.</p>
       <div className="row">
-        <button className="btn" disabled={step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
-        <label className="check inline"><input type="checkbox" checked={keys} onChange={e => setKeys(e.target.checked)} />Include my API keys</label>
+        <button className="btn" disabled={!!zipping || step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
+        <label className="check inline"><input type="checkbox" checked={keys} aria-describedby={keys ? 'backup-keys-warning' : undefined}
+          onChange={e => setKeys(e.target.checked)} />Include my API keys</label>
       </div>
-      {keys && <p className="err small">Anyone with the file can use your keys, and pay with them. Keep it private.</p>}
+      {keys && <p id="backup-keys-warning" className="err small">Anyone with the file can use your keys, and pay with them. Keep it private.</p>}
+      {zipping && <p>{zipping === 'making' ? 'Making the backup… a big library takes a while.' : 'Saving the file…'} <progress /></p>}
 
       {step.at === 'idle' && (
         <label className="btn file">Restore from backup…
-          <input type="file" accept=".zip,application/zip" aria-label="Restore from backup" onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
+          <input ref={fileRef} type="file" accept=".zip,application/zip" aria-label="Restore from backup" onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
         </label>
       )}
       {step.at === 'uploading' && <p>Uploading the backup: {step.pct}% <progress max={100} value={step.pct} /></p>}
       {step.at === 'preview' && (
         <div className="restore-preview">
-          <h3>Restore this backup?</h3>
+          <h3 ref={headRef} tabIndex={-1}>Restore this backup?</h3>
           <dl>
             {([['Made', new Date(step.m.created).toLocaleString()], ['App version', step.m.app],
               ...FOLDERS.filter(([f]) => step.m.folders[f]).map(([f, label]) => [label, files(step.m.folders[f].files) + (step.m.folders[f].bytes > 0 ? `, ${size(step.m.folders[f].bytes)}` : '')]),
@@ -94,8 +116,9 @@ export function BackupSettings() {
       {step.at === 'restoring' && <p>Restoring. This can take a few minutes; keep this page open. <progress /></p>}
       <div role="status" aria-live="polite">
         {step.at === 'done' && <p className="banner">Restored. Reloading the app…</p>}
-        {msg && <p className={msg.err ? 'banner err' : 'banner'}>{msg.text}</p>}
+        {msg && !msg.err && <p className="banner">{msg.text}</p>}
       </div>
+      <div role="alert">{msg?.err && <p className="banner err">{msg.text}</p>}</div>
     </fieldset>
   )
 }
