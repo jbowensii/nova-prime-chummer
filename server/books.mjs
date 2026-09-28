@@ -1,7 +1,6 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
-// data file is written by the importer, except upload.xml (the uploaded name), ai-providers.xml
-// (the user's choices, as sent) and a failed job's status.xml.
+// data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
 //   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import
 //   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy }]
@@ -12,7 +11,7 @@
 //   GET    /api/review/:id            -> review.xml
 //   PUT    /api/review/:id            body: review.xml with decisions; ?apply=1&source=&name=&canon= writes the overlay
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
-//   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed)
+//   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
@@ -77,7 +76,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       let out = '', err = ''
       const p = spawn(cmd, [...pre, '-m', 'importer', ...args], { cwd: importerRoot, timeout, windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'] })
-      if (args[0] !== 'set-key' && !args.includes('--dry-run')) child = p
+      if (!['set-key', 'set-settings'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -210,19 +209,20 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return run
   }
 
-  const baseUrls = xml => Object.fromEntries([...(xml ?? '').matchAll(/<provider\b[^>]*>/g)].map(m => [attr(m[0], 'id'), attr(m[0], 'baseUrl') ?? '']))
-
-  /** Save ai-providers.xml. A key is only sent to the address it was entered for: when a provider's base
-   *  URL changes, its key is cleared first (else an edited URL would carry the stored key to any host). */
-  async function putSettings(xml) {
-    const before = baseUrls(await readOr(join(config, 'ai-providers.xml'))), after = baseUrls(xml)
-    const keys = await readOr(join(config, 'ai-keys.xml'), '')
-    const cleared = PROVIDERS.filter(p => p in after && (before[p] ?? '') !== after[p]
-      && new RegExp(`<key\\s+provider="${p}"\\s*>\\s*[^<\\s]`).test(keys))
-    for (const p of cleared) await setKey(p, '')
-    await mkdir(config, { recursive: true })
-    await writeAtomic(join(config, 'ai-providers.xml'), xml)
-    return cleared
+  /** Save ai-providers.xml through the importer: the parser that later reads the file for a call is the one that
+   *  checks it and compares base URLs (a provider whose address changed has its key cleared first; a key is only
+   *  sent to the address it was entered for). Queued with the key writes, which it may make. */
+  function putSettings(xml) {
+    const run = keyChain.then(async () => {
+      const r = await importer(['set-settings', '--library', libraryDir], { input: xml, timeout: 30000 })
+      const why = (await redact(r.err)).trim().split('\n').pop()
+      if (r.code === 3) throw fail(400, why || 'these aren’t provider settings')
+      const out = rootTag(r.out, 'result')
+      if (r.code !== 0 || !out) throw fail(500, 'couldn’t save the settings: ' + why)
+      return (attr(out, 'cleared') ?? '').split(' ').filter(Boolean)
+    })
+    keyChain = run.catch(() => {})
+    return run
   }
 
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
@@ -246,9 +246,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     }
     if (p === '/api/ai-settings' && method === 'GET') return send(res, 200, await aiSettings(), 'application/xml; charset=utf-8')
     if (p === '/api/ai-settings' && method === 'PUT') {
-      const xml = xmlBody(await body(req), 'ca2:aiproviders')
-      if (!xml.includes(`xmlns:ca2="${CONFIG_NS}"`) || /<key\b/.test(xml)) throw fail(400, 'provider settings only; keys go to /api/ai-keys')
-      const cleared = await putSettings(xml)
+      const cleared = await putSettings(await body(req))
       return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
     if (p === '/api/ai-keys' && method === 'PUT') {

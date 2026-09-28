@@ -1,7 +1,7 @@
-// Stand-in for `python -m importer …` in server tests and e2e (no Python in CI). Invoked as
+// Stand-in for `python -m importer …` in server tests and e2e (books-python.test.ts runs the real one). Invoked as
 // `node stub-worker.mjs -m importer <command> …`. It fakes each command's files just enough for the
 // server's routes and the app: status.xml, import.xml, a one-entry overlay listed in
-// custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml.
+// custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml.
 // Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
@@ -79,6 +79,20 @@ if (cmd === 'run') {
   const others = existsSync(file) ? [...readFileSync(file, 'utf8').matchAll(/<key provider="([^"]+)">[^<]*<\/key>/g)].filter(m => m[1] !== rest[0]).map(m => m[0]) : []
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300) // widen the read-modify-write window, as a slow Python start would
   writeFileSync(file, `<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">${others.join('')}${key ? `<key provider="${rest[0]}">${key}</key>` : ''}</ca2:aikeys>\n`)
+} else if (cmd === 'set-settings') { // the real checks are tested with Python (importer tests, books-python.test.ts)
+  const body = readFileSync(0, 'utf8'), config = join(rest[0], '.config'), file = join(config, 'ai-providers.xml')
+  if (!/<ca2:aiproviders\b/.test(body) || /<key\b/.test(body)) {
+    process.stderr.write('provider settings only; keys go to /api/ai-keys\n')
+    process.exit(3)
+  }
+  const urls = x => Object.fromEntries([...x.matchAll(/<provider id="(\w+)"([^>]*)\/>/g)].map(m => [m[1], m[2].match(/ baseUrl="([^"]*)"/)?.[1] ?? '']))
+  const before = urls(existsSync(file) ? readFileSync(file, 'utf8') : ''), after = urls(body)
+  const keys = join(config, 'ai-keys.xml'), held = existsSync(keys) ? readFileSync(keys, 'utf8') : ''
+  const cleared = Object.keys(after).filter(p => (before[p] ?? '') !== after[p] && held.includes(`<key provider="${p}">`))
+  if (cleared.length) writeFileSync(keys, held.replace(new RegExp(`<key provider="(?:${cleared.join('|')})">[^<]*</key>`, 'g'), ''))
+  mkdirSync(config, { recursive: true })
+  writeFileSync(file, body)
+  console.log(`<result cleared="${cleared.join(' ')}" />`)
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)
   process.exit(2)
