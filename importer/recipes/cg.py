@@ -125,7 +125,7 @@ def extract_forms(lines):
             cells = [re.sub(r"\*\*", "", c.replace("<br>", " ")).strip() for c in l.strip("|").split("|")]
             wrap = None
             if len(cells) >= 4 and cells[1] in ("I", "S"):
-                body = f"{cells[2]}. {cells[3]}" if cells[2] else cells[3]
+                body = f"Threshold: {cells[2]}. {cells[3]}" if cells[2] else cells[3]
                 cur = {"name": cells[0], "type": cells[1], "page": page, "text": body}
                 forms.append(cur)
             continue
