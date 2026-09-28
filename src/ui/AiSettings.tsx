@@ -100,7 +100,7 @@ export function AiSettings() {
             </div>
             <div className="row keyrow">
               <label style={{ flex: 1 }}>API key
-                <input type="password" autoComplete="off" value={keyInput[id] ?? ''} placeholder={state.keys[id] ? 'Enter a new key to replace it' : ''}
+                <input type="password" autoComplete="off" value={keyInput[id] ?? ''} placeholder={state.keys[id] ? 'New key replaces it' : ''}
                   onChange={e => setKeyInput({ ...keyInput, [id]: e.target.value })} />
               </label>
               <button className="btn" disabled={!keyInput[id]?.trim()} onClick={() => void saveKey(id, keyInput[id])}>Save key</button>

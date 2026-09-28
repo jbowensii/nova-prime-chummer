@@ -360,3 +360,5 @@ table.proposals tr.dropped b { text-decoration: line-through; color: var(--text-
   .book { grid-template-columns: minmax(0, 1fr); }
   .lib h1 { font-size: 1.9rem; }
 }
+table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-top: 0.2rem; }
+.supported li > span:last-child { white-space: nowrap; }
