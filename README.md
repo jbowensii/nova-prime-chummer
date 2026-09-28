@@ -157,6 +157,11 @@ then **Replace everything on the server** applies it. The server saves its
 own current state first, to `library/.backups` (newest 3 kept), so a bad
 restore can be undone. Restores are capped at 20 GB.
 
+**Books → Core data** moves just the core rules tables between servers:
+**Download data pack** saves them as a small zip (no descriptions, PDFs or
+keys), and **Upload data pack** loads one — the way to set up a server
+without the core rulebook's PDF. The setup screen links to it.
+
 ## Develop
 
 ```bash
