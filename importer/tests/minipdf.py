@@ -324,3 +324,15 @@ def boxed_table_pdf() -> bytes:
 def boxed_labels_pdf() -> bytes:
     """One-page PDF: a one-cell box holding a label/value list."""
     return _build_pdf([BOXED_LABELS_OPS])
+
+
+# A line set with a small rotation (about 1 degree) in its text matrix: its letters' measured sizes differ by
+# a few hundredths of a point. Plus a small-caps style line: a bigger initial, which is a real size change.
+TILTED_OPS = """BT /F1 11 Tf 0.9998 -0.0175 0.0175 0.9998 72 700 Tm (Made up tilted words) Tj ET
+BT /F1 10.5 Tf 72 670 Td (M) Tj /F1 10 Tf (ADE UP) Tj ET
+"""
+
+
+def tilted_line_pdf() -> bytes:
+    """One-page PDF: a slightly rotated line and a line with a bigger initial."""
+    return _build_pdf([TILTED_OPS])
