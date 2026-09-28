@@ -211,7 +211,10 @@ def _swap(target, new, keep=()):
         os.rmdir(old)
         raise
     os.rmdir(new)
-    shutil.rmtree(old, ignore_errors=True)
+    # committed: renamed before it's deleted, so a swap killed while deleting isn't read as one to roll back (datapack.recover)
+    done = os.path.join(target, os.path.basename(old).replace(TEMP + "old-", TEMP + "done-", 1))
+    os.replace(old, done)
+    shutil.rmtree(done, ignore_errors=True)
 
 
 def apply(path, dirs, version=None):

@@ -203,6 +203,41 @@ class DataPackTest(unittest.TestCase):
         good = rezip(p, change={"core/skills.xml": None, "core/weapons.xml": weapons, "datapack.xml": manifest_for({"weapons.xml": weapons})})
         self.assertEqual(datapack.check(good)[0].find("file").get("name"), "weapons.xml")
 
+    def test_only_utf8_without_a_doctype(self):
+        p = pack(["skills.xml"])
+
+        def with_skills(b):
+            return rezip(p, change={"core/skills.xml": b, "datapack.xml": manifest_for({"skills.xml": b})})
+        body = skills().split(b"?>", 1)[1]
+        utf16 = ('<?xml version="1.0" encoding="UTF-16"?>\n<!DOCTYPE x [<!ENTITY e "made up">]>'
+                 + body.decode("utf8")).encode("utf-16")  # a BOM: no "<!DOCTYPE" in the raw bytes
+        self.assertRefused(with_skills(utf16), "core/skills.xml isn’t UTF-8")
+        self.assertRefused(with_skills(('<?xml version="1.0" encoding="UTF-16"?>' + body.decode("utf8")).encode("utf-16")), "isn’t UTF-8")
+        latin = b'<?xml version="1.0" encoding="ISO-8859-1"?>' + body  # ASCII bytes, but declared otherwise
+        self.assertRefused(with_skills(latin), "isn’t UTF-8")
+        self.assertRefused(with_skills(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE x>' + body), "has a DOCTYPE")
+        m = manifest_for({"skills.xml": skills()})
+        self.assertRefused(rezip(p, change={"datapack.xml": m.decode().encode("utf-16")}), "datapack.xml isn’t UTF-8")
+
+    def test_a_killed_import_is_recovered_not_lost(self):
+        d = custom()
+        core = os.path.join(d, "imported", "core")
+        originals = {n: Path(core, n).read_bytes() for n in os.listdir(core)}
+        # killed mid-swap: two originals moved aside, one new file already in, the rest still staged
+        old, new = os.path.join(core, ".restore-old-x"), os.path.join(core, ".restore-new-y")
+        os.makedirs(old), os.makedirs(new)
+        os.replace(os.path.join(core, "skills.xml"), os.path.join(old, "skills.xml"))
+        os.replace(os.path.join(core, "levels.xml"), os.path.join(old, "levels.xml"))
+        Path(core, "skills.xml").write_text("half-swapped new skills")
+        Path(new, "levels.xml").write_text("staged")
+        datapack.recover(core)  # as the next import, export or server start does
+        self.assertEqual({n: Path(core, n).read_bytes() for n in os.listdir(core)}, originals)
+        # killed after the commit, while deleting the old files: nothing is rolled back
+        os.makedirs(os.path.join(core, ".restore-done-z"))
+        Path(core, ".restore-done-z", "skills.xml").write_text("old, being deleted")
+        self.assertEqual(main(["datapack", "recover", "--custom", d]), 0)
+        self.assertEqual({n: Path(core, n).read_bytes() for n in os.listdir(core)}, originals)
+
     def test_cli(self):
         p, d = os.path.join(tempfile.mkdtemp(), "cli.zip"), custom()
         out, err = io.StringIO(), io.StringIO()
