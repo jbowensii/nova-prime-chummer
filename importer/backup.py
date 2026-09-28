@@ -255,8 +255,8 @@ def _extract(path, dirs, news):
             os.makedirs(dirs[folder], exist_ok=True)
             news[folder] = new = tempfile.mkdtemp(dir=dirs[folder], prefix=TEMP + "new-")
             for info in zf.infolist():
-                if not info.filename.startswith(folder + "/"):
-                    continue
+                if not info.filename.startswith(folder + "/") or info.filename in NEVER:
+                    continue  # a zip's session or recovery-code file never lands on the server
                 dst = os.path.join(new, *info.filename[len(folder) + 1:].split("/"))
                 if info.is_dir():
                     os.makedirs(dst, exist_ok=True)

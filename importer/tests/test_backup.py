@@ -4,6 +4,7 @@ import os
 import stat
 import tempfile
 import unittest
+from unittest import mock
 import unittest.mock
 import zipfile
 from pathlib import Path
@@ -215,6 +216,20 @@ class BackupTest(unittest.TestCase):
         backup.apply(os.path.join(backups, safety), dst)
         self.assertEqual(tree(dst), {k: v for k, v in before.items() if not k.endswith(".tmp")})
         self.assertIn("19990101T000000_000000Z.zip", os.listdir(backups))
+
+    def test_a_zips_session_and_recovery_files_are_never_restored(self):
+        """A zip made elsewhere (or edited) carrying sessions.xml or reset.xml: a standing recovery code must not land."""
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root, " new"), state(dst_root, " old")
+        for never in ("sessions.xml", "reset.xml"):
+            Path(src["library"], ".config", never).write_text("<x/>", encoding="utf8")
+        z = os.path.join(src_root, "carries.zip")
+        with mock.patch.object(backup, "NEVER", set()):
+            backup.backup(src, z)
+        with zipfile.ZipFile(z) as zf:
+            self.assertIn("library/.config/reset.xml", zf.namelist())
+        backup.apply(z, dst)
+        self.assertEqual(sorted(os.listdir(os.path.join(dst["library"], ".config"))), ["ai-keys.xml", "ai-providers.xml"])
 
     def test_keys_kept_when_the_zip_has_none(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
