@@ -51,6 +51,11 @@ will convert from this format; the format itself is ours and stays stable.
   prints if the entry is later removed from the data.
 - **Career events** are never edited. A mistake is undone with a `void`
   event, so the history stays complete.
+- **`allowNonCanon="false"`** on the root marks a runner as canon only: the
+  Review tab flags each non-canon amp, item or specialization. Missing means
+  non-canon content is allowed.
+- **`origin`** on a sample runner names the source it was built from
+  (`CRB`, `PREGENS`), so the library can badge non-canon samples.
 - Older `.ca2.json` exports still import.
 
 ## Server API

@@ -11,7 +11,7 @@ Entries printed in black are core-book (CRB) content: their page is looked up in
 book markdown. Rust entries are Daegann's (DHSA) and cite the DHSA page.
 
 Book-derived descriptions are written to a separate private file (default
-.extract/private/texts.xml), never to the committed data.
+.extract/private/texts/dhsa.xml: all of it is DHSA's text), never to the committed data.
 
 Usage: python tools/dhsa_to_xml.py <dhsa rows.json> <public/data> <report.md> <CRB .md> [texts.xml]
 """
@@ -154,6 +154,10 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:60]
 
 
+# "of your choice" and the like: the player picks the spec when buying the Amp
+WILDCARD = re.compile(r"choice|choose|chosen|of your|to be determined|depending|any specialization", re.I)
+
+
 class Mapper:
     def __init__(self, specs):
         self.specs = specs
@@ -202,6 +206,10 @@ class Mapper:
                 out += [("rr-skill", skill, None, None)] * n
                 continue
             sid = self.spec(skill, spec.replace("*", ""))
+            if sid is None and not WILDCARD.search(spec):
+                # a condition, not a named spec ("At night between midnight and 7am"): a custom spec with that text
+                c = spec.replace("*", "").strip()
+                sid = "custom:" + c[:1].upper() + c[1:]
             if sid is None:
                 self.unresolved.append(f"{target} ({spec})")
             out += [("rr-spec", sid or "", None, None if sid else f"{target} ({spec})")] * n
@@ -300,7 +308,7 @@ def reconcile(fx, narrative, base, rating, negative_ok=False):
     return computed
 
 
-def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/texts.xml"):
+def build(rows, data_dir, report_path, crb_path, text_path=".extract/private/texts/dhsa.xml"):
     for r in rows:  # DHSA v3.2 mixes '-' and '–' in headings; v3.4 uses '–'
         r["section"] = r["section"].replace(" - ", " – ")
     book = CoreBook(crb_path)

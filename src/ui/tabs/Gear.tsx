@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { currentBuild, itemCost, makeAmpAdd, makeBuy, makeSell } from '../../engine'
+import { currentBuild, isCanon, itemCost, makeAmpAdd, makeBuy, makeSell } from '../../engine'
 import type { ItemEntry, ItemKind } from '../../model/types'
 import { newId } from '../../model/types'
-import { fmt, Modal, Picker } from '../bits'
+import { fmt, Modal, NonCanon, Picker } from '../bits'
 import { useEditor } from '../editor'
 
 const SECTIONS: [ItemKind, string, string][] = [
@@ -71,7 +71,7 @@ export function GearTab() {
                     const amp = b.amps.find(a => a.linkedItem === i.uid)
                     return (
                       <tr key={i.uid}>
-                        <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}
+                        <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{cat && !isCanon(c, cat) && <> <NonCanon source={cat.source} /></>}
                           <div className="muted" style={{ fontSize: '0.88rem' }}>
                             {i.kind === 'armor' && `Armor ${i.armor ?? 0}`}
                             {i.kind === 'weapon' && (() => { const w = d.weapons.find(x => x.uid === i.uid); return w && `DV ${w.dv} [${w.ranges}]${i.specialist ? ', specialist' : ''}${w.note ? `, ${w.note}` : ''}` })()}
@@ -110,7 +110,7 @@ export function GearTab() {
           groups={[...new Set([...c.items.values()].filter(i => i.kind === adding).map(i => i.category ?? ''))].filter(Boolean)}
           items={[...c.items.values()].filter(i => i.kind === adding).map(i => ({
             id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`, `${i.source} p.${i.page}`].filter(Boolean).join(', '),
-            text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
+            nonCanon: !isCanon(c, i), text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
           }))} />}
       </Modal>
 
