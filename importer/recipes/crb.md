@@ -106,6 +106,10 @@ text), the sheet's lines in the texts only; an equipment amp named after a sheet
 The Awakened amp, contacts (named people of the runner's story) and metatype traits are skipped. 23 in v1.8:
 Concealment plus 22 (adept 2, cyberdeck 1, cyberware 5, equipment 5, quality 4, vehicle 5); names in the F1 report.
 Luna's tattoo focus prints 13 for effects worth 10 (a rating-mismatch row).
+Some sheet-only amps sit close to a box amp but stay separate entries, because the name or rating differs and the match
+is by name: Damaged MCT Gnat (vehicle 2; the box's MCT Gnat is 4), Wired Reflexes (cyberware 6; the box has Ares wired
+reflexes 6 and Evo wired reflexes 8), Roto-drone (vehicle 2; MCT-Nissan Roto-drone 5), Counterfeit datajack (cyberware 2;
+Datajack 2, Unlocked Datajack 4). Merging any of them would be a judgement about the book, not a name match.
 
 ## Sample runners (9c)
 
