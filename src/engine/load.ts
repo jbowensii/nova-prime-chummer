@@ -1,7 +1,8 @@
 // Build a Catalog from XML files: base data first, then overlays in order.
 // Same id replaces, <remove id> deletes, new id adds (docs/data-format.md). Imported books
 // (custom/imported/) carry ids scoped by source, so two books' same-named entries both stay;
-// sources merge by id across the three sources files instead of replacing.
+// sources merge by id across the three sources files instead of replacing, and an imported skill
+// adds its specs to the base skill of that id.
 import type { AttrId, Catalog, Pricing, Source } from '../model/types'
 import {
   parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPricing, toRule, toSkill,
@@ -63,8 +64,13 @@ export function buildCatalog(files: SourceFile[]): Catalog {
       const origin = originOf(f)
       try {
         for (const el of p.entries) {
+          const id = el.getAttribute('id')!, had = c.skills.get(id)
           if (p.kind === 'sources') { const s = { ...toSource(el), origin }; c.sources.set(s.id, mergeSource(c.sources.get(s.id), s)) }
-          else map.set(el.getAttribute('id')!, conv(el))
+          // an imported book adds specs to a skill it shares with the base data; house rules replace it
+          else if (p.kind === 'skills' && origin === 'imported' && had) {
+            const add = toSkill(el).specs.filter(s => !had.specs.some(h => h.id === s.id))
+            c.skills.set(id, { ...had, specs: [...had.specs, ...add] })
+          } else map.set(id, conv(el))
           // house rules must cite a listed source; checked once everything is loaded
           if (origin === 'user' && el.getAttribute('source')) cites.push([f.file, el.getAttribute('source')!])
         }

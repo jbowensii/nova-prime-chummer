@@ -42,6 +42,9 @@ export const BOOKS_DIR = process.env.BOOKS_DIR ?? '.extract/private/oracle'
 const loadBooks = (): Catalog | null => {
   if (!BOOK_CATALOG_FILES.every(f => existsSync(join(BOOKS_DIR, f)))) return null
   const bookFiles = BOOK_CATALOG_FILES.map(f => ({ file: f, xml: readFileSync(join(BOOKS_DIR, f), 'utf8'), overlay: false }))
+  // the books' spec additions (DHSA's), appended to the shipped skills as an import is
+  const skills = join(BOOKS_DIR, 'skills.xml')
+  if (existsSync(skills)) bookFiles.push({ file: 'custom/imported/books/skills.xml', xml: readFileSync(skills, 'utf8'), overlay: true })
   const textsDir = 'public/custom/texts'
   const texts = existsSync(textsDir) ? dir(textsDir, true) : []
   return buildCatalog([...base.filter(f => !BOOK_CATALOG_FILES.includes(f.file)), ...bookFiles, ...texts])
