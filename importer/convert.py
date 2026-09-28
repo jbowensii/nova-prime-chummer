@@ -6,9 +6,13 @@ import pdfplumber
 
 CONVERTER_VERSION = "1"
 
-# ponytail: fixed gutter-gap heuristic for 1-2 columns; add real N-column
-# clustering (k-means on x0) if a 3+ column layout shows up in practice.
-_MIN_GUTTER = 20
+_LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
+# ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
+# (k-means on x0) if a 3+ column layout shows up in practice.
+_MIN_GUTTER = 20  # pt; also doubles as "this word gap is a column jump, not word spacing"
+_MIN_LINES_PER_SIDE = 3
+_MIN_SIDE_FRACTION = 0.30
+_MAX_CROSS_FRACTION = 0.10
 
 
 def _bands(pdf):
@@ -20,85 +24,101 @@ def _bands(pdf):
     return body, big  # big[0] -> '#', big[1] -> '##', big[2] -> '###'
 
 
-def _column_ranges(words, page_width):
-    """Split a page into left-to-right column x-ranges by the biggest x0 gap.
-
-    Falls back to a single column spanning the whole page when there's no
-    gap that looks like a real gutter (too small, or off to one side).
-    """
-    if len(words) < 4:
-        return [(0, page_width)]
-    xs = sorted(w["x0"] for w in words)
-    gap, mid = max(((xs[i + 1] - xs[i], (xs[i] + xs[i + 1]) / 2) for i in range(len(xs) - 1)))
-    if gap < _MIN_GUTTER or not (page_width * 0.25 < mid < page_width * 0.75):
-        return [(0, page_width)]
-    return [(0, mid), (mid, page_width)]
-
-
-def _column_index(x0, ranges):
-    for i, (lo, hi) in enumerate(ranges):
-        if x0 < hi or i == len(ranges) - 1:
-            return i
-    return len(ranges) - 1
-
-
-_LINE_TOLERANCE = 3  # pt; covers baseline jitter between regular/bold runs on one line
-
-
-def _rows(words):
-    """Group words already confined to one column into lines by y proximity,
-    then order each line left-to-right by x0.
-
-    Clusters by comparing each word's top to the *first* word's top in the
-    current cluster (not the previous word's), so a run of words with tiny
-    baseline jitter (e.g. a bold run-in label next to regular body text)
-    doesn't drift the cluster boundary. Ordering within a line is a
-    separate x0 sort, not tied to the (noisy) top value, so a label with a
-    marginally different top than its line doesn't get sorted to the end.
-    """
-    words = sorted(words, key=lambda w: w["top"])
-    rows, cur, anchor_top = [], [], None
-    for w in words:
-        if anchor_top is not None and abs(w["top"] - anchor_top) > _LINE_TOLERANCE:
-            rows.append(cur)
-            cur = []
-            anchor_top = None
-        cur.append(w)
-        if anchor_top is None:
-            anchor_top = w["top"]
-    if cur:
-        rows.append(cur)
-    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
-
-
 def _heading_level(size, big):
     return next((i + 1 for i, s in enumerate(big) if abs(size - s) < 0.6), 0)
 
 
-def _page_items(page, big, table_boxes):
-    """Return, per column (left to right), a list of (top, text) items —
-    including tables whose bbox falls in that column — in reading order.
-    """
-    words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False)
-    words = [
-        w
-        for w in words
-        if not any(b[0] <= w["x0"] <= b[2] and b[1] <= w["top"] <= b[3] for b in table_boxes)
-    ]
-    ranges = _column_ranges(words, page.width)
-    columns = [[] for _ in ranges]
-    for w in words:
-        columns[_column_index(w["x0"], ranges)].append(w)
+def _in_table(w, table_boxes):
+    return any(b[0] <= w["x0"] <= b[2] and b[1] <= w["top"] <= b[3] for b in table_boxes)
 
-    buckets = [[] for _ in ranges]
-    for i, col_words in enumerate(columns):
-        for r in _rows(col_words):
-            text = " ".join(w["text"] for w in r)
-            size = round(max(w["size"] for w in r), 1)
-            level = _heading_level(size, big)
-            row_top = min(w["top"] for w in r)
-            buckets[i].append((row_top, ("#" * level + " " + text) if level else text))
-    return buckets, ranges
+
+def _cluster_lines(words):
+    """Group words into visual lines.
+
+    First cluster by y-proximity, anchored to the first word's top in the
+    cluster (tolerant of small baseline jitter between regular and bold
+    runs on what is visually one line). Then split a cluster at any
+    horizontal gap bigger than a normal word gap — this is what keeps two
+    side-by-side column lines that happen to sit at the same height from
+    being read as one garbled line.
+    """
+    words = sorted(words, key=lambda w: w["top"])
+    raw, cur, anchor = [], [], None
+    for w in words:
+        if anchor is not None and abs(w["top"] - anchor) > _LINE_TOLERANCE:
+            raw.append(cur)
+            cur = []
+            anchor = None
+        cur.append(w)
+        if anchor is None:
+            anchor = w["top"]
+    if cur:
+        raw.append(cur)
+
+    lines = []
+    for cluster in raw:
+        cluster = sorted(cluster, key=lambda w: w["x0"])
+        seg = [cluster[0]]
+        for prev, w in zip(cluster, cluster[1:]):
+            if w["x0"] - prev["x1"] > _MIN_GUTTER:
+                lines.append(seg)
+                seg = []
+            seg.append(w)
+        lines.append(seg)
+    return lines
+
+
+def _line_extent(line):
+    return min(w["x0"] for w in line), max(w["x1"] for w in line)
+
+
+def _find_gutter(words, lines, page_width):
+    """Return a column-split x, or None if the page doesn't look 2-column.
+
+    A candidate gutter (the biggest x0 gap among words) is only accepted
+    when it actually separates *lines* into two real column clusters: each
+    side needs a handful of lines and a real share of the page's lines, and
+    very few lines may cross it (occasional full-width tables/headings are
+    expected, but if most lines cross it, it isn't a gutter — it's just an
+    indent or a centered line).
+    """
+    if len(words) < 4 or not lines:
+        return None
+    xs = sorted(w["x0"] for w in words)
+    gap, mid = max(((xs[i + 1] - xs[i], (xs[i] + xs[i + 1]) / 2) for i in range(len(xs) - 1)))
+    if gap < _MIN_GUTTER or not (page_width * 0.25 < mid < page_width * 0.75):
+        return None
+
+    left = right = cross = 0
+    for line in lines:
+        x0, x1 = _line_extent(line)
+        if x1 <= mid:
+            left += 1
+        elif x0 >= mid:
+            right += 1
+        else:
+            cross += 1
+    total = left + right + cross
+    if (
+        left < _MIN_LINES_PER_SIDE
+        or right < _MIN_LINES_PER_SIDE
+        or left / total < _MIN_SIDE_FRACTION
+        or right / total < _MIN_SIDE_FRACTION
+        or cross / total >= _MAX_CROSS_FRACTION
+    ):
+        return None
+    return mid
+
+
+def _kind(x0, x1, mid):
+    """Classify an item spanning [x0, x1) as 'left', 'right', or a full-width 'band'."""
+    if mid is None:
+        return "single"
+    if x1 <= mid:
+        return "left"
+    if x0 >= mid:
+        return "right"
+    return "band"
 
 
 def _table_md(rows):
@@ -111,6 +131,37 @@ def _table_md(rows):
     ]
 
 
+def _reading_order(blocks, mid):
+    """blocks: list of (top, kind, text), any order.
+
+    Single column: plain top-to-bottom order. Two columns: left-then-right
+    for everything above the first full-width band, then the band itself,
+    then left-then-right again for the next segment, and so on — so a table
+    or heading spanning both columns doesn't get filed under one column out
+    of its real position.
+    """
+    blocks = sorted(blocks, key=lambda b: b[0])
+    if mid is None:
+        return [text for _, _, text in blocks if text]
+
+    out, left_buf, right_buf = [], [], []
+    for top, kind, text in blocks:
+        if not text:
+            continue
+        if kind == "left":
+            left_buf.append((top, text))
+        elif kind == "right":
+            right_buf.append((top, text))
+        else:  # band
+            out += [t for _, t in sorted(left_buf)]
+            out += [t for _, t in sorted(right_buf)]
+            left_buf, right_buf = [], []
+            out.append(text)
+    out += [t for _, t in sorted(left_buf)]
+    out += [t for _, t in sorted(right_buf)]
+    return out
+
+
 def convert(pdf_path: str, md_path: str) -> dict:
     with open(pdf_path, "rb") as f:
         sha = hashlib.sha256(f.read()).hexdigest()
@@ -121,14 +172,25 @@ def convert(pdf_path: str, md_path: str) -> dict:
             out.append(f"<!-- page {n} -->")
             tables = page.find_tables()
             boxes = [t.bbox for t in tables]
-            buckets, ranges = _page_items(page, big, boxes)
+            all_words = page.extract_words(extra_attrs=["size"], keep_blank_chars=False)
+            words = [w for w in all_words if not _in_table(w, boxes)]
+            lines = _cluster_lines(words)
+            mid = _find_gutter(words, lines, page.width)
+
+            blocks = []
+            for line in lines:
+                text = " ".join(w["text"] for w in line)
+                size = round(max(w["size"] for w in line), 1)
+                level = _heading_level(size, big)
+                text = ("#" * level + " " + text) if level else text
+                x0, x1 = _line_extent(line)
+                blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid), text))
             for t in tables:
                 md = _table_md(t.extract())
                 if md:
-                    x_center = (t.bbox[0] + t.bbox[2]) / 2
-                    buckets[_column_index(x_center, ranges)].append((t.bbox[1], "\n".join(md)))
-            for col in buckets:
-                out += [text for _, text in sorted(col, key=lambda x: x[0]) if text]
+                    blocks.append((t.bbox[1], _kind(t.bbox[0], t.bbox[2], mid), "\n".join(md)))
+
+            out += _reading_order(blocks, mid)
         title = (pdf.metadata or {}).get("Title", "") or ""
         pages = len(pdf.pages)
     with open(md_path, "w", encoding="utf8", newline="\n") as f:
