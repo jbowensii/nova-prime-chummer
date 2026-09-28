@@ -71,6 +71,8 @@ Every file has the same root:
 The importer's own records (`library/<book>/import.xml`, `review.xml`,
 `library/.config/ai-providers.xml`, `ai-keys.xml`) have schemas too:
 `import.xsd`, `review.xsd`, `aiproviders.xsd`, `aikeys.xsd`.
+The server's account files in `library/.config/` use `users.xsd` (`users.xml`, `sessions.xml`, `device-key.xml`,
+`reset.xml`) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret).
 
 ### levels
 
