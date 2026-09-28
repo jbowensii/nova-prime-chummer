@@ -5,8 +5,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
-// @ts-expect-error plain JS module
-import { createServer } from '../../server/server.mjs'
+import { createServer } from './_signin'
 // @ts-expect-error plain JS module
 import { findPython } from '../../tools/python.mjs'
 

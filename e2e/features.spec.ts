@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { STATE } from './session'
 
 async function newRunner(page: Page, name: string) {
   await page.goto('/')
@@ -123,7 +124,7 @@ test('Amp Builder: apply a book add-on', async ({ page }) => {
 })
 
 test('a runner saved from two browsers: conflict dialog, save mine as a new file', async ({ browser }) => {
-  const a = await browser.newPage(), b = await browser.newPage()
+  const a = await browser.newPage({ storageState: STATE }), b = await browser.newPage({ storageState: STATE })
   await newRunner(a, 'Twice')
   await a.waitForTimeout(700) // autosave
   const url = a.url()

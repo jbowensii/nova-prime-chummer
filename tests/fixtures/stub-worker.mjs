@@ -144,7 +144,8 @@ if (cmd === 'run') {
     if (entry.includes('<name>REFUSE')) refuse('unknown effect ref "stub-refusal"')
     const edits = drop(read('edits.xml', 'edits'), entryRe), texts = drop(read('texts.xml', 'texts'), textRe)
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 150) // widen the read-modify-write window
-    writeFileSync(join(dir, 'edits.xml'), edits.replace('</ca2:data>', `  ${entry}\n</ca2:data>`))
+    const by = rest.includes('--by') ? ` by="${opt('--by')}"` : ''
+    writeFileSync(join(dir, 'edits.xml'), edits.replace('</ca2:data>', `  ${entry.replace(/\sby="[^"]*"/, '').replace(/^(<\w+\b[^>]*?)(\/?>)/, `$1${by}$2`)}\n</ca2:data>`))
     writeFileSync(join(dir, 'texts.xml'), desc.trim() ? texts.replace('</ca2:data>', `  <text of="${kind}" id="${id}">${desc}</text>\n</ca2:data>`) : texts)
     console.log('<result state="saved" />')
   } else if (target === 'remove') {

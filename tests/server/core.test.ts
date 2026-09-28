@@ -6,8 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, vi } from 'vitest'
-// @ts-expect-error plain JS module
-import { createServer } from '../../server/server.mjs'
+import { createServer } from './_signin'
 
 vi.setConfig({ testTimeout: 30000 })
 

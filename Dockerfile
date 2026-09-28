@@ -20,7 +20,7 @@ RUN apk add --no-cache python3 py3-pip \
 COPY --from=build /app/dist ./dist
 # the app version backups record (package.json isn't in this image)
 COPY --from=build /app/VERSION ./VERSION
-COPY server/server.mjs server/books.mjs ./server/
+COPY server/server.mjs server/books.mjs server/auth.mjs server/users.mjs ./server/
 COPY importer ./importer
 RUN rm -rf ./importer/tests && find ./importer -name __pycache__ -prune -exec rm -rf {} +
 # the importer reads sources.xml from the built app's data, and the core files (skills, amp effects …) from
