@@ -1,0 +1,110 @@
+"""Shadowrun Anarchy 2.0 Alternative Core Rulebook (CRB) -> spells (amps, gear, pregens: later steps).
+
+Layout notes (page ranges, box shapes, converter quirks) are in crb.md next to this file. In short: every
+rules box is a one-cell table titled in capitals; its lines are <br>-separated and its two text columns
+come out interleaved. Spells sit in five boxes "<FAMILY> SPELLS" (printed pp.180-183). After the
+"SPELL TYPE THRESHOLD" header line, a row starts "<Name> <Family> ..." ; a name wraps onto the row's
+second line ("Increase" / "Reflexes"), and grouped spells chain "A / B / C*" down the lines, sharing one
+row. The chapter's margin tab letters (the spelled-out chapter title) come out as lone lines or glued
+to a line's ends; they are stripped here, not in the converter. The PDF has two cover pages before
+printed page 1: printed page = PDF page - 2. Descriptions go to the texts result, never the overlay.
+"""
+import re
+from xml.sax.saxutils import escape
+
+from importer.recipes import Result
+from importer.recipes.dhsa import slug  # same ids as today's catalog ("spell-" + slug)
+
+ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8", "Catalyst Game Labs", True
+SHA256 = ("4ae357ad00d8c9ad660a5595e9c100f1c9e7a105875f92bffc33111efc707a95",)  # the owner's v1.8 PDF
+PAGE_OFFSET = 2
+FAMILIES = ("Combat", "Detection", "Health", "Illusion", "Manipulation")
+
+TAB = "AWKENdOrL"  # letters of the margin tab (AWAKENED WORLD, lower-case d and r as printed)
+LONE = re.compile(rf"^[{TAB}]$")
+TRAIL = re.compile(rf" [{TAB}]$")
+# a glued lead letter; "A" only before a mark, since "A" can start a sentence
+LEAD = re.compile(rf"^(?:[{TAB.replace('A', '')}] |A (?=[*(+•]))")
+BOX = re.compile(rf"^\| (?:[{TAB}] )?({'|'.join(f.upper() for f in FAMILIES)}) SPELLS \|$")
+CHAIN = re.compile(r"^([A-Z][A-Za-z ]*?)(\*| /)")
+
+
+def match(meta, md_head):
+    if meta.get("sha256") in SHA256:
+        return 1.0
+    return 0.9 if re.search(r"alternate core rulebook", md_head, re.I) and re.search(r"shadowrun", md_head, re.I) else 0.0
+
+
+def _furniture(lines):
+    """Drop the margin tab letters: lone lines, and a letter glued to a line's start or end."""
+    out = []
+    for l in lines:
+        l = l.strip()
+        if LONE.match(l):
+            continue
+        l = TRAIL.sub("", LEAD.sub("", l))
+        if l:
+            out.append(l)
+    return out
+
+
+def spell_rows(md):
+    """[(printed page, family, [names], text)] from the spell boxes."""
+    out, page, lines = [], 0, md.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"<!-- page (\d+) -->", line)
+        if m:
+            page = int(m.group(1)) - PAGE_OFFSET
+            continue
+        m = BOX.match(line)
+        if not m or i + 2 >= len(lines) or not lines[i + 1].startswith("|---"):
+            continue
+        fam = m.group(1).title()
+        start = re.compile(rf"^([A-Z][^()]*?) {fam}(?=$| [(\dA-Z])")
+        body = _furniture(lines[i + 2].strip()[1:-1].split("<br>"))
+        rows, cur, chaining, second = [], None, False, False
+        for l in body[next((k + 1 for k, b in enumerate(body) if b.startswith("SPELL TYPE THRESHOLD")), len(body)):]:
+            if l.startswith("*"):  # footnotes: "**Area-based threshold:**", "* A, B … are different spells"
+                break
+            c = CHAIN.match(l) if chaining else None
+            s = None if c else start.match(l)
+            if c:
+                cur["names"].append(c.group(1).strip())
+                chaining = c.group(2) == " /"
+                l = l[c.end():].strip()
+            elif s:
+                name = s.group(1).strip()
+                chaining = name.endswith(" /")
+                cur = {"names": [name.rstrip(" /*")], "text": []}
+                rows.append(cur)
+                l = l[len(name):].strip()
+            elif cur is None:
+                continue
+            elif second and (w := re.match(r"([A-Z][a-z]+)(?= \(|$| [a-z])", l)):  # the name's second line
+                cur["names"][-1] += " " + w.group(1)
+                l = l[w.end():].strip()
+            second = bool(s) and not chaining
+            if l:
+                cur["text"].append(l)
+        for r in rows:
+            text = " ".join(r["text"]).replace("**", "").replace("�", ".")
+            out.append((page, fam.lower(), r["names"], text))
+    return out
+
+
+def extract(md, ctx=None):
+    spells, texts = [], []
+    for page, fam, names, text in spell_rows(md):
+        for name in names:
+            sid = "spell-" + slug(name)
+            spells.append(f'  <item id="{sid}" kind="spell" category="{fam}" source="{ID}" page="{page}">'
+                          f'<name>{escape(name)}</name><text></text></item>')
+            texts.append(f'  <text of="items" id="{sid}">{escape(text)}</text>')
+
+    def data(kind, comment, entries):
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                f"<!-- {comment} Generated by the importer (recipe crb) from the Anarchy 2.0 core rulebook. -->\n"
+                f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n' + "\n".join(entries) + "\n</ca2:data>\n")
+    return Result(files={"spells.xml": data("spells", "Spells.", spells)},
+                  texts=data("texts", "PRIVATE: book text. Do not commit.", texts),
+                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
