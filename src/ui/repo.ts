@@ -5,7 +5,8 @@ import { characterToXml, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
 import { deleteCharacter, getCharacter, listCharacters, saveCharacter } from './storage'
 
-export interface Stored { ch: Character; rev?: number; file?: string }
+/** owner, ownerName: the account the runner belongs to (server only; admin and editors also list everyone else's) */
+export interface Stored { ch: Character; rev?: number; file?: string; owner?: string; ownerName?: string }
 export type SaveResult =
   | { ok: true; rev?: number; file?: string }
   | { ok: false; conflict?: { rev: number; file: string; updatedAt?: string }; error?: string }
@@ -32,8 +33,9 @@ export function serverRepo(base = './'): Repo {
   const list = async (): Promise<Stored[]> => {
     const r = await fetch(`${base}api/characters`, { cache: 'no-store' })
     if (!r.ok) throw new Error(`tower04 answered ${r.status}`)
-    const rows: { file: string; rev: number; xml: string }[] = await r.json()
-    return rows.flatMap(row => { const p = xmlToCharacter(row.xml); return p.ok ? [{ ch: p.character, rev: row.rev, file: row.file }] : [] })
+    const rows: { file: string; rev: number; xml: string; owner?: string; ownerName?: string }[] = await r.json()
+    return rows.flatMap(row => { const p = xmlToCharacter(row.xml)
+      return p.ok ? [{ ch: p.character, rev: row.rev, file: row.file, owner: row.owner, ownerName: row.ownerName }] : [] })
   }
   return {
     mode: 'server',
