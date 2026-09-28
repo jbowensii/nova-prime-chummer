@@ -56,10 +56,11 @@ def write_overlay(dir, name, xml, ids=None):
 
 def merged_texts(path, entries, drop=()):
     """The kind="texts" file at `path` with (of, id, text) entries merged in by (of, id); others kept
-    unless their id is in `drop`. Raises on a corrupt existing file, so callers can build this before writing anything."""
+    unless their id (or (of, id)) is in `drop`. Raises on a corrupt existing file, so callers can build this before writing anything."""
     merged = {}
     if os.path.exists(path):
-        merged = {(t.get("of"), t.get("id")): t.text or "" for t in ET.parse(path).getroot() if t.get("id") not in drop}
+        merged = {(t.get("of"), t.get("id")): t.text or "" for t in ET.parse(path).getroot()
+                  if t.get("id") not in drop and (t.get("of"), t.get("id")) not in drop}
     merged.update({(of, i): text for of, i, text in entries})
     body = "".join(f"  <text of={quoteattr(of)} id={quoteattr(i)}>{escape(t)}</text>\n" for (of, i), t in merged.items())
     return (HEAD + "<!-- PRIVATE: book text. Do not commit. -->\n"

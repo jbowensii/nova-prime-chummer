@@ -8,15 +8,7 @@
   <xs:element name="data">
     <xs:complexType>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="rule">
-          <xs:complexType>
-            <xs:sequence><xs:element name="title" type="xs:string"/><xs:element name="text" type="xs:string"/></xs:sequence>
-            <xs:attributeGroup ref="ca2:ref"/>
-            <xs:attribute name="sheet" type="ca2:Id" use="required"/>
-            <xs:attribute name="section" type="xs:string"/>
-            <xs:attribute name="effects" type="ca2:IdList"/>
-          </xs:complexType>
-        </xs:element>
+        <xs:element name="rule" type="ca2:Rule"/>
         <xs:element name="remove" type="ca2:Remove"/>
       </xs:choice>
       <xs:attribute name="kind" use="required">

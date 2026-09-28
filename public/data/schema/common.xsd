@@ -37,4 +37,61 @@
   <xs:attributeGroup name="root">
     <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
   </xs:attributeGroup>
+
+  <!-- entry types of amps.xsd, items.xsd and rules.xsd (also the edits layer, edits.xsd) -->
+  <xs:complexType name="Amp">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <!-- equipment amps: the base item bought with the amp (priced from pricing.xml) -->
+      <xs:element name="item" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="kind" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="specialist" type="xs:boolean"/>
+          <xs:attribute name="armor" type="xs:positiveInteger"/>
+          <xs:attribute name="dv" type="xs:string"/>
+          <xs:attribute name="ranges" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="effect" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="ref" type="ca2:Id" use="required"/>
+          <xs:attribute name="param" type="xs:string"/>
+          <xs:attribute name="value" type="xs:positiveInteger"/>
+          <xs:attribute name="note" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="narrative" type="xs:string"/>
+    </xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="type" type="ca2:Id" use="required"/>
+    <xs:attribute name="printedRating" type="xs:integer"/>
+    <xs:attribute name="vehicle" type="ca2:Id"/>
+    <xs:attribute name="mod" type="xs:boolean"/>
+  </xs:complexType>
+  <xs:complexType name="Item">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="text" type="xs:string"/>
+    </xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/><xs:enumeration value="spell"/><xs:enumeration value="complex-form"/></xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="specialist" type="xs:boolean"/>
+    <xs:attribute name="armor" type="xs:positiveInteger"/>
+    <xs:attribute name="dv" type="xs:string"/>
+    <xs:attribute name="ranges" type="xs:string"/>
+    <xs:attribute name="category" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Rule">
+    <xs:sequence><xs:element name="title" type="xs:string"/><xs:element name="text" type="xs:string"/></xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="sheet" type="ca2:Id" use="required"/>
+    <xs:attribute name="section" type="xs:string"/>
+    <xs:attribute name="effects" type="ca2:IdList"/>
+  </xs:complexType>
 </xs:schema>
