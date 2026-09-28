@@ -738,12 +738,19 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     nameOf: username => users.find(u => u.username === username)?.name ?? username,
     /** The account as it is now (renamed, disabled or deleted since the request began): null when it can't act. */
     current: id => users.find(u => u.id === id && u.enabled) ?? null,
-    /** After a restore: the restored accounts; every session ends. No users.xml (a backup from before accounts): setup mode. */
-    async reload() {
+    /** After a restore: the restored accounts; every session ends. No users.xml (a backup from before accounts): setup mode.
+     *  `issuer`: the restored auth.xml's; links to any other issuer go, as when Settings changes the issuer. */
+    async reload(issuer = '') {
       load()
-      deviceSecret = null // the Library was replaced: its key (a restore never brings one), or a new one
+      deviceSecret = null // re-read: the restore keeps the server's key (importer/backup.py), or it is made anew
       sessions.clear()
       await persist()
+      if (users.some(u => u.oidcSub && u.oidcIss !== issuer)) {
+        await lock(async () => {
+          for (const u of users) if (u.oidcIss !== issuer) Object.assign(u, { oidcIss: '', oidcSub: '' })
+          await saveUsers()
+        })
+      }
     },
     /** Shutdown: sessions.xml now (synchronously, the process is about to exit). */
     stop() {

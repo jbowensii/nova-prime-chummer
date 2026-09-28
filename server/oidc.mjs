@@ -379,5 +379,5 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
     return false
   }
 
-  return { handle, enabled: () => settings().on }
+  return { handle, enabled: () => settings().on, issuer: () => settings().issuer }
 }

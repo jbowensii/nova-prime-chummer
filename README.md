@@ -253,6 +253,14 @@ then **Replace everything on the server** applies it. The server saves its
 own current state first, to `library/.backups` (newest 3 kept), so a bad
 restore can be undone. Restores are capped at 20 GB.
 
+The accounts travel with the backup (`users.xml`, the sign-in settings and
+every runner folder); sessions never do. A restore signs everyone out, and
+people sign in with the accounts in the backup. The Authelia client secret
+is in the file only with **Include my API keys**; without it the server keeps
+its own, unless the backup's sign-in settings name another issuer. Authelia
+links to another issuer are cleared. A backup from before accounts puts the
+server back in setup: the first admin gets its runners, as in the upgrade.
+
 **Books → Core data** moves just the core rules tables between servers:
 **Download data pack** saves them as a small zip (no descriptions, PDFs or
 keys), and **Upload data pack** loads one — the way to set up a server
