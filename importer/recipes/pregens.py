@@ -30,7 +30,10 @@ def extract(md, ctx=None):
         if not re.search(r"^SKILLS RATING", text, re.M):
             continue
         name, role = toc.get(page) or _story_title(pages.get(page - 1, ""))
-        sid = f"{ID.lower()}.{statblock._slug(name)}"
+        base = sid = f"{ID.lower()}.{statblock._slug(name) or 'runner'}"
+        n = 2
+        while any(x["file"] == f"{sid}.xml" for x in samples):  # two runners with one name: -2, -3…
+            sid, n = f"{base}-{n}", n + 1
         ch, rows = statblock.to_character(statblock.parse_statblock(text), rules, sid=sid, name=name, role=role,
                                           origin=ID, background=f"{role}. {NAME} p.{page}.", updated=updated)
         samples.append({"file": f"{sid}.xml", "xml": statblock.character_xml(ch), "name": name, "role": role, "page": page})
@@ -40,6 +43,6 @@ def extract(md, ctx=None):
 
 
 def _story_title(text):
-    """"# NOONCHI" / "(SOCIAL ADEPT)" on the story page, when the contents don't list the runner."""
+    """"# TEST FACE" / "(MADE-UP FACE)" on the story page, when the contents don't list the runner."""
     m = re.search(r"^# (.+)\n\((.+)\)", text, re.M)
     return (m.group(1).title(), m.group(2).capitalize()) if m else ("Runner", "")

@@ -47,16 +47,18 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         src = res.source["id"]
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
         texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
-        # merge texts first: a corrupt texts file fails the import before any overlay is replaced
+        # merge texts and the samples list first: a corrupt texts or samples file fails the import before any overlay is replaced
         texts = xmlio.merged_texts(texts_path, xmlio.texts_entries(xmlio.scope(res.texts, src, ids))) if res.texts else None
+        samples_path = os.path.join(custom_dir, "imported", "samples.xml")
+        samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
         for name, xml in res.files.items():
             xmlio.write_overlay(out_dir, name, xml, ids)
         if texts:
             xmlio.write_file(texts_path, texts)
         for s in res.samples:
             xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
-        if res.samples or os.path.exists(os.path.join(custom_dir, "imported", "samples.xml")):
-            xmlio.update_samples(custom_dir, src, res.samples)
+        if samples:
+            xmlio.write_file(samples_path, samples)
         xmlio.write_import(book_dir, report=res.report, files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
                            recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
                            name=res.source["name"], publisher=res.source["publisher"],
