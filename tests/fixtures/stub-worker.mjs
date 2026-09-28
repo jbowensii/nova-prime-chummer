@@ -58,6 +58,7 @@ if (cmd === 'run') {
   else { importXml(target); status(target, 'removed') }
 } else if (cmd === 'propose') {
   if (rest.includes('--dry-run')) console.log('<result parts="4" provider="anthropic" />')
+  else if (existsSync(join(target, 'review.xml')) && !rest.includes('--fresh')) status(target, 'review', 'Proposals from an earlier run are waiting for review; nothing was sent')
   else {
     writeFileSync(join(target, 'review.xml'), `<review book="${basename(target)}" source="X" provider="anthropic" created="${now}" bookSha256="00" parts="4" done="4">
   <proposal id="amp.a" kind="amp" state="pending" page="3"><amp id="a" type="quality" printedRating="0" source="X" page="3"><name>Lucky Charm</name><narrative></narrative></amp></proposal>
