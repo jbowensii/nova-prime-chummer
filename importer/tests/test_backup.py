@@ -27,6 +27,7 @@ def state(root, extra=""):
         "library/book-1/status.xml": '<status state="done"/>',
         "library/.config/ai-providers.xml": "<aiproviders/>",
         "library/.config/ai-keys.xml": f"<aikeys>secret{extra}</aikeys>",
+        "library/.config/auth-secret.xml": "<authsecret/>",
         "library/.backups/19990101T000000_000000Z.zip": "not really",
         "custom/edits/edits.xml.tmp": "half written",
     }
@@ -106,6 +107,7 @@ class BackupTest(unittest.TestCase):
             self.assertIn("characters/.trash/old.xml", names)
             self.assertIn("library/.config/ai-providers.xml", names)
             self.assertNotIn(backup.KEYS, names)
+            self.assertNotIn(backup.AUTH_SECRET, names)
             self.assertFalse(names & backup.NEVER)
             self.assertFalse([n for n in names if ".backups" in n or n.endswith(".tmp")])
         m = backup.check(out)
@@ -118,6 +120,7 @@ class BackupTest(unittest.TestCase):
                                "--library", dirs["library"], "--out", out, "--keys"]), 0)
         with zipfile.ZipFile(out) as zf:
             self.assertEqual(zf.read(backup.KEYS), b"<aikeys>secret</aikeys>")
+            self.assertIn(backup.AUTH_SECRET, zf.namelist())
         self.assertEqual(backup.check(out).get("keys"), "yes")
         self.assertEqual(backup.check(out).get("app"), backup.app_version())  # package.json's version
         self.assertEqual(os.listdir(root).count("b.zip"), 1)

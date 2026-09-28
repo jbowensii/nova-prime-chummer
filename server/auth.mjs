@@ -4,7 +4,8 @@
 //
 //   POST   /api/auth/login          { username, password } -> { user } + cookie; 401 wrong, 429 paused (5 tries, 15 min)
 //   POST   /api/auth/logout         -> 204, the session ends
-//   GET    /api/auth/me             -> { user | null, setup } (public; setup: no account exists yet)
+//   GET    /api/auth/me             -> { user | null, setup, oidc } (public; setup: no account exists yet; oidc: Sign in with
+//                                   Authelia is on)
 //   POST   /api/auth/password       { current, password } -> 204; the user's other sessions end
 //   POST   /api/setup               { code, username, name, password } -> 201 { user } + cookie: the first admin (404 once any
 //                                   account exists); top-level runners move into the admin's folder
@@ -32,7 +33,7 @@ const NS = 'urn:chummer-anarchy2:config:1'
 export const USERNAME = /^[a-z0-9][a-z0-9._-]{1,31}$/
 const USER_ID = /^[0-9a-f]{12}$/
 const EMAIL = /^[^\s@<>"&]{1,64}@[^\s@<>"&]{1,190}$/
-const ROLES = ['admin', 'editor', 'player'], METHODS = ['password', 'authelia'] // authelia: signs in through OIDC only (Task 5)
+const ROLES = ['admin', 'editor', 'player'], METHODS = ['password', 'authelia'] // authelia: signs in through OIDC only (server/oidc.mjs)
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1 }
 const MIN_PASSWORD = 10, MAX_PASSWORD = 1024
 const MINUTE = 60e3, DAY = 24 * 60 * MINUTE
@@ -144,12 +145,13 @@ export async function issueReset(libraryDir, username) {
   return c
 }
 
-/** A users.xml with these accounts ({ username, password, role?, name? }): for seeding tests and the e2e server. */
+/** A users.xml with these accounts ({ username, password, role?, name?, method?, email?, enabled? }): for seeding tests and
+ *  the e2e server. */
 export async function usersFile(list) {
   const users = []
-  for (const { username, password, role = 'admin', name = username } of list)
-    users.push({ id: randomBytes(6).toString('hex'), username, name, email: '', role, method: 'password', enabled: true, created: iso(),
-      password: await hashPassword(password) })
+  for (const { username, password, role = 'admin', name = username, method = 'password', email = '', enabled = true } of list)
+    users.push({ id: randomBytes(6).toString('hex'), username, name, email, role, method, enabled, created: iso(),
+      password: method === 'password' ? await hashPassword(password) : null })
   return usersXml(users)
 }
 
@@ -173,16 +175,16 @@ const last = h => String(h ?? '').split(',').pop().trim()
 
 /** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. */
 export function need(path, method) {
-  if (path === '/api/health' || (path === '/api/auth/me' && method === 'GET')
+  if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
-  if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|backup|restore|datapack|users)(\/|$)/.test(path)) return 'admin'
+  if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
   if (/^\/api\/edits(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   return 'user'
 }
 
 /** `lock`: the characters' write lock (shared with server.mjs); `runners`: runner-folder moves, run under it; `track`:
  *  books.track, so file writes are counted (a restore waits for them, and they are refused while it runs). */
-export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log = console, accountKeys = ACCOUNT_KEYS }) {
+export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log = console, accountKeys = ACCOUNT_KEYS, oidcOn = () => false }) {
   const config = join(libraryDir, '.config')
   const usersPath = join(config, 'users.xml'), sessionsPath = join(config, 'sessions.xml'), resetPath = join(config, 'reset.xml')
   const proxies = proxyList(trustProxy)
@@ -632,7 +634,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   /** The accounts routes; false for any other path. */
   async function handle(req, res, url, send, who) {
     const p = url.pathname, method = req.method
-    if (p === '/api/auth/me' && method === 'GET') return send(res, 200, { user: who ? pub(who) : null, setup: !users.length && !broken })
+    if (p === '/api/auth/me' && method === 'GET') return send(res, 200, { user: who ? pub(who) : null, setup: !users.length && !broken, oidc: oidcOn() })
     if (p === '/api/auth/login' && method === 'POST') return login(req, res, send)
     if (p === '/api/setup' && method === 'POST') return setup(req, res, send)
     if (p === '/api/setup/reset' && method === 'POST') return recover(req, res, send)
@@ -664,8 +666,21 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     return false
   }
 
+  /** A sign-in through Authelia (server/oidc.mjs), its claims verified: `username` (preferred_username), else `email`, names
+   *  an enabled account whose method is authelia -> a session and a known device, like a password sign-in; else null. */
+  async function signInExternal(res, ctx, { username, email, emailVerified }) {
+    const n = oneLine(username).toLowerCase(), e = oneLine(email).toLowerCase()
+    const u = (n && users.find(x => x.username === n)) || (e && emailVerified !== false && users.find(x => x.email === e)) || null
+    if (!u?.enabled || u.method !== 'authelia') return null
+    log.log(`signed in with Authelia: ${u.username} from ${ctx.ip}`)
+    await lock(async () => { u.lastLogin = iso(); await saveUsers() })
+    await startSession(res, ctx, u)
+    setDevice(res, ctx, u.id)
+    return u
+  }
+
   return {
-    gate, handle, session, context,
+    gate, handle, session, context, json, signInExternal,
     usernames: () => users.map(u => u.username),
     /** An account's display name (the runner list's group headings). */
     nameOf: username => users.find(u => u.username === username)?.name ?? username,
