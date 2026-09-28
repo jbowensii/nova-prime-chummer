@@ -14,6 +14,9 @@
   python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
   python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
   python -m importer restore --apply F --characters D --custom D --library D [--version V]  (exit 3: refused)
+  python -m importer datapack export --custom D --out F [--version V]  (exit 3: no core data)
+  python -m importer datapack check F                    (the manifest on stdout; exit 3: refused, the reason on stderr)
+  python -m importer datapack import F --custom D        (exit 3: refused, nothing changed)
 """
 import contextlib
 import hashlib
@@ -448,12 +451,31 @@ def _cmd_restore(argv):
     return 0
 
 
+def _cmd_datapack(argv):
+    from importer import datapack  # lxml: only for data packs
+    sub, custom, out = (argv[0] if argv else None), _flag(argv, "--custom"), _flag(argv, "--out")
+    if not ((sub == "export" and custom and out) or (sub == "check" and len(argv) == 2) or (sub == "import" and len(argv) == 4 and custom)):
+        print(USAGE, file=sys.stderr)
+        return 2
+    try:
+        if sub == "export":
+            datapack.export(custom, out, version=_flag(argv, "--version"))
+        elif sub == "check":
+            print(datapack.check(argv[1])[1][datapack.MANIFEST].decode("utf8").strip())
+        else:
+            print(f'<result state="imported" files={quoteattr(" ".join(datapack.import_pack(argv[1], custom)))} />')
+    except datapack.PackError as e:
+        print(e, file=sys.stderr)
+        return 3
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
             "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
             "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "edit": _cmd_edit,
-            "backup": _cmd_backup, "restore": _cmd_restore}
+            "backup": _cmd_backup, "restore": _cmd_restore, "datapack": _cmd_datapack}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
