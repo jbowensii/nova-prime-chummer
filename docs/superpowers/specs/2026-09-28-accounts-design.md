@@ -12,7 +12,7 @@ role sees only what it should.
 | Question | Decision |
 |---|---|
 | How accounts are made | The admin creates them on a Users page. No self sign-up. |
-| Books | Only the admin uploads/imports books and uses AI settings/keys; the imported data is available to every signed-in user. |
+| Books | Only the admin uploads/imports books and uses AI settings/keys. There is one shared catalog: all imported data (and the core data, see `2026-09-28-core-data-design.md`) is available to every signed-in user. No per-user book or data access. |
 | Backup / restore | Admin only. |
 | Catalog edits | Admin and editors. |
 | Runners | Each user owns theirs. Admin and editors can view and print everyone's, read-only. |
