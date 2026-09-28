@@ -127,6 +127,24 @@ test('concurrent key saves both land', async () => {
   for (const p of ['openai', 'gemini', 'anythingllm']) expect(x).toContain(`<key provider="${p}" set="true"/>`)
 })
 
+test('model lists: the provider is checked, errors come back plainly and never with the key', async () => {
+  const models = (p: string) => fetch(`${base}/api/ai-models?provider=${p}`)
+  for (const p of ['', 'evil', '..%2F..']) expect((await models(p)).status, p).toBe(400)
+  let r = await models('gemini')
+  expect(r.status).toBe(200)
+  expect(await r.json()).toEqual({ models: ['gemini-2.5-pro', 'gemini-2.5-flash'] })
+  r = await models('anthropic') // its key was cleared when its address changed
+  expect([r.status, await r.json()]).toEqual([502, { error: 'no API key is set for anthropic' }])
+  r = await models('anythingllm')
+  expect([r.status, await r.json()]).toEqual([502, { error: 'this provider has no model list' }])
+  expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-bad-LEAKME4242</key>' })).status).toBe(204)
+  r = await models('openai')
+  const text = await r.text()
+  expect(r.status).toBe(502)
+  expect(text).toContain('HTTP 401: invalid key [key]')
+  expect(text).not.toContain('LEAKME')
+})
+
 test('a book left mid-job by a restart is marked interrupted', async () => {
   expect(await waitFor('stale-1', 'failed')).toMatchObject({ message: 'Interrupted by a restart — re-import' })
 })

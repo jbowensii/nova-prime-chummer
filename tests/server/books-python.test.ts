@@ -72,6 +72,20 @@ describe.skipIf(!python)('with the real importer', () => {
     }
   }, 30000)
 
+  test('model lists go through the real importer and never show the key', async () => {
+    expect((await fetch(`${base}/api/ai-models?provider=evil`)).status).toBe(400)
+    let r = await fetch(`${base}/api/ai-models?provider=anythingllm`)
+    expect([r.status, await r.json()]).toEqual([502, { error: 'this provider has no model list' }])
+    // a saved address nobody answers at: the reason comes back, the key doesn't
+    expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings('<provider id="openai" enabled="true" baseUrl="http://127.0.0.1:1/v1"/>') })).status).toBe(200)
+    expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-test-NEVERSHOWN42</key>' })).status).toBe(204)
+    r = await fetch(`${base}/api/ai-models?provider=openai`)
+    const text = await r.text()
+    expect(r.status).toBe(502)
+    expect(text).toContain('couldn’t reach 127.0.0.1:1')
+    expect(text).not.toContain('NEVERSHOWN')
+  }, 30000)
+
   test('what the app never writes is refused with the reason', async () => {
     for (const body of [settings('<key provider="openai">k</key>'), settings(home + home), '<!DOCTYPE x [<!ENTITY a "b">]><x/>', '<aiproviders version="1"/>']) {
       const r = await fetch(`${base}/api/ai-settings`, { method: 'PUT', body })
