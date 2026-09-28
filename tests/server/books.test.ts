@@ -4,9 +4,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, beforeAll, expect, test } from 'vitest'
+import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 // @ts-expect-error plain JS module
 import { createServer } from '../../server/server.mjs'
+
+// the stub worker runs as a child process: a loaded machine can take seconds per job (waitFor allows 15 s)
+vi.setConfig({ testTimeout: 30000 })
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-books-'))
 const custom = join(dir, 'custom'), library = join(dir, 'library')
@@ -24,7 +27,7 @@ afterAll(() => srv.close())
 type Book = { id: string; file: string; state: string; message: string; source?: string; counts: Record<string, number>; busy: boolean; review?: string }
 const list = async (): Promise<Book[]> => (await fetch(`${base}/api/books`)).json()
 async function waitFor(id: string, state: string): Promise<Book | undefined> {
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 600; i++) { // 15 s
     const b = (await list()).find(x => x.id === id)
     if (state === 'gone' ? !b : b?.state === state && !b.busy) return b
     await new Promise(r => setTimeout(r, 25))

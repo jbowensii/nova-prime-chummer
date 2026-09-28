@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Catalog entries edited or added in the app. Written by the importer. (Made-up test edits.) -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="edits" version="1">
+  <item id="test.signal-jammer" kind="gear" source="TEST" page="10"><name>Signal Jammer Mk II</name><text></text></item>
+  <item id="table.lucky-charm" kind="gear" source="TABLE" page="1"><name>Lucky Charm</name><text></text></item>
+</ca2:data>

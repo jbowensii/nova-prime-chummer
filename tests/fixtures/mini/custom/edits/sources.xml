@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- House-rule sources created in the app. Written by the importer. (Made-up test source TABLE.) -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">
+  <source id="TABLE" publisher="" canon="false"><name>Test Table Rules</name></source>
+</ca2:data>
