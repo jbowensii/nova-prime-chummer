@@ -43,11 +43,14 @@ export function SignInSettings() {
     <fieldset className="signin-settings">
       <legend>Sign-in</legend>
       <p className="muted">Let people sign in through Authelia (single sign-on, with its two-factor). Their accounts must exist on the
-        Users page with “Signs in with: Authelia”; they’re matched by username, else email.</p>
+        Users page with “Signs in with: Authelia”. The first sign-in matches the Authelia username (or, without one, a verified email)
+        and links the account to that Authelia user for good; Unlink on the Users page undoes it.</p>
       {saved === null && !msg ? <p className="muted">Loading…</p> : (
         <form className="stack" onSubmit={save}>
           <label>Issuer address<input type="url" value={f.issuer} onChange={set('issuer')} placeholder="https://auth.example.com" spellCheck={false}
             autoComplete="off" /></label>
+          {newIssuer && saved?.issuer && <p className="warn small">A new issuer unlinks every Authelia account: each is linked again, by
+            username, at its next sign-in.</p>}
           <label>Client ID<input value={f.clientId} onChange={set('clientId')} spellCheck={false} autoComplete="off" autoCapitalize="none" /></label>
           <label>Client secret<input type="password" value={f.secret} onChange={set('secret')} autoComplete="new-password" aria-describedby="oidc-secret-note"
             placeholder={saved?.secretSet && !newIssuer ? 'Saved (type a new one to replace it)' : ''} /></label>

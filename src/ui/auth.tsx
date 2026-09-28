@@ -5,7 +5,7 @@ import { Modal } from './bits'
 
 export type Role = 'admin' | 'editor' | 'player'
 export interface User { id: string; username: string; name: string; email: string | null; role: Role; method: 'password' | 'authelia';
-  enabled: boolean; created: string; lastLogin: string | null }
+  enabled: boolean; created: string; lastLogin: string | null; linked?: boolean }
 
 /** The signed-in account; null when the app runs without a server (browser storage: no accounts, nothing hidden). */
 export const Me = createContext<User | null>(null)
