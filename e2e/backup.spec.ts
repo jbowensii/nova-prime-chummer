@@ -25,7 +25,7 @@ test('download a backup, change a runner, restore, see it back', async ({ page }
   expect(download.suggestedFilename()).toMatch(/^chummer-anarchy2-backup-\d{4}-\d{2}-\d{2}\.zip$/)
   const zip = info.outputPath('backup.zip')
   await download.saveAs(zip)
-  await expect(page.getByRole('status')).toContainText('Backup saved as chummer-anarchy2-backup-')
+  await expect(page.getByRole('status')).toContainText('The backup is ready')
   await page.getByRole('button', { name: 'Close' }).click()
 
   await page.getByRole('link', { name: 'Backed Up' }).click()

@@ -19,7 +19,7 @@ export function BackupSettings() {
   const [keys, setKeys] = useState(false)
   const [step, setStep] = useState<Step>({ at: 'idle' })
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
-  const [zipping, setZipping] = useState<'making' | 'saving' | null>(null)
+  const [zipping, setZipping] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null), headRef = useRef<HTMLHeadingElement>(null), prev = useRef(step.at)
   // the focused picker or button unmounts as the step changes: focus the preview's heading, or the picker again
   useEffect(() => {
@@ -29,23 +29,20 @@ export function BackupSettings() {
   }, [step.at])
   if (repo.mode !== 'server') return null
 
-  /** Fetched rather than linked, so a refusal or failure shows here instead of as a broken file in the browser's downloads. */
+  /** Two steps: the server makes the zip (its refusals and failures show here), then the browser fetches it by token
+   *  as a plain download, straight to disk with the browser's own progress. */
   const download = async () => {
     setMsg(null)
-    setZipping('making')
+    setZipping(true)
     try {
-      const r = await fetch(`./api/backup${keys ? '?keys=1' : ''}`, { cache: 'no-store' }).catch(() => { throw new Error(UNREACHABLE) })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
-      setZipping('saving')
-      const blob = await r.blob().catch(() => { throw new Error('the download was cut off; try again') })
+      const { token } = await api<{ token: string }>(`backup${keys ? '?keys=1' : ''}`, { method: 'POST' })
       const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'chummer-anarchy2-backup.zip'
+      a.href = `./api/backup/${token}`
+      a.download = '' // the server's name: chummer-anarchy2-backup-<date>.zip
       a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 60000)
-      setMsg({ text: `Backup saved as ${a.download}.` })
+      setMsg({ text: 'The backup is ready. Your browser is saving it; its downloads list shows the progress.' })
     } catch (e) { setMsg({ text: `Couldn’t make the backup. ${plain((e as Error).message)}`, err: true }) }
-    setZipping(null)
+    setZipping(false)
   }
 
   const pick = async (file: File | undefined) => {
@@ -82,12 +79,12 @@ export function BackupSettings() {
       <legend>Backup</legend>
       <p className="muted">Everything this server keeps: runners, house rules and edits, imported books, uploaded PDFs and AI settings.</p>
       <div className="row">
-        <button className="btn" disabled={!!zipping || step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
+        <button className="btn" disabled={zipping || step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
         <label className="check inline"><input type="checkbox" checked={keys} aria-describedby={keys ? 'backup-keys-warning' : undefined}
           onChange={e => setKeys(e.target.checked)} />Include my API keys</label>
       </div>
       {keys && <p id="backup-keys-warning" className="err small">Anyone with the file can use your keys, and pay with them. Keep it private.</p>}
-      {zipping && <p>{zipping === 'making' ? 'Making the backup… a big library takes a while.' : 'Saving the file…'} <progress /></p>}
+      {zipping && <p>Making the backup… a big library takes a while. <progress /></p>}
 
       {step.at === 'idle' && (
         <label className="btn file">Restore from backup…
