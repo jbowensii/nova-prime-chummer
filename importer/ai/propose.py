@@ -22,7 +22,7 @@ PREFIX = {"spell": "spell-", "complex-form": "cf-", "gear": "gear-"}  # as the s
 ITEM_KINDS = ("gear", "weapon", "armor")
 CATEGORIES = {"spell": ("combat", "detection", "health", "illusion", "manipulation"), "complex-form": ("sustained", "instant")}
 KEYS = ("amps", "items", "spells", "complexForms")
-ILLEGAL = re.compile("[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE000, 0xFFFD, 0x10000, 0x10FFFF))))  # not in XML 1.0
+ILLEGAL = xmlio.ILLEGAL
 
 
 def chunks(md, limit=LIMIT):
