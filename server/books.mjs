@@ -57,7 +57,8 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
   const queue = []
-  let running = null, child = null
+  let running = null, child = null, listChild = null
+  let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let keyChain = Promise.resolve() // key writes are read-modify-write in the importer: one at a time
 
   const bookDir = id => {
@@ -79,7 +80,8 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       const p = spawn(cmd, [...pre, '-m', 'importer', ...args], { cwd: importerRoot, timeout, windowsHide: true,
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // else Windows' code page mangles the ’ in messages
         stdio: ['pipe', 'pipe', 'pipe'] })
-      if (!['set-key', 'set-settings', 'list-models'].includes(args[0]) && !args.includes('--dry-run')) child = p
+      if (args[0] === 'list-models') listChild = p
+      else if (!['set-key', 'set-settings'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -239,11 +241,13 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return run
   }
 
-  /** The provider's model ids. Read-only, so outside the job queue and the key chain; the importer reads the saved
-   *  address before the key, and only the provider id comes from the request. */
+  /** The provider's model ids. Read-only, so outside the job queue and the key chain but one at a time; the importer
+   *  reads the saved address before the key, and only the provider id comes from the request. */
   async function listModels(provider) {
     if (!PROVIDERS.includes(provider)) throw fail(400, 'unknown provider')
-    const r = await importer(['list-models', provider, '--library', libraryDir], { timeout: 60000 })
+    const run = listChain.then(() => importer(['list-models', provider, '--library', libraryDir], { timeout: 60000 }))
+    listChain = run
+    const r = await run
     if (r.code === 0) return r.out.split('\n').map(s => s.trim()).filter(Boolean)
     const why = (await redact(r.err)).trim().split('\n').pop()
     throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t ask the provider' + (why ? `: ${why}` : ''))
@@ -345,6 +349,6 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return send(res, 405, { error: 'method not allowed' })
   }
 
-  // shutdown: stop the running importer; the next start marks its book interrupted
-  return { handle, stop: () => child?.kill(), libraryDir: resolve(libraryDir) }
+  // shutdown: stop the running importer (the next start marks its book interrupted) and any model list
+  return { handle, stop: () => { child?.kill(); listChild?.kill() }, libraryDir: resolve(libraryDir) }
 }
