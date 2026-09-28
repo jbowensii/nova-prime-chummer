@@ -7,7 +7,7 @@ import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { blankCharacter } from '../../src/engine/file'
 import { validate } from '../../src/engine/validate'
 import type { AmpEntry, Character, ItemEntry } from '../../src/model/types'
-import { base, BOOK_CATALOG_FILES, cat, mini } from '../helpers'
+import { cat, catFiles } from '../helpers'
 
 const NS = 'xmlns:ca2="urn:chummer-anarchy2:data:1"'
 
@@ -22,8 +22,8 @@ describe('sources', () => {
     expect(all.filter(e => !cat.sources.has(e.source)).map(e => e.id)).toEqual([])
   })
   test('canon is determined by the entry\'s own declared source, not by which file it shipped in', () => {
-    expect(isCanon(cat, cat.amps.get('rush-c')!)).toBe(true)
-    expect(isCanon(cat, cat.amps.get('rush')!)).toBe(false)
+    expect(isCanon(cat, cat.amps.get('testc.rush')!)).toBe(true)
+    expect(isCanon(cat, cat.amps.get('test.rush')!)).toBe(false)
   })
   test('a spec carries its own source, else its skill’s', () => {
     expect(specSource(cat, 'close-combat.firearms')).toBe('DHSA')
@@ -33,8 +33,8 @@ describe('sources', () => {
 })
 
 describe('allow non-canon content', () => {
-  const rushAmp = (): AmpEntry => ({ uid: 'a', catalogId: 'rush', type: 'equipment', name: 'Rush', narrative: '',
-    effects: cat.amps.get('rush')!.effects, linkedItem: 'i' })
+  const rushAmp = (): AmpEntry => ({ uid: 'a', catalogId: 'test.rush', type: 'equipment', name: 'Rush', narrative: '',
+    effects: cat.amps.get('test.rush')!.effects, linkedItem: 'i' })
   const rushItem = (): ItemEntry => ({ uid: 'i', kind: 'gear', name: 'Rush' })
   const nonCanon = (): Character => { const ch = blankCharacter(); ch.build.amps = [rushAmp()]; ch.build.items = [rushItem()]; return ch }
 
@@ -49,7 +49,7 @@ describe('allow non-canon content', () => {
   })
   test('a runner using only canon content has nothing to flag', () => {
     const ch = blankCharacter()
-    ch.build.amps = [{ uid: 'a', catalogId: 'rush-c', type: 'equipment', name: 'Rush', narrative: '', effects: cat.amps.get('rush-c')!.effects }]
+    ch.build.amps = [{ uid: 'a', catalogId: 'testc.rush', type: 'equipment', name: 'Rush', narrative: '', effects: cat.amps.get('testc.rush')!.effects }]
     expect(nonCanonUses(cat, ch.build)).toEqual([])
   })
   test('the switch and origin survive the XML file', () => {
@@ -63,20 +63,19 @@ describe('allow non-canon content', () => {
 
 describe('private texts and rules', () => {
   test('rules load from the reference sheet with links to amp effects', () => {
-    const hot = cat.rules.get('gadget-basics')!
+    const hot = cat.rules.get('test.gadget-basics')!
     expect(hot.title).toBe('Risk Reduction (spec)')
     expect(hot.effects).toEqual(['rr-spec'])
     expect(isCanon(cat, hot)).toBe(false)
     for (const r of cat.rules.values()) for (const e of r.effects) expect(cat.ampEffects.has(e), `${r.id} -> ${e}`).toBe(true)
   })
   test('committed data carries no rule text; a texts file fills it by id', () => {
-    expect(cat.rules.get('gadget-basics')!.text).toBe('')
-    const texts = `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="gadget-basics">Full immersion.</text>`
-      + `<text of="amps" id="keen-eye">Sharp senses.</text></ca2:data>`
-    const c = buildCatalog([...base.filter(f => !BOOK_CATALOG_FILES.includes(f.file)),
-      ...mini, { file: 'custom/texts/qref.xml', xml: texts, overlay: true }])
-    expect(c.rules.get('gadget-basics')!.text).toBe('Full immersion.')
-    expect(c.amps.get('keen-eye')!.narrative).toBe('Sharp senses.')
+    expect(cat.rules.get('test.gadget-basics')!.text).toBe('')
+    const texts = `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="test.gadget-basics">Full immersion.</text>`
+      + `<text of="amps" id="test.keen-eye">Sharp senses.</text></ca2:data>`
+    const c = buildCatalog([...catFiles, { file: 'custom/texts/qref.xml', xml: texts, overlay: true }])
+    expect(c.rules.get('test.gadget-basics')!.text).toBe('Full immersion.')
+    expect(c.amps.get('test.keen-eye')!.narrative).toBe('Sharp senses.')
   })
 })
 
@@ -84,10 +83,10 @@ describe('loadCatalog fetches each source’s private texts file', () => {
   test('texts named in sources.xml are loaded from custom/', async () => {
     const { existsSync } = await import('node:fs')
     const { loadCatalog } = await import('../../src/engine/load')
-    const fixtureRules = readFileSync('tests/fixtures/mini/rules.xml', 'utf8')
+    const fixtureRules = readFileSync('tests/fixtures/mini/custom/imported/test/rules.xml', 'utf8')
     const extra: Record<string, string> = {
       'data/rules.xml': fixtureRules,
-      'custom/texts/qref.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="gadget-basics">Full immersion.</text></ca2:data>`,
+      'custom/texts/qref.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="test.gadget-basics">Full immersion.</text></ca2:data>`,
     }
     const real = globalThis.fetch
     globalThis.fetch = (async (url: string) => {
@@ -97,7 +96,7 @@ describe('loadCatalog fetches each source’s private texts file', () => {
     }) as typeof fetch
     try {
       const c = await loadCatalog('./')
-      expect(c.rules.get('gadget-basics')!.text).toBe('Full immersion.')
+      expect(c.rules.get('test.gadget-basics')!.text).toBe('Full immersion.')
       expect(c.files.some(f => f.file === 'custom/texts/qref.xml')).toBe(true)
     } finally { globalThis.fetch = real }
   })

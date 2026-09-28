@@ -9,13 +9,13 @@ test('base catalog loads without errors', () => {
   expect(cat.skills.size).toBe(15) // 14 core skills + Tasking (Conversion Guide)
   expect(cat.pricing.attrLastPoint).toBe(20000)
   expect(cat.ampEffects.get('init-2')!.requires).toBe('init-1')
-  expect(cat.amps.get('trick-shot-rig')!.item!.kind).toBe('weapon')
+  expect(cat.amps.get('test.trick-shot-rig')!.item!.kind).toBe('weapon')
   expect(cat.items.get('light-armor')!.armor).toBe(3)
-  expect(cat.items.get('nano-tape')!.kind).toBe('gear')
-  expect(cat.files.length).toBe(17) // public/data minus the book catalogs, plus tests/fixtures/mini
+  expect(cat.items.get('test.nano-tape')!.kind).toBe('gear')
+  expect(cat.files.length).toBe(19) // public/data minus the book catalogs, plus tests/fixtures/mini/custom (sources + 5 files)
   // duplicate names across non-canon sources (TEST, TEST2) both load fine
-  expect(cat.amps.get('keen-eye')!.source).toBe('TEST')
-  expect(cat.amps.get('keen-eye-2')!.source).toBe('TEST2')
+  expect(cat.amps.get('test.keen-eye')!.source).toBe('TEST')
+  expect(cat.amps.get('test2.keen-eye')!.source).toBe('TEST2')
 })
 
 test('overlay replaces, removes, adds by id', () => {

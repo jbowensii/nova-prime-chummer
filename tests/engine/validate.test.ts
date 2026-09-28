@@ -56,9 +56,9 @@ test('amp.qualityAfterCreation: adding a Quality in career needs a GM', () => {
 
 test('catalog-sanctioned negative effects need no approval', () => {
   const ch = base()
-  const rush = cat.amps.get('rush')!
+  const rush = cat.amps.get('test.rush')!
   ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Rush' }]
-  ch.build.amps = [amp('d', 'equipment', rush.effects, { catalogId: 'rush', linkedItem: 'i' })]
+  ch.build.amps = [amp('d', 'equipment', rush.effects, { catalogId: 'test.rush', linkedItem: 'i' })]
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
@@ -75,9 +75,9 @@ test('a GM override approves the violation and unblocks Finalize', () => {
 
 test('effects a catalog amp carries are sanctioned even when the effect table forbids them (book drug pattern)', () => {
   const ch = base()
-  const rush = cat.amps.get('rush')!
+  const rush = cat.amps.get('test.rush')!
   ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Rush' }]
-  ch.build.amps = [amp('d', 'equipment', rush.effects, { catalogId: 'rush', linkedItem: 'i' })]
+  ch.build.amps = [amp('d', 'equipment', rush.effects, { catalogId: 'test.rush', linkedItem: 'i' })]
   expect(codes(ch)).not.toContain('amp.typeIllegal')
   ch.build.amps[0].catalogId = undefined // the same effects on a home-made amp are not
   expect(codes(ch)).toContain('amp.typeIllegal')
