@@ -54,7 +54,7 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
       </div>
       {!u && f.method === 'password' && <PasswordField label="Password" value={f.password} onChange={v => setF({ ...f, password: v })} autoComplete="new-password" />}
       {u && u.method === 'password' && f.method === 'authelia' && <p className="muted">Their app password is removed and they’re signed out.</p>}
-      {u && u.method === 'authelia' && f.method === 'password' && <p className="muted">Set a password for them with Reset password after saving.</p>}
+      {u && u.method === 'authelia' && f.method === 'password' && <p className="muted">They can’t sign in until you set a password for them with Reset password after saving.</p>}
       {err && <p className="err" role="alert">{err}</p>}
       <div className="actions">
         <button type="button" className="btn" onClick={onCancel}>Cancel</button>
@@ -124,7 +124,7 @@ export function UsersScreen() {
                   <td className="num">{u.runners}</td>
                   <td><div className="row">
                     <button className="btn small" aria-label={`Edit ${u.name}`} onClick={() => open({ at: 'edit', u })}>Edit</button>
-                    <button className="btn small quiet" aria-label={`Reset ${u.name}’s password`} onClick={() => open({ at: 'reset', u })}>Reset password</button>
+                    {u.method === 'password' && <button className="btn small quiet" aria-label={`Reset ${u.name}’s password`} onClick={() => open({ at: 'reset', u })}>Reset password</button>}
                     <button className="btn small quiet" aria-label={`${u.enabled ? 'Disable' : 'Enable'} ${u.name}`} onClick={() => void toggle(u)}>{u.enabled ? 'Disable' : 'Enable'}</button>
                     {u.runners > 0 && <button className="btn small quiet" aria-label={`Move ${u.name}’s runners`} onClick={() => open({ at: 'move', u })}>Move runners</button>}
                     <button className="btn small quiet" aria-label={`Delete ${u.name}`} onClick={() => open({ at: 'delete', u })}>Delete</button>
@@ -144,7 +144,7 @@ export function UsersScreen() {
         actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" form="ca2-reset">Set password</button></>}>
         {d?.at === 'reset' && <form id="ca2-reset" className="stack" onSubmit={e => { e.preventDefault()
           void act(() => send(`users/${d.u.id}/reset-password`, { password: pw }), `${d.u.name} has a new password and is signed out everywhere. Tell them the new one.`) }}>
-          <p>They’re signed out on every device and sign in with this password next.{d.u.method === 'authelia' ? ' Their account switches from Authelia to an app password.' : ''}</p>
+          <p>They’re signed out on every device and sign in with this password next.</p>
           <PasswordField label="New password" value={pw} onChange={setPw} autoComplete="new-password" autoFocus />
           {err && <p className="err" role="alert">{err}</p>}
         </form>}

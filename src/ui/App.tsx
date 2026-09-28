@@ -104,7 +104,7 @@ export default function App() {
   const [route, setRoute] = useState(parseHash)
   const [repo, setRepo] = useState<Repo | null>(null)
   // server: the signed-in account (null: sign in) and whether no account exists yet; browser storage: no accounts at all
-  const [me, setMe] = useState<{ user: User | null; setup: boolean } | null>(null)
+  const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean } | null>(null)
   const [ended, setEnded] = useState(false)
 
   useEffect(() => {
@@ -128,19 +128,19 @@ export default function App() {
   if (!repo || !me) return <main className="lib"><p className="muted">Loading…</p></main>
   if (route[0] === 'setup' && route[1] === 'reset') return <Recover />
   if (repo.mode === 'server' && me.setup) return <Setup onDone={u => { location.hash = '#/'; setMe({ user: u, setup: false }) }} />
-  if (repo.mode === 'server' && !user) return <SignIn onSignedIn={u => setMe({ user: u, setup: false })} />
+  if (repo.mode === 'server' && !user) return <SignIn oidc={me.oidc} onSignedIn={u => setMe({ user: u, setup: false, oidc: me.oidc })} />
 
   const back = (u: User) => {
     if (u.id !== user?.id) return location.reload() // saving stays held: the old account's changes are never sent
     session.held = false
-    setMe({ user: u, setup: false })
+    setMe({ user: u, setup: false, oidc: me.oidc })
     setEnded(false)
     dispatchEvent(new Event('ca2-signed-in'))
   }
   return (
     <Me.Provider value={user ?? null}>
       <div inert={ended} aria-hidden={ended || undefined}><Main repo={repo} route={route} /></div>
-      {ended && <Over><SignIn onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to
+      {ended && <Over><SignIn oidc={me.oidc} onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to
         carry on, and unsaved changes on this page are saved then. <b>Signing in as someone else discards this page’s unsaved changes.</b></>} /></Over>}
     </Me.Provider>
   )

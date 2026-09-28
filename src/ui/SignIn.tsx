@@ -1,7 +1,7 @@
-// The sign-in page (also shown over the app when a session ends) and the recovery page (#/setup/reset), which takes the
-// one-time code `node server/users.mjs reset <username>` prints.
-import { useState, type ReactNode } from 'react'
-import { PasswordField, send, type User } from './auth'
+// The sign-in page (also shown over the app when a session ends; "Sign in with Authelia" when Settings → Sign-in turned it on)
+// and the recovery page (#/setup/reset), which takes the one-time code `node server/users.mjs reset <username>` prints.
+import { useEffect, useState, type ReactNode } from 'react'
+import { fetchMe, PasswordField, send, type User } from './auth'
 
 /** A page with one form: the brand, a title, the fields, one error line (role=alert). */
 export function GatePage({ title, intro, err, onSubmit, busy, action, children, after }: { title: string; intro?: ReactNode; err: string;
@@ -21,9 +21,32 @@ export function GatePage({ title, intro, err, onSubmit, busy, action, children, 
   )
 }
 
-export function SignIn({ onSignedIn, note }: { onSignedIn: (u: User) => void; note?: ReactNode }) {
+// why a sign-in through Authelia came back without a session (server/oidc.mjs sends /?signin=<key>)
+const OIDC_ERRORS: Record<string, string> = {
+  'no-account': 'Authelia knows you, but this app has no account for you. Ask the admin for an account.',
+  expired: 'That sign-in took too long or was already used. Try again.',
+  denied: 'Authelia didn’t sign you in. Try again.',
+  off: 'Sign in with Authelia is turned off. Sign in with your username and password.',
+  failed: 'Signing in with Authelia didn’t work. Try again, and if it keeps failing ask the admin to check the sign-in settings.',
+}
+/** The ?signin= a failed Authelia sign-in came back with: read once, and taken off the address. */
+let oidcNote = (() => {
+  const key = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('signin')
+  if (key === null) return ''
+  history.replaceState(null, '', location.pathname + location.hash)
+  return OIDC_ERRORS[key] ?? OIDC_ERRORS.failed
+})()
+
+export function SignIn({ onSignedIn, note, oidc }: { onSignedIn: (u: User) => void; note?: ReactNode; oidc?: boolean }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
-  const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(() => oidcNote), [busy, setBusy] = useState(false)
+  useEffect(() => { oidcNote = '' }, []) // shown once
+  // over a page (a session that ended): Authelia opens in a new tab, so this page keeps its unsaved changes
+  const back = async () => {
+    const { user } = await fetchMe()
+    if (user) onSignedIn(user)
+    else setErr('You’re not signed in yet. Finish signing in with Authelia in the other tab, then choose this again.')
+  }
   const submit = async () => {
     setBusy(true); setErr('')
     try {
@@ -36,7 +59,10 @@ export function SignIn({ onSignedIn, note }: { onSignedIn: (u: User) => void; no
     <GatePage title="Sign in" busy={busy} err={err} onSubmit={() => void submit()} action="Sign in"
       intro={note && <p className="banner" role="status">{note}</p>}
       after={<>
-        {/* Task 5: "Sign in with Authelia" goes here when Settings → Sign-in has an issuer. */}
+        {oidc && <div className="row oidc">
+          <a className="btn" href="./api/auth/oidc/start" {...note ? { target: '_blank', rel: 'noopener' } : {}}>Sign in with Authelia</a>
+          {note && <button type="button" className="btn quiet" onClick={() => void back()}>I’ve signed in with Authelia</button>}
+        </div>}
         <p className="muted">Forgot your password? Ask the admin to reset it, or use a <a href="#/setup/reset"
           {...note ? { target: '_blank', rel: 'noopener' } : {}}>recovery code</a>{note ? ' (opens a new tab, so this page stays as it is)' : ''}.</p>
       </>}>
