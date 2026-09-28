@@ -72,7 +72,7 @@ export async function loadCatalog(baseUrl = './'): Promise<Catalog> {
   // private description files, kept out of the repository: one per source (sources.xml texts="..."),
   // plus the older single custom/texts.xml; each loads only when present
   const sourcesXml = files.find(f => f.file === 'sources.xml')?.xml ?? ''
-  const textFiles = [...new Set([...sourcesXml.matchAll(/texts="([^"]+)"/g)].map(m => m[1])), 'texts.xml']
+  const textFiles = [...new Set([...sourcesXml.matchAll(/\btexts="([^"]+)"/g)].map(m => m[1])), 'texts.xml']
   for (const t of textFiles) {
     const xml = await get(`custom/${t}`).catch(() => null)
     if (xml) files.push({ file: `custom/${t}`, xml, overlay: true })
