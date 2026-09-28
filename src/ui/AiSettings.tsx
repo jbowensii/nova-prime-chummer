@@ -50,7 +50,13 @@ export function AiSettings() {
   const [msg, setMsg] = useState<string | null>(null)
   // per provider: the loaded model list (a select replaces the text box), 'loading', or why it failed
   const [lists, setLists] = useState<Record<string, string[] | 'loading' | { error: string } | undefined>>({})
-  const load = () => api<string>('ai-settings').then(x => setState(parse(x)), e => setMsg(`Couldn’t read the AI settings: ${e.message}. Reload to try again.`))
+  const [savedUrl, setSavedUrl] = useState<Record<string, string>>({}) // the list is asked at the saved address only
+  const load = () => api<string>('ai-settings').then(x => {
+    const s = parse(x)
+    setState(s)
+    setSavedUrl(Object.fromEntries(IDS.map(id => [id, s.providers[id].baseUrl.trim()])))
+    setLists({})
+  }, e => setMsg(`Couldn’t read the AI settings: ${e.message}. Reload to try again.`))
   useEffect(() => { if (repo.mode === 'server') void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (repo.mode !== 'server') return <main className="lib"><BooksHeader title="AI settings" /><p>AI settings live on the app’s server; open this page there.</p></main>
@@ -73,6 +79,7 @@ export function AiSettings() {
       setMsg(value.trim() ? `${PROVIDER_NAMES[id]} key saved.` : `${PROVIDER_NAMES[id]} key removed.`)
       // only the key flag changes: unsaved provider edits on the page stay
       setState(s => s && { ...s, keys: { ...s.keys, [id]: !!value.trim() } })
+      setLists(l => ({ ...l, [id]: undefined }))
     } catch (e) { setMsg(`Couldn’t save the key: ${(e as Error).message}.`) }
   }
   const loadModels = async (id: string) => {
@@ -90,17 +97,18 @@ export function AiSettings() {
       <div key="model" className="modelrow">
         <label>{label}
           {listed
-            ? <select value={p.model} onChange={e => e.target.value === TYPE ? setLists({ ...lists, [id]: undefined }) : setP(id, { model: e.target.value })}>
+            ? <select value={p.model} onChange={e => e.target.value === TYPE ? setLists(l => ({ ...l, [id]: undefined })) : setP(id, { model: e.target.value })}>
                 <option value="">{ph.includes('(default)') ? `Default: ${ph.replace(' (default)', '')}` : 'Choose a model'}</option>
                 {listed.map(m => <option key={m} value={m}>{m}</option>)}
                 <option value={TYPE}>Type a model name instead</option>
               </select>
             : <input value={p.model} placeholder={ph} onChange={e => setP(id, { model: e.target.value })} />}
         </label>
-        <button className="btn quiet" disabled={!state.keys[id] || list === 'loading'} onClick={() => void loadModels(id)}
-          title={state.keys[id] ? undefined : 'Save a key first'}>{list === 'loading' ? 'Loading…' : 'Load models'}</button>
+        <button className="btn quiet" disabled={!state.keys[id] || list === 'loading' || p.baseUrl.trim() !== savedUrl[id]}
+          onClick={() => void loadModels(id)}>{list === 'loading' ? 'Loading…' : 'Load models'}</button>
+        <p className="muted wide">{p.baseUrl.trim() !== savedUrl[id] ? 'Save settings first: the list' : 'The list'} uses the saved address and key.</p>
         {list && typeof list === 'object' && 'error' in list &&
-          <p role="alert" className="wide">Couldn’t load the model list: {list.error}. You can type a model name.</p>}
+          <p role="alert" className="wide">Couldn’t load the model list: {list.error.replace(/\.$/, '')}. You can type a model name.</p>}
       </div>
     )
   }

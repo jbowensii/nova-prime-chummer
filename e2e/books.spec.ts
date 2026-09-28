@@ -120,6 +120,13 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
   await expect(page.getByRole('status')).toHaveText('Settings saved.')
   await page.reload()
   await expect(gemini.getByRole('textbox', { name: 'Model' })).toHaveValue('gemini-2.5-flash')
+  // the list is asked at the saved address: an unsaved one disables it until Save settings
+  await expect(gemini).toContainText('The list uses the saved address and key.')
+  await gemini.getByLabel('Address (optional)').fill('https://elsewhere.example')
+  await expect(gemini.getByRole('button', { name: 'Load models' })).toBeDisabled()
+  await expect(gemini).toContainText('Save settings first: the list uses the saved address and key.')
+  await gemini.getByLabel('Address (optional)').fill('')
+  await expect(gemini.getByRole('button', { name: 'Load models' })).toBeEnabled()
 
   await page.setViewportSize({ width: 375, height: 800 })
   const openai = page.locator('fieldset', { hasText: 'OpenAI' })
