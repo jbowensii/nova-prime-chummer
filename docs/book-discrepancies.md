@@ -47,7 +47,9 @@ microdrone, small and medium drones (the rulebook folds flight into its base
 drones' Speed) and the deck Attack, deck Firewall and vehicle Flying mods
 (rows of the Shadow Amp effects table, which the app ships as effects).
 Concealment is printed, on a pregen sheet, so it is a canon CRB amp; so is
-every other amp only a rulebook sheet prints.
+every other amp only a rulebook sheet prints. A sheet amp whose name differs from a
+similar box amp (a damaged or unbranded model, another maker's version) stays
+its own entry; `importer/recipes/crb.md` lists them.
 
 ## Effect-table exceptions the book makes
 

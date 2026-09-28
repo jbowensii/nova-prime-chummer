@@ -466,9 +466,12 @@ def sheet_amps(sheets, rows, rules):
     Arm" is a cyberarm). Skipped: metatype traits, the Awakened amp and contacts (the runner's own magic and people,
     not catalog entries)."""
     mapper = Mapper({**rules["specs"], **statblock.SPEC_NAMES})
-    known, bags, out = {}, set(), []
+    # ponytail: exact / unique-prefix / word-bag (any order, plural or not) matching, and no report row when a sheet
+    # name is close to a box name but doesn't match; revisit if a book update brings a genuine near-duplicate name
+    known, bags, out = {}, set(), []  # known: type -> normalized name -> amp id
 
     def bag(atype, name):
+        # the sheets say "Cybernetic Arm", the cyberware box "cyberarm"
         return atype, frozenset(w.rstrip("s") for w in statblock._norm(name).replace("cybernetic arm", "cyberarm").split()
                                 if w not in ("a", "an", "the"))
     for r in rows:
@@ -482,7 +485,7 @@ def sheet_amps(sheets, rows, rules):
             if atype in (None, "awakened", "contact") or bag(atype, a["name"]) in bags \
                     or statblock.catalog_id(a["name"], known.get(atype, {})):
                 continue
-            known.setdefault(atype, {})[statblock._norm(a["name"])] = a["name"]
+            known.setdefault(atype, {})[statblock._norm(a["name"])] = slug(a["name"])
             bags.add(bag(atype, a["name"]))
             # the sheet's line text stays out of the overlay: a narrative effect balances the printed rating
             fx = [("narrative", "", None, "balances printed rating") if f[0] == "narrative" else
