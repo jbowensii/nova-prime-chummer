@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { currentBuild, itemCost, makeAmpAdd, makeBuy, makeSell } from '../../engine'
-import type { ItemEntry, ItemKind } from '../../model/types'
+import type { ItemEntry, ItemKind, Pricing } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
 import { SourceLabel } from '../SourceLabel'
 import { EditButton } from '../EditEntry'
 import { useEditor } from '../editor'
 
-const SECTIONS: [ItemKind, string, string][] = [
-  ['armor', 'Armor', '2,500¥ per Armor point. Ratings don’t stack; wear one main and one alternate.'],
-  ['weapon', 'Weapons', '2,500¥ each; specialist weapons (sniper rifles, machine guns, launchers) 5,000¥.'],
-  ['gear', 'Equipment', '2,500¥ each unless the GM sets a higher price. Commlink and fake SIN are free.'],
-  ['spell', 'Spells', '5,000¥ each. Casting needs the Sorcery option on the Awakened amp.'],
-  ['complex-form', 'Complex forms', '5,000¥ each. Technomancers only: threading needs the Emerged amp (Conversion Guide p.9).'],
+// prices from the core data (pricing.xml)
+const SECTIONS: [ItemKind, string, (p: Pricing) => string][] = [
+  ['armor', 'Armor', p => `${fmt(p.armorPoint)} per Armor point. Ratings don’t stack; wear one main and one alternate.`],
+  ['weapon', 'Weapons', p => `${fmt(p.weaponStandard)} each; specialist weapons (sniper rifles, machine guns, launchers) ${fmt(p.weaponSpecialist)}.`],
+  ['gear', 'Equipment', p => `${fmt(p.equipment)} each unless the GM sets a higher price. Commlink and fake SIN are free.`],
+  ['spell', 'Spells', p => `${fmt(p.spell)} each. Casting needs the Sorcery option on the Awakened amp.`],
+  ['complex-form', 'Complex forms', p => `${fmt(p.complexForm)} each. Technomancers only: threading needs the Emerged amp.`],
 ]
 
 export function GearTab() {
@@ -63,7 +64,7 @@ export function GearTab() {
               <button className="btn small" onClick={() => setAdding(kind)}>Add from the book</button>
               <button className="btn small quiet" onClick={() => setCustom({ uid: newId(), kind, name: '', price: undefined })}>Custom</button>
             </div>
-            <p className="muted" style={{ margin: 0 }}>{hint}</p>
+            <p className="muted" style={{ margin: 0 }}>{hint(c.pricing)}</p>
             {kind === 'weapon' && <p style={{ margin: 0 }}>Unarmed: DV {d.weapons[0].dv} [{d.weapons[0].ranges}] <span className="muted">(Strength{d.weapons[0].dv !== String(ch.build.attributes.str) ? ' plus implant or adept bonuses' : ''})</span></p>}
             {items.length > 0 && (
               <div className="scroll-x"><table className="data">
@@ -128,7 +129,7 @@ export function GearTab() {
           {custom.kind === 'armor' && <label>Armor rating<input type="number" min={1} max={6} value={custom.armor ?? 1} onChange={e => setCustom({ ...custom, armor: Number(e.target.value) })} /></label>}
           {custom.kind === 'weapon' && <label className="row" style={{ display: 'flex' }}><input type="checkbox" checked={!!custom.specialist} onChange={e => setCustom({ ...custom, specialist: e.target.checked })} /> Specialist weapon</label>}
           <label>Price set by the GM (blank = standard)
-            <input type="number" min={0} step={2500} value={custom.price ?? ''} onChange={e => setCustom({ ...custom, price: e.target.value === '' ? undefined : Number(e.target.value) })} />
+            <input type="number" min={0} step={c.pricing.equipment} value={custom.price ?? ''} onChange={e => setCustom({ ...custom, price: e.target.value === '' ? undefined : Number(e.target.value) })} />
           </label>
           <p className="muted">Standard price: {fmt(itemCost(c.pricing, { ...custom, price: undefined }))}</p>
         </div>}

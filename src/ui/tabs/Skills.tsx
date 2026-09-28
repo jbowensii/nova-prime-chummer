@@ -45,7 +45,7 @@ export function SkillsTab() {
     <div className="stack">
       <h2>Skills</h2>
       <p className="muted">
-        2,500¥ a point up to 5, then 5,000¥ a point up to 8. Specializations and knowledge skills cost 2,500¥ each and add +2 to the pool (CRB p.52, 83).
+        {fmt(c.pricing.skillLow)} a point up to {c.pricing.skillLowMax}, then {fmt(c.pricing.skillHigh)} a point up to 8. Specializations cost {fmt(c.pricing.spec)} and add +2 to the pool; knowledge skills cost {fmt(c.pricing.knowledge)} each.
         {!career && level && ` ${level.name} caps skills at ${level.skillCap} during creation.`}
       </p>
       <div className="scroll-x"><table className="data">
@@ -97,7 +97,7 @@ export function SkillsTab() {
 
       <hr className="sep" />
       <h2>Knowledge</h2>
-      <p className="muted">Keywords and skills at rating 4+ already count as knowledge. Extra knowledge skills cost 2,500¥ each.</p>
+      <p className="muted">Keywords and skills at rating 4+ already count as knowledge. Extra knowledge skills cost {fmt(c.pricing.knowledge)} each.</p>
       <div className="row">
         {b.knowledge.map((k, i) => (
           <span key={i} className="chip">{k}{!career && <button aria-label={`Remove ${k}`} onClick={() => edit(x => { x.build.knowledge.splice(i, 1) })}>×</button>}</span>

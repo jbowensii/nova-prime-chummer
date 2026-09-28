@@ -20,7 +20,7 @@ export function AttributesTab() {
     <div className="stack">
       <h2>Attributes</h2>
       <p className="muted">
-        10,000¥ a point; the point that reaches your metatype’s maximum costs 20,000¥ (CRB p.83).
+        {fmt(c.pricing.attrPoint)} a point; the point that reaches your metatype’s maximum costs {fmt(c.pricing.attrLastPoint)}.
         {!career && level && <> {level.name} allows {level.attrAtMax} at maximum: <b className={atMax > level.attrAtMax ? 'err' : ''}>{atMax} of {level.attrAtMax} used</b>.</>}
         {career && ' In career mode each raise is recorded in the ledger.'}
       </p>
