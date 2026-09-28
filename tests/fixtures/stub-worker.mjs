@@ -53,6 +53,7 @@ if (cmd === 'run') {
   const file = join(target, '.config', 'ai-keys.xml')
   mkdirSync(dirname(file), { recursive: true })
   const others = existsSync(file) ? [...readFileSync(file, 'utf8').matchAll(/<key provider="([^"]+)">[^<]*<\/key>/g)].filter(m => m[1] !== rest[0]).map(m => m[0]) : []
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300) // widen the read-modify-write window, as a slow Python start would
   writeFileSync(file, `<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">${others.join('')}${key ? `<key provider="${rest[0]}">${key}</key>` : ''}</ca2:aikeys>\n`)
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)

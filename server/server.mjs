@@ -123,7 +123,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     return send(res, existing ? 200 : 201, { rev, file })
   }
 
-  return httpServer(async (req, res) => {
+  const server = httpServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://x')
       if (url.pathname.startsWith('/api/')) return await api(req, res, url)
@@ -141,15 +141,22 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (code === 500) console.error(e.stack) // never a request body
     }
   })
+  server.stopJobs = books.stop
+  return server
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT ?? 80)
-  createServer({
+  const server = createServer({
     staticDir: process.env.STATIC_DIR ?? new URL('../dist', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'),
     charDir: process.env.CHAR_DIR ?? '/data/characters',
     customDir: process.env.CUSTOM_DIR ?? '/data/custom',
     libraryDir: process.env.LIBRARY_DIR ?? '/data/library',
     python: process.env.PYTHON ?? 'python3',
-  }).listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
+  })
+  server.listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
+  // docker stop: end the importer job too (the next start marks its book interrupted)
+  const quit = () => { server.stopJobs(); server.close(); setTimeout(() => process.exit(0), 2000).unref() }
+  process.on('SIGTERM', quit)
+  process.on('SIGINT', quit)
 }
