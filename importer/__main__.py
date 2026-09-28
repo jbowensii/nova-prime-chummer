@@ -2,20 +2,29 @@
   python -m importer convert <pdf> <md> [--pages A-B]
   python -m importer run <library/book-id> --custom <custom dir> [--md] [--file NAME]
   python -m importer propose <library/book-id> --library <library dir> [--dry-run]
+  python -m importer remove <library/book-id> --custom <custom dir> [--files]
+  python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
+  python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
 """
 import hashlib
 import os
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from xml.sax.saxutils import quoteattr
 
-from importer import xmlio
+from importer import DATA_DIR, xmlio
 from importer.convert import CONVERTER_VERSION, convert
-from importer.recipes import identify
+from importer.recipes import RECIPES, identify
 
 USAGE = __doc__.strip()
+# overlay file per review.xml proposal kind: (file name, data kind)
+REVIEW_FILES = {"amp": ("amps.xml", "amps"), "gear": ("gear.xml", "gear"), "weapon": ("weapons.xml", "weapons"),
+                "armor": ("armor.xml", "armor"), "spell": ("spells.xml", "spells"), "complex-form": ("complexforms.xml", "complexforms")}
+SOURCE_ID = re.compile(r"[A-Z][A-Z0-9-]{0,19}")
+PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm")
 
 
 def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
@@ -74,6 +83,100 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         raise
 
 
+def _same_source(book_dir, source):
+    """import.xml of the other books in the library that name `source`."""
+    library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
+    imps = (xmlio.read_import(os.path.join(library, b)) for b in os.listdir(library)
+            if b != me and os.path.isdir(os.path.join(library, b)))
+    return [i for i in imps if i is not None and (i.get("source") or "").lower() == source.lower()]
+
+
+def remove(book_dir, custom_dir, forget=False):
+    """Undo a book's import: its overlay files, and (unless another book imports the same source) the
+    source's folder, texts and samples; then its import record (`forget`: the whole library/<id>).
+    Rebuilds custom/imported/index.xml and sources.xml. A re-import runs this first, so nothing an
+    earlier import wrote outlives it."""
+    library = os.path.dirname(os.path.normpath(book_dir))
+    imp = xmlio.read_import(book_dir)
+    src = imp.get("source") if imp is not None else None
+    if src:
+        out_dir = os.path.join(custom_dir, "imported", src.lower())
+        others = _same_source(book_dir, src)
+        shared = {f.get("name") for o in others for f in o.iter("file")}
+        gone = set()
+        for f in imp.iter("file"):
+            name = os.path.basename(f.get("name") or "")
+            path = os.path.join(out_dir, name)
+            if name.endswith(".xml") and name not in shared and os.path.isfile(path):
+                gone |= xmlio.top_ids(Path(path).read_text(encoding="utf8"))
+                os.remove(path)
+        texts = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
+        samples = os.path.join(custom_dir, "imported", "samples.xml")
+        if not others:
+            shutil.rmtree(out_dir, ignore_errors=True)
+            if os.path.exists(texts):
+                os.remove(texts)
+            if os.path.exists(samples):
+                xmlio.write_file(samples, xmlio.merged_samples(custom_dir, src, []))
+        elif gone and os.path.exists(texts):
+            xmlio.write_file(texts, xmlio.merged_texts(texts, [], drop=gone))
+    if forget:
+        shutil.rmtree(book_dir, ignore_errors=True)
+    else:
+        if imp is not None:
+            xmlio.write_import(book_dir, **{k: imp.get(k) for k in ("file", "sha256", "converter", "pages", "score")})
+        xmlio.write_status(book_dir, "removed")
+    if os.path.isdir(os.path.join(custom_dir, "imported")):
+        xmlio.update_index(custom_dir)
+        xmlio.update_sources(custom_dir, library)
+
+
+def _reserved_sources():
+    """Source ids a recipe or the shipped data own; an AI import may not take them."""
+    shipped = os.path.join(DATA_DIR, "sources.xml")
+    ids = {s.get("id") for s in xmlio.ET.parse(shipped).getroot()} if os.path.exists(shipped) else set()
+    return {i.upper() for i in ids | {r.ID for r in RECIPES} if i}
+
+
+def apply_review(book_dir, custom_dir, source, name, canon):
+    """Write the accepted and edited proposals of library/<id>/review.xml as custom/imported/<source>/,
+    ids scoped like a recipe's, replacing this book's previous outputs; then its import record and sources."""
+    try:
+        if not SOURCE_ID.fullmatch(source or "") or not (name or "").strip() or canon not in ("true", "false"):
+            raise ValueError("apply-review needs a source id (A-Z, 0-9, -), a name and canon true|false")
+        if source in _reserved_sources() or _same_source(book_dir, source):
+            raise ValueError(f"the source id {source} is already used by another book")
+        xmlio.write_status(book_dir, "applying")
+        rows = {}
+        for p in xmlio.ET.parse(os.path.join(book_dir, "review.xml")).getroot().findall("proposal"):
+            kind = p.get("kind")
+            entry = next((e for e in p if e.tag == ("amp" if kind == "amp" else "item")), None)
+            if p.get("state") in ("accepted", "edited") and kind in REVIEW_FILES and entry is not None:
+                entry.set("source", source)
+                entry.tail = None
+                rows.setdefault(REVIEW_FILES[kind], []).append("  " + xmlio.ET.tostring(entry, encoding="unicode"))
+        files = {f: xmlio.HEAD + "<!-- AI proposals accepted on the review screen. Generated by the importer. -->\n"
+                 f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{kind}" version="1">\n' + "\n".join(r) + "\n</ca2:data>\n"
+                 for (f, kind), r in rows.items()}
+        old = xmlio.read_import(book_dir)
+        rec = {k: old.get(k) for k in ("file", "sha256", "converter", "pages", "score")} if old is not None else {}
+        remove(book_dir, custom_dir)  # a second apply replaces the first
+        out_dir = os.path.join(custom_dir, "imported", source.lower())
+        ids = set().union(*(xmlio.top_ids(x) for x in files.values()))
+        for f, xml in files.items():
+            xmlio.write_overlay(out_dir, f, xml, ids)
+        xmlio.write_import(book_dir, files={f: len(xmlio.top_ids(x)) for f, x in files.items()}, recipe="ai", source=source,
+                           name=name.strip(), publisher="", canon=canon,
+                           imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
+        os.makedirs(os.path.join(custom_dir, "imported"), exist_ok=True)
+        xmlio.update_index(custom_dir)
+        xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
+        xmlio.write_status(book_dir, "done", f"{sum(map(len, rows.values()))} entries applied")
+    except Exception as e:
+        xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
+        raise
+
+
 def _cmd_convert(argv):
     pages = None
     if len(argv) == 4 and argv[2] == "--pages":
@@ -121,9 +224,41 @@ def _cmd_propose(argv):
     return 0
 
 
+def _flag(argv, name):
+    return argv[argv.index(name) + 1] if name in argv[:-1] else None
+
+
+def _cmd_remove(argv):
+    if len(argv) < 3 or argv[1] != "--custom":
+        print(USAGE, file=sys.stderr)
+        return 2
+    remove(argv[0], argv[2], forget="--files" in argv)
+    return 0
+
+
+def _cmd_apply_review(argv):
+    if len(argv) < 3 or argv[1] != "--custom":
+        print(USAGE, file=sys.stderr)
+        return 2
+    apply_review(argv[0], argv[2], _flag(argv, "--source"), _flag(argv, "--name"), _flag(argv, "--canon"))
+    print('<result state="done" />')
+    return 0
+
+
+def _cmd_set_key(argv):
+    """The key comes on stdin, never as an argument (process arguments are visible to other users)."""
+    if len(argv) != 2 or argv[1] not in PROVIDER_IDS:
+        print(USAGE, file=sys.stderr)
+        return 2
+    from importer.ai import providers
+    providers.set_key(os.path.join(argv[0], ".config"), argv[1], sys.stdin.read())
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose}
+    cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
+            "apply-review": _cmd_apply_review, "set-key": _cmd_set_key}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
