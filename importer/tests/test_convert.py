@@ -7,6 +7,7 @@ from importer.tests.minipdf import (
     JUSTIFIED_WORDS,
     bold_label_pdf,
     boxed_columns_pdf,
+    boxed_labels_pdf,
     boxed_table_pdf,
     bullets_then_indented_block_pdf,
     justified_paragraph_pdf,
@@ -118,12 +119,16 @@ class ConvertTest(unittest.TestCase):
 
     def test_box_in_two_columns_is_read_column_by_column(self):
         _, _, lines = _convert_to_lines(boxed_columns_pdf(), "boxcols")
-        cell = "<br>".join(f"{side} line {i}" for side in ("left", "right") for i in range(5))
+        cell = "<br>".join(f"{side} words on line {i}" for side in ("left", "right") for i in range(5))
         self.assertEqual(lines, ["| MADE UP BOX |", "|---|", f"| {cell} |"])
+
+    def test_label_value_box_keeps_its_rows(self):
+        _, _, lines = _convert_to_lines(boxed_labels_pdf(), "boxlabels")
+        self.assertEqual(lines[2], "| " + "<br>".join(f"Made up label {i} {i + 2}" for i in range(5)) + " |")
 
     def test_box_with_a_row_across_the_gutter_keeps_its_rows(self):
         _, _, lines = _convert_to_lines(boxed_table_pdf(), "boxtable")
-        cell = "<br>".join(f"left line {i} right line {i}" for i in range(5))
+        cell = "<br>".join(f"left words on line {i} right words on line {i}" for i in range(5))
         self.assertEqual(lines[2], f"| {cell}<br>Row label that runs long enough to cross the middle 7 |")
 
 if __name__ == "__main__":

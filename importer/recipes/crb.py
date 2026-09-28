@@ -154,7 +154,7 @@ def _join(lines):
 def entries(text):
     """[(name, paren, text)] for each bold run-in entry of a box's text. The paren is the "(…)" right after
     the name, or "" (a label such as "Note" or "Similar Archetypes"). A paren the layout pushed before its
-    name ("… (Rating 2 Contact Amp, 10,000¥) RR 1 **Name:** on …") is moved back to it."""
+    name ("… (Rating 4 Contact Amp, 20,000¥) RR 1 **Night clerk:** on …") is moved back to it."""
     ms = list(MARK.finditer(text))
     out = []
     for i, m in enumerate(ms):
@@ -266,7 +266,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
         if m:
             p, b, h, s, a = map(int, m.groups())
             text = text[:m.start()] + text[m.end():]
-        else:  # a drone given by size and Pilot only ("Small drone, Pilot 9, stationary")
+        else:  # a drone given by size and Pilot only ("Tiny drone, Pilot 7, hovers")
             size = next((v for k, v in DRONE_SIZES.items() if k in text.lower()), "small-drone")
             pm = re.search(r"Pilot (\d+)", text)
             p, (b, h, s), a = int(pm.group(1)) if pm else 6, CHASSIS[size], 0

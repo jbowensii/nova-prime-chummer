@@ -296,7 +296,13 @@ _BOX_RULES = """72 700 m 472 700 l S
 BT /F1 10 Tf 80 685 Td (MADE UP BOX) Tj ET
 """
 BOXED_COLUMNS_OPS = _BOX_RULES + "".join(
-    f"BT /F1 10 Tf {x} {665 - 15 * i} Td ({side} line {i}) Tj ET\n" for x, side in ((80, "left"), (280, "right")) for i in range(5)
+    f"BT /F1 10 Tf {x} {665 - 15 * i} Td ({side} words on line {i}) Tj ET\n" for x, side in ((80, "left"), (280, "right")) for i in range(5)
+)
+# A box holding a label/value list: labels at x=80, one-word values at x=420, five rows. Nothing
+# crosses the gap, but the values aren't running text: rows stay rows.
+BOXED_LABELS_OPS = _BOX_RULES + "".join(
+    f"BT /F1 10 Tf 80 {665 - 15 * i} Td (Made up label {i}) Tj ET\nBT /F1 10 Tf 420 {665 - 15 * i} Td ({i + 2}) Tj ET\n"
+    for i in range(5)
 )
 # The same box with a table row under the text that runs across the gutter (1 line in 11, under the
 # page-level 10% crossing allowance): rows stay rows.
@@ -313,3 +319,8 @@ def boxed_columns_pdf() -> bytes:
 def boxed_table_pdf() -> bytes:
     """One-page PDF: the two-column box with a table row across the gutter below the text."""
     return _build_pdf([BOXED_TABLE_OPS])
+
+
+def boxed_labels_pdf() -> bytes:
+    """One-page PDF: a one-cell box holding a label/value list."""
+    return _build_pdf([BOXED_LABELS_OPS])

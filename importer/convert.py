@@ -7,7 +7,8 @@ import pdfplumber
 
 CONVERTER_VERSION = "5"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
-# 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved)
+# 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
+#    a label/value list in one cell keeps its rows
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -15,6 +16,7 @@ _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visu
 _GUTTER_HALF = 5  # pt; a gutter is a clear strip >= 10pt (~1 em at body size) wide
 _MIN_LINES_PER_SIDE = 2
 _MAX_CROSS_FRACTION = 0.10
+_TEXT_WORDS = 4  # words a line, median, for a side of a table cell to count as a text column
 
 
 def _bands(pdf):
@@ -194,14 +196,21 @@ def _table_cells(table, words):
 
 def _cell_lines(words, cell):
     """A cell's visual lines. A boxed sidebar set in two text columns is read left column, then right, but
-    only when no line runs across the gutter: a table under or inside the text (rows crossing it) keeps
-    its rows, as does any cell where the split isn't clean."""
+    only when no line runs across the gutter and both sides read as running text (a median of at least
+    _TEXT_WORDS words a line; a lone letter, like a margin tab, doesn't count). A table under or inside
+    the text (rows crossing it) keeps its rows, and so does a label/value list (one-word values)."""
     rows = _cluster_lines(words)
     mid = _find_gutter(rows, cell[2], cell[0])
     if mid is None or _gutter_crossings(rows, mid):
         return rows
     parts = [p for r in rows for p in _split_at(r, mid)]
-    return [p for p in parts if _line_extent(p)[1] <= mid] + [p for p in parts if _line_extent(p)[0] >= mid]
+    left = [p for p in parts if _line_extent(p)[1] <= mid]
+    right = [p for p in parts if _line_extent(p)[0] >= mid]
+    for side in (left, right):
+        counts = [len(p) for p in side if not (len(p) == 1 and len(p[0]["text"]) == 1 and p[0]["text"].isalpha())]
+        if not counts or statistics.median(counts) < _TEXT_WORDS:
+            return rows
+    return left + right
 
 
 def _table_md(rows):

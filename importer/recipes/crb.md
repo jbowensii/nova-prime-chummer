@@ -85,9 +85,9 @@ Margin tabs per chapter: Mundane World pp.133-167, Awakened World 169-199, Virtu
 Mechanical World 230-242.
 
 Against the oracle's 148 source="CRB" amps and 13 gear items (the old catalog's DHSA rows printed in black):
-141 amps and all 13 gear items found, every printed rating equal. 25 are renamed (v1.8 prints the model name
+141 amps and all 13 gear items found, every printed rating equal. 27 are renamed (25 amps + 2 gear; v1.8 prints the model name
 without DHSA's added type, or a different name), 7 aren't in any v1.8 box (Concealment, the three flying
 drone variants, the deck Attack/Firewall and vehicle Flying add-ons). Pages move to the box for 10,
-the two autonomous medkits are Drone Amps in v1.8, and 8 entries' effects differ with a cause. The ids and
+the two autonomous medkits are Drone Amps in v1.8, 6 entries' effects and 4 items' descriptors differ with a cause. The ids and
 causes are listed in `importer/tests/test_crb.py`. v1.8 also prints 48 Amps the oracle lacks (contacts,
 control rigs, eyes and ears, bone lacing, base vehicles, weapons, drugs, drones).
