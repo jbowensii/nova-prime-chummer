@@ -1,6 +1,7 @@
 """CLI for the importer package.
   python -m importer convert <pdf> <md> [--pages A-B]
   python -m importer run <library/book-id> --custom <custom dir> [--md] [--file NAME]
+  python -m importer propose <library/book-id> --library <library dir>
 """
 import hashlib
 import os
@@ -101,9 +102,22 @@ def _cmd_run(argv):
     return 0
 
 
+def _cmd_propose(argv):
+    """AI proposals for a needs-ai book into its review.xml, through the provider library/.config chooses."""
+    from importer.ai import propose, providers, schema  # the anthropic SDK only loads for AI work
+    if len(argv) != 3 or argv[1] != "--library":
+        print(USAGE, file=sys.stderr)
+        return 2
+    config = os.path.join(argv[2], ".config")
+    use = providers.read_providers(config)[0] if os.path.exists(os.path.join(config, "ai-providers.xml")) else None
+    n = propose.propose(argv[0], lambda s, u: providers.call(config, s, u, schema.SCHEMA), provider=use)
+    print(f'<result state="review" proposals="{n}" />')
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    cmds = {"convert": _cmd_convert, "run": _cmd_run}
+    cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
