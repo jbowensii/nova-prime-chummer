@@ -10,7 +10,8 @@ export interface Level extends Ref { name: string; nuyen: number; attrAtMax: num
 export interface Metatype extends Ref { name: string; edge: number;
   ranges: Record<AttrId, [number, number]>; racialQuality: string }
 export interface Attribute extends Ref { name: string; abbr: string }
-export interface Spec { id: string; name: string; attr: AttrId }
+/** source/page: set when the spec comes from another book than its skill */
+export interface Spec { id: string; name: string; attr: AttrId; source?: string; page?: number }
 export interface Skill extends Ref { name: string; attr: AttrId; alt?: AttrId;
   requires?: 'awakened' | 'cyberdeck' | 'emerged'; specs: Spec[] }
 export interface Pricing { attrPoint: number; attrLastPoint: number;
@@ -41,6 +42,10 @@ export type ItemKind = 'gear' | 'weapon' | 'armor' | 'spell' | 'complex-form';
 export interface Item extends Ref { name: string; kind: ItemKind; specialist?: boolean;
   armor?: number; dv?: string; ranges?: string; category?: string; text: string }
 export interface Lifestyle extends Ref { name: string; perRun: number; text: string }
+/** a book or document the data comes from; canon = the game's official rules (sources.xml) */
+export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string }
+/** rules reference entry (quick-reference sheets); effects = amp effects it explains */
+export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string }
 export interface LoadError { file: string; line?: number; message: string }
 export interface Catalog {
   levels: Map<string, Level>; metatypes: Map<string, Metatype>;
@@ -48,6 +53,7 @@ export interface Catalog {
   ampTypes: Map<string, AmpType>; ampEffects: Map<string, AmpEffect>;
   amps: Map<string, AmpTemplate>; vehicles: Map<string, VehicleBase>;
   packages: Map<string, Package>; items: Map<string, Item>; lifestyles: Map<string, Lifestyle>;
+  sources: Map<string, Source>; rules: Map<string, Rule>;
   files: { file: string; kind: string; entries: number; overlay: boolean }[];
   errors: LoadError[];
 }
@@ -82,6 +88,10 @@ export interface Character { formatVersion: 1; id: string;
     background: string; notes: string };
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] };
   level: string; package: string; build: Build; finalizedAt?: string;
+  /** false: non-canon catalog content is flagged (undefined = allowed) */
+  allowNonCanon?: boolean;
+  /** source id of a sample character (sources.xml), e.g. CRB or PREGENS */
+  origin?: string;
   /** creation nuyen left over when finalized; the career balance starts here */
   finalRemaining?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }

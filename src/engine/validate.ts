@@ -1,6 +1,7 @@
 // Rule checks. Every violation cites the book; errors block Finalize unless a GM approves them.
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
+import { nonCanonUses } from './canon'
 import { balance, activeEvents, currentBuild } from './career'
 import { derive } from './derive'
 import { price } from './price'
@@ -143,6 +144,11 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     add('narrative.count', 'warning', 'narrative', `Pick 5 Keywords, 4 Dispositions and 4 Cues (have ${filled(n.keywords)}/${filled(n.dispositions)}/${filled(n.cues)}).`, 84)
 
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
+  // non-canon content, when the runner is set to canon only
+  if (ch.allowNonCanon === false)
+    for (const u of nonCanonUses(c, b))
+      add('content.nonCanon', 'warning', u.path, `${u.name} isn’t canon (${c.sources.get(u.source)?.name ?? u.source}); this runner is set to canon only.`)
+
   return out.map(v => (approved.has(`${v.code}|${v.path}`) ? { ...v, approved: true } : v))
 }
 

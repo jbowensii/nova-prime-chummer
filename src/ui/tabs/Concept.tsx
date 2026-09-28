@@ -1,5 +1,6 @@
 import { ATTRS } from '../../model/types'
 import { useEditor } from '../editor'
+import { NonCanon } from '../bits'
 
 const HINTS = {
   keywords: ['Metatype / social status', 'Origins / home', 'Role / occupation', 'Lifestyle', 'Anything else that defines them'],
@@ -67,6 +68,11 @@ export function ConceptTab() {
         {ch.package !== 'free' && ' The package only guides spending: nuyen can move between categories.'}
         {' '}{c.lifestyles.get(ch.identity.lifestyle ?? 'low')?.text}
       </p>}
+      <label className="check">
+        <input type="checkbox" checked={ch.allowNonCanon !== false}
+          onChange={e => update(d => { if (e.target.checked) delete d.allowNonCanon; else d.allowNonCanon = false })} />
+        <span>Allow non-canon content <span className="muted">(published material that isn’t the official rules, marked <NonCanon />). When off, the Review tab flags any on this runner.</span></span>
+      </label>
       <hr className="sep" />
       <div className="grid2">{list('keywords')}{list('dispositions')}{list('cues')}</div>
       <hr className="sep" />
