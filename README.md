@@ -150,7 +150,8 @@ or pick.
 house rules and edits, imported books, uploaded PDFs and AI settings — as
 one zip. Tick **Include my API keys** to have them in the file too;
 otherwise the zip has none, and anyone restoring it keeps the keys already
-on their own server. Restoring uploads a zip, shows what's in it (when it
+on their own server (except for a provider whose address the backup
+changes: that key is dropped, so it's never sent somewhere new). Restoring uploads a zip, shows what's in it (when it
 was made, the app version, file counts) so you can check before committing,
 then **Replace everything on the server** applies it. The server saves its
 own current state first, to `library/.backups` (newest 3 kept), so a bad
