@@ -667,6 +667,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   return {
     gate, handle, session, context,
     usernames: () => users.map(u => u.username),
+    /** An account's display name (the runner list's group headings). */
+    nameOf: username => users.find(u => u.username === username)?.name ?? username,
     /** The account as it is now (renamed, disabled or deleted since the request began): null when it can't act. */
     current: id => users.find(u => u.id === id && u.enabled) ?? null,
     /** After a restore: the restored accounts; every session ends. No users.xml (a backup from before accounts): setup mode. */
