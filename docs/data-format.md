@@ -198,7 +198,8 @@ on the sheet). Written by the importer's `qref` recipe (one
 
 ## Imported sample runners
 
-A recipe that reads stat blocks (`pregens`) writes each runner as a character
+A recipe that reads stat blocks (`pregens`; `crb` for the rulebook's 12 pregens
+and its character creation example) writes each runner as a character
 file (`character.xsd`, `origin` = the source) to
 `custom/imported/<source>/samples/<source>.<name>.xml`, and lists it in the
 generated `custom/imported/samples.xml` (`<sample source href name role page/>`,

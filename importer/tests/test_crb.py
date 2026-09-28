@@ -5,6 +5,7 @@ from collections import Counter
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from importer import statblock
 from importer.recipes import crb, identify
 
 # Invented spells, laid out as the converter prints the CRB's spell boxes: a one-cell table titled
@@ -120,6 +121,186 @@ AMPS_MD = """<!-- page 140 -->
 | **Hover sled:** (Rating 4 Vehicle Amp, 20,000¥) Pilot 6, Body 5, Handling 2, Speed 5, Armor 2; flying�<br>**Sports Car:** (Rating 1 Vehicle Amp, 5,000¥) Pilot 6, Body 5, Handling 2, Speed 5, Armor 0�<br>**Big Van:** Pilot 6, Body 9, Handling 1, Speed 3, Armor 9�<br>**Nurse bot:** (Rating 3 Drone Amp, 15,000¥) Small drone, Pilot 8, stationary�<br>C<br>**Tiny Scout:** (Rating 1 Drone Amp, 5,000¥) Pilot 6, Body 0, Handling 10, Speed 0 (Flying 1), Armor 0; no weapon mount� |
 **238**
 """
+
+
+# An invented runner laid out as the converter (v6) prints the CRB's pregens: a story page (the name in small caps,
+# the role in bold on two lines), then a stat page: attribute labels with the values detached (the first two on the
+# AGILITY and STRENGTH lines: Edge 3, Charisma 2; then Logic 3, Willpower 2, Agility 4, Strength 3), skill rows
+# plain and as 4-cell pipe rows, a spec with two attributes, amps "**Name (type)** [Essence] Rating", weapons and
+# spells in one list, equipment and threshold rows sharing lines (one wrapped), small-caps keywords and cues.
+# Plus a character creation example box (p.85, with its margin tab letters) whose prose builds a second runner.
+PREGEN_MD = """<!-- page 87 -->
+| CHARACTER CREATION EXAMPLE |
+|---|
+| Ann wants Spark, her character, to be a made-up elf mage� She chose as Keywords: Elf, Test mage, and Low life-<br>style� For her Dispositions, she chose: Quiet, Bold, which she gets from Owl, and Kind�<br>She decides to take: Strength 2, Agility 3, Willpower 4 (max rating), Logic 2, Charisma 3� G<br>A<br>She takes Sorcery 5 (illusion spells +2) and Stealth 3, then Network 2 (street +2)�<br>For her Awakened abilities, she spends 3 points (2 for astral perception and projection, 1 for sorcery)� She picks Owl as a mentor spirit at rating 2 (base rating 0 for the first quality, 2 for Risk Reduction 1 on Sorcery (illusion spells) Tests)� She picks a sustaining focus, a rating 2 Amp (0 for the equipment, and 2 to sustain up to 1 additional spells)�<br>The next 2 points are used for one contact: Old Pal, a made-up fixer (Risk Reduction 1 for Network (street) Tests)� She wears an armor jacket (Armor 3) and carries a traditional knife (standard weapon)� She decides to increase Stealth from 3 to 4� Finally, she picks up her 2 spells: Glimmer Sight and Zap� |
+**85**
+<!-- page 90 -->
+**SHADOWRUN**
+S
+N
+**88**
+TeST RiGGER
+**Made-up rigger,**
+**male troll**
+Invented story prose about the runner.
+<!-- page 91 -->
+ger
+T e
+EDGE
+CHARISMA
+LOGIC
+WILLPOWER
+AGILITY 3
+STRENGTH 2
+3
+2
+4
+3
+ESSENCE: 4
+SKILLS RATING +ATT. = DP RR
+**Athletics** 2 STR **5**
+(ranged defense +2) AGI **8**
+| **Close Combat** | 1 | AGI | **5** |
+|---|---|---|---|
+| (clubs +2) |  | AGI | **7** |
+**Engineering** 3 LOG **6**
+(remote-controlled weapons) LOG **6**
+| **Stealth** | 2 | AGI | **6** |
+|---|---|---|---|
+| (lockpicking +2) |  | LOG/AGI | **7/8** |
+**Piloting** 5 AGI **9**
+KNOWLEDGE SKILLS
+Made-up lore, Toy trains
+SHADOW AMPS ESSENCE RATING
+**Toy Jack (cyberware)** 1 4
+Direct neural interface; cold- and hot-sim VR
+**Toy Arm with a Heavy pistol (cyberware)** 1 4
+RR 1 on Ranged Weapons (pistols) Tests
+**Rusty Sedan (vehicle)** 2
+Sedan: Pilot 6, Body 6, Handling 2, Speed 4, Armor 1
+Front-facing weapon mount
+**2 Buzz Copter (drones)** 4
+Flying Drone: Pilot 6, Body 1, Handling 9, Speed 4, Armor 0
+**Old Pal, fixer (contact)** 2
+RR 1 on Tests for Network (street) Tests
+**Jolt (equipment)** 1
+BTL: DV +1 in melee� RR 1 on Close Combat Tests
+Must take a High Risk for all their
+Tests
+WEAPONS & SPELLS TYPE
+**Unarmed** DV 3 [OK/–/–/–] Weapon
+**Unarmed** (astral only) DV 4 [OK/–/–/–] Weapon
+**2 x Wrench** (club) DV 5 [OK/–/–/–] Weapon
+**Zap Pistol** (heavy pistol) DV 5 [OK/OK/Dis�/–] (Rusty Sedan) Weapon
+**Za** p (combat spell, physical) Spell
+EQUIPMENT WOUNDS
+Fake SIN, Commlink, **Thresholds Light Serious Incap�**
+Toolkit No armor 3 6 9
+Main armor
+6 9 12
+(Padded Coat 3)
+Secondary armor (Clothes 1) 4 7 10
+Mental 2 5 8
+KEYWORDS
+tRoLl
+teSt city / DowntOwn
+DISPOSITIONS
+GrumPy
+CUES
+i fix it. yOu paY
+fOr it.
+RISK LEVEL
+0 1 die 2 dice 4 dice 6+ dice
+"""
+
+
+class PregensTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.res = crb.extract(MD + PREGEN_MD)
+        cls.block = statblock.crb_statblock(PREGEN_MD.split("<!-- page 91 -->")[1])
+        cls.xml = {s["file"]: ET.fromstring(s["xml"]) for s in cls.res.samples}
+
+    def test_stat_page(self):
+        b = self.block
+        self.assertEqual(b["attributes"], {"cha": 2, "log": 3, "wil": 2, "agi": 4, "str": 3})
+        self.assertEqual(b["knowledge"], ["Made-up lore", "Toy trains"])
+        self.assertEqual([(s["name"], s["rating"], s["attr"], s["dp"], [(x["name"], x["plus2"], x["attr"], x["dp"]) for x in s["specs"]])
+                          for s in b["skills"]], [
+            ("Athletics", 2, "str", 5, [("Ranged defense", True, "agi", 8)]),
+            ("Close Combat", 1, "agi", 5, [("Clubs", True, "agi", 7)]),
+            ("Engineering", 3, "log", 6, [("Remote-controlled weapons", False, "log", 6)]),
+            ("Stealth", 2, "agi", 6, [("Lockpicking", True, "log", 7), ("Lockpicking", True, "agi", 8)]),
+            ("Piloting", 5, "agi", 9, []),
+        ])
+        self.assertEqual([(a["name"], a["type"], a["ess"], a["rating"], a["count"], a["lines"]) for a in b["amps"]], [
+            ("Toy Jack", "cyberware", 1.0, 4, 1, ["Direct neural interface", "Cold-sim and hot-sim VR"]),
+            ("Toy Arm with a Heavy pistol", "cyberware", 1.0, 4, 1, ["Integrated heavy pistol", "RR 1 on Ranged Weapons (pistols) Tests"]),
+            ("Rusty Sedan", "vehicle", None, 2, 1, ["Sedan: Pilot 6, Body 6, Handling 2, Speed 4, Armor 1", "Front-facing weapon mount"]),
+            ("Buzz Copter", "drones", None, 4, 2, ["Flying Drone: Pilot 6, Body 1, Handling 9, Speed 4, Armor 0"]),
+            ("Old Pal, fixer", "contact", None, 2, 1, ["RR 1 on Network (street) Tests"]),
+            ("Jolt", "equipment", None, 1, 1, ["BTL: DV +1 in melee", "RR 1 on Close Combat Tests", "Must take a High Risk for all their Tests"]),
+        ])
+        self.assertEqual([(w["name"], w["kind"], w["dv"], w["count"]) for w in b["weapons"]],
+                         [("Unarmed", None, "3", 1), ("Wrench", "club", "5", 2), ("Zap Pistol", "heavy pistol", "5", 1)])
+        self.assertEqual(b["spells"], ["Zap"])
+        self.assertEqual([(r["name"], r["armor"], r["l"]) for r in b["armor"]],
+                         [("No armor", None, 3), ("Padded Coat", "3", 6), ("Clothes", "1", 4), ("Mental", None, 2)])
+        self.assertEqual(b["equipment"], ["Fake SIN", "Commlink", "Toolkit"])
+        self.assertEqual((b["keywords"], b["dispositions"], b["cues"]),
+                         (["Troll", "Test city / downtown"], ["Grumpy"], ["I fix it.", "You pay for it."]))
+
+    def test_samples(self):
+        self.assertEqual([(s["file"], s["name"], s["role"], s["page"]) for s in self.res.samples], [
+            ("crb.spark.xml", "Spark", "Character creation example", 85),
+            ("crb.test-rigger.xml", "Test Rigger", "Made-up rigger, male troll", 88),
+        ])
+        root = self.xml["crb.test-rigger.xml"]
+        self.assertEqual((root.get("id"), root.get("origin"), root.get("metatype")), ("crb.test-rigger", "CRB", "troll"))
+        self.assertEqual(root.find("build/attributes").attrib, {"str": "3", "agi": "4", "wil": "2", "log": "3", "cha": "2"})
+        self.assertEqual([k.text for k in root.iter("knowledge")], ["Made-up lore", "Toy trains"])
+
+    def test_amps(self):
+        def fx(root):
+            return {a.get("name"): ([e.get("ref") + (f":{e.get('param')}" if e.get("param") else "") for e in a.iter("effect")], a.get("vehicle"))
+                    for a in root.iter("amp")}
+        self.assertEqual(fx(self.xml["crb.test-rigger.xml"]), {
+            "Toy Jack": (["vr-cold", "vr-hot"], None),
+            "Toy Arm with a Heavy pistol": (["rr-spec:ranged-weapons.pistols", "narrative:Integrated heavy pistol"], None),
+            "Rusty Sedan": (["vehicle-armor"], "sedan"),
+            "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
+            "Old Pal, fixer": (["rr-spec:network.street"], None),
+            "Jolt": (["dv-plus", "rr-skill:close-combat", "negative"], None),
+        })
+        self.assertEqual(fx(self.xml["crb.spark.xml"]), {
+            "Awakened": (["awk-sorcery", "awk-astral-projection"], None),
+            "Owl mentor spirit": (["rr-spec:sorcery.illusion-spells"], None),
+            "Sustaining focus": (["sustain-spell"], None),
+            "Old Pal, made-up fixer": (["rr-spec:network.street"], None),
+        })
+
+    def test_creation_example(self):
+        root = self.xml["crb.spark.xml"]
+        self.assertEqual((root.get("metatype"), [k.text for k in root.iter("keyword")], [d.text for d in root.iter("disposition")]),
+                         ("elf", ["Elf", "Test mage", "Low lifestyle"], ["Quiet", "Bold", "Kind"]))
+        self.assertEqual(root.find("build/attributes").attrib, {"str": "2", "agi": "3", "wil": "4", "log": "2", "cha": "3"})
+        self.assertEqual([(s.get("id"), s.get("rating"), [x.text for x in s]) for s in root.iter("skill")], [
+            ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
+        self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
+            ("armor", "Armor jacket", "light-armor"), ("weapon", "Traditional knife", "short-weapon"),
+            ("spell", "Glimmer Sight", None), ("spell", "Zap", None)])
+
+    def test_every_printed_number_is_a_report_row(self):
+        rows = [r for r in self.res.report if r.get("sample")]
+        self.assertEqual({r["sample"] for r in rows}, {"crb.spark", "crb.test-rigger"})
+        self.assertEqual({r["kind"] for r in rows if r["sample"] == "crb.spark"}, {"amp"})  # the prose prints no pools
+        self.assertEqual([(r["kind"], r.get("key"), r["printed"]) for r in rows if r["status"] != "ok"],
+                         [("pool", "stealth.lockpicking@log", 7)])  # Stealth's LOG isn't the spec's attribute
+        self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)
+        self.assertEqual([(r["key"], r["printed"]) for r in rows if r["kind"] == "threshold"],
+                         [("physicalNone", 3), ("physicalMain", 6), ("physicalAlt", 4), ("mental", 2)])
+        self.assertEqual([(r["printed"], r["computed"]) for r in rows if r["kind"] == "essence"], [(4, 4)])
+        self.assertEqual({r["page"] for r in rows}, {85, 88})
 
 
 class AmpsTest(unittest.TestCase):
@@ -396,7 +577,7 @@ class AmpsParityTest(unittest.TestCase):
     def test_report(self):
         # the whip's printed rating is 1 for DV 7 (+2 over the base): the old catalog listed it as a book
         # discrepancy too; the jet-ski has no boat chassis. The RCC's "choose 1 specialization" stays open.
-        self.assertEqual(sorted((r["kind"], r.get("id") or r.get("spec")) for r in self.report),
+        self.assertEqual(sorted((r["kind"], r.get("id") or r.get("spec")) for r in self.report if not r.get("sample")),
                          [("rating-mismatch", "jet-ski"), ("rating-mismatch", "monofilament-whip"),
                           ("unresolved-spec", "piloting (choose 1 specialization)")])
 

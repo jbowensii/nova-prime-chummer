@@ -30,14 +30,10 @@ def extract(md, ctx=None):
         if not re.search(r"^SKILLS RATING", text, re.M):
             continue
         name, role = toc.get(page) or _story_title(pages.get(page - 1, ""))
-        base = sid = f"{ID.lower()}.{statblock._slug(name) or 'runner'}"
-        n = 2
-        while any(x["file"] == f"{sid}.xml" for x in samples):  # two runners with one name: -2, -3…
-            sid, n = f"{base}-{n}", n + 1
-        ch, rows = statblock.to_character(statblock.parse_statblock(text), rules, sid=sid, name=name, role=role,
-                                          origin=ID, background=f"{role}. {NAME} p.{page}.", updated=updated)
-        samples.append({"file": f"{sid}.xml", "xml": statblock.character_xml(ch), "name": name, "role": role, "page": page})
-        report += [{**r, "page": page} for r in rows]
+        s, rows = statblock.sample(statblock.parse_statblock(text), rules, ID, name, role, page,
+                                   f"{role}. {NAME} p.{page}.", updated, samples)
+        samples.append(s)
+        report += rows
     return Result(files={}, texts=None, samples=samples, report=report,
                   source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
 
