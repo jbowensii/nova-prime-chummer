@@ -6,23 +6,20 @@ import type { Catalog, Character } from '../src/model/types'
 const dir = (d: string, overlay: boolean): SourceFile[] => readdirSync(d).filter(f => f.endsWith('.xml'))
   .map(f => ({ file: overlay ? `custom/${f}` : f, xml: readFileSync(join(d, f), 'utf8'), overlay }))
 
-/** The catalogs that will be removed once real book imports exist (task 12): not part of `cat`. */
+/** The book catalogs the app no longer ships (imports bring them), as the private oracle lays them out. */
 export const BOOK_CATALOG_FILES = ['amps.xml', 'spells.xml', 'complexforms.xml', 'gear.xml', 'rules.xml']
 
-/** Every shipped data file, unfiltered (used to exercise buildCatalog itself, and by tests that
- * still want the real book catalogs while they exist in public/data). */
+/** Every shipped data file: the mechanics only. */
 export const base: SourceFile[] = dir('public/data', false)
 
-/** Every file loadCatalog would load from public/data (book catalogs left out) and a custom root laid out
- * as the app's custom/ folder (imported/index.xml, imported/sources.xml, sources.xml, texts/, index.xml),
- * in the same order. Missing data files are the removed book catalogs; a listed file missing is an error. */
+/** Every file loadCatalog would load from public/data and a custom root laid out as the app's custom/ folder
+ * (imported/index.xml, imported/sources.xml, sources.xml, texts/, index.xml), in the same order. A missing
+ * data file or listed file is an error. */
 export async function loadDir(customRoot: string): Promise<SourceFile[]> {
   const read = (p: string) => existsSync(p) ? readFileSync(p, 'utf8') : null
-  const { files, missing } = await collectFiles(async path => path.startsWith('data/')
-    ? (BOOK_CATALOG_FILES.includes(path.slice(5)) ? null : read(join('public', path)))
-    : read(join(customRoot, path.replace(/^custom\//, ''))))
-  const bad = missing.filter(m => m.startsWith('custom/'))
-  if (bad.length) throw new Error(`${customRoot}: listed but missing: ${bad.join(', ')}`)
+  const { files, missing } = await collectFiles(async path =>
+    read(path.startsWith('data/') ? join('public', path) : join(customRoot, path.replace(/^custom\//, ''))))
+  if (missing.length) throw new Error(`${customRoot}: listed but missing: ${missing.join(', ')}`)
   return files
 }
 
@@ -30,13 +27,13 @@ export async function loadDir(customRoot: string): Promise<SourceFile[]> {
 export const MINI = 'tests/fixtures/mini/custom'
 
 /** The engine catalog: shipped mechanics (levels, skills, pricing, amp types/effects, weapons,
- * armor, lifestyles, sources...) plus the made-up imported books. Never the book catalogs, so
- * engine tests keep working after they're removed. */
+ * armor, lifestyles, sources...) plus the made-up imported books. Never real book data. */
 export const catFiles: SourceFile[] = await loadDir(MINI)
 export const cat: Catalog = buildCatalog(catFiles)
 
-/** Where the owner's private book imports live: BOOKS_DIR, else the oracle captured by /task-1
- * before public/data's book catalogs are touched. Same flat layout as public/data + a samples/ dir. */
+/** Where the owner's private book catalogs live: BOOKS_DIR, else the oracle captured in task 1 from the catalogs
+ * the app used to ship (.extract/private/oracle, never committed). Flat layout (amps.xml, spells.xml…) plus a
+ * samples/ dir, pregens-printed.json and book-discrepancies.md. */
 export const BOOKS_DIR = process.env.BOOKS_DIR ?? '.extract/private/oracle'
 
 const loadBooks = (): Catalog | null => {
@@ -47,7 +44,7 @@ const loadBooks = (): Catalog | null => {
   if (existsSync(skills)) bookFiles.push({ file: 'custom/imported/books/skills.xml', xml: readFileSync(skills, 'utf8'), overlay: true })
   const textsDir = 'public/custom/texts'
   const texts = existsSync(textsDir) ? dir(textsDir, true) : []
-  return buildCatalog([...base.filter(f => !BOOK_CATALOG_FILES.includes(f.file)), ...bookFiles, ...texts])
+  return buildCatalog([...base, ...bookFiles, ...texts])
 }
 
 /** Full catalog (shipped mechanics + real book content) from the owner's private imports; null in CI

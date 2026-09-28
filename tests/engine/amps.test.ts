@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
 import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects } from '../../src/engine/amps'
 import type { AmpEntry } from '../../src/model/types'
@@ -35,21 +34,19 @@ test('Essence: cyberware 1, bioware 0.5', () => {
   expect(ampEssence(cat, amp('bioware'))).toBe(0.5)
 })
 
-test("Hercules' amps (CRB p.88)", () => {
-  expect(ampRating(cat, amp('adept', ['rr-spec', 'perception.social'], ['rr-spec', 'perception.social']), first)).toBe(5) // Empathic Sense
-  expect(ampRating(cat, amp('adept', ['rr-spec', 'influence.impersonation']), first)).toBe(3) // Vocal Control
-  expect(ampRating(cat, amp('contact', ['rr-skill', 'network']), first)).toBe(5) // Elton Hutchinson
+test('adept, contact and awakened amp ratings', () => {
+  expect(ampRating(cat, amp('adept', ['rr-spec', 'perception.social'], ['rr-spec', 'perception.social']), first)).toBe(5) // two RR on one spec
+  expect(ampRating(cat, amp('adept', ['rr-spec', 'influence.impersonation']), first)).toBe(3) // one RR on a spec
+  expect(ampRating(cat, amp('contact', ['rr-skill', 'network']), first)).toBe(5) // a contact with RR on a skill
   expect(ampRating(cat, amp('awakened', ['awk-adept']), first)).toBe(1)
 })
 
-test('catalog amps reproduce their printed rating unless listed as a book discrepancy', () => {
-  const listed = new Set([...readFileSync('docs/book-discrepancies.md', 'utf8')
-    .matchAll(/^\| ([a-z0-9-]+) \| (?:CRB|DHSA) p\./gm)].map(m => m[1]))
+test('catalog amps reproduce their printed rating (the made-up books have no discrepancies)', () => {
   // a mod has no base rating of its own: it adds its effects to an existing amp
   const rating = (t: typeof cat.amps extends Map<string, infer V> ? V : never) => t.mod
     ? t.effects.reduce((n, e) => n + effectRating(cat, e), 0)
     : ampRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)
-  const bad = [...cat.amps.values()].filter(t => !listed.has(t.id) && rating(t) !== t.printedRating)
+  const bad = [...cat.amps.values()].filter(t => rating(t) !== t.printedRating)
   expect(bad.map(t => t.id)).toEqual([])
 })
 

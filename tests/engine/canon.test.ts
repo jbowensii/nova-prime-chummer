@@ -85,7 +85,8 @@ describe('loadCatalog fetches each source’s private texts file', () => {
     const { loadCatalog } = await import('../../src/engine/load')
     const fixtureRules = readFileSync('tests/fixtures/mini/custom/imported/test/rules.xml', 'utf8')
     const extra: Record<string, string> = {
-      'data/rules.xml': fixtureRules,
+      'custom/imported/index.xml': '<overlays><file href="test/rules.xml"/></overlays>',
+      'custom/imported/test/rules.xml': fixtureRules,
       'custom/texts/qref.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="test.gadget-basics">Full immersion.</text></ca2:data>`,
     }
     const real = globalThis.fetch
