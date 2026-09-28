@@ -7,6 +7,12 @@
   python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
   python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
   python -m importer list-models <provider> --library <library dir>  (one model id per line; exit 3: the reason on stderr)
+  python -m importer edit set <amps|items|rules> <id> --custom <custom dir>  (the entry on stdin; exit 3: refused)
+  python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
+  python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
+  python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
+  python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
+  python -m importer restore --apply F --characters D --custom D --library D [--version V]  (exit 3: refused)
 """
 import hashlib
 import os
@@ -136,9 +142,11 @@ def remove(book_dir, custom_dir, forget=False, status=True):
 
 
 def _reserved_sources(custom_dir):
-    """Source ids a recipe, the shipped data or the user's own custom/sources.xml own; an AI import may not take them."""
+    """Source ids a recipe, the shipped data, the user's own custom/sources.xml or a house-rule source of the
+    edits layer own; an AI import may not take them."""
     ids = {r.ID for r in RECIPES}
-    for path in (os.path.join(DATA_DIR, "sources.xml"), os.path.join(custom_dir, "sources.xml")):
+    for path in (os.path.join(DATA_DIR, "sources.xml"), os.path.join(custom_dir, "sources.xml"),
+                 os.path.join(custom_dir, "edits", "sources.xml")):
         if os.path.exists(path):
             ids |= {s.get("id") for s in xmlio.ET.parse(path).getroot()}
     return {i.upper() for i in ids if i}
@@ -252,6 +260,10 @@ def _cmd_propose(argv):
 
 
 def _flag(argv, name):
+    """`name value` or `name=value` (the server passes free text as one `--name=…` argument)."""
+    for a in argv:
+        if a.startswith(name + "="):
+            return a[len(name) + 1:]
     return argv[argv.index(name) + 1] if name in argv[:-1] else None
 
 
@@ -313,11 +325,67 @@ def _cmd_list_models(argv):
     return 0
 
 
+def _cmd_edit(argv):
+    """The edits layer (importer/edits.py). A refused edit exits 3 with the reason on stderr."""
+    from importer import edits
+    sub, custom = (argv[0] if argv else None), _flag(argv, "--custom")
+    if not custom or (sub in ("set", "remove") and len(argv) != 5) or sub not in ("set", "remove", "add-source") or len(argv) < 2:
+        print(USAGE, file=sys.stderr)
+        return 2
+    try:
+        if sub == "set":
+            edits.set_entry(custom, argv[1], argv[2], sys.stdin.buffer.read(edits.MAX_BODY + 1))
+            print('<result state="saved" />')
+        elif sub == "remove":
+            print(f'<result removed="{str(edits.remove_entry(custom, argv[1], argv[2])).lower()}" />')
+        else:
+            edits.add_source(custom, argv[1], _flag(argv, "--name"), _flag(argv, "--publisher") or "")
+            print('<result state="saved" />')
+    except edits.EditError as e:
+        print(e, file=sys.stderr)
+        return 3
+    return 0
+
+
+def _dirs(argv):
+    dirs = {f: _flag(argv, "--" + f) for f in ("characters", "custom", "library")}
+    return dirs if all(dirs.values()) else None
+
+
+def _cmd_backup(argv):
+    from importer import backup
+    dirs, out = _dirs(argv), _flag(argv, "--out")
+    if not dirs or not out:
+        print(USAGE, file=sys.stderr)
+        return 2
+    backup.backup(dirs, out, keys="--keys" in argv, version=_flag(argv, "--version"))
+    return 0
+
+
+def _cmd_restore(argv):
+    from importer import backup
+    zip_path, dirs = _flag(argv, "--check") or _flag(argv, "--apply"), _dirs(argv)
+    if not zip_path or ("--apply" in argv and not dirs):
+        print(USAGE, file=sys.stderr)
+        return 2
+    try:
+        if "--check" in argv:
+            print(xmlio.ET.tostring(backup.check(zip_path), encoding="unicode"))
+        else:
+            safety = backup.apply(zip_path, dirs, version=_flag(argv, "--version"))
+            print(f'<result state="restored" safety={quoteattr(os.path.basename(safety))} />')
+    except backup.RestoreError as e:
+        print(e, file=sys.stderr)
+        return 3
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
             "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
-            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models}
+            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "edit": _cmd_edit,
+            "backup": _cmd_backup, "restore": _cmd_restore}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2

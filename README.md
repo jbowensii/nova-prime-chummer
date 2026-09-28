@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.2.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.3.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -133,6 +133,29 @@ writes one file per source in `custom/texts/`, never in this repository.
 
 The app’s **Game data** page shows each source and whether it's canon, what
 loaded, and any errors.
+
+## Editing and adding catalog entries
+
+Any amp, item or rule listed in a picker, on Game data or on the Rules page
+has an **Edit** button. Amps open the Amp Builder in catalog mode; items and
+rules open a form with a Description box. A saved edit shows an **Edited**
+mark next to its source, and **Restore book version** drops it, bringing
+back what the book printed; a re-import never touches your edits. **Add
+entry** creates a new amp, item or rule under a house-rule source you name
+or pick.
+
+## Backup and restore
+
+**Settings → Backup** downloads everything the server keeps — runners,
+house rules and edits, imported books, uploaded PDFs and AI settings — as
+one zip. Tick **Include my API keys** to have them in the file too;
+otherwise the zip has none, and anyone restoring it keeps the keys already
+on their own server (except for a provider whose address the backup
+changes: that key is dropped, so it's never sent somewhere new). Restoring uploads a zip, shows what's in it (when it
+was made, the app version, file counts) so you can check before committing,
+then **Replace everything on the server** applies it. The server saves its
+own current state first, to `library/.backups` (newest 3 kept), so a bad
+restore can be undone. Restores are capped at 20 GB.
 
 ## Develop
 

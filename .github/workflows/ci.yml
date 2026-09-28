@@ -34,3 +34,5 @@ jobs:
       - run: docker build -t chummer-anarchy2 .
       # musl wheels for pdfplumber, pypdfium2 and anthropic: import everything the server spawns
       - run: docker run --rm chummer-anarchy2 python3 -c 'import importer.__main__, importer.ai.propose, importer.ai.providers, pypdfium2'
+      # the server reads the app version backups record from /app/VERSION
+      - run: docker run --rm chummer-anarchy2 grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+' /app/VERSION

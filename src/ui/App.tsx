@@ -5,6 +5,7 @@ import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'
 import { BooksScreen } from './Books'
+import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
 import { BookReview } from './Review'
 import { RulesScreen } from './Rules'
@@ -36,14 +37,15 @@ export default function App() {
   if (!catalog || !repo) return <main className="lib"><p className="muted">Loading game data…</p></main>
 
   const [page, id, tab] = route
+  const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   return (
-    <RepoContext.Provider value={repo}>
+    <RepoContext.Provider value={repo}><CatalogEdits c={catalog} reload={refresh}>
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to tower04.</p>}
       {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'books' && id === 'ai' ? <AiSettings />
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />
-        : page === 'books' ? <BooksScreen c={catalog} reload={() => void loadCatalog('./').then(setCatalog, () => {}) /* a failed reload keeps the loaded catalog */} />
+        : page === 'books' ? <BooksScreen c={catalog} reload={() => void refresh()} />
         : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} /> : <Library c={catalog} />}
-    </RepoContext.Provider>
+    </CatalogEdits></RepoContext.Provider>
   )
 }

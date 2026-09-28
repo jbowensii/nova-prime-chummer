@@ -36,15 +36,19 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const sync = useRef({ rev: undefined as number | undefined, loaded: undefined as Character | undefined, saved: undefined as Character | undefined,
     latest: undefined as Character | undefined, busy: false, queued: undefined as Character | undefined, paused: false })
 
+  // fetched once per runner: a catalog reload (a catalog edit saved) must not replace unsaved or conflicted state
+  const cat = useRef(c)
+  cat.current = c
   useEffect(() => {
     repo.get(id).then(s => {
       sync.current.rev = s?.rev
       sync.current.loaded = s?.ch
       // old runners can reference unscoped catalog ids; remap them, saved normally when they change
-      setCh(s && rescope(c, s.ch))
+      setCh(s && rescope(cat.current, s.ch))
       setLoaded(true)
     }, e => { setSaveError(String(e)); setLoaded(true) })
-  }, [repo, id, c])
+  }, [repo, id])
+  useEffect(() => setCh(x => x && rescope(c, x)), [c]) // same object when nothing needs remapping
 
   const persist = async (next: Character, keepalive = false) => {
     const st = sync.current

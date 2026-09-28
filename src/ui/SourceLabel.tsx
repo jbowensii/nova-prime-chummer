@@ -3,10 +3,12 @@
 //   2. the Non-canon badge when the entry isn't canon;
 //   3. a book tag (its source id, full title on hover) only when dupeLabel says 'book', i.e. a duplicate
 //      with the same canon status. A 'badge' duplicate needs nothing more: step 2 already tells it apart.
+//   4. "Edited" when the catalog entry comes from the edits layer (EditEntry.tsx).
 // Entries built in the Amp Builder or as custom items have no book: "Built by you".
 import type { Catalog } from '../model/types'
 import { dupeLabel, isCanonSource } from '../engine'
 import { NonCanon } from './bits'
+import { EditedMark } from './EditEntry'
 
 type Props = { c: Catalog; source: string; page: number; id?: string } | { builtByYou: true }
 
@@ -16,11 +18,13 @@ export function SourceLabel(p: Props) {
   const s = c.sources.get(source)
   const title = s ? [s.name, s.publisher, s.file && `file ${s.file}`].filter(Boolean).join(' — ') : source
   const dupe = id ? dupeLabel(c, id) : null
+  const edited = !!id && [c.amps, c.items, c.rules].some(m => m.get(id)?.edited)
   return (
     <span className="srcline">
       <span className="src" title={title}>{source} p.{page}</span>
       {!isCanonSource(c, source) && <NonCanon source={source} />}
       {dupe?.kind === 'book' && <span className="booktag" title={dupe.title}>{dupe.text}</span>}
+      {edited && <EditedMark />}
     </span>
   )
 }

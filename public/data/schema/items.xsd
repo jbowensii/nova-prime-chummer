@@ -17,19 +17,4 @@
       <xs:attributeGroup ref="ca2:root"/>
     </xs:complexType>
   </xs:element>
-  <xs:complexType name="Item">
-    <xs:sequence>
-      <xs:element name="name" type="xs:string"/>
-      <xs:element name="text" type="xs:string"/>
-    </xs:sequence>
-    <xs:attributeGroup ref="ca2:ref"/>
-    <xs:attribute name="kind" use="required">
-      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="gear"/><xs:enumeration value="weapon"/><xs:enumeration value="armor"/><xs:enumeration value="spell"/><xs:enumeration value="complex-form"/></xs:restriction></xs:simpleType>
-    </xs:attribute>
-    <xs:attribute name="specialist" type="xs:boolean"/>
-    <xs:attribute name="armor" type="xs:positiveInteger"/>
-    <xs:attribute name="dv" type="xs:string"/>
-    <xs:attribute name="ranges" type="xs:string"/>
-    <xs:attribute name="category" type="xs:string"/>
-  </xs:complexType>
 </xs:schema>
