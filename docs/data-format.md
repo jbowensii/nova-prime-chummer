@@ -334,7 +334,7 @@ and Add entry buttons), never by hand:
 
 | file | what |
 |---|---|
-| `edits/edits.xml` | edited or added entries, full entries in the data format (`<amp>`, `<item>`, `<rule>`) |
+| `edits/edits.xml` | edited or added entries, full entries in the data format (`<amp>`, `<item>`, `<rule>`), each with `by="<username>"` (who saved it last) |
 | `edits/texts.xml` | edited descriptions, same shape as `custom/texts/` |
 | `edits/sources.xml` | house-rule sources the user created (`canon="false"`) |
 

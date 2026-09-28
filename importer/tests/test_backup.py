@@ -94,6 +94,8 @@ class BackupTest(unittest.TestCase):
     def test_contents_without_and_with_keys(self):
         root = tempfile.mkdtemp()
         dirs = state(root)
+        for never in ("sessions.xml", "reset.xml"):  # session hashes and a recovery code's hash: never backed up
+            Path(dirs["library"], ".config", never).write_text("<x/>", encoding="utf8")
         out = os.path.join(root, "b.zip")
         backup.backup(dirs, out, version="9.9.9")
         with zipfile.ZipFile(out) as zf:
@@ -103,6 +105,7 @@ class BackupTest(unittest.TestCase):
             self.assertIn("characters/.trash/old.xml", names)
             self.assertIn("library/.config/ai-providers.xml", names)
             self.assertNotIn(backup.KEYS, names)
+            self.assertFalse(names & backup.NEVER)
             self.assertFalse([n for n in names if ".backups" in n or n.endswith(".tmp")])
         m = backup.check(out)
         self.assertEqual((m.get("app"), m.get("keys"), m.get("files")), ("9.9.9", "no", str(len(names) - 1)))

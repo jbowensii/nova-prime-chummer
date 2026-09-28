@@ -8,7 +8,7 @@
   python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
   python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
   python -m importer list-models <provider> --library <library dir>  (one model id per line; exit 3: the reason on stderr)
-  python -m importer edit set <amps|items|rules> <id> --custom <custom dir>  (the entry on stdin; exit 3: refused)
+  python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
   python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
   python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
   python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
@@ -401,12 +401,13 @@ def _cmd_edit(argv):
     """The edits layer (importer/edits.py). A refused edit exits 3 with the reason on stderr."""
     from importer import edits
     sub, custom = (argv[0] if argv else None), _flag(argv, "--custom")
-    if not custom or (sub in ("set", "remove") and len(argv) != 5) or sub not in ("set", "remove", "add-source") or len(argv) < 2:
+    by = _flag(argv, "--by") if sub == "set" else None
+    if not custom or (sub == "set" and len(argv) != (7 if by else 5)) or (sub == "remove" and len(argv) != 5)             or sub not in ("set", "remove", "add-source") or len(argv) < 2:
         print(USAGE, file=sys.stderr)
         return 2
     try:
         if sub == "set":
-            edits.set_entry(custom, argv[1], argv[2], sys.stdin.buffer.read(edits.MAX_BODY + 1))
+            edits.set_entry(custom, argv[1], argv[2], sys.stdin.buffer.read(edits.MAX_BODY + 1), by=by)
             print('<result state="saved" />')
         elif sub == "remove":
             print(f'<result removed="{str(edits.remove_entry(custom, argv[1], argv[2])).lower()}" />')

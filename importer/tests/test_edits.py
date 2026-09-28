@@ -34,9 +34,9 @@ class EditsTest(unittest.TestCase):
         d = custom()
         edits.set_entry(d, "amps", "test.keen-eye", AMP)
         edits.set_entry(d, "amps", "test.keen-eye", f"<edit>{AMP.replace('printedRating=\"3\"', 'printedRating=\"4\"')}"
-                        "<description>Sees &amp; knows.</description></edit>")
+                        "<description>Sees &amp; knows.</description></edit>", by="kim")
         amps = [e for e in read(d, "edits.xml") if e.get("id") == "test.keen-eye"]
-        self.assertEqual([a.get("printedRating") for a in amps], ["4"])
+        self.assertEqual([(a.get("printedRating"), a.get("by")) for a in amps], [("4", "kim")])
         self.assertEqual([(t.get("of"), t.get("id"), t.text) for t in read(d, "texts.xml")],
                          [("amps", "test.keen-eye", "Sees & knows.")])
         for f, xsd in (("edits.xml", "edits.xsd"), ("texts.xml", "texts.xsd")):
@@ -104,7 +104,7 @@ class EditsTest(unittest.TestCase):
     def test_written_file_passes_validate_data(self):
         d = custom()
         edits.add_source(d, "TABLE", "Our table")
-        edits.set_entry(d, "amps", "test.keen-eye", f"<edit>{AMP}<description>Sharp.</description></edit>")
+        edits.set_entry(d, "amps", "test.keen-eye", f"<edit>{AMP}<description>Sharp.</description></edit>", by="kim")
         edits.set_entry(d, "items", "table.charm", '<item id="table.charm" kind="gear" source="TABLE" page="1"><name>Charm</name><text/></item>')
         edits.set_entry(d, "rules", "test.gadget-basics", '<rule id="test.gadget-basics" sheet="test" effects="rr-spec" source="TEST" page="11">'
                         "<title>Risk</title><text/></rule>")
@@ -134,6 +134,13 @@ class EditsTest(unittest.TestCase):
         d = custom()
         with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.encode()))), mock.patch("sys.stdout", io.StringIO()):
             self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--custom", d]), 0)
+        # by: the server's username; one the client put on the entry is dropped
+        with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.replace("<amp ", '<amp by="eve" ').encode()))), mock.patch("sys.stdout", io.StringIO()):
+            self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--by", "kim", "--custom", d]), 0)
+        self.assertEqual([e.get("by") for e in read(d, "edits.xml")], ["kim"])
+        with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.encode()))), mock.patch("sys.stderr", io.StringIO()) as err:
+            self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--by", "Not A User", "--custom", d]), 3)
+        self.assertIn("isn’t a username", err.getvalue())
         with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(b"<amp"))), mock.patch("sys.stderr", io.StringIO()) as err:
             self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--custom", d]), 3)
         self.assertIn("well-formed", err.getvalue())
