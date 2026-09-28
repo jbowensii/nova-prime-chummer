@@ -36,9 +36,9 @@ Removed from the repository and produced by imports instead: `amps.xml`,
 `spells.xml`, `complexforms.xml`, `gear.xml`, `rules.xml`, the DHSA specs in
 `skills.xml`, and `public/samples/*` (the samples become recipe output).
 
-`sources.xml` stays, listing every supported book with its canon flag and
-recipe id, so the Books page can say what's supported before anything is
-uploaded.
+`sources.xml` stays, listing every supported book with its canon flag, so
+the Books page can say what's supported before anything is uploaded. (The
+recipe that reads a book is recorded per import in `import.xml`, not here.)
 
 Existing runners keep working: each stores a snapshot of every catalog
 entry it uses (character-format.md).
