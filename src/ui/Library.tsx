@@ -20,6 +20,16 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
 /** A character file: our XML, or the older .ca2.json. */
 export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
 
+/** The sample runners: the ones imported books brought (custom/imported/samples.xml), else the bundled set. */
+async function sampleUrls(): Promise<string[]> {
+  const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
+  const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
+  if (xml?.documentElement.localName === 'samples')
+    return [...xml.documentElement.getElementsByTagName('sample')].map(s => `./custom/imported/${s.getAttribute('href')}`)
+  const index: { file: string }[] = await (await fetch('./samples/index.json')).json()
+  return index.map(({ file }) => `./samples/${file}`)
+}
+
 export function Library({ c }: { c: Catalog }) {
   const repo = useRepo()
   const [list, setList] = useState<Stored[] | null>(null)
@@ -60,11 +70,10 @@ export function Library({ c }: { c: Catalog }) {
 
   const loadSamples = async () => {
     try {
-      const index: { file: string }[] = await (await fetch('./samples/index.json')).json()
       const have = new Set((list ?? []).map(s => s.ch.id))
       let n = 0
-      for (const { file } of index) {
-        const r = parseCharacterFile(await (await fetch(`./samples/${file}`)).text())
+      for (const url of await sampleUrls()) {
+        const r = readCharacterFile(await (await fetch(url)).text())
         if (r.ok && !have.has(r.character.id) && await store({ ...r.character, lastExportedAt: r.character.updatedAt })) n++
       }
       setMsg(n ? `Added ${n} sample characters.` : 'The sample characters are already in your library.')
