@@ -15,9 +15,9 @@ class Result:
     source: dict = field(default_factory=dict)    # {"id","name","publisher","canon"}
 
 
-from importer.recipes import crb, dhsa, pregens, qref  # noqa: E402  (recipes import Result from here)
+from importer.recipes import cg, crb, dhsa, pregens, qref  # noqa: E402  (recipes import Result from here)
 
-RECIPES = [qref, dhsa, pregens, crb]
+RECIPES = [qref, dhsa, pregens, crb, cg]
 
 
 def identify(meta, md_head):
