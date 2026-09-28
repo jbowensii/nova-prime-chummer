@@ -324,13 +324,25 @@ AMP_PAGES = {"actioneer-business-suit": ("148", "149"), "muscle-replacement-2": 
 # - v1.8 prints the autonomous medkits as Drone Amps (DHSA: equipment); their Pilot now explains the rating.
 AMP_TYPES = {"crashcart-essential-autonomous-medkit": ("equipment", "vehicle"),
              "docwagon-pro-autonomous-medkit": ("equipment", "vehicle")}
-# - effects: the old reader missed the Red Dog's 5 vehicles (read 3), counted "combat" as a club ("bat") for
-#   the lethal-toxin knife and couldn't map Novacoke's RRs; DHSA gives the Ingram RR on pistols (v1.8:
-#   submachine guns); the weapon foci were gear (v1.8 prints them as melee weapons with DV and range);
-#   the medkits above.
-AMP_EFFECTS = {"ares-red-dog-series", "combat-knife-coated-with-a-lethal-toxin", "novacoke", "ingram-smartgun-smg",
-               "weapon-focus-knife", "weapon-focus-katana",
-               "crashcart-essential-autonomous-medkit", "docwagon-pro-autonomous-medkit"}
+# - effects (new effects pinned, as (ref, param, value)): the old reader missed the Red Dog's 5 vehicles
+#   (read 3), counted "combat" as a club ("bat") for the lethal-toxin knife and couldn't map Novacoke's RRs;
+#   DHSA gives the Ingram RR on pistols (v1.8: submachine guns); the medkits above (Pilot 6 and 9).
+AMP_EFFECTS = {
+    "ares-red-dog-series": [("firewall-plus", "", ""), ("firewall-plus", "", ""), ("rcc", "", "5"), ("rr-skill", "piloting", "")],
+    "combat-knife-coated-with-a-lethal-toxin": [("dv-plus", "", ""), ("dv-plus", "", "")],
+    "novacoke": [("negative", "", "2"), ("rr-attr", "cha", ""), ("rr-spec", "perception.social", "")],
+    "ingram-smartgun-smg": [("narrative", "", ""), ("rr-spec", "ranged-weapons.submachine-guns", "")],
+    "crashcart-essential-autonomous-medkit": [],
+    "docwagon-pro-autonomous-medkit": [("pilot-plus", "", "")] * 3,
+}
+# - items (new descriptor pinned): the weapon foci were gear; v1.8 prints them as melee weapons with DV and
+#   range. The medkits are vehicles now, with no item.
+AMP_ITEMS = {
+    "weapon-focus-knife": {"kind": "weapon", "dv": "S+1/CHA+1", "ranges": "OK/-/-/-"},
+    "weapon-focus-katana": {"kind": "weapon", "dv": "S+2/CHA+2", "ranges": "OK/-/-/-"},
+    "crashcart-essential-autonomous-medkit": None,
+    "docwagon-pro-autonomous-medkit": None,
+}
 # v1.8 prints Amps DHSA doesn't reprint in black (contacts, vehicle control rigs, eyes and ears, bone lacing,
 # base vehicles, more weapons, drugs and drones): counted by type, no names.
 EXTRA_BY_TYPE = {"bioware": 1, "contact": 16, "cyberdeck": 1, "cyberware": 15, "equipment": 4, "quality": 1, "vehicle": 10}
@@ -369,10 +381,12 @@ class AmpsParityTest(unittest.TestCase):
             for f, known in (("page", AMP_PAGES), ("type", AMP_TYPES)):
                 if n.get(f) != o.get(f):
                     diffs.setdefault(f, {})[i] = (o.get(f), n.get(f))
-            if _fx(n) != _fx(o) or (o.find("item") is None) != (n.find("item") is None) or (
-                    o.find("item") is not None and o.find("item").attrib != n.find("item").attrib):
-                diffs.setdefault("effects", set()).add(i)
-        self.assertEqual(diffs, {"page": AMP_PAGES, "type": AMP_TYPES, "effects": AMP_EFFECTS})
+            if _fx(n) != _fx(o):
+                diffs.setdefault("effects", {})[i] = _fx(n)
+            item = [None if e.find("item") is None else dict(e.find("item").attrib) for e in (o, n)]
+            if item[0] != item[1]:
+                diffs.setdefault("items", {})[i] = item[1]
+        self.assertEqual(diffs, {"page": AMP_PAGES, "type": AMP_TYPES, "effects": AMP_EFFECTS, "items": AMP_ITEMS})
 
     def test_extras(self):
         extra = Counter(e.get("type") or e.get("kind") for i, e in self.new.items()
