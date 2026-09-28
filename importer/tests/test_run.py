@@ -13,6 +13,7 @@ from importer.tests.test_qref import MD
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCHEMA = os.path.join(ROOT, "public", "data", "schema")
+MINI = os.path.join(ROOT, "tests", "fixtures", "mini", "custom")  # its made-up core files
 # validates one file against one XSD with the repo's xmllint-wasm (same engine as validate-data.mjs)
 XSD_CHECK = """
 import { readFileSync } from 'node:fs';
@@ -87,7 +88,7 @@ class RunTest(unittest.TestCase):
         self.assertIn('href="qref/rules-matrix.xml"', Path(os.path.join(imported, "index.xml")).read_text(encoding="utf8"))
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
 
-        r = node("tools/validate-data.mjs", imported, "--texts=" + os.path.join(custom, "texts", "qref.xml"))
+        r = node("tools/validate-data.mjs", MINI, imported, "--texts=" + os.path.join(custom, "texts", "qref.xml"))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         for f, xsd in [(os.path.join(imported, "sources.xml"), "sources.xsd"), (os.path.join(book, "import.xml"), "import.xsd"),
                        (os.path.join(book, "status.xml"), "status.xsd")]:

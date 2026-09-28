@@ -13,6 +13,8 @@ class Result:
     samples: list = field(default_factory=list)   # {"file", "xml", "name", "role", "page"}: sample runners
     report: list = field(default_factory=list)    # dict rows: what didn't match
     source: dict = field(default_factory=dict)    # {"id","name","publisher","canon"}
+    core: dict = field(default_factory=dict)      # core file name -> XML (custom/imported/core/, ids unscoped): the CRB's
+    core_texts: list = field(default_factory=list)  # (of, id, text) for the core files' entries (unscoped)
 
 
 from importer.recipes import cg, crb, dhsa, pregens, qref  # noqa: E402  (recipes import Result from here)

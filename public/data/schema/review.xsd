@@ -42,6 +42,8 @@
       </xs:sequence>
       <xs:attribute name="book" type="xs:string" use="required"/>
       <xs:attribute name="source" type="xs:string" use="required"/>
+      <!-- true: rows for core tables the book's recipe couldn't read (applied to custom/imported/core/) -->
+      <xs:attribute name="core" type="xs:boolean"/>
       <xs:attribute name="provider" type="xs:string"/>
       <xs:attribute name="created" type="xs:dateTime" use="required"/>
       <xs:attribute name="bookSha256" type="xs:string" use="required"/>

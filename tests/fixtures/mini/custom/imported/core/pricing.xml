@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="pricing" version="1">
+  <pricing id="core" source="CRB" page="30"
+    attrPoint="12000" attrLastPoint="24000"
+    skillLow="3000" skillLowMax="4" skillHigh="6000"
+    spec="3500" knowledge="2000" ampPoint="6000"
+    equipment="3000" weaponStandard="3500" weaponSpecialist="7000"
+    armorPoint="3000" spell="6500" complexForm="6500" refundEffectRemoval="false"/>
+</ca2:data>

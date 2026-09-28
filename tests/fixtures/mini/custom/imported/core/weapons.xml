@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="weapons" version="1">
+  <item id="short-weapon" kind="weapon" dv="STR+2" ranges="OK/Dis/-/-" category="Melee" source="CRB" page="70"><name>Shiv</name><text>A made-up weapon.</text></item>
+  <item id="long-weapon" kind="weapon" dv="STR+3" ranges="OK/Dis/-/-" category="Melee" source="CRB" page="70"><name>Pole</name><text>A made-up weapon.</text></item>
+  <item id="advanced-close-quarter" kind="weapon" dv="6" ranges="OK/-/Dis/-" category="Melee" source="CRB" page="70"><name>Zapper stick</name><text>A made-up weapon.</text></item>
+  <item id="throwing-weapon" kind="weapon" dv="STR+2" ranges="OK/OK/-/-" category="Thrown" source="CRB" page="70"><name>Throwing star</name><text>A made-up weapon.</text></item>
+  <item id="bow" kind="weapon" dv="STR+2" ranges="Dis/OK/OK/-" category="Bows" source="CRB" page="70"><name>Longbow</name><text>A made-up weapon.</text></item>
+  <item id="crossbow" kind="weapon" dv="5" ranges="Dis/OK/OK/-" category="Bows" source="CRB" page="70"><name>Arbalest</name><text>A made-up weapon.</text></item>
+  <item id="taser" kind="weapon" dv="4" ranges="OK/Dis/-/-" category="Handguns" source="CRB" page="70"><name>Stunner</name><text>A made-up weapon.</text></item>
+  <item id="hold-out-pistol" kind="weapon" dv="2" ranges="OK/Dis/-/-" category="Handguns" source="CRB" page="70"><name>Pocket gun</name><text>A made-up weapon.</text></item>
+  <item id="light-pistol" kind="weapon" dv="3" ranges="OK/OK/-/-" category="Handguns" source="CRB" page="70"><name>Popgun</name><text>A made-up weapon.</text></item>
+  <item id="machine-pistol" kind="weapon" dv="5" ranges="OK/OK/-/-" category="Handguns" source="CRB" page="70"><name>Buzz pistol</name><text>A made-up weapon.</text></item>
+  <item id="heavy-pistol" kind="weapon" dv="6" ranges="OK/OK/Dis/Dis" category="Handguns" source="CRB" page="70"><name>Hand cannon</name><text>A made-up weapon.</text></item>
+  <item id="submachine-gun" kind="weapon" dv="6" ranges="OK/OK/Dis/-" category="Automatics" source="CRB" page="70"><name>Chopper gun</name><text>A made-up weapon.</text></item>
+  <item id="assault-rifle" kind="weapon" dv="8" ranges="Dis/OK/OK/OK" category="Longarms" source="CRB" page="70"><name>Battle rifle</name><text>A made-up weapon.</text></item>
+  <item id="shotgun" kind="weapon" specialist="true" dv="9" ranges="OK/Dis/-/-" category="Longarms" source="CRB" page="70"><name>Scattergun</name><text>A made-up weapon.</text></item>
+  <item id="sniper-rifle" kind="weapon" specialist="true" dv="11" ranges="-/-/OK/OK" category="Longarms" source="CRB" page="70"><name>Marksman rifle</name><text>A made-up weapon.</text></item>
+  <item id="machine-gun" kind="weapon" specialist="true" dv="10" ranges="-/Dis/OK/OK" category="Heavy" source="CRB" page="70"><name>Belt gun</name><text>A made-up weapon.</text></item>
+  <item id="grenade" kind="weapon" dv="6" ranges="OK/Dis/-/-" category="Thrown" source="CRB" page="70"><name>Boomball</name><text>A made-up weapon.</text></item>
+  <item id="grenade-launcher" kind="weapon" specialist="true" dv="8" ranges="-/OK/OK/Dis" category="Launchers" source="CRB" page="70"><name>Lobber</name><text>A made-up weapon.</text></item>
+  <item id="rocket-launcher" kind="weapon" specialist="true" dv="13" ranges="-/-/OK/OK" category="Launchers" source="CRB" page="70"><name>Tube</name><text>A made-up weapon.</text></item>
+</ca2:data>

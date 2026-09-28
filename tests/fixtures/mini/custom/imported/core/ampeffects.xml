@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="ampeffects" version="1">
+  <effect id="rr-spec" category="odds" rating="3" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" param="spec" source="CRB" page="50"><name>Luck with one specialization</name></effect>
+  <effect id="rr-skill" category="odds" rating="4" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" max="2" param="skill" source="CRB" page="50"><name>Luck with one Skill</name></effect>
+  <effect id="rr-attr" category="odds" rating="8" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" max="2" param="attribute" source="CRB" page="50"><name>Luck with one Attribute</name></effect>
+  <effect id="init-1" category="tempo" rating="3" types="cyberware bioware quality adept" max="2" source="CRB" page="50"><name>Quick I</name></effect>
+  <effect id="init-2" category="tempo" rating="4" types="cyberware bioware quality adept" max="2" requires="init-1" source="CRB" page="50"><name>Quick II</name></effect>
+  <effect id="init-3" category="tempo" rating="1" types="cyberware bioware quality adept" max="2" requires="init-2" source="CRB" page="50"><name>Quick III</name></effect>
+  <effect id="init-realm" category="tempo" rating="-2" types="cyberware bioware quality adept" max="2" requires="init-1" param="realm" source="CRB" page="51"><name>Quick in one world only</name></effect>
+  <effect id="dv-plus" category="body" rating="2" types="cyberware adept equipment vehicle" max="3" source="CRB" page="51"><name>Harder hits</name></effect>
+  <effect id="range-improve" category="body" rating="1" types="equipment vehicle adept" param="text" source="CRB" page="51"><name>Longer reach</name></effect>
+  <effect id="armor-plus" category="body" rating="2" types="quality cyberware adept equipment cyberdeck" max="2" source="CRB" page="51"><name>Tougher hide</name></effect>
+  <effect id="mental-armor" category="body" rating="3" types="quality adept equipment cyberdeck" max="2" source="CRB" page="51"><name>Steel mind</name></effect>
+  <effect id="wound-light" category="body" rating="2" types="quality cyberware bioware vehicle" max="2" source="CRB" page="51"><name>Extra scratch box</name></effect>
+  <effect id="wound-serious" category="body" rating="5" types="quality bioware adept cyberdeck vehicle" max="2" source="CRB" page="52"><name>Extra gash box</name></effect>
+  <effect id="sustain-spell" category="mystic" rating="1" types="equipment quality" max="3" source="CRB" page="52"><name>One more held spell</name></effect>
+  <effect id="summon-spirit" category="mystic" rating="2" types="equipment quality" max="2" source="CRB" page="52"><name>One more spirit</name></effect>
+  <effect id="weapon-focus" category="mystic" rating="2" types="equipment adept" max="2" source="CRB" page="52"><name>Bound blade</name></effect>
+  <effect id="vr-cold" category="sim" rating="2" types="cyberware cyberdeck" max="1" source="CRB" page="52"><name>Cool dive</name></effect>
+  <effect id="vr-hot" category="sim" rating="3" types="cyberware cyberdeck" max="1" requires="vr-cold" source="CRB" page="52"><name>Hot dive</name></effect>
+  <effect id="firewall-plus" category="grid" rating="2" types="cyberdeck cyberware" max="4" source="CRB" page="53"><name>Shield +1</name></effect>
+  <effect id="attack-plus" category="grid" rating="2" types="cyberdeck equipment" max="4" source="CRB" page="53"><name>Spike +1</name></effect>
+  <effect id="rcc" category="rig" rating="2" types="equipment cyberware vehicle" source="CRB" page="53"><name>Drone hub (one ride per level)</name></effect>
+  <effect id="vcr" category="rig" rating="1" types="cyberware bioware" max="1" source="CRB" page="53"><name>Jack-in rig</name></effect>
+  <effect id="pilot-plus" category="ride" rating="2" types="vehicle" max="4" source="CRB" page="53"><name>Smarter autopilot</name></effect>
+  <effect id="speed-plus" category="ride" rating="2" types="vehicle" max="2" source="CRB" page="53"><name>Faster</name></effect>
+  <effect id="handling-plus" category="ride" rating="2" types="vehicle" max="2" source="CRB" page="54"><name>Nimbler</name></effect>
+  <effect id="vehicle-armor" category="ride" rating="2" types="vehicle equipment" source="CRB" page="54"><name>Plating</name></effect>
+  <effect id="fixed" category="ride" rating="-2" types="vehicle equipment" max="1" source="CRB" page="54"><name>Bolted down</name></effect>
+  <effect id="flying" category="ride" rating="2" types="vehicle" max="1" source="CRB" page="54"><name>Wings</name></effect>
+  <effect id="weapon-mount" category="ride" rating="2" types="vehicle equipment" param="text" source="CRB" page="54"><name>Gun rack</name></effect>
+  <effect id="safety-override" category="ride" rating="2" types="vehicle cyberware" max="2" source="CRB" page="54"><name>No limiter</name></effect>
+  <effect id="extra-drone" category="ride" rating="3" types="vehicle" max="3" source="CRB" page="55"><name>Twin</name></effect>
+  <effect id="auto-medkit" category="ride" rating="2" types="vehicle equipment" max="2" source="CRB" page="55"><name>Medic bot</name></effect>
+  <effect id="narrative" category="other" rating="2" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" param="text" source="CRB" page="55"><name>Story perk</name></effect>
+  <effect id="negative" category="other" rating="-2" types="quality awakened cyberware bioware adept equipment cyberdeck vehicle contact" param="value" gmApproval="true" source="CRB" page="55"><name>Drawback</name></effect>
+  <effect id="awk-astral-perception" category="gift" rating="2" types="awakened" max="1" excludes="awk-astral-projection" source="CRB" page="55"><name>Spirit sight</name></effect>
+  <effect id="awk-astral-projection" category="gift" rating="3" types="awakened" max="1" excludes="awk-astral-perception" source="CRB" page="55"><name>Spirit walk</name></effect>
+  <effect id="awk-sorcery" category="gift" rating="2" types="awakened" max="2" source="CRB" page="56"><name>Spellcraft</name></effect>
+  <effect id="awk-conjuring" category="gift" rating="1" types="awakened" max="2" source="CRB" page="56"><name>Spirit calling</name></effect>
+  <effect id="awk-adept" category="gift" rating="2" types="awakened" max="1" source="CRB" page="56"><name>Knacks</name></effect>
+</ca2:data>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amptypes" version="1">
+  <amptype id="quality" base="1" baseAfterFirst="2" essence="0" source="CRB" page="40"><name>Trait</name></amptype>
+  <amptype id="awakened" base="1" essence="0" source="CRB" page="40"><name>Gifted</name></amptype>
+  <amptype id="cyberware" base="2" essence="1.25" source="CRB" page="40"><name>Chrome</name></amptype>
+  <amptype id="bioware" base="3" essence="0.25" source="CRB" page="40"><name>Grown</name></amptype>
+  <amptype id="adept" base="2" essence="0" requires="awk-adept" source="CRB" page="40"><name>Adept knack</name></amptype>
+  <amptype id="equipment" base="1" essence="0" source="CRB" page="40"><name>Gear</name></amptype>
+  <amptype id="cyberdeck" base="2" essence="0" source="CRB" page="40"><name>Deck</name></amptype>
+  <amptype id="vehicle" base="2" essence="0" source="CRB" page="40"><name>Ride</name></amptype>
+  <amptype id="contact" base="1" essence="0" source="CRB" page="40"><name>Friend</name></amptype>
+</ca2:data>

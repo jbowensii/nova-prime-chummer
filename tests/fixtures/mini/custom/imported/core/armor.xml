@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="armor" version="1">
+  <item id="armored-clothes" kind="armor" armor="2" source="CRB" page="71"><name>Padded tee</name><text>Made-up armor.</text></item>
+  <item id="armored-clothes-coat" kind="armor" armor="3" source="CRB" page="71"><name>Padded tee and duster</name><text>Made-up armor.</text></item>
+  <item id="light-armor" kind="armor" armor="4" source="CRB" page="71"><name>Vest</name><text>Made-up armor.</text></item>
+  <item id="heavy-armor" kind="armor" armor="5" source="CRB" page="71"><name>Plate suit</name><text>Made-up armor.</text></item>
+  <item id="military-armor" kind="armor" armor="6" source="CRB" page="71"><name>Walker suit</name><text>Made-up armor.</text></item>
+  <item id="ballistic-shield" kind="armor" armor="2" source="CRB" page="71"><name>Riot board</name><text>Made-up armor.</text></item>
+</ca2:data>

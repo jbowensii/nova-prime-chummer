@@ -29,10 +29,9 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from collections import Counter
 
-from importer import DATA_DIR
+from importer import core_file, mechanics_roots
 from importer.recipes.dhsa import DHSA_SPECS, Mapper
 
-DATA = DATA_DIR
 ATTRS = ("str", "agi", "wil", "log", "cha")
 ANCHORS = ("KEYWORDS", "SKILLS", "WEAPONS", "ARMOR", "WOUNDS", "DISPOSITIONS", "CUES", "SPELLS", "COMPLEX FORMS",
            "SHADOW AMPS", "EQUIPMENT")
@@ -58,7 +57,7 @@ WEAPON_ALIASES = {"smg": "submachine-gun", "hand taser": "taser", "stun gloves":
 SPEC_NAMES = {("engineering", "explosives"): "engineering.demolitions", ("piloting", "aerial drones"): "piloting.flying-drones"}
 # a line that limits an effect: the rules' price is above the printed one by a Negative effect
 LIMITED = re.compile(r"\bonly\b|first interaction|disadvantage|wears? off|must take", re.I)
-# a vehicle's printed stats (the CRB puts its kind first: "Sedan: Pilot 6, …")
+# a vehicle's printed stats (the CRB puts its kind first: "Sedan: Pilot N, …")
 VSTATS = re.compile(r"\bPilot (\d+),? Body (\d+),? Handling (\d+),? Speed (\d+)(?: \(Flying \d+\))?,? Armor (\d+)")
 
 
@@ -67,30 +66,38 @@ def _slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s.lower().replace("'", "")).strip("-")
 
 
-def load_rules(data=DATA):
-    """Shipped mechanics the recipe needs: skills (+ DHSA's specs), amp types and effects, chassis, armor and
-    weapon types. Never a book catalog."""
+def load_rules(data=None):
+    """Core mechanics the recipe needs: skills (+ DHSA's specs), amp types and effects, chassis, armor and weapon
+    types, from `data` or the core files (importer.core_dir) plus what imported books add to skills, amp types and
+    effects. Never a book catalog."""
     def root(f):
-        return ET.parse(os.path.join(data, f)).getroot()
+        return ET.parse(os.path.join(data, f) if data else core_file(f)).getroot()
+
+    def roots(f):
+        return [root(f)] if data else mechanics_roots(f)
     skills, specs = {}, {}
-    for s in root("skills.xml").iter("skill"):
-        skills[s.get("id")] = {"name": s.findtext("name"), "attr": s.get("attr"), "alt": s.get("alt"),
-                               "specs": {sp.get("id"): sp.get("attr") for sp in s.iter("spec")}}
-        specs.update({(s.get("id"), sp.text.strip().lower()): sp.get("id") for sp in s.iter("spec")})
+    for s in (s for r in roots("skills.xml") for s in r.iter("skill")):
+        sid = s.get("id")
+        skills.setdefault(sid, {"name": s.findtext("name"), "attr": s.get("attr"), "alt": s.get("alt"), "specs": {}})
+        skills[sid]["specs"].update({sp.get("id"): sp.get("attr") for sp in s.iter("spec")})
+        specs.update({(sid, sp.text.strip().lower()): sp.get("id") for sp in s.iter("spec")})
     for sk, sp, attr, _, name in DHSA_SPECS:  # the DHSA import adds these; the booklet uses them
+        if sk not in skills:
+            continue
         skills[sk]["specs"].setdefault(f"{sk}.{sp}", attr)
         specs[(sk, name.lower())] = f"{sk}.{sp}"
     effects = {e.get("id"): {"rating": float(e.get("rating")), "types": e.get("types", "").split(),
-                             "essence": float(e.get("essence") or 0)} for e in root("ampeffects.xml")}
+                             "essence": float(e.get("essence") or 0)} for r in roots("ampeffects.xml") for e in r}
     types = {t.get("id"): {"base": int(t.get("base")), "after": int(t.get("baseAfterFirst") or t.get("base")),
-                           "essence": float(t.get("essence"))} for t in root("amptypes.xml")}
+                           "essence": float(t.get("essence"))} for r in roots("amptypes.xml") for t in r}
     chassis = {v.get("id"): (int(v.get("body")), int(v.get("handling")), int(v.get("speed"))) for v in root("vehicles.xml")}
+    pilot = {v.get("id"): int(v.get("pilot")) for v in root("vehicles.xml")}
     armor = {}
     for i in root("armor.xml"):
         armor.setdefault(int(i.get("armor")), i.get("id"))
     weapons = {i.findtext("name").lower(): i.get("id") for i in root("weapons.xml")}
     weapons.update({i.get("id").replace("-", " "): i.get("id") for i in root("weapons.xml")})
-    return {"skills": skills, "specs": specs, "effects": effects, "types": types, "chassis": chassis,
+    return {"skills": skills, "specs": specs, "effects": effects, "types": types, "chassis": chassis, "pilot": pilot,
             "armor": armor, "weapons": weapons, "names": {v["name"].lower(): k for k, v in skills.items()}}
 
 
@@ -445,9 +452,9 @@ def map_amp(amp, rules, mapper, first_quality):
             refs.insert(0, pre)
     vehicle = _chassis(amp, rules) if atype == "vehicle" else None
     stats = next((m for m in map(VSTATS.search, lines) if m), None) if vehicle else None
-    if stats:  # what the printed stats add to the chassis: Pilot over 6, Armor
+    if stats:  # what the printed stats add to the chassis: Pilot over the chassis's, Armor
         # ponytail: handling/speed over the chassis aren't priced (the booklet's printed speeds don't charge them)
-        fx += _fx("pilot-plus", n=max(0, int(stats.group(1)) - 6)) + _fx("vehicle-armor", n=int(stats.group(5)))
+        fx += _fx("pilot-plus", n=max(0, int(stats.group(1)) - rules["pilot"][vehicle])) + _fx("vehicle-armor", n=int(stats.group(5)))
     if atype == "vehicle" and amp["count"] > 1:
         fx += _fx("extra-drone", n=amp["count"] - 1)
 
@@ -458,8 +465,8 @@ def map_amp(amp, rules, mapper, first_quality):
     if atype == "quality" and rate(atype, fx) != want and rate("equipment", fx) == want:
         atype = "equipment"
     gap = want - rate(atype, fx)
-    if gap > 0:  # the printed price covers lines the rules can't read: +1 narrative effect each
-        take = sorted(loose, key=lambda ln: not re.search(r"[+\d]", ln))[:gap]
+    if gap > 0:  # the printed price covers lines the rules can't read: a narrative effect each, at its core price
+        take = sorted(loose, key=lambda ln: not re.search(r"[+\d]", ln))[:gap // max(1, int(rules["effects"]["narrative"]["rating"]))]
         fx += [("narrative", ln, None, None) for ln in take]
         loose = [ln for ln in loose if ln not in take]
     elif gap < 0 and any(LIMITED.search(ln) for ln in lines):

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="lifestyles" version="1">
+  <lifestyle id="squatter" perRun="1500" source="CRB" page="80"><name>Couch</name><text>A made-up lifestyle.</text></lifestyle>
+  <lifestyle id="low" perRun="0" source="CRB" page="80"><name>Modest</name><text>A made-up lifestyle.</text></lifestyle>
+  <lifestyle id="middle" perRun="-1500" source="CRB" page="80"><name>Comfy</name><text>A made-up lifestyle.</text></lifestyle>
+  <lifestyle id="high" perRun="-3000" source="CRB" page="80"><name>Lavish</name><text>A made-up lifestyle.</text></lifestyle>
+</ca2:data>

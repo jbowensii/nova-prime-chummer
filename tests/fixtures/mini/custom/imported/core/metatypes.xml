@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="metatypes" version="1">
+  <metatype id="human" edge="5" source="CRB" page="9">
+    <name>Baseline</name><racialQuality></racialQuality>
+    <range attr="str" min="1" max="5"/><range attr="agi" min="1" max="5"/><range attr="wil" min="1" max="5"/><range attr="log" min="1" max="5"/><range attr="cha" min="1" max="5"/>
+  </metatype>
+  <metatype id="elf" edge="2" source="CRB" page="9">
+    <name>Sylph</name><racialQuality>Starlight eyes</racialQuality>
+    <range attr="str" min="1" max="3"/><range attr="agi" min="2" max="6"/><range attr="wil" min="1" max="5"/><range attr="log" min="1" max="5"/><range attr="cha" min="2" max="7"/>
+  </metatype>
+  <metatype id="dwarf" edge="2" source="CRB" page="9">
+    <name>Stout</name><racialQuality>Warm sight</racialQuality>
+    <range attr="str" min="2" max="6"/><range attr="agi" min="1" max="3"/><range attr="wil" min="2" max="7"/><range attr="log" min="1" max="5"/><range attr="cha" min="1" max="3"/>
+  </metatype>
+  <metatype id="ork" edge="2" source="CRB" page="9">
+    <name>Brute</name><racialQuality>Starlight eyes</racialQuality>
+    <range attr="str" min="2" max="7"/><range attr="agi" min="1" max="5"/><range attr="wil" min="1" max="5"/><range attr="log" min="1" max="3"/><range attr="cha" min="1" max="3"/>
+  </metatype>
+  <metatype id="troll" edge="1" source="CRB" page="9">
+    <name>Giant</name><racialQuality>Warm sight</racialQuality>
+    <range attr="str" min="3" max="8"/><range attr="agi" min="1" max="3"/><range attr="wil" min="1" max="5"/><range attr="log" min="1" max="3"/><range attr="cha" min="1" max="3"/>
+  </metatype>
+</ca2:data>

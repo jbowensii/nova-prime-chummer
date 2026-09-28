@@ -1,4 +1,6 @@
-"""Shadowrun Anarchy 2.0 Alternative Core Rulebook (CRB) -> spells, Shadow Amps, plain gear and sample runners.
+"""Shadowrun Anarchy 2.0 Alternative Core Rulebook (CRB) -> the core files (crb_core.py: skills, amp effects, pricing …,
+written to custom/imported/core/), spells, Shadow Amps, plain gear and sample runners. The amps and runners are read with
+the core files the book itself gives.
 
 Layout notes (page ranges, box shapes, converter quirks) are in crb.md next to this file. In short: every
 rules box is a one-cell table titled in capitals; its lines are <br>-separated (a box set in two text
@@ -22,15 +24,19 @@ number goes to the report, as the pregen booklet's do. An amp printed only on th
 name: Concealment on Hercules', the pregens' brand-name gear) is the rulebook's too, so it joins the catalog amps.
 """
 import functools
+import os
 import re
+import shutil
+import tempfile
 from collections import Counter
 from datetime import datetime, timezone
+from pathlib import Path
 from xml.sax.saxutils import escape
 
-from importer import statblock
+from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
-    BASE, CHASSIS, SKILLS, ATTRS, Mapper, attr, dv_num, load_skills, reconcile, slug, weapon_base)
+    SKILLS, ATTRS, Mapper, attr, core, dv_num, load_skills, reconcile, slug, specialist, weapon_base)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8", "Catalyst Game Labs", True
 SHA256 = ("4ae357ad00d8c9ad660a5595e9c100f1c9e7a105875f92bffc33111efc707a95",)  # the owner's v1.8 PDF
@@ -162,7 +168,7 @@ def _join(lines):
 def entries(text):
     """[(name, paren, text)] for each bold run-in entry of a box's text. The paren is the "(…)" right after
     the name, or "" (a label such as "Note" or "Similar Archetypes"). A paren the layout pushed before its
-    name ("… (Rating 4 Contact Amp, 20,000¥) RR 1 **Night clerk:** on …") is moved back to it."""
+    name ("… (Rating N Contact Amp, X¥) RR 1 **Night clerk:** on …") is moved back to it."""
     ms = list(MARK.finditer(text))
     out = []
     for i, m in enumerate(ms):
@@ -256,7 +262,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
                           for d in re.findall(r"\bDV (\([^)]*\)|\d+(?: \([a-z ]+\))?(?: / \d+(?: \([a-z ]+\))?)?)", text))
             rm = RANGES.search(text)
             rng = re.sub(r"\s+", "", rm.group(1)).replace("–", "-").replace("—", "-").replace("Dis.", "Dis") if rm else ""
-            item = f'<item kind="weapon"{attr("specialist", "true" if (cost or 0) - rating * 5000 >= 5000 else "")}{attr("dv", dv)}{attr("ranges", rng)}/>'
+            item = f'<item kind="weapon"{attr("specialist", "true" if specialist(cost, rating) else "")}{attr("dv", dv)}{attr("ranges", rng)}/>'
             a, b = dv_num(dv.split()[0] if dv else ""), dv_num(bdv)
             if a and b and a[0] == b[0] and a[1] > b[1]:
                 vfx += [("dv-plus", None, None, None)] * (a[1] - b[1])
@@ -270,6 +276,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
         else:
             item = '<item kind="gear"/>'
     if atype == "vehicle":
+        chassis = core()["chassis"]
         m = statblock.VSTATS.search(text)  # shared with the stat blocks (read at call time: statblock imports dhsa)
         if m:
             p, b, h, s, a = map(int, m.groups())
@@ -277,15 +284,15 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
         else:  # a drone given by size and Pilot only ("Tiny drone, Pilot 7, hovers")
             size = next((v for k, v in DRONE_SIZES.items() if k in text.lower()), "small-drone")
             pm = re.search(r"Pilot (\d+)", text)
-            p, (b, h, s), a = int(pm.group(1)) if pm else 6, CHASSIS[size], 0
+            p, (b, h, s), a = int(pm.group(1)) if pm else core()["pilot"][size], chassis[size], 0
             text = re.sub(r"Pilot \d+", "", text)
         flying = any(c.lower() == "flying" for c in clauses(text))
         ground = s // 2 if flying else s
         # the nearest chassis; on a tie (sports car and chopper share stats) the one the name says
-        vehicle = min(CHASSIS, key=lambda c: (abs(CHASSIS[c][0] - b) * 3 + abs(CHASSIS[c][1] - h) + abs(CHASSIS[c][2] - ground),
+        vehicle = min(chassis, key=lambda c: (abs(chassis[c][0] - b) * 3 + abs(chassis[c][1] - h) + abs(chassis[c][2] - ground),
                                               c not in slug(name)))
-        cb, ch, cs = CHASSIS[vehicle]
-        vfx = [("pilot-plus", None, None, None)] * max(0, p - 6) + [("vehicle-armor", None, None, None)] * a
+        cb, ch, cs = chassis[vehicle]
+        vfx = [("pilot-plus", None, None, None)] * max(0, p - core()["pilot"][vehicle]) + [("vehicle-armor", None, None, None)] * a
         vfx += [("handling-plus", None, None, None)] * max(0, h - ch) + [("speed-plus", None, None, None)] * max(0, ground - cs)
         if flying:
             vfx.append(("flying", None, None, None))
@@ -301,7 +308,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
         if lvl in refs and pre not in refs:
             fx.insert(0, (pre, None, None, None))
             refs.insert(0, pre)
-    computed = reconcile(fx, narrative, BASE[atype], rating)
+    computed = reconcile(fx, narrative, core()["base"][atype], rating)
     return {"id": slug(name), "name": name, "type": atype, "rating": rating, "page": page, "item": item,
             "vehicle": vehicle, "mod": False, "text": text.strip(" ,;"), "computed": computed, "fx": fx}
 
@@ -503,7 +510,35 @@ def sheet_amps(sheets, rows, rules):
 
 
 def extract(md, ctx=None):
-    spells, amps, gear, texts, report, ids = [], [], [], [], [], set()
+    """Spells, amps, gear and sample runners (overlay), and the core files (Result.core). The amps and runners are read
+    with the core files this book gives; a core table it can't read comes from the core already in place, if any."""
+    from importer.recipes import crb_core
+    core, core_texts, report = crb_core.build(md)
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, xml in core.items():
+            Path(tmp, name).write_text(xml, encoding="utf8")
+        missing = [f"{n}.xml" for n in CORE_FILES if f"{n}.xml" not in core]
+        found = {name: find_core_file(name) for name in missing}
+        if not all(found.values()):  # a table neither this book nor the core in place has
+            report.append({"kind": "amps-skipped", "problem": "no core data to read the amps and sample runners with (missing: "
+                           + ", ".join(n for n, p in found.items() if not p) + "); import the book again once the core tables are in place"})
+            return _spells_only(md, core, core_texts, report)
+        for path in found.values():
+            shutil.copy(path, tmp)
+        with use_core(tmp):
+            res = _extract(md, report)
+    res.core, res.core_texts = core, core_texts
+    return res
+
+
+def _spells_only(md, core, core_texts, report):
+    res = _extract(md, report, spells_only=True)
+    res.core, res.core_texts = core, core_texts
+    return res
+
+
+def _extract(md, report, spells_only=False):
+    spells, amps, gear, texts, ids = [], [], [], [], set()
     spell_list = spell_rows(md)
     for page, fam, names, text in spell_list:
         for name in names:
@@ -520,10 +555,12 @@ def extract(md, ctx=None):
         ids.add(s)
         return s
 
-    mapper = Mapper(load_skills(dhsa_specs=False)[1])
-    rows, items = amps_and_gear(md, mapper)
-    samples, sample_rows, sheets = sample_runners(md, [n for r in spell_list for n in r[2]])
-    rows += sheet_amps(sheets, rows, statblock.load_rules())
+    mapper = Mapper({} if spells_only else load_skills(dhsa_specs=False)[1])
+    rows, items, samples, sample_rows = [], [], [], []
+    if not spells_only:
+        rows, items = amps_and_gear(md, mapper)
+        samples, sample_rows, sheets = sample_runners(md, [n for r in spell_list for n in r[2]])
+        rows += sheet_amps(sheets, rows, statblock.load_rules())
     for r in rows:
         aid = uid(r["id"])
         if r["computed"] != r["rating"]:
