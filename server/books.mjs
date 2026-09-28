@@ -14,6 +14,7 @@
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
+//   GET    /api/ai-models?provider=   -> { models: [id…] }, asked with the saved key and address; 400 bad provider, 502 { error }
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
@@ -76,8 +77,9 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return new Promise(done => {
       let out = '', err = ''
       const p = spawn(cmd, [...pre, '-m', 'importer', ...args], { cwd: importerRoot, timeout, windowsHide: true,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // else Windows' code page mangles the ’ in messages
         stdio: ['pipe', 'pipe', 'pipe'] })
-      if (!['set-key', 'set-settings'].includes(args[0]) && !args.includes('--dry-run')) child = p
+      if (!['set-key', 'set-settings', 'list-models'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -237,6 +239,16 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
     return run
   }
 
+  /** The provider's model ids. Read-only, so outside the job queue and the key chain; the importer reads the saved
+   *  address before the key, and only the provider id comes from the request. */
+  async function listModels(provider) {
+    if (!PROVIDERS.includes(provider)) throw fail(400, 'unknown provider')
+    const r = await importer(['list-models', provider, '--library', libraryDir], { timeout: 60000 })
+    if (r.code === 0) return r.out.split('\n').map(s => s.trim()).filter(Boolean)
+    const why = (await redact(r.err)).trim().split('\n').pop()
+    throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t ask the provider' + (why ? `: ${why}` : ''))
+  }
+
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
   async function sweep() {
     const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
@@ -261,6 +273,7 @@ export function booksApi({ customDir, libraryDir, python = 'python3', importerRo
       const cleared = await putSettings(await body(req))
       return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
+    if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
     if (p === '/api/ai-keys' && method === 'PUT') {
       await putKeys(req)
       return send(res, 204, '', 'text/plain')

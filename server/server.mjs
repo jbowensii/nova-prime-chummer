@@ -136,7 +136,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       send(res, 404, 'not found', 'text/plain')
     } catch (e) {
       if (res.headersSent) return res.destroy()
-      const code = [400, 404, 409, 413, 415].includes(e.code) ? e.code : 500
+      const code = [400, 404, 409, 413, 415, 502].includes(e.code) ? e.code : 500
       send(res, code, { error: code === 500 ? 'server error' : e.message })
       if (code === 500) console.error(e.stack) // never a request body
     }
