@@ -21,7 +21,7 @@ const LIBRARY_DIR = process.env.LIBRARY_DIR ?? '.extract/private/library'
 const CUSTOM_DIR = process.env.CUSTOM_DIR ?? '.extract/private/custom'
 const samplesXml = join(CUSTOM_DIR, 'imported', 'samples.xml')
 // the catalog the app loads with these imports: the samples' catalog ids (crb.spell-…) point into it
-const imported = books && existsSync(join(CUSTOM_DIR, 'imported', 'index.xml')) ? buildCatalog(await loadDir(CUSTOM_DIR)) : null
+const imported = books && existsSync(join(CUSTOM_DIR, 'imported', 'index.xml')) ? buildCatalog(await loadDir(CUSTOM_DIR, true)) : null
 
 const doc = (p: string) => new DOMParser().parseFromString(readFileSync(p, 'utf8'), 'text/xml')
 const attrsOf = (e: Element) => Object.fromEntries([...e.attributes].map(a => [a.name, a.value]))

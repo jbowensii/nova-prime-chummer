@@ -1,4 +1,5 @@
-// Build a Catalog from XML files: base data first, then overlays in order.
+// Build a Catalog from XML files: base data first (public/data, then the core files in custom/imported/core/), then
+// overlays in order.
 // Same id replaces, <remove id> deletes, new id adds (docs/data-format.md). Imported books
 // (custom/imported/) carry ids scoped by source, so two books' same-named entries both stay;
 // sources merge by id across the three sources files instead of replacing, and an imported skill
@@ -12,6 +13,9 @@ import {
 
 export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
   'packages', 'vehicles', 'weapons', 'armor', 'lifestyles']
+/** The rules engine's core files: built by the core rulebook's import (or a data pack) into custom/imported/core/; in
+ * development the owner's local copies in public/data load first. Everything but sources.xml. */
+export const CORE_FILES = DATA_FILES.filter(n => n !== 'sources')
 
 export interface SourceFile { file: string; xml: string; overlay: boolean }
 
@@ -48,7 +52,7 @@ export function buildCatalog(files: SourceFile[]): Catalog {
   const c: Catalog = { levels: new Map(), metatypes: new Map(), attributes: new Map(), skills: new Map(),
     pricing: undefined as unknown as Pricing, ampTypes: new Map(), ampEffects: new Map(), amps: new Map(),
     vehicles: new Map(), packages: new Map(), items: new Map(), lifestyles: new Map(), sources: new Map(), rules: new Map(),
-    original: { amps: new Map(), items: new Map(), rules: new Map() }, files: [], errors: [] }
+    original: { amps: new Map(), items: new Map(), rules: new Map() }, files: [], errors: [], coreMissing: [] }
   const targets: Record<string, [Map<string, unknown>, (el: Element) => unknown]> = {
     levels: [c.levels, toLevel], metatypes: [c.metatypes, toMetatype],
     attributes: [c.attributes as Map<AttrId, unknown>, toAttribute], skills: [c.skills, toSkill],
@@ -72,6 +76,7 @@ export function buildCatalog(files: SourceFile[]): Catalog {
         const of = el.getAttribute('of')
         if (of === 'amps') { const a = c.amps.get(id); if (a) a.narrative = text }
         else if (of === 'rules') { const r = c.rules.get(id); if (r) r.text = text }
+        else if (of === 'lifestyles') { const l = c.lifestyles.get(id); if (l) l.text = text }
         else { const i = c.items.get(id); if (i) i.text = text }
       }
     } else if (p.kind === 'edits') {
@@ -118,16 +123,21 @@ export function buildCatalog(files: SourceFile[]): Catalog {
 
 const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
 
-/** Every file the app loads, in load order: data/*.xml, custom/imported/sources.xml, custom/sources.xml,
+/** Every file the app loads, in load order: data/*.xml, custom/imported/core/*.xml, custom/imported/sources.xml, custom/sources.xml,
  * the files listed in custom/imported/index.xml, the private texts files named by any source (plus the
  * older single custom/texts.xml), the edits layer (custom/edits/sources.xml, edits.xml, texts.xml), then the
  * house rules listed in custom/index.xml. `get` returns a
- * file's text, or null when it isn't there; `missing` lists data and listed files that weren't. */
-export async function collectFiles(get: (path: string) => Promise<string | null>): Promise<{ files: SourceFile[]; missing: string[] }> {
+ * file's text, or null when it isn't there; `missing` lists data and listed files that weren't, `coreMissing` the core
+ * files found in neither data/ nor custom/imported/core/ (the app then opens on its setup screen). */
+export async function collectFiles(get: (path: string) => Promise<string | null>): Promise<{ files: SourceFile[]; missing: string[]; coreMissing: string[] }> {
   const files: SourceFile[] = []
   const missing: string[] = []
   const data = await Promise.all(DATA_FILES.map(n => get(`data/${n}.xml`)))
-  data.forEach((xml, i) => { if (xml == null) missing.push(DATA_FILES[i]); else files.push({ file: `${DATA_FILES[i]}.xml`, xml, overlay: false }) })
+  const core = await Promise.all(CORE_FILES.map(n => get(`${IMPORTED}core/${n}.xml`)))
+  data.forEach((xml, i) => { if (xml != null) files.push({ file: `${DATA_FILES[i]}.xml`, xml, overlay: false }) })
+  core.forEach((xml, i) => { if (xml != null) files.push({ file: `${IMPORTED}core/${CORE_FILES[i]}.xml`, xml, overlay: false }) })
+  if (data[0] == null) missing.push('sources')
+  const coreMissing = CORE_FILES.filter((_, i) => data[i + 1] == null && core[i] == null)
   const optional = async (path: string) => { const xml = await get(path); if (xml != null) files.push({ file: path, xml, overlay: true }); return xml }
   const listed = async (dir: string) => {
     const index = await get(`${dir}index.xml`)
@@ -142,7 +152,7 @@ export async function collectFiles(get: (path: string) => Promise<string | null>
   for (const t of [...texts, 'texts.xml']) await optional(`custom/${t}`)
   for (const e of ['sources', 'edits', 'texts']) await optional(`custom/edits/${e}.xml`)
   await listed('custom/')
-  return { files, missing }
+  return { files, missing, coreMissing }
 }
 
 /** Fetch base data, imported books and house-rule overlays (see collectFiles; missing indexes = none). */
@@ -150,8 +160,9 @@ export async function loadCatalog(baseUrl = './'): Promise<Catalog> {
   // an unreachable server fails the load (the app's failure screen); custom/ files are optional extras
   const get = (path: string) => fetch(baseUrl + path, { cache: 'no-cache' })
     .then(r => r.ok ? r.text() : null, e => { if (path.startsWith('data/')) throw e; return null })
-  const { files, missing } = await collectFiles(get)
+  const { files, missing, coreMissing } = await collectFiles(get)
   const c = buildCatalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
+  c.coreMissing = coreMissing
   return c
 }

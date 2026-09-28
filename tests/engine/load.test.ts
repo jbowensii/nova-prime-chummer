@@ -4,15 +4,15 @@ import { base, cat, catFiles } from '../helpers'
 
 test('base catalog loads without errors', () => {
   expect(cat.errors).toEqual([])
-  expect(cat.levels.get('runner')!.nuyen).toBe(375000)
-  expect(cat.metatypes.get('troll')!.ranges.str).toEqual([1, 6])
-  expect(cat.skills.size).toBe(15) // 14 core skills + Tasking (Conversion Guide)
-  expect(cat.pricing.attrLastPoint).toBe(20000)
+  expect(cat.levels.get('runner')!.nuyen).toBe(455000) // made-up core data
+  expect(cat.metatypes.get('troll')!.ranges.str).toEqual([3, 8])
+  expect(cat.skills.size).toBe(15) // 14 core skills + Tasking (a book adds it)
+  expect(cat.pricing.attrLastPoint).toBe(24000)
   expect(cat.ampEffects.get('init-2')!.requires).toBe('init-1')
   expect(cat.amps.get('test.trick-shot-rig')!.item!.kind).toBe('weapon')
-  expect(cat.items.get('light-armor')!.armor).toBe(3)
+  expect(cat.items.get('light-armor')!.armor).toBe(4)
   expect(cat.items.get('test.nano-tape')!.kind).toBe('gear')
-  expect(cat.files.length).toBe(25) // public/data minus the book catalogs, plus tests/fixtures/mini/custom (sources + 8 files + 3 edits files)
+  expect(cat.files.length).toBe(28) // sources.xml, then tests/fixtures/mini/custom: 12 core files, imported sources + 11 files, 3 edits files
   // duplicate names across non-canon sources (TEST, TEST2) both load fine
   expect(cat.amps.get('test.keen-eye')!.source).toBe('TEST')
   expect(cat.amps.get('test2.keen-eye')!.source).toBe('TEST2')
@@ -35,7 +35,7 @@ test('bad overlay is skipped and reported, base still loads', () => {
   const c = buildCatalog([...base, { file: 'broken.xml', xml: '<ca2:data', overlay: true }])
   expect(c.errors).toHaveLength(1)
   expect(c.errors[0].file).toBe('broken.xml')
-  expect(c.levels.get('runner')!.nuyen).toBe(375000)
+  expect(c.levels.get('runner')!.nuyen).toBe(455000)
 })
 
 test('private texts merge by id; the committed data carries none', () => {

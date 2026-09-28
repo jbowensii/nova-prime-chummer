@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:py": "node tools/python.mjs",
-    "validate:data": "node tools/validate-data.mjs",
+    "validate:data": "node tools/validate-data.mjs tests/fixtures/mini/custom",
     "e2e": "playwright test",
     "check": "tsc -b && npm run validate:data && npm test",
     "serve": "npm run build && node server/server.mjs"

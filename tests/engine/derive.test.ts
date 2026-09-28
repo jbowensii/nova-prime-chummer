@@ -42,13 +42,13 @@ test('thresholds with no armor, main armor, alternate armor, and mental', () => 
   expect(t.mental).toEqual([2, 5, 8])
 })
 
-test('dice pools: attribute + skill, +2 per specialization', () => {
+test('dice pools: attribute + skill, +2 per specialization, each with its made-up linked attribute', () => {
   const pools = derive(cat, face()).pools
   const dp = (skill: string, attr: string, spec?: string) => pools.find(p => p.skill === skill && p.attr === attr && p.spec === spec)!.dp
-  expect(dp('athletics', 'str')).toBe(5)
-  expect(dp('athletics', 'agi', 'athletics.ranged-defense')).toBe(8)
-  expect(dp('influence', 'cha', 'influence.bluff')).toBe(11)
-  expect(dp('ranged-weapons', 'agi', 'ranged-weapons.pistols')).toBe(10)
+  expect(dp('athletics', 'str')).toBe(5) // Athletics' alternative attribute
+  expect(dp('athletics', 'wil', 'athletics.ranged-defense')).toBe(7)
+  expect(dp('influence', 'log', 'influence.bluff')).toBe(10)
+  expect(dp('ranged-weapons', 'log', 'ranged-weapons.pistols')).toBe(10)
 })
 
 test('initiative enhancements do not stack: the best source wins', () => {
@@ -57,11 +57,11 @@ test('initiative enhancements do not stack: the best source wins', () => {
   expect(derive(cat, ch).initiative).toMatchObject({ level: 3, source: 'b' })
 })
 
-test('Essence 6 - 2 cyberware - 1 bioware = 3.5, cancelling 1 magic and 1 healing hit', () => {
+test('Essence 6 - 2 cyberware - 1 bioware = 3.25 (made-up 1.25 and 0.25), cancelling 1 magic and 1 healing hit', () => {
   const ch = blankCharacter()
   ch.build.amps = [amp('a', 'cyberware', []), amp('b', 'cyberware', []), amp('c', 'bioware', [])]
   const d = derive(cat, ch)
-  expect(d.essence).toBe(3.5)
+  expect(d.essence).toBe(3.25)
   expect(d.essenceEffects).toMatchObject({ magicHitsCancelled: 1, healingHitsCancelled: 1, socialDisadvantage: false, dead: false })
 })
 
