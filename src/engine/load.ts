@@ -2,7 +2,8 @@
 // Same id replaces, <remove id> deletes, new id adds (docs/data-format.md). Imported books
 // (custom/imported/) carry ids scoped by source, so two books' same-named entries both stay;
 // sources merge by id across the three sources files instead of replacing, and an imported skill
-// adds its specs to the base skill of that id.
+// adds its specs to the base skill of that id. The edits layer (custom/edits/, kind="edits") replaces
+// entries by id after the imports and before the house rules; the replaced entries stay in c.original.
 import type { AttrId, Catalog, Pricing, Source } from '../model/types'
 import {
   parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPricing, toRule, toSkill,
@@ -27,11 +28,27 @@ function mergeSource(prev: Source | undefined, s: Source): Source {
   return { ...prev, ...defined(s) }
 }
 
+/** One edits-layer entry: replaces the same id (kept in c.original), marked edited. An empty description
+ * keeps the replaced entry's (the private text an import brought); custom/edits/texts.xml loads after. */
+function editEntry(c: Catalog, el: Element) {
+  const id = el.getAttribute('id')!
+  const put = <T extends { edited?: boolean }>(map: Map<string, T>, orig: Map<string, T>, e: T, text: keyof T) => {
+    const prev = map.get(id)
+    if (prev && !prev.edited) orig.set(id, prev)
+    if (!e[text] && prev) e[text] = prev[text]
+    map.set(id, { ...e, edited: true })
+  }
+  if (el.localName === 'amp') put(c.amps, c.original.amps, toAmp(el), 'narrative')
+  else if (el.localName === 'item') put(c.items, c.original.items, toItem(el), 'text')
+  else if (el.localName === 'rule') put(c.rules, c.original.rules, toRule(el), 'text')
+  else throw new Error(`<${el.localName}> can't be edited`)
+}
+
 export function buildCatalog(files: SourceFile[]): Catalog {
   const c: Catalog = { levels: new Map(), metatypes: new Map(), attributes: new Map(), skills: new Map(),
     pricing: undefined as unknown as Pricing, ampTypes: new Map(), ampEffects: new Map(), amps: new Map(),
     vehicles: new Map(), packages: new Map(), items: new Map(), lifestyles: new Map(), sources: new Map(), rules: new Map(),
-    files: [], errors: [] }
+    original: { amps: new Map(), items: new Map(), rules: new Map() }, files: [], errors: [] }
   const targets: Record<string, [Map<string, unknown>, (el: Element) => unknown]> = {
     levels: [c.levels, toLevel], metatypes: [c.metatypes, toMetatype],
     attributes: [c.attributes as Map<AttrId, unknown>, toAttribute], skills: [c.skills, toSkill],
@@ -57,6 +74,13 @@ export function buildCatalog(files: SourceFile[]): Catalog {
         else if (of === 'rules') { const r = c.rules.get(id); if (r) r.text = text }
         else { const i = c.items.get(id); if (i) i.text = text }
       }
+    } else if (p.kind === 'edits') {
+      try {
+        for (const el of p.entries) editEntry(c, el)
+      } catch (e) {
+        c.errors.push({ file: f.file, message: `bad entry: ${(e as Error).message}` }); continue
+      }
+      for (const el of p.entries) if (el.getAttribute('source')) cites.push([f.file, el.getAttribute('source')!])
     } else {
       const t = targets[p.kind]
       if (!t) { c.errors.push({ file: f.file, message: `unknown kind "${p.kind}"` }); continue }
@@ -96,7 +120,8 @@ const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').match
 
 /** Every file the app loads, in load order: data/*.xml, custom/imported/sources.xml, custom/sources.xml,
  * the files listed in custom/imported/index.xml, the private texts files named by any source (plus the
- * older single custom/texts.xml), then the house rules listed in custom/index.xml. `get` returns a
+ * older single custom/texts.xml), the edits layer (custom/edits/sources.xml, edits.xml, texts.xml), then the
+ * house rules listed in custom/index.xml. `get` returns a
  * file's text, or null when it isn't there; `missing` lists data and listed files that weren't. */
 export async function collectFiles(get: (path: string) => Promise<string | null>): Promise<{ files: SourceFile[]; missing: string[] }> {
   const files: SourceFile[] = []
@@ -115,6 +140,7 @@ export async function collectFiles(get: (path: string) => Promise<string | null>
   await listed(IMPORTED)
   const texts = new Set([...sourceXml.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => m[1]))
   for (const t of [...texts, 'texts.xml']) await optional(`custom/${t}`)
+  for (const e of ['sources', 'edits', 'texts']) await optional(`custom/edits/${e}.xml`)
   await listed('custom/')
   return { files, missing }
 }

@@ -16,7 +16,7 @@ if (existsSync('public/custom/texts.xml')) process.argv.push('--texts=public/cus
 const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
 
 // base files, then each custom dir the way the app loads it: imported/sources.xml, sources.xml,
-// the files in imported/index.xml, then the house rules in index.xml
+// the files in imported/index.xml, the edits layer (edits/sources.xml, edits.xml, texts.xml), then the house rules in index.xml
 const files = readdirSync(DATA).filter(f => f.endsWith('.xml')).map(f => join(DATA, f));
 for (const t of process.argv.filter(a => a.startsWith('--texts='))) files.push(t.slice(8));
 const listed = dir => {
@@ -27,6 +27,7 @@ const listed = dir => {
 for (const dir of ['public/custom', ...process.argv.slice(2).filter(a => !a.startsWith('--'))]) {
   for (const s of [join(dir, 'imported', 'sources.xml'), join(dir, 'sources.xml')]) if (existsSync(s)) files.push(s);
   listed(join(dir, 'imported'));
+  for (const e of ['sources', 'edits', 'texts']) if (existsSync(join(dir, 'edits', `${e}.xml`))) files.push(join(dir, 'edits', `${e}.xml`));
   listed(dir);
 }
 
@@ -63,8 +64,11 @@ for (const { kind, doc } of docs) if (kind === 'skills') for (const s of doc.que
 const has = (kind, id) => ids[kind]?.has(id);
 const need = (file, ok, what) => { if (!ok) errors.push(`${file}: unresolved ${what}`); };
 
-for (const { file, kind, doc } of docs) {
+// an edits file (kind="edits") holds amps, items and rules: each is checked as its own kind
+const EDIT_KINDS = { amp: 'amps', item: 'gear', rule: 'rules' };
+for (const { file, kind: fileKind, doc } of docs) {
   for (const el of doc.documentElement.children) {
+    const kind = fileKind === 'edits' ? EDIT_KINDS[el.tagName] : fileKind;
     const a = n => el.getAttribute(n);
     const id = a('id');
     // every citation names a source listed in sources.xml (specs may cite their own)
