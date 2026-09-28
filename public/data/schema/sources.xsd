@@ -17,6 +17,11 @@
             <xs:attribute name="publisher" type="xs:string" use="required"/>
             <xs:attribute name="canon" type="xs:boolean" use="required"/>
             <xs:attribute name="texts" type="xs:string"/>
+            <!-- imported sources (custom/imported/sources.xml): uploaded file name(s) ("; "-separated),
+                 SHA-256(s) (space-separated), and the date of the latest import -->
+            <xs:attribute name="file" type="xs:string"/>
+            <xs:attribute name="sha256" type="xs:string"/>
+            <xs:attribute name="imported" type="xs:date"/>
           </xs:complexType>
         </xs:element>
         <xs:element name="remove" type="ca2:Remove"/>

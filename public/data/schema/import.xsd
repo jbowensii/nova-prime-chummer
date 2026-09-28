@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- library/<book-id>/import.xml: what the importer made of one uploaded book. source/name/publisher/canon/
+     recipe/imported are absent until a recipe matched. <file> counts entries per overlay file; <row> is one
+     report line (what didn't match), with free attributes. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="import">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="files">
+          <xs:complexType><xs:sequence>
+            <xs:element name="file" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:attribute name="name" type="xs:string" use="required"/>
+                <xs:attribute name="entries" type="xs:nonNegativeInteger" use="required"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence></xs:complexType>
+        </xs:element>
+        <xs:element name="report">
+          <xs:complexType><xs:sequence>
+            <xs:element name="row" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType><xs:anyAttribute processContents="skip"/></xs:complexType>
+            </xs:element>
+          </xs:sequence></xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="file" type="xs:string" use="required"/>
+      <xs:attribute name="sha256" type="xs:string" use="required"/>
+      <xs:attribute name="converter" type="xs:string" use="required"/>
+      <xs:attribute name="pages" type="xs:nonNegativeInteger" use="required"/>
+      <xs:attribute name="score" type="xs:decimal" use="required"/>
+      <xs:attribute name="recipe" type="xs:string"/>
+      <xs:attribute name="source" type="xs:string"/>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="publisher" type="xs:string"/>
+      <xs:attribute name="canon" type="xs:boolean"/>
+      <xs:attribute name="imported" type="xs:dateTime"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
