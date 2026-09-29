@@ -1,10 +1,10 @@
-// Where runners are saved: the tower04 server when the app is served by it, else this
+// Where runners are saved: the Chummer server when the app is served by it, else this
 // browser's localStorage (local dev, plain static hosting).
 import { createContext, useContext } from 'react'
 import { characterToXml, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
 import { deleteCharacter, getCharacter, listCharacters, saveCharacter } from './storage'
-import { track } from './auth'
+import { track, UNREACHABLE } from './auth'
 
 /** owner, ownerName: the account the runner belongs to (server only; admin and editors also list everyone else's) */
 export interface Stored { ch: Character; rev?: number; file?: string; owner?: string; ownerName?: string }
@@ -60,7 +60,11 @@ export function serverRepo(base = './'): Repo {
         return { ok: false, error: `Couldn’t reach the server: ${(e as Error).message}` }
       }
     })()),
-    remove: id => track(fetch(`${base}api/characters/${encodeURIComponent(id)}`, { method: 'DELETE' }).then(() => {})),
+    // a refused or failed delete rejects with the server's reason (the runner stays where it was)
+    remove: id => track((async () => {
+      const r = await fetch(`${base}api/characters/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => { throw new Error(UNREACHABLE) })
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
+    })()),
   }
 }
 

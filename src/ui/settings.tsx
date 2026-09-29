@@ -57,6 +57,7 @@ export function SettingsButton() {
             </fieldset>
           ))}
           <p className="muted">Saved in this browser only.</p>
+          {/* not isAdmin(): that is true without a server, where AI settings can't work */}
           {me?.role === 'admin' && <fieldset><legend>AI settings</legend>
             <p className="muted">The AI provider and keys the importer uses for books its recipes can’t read.</p>
             <a className="btn" href="#/books/ai" onClick={() => setOpen(false)}>Open AI settings</a></fieldset>}

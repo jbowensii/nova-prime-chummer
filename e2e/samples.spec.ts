@@ -91,3 +91,26 @@ test('tidy-up: unmodified duplicates from before sample keys move to the trash; 
   await load(page)
   await expect(page.getByRole('status')).toHaveText('The sample characters are already in your library.')
 })
+
+test('tidy-up that fails halfway says what moved and what didn’t, and closes', async ({ page }) => {
+  await signIn(page, 'ada')
+  const xml = readFileSync(join(dir, 'old-sample.xml'), 'utf8')
+  for (const id of ['pregens.test-face-4', 'pregens.test-face-5'])
+    expect((await page.request.put(`${base}api/characters/${id}`, { data: xml.replace('id="pregens.test-face"', `id="${id}"`),
+      headers: { 'Content-Type': 'application/xml', Origin: base.replace(/\/$/, '') } })).status()).toBe(201)
+  await page.reload()
+  let deletes = 0
+  await page.route('**/api/characters/**', r => r.request().method() === 'DELETE' && ++deletes === 2
+    ? r.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'a restore is running; try again when it’s done' }) })
+    : r.continue())
+  await page.getByRole('button', { name: 'Tidy up' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click()
+  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Test Face. Couldn’t move the last copy: a restore is running; try again when it’s done. Try Tidy up again in a moment.')
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page.getByText('A sample character is in your library twice, unchanged since they were loaded.')).toBeVisible()
+  await page.unroute('**/api/characters/**')
+  await page.getByRole('button', { name: 'Tidy up' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click()
+  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Test Face.')
+  await expect(page.getByRole('button', { name: 'Tidy up' })).toHaveCount(0)
+})

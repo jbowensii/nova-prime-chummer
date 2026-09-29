@@ -106,15 +106,23 @@ export function Library({ c }: { c: Catalog }) {
   // the unmodified duplicate samples of your own runners (loaded twice before samples had keys): to your trash
   const dupes = duplicateSamples(mine.map(s => s.ch))
   const tidy = async () => {
-    const moved: string[] = []
-    for (const ch of dupes) { await repo.remove(ch.id); moved.push(ch.identity.streetName || ch.identity.name) }
-    setTidying(false)
-    setMsg(`${repo.mode === 'server' ? 'Moved to your trash' : 'Removed'}: ${moved.join(', ')}.`)
-    void refresh()
+    const moved: string[] = [], name = (ch: Character) => ch.identity.streetName || ch.identity.name
+    const done = () => moved.length ? `${repo.mode === 'server' ? 'Moved to your trash' : 'Removed'}: ${moved.join(', ')}.` : ''
+    try {
+      for (const ch of dupes) { await repo.remove(ch.id); moved.push(name(ch)) } // stops at the first that fails
+      setMsg(done())
+    } catch (e) {
+      const left = dupes.length - moved.length
+      setMsg([done(), because(`Couldn’t move ${left === 1 ? 'the last copy' : `the other ${left} copies`}`, (e as Error).message ?? String(e)),
+        'Try Tidy up again in a moment.'].filter(Boolean).join(' '))
+    } finally {
+      setTidying(false)
+      void refresh()
+    }
   }
 
   const duplicate = async (ch: Character) => {
-    await store({ ...structuredClone(ch), id: newId(), identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
+    await store({ ...structuredClone(ch), id: newId(), sampleKey: undefined, identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
     void refresh()
   }
 
@@ -211,7 +219,9 @@ export function Library({ c }: { c: Catalog }) {
 
       <Modal open={!!toDelete} onClose={() => setToDelete(null)} title={`Delete ${toDelete?.identity.streetName || toDelete?.identity.name || 'this runner'}?`}
         actions={<><button className="btn" onClick={() => setToDelete(null)}>Keep</button>
-          <button className="btn danger" onClick={async () => { await repo.remove(toDelete!.id); setToDelete(null); void refresh() }}>Delete runner</button></>}>
+          <button className="btn danger" onClick={async () => {
+            try { await repo.remove(toDelete!.id) } catch (e) { setMsg(because('Couldn’t delete the runner', (e as Error).message ?? String(e))) }
+            setToDelete(null); void refresh() }}>Delete runner</button></>}>
         <p>{repo.mode === 'server'
           ? 'The file moves to its owner’s .trash folder on the server (characters/<username>/.trash/), so it can still be recovered there.'
           : 'This removes the runner from this browser. Exported files are not affected.'}</p>
