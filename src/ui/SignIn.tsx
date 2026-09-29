@@ -27,6 +27,7 @@ const OIDC_ERRORS: Record<string, string> = {
   expired: 'That sign-in took too long or was already used. Try again.',
   denied: 'Authelia didn’t sign you in. Try again.',
   off: 'Sign in with Authelia is turned off. Sign in with your username and password.',
+  restoring: 'The server is being restored from a backup. Try again in a minute.',
   failed: 'Signing in with Authelia didn’t work. Try again, and if it keeps failing ask the admin to check the sign-in settings.',
 }
 /** The ?signin= a failed Authelia sign-in came back with: read once, and taken off the address. */

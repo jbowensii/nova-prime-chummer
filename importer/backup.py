@@ -29,6 +29,9 @@ from importer import xmlio
 FOLDERS = ("characters", "custom", "library")
 KEYS = "library/.config/ai-keys.xml"
 USERS = "library/.config/users.xml"  # the accounts (server/auth.mjs); counted in the manifest
+AUTH = "library/.config/auth.xml"  # the sign-in settings (server/oidc.mjs)
+CONFIG_NS = "urn:chummer-anarchy2:config:1"
+MAX_CONFIG = 16 * 1024 ** 2
 # the Authelia client secret (server/oidc.mjs): like the API keys, only in a backup made with keys
 AUTH_SECRET = "library/.config/auth-secret.xml"
 # never in a backup or restored: session hashes (a restore ends every session), a pending recovery code's hash and the
@@ -198,15 +201,34 @@ def check(path):
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
             raise RestoreError(f"backup.xml can’t be read ({e})")
         _check_manifest(root, counts, KEYS.casefold() in files)
+        # the accounts and sign-in settings as the server will read them: one it can't would lock everyone out
+        byname = {i.filename.casefold(): i for i in infos}
+        users = _config(zf, byname.get(USERS.casefold()), "users", "accounts file")
+        _config(zf, byname.get(AUTH.casefold()), "auth", "sign-in settings")
         # what the zip holds, whatever the manifest says (older backups don't say); no accounts means setup mode
-        users = next((i for i in infos if i.filename.casefold() == USERS.casefold()), None)
-        if users:
-            with zf.open(users) as f:
-                root.set("users", str(_count_users(f)))
-        else:
-            root.set("users", "0")
+        root.set("users", str(0 if users is None else len(users.findall("user"))))
         root.set("authSecret", "yes" if AUTH_SECRET.casefold() in files else "no")
     return root
+
+
+def _config(zf, info, name, what):
+    """A library/.config file of the zip (users.xml, auth.xml) checked against its schema (users.xsd, auth.xsd): its root,
+    None when the zip has none; RestoreError when it isn't valid."""
+    if info is None:
+        return None
+    from importer.datapack import PARSER, _schema  # lxml: only here, backup itself doesn't need it
+    from lxml import etree
+    if info.file_size > MAX_CONFIG:
+        raise RestoreError(f"the backup’s {what} ({info.filename}) is too large")
+    try:
+        doc = etree.fromstring(zf.read(info), PARSER)
+    except (etree.XMLSyntaxError, zipfile.BadZipFile, zlib.error, EOFError) as e:
+        raise RestoreError(f"the backup’s {what} ({info.filename}) can’t be read ({e})")
+    schema = _schema(name)
+    if doc.tag != f"{{{CONFIG_NS}}}{name}" or not schema.validate(doc):
+        why = schema.error_log.last_error.message if doc.tag == f"{{{CONFIG_NS}}}{name}" else f"its root isn’t <{name}>"
+        raise RestoreError(f"the backup’s {what} ({info.filename}) isn’t valid, so nobody could sign in after the restore ({why})")
+    return doc
 
 
 def _check_manifest(root, counts, has_keys):
@@ -282,7 +304,6 @@ def apply(path, dirs, version=None):
 def _extract(path, dirs, news):
     """Unpack each folder of the zip into a temp folder inside its target, recorded in `news` ({folder: temp})."""
     with zipfile.ZipFile(path) as zf:
-        has_keys = KEYS in zf.namelist()
         for folder in FOLDERS:
             os.makedirs(dirs[folder], exist_ok=True)
             news[folder] = new = tempfile.mkdtemp(dir=dirs[folder], prefix=TEMP + "new-")

@@ -101,7 +101,7 @@ export function BackupSettings() {
           <dl>
             {([['Made', new Date(step.m.created).toLocaleString()], ['App version', step.m.app],
               ...FOLDERS.filter(([f]) => step.m.folders[f]).map(([f, label]) => [label, files(step.m.folders[f].files) + (step.m.folders[f].bytes > 0 ? `, ${size(step.m.folders[f].bytes)}` : '')]),
-              ['Accounts', step.m.users ? `${step.m.users} ${step.m.users === 1 ? 'account' : 'accounts'}` : 'None (made before accounts): the server asks for a first admin again, who gets the backup’s runners'],
+              ['Accounts', step.m.users ? `${step.m.users} ${step.m.users === 1 ? 'account' : 'accounts'}` : 'None: the server asks for a first admin again, who gets the backup’s runners'],
               ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own, except for a provider whose address the backup changes)'],
               ['Authelia client secret', step.m.authSecret ? 'Included' : 'Not included (the server keeps its own if the backup’s sign-in settings name the same issuer)']] as [string, string][])
               .map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}

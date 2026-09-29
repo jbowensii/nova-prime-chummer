@@ -127,7 +127,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   }
   let oidc = null
   auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
-  oidc = oidcApi({ libraryDir, auth, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
+  oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-cache' })
