@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.3.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.4.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -87,6 +87,53 @@ docker run -d --init -p 8480:80 \
 docker build -t chummer-anarchy2:latest .
 docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library chummer-anarchy2:latest
 ```
+
+### Accounts
+
+Sign-in is required: everyone needs an account on the server. There's no
+self sign-up — the admin creates each one on the **Users** page.
+
+**First start.** With no accounts yet, the app shows a setup page. Read the
+one-time setup code from the container log (`docker logs chummer-anarchy2`)
+and enter it with a name, username and password to create the first admin.
+The code is new on every restart and works once. Upgrading a server from
+0.3 (no accounts yet) does the same thing: on setup, any runners already
+saved at the top of the characters folder move into the new admin's own
+folder.
+
+**Roles.**
+
+| | admin | editor | player |
+|---|---|---|---|
+| Own runners: create, edit, delete | ✓ | ✓ | ✓ |
+| Everyone's runners: view, print | ✓ | ✓ | – |
+| Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
+| Catalog, descriptions, Rules, Data (read) | ✓ | ✓ | ✓ |
+| Books page, imports, AI settings and keys | ✓ | – | – |
+| Backup and restore | ✓ | – | – |
+| Users page, Sign-in settings | ✓ | – | – |
+
+The server enforces every rule; a hidden control is only convenience. There
+is always at least one enabled admin.
+
+**Users page** (admin, account menu → Users): add an account (name,
+username, email, role, app password or Authelia); edit name, email, role or
+sign-in method; disable/enable; reset a password (also ends that person's
+other sessions); move a runner to another user; delete (only with no
+runners, or after moving them).
+
+**Sign-in settings** (account menu → Sign-in, admin) turns on Authelia —
+see [below](#sign-in-with-authelia-openid-connect).
+
+**Locked out?** From the host:
+
+```bash
+docker exec chummer-anarchy2 node server/users.mjs reset <username>
+```
+
+prints a one-time code (15 minutes) to use at `<app address>/#/setup/reset`
+to set that account a new password. It also works when Authelia is down —
+it switches the account back to an app password.
 
 ### Behind a reverse proxy (TRUST_PROXY)
 
@@ -209,13 +256,24 @@ edit or drop each one.
 Imports need the server (Docker or `npm run serve`) and Python 3 with
 `importer/requirements.txt`.
 
-## Game data and house rules
+## Core data
 
 The mechanics (levels, metatypes, skills, pricing, amp types and effects,
-packages, lifestyles, generic weapons, armor and vehicles) are XML in
-`public/data/` (served as `/data/`), with XSD schemas in
-`public/data/schema/`, so other tools can read and extend them. Imported
-books are overlays in `custom/imported/`. The format is documented in
+packages, lifestyles, generic weapons, armor and vehicles) aren't shipped
+with the app — they come from the core rulebook. A fresh server shows a
+setup page until either:
+
+- **Books → import the core rulebook** (the CRB PDF), the same way as any
+  other book, or
+- **Books → Core data → Upload data pack**: a small zip of just the core
+  tables (no descriptions, PDFs or keys) exported from another server with
+  **Download data pack**.
+
+Upgrading an existing server that already has the core rulebook in its
+Library re-imports it automatically on first start — nothing to do by
+hand. XSD schemas for these files ship in `public/data/schema/`, so other
+tools can read and extend them. Imported books are overlays in
+`custom/imported/`. The format is documented in
 [docs/data-format.md](docs/data-format.md).
 
 House rules and extra content go in `custom/` (the mounted appdata folder on

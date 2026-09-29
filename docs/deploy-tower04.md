@@ -77,6 +77,28 @@ published, the tag existed only as a tower-local build and force update
 failed — Unraid's `CreateDocker.php` skipped the container without stopping
 it, so it kept running on the old image. That no longer applies.)
 
+## 0.4.0 upgrade (accounts, core data)
+
+1. Docker page → chummer-anarchy2 → **docker pull** first (0.4.0 needs a
+   fresh image pull, not just a container restart), then Edit → **Apply**.
+2. If tower04 is exposed through a reverse proxy, fill in **Trusted proxy**
+   (its address) and, if there's one public address, **Public address**
+   before Apply — see [README.md](../README.md#behind-a-reverse-proxy-trust_proxy).
+   Leave both empty for LAN-only.
+3. On first start after the upgrade, read the one-time setup code from the
+   container log (`docker logs chummer-anarchy2`) and use it to create the
+   first admin. Any runners already at the top of the characters folder
+   move into that admin's own folder.
+4. The core rulebook's tables (levels, metatypes, skills, pricing, amp
+   types and effects, packages, lifestyles, generic weapons, armor,
+   vehicles) re-import automatically on this first start, since the CRB
+   PDF is already in the Library — nothing to upload again. The
+   Conversion Guide and DHSA overlays (Tasking, Emerged, implant grades)
+   re-run right after.
+5. Check **Game data** loaded cleanly and Books still lists the imports,
+   then sign in as the new admin and add the other accounts on the
+   **Users** page.
+
 ## Redeploy after changes
 
 Push (or merge) to `main`; the `publish.yml` workflow builds and pushes
