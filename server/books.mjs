@@ -80,6 +80,9 @@ const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
 const SET_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/ // a folder in custom/samples/, and each file in it
 const BUILTIN = { name: 'Built-in samples (first release)', canon: true } // custom/samples/builtin/ without a set.xml
+/** The 429 when an account's daily questions are used up (limit 0: it has none). */
+export const limitReached = n => n === 0 ? 'You have no questions today.'
+  : `${n === 1 ? 'You’ve used today’s question.' : `You’ve used all ${n} of today’s questions.`} Ask again tomorrow.`
 const MAX_QUESTION = 500 // importer/ask.py MAX_QUESTION; its provider call gives up at 50 s, the server's askTimeout (60 s) stops it
 const ASK_AT_ONCE = 3 // questions being answered on the whole server (each is a Python process)
 
@@ -397,7 +400,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (asking.size >= ASK_AT_ONCE) throw Object.assign(fail(429, 'Ask the rules is busy; try again in a moment'), { retryAfter: 5 })
     const limit = who.dailyQuestions ?? null
     if (limit != null && usedToday(who.id) >= limit)
-      throw Object.assign(fail(429, `You’ve used today’s ${limit} questions. Ask again tomorrow.`),
+      throw Object.assign(fail(429, limitReached(limit)),
         { retryAfter: Math.ceil((Date.parse(`${utcDay()}T00:00:00Z`) + 86400e3 - Date.now()) / 1000) })
     asking.add(who.id)
     let r

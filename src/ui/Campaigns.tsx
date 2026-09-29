@@ -122,7 +122,8 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
     } catch (e) { setMsg({ text: (e as Error).message, err: true }); return false }
   }
   const groups = new Map<string, CampaignRunner[]>()
-  for (const r of camp.runners) groups.set(r.ownerName, [...groups.get(r.ownerName) ?? [], r])
+  // by owner: the username (GM, admin), else the name (a member's roster has no usernames; their own runners are `mine`)
+  for (const r of camp.runners) { const k = r.owner ? `u:${r.owner}` : r.mine ? 'me' : `n:${r.ownerName}`; groups.set(k, [...groups.get(k) ?? [], r]) }
   // the archetype package when there is one (a free build has none), and the level of play
   const label = (r: CampaignRunner) => [c.packages.get(r.package)?.name, c.levels.get(r.level)?.name ?? r.level].filter(Boolean).join(', ')
   const staffAccounts = accounts.filter(u => u.role !== 'player' && !camp.gms.some(g => g.username === u.username))
@@ -140,7 +141,7 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
         <AskRules />
         {camp.runners.length === 0 ? <p className="empty-note">No runners in this campaign yet. Players add theirs from their runner list with <b>Add to campaign…</b></p>
           : [...groups].map(([owner, rows]) => <div key={owner} className="cgroup">
-            <h3>{owner}</h3>
+            <h3>{rows[0].ownerName}</h3>
             {rows.map(r => {
               const open = r.id && (r.mine || manages)
               return <div className="dossier" key={r.key}>

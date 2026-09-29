@@ -8,6 +8,8 @@ import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { ADMIN, createServer, rawFetch, signIn } from './_signin'
 // @ts-expect-error plain JS module
 import { usersFile } from '../../server/auth.mjs'
+// @ts-expect-error plain JS module
+import { limitReached } from '../../server/books.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
 const dir = mkdtempSync(join(tmpdir(), 'ca2-ask-')), lib = join(dir, 'library')
@@ -71,6 +73,11 @@ test('the question is checked: text, 500 characters at most, JSON', async () => 
   expect((await as('eddie', '/api/ask', { method: 'POST', body: JSON.stringify({ question: 'x'.repeat(9000) }) })).status).toBe(413)
 })
 
+test('the limit message: none, one, or all N', () => {
+  expect([0, 1, 5].map(limitReached)).toEqual(['You have no questions today.', 'You’ve used today’s question. Ask again tomorrow.',
+    'You’ve used all 5 of today’s questions. Ask again tomorrow.'])
+})
+
 test('a daily limit counts every question the provider got, answers 429 with Retry-After, and resets at UTC midnight', async () => {
   const laser = await (await ask('pia', 'orbital laser?')).json()
   expect(laser).toMatchObject({ covered: false, used: 0, limit: 2, sources: [] }) // retrieval found nothing: no call, not counted
@@ -79,7 +86,7 @@ test('a daily limit counts every question the provider got, answers 429 with Ret
   expect((await ask('pia', 'fail puddles')).status).toBe(502) // a provider error after the call: counted
   expect(await (await as('pia', '/api/ask')).json()).toMatchObject({ used: 2 })
   const r = await ask('pia', 'puddles three')
-  expect([r.status, (await r.json()).error]).toEqual([429, 'You’ve used today’s 2 questions. Ask again tomorrow.'])
+  expect([r.status, (await r.json()).error]).toEqual([429, 'You’ve used all 2 of today’s questions. Ask again tomorrow.'])
   const wait = Number(r.headers.get('Retry-After'))
   expect(wait).toBeGreaterThan(0)
   expect(wait).toBeLessThanOrEqual(86400)

@@ -217,7 +217,7 @@ test('ask the rules: the bar in the builder, answers with sources, not covered, 
   await bar.getByRole('button', { name: 'Ask' }).click()
   await expect(page.getByText('No questions left today.')).toBeVisible()
   await bar.getByRole('button', { name: 'Ask' }).click()
-  await expect(page.getByRole('alert')).toHaveText('You’ve used today’s 2 questions. Ask again tomorrow.')
+  await expect(page.getByRole('alert')).toHaveText('You’ve used all 2 of today’s questions. Ask again tomorrow.')
   expect(await page.evaluate(() => [Object.keys(localStorage).filter(k => k !== 'ca2.settings.v1'), sessionStorage.length])).toEqual([[], 0])
 })
 

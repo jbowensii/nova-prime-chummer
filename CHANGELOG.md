@@ -30,7 +30,8 @@
   books don't cover it, it says so without asking the AI.
 - The admin sets **Questions per day** per account on the Users page (blank:
   no limit); the bar shows how many are left, and a used-up day says “You’ve
-  used today’s N questions. Ask again tomorrow.”
+  used all N of today’s questions. Ask again tomorrow.” (“You’ve used today’s
+  question.” for one, “You have no questions today.” for none)
 - Nothing is kept: asking again or closing clears the answer, and nothing is
   saved on the server or in the browser.
 

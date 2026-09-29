@@ -15,17 +15,24 @@ export interface Answer { answer: string; sources: Source[]; covered: boolean; u
 export const sourceLine = (sources: Source[]) =>
   [...new Set(sources.map(s => [s.source, s.page ? `p.${s.page}` : s.title].filter(Boolean).join(' ')).filter(Boolean))].join(' · ')
 
-/** GET /api/ask once: null while loading and without a server or a sign-in (then nothing shows). */
+// the status is shared by every bar and drawer on the page: an answer's used/limit updates them all
+let shared: AskStatus | null = null
+const listeners = new Set<(s: AskStatus | null) => void>()
+const publish = (s: AskStatus | null) => { shared = s; for (const f of listeners) f(s) }
+
+/** GET /api/ask on mount (fresh per page), shared: null while loading and without a server or a sign-in (then nothing shows). */
 function useAskStatus(): [AskStatus | null, (s: AskStatus) => void] {
   const me = useMe()
-  const [status, setStatus] = useState<AskStatus | null>(null)
+  const [status, setStatus] = useState<AskStatus | null>(shared)
+  useEffect(() => {
+    listeners.add(setStatus)
+    return () => { listeners.delete(setStatus) }
+  }, [])
   useEffect(() => {
     if (!me) return
-    let live = true
-    fetch('./api/ask', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(s => live && setStatus(s), () => {})
-    return () => { live = false }
+    fetch('./api/ask', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(publish, () => {})
   }, [me])
-  return [status, setStatus]
+  return [status, publish]
 }
 
 /** One question: POST /api/ask; the answer, or a message to show (a 429's own words: the daily limit, or busy). */

@@ -18,8 +18,8 @@ test('sources as one plain line: book and page, or the title without a page; no 
 
 test('a refusal: the daily limit and busy in the server’s own words, anything else with a lead', async () => {
   const f = vi.spyOn(window, 'fetch')
-  f.mockResolvedValueOnce(json(429, { error: 'You’ve used today’s 2 questions. Ask again tomorrow.' }, { 'Retry-After': '3600' }))
-  expect(await askRules('q')).toEqual({ error: 'You’ve used today’s 2 questions. Ask again tomorrow.' })
+  f.mockResolvedValueOnce(json(429, { error: 'You’ve used all 2 of today’s questions. Ask again tomorrow.' }, { 'Retry-After': '3600' }))
+  expect(await askRules('q')).toEqual({ error: 'You’ve used all 2 of today’s questions. Ask again tomorrow.' })
   f.mockResolvedValueOnce(json(429, { error: 'Ask the rules is busy; try again in a moment' }, { 'Retry-After': '5' }))
   expect(await askRules('q')).toEqual({ error: 'Ask the rules is busy; try again in a moment.' })
   f.mockResolvedValueOnce(json(502, { error: 'no answer within 60 seconds; try again' }))
