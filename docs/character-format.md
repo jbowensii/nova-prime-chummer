@@ -66,6 +66,9 @@ will convert from this format; the format itself is ours and stays stable.
   under a key, the library offers to move the extra ones to that account's trash: a copy someone changed (saved again,
   or dated after it was loaded) always stays; otherwise the preferred version stays (a book's over an example set's,
   the newest import).
+- **`campaign`** names the campaign the runner plays in (`custom/campaigns.xml`, see data-format.md). Only the server
+  sets it (`/api/campaigns`); a save keeps the stored value whatever the body says, a new file (a copy, an import, a
+  restored copy) gets none, and it counts only while the runner's owner is a GM or member of that campaign.
 - Older `.ca2.json` exports still import.
 
 ## Server API
@@ -73,7 +76,7 @@ will convert from this format; the format itself is ours and stays stable.
 | Request | Result |
 |---|---|
 | `GET /api/health` | `{ ok: true, storage: "server" }` |
-| `GET /api/characters` | `[{ file, rev, xml, owner }]`: your runners; an admin or editor also gets everyone else's (read only) |
+| `GET /api/characters` | `[{ file, rev, xml, owner, ownerName }]`: your runners; the admin also gets everyone else's, an editor those in the campaigns they GM (read only) |
 | `PUT /api/characters/:id` (body: XML, `If-Match: rev`) | `201`/`200 { rev, file }`, or `409 { rev, file, updatedAt }` |
 | `PUT …?force=1` | overwrite regardless of `rev` |
 | `PUT …?filename=Name` | file name for a new runner (default: its street name) |
