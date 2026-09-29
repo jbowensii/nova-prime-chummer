@@ -500,6 +500,19 @@ doesn't hold are kept. The files it replaces wait in `core/.restore-old-*`
 until the new ones are in; if the import is killed meanwhile, the next import,
 export or server start (`datapack recover`) puts them back.
 
+## Trash (`characters/<username>/.trash/`)
+
+Deleting a runner moves its file to its owner's `.trash/` as
+`<file name>-<milliseconds since 1970>.xml`, unchanged otherwise; that
+suffix is when it was deleted (files without one use their modified time).
+The Trash page (server only; a browser's own storage deletes for good) lists
+them and restores one to `characters/<username>/` under its old file name
+(or the next free one). When a runner with the same `id` is already in any
+account's library, the restore is a copy: a new `id`, `rev="1"` and
+"(restored copy)" after its street name. Delete forever and Empty trash
+remove the files for good. Only `*.xml` files there count; the server refuses
+any other name, and anything with a separator or a leading dot.
+
 ## Backup zip
 
 `python -m importer backup` (Settings → **Backup** → "Download backup")
@@ -513,7 +526,8 @@ library/…
 ```
 
 - `characters/`, `custom/` and `library/` are copies of the folders those
-  names mount to in Docker; `library/.backups/` (the safety backups below)
+  names mount to in Docker (each account's trash, `characters/<username>/.trash/`,
+  comes along); `library/.backups/` (the safety backups below)
   is skipped so a backup never nests old backups.
 - `library/.config/ai-keys.xml` is included only when the download was made
   with "Include my API keys" ticked (`?keys=1`); otherwise it's left out and

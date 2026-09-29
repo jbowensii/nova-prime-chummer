@@ -1,5 +1,26 @@
 # Release notes
 
+## 0.4.4 — 2026-09-29: the trash
+
+**Trash**
+- A **Trash** page for every account (**Trash (N)** in the runner list, and
+  the account menu) lists the runners you deleted, with when each was
+  deleted.
+- **Restore** puts a runner back in your library. If a runner with the same
+  id is already there (or in anyone’s library), it comes back as a copy with
+  a new id, named “… (restored copy)”.
+- **Delete forever** removes one; **Empty trash** removes them all, after
+  asking: “Permanently delete N runners? This can’t be undone.”
+- The admin opens anyone’s trash (a **Trash** button per account on the
+  Users page, or the account picker on the Trash page) and can restore or
+  empty it. Players and editors only ever see their own.
+- The server checks every file name (only `*.xml` in that account’s
+  `.trash/`, no separators or leading dot), counts each change as a write,
+  and refuses them while a restore runs (`/api/trash`,
+  docs/character-format.md).
+- Browser-only storage has no trash (deleting there is for good), so the
+  page isn’t offered there.
+
 ## 0.4.3 — 2026-09-29: the example character library
 
 **Example characters**
