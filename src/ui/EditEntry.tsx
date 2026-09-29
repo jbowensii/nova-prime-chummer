@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule } from '../model/types'
-import { canEdit, useMe } from './auth'
+import { because, canEdit, useMe } from './auth'
 import { Modal } from './bits'
 import { api } from './Books'
 import { Editor, type EditorCtx } from './editor'
@@ -139,7 +139,7 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
         body: `<edit>${entryXml(kind, e)}<description>${esc(desc)}</description></edit>` })
       await onDone(`${adding ? 'Added' : 'Saved'} ${nameOf(e)}.`)
     } catch (x) {
-      setErr(`Couldn’t save: ${(x as Error).message.replace(/\.$/, '')}. Fix it and save again.`)
+      setErr(`${because('Couldn’t save', (x as Error).message)} Fix it and save again.`)
       setBusy(false)
     }
   }
@@ -151,7 +151,7 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
     try {
       await api(`edits/${kind}/${encodeURIComponent(entry!.id)}`, { method: 'DELETE' })
       await onDone(state === 'changed' ? `Restored the book’s version of ${nameOf(entry!)}.` : `Removed ${nameOf(entry!)}.`)
-    } catch (x) { setErr(`Couldn’t remove it: ${(x as Error).message.replace(/\.$/, '')}.`); setBusy(false) }
+    } catch (x) { setErr(because('Couldn’t remove it', (x as Error).message)); setBusy(false) }
   }
 
   const idOk = /^[A-Z][A-Z0-9-]{0,19}$/.test(newSource.id) && !c.sources.has(newSource.id)

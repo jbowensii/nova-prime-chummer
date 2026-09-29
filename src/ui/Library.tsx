@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, isAdmin, useMe } from './auth'
+import { AccountMenu, because, isAdmin, useMe } from './auth'
 import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
@@ -46,7 +46,7 @@ export function Library({ c }: { c: Catalog }) {
     if (!admin) return // only the admin uploads books
     fetch('./api/books', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => setNoBooks(Array.isArray(b) && b.length === 0), () => {})
   }, [repo.mode, c, admin])
-  const refresh = () => repo.list().then(setList, e => { setMsg(`Couldn’t load your runners: ${e}`); setList([]) })
+  const refresh = () => repo.list().then(setList, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const where = repo.mode === 'server' ? 'tower04' : 'this browser'
 
@@ -93,7 +93,7 @@ export function Library({ c }: { c: Catalog }) {
       setMsg([n ? `Added ${n} sample characters.` : bad.length ? '' : 'The sample characters are already in your library.', ...bad].filter(Boolean).join(' '))
       void refresh()
     } catch (e) {
-      setMsg(`Couldn’t load the samples: ${e}`)
+      setMsg(because('Couldn’t load the samples', (e as Error).message ?? String(e)))
     }
   }
 

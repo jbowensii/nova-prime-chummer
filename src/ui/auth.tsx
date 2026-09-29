@@ -18,6 +18,12 @@ export const MIN_PASSWORD = 10
 
 /** A server message ("wrong username or password") as a sentence. */
 export const sentence = (s: string) => `${s[0].toUpperCase()}${s.slice(1).replace(/[.:]\s*$/, '')}.`
+/** A lead ("Couldn’t load the data pack") and a server's reason as one line: "Lead: reason." — or, when the reason has a
+ *  colon of its own (two in one sentence read badly), "Lead. Reason." */
+export function because(lead: string, why: string) {
+  const w = why.trim().replace(/[.:]\s*$/, '')
+  return !w ? `${lead}.` : w.includes(':') ? `${lead}. ${sentence(w)}` : `${lead}: ${w}.`
+}
 export const UNREACHABLE = 'The server can’t be reached. Check it’s running, then try again.'
 
 /** What went wrong with a refused request, in plain words; 429s say how long the pause is (Retry-After). */
@@ -51,7 +57,7 @@ let expired: (() => void) | null = null
 /** held: no session to save under. Set the moment a 401 is seen (or on sign-out); only the same account signing back in
  *  clears it, so an unsaved change is never sent under someone else's session. */
 export const session = { held: false }
-/** Runner saves in flight: sign-out waits for them before ending the session. */
+/** Runner saves in flight (repo.ts tracks every server save and delete): sign-out waits for them before ending the session. */
 const saving = new Set<Promise<unknown>>()
 export function track<T>(p: Promise<T>): Promise<T> {
   saving.add(p)
@@ -78,15 +84,22 @@ export function onSessionEnd(fn: (() => void) | null) {
   }
 }
 
+/** How long sign-out waits for the saves under way before it asks: a save that hangs mustn't keep anyone signed in. */
+export const SIGN_OUT_WAIT = 10_000
 /** Sign out: the open runner sends its last change and every save finishes, then the session ends (nothing is sent after
- *  it), then a reload so nothing stays in memory. */
-export async function signOut() {
-  dispatchEvent(new Event('ca2-leaving'))
-  while (saving.size) await Promise.allSettled([...saving])
+ *  it), then a reload so nothing stays in memory. Waits at most `wait` ms: false when a save is still running then (the
+ *  caller warns; `force` signs out without waiting). */
+export async function signOut(force = false, wait = SIGN_OUT_WAIT): Promise<boolean> {
+  if (!force) {
+    dispatchEvent(new Event('ca2-leaving'))
+    const late = new Promise<'late'>(ok => setTimeout(ok, wait, 'late'))
+    while (saving.size) if (await Promise.race([Promise.allSettled([...saving]), late]) === 'late') return false
+  }
   session.held = true
   await fetch('./api/auth/logout', { method: 'POST' }).catch(() => {})
   location.hash = '#/'
   location.reload()
+  return true
 }
 
 /** Password, with the "at least 10 characters" hint tied to it. */
@@ -136,6 +149,11 @@ function ChangePassword({ open, onClose }: { open: boolean; onClose: () => void 
 export function AccountMenu() {
   const me = useMe()
   const [open, setOpen] = useState(false), [pw, setPw] = useState(false)
+  const [leaving, setLeaving] = useState<'no' | 'waiting' | 'stuck'>('no')
+  const leave = async (force = false) => {
+    setLeaving('waiting')
+    if (!await signOut(force)) setLeaving('stuck')
+  }
   const btn = useRef<HTMLButtonElement>(null), panel = useId()
   useEffect(() => {
     if (!open) return
@@ -153,8 +171,13 @@ export function AccountMenu() {
         <p><b>{me.name}</b><br /><span className="muted">{ROLE_NAMES[me.role]} · {me.username}</span></p>
         {me.role === 'admin' && <a className="btn quiet" href="#/users" onClick={() => setOpen(false)}>Users</a>}
         {me.method === 'password' && <button className="btn quiet" onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
-        <button className="btn quiet" onClick={() => void signOut()}>Sign out</button>
+        <button className="btn quiet" disabled={leaving === 'waiting'} onClick={() => void leave()}>{leaving === 'waiting' ? 'Signing out…' : 'Sign out'}</button>
       </div>
+      <Modal open={leaving === 'stuck'} onClose={() => setLeaving('no')} title="A change is still saving"
+        actions={<><button className="btn" onClick={() => void leave()}>Keep waiting</button>
+          <button className="btn danger" onClick={() => void leave(true)}>Sign out anyway</button></>}>
+        <p>A runner’s change hasn’t reached the server after {SIGN_OUT_WAIT / 1000} seconds. Keep waiting, or sign out now and lose that change.</p>
+      </Modal>
       <ChangePassword open={pw} onClose={() => { setPw(false); btn.current?.focus() }} />
     </div>
   )

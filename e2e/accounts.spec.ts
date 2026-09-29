@@ -284,6 +284,70 @@ test('phone width: the accounts screens don’t scroll sideways', async ({ page 
   await fits(page, 'a read-only runner')
 })
 
+test('the admin renames a username: refusals say why; the runners move with the account', async ({ page }) => {
+  await signIn(page, 'ada', PW.ada)
+  await page.goto('/#/users')
+  await page.getByRole('button', { name: 'Edit Pat Player' }).click()
+  const form = page.getByRole('dialog')
+  await expect(form.getByLabel('Username')).toHaveValue('pat')
+  for (const [name, why] of [
+    ['Pat Player!', 'A username is 2–32 characters: a–z, 0–9, dots, dashes and underscores, starting with a letter or digit.'],
+    ['eve', 'The username eve is taken.']]) {
+    await form.getByLabel('Username').fill(name)
+    await form.getByRole('button', { name: 'Save changes' }).click()
+    await expect(form.getByRole('alert')).toHaveText(why)
+  }
+  await form.getByLabel('Username').fill('Pat.New')
+  await expect(form.getByText('They sign in as pat.new from now on, and their runners move with the account.')).toBeVisible()
+  await form.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByRole('status')).toHaveText('Saved Pat Player. They sign in as pat.new now.')
+  const row = page.getByRole('row', { name: /Pat Player/ })
+  await expect(row.getByRole('cell').nth(1)).toHaveText('pat.new')
+  await expect(row.getByRole('cell').nth(7)).toHaveText('1')
+
+  await page.context().clearCookies()
+  await signIn(page, 'pat.new', PW.pat2)
+  await expect(page.getByRole('link', { name: 'Pat Runner Two' })).toBeVisible()
+  await page.context().clearCookies()
+  await page.goto('/')
+  await page.reload()
+  await page.getByLabel('Username').fill('pat')
+  await page.getByLabel('Password', { exact: true }).fill(PW.pat2)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByRole('alert')).toHaveText('Wrong username or password.')
+})
+
+test('sign-out waits for a save from the runner list; one that hangs is given 10 seconds, then the choice', async ({ page }) => {
+  test.setTimeout(60000)
+  await signIn(page, 'pat.new', PW.pat2)
+  // a slow save from the runner list (Duplicate) still lands before the session ends
+  await page.route('**/api/characters/**', async r => { if (r.request().method() === 'PUT') await new Promise(ok => setTimeout(ok, 1500)); await r.continue() })
+  await page.getByRole('button', { name: 'Duplicate' }).first().click()
+  await menu(page, 'Pat Player').click()
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  await page.unroute('**/api/characters/**')
+  await signIn(page, 'pat.new', PW.pat2)
+  await expect(page.getByRole('link', { name: 'Pat Runner Two (copy)' })).toBeVisible()
+
+  // a save that never answers: after 10 s the app says so; Keep waiting, then Sign out anyway
+  await page.route('**/api/characters/**', r => { if (r.request().method() !== 'PUT') return r.continue() }) // PUTs hang
+  await page.getByRole('button', { name: 'Duplicate' }).first().click()
+  await menu(page, 'Pat Player').click()
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('button', { name: 'Signing out…' })).toBeDisabled()
+  const stuck = page.getByRole('dialog', { name: 'A change is still saving' })
+  await expect(stuck).toBeVisible({ timeout: 15000 })
+  await expect(stuck).toContainText('hasn’t reached the server after 10 seconds')
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible() // still signed in
+  await stuck.getByRole('button', { name: 'Keep waiting' }).click()
+  await expect(stuck).toBeHidden()
+  await expect(stuck).toBeVisible({ timeout: 15000 })
+  await stuck.getByRole('button', { name: 'Sign out anyway' }).click()
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  expect((await (await page.request.get('/api/auth/me')).json()).user).toBeFalsy() // the session really ended
+})
+
 test('too many wrong passwords pause sign-in', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Username').fill('eve')

@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react'
 import { characterToXml, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
 import { deleteCharacter, getCharacter, listCharacters, saveCharacter } from './storage'
+import { track } from './auth'
 
 /** owner, ownerName: the account the runner belongs to (server only; admin and editors also list everyone else's) */
 export interface Stored { ch: Character; rev?: number; file?: string; owner?: string; ownerName?: string }
@@ -41,7 +42,8 @@ export function serverRepo(base = './'): Repo {
     mode: 'server',
     list,
     get: async id => (await list()).find(s => s.ch.id === id),
-    async save(ch, rev, opts = {}) {
+    // every save and delete, from the editor or the runner list, is tracked: sign-out waits for it (auth.tsx)
+    save: (ch, rev, opts = {}) => track((async (): Promise<SaveResult> => {
       const q = new URLSearchParams()
       if (opts.force) q.set('force', '1')
       if (opts.filename) q.set('filename', opts.filename)
@@ -57,8 +59,8 @@ export function serverRepo(base = './'): Repo {
       } catch (e) {
         return { ok: false, error: `Couldn’t reach tower04: ${(e as Error).message}` }
       }
-    },
-    remove: async id => { await fetch(`${base}api/characters/${encodeURIComponent(id)}`, { method: 'DELETE' }) },
+    })()),
+    remove: id => track(fetch(`${base}api/characters/${encodeURIComponent(id)}`, { method: 'DELETE' }).then(() => {})),
   }
 }
 

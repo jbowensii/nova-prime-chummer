@@ -2,6 +2,7 @@
 // each key goes alone to ai-keys.xml ("Save key") and never comes back: the page only learns whether it is set.
 import { useEffect, useState } from 'react'
 import { api, BooksHeader, PROVIDER_NAMES } from './Books'
+import { because } from './auth'
 import { useRepo } from './repo'
 
 interface Provider { enabled: boolean; baseUrl: string; model: string; workspace: string }
@@ -56,7 +57,7 @@ export function AiSettings() {
     setState(s)
     setSavedUrl(Object.fromEntries(IDS.map(id => [id, s.providers[id].baseUrl.trim()])))
     setLists({})
-  }, e => setMsg(`Couldn’t read the AI settings: ${e.message}. Reload to try again.`))
+  }, e => setMsg(`${because('Couldn’t read the AI settings', e.message)} Reload to try again.`))
   useEffect(() => { if (repo.mode === 'server') void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (repo.mode !== 'server') return <main className="lib"><BooksHeader title="AI settings" /><p>AI settings live on the app’s server; open this page there.</p></main>
@@ -69,7 +70,7 @@ export function AiSettings() {
       const r = await api<{ cleared: string[]; message?: string }>('ai-settings', { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: toXml(use, state.providers) })
       setMsg(r.message ? `Settings saved. ${r.cleared.map(p => PROVIDER_NAMES[p]).join(', ')}: ${r.message}.` : 'Settings saved.')
       await load()
-    } catch (e) { setMsg(`Couldn’t save the settings: ${(e as Error).message}.`) }
+    } catch (e) { setMsg(because('Couldn’t save the settings', (e as Error).message)) }
   }
   const saveKey = async (id: string, value: string) => {
     try {
@@ -80,7 +81,7 @@ export function AiSettings() {
       // only the key flag changes: unsaved provider edits on the page stay
       setState(s => s && { ...s, keys: { ...s.keys, [id]: !!value.trim() } })
       setLists(l => ({ ...l, [id]: undefined }))
-    } catch (e) { setMsg(`Couldn’t save the key: ${(e as Error).message}.`) }
+    } catch (e) { setMsg(because('Couldn’t save the key', (e as Error).message)) }
   }
   const loadModels = async (id: string) => {
     setLists(l => ({ ...l, [id]: 'loading' }))

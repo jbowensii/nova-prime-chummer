@@ -2,6 +2,7 @@
 // Restore is two steps: upload + check (a preview with a token), then apply; the page reloads after (server/books.mjs).
 import { useEffect, useRef, useState } from 'react'
 import { api, sendFile } from './Books'
+import { because } from './auth'
 import { useRepo } from './repo'
 
 interface Manifest { app: string; created: string; keys: boolean; users: number; authSecret: boolean; files: number; bytes: number; folders: Record<string, { files: number; bytes: number }> }
@@ -58,7 +59,7 @@ export function BackupSettings() {
       setStep({ at: 'idle' })
       const why = (e as Error).message, status = (e as { status?: number }).status
       setMsg({ err: true, text: status === 413 ? 'This file is larger than 20 GB, the most a restore can take. Choose a backup made by this app.'
-        : (status === 400 || status === 415) && why ? `This file can’t be restored: ${why.replace(/\.$/, '')}.` : plain(why) })
+        : (status === 400 || status === 415) && why ? because('This file can’t be restored', why) : plain(why) })
     }
   }
 
@@ -73,7 +74,7 @@ export function BackupSettings() {
       setStep({ at: 'idle' })
       const why = (e as Error).message // a lost connection doesn't stop the server's restore
       setMsg({ err: true, text: why === UNREACHABLE ? 'Lost contact with the server. The restore may still be running — reload in a minute to check.'
-        : `The restore didn’t run: ${plain(why)}` })
+        : because('The restore didn’t run', plain(why)) })
     }
   }
 

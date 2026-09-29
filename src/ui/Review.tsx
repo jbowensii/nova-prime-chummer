@@ -7,6 +7,7 @@ import { Modal } from './bits'
 import { api, BooksHeader, PROVIDER_NAMES, type Book } from './Books'
 import { Editor, type EditorCtx } from './editor'
 import { AmpBuilder } from './tabs/AmpBuilder'
+import { because } from './auth'
 
 const STATES: Record<string, string> = { pending: 'To decide', accepted: 'Accepted', edited: 'Edited', dropped: 'Dropped' }
 const KIND: Record<string, string> = { amp: 'Amp', gear: 'Gear', weapon: 'Weapon', armor: 'Armor', spell: 'Spell', 'complex-form': 'Complex form' }
@@ -52,7 +53,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    api<string>(`review/${id}`).then(x => setDoc(new DOMParser().parseFromString(x, 'text/xml')), e => setMsg(`Couldn’t open the proposals: ${e.message}.`))
+    api<string>(`review/${id}`).then(x => setDoc(new DOMParser().parseFromString(x, 'text/xml')), e => setMsg(because('Couldn’t open the proposals', e.message)))
     api<Book[]>('books').then(bs => {
       const b = bs.find(x => x.id === id)
       setBook(b ?? null)
@@ -70,7 +71,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
     change()
     setVersion(v => v + 1)
     try { await api(`review/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: body() }) }
-    catch (e) { setMsg(`Couldn’t save that decision: ${(e as Error).message}. Try again.`) }
+    catch (e) { setMsg(`${because('Couldn’t save that decision', (e as Error).message)} Try again.`) }
   }
   const decide = (p: Element, state: string) => save(() => p.setAttribute('state', state))
   const accepted = proposals.filter(p => ['accepted', 'edited'].includes(p.getAttribute('state')!)).length
@@ -86,7 +87,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       await api(`review/${id}?${new URLSearchParams(core ? { apply: '1' } : { apply: '1', source, name: title.trim(), canon: String(canon) })}`,
         { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: body() })
       location.hash = '#/books'
-    } catch (e) { setMsg(`Couldn’t add the entries: ${(e as Error).message}.`); setBusy(false) }
+    } catch (e) { setMsg(because('Couldn’t add the entries', (e as Error).message)); setBusy(false) }
   }
 
   return (
