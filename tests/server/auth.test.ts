@@ -71,6 +71,7 @@ describe('with an admin, an editor and a player', () => {
   const ROUTES: [string, string, 'public' | 'user' | 'editor' | 'admin', BodyInit?][] = [
     ['GET', '/api/health', 'public'], ['GET', '/api/auth/me', 'public'],
     ['GET', '/api/characters', 'user'], ['PUT', '/api/characters/zz', 'user', '<nope/>'], ['DELETE', '/api/characters/zz', 'user'],
+    ['GET', '/api/trash', 'user'], ['POST', '/api/trash/zz.xml/restore', 'user'], ['DELETE', '/api/trash/zz.xml', 'user'], ['DELETE', '/api/trash', 'user'],
     ['POST', '/api/auth/password', 'user', '{}'], ['GET', '/custom/index.xml', 'user'], ['GET', '/api/edits', 'user'], ['GET', '/api/nothing', 'user'],
     ['PUT', '/api/edits/items/x', 'editor', '<edit/>'], ['DELETE', '/api/edits/items/x', 'editor'], ['POST', '/api/edits/sources', 'editor', '{}'],
     ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'], ['GET', '/api/samples', 'user'],
