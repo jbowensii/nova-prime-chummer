@@ -120,7 +120,10 @@ folder.
 | | admin | editor | player |
 |---|---|---|---|
 | Own runners: create, edit, delete | ✓ | ✓ | ✓ |
-| Everyone's runners: view, print | ✓ | ✓ | – |
+| Everyone's runners: view, print | ✓ | – | – |
+| Start and run campaigns; view and print their runners | ✓ | ✓ | – |
+| Play in campaigns (put own runners in; see the roster) | ✓ | ✓ | ✓ |
+| Ask the rules (up to the admin's daily limit) | ✓ | ✓ | ✓ |
 | Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
 | Catalog, descriptions, Data (read); Table rules (read) | ✓ | ✓ | ✓ |
 | Rules tab, Table rules switches and house rules | ✓ | ✓ | – |
@@ -136,7 +139,36 @@ username, email, role, app password or Authelia); edit name, username, email,
 role or sign-in method (renaming moves the person’s runners with them and
 they sign in with the new name); disable/enable; reset a password (also ends that person's
 other sessions); move a runner to another user; delete (only with no
-runners, or after moving them).
+runners, or after moving them); set **Questions per day** for Ask the rules
+(blank: no limit).
+
+**Campaigns** (runner list → **Campaigns**). The admin or an editor starts a
+campaign and is its GM; the admin can add other editors as co-GMs. The GM
+adds players by username. A player puts a runner in a campaign with **Add to
+campaign…** on the runner list (one campaign per runner at a time: to play
+it in another one, **Duplicate** it; a copy is in none). Example characters
+work the same: the loaded copy is your own. The runner list shows each
+runner's campaign and can show one campaign's runners only.
+On a campaign's page the GM and the admin open every runner read-only and
+print it; a player sees the roster: who plays, and the names, archetypes and
+levels of the others' runners, never their sheets. An editor sees only the
+runners in the campaigns they run (plus their own). The GM's tools: add or
+remove players (their runners leave the campaign, but stay theirs), rename,
+a note for the table, archive (no runners can join) and delete (once no
+runners are in it). Campaigns live in `custom/campaigns.xml`, are in backups,
+and are never served as a file.
+
+**Ask the rules.** Once the admin has chosen an AI provider in AI settings,
+enabled it and saved its key, everyone signed in can ask a rules question:
+in the bar at the top of the builder and of a campaign's runners, or with the
+**?** button in the header on any page. The server finds the most relevant
+passages in its own data (imported rules and texts, amps, items, spells,
+table rules) and sends only those and the question to the admin's provider;
+the answer comes back with its sources ("CRB p.61 · QREF Base"). When the
+books don't cover it, it says so without asking the AI. The admin sets a
+limit per person per day on the Users page (the day is UTC). Nothing is
+saved: no questions or answers on the server or in the browser, and the log
+has only who asked and when.
 
 **Sign-in settings** (account menu → Sign-in, admin) turns on Authelia —
 see [below](#sign-in-with-authelia-openid-connect). **AI settings** has a link

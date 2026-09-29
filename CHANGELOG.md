@@ -1,5 +1,39 @@
 # Release notes
 
+## 0.5.0 — 2026-09-29: campaigns and Ask the rules
+
+**Campaigns**
+- A **Campaigns** page (runner list → **Campaigns**): the campaigns you run or
+  play in, with the GM, players and runners of each; **New campaign** for the
+  admin and editors, who become its GM. Archived campaigns show on request.
+- A campaign's page: its runners grouped by player, and the table (GMs and
+  players). The GM and the admin open each runner read-only and **Print** it;
+  a player sees the others' runners as roster rows (name, archetype, level),
+  never their sheets.
+- GM tools: add players by username, remove them (their runners leave the
+  campaign and stay theirs), rename, a note for the table, archive or
+  unarchive, and delete once no runners are in it. The admin adds co-GMs.
+- The runner list tags each runner with its campaign, has **Add to
+  campaign…** and **Remove from campaign**, and can show one campaign's
+  runners only. One campaign per runner: a duplicate is in none. A loaded
+  example character is your own copy and joins a campaign like any other.
+- Editors now read only the runners in the campaigns they run (they used to
+  read everyone's); the admin still reads all.
+
+**Ask the rules**
+- Ask a rules question in the bar at the top of the builder and of a
+  campaign's runners, or with the header's **?** button on any page (a drawer:
+  Esc closes it, focus stays inside). Shown once the admin has an AI provider
+  chosen, enabled and keyed.
+- The answer comes from the passages the server finds in its own books,
+  with its sources ("CRB p.61 · QREF Base"), shown as plain text. When the
+  books don't cover it, it says so without asking the AI.
+- The admin sets **Questions per day** per account on the Users page (blank:
+  no limit); the bar shows how many are left, and a used-up day says “You’ve
+  used today’s N questions. Ask again tomorrow.”
+- Nothing is kept: asking again or closing clears the answer, and nothing is
+  saved on the server or in the browser.
+
 ## 0.4.5 — 2026-09-29: AnythingLLM workspaces
 
 **AI settings**
