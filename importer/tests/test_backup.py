@@ -28,6 +28,8 @@ def state(root, extra=""):
         "library/book-1/original.pdf": "%PDF-1.4 made up " * 100,
         "library/book-1/book.md": f"# Made-up book{extra}",
         "library/book-1/status.xml": '<status state="done"/>',
+        "library/backgrounds/backgrounds.xml": f"<backgrounds>{extra}</backgrounds>",  # the background art goes with library/
+        "library/backgrounds/0123456789ab.png": "made-up image bytes",
         "library/.config/ai-providers.xml": "<aiproviders/>",
         "library/.config/ai-keys.xml": f"<aikeys>secret{extra}</aikeys>",
         "library/.config/auth-secret.xml": "<authsecret/>",

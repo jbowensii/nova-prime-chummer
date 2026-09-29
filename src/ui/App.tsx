@@ -20,6 +20,7 @@ import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
 import { AskButton } from './AskRules'
+import { BackgroundArt } from './Background'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
 
@@ -152,6 +153,7 @@ export default function App() {
   }
   return (
     <Me.Provider value={user ?? null}>
+      {user && <BackgroundArt />}
       <div inert={ended} aria-hidden={ended || undefined}><Main repo={repo} route={route} /></div>
       {ended && <Over><SignIn oidc={me.oidc} onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to
         carry on, and unsaved changes on this page are saved then. <b>Signing in as someone else discards this page’s unsaved changes.</b></>} /></Over>}

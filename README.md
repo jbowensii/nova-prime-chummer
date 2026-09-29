@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.5.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.5.1 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -129,6 +129,7 @@ folder.
 | Rules tab, Table rules switches and house rules | ✓ | ✓ | – |
 | Books page, imports, AI settings and keys | ✓ | – | – |
 | Backup and restore | ✓ | – | – |
+| Background art: upload, switch on or off, delete | ✓ | – | – |
 | Users page, Sign-in settings | ✓ | – | – |
 
 The server enforces every rule; a hidden control is only convenience. There
@@ -169,6 +170,17 @@ books don't cover it, it says so without asking the AI. The admin sets a
 limit per person per day on the Users page (the day is UTC). Nothing is
 saved: no questions or answers on the server or in the browser, and the log
 has only who asked and when.
+
+**Background art.** The admin uploads their own images in **Settings →
+Background art** (PNG, JPEG or WebP, 10 MB each, up to 50) and switches each
+one on or off, or deletes it. The ones that are on show behind every page for
+everyone signed in, one picked at random on each page load: faint under the
+text in the middle of the screen, a little stronger toward the edges, tinted
+indigo in the dark theme and fainter still on phones. They're never printed.
+Anyone can turn them off in their own browser (**Settings → Background →
+Plain page**). The images live in `library/backgrounds/`, are in backups (not
+in data packs), and are only sent to signed-in browsers. No artwork ships
+with the app.
 
 **Sign-in settings** (account menu → Sign-in, admin) turns on Authelia —
 see [below](#sign-in-with-authelia-openid-connect). **AI settings** has a link
@@ -376,7 +388,7 @@ or pick.
 ## Backup and restore
 
 **Settings → Backup** downloads everything the server keeps — runners,
-house rules and edits, imported books, uploaded PDFs and AI settings — as
+house rules and edits, imported books, uploaded PDFs, background art and AI settings — as
 one zip. Tick **Include my API keys** to have them in the file too;
 otherwise the zip has none, and anyone restoring it keeps the keys already
 on their own server (except for a provider whose address the backup

@@ -81,7 +81,7 @@ export function BackupSettings() {
   return (
     <fieldset className="backup">
       <legend>Backup</legend>
-      <p className="muted">Everything this server keeps: runners, accounts, house rules and edits, imported books, uploaded PDFs and settings.</p>
+      <p className="muted">Everything this server keeps: runners, accounts, house rules and edits, imported books, uploaded PDFs, background art and settings.</p>
       <div className="row">
         <button className="btn" disabled={zipping || step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
         <label className="check inline"><input type="checkbox" checked={keys} aria-describedby={keys ? 'backup-keys-warning' : undefined}
