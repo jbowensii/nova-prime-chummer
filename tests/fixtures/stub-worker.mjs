@@ -83,7 +83,8 @@ if (cmd === 'run') {
   const items = [...review.matchAll(/<proposal\b[^>]*state="(?:accepted|edited)"[^>]*>\s*(<item\b[\s\S]*?<\/item>)/g)].map(m => m[1])
   mkdirSync(join(opt('--custom'), 'imported', 'core'), { recursive: true })
   writeFileSync(join(opt('--custom'), 'imported', 'core', 'weapons.xml'), `<ca2:data ${NS} kind="weapons" version="1">${items.join('')}</ca2:data>\n`)
-  writeFileSync(join(target, 'import.xml'), readFileSync(join(target, 'import.xml'), 'utf8').replace(/<row kind="core-unread" file="weapons.xml"[^>]*\/>/, ''))
+  writeFileSync(join(target, 'import.xml'), readFileSync(join(target, 'import.xml'), 'utf8').replace(/<row kind="core-unread" file="weapons.xml"[^>]*\/>/,
+    `<row kind="core-ai" file="weapons.xml" entries="${items.length}" problem="read by AI: check it against the book"/>`))
   status(target, 'done', `${items.length} rows added to the core data`)
 } else if (cmd === 'apply-review') {
   const src = opt('--source'), review = readFileSync(join(target, 'review.xml'), 'utf8')

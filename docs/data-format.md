@@ -275,7 +275,21 @@ scoped, every entry `source="CRB"` and its page. Their descriptions (weapon
 examples, armor, lifestyle rules) go to `texts/crb.xml`. Values the book
 doesn't print are app defaults kept in the recipe (`DEFAULTS`,
 `EFFECTS`). A table the recipe can't read is left out and the import report
-says so (`kind="core-unread"`).
+says so (`kind="core-unread"`, with the book.md pages it should be on).
+
+Any of the twelve can then be read by AI (Books → **Read the tables with AI**,
+`python -m importer propose <library/book-id> --library <dir> --core`): only
+the chunks holding those pages are sent, and the model fills one JSON list per
+table in the shape of its schema (`importer/ai/schema.py` `CORE`; weapons and
+armor as `items`). Each proposed row is checked against its table's schema and
+the ids the engine names (attributes, amp effects) and waits in `review.xml`
+(`core="true"`, proposal kinds `level`, `metatype`, `attribute`, `skill`,
+`pricing`, `amptype`, `effect`, `package`, `vehicle`, `lifestyle`, `weapon`,
+`armor`). Accepting (`apply-review --core`) writes the accepted rows as the
+core files, rechecked; a row that fails is left out and reported. The import
+report then lists each such table as `kind="core-ai"` (read by AI, with its
+row count: check it against the book) instead of `core-unread`, and the Books
+page says which tables came from AI.
 
 Load order: `public/data/` (in development also the owner's local copies of
 the core files, gitignored), then `imported/core/`, then the imported books,

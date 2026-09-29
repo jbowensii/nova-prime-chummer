@@ -12,14 +12,17 @@ from xml.sax.saxutils import escape
 
 from importer import core_file, mechanics_roots, xmlio
 from importer.ai.providers import ProviderError, TruncatedReply
-from importer.ai.schema import SCHEMA
+from importer.ai.schema import CORE, SCHEMA, core_schema
 
 LIMIT = 12000
 HEADING = re.compile(r"^#{1,2} ", re.M)
 PAGE = re.compile(r"<!-- page (\d+) -->")
 PREFIX = {"spell": "spell-", "complex-form": "cf-", "gear": "gear-"}  # as the shipped files name them
-# core files a recipe couldn't read (import.xml rows kind="core-unread") that the AI can propose rows for: the item tables
-CORE_KINDS = {"weapons.xml": "weapon", "armor.xml": "armor"}
+# core files a recipe couldn't read (import.xml rows kind="core-unread") -> the proposal kind of their rows: every core
+# table. Weapons and armor rows are <item>s; every other kind is its entry's tag (<level>, <effect>…)
+CORE_KINDS = {"weapons.xml": "weapon", "armor.xml": "armor", "levels.xml": "level", "metatypes.xml": "metatype",
+              "attributes.xml": "attribute", "skills.xml": "skill", "pricing.xml": "pricing", "amptypes.xml": "amptype",
+              "ampeffects.xml": "effect", "packages.xml": "package", "vehicles.xml": "vehicle", "lifestyles.xml": "lifestyle"}
 ITEM_KINDS = ("gear", "weapon", "armor")
 CATEGORIES = {"spell": ("combat", "detection", "health", "illusion", "manipulation"), "complex-form": ("sustained", "instant")}
 KEYS = ("amps", "items", "spells", "complexForms")
@@ -137,7 +140,91 @@ rr-spec a specialization id ({" ".join(sorted(m["specs"]))}) or "custom:<name>" 
 Spell categories: {", ".join(CATEGORIES["spell"])}. Complex form categories: {", ".join(CATEGORIES["complex-form"])}."""
 
 
-def parse(text):
+def core_prompt(tables):
+    """The system prompt for the core tables `tables` (file stems) a recipe couldn't read. Needs no core data: any table
+    may be the missing one."""
+    from importer.recipes import crb_core  # the app's own ids for the tables whose ids the engine names
+    hints = {"attributes": f"Attribute ids are {' '.join(crb_core.ATTR_LETTER.values())}.",
+             "metatypes": "Each metatype has one range per attribute (attr: str agi wil log cha).",
+             "skills": "attr and alt are attribute ids (str agi wil log cha); spec ids are <skill id>.<spec name in kebab-case>.",
+             "ampeffects": f"Use these ids for the rows they name: {' '.join(e[0] for e in crb_core.EFFECTS)}. "
+                           "types is the space-separated amp type ids that may take the effect.",
+             "packages": "level is the level id the package is for.",
+             "pricing": "One pricing row; complexForm is null unless the book prints it."}
+    return f"""You read part of a Shadowrun Anarchy 2.0 core rulebook, converted from PDF to Markdown.
+`<!-- page N -->` marks where printed page N starts. Answer with one JSON object only, matching this JSON Schema:
+{json.dumps(core_schema(tables))}
+
+List only the rows of the book's {" and ".join(sorted(tables))} tables printed in this text; use empty lists when there
+are none. `page` is the printed page of the row. Numbers are plain numbers (nuyen without separators or ¥). `id` is the
+row's name in lowercase kebab-case unless said below.
+""" + "\n".join(hints[t] for t in sorted(tables) if t in hints)
+
+
+def _id(v):
+    return re.sub(r"[^a-z0-9.-]+", "-", (_text(v) or "").lower()).strip("-.") or "unnamed"
+
+
+def schema_notes(table, xml):
+    """[] when `xml` (one entry) is valid in the core file `table`, else why not (the file's schema, as a data pack is checked)."""
+    from lxml import etree
+    from importer import datapack
+    try:
+        root = etree.fromstring(f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{table}" version="1">{xml}</ca2:data>'.encode("utf8"))
+    except etree.XMLSyntaxError as e:
+        return [f"isn’t readable XML ({e})"]
+    s = datapack._schema("items" if table in ("weapons", "armor") else table)
+    return [] if s.validate(root) else [f"doesn’t fit the {table} table: {s.error_log.last_error.message}"]
+
+
+def id_notes(table, i):
+    """The engine names attributes and amp effects by the app's ids: another id is flagged for the reviewer."""
+    from importer.recipes import crb_core
+    known = {"attributes": set(crb_core.ATTR_LETTER.values()), "ampeffects": {e[0] for e in crb_core.EFFECTS}}.get(table)
+    return [f'id "{i}" isn’t one the app uses for {table}'] if known and i not in known else []
+
+
+def core_entry(table, raw, source, page, seen):
+    """(kind, entry id, page, entry XML, notes) for one proposed row of the core table `table`. Only the schema's
+    properties are read (in its order), every value cleaned and escaped; the entry is checked against the table's schema."""
+    kind, props = CORE_KINDS[f"{table}.xml"], CORE[table]["properties"]
+
+    def val(k):
+        v = raw.get(k)
+        return ("true" if v else "false") if isinstance(v, bool) else _text(v)
+    i = _unique(seen, kind, "core" if table == "pricing" else _id(raw.get("id") or raw.get("name")))
+    p = _pos(raw.get("page")) or page
+    attrs = {"id": i, **{k: val(k) for k in props if k not in ("id", "name", "page", "racialQuality", "ranges", "specs")},
+             "source": source, "page": p}
+    if table == "pricing":
+        attrs["complexForm"] = attrs["complexForm"] or attrs["spell"]  # as the recipe does: the spell price unless printed
+        attrs["refundEffectRemoval"] = "false"  # the app's default (crb_core.DEFAULTS): the book doesn't say
+    rows = lambda k: [x for x in raw.get(k) if isinstance(x, dict)] if isinstance(raw.get(k), list) else []  # noqa: E731
+    inner = "" if table == "pricing" else f"<name>{escape(_text(raw.get('name')) or '')}</name>"
+    if table == "metatypes":
+        inner += f"<racialQuality>{escape(_text(raw.get('racialQuality')) or '')}</racialQuality>" + "".join(
+            "<range" + xmlio._attrs({k: _text(r.get(k)) for k in ("attr", "min", "max")}) + "/>" for r in rows("ranges"))
+    if table == "skills":
+        inner += "".join(_el("spec", {"id": _id(s.get("id")), "attr": _text(s.get("attr"))}, escape(_text(s.get("name")) or ""))
+                         for s in rows("specs"))
+    if table == "lifestyles":
+        inner += "<text></text>"
+    xml = f"<{kind}{xmlio._attrs(attrs)}/>" if table == "pricing" else _el(kind, attrs, inner)
+    return kind, i, p, xml, schema_notes(table, xml) + id_notes(table, i)
+
+
+def core_entries(obj, tables, source, page, seen):
+    """The proposals of one chunk's reply for the core tables `tables`: weapons/armor rows from `items`, the rest per table."""
+    items = {CORE_KINDS[f"{t}.xml"] for t in tables} & {"weapon", "armor"}
+    if items:
+        yield from (e for e in _entries({"items": obj.get("items")}, source, page, None, seen) if e[0] in items)
+    for t in sorted(set(tables) & set(CORE)):
+        for raw in obj.get(t) if isinstance(obj.get(t), list) else []:
+            if isinstance(raw, dict):
+                yield core_entry(t, raw, source, page, seen)
+
+
+def parse(text, keys=KEYS):
     """The first JSON object in the reply with one of our top-level keys (some servers wrap it in prose
     despite JSON mode), or None."""
     text, i = text or "", 0
@@ -147,7 +234,7 @@ def parse(text):
         except ValueError:
             i += 1
             continue
-        if any(isinstance(obj.get(k), list) for k in KEYS):
+        if any(isinstance(obj.get(k), list) for k in keys):
             return obj
         i = end  # never look inside an object that isn't ours
     return None
@@ -247,28 +334,30 @@ def propose(book_dir, ask, provider=None, data_dir=None, fresh=False, core=False
     A finished review.xml holds paid-for proposals and the user's decisions: it is kept, and nothing sent,
     unless `fresh` asks to replace it.
     `core`: only the pages of the core tables the book's recipe couldn't read (core_unread), only rows of those tables
-    (weapons, armor), for the core files (review.xml core="true", applied by apply-review --core)."""
+    (any of the twelve), for the core files (review.xml core="true", applied by apply-review --core). It needs no core
+    data, since the missing table may be one the amp checks read."""
     path = os.path.join(book_dir, "review.xml")
     if not fresh and (n := _finished(path)) is not None:
         xmlio.write_status(book_dir, "review", "Proposals from an earlier run are waiting for review; nothing was sent")
         return n
     try:
-        m = mechanics(data_dir)
         with open(os.path.join(book_dir, "book.md"), encoding="utf8") as f:
             md = f.read()
         sha = hashlib.sha256(md.encode("utf8")).hexdigest()
         book = os.path.basename(os.path.normpath(book_dir))
         source = book.upper()  # provisional; the review screen sets it
-        system, parts = system_prompt(m), chunks(md)
-        kinds = None
         if core:
             unread = core_unread(book_dir)
             if not unread:
                 raise ValueError("no core table of this book is waiting for the AI")
-            kinds = {CORE_KINDS[f] for f in unread}
+            tables = {f[:-4] for f in unread}
             source = xmlio.read_import(book_dir).get("source")
-            parts = core_chunks(md, set().union(*unread.values()))
-            system += "\nList only the rows of the book's " + " and ".join(sorted(f[:-4] for f in unread)) + " tables, as items."
+            system, parts, keys = core_prompt(tables), core_chunks(md, set().union(*unread.values())), (*tables & set(CORE), "items")
+            entries = lambda obj, page: core_entries(obj, tables, source, page, seen)  # noqa: E731
+        else:
+            m = mechanics(data_dir)
+            system, parts, keys = system_prompt(m), chunks(md), KEYS
+            entries = lambda obj, page: _entries(obj, source, page, m, seen)  # noqa: E731
         done, rows, skips, seen = (0, [], [], set()) if fresh else _resume(path, sha, len(parts))
         created = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -282,14 +371,14 @@ def propose(book_dir, ask, provider=None, data_dir=None, fresh=False, core=False
             chunk = parts[n - 1]
             xmlio.write_status(book_dir, "proposing", f"part {n} of {len(parts)}")
             try:
-                obj, why = parse(ask(system, chunk)), "the reply had no JSON with amps, items, spells or complexForms"
+                obj, why = parse(ask(system, chunk), keys), f"the reply had no JSON with {', '.join(sorted(keys))}"
             except TruncatedReply as e:
                 obj, why = None, str(e)
             if obj is None:
                 skips.append(f"  {_el('skip', {'part': n}, escape(why))}\n")
             else:
                 pages = PAGE.findall(chunk)
-                rows += [_proposal(*e) for e in _entries(obj, source, int(pages[0]) if pages else 1, m, seen) if kinds is None or e[0] in kinds]
+                rows += [_proposal(*e) for e in entries(obj, int(pages[0]) if pages else 1)]
             save(n)
         if not parts:
             save(0)

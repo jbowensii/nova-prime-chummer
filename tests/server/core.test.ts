@@ -67,12 +67,12 @@ test('a core the CRB can’t complete is tried once per book file and app versio
   expect((await start(dir, 6)).map(c => c.split(' ').slice(0, 2).join(' '))[1]).toBe('run d-crb') // a new file: tried again
 })
 
-test('core tables a recipe couldn’t read: the AI reads them, and the accepted rows become the core file', async () => {
+test('core tables a recipe couldn’t read: the AI reads them, the accepted rows become the core file, the book lists it as read by AI', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-core-'))
   const custom = join(dir, 'custom'), lib = join(dir, 'library')
   core(dir, CORE)
   for (const [id, rows] of [['crb', '<row kind="core-unread" file="weapons.xml" page="142" mdPages="144-144"/><row kind="core-unread" file="levels.xml"/>'],
-    ['other', '']]) {
+    ['lv', '<row kind="core-unread" file="levels.xml" page="84" mdPages="86-87"/>'], ['other', '']]) {
     mkdirSync(join(lib, id), { recursive: true })
     writeFileSync(join(lib, id, 'import.xml'), `<import recipe="${id}" source="${id.toUpperCase()}" file="${id}.pdf"><files/><report>${rows}</report></import>\n`)
     writeFileSync(join(lib, id, 'status.xml'), '<status state="done" updated="2026-09-28T00:00:00Z"></status>\n')
@@ -91,6 +91,7 @@ test('core tables a recipe couldn’t read: the AI reads them, and the accepted 
   try {
     expect(await state('crb')).toMatchObject({ source: 'CRB', coreUnread: ['weapons.xml', 'levels.xml'] })
     expect((await fetch(`${base}/books/other/ai`, { method: 'POST' })).status).toBe(409) // a recipe's book with nothing unread
+    expect((await fetch(`${base}/books/lv/ai?dryRun=1`, { method: 'POST' })).status).toBe(200) // any core table, not only weapons and armor
     expect(await (await fetch(`${base}/books/crb/ai?dryRun=1`, { method: 'POST' })).json()).toEqual({ parts: 4, provider: 'anthropic' })
     expect((await fetch(`${base}/books/crb/ai`, { method: 'POST' })).status).toBe(202)
     expect(await state('crb')).toMatchObject({ state: 'review', review: 'done' })
@@ -98,7 +99,7 @@ test('core tables a recipe couldn’t read: the AI reads them, and the accepted 
     expect(review).toContain('core="true"')
     const put = await fetch(`${base}/review/crb?apply=1`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: review })
     expect(put.status).toBe(202) // no source, name or canon: the rows cite the book as imported
-    expect(await state('crb')).toMatchObject({ state: 'done', coreUnread: ['levels.xml'] })
+    expect(await state('crb')).toMatchObject({ state: 'done', coreUnread: ['levels.xml'], coreAi: ['weapons.xml'] })
     expect(readFileSync(join(custom, 'imported', 'core', 'weapons.xml'), 'utf8')).toContain('<item id="pea-shooter" kind="weapon"')
   } finally { srv.stopJobs(); srv.close() }
 })
