@@ -164,7 +164,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
 
   async function api(req, res, url, who) {
     if (url.pathname === '/api/health') return send(res, 200, { ok: true, storage: 'server' })
-    if (await oidc.handle(req, res, url, send) !== false) return
+    if (await oidc.handle(req, res, url, send, who) !== false) return
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
     if (url.pathname === '/api/characters' && req.method === 'GET') {

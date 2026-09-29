@@ -6,6 +6,10 @@
 //                                   per start, so a flood of starts can't push anyone's sign-in out (and needs no limit)
 //   GET  /api/auth/oidc/callback    public: code + state -> the ID token checked, the account matched -> 302 to / with a
 //                                   session, or to /?signin=<no-account|expired|denied|failed|off> (no details in the URL)
+//   POST /api/auth/oidc/link/start  a signed-in password account: -> { url } (the issuer's, for the browser to open); the sealed
+//                                   cookie also holds the account id and its session. The callback then links the account
+//                                   (server/auth.mjs linkExternal): method authelia, no password, other sessions ended ->
+//                                   302 to /?link=<done|taken|session|expired|denied|failed>
 //   GET  /api/auth-settings         admin: -> { issuer, clientId, tokenAuth, enabled, secretSet, redirectUri } (never the secret)
 //   PUT  /api/auth-settings         admin: any of { issuer, clientId, tokenAuth, enabled, secret } -> the same; a new issuer
 //                                   drops the stored secret unless a new one comes with it
@@ -82,6 +86,9 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
 /** `auth`: server/auth.mjs's authApi (json(), signInExternal(), unlinkAll()). Options for tests: fetch timeout, answer size cap,
  *  the shortest gap between two key-set fetches for an unknown kid, how long a failed discovery is remembered, whether plain
  *  http to this machine is allowed. */
+/** What ties a link to the session that started it: in the sealed cookie, never the session hash itself. */
+const binding = sessionHash => sha256(`link\n${sessionHash}`).toString('base64url')
+
 export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE, failTtl = FAIL_TTL,
   insecure = insecureAllowed() }) {
   const config = join(libraryDir, '.config')
@@ -294,24 +301,40 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     `${cookieName(ctx)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
   const go = (res, where) => { res.writeHead(302, { Location: where, 'Cache-Control': 'no-store' }); res.end() }
 
-  async function start(req, res) {
-    const ctx = req.ctx, s = settings()
-    if (!s.on) return go(res, '/?signin=off')
+  /** The issuer's authorization URL for a new flow, its state sealed into this browser's cookie (with `extra`); null when it
+   *  can't start (logged). */
+  async function begin(res, ctx, s, extra = {}) {
     let d
     try {
       if (!ctx.origin) throw refuse('failed', 'the request has no usable Host')
       d = await discover(s.issuer)
     } catch (e) {
-      log.error(`Authelia sign-in couldn’t start: ${e.key ? e.message : 'error'} (from ${ctx.ip})`)
-      return go(res, '/?signin=failed')
+      log.error(`Authelia ${extra.l ? 'link' : 'sign-in'} couldn’t start: ${e.key ? e.message : 'error'} (from ${ctx.ip})`)
+      return null
     }
     const state = rand(), verifier = rand(), nonce = rand()
     const redirectUri = `${ctx.origin}/api/auth/oidc/callback`
-    cookie(res, ctx, seal({ s: state, n: nonce, v: verifier, r: redirectUri, i: s.issuer, c: s.clientId, e: Date.now() + STATE_TTL }), STATE_TTL / 1000)
+    cookie(res, ctx, seal({ s: state, n: nonce, v: verifier, r: redirectUri, i: s.issuer, c: s.clientId, e: Date.now() + STATE_TTL, ...extra }), STATE_TTL / 1000)
     const u = new URL(d.authorization_endpoint)
     for (const [k, v] of Object.entries({ response_type: 'code', client_id: s.clientId, redirect_uri: redirectUri, scope: SCOPE, state, nonce,
       code_challenge: sha256(verifier).toString('base64url'), code_challenge_method: 'S256' })) u.searchParams.set(k, v)
-    return go(res, u.href)
+    return u.href
+  }
+
+  async function start(req, res) {
+    const s = settings()
+    if (!s.on) return go(res, '/?signin=off')
+    return go(res, await begin(res, req.ctx, s) ?? '/?signin=failed')
+  }
+
+  /** "Link my Authelia account": a signed-in password account (the POST passed the Origin check and is a counted write). */
+  async function linkStart(req, res, send, who) {
+    if (who.method !== 'password') throw fail(400, 'this account already signs in with Authelia')
+    const s = settings()
+    if (!s.on) throw fail(409, 'Sign in with Authelia is turned off')
+    const url = await begin(res, req.ctx, s, { l: who.id, b: binding(who.session) })
+    if (!url) throw fail(502, 'Authelia can’t be reached right now; try again later')
+    return send(res, 200, { url })
   }
 
   /** The state this browser's cookie holds, if it's the one the issuer sent back, unexpired and not used yet; then used. */
@@ -319,20 +342,24 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     const raw = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${cookieName(ctx)}=([A-Za-z0-9_-]{40,3000})(?:;|$)`))?.[1]
     const c = raw && unseal(raw), now = Date.now()
     if (!c || typeof c.s !== 'string' || typeof c.n !== 'string' || typeof c.e !== 'number') throw refuse('expired', 'no state cookie from this browser')
-    if (!(c.e > now && c.e <= now + STATE_TTL)) throw refuse('expired', 'an expired state')
-    if (!timingSafeEqual(sha256(state), sha256(c.s))) throw refuse('expired', 'the state doesn’t match this browser’s')
-    if (used.has(c.n)) throw refuse('expired', 'a state that was already used')
+    const no = message => Object.assign(refuse('expired', message), { link: typeof c.l === 'string' }) // a link comes back to /?link=
+    if (!(c.e > now && c.e <= now + STATE_TTL)) throw no('an expired state')
+    if (!timingSafeEqual(sha256(state), sha256(c.s))) throw no('the state doesn’t match this browser’s')
+    if (used.has(c.n)) throw no('a state that was already used')
     // ponytail: past MAX_USED the oldest are forgotten; a replay then still fails at the issuer (a code works once)
     for (const [k, e] of used) if (e <= now || used.size >= MAX_USED) used.delete(k); else break
     used.set(c.n, c.e)
-    return { nonce: c.n, verifier: c.v, redirectUri: c.r, issuer: c.i, clientId: c.c }
+    return { nonce: c.n, verifier: c.v, redirectUri: c.r, issuer: c.i, clientId: c.c,
+      link: typeof c.l === 'string' ? { user: c.l, binding: String(c.b ?? '') } : null }
   }
 
   async function callback(req, res, url) {
     const ctx = req.ctx, q = url.searchParams
     cookie(res, ctx, '', 0) // single use: the cookie goes whatever happens next
+    let link = null
     try {
       const entry = take(req, ctx, q.get('state') ?? '')
+      link = entry.link
       if (q.get('error')) throw refuse('denied', `the issuer said ${oneLine(q.get('error')).slice(0, 60)}`)
       const code = q.get('code') ?? ''
       if (!code || code.length > 2048) throw refuse('failed', 'the issuer sent no code')
@@ -343,14 +370,23 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
       let claims = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
       if (claims.preferred_username === undefined && claims.email === undefined && d.userinfo_endpoint && typeof tokens.access_token === 'string')
         claims = { ...await userinfo(d, tokens.access_token, claims.sub), sub: claims.sub }
+      if (link) {
+        // this browser's session must still be the very one that started the link (not only the same account)
+        const who = auth.session(req, res, ctx)
+        if (!who || who.id !== link.user || !timingSafeEqual(sha256(binding(who.session)), sha256(link.binding)))
+          throw refuse('session', 'the session that started the link isn’t this browser’s any more')
+        await auth.linkExternal(ctx, who, { iss: d.issuer, sub: claims.sub })
+        return go(res, '/?link=done')
+      }
       const u = await auth.signInExternal(res, ctx, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
         emailVerified: claims.email_verified })
       if (!u) throw refuse('no-account', `no Authelia account here for "${oneLine(claims.preferred_username ?? claims.email).slice(0, 80)}" (sub ${oneLine(claims.sub).slice(0, 80)})`)
       return go(res, '/')
     } catch (e) {
-      log.log(`Authelia sign-in refused from ${ctx.ip}: ${e.key ? e.message : 'an error'}`)
+      const linking = !!link || !!e.link
+      log.log(`Authelia ${linking ? 'link' : 'sign-in'} refused from ${ctx.ip}: ${e.key ? e.message : 'an error'}`)
       if (!e.key) log.error(e.stack)
-      return go(res, `/?signin=${e.key ?? 'failed'}`)
+      return go(res, `/?${linking ? 'link' : 'signin'}=${e.key ?? 'failed'}`)
     }
   }
 
@@ -375,12 +411,13 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
   }
 
   /** The routes here; false for any other path. */
-  async function handle(req, res, url, send) {
+  async function handle(req, res, url, send, who) {
     const p = url.pathname, method = req.method
     // both write to the Library (the state key on first use; the account link, session and device): counted like any write,
     // so a restore waits for them, and while one runs they send the browser back with a plain message
     if (p === '/api/auth/oidc/start' && method === 'GET') return counted(res, () => start(req, res))
     if (p === '/api/auth/oidc/callback' && method === 'GET') return counted(res, () => callback(req, res, url))
+    if (p === '/api/auth/oidc/link/start' && method === 'POST') return linkStart(req, res, send, who) // counted by server.mjs
     if (p === '/api/auth-settings' && method === 'GET') return send(res, 200, view(settings(), req.ctx))
     if (p === '/api/auth-settings' && method === 'PUT') return send(res, 200, view(await save(req), req.ctx))
     if (p === '/api/auth-settings/test' && method === 'POST') return send(res, 200, await test(req))

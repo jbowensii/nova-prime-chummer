@@ -723,8 +723,27 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     return u
   }
 
+  /** "Link my Authelia account" (server/oidc.mjs, its claims verified and `who` the session that started it): the password
+   *  account is bound to (iss, sub) and signs in through Authelia from now on; its password goes and every other session
+   *  ends. Refused (`key` for /?link=) when that subject is another account's, or the account changed meanwhile. */
+  async function linkExternal(ctx, who, { iss, sub }) {
+    const no = (key, message) => Object.assign(new Error(message), { key })
+    if (!/^[\x21-\x7e]{1,300}$/.test(iss) || !/^[\x21-\x7e]{1,255}$/.test(sub)) throw no('failed', 'the issuer or subject isn’t printable ASCII')
+    const u = await lock(async () => {
+      const u = users.find(x => x.id === who.id)
+      if (!u?.enabled || u.method !== 'password' || !sessions.has(who.session)) throw no('session', 'the account or its session changed meanwhile')
+      // one subject, one account; no name for the other one (it isn't this user's to know)
+      if (users.some(x => x !== u && x.oidcSub === sub && x.oidcIss === iss)) throw no('taken', `that Authelia user is linked to another account (${u.username} tried)`)
+      Object.assign(u, { method: 'authelia', password: null, oidcIss: iss, oidcSub: sub })
+      await saveUsers()
+      return u
+    })
+    await endSessions(u.id, who.session) // every other session: this one stays signed in
+    log.log(`Authelia linked by the account itself: ${u.username} from ${ctx.ip}; its password no longer works`)
+  }
+
   return {
-    gate, handle, session, context, json, signInExternal,
+    gate, handle, session, context, json, signInExternal, linkExternal,
     /** A new issuer: every account's Authelia link goes (subjects are per issuer). */
     async unlinkAll() {
       await lock(async () => {
