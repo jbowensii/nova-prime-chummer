@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made up for the tests: an example set that isn't canon. -->
+<ca2:sampleset xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" name="Made-up house set" canon="false"/>

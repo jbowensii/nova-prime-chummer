@@ -73,7 +73,7 @@ describe('with an admin, an editor and a player', () => {
     ['GET', '/api/characters', 'user'], ['PUT', '/api/characters/zz', 'user', '<nope/>'], ['DELETE', '/api/characters/zz', 'user'],
     ['POST', '/api/auth/password', 'user', '{}'], ['GET', '/custom/index.xml', 'user'], ['GET', '/api/edits', 'user'], ['GET', '/api/nothing', 'user'],
     ['PUT', '/api/edits/items/x', 'editor', '<edit/>'], ['DELETE', '/api/edits/items/x', 'editor'], ['POST', '/api/edits/sources', 'editor', '{}'],
-    ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'],
+    ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'], ['GET', '/api/samples', 'user'],
     ['GET', '/api/books', 'admin'], ['POST', '/api/books', 'admin', 'not a pdf'], ['GET', '/api/books/nope/report', 'admin'],
     ['POST', '/api/books/nope/reimport', 'admin'], ['POST', '/api/books/nope/ai', 'admin'], ['DELETE', '/api/books/nope', 'admin'],
     ['GET', '/api/review/nope', 'admin'], ['PUT', '/api/review/nope', 'admin', '<review/>'],
@@ -116,6 +116,27 @@ describe('with an admin, an editor and a player', () => {
     expect(read.status).toBe(200)
     expect(await read.text()).toContain('<rule id="house-3f2a" on="false"><name>No &lt;b&gt;crits&lt;/b&gt; &amp; such</name><text>Made up.\nTwo lines.</text></rule>')
     expect(readdirSync(join(s.dir, 'custom')).filter(f => f.endsWith('.tmp'))).toEqual([])
+  })
+
+  test('example sets: everyone signed in reads custom/samples/<set>/; nobody writes them through the API', async () => {
+    const root = join(s.dir, 'custom', 'samples')
+    mkdirSync(join(root, 'builtin'), { recursive: true }); mkdirSync(join(root, 'house'), { recursive: true }); mkdirSync(join(root, '.hidden'), { recursive: true })
+    writeFileSync(join(root, 'builtin', 'sample-dusty.xml'), runner('sample-dusty', 'Dusty Hat'))
+    writeFileSync(join(root, 'builtin', 'notes.txt'), 'not a runner')
+    writeFileSync(join(root, 'house', 'set.xml'), '<?xml version="1.0"?><ca2:sampleset xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" name="Made-up &amp; house set" canon="false"/>')
+    writeFileSync(join(root, 'house', 'mo.xml'), runner('house-mo', 'Mo Ray'))
+    writeFileSync(join(root, '.hidden', 'x.xml'), runner('x', 'Hidden'))
+    const r = await call(s.base, 'GET', '/api/samples', { cookie: jar.player })
+    expect(await r.json()).toEqual({ sets: [
+      { id: 'builtin', name: 'Built-in samples (first release)', canon: true, samples: [{ name: 'Dusty Hat', href: 'samples/builtin/sample-dusty.xml' }] },
+      { id: 'house', name: 'Made-up & house set', canon: false, samples: [{ name: 'Mo Ray', href: 'samples/house/mo.xml' }] }] })
+    expect((await call(s.base, 'GET', '/custom/samples/builtin/sample-dusty.xml', { cookie: jar.player })).status).toBe(200)
+    expect((await call(s.base, 'GET', '/custom/samples/builtin/sample-dusty.xml')).status).toBe(401)
+    for (const m of ['PUT', 'POST', 'DELETE']) expect((await call(s.base, m, '/api/samples', { cookie: jar.admin, body: m === 'DELETE' ? undefined : '{}' })).status).toBe(405)
+    const set = join(root, 'house', 'set.xml')
+    const v = await validateXML({ xml: { fileName: set, contents: readFileSync(set, 'utf8') },
+      schema: { fileName: 'sampleset.xsd', contents: readFileSync('public/data/schema/sampleset.xsd', 'utf8') } })
+    expect(v.errors).toEqual([])
   })
 
   test('me says who is signed in, and never a hash', async () => {

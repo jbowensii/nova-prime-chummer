@@ -56,12 +56,16 @@ will convert from this format; the format itself is ours and stays stable.
   non-canon content is allowed.
 - **`origin`** on a sample runner names the source it was built from
   (`CRB`, `PREGENS`), so the library can badge non-canon samples.
-- **`sampleKey`** on a runner loaded with "Load sample characters" names the sample: the source and the sample's name
-  from `samples.xml` (`pregens.test-face`; a second sample of the same name in one source gets `-2`). Each account gets
-  copies with ids of its own, and loading again skips every sample whose key is already in that account's library, so a
-  re-import that gives a sample a new file or id adds no copy. A runner loaded before keys existed counts by its
-  `origin` and name. When a library holds unmodified copies of one sample (the same apart from id and timestamps),
-  the library offers to move the extra ones to that account's trash; copies someone changed stay.
+- **`sampleKey`** on a runner loaded with "Load example characters" names the example character it copies: its name
+  slug and whether that version is canon (`test-face|canon`, `test-face|noncanon`). Each account gets copies with ids
+  of its own, and loading again skips every key already in that account's library, so a re-import that gives a sample
+  a new file or id, or a second book with the same character, adds no copy. Older copies count too: a 0.4.1 key
+  (`pregens.test-face`: the source gives the canon-ness), a copy with only an `origin` (its source and name), and a
+  first-release built-in runner (id `sample-…`, no `origin`: canon). The load also sets `lastExportedAt` to the
+  example's `updatedAt`, which is how the library tells an unchanged copy. When a library holds more than one copy
+  under a key, the library offers to move the extra ones to that account's trash: a copy someone changed (saved again,
+  or dated after it was loaded) always stays; otherwise the preferred version stays (a book's over an example set's,
+  the newest import).
 - Older `.ca2.json` exports still import.
 
 ## Server API
