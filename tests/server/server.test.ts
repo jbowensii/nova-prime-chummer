@@ -3,8 +3,7 @@ import { mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-// @ts-expect-error plain JS module
-import { createServer } from '../../server/server.mjs'
+import { createServer } from './_signin'
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-'))
 let base = ''
@@ -28,7 +27,7 @@ test('create names the file after the street name and starts at rev 1', async ()
   const r = await put('a1', xml('a1', 'Test Runner'))
   expect(r.status).toBe(201)
   expect(await r.json()).toEqual({ rev: 1, file: 'Test-Runner.xml' })
-  expect(readFileSync(join(dir, 'chars', 'Test-Runner.xml'), 'utf8')).toContain('rev="1"')
+  expect(readFileSync(join(dir, 'chars', 'admin', 'Test-Runner.xml'), 'utf8')).toContain('rev="1"')
 })
 
 test('a save based on an old revision is refused; force or the right rev succeeds', async () => {
@@ -52,8 +51,8 @@ test('list returns every runner with its XML', async () => {
 
 test('delete moves the file to .trash', async () => {
   expect((await fetch(`${base}/api/characters/a3`, { method: 'DELETE' })).status).toBe(204)
-  expect(readdirSync(join(dir, 'chars'))).not.toContain('Test-Runner-2.xml')
-  expect(readdirSync(join(dir, 'chars', '.trash'))[0]).toMatch(/^Test-Runner-2-\d+\.xml$/)
+  expect(readdirSync(join(dir, 'chars', 'admin'))).not.toContain('Test-Runner-2.xml')
+  expect(readdirSync(join(dir, 'chars', 'admin', '.trash'))[0]).toMatch(/^Test-Runner-2-\d+\.xml$/)
 })
 
 test('trust boundary: bad ids, mismatched bodies and path traversal are refused', async () => {
@@ -64,7 +63,7 @@ test('trust boundary: bad ids, mismatched bodies and path traversal are refused'
 })
 
 test('serves the app and data files', async () => {
-  const r = await fetch(`${base}/data/levels.xml`)
+  const r = await fetch(`${base}/data/sources.xml`)
   expect(r.status).toBe(200)
-  expect(await r.text()).toContain('kind="levels"')
+  expect(await r.text()).toContain('kind="sources"')
 })

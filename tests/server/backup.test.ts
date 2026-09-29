@@ -4,13 +4,13 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFil
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
-// @ts-expect-error plain JS module
-import { createServer } from '../../server/server.mjs'
+import { createServer } from './_signin'
 
 vi.setConfig({ testTimeout: 30000 })
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-backup-'))
 const chars = join(dir, 'chars'), library = join(dir, 'library'), backups = join(library, '.backups')
+const mine = join(chars, 'admin') // the signed-in admin's runners
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version
 let base = ''
 let srv: { close: () => void; stopJobs: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
@@ -120,7 +120,7 @@ test('backup → change → preview → restore brings the runner back; the toke
   expect(temps()).toHaveLength(1) // the upload waits for its token
   const r = await apply(token)
   expect([r.status, await r.json()]).toEqual([200, { ok: true }])
-  expect(readdirSync(chars).map(f => readFileSync(join(chars, f), 'utf8')).join()).toContain('streetName="Before"')
+  expect(readdirSync(mine).map(f => readFileSync(join(mine, f), 'utf8')).join()).toContain('streetName="Before"')
   expect(readFileSync(join(library, '.config', 'ai-keys.xml'), 'utf8')).toContain('KEEPOUT') // a backup without keys keeps the server's
   expect(readdirSync(backups).some(f => /^\d{14}_\d{6}Z\.zip$/.test(f))).toBe(true) // the safety backup
   expect(temps()).toEqual([])
@@ -144,7 +144,7 @@ test('a restore is refused while a write runs, and nothing writes while a restor
     await fetch(`${base}/api/characters/r1`, { method: 'DELETE' })])
     expect(r.status).toBe(409)
   expect((await restoring).status).toBe(200)
-  expect(readdirSync(chars).map(f => readFileSync(join(chars, f), 'utf8')).join()).not.toContain('During')
+  expect(readdirSync(mine).map(f => readFileSync(join(mine, f), 'utf8')).join()).not.toContain('During')
 })
 
 test('a new preview or backup replaces the pending one; stopping the server deletes them', async () => {
@@ -191,5 +191,5 @@ test('start-up removes temp files a stop left (library/.backups, restore swap fo
   createServer({ staticDir: 'public', charDir: ch, customDir: cu, libraryDir: lib,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   expect(readdirSync(bk).sort()).toEqual(['20260928T000000_000000Z.zip', 'mine.zip'])
-  expect([readdirSync(ch), readdirSync(cu), readdirSync(lib)]).toEqual([['keep'], [], ['.backups']])
+  expect([readdirSync(ch), readdirSync(cu), readdirSync(lib).sort()]).toEqual([['keep'], [], ['.backups', '.config']]) // .config: the test admin
 })

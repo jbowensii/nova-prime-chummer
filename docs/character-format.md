@@ -1,7 +1,7 @@
 # Character file format
 
 A runner is one XML file. That's what the server stores in
-`characters/` (on Unraid: `/mnt/user/appdata/chummer-anarchy2/characters`) and
+`characters/<username>/`, one folder per account (on Unraid: `/mnt/user/appdata/chummer-anarchy2/characters`), and
 what **Export** downloads. The schema is `public/data/schema/character.xsd`
 (namespace `urn:chummer-anarchy2:character:1`). A later Foundry VTT export
 will convert from this format; the format itself is ours and stays stable.
@@ -32,8 +32,8 @@ will convert from this format; the format itself is ours and stays stable.
   </build>
   <career>
     <event id="…" at="…" type="earn" amount="50000" run="…" date="2086-03-01"/>
-    <event … type="advance" path="skills.stealth" from="5" to="6" cost="5000"/>
-    <event … type="amp-modify" ampUid="…" cost="15000"><before><amp …/></before><after><amp …/></after></event>
+    <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>
+    <event … type="amp-modify" ampUid="…" cost="12000"><before><amp …/></before><after><amp …/></after></event>
     <event … type="void" eventId="…" reason="misclick"/>
   </career>
   <override code="attr.maxCount" path="attributes">GM: street legend campaign</override>
@@ -63,11 +63,14 @@ will convert from this format; the format itself is ours and stays stable.
 | Request | Result |
 |---|---|
 | `GET /api/health` | `{ ok: true, storage: "server" }` |
-| `GET /api/characters` | `[{ file, rev, xml }]` |
+| `GET /api/characters` | `[{ file, rev, xml, owner }]`: your runners; an admin or editor also gets everyone else's (read only) |
 | `PUT /api/characters/:id` (body: XML, `If-Match: rev`) | `201`/`200 { rev, file }`, or `409 { rev, file, updatedAt }` |
 | `PUT …?force=1` | overwrite regardless of `rev` |
 | `PUT …?filename=Name` | file name for a new runner (default: its street name) |
-| `DELETE /api/characters/:id` | `204`; the file moves to `characters/.trash/` |
+| `DELETE /api/characters/:id` | `204`; the file moves to `characters/<username>/.trash/` |
+
+Every request needs a signed-in session (`server/auth.mjs`). `PUT` and `DELETE` act on your own runners only: a
+runner id another account holds is refused with `403`.
 
 Writes go to a temporary file and are renamed into place, so a crash never
 leaves a half-written runner.

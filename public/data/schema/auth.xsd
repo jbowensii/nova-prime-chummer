@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- library/.config/auth.xml (Sign in with Authelia: issuer, client id, on/off), oidc-key.xml and auth-secret.xml (the client secret, mode 600,
+     with the issuer it was given for: a new issuer drops it). Written by the server (server/oidc.mjs); never served; the secret is
+     never returned by the API or logged, and goes into a backup only with "Include my API keys". -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:config:1"
+           targetNamespace="urn:chummer-anarchy2:config:1"
+           elementFormDefault="unqualified">
+  <xs:element name="auth">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="oidc" minOccurs="0">
+          <xs:complexType>
+            <!-- enabled: the sign-in page shows "Sign in with Authelia" (only with an issuer, client id and secret) -->
+            <xs:attribute name="enabled" type="xs:boolean" use="required"/>
+            <!-- the issuer exactly as its discovery document names it (https://, or http:// to localhost) -->
+            <xs:attribute name="issuer" type="xs:string" use="required"/>
+            <xs:attribute name="client" type="xs:string" use="required"/>
+            <xs:attribute name="tokenAuth" use="required">
+              <xs:simpleType><xs:restriction base="xs:string">
+                <xs:enumeration value="client_secret_basic"/><xs:enumeration value="client_secret_post"/>
+              </xs:restriction></xs:simpleType>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- oidc-key.xml (mode 600, never backed up): the AES-256-GCM key sealing the sign-in state cookie -->
+  <xs:element name="oidckey">
+    <xs:complexType>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="key" type="xs:base64Binary" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="authsecret">
+    <xs:complexType>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="issuer" type="xs:string" use="required"/>
+      <xs:attribute name="secret" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="512"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

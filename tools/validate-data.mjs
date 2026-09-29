@@ -15,7 +15,8 @@ for (const dir of ['public/custom/texts', '.extract/private/texts'])
 if (existsSync('public/custom/texts.xml')) process.argv.push('--texts=public/custom/texts.xml');
 const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
 
-// base files, then each custom dir the way the app loads it: imported/sources.xml, sources.xml,
+// base files (public/data: sources.xml, and the owner's local core copies when present), then each custom dir the way the
+// app loads it: imported/core/ (the core files), imported/sources.xml, sources.xml,
 // the files in imported/index.xml, the edits layer (edits/sources.xml, edits.xml, texts.xml), then the house rules in index.xml
 const files = readdirSync(DATA).filter(f => f.endsWith('.xml')).map(f => join(DATA, f));
 for (const t of process.argv.filter(a => a.startsWith('--texts='))) files.push(t.slice(8));
@@ -25,6 +26,8 @@ const listed = dir => {
   for (const m of readFileSync(idx, 'utf8').replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)) files.push(join(dir, m[1]));
 };
 for (const dir of ['public/custom', ...process.argv.slice(2).filter(a => !a.startsWith('--'))]) {
+  const core = join(dir, 'imported', 'core');
+  if (existsSync(core)) for (const f of readdirSync(core).filter(f => f.endsWith('.xml'))) files.push(join(core, f));
   for (const s of [join(dir, 'imported', 'sources.xml'), join(dir, 'sources.xml')]) if (existsSync(s)) files.push(s);
   listed(join(dir, 'imported'));
   for (const e of ['sources', 'edits', 'texts']) if (existsSync(join(dir, 'edits', `${e}.xml`))) files.push(join(dir, 'edits', `${e}.xml`));

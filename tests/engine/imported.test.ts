@@ -123,7 +123,7 @@ test('loadCatalog fetches data, sources, imported files, texts, edits, then hous
     expect(at('custom/imported/testc/amps.xml')).toBeGreaterThan(at('custom/imported/index.xml'))
     expect(at('custom/texts/house.xml')).toBeGreaterThan(at('custom/imported/testc/items.xml'))
     expect(at('custom/house.xml')).toBeGreaterThan(at('custom/texts/house.xml'))
-    expect(c.files.map(f => f.file).slice(-6)).toEqual(['custom/imported/testc/items.xml', 'custom/texts/house.xml',
+    expect(c.files.map(f => f.file).slice(-6)).toEqual(['custom/imported/testc/skills.xml', 'custom/texts/house.xml',
       'custom/edits/sources.xml', 'custom/edits/edits.xml', 'custom/edits/texts.xml', 'custom/house.xml'])
   } finally { restore() }
 })

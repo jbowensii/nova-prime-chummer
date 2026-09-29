@@ -20,11 +20,13 @@ RUN apk add --no-cache python3 py3-pip \
 COPY --from=build /app/dist ./dist
 # the app version backups record (package.json isn't in this image)
 COPY --from=build /app/VERSION ./VERSION
-COPY server/server.mjs server/books.mjs ./server/
+COPY server/server.mjs server/books.mjs server/auth.mjs server/oidc.mjs server/users.mjs ./server/
 COPY importer ./importer
 RUN rm -rf ./importer/tests && find ./importer -name __pycache__ -prune -exec rm -rf {} +
-# the importer reads the shipped mechanics (skills, amp effects, amp types …) from the built app's data
-ENV PORT=80 STATIC_DIR=/app/dist CHAR_DIR=/data/characters CUSTOM_DIR=/data/custom LIBRARY_DIR=/data/library \
+# the importer reads sources.xml from the built app's data, and the core files (skills, amp effects …) from
+# CUSTOM_DIR/imported/core, which the core rulebook's import builds: the image ships no core data
+# UV_THREADPOOL_SIZE: password hashing (scrypt) shares the threadpool with file reads; more threads keep the app responsive
+ENV UV_THREADPOOL_SIZE=16 PORT=80 STATIC_DIR=/app/dist CHAR_DIR=/data/characters CUSTOM_DIR=/data/custom LIBRARY_DIR=/data/library \
     PYTHON=python3 CA2_DATA_DIR=/app/dist/data PYTHONDONTWRITEBYTECODE=1
 VOLUME ["/data/characters", "/data/custom", "/data/library"]
 EXPOSE 80

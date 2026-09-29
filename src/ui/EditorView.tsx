@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { appendEvent, balance, derive, price, rescope, validate } from '../engine'
 import type { CareerEvent, Catalog, Character } from '../model/types'
+import { AccountMenu, session, track, useMe } from './auth'
 import { fmt, Modal } from './bits'
 import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
@@ -24,6 +25,9 @@ interface Pending { ev: CareerEvent; summary: string; cost: number; after: numbe
 
 export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string }) {
   const repo = useRepo()
+  const me = useMe()
+  // someone else's runner (admin and editors can open everyone's): read-only, their name on the bar
+  const [owner, setOwner] = useState<string | null>(null)
   const [ch, setCh] = useState<Character | undefined>()
   const [loaded, setLoaded] = useState(false)
   const hist = useRef<{ past: Character[]; future: Character[] }>({ past: [], future: [] })
@@ -43,6 +47,9 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     repo.get(id).then(s => {
       sync.current.rev = s?.rev
       sync.current.loaded = s?.ch
+      const theirs = !!(me && s?.owner && s.owner !== me.username)
+      sync.current.paused = theirs // never saved
+      setOwner(theirs ? s!.ownerName ?? s!.owner! : null)
       // old runners can reference unscoped catalog ids; remap them, saved normally when they change
       setCh(s && rescope(cat.current, s.ch))
       setLoaded(true)
@@ -50,19 +57,22 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   }, [repo, id])
   useEffect(() => setCh(x => x && rescope(c, x)), [c]) // same object when nothing needs remapping
 
-  const persist = async (next: Character, keepalive = false) => {
+  // the returned promise covers the queued follow-up too; sign-out waits for it (auth.tsx track)
+  const persist = (next: Character, keepalive = false): Promise<void> => {
     const st = sync.current
-    if (st.paused || next === st.saved) return
-    if (st.busy) { st.queued = next; return }
+    if (st.paused || session.held || next === st.saved) return Promise.resolve()
+    if (st.busy) { st.queued = next; return Promise.resolve() }
     st.busy = true
-    const r = await repo.save(next, st.rev, { keepalive })
-    st.busy = false
-    if (r.ok) { st.rev = r.rev; st.saved = next; setSaveError(null) }
-    else if (r.conflict) { st.paused = true; setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
-    else setSaveError(r.error ?? 'Saving failed.')
-    const q = st.queued
-    st.queued = undefined
-    if (q && !st.paused) void persist(q)
+    return track((async () => {
+      const r = await repo.save(next, st.rev, { keepalive })
+      st.busy = false
+      if (r.ok) { st.rev = r.rev; st.saved = next; setSaveError(null) }
+      else if (r.conflict) { st.paused = true; setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
+      else if (!session.held) setSaveError(r.error ?? 'Saving failed.') // a 401: the sign-in form is up, it's sent once back
+      const q = st.queued
+      st.queued = undefined
+      if (q && !st.paused) await persist(q)
+    })())
   }
 
   useEffect(() => {
@@ -79,7 +89,9 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       if (st.latest && st.latest !== st.loaded && st.latest !== st.saved) void persist(st.latest, true)
     }
     addEventListener('pagehide', flush)
-    return () => { removeEventListener('pagehide', flush); flush() }
+    addEventListener('ca2-signed-in', flush) // the same account signed back in after the session ended: send what didn't save
+    addEventListener('ca2-leaving', flush) // signing out: send it before the session ends
+    return () => { for (const e of ['pagehide', 'ca2-signed-in', 'ca2-leaving']) removeEventListener(e, flush); flush() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const resolveConflict = async (how: 'overwrite' | 'copy' | 'reload') => {
@@ -115,15 +127,16 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   }
   const mutate = (fn: (d: Character) => void) => { const d = structuredClone(ch); fn(d); return d }
 
+  const ro = owner !== null
   const ctx: EditorCtx = {
     c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career,
-    edit: fn => { if (!career) commit(mutate(fn), true) },
-    update: fn => commit(mutate(fn), !career),
-    record: (ev, summary) => new Promise<boolean>(resolve => {
+    edit: fn => { if (!career && !ro) commit(mutate(fn), true) },
+    update: fn => { if (!ro) commit(mutate(fn), !career) },
+    record: (ev, summary) => ro ? Promise.resolve(false) : new Promise<boolean>(resolve => {
       const cost = ev.type === 'earn' ? -ev.amount : 'cost' in ev ? ev.cost : 0
       setPending({ ev, summary, cost, after: calc.bal - cost, resolve })
     }),
-    replace: next => commit(next, true),
+    replace: next => { if (!ro) commit(next, true) },
     undo: () => { const prev = hist.current.past.pop(); if (prev) { hist.current.future.push(ch); setCh(prev); bump(n => n + 1) } },
     redo: () => { const next = hist.current.future.pop(); if (next) { hist.current.past.push(ch); setCh(next); bump(n => n + 1) } },
     canUndo: hist.current.past.length > 0,
@@ -149,12 +162,13 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
         <a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
         <div className="who"><span className="name">{name}</span><span className={`mode ${career ? 'career' : 'creation'}`}>{career ? 'Career' : 'Creation'}</span></div>
         <span className="spacer" />
-        {!career && <>
+        {!career && !ro && <>
           <button className="btn quiet" disabled={!ctx.canUndo} onClick={ctx.undo}>Undo</button>
           <button className="btn quiet" disabled={!ctx.canRedo} onClick={ctx.redo}>Redo</button>
         </>}
         <SettingsButton />
-        <button className="btn" onClick={() => setCh(exportCharacter(c, ch))}>Export file</button>
+        <AccountMenu />
+        <button className="btn" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))}>Export file</button>
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
@@ -163,10 +177,12 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           </a>
         ))}
       </nav>
+      {ro && <p className="banner readonly" role="status">Read only — {owner}’s runner. Only they can change it; you can still
+        {' '}<a href={`#/c/${ch.id}/print`}>print it</a> or export a copy.</p>}
       {saveError && <p className="banner" style={{ margin: '1rem 1.25rem 0' }}>{saveError} Changes are kept in this tab; use Export file if you need to close it.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
-        <main className="work">
+        <main className="work"><fieldset className="bare" disabled={ro}>
           {tab === 'concept' && <ConceptTab />}
           {tab === 'attributes' && <AttributesTab />}
           {tab === 'skills' && <SkillsTab />}
@@ -174,7 +190,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           {tab === 'gear' && <GearTab />}
           {tab === 'review' && <ReviewTab />}
           {tab === 'ledger' && <LedgerTab />}
-        </main>
+        </fieldset></main>
         <Receipt />
       </div>
       <Modal open={!!conflict} onClose={() => void resolveConflict('reload')} title="Saved elsewhere"

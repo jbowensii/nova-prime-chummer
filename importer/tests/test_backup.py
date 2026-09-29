@@ -4,6 +4,7 @@ import os
 import stat
 import tempfile
 import unittest
+from unittest import mock
 import unittest.mock
 import zipfile
 from pathlib import Path
@@ -26,6 +27,7 @@ def state(root, extra=""):
         "library/book-1/status.xml": '<status state="done"/>',
         "library/.config/ai-providers.xml": "<aiproviders/>",
         "library/.config/ai-keys.xml": f"<aikeys>secret{extra}</aikeys>",
+        "library/.config/auth-secret.xml": "<authsecret/>",
         "library/.backups/19990101T000000_000000Z.zip": "not really",
         "custom/edits/edits.xml.tmp": "half written",
     }
@@ -66,9 +68,36 @@ def bad_zip(entries, manifest=True, attrs=None):
 
 
 class BackupTest(unittest.TestCase):
+    def test_a_swaps_temp_folders_never_travel_in_a_backup(self):
+        """A backup made while a data pack swaps would carry core/.restore-old-*; restored, `recover` would put those stale
+        tables back over the live ones. The backup skips them at any depth, and check refuses a zip that has them."""
+        from importer import datapack
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        core = os.path.join(dirs["custom"], "imported", "core")
+        os.makedirs(os.path.join(core, ".restore-old-abc"))
+        Path(core, "skills.xml").write_text("current")
+        Path(core, ".restore-old-abc", "skills.xml").write_text("STALE")
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        with zipfile.ZipFile(out) as zf:
+            self.assertIn("custom/imported/core/skills.xml", zf.namelist())
+            self.assertFalse([n for n in zf.namelist() if ".restore-" in n])
+        backup.check(out)
+        restored = {f: os.path.join(root, "restored", f) for f in backup.FOLDERS}
+        backup.apply(out, restored)
+        datapack.recover(os.path.join(restored["custom"], "imported", "core"))
+        self.assertEqual(Path(restored["custom"], "imported", "core", "skills.xml").read_text(), "current")
+        planted = bad_zip({"custom/imported/core/.restore-old-abc/skills.xml": b"STALE"})
+        with self.assertRaises(backup.RestoreError) as e:
+            backup.check(planted)
+        self.assertIn(".restore-", str(e.exception))
+
     def test_contents_without_and_with_keys(self):
         root = tempfile.mkdtemp()
         dirs = state(root)
+        for never in ("sessions.xml", "reset.xml", "device-key.xml", "oidc-key.xml"):  # session hashes and a recovery code's hash: never backed up
+            Path(dirs["library"], ".config", never).write_text("<x/>", encoding="utf8")
         out = os.path.join(root, "b.zip")
         backup.backup(dirs, out, version="9.9.9")
         with zipfile.ZipFile(out) as zf:
@@ -78,6 +107,8 @@ class BackupTest(unittest.TestCase):
             self.assertIn("characters/.trash/old.xml", names)
             self.assertIn("library/.config/ai-providers.xml", names)
             self.assertNotIn(backup.KEYS, names)
+            self.assertNotIn(backup.AUTH_SECRET, names)
+            self.assertFalse(names & backup.NEVER)
             self.assertFalse([n for n in names if ".backups" in n or n.endswith(".tmp")])
         m = backup.check(out)
         self.assertEqual((m.get("app"), m.get("keys"), m.get("files")), ("9.9.9", "no", str(len(names) - 1)))
@@ -89,6 +120,7 @@ class BackupTest(unittest.TestCase):
                                "--library", dirs["library"], "--out", out, "--keys"]), 0)
         with zipfile.ZipFile(out) as zf:
             self.assertEqual(zf.read(backup.KEYS), b"<aikeys>secret</aikeys>")
+            self.assertIn(backup.AUTH_SECRET, zf.namelist())
         self.assertEqual(backup.check(out).get("keys"), "yes")
         self.assertEqual(backup.check(out).get("app"), backup.app_version())  # package.json's version
         self.assertEqual(os.listdir(root).count("b.zip"), 1)
@@ -188,6 +220,20 @@ class BackupTest(unittest.TestCase):
         self.assertEqual(tree(dst), {k: v for k, v in before.items() if not k.endswith(".tmp")})
         self.assertIn("19990101T000000_000000Z.zip", os.listdir(backups))
 
+    def test_a_zips_session_and_recovery_files_are_never_restored(self):
+        """A zip made elsewhere (or edited) carrying sessions.xml or reset.xml: a standing recovery code must not land."""
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root, " new"), state(dst_root, " old")
+        for never in ("sessions.xml", "reset.xml", "device-key.xml", "oidc-key.xml"):
+            Path(src["library"], ".config", never).write_text("<x/>", encoding="utf8")
+        z = os.path.join(src_root, "carries.zip")
+        with mock.patch.object(backup, "NEVER", set()):
+            backup.backup(src, z)
+        with zipfile.ZipFile(z) as zf:
+            self.assertIn("library/.config/reset.xml", zf.namelist())
+        backup.apply(z, dst)
+        self.assertEqual(sorted(os.listdir(os.path.join(dst["library"], ".config"))), ["ai-keys.xml", "ai-providers.xml"])
+
     def test_keys_kept_when_the_zip_has_none(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root, " new"), state(dst_root, " old")
@@ -225,6 +271,119 @@ class BackupTest(unittest.TestCase):
         backup.backup(src, z)
         backup.apply(z, dst)
         self.assertEqual([p for p in providers.PROVIDER_IDS if providers.read_key(cfg, p)], [])
+
+    def _accounts(self, dirs, issuer=None, secret=None, users=2):
+        """users.xml with `users` accounts; auth.xml naming `issuer` and auth-secret.xml given for `secret` (None: no file)."""
+        cfg = os.path.join(dirs["library"], ".config")
+        ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
+        rows = "".join(f'<user id="{i:012x}" username="user{i}" name="User {i}" role="admin" method="authelia" enabled="true" '
+                       f'created="2026-09-28T00:00:00Z"/>' for i in range(users))
+        Path(cfg, "users.xml").write_text(f"<ca2:users {ns}>{rows}</ca2:users>", encoding="utf8")
+        for name, text in (("auth.xml", issuer is not None and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c" tokenAuth="client_secret_basic"/></ca2:auth>'),
+                           ("auth-secret.xml", secret is not None and f'<ca2:authsecret {ns} issuer="{secret}" secret="s3cret-{secret}"/>')):
+            if text:
+                Path(cfg, name).write_text(text, encoding="utf8")
+            elif os.path.exists(os.path.join(cfg, name)):
+                os.remove(os.path.join(cfg, name))
+        return cfg
+
+    def test_accounts_always_travel_the_authelia_secret_only_with_keys(self):
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        self._accounts(dirs, "https://auth.example", "https://auth.example", users=3)
+        out = os.path.join(root, "b.zip")
+        for keys in (False, True):
+            backup.backup(dirs, out, keys=keys)
+            with zipfile.ZipFile(out) as zf:
+                self.assertTrue({backup.USERS, "library/.config/auth.xml", "characters/runner-1.xml", "characters/.trash/old.xml"}
+                                <= set(zf.namelist()))
+                self.assertEqual(backup.AUTH_SECRET in zf.namelist(), keys)
+                written = backup.ET.fromstring(zf.read("backup.xml"))
+            m = backup.check(out)
+            for r in (written, m):
+                self.assertEqual((r.get("users"), r.get("authSecret")), ("3", "yes" if keys else "no"))
+
+    def test_the_servers_authelia_secret_stays_for_the_same_issuer_only(self):
+        """A restore without keys keeps the server's client secret when the restored auth.xml names the issuer it was
+        given for; another issuer, or no auth.xml, drops it (like the API keys and their addresses)."""
+        for restored, kept in (("https://auth.example", True), ("https://other.example", False), (None, False)):
+            with self.subTest(restored=restored):
+                src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+                src, dst = state(src_root), state(dst_root)
+                self._accounts(src, restored)
+                cfg = self._accounts(dst, "https://auth.example", "https://auth.example")
+                z = os.path.join(src_root, "nokeys.zip")
+                backup.backup(src, z)
+                backup.apply(z, dst)
+                path = os.path.join(cfg, "auth-secret.xml")
+                self.assertEqual(os.path.exists(path), kept)
+                if kept:
+                    self.assertIn("s3cret-https://auth.example", Path(path).read_text(encoding="utf8"))
+                    if os.name != "nt":
+                        self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
+        # a backup with keys brings its own secret, whatever the server had
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root), state(dst_root)
+        self._accounts(src, "https://other.example", "https://other.example")
+        cfg = self._accounts(dst, "https://auth.example", "https://auth.example")
+        z = os.path.join(src_root, "keys.zip")
+        backup.backup(src, z, keys=True)
+        backup.apply(z, dst)
+        self.assertIn("s3cret-https://other.example", Path(cfg, "auth-secret.xml").read_text(encoding="utf8"))
+
+    def test_the_servers_cookie_keys_stay(self):
+        """device-key.xml and oidc-key.xml are this server's: a zip's copies never land, the server's stay."""
+        src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = state(src_root), state(dst_root)
+        for name in backup.NEVER_KEPT:
+            Path(src["library"], ".config", name).write_text("<zip/>", encoding="utf8")
+            Path(dst["library"], ".config", name).write_text("<server/>", encoding="utf8")
+        z = os.path.join(src_root, "carries.zip")
+        with mock.patch.object(backup, "NEVER", set()):
+            backup.backup(src, z)
+        backup.apply(z, dst)
+        for name in backup.NEVER_KEPT:
+            self.assertEqual(Path(dst["library"], ".config", name).read_text(encoding="utf8"), "<server/>")
+
+    def test_a_backup_from_before_accounts_says_so(self):
+        """No users.xml: the manifest says 0 accounts (the server goes back to setup); an unreadable one is refused."""
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        self.assertEqual(backup.check(out).get("users"), "0")
+        self._accounts(dirs)
+        Path(dirs["library"], ".config", "users.xml").write_text("<ca2:users", encoding="utf8")
+        backup.backup(dirs, out)  # a broken server can still be backed up ...
+        with self.assertRaisesRegex(backup.RestoreError, "accounts file"):  # ... but that isn't restored
+            backup.check(out)
+
+    def test_accounts_and_sign_in_settings_must_be_valid(self):
+        """users.xml and auth.xml are checked against users.xsd and auth.xsd: one the server can't read would leave nobody
+        able to sign in (and so nobody able to restore the safety backup)."""
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        cfg = self._accounts(dirs, "https://auth.example")
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        self.assertEqual(backup.check(out).get("users"), "2")
+        ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
+        bad = {
+            "users.xml": [f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="boss" method="password" '
+                          'enabled="true" created="2026-09-28T00:00:00Z"/></ca2:users>',  # no such role
+                          f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="admin" method="password" '
+                          'enabled="true" created="2026-09-28T00:00:00Z"><password algorithm="scrypt" N="2" r="1" p="1"/></user></ca2:users>',
+                          f'<ca2:sessions {ns}/>'],  # another root users.xsd allows
+            "auth.xml": [f'<ca2:auth {ns}><oidc issuer="x"/></ca2:auth>', "<auth/>"],
+        }
+        for name, texts in bad.items():
+            for text in texts:
+                with self.subTest(name=name, text=text):
+                    self._accounts(dirs, "https://auth.example")
+                    Path(cfg, name).write_text(text, encoding="utf8")
+                    backup.backup(dirs, out)
+                    with self.assertRaisesRegex(backup.RestoreError, "isn’t valid"):
+                        backup.check(out)
 
     def test_backups_pruned_to_three(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()

@@ -103,7 +103,7 @@ test('edit a book add-on from the amp picker; an unsaved runner change survives 
   await page.getByLabel('Search the book’s amps').fill('Static Shroud')
   const shroud = page.locator('.picker li', { hasText: 'Static Shroud' })
   await expect(shroud).toHaveClass('off') // listed to be edited, not picked
-  await expect(shroud).toContainText('Add-on for Equipment')
+  await expect(shroud).toContainText('Add-on for Gear') // the made-up core data's name for equipment amps
   await shroud.getByRole('button', { name: 'Edit Static Shroud' }).click()
   await dialog(page).getByLabel('Description', { exact: true }).fill('Hums quietly, made-up text.')
   await dialog(page).getByRole('button', { name: 'Save to the catalog' }).click()

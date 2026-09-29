@@ -36,7 +36,7 @@ test('amp picker: every entry shows its source; duplicates are told apart', asyn
   await expect(keen.locator('.booktag')).toHaveText(['TEST', 'TEST2'])
   await expect(keen.locator('.booktag').first()).toHaveAttribute('title', 'Test Book One')
 
-  await page.getByRole('button', { name: 'Quality', exact: true }).click()
+  await page.getByRole('button', { name: 'Trait', exact: true }).click()
   await page.getByLabel('Name', { exact: true }).fill('Lucky streak')
   await page.getByRole('button', { name: 'Add amp' }).click()
   await expect(page.locator('tr', { hasText: 'Lucky streak' })).toContainText('Built by you')

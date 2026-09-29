@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP core data for tests. Every name and number is invented; only the ids are the app's vocabulary. Cited as the core rulebook, as the real core files are. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">
+  <skill id="athletics" attr="agi" alt="str" source="CRB" page="20"><name>Athletics</name>
+    <spec id="athletics.ranged-defense" attr="wil">Dodging</spec>
+    <spec id="athletics.climbing" attr="agi">Scaling</spec>
+    <spec id="athletics.tumbling" attr="agi">Tumbling</spec>
+  </skill>
+  <skill id="close-combat" attr="str" alt="log" source="CRB" page="21"><name>Close Combat</name>
+    <spec id="close-combat.blades" attr="str">Knives and swords</spec>
+    <spec id="close-combat.unarmed" attr="str">Fists</spec>
+    <spec id="close-combat.grappling" attr="str">Grappling</spec>
+  </skill>
+  <skill id="conjuring" attr="cha" alt="wil" requires="awakened" source="CRB" page="22"><name>Conjuring</name>
+    <spec id="conjuring.summoning" attr="cha">Summoning</spec>
+    <spec id="conjuring.dismissal" attr="wil">Dismissal</spec>
+  </skill>
+  <skill id="cracking" attr="wil" alt="log" requires="cyberdeck" source="CRB" page="23"><name>Cracking</name>
+    <spec id="cracking.brute-force" attr="wil">Battering</spec>
+    <spec id="cracking.sneak-in" attr="log">Sneak-in</spec>
+  </skill>
+  <skill id="electronics" attr="wil" alt="log" source="CRB" page="24"><name>Electronics</name>
+    <spec id="electronics.matrix-search" attr="wil">Data digging</spec>
+    <spec id="electronics.gadgets" attr="log">Gadgets</spec>
+  </skill>
+  <skill id="engineering" attr="agi" alt="log" source="CRB" page="25"><name>Engineering</name>
+    <spec id="engineering.demolitions" attr="agi">Blasting</spec>
+    <spec id="engineering.welding" attr="agi">Welding</spec>
+  </skill>
+  <skill id="influence" attr="wil" alt="log" source="CRB" page="26"><name>Influence</name>
+    <spec id="influence.bluff" attr="log">Fibbing</spec>
+    <spec id="influence.intimidation" attr="str">Menace</spec>
+    <spec id="influence.negotiation" attr="wil">Haggling</spec>
+    <spec id="influence.impersonation" attr="agi">Mimicry</spec>
+    <spec id="influence.etiquette" attr="wil">Manners</spec>
+  </skill>
+  <skill id="network" attr="wil" alt="cha" source="CRB" page="27"><name>Network</name>
+    <spec id="network.street" attr="wil">Gutter</spec>
+    <spec id="network.criminal" attr="log">Underworld</spec>
+    <spec id="network.nobility" attr="cha">Nobility</spec>
+  </skill>
+  <skill id="perception" attr="wil" alt="log" source="CRB" page="28"><name>Perception</name>
+    <spec id="perception.physical" attr="wil">Watching</spec>
+    <spec id="perception.social" attr="cha">Reading people</spec>
+  </skill>
+  <skill id="piloting" attr="log" alt="agi" source="CRB" page="29"><name>Piloting</name>
+    <spec id="piloting.flying-drones" attr="log">Drone flying</spec>
+    <spec id="piloting.boats" attr="agi">Boats</spec>
+  </skill>
+  <skill id="ranged-weapons" attr="log" alt="agi" source="CRB" page="30"><name>Ranged Weapons</name>
+    <spec id="ranged-weapons.pistols" attr="log">Handguns</spec>
+    <spec id="ranged-weapons.submachine-guns" attr="str">Bullet hoses</spec>
+    <spec id="ranged-weapons.rifles" attr="log">Long guns</spec>
+    <spec id="ranged-weapons.grenade-launchers" attr="log">Lobbers</spec>
+    <spec id="ranged-weapons.heavy-weapons" attr="log">Big guns</spec>
+  </skill>
+  <skill id="sorcery" attr="cha" alt="wil" requires="awakened" source="CRB" page="31"><name>Sorcery</name>
+    <spec id="sorcery.illusion-spells" attr="cha">Glamour</spec>
+    <spec id="sorcery.warding" attr="wil">Warding</spec>
+  </skill>
+  <skill id="stealth" attr="log" alt="agi" source="CRB" page="32"><name>Stealth</name>
+    <spec id="stealth.physical-sneaking" attr="log">Creeping</spec>
+    <spec id="stealth.palming" attr="wil">Sleight of hand</spec>
+    <spec id="stealth.lockpicking" attr="agi">Lock work</spec>
+    <spec id="stealth.astral-sneaking" attr="wil">Spirit hiding</spec>
+    <spec id="stealth.matrix-sneaking" attr="wil">Data hiding</spec>
+  </skill>
+  <skill id="survival" attr="cha" alt="log" source="CRB" page="33"><name>Survival</name>
+    <spec id="survival.composure" attr="cha">Nerves</spec>
+    <spec id="survival.foraging" attr="log">Foraging</spec>
+  </skill>
+</ca2:data>

@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import { api, sendFile } from './Books'
 import { useRepo } from './repo'
 
-interface Manifest { app: string; created: string; keys: boolean; files: number; bytes: number; folders: Record<string, { files: number; bytes: number }> }
+interface Manifest { app: string; created: string; keys: boolean; users: number; authSecret: boolean; files: number; bytes: number; folders: Record<string, { files: number; bytes: number }> }
 type Step = { at: 'idle' } | { at: 'uploading'; pct: number } | { at: 'preview'; token: string; m: Manifest } | { at: 'restoring' } | { at: 'done' }
 
 const UNREACHABLE = 'the server can’t be reached'
-const FOLDERS: [string, string][] = [['characters', 'Runners'], ['custom', 'House rules, edits and imported books'], ['library', 'Uploaded PDFs and AI settings']]
+/** Set before the reload after a restore: the sign-in page says why everyone was signed out (App.tsx). */
+export const RESTORED = 'ca2-restored'
+const FOLDERS: [string, string][] = [['characters', 'Runners'], ['custom', 'House rules, edits and imported books'], ['library', 'Uploaded PDFs, accounts and settings']]
 const size = (b: number) => b < 1024 ** 2 ? `${Math.max(1, Math.round(b / 1024))} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`
 const files = (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`
 const plain = (why?: string) => !why ? 'Something went wrong. Try again.'
@@ -65,6 +67,7 @@ export function BackupSettings() {
     try {
       await api(`restore/${token}`, { method: 'POST' })
       setStep({ at: 'done' })
+      try { sessionStorage.setItem(RESTORED, '1') } catch { /* the sign-in page just won't say why */ }
       setTimeout(() => location.reload(), 1500) // the catalog, the runner list and any open runner all come from the server again
     } catch (e) {
       setStep({ at: 'idle' })
@@ -77,7 +80,7 @@ export function BackupSettings() {
   return (
     <fieldset className="backup">
       <legend>Backup</legend>
-      <p className="muted">Everything this server keeps: runners, house rules and edits, imported books, uploaded PDFs and AI settings.</p>
+      <p className="muted">Everything this server keeps: runners, accounts, house rules and edits, imported books, uploaded PDFs and settings.</p>
       <div className="row">
         <button className="btn" disabled={zipping || step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
         <label className="check inline"><input type="checkbox" checked={keys} aria-describedby={keys ? 'backup-keys-warning' : undefined}
@@ -98,11 +101,14 @@ export function BackupSettings() {
           <dl>
             {([['Made', new Date(step.m.created).toLocaleString()], ['App version', step.m.app],
               ...FOLDERS.filter(([f]) => step.m.folders[f]).map(([f, label]) => [label, files(step.m.folders[f].files) + (step.m.folders[f].bytes > 0 ? `, ${size(step.m.folders[f].bytes)}` : '')]),
-              ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own, except for a provider whose address the backup changes)']] as [string, string][])
+              ['Accounts', step.m.users ? `${step.m.users} ${step.m.users === 1 ? 'account' : 'accounts'}` : 'None: the server asks for a first admin again, who gets the backup’s runners'],
+              ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own, except for a provider whose address the backup changes)'],
+              ['Authelia client secret', step.m.authSecret ? 'Included' : 'Not included (the server keeps its own if the backup’s sign-in settings name the same issuer)']] as [string, string][])
               .map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
           </dl>
-          <p className="err">This replaces every runner, house rule, imported book and setting on the server with the backup’s.
+          <p className="err">This replaces every runner, account, house rule, imported book and setting on the server with the backup’s.
             Anything changed since the backup was made is lost.</p>
+          <p>Everyone is signed out, you too. {step.m.users ? 'Sign in again with an account from the backup.' : 'Then the server asks for a first admin.'}</p>
           <p className="muted">The server’s current data is saved first as a safety backup in its Library (library/.backups; the newest 3 are kept).</p>
           <div className="row">
             <button className="btn" onClick={() => setStep({ at: 'idle' })}>Cancel</button>

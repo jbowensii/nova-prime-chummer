@@ -37,7 +37,7 @@ docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path
 | Container | `chummer-anarchy2`, bridge network, 8480 → 80, Autostart on. Runs `server/server.mjs` (Node), health check `/api/health` |
 | Template | Added via the `jbowensii/unraid-templates` template repository (see Install above); Unraid manages it |
 | Image | `ghcr.io/jbowensii/chummer-anarchy2:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) on every push to `main` |
-| Characters | `/mnt/user/appdata/chummer-anarchy2/characters` → `/data/characters`: one XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/.trash/` |
+| Characters | `/mnt/user/appdata/chummer-anarchy2/characters` → `/data/characters`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
 | House rules | `/mnt/user/appdata/chummer-anarchy2/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
 | Library | `/mnt/user/appdata/chummer-anarchy2/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600). Never served over HTTP; back it up with the rest of appdata |
 | Icon | written to `/var/lib/docker/unraid/images/` and the dockerman runtime images folder. The template's GitHub raw URL can't serve from a private repo. |
@@ -76,6 +76,28 @@ by the `publish.yml` workflow. (Historical note: before this image was
 published, the tag existed only as a tower-local build and force update
 failed — Unraid's `CreateDocker.php` skipped the container without stopping
 it, so it kept running on the old image. That no longer applies.)
+
+## 0.4.0 upgrade (accounts, core data)
+
+1. Docker page → chummer-anarchy2 → **docker pull** first (0.4.0 needs a
+   fresh image pull, not just a container restart), then Edit → **Apply**.
+2. If tower04 is exposed through a reverse proxy, fill in **Trusted proxy**
+   (its address) and, if there's one public address, **Public address**
+   before Apply — see [README.md](../README.md#behind-a-reverse-proxy-trust_proxy).
+   Leave both empty for LAN-only.
+3. On first start after the upgrade, read the one-time setup code from the
+   container log (`docker logs chummer-anarchy2`) and use it to create the
+   first admin. Any runners already at the top of the characters folder
+   move into that admin's own folder.
+4. The core rulebook's tables (levels, metatypes, skills, pricing, amp
+   types and effects, packages, lifestyles, generic weapons, armor,
+   vehicles) re-import automatically on this first start, since the CRB
+   PDF is already in the Library — nothing to upload again. The
+   Conversion Guide and DHSA overlays (Tasking, Emerged, implant grades)
+   re-run right after.
+5. Check **Game data** loaded cleanly and Books still lists the imports,
+   then sign in as the new admin and add the other accounts on the
+   **Users** page.
 
 ## Redeploy after changes
 

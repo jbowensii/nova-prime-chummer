@@ -16,7 +16,7 @@ from importer.__main__ import main
 from importer.ai import propose as P
 from importer.ai import providers as AI
 from importer.ai.schema import SCHEMA
-from importer.tests.test_run import SCHEMA as XSD_DIR, XSD_CHECK, node
+from importer.tests.test_run import MINI, SCHEMA as XSD_DIR, XSD_CHECK, node
 
 KEY = "sk-test-SECRET-123"
 ANTHROPIC_MSG = {"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-opus-5",
@@ -446,7 +446,7 @@ class ProposeTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_validation_rules(self):
-        m = P.mechanics(P.DATA)
+        m = P.mechanics()
         notes = P.amp_notes({"type": "nope", "effects": [
             {"ref": "rr-spec", "param": "athletics.nope"}, {"ref": "rr-skill", "param": "nope"},
             {"ref": "rr-attr", "param": "nope"}, {"ref": "rr-attr", "param": "str"}, {"ref": "rr-spec", "param": None}]}, m)
@@ -621,7 +621,7 @@ class ApplyReviewTest(unittest.TestCase):
         imp = ET.parse(os.path.join(book, "import.xml")).getroot()
         self.assertEqual((imp.get("recipe"), imp.get("source")), ("ai", "MADE"))
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
-        r = node("tools/validate-data.mjs", imported)
+        r = node("tools/validate-data.mjs", MINI, imported)  # the made-up core files, then the overlay
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         for f, xsd in [(os.path.join(imported, "sources.xml"), "sources.xsd"), (os.path.join(book, "import.xml"), "import.xsd")]:
             r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(XSD_DIR, xsd), os.path.join(XSD_DIR, "common.xsd"))

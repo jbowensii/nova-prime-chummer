@@ -1,9 +1,11 @@
 # Chummer Anarchy 2.0 data format
 
-All game data is XML. The app ships the mechanics only, in `public/data/`
-(served unchanged at `/data/`): sources, levels, metatypes, attributes,
-skills, pricing, amp types and effects, packages, lifestyles, and the generic
-weapons, armor and vehicles. Book content (amps, spells, complex forms, gear,
+All game data is XML. The app ships only `public/data/sources.xml` (the books
+a recipe supports) and the schemas. The **core files** (levels, metatypes,
+attributes, skills, pricing, amp types and effects, packages, lifestyles, and
+the generic weapons, armor and vehicles) come from the core rulebook: its
+import writes them to `custom/imported/core/` (see "Core files" below), or the
+admin uploads a data pack. Book content (amps, spells, complex forms, gear,
 rules, sample runners, descriptions) comes from the PDFs the user uploads:
 the importer writes it to `custom/imported/` (see "Imported books" below).
 Any application can read or write these files. The schemas in
@@ -69,6 +71,9 @@ Every file has the same root:
 The importer's own records (`library/<book>/import.xml`, `review.xml`,
 `library/.config/ai-providers.xml`, `ai-keys.xml`) have schemas too:
 `import.xsd`, `review.xsd`, `aiproviders.xsd`, `aikeys.xsd`.
+The server's account files in `library/.config/` use `users.xsd` (`users.xml`, `sessions.xml`, `device-key.xml`,
+`reset.xml`) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret; `oidc-key.xml`: the
+sign-in state cookie's key, never backed up). An Authelia account's `<user>` carries `oidcIss`/`oidcSub` once linked.
 
 ### levels
 
@@ -95,13 +100,13 @@ All caps apply during creation only.
 `<skill id attr alt? requires?><name/><spec id attr>Display name</spec>*</skill>`
 
 - `attr` is the default linked attribute, and `alt` the other listed option.
-- `requires` is `awakened`, `cyberdeck` or `emerged` (Tasking).
+- `requires` is `awakened`, `cyberdeck` or `emerged` (Tasking, which the Conversion Guide's import adds).
 - Spec ids are `<skill>.<spec>`, for example `stealth.physical-sneaking`.
 - A spec from another book than its skill carries its own `source` and
   `page`. An imported book adds specs with a `<skill>` of the base skill's
   id holding only its new specs (DHSA's `influence.seduction`): the loader
   appends them to that skill, once per spec id. A house-rule `<skill>`
-  still replaces the whole skill. The shipped skills.xml has the core
+  still replaces the whole skill. The core skills.xml has the core
   rulebook's specs only.
 - An amp effect may name a custom spec, `param="custom:Defense against
   throwing weapons"`, for a condition that isn't a named specialization.
@@ -236,11 +241,11 @@ The numbers the book prints for each runner are report rows in
 
 ## Private descriptions (`custom/texts/`)
 
-`<text of="amps|items|rules" id="…">description</text>` entries, kind
+`<text of="amps|items|rules|lifestyles" id="…">description</text>` entries, kind
 `texts` (schema `texts.xsd`), one file per source: the file each source's
 `texts` attribute names (`texts/crb.xml`, `texts/dhsa.xml`, `texts/qref.xml`), plus the older
 single `custom/texts.xml`. Each is loaded when present and merged into the
-amp's narrative, item's text or rule's text with the same id. They're
+amp's narrative, item's, rule's or lifestyle's text with the same id. They're
 never committed:
 
 | file | written by |
@@ -252,6 +257,40 @@ never committed:
 On tower04 they live in `/mnt/user/appdata/chummer-anarchy2/custom/texts/`.
 For local development without the server, copy them to `public/custom/texts/`
 (gitignored).
+
+## Core files (`custom/imported/core/`)
+
+The twelve core files above (`ampeffects`, `amptypes`, `armor`, `attributes`,
+`levels`, `lifestyles`, `metatypes`, `packages`, `pricing`, `skills`,
+`vehicles`, `weapons`), written by the core rulebook's import (recipe `crb`,
+`importer/recipes/crb_core.py`) with the same schemas as before, ids **not**
+scoped, every entry `source="CRB"` and its page. Their descriptions (weapon
+examples, armor, lifestyle rules) go to `texts/crb.xml`. Values the book
+doesn't print are app defaults kept in the recipe (`DEFAULTS`,
+`EFFECTS`). A table the recipe can't read is left out and the import report
+says so (`kind="core-unread"`).
+
+Load order: `public/data/` (in development also the owner's local copies of
+the core files, gitignored), then `imported/core/`, then the imported books,
+the edits layer and the house rules. With a core file in neither place the
+app opens on a setup screen. A book adds to the core data like any overlay:
+the Conversion Guide's import adds the Tasking skill and the Emerged amp type,
+DHSA's its implant grades (`imported/cg/skills.xml`, `amptypes.xml`,
+`imported/dhsa/ampeffects.xml`; skill, amp type and effect ids stay unscoped). A book can
+add amp types and effects but never replace a core one (the importer drops it, report `kind="core-override"`).
+Without attributes, metatypes, levels, packages, pricing or skills the app opens on its setup screen; another
+missing table shows a banner.
+A server started without `imported/core/` whose Library holds the core
+rulebook re-imports it (then the Conversion Guide and DHSA).
+It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`).
+After a [data pack](#data-pack) is loaded, the marker records `pack=` and the
+pack's files (`files=`); while all of those files are there, that CRB file isn't
+re-imported at start-up, whatever the version: the core came from the pack. Once
+one of them is gone the mark no longer counts and the usual rule applies; a
+**Re-import** of that CRB drops it. A
+different CRB file (a new upload) is re-imported regardless, and any
+import of the core rulebook (upload, **Re-import**) writes the core files over
+the pack's as usual.
 
 ## Imported books (`custom/imported/`)
 
@@ -267,7 +306,7 @@ it by hand, re-import instead.
 | `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
 | `texts/<source>.xml` | its private descriptions |
 
-Load order: the shipped `public/data/`, then `imported/index.xml`, then the
+Load order: `public/data/`, `imported/core/`, then `imported/index.xml`, then the
 edits layer (`custom/edits/`, below), then the house rules in
 `custom/index.xml`, so house rules still win.
 
@@ -298,7 +337,7 @@ and Add entry buttons), never by hand:
 
 | file | what |
 |---|---|
-| `edits/edits.xml` | edited or added entries, full entries in the data format (`<amp>`, `<item>`, `<rule>`) |
+| `edits/edits.xml` | edited or added entries, full entries in the data format (`<amp>`, `<item>`, `<rule>`), each with `by="<username>"` (who saved it last) |
 | `edits/texts.xml` | edited descriptions, same shape as `custom/texts/` |
 | `edits/sources.xml` | house-rule sources the user created (`canon="false"`) |
 
@@ -307,7 +346,7 @@ replaces the imported one with that id at load time. A new entry gets an id
 `<houserule source lower>.<slug>` and needs a house-rule source (from
 `edits/sources.xml`) that exists.
 
-Load order: shipped `public/data/` → `imported/index.xml` → **`custom/edits/`**
+Load order: `public/data/` → `imported/core/` → `imported/index.xml` → **`custom/edits/`**
 → `custom/index.xml` house rules, so house rules still win over edits, and
 edits win over the book. The loader marks an edits-layer entry `edited: true`
 and keeps the entry it replaced (`original`) so the app can show "Edited"
@@ -345,11 +384,38 @@ app's Data screen. The app keeps running on the base data.
 
 ```xml
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="levels" version="1">
-  <level id="runner" nuyen="400000" attrAtMax="1" skillCap="5" rrAttr="1" rrSkill="1" rrSpec="2" source="CUSTOM" page="1"><name>Runner (house)</name></level>
+  <level id="runner" nuyen="400000" attrAtMax="2" skillCap="6" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Runner (house)</name></level>
   <remove id="ganger"/>
   <level id="legend" nuyen="600000" attrAtMax="3" skillCap="7" rrAttr="2" rrSkill="2" rrSpec="3" source="CUSTOM" page="1"><name>Street Legend</name></level>
 </ca2:data>
 ```
+
+## Data pack
+
+`python -m importer datapack export --custom <dir> --out <zip>` (Books →
+**Core data** → "Download data pack") writes the core files of
+`custom/imported/core/` as one zip:
+
+```
+datapack.xml
+core/<name>.xml   (each of the twelve core files present)
+```
+
+- `datapack.xml`, schema `datapack.xsd`: the app version, the date, and one
+  `<file name bytes sha256>` per core file in the zip.
+- Only the core files: never descriptions (`texts/`), PDFs or keys.
+
+`datapack import <zip> --custom <dir>` ("Upload data pack", 50 MB at most)
+first checks it all (`datapack check`): nothing but `datapack.xml` and
+`core/<core file>.xml`, no link, device, encrypted or oversized entry, a
+manifest that lists exactly the zip's files with matching sizes and hashes
+(these catch damage, not tampering: anyone can recompute them), and every file
+UTF-8 with no DOCTYPE, valid against its schema (`items.xsd` for weapons and
+armor), with the kind its name says. Then the pack's files replace those in
+`custom/imported/core/` in one swap (all or none); core files the pack
+doesn't hold are kept. The files it replaces wait in `core/.restore-old-*`
+until the new ones are in; if the import is killed meanwhile, the next import,
+export or server start (`datapack recover`) puts them back.
 
 ## Backup zip
 
@@ -371,10 +437,20 @@ library/…
   a restore keeps the target server's own keys, except that a provider whose
   base URL the restored `ai-providers.xml` changes loses its key (a key only
   goes to the address it was entered for, as when settings are saved).
+- `library/.config/users.xml` and `auth.xml` (the accounts and sign-in settings)
+  are always included; `auth-secret.xml` (the Authelia client secret) only with
+  keys. Without it a restore keeps the server's own secret when the restored
+  `auth.xml` names the issuer the secret was given for, and drops it otherwise.
+  `sessions.xml`, `reset.xml`, `device-key.xml` and `oidc-key.xml` are never
+  included; a restore ends every session and keeps the server's own cookie keys.
+  After a restore the server clears Authelia links to any issuer other than the
+  restored `auth.xml`'s. No `users.xml` (a backup from before accounts): setup
+  mode, and the first admin gets the top-level runners.
 - `backup.xml`, schema `backup.xsd`: the app version (baked into the image
   as `/app/VERSION` at build time, from `package.json`), the date it was
   made, a file count and byte count per folder, and whether keys are
-  included. `restore --check` reads this to show the preview in the UI
+  included, the number of accounts (`users`) and whether the Authelia secret is
+  inside (`authSecret`; `restore --check` sets both from the zip itself). `restore --check` reads this to show the preview in the UI
   before anyone confirms.
 
 `restore --apply` refuses a zip whose entries fall outside

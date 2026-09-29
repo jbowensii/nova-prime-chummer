@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { STATE } from './session'
 
 async function newRunner(page: Page, name: string) {
   await page.goto('/')
@@ -11,7 +12,7 @@ async function newRunner(page: Page, name: string) {
 test('export a runner as XML, delete it, import the file back', async ({ page }) => {
   await newRunner(page, 'Roundtrip')
   await page.getByRole('link', { name: 'Attributes' }).click()
-  await page.getByRole('button', { name: 'Raise Agility' }).click()
+  await page.getByRole('button', { name: 'Raise Finesse' }).click()
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export file' }).click()
   const dl = await download
@@ -95,8 +96,8 @@ test('Finalize can be undone from the ledger until the first entry', async ({ pa
 test('technomancer: Emerged amp, Tasking skill, living persona', async ({ page }) => {
   await newRunner(page, 'Resonance')
   await page.getByRole('link', { name: 'Attributes' }).click()
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Raise Willpower' }).click()
-  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Raise Charisma' }).click()
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Raise Resolve' }).click()
+  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Raise Presence' }).click()
   await page.getByRole('link', { name: 'Shadow Amps' }).click()
   await page.getByRole('button', { name: 'Add an amp' }).click()
   await page.getByRole('button', { name: 'Emerged', exact: true }).click()
@@ -114,7 +115,7 @@ test('Amp Builder: apply a book add-on', async ({ page }) => {
   await newRunner(page, 'Rigger')
   await page.getByRole('link', { name: 'Shadow Amps' }).click()
   await page.getByRole('button', { name: 'Add an amp' }).click()
-  await page.getByRole('button', { name: 'Equipment', exact: true }).click()
+  await page.getByRole('button', { name: 'Gear', exact: true }).click()
   await page.getByLabel('Name').fill('Gadget')
   const before = await page.locator('.ampfoot b').first().textContent()
   await page.getByLabel('Apply a book add-on').selectOption('test.static-shroud')
@@ -123,7 +124,7 @@ test('Amp Builder: apply a book add-on', async ({ page }) => {
 })
 
 test('a runner saved from two browsers: conflict dialog, save mine as a new file', async ({ browser }) => {
-  const a = await browser.newPage(), b = await browser.newPage()
+  const a = await browser.newPage({ storageState: STATE }), b = await browser.newPage({ storageState: STATE })
   await newRunner(a, 'Twice')
   await a.waitForTimeout(700) // autosave
   const url = a.url()

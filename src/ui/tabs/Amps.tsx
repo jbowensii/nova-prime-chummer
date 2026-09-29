@@ -62,7 +62,7 @@ export function AmpsTab() {
     <div className="stack">
       <div className="row"><h2 style={{ margin: 0 }}>Shadow Amps</h2><span className="spacer" />
         <button className="btn primary" onClick={() => setChoosing(true)}>Add an amp</button></div>
-      <p className="muted">Everything special about a runner is a Shadow Amp: Qualities, magic, implants, signature gear, vehicles and contacts. Rating = base + effects, and each point costs 5,000¥ (CRB p.58–63, 83).</p>
+      <p className="muted">Everything special about a runner is a Shadow Amp: Qualities, magic, implants, signature gear, vehicles and contacts. Rating = base + effects, and each point costs {fmt(c.pricing.ampPoint)}.</p>
       {b.amps.length === 0 && <p>No amps yet. Add one from the book, or build your own from an amp type and effects.</p>}
       {types.map(t => {
         const list = b.amps.filter(a => a.type === t.id)

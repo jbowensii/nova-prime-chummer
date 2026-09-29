@@ -175,7 +175,7 @@ td.hash { font-family: ui-monospace, monospace; font-size: 0.8rem; }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; align-items: start; position: relative; }
 .work { padding: 1.6rem 1.5rem 4rem; max-width: 62rem; min-width: 0; }
-.scroll-x { overflow-x: auto; max-width: 100%; }
+.scroll-x { overflow-x: auto; max-width: 100%; position: relative; } /* relative: holds .sr-only text that would escape the scroll box */
 /* Full: the book's vertical chapter tab on the outer page edge */
 .chapter-tab { display: none; }
 :root[data-texture='full'] .chapter-tab {
@@ -322,10 +322,12 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .backup p { margin: 0.5rem 0; }
 .backup label.check { margin: 0; color: var(--text); }
 .backup .small { font-size: 0.9rem; }
-.backup .file { position: relative; display: inline-block; margin-top: 0.8rem; }
-.backup .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.backup .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.backup .file, .datapack .file { position: relative; display: inline-block; margin-top: 0.8rem; }
+.backup .file input, .datapack .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.backup .file:focus-within, .datapack .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .backup progress { vertical-align: middle; accent-color: var(--yellow); }
+.datapack { margin-bottom: 1.5rem; }
+.datapack .row label.file { margin-top: 0; font-size: 1rem; } /* a button beside a button */
 .restore-preview { margin-top: 0.8rem; padding: 0.8rem; border: 1px solid var(--rule); background: var(--zebra); }
 .restore-preview h3 { margin: 0 0 0.5rem; }
 .restore-preview dl { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 0.25rem 1rem; margin: 0 0 0.6rem; }
@@ -392,3 +394,33 @@ table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-to
 .picker li.off { cursor: default; }
 .picker li.off:hover { background: inherit; color: inherit; }
 .picker li.off:hover .t, .picker li.off:hover .muted { color: var(--text-2); }
+
+/* ---- accounts (auth.tsx, SignIn.tsx, Setup.tsx, Users.tsx) ---- */
+.gate { max-width: 30rem; }
+.gate form { margin-top: 1.2rem; }
+.gate .oidc { margin: 1.4rem 0 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.field { display: grid; gap: 0.2rem; }
+.field small { font-size: 0.82rem; }
+dialog.gate-over { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0;
+  border: 0; box-shadow: none; overflow-y: auto; background: var(--bg); }
+dialog.gate-over::backdrop { background: var(--bg); }
+.account { position: relative; }
+.account-panel { position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: 15; min-width: 14rem; display: grid; justify-items: start;
+  padding: 0.7rem 0.6rem; background: var(--surface); border: 1px solid var(--rule); border-top: 4px solid var(--yellow); box-shadow: 0 8px 24px rgb(0 0 0 / 0.25); }
+.account-panel[hidden] { display: none; }
+.account-panel p { margin: 0 0.45rem 0.5rem; font-family: var(--sans); font-size: 0.95rem; line-height: 1.35; }
+fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
+/* someone else's runner: fields read as text, not as boxes to type in */
+fieldset.bare:disabled :is(input, select, textarea) { background: none; border-style: dashed; opacity: 1; }
+.banner.readonly { margin: 1rem 1.25rem 0; border-left-color: var(--indigo); font-weight: 600; }
+:root[data-theme='dark'] .banner.readonly { border-left-color: var(--yellow); }
+.banner.bad { border-left-color: var(--err); }
+table.users td:nth-child(-n+2) { white-space: nowrap; }
+table.users tr.off td { color: var(--text-3); }
+table.users .row { gap: 0.2rem; min-width: 13rem; }
+table.users td:last-child { white-space: normal; }
+@media (max-width: 600px) {
+  /* the menu button can sit anywhere in a wrapped header: the panel spans the screen just below it */
+  .account-panel { position: fixed; top: auto; left: 1rem; right: 1rem; }
+}
+h1[tabindex="-1"]:focus { outline: none; } /* focused on a page switch (App.tsx) for screen readers, not a control */

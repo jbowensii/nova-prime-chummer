@@ -22,20 +22,20 @@ KEYWORDS
 • Made-up face
 SKILLS RATING ATT DP RR
 **Athletics 3 STR 5**
-(Ranged defense +2) AGI 8
+(Dodging +2) WIL 8
 **Stealth - AGI 3**
 **Perception 2 LOG 5**
-(Physical) LOG 5 1
+(Watching) LOG 5 1
 **Survival 1 LOG 4**
-(Composure +2) WIL 6
+(Nerves +2) WIL 6
 **Close combat 1 AGI 4**
 **Electronics 1 LOG 5**
 (Mystery trick +2) LOG 6
 **Influence 5 CHA 9 (1)**
-(Bluff +2) CHA 11 1
-(Intimidation +2) STR 9
+(Fibbing +2) CHA 11 1
+(Menace +2) AGI 9
 **Network 2 CHA 6**
-(Streets +2) CHA 8
+(Gutter +2) CHA 8
 WEAPONS DV RANGE
 **Unarmed** 2 [OK/–/–/–]
 **Zap Pistol** (Heavy pistol) 5 [OK/OK/Dis/–]
@@ -57,20 +57,20 @@ SHADOW AMPS ESS COST
 **Natural Low-Light Vision** (Elf) **0**
 **Big Grin** (Quality) **4**
 RR 1 on Influence tests (first meeting only).
-**Toy Eyes** (Cyberware) **-0.5 5**
-Delta Grade (-0.5 Essence)
-RR 1 on Ranged Weapons (Pistols) tests
+**Toy Eyes** (Cyberware) **-1 9**
+Delta Grade (-0.25 Essence)
+RR 1 on Ranged Weapons (Handguns) tests
 Glows in the dark
-**Zap Pistol** (Weapon) **2**
+**Zap Pistol** (Weapon) **4**
 Heavy pistol VD 5 (OK/OK/Dés/–)
-Smartlink: RR 1 on Ranged weapon (Pistols) tests
-**Pocket Buzzer** (Drone) **3**
+Smartlink: RR 1 on Ranged weapon (Handguns) tests
+**Pocket Buzzer** (Drone) **6**
 Flying microdrone
-Pilot 6, Body 0, Handling 10, Speed 1, Armor 0
+Pilot 5, Body 1, Handling 9, Speed 1, Armor 0
 Beeps loudly
 **Old Friend** (Contact) **0**
 Knows a guy.
-RR 1 on Network (Street) tests
+RR 1 on Network (Gutter) tests
 EQUIPMENT
 Fake SIN, Commlink,
 Zap Pistol
@@ -110,8 +110,8 @@ class ParseTest(unittest.TestCase):
         self.assertIsNone(sk["Stealth"]["rating"])
         self.assertEqual(sk["Influence"]["rr"], "(1)")
         self.assertEqual([(x["name"], x["plus2"], x["attr"], x["dp"]) for x in sk["Influence"]["specs"]],
-                         [("Bluff", True, "cha", 11), ("Intimidation", True, "str", 9)])
-        self.assertEqual(sk["Perception"]["specs"], [{"name": "Physical", "plus2": False, "attr": "log", "dp": 5, "rr": "1"}])
+                         [("Fibbing", True, "cha", 11), ("Menace", True, "agi", 9)])
+        self.assertEqual(sk["Perception"]["specs"], [{"name": "Watching", "plus2": False, "attr": "log", "dp": 5, "rr": "1"}])
 
     def test_weapons_armor_amps(self):
         b = self.b
@@ -120,8 +120,8 @@ class ParseTest(unittest.TestCase):
         self.assertEqual([(a["name"], a["armor"], a["l"]) for a in b["armor"]],
                          [("No armor", None, 2), ("Padded coat", "2", 4), ("Padded coat and hat", "+1", 5), ("Mental", None, 3)])
         eyes = b["amps"][2]
-        self.assertEqual((eyes["name"], eyes["type"], eyes["ess"], eyes["rating"], eyes["count"]), ("Toy Eyes", "Cyberware", 0.5, 5, 1))
-        self.assertEqual(eyes["lines"], ["Delta Grade (-0.5 Essence)", "RR 1 on Ranged Weapons (Pistols) tests", "Glows in the dark"])
+        self.assertEqual((eyes["name"], eyes["type"], eyes["ess"], eyes["rating"], eyes["count"]), ("Toy Eyes", "Cyberware", 1.0, 9, 1))
+        self.assertEqual(eyes["lines"], ["Delta Grade (-0.25 Essence)", "RR 1 on Ranged Weapons (Handguns) tests", "Glows in the dark"])
 
 
 class CharacterTest(unittest.TestCase):
@@ -141,7 +141,7 @@ class CharacterTest(unittest.TestCase):
         sk = {s["id"]: s for s in self.b["skills"]}
         self.assertNotIn("stealth", sk)  # unrated
         self.assertEqual(sk["athletics"], {"id": "athletics", "rating": 3, "specs": ["athletics.ranged-defense"]})
-        self.assertEqual(sk["perception"]["specs"], [])  # "(Physical)" without +2 is a pool, not a specialization
+        self.assertEqual(sk["perception"]["specs"], [])  # "(Watching)" without +2 is a pool, not a specialization
         self.assertEqual(sk["electronics"]["specs"], ["custom:Mystery trick"])
         self.assertEqual(sk["network"]["specs"], ["network.street"])
 
@@ -159,23 +159,23 @@ class CharacterTest(unittest.TestCase):
 
     def test_items(self):
         its = [(i["uid"], i["kind"], i["name"], i.get("armor"), i.get("catalogId")) for i in self.b["items"]]
-        self.assertEqual(its, [("it-1", "armor", "Padded coat", 2, "armored-clothes-coat"),
-                               ("it-2", "armor", "Padded coat and hat", 3, "light-armor"),
+        self.assertEqual(its, [("it-1", "armor", "Padded coat", 2, "armored-clothes"),  # the made-up armor with that rating
+                               ("it-2", "armor", "Padded coat and hat", 3, "armored-clothes-coat"),
                                ("it-3", "weapon", "Zap Pistol", None, "heavy-pistol"),
                                ("it-4", "gear", "Fake SIN", None, None), ("it-5", "gear", "Commlink", None, None)])
         self.assertEqual((self.b["mainArmor"], self.b["altArmor"]), ("it-1", "it-2"))
 
     def test_printed_numbers_are_report_rows(self):
         rows = {(r["kind"], r.get("key")): r for r in self.rows}
-        self.assertEqual(rows[("pool", "influence.intimidation@str")]["status"], "attribute")
+        self.assertEqual(rows[("pool", "influence.intimidation@agi")]["status"], "attribute")
         self.assertEqual(rows[("pool", "electronics@log")]["status"], "contradicts")
-        self.assertEqual(rows[("pool", "athletics.ranged-defense@agi")]["status"], "ok")
+        self.assertEqual(rows[("pool", "athletics.ranged-defense@wil")]["status"], "ok")
         self.assertEqual(rows[("pool", "perception@log")]["status"], "ok")
         self.assertEqual((rows[("threshold", "physicalAlt")]["printed"], rows[("threshold", "physicalAlt")]["status"]), (5, "ok"))
-        self.assertEqual((rows[("essence", None)]["printed"], rows[("essence", None)]["status"]), (5.5, "ok"))
+        self.assertEqual((rows[("essence", None)]["printed"], rows[("essence", None)]["status"]), (5, "ok"))
         self.assertEqual(rows[("amp", "amp-4")]["status"], "ok")  # the drone: 1 + Flying + one narrative
         friend = rows[("amp", "amp-5")]
-        self.assertEqual((friend["printed"], friend["computed"], friend["status"]), (0, 2, "mismatch"))
+        self.assertEqual((friend["printed"], friend["computed"], friend["status"]), (0, 4, "mismatch"))
         self.assertTrue(all(r["sample"] == "pregens.test-face" for r in self.rows))
 
     def test_character_xml_matches_the_fixture_the_ts_reader_is_tested_on(self):

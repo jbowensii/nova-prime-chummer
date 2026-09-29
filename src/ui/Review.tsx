@@ -78,10 +78,12 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
   const validSource = /^[A-Z][A-Z0-9-]{0,19}$/.test(source)
   const taken = validSource && c.sources.has(source) && book?.source !== source
 
+  // rows for core tables the book's recipe couldn't read: they go to the core data, cited to the book as imported
+  const core = doc.documentElement.getAttribute('core') === 'true'
   const apply = async () => {
     setBusy(true)
     try {
-      await api(`review/${id}?${new URLSearchParams({ apply: '1', source, name: title.trim(), canon: String(canon) })}`,
+      await api(`review/${id}?${new URLSearchParams(core ? { apply: '1' } : { apply: '1', source, name: title.trim(), canon: String(canon) })}`,
         { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: body() })
       location.hash = '#/books'
     } catch (e) { setMsg(`Couldn’t add the entries: ${(e as Error).message}.`); setBusy(false) }
@@ -125,6 +127,12 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
         })}</tbody>
       </table></div>
 
+      {core ? <>
+        <h2 style={{ marginTop: '1.5rem' }}>Core data</h2>
+        <p className="muted">These rows replace the {book?.coreUnread?.filter(f => f === 'weapons.xml' || f === 'armor.xml').map(f => f.replace(/\.xml$/, '')).join(' and ') || 'core'} table and cite {doc.documentElement.getAttribute('source')}.</p>
+        <button className="btn primary" disabled={busy || !accepted} onClick={() => void apply()}>Add to the core data</button>
+        {!busy && !accepted && <p className="muted" style={{ marginTop: '0.5rem' }}>Accept or edit at least one entry first.</p>}
+      </> : <>
       <h2 style={{ marginTop: '1.5rem' }}>The book</h2>
       <p className="muted">Every entry cites this book. The source id is a short code shown next to each entry, like “CRB p.58”.</p>
       <div className="grid2">
@@ -141,6 +149,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       <button className="btn primary" disabled={busy || !accepted || !validSource || taken || !title.trim()} onClick={() => void apply()}>Add accepted entries</button>
       {!busy && (!accepted || !source || !title.trim()) && <p className="muted" style={{ marginTop: '0.5rem' }}>
         {!accepted ? 'Accept or edit at least one entry first.' : !source ? 'Enter a source id first.' : 'Enter the book’s title first.'}</p>}
+      </>}
 
       <Modal open={!!editAmp} onClose={() => setEditAmp(null)} title={`Edit ${editAmp?.amp.name ?? ''}`} actions={<></>}>
         {editAmp && <Editor.Provider value={{ c, career: false } as EditorCtx /* ponytail: the builder reads only c and career */}>

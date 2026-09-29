@@ -5,8 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFil
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-// @ts-expect-error plain JS module
-import { createServer } from '../../server/server.mjs'
+import { createServer } from './_signin'
 // @ts-expect-error plain JS module
 import { findPython } from '../../tools/python.mjs'
 
@@ -19,7 +18,7 @@ let srv: { close: () => void; listen: (p: number, cb: () => void) => void; addre
 const runner = (street: string) =>
   `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="r1" streetName="${street}" metatype="ork" level="runner" updatedAt="2026-09-27"><build/></ca2:character>`
 const putRunner = (street: string) => fetch(`${base}/api/characters/r1?force=1`, { method: 'PUT', body: runner(street) })
-const runners = () => readdirSync(chars).filter(f => f.endsWith('.xml')).map(f => readFileSync(join(chars, f), 'utf8')).join()
+const runners = () => readdirSync(join(chars, 'admin')).filter(f => f.endsWith('.xml')).map(f => readFileSync(join(chars, 'admin', f), 'utf8')).join()
 
 describe.skipIf(!python)('with the real importer', () => {
   beforeAll(() => new Promise<void>(ok => {
@@ -46,7 +45,7 @@ describe.skipIf(!python)('with the real importer', () => {
     expect(p.status).toBe(200)
     const { token, manifest } = await p.json()
     expect(manifest).toMatchObject({ app: JSON.parse(readFileSync('package.json', 'utf8')).version, keys: false,
-      folders: { characters: { files: 1 }, custom: { files: 1 }, library: { files: 1 } } })
+      folders: { characters: { files: 1 }, custom: { files: 1 }, library: { files: 2 } } }) // library: a book file and users.xml (never sessions.xml)
     expect(Date.parse(manifest.created)).toBeGreaterThan(Date.now() - 600000)
 
     const r = await fetch(`${base}/api/restore/${token}`, { method: 'POST' })

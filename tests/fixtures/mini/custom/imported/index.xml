@@ -7,6 +7,9 @@
   <file href="test/skills.xml"/>
   <file href="test2/amps.xml"/>
   <file href="test2/items.xml"/>
+  <file href="testc/ampeffects.xml"/>
   <file href="testc/amps.xml"/>
+  <file href="testc/amptypes.xml"/>
   <file href="testc/items.xml"/>
+  <file href="testc/skills.xml"/>
 </overlays>
