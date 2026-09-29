@@ -24,10 +24,11 @@ export async function fakeIssuer({ clientId = 'chummer', secret = 'fake-client-s
     hits: {}, // path -> requests seen
     issued: [], // every token and code handed out: none may reach a log
     codes: new Map(),
+    authorized: {}, // the last authorize request's parameters
   }
   const idToken = nonce => {
     const now = Math.floor(Date.now() / 1000)
-    const claims = { iss: f.base, aud: f.clientId, sub: f.user.sub, iat: now, exp: now + 300, nonce,
+    const claims = { iss: f.base, aud: f.clientId, sub: f.user.sub, iat: now, exp: now + 300, auth_time: now, nonce,
       ...(f.userinfoOnly ? {} : { preferred_username: f.user.preferred_username, email: f.user.email, email_verified: f.user.email_verified }), ...f.claims }
     for (const k of Object.keys(claims)) if (claims[k] === undefined) delete claims[k]
     const head = `${b64u({ alg: f.alg, kid: f.kid, typ: 'JWT' })}.${b64u(claims)}`
@@ -50,6 +51,7 @@ export async function fakeIssuer({ clientId = 'chummer', secret = 'fake-client-s
     if (p === '/jwks') return answer(res, 200, { keys: f.published.map(kid => ({ ...keys[kid].publicKey.export({ format: 'jwk' }), kid, alg: keys[kid].alg, use: 'sig' })) })
     if (p === '/authorize') {
       const q = url.searchParams, back = new URL(q.get('redirect_uri'))
+      f.authorized = Object.fromEntries(q)
       if (q.get('client_id') !== f.clientId || q.get('response_type') !== 'code' || q.get('code_challenge_method') !== 'S256' || q.get('scope') !== 'openid profile email')
         return answer(res, 400, 'bad authorize request', 'text/plain')
       back.searchParams.set('state', q.get('state'))
