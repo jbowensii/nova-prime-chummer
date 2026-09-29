@@ -192,9 +192,8 @@ and treats the package's note as guidance only. This goes in `levels.xml` so it 
 
 ### 5.3 Packages
 
-Packages are **guides**, not constraints. The book says nuyen "can be moved
-from one category to another one, as long as the total amount remains the
-same." The UI shows guide against actual per category. Picking **Free**
+Packages are **guides**, not constraints. The book lets nuyen move between
+categories as long as the total stays the same. The UI shows guide against actual per category. Picking **Free**
 shows no guides.
 
 Worked check: each package's categories, priced with the pricing above, total its level's budget exactly. All 9

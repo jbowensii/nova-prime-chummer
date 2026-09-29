@@ -291,7 +291,7 @@ setup page until either:
   confirm **Load data pack**.
 
 A book can override a core price: the Conversion Guide import sets the
-complex-form price it prints (5,000¥); without it, complex forms cost the
+complex-form price it prints; without it, complex forms cost the
 spell price.
 
 Upgrading an existing server that already has the core rulebook in its
