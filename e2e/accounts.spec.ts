@@ -361,3 +361,21 @@ test('too many wrong passwords pause sign-in', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByRole('alert')).toHaveText('Too many tries, so this is paused. Try again in 15 minutes.')
 })
+
+test('the admin renames their own username: still signed in, the runners move, the new name signs in', async ({ page }) => {
+  await signIn(page, 'ada', PW.ada)
+  await page.goto('/#/users')
+  await page.getByRole('button', { name: 'Edit Ada Admin' }).click()
+  const form = page.getByRole('dialog')
+  await form.getByLabel('Username').fill('ada.b')
+  await form.getByRole('button', { name: 'Save changes' }).click()
+  // the app reloads under the new name, with the same session
+  await expect(page.getByRole('row', { name: /Ada Admin/ }).getByRole('cell').nth(1)).toHaveText('ada.b')
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Ada Runner' })).toBeVisible()
+  await menu(page, 'Ada Admin').click()
+  await expect(page.getByText('Admin · ada.b')).toBeVisible()
+  await page.context().clearCookies()
+  await signIn(page, 'ada.b', PW.ada)
+  await expect(page.getByRole('link', { name: 'Ada Runner' })).toBeVisible()
+})
