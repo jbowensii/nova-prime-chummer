@@ -82,7 +82,7 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
 /** `auth`: server/auth.mjs's authApi (json(), signInExternal(), unlinkAll()). Options for tests: fetch timeout, answer size cap,
  *  the shortest gap between two key-set fetches for an unknown kid, how long a failed discovery is remembered, whether plain
  *  http to this machine is allowed. */
-export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE, failTtl = FAIL_TTL,
+export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE, failTtl = FAIL_TTL,
   insecure = insecureAllowed() }) {
   const config = join(libraryDir, '.config')
   const settingsPath = join(config, 'auth.xml'), secretPath = join(config, 'auth-secret.xml'), keyPath = join(config, 'oidc-key.xml')
@@ -367,11 +367,20 @@ export function oidcApi({ libraryDir, auth, log = console, timeout = 5000, maxBy
     }
   }
 
+  function counted(res, fn) {
+    try { return track(fn) } catch (e) {
+      if (e.code !== 409) throw e
+      return go(res, '/?signin=restoring')
+    }
+  }
+
   /** The routes here; false for any other path. */
   async function handle(req, res, url, send) {
     const p = url.pathname, method = req.method
-    if (p === '/api/auth/oidc/start' && method === 'GET') return start(req, res)
-    if (p === '/api/auth/oidc/callback' && method === 'GET') return callback(req, res, url)
+    // both write to the Library (the state key on first use; the account link, session and device): counted like any write,
+    // so a restore waits for them, and while one runs they send the browser back with a plain message
+    if (p === '/api/auth/oidc/start' && method === 'GET') return counted(res, () => start(req, res))
+    if (p === '/api/auth/oidc/callback' && method === 'GET') return counted(res, () => callback(req, res, url))
     if (p === '/api/auth-settings' && method === 'GET') return send(res, 200, view(settings(), req.ctx))
     if (p === '/api/auth-settings' && method === 'PUT') return send(res, 200, view(await save(req), req.ctx))
     if (p === '/api/auth-settings/test' && method === 'POST') return send(res, 200, await test(req))

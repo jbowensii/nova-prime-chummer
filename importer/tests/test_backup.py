@@ -276,9 +276,10 @@ class BackupTest(unittest.TestCase):
         """users.xml with `users` accounts; auth.xml naming `issuer` and auth-secret.xml given for `secret` (None: no file)."""
         cfg = os.path.join(dirs["library"], ".config")
         ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
-        rows = "".join(f'<user id="u{i}" username="user{i}" role="admin" method="password" enabled="true"/>' for i in range(users))
+        rows = "".join(f'<user id="{i:012x}" username="user{i}" name="User {i}" role="admin" method="authelia" enabled="true" '
+                       f'created="2026-09-28T00:00:00Z"/>' for i in range(users))
         Path(cfg, "users.xml").write_text(f"<ca2:users {ns}>{rows}</ca2:users>", encoding="utf8")
-        for name, text in (("auth.xml", issuer is not None and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c"/></ca2:auth>'),
+        for name, text in (("auth.xml", issuer is not None and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c" tokenAuth="client_secret_basic"/></ca2:auth>'),
                            ("auth-secret.xml", secret is not None and f'<ca2:authsecret {ns} issuer="{secret}" secret="s3cret-{secret}"/>')):
             if text:
                 Path(cfg, name).write_text(text, encoding="utf8")
@@ -356,6 +357,33 @@ class BackupTest(unittest.TestCase):
         backup.backup(dirs, out)  # a broken server can still be backed up ...
         with self.assertRaisesRegex(backup.RestoreError, "accounts file"):  # ... but that isn't restored
             backup.check(out)
+
+    def test_accounts_and_sign_in_settings_must_be_valid(self):
+        """users.xml and auth.xml are checked against users.xsd and auth.xsd: one the server can't read would leave nobody
+        able to sign in (and so nobody able to restore the safety backup)."""
+        root = tempfile.mkdtemp()
+        dirs = state(root)
+        cfg = self._accounts(dirs, "https://auth.example")
+        out = os.path.join(root, "b.zip")
+        backup.backup(dirs, out)
+        self.assertEqual(backup.check(out).get("users"), "2")
+        ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
+        bad = {
+            "users.xml": [f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="boss" method="password" '
+                          'enabled="true" created="2026-09-28T00:00:00Z"/></ca2:users>',  # no such role
+                          f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="admin" method="password" '
+                          'enabled="true" created="2026-09-28T00:00:00Z"><password algorithm="scrypt" N="2" r="1" p="1"/></user></ca2:users>',
+                          f'<ca2:sessions {ns}/>'],  # another root users.xsd allows
+            "auth.xml": [f'<ca2:auth {ns}><oidc issuer="x"/></ca2:auth>', "<auth/>"],
+        }
+        for name, texts in bad.items():
+            for text in texts:
+                with self.subTest(name=name, text=text):
+                    self._accounts(dirs, "https://auth.example")
+                    Path(cfg, name).write_text(text, encoding="utf8")
+                    backup.backup(dirs, out)
+                    with self.assertRaisesRegex(backup.RestoreError, "isn’t valid"):
+                        backup.check(out)
 
     def test_backups_pruned_to_three(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()

@@ -364,6 +364,46 @@ test('discovery: an issuer naming itself differently, endpoints elsewhere, too s
   } finally { s.close() }
 })
 
+test('a sign-in never writes under a restore: refused while one runs, and one under way holds the restore off', async () => {
+  // the review's race: a callback during the restore wrote the old in-memory accounts over the restored users.xml
+  const s = await boot()
+  try {
+    await on(s)
+    const headers = { Origin: s.base, Cookie: s.admin }
+    const { token: dl } = await (await fetch(`${s.base}/api/backup`, { method: 'POST', headers })).json()
+    const zip = Buffer.from(await (await fetch(`${s.base}/api/backup/${dl}`, { headers })).arrayBuffer())
+    const preview = async (cookie: string) => (await (await fetch(`${s.base}/api/restore?preview=1`, { method: 'POST', body: zip,
+      headers: { Origin: s.base, Cookie: cookie } })).json()).token
+    const restore = (token: string, cookie: string) => fetch(`${s.base}/api/restore/${token}`, { method: 'POST', headers: { Origin: s.base, Cookie: cookie } })
+
+    // kim is at the issuer when the restore starts; the callback lands while it runs (the stub holds it 400 ms)
+    const start = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })
+    const bind = start.headers.getSetCookie().find(c => c.startsWith('ca2_oidc='))!.split(';')[0]
+    const back = (await fetch(start.headers.get('location')!, { redirect: 'manual' })).headers.get('location')!
+    const running = restore(await preview(s.admin), s.admin)
+    await new Promise(ok => setTimeout(ok, 150))
+    const cb = await fetch(back, { redirect: 'manual', headers: { Cookie: bind } })
+    expect(cb.headers.get('location')).toBe('/?signin=restoring')
+    expect((await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })).headers.get('location')).toBe('/?signin=restoring')
+    expect((await running).status).toBe(200)
+    expect(s.account('kim')).toMatchObject({ oidcSub: '', lastLogin: undefined }) // the restored users.xml, untouched
+    expect(cb.headers.getSetCookie().some(c => /session=/.test(c))).toBe(false)
+
+    // a sign-in under way (a slow token endpoint): a restore is refused until it is done
+    const admin = (await fetch(`${s.base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: 'admin', password: ADMIN_PW }),
+      headers: { 'Content-Type': 'application/json', Origin: s.base } })).headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const token = await preview(admin)
+    s.f.delay['/token'] = 300
+    try {
+      const signing = flow(s)
+      await new Promise(ok => setTimeout(ok, 150))
+      expect((await restore(token, admin)).status).toBe(409)
+      expect((await signing).location).toBe('/')
+    } finally { delete s.f.delay['/token'] }
+    expect(s.account('kim').oidcSub).toBeTruthy()
+  } finally { s.close() }
+})
+
 test('a failed discovery is remembered: an issuer that is down isn’t asked on every start', async () => {
   const s = await boot()
   try {

@@ -347,7 +347,8 @@ test('a restore ends every session and brings back the backup’s accounts; one 
   expect(preview.manifest).toMatchObject({ users: 1, authSecret: false })
   expect((await call(s.base, 'POST', `/api/restore/${preview.token}`, { cookie })).status).toBe(200)
   for (const c of [cookie, other]) expect((await call(s.base, 'GET', '/api/characters', { cookie: c })).status).toBe(401)
-  expect(readFileSync(join(s.lib, '.config', 'sessions.xml'), 'utf8')).not.toMatch(/<session\b/)
+  const sessionsXml = join(s.lib, '.config', 'sessions.xml') // gone with the swap; written again later
+  expect(existsSync(sessionsXml) ? readFileSync(sessionsXml, 'utf8') : '').not.toMatch(/<session\b/)
   cookie = (await login(s.base, 'admin', PW.admin)).cookie
   expect(cookie).toBeTruthy()
 
