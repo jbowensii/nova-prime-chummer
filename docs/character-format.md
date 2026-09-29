@@ -78,9 +78,15 @@ will convert from this format; the format itself is ours and stays stable.
 | `PUT …?force=1` | overwrite regardless of `rev` |
 | `PUT …?filename=Name` | file name for a new runner (default: its street name) |
 | `DELETE /api/characters/:id` | `204`; the file moves to `characters/<username>/.trash/` |
+| `GET /api/trash` | `{ user, name, items: [{ file, id, name, deletedAt }] }`: your trash, newest first |
+| `POST /api/trash/:file/restore` | `{ file, id, name, copy }`: back in the library; `copy`: its id was taken, so it came back with a new id and "(restored copy)" |
+| `DELETE /api/trash/:file` | `204`; deleted for good |
+| `DELETE /api/trash` (body `{ files: [...] }`, optional) | `{ deleted }`: those files (the page sends the ones it showed), or the whole trash; `deleted` is how many went |
+| `…/api/trash…?user=<username>` | the admin: another account's trash (anyone else: `403`) |
 
 Every request needs a signed-in session (`server/auth.mjs`). `PUT` and `DELETE` act on your own runners only: a
-runner id another account holds is refused with `403`.
+runner id another account holds is refused with `403`. The trash routes take only a `*.xml` file name with no separators
+or leading dot; like every write, they're refused (`409`) while a restore runs.
 
 Writes go to a temporary file and are renamed into place, so a crash never
 leaves a half-written runner.

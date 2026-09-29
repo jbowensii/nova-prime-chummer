@@ -277,10 +277,11 @@ table.data.fixed { table-layout: fixed; }
 .lib h1 { font-size: 2.4rem; margin-top: 0.4rem; }
 .dossier { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 1rem; align-items: center; padding: 0.8rem 0; border-bottom: 1px solid var(--rule); }
 .dossier .face { width: 3.5rem; height: 3.5rem; background: var(--indigo); object-fit: cover; display: grid; place-items: center; font-family: var(--graffiti); font-size: 1.6rem; color: var(--yellow); }
-.dossier a.title { font-family: var(--display); font-size: 1.25rem; color: var(--heading); text-decoration: none; text-transform: uppercase; }
+.dossier .title { font-family: var(--display); font-size: 1.25rem; color: var(--heading); text-decoration: none; text-transform: uppercase; }
 .dossier a.title:hover { color: var(--rust); text-decoration: underline; text-decoration-color: var(--yellow); }
 .dossier .meta { color: var(--text-2); font-size: 0.92rem; }
 .empty { padding: 2.5rem 0; }
+.trash { list-style: none; margin: 0; padding: 0; }
 .banner { padding: 0.6rem 0.8rem; border-left: 4px solid var(--yellow); background: var(--zebra); margin-bottom: 1rem; }
 
 /* ---- dialog: a sidebar on paper ---- */
@@ -377,7 +378,9 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .provider .keyrow { align-items: end; margin-top: 0.8rem; }
 .provider .modelrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: end; }
 .provider .modelrow label { flex: 1 1 14rem; min-width: 0; }
-.provider .modelrow .wide { flex-basis: 100%; }
+.provider .modelrow .wide, .provider .testrow .wide { flex-basis: 100%; }
+.provider .testrow { margin-top: 0.4rem; }
+.provider .testrow p { margin: 0; overflow-wrap: anywhere; }
 .provider p { margin: 0.4rem 0; font-size: 0.95rem; }
 .decision { font-size: 0.85rem; font-weight: 700; }
 .decision.accepted, .decision.edited { color: var(--ok); }

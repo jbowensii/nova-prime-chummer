@@ -20,6 +20,8 @@
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
 //   GET    /api/ai-models?provider=   -> { models: [id…] }, asked with the saved key and address; 400 bad provider, 502 { error }
+//   POST   /api/ai-test?provider=     a tiny fixed prompt to the saved provider -> { ok, model, reply (200 characters, text), ms };
+//                                     502 { error } in plain words; 429 while one runs or after 10 in a minute
 //   GET    /api/edits                 -> [{ kind, id }] the entries in custom/edits/edits.xml
 //   PUT    /api/edits/:kind/:id       body: <edit><amp|item|rule …/><description>…</description></edit> -> 204; 400 { error: why }
 //                                     the entry is saved with by="<username>"
@@ -108,8 +110,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const config = join(libraryDir, '.config')
   const backups = join(libraryDir, '.backups')
   const queue = []
-  let running = null, child = null, listChild = null
+  let running = null, child = null, listChild = null, testChild = null
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
+  let testing = null; const tests = [] // connection tests: one at a time, 10 a minute (each may cost a few tokens)
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
   const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve() }
   let writes = 0, zipping = 0, restoring = false
@@ -137,6 +140,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         env: { ...process.env, PYTHONIOENCODING: 'utf-8', CA2_CUSTOM_DIR: customDir },
         stdio: ['pipe', 'pipe', 'pipe'] })
       if (args[0] === 'list-models') listChild = p
+      else if (args[0] === 'test-ai') testChild = p
       else if (args[0] === 'backup') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
       else if (!['set-key', 'set-settings', 'edit', 'restore', 'datapack'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
@@ -324,6 +328,25 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (r.code === 0) return r.out.split('\n').map(s => s.trim()).filter(Boolean)
     const why = (await redact(r.err)).trim().split('\n').pop()
     throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t ask the provider' + (why ? `: ${why}` : ''))
+  }
+
+  /** Is the provider connected? `importer test-ai`: the saved address, model and key, a tiny fixed prompt. */
+  async function testProvider(provider) {
+    if (!PROVIDERS.includes(provider)) throw fail(400, 'unknown provider')
+    if (testing) throw Object.assign(fail(429, 'a connection test is already running; wait for it'), { retryAfter: 5 })
+    const now = Date.now()
+    while (tests.length && tests[0] < now - 60000) tests.shift()
+    if (tests.length >= 10) throw Object.assign(fail(429, 'that’s 10 tests in a minute; wait a moment'), { retryAfter: Math.ceil((tests[0] + 60000 - now) / 1000) })
+    tests.push(now)
+    testing = importer(['test-ai', provider, '--library', libraryDir], { timeout: 30000 })
+    const r = await testing.finally(() => { testing = null })
+    if (r.signal) throw fail(502, 'no answer within 30 seconds')
+    const why = (await redact(r.err)).trim().split('\n').pop()
+    if (r.code !== 0) throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t ask the provider' + (why ? `: ${why}` : ''))
+    let out
+    try { out = JSON.parse(r.out.trim().split('\n').pop()) } catch { throw fail(502, 'the importer’s answer couldn’t be read') }
+    const text = s => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim() // text only, one line
+    return { ok: true, model: text(out.model).slice(0, 120), reply: (await redact(text(out.reply))).slice(0, 200), ms: Math.round(Number(out.ms) || 0) }
   }
 
   /** One `importer edit …` call after the previous one; exit 3 is a refusal whose reason goes back as a 400. */
@@ -746,6 +769,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       const cleared = await putSettings(await body(req))
       return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
+    if (p === '/api/ai-test' && method === 'POST') return send(res, 200, await testProvider(url.searchParams.get('provider') ?? ''))
     if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/table-rules') return tableRules(req, res, send)
@@ -832,7 +856,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   // shutdown: stop the running importer (the next start marks its book interrupted) and any model list
   // and backups being made; pending restore uploads and unfetched backups are deleted
   const stop = () => {
-    child?.kill(); listChild?.kill()
+    child?.kill(); listChild?.kill(); testChild?.kill()
     for (const p of spawned) p.kill()
     for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
   }

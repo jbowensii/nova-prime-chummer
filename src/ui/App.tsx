@@ -15,6 +15,7 @@ import { Setup } from './Setup'
 import { Recover, SignIn } from './SignIn'
 import { RESTORED } from './Backup'
 import { DataScreen } from './tabs/Data'
+import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
 
@@ -55,7 +56,8 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
 
   const admin = isAdmin(me)
   // pages a role can't use open the runner list instead (the server refuses their requests anyway)
-  const page = (route[0] === 'books' || route[0] === 'users') && !admin ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
+  // the trash is the server's: the browser's own storage deletes for good
+  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (route[0] === 'trash' && repo.mode !== 'server') ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
   const [, id, tab] = route
   const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
@@ -68,6 +70,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to the server.</p>}
       {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'users' ? <UsersScreen />
+        : page === 'trash' ? <TrashScreen user={id} />
         : page === 'books' && id === 'ai' ? <AiSettings />
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />
         : page === 'books' ? <BooksScreen c={catalog} reload={() => void refresh()} />

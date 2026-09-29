@@ -20,6 +20,9 @@ const FIELDS: Record<string, { hint: string; fields: [Field, string, string][] }
     fields: [['baseUrl', 'Address', 'http://anythingllm:3001'], ['workspace', 'Workspace', 'shadowrun']] },
 }
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+/** A connection test's answer (POST /api/ai-test): the model, its reply (200 characters of text) and how long it took. */
+export interface Tested { ok: true; model: string; reply: string; ms: number }
+export const connected = (t: Tested) => `Connected — ${t.model} replied “${t.reply}” in ${(t.ms / 1000).toFixed(1)} s.`
 const blank = (): Provider => ({ enabled: false, baseUrl: '', model: '', workspace: '' })
 
 function parse(xml: string) {
@@ -52,10 +55,14 @@ export function AiSettings() {
   // per provider: the loaded model list (a select replaces the text box), 'loading', or why it failed
   const [lists, setLists] = useState<Record<string, string[] | 'loading' | { error: string } | undefined>>({})
   const [savedUrl, setSavedUrl] = useState<Record<string, string>>({}) // the list is asked at the saved address only
+  const [saved, setSaved] = useState<Record<string, Provider>>({}) // a connection test uses the saved settings only
+  const [tests, setTests] = useState<Record<string, 'running' | Tested | { error: string } | undefined>>({})
   const load = () => api<string>('ai-settings').then(x => {
     const s = parse(x)
     setState(s)
     setSavedUrl(Object.fromEntries(IDS.map(id => [id, s.providers[id].baseUrl.trim()])))
+    setSaved(s.providers)
+    setTests({})
     setLists({})
   }, e => setMsg(`${because('Couldn’t read the AI settings', e.message)} Reload to try again.`))
   useEffect(() => { if (repo.mode === 'server') void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -81,6 +88,7 @@ export function AiSettings() {
       // only the key flag changes: unsaved provider edits on the page stay
       setState(s => s && { ...s, keys: { ...s.keys, [id]: !!value.trim() } })
       setLists(l => ({ ...l, [id]: undefined }))
+      setTests(t => ({ ...t, [id]: undefined }))
     } catch (e) { setMsg(because('Couldn’t save the key', (e as Error).message)) }
   }
   const loadModels = async (id: string) => {
@@ -89,6 +97,11 @@ export function AiSettings() {
       const { models } = await api<{ models: string[] }>(`ai-models?provider=${id}`)
       setLists(l => ({ ...l, [id]: [...models].sort() }))
     } catch (e) { setLists(l => ({ ...l, [id]: { error: (e as Error).message } })) }
+  }
+  const runTest = async (id: string) => {
+    setTests(t => ({ ...t, [id]: 'running' }))
+    try { const r = await api<Tested>(`ai-test?provider=${id}`, { method: 'POST' }); setTests(t => ({ ...t, [id]: r })) }
+    catch (e) { setTests(t => ({ ...t, [id]: { error: (e as Error).message } })) }
   }
   const TYPE = ' type' // the "type a model name" option: model ids have no spaces
   const modelField = (id: string, label: string, ph: string) => {
@@ -148,6 +161,17 @@ export function AiSettings() {
               {state.keys[id] && <button className="btn quiet" onClick={() => void saveKey(id, '')}>Remove key</button>}
             </div>
             <p className={state.keys[id] ? 'ok' : 'muted'}>{state.keys[id] ? 'Key saved' : 'No key saved'}</p>
+            {(() => {
+              const t = tests[id], changed = JSON.stringify(p) !== JSON.stringify(saved[id])
+              return <div className="row testrow">
+                <button className="btn quiet" disabled={changed || t === 'running'} aria-label={`Test ${PROVIDER_NAMES[id]}`}
+                  onClick={() => void runTest(id)}>{t === 'running' ? 'Testing…' : 'Test'}</button>
+                <span className="muted">{changed ? 'Save settings first: the test' : 'The test'} sends “Reply with the single word OK.” with the saved settings and key.</span>
+                {t && t !== 'running' && ('error' in t
+                  ? <p role="alert" className="wide">{because('Couldn’t connect', t.error)}</p>
+                  : <p role="status" className="ok wide">{connected(t)}</p>)}
+              </div>
+            })()}
           </fieldset>
         )
       })}

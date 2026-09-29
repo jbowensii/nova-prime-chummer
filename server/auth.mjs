@@ -190,7 +190,7 @@ export function publicOrigin(spec = '') {
 export function need(path, method) {
   if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
-  if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
+  if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|ai-test|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
   if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   return 'user'
 }

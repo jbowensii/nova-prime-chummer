@@ -141,7 +141,8 @@ test('a restore is refused while a write runs, and nothing writes while a restor
   for (const r of [await putRunner('During'), await setKey('sk-test-DURING1234'), await make(),
     await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7', headers: { 'Content-Type': 'application/pdf' } }),
     await fetch(`${base}/api/edits/items/x`, { method: 'PUT', body: '<edit/>' }), await fetch(`${base}/api/review/abc-1`, { method: 'PUT', body: '<review/>' }),
-    await fetch(`${base}/api/characters/r1`, { method: 'DELETE' })])
+    await fetch(`${base}/api/characters/r1`, { method: 'DELETE' }), await fetch(`${base}/api/trash`, { method: 'DELETE' }),
+    await fetch(`${base}/api/trash/r1.xml`, { method: 'DELETE' }), await fetch(`${base}/api/trash/r1.xml/restore`, { method: 'POST' })])
     expect(r.status).toBe(409)
   expect((await restoring).status).toBe(200)
   expect(readdirSync(mine).map(f => readFileSync(join(mine, f), 'utf8')).join()).not.toContain('During')

@@ -71,6 +71,7 @@ describe('with an admin, an editor and a player', () => {
   const ROUTES: [string, string, 'public' | 'user' | 'editor' | 'admin', BodyInit?][] = [
     ['GET', '/api/health', 'public'], ['GET', '/api/auth/me', 'public'],
     ['GET', '/api/characters', 'user'], ['PUT', '/api/characters/zz', 'user', '<nope/>'], ['DELETE', '/api/characters/zz', 'user'],
+    ['GET', '/api/trash', 'user'], ['POST', '/api/trash/zz.xml/restore', 'user'], ['DELETE', '/api/trash/zz.xml', 'user'], ['DELETE', '/api/trash', 'user'],
     ['POST', '/api/auth/password', 'user', '{}'], ['GET', '/custom/index.xml', 'user'], ['GET', '/api/edits', 'user'], ['GET', '/api/nothing', 'user'],
     ['PUT', '/api/edits/items/x', 'editor', '<edit/>'], ['DELETE', '/api/edits/items/x', 'editor'], ['POST', '/api/edits/sources', 'editor', '{}'],
     ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'], ['GET', '/api/samples', 'user'],
@@ -78,7 +79,7 @@ describe('with an admin, an editor and a player', () => {
     ['POST', '/api/books/nope/reimport', 'admin'], ['POST', '/api/books/nope/ai', 'admin'], ['DELETE', '/api/books/nope', 'admin'],
     ['GET', '/api/review/nope', 'admin'], ['PUT', '/api/review/nope', 'admin', '<review/>'],
     ['GET', '/api/ai-settings', 'admin'], ['PUT', '/api/ai-settings', 'admin', '<nope/>'], ['PUT', '/api/ai-keys', 'admin', '<nope/>'],
-    ['GET', '/api/ai-models?provider=nope', 'admin'],
+    ['GET', '/api/ai-models?provider=nope', 'admin'], ['POST', '/api/ai-test?provider=nope', 'admin'],
     ['GET', '/api/backup/nope', 'admin'], ['POST', '/api/restore?preview=1', 'admin', 'not a zip'], ['POST', '/api/restore/nope', 'admin'],
     ['POST', '/api/datapack', 'admin'], ['GET', '/api/datapack/nope', 'admin'], ['POST', '/api/datapack/import', 'admin', 'not a zip'],
     ['POST', '/api/datapack/import/nope', 'admin'],

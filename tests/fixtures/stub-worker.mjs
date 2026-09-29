@@ -142,6 +142,17 @@ ${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
   if (!key) fail(`no API key is set for ${target}`)
   if (key.includes('bad')) fail(`stub.example answered HTTP 401: invalid key ${key}`)
   console.log({ anthropic: 'claude-sonnet-5\nclaude-opus-5\nclaude-haiku-4-5', openai: 'gpt-5\ngpt-5-mini', gemini: 'gemini-2.5-pro\ngemini-2.5-flash' }[target])
+} else if (cmd === 'test-ai') { // target is the provider; saved key "…bad…": refused with the key on stderr; "…slow…": 1 s
+  const config = join(opt('--library'), '.config'), keys = join(config, 'ai-keys.xml'), settings = join(config, 'ai-providers.xml')
+  const key = (existsSync(keys) ? readFileSync(keys, 'utf8') : '').match(new RegExp(`<key provider="${target}">([^<]*)</key>`))?.[1] ?? ''
+  const saved = (existsSync(settings) ? readFileSync(settings, 'utf8') : '').match(new RegExp(`<provider id="${target}"([^>]*)/>`))?.[1]
+  const fail = why => { process.stderr.write(`${why}\n`); process.exit(3) }
+  if (saved == null) fail('save this provider’s settings first')
+  if (!key && ['anthropic', 'gemini'].includes(target)) fail(`no API key is set for ${target}`)
+  if (key.includes('bad')) fail(`the provider didn’t accept the API key (HTTP 401) ${key}`)
+  if (key.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000)
+  const model = target === 'anythingllm' ? `workspace ${saved.match(/ workspace="([^"]*)"/)?.[1]}` : saved.match(/ model="([^"]*)"/)?.[1] ?? 'default-model'
+  console.log(JSON.stringify({ model, reply: `OK\u0007${'!'.repeat(300)}`, ms: 1234 }))
 } else if (cmd === 'edit') { // target: set | remove | add-source; the real checks are importer/edits.py's (books-python.test.ts)
   const dir = join(opt('--custom'), 'edits'), [kind, id] = rest
   const tag = { amps: 'amp', items: 'item', rules: 'rule' }[kind]

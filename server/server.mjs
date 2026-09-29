@@ -10,7 +10,13 @@
 //          If-Match: <rev>                  refuse with 409 if the stored file has moved on
 //          ?force=1                         overwrite anyway
 //          ?filename=<name>                 file name for a new runner (else from the street name)
-//   DELETE /api/characters/:id           moves the file to .trash/ (never hard-deletes)
+//   DELETE /api/characters/:id           moves the file to .trash/ as <name>-<ms since 1970>.xml
+//   GET    /api/trash                    -> { user, name, items: [{ file, id, name, deletedAt }] } the caller's trash, newest first
+//   POST   /api/trash/:file/restore      back into the library -> { file, id, name, copy }; copy: the id was taken, so it came
+//                                        back with a new id and "(restored copy)" after its street name
+//   DELETE /api/trash/:file              deletes that file for good; DELETE /api/trash empties the trash -> { deleted }
+//                                        (body { files: [...] }: only those, e.g. the ones the page showed)
+//          ?user=<username>              the admin: another account's trash (everyone else: 403)
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
@@ -19,17 +25,20 @@
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
-import { mkdir, readdir, readFile, rename, rmdir, stat, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
-import { booksApi } from './books.mjs'
+import { booksApi, unesc } from './books.mjs'
 import { oidcApi } from './oidc.mjs'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.xsd': 'application/xml' }
 const MAX_BODY = 5 * 1024 * 1024
 const ID = /^[A-Za-z0-9._-]{1,80}$/
+const TRASH_FILE = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,150}\.xml$/ // a file in .trash/: no separators, no leading dot
+const NS = /<ca2:character\b[^>]*xmlns:ca2="urn:chummer-anarchy2:character:1"/
 
 const rootAttr = (xml, name) => xml.match(new RegExp(`<ca2:character\\b[^>]*\\s${name}="([^"]*)"`))?.[1]
 const slug = s => (s || '').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'runner'
@@ -45,6 +54,14 @@ const SECURITY_HEADERS = {
 function setRev(xml, rev) {
   return xml.replace(/<ca2:character\b[^>]*>/, tag =>
     /\srev="[^"]*"/.test(tag) ? tag.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : tag.replace(/\sid="/, ` rev="${rev}" id="`))
+}
+
+/** A trashed runner restored next to one with its id: a new id, rev 1 and "(restored copy)" after its street name (or name). */
+export function restoredCopy(xml, id) {
+  return setRev(xml.replace(/<ca2:character\b[^>]*>/, tag => {
+    const street = tag.match(/\sstreetName="([^"]*)"/)?.[1] || tag.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
+    return tag.replace(/\s(id|streetName)="[^"]*"/g, '').replace(/^<ca2:character/, `$& id="${id}" streetName="${street} (restored copy)"`)
+  }), 1)
 }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..') // where `python -m importer` runs
@@ -167,6 +184,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (await oidc.handle(req, res, url, send, who) !== false) return
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
+    if (/^\/api\/trash(\/|$)/.test(url.pathname)) return trash(req, res, url, who)
     if (url.pathname === '/api/characters' && req.method === 'GET') {
       const owners = [who.username, ...(who.role === 'player' ? [] : auth.usernames().filter(u => u !== who.username))]
       const out = []
@@ -179,7 +197,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
     if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
     const xml = req.method === 'PUT' ? await readBody(req) : null
-    if (xml != null && (!/<ca2:character\b[^>]*xmlns:ca2="urn:chummer-anarchy2:character:1"/.test(xml) || rootAttr(xml, 'id') !== id))
+    if (xml != null && (!NS.test(xml) || rootAttr(xml, 'id') !== id))
       return send(res, 400, { error: 'body is not a character file for this id' })
     return lock(async () => {
       // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
@@ -207,6 +225,74 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await writeFile(tmp, setRev(xml, rev), 'utf8')
       await rename(tmp, join(dir, file))
       return send(res, existing ? 200 : 201, { rev, file })
+    })
+  }
+
+  /** The Trash page's routes (see the top of this file). Players and editors: their own trash only; the admin: ?user=. */
+  async function trash(req, res, url, who) {
+    const m = url.pathname.match(/^\/api\/trash(?:\/([^/]+)(\/restore)?)?$/)
+    if (!m) return send(res, 404, { error: 'not found' })
+    let file = null
+    if (m[1] != null) {
+      try { file = decodeURIComponent(m[1]) } catch { file = '' }
+      if (!TRASH_FILE.test(file) || file.includes('..')) return send(res, 400, { error: 'bad file name' })
+    }
+    const want = !file ? ['GET', 'DELETE'] : m[2] ? ['POST'] : ['DELETE']
+    if (!want.includes(req.method)) return send(res, 405, { error: 'method not allowed' })
+    const whose = me => {
+      const u = url.searchParams.get('user') ?? me.username
+      if (u !== me.username && me.role !== 'admin') throw fail(403, 'only the admin can open another account’s trash')
+      if (!auth.usernames().includes(u)) throw fail(404, 'no such account')
+      return u
+    }
+    /** The runner files in a trash folder: regular files with a trash name (no links, no folders called *.xml). */
+    const files = async dir => (await readdir(dir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && TRASH_FILE.test(d.name)).map(d => d.name)
+    if (req.method === 'GET') {
+      const user = whose(who), dir = join(folder(user), '.trash'), items = []
+      for (const f of await files(dir)) {
+        const [xml, s] = await Promise.all([readFile(join(dir, f), 'utf8'), stat(join(dir, f))]).catch(() => [])
+        if (!xml) continue
+        const at = Number(f.match(/-(\d{13})\.xml$/)?.[1] ?? s.mtimeMs)
+        items.push({ file: f, id: rootAttr(xml, 'id') ?? '', name: unesc(rootAttr(xml, 'streetName') || rootAttr(xml, 'name') || '') || base(f),
+          deletedAt: new Date(at).toISOString() })
+      }
+      return send(res, 200, { user, name: auth.nameOf(user), items: items.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)) })
+    }
+    return lock(async () => {
+      const me = auth.current(who.id) // as it is now (renamed, disabled or deleted while this waited)
+      if (!me) return send(res, 401, { error: 'sign in first' })
+      const user = whose(me), dir = join(folder(user), '.trash')
+      if (!file) {
+        // { files: [...] }: only those (what the page showed), each checked; no body: all of them
+        const body = await readBody(req)
+        let only = null
+        if (body.trim()) {
+          try { only = JSON.parse(body).files } catch { /* checked below */ }
+          if (!Array.isArray(only) || only.length > 10000 || !only.every(f => typeof f === 'string')) return send(res, 400, { error: 'body is { files: [file names] }' })
+        }
+        let deleted = 0
+        for (const f of await files(dir)) if (!only || only.includes(f)) { await unlink(join(dir, f)); deleted++ }
+        return send(res, 200, { deleted })
+      }
+      const path = join(dir, file)
+      if (!inside(path, dir) || !(await lstat(path).catch(() => null))?.isFile()) return send(res, 404, { error: 'no such runner in the trash' })
+      if (req.method === 'DELETE') { await unlink(path); res.writeHead(204).end(); return }
+      const xml = await readFile(path, 'utf8')
+      if (!NS.test(xml)) return send(res, 400, { error: 'this file isn’t a runner, so it can’t be restored' })
+      let id = rootAttr(xml, 'id') ?? ''
+      let taken = !ID.test(id)
+      for (const u of auth.usernames()) if (!taken && (await index(folder(u))).some(c => c.id === id)) taken = true
+      await mkdir(folder(user), { recursive: true })
+      const name = await freeName(folder(user), base(file).replace(/-\d{13}$/, '') || 'runner')
+      if (taken) {
+        id = randomUUID()
+        const tmp = join(folder(user), `.${name}.tmp`)
+        await writeFile(tmp, restoredCopy(xml, id), 'utf8')
+        await rename(tmp, join(folder(user), name))
+        await unlink(path) // a crash before this leaves it in the trash too: nothing is lost
+      } else await rename(path, join(folder(user), name))
+      const after = await readFile(join(folder(user), name), 'utf8')
+      return send(res, 200, { file: name, id, name: unesc(rootAttr(after, 'streetName') || rootAttr(after, 'name') || ''), copy: taken })
     })
   }
 

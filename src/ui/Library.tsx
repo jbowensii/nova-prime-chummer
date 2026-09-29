@@ -6,6 +6,7 @@ import { AccountMenu, because, canEdit, isAdmin, useMe } from './auth'
 import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
+import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { chooseExamples, extraCopies, keyOf, type Example, type Sources } from './samples'
 
@@ -61,7 +62,11 @@ export function Library({ c }: { c: Catalog }) {
     if (!admin) return // only the admin uploads books
     fetch('./api/books', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => setNoBooks(Array.isArray(b) && b.length === 0), () => {})
   }, [repo.mode, c, admin])
-  const refresh = () => repo.list().then(setList, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
+  const [trashed, setTrashed] = useState<number | null>(null) // server only: the browser's storage has no trash
+  const refresh = () => {
+    if (repo.mode === 'server') loadTrash().then(t => setTrashed(t.items.length), () => setTrashed(null))
+    return repo.list().then(setList, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
+  }
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const where = repo.mode === 'server' ? 'the server' : 'this browser'
   // admin and editors also get everyone else's runners (read-only): theirs first, then one group per owner
@@ -183,6 +188,7 @@ export function Library({ c }: { c: Catalog }) {
           {admin && <a className="btn quiet" href="#/books">Books</a>}
           {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
           <a className="btn quiet" href="#/data">Game data</a>
+          {trashed !== null && <a className="btn quiet" href="#/trash">Trash ({trashed})</a>}
           <SettingsButton />
           <AccountMenu />
         </div>
@@ -230,7 +236,7 @@ export function Library({ c }: { c: Catalog }) {
         <p>Your library keeps one copy of each example character (one canon, one non-canon). These extra copies are unchanged since they were loaded:</p>
         <ul>{dupes.map(ch => <li key={ch.id}>{ch.identity.streetName || ch.identity.name} ({from(ch)})</li>)}</ul>
         <p className="muted">{repo.mode === 'server'
-          ? 'They move to your .trash folder on the server, so they can still be recovered there. Copies you changed stay.'
+          ? 'They move to your trash, so they can still be restored from there. Copies you changed stay.'
           : 'They’re removed from this browser. Copies you changed stay.'}</p>
       </Modal>
 
@@ -240,7 +246,7 @@ export function Library({ c }: { c: Catalog }) {
             try { await repo.remove(toDelete!.id) } catch (e) { setMsg(because('Couldn’t delete the runner', (e as Error).message ?? String(e))) }
             setToDelete(null); void refresh() }}>Delete runner</button></>}>
         <p>{repo.mode === 'server'
-          ? 'The file moves to its owner’s .trash folder on the server (characters/<username>/.trash/), so it can still be recovered there.'
+          ? 'It moves to your trash, where you can restore it or delete it for good.'
           : 'This removes the runner from this browser. Exported files are not affected.'}</p>
       </Modal>
     </main>

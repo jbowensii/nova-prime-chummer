@@ -43,6 +43,11 @@ own API key), and you review its entries before they’re added.
   trash and never touches one you edited. Each import’s
   report lists any printed number the engine doesn’t reproduce; see
   [docs/book-discrepancies.md](docs/book-discrepancies.md) for the rules calls.
+- **Trash.** Deleted runners go to your trash (**Trash (N)** in the runner
+  list, or the account menu): restore one, delete one forever, or empty the
+  trash. A runner restored next to one with the same id comes back as a
+  copy, “(restored copy)”. The admin can open anyone’s trash from the Users
+  page. Browser-only storage has no trash: deleting there is for good.
 - **Canon and non-canon.** The core rulebook and Conversion Guide are canon.
   Published material that isn't official rules (Daegann's expanded amp list
   and pregens, the quick-reference sheets) carries a **Non-canon** badge, and
@@ -269,6 +274,10 @@ AnythingLLM under **AI settings**. The key is stored on the server in a file
 of its own and never shown again. Once a key is saved, **Load models** asks
 the provider (with that key, at the saved address) for its model list to pick
 from; AnythingLLM has none, and you can always type a model name instead.
+**Test** (each provider, once its settings are saved) sends the provider a tiny
+fixed prompt with the saved settings and key and shows its reply and how long
+it took, or why it failed (key refused, model or workspace not found, address
+unreachable, no answer within 30 seconds).
 If the core rulebook’s recipe can’t read a core table, the same AI can read it
 (any of the core tables, not just weapons and armor); those rows are marked
 for you to check against the book. Before anything is sent the page names the

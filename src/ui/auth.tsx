@@ -231,6 +231,7 @@ export function AccountMenu() {
       <div id={panel} className="account-panel" hidden={!open}>
         <p><b>{me.name}</b><br /><span className="muted">{ROLE_NAMES[me.role]} · {me.username}</span></p>
         {me.role === 'admin' && <a className="btn quiet" href="#/users" onClick={() => setOpen(false)}>Users</a>}
+        <a className="btn quiet" href="#/trash" onClick={() => setOpen(false)}>Trash</a>
         {me.method === 'password' && <button className="btn quiet" onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
         {me.method === 'password' && oidcOn && <button className="btn quiet" onClick={() => { setOpen(false); setLink(true) }}>Link my Authelia account</button>}
         <button className="btn quiet" disabled={leaving === 'waiting'} onClick={() => void leave()}>{leaving === 'waiting' ? 'Signing out…' : 'Sign out'}</button>

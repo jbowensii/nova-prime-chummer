@@ -141,6 +141,7 @@ export function UsersScreen() {
                     <button className="btn small quiet" aria-label={`${u.enabled ? 'Disable' : 'Enable'} ${u.name}`} onClick={() => void toggle(u)}>{u.enabled ? 'Disable' : 'Enable'}</button>
                     {u.linked && <button className="btn small quiet" aria-label={`Unlink ${u.name} from Authelia`} onClick={() => void unlink(u)}>Unlink Authelia</button>}
                     {u.runners > 0 && <button className="btn small quiet" aria-label={`Move ${u.name}’s runners`} onClick={() => open({ at: 'move', u })}>Move runners</button>}
+                    <a className="btn small quiet" aria-label={`Open ${u.name}’s trash`} href={`#/trash/${u.username}`}>Trash</a>
                     <button className="btn small quiet" aria-label={`Delete ${u.name}`} onClick={() => open({ at: 'delete', u })}>Delete</button>
                   </div></td>
                 </tr>

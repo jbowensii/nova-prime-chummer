@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { mkdirSync } from 'node:fs'
 
 // The e2e server runs the real Books API with a stub worker (tests/fixtures/stub-worker.mjs): any PDF
 // imports as the made-up book STUB (one amp, "Stub Amp"); a PDF containing "needs-ai" matches no recipe,
@@ -137,4 +138,27 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
   await expect(openai.getByRole('textbox', { name: 'Model' })).toBeEditable()
   await expect(page.locator('body')).not.toContainText('sk-bad-e2e')
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+})
+
+// the stub worker answers a connection test with a made-up reply for a saved provider, and refuses a key containing "bad"
+test('Test asks the saved provider and says whether it answered', async ({ page }) => {
+  await page.goto('/#/books/ai')
+  const gemini = page.locator('fieldset', { hasText: 'Gemini' }), openai = page.locator('fieldset', { hasText: 'OpenAI' })
+  await gemini.getByRole('button', { name: 'Test Google Gemini' }).click()
+  await expect(gemini.getByRole('status')).toContainText('Connected — gemini-2.5-flash replied “OK !!!')
+  await expect(gemini.getByRole('status')).toContainText('” in 1.2 s.')
+  await openai.getByRole('button', { name: 'Test OpenAI-compatible' }).click()
+  await expect(openai.getByRole('alert')).toHaveText('Couldn’t connect: the provider didn’t accept the API key (HTTP 401) [key].')
+  await expect(page.locator('body')).not.toContainText('sk-bad-e2e')
+  // unsaved changes: the test would use the saved settings, so it waits for Save settings
+  await gemini.getByLabel('Address (optional)').fill('https://elsewhere.example')
+  await expect(gemini.getByRole('button', { name: 'Test Google Gemini' })).toBeDisabled()
+  await expect(gemini).toContainText('Save settings first: the test sends')
+  await gemini.getByLabel('Address (optional)').fill('')
+  await expect(gemini.getByRole('button', { name: 'Test Google Gemini' })).toBeEnabled()
+  mkdirSync('.extract/screenshots/0.4.4', { recursive: true })
+  await gemini.screenshot({ path: '.extract/screenshots/0.4.4/ai-test-light.png' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+  await gemini.screenshot({ path: '.extract/screenshots/0.4.4/ai-test-phone.png' })
 })
