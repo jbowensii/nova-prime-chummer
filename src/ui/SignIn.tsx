@@ -41,7 +41,7 @@ let oidcNote = (() => {
 /** `over`: shown over a page whose session ended (the default when there is a `note`). */
 export function SignIn({ onSignedIn, note, oidc, over = !!note }: { onSignedIn: (u: User) => void; note?: ReactNode; oidc?: boolean; over?: boolean }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
-  const [err, setErr] = useState(() => oidcNote || takeLinkNote()), [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(() => oidcNote || takeLinkNote(null)), [busy, setBusy] = useState(false)
   useEffect(() => { oidcNote = '' }, []) // shown once
   // over a page (a session that ended): Authelia opens in a new tab, so this page keeps its unsaved changes
   const back = async () => {

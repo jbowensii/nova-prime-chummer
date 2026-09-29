@@ -59,38 +59,50 @@ export async function fetchMe(): Promise<{ user: User | null; setup: boolean; oi
 const LINK_RESULTS: Record<string, string> = {
   done: 'Your account is now linked to Authelia. From now on, sign in with Authelia: your password no longer works, and your other devices are signed out.',
   taken: 'That Authelia user is already linked to another account here, so nothing changed. Ask the admin if that’s wrong.',
+  'other-account': 'Nothing changed: the Authelia user who signed in has an account of their own here. Sign in to Authelia as yourself and try again.',
+  stale: 'Nothing changed: Authelia didn’t ask for your password again. Sign out of Authelia, then try again.',
   session: 'Nothing changed: the link was started from a sign-in that has ended or changed. Sign in and try again.',
   expired: 'Nothing changed: the link took too long or was already used. Try again.',
   denied: 'Nothing changed: Authelia didn’t sign you in. Try again.',
   failed: 'Nothing changed: linking to Authelia didn’t work. Try again, and if it keeps failing ask the admin to check the sign-in settings.',
 }
 /** The ?link= the browser came back with: read once, and taken off the address. */
-let linkNote = (() => {
+let linkKey = (() => {
   const key = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('link')
   if (key === null) return ''
   history.replaceState(null, '', location.pathname + location.hash)
-  return LINK_RESULTS[key] ?? LINK_RESULTS.failed
+  return Object.hasOwn(LINK_RESULTS, key) ? key : 'failed'
 })()
-/** The link result, once (the account menu shows it; the sign-in page when nobody is signed in any more). */
-export function takeLinkNote() { const n = linkNote; linkNote = ''; return n }
+/** The link result, once (the account menu shows it; the sign-in page when nobody is signed in any more). Anyone can make a
+ *  /?link=done address: "done" is only said to an account that really signs in with Authelia now. */
+export function takeLinkNote(me: User | null) {
+  const k = linkKey
+  linkKey = ''
+  return !k || (k === 'done' && me?.method !== 'authelia') ? '' : LINK_RESULTS[k]
+}
 
-/** "Link my Authelia account": what changes, then off to Authelia (the server checks everything again). */
+/** "Link my Authelia account": what changes, the current password, then off to Authelia (the server checks it all). */
 function LinkAuthelia({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
-  const go = async () => {
+  const [cur, setCur] = useState(''), [err, setErr] = useState(''), [busy, setBusy] = useState(false)
+  const close = () => { setCur(''); setErr(''); onClose() }
+  const go = async (e: React.FormEvent) => {
+    e.preventDefault()
     setBusy(true); setErr('')
     try {
       if (!await saved()) throw new Error('A runner’s change is still saving. Try again in a moment.')
-      location.assign((await (await send('auth/oidc/link/start')).json()).url)
-    } catch (x) { setErr((x as Error).message); setBusy(false) }
+      location.assign((await (await send('auth/oidc/link/start', { current: cur })).json()).url)
+    } catch (x) { setErr((x as Error).message); setCur(''); setBusy(false) }
   }
   return (
-    <Modal open={open} onClose={() => { setErr(''); onClose() }} title="Link my Authelia account" actions={<>
-      <button className="btn" onClick={() => { setErr(''); onClose() }}>Cancel</button>
-      <button className="btn primary" disabled={busy} onClick={() => void go()}>{busy ? 'One moment…' : 'Continue to Authelia'}</button></>}>
-      <p>You’ll sign in with Authelia to show it’s you. After that, this account signs in with Authelia only: <b>your password stops
-        working</b> and your other devices are signed out. Only the admin can switch it back.</p>
-      {err && <p className="err" role="alert">{err}</p>}
+    <Modal open={open} onClose={close} title="Link my Authelia account" actions={<>
+      <button className="btn" onClick={close}>Cancel</button>
+      <button className="btn primary" form="ca2-link" disabled={busy}>{busy ? 'One moment…' : 'Continue to Authelia'}</button></>}>
+      <form id="ca2-link" className="stack" onSubmit={e => void go(e)}>
+        <p>You’ll sign in with Authelia as yourself to show it’s you. After that, this account signs in with Authelia only: <b>your
+          password stops working</b> and your other devices are signed out. Only the admin can switch it back.</p>
+        <PasswordField label="Current password" value={cur} onChange={setCur} autoComplete="current-password" hint={false} autoFocus />
+        {err && <p className="err" role="alert">{err}</p>}
+      </form>
     </Modal>
   )
 }
@@ -197,7 +209,7 @@ function ChangePassword({ open, onClose }: { open: boolean; onClose: () => void 
 export function AccountMenu() {
   const me = useMe()
   const [open, setOpen] = useState(false), [pw, setPw] = useState(false), [link, setLink] = useState(false)
-  const [linked, setLinked] = useState(takeLinkNote)
+  const [linked, setLinked] = useState(() => takeLinkNote(me))
   const [leaving, setLeaving] = useState<'no' | 'waiting' | 'stuck'>('no')
   const leave = async (force = false) => {
     setLeaving('waiting')
