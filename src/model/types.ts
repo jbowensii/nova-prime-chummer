@@ -99,8 +99,8 @@ export interface Character { formatVersion: 1; id: string;
   allowNonCanon?: boolean;
   /** source id of a sample character (sources.xml), e.g. CRB or PREGENS */
   origin?: string;
-  /** which imported sample this runner was loaded from: "<source>.<name slug>" (src/ui/samples.ts); loading the samples
-   *  again skips it even when a re-import gave the sample a new file id */
+  /** which example character this runner is a copy of: "<name slug>|canon" or "<name slug>|noncanon" (src/ui/samples.ts);
+   *  0.4.1 wrote "<source>.<name slug>". Loading the examples again skips every key already in the library */
   sampleKey?: string;
   /** creation nuyen left over when finalized; the career balance starts here */
   finalRemaining?: number;

@@ -7,7 +7,7 @@ import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
 import { needsExportReminder } from './storage'
-import { duplicateSamples, keyed, keyOf } from './samples'
+import { chooseExamples, extraCopies, keyOf, type Example, type Sources } from './samples'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
@@ -22,13 +22,20 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
 /** A character file: our XML, or the older .ca2.json. */
 export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
 
-/** The sample runners the imported books brought (custom/imported/samples.xml), each with its key (samples.ts); none
- *  before any import. */
-async function sampleList() {
+/** Every example character there is: the imported books' sample runners (custom/imported/samples.xml; none before any
+ *  import) and, on the server, its example sets (GET /api/samples). Canon: the book's source, or the set's flag. */
+async function exampleList(c: Catalog, server: boolean): Promise<Example[]> {
   const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
   const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
-  return xml?.documentElement.localName === 'samples' ? keyed([...xml.documentElement.getElementsByTagName('sample')].map(s =>
-    ({ url: `./custom/imported/${s.getAttribute('href')}`, source: s.getAttribute('source') ?? '', name: s.getAttribute('name') ?? '' }))) : []
+  const books = xml?.documentElement.localName === 'samples' ? [...xml.documentElement.getElementsByTagName('sample')].map(s => {
+    const source = s.getAttribute('source') ?? ''
+    return { url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source, canon: isCanonSource(c, source) }
+  }) : []
+  if (!server) return books
+  const r = await fetch('./api/samples', { cache: 'no-store' })
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
+  const { sets }: { sets: { name: string; canon: boolean; samples: { name: string; href: string }[] }[] } = await r.json()
+  return [...books, ...sets.flatMap(set => set.samples.map(s => ({ url: `./custom/${s.href}`, name: s.name, set: set.name, canon: set.canon })))]
 }
 
 export function Library({ c }: { c: Catalog }) {
@@ -54,6 +61,7 @@ export function Library({ c }: { c: Catalog }) {
   const where = repo.mode === 'server' ? 'the server' : 'this browser'
   // admin and editors also get everyone else's runners (read-only): theirs first, then one group per owner
   const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
+  const sources: Sources = id => { const k = id.toLowerCase(); return [...c.sources.values()].find(s => s.id.toLowerCase() === k) }
 
   const store = async (ch: Character, rev?: number) => {
     const r = await repo.save(ch, rev)
@@ -80,31 +88,33 @@ export function Library({ c }: { c: Catalog }) {
     void refresh()
   }
 
-  // each account gets copies of its own (new ids), matched by the sample's key: never twice, whatever ids a re-import gave
-  const loadSamples = async () => {
+  // each account gets copies of its own (new ids): one per character and canon-ness, whatever ids a re-import gave
+  const loadExamples = async () => {
     try {
-      const have = new Set(mine.map(s => keyOf(s.ch)))
+      const have = new Set(mine.map(s => keyOf(s.ch, sources)))
       let n = 0
       const bad: string[] = []
-      const samples = await sampleList()
-      if (!samples.length) return setMsg('No sample characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet).')
-      for (const { url, key } of samples.filter(s => !have.has(s.key))) {
+      const examples = chooseExamples(await exampleList(c, repo.mode === 'server'), sources)
+      if (!examples.length) return setMsg('No example characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet) and the server’s example sets.')
+      for (const { url, key } of examples.filter(s => !have.has(s.key))) {
         const file = url.split('/').pop()
         const res = await fetch(url).catch(() => null)
         if (!res?.ok) { bad.push(`${file}: couldn’t be fetched.`); continue }
         const r = readCharacterFile(await res.text())
         if (!r.ok) { bad.push(`${file}: ${r.reason}`); continue }
-        if (await store({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })) n++
+        if (await store({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })) { n++; have.add(key) }
       }
-      setMsg([n ? `Added ${n} sample characters.` : bad.length ? '' : 'The sample characters are already in your library.', ...bad].filter(Boolean).join(' '))
+      setMsg([n ? `Added ${n} example character${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The example characters are already in your library.', ...bad].filter(Boolean).join(' '))
       void refresh()
     } catch (e) {
-      setMsg(because('Couldn’t load the samples', (e as Error).message ?? String(e)))
+      setMsg(because('Couldn’t load the example characters', (e as Error).message ?? String(e)))
     }
   }
 
-  // the unmodified duplicate samples of your own runners (loaded twice before samples had keys): to your trash
-  const dupes = duplicateSamples(mine.map(s => s.ch))
+  // extra copies of an example character in your own library (loaded twice, or both a book's and a set's version): to your trash
+  const dupes = extraCopies(mine, sources)
+  const from = (ch: Character) => ch.origin ? c.sources.get(ch.origin)?.name ?? ch.origin : ch.sampleKey?.includes('.') ? ch.sampleKey.split('.')[0].toUpperCase()
+    : ch.id.startsWith('sample-') ? 'built-in, first release' : 'example set'
   const tidy = async () => {
     const moved: string[] = [], name = (ch: Character) => ch.identity.streetName || ch.identity.name
     const done = () => moved.length ? `${repo.mode === 'server' ? 'Moved to your trash' : 'Removed'}: ${moved.join(', ')}.` : ''
@@ -162,7 +172,7 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn primary" onClick={() => setCreating(true)}>New runner</button>
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
-          <button className="btn quiet" onClick={loadSamples}>Load sample characters</button>
+          <button className="btn quiet" onClick={loadExamples}>Load example characters</button>
           {admin && <a className="btn quiet" href="#/books">Books</a>}
           {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
           <a className="btn quiet" href="#/data">Game data</a>
@@ -174,14 +184,14 @@ export function Library({ c }: { c: Catalog }) {
       {noBooks && <p className="banner">Upload your books to add amps, spells and gear. <a href="#/books">Open the Books page</a></p>}
       {msg && <p className="banner" role="status">{msg}</p>}
       {dupes.length > 0 && <p className="banner">
-        {dupes.length === 1 ? 'A sample character is in your library twice' : `${dupes.length} sample characters are extra copies`}, unchanged since they were loaded.{' '}
+        {dupes.length === 1 ? 'An example character is in your library twice' : `${dupes.length} example characters are extra copies`}, unchanged since they were loaded.{' '}
         <button className="btn small" onClick={() => setTidying(true)}>Tidy up</button></p>}
 
       {list === null ? <p className="muted">Loading runners…</p> : <>
         {others.length > 0 && <h2>My runners</h2>}
         {mine.length === 0 ? (
           <div className="empty">
-            <p>No runners yet. Start a new one, import a character file, or load the sample characters your imported books bring to look around.</p>
+            <p>No runners yet. Start a new one, import a character file, or load the example characters to look around.</p>
           </div>
         ) : mine.map(s => dossier(s, true))}
         {others.map(([owner, name, rows]) => <section key={owner} aria-label={`${name}’s runners`}>
@@ -207,11 +217,11 @@ export function Library({ c }: { c: Catalog }) {
         <p className="muted" style={{ marginTop: '0.8rem' }}>Both can be changed later on the Concept tab.</p>
       </Modal>
 
-      <Modal open={tidying} onClose={() => setTidying(false)} title="Tidy up the sample characters"
+      <Modal open={tidying} onClose={() => setTidying(false)} title="Tidy up the example characters"
         actions={<><button className="btn" onClick={() => setTidying(false)}>Keep them</button>
           <button className="btn primary" onClick={() => void tidy()}>{repo.mode === 'server' ? 'Move to trash' : 'Remove copies'}</button></>}>
-        <p>These copies are the same as another copy in your library, apart from when they were saved:</p>
-        <ul>{dupes.map(ch => <li key={ch.id}>{ch.identity.streetName || ch.identity.name}</li>)}</ul>
+        <p>Your library keeps one copy of each example character (one canon, one non-canon). These extra copies are unchanged since they were loaded:</p>
+        <ul>{dupes.map(ch => <li key={ch.id}>{ch.identity.streetName || ch.identity.name} ({from(ch)})</li>)}</ul>
         <p className="muted">{repo.mode === 'server'
           ? 'They move to your .trash folder on the server, so they can still be recovered there. Copies you changed stay.'
           : 'They’re removed from this browser. Copies you changed stay.'}</p>
