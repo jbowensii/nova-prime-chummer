@@ -1,5 +1,5 @@
-// Per-browser display settings: theme, texture level, print style (docs/design-system.md); on a server, also Sign-in and Backup
-// (admin).
+// Per-browser display settings: theme, texture level, print style (docs/design-system.md); on a server, also AI settings (a
+// link to the page under Books), Sign-in and Backup (admin).
 import { useState } from 'react'
 import { isAdmin, useMe } from './auth'
 import { BackupSettings } from './Backup'
@@ -36,7 +36,7 @@ const GROUPS: { key: keyof Settings; label: string; options: [string, string, st
 export function SettingsButton() {
   const [open, setOpen] = useState(false)
   const [s, setS] = useState(loadSettings)
-  const admin = isAdmin(useMe())
+  const me = useMe(), admin = isAdmin(me)
   const set = (k: keyof Settings, v: string) => { const next = { ...s, [k]: v } as Settings; setS(next); saveSettings(next) }
   return (
     <>
@@ -57,6 +57,10 @@ export function SettingsButton() {
             </fieldset>
           ))}
           <p className="muted">Saved in this browser only.</p>
+          {/* not isAdmin(): that is true without a server, where AI settings can't work */}
+          {me?.role === 'admin' && <fieldset><legend>AI settings</legend>
+            <p className="muted">The AI provider and keys the importer uses for books its recipes can’t read.</p>
+            <a className="btn" href="#/books/ai" onClick={() => setOpen(false)}>Open AI settings</a></fieldset>}
           {admin && <SignInSettings />}
           {admin && <BackupSettings />}
         </div>

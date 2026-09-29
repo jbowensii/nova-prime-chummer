@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- library/<book-id>/review.xml: AI proposals for a book no recipe knows, and the user's decisions.
      Each proposal holds one entry exactly as it would go in the overlay (amps.xsd / items.xsd) and
-     the validation notes. kind names the overlay: amp, gear, weapon, armor, spell, complex-form.
+     the validation notes. kind names the overlay: amp, gear, weapon, armor, spell, complex-form; in a core review
+     (core="true") the core table's entry: weapon, armor, level, metatype, attribute, skill, pricing, amptype, effect,
+     package, vehicle, lifestyle (the entry element is the kind, weapons and armor are <item>).
      source is provisional until the user picks one. The file is rewritten after each of the book.md
      parts (done of parts; bookSha256 = the book.md proposed), so an unfinished run can resume.
      <skip part> = a part whose reply was cut off or had no usable JSON, with the reason. -->
@@ -20,6 +22,16 @@
               <xs:choice>
                 <xs:element name="amp" type="xs:anyType"/>
                 <xs:element name="item" type="xs:anyType"/>
+                <xs:element name="level" type="xs:anyType"/>
+                <xs:element name="metatype" type="xs:anyType"/>
+                <xs:element name="attribute" type="xs:anyType"/>
+                <xs:element name="skill" type="xs:anyType"/>
+                <xs:element name="pricing" type="xs:anyType"/>
+                <xs:element name="amptype" type="xs:anyType"/>
+                <xs:element name="effect" type="xs:anyType"/>
+                <xs:element name="package" type="xs:anyType"/>
+                <xs:element name="vehicle" type="xs:anyType"/>
+                <xs:element name="lifestyle" type="xs:anyType"/>
               </xs:choice>
               <xs:element name="note" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
@@ -28,6 +40,11 @@
               <xs:simpleType><xs:restriction base="xs:string">
                 <xs:enumeration value="amp"/><xs:enumeration value="gear"/><xs:enumeration value="weapon"/>
                 <xs:enumeration value="armor"/><xs:enumeration value="spell"/><xs:enumeration value="complex-form"/>
+                <!-- a core review's rows (core="true"): the entry of the core table it goes in -->
+                <xs:enumeration value="level"/><xs:enumeration value="metatype"/><xs:enumeration value="attribute"/>
+                <xs:enumeration value="skill"/><xs:enumeration value="pricing"/><xs:enumeration value="amptype"/>
+                <xs:enumeration value="effect"/><xs:enumeration value="package"/><xs:enumeration value="vehicle"/>
+                <xs:enumeration value="lifestyle"/>
               </xs:restriction></xs:simpleType>
             </xs:attribute>
             <xs:attribute name="state" use="required">

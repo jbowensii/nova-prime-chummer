@@ -141,7 +141,7 @@ test('a runner saved from two browsers: conflict dialog, save mine as a new file
   await expect(a.getByRole('link', { name: 'Twice A copy' })).toBeVisible()
 })
 
-test('runners saved in the browser move to tower04 on first load', async ({ page }) => {
+test('runners saved in the browser move to the server on first load', async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => localStorage.setItem('ca2.library.v1', JSON.stringify([{ formatVersion: 1, id: 'legacy-1',
     identity: { name: '', streetName: 'Old Timer', metatype: 'human', background: '', notes: '' },
@@ -149,7 +149,7 @@ test('runners saved in the browser move to tower04 on first load', async ({ page
     build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
     career: [], overrides: [], updatedAt: '2026-09-01T00:00:00Z' }])))
   await page.reload()
-  await expect(page.getByRole('status').first()).toContainText('Moved 1 runner from this browser to tower04')
+  await expect(page.getByRole('status').first()).toContainText('Moved 1 runner from this browser to the server')
   await expect(page.getByRole('link', { name: 'Old Timer' })).toBeVisible()
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ca2.library.v1') ?? '[]').length)).toBe(0)
 })

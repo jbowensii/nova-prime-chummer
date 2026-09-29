@@ -34,7 +34,7 @@ WEAPON_GROUPS = {"Close combat": ("short-weapon", "long-weapon", "advanced-close
 SKIP_WEAPONS = {"unarmed"}
 # values the book doesn't state, and why
 DEFAULTS = {
-    "complexForm": "spell",          # CRB has no technomancers; the CG (p.9) prices complex forms like spells
+    "complexForm": "spell",          # CRB has no technomancers: a stand-in until the CG's import sets its own price (<prices>)
     "refundEffectRemoval": "false",  # CRB is silent on refunds when an Amp effect is removed: no refund
 }
 
@@ -306,8 +306,7 @@ def ampeffects(pages, types):
     awk = [(p, _text(m[1]), f"+{m[2]}", "") for p, l in _lines(pages, 58, 58) if (m := re.match(r"• \*\*(.+?):\*\* rating \+(\d+)", l))]
     out = []
     for eid, cat, pattern, a in EFFECTS:
-        if a.get("derive") == "realm":  # "limited to one of three realms (astral space, physical world, virtual reality) with a
-            # rating reduction of 1 for each level"
+        if a.get("derive") == "realm":  # the book limits this effect to one realm, for a rating reduction per level (read from p.61 below)
             notes = pages.get(61, "")
             realms, cut = re.search(r"realms \(([^)]*)\)", notes), re.search(r"rating reduction of (\d+) for each", notes)
             if not realms or not cut:

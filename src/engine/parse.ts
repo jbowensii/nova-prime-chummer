@@ -43,6 +43,13 @@ export const toPricing = (el: Element): Pricing => ({ attrPoint: req(el, 'attrPo
   armorPoint: req(el, 'armorPoint'), spell: req(el, 'spell'), complexForm: num(el, 'complexForm') ?? req(el, 'spell'),
   refundEffectRemoval: bool(el, 'refundEffectRemoval') })
 
+const PRICE_KEYS = new Set(['attrPoint', 'attrLastPoint', 'skillLow', 'skillLowMax', 'skillHigh', 'spec', 'knowledge', 'ampPoint', 'equipment',
+  'weaponStandard', 'weaponSpecialist', 'armorPoint', 'spell', 'complexForm'])
+/** A partial `<prices>` (a book's pricing overlay): only the prices it sets; an unknown or non-numeric attribute is ignored. */
+export const toPrices = (el: Element): Partial<Pricing> => Object.fromEntries([...el.attributes]
+  .flatMap((a): [string, number | boolean][] => a.name === 'refundEffectRemoval' ? [[a.name, a.value === 'true']]
+    : PRICE_KEYS.has(a.name) && a.value.trim() !== '' && Number.isFinite(Number(a.value)) ? [[a.name, Number(a.value)]] : []))
+
 export const toAmpType = (el: Element): AmpType => ({ ...ref(el), name: child(el, 'name'), base: req(el, 'base'),
   baseAfterFirst: num(el, 'baseAfterFirst'), essence: req(el, 'essence'), requires: str(el, 'requires') })
 

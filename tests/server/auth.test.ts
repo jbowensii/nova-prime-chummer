@@ -2,7 +2,7 @@
 // Accounts (server/auth.mjs): roles on every route, sign-in and lockout, sessions, setup and recovery codes, the Origin
 // check, the trusted proxy, runner folders. Plain fetch here: every request says who it is.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -34,7 +34,7 @@ async function start(dir: string, users?: Partial<Record<Role, string>> | null, 
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], ...extra })
   await new Promise<void>(ok => srv.listen(0, ok))
   const base = `http://127.0.0.1:${srv.address().port}`
-  return { srv, base, lib, chars: join(dir, 'chars') }
+  return { srv, base, lib, chars: join(dir, 'chars'), dir }
 }
 const json = (b: unknown) => ({ body: JSON.stringify(b), headers: { 'Content-Type': 'application/json' } })
 /** A request from the app's own page (Origin), with `cookie`. */
@@ -72,6 +72,7 @@ describe('with an admin, an editor and a player', () => {
     ['GET', '/api/characters', 'user'], ['PUT', '/api/characters/zz', 'user', '<nope/>'], ['DELETE', '/api/characters/zz', 'user'],
     ['POST', '/api/auth/password', 'user', '{}'], ['GET', '/custom/index.xml', 'user'], ['GET', '/api/edits', 'user'], ['GET', '/api/nothing', 'user'],
     ['PUT', '/api/edits/items/x', 'editor', '<edit/>'], ['DELETE', '/api/edits/items/x', 'editor'], ['POST', '/api/edits/sources', 'editor', '{}'],
+    ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'],
     ['GET', '/api/books', 'admin'], ['POST', '/api/books', 'admin', 'not a pdf'], ['GET', '/api/books/nope/report', 'admin'],
     ['POST', '/api/books/nope/reimport', 'admin'], ['POST', '/api/books/nope/ai', 'admin'], ['DELETE', '/api/books/nope', 'admin'],
     ['GET', '/api/review/nope', 'admin'], ['PUT', '/api/review/nope', 'admin', '<review/>'],
@@ -79,6 +80,7 @@ describe('with an admin, an editor and a player', () => {
     ['GET', '/api/ai-models?provider=nope', 'admin'],
     ['GET', '/api/backup/nope', 'admin'], ['POST', '/api/restore?preview=1', 'admin', 'not a zip'], ['POST', '/api/restore/nope', 'admin'],
     ['POST', '/api/datapack', 'admin'], ['GET', '/api/datapack/nope', 'admin'], ['POST', '/api/datapack/import', 'admin', 'not a zip'],
+    ['POST', '/api/datapack/import/nope', 'admin'],
     ['GET', '/api/users', 'admin'], ['POST', '/api/users', 'admin', '{}'], ['PUT', '/api/users/000000000000', 'admin', '{}'],
     ['DELETE', '/api/users/000000000000', 'admin'], ['POST', '/api/users/000000000000/reset-password', 'admin', '{}'],
     ['POST', '/api/users/000000000000/move-runner', 'admin', '{}'], ['POST', '/api/users/000000000000/unlink', 'admin'],
@@ -94,6 +96,25 @@ describe('with an admin, an editor and a player', () => {
       if (want === 'allowed') expect([401, 403], `${who} ${r.status}`).not.toContain(r.status)
       else expect(r.status, who || 'nobody').toBe(want)
     }
+  })
+
+  test('table rules: the GM writes them (checked, schema-valid, atomic); everyone signed in reads them', async () => {
+    const put = (rules: unknown, cookie = jar.editor) => call(s.base, 'PUT', '/api/table-rules', { cookie, ...json({ rules }) })
+    for (const bad of [null, [{ id: 'Bad Id', on: true }], [{ id: 'a', on: true }, { id: 'a', on: false }], [{ id: 'a', on: 'yes' }],
+      [{ id: 'house-1', on: true, text: 'no name' }], [{ id: 'house-1', on: true, name: 'x'.repeat(121) }], Array.from({ length: 201 }, (_, i) => ({ id: `r${i}`, on: true }))])
+      expect((await put(bad)).status, JSON.stringify(bad).slice(0, 60)).toBe(400)
+    expect((await call(s.base, 'PUT', '/api/table-rules', { cookie: jar.editor, body: '{"rules":[]}' })).status).toBe(415)
+    const rules = [{ id: 'test.optional-made-up', on: true }, { id: 'house-3f2a', on: false, name: 'No <b>crits</b> & such', text: 'Made up.\nTwo lines.' }]
+    expect((await put(rules)).status).toBe(204)
+    expect((await put(rules, jar.player)).status).toBe(403)
+    const file = join(s.dir, 'custom', 'table-rules.xml')
+    const r = await validateXML({ xml: { fileName: file, contents: readFileSync(file, 'utf8') },
+      schema: { fileName: 'tablerules.xsd', contents: readFileSync('public/data/schema/tablerules.xsd', 'utf8') } })
+    expect(r.errors).toEqual([])
+    const read = await call(s.base, 'GET', '/custom/table-rules.xml', { cookie: jar.player })
+    expect(read.status).toBe(200)
+    expect(await read.text()).toContain('<rule id="house-3f2a" on="false"><name>No &lt;b&gt;crits&lt;/b&gt; &amp; such</name><text>Made up.\nTwo lines.</text></rule>')
+    expect(readdirSync(join(s.dir, 'custom')).filter(f => f.endsWith('.tmp'))).toEqual([])
   })
 
   test('me says who is signed in, and never a hash', async () => {
@@ -542,6 +563,26 @@ test('runners: a save waiting while its account is renamed lands in the new fold
   mkdirSync(join(s.chars, 'leftover'))
   const add = await call(s.base, 'POST', '/api/users', { cookie: admin, ...json({ username: 'leftover', name: 'L', role: 'player', password: 'long-enough-1' }) })
   expect([add.status, (await add.json()).error]).toEqual([409, 'characters/leftover already exists; move it away first'])
+  s.srv.close()
+})
+
+test('rename: when users.xml can’t be saved the runner folder moves back and the account keeps its name', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player })
+  const admin = (await login(s.base, 'admin', PW.admin)).cookie, player = (await login(s.base, 'player', PW.player)).cookie
+  expect((await call(s.base, 'PUT', '/api/characters/p1', { cookie: player, body: runner('p1', 'Pats Runner') })).status).toBe(201)
+  const id = (await (await call(s.base, 'GET', '/api/auth/me', { cookie: player })).json()).user.id
+  const users = join(s.lib, '.config', 'users.xml'), saved = readFileSync(users, 'utf8')
+  rmSync(users)
+  mkdirSync(users) // the atomic write's rename onto users.xml fails
+  expect((await call(s.base, 'PUT', `/api/users/${id}`, { cookie: admin, ...json({ username: 'kim' }) })).status).toBe(500)
+  expect(readdirSync(s.chars)).toEqual(['player'])
+  expect(readdirSync(join(s.chars, 'player'))).toEqual(['Pats-Runner.xml'])
+  const list = await (await call(s.base, 'GET', '/api/users', { cookie: admin })).json()
+  expect(list.find((u: { id: string }) => u.id === id).username).toBe('player')
+  rmSync(users, { recursive: true })
+  writeFileSync(users, saved)
+  expect((await call(s.base, 'PUT', `/api/users/${id}`, { cookie: admin, ...json({ username: 'kim' }) })).status).toBe(200)
+  expect(readdirSync(s.chars)).toEqual(['kim'])
   s.srv.close()
 })
 

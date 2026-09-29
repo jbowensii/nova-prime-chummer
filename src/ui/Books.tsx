@@ -5,13 +5,15 @@ import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
-import { AccountMenu, sessionEnded } from './auth'
+import { AccountMenu, because, sessionEnded } from './auth'
 import { SettingsButton } from './settings'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
-  /** core files the book's recipe couldn't read (the AI can read the weapons and armor tables) */
-  coreUnread?: string[] }
+  /** core files the book's recipe couldn't read (the AI can propose their rows) */
+  coreUnread?: string[]
+  /** core files read by AI from this book (accepted on the review screen): to check against the book */
+  coreAi?: string[] }
 
 const STATE: Record<string, string> = { queued: 'Waiting', converting: 'Reading the PDF', identifying: 'Recognizing the book',
   extracting: 'Extracting entries', 'needs-ai': 'Needs AI', proposing: 'Asking the AI', review: 'Ready to review',
@@ -33,8 +35,9 @@ function counts(c: Record<string, number>) {
   return [...n].map(([k, v]) => `${v} ${v === 1 ? k : KINDS.find(x => x[1] === k)?.[2] ?? k}`).join(', ')
 }
 
-/** A recipe's book with weapons or armor tables it couldn't read: the AI can propose their rows. */
-const coreAi = (b: Book) => !!b.source && !!b.coreUnread?.some(f => f === 'weapons.xml' || f === 'armor.xml')
+/** A recipe's book with core tables it couldn't read: the AI can propose their rows. */
+const canCoreAi = (b: Book) => !!b.source && !!b.coreUnread?.length
+const tables = (files: string[]) => files.map(f => f.replace(/[.]xml$/, '')).join(', ')
 
 const UNREACHABLE = 'the server can’t be reached'
 
@@ -81,14 +84,24 @@ export function BooksHeader({ title, children }: { title: string; children?: Rea
   )
 }
 
+interface PackSummary { app: string; created: string; files: string[]; replaces: string[] }
+
 /** The core data as a data pack (server/books.mjs /api/datapack): download it, or load one onto this server — the way to
- *  core data without the core rulebook's PDF. The setup screen links here as #/books/datapack. */
+ *  core data without the core rulebook's PDF. Loading is two steps, like a restore: upload + check (a summary with a
+ *  token), then load. The setup screen links here as #/books/datapack. */
 function DataPack({ reload }: { reload: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [preview, setPreview] = useState<{ token: string; pack: PackSummary } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null), headRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => { if (/^#\/books\/datapack$/.test(location.hash)) { fileRef.current?.scrollIntoView({ block: 'center' }); fileRef.current?.focus() } }, [])
-  const why = (e: unknown) => (e as Error).message.replace(/\.$/, '')
+  // the preview's heading takes focus; once it's gone (cancelled or loaded) the picker gets it back when it's usable again
+  const back = useRef(false)
+  useEffect(() => {
+    if (preview) { headRef.current?.focus(); back.current = true }
+    else if (!busy && back.current) { back.current = false; fileRef.current?.focus() }
+  }, [preview, busy])
+  const why = (e: unknown) => (e as Error).message
 
   /** Two steps, like a backup: the server makes the pack, then the browser fetches it by token as a plain download. */
   const download = async () => {
@@ -101,27 +114,38 @@ function DataPack({ reload }: { reload: () => void }) {
       a.download = '' // the server's name: chummer-anarchy2-datapack-<date>.zip
       a.click()
       setMsg({ text: 'The data pack is ready. Your browser is saving it.' })
-    } catch (e) { setMsg({ err: true, text: `Couldn’t make the data pack: ${why(e)}.` }) }
+    } catch (e) { setMsg({ err: true, text: because('Couldn’t make the data pack', why(e)) }) }
     setBusy(null)
+  }
+
+  const refused = (e: unknown) => {
+    const status = (e as { status?: number }).status
+    setMsg({ err: true, text: status === 413 ? 'This file is larger than 50 MB, so it isn’t a data pack. Choose a data pack made by this app.'
+      : status === 400 || status === 415 ? `${because('This file can’t be loaded', why(e))} Choose a data pack made by this app.`
+      : because('Couldn’t load the data pack', why(e)) })
   }
 
   const upload = async (file: File | undefined) => {
     if (!file) return
     setMsg(null)
-    setBusy('Loading the data pack…')
-    try {
-      const r = JSON.parse(await sendFile('datapack/import', file, { 'Content-Type': 'application/zip' }, () => {}))
-      setMsg({ text: `Data pack loaded: ${r.files.length} core ${r.files.length === 1 ? 'table' : 'tables'} replaced.` })
-      reload()
-    } catch (e) {
-      const status = (e as { status?: number }).status
-      setMsg({ err: true, text: status === 413 ? 'This file is larger than 50 MB, so it isn’t a data pack. Choose a data pack made by this app.'
-        : status === 400 || status === 415 ? `This file can’t be loaded: ${why(e)}. Choose a data pack made by this app.`
-        : `Couldn’t load the data pack: ${why(e)}.` })
-    }
+    setBusy('Checking the data pack…')
+    try { setPreview(JSON.parse(await sendFile('datapack/import', file, { 'Content-Type': 'application/zip' }, () => {}))) }
+    catch (e) { refused(e) }
     setBusy(null)
   }
 
+  const load = async (token: string) => {
+    setPreview(null)
+    setBusy('Loading the data pack…')
+    try {
+      const r = await api<{ files: string[] }>(`datapack/import/${token}`, { method: 'POST' })
+      setMsg({ text: `Data pack loaded: ${r.files.length} core ${r.files.length === 1 ? 'table' : 'tables'} replaced.` })
+      reload()
+    } catch (e) { refused(e) }
+    setBusy(null)
+  }
+
+  const p = preview?.pack
   return (
     <section className="datapack" id="datapack">
       <h2>Core data</h2>
@@ -129,11 +153,28 @@ function DataPack({ reload }: { reload: () => void }) {
         another server without the book: it holds no descriptions, PDFs or keys. Loading one replaces the tables it holds.</p>
       <div className="row">
         <button className="btn" disabled={!!busy} onClick={() => void download()}>Download data pack</button>
-        <label className="btn file" aria-disabled={!!busy}>Upload data pack
-          <input ref={fileRef} type="file" accept=".zip,application/zip" aria-label="Upload data pack" disabled={!!busy}
+        <label className="btn file" aria-disabled={!!busy || !!preview}>Upload data pack
+          <input ref={fileRef} type="file" accept=".zip,application/zip" aria-label="Upload data pack" disabled={!!busy || !!preview}
             onChange={e => { void upload(e.target.files?.[0]); e.target.value = '' }} />
         </label>
       </div>
+      {preview && p && (
+        <div className="restore-preview">
+          <h3 ref={headRef} tabIndex={-1}>Load this data pack?</h3>
+          <dl>
+            {([['Made', new Date(p.created).toLocaleString()], ['App version', p.app],
+              ['Tables', `${p.files.length} of 12: ${tables(p.files)}`],
+              ['Replaces', p.replaces.length ? tables(p.replaces) : 'Nothing: the server has none of these tables yet'],
+              ...(p.files.length > p.replaces.length && p.replaces.length ? [['Adds', tables(p.files.filter(f => !p.replaces.includes(f)))]] : [])] as [string, string][])
+              .map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+          </dl>
+          {p.replaces.length > 0 && <p className="err">The server’s current copies of those tables are overwritten. House rules, edits and imported books stay.</p>}
+          <div className="row">
+            <button className="btn" onClick={() => setPreview(null)}>Cancel</button>
+            <button className="btn primary" onClick={() => void load(preview.token)}>Load data pack</button>
+          </div>
+        </div>
+      )}
       <div role="status" aria-live="polite">
         {busy && <p className="muted">{busy}</p>}
         {msg && !msg.err && <p className="banner">{msg.text}</p>}
@@ -199,14 +240,14 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
         await sendFile('books', f, { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(f.name) }, pct => setUploading({ name: f.name, pct }))
         setLive(`Uploaded ${f.name}`)
       }
-      catch (e) { setMsg(`Couldn’t upload ${f.name}: ${(e as Error).message}.${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : (e as { status?: number }).status === 401 ? '' : ' Try again.'}`) }
+      catch (e) { setMsg(`${because(`Couldn’t upload ${f.name}`, (e as Error).message)}${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : (e as { status?: number }).status === 401 ? '' : ' Try again.'}`) }
     }
     setUploading(null)
     void refresh()
   }
 
   const act = async (what: string, run: () => Promise<unknown>) => {
-    try { await run() } catch (e) { setMsg(`Couldn’t ${what}: ${(e as Error).message}.`) }
+    try { await run() } catch (e) { setMsg(because(`Couldn’t ${what}`, (e as Error).message)) }
     void refresh()
   }
 
@@ -217,14 +258,14 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
       const [dry, settings] = await Promise.all([api<{ parts: number; provider: string | null }>(`books/${book.id}/ai?dryRun=1`, { method: 'POST' }), api<string>('ai-settings')])
       setAsking({ book, fresh, ...dry, keySet: !!dry.provider && settings.includes(`<key provider="${dry.provider}" set="true"`) })
     }
-    catch (e) { setAsking(null); setMsg(`Couldn’t prepare the AI import: ${(e as Error).message}.`) }
+    catch (e) { setAsking(null); setMsg(because('Couldn’t prepare the AI import', (e as Error).message)) }
   }
 
   const openReport = async (book: Book) => {
     try {
       const doc = new DOMParser().parseFromString(await api<string>(`books/${book.id}/report`), 'text/xml')
       setReport({ book, rows: [...doc.getElementsByTagName('row')].map(r => Object.fromEntries([...r.attributes].map(a => [a.name, a.value]))) })
-    } catch (e) { setMsg(`Couldn’t open the report: ${(e as Error).message}.`) }
+    } catch (e) { setMsg(because('Couldn’t open the report', (e as Error).message)) }
   }
 
   const importedSources = new Set((books ?? []).filter(b => b.state === 'done' && b.source).map(b => b.source))
@@ -272,17 +313,18 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
             </div>
             {b.message && b.state !== 'done' && <div className={b.state === 'failed' ? 'err' : 'muted'}>{b.message}</div>}
             {b.state === 'done' && b.message && <div className="muted">{b.message}</div>}
-            {!!b.coreUnread?.length && <div className="err">Couldn’t read these core tables: {b.coreUnread.map(f => f.replace(/\.xml$/, '')).join(', ')}.
-              {coreAi(b) ? ' Read them with AI, or upload a data pack.' : ' Upload a data pack with them.'}</div>}
+            {!!b.coreUnread?.length && <div className="err">Couldn’t read these core tables: {tables(b.coreUnread)}.
+              {canCoreAi(b) ? ' Read them with AI, or upload a data pack.' : ' Upload a data pack with them.'}</div>}
+            {!!b.coreAi?.length && <div className="warn">Read by AI from this book: {tables(b.coreAi)}. Check them against the book.</div>}
           </div>
           <div className="row">
             {b.state === 'needs-ai' && (b.review === 'done'
               ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Extract with AI again</button>
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Extract with AI</button>)}
-            {coreAi(b) && ['done', 'failed', 'review'].includes(b.state) && (b.review === 'done'
+            {canCoreAi(b) && ['done', 'failed', 'review'].includes(b.state) && (b.review === 'done'
               ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Read the tables with AI again</button>
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Read the tables with AI</button>)}
-            {b.review && (!b.source || coreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
+            {b.review && (!b.source || canCoreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
             {b.state === 'done' && <button className="btn small quiet" onClick={() => void openReport(b)}>Report</button>}
             {['done', 'failed', 'removed', 'needs-ai'].includes(b.state) && b.recipe !== 'ai' &&
               <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`books/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}

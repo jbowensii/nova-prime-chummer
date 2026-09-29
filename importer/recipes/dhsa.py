@@ -599,7 +599,7 @@ def extract(md, ctx=None):
     files = {
         "amps.xml": data("amps", 'Prebuilt Shadow Amps and add-on mods (mod="true"); texts in custom/texts/dhsa.xml.', amps),
         "spells.xml": data("spells", "Spells.", spells),
-        "complexforms.xml": data("complexforms", "Technomancer complex forms, 5,000 nuyen each (rules: CGL Conversion Guide p.9).", forms),
+        "complexforms.xml": data("complexforms", "Technomancer complex forms (price: the core pricing, or the Conversion Guide when imported).", forms),
         "gear.xml": data("gear", "Plain equipment (not Amps), at the equipment price unless the GM says otherwise.", gear),
         "skills.xml": data("skills", "Specializations DHSA adds to the core skills.", skill_xml),
     }

@@ -7,12 +7,20 @@ import { Modal } from './bits'
 import { api, BooksHeader, PROVIDER_NAMES, type Book } from './Books'
 import { Editor, type EditorCtx } from './editor'
 import { AmpBuilder } from './tabs/AmpBuilder'
+import { because } from './auth'
 
 const STATES: Record<string, string> = { pending: 'To decide', accepted: 'Accepted', edited: 'Edited', dropped: 'Dropped' }
-const KIND: Record<string, string> = { amp: 'Amp', gear: 'Gear', weapon: 'Weapon', armor: 'Armor', spell: 'Spell', 'complex-form': 'Complex form' }
+const KIND: Record<string, string> = { amp: 'Amp', gear: 'Gear', weapon: 'Weapon', armor: 'Armor', spell: 'Spell', 'complex-form': 'Complex form',
+  level: 'Level', metatype: 'Metatype', attribute: 'Attribute', skill: 'Skill', pricing: 'Prices', amptype: 'Amp type', effect: 'Amp effect',
+  package: 'Package', vehicle: 'Vehicle', lifestyle: 'Lifestyle' }
 const ITEM_FIELDS: [string, string][] = [['category', 'Category'], ['dv', 'Damage (DV)'], ['ranges', 'Ranges'], ['armor', 'Armor']]
+/** What the edit form offers: an item's fields, or a core row's own attributes (a core review's levels, prices…). Nested rows
+ *  (a metatype's ranges, a skill's specializations) aren't edited here: drop the row, or fix it in a house rule after. */
+const fieldsOf = (e: Element): [string, string][] => e.tagName === 'item' ? ITEM_FIELDS
+  : [...e.attributes].map(a => a.name).filter(n => !['source', 'page'].includes(n)).map(n => [n, n])
+const hasName = (e: Element) => [...e.children].some(c => c.tagName === 'name')
 
-const entryOf = (p: Element) => [...p.children].find(e => e.tagName === 'amp' || e.tagName === 'item')!
+const entryOf = (p: Element) => [...p.children].find(e => e.tagName !== 'note')!
 const text = (el: Element, tag: string) => [...el.children].find(e => e.tagName === tag)?.textContent ?? ''
 function setText(el: Element, tag: string, value: string, before?: Element | null) {
   let t = [...el.children].find(e => e.tagName === tag)
@@ -49,10 +57,12 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
   const [canon, setCanon] = useState(false)
   const [editAmp, setEditAmp] = useState<{ p: Element; amp: AmpEntry } | null>(null)
   const [editItem, setEditItem] = useState<{ p: Element; values: Record<string, string> } | null>(null)
+  const editFields = editItem ? fieldsOf(entryOf(editItem.p)) : []
+  const editNamed = !!editItem && hasName(entryOf(editItem.p))
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    api<string>(`review/${id}`).then(x => setDoc(new DOMParser().parseFromString(x, 'text/xml')), e => setMsg(`Couldn’t open the proposals: ${e.message}.`))
+    api<string>(`review/${id}`).then(x => setDoc(new DOMParser().parseFromString(x, 'text/xml')), e => setMsg(because('Couldn’t open the proposals', e.message)))
     api<Book[]>('books').then(bs => {
       const b = bs.find(x => x.id === id)
       setBook(b ?? null)
@@ -70,7 +80,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
     change()
     setVersion(v => v + 1)
     try { await api(`review/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: body() }) }
-    catch (e) { setMsg(`Couldn’t save that decision: ${(e as Error).message}. Try again.`) }
+    catch (e) { setMsg(`${because('Couldn’t save that decision', (e as Error).message)} Try again.`) }
   }
   const decide = (p: Element, state: string) => save(() => p.setAttribute('state', state))
   const accepted = proposals.filter(p => ['accepted', 'edited'].includes(p.getAttribute('state')!)).length
@@ -86,7 +96,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       await api(`review/${id}?${new URLSearchParams(core ? { apply: '1' } : { apply: '1', source, name: title.trim(), canon: String(canon) })}`,
         { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: body() })
       location.hash = '#/books'
-    } catch (e) { setMsg(`Couldn’t add the entries: ${(e as Error).message}.`); setBusy(false) }
+    } catch (e) { setMsg(because('Couldn’t add the entries', (e as Error).message)); setBusy(false) }
   }
 
   return (
@@ -105,22 +115,22 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       <div className="scroll-x"><table className="data proposals">
         <thead><tr><th>Name</th><th>Kind</th><th className="num">Rating</th><th>Notes</th><th>Decision</th></tr></thead>
         <tbody>{proposals.map(p => {
-          const e = entryOf(p), state = p.getAttribute('state')!
+          const e = entryOf(p), state = p.getAttribute('state')!, label = hasName(e) ? text(e, 'name') : KIND[p.getAttribute('kind')!]
           const notes = [...p.getElementsByTagName('note')].map(n => n.textContent)
           return (
             <tr key={p.getAttribute('id')} className={state}>
-              <td><b>{text(e, 'name')}</b> <span className="src">p.{p.getAttribute('page')}</span></td>
+              <td><b>{label}</b> <span className="src">p.{p.getAttribute('page')}</span></td>
               <td>{KIND[p.getAttribute('kind')!] ?? p.getAttribute('kind')}{e.getAttribute('type') && <span className="muted"> {c.ampTypes.get(e.getAttribute('type')!)?.name ?? e.getAttribute('type')}</span>}
                 {e.getAttribute('category') && <span className="muted"> {e.getAttribute('category')}</span>}</td>
-              <td className="num">{e.getAttribute('printedRating') ?? e.getAttribute('dv') ?? e.getAttribute('armor') ?? ''}</td>
+              <td className="num">{e.getAttribute('printedRating') ?? e.getAttribute('dv') ?? e.getAttribute('armor') ?? e.getAttribute('rating') ?? ''}</td>
               <td>{notes.length ? <span className="warn">{notes.join('; ')}</span> : <span className="muted">none</span>}</td>
               <td><span className={`decision ${state}`}>{STATES[state] ?? state}</span>
                 <div className="acts">
-                <button className="btn small quiet" aria-label={`Accept ${text(e, 'name')}`} disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
-                <button className="btn small quiet" aria-label={`Edit ${text(e, 'name')}`} onClick={() => e.tagName === 'amp'
+                <button className="btn small quiet" aria-label={`Accept ${label}`} disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
+                <button className="btn small quiet" aria-label={`Edit ${label}`} onClick={() => e.tagName === 'amp'
                   ? setEditAmp({ p, amp: toAmp(e) })
-                  : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...ITEM_FIELDS.map(([k]) => [k, e.getAttribute(k) ?? ''])]) })}>Edit</button>
-                <button className="btn small quiet" aria-label={`Drop ${text(e, 'name')}`} disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
+                  : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...fieldsOf(e).map(([k]) => [k, e.getAttribute(k) ?? ''])]) })}>Edit</button>
+                <button className="btn small quiet" aria-label={`Drop ${label}`} disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
               </td>
             </tr>
           )
@@ -129,7 +139,8 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
 
       {core ? <>
         <h2 style={{ marginTop: '1.5rem' }}>Core data</h2>
-        <p className="muted">These rows replace the {book?.coreUnread?.filter(f => f === 'weapons.xml' || f === 'armor.xml').map(f => f.replace(/\.xml$/, '')).join(' and ') || 'core'} table and cite {doc.documentElement.getAttribute('source')}.</p>
+        <p className="muted">These rows replace the {book?.coreUnread?.map(f => f.replace(/[.]xml$/, '')).join(', ') || 'core'} {book?.coreUnread?.length === 1 ? 'table' : 'tables'} and cite {doc.documentElement.getAttribute('source')}.
+          The book will list them as read by AI.</p>
         <button className="btn primary" disabled={busy || !accepted} onClick={() => void apply()}>Add to the core data</button>
         {!busy && !accepted && <p className="muted" style={{ marginTop: '0.5rem' }}>Accept or edit at least one entry first.</p>}
       </> : <>
@@ -159,20 +170,20 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
         </Editor.Provider>}
       </Modal>
 
-      <Modal open={!!editItem} onClose={() => setEditItem(null)} title={`Edit ${editItem ? text(entryOf(editItem.p), 'name') : ''}`}
+      <Modal open={!!editItem} onClose={() => setEditItem(null)} title={`Edit ${editItem ? text(entryOf(editItem.p), 'name') || KIND[editItem.p.getAttribute('kind')!] : ''}`}
         actions={<><button className="btn" onClick={() => setEditItem(null)}>Cancel</button>
-          <button className="btn primary" disabled={!editItem?.values.name.trim()} onClick={() => {
+          <button className="btn primary" disabled={editNamed && !editItem?.values.name.trim()} onClick={() => {
             const { p, values } = editItem!
             setEditItem(null)
             void save(() => {
               const e = entryOf(p)
-              setText(e, 'name', values.name.trim(), e.firstElementChild)
-              for (const [k] of ITEM_FIELDS) if (values[k].trim()) e.setAttribute(k, values[k].trim()); else e.removeAttribute(k)
+              if (hasName(e)) setText(e, 'name', values.name.trim(), e.firstElementChild)
+              for (const [k] of fieldsOf(e)) if (values[k].trim()) e.setAttribute(k, values[k].trim()); else e.removeAttribute(k)
               p.setAttribute('state', 'edited')
             })
           }}>Save changes</button></>}>
         {editItem && <div className="grid2">
-          {[['name', 'Name'] as [string, string], ...ITEM_FIELDS].map(([k, label]) => (
+          {[...(editNamed ? [['name', 'Name'] as [string, string]] : []), ...editFields].map(([k, label]) => (
             <label key={k}>{label}<input value={editItem.values[k]} type={k === 'armor' ? 'number' : 'text'} min={0}
               onChange={e => setEditItem({ ...editItem, values: { ...editItem.values, [k]: e.target.value } })} /></label>
           ))}

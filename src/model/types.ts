@@ -99,6 +99,9 @@ export interface Character { formatVersion: 1; id: string;
   allowNonCanon?: boolean;
   /** source id of a sample character (sources.xml), e.g. CRB or PREGENS */
   origin?: string;
+  /** which imported sample this runner was loaded from: "<source>.<name slug>" (src/ui/samples.ts); loading the samples
+   *  again skips it even when a re-import gave the sample a new file id */
+  sampleKey?: string;
   /** creation nuyen left over when finalized; the career balance starts here */
   finalRemaining?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }

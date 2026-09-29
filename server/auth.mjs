@@ -191,7 +191,7 @@ export function need(path, method) {
   if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
   if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
-  if (/^\/api\/edits(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
+  if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   return 'user'
 }
 
@@ -503,9 +503,17 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       throw fail(401, 'wrong username or password')
     }
     succeeded(name, ctx.ip, name)
+    // the session starts under the lock, with the password checked still the account's: a reset, a change or an Authelia
+    // link that ends sessions meanwhile ends this one too, or this sign-in is refused
+    let started
+    await lock(async () => {
+      if (!(u.enabled && u.method === 'password' && u.password === usable)) throw fail(401, 'wrong username or password')
+      u.lastLogin = iso()
+      await saveUsers()
+      started = startSession(res, ctx, u)
+    })
+    await started
     log.log(`signed in: ${u.username} from ${ctx.ip}`)
-    await lock(async () => { u.lastLogin = iso(); await saveUsers() })
-    await startSession(res, ctx, u)
     setDevice(res, ctx, u.id)
     return send(res, 200, { user: pub(u) })
   }
@@ -560,9 +568,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       await rm(resetPath, { force: true })
       Object.assign(u, { password: pw, method: 'password', oidcIss: '', oidcSub: '' })
       await saveUsers()
+      await endSessions(u.id)
       return u
     })
-    await endSessions(u.id)
     accountFails.delete(u.username) // the documented way back in: the account's wait goes too
     log.log(`password reset with a recovery code: ${u.username} from ${ctx.ip}`)
     return send(res, 204, '', 'text/plain')
@@ -597,13 +605,19 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const u = await lock(async () => {
         const u = byId(id), f = fields(b, u), after = { ...u, ...f }
         keepAnAdmin(u, after)
-        if (f.username && f.username !== u.username) await runners.rename(u.username, f.username)
+        const before = { ...u }, moved = f.username && f.username !== u.username
+        if (moved) await runners.rename(u.username, f.username)
         const end = after.enabled === false || after.method !== u.method
         if (f.method && f.method !== 'password') f.password = null // an Authelia account has no app password
         // a new name, email or method: the Authelia link goes, and the next Authelia sign-in matches afresh
         if (['username', 'email', 'method'].some(k => k in f && f[k] !== u[k])) Object.assign(f, { oidcIss: '', oidcSub: '' })
         Object.assign(u, f)
-        await saveUsers()
+        try { await saveUsers() } catch (e) {
+          // users.xml still has the old name: the account and its runner folder go back to it
+          Object.assign(u, before)
+          if (moved) await runners.rename(f.username, before.username)
+          throw e
+        }
         if (end) await endSessions(u.id)
         return u
       })
@@ -629,9 +643,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
         const u = byId(id)
         Object.assign(u, { password: pw, method: 'password', oidcIss: '', oidcSub: '' })
         await saveUsers()
+        await endSessions(u.id)
         return u
       })
-      await endSessions(u.id)
       accountFails.delete(u.username)
       log.log(`password reset: ${u.username} by ${who.username}`)
       return send(res, 204, '', 'text/plain')
@@ -674,24 +688,39 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     }
     if (p === '/api/auth/password' && method === 'POST') {
       const b = await json(req)
-      const u = users.find(x => x.id === who.id)
-      if (u.method !== 'password') throw fail(400, 'this account signs in with Authelia')
-      const device = deviceOf(req, req.ctx, u.id) // a known device passes the account's wait here too
-      locked(u.username, req.ctx.ip, u.username, device)
-      if (!await checkLimited(String(b.current ?? '').slice(0, MAX_PASSWORD), u.password)) {
-        failed(u.username, req.ctx.ip, u.username, device)
-        throw fail(400, 'your current password is wrong')
-      }
-      succeeded(u.username, req.ctx.ip, u.username)
+      const u = await checkCurrent(req, who, b)
       const pw = await hashLimited(password(b.password))
-      await lock(async () => { u.password = pw; await saveUsers() })
-      await endSessions(u.id, who.session) // every other session
+      await lock(async () => { u.password = pw; await saveUsers(); await endSessions(u.id, who.session) }) // every other session
       log.log(`password changed: ${u.username}`)
       return send(res, 204, '', 'text/plain')
     }
     if (/^\/api\/(auth|setup)(\/|$)/.test(p)) return send(res, 404, { error: 'not found' })
     if (p === '/api/users' || p.startsWith('/api/users/')) return users_(req, res, url, send, who)
     return false
+  }
+
+  /** The account `current` (the change-password and link-start body field) is the password of: the signed-in password
+   *  account, checked like a sign-in (the pauses, a known device passing the account's wait, the scrypt cap); 400 when wrong. */
+  async function checkCurrent(req, who, b) {
+    const u = users.find(x => x.id === who.id)
+    if (u.method !== 'password') throw fail(400, 'this account signs in with Authelia')
+    const device = deviceOf(req, req.ctx, u.id) // a known device passes the account's wait here too
+    locked(u.username, req.ctx.ip, u.username, device)
+    if (!await checkLimited(String(b.current ?? '').slice(0, MAX_PASSWORD), u.password)) {
+      failed(u.username, req.ctx.ip, u.username, device)
+      throw fail(400, 'your current password is wrong')
+    }
+    succeeded(u.username, req.ctx.ip, u.username)
+    return u
+  }
+
+  /** The account an Authelia user's claims name: by preferred_username when there is one, else by a verified email. Only
+   *  ASCII is compared: toLowerCase() folds some other letters into ASCII (U+212A KELVIN SIGN -> k). */
+  function named({ username, email, emailVerified }) {
+    const ascii = v => typeof v === 'string' && /^[\x21-\x7e]{1,254}$/.test(v) ? v.toLowerCase() : ''
+    const n = ascii(username), e = ascii(email)
+    return (username !== undefined && username !== '' ? n && users.find(x => x.username === n)
+      : e && emailVerified === true && users.find(x => x.email === e)) || null
   }
 
   /** A sign-in through Authelia (server/oidc.mjs), its claims verified: `username` (preferred_username), else `email`, names
@@ -702,12 +731,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     // an account linked to this Authelia subject is it, whatever the name says now; else a first sign-in names it by
     // preferred_username only, or by a verified email when there is no username. Only ASCII is compared: toLowerCase()
     // folds some other letters into ASCII (U+212A KELVIN SIGN -> k)
-    const ascii = v => typeof v === 'string' && /^[\x21-\x7e]{1,254}$/.test(v) ? v.toLowerCase() : ''
     let u = users.find(x => x.oidcSub === sub && x.oidcIss === iss)
     if (!u) {
-      const n = ascii(username), e = ascii(email)
-      u = username !== undefined && username !== '' ? n && users.find(x => x.username === n)
-        : e && emailVerified === true && users.find(x => x.email === e)
+      u = named({ username, email, emailVerified })
       if (u?.oidcSub) return null // linked to another Authelia user: never taken over by a matching name
     }
     if (!u?.enabled || u.method !== 'authelia') return null
@@ -723,8 +749,33 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     return u
   }
 
+  /** "Link my Authelia account" (server/oidc.mjs, its claims verified and `who` the session that started it): the password
+   *  account is bound to (iss, sub) and signs in through Authelia from now on; its password goes and every other session
+   *  ends. Refused (`key` for /?link=) when that subject is another account's, its name or email names another account, or
+   *  the account changed meanwhile. */
+  async function linkExternal(ctx, who, { iss, sub, username, email, emailVerified }) {
+    const no = (key, message) => Object.assign(new Error(message), { key })
+    if (!/^[\x21-\x7e]{1,300}$/.test(iss) || !/^[\x21-\x7e]{1,255}$/.test(sub)) throw no('failed', 'the issuer or subject isn’t printable ASCII')
+    const u = await lock(async () => {
+      const u = users.find(x => x.id === who.id)
+      if (!u?.enabled || u.method !== 'password' || !sessions.has(who.session)) throw no('session', 'the account or its session changed meanwhile')
+      // one subject, one account; no name for the other one (it isn't this user's to know)
+      if (users.some(x => x !== u && x.oidcSub === sub && x.oidcIss === iss)) throw no('taken', `that Authelia user is linked to another account (${u.username} tried)`)
+      // someone else's Authelia sign-in (a shared browser's SSO session): it names its own account here, never this one
+      // either claim on its own: the username, and a verified email even when there is a username
+      const others = [named({ username }), named({ email, emailVerified })]
+      if (others.some(x => x && x !== u)) throw no('other-account', `that Authelia user names another account (${u.username} tried)`)
+      Object.assign(u, { method: 'authelia', password: null, oidcIss: iss, oidcSub: sub })
+      await saveUsers()
+      // under the same lock as the password sign-in's check: no password session can start after this
+      await endSessions(u.id, who.session) // every other session: this one stays signed in
+      return u
+    })
+    log.log(`Authelia linked by the account itself: ${u.username} from ${ctx.ip}; its password no longer works`)
+  }
+
   return {
-    gate, handle, session, context, json, signInExternal,
+    gate, handle, session, context, json, signInExternal, linkExternal, checkCurrent,
     /** A new issuer: every account's Authelia link goes (subjects are per issuer). */
     async unlinkAll() {
       await lock(async () => {

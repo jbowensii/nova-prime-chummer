@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.4.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.4.1 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -34,7 +34,10 @@ own API key), and you review its entries before they’re added.
 - **Printable sheet** laid out like the official one. Your browser’s “Save as
   PDF” makes the PDF.
 - **Sample characters** from your imported books load with one click: the
-  rulebook’s pregens and Lightning, and Daegann’s pregen booklet. Each import’s
+  rulebook’s pregens and Lightning, and Daegann’s pregen booklet. Loading them
+  again never adds copies, and each person gets their own. If earlier versions
+  left duplicates, the Library offers **Tidy up**: it moves unchanged
+  duplicates to your trash and never touches one you edited. Each import’s
   report lists any printed number the engine doesn’t reproduce; see
   [docs/book-discrepancies.md](docs/book-discrepancies.md) for the rules calls.
 - **Canon and non-canon.** The core rulebook and Conversion Guide are canon.
@@ -43,6 +46,9 @@ own API key), and you review its entries before they’re added.
   a runner can be set to canon only, which flags any on the Review tab.
 - **Rules reference** from the Base, Magic, Matrix and Vehicles quick
   reference sheets: a searchable page plus hover help on matching effects.
+  The **Rules** tab is for the GM (admin and editors). Its **Table rules**
+  switches turn the book’s optional rules on or off, and the GM can add house
+  rules. Players get a read-only **Table rules** page listing what’s on.
 
 ## Run it
 
@@ -108,7 +114,8 @@ folder.
 | Own runners: create, edit, delete | ✓ | ✓ | ✓ |
 | Everyone's runners: view, print | ✓ | ✓ | – |
 | Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
-| Catalog, descriptions, Rules, Data (read) | ✓ | ✓ | ✓ |
+| Catalog, descriptions, Data (read); Table rules (read) | ✓ | ✓ | ✓ |
+| Rules tab, Table rules switches and house rules | ✓ | ✓ | – |
 | Books page, imports, AI settings and keys | ✓ | – | – |
 | Backup and restore | ✓ | – | – |
 | Users page, Sign-in settings | ✓ | – | – |
@@ -117,13 +124,15 @@ The server enforces every rule; a hidden control is only convenience. There
 is always at least one enabled admin.
 
 **Users page** (admin, account menu → Users): add an account (name,
-username, email, role, app password or Authelia); edit name, email, role or
-sign-in method; disable/enable; reset a password (also ends that person's
+username, email, role, app password or Authelia); edit name, username, email,
+role or sign-in method (renaming moves the person’s runners with them and
+they sign in with the new name); disable/enable; reset a password (also ends that person's
 other sessions); move a runner to another user; delete (only with no
 runners, or after moving them).
 
 **Sign-in settings** (account menu → Sign-in, admin) turns on Authelia —
-see [below](#sign-in-with-authelia-openid-connect).
+see [below](#sign-in-with-authelia-openid-connect). **AI settings** has a link
+in Settings too.
 
 **Locked out?** From the host:
 
@@ -231,6 +240,12 @@ token. The issuer must be https, and its authorization, token, key-set and useri
 host (Authelia's are). Plain http to `localhost`/`127.0.0.1` is only allowed for development, with `ALLOW_INSECURE_OIDC=1`.
 Signing out of the app doesn't sign you out of Authelia.
 
+**Link my Authelia account.** With Authelia on, someone who signs in with a password can choose **Link my Authelia
+account** in the account menu. It asks for their current password, then sends them to Authelia to sign in fresh. On
+success the account switches to Authelia only: the password stops working, their other sessions end and they stay signed
+in. It's refused if that Authelia user is already linked to another account or names a different one. Only the admin can
+switch the account back (Users page).
+
 ### Any static host
 
 `npm run build` and serve `dist/`. The build ships no core data, so a static copy needs the core files too: unzip
@@ -251,8 +266,10 @@ AnythingLLM under **AI settings**. The key is stored on the server in a file
 of its own and never shown again. Once a key is saved, **Load models** asks
 the provider (with that key, at the saved address) for its model list to pick
 from; AnythingLLM has none, and you can always type a model name instead.
-Before anything is sent the page names the provider and how many parts the
-book goes in; the proposals then wait on a review screen where you accept,
+If the core rulebook’s recipe can’t read a core table, the same AI can read it
+(any of the core tables, not just weapons and armor); those rows are marked
+for you to check against the book. Before anything is sent the page names the
+provider and how many parts the book goes in; the proposals then wait on a review screen where you accept,
 edit or drop each one.
 
 Imports need the server (Docker or `npm run serve`) and Python 3 with
@@ -269,7 +286,13 @@ setup page until either:
   other book, or
 - **Books → Core data → Upload data pack**: a small zip of just the core
   tables (no descriptions, PDFs or keys) exported from another server with
-  **Download data pack**.
+  **Download data pack**. Choosing a file shows a preview (when it was made,
+  the app version, which tables it replaces) and nothing changes until you
+  confirm **Load data pack**.
+
+A book can override a core price: the Conversion Guide import sets the
+complex-form price it prints; without it, complex forms cost the
+spell price.
 
 Upgrading an existing server that already has the core rulebook in its
 Library re-imports it automatically on first start — nothing to do by

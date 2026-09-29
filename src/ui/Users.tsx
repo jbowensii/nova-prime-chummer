@@ -1,4 +1,4 @@
-// Users (admin): every account, add one, edit name/email/role/sign-in method, disable or enable, reset a password, move
+// Users (admin): every account, add one, edit name/username/email/role/sign-in method, disable or enable, reset a password, move
 // runners to another account, delete (only with no runners). The server refuses anything that would leave no enabled
 // admin; its reason is shown as it comes.
 import { useEffect, useState } from 'react'
@@ -18,6 +18,8 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
   const [f, setF] = useState({ name: u?.name ?? '', username: u?.username ?? '', email: u?.email ?? '', role: u?.role ?? 'player' as Role,
     method: u?.method ?? 'password', password: '' })
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
+  const me = useMe()
+  const username = f.username.trim().toLowerCase(), renamed = !!u && username !== u.username
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,9 +27,11 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
     setBusy(true); setErr('')
     try {
       const { name, email, role, method } = f
-      if (u) await send(`users/${u.id}`, { name, email, role, method }, 'PUT')
+      if (u) await send(`users/${u.id}`, { name, email, role, method, ...renamed ? { username } : {} }, 'PUT')
       else await send('users', { ...f, password: method === 'password' ? f.password : undefined })
-      onSaved(u ? `Saved ${name}.` : `Added ${name}. They can sign in as ${f.username.toLowerCase()}.`)
+      // your own username changed: the app reloads so everything (your runners, the menu) goes by the new one
+      if (renamed && u.id === me?.id) return location.reload()
+      onSaved(u ? `Saved ${name}.${renamed ? ` They sign in as ${username} now.` : ''}` : `Added ${name}. They can sign in as ${username}.`)
     } catch (x) { setErr((x as Error).message) }
     setBusy(false)
   }
@@ -35,8 +39,8 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
     <form id="ca2-account" className="stack" onSubmit={submit}>
       <div className="grid2">
         <label>Name<input value={f.name} onChange={set('name')} required maxLength={80} autoFocus /></label>
-        {!u && <label>Username<input value={f.username} onChange={set('username')} required minLength={2} maxLength={32} autoCapitalize="none"
-          spellCheck={false} autoComplete="off" /></label>}
+        <label>Username<input value={f.username} onChange={set('username')} required minLength={2} maxLength={32} autoCapitalize="none"
+          spellCheck={false} autoComplete="off" /></label>
         <label>Email (optional)<input type="email" value={f.email} onChange={set('email')} autoComplete="off" /></label>
         <label>Role
           <select value={f.role} onChange={set('role')}>
@@ -54,6 +58,8 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
       </div>
       {!u && f.method === 'password' && <PasswordField label="Password" value={f.password} onChange={v => setF({ ...f, password: v })} autoComplete="new-password" />}
       {u && u.method === 'password' && f.method === 'authelia' && <p className="muted">Their app password is removed and they’re signed out.</p>}
+      {renamed && <p className="muted">They sign in as {username || '…'} from now on, and their runners move with the account.
+        {u.linked && f.method === 'authelia' && ` Their Authelia link is removed: their next Authelia sign-in as ${username || '…'} links it again.`}</p>}
       {u && u.method === 'authelia' && f.method === 'password' && <p className="muted">They can’t sign in until you set a password for them with Reset password after saving.</p>}
       {err && <p className="err" role="alert">{err}</p>}
       <div className="actions">

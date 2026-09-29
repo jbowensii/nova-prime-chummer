@@ -124,6 +124,15 @@ One `<pricing>` element. All values are in nuyen.
 | equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
 | refundEffectRemoval | `true` refunds rating lost when an amp effect is removed |
 
+A book can carry a partial pricing overlay: `imported/<source>/pricing.xml` with one `<prices id source page …/>`
+holding only the attributes it sets (the Conversion Guide's import writes `complexForm`, read from its page). The
+loader writes those attributes over the pricing loaded so far, in load order: the core `<pricing>`, then each
+imported book's `<prices>` in `imported/index.xml` order (the last loaded wins), then the house rules, where a full
+`<pricing>` replaces every price and a `<prices>` sets only its own. A `<prices>` with no `<pricing>` before it is
+reported and ignored; within a file the entries apply in order, and a `<prices>` attribute that isn't a price or a
+number is ignored. A house rule that changes one price should use `<prices>`: a full `<pricing>` without `complexForm`
+prices complex forms at its `spell` price, dropping the Conversion Guide's.
+
 ### amptypes
 
 `<amptype id base baseAfterFirst? essence requires?><name/></amptype>`
@@ -225,6 +234,27 @@ lists amp effect ids the rule explains (hover help in the Amp Builder and
 on the sheet). Written by the importer's `qref` recipe (one
 `custom/imported/qref/rules-<sheet>.xml` per uploaded sheet, ids scoped
 `qref.<sheet>-<title>`); `<text>` stays empty, the text is private.
+Sheet `optional` holds a book's optional rules, the seeds of the table rules below: the core rulebook's import writes
+`custom/imported/crb/rules-optional.xml` (extended social tests p.139, vehicle and drone damage for characters,
+critters and devices p.68, planning pool or personal Edge p.80: names and pages only; the descriptions go to
+`texts/crb.xml` as `of="rules"`).
+
+## Table rules (`custom/table-rules.xml`)
+
+The optional rules a GM (admin or editor) plays with, switched on and off on the Rules page, plus house rules the GM
+writes. Written by the server (`PUT /api/table-rules`, admin and editors; atomic), schema `tablerules.xsd`, namespace
+`urn:chummer-anarchy2:config:1`; every signed-in user reads it at `/custom/table-rules.xml`, and players see the rules
+switched on under Table rules. It lives in `custom/`, so backups carry it.
+
+```xml
+<ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
+  <rule id="crb.optional-extended-social-tests" on="true"/>          <!-- a book's optional rule, by its id -->
+  <rule id="house-3f2a9c01b2d4" on="true"><name>…</name><text>…</text></rule>   <!-- a house rule -->
+</ca2:tablerules>
+```
+
+A book's rule not listed is off. A listed book rule whose book is gone keeps its switch for when the book comes back.
+At most 200 rules; a house rule's name is 120 characters at most, its description 4,000.
 
 ## Imported sample runners
 
@@ -234,7 +264,8 @@ file (`character.xsd`, `origin` = the source) to
 `custom/imported/<source>/samples/<source>.<name>.xml`, and lists it in the
 generated `custom/imported/samples.xml` (`<sample source href name role page/>`,
 `href` relative to `custom/imported/`; schema `samples.xsd`). "Load sample
-characters" reads that list; before any import there are none.
+characters" reads that list; before any import there are none. It matches samples by source and name, not by id
+(`sampleKey`, docs/character-format.md).
 The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
@@ -268,7 +299,26 @@ scoped, every entry `source="CRB"` and its page. Their descriptions (weapon
 examples, armor, lifestyle rules) go to `texts/crb.xml`. Values the book
 doesn't print are app defaults kept in the recipe (`DEFAULTS`,
 `EFFECTS`). A table the recipe can't read is left out and the import report
-says so (`kind="core-unread"`).
+says so (`kind="core-unread"`, with the book.md pages it should be on).
+
+Any of the twelve can then be read by AI (Books → **Read the tables with AI**,
+`python -m importer propose <library/book-id> --library <dir> --core`): only
+the chunks holding those pages are sent, and the model fills one JSON list per
+table in the shape of its schema (`importer/ai/schema.py` `CORE`; weapons and
+armor as `items`). Each proposed row is checked against its table's schema, its
+own id where the engine names it (attributes, amp effects), and the ids it names
+that no schema checks (a skill's or metatype range's attribute, a package's
+level, an effect's amp types and required or excluded effects, an amp type's
+required effect: against the tables in place and this review's rows), and
+waits in `review.xml`
+(`core="true"`, proposal kinds `level`, `metatype`, `attribute`, `skill`,
+`pricing`, `amptype`, `effect`, `package`, `vehicle`, `lifestyle`, `weapon`,
+`armor`). Accepting (`apply-review --core`) writes the accepted rows as the
+core files, rechecked the same way (a table being replaced counts only its
+accepted rows); a row that fails is left out and reported. The import
+report then lists each such table as `kind="core-ai"` (read by AI, with its
+row count: check it against the book) instead of `core-unread`, and the Books
+page says which tables came from AI.
 
 Load order: `public/data/` (in development also the owner's local copies of
 the core files, gitignored), then `imported/core/`, then the imported books,
@@ -278,16 +328,21 @@ the Conversion Guide's import adds the Tasking skill and the Emerged amp type,
 DHSA's its implant grades (`imported/cg/skills.xml`, `amptypes.xml`,
 `imported/dhsa/ampeffects.xml`; skill, amp type and effect ids stay unscoped). A book can
 add amp types and effects but never replace a core one (the importer drops it, report `kind="core-override"`).
+Prices are the exception: a book's `<prices>` (the Conversion Guide's complex-form price, `imported/cg/pricing.xml`)
+sets the prices it prints over the core's (see pricing above).
 Without attributes, metatypes, levels, packages, pricing or skills the app opens on its setup screen; another
 missing table shows a banner.
 A server started without `imported/core/` whose Library holds the core
 rulebook re-imports it (then the Conversion Guide and DHSA).
-It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`).
+It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`). The
+markers are keyed on the file's sha256, not its folder: the same PDF uploaded
+again to a new folder is the same CRB file, and every folder's marker for it counts.
 After a [data pack](#data-pack) is loaded, the marker records `pack=` and the
 pack's files (`files=`); while all of those files are there, that CRB file isn't
 re-imported at start-up, whatever the version: the core came from the pack. Once
 one of them is gone the mark no longer counts and the usual rule applies; a
-**Re-import** of that CRB drops it. A
+**Re-import** of that CRB, or uploading the same PDF again, drops it (in every
+folder). A
 different CRB file (a new upload) is re-imported regardless, and any
 import of the core rulebook (upload, **Re-import**) writes the core files over
 the pack's as usual.
@@ -302,7 +357,7 @@ it by hand, re-import instead.
 |---|---|
 | `imported/index.xml` | the overlay files below, in load order (same `<overlays><file href/>` format as `custom/index.xml`) |
 | `imported/sources.xml` | one `<source>` per imported book (see sources above) |
-| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml` |
+| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml`, `pricing.xml` (a partial `<prices>`) |
 | `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
 | `texts/<source>.xml` | its private descriptions |
 
@@ -405,8 +460,10 @@ core/<name>.xml   (each of the twelve core files present)
   `<file name bytes sha256>` per core file in the zip.
 - Only the core files: never descriptions (`texts/`), PDFs or keys.
 
-`datapack import <zip> --custom <dir>` ("Upload data pack", 50 MB at most)
-first checks it all (`datapack check`): nothing but `datapack.xml` and
+"Upload data pack" (50 MB at most) is two steps, like a restore: the server runs
+`datapack check <zip>` and shows what the pack holds (its date, app version,
+tables, and which of them replace the server’s), then **Load data pack** runs
+`datapack import <zip> --custom <dir>`, which checks it all again (`datapack check`): nothing but `datapack.xml` and
 `core/<core file>.xml`, no link, device, encrypted or oversized entry, a
 manifest that lists exactly the zip's files with matching sizes and hashes
 (these catch damage, not tampering: anyone can recompute them), and every file

@@ -1,4 +1,5 @@
-// Rules reference: the imported quick-reference sheets (rules kind), text from the private texts file.
+// Rules (admin and editors, the GMs): the table rules they switch on for their players (TableRules.tsx), then the rules
+// reference: the imported quick-reference sheets (rules kind), text from the private texts file.
 import { useMemo, useState } from 'react'
 import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
@@ -6,6 +7,7 @@ import { NonCanon } from './bits'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
 import { AccountMenu, isAdmin, useMe } from './auth'
 import { SettingsButton } from './settings'
+import { TableRulesManager } from './TableRules'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
 
@@ -28,10 +30,12 @@ export function RulesScreen({ c }: { c: Catalog }) {
   return (
     <main className="lib rules">
       <header>
-        <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Rules reference</h1></div>
+        <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Rules</h1></div>
         <div className="row">{openEdit && <button className="btn quiet" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>}
           <a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu /></div>
       </header>
+      <TableRulesManager c={c} />
+      <h2>Rules reference</h2>
       {rules.length === 0 && <p className="banner">No rules yet. {admin ? <>Upload the quick-reference sheets on the <a href="#/books">Books page</a>.</> : 'The admin hasn’t uploaded the quick-reference sheets yet.'}</p>}
       <p className="muted">
         {sources.length > 0 && <>From {sources.map(s => `${s!.name} (${s!.publisher})`).join('; ')}.</>}

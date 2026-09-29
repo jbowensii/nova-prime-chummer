@@ -1,6 +1,8 @@
 """CRB recipe, core files: made-up tables in the converter's shape, and (gated) the answer key: with the owner's local
 copies of the core files (public/data, gitignored) and the converted CRB present, the recipe's core files must equal
 them, names and attributes; descriptions are the texts' (checked apart)."""
+import contextlib
+import io
 import os
 import tempfile
 import unittest
@@ -250,7 +252,7 @@ class ExtractTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"CA2_CORE_DIR": tmp, "CA2_CUSTOM_DIR": tmp}), mock.patch("importer.DATA_DIR", tmp):
                 res = crb.extract(MD)
         self.assertEqual(set(res.core), {f"{n}.xml" for n in CORE_FILES} - {"ampeffects.xml"})
-        skipped = [r for r in res.report if r["kind"] == "amps-skipped"]
+        skipped = [r for r in res.report if r.get("kind") == "amps-skipped"]
         self.assertEqual(len(skipped), 1)
         self.assertIn("missing: ampeffects.xml", skipped[0]["problem"])
 
@@ -277,48 +279,212 @@ class ExtractTest(unittest.TestCase):
 
 
 class AiFallbackTest(unittest.TestCase):
-    """A core table the recipe can't read: the AI reads only its pages and proposes only its rows; the accepted ones become
-    the core file, and the import report stops listing the table."""
+    """Any core table the recipe can't read: the AI reads only those tables' pages and proposes only their rows, each
+    checked against its table's schema; the accepted ones become the core files, and the import report lists each table
+    as read by AI instead of unread. The fake provider answers with invented rows; no core data is needed."""
 
-    def test_propose_and_apply_an_unread_weapons_table(self):
+    # invented rows, by the page the chunk starts on (page 3: levels, 4: weapons, 5: pricing)
+    REPLIES = {
+        "3": {"levels": [{"id": "street", "name": "Street <b>", "page": 3, "nuyen": 111000, "attrAtMax": 1, "skillCap": 5,
+                          "rrAttr": 1, "rrSkill": 1, "rrSpec": 2, "onload": "alert(1)"},
+                         {"id": "Big Time!", "name": "Big time", "page": 3, "nuyen": "lots", "attrAtMax": 2, "skillCap": 6,
+                          "rrAttr": 1, "rrSkill": 1, "rrSpec": 2}],
+              "items": [{"name": "Stray spoon", "kind": "weapon", "category": None, "page": 3, "dv": "1", "armor": None, "ranges": None}]},
+        "4": {"items": [{"name": "Pea shooter", "kind": "weapon", "category": "Pistols", "page": 4, "dv": "2", "armor": None, "ranges": "OK/OK/-/-"},
+                        {"name": "Tin spoon", "kind": "gear", "category": None, "page": 4, "dv": None, "armor": None, "ranges": None}]},
+        "5": {"pricing": [{"page": 5, "attrPoint": 1100, "attrLastPoint": 2200, "skillLow": 330, "skillLowMax": 4, "skillHigh": 660,
+                           "spec": 440, "knowledge": 220, "ampPoint": 550, "equipment": 330, "weaponStandard": 350, "weaponSpecialist": 700,
+                           "armorPoint": 300, "spell": 650, "complexForm": None}]},
+    }
+
+    def _book(self, tmp, unread):
+        from importer import xmlio
+        book = os.path.join(tmp, "library", "crb")
+        md = "<!-- page 1 -->\n# Intro\nMade up.\n\n" + "".join(f"<!-- page {n} -->\n# Page {n}\n" + "Filler text. " * 900 + "\n\n" for n in range(2, 7))
+        xmlio.write_file(os.path.join(book, "book.md"), md)
+        rows = [{"kind": "core-unread", "file": f, "page": p, "mdPages": f"{p}-{p}", "problem": "made up"} for f, p in unread]
+        xmlio.write_import(book, report=rows + [{"kind": "unresolved-spec", "spec": "made-up"}], files={"spells.xml": 3}, file="crb.pdf",
+                           sha256="00", converter="6", pages=6, score="1.00", recipe="crb", source="CRB", name="Made-up core", publisher="P",
+                           canon="true", imported="2026-09-28T00:00:00+00:00")
+        return book
+
+    def _ask(self, asked):
         import json
+        import re
+
+        def ask(system, user):
+            asked.append((system, user))
+            got = [self.REPLIES.get(n, {}) for n in re.findall(r"^# Page (\d+)$", user, re.M)]  # the pages this chunk holds
+            return json.dumps({k: [r for g in got for r in g.get(k, [])] for k in {k for g in got for k in g} | {"items"}})
+        return ask
+
+    def _valid(self, path, xsd):
+        from importer.tests.test_run import SCHEMA, XSD_CHECK, node
+        r = node("--input-type=module", "-e", XSD_CHECK, str(path), os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd"))
+        self.assertEqual(r.returncode, 0, f"{path}: {r.stderr}")
+
+    def test_every_unread_table_is_proposed_checked_and_applied(self):
         from importer import xmlio
         from importer.__main__ import apply_core_review
         from importer.ai import propose as P
-        from importer.tests.test_run import SCHEMA, XSD_CHECK, node
         with tempfile.TemporaryDirectory() as tmp:
-            book, custom = os.path.join(tmp, "library", "crb"), os.path.join(tmp, "custom")
-            md = "<!-- page 1 -->\n# Intro\nMade up.\n\n" + "".join(f"<!-- page {n} -->\n# Page {n}\n" + "Filler text. " * 900 + "\n\n" for n in range(2, 6))
-            xmlio.write_file(os.path.join(book, "book.md"), md)
-            xmlio.write_import(book, report=[{"kind": "core-unread", "file": "weapons.xml", "page": 2, "mdPages": "4-4", "problem": "made up"},
-                                             {"kind": "core-unread", "file": "levels.xml", "page": 1, "mdPages": "3-3", "problem": "made up"}],
-                               files={"spells.xml": 3}, file="crb.pdf", sha256="00", converter="6", pages=5, score="1.00", recipe="crb",
-                               source="CRB", name="Made-up core", publisher="P", canon="true", imported="2026-09-28T00:00:00+00:00")
-            reply = {"amps": [], "spells": [], "complexForms": [],
-                     "items": [{"name": "Pea shooter", "kind": "weapon", "category": "Pistols", "page": 2, "dv": "2", "armor": None, "ranges": "OK/OK/-/-"},
-                               {"name": "Tin spoon", "kind": "gear", "category": None, "page": 2, "dv": None, "armor": None, "ranges": None}]}
+            book, custom = self._book(tmp, [("levels.xml", 3), ("weapons.xml", 4), ("pricing.xml", 5)]), os.path.join(tmp, "custom")
             asked = []
-            P.propose(book, lambda s, u: asked.append(u) or json.dumps(reply), core=True)
-            self.assertTrue(asked and all("<!-- page 4 -->" in u for u in asked))  # only the weapons table's pages
+            with mock.patch.object(P, "mechanics", side_effect=AssertionError("a core review needs no core data")):
+                P.propose(book, self._ask(asked), provider="made-up", core=True)
+            sent = " ".join(u for _, u in asked)
+            self.assertTrue(all(f"# Page {n}\n" in sent for n in (3, 4, 5)))
+            self.assertNotIn("# Page 6", sent)  # only the chunks holding the unread tables' pages
+            self.assertIn("levels and pricing and weapons tables", asked[0][0])
+            self.assertIn('"levels"', asked[0][0])  # the JSON shape of each table
             root = ET.parse(os.path.join(book, "review.xml")).getroot()
             self.assertEqual((root.get("core"), root.get("source")), ("true", "CRB"))
-            props = root.findall("proposal")
-            self.assertEqual({p.get("kind") for p in props}, {"weapon"})  # no gear: only the table's rows
-            for p in props:
+            props = {p.get("id"): p for p in root.findall("proposal")}
+            # only the unread tables' rows: the weapon on the levels page too, never the gear
+            self.assertEqual(set(props), {"level.street", "level.big-time", "weapon.stray-spoon", "weapon.pea-shooter", "pricing.core"})
+            street = props["level.street"].find("level")
+            self.assertEqual(street.findtext("name"), "Street <b>")  # escaped text, not markup
+            self.assertIsNone(street.get("onload"))  # only the schema's properties become attributes
+            self.assertEqual(props["level.street"].findall("note"), [])
+            self.assertIn("doesn’t fit the levels table", props["level.big-time"].findtext("note"))
+            price = props["pricing.core"].find("pricing")
+            self.assertEqual((price.get("complexForm"), price.get("refundEffectRemoval"), price.get("source")), ("650", "false", "CRB"))
+            self._valid(os.path.join(book, "review.xml"), "review.xsd")
+
+            for p in root.findall("proposal"):
                 p.set("state", "accepted")
             ET.ElementTree(root).write(os.path.join(book, "review.xml"), encoding="unicode")
-            r = node("--input-type=module", "-e", XSD_CHECK, os.path.join(book, "review.xml"), os.path.join(SCHEMA, "review.xsd"),
-                     os.path.join(SCHEMA, "common.xsd"))
-            self.assertEqual(r.returncode, 0, r.stderr)
-
             apply_core_review(book, custom)
-            weapons = Path(custom, "imported", "core", "weapons.xml")
-            self.assertIn('<item id="pea-shooter" kind="weapon"', weapons.read_text(encoding="utf8"))
-            self.assertIn('source="CRB"', weapons.read_text(encoding="utf8"))
-            r = node("--input-type=module", "-e", XSD_CHECK, str(weapons), os.path.join(SCHEMA, "items.xsd"), os.path.join(SCHEMA, "common.xsd"))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertEqual([r.get("file") for r in xmlio.read_import(book).iter("row") if r.get("kind") == "core-unread"], ["levels.xml"])
+            core = Path(custom, "imported", "core")
+            self.assertEqual(sorted(f.name for f in core.iterdir()), ["levels.xml", "pricing.xml", "weapons.xml"])
+            for f, xsd in (("levels.xml", "levels.xsd"), ("pricing.xml", "pricing.xsd"), ("weapons.xml", "items.xsd")):
+                self._valid(core / f, xsd)
+            self.assertEqual([e.get("id") for e in ET.parse(core / "levels.xml").getroot()], ["street"])
+            self.assertEqual([e.get("id") for e in ET.parse(core / "weapons.xml").getroot()], ["stray-spoon", "pea-shooter"])
+            rows = [r.attrib for r in xmlio.read_import(book).iter("row")]
+            self.assertFalse([r for r in rows if r.get("kind") == "core-unread"])
+            self.assertEqual({r["file"]: r["entries"] for r in rows if r.get("kind") == "core-ai"},
+                             {"levels.xml": "1", "pricing.xml": "1", "weapons.xml": "2"})  # read by AI: the report says so
+            skipped = [r for r in rows if r.get("proposal")]
+            self.assertEqual([r["proposal"] for r in skipped], ["level.big-time"])
+            self.assertIn({"kind": "unresolved-spec", "spec": "made-up"}, rows)
             self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
+
+    def test_an_edit_that_breaks_a_row_or_a_second_pricing_row_stays_out(self):
+        from importer import xmlio
+        from importer.__main__ import apply_core_review
+        from importer.ai import propose as P
+        with tempfile.TemporaryDirectory() as tmp:
+            book, custom = self._book(tmp, [("levels.xml", 3), ("pricing.xml", 5)]), os.path.join(tmp, "custom")
+            self.REPLIES = {**self.REPLIES, "5": {"pricing": self.REPLIES["5"]["pricing"] * 2}}
+            P.propose(book, self._ask([]), core=True)
+            root = ET.parse(os.path.join(book, "review.xml")).getroot()
+            for p in root.findall("proposal"):
+                p.set("state", "edited" if p.get("id") == "level.street" else "accepted")
+            root.find("proposal[@id='level.street']/level").set("skillCap", "-1")  # the user's edit breaks the row
+            ET.ElementTree(root).write(os.path.join(book, "review.xml"), encoding="unicode")
+            apply_core_review(book, custom)
+            self.assertFalse(Path(custom, "imported", "core", "levels.xml").exists())
+            self.assertEqual(len(ET.parse(Path(custom, "imported", "core", "pricing.xml")).getroot()), 1)
+            rows = [r.attrib for r in xmlio.read_import(book).iter("row")]
+            self.assertEqual(sorted(r["proposal"] for r in rows if r.get("proposal")), ["level.big-time", "level.street", "pricing.core-2"])
+            self.assertEqual([r["file"] for r in rows if r.get("kind") == "core-unread"], ["levels.xml"])  # still unread
+            self.assertEqual([r["file"] for r in rows if r.get("kind") == "core-ai"], ["pricing.xml"])
+
+    def _round_trip(self, core_dir):
+        """Every entry of the core files in `core_dir`, as the model would send it, comes back as the same entry: the JSON
+        shapes hold every attribute the tables use."""
+        from importer import use_core
+        from importer.ai import propose as P
+        from importer.ai.schema import CORE
+        for table in CORE:
+            for el in ET.parse(os.path.join(core_dir, f"{table}.xml")).getroot():
+                if el.get("source") != "CRB":  # the owner's copies still hold DHSA's implant grades, which its import adds
+                    continue
+                raw = {**el.attrib, "page": int(el.get("page")), "name": el.findtext("name"), "racialQuality": el.findtext("racialQuality"),
+                       "ranges": [r.attrib for r in el.iter("range")], "specs": [{**s.attrib, "name": s.text} for s in el.iter("spec")]}
+                with use_core(str(core_dir)):  # the ids it names resolve against the same core files
+                    kind, i, _, xml, notes = P.core_entry(table, raw, el.get("source"), 1, set())
+                back = ET.fromstring(xml)
+                self.assertEqual((notes, back.tag, back.attrib), ([], el.tag, el.attrib), f"{table} {i}")
+                self.assertEqual([(c.tag, c.attrib, (c.text or "").strip()) for c in back],
+                                 [(c.tag, c.attrib, (c.text or "").strip()) for c in el if c.tag != "text"] + ([("text", {}, "")] if table == "lifestyles" else []))
+
+    def test_every_core_table_round_trips_through_its_json_shape(self):
+        self._round_trip(ROOT / "tests/fixtures/mini/custom/imported/core")
+
+    @unittest.skipUnless(LOCAL_CORE, "the owner's local core files aren't present")
+    def test_the_answer_key_round_trips_too(self):
+        self._round_trip(DATA_DIR)
+
+    def test_ids_a_row_names_are_checked_on_propose_and_enforced_on_apply(self):
+        """The schema can't check the ids a row names: the review notes them, and apply leaves such a row out, including
+        one the user's edit broke. Invented rows; the made-up core files are in place (a levels table not being replaced)."""
+        from importer import xmlio
+        from importer.__main__ import apply_core_review
+        from importer.ai import propose as P
+        spec = lambda a: [{"id": "sneak.quiet", "attr": a, "name": "Quiet"}]  # noqa: E731
+        ranges = [{"attr": a, "min": 1, "max": 6} for a in ("str", "agi", "wil", "log", "cha")]
+        self.REPLIES = {
+            "3": {"skills": [{"id": "sneak", "name": "Sneak", "page": 3, "attr": "agi", "alt": None, "requires": None, "specs": spec("agi")},
+                             {"id": "bash", "name": "Bash", "page": 3, "attr": "strength", "alt": "wil", "requires": None, "specs": spec("brawn")}],
+                  "metatypes": [{"id": "gnome", "name": "Gnome", "page": 3, "edge": 1, "racialQuality": "Small", "ranges": ranges},
+                                {"id": "blob", "name": "Blob", "page": 3, "edge": 1, "racialQuality": "Round", "ranges": ranges[:4] + [{"attr": "luck", "min": 1, "max": 6}]}]},
+            "4": {"packages": [{"id": "runner-x", "name": "X", "page": 4, "level": "runner", "archetype": "x", **dict.fromkeys(
+                                  ("attrPoints", "attrAtMax", "skillPoints", "skillsAtSix", "ampPoints", "armor", "standardWeapons",
+                                   "specialistWeapons", "equipment", "spells"), 1)},
+                               {"id": "mythic-x", "name": "Y", "page": 4, "level": "mythic", "archetype": "y", **dict.fromkeys(
+                                  ("attrPoints", "attrAtMax", "skillPoints", "skillsAtSix", "ampPoints", "armor", "standardWeapons",
+                                   "specialistWeapons", "equipment", "spells"), 1)}],
+                  "attributes": [{"id": "str", "name": "Brawn", "page": 4, "abbr": "B"}]},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            book, custom = self._book(tmp, [("skills.xml", 3), ("metatypes.xml", 3), ("packages.xml", 4), ("attributes.xml", 4)]), os.path.join(tmp, "custom")
+            P.propose(book, self._ask([]), core=True)
+            root = ET.parse(os.path.join(book, "review.xml")).getroot()
+            notes = {p.get("id"): [n.text for n in p.findall("note")] for p in root.findall("proposal")}
+            expect = {"skill.bash": ['attribute attr "strength" isn’t a known id', 'attribute of sneak.quiet "brawn" isn’t a known id'],
+                      "metatype.blob": ['range attribute "luck" isn’t a known id', "needs one range for each attribute"],
+                      "package.mythic-x": ['level "mythic" isn’t a known id']}  # (the schema's attribute enum notes the first two too)
+            self.assertEqual({k for k, v in notes.items() if v}, set(expect))
+            for k, want in expect.items():
+                self.assertTrue(set(want) <= set(notes[k]), notes[k])
+            for p in root.findall("proposal"):
+                p.set("state", "accepted")
+            root.find("proposal[@id='attribute.str']").set("state", "edited")
+            root.find("proposal[@id='attribute.str']/attribute").set("id", "brawn")  # the edit renames an attribute the engine names
+            ET.ElementTree(root).write(os.path.join(book, "review.xml"), encoding="unicode")
+            apply_core_review(book, custom)
+            core = Path(custom, "imported", "core")
+            self.assertEqual(sorted(f.name for f in core.iterdir()), ["metatypes.xml", "packages.xml", "skills.xml"])
+            self.assertEqual([e.get("id") for e in ET.parse(core / "skills.xml").getroot()], ["sneak"])
+            self.assertEqual([e.get("id") for e in ET.parse(core / "metatypes.xml").getroot()], ["gnome"])
+            self.assertEqual([e.get("id") for e in ET.parse(core / "packages.xml").getroot()], ["runner-x"])
+            refused = {r.get("proposal"): r.get("problem") for r in xmlio.read_import(book).iter("row") if r.get("proposal")}
+            self.assertEqual(set(refused), {"skill.bash", "metatype.blob", "package.mythic-x", "attribute.str"})
+            self.assertIn('id "brawn" isn’t one the app uses for attributes', refused["attribute.str"])
+
+    def test_a_row_may_name_a_row_of_the_same_review_and_a_replaced_table_counts_only_its_rows(self):
+        from importer.ai import propose as P
+        refs = P.core_refs(["level.mythic", "amptype.spirit"], replacing={"levels"})
+        self.assertEqual(refs["levels"], {"mythic"})  # the core's levels are being replaced
+        self.assertIn("quality", refs["amptypes"])  # still in place
+        self.assertIn("spirit", refs["amptypes"])
+        self.assertIn("emerged", refs["amptypes"])  # a made-up book's addition
+        el = ET.fromstring('<effect id="fx" category="c" rating="1" types="spirit ghost" requires="fx-2" source="CRB" page="1"><name>F</name></effect>')
+        self.assertEqual(P.ref_notes("ampeffects", el, refs), ['amp type "ghost" isn’t a known id', 'requires effect "fx-2" isn’t a known id'])
+
+    def test_cli_asks_the_provider_for_the_unread_tables_shape(self):
+        from importer.__main__ import main
+        from importer.ai import providers
+        with tempfile.TemporaryDirectory() as tmp:
+            book = self._book(tmp, [("vehicles.xml", 3), ("armor.xml", 4)])
+            shapes = []
+            with mock.patch.object(providers, "call", side_effect=lambda c, s, u, schema: shapes.append(schema) or '{"vehicles": []}'), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["propose", book, "--library", os.path.join(tmp, "library"), "--core"]), 0)
+            self.assertTrue(shapes)
+            self.assertEqual(set(shapes[0]["properties"]), {"vehicles", "items"})
 
 
 # ---------------------------------------------------------------- the answer key

@@ -9,7 +9,7 @@ import { fakeIssuer } from '../tests/fixtures/fake-issuer.mjs'
 // Sign in with Authelia end to end, against the made-up issuer (tests/fixtures/fake-issuer.mjs) on a server of its own:
 // the admin sets it up in Settings → Sign-in, then Kim (an Authelia account) signs in through it; someone without an
 // account comes back to the sign-in page with a plain message. Runs in order; every test starts signed out.
-const ADMIN_PW = 'ada-password-1'
+const ADMIN_PW = 'ada-password-1', PAT_PW = 'pat-password-1'
 let server: ReturnType<typeof createServer>, issuer: Awaited<ReturnType<typeof fakeIssuer>>, base = ''
 
 test.describe.configure({ mode: 'serial' })
@@ -22,7 +22,7 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
   writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: ADMIN_PW, name: 'Ada Admin' },
-    { username: 'kim', method: 'authelia', role: 'player', name: 'Kim Player' }]))
+    { username: 'kim', method: 'authelia', role: 'player', name: 'Kim Player' }, { username: 'pat', password: PAT_PW, role: 'player', name: 'Pat Player' }]))
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
@@ -75,6 +75,7 @@ test('Kim signs in with Authelia; the sign-in page and the round trip break no C
   await page.getByRole('button', { name: 'Kim Player' }).click()
   await expect(page.getByText('Player · kim')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0) // an Authelia account has no app password
+  await expect(page.getByRole('button', { name: 'Link my Authelia account' })).toHaveCount(0) // nor anything to link
   await check()
 })
 
@@ -103,4 +104,40 @@ test('Users: an Authelia account shows no password actions', async ({ page }) =>
   await expect(page.getByRole('status')).toHaveText('Kim Player is unlinked from Authelia. The next Authelia sign-in as kim links it again.')
   await expect(page.getByRole('row', { name: /Kim Player/ })).toContainText('Authelia (not signed in yet)')
   await expect(page.getByRole('button', { name: 'Reset Ada Admin’s password' })).toBeVisible()
+})
+
+test('Pat links a password account to Authelia, then signs in with Authelia; the password no longer works', async ({ page }) => {
+  const keep = issuer.user
+  issuer.user = { sub: 'u-pat', preferred_username: 'pat-at-sso', email: 'pat@example.test', email_verified: true }
+  try {
+    await page.goto('/')
+    await page.getByLabel('Username').fill('pat')
+    await page.getByLabel('Password', { exact: true }).fill(PAT_PW)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: 'Pat Player' }).click()
+    await page.getByRole('button', { name: 'Link my Authelia account' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Link my Authelia account' })
+    await expect(dialog).toContainText('your password stops working')
+    await dialog.getByLabel('Current password').fill('not-my-password')
+    await dialog.getByRole('button', { name: 'Continue to Authelia' }).click()
+    await expect(dialog.getByRole('alert')).toHaveText('Your current password is wrong.')
+    await dialog.getByLabel('Current password').fill(PAT_PW)
+    await dialog.getByRole('button', { name: 'Continue to Authelia' }).click()
+    await expect(page.getByRole('status')).toHaveText('Your account is now linked to Authelia. From now on, sign in with Authelia: your password no longer works, and your other devices are signed out.')
+    expect(new URL(page.url()).search).toBe('')
+    await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: 'Pat Player' }).click()
+    await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Link my Authelia account' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Sign out' }).click()
+
+    await page.getByLabel('Username').fill('pat')
+    await page.getByLabel('Password', { exact: true }).fill(PAT_PW)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('alert')).toHaveText('Wrong username or password.')
+    await page.getByRole('link', { name: 'Sign in with Authelia' }).click()
+    await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+    await page.getByRole('button', { name: 'Pat Player' }).click()
+    await expect(page.getByText('Player · pat')).toBeVisible()
+  } finally { issuer.user = keep }
 })

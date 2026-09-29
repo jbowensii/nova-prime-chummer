@@ -1,13 +1,13 @@
 // Build a Catalog from XML files: base data first (public/data, then the core files in custom/imported/core/), then
 // overlays in order.
-// Same id replaces, <remove id> deletes, new id adds (docs/data-format.md). Imported books
+// Same id replaces, <remove id> deletes, new id adds (docs/data-format.md); a book's <prices> sets only its own prices. Imported books
 // (custom/imported/) carry ids scoped by source, so two books' same-named entries both stay;
 // sources merge by id across the three sources files instead of replacing, and an imported skill
 // adds its specs to the base skill of that id. The edits layer (custom/edits/, kind="edits") replaces
 // entries by id after the imports and before the house rules; the replaced entries stay in c.original.
 import type { AttrId, Catalog, Pricing, Source } from '../model/types'
 import {
-  parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPricing, toRule, toSkill,
+  parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPrices, toPricing, toRule, toSkill,
   toSource, toVehicle,
 } from './parse'
 
@@ -68,7 +68,15 @@ export function buildCatalog(files: SourceFile[]): Catalog {
     const p = parseDataFile(f.xml, f.file)
     if (p.error) { c.errors.push(p.error); continue }
     if (p.kind === 'pricing') {
-      if (p.entries[0]) c.pricing = toPricing(p.entries[0])
+      // <pricing> replaces the prices; <prices> (a book's partial overlay) sets only its own over them: the last loaded wins
+      // (every entry, in document order)
+      let orphan = false
+      for (const el of p.entries) {
+        if (el.localName === 'pricing') c.pricing = toPricing(el)
+        else if (!c.pricing) orphan = true
+        else c.pricing = { ...c.pricing, ...toPrices(el) }
+      }
+      if (orphan) { c.errors.push({ file: f.file, message: '<prices> changes nothing without a <pricing> loaded first' }); continue }
     } else if (p.kind === 'texts') {
       // private descriptions merged by id (docs/data-format.md)
       for (const el of p.entries) {

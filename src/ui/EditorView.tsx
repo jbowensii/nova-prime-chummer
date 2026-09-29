@@ -115,7 +115,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch])
 
   if (!loaded) return <main className="lib"><p className="muted">Loading runner…</p></main>
-  if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on tower04' : ' from this browser'}. <a href="#/">Back to your runners</a></p></main>
+  if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on the server' : ' from this browser'}. <a href="#/">Back to your runners</a></p></main>
 
   const career = !!ch.finalizedAt
   const commit = (next: Character, undoable: boolean) => {
@@ -200,7 +200,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           <button className="btn primary" onClick={() => void resolveConflict('overwrite')}>Overwrite with mine</button>
         </>}>
         {conflict && <div className="stack">
-          <p>{name} was saved on tower04 from another browser{conflict.updatedAt ? ` (${new Date(conflict.updatedAt).toLocaleString()})` : ''}, after you opened it. File: <code>{conflict.file}</code>.</p>
+          <p>{name} was saved on the server from another browser{conflict.updatedAt ? ` (${new Date(conflict.updatedAt).toLocaleString()})` : ''}, after you opened it. File: <code>{conflict.file}</code>.</p>
           <label>File name if you save yours as a new file<input value={copyName} onChange={e => setCopyName(e.target.value)} /></label>
         </div>}
       </Modal>

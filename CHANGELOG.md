@@ -1,5 +1,43 @@
 # Release notes
 
+## 0.4.1 — 2026-09-29: table rules, self-service Authelia link and fixes
+
+**Rules and samples**
+- The **Rules** tab is for the GM (admin and editors). **Table rules** are
+  switches for the core rulebook’s optional rules (extended social tests,
+  vehicle rules for characters, critters and devices, planning pool or
+  personal Edge), plus house rules the GM adds. They’re stored in
+  `custom/table-rules.xml` and travel with backups. Players get a read-only
+  **Table rules** page listing what’s on; the quick-reference data is still
+  readable by everyone.
+- **Load sample characters** never duplicates: each sample has a stable key,
+  saved on the runner, and every account gets its own copies. The Library
+  offers a one-time **Tidy up** that moves unchanged duplicates to your
+  trash and never touches one you edited.
+
+**Accounts**
+- **Link my Authelia account**: a password account can switch itself to
+  Authelia from the account menu. It asks for the current password and a
+  fresh Authelia sign-in, refuses an Authelia user already linked elsewhere,
+  ends the other sessions and drops the password.
+- The Users page can rename a username; the person’s runners move with it.
+- Sign-out waits for runner saves to finish (Duplicate, Export, import and
+  delete included) and asks before leaving one behind.
+- Settings links to **AI settings** for the admin.
+
+**Books and core data**
+- Loading a data pack now shows a preview (when it was made, the app version,
+  what it replaces) and waits for your confirmation.
+- A book can override a core price. The Conversion Guide import sets the
+  complex-form price it prints; the core still writes the spell price as a
+  stand-in.
+- If the core rulebook’s recipe can’t read a core table, the AI fallback now
+  covers all of them, not just weapons and armor.
+- The automatic core rebuild follows the rulebook file itself: uploading or
+  re-importing the same PDF replaces a data pack’s tables, and moving the
+  file between Library folders no longer triggers a rebuild.
+- Error messages read as sentences, and none names a particular host.
+
 ## 0.4.0 — 2026-09-28: accounts, Authelia and core data
 
 **Accounts**

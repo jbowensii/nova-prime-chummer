@@ -342,6 +342,16 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .rule-list dt { font-weight: 700; }
 .rule-list dt .muted { font-weight: 400; font-size: 0.85rem; margin-left: 0.4rem; }
 .rule-list dd { margin: 0.2rem 0 0; max-width: 70ch; }
+/* table rules (TableRules.tsx): the GM's switches on the Rules page, the players' read-only list */
+.table-rules-gm { margin-bottom: 2rem; }
+.table-rules { list-style: none; margin: 0 0 1rem; padding: 0; }
+.table-rules > li { padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
+.table-rules .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.8rem; }
+.table-rules .head > .muted { font-size: 0.88rem; }
+.table-rules > li > p { margin: 0.3rem 0 0; overflow-wrap: anywhere; }
+.table-rules .switch { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.table-rules .switch input { width: 1.1rem; height: 1.1rem; accent-color: var(--rust); }
+.table-rules .row { margin-left: auto; }
 .has-help { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
 
 /* ---- books, AI settings, review ---- */
