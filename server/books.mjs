@@ -438,6 +438,16 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   async function dropPackMarks(sha) {
     for (const m of await marks(sha)) if (attr(m.tag, 'pack')) await rm(join(libraryDir, m.id, 'core-rebuild.xml'), { force: true })
   }
+  /** A loaded data pack replaced these core files: a book that had them read by AI no longer says so (its core-ai rows go).
+   *  A successful re-import needs nothing: it writes the book's import record afresh. */
+  async function dropCoreAi(files) {
+    for (const d of await readdir(libraryDir, { withFileTypes: true }).catch(() => [])) {
+      if (!d.isDirectory() || !BOOK_ID.test(d.name)) continue
+      const path = join(libraryDir, d.name, 'import.xml'), xml = await readOr(path)
+      const next = xml?.replace(/[ \t]*<row\b[^>]*\/>\n?/g, r => attr(r, 'kind') === 'core-ai' && files.includes(attr(r, 'file')) ? '' : r)
+      if (next !== xml) await writeAtomic(path, next)
+    }
+  }
   /** A pack import killed mid-swap leaves the files it had moved aside in core/.restore-old-*: put them back before
    *  anything reads the core (importer/datapack.py recover). */
   async function recoverCore() {
@@ -649,6 +659,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         if (crb) await writeAtomic(join(libraryDir, crb.id, 'core-rebuild.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${
           esc(crb.sha)}" pack="${new Date().toISOString()}" files="${esc(files.join(' '))}"/>\n`)
       } catch (e) { console.error(`the data pack is loaded, but the start-up re-import mark wasn’t written: ${e.message}`) }
+      await dropCoreAi(files).catch(e => console.error(`the data pack is loaded, but a book still says it read a table by AI: ${e.message}`))
       return send(res, 200, { files })
     } finally {
       packing = false

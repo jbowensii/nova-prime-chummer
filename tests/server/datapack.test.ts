@@ -140,6 +140,27 @@ test('the same core rulebook uploaded again to a new folder: the marks follow th
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
 })
 
+test('a pack that replaces a table read by AI: the books stop saying so for that table, not for the others', async () => {
+  const ai = join(library, 'crb-ai'), otherBook = join(library, 'other-ai')
+  for (const [d, rows] of [[ai, '    <row kind="core-ai" file="skills.xml" entries="2" problem="read by AI: check it against the book"/>\n'
+    + '    <row kind="core-ai" file="weapons.xml" entries="1" problem="read by AI: check it against the book"/>\n    <row kind="core-unread" file="levels.xml"/>\n'],
+  [otherBook, '    <row kind="core-ai" file="skills.xml" entries="1" problem="read by AI: check it against the book"/>\n']]) {
+    mkdirSync(d, { recursive: true })
+    writeFileSync(join(d, 'import.xml'), `<import recipe="crb" source="CRB" file="crb.pdf" sha256="ai"><files/><report>\n${rows}  </report></import>\n`)
+    writeFileSync(join(d, 'status.xml'), '<status state="done" updated="2026-09-28T00:00:00Z"></status>\n')
+  }
+  const listed = async () => Object.fromEntries(((await (await fetch(`${base}/api/books`)).json()) as { id: string; coreAi: string[]; coreUnread: string[] }[])
+    .filter(b => ['crb-ai', 'other-ai'].includes(b.id)).map(b => [b.id, [b.coreAi, b.coreUnread]]))
+  expect(await listed()).toEqual({ 'crb-ai': [['skills.xml', 'weapons.xml'], ['levels.xml']], 'other-ai': [['skills.xml'], []] })
+  const { bytes } = await download()
+  const pack = JSON.parse(bytes.toString().slice(MAGIC.length))
+  pack.files = { 'skills.xml': pack.files['skills.xml'] }
+  const r = await uploadAndLoad(MAGIC + JSON.stringify(pack))
+  expect(r.status).toBe(200)
+  expect(await listed()).toEqual({ 'crb-ai': [['weapons.xml'], ['levels.xml']], 'other-ai': [[], []] })
+  for (const d of [ai, otherBook]) rmSync(d, { recursive: true, force: true })
+})
+
 test('refused uploads say why and change nothing', async () => {
   const before = readFileSync(join(core, 'skills.xml'), 'utf8')
   let r = await upload('not a zip')
