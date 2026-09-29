@@ -253,8 +253,11 @@ def apply_core_review(book_dir, custom_dir):
         root = xmlio.ET.parse(os.path.join(book_dir, "review.xml")).getroot()
         if root.get("core") != "true":
             raise ValueError("this review isn’t of core tables")
-        files, report = {}, []
-        for p in root.findall("proposal"):
+        files, report, ok = {}, [], []
+
+        def refuse(p, notes):
+            report.append({"proposal": p.get("id"), "page": p.get("page"), "problem": "; ".join(notes)})
+        for p in root.findall("proposal"):  # each accepted row on its own: its tag and schema
             kind = p.get("kind")
             entry = next((e for e in p if e.tag != "note"), None)
             f = next((f for f, k in propose.CORE_KINDS.items() if k == kind), None)
@@ -263,13 +266,21 @@ def apply_core_review(book_dir, custom_dir):
             entry.set("source", root.get("source"))
             entry.tail = None
             xml = xmlio.ET.tostring(entry, encoding="unicode")
-            table = f[:-4]
             notes = ((_entry_notes(kind, entry, None) if entry.tag == "item" else [] if entry.tag == kind else [f"<{entry.tag}> isn’t a {kind}"])
-                     + propose.schema_notes(table, xml))
+                     + propose.schema_notes(f[:-4], xml))
+            if notes:
+                refuse(p, notes)
+            else:
+                ok.append((p, f, entry, xml))
+        # then what they name: the ids in place, where a table being replaced counts only its accepted rows
+        refs = propose.core_refs([f"{p.get('kind')}.{e.get('id')}" for p, _, e, _ in ok], replacing={f[:-4] for _, f, _, _ in ok})
+        for p, f, entry, xml in ok:
+            table = f[:-4]
+            notes = propose.core_notes(table, entry, refs) if entry.tag != "item" else []
             if not notes and table == "pricing" and files.get(f):
                 notes = ["the pricing table has one row; another was accepted first"]
             if notes:
-                report.append({"proposal": p.get("id"), "page": p.get("page"), "problem": "; ".join(notes)})
+                refuse(p, notes)
                 continue
             files.setdefault(f, []).append("  " + xml)
         for f, rows in files.items():

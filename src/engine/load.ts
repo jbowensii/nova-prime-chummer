@@ -69,10 +69,14 @@ export function buildCatalog(files: SourceFile[]): Catalog {
     if (p.error) { c.errors.push(p.error); continue }
     if (p.kind === 'pricing') {
       // <pricing> replaces the prices; <prices> (a book's partial overlay) sets only its own over them: the last loaded wins
-      const prices = p.entries.find(el => el.localName === 'prices'), full = p.entries.find(el => el.localName === 'pricing')
-      if (full) c.pricing = toPricing(full)
-      if (prices && !c.pricing) { c.errors.push({ file: f.file, message: '<prices> changes nothing without a <pricing> loaded first' }); continue }
-      if (prices) c.pricing = { ...c.pricing, ...toPrices(prices) }
+      // (every entry, in document order)
+      let orphan = false
+      for (const el of p.entries) {
+        if (el.localName === 'pricing') c.pricing = toPricing(el)
+        else if (!c.pricing) orphan = true
+        else c.pricing = { ...c.pricing, ...toPrices(el) }
+      }
+      if (orphan) { c.errors.push({ file: f.file, message: '<prices> changes nothing without a <pricing> loaded first' }); continue }
     } else if (p.kind === 'texts') {
       // private descriptions merged by id (docs/data-format.md)
       for (const el of p.entries) {

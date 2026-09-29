@@ -233,6 +233,17 @@ describe('a book’s pricing overlay', () => {
     expect(c.pricing).toBeUndefined()
     expect(c.errors.map(e => e.message)).toContain('<prices> changes nothing without a <pricing> loaded first')
   })
+  test('every entry of a file applies, in document order', () => {
+    const full = `<pricing id="core" source="CRB" page="1" attrPoint="1" attrLastPoint="2" skillLow="3" skillLowMax="4" skillHigh="5" spec="6"
+      knowledge="7" ampPoint="8" equipment="9" weaponStandard="10" weaponSpecialist="11" armorPoint="12" spell="13" complexForm="14" refundEffectRemoval="false"/>`
+    const p = (id: string, a: string) => `<prices id="${id}" ${a} source="CRB" page="1"/>`
+    expect(buildCatalog([...base, pricing('custom/h.xml', p('a', 'spell="99"') + full + p('b', 'knowledge="70"') + p('c', 'ampPoint="80"'))]).pricing)
+      .toMatchObject({ spell: 13, knowledge: 70, ampPoint: 80, complexForm: 14 })
+  })
+  test('a <prices> attribute that isn’t a price or a number is ignored', () => {
+    const p = buildCatalog([...base, pricing('custom/h.xml', '<prices id="a" source="CRB" page="1" spell="lots" knowledge="" bogus="5" ampPoint="81"/>')]).pricing
+    expect(p).toEqual({ ...core, ampPoint: 81 })
+  })
   test('the made-up catalog prices complex forms from its book', () => {
     expect(cat.pricing).toEqual({ ...core, complexForm: 7250 })
   })

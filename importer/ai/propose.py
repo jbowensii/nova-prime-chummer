@@ -184,6 +184,63 @@ def id_notes(table, i):
     return [f'id "{i}" isn’t one the app uses for {table}'] if known and i not in known else []
 
 
+def core_refs(rows=(), replacing=()):
+    """{table: ids} a core row may name that its schema can't check: the levels, amp types and amp effects in place (the
+    core files and what books add), plus `rows` ("kind.id", the rows of this review). A table in `replacing` (being
+    written from this review) leaves out its core file's ids."""
+    from importer import NoCoreData, find_core_file
+    refs = {}
+    for t in ("levels", "amptypes", "ampeffects"):
+        try:
+            roots = [ET.parse(find_core_file("levels.xml")).getroot()] if t == "levels" else mechanics_roots(f"{t}.xml")
+        except (OSError, TypeError, ET.ParseError, NoCoreData):  # that table isn't in place (it may be the one being read)
+            roots = []
+        roots = roots[1:] if t in replacing else roots  # the core file comes first
+        refs[t] = {e.get("id") for r in roots for e in r}
+    table = {k: f[:-4] for f, k in CORE_KINDS.items()}
+    for r in rows:
+        kind, _, i = r.partition(".")
+        refs.setdefault(table.get(kind), set()).add(i)
+    return refs
+
+
+def ref_notes(table, el, refs):
+    """What a core row names that doesn't exist: attributes (the app's five), a package's level, an effect's amp types and
+    the effects it requires or excludes, an amp type's required effect. The engine looks all of these up by id."""
+    from importer.recipes import crb_core
+    attrs, notes = set(crb_core.ATTR_LETTER.values()), []
+
+    def need(what, v, known):
+        if v is not None and v not in known:
+            notes.append(f'{what} "{v}" isn’t a known id')
+    if table == "skills":
+        for a in ("attr", "alt"):
+            need(f"attribute {a}", el.get(a), attrs)
+        for s in el.iter("spec"):
+            need(f"attribute of {s.get('id')}", s.get("attr"), attrs)
+    if table == "metatypes":
+        got = [r.get("attr") for r in el.iter("range")]
+        for a in got:
+            need("range attribute", a, attrs)
+        if sorted(got) != sorted(attrs):
+            notes.append("needs one range for each attribute")
+    if table == "packages":
+        need("level", el.get("level"), refs.get("levels", set()))
+    if table == "ampeffects":
+        for t in (el.get("types") or "").split():
+            need("amp type", t, refs.get("amptypes", set()))
+        for a in ("requires", "excludes"):
+            need(f"{a} effect", el.get(a), refs.get("ampeffects", set()) | {el.get("id")})
+    if table == "amptypes":
+        need("requires effect", el.get("requires"), refs.get("ampeffects", set()))
+    return notes
+
+
+def core_notes(table, el, refs):
+    """The checks a core row gets beyond its schema, on propose and again on apply: its id, and the ids it names."""
+    return id_notes(table, el.get("id")) + ref_notes(table, el, refs)
+
+
 def core_entry(table, raw, source, page, seen):
     """(kind, entry id, page, entry XML, notes) for one proposed row of the core table `table`. Only the schema's
     properties are read (in its order), every value cleaned and escaped; the entry is checked against the table's schema."""
@@ -210,7 +267,8 @@ def core_entry(table, raw, source, page, seen):
     if table == "lifestyles":
         inner += "<text></text>"
     xml = f"<{kind}{xmlio._attrs(attrs)}/>" if table == "pricing" else _el(kind, attrs, inner)
-    return kind, i, p, xml, schema_notes(table, xml) + id_notes(table, i)
+    notes = schema_notes(table, xml)
+    return kind, i, p, xml, notes + core_notes(table, ET.fromstring(xml), core_refs(seen))
 
 
 def core_entries(obj, tables, source, page, seen):

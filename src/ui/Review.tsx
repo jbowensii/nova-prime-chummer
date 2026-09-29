@@ -114,22 +114,22 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
       <div className="scroll-x"><table className="data proposals">
         <thead><tr><th>Name</th><th>Kind</th><th className="num">Rating</th><th>Notes</th><th>Decision</th></tr></thead>
         <tbody>{proposals.map(p => {
-          const e = entryOf(p), state = p.getAttribute('state')!
+          const e = entryOf(p), state = p.getAttribute('state')!, label = hasName(e) ? text(e, 'name') : KIND[p.getAttribute('kind')!]
           const notes = [...p.getElementsByTagName('note')].map(n => n.textContent)
           return (
             <tr key={p.getAttribute('id')} className={state}>
-              <td><b>{hasName(e) ? text(e, 'name') : KIND[p.getAttribute('kind')!]}</b> <span className="src">p.{p.getAttribute('page')}</span></td>
+              <td><b>{label}</b> <span className="src">p.{p.getAttribute('page')}</span></td>
               <td>{KIND[p.getAttribute('kind')!] ?? p.getAttribute('kind')}{e.getAttribute('type') && <span className="muted"> {c.ampTypes.get(e.getAttribute('type')!)?.name ?? e.getAttribute('type')}</span>}
                 {e.getAttribute('category') && <span className="muted"> {e.getAttribute('category')}</span>}</td>
               <td className="num">{e.getAttribute('printedRating') ?? e.getAttribute('dv') ?? e.getAttribute('armor') ?? e.getAttribute('rating') ?? ''}</td>
               <td>{notes.length ? <span className="warn">{notes.join('; ')}</span> : <span className="muted">none</span>}</td>
               <td><span className={`decision ${state}`}>{STATES[state] ?? state}</span>
                 <div className="acts">
-                <button className="btn small quiet" aria-label={`Accept ${text(e, 'name')}`} disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
-                <button className="btn small quiet" aria-label={`Edit ${text(e, 'name')}`} onClick={() => e.tagName === 'amp'
+                <button className="btn small quiet" aria-label={`Accept ${label}`} disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
+                <button className="btn small quiet" aria-label={`Edit ${label}`} onClick={() => e.tagName === 'amp'
                   ? setEditAmp({ p, amp: toAmp(e) })
                   : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...fieldsOf(e).map(([k]) => [k, e.getAttribute(k) ?? ''])]) })}>Edit</button>
-                <button className="btn small quiet" aria-label={`Drop ${text(e, 'name')}`} disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
+                <button className="btn small quiet" aria-label={`Drop ${label}`} disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
               </td>
             </tr>
           )

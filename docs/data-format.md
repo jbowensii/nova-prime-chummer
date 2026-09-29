@@ -129,7 +129,9 @@ holding only the attributes it sets (the Conversion Guide's import writes `compl
 loader writes those attributes over the pricing loaded so far, in load order: the core `<pricing>`, then each
 imported book's `<prices>` in `imported/index.xml` order (the last loaded wins), then the house rules, where a full
 `<pricing>` replaces every price and a `<prices>` sets only its own. A `<prices>` with no `<pricing>` before it is
-reported and ignored.
+reported and ignored; within a file the entries apply in order, and a `<prices>` attribute that isn't a price or a
+number is ignored. A house rule that changes one price should use `<prices>`: a full `<pricing>` without `complexForm`
+prices complex forms at its `spell` price, dropping the Conversion Guide's.
 
 ### amptypes
 
@@ -281,12 +283,17 @@ Any of the twelve can then be read by AI (Books → **Read the tables with AI**,
 `python -m importer propose <library/book-id> --library <dir> --core`): only
 the chunks holding those pages are sent, and the model fills one JSON list per
 table in the shape of its schema (`importer/ai/schema.py` `CORE`; weapons and
-armor as `items`). Each proposed row is checked against its table's schema and
-the ids the engine names (attributes, amp effects) and waits in `review.xml`
+armor as `items`). Each proposed row is checked against its table's schema, its
+own id where the engine names it (attributes, amp effects), and the ids it names
+that no schema checks (a skill's or metatype range's attribute, a package's
+level, an effect's amp types and required or excluded effects, an amp type's
+required effect: against the tables in place and this review's rows), and
+waits in `review.xml`
 (`core="true"`, proposal kinds `level`, `metatype`, `attribute`, `skill`,
 `pricing`, `amptype`, `effect`, `package`, `vehicle`, `lifestyle`, `weapon`,
 `armor`). Accepting (`apply-review --core`) writes the accepted rows as the
-core files, rechecked; a row that fails is left out and reported. The import
+core files, rechecked the same way (a table being replaced counts only its
+accepted rows); a row that fails is left out and reported. The import
 report then lists each such table as `kind="core-ai"` (read by AI, with its
 row count: check it against the book) instead of `core-unread`, and the Books
 page says which tables came from AI.
