@@ -43,3 +43,11 @@ jobs:
           "/(ampeffects|amptypes|armor|attributes|levels|lifestyles|metatypes|packages|pricing|skills|vehicles|weapons)[.]xml$";
           grep -rlE "<(amptype|effect|level|metatype|package|vehicle|lifestyle) id=.[a-z-]+.[^>]* (base|rating|nuyen|edge|attrPoints|pilot|perRun)=.-?[0-9]|attrLastPoint=.[0-9]|<skill id=.[a-z-]+. attr=.[a-z]{3}.|<attribute id=.[a-z]+. abbr=.[A-Z]{3}.|<item id=.[a-z-]+. kind=.(weapon|armor)." /app);
           [ -z "$found" ] || { echo "core data in the image: $found"; exit 1; }'
+      # the image starts: every server module is there, the app is served, and a fresh server logs its setup code
+      - run: |
+          docker run -d --name ca2 chummer-anarchy2
+          for i in $(seq 30); do docker exec ca2 wget -qO- http://127.0.0.1/api/health > /dev/null 2>&1 && break; sleep 1; done
+          docker exec ca2 wget -qO- http://127.0.0.1/api/health | grep -q '"ok":true'
+          docker exec ca2 wget -qO- http://127.0.0.1/ | grep -q 'id="root"'
+          docker logs ca2 2>&1 | grep -q 'Setup code for the first admin'
+          docker rm -f ca2
