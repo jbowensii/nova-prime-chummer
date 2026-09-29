@@ -76,7 +76,7 @@ describe.skipIf(!python)('with the real importer', () => {
   test('model lists go through the real importer and never show the key', async () => {
     expect((await fetch(`${base}/api/ai-models?provider=evil`)).status).toBe(400)
     let r = await fetch(`${base}/api/ai-models?provider=anythingllm`)
-    expect([r.status, await r.json()]).toEqual([502, { error: 'this provider has no model list' }])
+    expect([r.status, await r.json()]).toEqual([502, { error: 'no API key is set for anythingllm' }])
     // a saved address nobody answers at: the reason comes back, the key doesn't
     expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings('<provider id="openai" enabled="true" baseUrl="http://127.0.0.1:1/v1"/>') })).status).toBe(200)
     expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-test-NEVERSHOWN42</key>' })).status).toBe(204)

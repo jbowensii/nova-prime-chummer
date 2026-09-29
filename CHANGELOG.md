@@ -1,5 +1,26 @@
 # Release notes
 
+## 0.4.5 — 2026-09-29: AnythingLLM workspaces
+
+**AI settings**
+- AnythingLLM’s workspace can be a name: “Shadowrun Anarchy 2.0” used to fail
+  the Test with HTTP 400 “not a valid workspace”, because AnythingLLM wants
+  the workspace’s slug. The app now looks the saved text up in the server’s
+  workspace list (a slug as is, or a name, ignoring case and spaces at either
+  end) for the Test and for reading books, asking for the list once a minute
+  at most.
+- A workspace the server doesn’t have says so plainly and names the ones it
+  has: “Workspace “X” isn’t on this AnythingLLM server. Its workspaces: A, B.”
+  AnythingLLM’s own 400 “not a valid workspace” reads the same way.
+- **Load workspaces** (AnythingLLM’s list button) shows the workspaces by
+  name and saves the one you pick by its slug; asked with the saved key at the
+  saved address, never following a redirect.
+- **Test** no longer stays disabled after saving and reloading: it compares
+  only the fields that provider’s test uses, trimmed as they are saved. The
+  API key box no longer invites the browser’s password manager to fill the
+  box before it (AnythingLLM’s workspace). Whenever Test is disabled, the text
+  beside it says why: unsaved changes, no key saved, or a test running.
+
 ## 0.4.4 — 2026-09-29: the trash
 
 **Trash**

@@ -137,8 +137,8 @@ test('model lists: the provider is checked, errors come back plainly and never w
   expect(await r.json()).toEqual({ models: ['gemini-2.5-pro', 'gemini-2.5-flash'] })
   r = await models('anthropic') // its key was cleared when its address changed
   expect([r.status, await r.json()]).toEqual([502, { error: 'no API key is set for anthropic' }])
-  r = await models('anythingllm')
-  expect([r.status, await r.json()]).toEqual([502, { error: 'this provider has no model list' }])
+  r = await models('anythingllm') // workspaces: the name to show, the slug to save
+  expect([r.status, await r.json()]).toEqual([200, { workspaces: [{ slug: 'shadowrun-anarchy-20', name: 'Shadowrun Anarchy 2.0' }, { slug: 'rules', name: 'Rules' }] }])
   expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-bad-LEAKME4242</key>' })).status).toBe(204)
   r = await models('openai')
   const text = await r.text()

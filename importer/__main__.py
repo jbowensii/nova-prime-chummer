@@ -7,7 +7,7 @@
   python -m importer apply-review <library/book-id> --custom <custom dir> --core   (a review of unread core tables)
   python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
   python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
-  python -m importer list-models <provider> --library <library dir>  (one model id per line; exit 3: the reason on stderr)
+  python -m importer list-models <provider> --library <library dir>  (one model id per line, AnythingLLM: slug<TAB>name; exit 3: the reason on stderr)
   python -m importer test-ai <provider> --library <library dir>  (a tiny fixed prompt: {"model", "reply", "ms"} JSON; exit 3: the reason on stderr)
   python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
   python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>

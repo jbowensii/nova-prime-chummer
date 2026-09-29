@@ -22,6 +22,8 @@ KEY = "sk-test-SECRET-123"
 ANTHROPIC_MSG = {"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-opus-5",
                  "content": [{"type": "text", "text": '{"amps": []}'}], "stop_reason": "end_turn",
                  "stop_sequence": None, "usage": {"input_tokens": 1, "output_tokens": 1}}
+WORKSPACES = {"workspaces": [{"id": 1, "name": "Shadowrun", "slug": "shadowrun", "openAiTemp": 0.7, "threads": []},
+                             {"id": 2, "name": "Anarchy Two Point Oh", "slug": "anarchy-two-point-oh", "threads": []}]}
 
 
 class Stub:
@@ -94,10 +96,11 @@ class ProvidersTest(unittest.TestCase):
         self.assertEqual(r["body"]["generationConfig"], {"responseMimeType": "application/json"})
 
     def test_anythingllm_request(self):
-        s = self.stub(lambda p: (200, {"textResponse": "hello"}))
+        s = self.stub(lambda p: (200, WORKSPACES if p == "/api/v1/workspaces" else {"textResponse": "hello"}))
         out = AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "shadowrun"}, KEY, "sys", "usr")
         self.assertEqual(out, "hello")
-        r = s.requests[0]
+        self.assertEqual(s.requests[0]["headers"]["authorization"], f"Bearer {KEY}")
+        r = s.requests[1]
         self.assertEqual(r["path"], "/api/v1/workspace/shadowrun/chat")
         self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
         self.assertEqual(r["body"], {"message": "sys\n\nusr", "mode": "chat"})
@@ -157,6 +160,31 @@ class ProvidersTest(unittest.TestCase):
         self.assertEqual(len(s.requests), 2)
         self.assertEqual(elsewhere.requests, [])
 
+    def test_anythingllm_workspace_name_resolves_to_its_slug_once_per_run(self):
+        s = self.stub(lambda p: (200, WORKSPACES if p == "/api/v1/workspaces" else {"textResponse": "hi"}))
+        p = {"id": "anythingllm", "baseUrl": s.url, "workspace": "  anarchy two POINT oh "}
+        self.assertEqual([AI.complete(p, KEY, "s", "u") for _ in range(3)], ["hi"] * 3)
+        self.assertEqual([r["path"] for r in s.requests], ["/api/v1/workspaces"] + ["/api/v1/workspace/anarchy-two-point-oh/chat"] * 3)
+
+    def test_anythingllm_unknown_workspace_names_the_ones_there(self):
+        s = self.stub(lambda p: (200, WORKSPACES))
+        with self.assertRaises(AI.ProviderError) as cm:
+            AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "Shadowrun Anarchy 2.0"}, KEY, "s", "u")
+        self.assertEqual(str(cm.exception), "Workspace “Shadowrun Anarchy 2.0” isn’t on this AnythingLLM server. "
+                                            "Its workspaces: Shadowrun, Anarchy Two Point Oh.")
+        self.assertEqual([r["path"] for r in s.requests], ["/api/v1/workspaces"])  # no chat to a guessed workspace
+
+    def test_anythingllm_400_not_a_valid_workspace_reads_plainly(self):
+        def reply(p):  # the workspace went away after the list was read
+            if p == "/api/v1/workspaces":
+                return 200, WORKSPACES
+            return 400, {"id": "x", "type": "abort", "textResponse": None, "error": f"Workspace shadowrun is not a valid workspace. {KEY}"}
+        s = self.stub(reply)
+        with self.assertRaises(AI.ProviderError) as cm:
+            AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "shadowrun"}, KEY, "s", "u")
+        self.assertIn("Workspace “shadowrun” isn’t on this AnythingLLM server. Its workspaces: Shadowrun,", str(cm.exception))
+        self.assertNotIn(KEY, str(cm.exception))
+
     def test_unknown_provider(self):
         with self.assertRaisesRegex(AI.ProviderError, "unknown provider"):
             AI.complete({"id": "nope"}, KEY, "s", "u")
@@ -173,7 +201,7 @@ class ListModelsTest(unittest.TestCase):
                          f'<provider id="anthropic" enabled="true" baseUrl="{stub_url}"/>'
                          f'<provider id="openai" enabled="true" baseUrl="{stub_url}/v1"/>'
                          f'<provider id="gemini" enabled="true" baseUrl="{stub_url}"/>'
-                         '<provider id="anythingllm" enabled="true" baseUrl="http://127.0.0.1:1" workspace="w"/></ca2:aiproviders>')
+                         f'<provider id="anythingllm" enabled="true" baseUrl="{stub_url}" workspace="w"/></ca2:aiproviders>')
         for p in AI.PROVIDER_IDS:
             if key:
                 AI.set_key(config, p, key)
@@ -183,6 +211,13 @@ class ListModelsTest(unittest.TestCase):
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
+
+    def test_anythingllm_lists_workspaces_as_slug_tab_name(self):
+        s = self.stub(lambda p: (200, WORKSPACES))
+        self.assertEqual(AI.list_models("anythingllm", self.library(s.url)), ["anarchy-two-point-oh\tAnarchy Two Point Oh", "shadowrun\tShadowrun"])
+        r = s.requests[0]
+        self.assertEqual((r["method"], r["path"]), ("GET", "/api/v1/workspaces"))
+        self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
 
     def test_openai_lists_data_ids_with_the_bearer_key(self):
         s = self.stub(lambda p: (200, {"object": "list", "data": [{"id": "gpt-5"}, {"id": "gpt-4.1"}, {"id": "gpt-5"}]}))
@@ -220,7 +255,7 @@ class ListModelsTest(unittest.TestCase):
     def test_a_redirected_list_is_refused(self):
         elsewhere = self.stub(lambda p: (200, {"data": [{"id": "x"}]}))
         s = self.stub(lambda p: (301, {}, {"Location": elsewhere.url + p}))
-        for p in ("openai", "gemini"):
+        for p in ("openai", "gemini", "anythingllm"):
             with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):
                 AI.list_models(p, self.library(s.url))
         self.assertEqual(elsewhere.requests, [])
@@ -228,14 +263,14 @@ class ListModelsTest(unittest.TestCase):
     def test_errors_never_show_the_key(self):
         s = self.stub(lambda p: (400, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}}))
         lib = self.library(s.url)
-        for p in ("anthropic", "openai", "gemini"):
+        for p in ("anthropic", "openai", "gemini", "anythingllm"):
             with self.assertRaises(AI.ProviderError) as cm:
                 AI.list_models(p, lib)
             self.assertNotIn(KEY, str(cm.exception), p)
             self.assertIn("bad key [key]", str(cm.exception), p)
 
     def test_what_has_no_list_or_no_key_says_so(self):
-        with self.assertRaisesRegex(AI.ProviderError, "no model list"):
+        with self.assertRaisesRegex(AI.ProviderError, "no API key is set for anythingllm"):
             AI.list_models("anythingllm", tempfile.mkdtemp())
         with self.assertRaisesRegex(AI.ProviderError, "no API key is set for gemini"):
             AI.list_models("gemini", tempfile.mkdtemp())
@@ -252,7 +287,7 @@ class ListModelsTest(unittest.TestCase):
         with contextlib.redirect_stderr(err):
             self.assertEqual(main(["list-models", "anythingllm", "--library", lib]), 3)
             self.assertEqual(main(["list-models", "evil", "--library", lib]), 2)
-        self.assertIn("no model list", err.getvalue())
+        self.assertIn("anythingllm sent a model list in an unexpected shape", err.getvalue())
 
 
 class PingTest(unittest.TestCase):
@@ -281,6 +316,7 @@ class PingTest(unittest.TestCase):
         replies = {"/v1/messages": ANTHROPIC_MSG | {"content": [{"type": "text", "text": "OK"}]},
                    "/v1/chat/completions": {"choices": [{"message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}]},
                    "/v1beta/models/m-1:generateContent": {"candidates": [{"content": {"parts": [{"text": "OK"}]}, "finishReason": "STOP"}]},
+                   "/api/v1/workspaces": WORKSPACES,
                    "/api/v1/workspace/shadowrun/chat": {"id": "c1", "type": "textResponse", "textResponse": "OK", "sources": [], "close": True, "error": None}}
         s = self.stub(lambda p: (200, replies[p]))
         lib = self.library(s.url)
@@ -310,7 +346,7 @@ class PingTest(unittest.TestCase):
             AI.ping("openai", self.library("http://127.0.0.1:1"))
 
     def test_anythingllm_error_field_and_missing_settings(self):
-        s = self.stub(lambda p: (200, {"textResponse": None, "error": "No workspace found"}))
+        s = self.stub(lambda p: (200, WORKSPACES if p == "/api/v1/workspaces" else {"textResponse": None, "error": "No workspace found"}))
         with self.assertRaisesRegex(AI.ProviderError, "AnythingLLM answered: No workspace found"):
             AI.ping("anythingllm", self.library(s.url))
         with self.assertRaisesRegex(AI.ProviderError, "save this provider’s settings first"):
@@ -336,11 +372,12 @@ class PingTest(unittest.TestCase):
         self.assertEqual(elsewhere.requests, [])
 
     def test_model_and_workspace_stay_one_path_segment(self):
-        s = self.stub(lambda p: (200, {"candidates": [{"content": {"parts": [{"text": "OK"}]}}], "textResponse": "OK"}))
+        s = self.stub(lambda p: (200, {"candidates": [{"content": {"parts": [{"text": "OK"}]}}], "textResponse": "OK",
+                                       "workspaces": [{"name": "Admin", "slug": "../admin"}]}))
         AI.ping("gemini", self.library(s.url, model=' model="../../evil?x=1"'))
-        AI.ping("anythingllm", self.library(s.url, workspace="../admin"))
+        AI.ping("anythingllm", self.library(s.url, workspace="Admin"))
         self.assertEqual([r["path"] for r in s.requests],
-                         ["/v1beta/models/..%2F..%2Fevil%3Fx%3D1:generateContent", "/api/v1/workspace/..%2Fadmin/chat"])
+                         ["/v1beta/models/..%2F..%2Fevil%3Fx%3D1:generateContent", "/api/v1/workspaces", "/api/v1/workspace/..%2Fadmin/chat"])
 
     def test_cli_prints_json_or_the_reason(self):
         s = self.stub(lambda p: (200, {"choices": [{"message": {"content": "OK"}}]}))
