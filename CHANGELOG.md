@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.5.1 — 2026-09-29: background art
+
+- **Settings → Background art** (admin): upload your own images (PNG, JPEG
+  or WebP, 10 MB each, up to 50), switch each one on or off, delete one after
+  a confirm. A file that isn't really one of those images (an SVG or a web
+  page renamed .png, say) is refused.
+- The images that are on show behind every page for everyone signed in, one
+  picked at random on each page load (one on: always that one; none: no
+  background). The middle of the screen, where the text is, shows the art
+  only faintly; it's a little stronger toward the edges. The dark theme tints
+  it indigo, phones show it fainter still, and it never prints.
+- **Settings → Background → Plain page** turns it off in your own browser.
+- The images live in `library/backgrounds/` (`backgrounds.xml`, with its
+  schema), are sent only to signed-in browsers, and travel in backups (not in
+  data packs). No artwork ships with the app.
+- A dialog opened over another one (like this delete confirm over Settings)
+  no longer closes both.
+
 ## 0.5.0 — 2026-09-29: campaigns and Ask the rules
 
 **Campaigns**

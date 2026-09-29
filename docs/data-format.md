@@ -277,6 +277,21 @@ campaign, and one left without a GM gets an admin.
 </ca2:campaigns>
 ```
 
+## Background art (`library/backgrounds/`)
+
+The admin's uploaded images (Settings → Background art): `library/backgrounds/<id>.<png|jpg|webp>` and
+`library/backgrounds/backgrounds.xml`, written by the server (`server/backgrounds.mjs`, `/api/backgrounds`; atomic),
+schema `backgrounds.xsd`, namespace `urn:chummer-anarchy2:config:1`. An image's type comes from its first bytes (PNG, JPEG
+or WebP; anything else, SVG included, is refused), 10 MB at most, 50 images at most. The Library is never served as files:
+signed-in browsers get the enabled images through `GET /api/backgrounds/<id>`. Backups carry the folder with the rest of
+`library/`; data packs don't.
+
+```xml
+<ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
+  <background id="0a1b2c3d4e5f" type="png" name="alley.png" enabled="true" uploaded="2026-09-29T12:00:00Z" size="482133"/>
+</ca2:backgrounds>
+```
+
 ## Imported sample runners
 
 A recipe that reads stat blocks (`pregens`; `crb` for the rulebook's 12 pregens
