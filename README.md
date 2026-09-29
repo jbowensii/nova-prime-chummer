@@ -273,8 +273,13 @@ server (OpenAI, OpenRouter, LiteLLM, Ollama, LM Studio), Google Gemini or
 AnythingLLM under **AI settings**. The key is stored on the server in a file
 of its own and never shown again. Once a key is saved, **Load models** asks
 the provider (with that key, at the saved address) for its model list to pick
-from; AnythingLLM has none, and you can always type a model name instead.
-**Test** (each provider, once its settings are saved) sends the provider a tiny
+from, and you can always type a model name instead. For AnythingLLM,
+**Load workspaces** lists its workspaces by name and saves the one you pick by
+its slug; a typed workspace name is looked up too (the workspace's name, not
+just its slug, works), and one the server doesn't have is named along with the
+workspaces it does have.
+**Test** (each provider, once its settings and key are saved; beside it the
+page says why it is disabled) sends the provider a tiny
 fixed prompt with the saved settings and key and shows its reply and how long
 it took, or why it failed (key refused, model or workspace not found, address
 unreachable, no answer within 30 seconds).

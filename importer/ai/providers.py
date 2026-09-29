@@ -8,6 +8,7 @@ import json
 import os
 import re
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -194,8 +195,7 @@ def complete(provider, key, system, user, schema=None):
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return "".join(p.get("text", "") for p in out["candidates"][0]["content"]["parts"])
         if pid == "anythingllm":
-            url = f"{provider['baseUrl'].rstrip('/')}/api/v1/workspace/{urllib.parse.quote(provider['workspace'], safe='')}/chat"
-            return _request(url, _bearer(key), {"message": f"{system}\n\n{user}", "mode": "chat"})["textResponse"]
+            return _anythingllm_chat(provider, key, f"{system}\n\n{user}", TIMEOUT)["textResponse"]
     except ProviderError as e:
         raise type(e)(_redact(str(e), key)) from None
     except (KeyError, IndexError, TypeError) as e:
@@ -204,12 +204,10 @@ def complete(provider, key, system, user, schema=None):
 
 
 def list_models(provider_id, library_dir):
-    """The model ids a provider offers, sorted. Asked with the saved key at the saved address only: an address
+    """The model ids a provider offers, sorted; for AnythingLLM its workspaces as "slug<TAB>name". Asked with the saved key at the saved address only: an address
     from a request could send the key anywhere. The providers file is read before the key, so a settings save
     that changes the address (it clears the key first) never pairs the new address with the old key."""
     config = os.path.join(library_dir, ".config")
-    if provider_id == "anythingllm":
-        raise ProviderError("this provider has no model list")
     if provider_id not in PROVIDER_IDS:
         raise ProviderError(f"unknown provider “{provider_id}”")
     saved = read_providers(config)[1] if os.path.exists(os.path.join(config, "ai-providers.xml")) else {}
@@ -226,6 +224,10 @@ def list_models(provider_id, library_dir):
             if not p.get("baseUrl"):
                 raise ProviderError("save the address first")
             ids = [m["id"] for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]]
+        elif provider_id == "anythingllm":
+            if not p.get("baseUrl"):
+                raise ProviderError("save the address first")
+            ids = [f"{slug}\t{name}" for name, slug in _workspaces(p["baseUrl"], key, LIST_TIMEOUT, fresh=True)]
         else:  # ponytail: one page of 1000; Gemini offers a few dozen models, follow nextPageToken if that changes
             out = _request(f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models?pageSize=1000", {"x-goog-api-key": key}, timeout=LIST_TIMEOUT)
             ids = [m["name"].removeprefix("models/") for m in out.get("models", [])
@@ -271,8 +273,7 @@ def ping(provider_id, library_dir):
             return model, "".join(x.get("text", "") for x in out["candidates"][0].get("content", {}).get("parts", []))
         if not p.get("workspace"):
             raise ProviderError("save the workspace first")
-        url = f"{p['baseUrl'].rstrip('/')}/api/v1/workspace/{urllib.parse.quote(p['workspace'], safe='')}/chat"
-        out = _request(url, _bearer(key), {"message": PING, "mode": "chat"}, timeout=PING_TIMEOUT)
+        out = _anythingllm_chat(p, key, PING, PING_TIMEOUT)
         if out.get("error"):
             raise ProviderError(f"AnythingLLM answered: {out['error']}")
         return f"workspace {p['workspace']}", out["textResponse"] or ""
@@ -282,6 +283,41 @@ def ping(provider_id, library_dir):
         raise ProviderError(f"{why} (HTTP {status})" if why else _redact(str(e), key)) from None
     except (KeyError, IndexError, TypeError, AttributeError) as e:
         raise ProviderError(f"{provider_id} sent an answer in an unexpected shape (missing {e})") from None
+
+
+WORKSPACES_TTL = 60
+_WORKSPACES = {}  # (baseUrl, key) -> (when, [(name, slug)]): one list per run, not one per chunk
+
+
+def _workspaces(base_url, key, timeout, fresh=False):
+    """AnythingLLM's workspaces as [(name, slug)], cached for a minute."""
+    base = base_url.rstrip("/")
+    hit = _WORKSPACES.get((base, key))
+    if fresh or not hit or time.monotonic() - hit[0] > WORKSPACES_TTL:
+        out = _request(base + "/api/v1/workspaces", _bearer(key), timeout=timeout)
+        hit = _WORKSPACES[(base, key)] = (time.monotonic(), [(w["name"], w["slug"]) for w in out["workspaces"]])
+    return hit[1]
+
+
+def _no_workspace(workspace, spaces):
+    return ProviderError(f"Workspace “{workspace}” isn’t on this AnythingLLM server. "
+                         f"Its workspaces: {', '.join(n for n, _ in spaces) or 'none'}.")
+
+
+def _anythingllm_chat(p, key, message, timeout):
+    """POST to the saved workspace's chat. AnythingLLM wants the slug; the saved text may be the display name."""
+    base, ws = p["baseUrl"].rstrip("/"), p["workspace"].strip()
+    spaces = _workspaces(base, key, timeout)
+    slug = next((s for _, s in spaces if s == ws), None) or next((s for n, s in spaces if n.strip().casefold() == ws.casefold()), None)
+    if slug is None:
+        raise _no_workspace(ws, spaces)
+    try:
+        return _request(f"{base}/api/v1/workspace/{urllib.parse.quote(slug, safe='')}/chat", _bearer(key),
+                        {"message": message, "mode": "chat"}, timeout=timeout)
+    except ProviderError as e:
+        if getattr(e, "status", None) == 400 and "not a valid workspace" in str(e):  # removed since the list was read
+            raise _no_workspace(ws, _workspaces(base, key, timeout, fresh=True)) from None
+        raise
 
 
 def _redact(text, key):

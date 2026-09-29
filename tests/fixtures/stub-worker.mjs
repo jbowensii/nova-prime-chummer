@@ -138,10 +138,10 @@ ${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
   const keys = join(opt('--library'), '.config', 'ai-keys.xml')
   const key = (existsSync(keys) ? readFileSync(keys, 'utf8') : '').match(new RegExp(`<key provider="${target}">([^<]*)</key>`))?.[1]
   const fail = why => { process.stderr.write(`${why}\n`); process.exit(3) }
-  if (target === 'anythingllm') fail('this provider has no model list')
   if (!key) fail(`no API key is set for ${target}`)
   if (key.includes('bad')) fail(`stub.example answered HTTP 401: invalid key ${key}`)
-  console.log({ anthropic: 'claude-sonnet-5\nclaude-opus-5\nclaude-haiku-4-5', openai: 'gpt-5\ngpt-5-mini', gemini: 'gemini-2.5-pro\ngemini-2.5-flash' }[target])
+  console.log({ anthropic: 'claude-sonnet-5\nclaude-opus-5\nclaude-haiku-4-5', openai: 'gpt-5\ngpt-5-mini', gemini: 'gemini-2.5-pro\ngemini-2.5-flash',
+    anythingllm: 'shadowrun-anarchy-20\tShadowrun Anarchy 2.0\nrules\tRules' }[target]) // AnythingLLM: slug<TAB>name
 } else if (cmd === 'test-ai') { // target is the provider; saved key "…bad…": refused with the key on stderr; "…slow…": 1 s
   const config = join(opt('--library'), '.config'), keys = join(config, 'ai-keys.xml'), settings = join(config, 'ai-providers.xml')
   const key = (existsSync(keys) ? readFileSync(keys, 'utf8') : '').match(new RegExp(`<key provider="${target}">([^<]*)</key>`))?.[1] ?? ''

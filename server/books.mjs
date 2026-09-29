@@ -19,7 +19,7 @@
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
-//   GET    /api/ai-models?provider=   -> { models: [id…] }, asked with the saved key and address; 400 bad provider, 502 { error }
+//   GET    /api/ai-models?provider=   -> { models: [id…] } (AnythingLLM: { workspaces: [{ slug, name }…] }), asked with the saved key and address; 400 bad provider, 502 { error }
 //   POST   /api/ai-test?provider=     a tiny fixed prompt to the saved provider -> { ok, model, reply (200 characters, text), ms };
 //                                     502 { error } in plain words; 429 while one runs or after 10 in a minute
 //   GET    /api/edits                 -> [{ kind, id }] the entries in custom/edits/edits.xml
@@ -770,7 +770,11 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
     }
     if (p === '/api/ai-test' && method === 'POST') return send(res, 200, await testProvider(url.searchParams.get('provider') ?? ''))
-    if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
+    if (p === '/api/ai-models' && method === 'GET') {
+      const provider = url.searchParams.get('provider') ?? '', ids = await listModels(provider)
+      return send(res, 200, provider === 'anythingllm' // the importer prints slug<TAB>name
+        ? { workspaces: ids.map(l => ({ slug: l.split('\t')[0], name: l.slice(l.indexOf('\t') + 1) })) } : { models: ids })
+    }
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/table-rules') return tableRules(req, res, send)
     if (p === '/api/samples') return sampleSets(req, res, send)

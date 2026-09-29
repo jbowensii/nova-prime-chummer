@@ -5,7 +5,8 @@ import { api, BooksHeader, PROVIDER_NAMES } from './Books'
 import { because } from './auth'
 import { useRepo } from './repo'
 
-interface Provider { enabled: boolean; baseUrl: string; model: string; workspace: string }
+interface Opt { value: string; label: string }
+export interface Provider { enabled: boolean; baseUrl: string; model: string; workspace: string }
 type Field = 'baseUrl' | 'model' | 'workspace'
 const NS = 'urn:chummer-anarchy2:config:1'
 const IDS = ['anthropic', 'openai', 'gemini', 'anythingllm']
@@ -24,8 +25,18 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 export interface Tested { ok: true; model: string; reply: string; ms: number }
 export const connected = (t: Tested) => `Connected — ${t.model} replied “${t.reply}” in ${(t.ms / 1000).toFixed(1)} s.`
 const blank = (): Provider => ({ enabled: false, baseUrl: '', model: '', workspace: '' })
+const KEY_NEEDED = ['anthropic', 'gemini', 'anythingllm'] // a local OpenAI-compatible server may need none
+/** The fields a provider's test uses, trimmed as they are saved: a stale attribute it ignores (a model on AnythingLLM) never counts. */
+const used = (id: string, p: Provider) => FIELDS[id].fields.map(([k]) => p[k].trim()).join('\n')
+/** Why Test is disabled, said beside it; null when it can run. */
+export function testBlocked(id: string, p: Provider, saved: Provider | undefined, keySet: boolean, running: boolean) {
+  if (running) return 'Testing now:'
+  if (!saved || used(id, p) !== used(id, saved)) return 'Unsaved changes. Save settings first:'
+  if (!keySet && KEY_NEEDED.includes(id)) return 'No key saved. Save a key first:'
+  return null
+}
 
-function parse(xml: string) {
+export function parse(xml: string) {
   const root = new DOMParser().parseFromString(xml, 'text/xml').documentElement
   const providers = Object.fromEntries(IDS.map(id => [id, blank()]))
   for (const p of root.getElementsByTagName('provider')) {
@@ -37,7 +48,7 @@ function parse(xml: string) {
   return { use: root.getAttribute('use') ?? '', providers, keys }
 }
 
-function toXml(use: string, providers: Record<string, Provider>) {
+export function toXml(use: string, providers: Record<string, Provider>) {
   const rows = IDS.map(id => {
     const p = providers[id]
     const attrs = ([['baseUrl', p.baseUrl], ['model', p.model], ['workspace', p.workspace]] as const)
@@ -53,7 +64,7 @@ export function AiSettings() {
   const [keyInput, setKeyInput] = useState<Record<string, string>>({})
   const [msg, setMsg] = useState<string | null>(null)
   // per provider: the loaded model list (a select replaces the text box), 'loading', or why it failed
-  const [lists, setLists] = useState<Record<string, string[] | 'loading' | { error: string } | undefined>>({})
+  const [lists, setLists] = useState<Record<string, Opt[] | 'loading' | { error: string } | undefined>>({})
   const [savedUrl, setSavedUrl] = useState<Record<string, string>>({}) // the list is asked at the saved address only
   const [saved, setSaved] = useState<Record<string, Provider>>({}) // a connection test uses the saved settings only
   const [tests, setTests] = useState<Record<string, 'running' | Tested | { error: string } | undefined>>({})
@@ -94,8 +105,9 @@ export function AiSettings() {
   const loadModels = async (id: string) => {
     setLists(l => ({ ...l, [id]: 'loading' }))
     try {
-      const { models } = await api<{ models: string[] }>(`ai-models?provider=${id}`)
-      setLists(l => ({ ...l, [id]: [...models].sort() }))
+      const r = await api<{ models?: string[]; workspaces?: { slug: string; name: string }[] }>(`ai-models?provider=${id}`)
+      const opts = r.workspaces ? r.workspaces.map(w => ({ value: w.slug, label: w.name })) : (r.models ?? []).map(m => ({ value: m, label: m }))
+      setLists(l => ({ ...l, [id]: opts.sort((a, b) => a.label < b.label ? -1 : a.label > b.label ? 1 : 0) }))
     } catch (e) { setLists(l => ({ ...l, [id]: { error: (e as Error).message } })) }
   }
   const runTest = async (id: string) => {
@@ -103,26 +115,27 @@ export function AiSettings() {
     try { const r = await api<Tested>(`ai-test?provider=${id}`, { method: 'POST' }); setTests(t => ({ ...t, [id]: r })) }
     catch (e) { setTests(t => ({ ...t, [id]: { error: (e as Error).message } })) }
   }
-  const TYPE = ' type' // the "type a model name" option: model ids have no spaces
-  const modelField = (id: string, label: string, ph: string) => {
+  const TYPE = ' type' // the "type a name instead" option: model ids and workspace slugs have no spaces
+  // the model (for AnythingLLM the workspace: its name shown, its slug saved), picked from a list loaded from the provider
+  const pickField = (id: string, k: 'model' | 'workspace', label: string, ph: string) => {
     const p = state.providers[id], list = lists[id]
-    const listed = Array.isArray(list) ? (p.model && !list.includes(p.model) ? [p.model, ...list] : list) : null
+    const listed = Array.isArray(list) ? (p[k] && !list.some(o => o.value === p[k]) ? [{ value: p[k], label: p[k] }, ...list] : list) : null
     return (
-      <div key="model" className="modelrow">
+      <div key={k} className="modelrow">
         <label>{label}
           {listed
-            ? <select value={p.model} onChange={e => e.target.value === TYPE ? setLists(l => ({ ...l, [id]: undefined })) : setP(id, { model: e.target.value })}>
-                <option value="">{ph.includes('(default)') ? `Default: ${ph.replace(' (default)', '')}` : 'Choose a model'}</option>
-                {listed.map(m => <option key={m} value={m}>{m}</option>)}
-                <option value={TYPE}>Type a model name instead</option>
+            ? <select value={p[k]} onChange={e => e.target.value === TYPE ? setLists(l => ({ ...l, [id]: undefined })) : setP(id, { [k]: e.target.value })}>
+                <option value="">{ph.includes('(default)') ? `Default: ${ph.replace(' (default)', '')}` : `Choose a ${k}`}</option>
+                {listed.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                <option value={TYPE}>Type a {k} name instead</option>
               </select>
-            : <input value={p.model} placeholder={ph} onChange={e => setP(id, { model: e.target.value })} />}
+            : <input value={p[k]} placeholder={ph} autoComplete="off" onChange={e => setP(id, { [k]: e.target.value })} />}
         </label>
         <button className="btn quiet" disabled={!state.keys[id] || list === 'loading' || p.baseUrl.trim() !== savedUrl[id]}
-          onClick={() => void loadModels(id)}>{list === 'loading' ? 'Loading…' : 'Load models'}</button>
+          onClick={() => void loadModels(id)}>{list === 'loading' ? 'Loading…' : `Load ${k}s`}</button>
         <p className="muted wide">{p.baseUrl.trim() !== savedUrl[id] ? 'Save settings first: the list' : 'The list'} uses the saved address and key.</p>
         {list && typeof list === 'object' && 'error' in list &&
-          <p role="alert" className="wide">Couldn’t load the model list: {list.error.replace(/\.$/, '')}. You can type a model name.</p>}
+          <p role="alert" className="wide">Couldn’t load the {k} list: {list.error.replace(/\.$/, '')}. You can type a {k} name.</p>}
       </div>
     )
   }
@@ -150,11 +163,12 @@ export function AiSettings() {
             <p className="muted">{f.hint}</p>
             <label className="check"><input type="checkbox" checked={p.enabled} onChange={e => setP(id, { enabled: e.target.checked })} />Turn on</label>
             <div className="grid2">
-              {f.fields.map(([k, label, ph]) => k === 'model' ? modelField(id, label, ph) : <label key={k}>{label}<input value={p[k]} placeholder={ph} onChange={e => setP(id, { [k]: e.target.value })} /></label>)}
+              {f.fields.map(([k, label, ph]) => k === 'model' || (k === 'workspace' && id === 'anythingllm') ? pickField(id, k, label, ph)
+                : <label key={k}>{label}<input value={p[k]} placeholder={ph} autoComplete="off" onChange={e => setP(id, { [k]: e.target.value })} /></label>)}
             </div>
             <div className="row keyrow">
               <label style={{ flex: 1 }}>API key
-                <input type="password" autoComplete="off" value={keyInput[id] ?? ''} placeholder={state.keys[id] ? 'New key replaces it' : ''}
+                <input type="password" autoComplete="new-password" value={keyInput[id] ?? ''} placeholder={state.keys[id] ? 'New key replaces it' : ''}
                   onChange={e => setKeyInput({ ...keyInput, [id]: e.target.value })} />
               </label>
               <button className="btn" disabled={!keyInput[id]?.trim()} onClick={() => void saveKey(id, keyInput[id])}>Save key</button>
@@ -162,11 +176,11 @@ export function AiSettings() {
             </div>
             <p className={state.keys[id] ? 'ok' : 'muted'}>{state.keys[id] ? 'Key saved' : 'No key saved'}</p>
             {(() => {
-              const t = tests[id], changed = JSON.stringify(p) !== JSON.stringify(saved[id])
+              const t = tests[id], blocked = testBlocked(id, p, saved[id], state.keys[id], t === 'running')
               return <div className="row testrow">
-                <button className="btn quiet" disabled={changed || t === 'running'} aria-label={`Test ${PROVIDER_NAMES[id]}`}
+                <button className="btn quiet" disabled={!!blocked} aria-label={`Test ${PROVIDER_NAMES[id]}`}
                   onClick={() => void runTest(id)}>{t === 'running' ? 'Testing…' : 'Test'}</button>
-                <span className="muted">{changed ? 'Save settings first: the test' : 'The test'} sends “Reply with the single word OK.” with the saved settings and key.</span>
+                <span className="muted">{blocked ? `${blocked} the test` : 'The test'} sends “Reply with the single word OK.” with the saved settings and key.</span>
                 {t && t !== 'running' && ('error' in t
                   ? <p role="alert" className="wide">{because('Couldn’t connect', t.error)}</p>
                   : <p role="status" className="ok wide">{connected(t)}</p>)}
