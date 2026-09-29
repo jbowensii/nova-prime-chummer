@@ -441,3 +441,41 @@ table.users td:last-child { white-space: normal; }
   .account-panel { position: fixed; top: auto; left: 1rem; right: 1rem; }
 }
 h1[tabindex="-1"]:focus { outline: none; } /* focused on a page switch (App.tsx) for screen readers, not a control */
+
+/* ---- campaigns (Campaigns.tsx; the runner list's tag and filter) ---- */
+.ctag { display: inline-block; font-size: 0.75rem; line-height: 1.35; padding: 0 0.5rem; border: 1px solid var(--rust); border-radius: 999px;
+  background: var(--cream); color: var(--ink); font-weight: 600; text-decoration: none; white-space: nowrap; vertical-align: 0.1em;
+  max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme='dark'] .ctag { background: var(--zebra); color: var(--text); border-color: var(--yellow); }
+a.ctag:hover { background: var(--yellow); color: var(--ink); }
+label.filter { display: inline-flex; flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+label.check.inline { margin: 0 0 0.8rem; color: var(--text); }
+table.campaigns tr.off td { color: var(--text-3); }
+.campaign section { margin-top: 2rem; }
+.campaign-note { white-space: pre-wrap; overflow-wrap: anywhere; padding-left: 0.8rem; border-left: 4px solid var(--indigo); }
+:root[data-theme='dark'] .campaign-note { border-left-color: var(--yellow); }
+.cgroup { margin-top: 1rem; }
+.cgroup h3 { margin-bottom: 0; }
+.cgroup .dossier .title { overflow-wrap: anywhere; }
+.roster { list-style: none; margin: 0 0 1rem; padding: 0; }
+.roster li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.3rem 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--rule); }
+.addrow { align-items: end; margin-bottom: 0.8rem; }
+.addrow label { flex: 1 1 14rem; max-width: 22rem; }
+@media (max-width: 600px) { .cgroup .dossier { grid-template-columns: 2.5rem minmax(0, 1fr); } .cgroup .dossier .face { width: 2.5rem; height: 2.5rem; }
+  .cgroup .dossier > .row { grid-column: 1 / -1; } }
+
+/* ---- ask the rules (AskRules.tsx): a compact bar, and the header's drawer. The answer is plain text. ---- */
+.ask { margin: 0 0 1.2rem; padding: 0.55rem 0.7rem; background: var(--zebra); border-left: 4px solid var(--yellow); }
+.ask-row { display: flex; gap: 0.5rem; align-items: center; }
+.ask-row input { flex: 1; min-width: 0; }
+.ask.in-drawer { background: none; border: 0; padding: 0; margin: 0; }
+.ask.in-drawer .ask-row { flex-wrap: wrap; align-items: end; }
+.ask.in-drawer .ask-row label { flex-basis: 100%; }
+.ask-note, .ask-left { margin: 0.5rem 0 0; font-size: 0.9rem; }
+.ask p.ask-note, .ask p.ask-left { font-family: var(--sans); font-size: 0.9rem; }
+.ask-answer { margin-top: 0.6rem; }
+.ask-answer p:first-child { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--serif); font-size: 1.05rem; margin-bottom: 0.3rem; }
+.ask-answer .src { display: block; white-space: normal; overflow-wrap: anywhere; margin-bottom: 0.2rem; }
+.ask-btn { font-family: var(--display); font-size: 1.1rem; min-width: 2rem; justify-content: center; border: 1px solid var(--rule) !important; border-radius: 999px; padding: 0 0.55rem; }
+dialog.drawer { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; width: min(30rem, 100vw); max-width: 100vw; border-top: 0; border-left: 4px solid var(--yellow); overflow-y: auto; }
+dialog.drawer h2 { margin-top: 0; }

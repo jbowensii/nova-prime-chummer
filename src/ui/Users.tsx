@@ -6,6 +6,7 @@ import { xmlToCharacter } from '../engine'
 import { Modal } from './bits'
 import { AccountMenu, PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
 import { SettingsButton } from './settings'
+import { AskButton } from './AskRules'
 
 type Account = User & { runners: number }
 type Dialog = { at: 'add' } | { at: 'edit' | 'reset' | 'delete' | 'move'; u: Account }
@@ -16,7 +17,7 @@ const when = (iso: string | null) => iso ? new Date(iso).toLocaleString(undefine
 
 function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: string) => void; onCancel: () => void }) {
   const [f, setF] = useState({ name: u?.name ?? '', username: u?.username ?? '', email: u?.email ?? '', role: u?.role ?? 'player' as Role,
-    method: u?.method ?? 'password', password: '' })
+    method: u?.method ?? 'password', password: '', daily: u?.dailyQuestions?.toString() ?? '' })
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
   const me = useMe()
   const username = f.username.trim().toLowerCase(), renamed = !!u && username !== u.username
@@ -26,9 +27,9 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
     if (busy) return
     setBusy(true); setErr('')
     try {
-      const { name, email, role, method } = f
-      if (u) await send(`users/${u.id}`, { name, email, role, method, ...renamed ? { username } : {} }, 'PUT')
-      else await send('users', { ...f, password: method === 'password' ? f.password : undefined })
+      const { name, email, role, method } = f, dailyQuestions = f.daily.trim() === '' ? null : Number(f.daily)
+      if (u) await send(`users/${u.id}`, { name, email, role, method, dailyQuestions, ...renamed ? { username } : {} }, 'PUT')
+      else await send('users', { name, username: f.username, email, role, method, dailyQuestions, password: method === 'password' ? f.password : undefined })
       // your own username changed: the app reloads so everything (your runners, the menu) goes by the new one
       if (renamed && u.id === me?.id) return location.reload()
       onSaved(u ? `Saved ${name}.${renamed ? ` They sign in as ${username} now.` : ''}` : `Added ${name}. They can sign in as ${username}.`)
@@ -45,7 +46,7 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
         <label>Role
           <select value={f.role} onChange={set('role')}>
             <option value="player">Player: their own runners</option>
-            <option value="editor">Editor: also catalog edits, reads everyone’s runners</option>
+            <option value="editor">Editor: also catalog edits and campaigns; reads the runners in theirs</option>
             <option value="admin">Admin: everything, including books and users</option>
           </select>
         </label>
@@ -55,6 +56,7 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
             <option value="authelia">Authelia</option>
           </select>
         </label>
+        <label>Questions per day (Ask the rules)<input type="number" min={0} max={10000} step={1} value={f.daily} onChange={set('daily')} placeholder="No limit" /></label>
       </div>
       {!u && f.method === 'password' && <PasswordField label="Password" value={f.password} onChange={v => setF({ ...f, password: v })} autoComplete="new-password" />}
       {u && u.method === 'password' && f.method === 'authelia' && <p className="muted">Their app password is removed and they’re signed out.</p>}
@@ -118,23 +120,23 @@ export function UsersScreen() {
       <header>
         <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Users</h1></div>
         <div className="row"><button className="btn primary" onClick={() => open({ at: 'add' })}>Add account</button>
-          <a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu /></div>
+          <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
       </header>
-      <p className="muted">Admins manage books, backups and accounts. Editors can also change the catalog and read everyone’s runners.
+      <p className="muted">Admins manage books, backups and accounts. Editors can also change the catalog and run campaigns, and read the runners in them.
         Players see only their own runners.</p>
       {msg && <p className={`banner${msg.err ? ' bad' : ''}`} role={msg.err ? 'alert' : 'status'}>{msg.text}</p>}
       {list === null ? <p className="muted">Loading accounts…</p> : (
         <div className="scroll-x">
           <table className="data users">
             <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Signs in with</th><th>Status</th><th>Last sign-in</th>
-              <th className="num">Runners</th><th><span className="sr-only">Actions</span></th></tr></thead>
+              <th className="num">Runners</th><th className="num">Questions a day</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {list.map(u => (
                 <tr key={u.id} className={u.enabled ? undefined : 'off'}>
                   <td><b>{u.name}</b>{u.id === me?.id && <span className="muted"> (you)</span>}</td>
                   <td>{u.username}</td><td>{u.email ?? <span className="muted">None</span>}</td><td>{ROLE_NAMES[u.role]}</td>
                   <td>{METHOD_NAMES[u.method]}{u.method === 'authelia' && <span className="muted">{u.linked ? ' (linked)' : ' (not signed in yet)'}</span>}</td><td>{u.enabled ? 'Enabled' : 'Disabled'}</td><td>{when(u.lastLogin)}</td>
-                  <td className="num">{u.runners}</td>
+                  <td className="num">{u.runners}</td><td className="num">{u.dailyQuestions ?? <span className="muted">No limit</span>}</td>
                   <td><div className="row">
                     <button className="btn small" aria-label={`Edit ${u.name}`} onClick={() => open({ at: 'edit', u })}>Edit</button>
                     {u.method === 'password' && <button className="btn small quiet" aria-label={`Reset ${u.name}’s password`} onClick={() => open({ at: 'reset', u })}>Reset password</button>}

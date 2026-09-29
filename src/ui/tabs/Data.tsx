@@ -3,6 +3,7 @@ import { AccountMenu } from '../auth'
 import { NonCanon } from '../bits'
 import { EditButton, editState, STATE_TEXT, useOpenEdit, type EditKind } from '../EditEntry'
 import { SourceLabel } from '../SourceLabel'
+import { AskButton } from '../AskRules'
 
 const KINDS: [EditKind, string][] = [['amps', 'Amp'], ['items', 'Item'], ['rules', 'Rule']]
 
@@ -22,7 +23,7 @@ export function DataScreen({ c }: { c: Catalog }) {
     .filter(e => e.edited).map(e => ({ kind, label, e, name: e.name ?? e.title ?? e.id, state: editState(c, kind, e as never) })))
   return (
     <main className="lib">
-      <header><div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Game data</h1></div><div className="row"><a className="btn quiet" href="#/">Your runners</a><AccountMenu /></div></header>
+      <header><div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Game data</h1></div><div className="row"><a className="btn quiet" href="#/">Your runners</a><AskButton /><AccountMenu /></div></header>
       <p>All rules and catalog data load from XML files next to this page. House rules and extra content go in the <code>custom/</code> folder
         (on Unraid: <code>/mnt/user/appdata/chummer-anarchy2/custom</code>), listed in <code>custom/index.xml</code>. Same id replaces a book entry,
         <code> &lt;remove id="…"/&gt;</code> deletes one, a new id adds one. Reload the page after changing them.</p>

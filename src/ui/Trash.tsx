@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { AccountMenu, because, isAdmin, send, useMe } from './auth'
 import { Modal } from './bits'
 import { SettingsButton } from './settings'
+import { AskButton } from './AskRules'
 
 export interface TrashItem { file: string; id: string; name: string; deletedAt: string }
 interface Trash { user: string; name: string; items: TrashItem[] }
@@ -60,7 +61,7 @@ export function TrashScreen({ user: asked }: { user?: string }) {
             <select value={user ?? me?.username} onChange={e => { location.hash = e.target.value === me?.username ? '#/trash' : `#/trash/${encodeURIComponent(e.target.value)}` }}>
               {accounts.map(a => <option key={a.username} value={a.username}>{a.name} ({a.username})</option>)}
             </select></label>}
-          <a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu />
+          <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu />
         </div>
       </header>
       <p className="muted">Deleted runners wait here until {own ? 'you restore them or empty the trash' : 'they’re restored or the trash is emptied'}.

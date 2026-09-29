@@ -138,12 +138,29 @@ test('a player sees only their own runners and no Books, Users or Edit', async (
   await expect(menu(page, 'Pat Player')).toBeVisible() // they can still sign out
 })
 
+/** A signed-in API call as `username` (the app's own origin), outside the browser. */
+async function api(username: string, password: string) {
+  const origin = base.replace(/\/$/, '')
+  const r = await fetch(`${origin}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username, password }), headers: { 'Content-Type': 'application/json', Origin: origin } })
+  const cookie = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+  return async (method: string, path: string, body?: unknown) => (await fetch(`${origin}${path}`, { method, body: body && JSON.stringify(body),
+    headers: { Origin: origin, Cookie: cookie, ...body ? { 'Content-Type': 'application/json' } : {} } })).json()
+}
+
 test('an editor edits an entry and reads the player’s runner read-only', async ({ page }) => {
   await signIn(page, 'eve', PW.eve)
   await expect(page.getByRole('link', { name: 'Books', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'My runners' })).toBeVisible()
+  // an editor reads only the runners in the campaigns they GM: Eve runs one, Pat puts a runner in it
+  await expect(page.getByRole('heading', { name: 'Pat Player’s runners' })).toHaveCount(0)
+  const eve = await api('eve', PW.eve), pat = await api('pat', PW.pat)
+  const { id } = await eve('POST', '/api/campaigns', { name: 'Test campaign' })
+  await eve('POST', `/api/campaigns/${id}/members`, { user: 'pat' })
+  const mine: { xml: string }[] = await pat('GET', '/api/characters')
+  await pat('POST', `/api/campaigns/${id}/runners`, { id: mine.find(c => c.xml.includes('streetName="Pat Runner"'))!.xml.match(/ id="([^"]+)"/)![1] })
+  await page.reload()
   await expect(page.getByRole('heading', { name: 'Pat Player’s runners' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Ada Admin’s runners' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'My runners' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Ada Admin’s runners' })).toHaveCount(0)
   const puts: string[] = []
   page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()) })
   await page.getByRole('link', { name: 'Pat Runner' }).click()

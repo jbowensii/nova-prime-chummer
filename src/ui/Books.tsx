@@ -7,6 +7,7 @@ import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
 import { AccountMenu, because, sessionEnded } from './auth'
 import { SettingsButton } from './settings'
+import { AskButton } from './AskRules'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
@@ -79,7 +80,7 @@ export function BooksHeader({ title, children }: { title: string; children?: Rea
   return (
     <header>
       <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>{title}</h1></div>
-      <div className="row">{children}<a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu /></div>
+      <div className="row">{children}<a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
     </header>
   )
 }

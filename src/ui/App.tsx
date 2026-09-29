@@ -6,6 +6,7 @@ import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'
 import { AccountMenu, canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
+import { CampaignScreen, CampaignsScreen } from './Campaigns'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
 import { BookReview } from './Review'
@@ -18,6 +19,7 @@ import { DataScreen } from './tabs/Data'
 import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
+import { AskButton } from './AskRules'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
 
@@ -30,7 +32,7 @@ function NoCoreData({ missing }: { missing: string[] }) {
   return (
     <main className="lib">
       <header><div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>The game data isn’t set up yet</h1></div>
-        <div className="row"><AccountMenu /></div></header>
+        <div className="row"><AskButton /><AccountMenu /></div></header>
       {admin ? <>
         <p>Import the core rulebook on the Books page, or upload a data pack.</p>
         {missing.length < 12 && <p className="muted">Missing: {missing.join(', ')}.</p>}
@@ -56,8 +58,8 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
 
   const admin = isAdmin(me)
   // pages a role can't use open the runner list instead (the server refuses their requests anyway)
-  // the trash is the server's: the browser's own storage deletes for good
-  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (route[0] === 'trash' && repo.mode !== 'server') ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
+  // the trash and campaigns are the server's: the browser's own storage deletes for good, and has no accounts
+  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (['trash', 'campaigns'].includes(route[0]) && repo.mode !== 'server') ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
   const [, id, tab] = route
   const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
@@ -70,6 +72,8 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to the server.</p>}
       {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'users' ? <UsersScreen />
+        : page === 'campaigns' && id ? <CampaignScreen key={id} c={catalog} id={id} />
+        : page === 'campaigns' ? <CampaignsScreen />
         : page === 'trash' ? <TrashScreen user={id} />
         : page === 'books' && id === 'ai' ? <AiSettings />
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />

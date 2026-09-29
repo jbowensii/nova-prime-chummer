@@ -8,6 +8,7 @@ import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
 import { AccountMenu, isAdmin, useMe } from './auth'
 import { SettingsButton } from './settings'
 import { TableRulesManager } from './TableRules'
+import { AskButton } from './AskRules'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
 
@@ -32,7 +33,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
       <header>
         <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Rules</h1></div>
         <div className="row">{openEdit && <button className="btn quiet" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>}
-          <a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu /></div>
+          <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
       </header>
       <TableRulesManager c={c} />
       <h2>Rules reference</h2>

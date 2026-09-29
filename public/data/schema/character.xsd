@@ -40,6 +40,7 @@
       <xs:attribute name="allowNonCanon" type="xs:boolean"/>
       <xs:attribute name="origin" type="xs:string"/>
       <xs:attribute name="sampleKey" type="xs:string"/>
+      <xs:attribute name="campaign" type="xs:string"/>
       <xs:attribute name="updatedAt" type="xs:string" use="required"/>
       <xs:attribute name="lastExportedAt" type="xs:string"/>
     </xs:complexType>

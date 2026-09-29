@@ -6,7 +6,7 @@ import type { Character } from '../model/types'
 import { deleteCharacter, getCharacter, listCharacters, saveCharacter } from './storage'
 import { track, UNREACHABLE } from './auth'
 
-/** owner, ownerName: the account the runner belongs to (server only; admin and editors also list everyone else's) */
+/** owner, ownerName: the account the runner belongs to (server only; the admin also lists everyone else's, an editor their campaigns') */
 export interface Stored { ch: Character; rev?: number; file?: string; owner?: string; ownerName?: string }
 export type SaveResult =
   | { ok: true; rev?: number; file?: string }

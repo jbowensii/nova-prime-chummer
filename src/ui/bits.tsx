@@ -55,8 +55,18 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
   )
 }
 
-/** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose. */
-export function Modal({ open, onClose, title, children, actions }: { open: boolean; onClose: () => void; title: string; children: ReactNode; actions?: ReactNode }) {
+/** Tab and Shift+Tab stay inside a dialog: from its last control to its first, and back (the page behind is inert anyway). */
+function trapTab(e: React.KeyboardEvent<HTMLDialogElement>) {
+  if (e.key !== 'Tab') return
+  const all = [...e.currentTarget.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !(el as HTMLButtonElement).disabled && el.offsetParent !== null)
+  const first = all[0], last = all[all.length - 1]
+  if (!first) return
+  if (e.shiftKey ? document.activeElement === first : document.activeElement === last) { e.preventDefault(); (e.shiftKey ? last : first).focus() }
+}
+
+/** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose; Tab stays inside. */
+export function Modal({ open, onClose, title, children, actions, className }: { open: boolean; onClose: () => void; title: string; children: ReactNode; actions?: ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null)
   const tid = useId() // two dialogs can be open at once (an edit over a picker)
   useEffect(() => {
@@ -66,7 +76,7 @@ export function Modal({ open, onClose, title, children, actions }: { open: boole
     if (!open && d.open) d.close()
   }, [open])
   return (
-    <dialog ref={ref} onClose={onClose} onCancel={e => { e.preventDefault(); onClose() }} aria-labelledby={tid}>
+    <dialog ref={ref} className={className} onClose={onClose} onKeyDown={trapTab} onCancel={e => { e.preventDefault(); onClose() }} aria-labelledby={tid}>
       {open && (
         <>
           <h2 id={tid}>{title}</h2>

@@ -72,7 +72,8 @@ The importer's own records (`library/<book>/import.xml`, `review.xml`,
 `library/.config/ai-providers.xml`, `ai-keys.xml`) have schemas too:
 `import.xsd`, `review.xsd`, `aiproviders.xsd`, `aikeys.xsd`.
 The server's account files in `library/.config/` use `users.xsd` (`users.xml`, `sessions.xml`, `device-key.xml`,
-`reset.xml`) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret; `oidc-key.xml`: the
+`reset.xml`, `ask-counts.xml`: each account's answered Ask the rules questions today, UTC; a `<user>`'s optional
+`dailyQuestions` is its limit) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret; `oidc-key.xml`: the
 sign-in state cookie's key, never backed up). An Authelia account's `<user>` carries `oidcIss`/`oidcSub` once linked.
 
 ### levels
@@ -255,6 +256,26 @@ switched on under Table rules. It lives in `custom/`, so backups carry it.
 
 A book's rule not listed is off. A listed book rule whose book is gone keeps its switch for when the book comes back.
 At most 200 rules; a house rule's name is 120 characters at most, its description 4,000.
+
+
+## Campaigns (`custom/campaigns.xml`)
+
+A GM's table: its GMs (the admin or editors; the one who made it, plus co-GMs the admin adds), its players, and a note.
+Written by the server (`server/campaigns.mjs`, `/api/campaigns`; atomic, under the runners' write lock), schema
+`campaigns.xsd`, namespace `urn:chummer-anarchy2:config:1`. It is never served as a file (who plays where is for the
+campaign's own people); it lives in `custom/`, so backups carry it. A runner joins with `campaign="<id>"` on its own file
+(character-format.md), one campaign at a time. A username change renames it here; a deleted account leaves every
+campaign, and one left without a GM gets an admin.
+
+```xml
+<ca2:campaigns xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
+  <campaign id="3f2a9c01b2d4" name="…" created="2026-09-29T12:00:00Z" archived="true">   <!-- archived: optional -->
+    <note>…</note>
+    <gm user="eve"/>          <!-- one or more -->
+    <member user="pat"/>      <!-- any number -->
+  </campaign>
+</ca2:campaigns>
+```
 
 ## Imported sample runners
 

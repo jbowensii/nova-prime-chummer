@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- custom/campaigns.xml: the campaigns (Campaigns page), written by the server (server/campaigns.mjs); never served as a
+     file. Each has one or more GMs (admins or editors) and any number of members; a runner joins one with its own
+     campaign="<id>" attribute (character.xsd). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:config:1"
+           targetNamespace="urn:chummer-anarchy2:config:1"
+           elementFormDefault="unqualified">
+  <xs:simpleType name="Username"><xs:restriction base="xs:string"><xs:pattern value="[a-z0-9][a-z0-9._\-]{1,31}"/></xs:restriction></xs:simpleType>
+  <xs:complexType name="Person"><xs:attribute name="user" type="ca2:Username" use="required"/></xs:complexType>
+
+  <xs:element name="campaigns">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="campaign" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="note" minOccurs="0"><xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="4000"/></xs:restriction></xs:simpleType></xs:element>
+              <xs:element name="gm" type="ca2:Person" maxOccurs="unbounded"/>
+              <xs:element name="member" type="ca2:Person" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="id" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="name" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="80"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="created" type="xs:dateTime" use="required"/>
+            <xs:attribute name="archived" type="xs:boolean"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+    </xs:complexType>
+    <xs:unique name="one-per-id"><xs:selector xpath="campaign"/><xs:field xpath="@id"/></xs:unique>
+  </xs:element>
+</xs:schema>

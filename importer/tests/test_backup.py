@@ -23,6 +23,7 @@ def state(root, extra=""):
         "custom/index.xml": "<overlays/>",
         "custom/edits/edits.xml": f"<edits>{extra}</edits>",
         "custom/table-rules.xml": f"<tablerules>{extra}</tablerules>",  # the GM's table rules go with custom/
+        "custom/campaigns.xml": f"<campaigns>{extra}</campaigns>",  # and the campaigns
         "custom/samples/builtin/sample-made-up.xml": f"<runner>Example{extra}</runner>",  # the example sets too
         "library/book-1/original.pdf": "%PDF-1.4 made up " * 100,
         "library/book-1/book.md": f"# Made-up book{extra}",

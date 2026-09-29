@@ -17,6 +17,7 @@ import { LedgerTab } from './tabs/Ledger'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
+import { AskButton, AskRules } from './AskRules'
 
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
   ['gear', 'Gear & spells'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
@@ -100,7 +101,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       const r = await repo.save(ch, undefined, { force: true })
       if (r.ok) sync.current.rev = r.rev
     } else if (how === 'copy') {
-      const copy = { ...ch, id: newId(), identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
+      const copy = { ...ch, id: newId(), campaign: undefined, identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
       const r = await repo.save(copy, undefined, { filename: copyName.trim() })
       if (r.ok) location.hash = `#/c/${copy.id}/${tab}`
     } else {
@@ -166,6 +167,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           <button className="btn quiet" disabled={!ctx.canUndo} onClick={ctx.undo}>Undo</button>
           <button className="btn quiet" disabled={!ctx.canRedo} onClick={ctx.redo}>Redo</button>
         </>}
+        <AskButton />
         <SettingsButton />
         <AccountMenu />
         <button className="btn" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))}>Export file</button>
@@ -182,7 +184,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       {saveError && <p className="banner" style={{ margin: '1rem 1.25rem 0' }}>{saveError} Changes are kept in this tab; use Export file if you need to close it.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
-        <main className="work"><fieldset className="bare" disabled={ro}>
+        <main className="work"><AskRules /><fieldset className="bare" disabled={ro}>
           {tab === 'concept' && <ConceptTab />}
           {tab === 'attributes' && <AttributesTab />}
           {tab === 'skills' && <SkillsTab />}
