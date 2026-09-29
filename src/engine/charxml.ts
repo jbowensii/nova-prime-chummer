@@ -63,7 +63,7 @@ export function characterToXml(ch: Character, rev?: number): string {
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: ch.identity.streetName, name: ch.identity.name,
     metatype: ch.identity.metatype, level: ch.level, package: ch.package, lifestyle: ch.identity.lifestyle,
     finalizedAt: ch.finalizedAt, finalRemaining: ch.finalRemaining, allowNonCanon: ch.allowNonCanon === false ? 'false' : undefined,
-    origin: ch.origin, sampleKey: ch.sampleKey, updatedAt: ch.updatedAt, lastExportedAt: ch.lastExportedAt })
+    origin: ch.origin, sampleKey: ch.sampleKey, campaign: ch.campaign, updatedAt: ch.updatedAt, lastExportedAt: ch.lastExportedAt })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="${CHAR_NS}"${root}>\n  ${body}\n</ca2:character>\n`
 }
 
@@ -159,6 +159,7 @@ export function xmlToCharacter(xml: string): Parsed {
     if (s(r, 'allowNonCanon') === 'false') ch.allowNonCanon = false
     if (s(r, 'origin')) ch.origin = s(r, 'origin')
     if (s(r, 'sampleKey')) ch.sampleKey = s(r, 'sampleKey')
+    if (s(r, 'campaign')) ch.campaign = s(r, 'campaign')
     return { ok: true, character: migrate(ch as unknown as Record<string, unknown>), rev: n(r, 'rev') }
   } catch (e) {
     return { ok: false, reason: `Damaged file: ${(e as Error).message}` }

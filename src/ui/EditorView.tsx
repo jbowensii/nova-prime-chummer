@@ -100,7 +100,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       const r = await repo.save(ch, undefined, { force: true })
       if (r.ok) sync.current.rev = r.rev
     } else if (how === 'copy') {
-      const copy = { ...ch, id: newId(), identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
+      const copy = { ...ch, id: newId(), campaign: undefined, identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
       const r = await repo.save(copy, undefined, { filename: copyName.trim() })
       if (r.ok) location.hash = `#/c/${copy.id}/${tab}`
     } else {

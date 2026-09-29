@@ -102,6 +102,8 @@ export interface Character { formatVersion: 1; id: string;
   /** which example character this runner is a copy of: "<name slug>|canon" or "<name slug>|noncanon" (src/ui/samples.ts);
    *  0.4.1 wrote "<source>.<name slug>". Loading the examples again skips every key already in the library */
   sampleKey?: string;
+  /** the campaign it plays in (server only, set through /api/campaigns; a copy is in none) */
+  campaign?: string;
   /** creation nuyen left over when finalized; the career balance starts here */
   finalRemaining?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }

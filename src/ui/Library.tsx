@@ -69,7 +69,7 @@ export function Library({ c }: { c: Catalog }) {
   }
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const where = repo.mode === 'server' ? 'the server' : 'this browser'
-  // admin and editors also get everyone else's runners (read-only): theirs first, then one group per owner
+  // the admin also gets everyone else's runners, an editor those in the campaigns they GM (read-only): theirs first, then one group per owner
   const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
   const sources: Sources = id => { const k = id.toLowerCase(); return [...c.sources.values()].find(s => s.id.toLowerCase() === k) }
 
@@ -144,7 +144,7 @@ export function Library({ c }: { c: Catalog }) {
   }
 
   const duplicate = async (ch: Character) => {
-    await store({ ...structuredClone(ch), id: newId(), sampleKey: undefined, identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
+    await store({ ...structuredClone(ch), id: newId(), sampleKey: undefined, campaign: undefined, identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
     void refresh()
   }
 
