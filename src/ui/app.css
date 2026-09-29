@@ -479,3 +479,27 @@ table.campaigns tr.off td { color: var(--text-3); }
 .ask-btn { font-family: var(--display); font-size: 1.1rem; min-width: 2rem; justify-content: center; border: 1px solid var(--rule) !important; border-radius: 999px; padding: 0 0.55rem; }
 dialog.drawer { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; width: min(30rem, 100vw); max-width: 100vw; border-top: 0; border-left: 4px solid var(--yellow); overflow-y: auto; }
 dialog.drawer h2 { margin-top: 0; }
+
+/* ---- background art (src/ui/Background.tsx) ----
+   The admin's image behind every page, under the page color: the ::after layer is --bg at ART_CENTER (93%: the art shows at
+   7%) across the middle, where the content is, easing to ART_EDGE (82%: 18%) at the corners; phones 95% and 88%. The art
+   itself is flattened (contrast .6) so neither a black nor a white image can pull text below its contrast: tests/ui/background.test.ts
+   checks the worst case against the tokens. Dark mode: the overlay is the indigo page, so the art takes its tint. */
+.bg-art { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.bg-art > div { position: absolute; inset: 0; background: center / cover no-repeat; filter: contrast(0.6) saturate(0.8); }
+.bg-art::after { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--bg) 93%, transparent) 40%, color-mix(in srgb, var(--bg) 82%, transparent) 100%); }
+@media (max-width: 600px) {
+  .bg-art::after { background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--bg) 95%, transparent) 40%, color-mix(in srgb, var(--bg) 88%, transparent) 100%); }
+}
+:root[data-art='off'] .bg-art { display: none; }
+@media (prefers-reduced-transparency: reduce) { .bg-art { display: none; } }
+@media print { .bg-art { display: none !important; } }
+.bg-gallery { list-style: none; padding: 0; margin: 0.6rem 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.8rem; }
+.bg-gallery li { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.bg-gallery img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border: 1px solid var(--rule); background: var(--zebra); }
+.bg-gallery li.off img { opacity: 0.4; }
+.bg-gallery .name { font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bg-gallery label.check { margin: 0; color: var(--text); font-size: 0.95rem; align-items: center; }
+.bg-gallery label.check input { margin-top: 0; }
+.bg-gallery .btn { align-self: flex-start; }

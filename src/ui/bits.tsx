@@ -76,7 +76,9 @@ export function Modal({ open, onClose, title, children, actions, className }: { 
     if (!open && d.open) d.close()
   }, [open])
   return (
-    <dialog ref={ref} className={className} onClose={onClose} onKeyDown={trapTab} onCancel={e => { e.preventDefault(); onClose() }} aria-labelledby={tid}>
+    // React passes a nested dialog's close and cancel up to this one too: only its own count
+    <dialog ref={ref} className={className} onClose={e => e.target === e.currentTarget && onClose()} onKeyDown={trapTab}
+      onCancel={e => { if (e.target !== e.currentTarget) return; e.preventDefault(); onClose() }} aria-labelledby={tid}>
       {open && (
         <>
           <h2 id={tid}>{title}</h2>
