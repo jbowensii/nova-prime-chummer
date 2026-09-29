@@ -30,6 +30,8 @@ const ACCOUNTS = [
   { username: 'dis', method: 'authelia', role: 'player', enabled: false },
   { username: 'kai', method: 'authelia', role: 'admin', email: 'kai@example.test' }, // never linked: M1's target
   { username: 'lee', password: 'lee-password-1', role: 'player' },
+  { username: 'max', password: 'max-password-1', role: 'player' },
+  { username: 'zed', password: 'zed-password-1', role: 'player' },
 ]
 
 async function boot(opts: Record<string, unknown> = {}, server: Record<string, unknown> = {}) {
@@ -347,10 +349,16 @@ describe('link my Authelia account', () => {
   let s: Boot
   beforeAll(async () => { s = await boot(); await on(s) })
   afterAll(() => s.close())
-  const login = async (username: string, password: string) => session((await fetch(`${s.base}/api/auth/login`, { method: 'POST',
-    body: JSON.stringify({ username, password }), headers: { 'Content-Type': 'application/json', Origin: s.base } })).headers.getSetCookie())
-  const linkStart = (cookie: string, origin: string | null = s.base) => fetch(`${s.base}/api/auth/oidc/link/start`, { method: 'POST',
-    headers: { ...cookie ? { Cookie: cookie } : {}, ...origin ? { Origin: origin } : {} } })
+  const passwords = new Map<string, string>() // session cookie -> the password it signed in with (link/start's `current`)
+  const login = async (username: string, password: string) => {
+    const c = session((await fetch(`${s.base}/api/auth/login`, { method: 'POST',
+      body: JSON.stringify({ username, password }), headers: { 'Content-Type': 'application/json', Origin: s.base } })).headers.getSetCookie())
+    passwords.set(c, password)
+    return c
+  }
+  const linkStart = (cookie: string, { origin = s.base as string | null, referer = '', current = passwords.get(cookie) as string | null | undefined } = {}) =>
+    fetch(`${s.base}/api/auth/oidc/link/start`, { method: 'POST', body: JSON.stringify(current == null ? {} : { current }),
+      headers: { 'Content-Type': 'application/json', ...cookie ? { Cookie: cookie } : {}, ...origin ? { Origin: origin } : {}, ...referer ? { Referer: referer } : {} } })
   /** Start as `cookie`, through the issuer, and back with `back` as the browser's session (by default the same). */
   async function link(cookie: string, back = cookie) {
     const r = await linkStart(cookie)
@@ -391,8 +399,9 @@ describe('link my Authelia account', () => {
   test('refused at the start: not signed in, no or another Origin, an Authelia account, Authelia turned off', async () => {
     const lee = await login('lee', 'lee-password-1')
     expect((await linkStart('')).status).toBe(401)
-    expect((await linkStart(lee, null)).status).toBe(403)
-    expect((await linkStart(lee, 'https://evil.example')).status).toBe(403)
+    expect((await linkStart(lee, { origin: null })).status).toBe(403)
+    expect((await linkStart(lee, { origin: null, referer: `${s.base}/` })).status).toBe(403) // a Referer alone isn't enough here
+    expect((await linkStart(lee, { origin: 'https://evil.example' })).status).toBe(403)
     const kim = session((await flow(s)).cookies) // kim signs in with Authelia
     expect((await (await linkStart(kim)).json()).error).toBe('this account already signs in with Authelia')
     await s.put({ enabled: false })
@@ -402,6 +411,58 @@ describe('link my Authelia account', () => {
       expect(r.headers.getSetCookie().some(c => c.startsWith('ca2_oidc='))).toBe(false)
     } finally { await on(s) }
     expect(s.account('lee')).toMatchObject({ method: 'password', oidcSub: '' })
+  })
+
+  test('H1: the current password is required, checked like change-password (a wrong one counts toward the pause)', async () => {
+    const max = await login('max', 'max-password-1')
+    const noPw = await linkStart(max, { current: null })
+    expect([noPw.status, (await noPw.json()).error]).toEqual([400, 'your current password is wrong'])
+    const wrong = await linkStart(max, { current: 'not-the-password' })
+    expect([wrong.status, (await wrong.json()).error]).toEqual([400, 'your current password is wrong'])
+    expect(wrong.headers.getSetCookie().some(c => c.startsWith('ca2_oidc='))).toBe(false)
+    for (let i = 0; i < 3; i++) expect((await linkStart(max, { current: 'not-the-password' })).status).toBe(400)
+    const paused = await linkStart(max) // five wrong: paused, even with the right one
+    expect(paused.status).toBe(429)
+    expect(paused.headers.get('retry-after')).toBeTruthy()
+    expect(s.account('max')).toMatchObject({ method: 'password', oidcSub: '' })
+    expect(logged.some(l => l.includes('max-password-1') || l.includes('not-the-password'))).toBe(false)
+  })
+
+  test('M1: Authelia is asked to sign in afresh; an Authelia user naming another account, or an old Authelia sign-in, is refused', async () => {
+    const lee = await login('lee', 'lee-password-1')
+    const r = await link(lee) // the default user is kim, already linked to u-kim: taken
+    expect(r.location).toBe('/?link=taken')
+    expect(s.f.authorized).toMatchObject({ prompt: 'login', max_age: '0' })
+    await flow(s)
+    expect(s.f.authorized.prompt).toBeUndefined() // a sign-in isn't asked to sign in again
+    // the reviewer's probe: kai (an admin, Authelia, never linked) left signed in to Authelia on lee's browser
+    await as({ sub: 'u-kai', preferred_username: 'kai' }, async () => { expect((await link(lee)).location).toBe('/?link=other-account') })
+    await as({ sub: 'u-kai', preferred_username: 'KAI' }, async () => { expect((await link(lee)).location).toBe('/?link=other-account') })
+    await as({ sub: 'u-kai', email: 'kai@example.test', email_verified: true }, async () => { expect((await link(lee)).location).toBe('/?link=other-account') })
+    expect([s.account('kai').oidcSub, s.account('lee').method]).toEqual(['', 'password'])
+    // an Authelia sign-in from before the link began (the issuer ignored prompt=login)
+    s.f.claims = { auth_time: Math.floor(Date.now() / 1000) - 3600 }
+    try {
+      await as({ sub: 'u-lee', preferred_username: 'lee' }, async () => { expect((await link(lee)).location).toBe('/?link=stale') })
+      s.f.claims = { auth_time: 'yesterday' }
+      await as({ sub: 'u-lee', preferred_username: 'lee' }, async () => { expect((await link(lee)).location).toBe('/?link=stale') })
+    } finally { s.f.claims = {} }
+    expect(s.account('lee')).toMatchObject({ method: 'password', oidcSub: '' })
+  })
+
+  test('L1: a password sign-in racing the link never keeps a session once the password is gone', async () => {
+    const zed = await login('zed', 'zed-password-1')
+    await as({ sub: 'u-zed', preferred_username: 'zed' }, async () => {
+      const r = await linkStart(zed)
+      const bind = r.headers.getSetCookie().find(c => c.startsWith('ca2_oidc='))!.split(';')[0]
+      const cb = (await fetch((await r.json()).url, { redirect: 'manual' })).headers.get('location')!
+      // sign-ins whose scrypt runs while the callback commits
+      const racing = Array.from({ length: 6 }, () => login('zed', 'zed-password-1'))
+      const done = await fetch(cb, { redirect: 'manual', headers: { Cookie: `${bind}; ${zed}` } })
+      expect(done.headers.get('location')).toBe('/?link=done')
+      for (const c of await Promise.all(racing)) if (c) expect((await me(s, c)).user, 'a racing password session survived').toBe(null)
+      expect((await me(s, zed)).user.username).toBe('zed')
+    })
   })
 
   test('an Authelia user already linked to another account: refused, nothing changes, the password still works', async () => {
@@ -461,12 +522,14 @@ test('a link never writes under a restore: its start and its callback are refuse
     const { token } = await (await fetch(`${s.base}/api/restore?preview=1`, { method: 'POST', body: zip, headers })).json()
     const pat = session((await fetch(`${s.base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: 'pat', password: 'pat-password-1' }),
       headers: { 'Content-Type': 'application/json', Origin: s.base } })).headers.getSetCookie())
-    const r = await fetch(`${s.base}/api/auth/oidc/link/start`, { method: 'POST', headers: { Origin: s.base, Cookie: pat } })
+    const r = await fetch(`${s.base}/api/auth/oidc/link/start`, { method: 'POST', body: JSON.stringify({ current: 'pat-password-1' }),
+      headers: { 'Content-Type': 'application/json', Origin: s.base, Cookie: pat } })
     const bind = r.headers.getSetCookie().find(c => c.startsWith('ca2_oidc='))!.split(';')[0]
     const back = (await fetch((await r.json()).url, { redirect: 'manual' })).headers.get('location')!
     const running = fetch(`${s.base}/api/restore/${token}`, { method: 'POST', headers }) // the stub holds it 400 ms
     await new Promise(ok => setTimeout(ok, 150))
-    const started = await fetch(`${s.base}/api/auth/oidc/link/start`, { method: 'POST', headers: { Origin: s.base, Cookie: pat } })
+    const started = await fetch(`${s.base}/api/auth/oidc/link/start`, { method: 'POST', body: JSON.stringify({ current: 'pat-password-1' }),
+      headers: { 'Content-Type': 'application/json', Origin: s.base, Cookie: pat } })
     expect(started.status).toBe(409)
     const cb = await fetch(back, { redirect: 'manual', headers: { Cookie: `${bind}; ${pat}` } })
     expect(cb.headers.get('location')).toBe('/?signin=restoring') // every session ends with the restore: the sign-in page says why

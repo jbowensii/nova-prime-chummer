@@ -9,7 +9,8 @@
 //   POST /api/auth/oidc/link/start  a signed-in password account: -> { url } (the issuer's, for the browser to open); the sealed
 //                                   cookie also holds the account id and its session. The callback then links the account
 //                                   (server/auth.mjs linkExternal): method authelia, no password, other sessions ended ->
-//                                   302 to /?link=<done|taken|session|expired|denied|failed>
+//                                   302 to /?link=<done|taken|other-account|stale|session|expired|denied|failed>. The body is
+//                                   { current } (the account's password); Authelia is asked to sign in afresh (prompt=login)
 //   GET  /api/auth-settings         admin: -> { issuer, clientId, tokenAuth, enabled, secretSet, redirectUri } (never the secret)
 //   PUT  /api/auth-settings         admin: any of { issuer, clientId, tokenAuth, enabled, secret } -> the same; a new issuer
 //                                   drops the stored secret unless a new one comes with it
@@ -301,9 +302,9 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     `${cookieName(ctx)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
   const go = (res, where) => { res.writeHead(302, { Location: where, 'Cache-Control': 'no-store' }); res.end() }
 
-  /** The issuer's authorization URL for a new flow, its state sealed into this browser's cookie (with `extra`); null when it
-   *  can't start (logged). */
-  async function begin(res, ctx, s, extra = {}) {
+  /** The issuer's authorization URL for a new flow (with `params`), its state sealed into this browser's cookie (with
+   *  `extra`); null when it can't start (logged). */
+  async function begin(res, ctx, s, extra = {}, params = {}) {
     let d
     try {
       if (!ctx.origin) throw refuse('failed', 'the request has no usable Host')
@@ -317,7 +318,7 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     cookie(res, ctx, seal({ s: state, n: nonce, v: verifier, r: redirectUri, i: s.issuer, c: s.clientId, e: Date.now() + STATE_TTL, ...extra }), STATE_TTL / 1000)
     const u = new URL(d.authorization_endpoint)
     for (const [k, v] of Object.entries({ response_type: 'code', client_id: s.clientId, redirect_uri: redirectUri, scope: SCOPE, state, nonce,
-      code_challenge: sha256(verifier).toString('base64url'), code_challenge_method: 'S256' })) u.searchParams.set(k, v)
+      code_challenge: sha256(verifier).toString('base64url'), code_challenge_method: 'S256', ...params })) u.searchParams.set(k, v)
     return u.href
   }
 
@@ -327,12 +328,17 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     return go(res, await begin(res, req.ctx, s) ?? '/?signin=failed')
   }
 
-  /** "Link my Authelia account": a signed-in password account (the POST passed the Origin check and is a counted write). */
+  /** "Link my Authelia account": a signed-in password account, its current password given ({ current }, checked like
+   *  change-password: the pauses and the scrypt cap). The POST passed the Origin check and is a counted write. */
   async function linkStart(req, res, send, who) {
     if (who.method !== 'password') throw fail(400, 'this account already signs in with Authelia')
+    // an Origin header itself, not only a Referer: this one ends up deleting the password
+    if (!req.headers.origin) throw fail(403, 'this request didn’t come from the app’s own page')
     const s = settings()
     if (!s.on) throw fail(409, 'Sign in with Authelia is turned off')
-    const url = await begin(res, req.ctx, s, { l: who.id, b: binding(who.session) })
+    await auth.checkCurrent(req, who, await auth.json(req))
+    // Authelia asks for the password again (no SSO session of whoever used this browser last), and says when (auth_time)
+    const url = await begin(res, req.ctx, s, { l: who.id, b: binding(who.session) }, { prompt: 'login', max_age: '0' })
     if (!url) throw fail(502, 'Authelia can’t be reached right now; try again later')
     return send(res, 200, { url })
   }
@@ -350,7 +356,7 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     for (const [k, e] of used) if (e <= now || used.size >= MAX_USED) used.delete(k); else break
     used.set(c.n, c.e)
     return { nonce: c.n, verifier: c.v, redirectUri: c.r, issuer: c.i, clientId: c.c,
-      link: typeof c.l === 'string' ? { user: c.l, binding: String(c.b ?? '') } : null }
+      link: typeof c.l === 'string' ? { user: c.l, binding: String(c.b ?? ''), started: c.e - STATE_TTL } : null }
   }
 
   async function callback(req, res, url) {
@@ -367,7 +373,8 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
       if (!s.on || s.issuer !== entry.issuer || s.clientId !== entry.clientId) throw refuse('failed', 'the sign-in settings changed meanwhile')
       const d = await discover(s.issuer)
       const tokens = await exchange(d, s, code, entry)
-      let claims = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
+      const id = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
+      let claims = id
       if (claims.preferred_username === undefined && claims.email === undefined && d.userinfo_endpoint && typeof tokens.access_token === 'string')
         claims = { ...await userinfo(d, tokens.access_token, claims.sub), sub: claims.sub }
       if (link) {
@@ -375,7 +382,11 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
         const who = auth.session(req, res, ctx)
         if (!who || who.id !== link.user || !timingSafeEqual(sha256(binding(who.session)), sha256(link.binding)))
           throw refuse('session', 'the session that started the link isn’t this browser’s any more')
-        await auth.linkExternal(ctx, who, { iss: d.issuer, sub: claims.sub })
+        // prompt=login + max_age=0: an Authelia sign-in from before this link began isn't one made for it
+        if (id.auth_time !== undefined && !(typeof id.auth_time === 'number' && id.auth_time >= link.started / 1000 - LEEWAY))
+          throw refuse('stale', 'Authelia didn’t ask for the password again (auth_time is before the link began)')
+        await auth.linkExternal(ctx, who, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
+          emailVerified: claims.email_verified })
         return go(res, '/?link=done')
       }
       const u = await auth.signInExternal(res, ctx, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
