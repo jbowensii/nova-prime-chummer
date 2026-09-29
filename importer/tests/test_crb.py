@@ -624,3 +624,57 @@ class AmpsParityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Invented text in the converter's shapes: the extended social tests box (a two-line title), the vehicle damage note as
+# body prose with its run-in label on a line of its own; no planning pool box at all.
+OPTIONAL_MD = """<!-- page 70 -->
+**SHADOWRUN**
+Made-up prose before the note ends here.
+You can, optionally, decide to use the rules for vehi-
+**Note:**
+cles for made-up folks too. It makes them sturdier in
+an invented way.
+To avoid made-up trouble, a table follows.
+<!-- page 141 -->
+| OPTIONAL RULES: |
+|---|
+| EXTENDED SOCIAL TESTS |
+| Invented social duels go on for a while�<br>Each side marks made-up social damage� |
+Prose after the box.
+"""
+
+
+class OptionalRulesTest(unittest.TestCase):
+    """The optional rules seed the app's Table rules: names and pages in the overlay, descriptions only in the texts."""
+
+    def setUp(self):
+        self.res = crb.extract(OPTIONAL_MD)
+        self.rules = ET.fromstring(self.res.files["rules-optional.xml"])
+        self.texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts) if t.get("of") == "rules"}
+
+    def test_rules(self):
+        self.assertEqual([(r.get("id"), r.get("sheet"), r.get("source"), r.get("page"), r.find("title").text) for r in self.rules], [
+            ("optional-extended-social-tests", "optional", "CRB", "139", "Extended social tests"),
+            ("optional-vehicle-damage-for-all", "optional", "CRB", "68", "Vehicle and drone damage for characters, critters and devices"),
+            ("optional-planning-pool", "optional", "CRB", "80", "Planning pool or personal Edge"),  # not found: the known page
+        ])
+        for r in self.rules:
+            self.assertEqual(r.find("text").text or "", "")
+
+    def test_texts(self):
+        self.assertEqual(self.texts, {
+            "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",
+            "optional-vehicle-damage-for-all": "You can, optionally, decide to use the rules for vehicles for made-up folks too. "
+                                               "It makes them sturdier in an invented way.",
+        })
+
+
+@unittest.skipUnless(BOOK.exists(), "owner's converted CRB book not present")
+class OptionalRulesBookTest(unittest.TestCase):
+    def test_all_three_found(self):
+        rules = crb.optional_rules(BOOK.read_text(encoding="utf8"))
+        self.assertEqual([(r[0], r[2]) for r in rules], [("optional-extended-social-tests", 139),
+                                                         ("optional-vehicle-damage-for-all", 68), ("optional-planning-pool", 80)])
+        for r in rules:
+            self.assertGreater(len(r[3]), 100, r[0])

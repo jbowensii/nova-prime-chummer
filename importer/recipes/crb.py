@@ -509,6 +509,49 @@ def sheet_amps(sheets, rows, rules):
     return out
 
 
+# The book's optional rules, the seeds of the app's Table rules (a GM switches them on): id, name, page. Names and pages
+# are facts; each description goes to the private texts. `where` finds it: ("box", title, first line) for a box, or
+# ("prose", pattern) for a paragraph of body text.
+OPTIONAL = (
+    ("optional-extended-social-tests", "Extended social tests", 139, ("box", "OPTIONAL RULES:", "EXTENDED SOCIAL TESTS")),
+    ("optional-vehicle-damage-for-all", "Vehicle and drone damage for characters, critters and devices", 68,
+     ("prose", re.compile(r"\boptionally\b.*\brules for vehi"))),
+    ("optional-planning-pool", "Planning pool or personal Edge", 80, ("box", "PLANNING POOL", "OR PERSONAL EDGE?")),
+)
+
+
+def _paragraph(md, pattern):
+    """(printed page, text) of the body paragraph whose line matches `pattern`, or None. A run-in label the converter
+    set on its own line ("**Note:**") is dropped. The paragraph ends at a short line ending a sentence."""
+    lines, page = md.splitlines(), 0
+    for i, line in enumerate(lines):
+        m = re.match(r"<!-- page (\d+) -->", line)
+        if m:
+            page = int(m.group(1)) - PAGE_OFFSET
+        elif pattern.search(line):
+            out = []
+            # ponytail: "short line ending in a period" ends the paragraph; a real paragraph break would need the layout
+            for l in lines[i:i + 15]:
+                if re.fullmatch(r"\*\*[^*]+:\*\*", l.strip()):
+                    continue
+                out.append(l.strip())
+                if l.rstrip().endswith(".") and len(l.strip()) < 45:
+                    break
+            return page, _join(out)
+    return None
+
+
+def optional_rules(md):
+    """[(id, name, page, text)]: the optional rules; the page the book prints when it's found (else the known page) and
+    its description ("" when not found)."""
+    found = {(t, b[0].strip()): (p, _join(b[1:])) for p, t, b in boxes(md) if b}
+    out = []
+    for oid, name, page, where in OPTIONAL:
+        hit = found.get(where[1:]) if where[0] == "box" else _paragraph(md, where[1])
+        out.append((oid, name, *(hit or (page, ""))))
+    return out
+
+
 def extract(md, ctx=None):
     """Spells, amps, gear and sample runners (overlay), and the core files (Result.core). The amps and runners are read
     with the core files this book gives; a core table it can't read comes from the core already in place, if any."""
@@ -578,6 +621,12 @@ def _extract(md, report, spells_only=False):
                     f'<name>{escape(g["name"])}</name><text></text></item>')
         if g["text"]:
             texts.append(f'  <text of="items" id="{gid}">{escape(g["text"])}</text>')
+    rules = []
+    for oid, name, page, text in optional_rules(md):
+        rules.append(f'  <rule id="{oid}" sheet="optional" section="Optional rule" source="{ID}" page="{page}">'
+                     f'<title>{escape(name)}</title><text></text></rule>')
+        if text:
+            texts.append(f'  <text of="rules" id="{oid}">{escape(text)}</text>')
     report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
     report += sample_rows
 
@@ -587,6 +636,7 @@ def _extract(md, report, spells_only=False):
                 f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n' + "\n".join(entries) + "\n</ca2:data>\n")
     files = {"spells.xml": data("spells", "Spells.", spells),
              "amps.xml": data("amps", 'Prebuilt Shadow Amps and add-on mods (mod="true"); texts in custom/texts/crb.xml.', amps),
-             "gear.xml": data("gear", "Plain equipment (not Amps).", gear)}
+             "gear.xml": data("gear", "Plain equipment (not Amps).", gear),
+             "rules-optional.xml": data("rules", "The book's optional rules (the app's Table rules); texts in custom/texts/crb.xml.", rules)}
     return Result(files=files, texts=data("texts", "PRIVATE: book text. Do not commit.", texts), samples=samples, report=report,
                   source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})

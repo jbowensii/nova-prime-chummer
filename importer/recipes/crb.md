@@ -67,6 +67,7 @@ ruling); the parity oracle is the acceptance target and the owner can adjust the
 | RCC, vehicles, drones | 232, 234-238, 241 | Box "RIGGER COMMAND CONSOLE" (232); vehicle selection prose 234-237 with art tables; box "VEHICLES" (238, preceded by two header-art tables); box "DRONES" (241). |
 | NPC vehicles | 247-249 | NPC stat blocks (5-column attribute tables); the oracle cites two vehicles on p.249. |
 | Character creation example (Lightning) | 85 | Box "CHARACTER CREATION EXAMPLE" (PDF 87), one body cell. |
+| Optional rules | 68, 80, 139 | The Table rules' seeds, names and pages only (descriptions to the texts): the vehicle and drone damage note on p.68 is body prose with its "**Note:**" label on a line of its own; the box "PLANNING POOL" (p.80, first line "OR PERSONAL EDGE?"); the box "OPTIONAL RULES:" (p.139, first line "EXTENDED SOCIAL TESTS"). A rule not found keeps its known page and gets no text. |
 | Pregens | 87-111 | Chapter opener 87; 12 runners, two pages each: story page (even, 88-110: letter-cased name line, bold role line, prose) and stat page (odd, 89-111): letter-spaced attribute labels with values detached, "SKILLS RATING +ATT. = DP RR" block where some skill rows come out as 4-column pipe tables, then SHADOW AMPS / WEAPONS / EQUIPMENT / WOUNDS / KEYWORDS / DISPOSITIONS / CUES blocks, letter-spaced. Order: Hercules, Wild Jane, Trash, Gambit, Charon, Luna, Casper, Echo, Drakk, White_Rabbit, Mictlan, Capitán. |
 
 ## Spells parity (9a)
