@@ -22,6 +22,7 @@ def state(root, extra=""):
         "characters/.trash/old.xml": "<runner>Gone</runner>",
         "custom/index.xml": "<overlays/>",
         "custom/edits/edits.xml": f"<edits>{extra}</edits>",
+        "custom/table-rules.xml": f"<tablerules>{extra}</tablerules>",  # the GM's table rules go with custom/
         "library/book-1/original.pdf": "%PDF-1.4 made up " * 100,
         "library/book-1/book.md": f"# Made-up book{extra}",
         "library/book-1/status.xml": '<status state="done"/>',

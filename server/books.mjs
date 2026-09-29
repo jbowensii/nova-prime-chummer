@@ -1,6 +1,6 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
-// edits (admin and editors; GET /api/edits: anyone signed in); `who` is the signed-in user.
+// edits and the table rules (admin and editors; GET /api/edits: anyone signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -24,6 +24,9 @@
 //                                     the entry is saved with by="<username>"
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
+//   PUT    /api/table-rules           admin and editors: { rules: [{ id, on, name?, text? }] } -> 204; replaces custom/table-rules.xml
+//                                     (tablerules.xsd: a book's optional rule by its id, a house rule with its name and text);
+//                                     anyone signed in reads the file at /custom/table-rules.xml
 //   POST   /api/backup[?keys=1]       makes the zip of characters/, custom/ and library/ (keys=1: with the API keys) -> { token };
 //                                     one at a time (409); the zip waits 10 min for its token
 //   GET    /api/backup/:token         the zip, once, as chummer-anarchy2-backup-<date>.zip
@@ -58,6 +61,7 @@ const BOOK_ID = /^[a-z0-9][a-z0-9-]{0,40}$/
 const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
 const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }
 const ENTRY_ID = /^[a-z0-9][a-z0-9.-]{0,99}$/ // importer/edits.py's ID, bounded
+const MAX_TABLE_RULES = 200 // tablerules.xsd
 const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its description, plus the <edit> wrapper
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
@@ -101,7 +105,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   let running = null, child = null, listChild = null
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
-  const chains = { key: Promise.resolve(), edit: Promise.resolve() }
+  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve() }
   let writes = 0, zipping = 0, restoring = false
   let packing = false // a data pack being made or imported: one at a time, and no job starts meanwhile
   const spawned = new Set() // backup processes, stopped with the server
@@ -356,6 +360,28 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id]), 'result'), 'removed') === 'true' })
     return send(res, 405, { error: 'method not allowed' })
+  }
+
+  /** The GM's table rules, all at once: the Rules page sends the whole list on every change. */
+  async function tableRules(req, res, send) {
+    if (req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
+    if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the table rules as application/json' })
+    let b
+    try { b = JSON.parse(await body(req, 1024 * 1024)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { rules: [{ id, on, name?, text? }] } as JSON') }
+    if (!Array.isArray(b?.rules) || b.rules.length > MAX_TABLE_RULES) throw fail(400, `send { rules: [{ id, on, name?, text? }] }, ${MAX_TABLE_RULES} rules at most`)
+    const seen = new Set()
+    const rows = b.rules.map(r => {
+      const id = String(r?.id ?? ''), name = clean(String(r?.name ?? '')).trim(), text = clean(String(r?.text ?? '')).trim()
+      if (!ENTRY_ID.test(id) || seen.has(id)) throw fail(400, 'each rule needs an id of its own')
+      seen.add(id)
+      if (typeof r.on !== 'boolean') throw fail(400, 'a rule is on (true) or off (false)')
+      if (!name && text) throw fail(400, 'a house rule needs a name')
+      if (name.length > 120 || text.length > 4000) throw fail(400, 'a house rule’s name is 120 characters at most, its description 4,000')
+      return `  <rule id="${id}" on="${r.on}">${name ? `<name>${esc(name)}</name><text>${esc(text)}</text>` : ''}</rule>\n`
+    })
+    await serial('table', () => writeAtomic(join(customDir, 'table-rules.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + `<ca2:tablerules xmlns:ca2="${CONFIG_NS}" version="1">\n${rows.join('')}</ca2:tablerules>\n`))
+    return send(res, 204, '', 'text/plain')
   }
 
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
@@ -687,6 +713,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
+    if (p === '/api/table-rules') return tableRules(req, res, send)
     if (p === '/api/ai-keys' && method === 'PUT') {
       await putKeys(req)
       return send(res, 204, '', 'text/plain')
