@@ -124,6 +124,15 @@ One `<pricing>` element. All values are in nuyen.
 | equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
 | refundEffectRemoval | `true` refunds rating lost when an amp effect is removed |
 
+A book can carry a partial pricing overlay: `imported/<source>/pricing.xml` with one `<prices id source page …/>`
+holding only the attributes it sets (the Conversion Guide's import writes `complexForm`, read from its page). The
+loader writes those attributes over the pricing loaded so far, in load order: the core `<pricing>`, then each
+imported book's `<prices>` in `imported/index.xml` order (the last loaded wins), then the house rules, where a full
+`<pricing>` replaces every price and a `<prices>` sets only its own. A `<prices>` with no `<pricing>` before it is
+reported and ignored; within a file the entries apply in order, and a `<prices>` attribute that isn't a price or a
+number is ignored. A house rule that changes one price should use `<prices>`: a full `<pricing>` without `complexForm`
+prices complex forms at its `spell` price, dropping the Conversion Guide's.
+
 ### amptypes
 
 `<amptype id base baseAfterFirst? essence requires?><name/></amptype>`
@@ -268,7 +277,26 @@ scoped, every entry `source="CRB"` and its page. Their descriptions (weapon
 examples, armor, lifestyle rules) go to `texts/crb.xml`. Values the book
 doesn't print are app defaults kept in the recipe (`DEFAULTS`,
 `EFFECTS`). A table the recipe can't read is left out and the import report
-says so (`kind="core-unread"`).
+says so (`kind="core-unread"`, with the book.md pages it should be on).
+
+Any of the twelve can then be read by AI (Books → **Read the tables with AI**,
+`python -m importer propose <library/book-id> --library <dir> --core`): only
+the chunks holding those pages are sent, and the model fills one JSON list per
+table in the shape of its schema (`importer/ai/schema.py` `CORE`; weapons and
+armor as `items`). Each proposed row is checked against its table's schema, its
+own id where the engine names it (attributes, amp effects), and the ids it names
+that no schema checks (a skill's or metatype range's attribute, a package's
+level, an effect's amp types and required or excluded effects, an amp type's
+required effect: against the tables in place and this review's rows), and
+waits in `review.xml`
+(`core="true"`, proposal kinds `level`, `metatype`, `attribute`, `skill`,
+`pricing`, `amptype`, `effect`, `package`, `vehicle`, `lifestyle`, `weapon`,
+`armor`). Accepting (`apply-review --core`) writes the accepted rows as the
+core files, rechecked the same way (a table being replaced counts only its
+accepted rows); a row that fails is left out and reported. The import
+report then lists each such table as `kind="core-ai"` (read by AI, with its
+row count: check it against the book) instead of `core-unread`, and the Books
+page says which tables came from AI.
 
 Load order: `public/data/` (in development also the owner's local copies of
 the core files, gitignored), then `imported/core/`, then the imported books,
@@ -278,6 +306,8 @@ the Conversion Guide's import adds the Tasking skill and the Emerged amp type,
 DHSA's its implant grades (`imported/cg/skills.xml`, `amptypes.xml`,
 `imported/dhsa/ampeffects.xml`; skill, amp type and effect ids stay unscoped). A book can
 add amp types and effects but never replace a core one (the importer drops it, report `kind="core-override"`).
+Prices are the exception: a book's `<prices>` (the Conversion Guide's complex-form price, `imported/cg/pricing.xml`)
+sets the prices it prints over the core's (see pricing above).
 Without attributes, metatypes, levels, packages, pricing or skills the app opens on its setup screen; another
 missing table shows a banner.
 A server started without `imported/core/` whose Library holds the core
@@ -305,7 +335,7 @@ it by hand, re-import instead.
 |---|---|
 | `imported/index.xml` | the overlay files below, in load order (same `<overlays><file href/>` format as `custom/index.xml`) |
 | `imported/sources.xml` | one `<source>` per imported book (see sources above) |
-| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml` |
+| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml`, `pricing.xml` (a partial `<prices>`) |
 | `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
 | `texts/<source>.xml` | its private descriptions |
 

@@ -5,7 +5,7 @@
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
 //   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import
-//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy, review, coreUnread }]
+//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy, review, coreUnread, coreAi }]
 //   GET    /api/books/:id/report      -> import.xml
 //   POST   /api/books/:id/reimport    clears the book's outputs, then imports again
 //   DELETE /api/books/:id[?files=1]   clears the book's outputs (files=1: also its Library folder)
@@ -69,9 +69,10 @@ const clean = s => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/g, '')
 export const attr = (tag, name) => { const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]; return v == null ? undefined : unesc(v) }
 export const rootTag = (xml, name) => xml?.match(new RegExp(`<${name}\\b[^>]*>`))?.[0]
 const readOr = (path, fallback = null) => readFile(path, 'utf8').catch(() => fallback)
-/** The core files a recipe couldn't read (import.xml rows kind="core-unread"); the AI can read the weapons and armor tables. */
-const coreUnread = imp => [...(imp ?? '').matchAll(/<row\b[^>]*\skind="core-unread"[^>]*>/g)].map(m => attr(m[0], 'file'))
-const CORE_AI = ['weapons.xml', 'armor.xml']
+/** The core files named by import.xml rows of `kind`: core-unread (a recipe couldn't read them; the AI can propose any
+ *  table's rows) or core-ai (read by AI from that book: to check against it). */
+const coreRows = (imp, kind) => [...(imp ?? '').matchAll(/<row\b[^>]*>/g)].filter(m => attr(m[0], 'kind') === kind).map(m => attr(m[0], 'file'))
+const coreUnread = imp => coreRows(imp, 'core-unread')
 // the core files (as src/engine/load.ts CORE_FILES, importer/__init__.py CORE_FILES)
 const CORE_FILES = ['ampeffects', 'amptypes', 'armor', 'attributes', 'levels', 'lifestyles', 'metatypes', 'packages', 'pricing', 'skills',
   'vehicles', 'weapons']
@@ -197,7 +198,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       source: attr(it, 'source'), name: attr(it, 'name'), canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
       recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id),
       review: rv ? (attr(rv, 'done') === attr(rv, 'parts') ? 'done' : 'partial') : undefined,
-      coreUnread: coreUnread(imp),
+      coreUnread: coreUnread(imp), coreAi: coreRows(imp, 'core-ai'),
     }
   }
 
@@ -742,7 +743,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (action === 'ai' && method === 'POST') {
       needsQuiet()
       // a recipe's book only for the core tables it couldn't read
-      const core = !!attr(imp, 'source') && coreUnread(await readOr(join(dir, 'import.xml'))).some(f => CORE_AI.includes(f))
+      const core = !!attr(imp, 'source') && coreUnread(await readOr(join(dir, 'import.xml'))).length > 0
       if (core ? !['done', 'failed', 'review'].includes(state) : attr(imp, 'source') || !['needs-ai', 'failed', 'review'].includes(state))
         throw fail(409, 'AI proposals are for books no recipe knows, or core tables a recipe couldn’t read')
       const args = ['propose', dir, '--library', libraryDir, ...(url.searchParams.get('fresh') === '1' ? ['--fresh'] : []), ...(core ? ['--core'] : [])]

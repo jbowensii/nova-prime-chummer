@@ -10,8 +10,10 @@ import { SettingsButton } from './settings'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
-  /** core files the book's recipe couldn't read (the AI can read the weapons and armor tables) */
-  coreUnread?: string[] }
+  /** core files the book's recipe couldn't read (the AI can propose their rows) */
+  coreUnread?: string[]
+  /** core files read by AI from this book (accepted on the review screen): to check against the book */
+  coreAi?: string[] }
 
 const STATE: Record<string, string> = { queued: 'Waiting', converting: 'Reading the PDF', identifying: 'Recognizing the book',
   extracting: 'Extracting entries', 'needs-ai': 'Needs AI', proposing: 'Asking the AI', review: 'Ready to review',
@@ -33,8 +35,9 @@ function counts(c: Record<string, number>) {
   return [...n].map(([k, v]) => `${v} ${v === 1 ? k : KINDS.find(x => x[1] === k)?.[2] ?? k}`).join(', ')
 }
 
-/** A recipe's book with weapons or armor tables it couldn't read: the AI can propose their rows. */
-const coreAi = (b: Book) => !!b.source && !!b.coreUnread?.some(f => f === 'weapons.xml' || f === 'armor.xml')
+/** A recipe's book with core tables it couldn't read: the AI can propose their rows. */
+const canCoreAi = (b: Book) => !!b.source && !!b.coreUnread?.length
+const tables = (files: string[]) => files.map(f => f.replace(/[.]xml$/, '')).join(', ')
 
 const UNREACHABLE = 'the server can’t be reached'
 
@@ -311,17 +314,18 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
             </div>
             {b.message && b.state !== 'done' && <div className={b.state === 'failed' ? 'err' : 'muted'}>{b.message}</div>}
             {b.state === 'done' && b.message && <div className="muted">{b.message}</div>}
-            {!!b.coreUnread?.length && <div className="err">Couldn’t read these core tables: {b.coreUnread.map(f => f.replace(/\.xml$/, '')).join(', ')}.
-              {coreAi(b) ? ' Read them with AI, or upload a data pack.' : ' Upload a data pack with them.'}</div>}
+            {!!b.coreUnread?.length && <div className="err">Couldn’t read these core tables: {tables(b.coreUnread)}.
+              {canCoreAi(b) ? ' Read them with AI, or upload a data pack.' : ' Upload a data pack with them.'}</div>}
+            {!!b.coreAi?.length && <div className="warn">Read by AI from this book: {tables(b.coreAi)}. Check them against the book.</div>}
           </div>
           <div className="row">
             {b.state === 'needs-ai' && (b.review === 'done'
               ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Extract with AI again</button>
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Extract with AI</button>)}
-            {coreAi(b) && ['done', 'failed', 'review'].includes(b.state) && (b.review === 'done'
+            {canCoreAi(b) && ['done', 'failed', 'review'].includes(b.state) && (b.review === 'done'
               ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Read the tables with AI again</button>
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Read the tables with AI</button>)}
-            {b.review && (!b.source || coreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
+            {b.review && (!b.source || canCoreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
             {b.state === 'done' && <button className="btn small quiet" onClick={() => void openReport(b)}>Report</button>}
             {['done', 'failed', 'removed', 'needs-ai'].includes(b.state) && b.recipe !== 'ai' &&
               <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`books/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}

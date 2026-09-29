@@ -26,6 +26,7 @@ It grants a few made-up abilities.
 COMPLEX FORMS extra glued prose from the next column, ignored.
 Complex form rules text goes here.
 It keeps going for a line.
+Complex forms cost 1,234¥ to learn.
 | COMPLEX |  | FORMS |  |
 |---|---|---|---|
 | **COMPLEX**<br>**FORM** | **TYPE** | **THRESHOLD** | **NOTES** |
@@ -162,6 +163,17 @@ class ExtractTest(unittest.TestCase):
     def test_source(self):
         self.assertEqual(self.res.source, {"id": "CG", "name": cg.NAME, "publisher": "Catalyst Game Labs", "canon": True})
 
+    def test_complex_form_price_is_a_partial_pricing_overlay(self):
+        (el,) = ET.fromstring(self.res.files["pricing.xml"])
+        self.assertEqual(el.tag, "prices")  # only the price the book prints, written over the core pricing by the loader
+        self.assertEqual(dict(el.attrib), {"id": "complex-forms", "complexForm": "1234", "source": "CG", "page": "2"})
+        self.assertEqual(self.res.report, [])
+
+    def test_no_printed_price_no_overlay(self):
+        res = cg.extract(MD.replace("Complex forms cost 1,234¥ to learn.\n", ""))
+        self.assertNotIn("pricing.xml", res.files)
+        self.assertEqual([r["kind"] for r in res.report], ["price-unread"])
+
 
 class MatchTest(unittest.TestCase):
     def test_known_file(self):
@@ -178,6 +190,7 @@ class MatchTest(unittest.TestCase):
 ROOT = Path(__file__).resolve().parents[2]
 BOOK = ROOT / ".extract/private/library/cg/book.md"
 ORACLE = ROOT / ".extract/private/oracle/complexforms.xml"
+KEY = ROOT / "public/data/pricing.xml"  # the owner's local answer key (gitignored)
 
 
 @unittest.skipUnless(BOOK.exists(), "owner's converted CG book not present")
@@ -192,6 +205,12 @@ class RealBookTest(unittest.TestCase):
     def test_book_matches_without_its_hash(self):
         head = BOOK.read_text(encoding="utf8")[:4000]
         self.assertEqual(cg.match({"sha256": ""}, head), 0.9)
+
+    def test_complex_form_price_read_from_the_book(self):
+        (el,) = ET.fromstring(self.res.files["pricing.xml"])
+        self.assertEqual((el.tag, el.get("page")), ("prices", "9"))
+        if KEY.exists():  # the owner's pricing prices complex forms as the CG prints
+            self.assertEqual(el.get("complexForm"), next(ET.parse(KEY).getroot().iter("pricing")).get("complexForm"))
 
     def test_every_form_extracted_once(self):
         self.assertEqual(len(self.names), len(set(self.names)))

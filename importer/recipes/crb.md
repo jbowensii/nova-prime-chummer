@@ -150,8 +150,8 @@ Named exceptions (values the recipe keeps in code, with the owner's rules for th
 - `mental-armor`: priced from the Astral Armor power (its rating less the adept base, p.190) with Armor +1's max and types;
   cyberdecks may take it too (biofeedback, p.211) — that last part is the app's.
 - `init-realm`: read from the initiative rows' notes (the realms listed, the rating reduction per level).
-- Pricing `complexForm`: the CRB has no technomancers; the recipe writes the spell price (the CG p.9 prints the same). The
-  spec wants it "from the CG when imported": not done, since a book can't partly override pricing yet.
+- Pricing `complexForm`: the CRB has no technomancers; the recipe writes the spell price as a stand-in. The CG's import
+  reads its own price ("Complex forms cost N¥", p.9) into a partial `<prices>` overlay that the loader writes over it.
 - ids, effect categories and params, "once" maxima for on/off effects, weapon groups, and dropping the "Unarmed" weapon row.
 - `cg.py` TASKING_SPECS and TASKING_ATTR: the Conversion Guide's Tasking specializations, kept as vocabulary.
 

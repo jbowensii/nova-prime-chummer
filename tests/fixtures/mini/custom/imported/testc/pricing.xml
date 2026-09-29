@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up partial pricing a book adds (as the Conversion Guide prices complex forms): only complexForm changes. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="pricing" version="1">
+  <prices id="testc.complex-forms" complexForm="7250" source="TESTC" page="12"/>
+</ca2:data>
