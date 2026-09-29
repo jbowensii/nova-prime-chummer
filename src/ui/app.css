@@ -385,6 +385,10 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 table.proposals tr.dropped b { text-decoration: line-through; color: var(--text-3); }
 .review .canon { border: 0; padding: 0; margin: 0.8rem 0; }
 .review .canon label.check { margin: 0.3rem 0; color: var(--text); font-size: 0.95rem; }
+fieldset.nested { border: 0; padding: 0; margin: 0.8rem 0 0; }
+fieldset.nested legend { font-weight: 600; margin-bottom: 0.3rem; }
+fieldset.nested input[type=number] { width: 5rem; }
+fieldset.nested .row { gap: 0.4rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
 @media (max-width: 600px) {
   .lib { padding-inline: 1rem; }
   .book { grid-template-columns: minmax(0, 1fr); }

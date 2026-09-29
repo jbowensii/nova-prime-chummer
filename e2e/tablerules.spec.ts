@@ -113,3 +113,64 @@ test('a player sees the rules switched on, read only; the Rules page isn’t the
   const r = await page.request.put(`${base}api/table-rules`, { data: { rules: [] }, headers: { Origin: base.replace(/\/$/, '') } })
   expect(r.status()).toBe(403)
 })
+
+test('two quick switches both count: the second save waits for the first and builds on it', async ({ page }) => {
+  await signIn(page, 'ada')
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  const gm = page.getByRole('region', { name: 'Table rules' })
+  const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
+  await expect(haggles).toBeChecked()
+  await expect(streets).toBeChecked()
+  let first = true
+  await page.route('**/api/table-rules', async r => { // the first save is slow to reach the server
+    if (first) { first = false; await new Promise(ok => setTimeout(ok, 800)) }
+    await r.continue()
+  })
+  await haggles.click()
+  await streets.click()
+  await expect(gm.getByRole('status')).toHaveText('Quieter streets is off.')
+  await page.unroute('**/api/table-rules')
+  await page.reload()
+  await expect(haggles).not.toBeChecked()
+  await expect(streets).not.toBeChecked()
+  const saved = readFileSync(join(dir, 'custom', 'table-rules.xml'), 'utf8')
+  expect(saved).toContain('<rule id="test.optional-long-haggles" on="false"></rule>')
+  expect(saved).toMatch(/on="false"><name>Quieter streets<\/name>/)
+})
+
+test('the same switch twice during a slow save ends as the last click; a failed save’s error stays until dismissed', async ({ page }) => {
+  await signIn(page, 'ada')
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  const gm = page.getByRole('region', { name: 'Table rules' })
+  const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
+  await expect(haggles).not.toBeChecked()
+  let n = 0
+  await page.route('**/api/table-rules', async r => {
+    if (n++ === 0) await new Promise(ok => setTimeout(ok, 800))
+    await r.continue()
+  })
+  await haggles.click() // on (slow)
+  await haggles.click() // off again, after the first
+  await haggles.click() // on: the last click
+  await expect(gm.getByRole('status')).toHaveText('Long haggles is on.')
+  expect(n).toBe(3)
+  await page.unroute('**/api/table-rules')
+  await page.reload()
+  await expect(haggles).toBeChecked()
+
+  let first = true // the first save fails, the next one succeeds: the error stays
+  await page.route('**/api/table-rules', async r => {
+    if (first) { first = false; return r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"server error"}' }) }
+    await r.continue()
+  })
+  await haggles.click()
+  await streets.click()
+  await expect(streets).toBeChecked()
+  await expect(gm.getByRole('alert')).toContainText('Couldn’t save the table rules.')
+  await gm.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(gm.getByRole('alert')).toHaveCount(0)
+  await page.unroute('**/api/table-rules')
+  await page.reload()
+  await expect(haggles).toBeChecked() // the failed save changed nothing
+  await expect(streets).toBeChecked()
+})

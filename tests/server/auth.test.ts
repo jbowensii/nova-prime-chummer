@@ -4,6 +4,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
+import { Readable } from 'node:stream'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
@@ -11,7 +12,7 @@ import { validateXML } from 'xmllint-wasm'
 // @ts-expect-error plain JS module
 import { createServer } from '../../server/server.mjs'
 // @ts-expect-error plain JS module
-import { issueReset, netKey, usersFile } from '../../server/auth.mjs'
+import { authApi, issueReset, netKey, usersFile } from '../../server/auth.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
 const PW = { admin: 'admin-password-1', editor: 'editor-password-1', player: 'player-password-1' }
@@ -441,7 +442,8 @@ test('known devices: a browser that signed in skips its account’s wait until i
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player }, { trustProxy: '127.0.0.1' })
   let ip = 0
   const from = (extra: Record<string, string> = {}) => ({ 'X-Forwarded-For': `198.51.100.${++ip}`, ...extra })
-  const lockOut = async (name = 'player') => { for (let i = 0; i < 11; i++) await login(s.base, name, 'wrong-password', from()) }
+  // 13 failures: the wait reaches 4 s, so a slow CI box can't outlast it between steps
+  const lockOut = async (name = 'player') => { for (let i = 0; i < 13; i++) await login(s.base, name, 'wrong-password', from()) }
   const first = await login(s.base, 'player', PW.player, from())
   expect(first.deviceSet).toMatch(/^ca2_device=[\w-]{22}\.[\w-]{43}; Path=\/; HttpOnly; SameSite=Lax; Max-Age=31536000$/)
   const device = first.device, other = (await login(s.base, 'admin', PW.admin, from())).device
@@ -452,6 +454,7 @@ test('known devices: a browser that signed in skips its account’s wait until i
   expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(429)
   expect((await login(s.base, 'player', PW.player, from({ Cookie: other }))).r.status).toBe(429) // another account's device
   expect((await login(s.base, 'player', PW.player, from({ Cookie: device.replace(/.$/, c => c === 'A' ? 'B' : 'A') }))).r.status).toBe(429) // forged
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: device.replace(/(\.[\w-]{10})(.)/, (_, a, c) => a + (c === 'A' ? 'B' : 'A')) }))).r.status).toBe(429) // forged MAC
   expect((await login(s.base, 'player', PW.player, from({ Cookie: device }))).r.status).toBe(200) // and that clears the wait
   expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(200)
 
@@ -584,6 +587,29 @@ test('rename: when users.xml can’t be saved the runner folder moves back and t
   expect((await call(s.base, 'PUT', `/api/users/${id}`, { cookie: admin, ...json({ username: 'kim' }) })).status).toBe(200)
   expect(readdirSync(s.chars)).toEqual(['kim'])
   s.srv.close()
+})
+
+test('rename: when the folder can’t move back either, the users.xml error is the one reported and the failed move is logged', async () => {
+  const lib = join(mkdtempSync(join(tmpdir(), 'ca2-auth-')), 'library'), users = join(lib, '.config', 'users.xml')
+  mkdirSync(join(lib, '.config'), { recursive: true })
+  writeFileSync(users, await usersFile([{ username: 'admin', role: 'admin', password: PW.admin }, { username: 'player', role: 'player', password: PW.player }]))
+  const moves: string[] = [], errors: string[] = []
+  const runners = { count: async () => 0, free: async () => {}, retire: async () => {},
+    async rename(from: string, to: string) { moves.push(`${from}>${to}`); if (moves.length > 1) throw new Error('the disk said no') } }
+  const auth = authApi({ libraryDir: lib, lock: (fn: () => unknown) => fn(), track: (fn: () => unknown) => fn(), runners,
+    log: { log: () => {}, error: (m: string) => errors.push(m), warn: () => {} } })
+  const target = readFileSync(users, 'utf8').match(/<user id="([0-9a-f]+)" username="player"/)![1]
+  rmSync(users)
+  mkdirSync(users) // saving users.xml fails
+  const req = Object.assign(Readable.from([Buffer.from(JSON.stringify({ username: 'kim' }))]), { method: 'PUT', headers: { 'content-type': 'application/json' } })
+  const who = { id: 'x', username: 'admin', role: 'admin' }
+  const err = await auth.handle(req, {}, new URL(`http://x/api/users/${target}`), () => {}, who).catch((e: Error) => e)
+  expect(moves).toEqual(['player>kim', 'kim>player'])
+  expect(err).toBeInstanceOf(Error)
+  expect(err.message).not.toContain('the disk said no') // the save's error, not the move back's
+  expect(errors).toEqual([expect.stringContaining('move characters/kim to characters/player (the disk said no)')])
+  expect(auth.usernames()).toContain('player')
+  auth.stop()
 })
 
 test('sessions: at most 20 per account (the oldest goes); files with secrets are private (0600)', async () => {

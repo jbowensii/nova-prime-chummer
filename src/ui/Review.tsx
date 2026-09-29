@@ -2,7 +2,7 @@
 // book (source id, title, canon) and add the accepted ones. Every decision is saved back to review.xml at once.
 import { useEffect, useState } from 'react'
 import { blankCharacter } from '../engine'
-import type { AmpEntry, Catalog } from '../model/types'
+import { ATTRS, type AmpEntry, type AttrId, type Catalog } from '../model/types'
 import { Modal } from './bits'
 import { api, BooksHeader, PROVIDER_NAMES, type Book } from './Books'
 import { Editor, type EditorCtx } from './editor'
@@ -14,11 +14,55 @@ const KIND: Record<string, string> = { amp: 'Amp', gear: 'Gear', weapon: 'Weapon
   level: 'Level', metatype: 'Metatype', attribute: 'Attribute', skill: 'Skill', pricing: 'Prices', amptype: 'Amp type', effect: 'Amp effect',
   package: 'Package', vehicle: 'Vehicle', lifestyle: 'Lifestyle' }
 const ITEM_FIELDS: [string, string][] = [['category', 'Category'], ['dv', 'Damage (DV)'], ['ranges', 'Ranges'], ['armor', 'Armor']]
-/** What the edit form offers: an item's fields, or a core row's own attributes (a core review's levels, prices…). Nested rows
- *  (a metatype's ranges, a skill's specializations) aren't edited here: drop the row, or fix it in a house rule after. */
+/** What the edit form offers: an item's fields, or a core row's own attributes (a core review's levels, prices…); a
+ *  metatype's ranges and a skill's specializations are its nested rows (nestedOf). */
 const fieldsOf = (e: Element): [string, string][] => e.tagName === 'item' ? ITEM_FIELDS
   : [...e.attributes].map(a => a.name).filter(n => !['source', 'page'].includes(n)).map(n => [n, n])
 const hasName = (e: Element) => [...e.children].some(c => c.tagName === 'name')
+
+/** A core row's nested rows as the edit form holds them: a metatype's range per attribute, a skill's specializations. */
+export interface Nested { ranges?: { attr: string; min: string; max: string }[]; specs?: { id: string; attr: string; name: string }[] }
+const kids = (e: Element, tag: string) => [...e.children].filter(x => x.tagName === tag)
+export const nestedOf = (e: Element): Nested => ({
+  ...e.tagName === 'metatype' ? { ranges: kids(e, 'range').map(r => ({ attr: r.getAttribute('attr') ?? '', min: r.getAttribute('min') ?? '', max: r.getAttribute('max') ?? '' })) } : {},
+  ...e.tagName === 'skill' ? { specs: kids(e, 'spec').map(s => ({ id: s.getAttribute('id') ?? '', attr: s.getAttribute('attr') ?? '', name: s.textContent ?? '' })) } : {},
+})
+const kebab = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^[-.]+|[-.]+$/g, '')
+/** A specialization's id: its own, else <skill id>.<name in kebab-case>, as the importer names them. */
+export const specId = (skill: string, s: { id: string; name: string }) => s.id.trim() || `${skill}.${kebab(s.name)}`
+/** Why the nested rows can't be saved as they are, or null. The importer checks them again on apply (schema and ids). */
+export function nestedProblem(n: Nested, skill = ''): string | null {
+  for (const r of n.ranges ?? []) {
+    if (!/^\d+$/.test(r.min.trim()) || !/^\d+$/.test(r.max.trim())) return `The ${r.attr} range needs whole numbers.`
+    if (Number(r.max) < 1 || Number(r.min) > Number(r.max)) return `The ${r.attr} range needs a maximum of at least 1, and no lower than its minimum.`
+  }
+  const ids = new Set<string>()
+  for (const s of n.specs ?? []) {
+    if (!s.name.trim()) return 'Each specialization needs a name.'
+    const id = specId(skill, s)
+    if (!/[a-z0-9]$/.test(id)) return `The specialization “${s.name.trim()}” needs a letter or digit in its name.`
+    if (ids.has(id)) return `Two specializations have the id ${id}.`
+    ids.add(id)
+  }
+  return null
+}
+/** Write the form's nested rows back into the entry. Ranges and specs come last in both (metatypes.xsd, skills.xsd). */
+export function setNested(e: Element, n: Nested) {
+  const add = (tag: string, attrs: Record<string, string>, text?: string) => {
+    const x = e.ownerDocument.createElement(tag)
+    for (const [k, v] of Object.entries(attrs)) x.setAttribute(k, v)
+    if (text !== undefined) x.textContent = text
+    e.appendChild(x)
+  }
+  if (n.ranges) {
+    for (const r of kids(e, 'range')) r.remove()
+    for (const r of n.ranges) add('range', { attr: r.attr, min: r.min.trim(), max: r.max.trim() })
+  }
+  if (n.specs) {
+    for (const s of kids(e, 'spec')) s.remove()
+    for (const s of n.specs) add('spec', { id: specId(e.getAttribute('id') ?? '', s), attr: s.attr }, s.name.trim())
+  }
+}
 
 const entryOf = (p: Element) => [...p.children].find(e => e.tagName !== 'note')!
 const text = (el: Element, tag: string) => [...el.children].find(e => e.tagName === tag)?.textContent ?? ''
@@ -56,9 +100,12 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
   const [title, setTitle] = useState('')
   const [canon, setCanon] = useState(false)
   const [editAmp, setEditAmp] = useState<{ p: Element; amp: AmpEntry } | null>(null)
-  const [editItem, setEditItem] = useState<{ p: Element; values: Record<string, string> } | null>(null)
+  const [editItem, setEditItem] = useState<{ p: Element; values: Record<string, string>; nested: Nested } | null>(null)
   const editFields = editItem ? fieldsOf(entryOf(editItem.p)) : []
   const editNamed = !!editItem && hasName(entryOf(editItem.p))
+  const problem = editItem && nestedProblem(editItem.nested, entryOf(editItem.p).getAttribute('id') ?? '')
+  const setNest = (n: Nested) => editItem && setEditItem({ ...editItem, nested: { ...editItem.nested, ...n } })
+  const attrName = (a: string) => c.attributes.get(a as AttrId)?.name ?? a
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -129,7 +176,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
                 <button className="btn small quiet" aria-label={`Accept ${label}`} disabled={state === 'accepted'} onClick={() => void decide(p, 'accepted')}>Accept</button>
                 <button className="btn small quiet" aria-label={`Edit ${label}`} onClick={() => e.tagName === 'amp'
                   ? setEditAmp({ p, amp: toAmp(e) })
-                  : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...fieldsOf(e).map(([k]) => [k, e.getAttribute(k) ?? ''])]) })}>Edit</button>
+                  : setEditItem({ p, values: Object.fromEntries([['name', text(e, 'name')], ...fieldsOf(e).map(([k]) => [k, e.getAttribute(k) ?? ''])]), nested: nestedOf(e) })}>Edit</button>
                 <button className="btn small quiet" aria-label={`Drop ${label}`} disabled={state === 'dropped'} onClick={() => void decide(p, 'dropped')}>Drop</button></div>
               </td>
             </tr>
@@ -172,13 +219,14 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
 
       <Modal open={!!editItem} onClose={() => setEditItem(null)} title={`Edit ${editItem ? text(entryOf(editItem.p), 'name') || KIND[editItem.p.getAttribute('kind')!] : ''}`}
         actions={<><button className="btn" onClick={() => setEditItem(null)}>Cancel</button>
-          <button className="btn primary" disabled={editNamed && !editItem?.values.name.trim()} onClick={() => {
-            const { p, values } = editItem!
+          <button className="btn primary" disabled={(editNamed && !editItem?.values.name.trim()) || !!problem} onClick={() => {
+            const { p, values, nested } = editItem!
             setEditItem(null)
             void save(() => {
               const e = entryOf(p)
               if (hasName(e)) setText(e, 'name', values.name.trim(), e.firstElementChild)
               for (const [k] of fieldsOf(e)) if (values[k].trim()) e.setAttribute(k, values[k].trim()); else e.removeAttribute(k)
+              setNested(e, nested)
               p.setAttribute('state', 'edited')
             })
           }}>Save changes</button></>}>
@@ -188,6 +236,28 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
               onChange={e => setEditItem({ ...editItem, values: { ...editItem.values, [k]: e.target.value } })} /></label>
           ))}
         </div>}
+        {editItem?.nested.ranges && <fieldset className="nested"><legend>Attribute ranges</legend>
+          <table className="data"><thead><tr><th>Attribute</th><th className="num">Min</th><th className="num">Max</th></tr></thead><tbody>
+            {editItem.nested.ranges.map((r, i) => <tr key={i}><td>{attrName(r.attr)}</td>
+              {(['min', 'max'] as const).map(k => <td key={k} className="num"><input type="number" min={k === 'min' ? 0 : 1} value={r[k]} aria-label={`${attrName(r.attr)} ${k}`}
+                onChange={e => setNest({ ranges: editItem.nested.ranges!.map((x, j) => j === i ? { ...x, [k]: e.target.value } : x) })} /></td>)}
+            </tr>)}
+          </tbody></table></fieldset>}
+        {editItem?.nested.specs && <fieldset className="nested"><legend>Specializations</legend>
+          {editItem.nested.specs.length === 0 && <p className="muted">None yet.</p>}
+          {editItem.nested.specs.map((s, i) => {
+            const set = (v: Partial<typeof s>) => setNest({ specs: editItem.nested.specs!.map((x, j) => j === i ? { ...x, ...v } : x) })
+            return <div className="row" key={i}>
+              <input value={s.name} onChange={e => set({ name: e.target.value })} aria-label={`Specialization ${i + 1} name`} />
+              <select value={s.attr} onChange={e => set({ attr: e.target.value })} aria-label={`Specialization ${i + 1} attribute`}>
+                {ATTRS.map(a => <option key={a} value={a}>{attrName(a)}</option>)}</select>
+              <button className="btn small quiet" aria-label={`Remove specialization ${i + 1}`}
+                onClick={() => setNest({ specs: editItem.nested.specs!.filter((_, j) => j !== i) })}>Remove</button>
+            </div>
+          })}
+          <button className="btn small" onClick={() => setNest({ specs: [...editItem.nested.specs!, { id: '', attr: entryOf(editItem.p).getAttribute('attr') ?? 'agi', name: '' }] })}>Add a specialization</button>
+        </fieldset>}
+        {problem && <p className="err" role="alert">{problem}</p>}
       </Modal>
     </main>
   )

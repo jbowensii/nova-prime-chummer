@@ -317,7 +317,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   function deviceOf(req, ctx, id) {
     const m = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${deviceName(ctx)}=([A-Za-z0-9_-]{22})\\.([A-Za-z0-9_-]{43})(?:;|$)`))
     if (!m) return null
-    return timingSafeEqual(Buffer.from(m[2], 'base64url'), deviceMac(`id:${id}`, m[1])) ? m[1] : null
+    // compare the text itself: base64url's last character has spare bits, so decoding would accept altered copies
+    return timingSafeEqual(Buffer.from(m[2]), Buffer.from(deviceMac(`id:${id}`, m[1]).toString('base64url'))) ? m[1] : null
   }
   const SESSIONS_PER_USER = 20
   function startSession(res, ctx, u) {
@@ -615,7 +616,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
         try { await saveUsers() } catch (e) {
           // users.xml still has the old name: the account and its runner folder go back to it
           Object.assign(u, before)
-          if (moved) await runners.rename(f.username, before.username)
+          // the move back failing too must not hide why the rename failed: that error is reported, this one logged
+          if (moved) await runners.rename(f.username, before.username).catch(e2 => log.error(`account ${before.username} keeps its name (users.xml `
+            + `couldn’t be saved), but its runner folder couldn’t move back: move characters/${f.username} to characters/${before.username} (${e2.message})`))
           throw e
         }
         if (end) await endSessions(u.id)

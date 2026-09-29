@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.4.1 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.4.2 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -270,7 +270,8 @@ If the core rulebook’s recipe can’t read a core table, the same AI can read 
 (any of the core tables, not just weapons and armor); those rows are marked
 for you to check against the book. Before anything is sent the page names the
 provider and how many parts the book goes in; the proposals then wait on a review screen where you accept,
-edit or drop each one.
+edit or drop each one (a core table's rows include a metatype's attribute
+ranges and a skill's specializations).
 
 Imports need the server (Docker or `npm run serve`) and Python 3 with
 `importer/requirements.txt`.

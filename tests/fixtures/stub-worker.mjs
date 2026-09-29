@@ -3,7 +3,9 @@
 // server's routes and the app: status.xml, import.xml, a one-entry overlay listed in
 // custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml, and the edits layer
 // (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
-// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s.
+// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s;
+// "core-unread" → the core rulebook (CRB) with its weapons, metatypes and skills tables unread (propose --core offers made-up
+// rows for the unread tables it knows, apply-review --core writes the accepted ones as those core files).
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
 // anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts); datapack
 // export/import likewise (importer/datapack.py, run for real in datapack-python.test.ts).
@@ -45,7 +47,12 @@ if (cmd === 'run') {
     process.stderr.write('Traceback: boom, key sk-ant-SECRETSTUBKEY123\n')
     process.exit(1)
   }
-  if (pdf.includes('needs-ai')) {
+  if (pdf.includes('core-unread')) {
+    const rows = ['weapons', 'metatypes', 'skills'].map(t => `<row kind="core-unread" file="${t}.xml" page="1" problem="made up"/>`).join('')
+    importXml(target, ' recipe="crb" source="CRB" name="Made-up Core" publisher="Stub" canon="true" imported="2026-09-28T00:00:00+00:00"')
+    writeFileSync(join(target, 'import.xml'), readFileSync(join(target, 'import.xml'), 'utf8').replace('<report/>', `<report>${rows}</report>`))
+    status(target, 'done')
+  } else if (pdf.includes('needs-ai')) {
     writeFileSync(join(target, 'book.md'), '# Stub\n')
     importXml(target)
     status(target, 'needs-ai', 'no recipe matched this book')
@@ -66,11 +73,18 @@ if (cmd === 'run') {
 } else if (cmd === 'propose') {
   if (rest.includes('--dry-run')) console.log('<result parts="4" provider="anthropic" />')
   else if (existsSync(join(target, 'review.xml')) && !rest.includes('--fresh')) status(target, 'review', 'Proposals from an earlier run are waiting for review; nothing was sent')
-  else if (rest.includes('--core')) { // rows for a weapons table the recipe couldn't read
+  else if (rest.includes('--core')) { // made-up rows for the unread tables it has one for
+    const unread = [...readFileSync(join(target, 'import.xml'), 'utf8').matchAll(/<row kind="core-unread" file="(\w+)\.xml"/g)].map(m => m[1])
+    const ranges = [['str', 1, 3], ['agi', 2, 7], ['wil', 1, 6], ['log', 1, 6], ['cha', 1, 5]].map(([a, min, max]) => `<range attr="${a}" min="${min}" max="${max}"/>`).join('')
+    const rows = {
+      weapons: '<proposal id="weapon.pea-shooter" kind="weapon" state="pending" page="142"><item id="pea-shooter" kind="weapon" dv="2" ranges="OK/OK/-/-" source="CRB" page="142"><name>Pea Shooter</name><text></text></item></proposal>',
+      metatypes: `<proposal id="metatype.glimmerkin" kind="metatype" state="pending" page="9"><metatype id="glimmerkin" edge="3" source="CRB" page="9"><name>Glimmerkin</name><racialQuality>Shimmer</racialQuality>${ranges}</metatype></proposal>`,
+      skills: '<proposal id="skill.tinkering" kind="skill" state="pending" page="20"><skill id="tinkering" attr="log" source="CRB" page="20"><name>Tinkering</name><spec id="tinkering.gadgets" attr="log">Gadgets</spec><spec id="tinkering.clocks" attr="log">Clocks</spec></skill></proposal>',
+    }
+    const got = unread.filter(t => rows[t])
     writeFileSync(join(target, 'review.xml'), `<review book="${basename(target)}" source="CRB" core="true" provider="anthropic" created="${now}" bookSha256="00" parts="1" done="1">
-  <proposal id="weapon.pea-shooter" kind="weapon" state="pending" page="142"><item id="pea-shooter" kind="weapon" dv="2" ranges="OK/OK/-/-" source="CRB" page="142"><name>Pea Shooter</name><text></text></item></proposal>
-</review>\n`)
-    status(target, 'review', '1 proposal to review')
+${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
+    status(target, 'review', `${got.length} proposals to review`)
   } else {
     writeFileSync(join(target, 'review.xml'), `<review book="${basename(target)}" source="X" provider="anthropic" created="${now}" bookSha256="00" parts="4" done="4">
   <proposal id="amp.a" kind="amp" state="pending" page="3"><amp id="a" type="quality" printedRating="0" source="X" page="3"><name>Lucky Charm</name><narrative></narrative></amp></proposal>
@@ -79,13 +93,19 @@ if (cmd === 'run') {
     status(target, 'review', '2 proposals to review')
   }
 } else if (cmd === 'apply-review' && rest.includes('--core')) {
-  const review = readFileSync(join(target, 'review.xml'), 'utf8')
-  const items = [...review.matchAll(/<proposal\b[^>]*state="(?:accepted|edited)"[^>]*>\s*(<item\b[\s\S]*?<\/item>)/g)].map(m => m[1])
+  // no checks here: the real ones are importer/__main__.py apply_core_review's
+  const review = readFileSync(join(target, 'review.xml'), 'utf8'), files = {}
+  for (const [, kind, entry] of review.matchAll(/<proposal\b[^>]*kind="(\w+)"[^>]*state="(?:accepted|edited)"[^>]*>\s*(<(\w+)\b[\s\S]*?<\/\3>)/g))
+    (files[{ weapon: 'weapons', metatype: 'metatypes', skill: 'skills' }[kind]] ??= []).push(entry)
   mkdirSync(join(opt('--custom'), 'imported', 'core'), { recursive: true })
-  writeFileSync(join(opt('--custom'), 'imported', 'core', 'weapons.xml'), `<ca2:data ${NS} kind="weapons" version="1">${items.join('')}</ca2:data>\n`)
-  writeFileSync(join(target, 'import.xml'), readFileSync(join(target, 'import.xml'), 'utf8').replace(/<row kind="core-unread" file="weapons.xml"[^>]*\/>/,
-    `<row kind="core-ai" file="weapons.xml" entries="${items.length}" problem="read by AI: check it against the book"/>`))
-  status(target, 'done', `${items.length} rows added to the core data`)
+  let imp = readFileSync(join(target, 'import.xml'), 'utf8')
+  for (const [t, rows] of Object.entries(files)) {
+    writeFileSync(join(opt('--custom'), 'imported', 'core', `${t}.xml`), `<ca2:data ${NS} kind="${t}" version="1">${rows.join('')}</ca2:data>\n`)
+    imp = imp.replace(new RegExp(`<row kind="core-unread" file="${t}\\.xml"[^>]*/>`),
+      `<row kind="core-ai" file="${t}.xml" entries="${rows.length}" problem="read by AI: check it against the book"/>`)
+  }
+  writeFileSync(join(target, 'import.xml'), imp)
+  status(target, 'done', `${Object.values(files).flat().length} rows added to the core data`)
 } else if (cmd === 'apply-review') {
   const src = opt('--source'), review = readFileSync(join(target, 'review.xml'), 'utf8')
   const amps = [...review.matchAll(/<proposal\b[^>]*state="(?:accepted|edited)"[^>]*>\s*(<amp\b[\s\S]*?<\/amp>)/g)]

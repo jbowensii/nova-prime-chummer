@@ -309,8 +309,9 @@ armor as `items`). Each proposed row is checked against its table's schema, its
 own id where the engine names it (attributes, amp effects), and the ids it names
 that no schema checks (a skill's or metatype range's attribute, a package's
 level, an effect's amp types and required or excluded effects, an amp type's
-required effect: against the tables in place and this review's rows), and
-waits in `review.xml`
+required effect: against the tables in place and this review's rows), plus
+what nested rows can get wrong (a range's minimum above its maximum, a
+specialization id used twice in a skill), and waits in `review.xml`
 (`core="true"`, proposal kinds `level`, `metatype`, `attribute`, `skill`,
 `pricing`, `amptype`, `effect`, `package`, `vehicle`, `lifestyle`, `weapon`,
 `armor`). Accepting (`apply-review --core`) writes the accepted rows as the
@@ -318,7 +319,12 @@ core files, rechecked the same way (a table being replaced counts only its
 accepted rows); a row that fails is left out and reported. The import
 report then lists each such table as `kind="core-ai"` (read by AI, with its
 row count: check it against the book) instead of `core-unread`, and the Books
-page says which tables came from AI.
+page says which tables came from AI. The review screen edits a core row's own
+attributes, a metatype's range per attribute and a skill's specializations
+(add, rename, remove; a new one's id is `<skill id>.<name in kebab-case>`).
+A data pack that later replaces such a table drops its `core-ai` rows from
+every book's report, and a re-import writes the report afresh, so the note
+goes once the table no longer comes from AI.
 
 Load order: `public/data/` (in development also the owner's local copies of
 the core files, gitignored), then `imported/core/`, then the imported books,
