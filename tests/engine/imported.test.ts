@@ -205,3 +205,35 @@ test('an unreachable server fails the load; an unreachable imports index just me
     expect(c.sources.get('TEST')!.origin).toBe('imported')
   } finally { noIndex.restore() }
 })
+
+describe('a book’s pricing overlay', () => {
+  const pricing = (file: string, body: string): SourceFile =>
+    ({ file, xml: `<ca2:data ${NS} kind="pricing" version="1">${body}</ca2:data>`, overlay: true })
+  const prices = (file: string, src: string, cf: number) => pricing(file, `<prices id="${src.toLowerCase()}.p" complexForm="${cf}" source="${src}" page="1"/>`)
+  const core = buildCatalog(base).pricing
+
+  test('<prices> sets only its own prices over the core', () => {
+    const p = buildCatalog([...base, prices('custom/imported/cg/pricing.xml', 'CG', 4321)]).pricing
+    expect(p).toEqual({ ...core, complexForm: 4321 })
+  })
+  test('two books: the last loaded wins', () => {
+    const p = buildCatalog([...base, prices('custom/imported/a/pricing.xml', 'CG', 1111), prices('custom/imported/b/pricing.xml', 'CG', 2222)]).pricing
+    expect(p.complexForm).toBe(2222)
+  })
+  test('house rules still override: a full <pricing> replaces, a <prices> sets its own', () => {
+    const house = pricing('custom/house-pricing.xml', `<pricing id="core" source="CRB" page="1" attrPoint="1" attrLastPoint="2" skillLow="3"
+      skillLowMax="4" skillHigh="5" spec="6" knowledge="7" ampPoint="8" equipment="9" weaponStandard="10" weaponSpecialist="11" armorPoint="12"
+      spell="13" complexForm="14" refundEffectRemoval="true"/>`)
+    const book = prices('custom/imported/cg/pricing.xml', 'CG', 4321)
+    expect(buildCatalog([...base, book, house]).pricing).toMatchObject({ attrPoint: 1, complexForm: 14, refundEffectRemoval: true })
+    expect(buildCatalog([...base, book, prices('custom/house-cf.xml', 'CRB', 99)]).pricing).toEqual({ ...core, complexForm: 99 })
+  })
+  test('<prices> with no <pricing> before it is reported, not used', () => {
+    const c = buildCatalog([...base.filter(f => !f.file.endsWith('pricing.xml')), prices('custom/imported/cg/pricing.xml', 'CG', 4321)])
+    expect(c.pricing).toBeUndefined()
+    expect(c.errors.map(e => e.message)).toContain('<prices> changes nothing without a <pricing> loaded first')
+  })
+  test('the made-up catalog prices complex forms from its book', () => {
+    expect(cat.pricing).toEqual({ ...core, complexForm: 7250 })
+  })
+})

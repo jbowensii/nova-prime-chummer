@@ -9,6 +9,8 @@
     <xs:complexType>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="pricing" type="ca2:Pricing"/>
+        <!-- a book's partial pricing overlay: only the prices it sets, written over the pricing loaded before it -->
+        <xs:element name="prices" type="ca2:Prices"/>
         <xs:element name="remove" type="ca2:Remove"/>
       </xs:choice>
       <xs:attribute name="kind" use="required">
@@ -34,5 +36,23 @@
     <xs:attribute name="spell" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="complexForm" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="refundEffectRemoval" type="xs:boolean" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="Prices">
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="attrPoint" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="attrLastPoint" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="skillLow" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="skillLowMax" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="skillHigh" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="spec" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="knowledge" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="ampPoint" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="equipment" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="weaponStandard" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="weaponSpecialist" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="armorPoint" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="spell" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="complexForm" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="refundEffectRemoval" type="xs:boolean"/>
   </xs:complexType>
 </xs:schema>

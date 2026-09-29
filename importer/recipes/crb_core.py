@@ -34,7 +34,7 @@ WEAPON_GROUPS = {"Close combat": ("short-weapon", "long-weapon", "advanced-close
 SKIP_WEAPONS = {"unarmed"}
 # values the book doesn't state, and why
 DEFAULTS = {
-    "complexForm": "spell",          # CRB has no technomancers; the CG (p.9) prices complex forms like spells
+    "complexForm": "spell",          # CRB has no technomancers: a stand-in until the CG's import sets its own price (<prices>)
     "refundEffectRemoval": "false",  # CRB is silent on refunds when an Amp effect is removed: no refund
 }
 

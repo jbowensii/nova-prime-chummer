@@ -33,14 +33,14 @@ test('mental protection raises mental thresholds', () => {
   expect(d.thresholds.physicalNone[0]).toBe(1 + 1)
 })
 
-test('technomancer (a book adds Tasking and Emerged; made-up base 6): Emerged costs 36,000; persona FW = WIL, Attack = CHA', () => {
+test('technomancer (a book adds Tasking and Emerged; made-up base 6): Emerged costs 36,000, a complex form the book’s price; persona FW = WIL, Attack = CHA', () => {
   const ch = blankCharacter()
   ch.build.attributes = { str: 2, agi: 2, wil: 4, log: 4, cha: 3 }
   ch.build.amps = [amp('e', 'emerged', [])]
   ch.build.skills = [{ id: 'tasking', rating: 3, specs: ['tasking.compiling'] }, { id: 'cracking', rating: 2, specs: [] }]
   ch.build.items = [{ uid: 'cf', kind: 'complex-form', name: 'Editor' }]
   expect(ampRating(cat, ch.build.amps[0], first) * cat.pricing.ampPoint).toBe(36000)
-  expect(itemCost(cat.pricing, ch.build.items[0])).toBe(6500)
+  expect(itemCost(cat.pricing, ch.build.items[0])).toBe(7250) // the book’s <prices> over the core's 6,500
   const d = derive(cat, ch)
   expect(d).toMatchObject({ emerged: true, firewall: 4, attack: 3 })
   expect(d.thresholds.matrix).toEqual([4, 7, 10])

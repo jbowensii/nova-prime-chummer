@@ -43,6 +43,11 @@ export const toPricing = (el: Element): Pricing => ({ attrPoint: req(el, 'attrPo
   armorPoint: req(el, 'armorPoint'), spell: req(el, 'spell'), complexForm: num(el, 'complexForm') ?? req(el, 'spell'),
   refundEffectRemoval: bool(el, 'refundEffectRemoval') })
 
+/** A partial `<prices>` (a book's pricing overlay): only the prices it sets. */
+export const toPrices = (el: Element): Partial<Pricing> => Object.fromEntries([...el.attributes]
+  .filter(a => !['id', 'source', 'page'].includes(a.name))
+  .map(a => [a.name, a.name === 'refundEffectRemoval' ? a.value === 'true' : Number(a.value)]))
+
 export const toAmpType = (el: Element): AmpType => ({ ...ref(el), name: child(el, 'name'), base: req(el, 'base'),
   baseAfterFirst: num(el, 'baseAfterFirst'), essence: req(el, 'essence'), requires: str(el, 'requires') })
 

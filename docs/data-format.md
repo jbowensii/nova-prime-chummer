@@ -124,6 +124,13 @@ One `<pricing>` element. All values are in nuyen.
 | equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
 | refundEffectRemoval | `true` refunds rating lost when an amp effect is removed |
 
+A book can carry a partial pricing overlay: `imported/<source>/pricing.xml` with one `<prices id source page …/>`
+holding only the attributes it sets (the Conversion Guide's import writes `complexForm`, read from its page). The
+loader writes those attributes over the pricing loaded so far, in load order: the core `<pricing>`, then each
+imported book's `<prices>` in `imported/index.xml` order (the last loaded wins), then the house rules, where a full
+`<pricing>` replaces every price and a `<prices>` sets only its own. A `<prices>` with no `<pricing>` before it is
+reported and ignored.
+
 ### amptypes
 
 `<amptype id base baseAfterFirst? essence requires?><name/></amptype>`
@@ -278,6 +285,8 @@ the Conversion Guide's import adds the Tasking skill and the Emerged amp type,
 DHSA's its implant grades (`imported/cg/skills.xml`, `amptypes.xml`,
 `imported/dhsa/ampeffects.xml`; skill, amp type and effect ids stay unscoped). A book can
 add amp types and effects but never replace a core one (the importer drops it, report `kind="core-override"`).
+Prices are the exception: a book's `<prices>` (the Conversion Guide's complex-form price, `imported/cg/pricing.xml`)
+sets the prices it prints over the core's (see pricing above).
 Without attributes, metatypes, levels, packages, pricing or skills the app opens on its setup screen; another
 missing table shows a banner.
 A server started without `imported/core/` whose Library holds the core
@@ -302,7 +311,7 @@ it by hand, re-import instead.
 |---|---|
 | `imported/index.xml` | the overlay files below, in load order (same `<overlays><file href/>` format as `custom/index.xml`) |
 | `imported/sources.xml` | one `<source>` per imported book (see sources above) |
-| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml` |
+| `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml`, `pricing.xml` (a partial `<prices>`) |
 | `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
 | `texts/<source>.xml` | its private descriptions |
 
