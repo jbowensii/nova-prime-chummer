@@ -33,9 +33,12 @@
 //   POST   /api/datapack              makes the data pack of custom/imported/core/ -> { token };
 //                                     the zip waits 10 min for its token; 409 when there is no core data
 //   GET    /api/datapack/:token       the pack, once, as chummer-anarchy2-datapack-<date>.zip
-//   POST   /api/datapack/import       body: a data pack zip (50 MB at most) -> { files: [name…] }, the core files it
-//                                     replaced (importer/datapack.py checks it all first); 409 while a job or another pack runs,
-//                                     and jobs wait for it. Both are counted writes (track), so a restore and they exclude each other.
+//   POST   /api/datapack/import       body: a data pack zip (50 MB at most), checked in full (importer/datapack.py check)
+//                                     -> { token, pack: { app, created, files: [name…], replaces: [name…] } } (replaces: the core
+//                                     files the server has now); the zip waits 30 min for its token, one pending at a time
+//   POST   /api/datapack/import/:token loads that pack -> { files: [name…] }, the core files it replaced; 409 while a job or
+//                                     another pack runs, and jobs wait for it. All are counted writes (track), so a restore
+//                                     and they exclude each other.
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { createReadStream, createWriteStream, readdirSync, rmSync } from 'node:fs'
@@ -243,7 +246,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (e.code === 413) res.setHeader('Connection', 'close')
       return send(res, typeof e.code === 'number' ? e.code : 500, { error: e.code === 413 || e.code === 415 ? e.message : 'upload failed' })
     }
-    await writeAtomic(join(dir, 'upload.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<upload file="${esc(file)}" size="${size}" sha256="${sha.digest('hex')}" uploaded="${new Date().toISOString()}"/>\n`)
+    const hex = sha.digest('hex')
+    await writeAtomic(join(dir, 'upload.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<upload file="${esc(file)}" size="${size}" sha256="${hex}" uploaded="${new Date().toISOString()}"/>\n`)
+    await dropPackMarks(hex) // a book file uploaded again: chosen over a loaded data pack, as with Re-import
     await setStatus(id, 'queued')
     enqueue(id, [['run', dir, '--custom', customDir, '--file', file]])
     return send(res, 202, { id })
@@ -368,24 +373,43 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
    *  upload, a new version or the admin's Re-import tries again.
    *  A data pack's import marks that CRB file (pack=, files= the pack's files, no version: the book wasn't tried; the core came from the
    *  pack), so a restart doesn't re-import the book over the pack while those files are all there; once one is gone the
-   *  mark no longer counts and the usual rule applies. A different CRB file (a new upload) is re-imported regardless. */
+   *  mark no longer counts and the usual rule applies. A different CRB file is re-imported regardless.
+   *  The marks are keyed on the book file's sha256, not its folder: the same PDF uploaded again to a new folder is the same
+   *  book (its old folder's marks count), and that upload, like a Re-import, drops the file's pack marks (dropPackMarks). */
   async function rebuildCore() {
     const present = new Set(await readdir(join(customDir, 'imported', 'core')).catch(() => []))
     if (CORE_FILES.every(n => present.has(`${n}.xml`))) return
     const books = await coreBooks()
     const crb = books.find(b => b.order === 0)
     if (!crb) return
-    const marker = join(libraryDir, crb.id, 'core-rebuild.xml')
-    const tried = rootTag(await readOr(marker), 'rebuild')
-    const packFiles = (attr(tried, 'files') ?? '').split(' ').filter(Boolean)
-    const packed = !!attr(tried, 'pack') && packFiles.length > 0 && packFiles.every(f => present.has(f))
-    if (tried && attr(tried, 'sha256') === crb.sha && (attr(tried, 'version') === version || (packed && present.size > 0))) return
-    await writeAtomic(marker, `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
+    const counts = t => {
+      const packFiles = (attr(t, 'files') ?? '').split(' ').filter(Boolean)
+      const packed = !!attr(t, 'pack') && packFiles.length > 0 && packFiles.every(f => present.has(f))
+      return attr(t, 'version') === version || (packed && present.size > 0)
+    }
+    if ((await marks(crb.sha)).some(m => counts(m.tag))) return
+    await writeAtomic(join(libraryDir, crb.id, 'core-rebuild.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" version="${esc(version)}" tried="${new Date().toISOString()}"/>\n`)
     for (const b of books.sort((x, y) => x.order - y.order)) {
       const dir = join(libraryDir, b.id)
       await setStatus(b.id, 'queued', 'Re-importing to build the core data')
       enqueue(b.id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(b.file ? ['--file', b.file] : [])]])
     }
+  }
+  /** Every Library folder's core-rebuild.xml for the book file with this sha256: [{ id, tag }]. */
+  async function marks(sha) {
+    const out = []
+    if (!sha) return out
+    for (const d of await readdir(libraryDir, { withFileTypes: true }).catch(() => [])) {
+      if (!d.isDirectory() || !BOOK_ID.test(d.name)) continue
+      const tag = rootTag(await readOr(join(libraryDir, d.name, 'core-rebuild.xml')), 'rebuild')
+      if (tag && attr(tag, 'sha256') === sha) out.push({ id: d.name, tag })
+    }
+    return out
+  }
+  /** The admin chose this book file over a loaded data pack (uploaded it again, or Re-import): its pack marks go, in every
+   *  folder, so the start-up rule is the usual one again. */
+  async function dropPackMarks(sha) {
+    for (const m of await marks(sha)) if (attr(m.tag, 'pack')) await rm(join(libraryDir, m.id, 'core-rebuild.xml'), { force: true })
   }
   /** A pack import killed mid-swap leaves the files it had moved aside in core/.restore-old-*: put them back before
    *  anything reads the core (importer/datapack.py recover). */
@@ -423,9 +447,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const dirArgs = () => ['--characters', charDir, '--custom', customDir, '--library', libraryDir, '--version', version]
   const tempZip = kind => join(backups, `${kind}-${randomBytes(12).toString('hex')}.zip`)
 
-  /** Tokens for a made backup (downloads) and an uploaded one (uploads): random, single use, and each map holds one at
-   *  a time (a new one drops the old). The path is deleted on expiry, on replacement and on stop; on use, by the caller. */
-  const downloads = new Map(), uploads = new Map(), packs = new Map() // token -> { path, timer }
+  /** Tokens for a made backup or data pack (downloads, packs) and an uploaded one (uploads, packUploads): random, single
+   *  use, and each map holds one at a time (a new one drops the old). The path is deleted on expiry, on replacement and on stop; on use, by the caller. */
+  const downloads = new Map(), uploads = new Map(), packs = new Map(), packUploads = new Map() // token -> { path, timer }
   const take = (map, token) => {
     const t = map.get(token)
     if (!t) return null
@@ -490,15 +514,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     await mkdir(backups, { recursive: true })
     const file = tempZip('upload')
-    let size = 0
     try {
-      await pipeline(req, async function* (src) {
-        for await (const c of src) {
-          if ((size += c.length) > MAX_ZIP) throw fail(413, 'the file is larger than 20 GB')
-          yield c
-        }
-      }, createWriteStream(file, { flags: 'wx', mode: 0o600 }))
-      if ((await head(file))?.slice(0, 4) !== 'PK\x03\x04') throw fail(415, 'this file isn’t a backup (not a zip file)')
+      await receiveZip(req, file, MAX_ZIP, 'the file is larger than 20 GB', 'this file isn’t a backup (not a zip file)')
       const r = await importer(['restore', '--check', file], { timeout: 10 * 60000 })
       if (r.code === 3) throw fail(400, (await redact(r.err)).trim().split('\n').pop() || 'this file isn’t a backup from this app')
       const m = rootTag(r.out, 'backup')
@@ -541,33 +558,63 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 200, { token: await issue(packs, folder, downloadTtl) })
   }
 
-  /** Upload a data pack and import it: `datapack import` checks everything (names, sizes, manifest, hashes, schemas) before
-   *  it swaps the pack's core files in, all or none. Refused while a job runs; jobs queued meanwhile wait (pump). */
-  async function importPack(req, res, send) {
+  /** The request body to a new temp `file` (0600), `max` bytes at most (413 `big`), refused (415 `notZip`) unless it
+   *  starts like a zip. The caller removes the file on failure. */
+  async function receiveZip(req, file, max, big, notZip) {
+    let size = 0
+    await pipeline(req, async function* (src) {
+      for await (const c of src) {
+        if ((size += c.length) > max) throw fail(413, big)
+        yield c
+      }
+    }, createWriteStream(file, { flags: 'wx', mode: 0o600 }))
+    if ((await head(file))?.slice(0, 4) !== 'PK\x03\x04') throw fail(415, notZip)
+  }
+
+  /** Data pack upload, step 1, like a restore's preview: `datapack check` reads it all (names, sizes, manifest, hashes,
+   *  schemas); nothing changes yet. -> { token, pack } for loadPack; one pending pack at a time. */
+  async function previewPack(req, res, send) {
     if (Number(req.headers['content-length']) > MAX_PACK) {
       res.setHeader('Connection', 'close')
       return send(res, 413, { error: 'the file is larger than 50 MB' })
     }
+    await mkdir(backups, { recursive: true })
+    const file = tempZip('pack')
+    try {
+      await receiveZip(req, file, MAX_PACK, 'the file is larger than 50 MB', 'this file isn’t a data pack (not a zip file)')
+      const r = await importer(['datapack', 'check', file], { timeout: 5 * 60000 })
+      const why = (await redact(r.err)).trim().split('\n').pop()
+      if (r.code === 3) throw fail(400, why || 'this file isn’t a data pack from this app')
+      const m = rootTag(r.out, 'datapack')
+      if (r.code !== 0 || !m) throw Object.assign(fail(500, `couldn’t check the data pack (${why})`), { say: true })
+      const files = [...r.out.matchAll(/<file\b[^>]*>/g)].map(f => attr(f[0], 'name')).sort()
+      const have = new Set(await readdir(join(customDir, 'imported', 'core')).catch(() => []))
+      const token = await issue(packUploads, file, restoreTtl)
+      return send(res, 200, { token, pack: { app: attr(m, 'app'), created: attr(m, 'created'), files, replaces: files.filter(f => have.has(f)) } })
+    } catch (e) {
+      await rm(file, { force: true })
+      if (e.code === 413) res.setHeader('Connection', 'close')
+      if (typeof e.code === 'number' && e.code !== 500) throw e
+      return send(res, 500, { error: e.say ? e.message : 'upload failed' })
+    }
+  }
+
+  /** Data pack upload, step 2: `datapack import` checks it again and swaps its core files in, all or none. Refused while
+   *  a job runs; jobs queued meanwhile wait (pump). A token that gets this far is used up. */
+  async function loadPack(token, res, send) {
+    const gone = () => fail(404, 'this data pack upload has expired; choose the file again')
+    if (!packUploads.has(token)) throw gone()
     if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
     if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     if (zipping) throw fail(409, 'a backup is being made; try again when it’s done') // it would copy the swap's folders
+    const file = take(packUploads, token)
     packing = true
-    const file = tempZip('pack')
-    let size = 0
     try {
-      await mkdir(backups, { recursive: true })
-      await pipeline(req, async function* (src) {
-        for await (const c of src) {
-          if ((size += c.length) > MAX_PACK) throw fail(413, 'the file is larger than 50 MB')
-          yield c
-        }
-      }, createWriteStream(file, { flags: 'wx', mode: 0o600 }))
-      if ((await head(file))?.slice(0, 4) !== 'PK\x03\x04') throw fail(415, 'this file isn’t a data pack (not a zip file)')
       const r = await importer(['datapack', 'import', file, '--custom', customDir], { timeout: 5 * 60000 })
       const why = (await redact(r.err)).trim().split('\n').pop()
       if (r.code === 3) throw fail(400, why || 'this file isn’t a data pack from this app')
       const out = rootTag(r.out, 'result')
-      if (r.code !== 0 || !out) throw Object.assign(fail(500, 'couldn’t load the data pack: ' + why), { say: true })
+      if (r.code !== 0 || !out) return send(res, 500, { error: `couldn’t load the data pack (${why})` })
       // the core now comes from the pack: the start-up re-import leaves it alone (rebuildCore)
       const files = (attr(out, 'files') ?? '').split(' ').filter(Boolean)
       try { // the pack is in: a failed mark is logged, not reported as a failed upload
@@ -576,10 +623,6 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
           esc(crb.sha)}" pack="${new Date().toISOString()}" files="${esc(files.join(' '))}"/>\n`)
       } catch (e) { console.error(`the data pack is loaded, but the start-up re-import mark wasn’t written: ${e.message}`) }
       return send(res, 200, { files })
-    } catch (e) {
-      if (e.code === 413) res.setHeader('Connection', 'close')
-      if (typeof e.code === 'number' && e.code !== 500) throw e
-      return send(res, 500, { error: e.say ? e.message : 'upload failed' })
     } finally {
       packing = false
       await rm(file, { force: true })
@@ -623,7 +666,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (rt && method === 'POST') return restore(rt[1], send, res)
     if (p === '/api/restore' || rt) return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/datapack' && method === 'POST') return makePack(res, send)
-    if (p === '/api/datapack/import' && method === 'POST') return importPack(req, res, send)
+    if (p === '/api/datapack/import' && method === 'POST') return previewPack(req, res, send)
+    const lt = p.match(/^\/api\/datapack\/import\/([^/]+)$/)
+    if (lt && method === 'POST') return loadPack(lt[1], res, send)
+    if (lt) return send(res, 405, { error: 'method not allowed' })
     const pt = p.match(/^\/api\/datapack\/([^/]+)$/)
     if (pt && method === 'GET' && pt[1] !== 'import') return sendZip('datapack', pt[1], res)
     if (p === '/api/datapack' || pt) return send(res, 405, { error: 'method not allowed' })
@@ -686,8 +732,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       needsQuiet()
       if (attr(imp, 'recipe') === 'ai') throw fail(409, 'a book read by AI can’t be re-imported; remove it, or apply its review again')
       const file = attr(imp, 'file') ?? attr(rootTag(hasUpload, 'upload'), 'file')
-      // the admin chose the book over a loaded data pack: its pack mark goes, so the start-up rule is the usual one again
+      // the admin chose the book over a loaded data pack: its pack marks go (this folder's, and any for the same file)
       if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
+      await dropPackMarks(attr(imp, 'sha256'))
       await setStatus(id, 'queued')
       enqueue(id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(file ? ['--file', file] : [])]])
       return send(res, 202, { id })
@@ -723,7 +770,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const stop = () => {
     child?.kill(); listChild?.kill()
     for (const p of spawned) p.kill()
-    for (const map of [uploads, downloads, packs]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
+    for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
   }
   return { handle, stop, track, started, libraryDir: resolve(libraryDir) }
 }

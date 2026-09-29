@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Data packs with the real `python -m importer` (skipped when no Python with the importer's requirements is found):
-// download the made-up core files as a pack, lose them, upload the pack, get them back.
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+// download the made-up core files as a pack, lose them, upload the pack (preview, then load), get them back.
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
@@ -30,7 +30,11 @@ describe.skipIf(!python)('with the real importer', () => {
     const zip = Buffer.from(await (await fetch(`${base}/api/datapack/${token}`)).arrayBuffer())
     expect(zip.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
     rmSync(core, { recursive: true })
-    const r = await fetch(`${base}/api/datapack/import`, { method: 'POST', body: zip })
+    const p = await fetch(`${base}/api/datapack/import`, { method: 'POST', body: zip })
+    const { token: t, pack } = await p.json()
+    expect([p.status, pack.files, pack.replaces, pack.created]).toEqual([200, readdirSync(FIXTURE).sort(), [], expect.stringMatching(/^\d{4}-\d\d-\d\dT/)])
+    expect(existsSync(core)).toBe(false) // nothing loaded yet
+    const r = await fetch(`${base}/api/datapack/import/${t}`, { method: 'POST' })
     expect([r.status, (await r.json()).files]).toEqual([200, readdirSync(FIXTURE).sort()])
     expect(files(core)).toEqual(files(FIXTURE))
     await vi.waitFor(() => expect(readdirSync(join(dir, 'library', '.backups'))).toEqual([])) // the upload's temp zip is gone

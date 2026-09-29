@@ -282,12 +282,15 @@ Without attributes, metatypes, levels, packages, pricing or skills the app opens
 missing table shows a banner.
 A server started without `imported/core/` whose Library holds the core
 rulebook re-imports it (then the Conversion Guide and DHSA).
-It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`).
+It tries once per CRB file and app version (`library/<id>/core-rebuild.xml`). The
+markers are keyed on the file's sha256, not its folder: the same PDF uploaded
+again to a new folder is the same CRB file, and every folder's marker for it counts.
 After a [data pack](#data-pack) is loaded, the marker records `pack=` and the
 pack's files (`files=`); while all of those files are there, that CRB file isn't
 re-imported at start-up, whatever the version: the core came from the pack. Once
 one of them is gone the mark no longer counts and the usual rule applies; a
-**Re-import** of that CRB drops it. A
+**Re-import** of that CRB, or uploading the same PDF again, drops it (in every
+folder). A
 different CRB file (a new upload) is re-imported regardless, and any
 import of the core rulebook (upload, **Re-import**) writes the core files over
 the pack's as usual.
@@ -405,8 +408,10 @@ core/<name>.xml   (each of the twelve core files present)
   `<file name bytes sha256>` per core file in the zip.
 - Only the core files: never descriptions (`texts/`), PDFs or keys.
 
-`datapack import <zip> --custom <dir>` ("Upload data pack", 50 MB at most)
-first checks it all (`datapack check`): nothing but `datapack.xml` and
+"Upload data pack" (50 MB at most) is two steps, like a restore: the server runs
+`datapack check <zip>` and shows what the pack holds (its date, app version,
+tables, and which of them replace the server’s), then **Load data pack** runs
+`datapack import <zip> --custom <dir>`, which checks it all again (`datapack check`): nothing but `datapack.xml` and
 `core/<core file>.xml`, no link, device, encrypted or oversized entry, a
 manifest that lists exactly the zip's files with matching sizes and hashes
 (these catch damage, not tampering: anyone can recompute them), and every file

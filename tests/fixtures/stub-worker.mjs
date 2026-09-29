@@ -206,13 +206,13 @@ if (cmd === 'run') {
     if (kept) { mkdirSync(dirname(keysFile), { recursive: true }); writeFileSync(keysFile, kept) }
     console.log('<result state="restored" safety="stub.zip" />')
   }
-} else if (cmd === 'datapack') { // target: export | import; the stub's "zip" is JSON behind a zip header (the real one: datapack-python.test.ts)
+} else if (cmd === 'datapack') { // target: export | check | import; the stub's "zip" is JSON behind a zip header (the real one: datapack-python.test.ts)
   const MAGIC = 'PK\x03\x04\n', CORE = /^(ampeffects|amptypes|armor|attributes|levels|lifestyles|metatypes|packages|pricing|skills|vehicles|weapons)\.xml$/
-  const core = join(opt('--custom'), 'imported', 'core')
+  const core = join(opt('--custom') ?? '', 'imported', 'core')
   if (target === 'export') {
     const names = existsSync(core) ? readdirSync(core).filter(n => CORE.test(n)) : []
     if (!names.length) { process.stderr.write('there is no core data to put in a pack. Import the core rulebook first\n'); process.exit(3) }
-    writeFileSync(opt('--out'), MAGIC + JSON.stringify({ app: opt('--version'), files: Object.fromEntries(names.map(n => [n, readFileSync(join(core, n), 'utf8')])) }))
+    writeFileSync(opt('--out'), MAGIC + JSON.stringify({ app: opt('--version'), created: '2026-09-28T12:00:00+00:00', files: Object.fromEntries(names.map(n => [n, readFileSync(join(core, n), 'utf8')])) }))
   } else {
     let pack = null
     try { pack = JSON.parse(readFileSync(rest[0], 'utf8').slice(MAGIC.length)) } catch { /* below */ }
@@ -220,9 +220,14 @@ if (cmd === 'run') {
     const bad = Object.keys(pack.files).find(n => !CORE.test(n))
     if (bad) { process.stderr.write(`the pack has a file a data pack can’t hold: ${bad} (only datapack.xml and the core files in core/)\n`); process.exit(3) }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400) // a window for the "nothing else runs meanwhile" tests
-    mkdirSync(core, { recursive: true })
-    for (const [n, text] of Object.entries(pack.files)) writeFileSync(join(core, n), text)
-    console.log(`<result state="imported" files="${Object.keys(pack.files).sort().join(' ')}" />`)
+    if (target === 'check') {
+      console.log(`<datapack format="1" app="${pack.app ?? '0.0.0'}" created="${pack.created ?? '2026-09-28T12:00:00+00:00'}">\n${
+        Object.keys(pack.files).map(n => `  <file name="${n}" bytes="1" sha256="00"/>\n`).join('')}</datapack>`)
+    } else {
+      mkdirSync(core, { recursive: true })
+      for (const [n, text] of Object.entries(pack.files)) writeFileSync(join(core, n), text)
+      console.log(`<result state="imported" files="${Object.keys(pack.files).sort().join(' ')}" />`)
+    }
   }
 } else {
   process.stderr.write(`stub: unknown command ${cmd}\n`)

@@ -1,6 +1,7 @@
 // @vitest-environment node
 // Data pack API with the stub worker (tests/fixtures/stub-worker.mjs); datapack-python.test.ts runs the real importer.
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
@@ -27,9 +28,31 @@ const download = async () => {
   const r = await fetch(`${base}/api/datapack/${token}`)
   return { r, token, bytes: Buffer.from(await r.arrayBuffer()) }
 }
+/** Step 1: the upload, checked; nothing changes yet. -> { token, pack } */
 const upload = (body: Buffer | string, headers: Record<string, string> = {}) =>
   fetch(`${base}/api/datapack/import`, { method: 'POST', body, headers: { 'Content-Type': 'application/zip', ...headers } })
+/** Step 2: load the checked pack. */
+const load = (token: string) => fetch(`${base}/api/datapack/import/${token}`, { method: 'POST' })
+const uploadAndLoad = async (body: Buffer | string) => {
+  const r = await upload(body)
+  if (!r.ok) return r
+  return load((await r.json()).token)
+}
 const MAGIC = 'PK\x03\x04\n'
+/** A server start on this data: the importer calls its start-up re-import queued ("remove crb-1", …). */
+const restart = async () => {
+  const log = join(dir, 'calls.log')
+  writeFileSync(log, '')
+  vi.stubEnv('STUB_LOG', log)
+  const again = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  await again.started
+  await new Promise(r => setTimeout(r, 300))
+  again.stopJobs()
+  vi.unstubAllEnvs()
+  return readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))
+}
+const idle = () => vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
 
 test('a pack is made, then downloads once as a dated zip; its folder is gone afterwards', async () => {
   const { r, token, bytes } = await download()
@@ -52,24 +75,20 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   const pack = JSON.parse(bytes.toString().slice(MAGIC.length))
   pack.files = { 'skills.xml': pack.files['skills.xml'].replace('</ca2:data>', '<!-- from the pack --></ca2:data>') } // a partial pack
   rmSync(join(core, 'lifestyles.xml'))
-  const r = await upload(MAGIC + JSON.stringify(pack))
+  const p = await upload(MAGIC + JSON.stringify(pack))
+  const { token, pack: summary } = await p.json()
+  expect([p.status, summary]).toEqual([200, { app: JSON.parse(readFileSync('package.json', 'utf8')).version, created: '2026-09-28T12:00:00+00:00', files: ['skills.xml'], replaces: ['skills.xml'] }])
+  expect(readFileSync(join(core, 'skills.xml'), 'utf8')).not.toContain('from the pack') // the preview changes nothing
+  expect(temps()).toHaveLength(1) // the checked zip waits for its token
+  const r = await load(token)
   expect([r.status, await r.json()]).toEqual([200, { files: ['skills.xml'] }])
+  await vi.waitFor(() => expect(temps()).toEqual([])) // the zip goes once loaded
+  const again = await load(token) // single use
+  expect([again.status, (await again.json()).error]).toEqual([404, 'this data pack upload has expired; choose the file again'])
   expect(readFileSync(join(core, 'skills.xml'), 'utf8')).toContain('from the pack')
   expect(existsSync(join(core, 'lifestyles.xml'))).toBe(false) // a partial pack: the core is still missing a table ...
   expect(readFileSync(join(library, 'crb-1', 'core-rebuild.xml'), 'utf8')).toMatch(/<rebuild sha256="abc" pack="[^"]+" files="skills.xml"\/>/) // no version: the book itself wasn't tried
   // ... and a restart doesn't re-import the core rulebook over the pack
-  const restart = async () => {
-    const log = join(dir, 'calls.log')
-    writeFileSync(log, '')
-    vi.stubEnv('STUB_LOG', log)
-    const again = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
-      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-    await again.started
-    await new Promise(r => setTimeout(r, 300))
-    again.stopJobs()
-    vi.unstubAllEnvs()
-    return readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))
-  }
   expect(await restart()).toEqual([])
   // once the pack's files are gone, the mark no longer holds: the core rulebook is re-imported
   const saved = readFileSync(join(core, 'skills.xml'))
@@ -84,6 +103,41 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
   rmSync(join(library, 'crb-1'), { recursive: true })
+})
+
+test('the same core rulebook uploaded again to a new folder: the marks follow the file’s sha256, not the folder', async () => {
+  const pdf = '%PDF-1.4 the same core rulebook', sha = createHash('sha256').update(pdf).digest('hex')
+  const old = join(library, 'crb-old'), mark = join(old, 'core-rebuild.xml'), other = join(library, 'other-crb', 'core-rebuild.xml')
+  mkdirSync(old, { recursive: true })
+  mkdirSync(join(library, 'other-crb'), { recursive: true })
+  const isCrb = () => writeFileSync(join(old, 'import.xml'), `<import recipe="crb" source="CRB" file="crb.pdf" sha256="${sha}"><files/><report/></import>\n`)
+  isCrb() // the stub's remove, which a start-up re-import queues, rewrites the record
+  writeFileSync(mark, `<rebuild sha256="${sha}" pack="2026-09-28T00:00:00Z" files="skills.xml"/>\n`)
+  writeFileSync(other, '<rebuild sha256="another-file" pack="2026-09-28T00:00:00Z" files="skills.xml"/>\n')
+  rmSync(join(core, 'lifestyles.xml'))
+  expect(await restart()).toEqual([]) // the pack's mark holds
+  // the admin uploads the same PDF again: chosen over the pack, so every pack mark for that file goes (another file's stays)
+  const up = await fetch(`${base}/api/books`, { method: 'POST', body: pdf, headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'crb.pdf' } })
+  expect(up.status).toBe(202)
+  const { id } = await up.json()
+  expect(existsSync(mark)).toBe(false)
+  expect(existsSync(other)).toBe(true)
+  await idle()
+  expect(await restart()).toContain('remove crb-old') // the core is partial and this file wasn't tried with this version
+  // tried once per file and version, whichever folder holds the mark
+  const tried = readFileSync(mark, 'utf8')
+  expect(tried).toMatch(new RegExp(`<rebuild sha256="${sha}" version="[^"]+" tried=`))
+  rmSync(mark)
+  isCrb()
+  writeFileSync(join(library, id, 'core-rebuild.xml'), tried)
+  expect(await restart()).toEqual([])
+  // a mark for another file doesn't count
+  writeFileSync(join(library, id, 'core-rebuild.xml'), tried.replace(sha, 'another-file'))
+  isCrb()
+  expect(await restart()).toContain('remove crb-old')
+  await idle()
+  for (const d of [old, join(library, id), join(library, 'other-crb')]) rmSync(d, { recursive: true, force: true })
+  cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
 })
 
 test('refused uploads say why and change nothing', async () => {
@@ -103,41 +157,69 @@ test('refused uploads say why and change nothing', async () => {
   await vi.waitFor(() => expect(temps()).toEqual([]))
 })
 
-test('one pack at a time; not while a book imports; a job waits for the pack; not during a restore', async () => {
+test('one pack loads at a time; not while a book imports; a job waits for the pack; not during a restore', async () => {
   const { bytes } = await download()
-  const first = upload(bytes)
-  await vi.waitFor(() => expect(temps()).toHaveLength(1))
-  expect((await upload(bytes)).status).toBe(409)
+  /** A pack's load under way (the stub's takes 400 ms). */
+  const loading = async () => {
+    const { token } = await (await upload(bytes)).json()
+    const done = load(token)
+    await new Promise(r => setTimeout(r, 100))
+    return { done }
+  }
+  let { done } = await loading()
   expect((await fetch(`${base}/api/datapack`, { method: 'POST' })).status).toBe(409)
   // a book uploaded meanwhile is queued, and starts after the pack
   const book = await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.4 slow', headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'b.pdf' } })
   expect(book.status).toBe(202)
   const { id } = await book.json()
   expect((await (await fetch(`${base}/api/books`)).json()).find((b: { id: string }) => b.id === id).state).toBe('queued')
-  expect((await first).status).toBe(200)
+  expect((await done).status).toBe(200)
   await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).find((b: { id: string }) => b.id === id).state).toBe('done'), { timeout: 10000 })
-  // while a job runs, a pack is refused
+  // while a job runs, a pack can be checked but not loaded; the refused load keeps its token
   const slow = await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.4 slow', headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'c.pdf' } })
   expect(slow.status).toBe(202)
-  const busy = await upload(bytes)
+  const { token } = await (await upload(bytes)).json()
+  const busy = await load(token)
   expect([busy.status, (await busy.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
   const made = await fetch(`${base}/api/datapack`, { method: 'POST' }) // nor made: it could mix old and new tables
   expect([made.status, (await made.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
   await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
-  // a pack import is a counted write: a restore can't start under it
-  const pending = upload(bytes)
-  await vi.waitFor(() => expect(temps()).toHaveLength(1))
+  expect((await load(token)).status).toBe(200)
+  // a pack load is a counted write: a restore can't start under it
+  ;({ done } = await loading())
   const backup = await fetch(`${base}/api/backup`, { method: 'POST' }) // nor a backup: it would copy the swap's folders
   expect([backup.status, (await backup.json()).error]).toEqual([409, 'a data pack is being made or loaded; try again when it’s done'])
   const restore = await fetch(`${base}/api/restore/${'0'.repeat(32)}`, { method: 'POST' })
   expect(restore.status).toBe(409)
-  expect((await pending).status).toBe(200)
+  expect((await done).status).toBe(200)
   // nor while a backup is being made (the stub's takes 300 ms)
+  const { token: t2 } = await (await upload(bytes)).json()
   const zipping = fetch(`${base}/api/backup`, { method: 'POST' })
   await vi.waitFor(() => expect(readdirSync(backups).some(f => f.startsWith('download-'))).toBe(true))
-  const during = await upload(bytes)
+  const during = await load(t2)
   expect([during.status, (await during.json()).error]).toEqual([409, 'a backup is being made; try again when it’s done'])
   await zipping
+  expect((await load(t2)).status).toBe(200)
+})
+
+test('pending uploads: one at a time, and each expires with its zip', async () => {
+  const d = mkdtempSync(join(tmpdir(), 'ca2-pack-ttl-')), bk = join(d, 'library', '.backups')
+  cpSync('tests/fixtures/mini/custom/imported/core', join(d, 'custom', 'imported', 'core'), { recursive: true })
+  const s = createServer({ staticDir: 'public', charDir: join(d, 'chars'), customDir: join(d, 'custom'), libraryDir: join(d, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], restoreTtl: 1500 })
+  await new Promise<void>(ok => s.listen(0, ok))
+  const url = `http://127.0.0.1:${s.address().port}/api/datapack/import`
+  const zips = () => readdirSync(bk).filter(f => /^pack-.*\.zip$/.test(f))
+  try {
+    const pack = MAGIC + JSON.stringify({ files: { 'skills.xml': readFileSync(join(core, 'skills.xml'), 'utf8') } })
+    const a = (await (await fetch(url, { method: 'POST', body: pack })).json()).token
+    const b = (await (await fetch(url, { method: 'POST', body: pack })).json()).token
+    expect(zips()).toHaveLength(1) // the newer upload replaced the older
+    expect((await fetch(`${url}/${a}`, { method: 'POST' })).status).toBe(404)
+    await vi.waitFor(() => expect(zips()).toEqual([]), { timeout: 5000 })
+    expect((await fetch(`${url}/${b}`, { method: 'POST' })).status).toBe(404) // expired
+    expect((await fetch(`${url}/${b}`)).status).toBe(405)
+  } finally { s.stopJobs(); s.close() }
 })
 
 test('no core data: the pack is refused with the reason', async () => {

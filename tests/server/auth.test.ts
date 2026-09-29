@@ -79,6 +79,7 @@ describe('with an admin, an editor and a player', () => {
     ['GET', '/api/ai-models?provider=nope', 'admin'],
     ['GET', '/api/backup/nope', 'admin'], ['POST', '/api/restore?preview=1', 'admin', 'not a zip'], ['POST', '/api/restore/nope', 'admin'],
     ['POST', '/api/datapack', 'admin'], ['GET', '/api/datapack/nope', 'admin'], ['POST', '/api/datapack/import', 'admin', 'not a zip'],
+    ['POST', '/api/datapack/import/nope', 'admin'],
     ['GET', '/api/users', 'admin'], ['POST', '/api/users', 'admin', '{}'], ['PUT', '/api/users/000000000000', 'admin', '{}'],
     ['DELETE', '/api/users/000000000000', 'admin'], ['POST', '/api/users/000000000000/reset-password', 'admin', '{}'],
     ['POST', '/api/users/000000000000/move-runner', 'admin', '{}'], ['POST', '/api/users/000000000000/unlink', 'admin'],
