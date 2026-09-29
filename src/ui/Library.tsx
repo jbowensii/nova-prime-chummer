@@ -186,7 +186,7 @@ export function Library({ c }: { c: Catalog }) {
         actions={<><button className="btn" onClick={() => setToDelete(null)}>Keep</button>
           <button className="btn danger" onClick={async () => { await repo.remove(toDelete!.id); setToDelete(null); void refresh() }}>Delete runner</button></>}>
         <p>{repo.mode === 'server'
-          ? 'The file moves to the characters/.trash folder on tower04, so it can still be recovered there.'
+          ? 'The file moves to its owner’s .trash folder on the server (characters/<username>/.trash/), so it can still be recovered there.'
           : 'This removes the runner from this browser. Exported files are not affected.'}</p>
       </Modal>
     </main>
