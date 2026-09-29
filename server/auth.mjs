@@ -615,7 +615,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
         try { await saveUsers() } catch (e) {
           // users.xml still has the old name: the account and its runner folder go back to it
           Object.assign(u, before)
-          if (moved) await runners.rename(f.username, before.username)
+          // the move back failing too must not hide why the rename failed: that error is reported, this one logged
+          if (moved) await runners.rename(f.username, before.username).catch(e2 => log.error(`account ${before.username} keeps its name (users.xml `
+            + `couldn’t be saved), but its runner folder couldn’t move back: move characters/${f.username} to characters/${before.username} (${e2.message})`))
           throw e
         }
         if (end) await endSessions(u.id)
