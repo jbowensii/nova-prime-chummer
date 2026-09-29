@@ -1,5 +1,57 @@
 # Release notes
 
+## 0.4.0 — 2026-09-28: accounts, Authelia and core data
+
+**Accounts**
+- Sign-in is required. On first start, a one-time setup code in the
+  container log creates the first admin; the admin creates everyone else
+  on the **Users** page (app password or Authelia), and can disable,
+  reset or delete an account.
+- Three roles — admin, editor, player — each seeing and doing only what
+  their row of the roles table allows; the server enforces every rule, not
+  just the UI. Each person owns their own runners; admins and editors can
+  view and print everyone's, read-only.
+- Sign in with an app password, or with [Authelia](https://www.authelia.com/)
+  (OpenID Connect, with Authelia's own two-factor) per account.
+- Locked out? `docker exec chummer-anarchy2 node server/users.mjs reset
+  <user>` prints a one-time recovery code for `/#/setup/reset`.
+
+**Core data out of the repository**
+- The core rulebook's catalogs (levels, metatypes, skills, pricing, amp
+  types and effects, packages, lifestyles, generic weapons, armor,
+  vehicles) no longer ship with the app or live in its git history. A
+  server builds them by importing the CRB PDF like any other book, or an
+  admin loads a **data pack** — a small zip of just those tables, with no
+  descriptions, PDFs or keys — exported from another server. Upgrading a
+  server that already has the CRB in its Library re-imports it
+  automatically on first start.
+
+**Security hardening**
+- Passwords hashed with scrypt; sessions are random tokens, stored as
+  hashes, 30-day sliding expiry, `Secure`/`__Host-` behind a trusted
+  proxy.
+- Sign-in lockout per account and per client address/network, with a
+  known-device cookie so a household's other sign-ins aren't slowed by one
+  wrong password; every non-GET request is checked against its Origin.
+- `TRUST_PROXY` and `PUBLIC_URL` settings (Unraid template: **Trusted
+  proxy**, **Public address**) so the app knows which forwarded headers to
+  believe when it sits behind a reverse proxy, with an example nginx rate
+  limit for the login route.
+
+**Backup changes**
+- Backups now include accounts (`users.xml`, sign-in settings, every
+  runner folder); sessions never do. The Authelia client secret travels
+  only with **Include my API keys**. A restore signs everyone out; a
+  backup from before accounts puts the server back into setup, with its
+  runners going to the new first admin.
+
+**Breaking**
+- The app now requires signing in — it's no longer open to anyone who can
+  reach it. Plan for the first-start setup code when upgrading.
+- A server with no core data (a fresh install, or an upgrade whose CRB PDF
+  isn't in its Library) opens on a setup page until the CRB is imported or
+  a data pack is uploaded.
+
 ## 0.3.0 — 2026-09-28: edit the catalog, back up the server
 
 **Catalog edits**
