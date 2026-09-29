@@ -153,13 +153,16 @@ ${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
   if (key.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000)
   const model = target === 'anythingllm' ? `workspace ${saved.match(/ workspace="([^"]*)"/)?.[1]}` : saved.match(/ model="([^"]*)"/)?.[1] ?? 'default-model'
   console.log(JSON.stringify({ model, reply: `OK\u0007${'!'.repeat(300)}`, ms: 1234 }))
-} else if (cmd === 'ask') { // the question on stdin: "laser" → not covered; "slow" → 1 s; "leak" → the saved key in the answer, "fail" → on stderr
+} else if (cmd === 'ask') { // the question on stdin: "laser" → not covered, provider not asked; "refuse" → the model says not covered;
+  // "slow" → 1 s; "hang" → 10 s (past the server's kill); "leak" → the saved key in the answer, "fail" → on stderr (after the call)
   const q = readFileSync(0, 'utf8'), keys = join(opt('--library'), '.config', 'ai-keys.xml')
   const key = (existsSync(keys) ? readFileSync(keys, 'utf8') : '').match(/<key provider="\w+">([^<]*)<\/key>/)?.[1] ?? ''
   if (q.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000)
-  if (q.includes('fail')) { process.stderr.write(`the provider didn’t accept the API key ${key}\n`); process.exit(3) }
-  console.log(JSON.stringify(q.includes('laser') ? { answer: 'The books on this server don’t cover that.', sources: [], covered: false }
-    : { answer: `Invented answer [ZZ p.61].${q.includes('leak') ? ` ${key}` : ''}`, sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping' }], covered: true }))
+  if (q.includes('hang')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10000)
+  if (q.includes('fail')) { process.stderr.write(`the provider didn’t accept the API key ${key}\n`); console.log('{"called": true}'); process.exit(3) }
+  const not = { answer: 'The books on this server don’t cover that.', sources: [], covered: false }
+  console.log(JSON.stringify(q.includes('laser') ? { ...not, called: false } : q.includes('refuse') ? { ...not, called: true }
+    : { answer: `Invented answer [ZZ p.61].${q.includes('leak') ? ` ${key}` : ''}`, sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping' }], covered: true, called: true }))
 } else if (cmd === 'edit') { // target: set | remove | add-source; the real checks are importer/edits.py's (books-python.test.ts)
   const dir = join(opt('--custom'), 'edits'), [kind, id] = rest
   const tag = { amps: 'amp', items: 'item', rules: 'rule' }[kind]

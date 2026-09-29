@@ -87,7 +87,11 @@ def passages(custom):
     for path in _files(custom):
         root = _parse(path)
         for e in root if root is not None else []:
-            if not e.get("id") or e.tag == "remove":
+            if e.tag == "remove":  # a house rule's <remove id>: the entry is gone, whatever its kind
+                for k in [k for k in by_id if k[1] == e.get("id")]:
+                    del by_id[k]
+                continue
+            if not e.get("id"):
                 continue
             title = (e.findtext("name") or e.findtext("title") or e.get("id")).strip()
             body = " ".join(" ".join(e.itertext()).split())

@@ -21,6 +21,8 @@ FILES = {
                                       '<rule id="zz.optional-kettle" sheet="optional" section="Optional" source="ZZ" page="80"><title>Kettle breaks</title><text></text></rule>'),
     "imported/zz/amps.xml": D.format("amps", '<amp id="zz.glow-skin" type="quality" source="ZZ" page="12"><name>Glow Skin</name><narrative></narrative></amp>'),
     "imported/zz/items.xml": D.format("gear", '<item id="zz.teacup" kind="gear" source="ZZ" page="9"><name>Teacup</name><text></text></item>'),
+    "index.xml": '<overlays><file href="house.xml"/></overlays>',  # a house rule removes an amp
+    "house.xml": D.format("amps", '<remove id="zz.glow-skin"/>'),
     "imported/index.xml": '<overlays><file href="zz/rules.xml"/><file href="zz/amps.xml"/><file href="zz/items.xml"/><file href="../../outside.xml"/></overlays>',
     "texts/zz.xml": D.format("texts", '<text of="rules" id="zz.puddle-jumping">A runner leaps a puddle with Athletics; a miss means wet boots and minus one to the next test.</text>\n'
                                       '<text of="amps" id="zz.glow-skin">The skin glows softly in darkness.</text>'),
@@ -70,6 +72,7 @@ class RetrievalTest(unittest.TestCase):
         self.assertNotIn("Muffin rule", by)  # off
         self.assertEqual(by["Biscuit rule"]["source"], "House rule")
         self.assertFalse(any("outside" in p["text"] for p in self.docs()))
+        self.assertNotIn("Glow Skin", by)  # removed by a house rule
 
     def test_best_match_first_and_nothing_below_the_floor(self):
         docs = self.docs()
@@ -98,7 +101,7 @@ class AnswerTest(unittest.TestCase):
         s = self.stub('{"answer": "should never be asked"}')
         code, out, _ = run(self.argv(), "How does the orbital laser cannon work?")
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(out), {"answer": ask.NOT_COVERED, "sources": [], "covered": False})
+        self.assertEqual(json.loads(out), {"answer": ask.NOT_COVERED, "sources": [], "covered": False, "called": False})
         self.assertEqual(s.requests, [])
         # not even the provider settings are needed
         code, out, _ = run(["ask", "--custom", self.custom, "--library", tempfile.mkdtemp()], "orbital laser?")
@@ -111,7 +114,7 @@ class AnswerTest(unittest.TestCase):
         r = json.loads(out)
         self.assertEqual(r["answer"], "You leap it with Athletics; a miss means wet boots [ZZ p.61].")
         self.assertEqual(r["sources"], [{"source": "ZZ", "page": "61", "title": "Puddle jumping"}])  # the cited one
-        self.assertTrue(r["covered"])
+        self.assertTrue(r["covered"] and r["called"])
         body = s.requests[0]["body"]
         system, user = body["messages"][0]["content"], body["messages"][1]["content"]
         self.assertIn("Use only the numbered passages", system)
@@ -126,17 +129,18 @@ class AnswerTest(unittest.TestCase):
         r = json.loads(run(self.argv(), "biscuits?")[1])
         self.assertEqual((r["answer"], r["sources"][0]["title"]), ("Plain prose [House rule] about biscuits.", "Biscuit rule"))
         self.stub(json.dumps({"answer": ask.NOT_COVERED}))
-        self.assertEqual(json.loads(run(self.argv(), "biscuits?")[1]), {"answer": ask.NOT_COVERED, "sources": [], "covered": False})
+        # the model saying not covered was still a call: it counts
+        self.assertEqual(json.loads(run(self.argv(), "biscuits?")[1]), {"answer": ask.NOT_COVERED, "sources": [], "covered": False, "called": True})
 
     def test_refusals_and_provider_errors_never_show_the_key(self):
-        self.assertEqual(run(self.argv(), "puddle " * 80)[0], 3)  # over 500 characters
+        self.assertEqual(run(self.argv(), "puddle " * 80)[:2], (3, '{"called": false}\n'))  # over 500 characters
         self.assertEqual(run(self.argv(), "   ")[0], 3)
         s = Stub(lambda p: (400, {"error": f"bad key {KEY}"}))
         self.addCleanup(s.close)
         write_providers(os.path.join(self.lib, ".config"), url=s.url + "/v1")
         AI.set_key(os.path.join(self.lib, ".config"), "openai", KEY)
         code, out, err = run(self.argv(), "puddle jumping?")
-        self.assertEqual((code, out), (3, ""))
+        self.assertEqual((code, json.loads(out)), (3, {"called": True}))  # the request went out: it counts
         self.assertIn("bad key [key]", err)
         self.assertNotIn(KEY, err)
         write_providers(os.path.join(self.lib, ".config"), enabled="false")

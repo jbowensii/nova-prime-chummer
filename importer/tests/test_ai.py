@@ -103,7 +103,28 @@ class ProvidersTest(unittest.TestCase):
         r = s.requests[1]
         self.assertEqual(r["path"], "/api/v1/workspace/shadowrun/chat")
         self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
-        self.assertEqual(r["body"], {"message": "sys\n\nusr", "mode": "chat"})
+        self.assertEqual({k: v for k, v in r["body"].items() if k != "sessionId"}, {"message": "sys\n\nusr", "mode": "chat"})
+        # a fresh session per call: no earlier question's history (another user's) joins this one
+        AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "shadowrun"}, KEY, "sys", "usr")
+        ids = [q["body"]["sessionId"] for q in s.requests if q["path"].endswith("/chat")]
+        self.assertEqual(len(set(ids)), 2)
+        self.assertRegex(ids[0], r"^ca2-[0-9a-f]{32}$")
+
+    def test_a_capped_call_leaves_room_for_thinking_and_is_not_retried(self):
+        replies = {"/v1/chat/completions": {"choices": [{"message": {"content": "x"}}]},
+                   "/v1beta/models/g:generateContent": {"candidates": [{"content": {"parts": [{"text": "x"}]}}]}}
+        s = self.stub(lambda p: (200, replies[p]) if p in replies else (500, {"error": {"type": "api_error", "message": "boom"}}))
+        AI.complete({"id": "openai", "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u", max_tokens=800, timeout=5)
+        AI.complete({"id": "gemini", "baseUrl": s.url, "model": "g"}, KEY, "s", "u", max_tokens=800, timeout=5)
+        body = {r["path"]: r["body"] for r in s.requests}
+        self.assertEqual(body["/v1/chat/completions"]["max_completion_tokens"], 800 * AI.OPENAI_CAP)
+        self.assertNotIn("max_tokens", body["/v1/chat/completions"])
+        gc = body["/v1beta/models/g:generateContent"]["generationConfig"]
+        self.assertEqual((gc["maxOutputTokens"], gc["thinkingConfig"]), (800 + 2 * AI.GEMINI_THINKING, {"thinkingBudget": AI.GEMINI_THINKING}))
+        with self.assertRaises(AI.ProviderError):  # Anthropic with a timeout: one request, no SDK retries
+            AI.complete({"id": "anthropic", "baseUrl": s.url}, KEY, "s", "u", max_tokens=800, timeout=5)
+        self.assertEqual(len([r for r in s.requests if r["path"].startswith("/v1/messages")]), 1)
+        self.assertEqual(s.requests[-1]["body"]["max_tokens"], 800)
 
     def test_anthropic_request_via_sdk(self):
         s = self.stub(lambda p: (200, ANTHROPIC_MSG))
@@ -328,7 +349,7 @@ class PingTest(unittest.TestCase):
         self.assertEqual(by["/v1/chat/completions"]["body"], {"model": "m-1", "messages": [{"role": "user", "content": AI.PING}]})
         self.assertEqual(by["/v1/chat/completions"]["headers"]["authorization"], f"Bearer {KEY}")
         self.assertEqual(by["/v1beta/models/m-1:generateContent"]["headers"]["x-goog-api-key"], KEY)
-        self.assertEqual(by["/api/v1/workspace/shadowrun/chat"]["body"], {"message": AI.PING, "mode": "chat"})
+        self.assertEqual({k: v for k, v in by["/api/v1/workspace/shadowrun/chat"]["body"].items() if k != "sessionId"}, {"message": AI.PING, "mode": "chat"})
         self.assertEqual(by["/api/v1/workspace/shadowrun/chat"]["headers"]["authorization"], f"Bearer {KEY}")
 
     def test_common_failures_read_plainly_and_never_show_the_key(self):

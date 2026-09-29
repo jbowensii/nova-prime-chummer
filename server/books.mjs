@@ -36,9 +36,10 @@
 //   GET    /api/ask                   anyone signed in: -> { available, limit, used } (available: an AI provider is chosen, enabled
 //                                     and has its key; limit: the account's dailyQuestions, null for none; used: answered today, UTC)
 //   POST   /api/ask                   anyone signed in: { question } (500 characters at most) -> { answer, sources: [{ source, page,
-//                                     title }], covered, used, limit } through `importer ask` (60 s); one at a time per account (429);
-//                                     a covered answer counts against the day's limit (429 + Retry-After until UTC midnight). Only the
-//                                     username and the time are logged; counts in library/.config/ask-counts.xml
+//                                     title }], covered, used, limit } through `importer ask` (60 s); one at a time per account and
+//                                     ASK_AT_ONCE on the server (429); every question that reached the provider counts against the day's
+//                                     limit, whatever came back (429 + Retry-After until UTC midnight); one the books don't cover without
+//                                     asking it is free. Only the username and the time are logged; counts in library/.config/ask-counts.xml
 //   POST   /api/backup[?keys=1]     makes the zip of characters/, custom/ and library/ (keys=1: with the API keys) -> { token };
 //                                     one at a time (409); the zip waits 10 min for its token
 //   GET    /api/backup/:token         the zip, once, as chummer-anarchy2-backup-<date>.zip
@@ -79,7 +80,8 @@ const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
 const SET_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/ // a folder in custom/samples/, and each file in it
 const BUILTIN = { name: 'Built-in samples (first release)', canon: true } // custom/samples/builtin/ without a set.xml
-const MAX_QUESTION = 500, ASK_TIMEOUT = 60000 // importer/ask.py MAX_QUESTION; its provider call gives up at 50 s
+const MAX_QUESTION = 500 // importer/ask.py MAX_QUESTION; its provider call gives up at 50 s, the server's askTimeout (60 s) stops it
+const ASK_AT_ONCE = 3 // questions being answered on the whole server (each is a Python process)
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
@@ -111,7 +113,7 @@ export async function writeAtomic(path, text, mode = 0o666) {
   await rename(tmp, path)
 }
 
-export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000,
+export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000, askTimeout = 60000,
   onRestore = async () => {} }) {
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
@@ -392,6 +394,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (!question || question.length > MAX_QUESTION) throw fail(400, `a question is 1–${MAX_QUESTION} characters`)
     if (!await askAvailable()) throw fail(409, 'Ask the rules isn’t set up: the admin chooses an AI provider and its key in AI settings')
     if (asking.has(who.id)) throw Object.assign(fail(429, 'your last question is still being answered; wait for it'), { retryAfter: 5 })
+    if (asking.size >= ASK_AT_ONCE) throw Object.assign(fail(429, 'Ask the rules is busy; try again in a moment'), { retryAfter: 5 })
     const limit = who.dailyQuestions ?? null
     if (limit != null && usedToday(who.id) >= limit)
       throw Object.assign(fail(429, `You’ve used today’s ${limit} questions. Ask again tomorrow.`),
@@ -399,20 +402,23 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     asking.add(who.id)
     let r
     try {
-      r = await importer(['ask', '--custom', customDir, '--library', libraryDir], { input: question, timeout: ASK_TIMEOUT })
+      r = await importer(['ask', '--custom', customDir, '--library', libraryDir], { input: question, timeout: askTimeout })
     } finally { asking.delete(who.id) }
     console.log(`ask: ${who.username} at ${new Date().toISOString()}`) // never the question or the answer
-    if (r.signal) throw fail(502, 'no answer within 60 seconds; try again')
-    const why = (await redact(r.err)).trim().split('\n').pop()
-    if (r.code !== 0) throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t answer' + (why ? `: ${why}` : ''))
-    let out
-    try { out = JSON.parse(r.out.trim().split('\n').pop()) } catch { throw fail(502, 'the importer’s answer couldn’t be read') }
-    const text = s => String(s ?? '').slice(0, 200)
-    const sources = (Array.isArray(out.sources) ? out.sources : []).slice(0, 8).map(s => ({ source: text(s?.source), page: text(s?.page), title: text(s?.title) }))
-    if (out.covered === true) {
-      asked.n.set(who.id, usedToday(who.id) + 1)
+    let out = null
+    try { out = JSON.parse(r.out.trim().split('\n').pop()) } catch { /* killed or crashed: no JSON */ }
+    // counted unless the importer says it never asked the provider (a timeout or a crash counts: it may have)
+    if (out?.called !== false) {
+      const n = usedToday(who.id) + 1 // first: at midnight this rolls the day over, and the count goes in the new one
+      asked.n.set(who.id, n)
       await saveCounts()
     }
+    if (r.signal) throw fail(502, `no answer within ${askTimeout / 1000} seconds; try again`)
+    const why = (await redact(r.err)).trim().split('\n').pop()
+    if (r.code !== 0) throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t answer' + (why ? `: ${why}` : ''))
+    if (!out) throw fail(502, 'the importer’s answer couldn’t be read')
+    const text = s => String(s ?? '').slice(0, 200)
+    const sources = (Array.isArray(out.sources) ? out.sources : []).slice(0, 8).map(s => ({ source: text(s?.source), page: text(s?.page), title: text(s?.title) }))
     return { answer: (await redact(String(out.answer ?? ''))).slice(0, 6000), sources, covered: out.covered === true, used: usedToday(who.id), limit }
   }
 

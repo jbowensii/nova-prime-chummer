@@ -13,12 +13,13 @@ vi.setConfig({ testTimeout: 30000 })
 const dir = mkdtempSync(join(tmpdir(), 'ca2-ask-')), lib = join(dir, 'library')
 const PLAYER = { username: 'pia', password: 'player-password-1', role: 'player', dailyQuestions: 2 }
 const EDITOR = { username: 'eddie', password: 'editor-password-1', role: 'editor' }
+const PAT = { username: 'pat', password: 'player-password-2', role: 'player' }
 type Srv = { close: () => void; stopJobs: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 const servers: Srv[] = []
 function start(): Promise<string> {
   return new Promise(ok => {
     const s: Srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: lib,
-      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], askTimeout: 2000 })
     servers.push(s)
     s.listen(0, () => ok(`http://127.0.0.1:${s.address().port}`))
   })
@@ -27,9 +28,9 @@ let base = ''
 const cookies: Record<string, string> = {}
 beforeAll(async () => {
   mkdirSync(join(lib, '.config'), { recursive: true })
-  writeFileSync(join(lib, '.config', 'users.xml'), await usersFile([ADMIN, PLAYER, EDITOR]))
+  writeFileSync(join(lib, '.config', 'users.xml'), await usersFile([ADMIN, PLAYER, EDITOR, PAT]))
   base = await start()
-  for (const u of [ADMIN, PLAYER, EDITOR]) cookies[u.username] = (await signIn(base, u))!
+  for (const u of [ADMIN, PLAYER, EDITOR, PAT]) cookies[u.username] = (await signIn(base, u))!
 })
 afterAll(() => { for (const s of servers) { s.stopJobs(); s.close() } })
 afterEach(() => { vi.useRealTimers() })
@@ -70,11 +71,13 @@ test('the question is checked: text, 500 characters at most, JSON', async () => 
   expect((await as('eddie', '/api/ask', { method: 'POST', body: JSON.stringify({ question: 'x'.repeat(9000) }) })).status).toBe(413)
 })
 
-test('a daily limit counts covered answers, answers 429 with Retry-After, and resets at UTC midnight', async () => {
+test('a daily limit counts every question the provider got, answers 429 with Retry-After, and resets at UTC midnight', async () => {
   const laser = await (await ask('pia', 'orbital laser?')).json()
-  expect(laser).toMatchObject({ covered: false, used: 0, limit: 2, sources: [] }) // not covered: nothing asked, nothing counted
-  expect(await (await ask('pia', 'puddles one')).json()).toMatchObject({ covered: true, used: 1 })
-  expect(await (await ask('pia', 'puddles two')).json()).toMatchObject({ covered: true, used: 2 })
+  expect(laser).toMatchObject({ covered: false, used: 0, limit: 2, sources: [] }) // retrieval found nothing: no call, not counted
+  // the model saying it isn't covered was a call: counted
+  expect(await (await ask('pia', 'refuse puddles')).json()).toMatchObject({ covered: false, used: 1 })
+  expect((await ask('pia', 'fail puddles')).status).toBe(502) // a provider error after the call: counted
+  expect(await (await as('pia', '/api/ask')).json()).toMatchObject({ used: 2 })
   const r = await ask('pia', 'puddles three')
   expect([r.status, (await r.json()).error]).toEqual([429, 'You’ve used today’s 2 questions. Ask again tomorrow.'])
   const wait = Number(r.headers.get('Retry-After'))
@@ -96,6 +99,33 @@ test('a daily limit counts covered answers, answers 429 with Retry-After, and re
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(Date.now() + wait * 1000 + 1000)
   expect(await (await ask('pia', 'puddles tomorrow')).json()).toMatchObject({ covered: true, used: 1 })
+})
+
+test('a question the server had to stop counts too', async () => {
+  const before = (await (await as('pat', '/api/ask')).json()).used
+  const r = await ask('pat', 'hang puddles')
+  expect([r.status, (await r.json()).error]).toEqual([502, 'no answer within 2 seconds; try again'])
+  expect((await (await as('pat', '/api/ask')).json()).used).toBe(before + 1)
+})
+
+test('a count at UTC midnight lands in the new day', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  const midnight = Date.parse(`${new Date(Date.now() + 2 * 86400e3).toISOString().slice(0, 10)}T00:00:00Z`)
+  vi.setSystemTime(midnight - 500)
+  expect((await (await as('pat', '/api/ask')).json()).used).toBe(0) // a new day for pat
+  const slow = ask('pat', 'slow puddles')
+  await new Promise(r => setTimeout(r, 300))
+  vi.setSystemTime(midnight + 5000) // answered after midnight
+  expect(await (await slow).json()).toMatchObject({ used: 1 })
+  expect((await (await as('pat', '/api/ask')).json()).used).toBe(1)
+})
+
+test('at most 3 questions are answered at once on the server', async () => {
+  const slow = ['admin', 'eddie', 'pat'].map(u => ask(u, 'slow puddles'))
+  await new Promise(r => setTimeout(r, 300))
+  const busy = await ask('pia', 'puddles')
+  expect([busy.status, (await busy.json()).error, busy.headers.get('Retry-After')]).toEqual([429, 'Ask the rules is busy; try again in a moment', '5'])
+  expect((await Promise.all(slow)).map(r => r.status)).toEqual([200, 200, 200])
 })
 
 test('one question at a time per account', async () => {
