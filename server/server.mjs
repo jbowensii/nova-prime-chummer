@@ -123,8 +123,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     async rename(from, to) {
       const move = await exists(folder(from))
       if (move && await exists(folder(to))) throw fail(409, `characters/${to} already exists; move it away first`)
-      await campaigns.rename(from, to)
       if (move) await rename(folder(from), folder(to))
+      try { await campaigns.rename(from, to) } catch (e) {
+        if (move) await rename(folder(to), folder(from)) // users.xml keeps the old name: so does the folder
+        throw e
+      }
     },
     /** The upgrade: runners at the top of characters/ (and its .trash/) from before accounts go to the first admin. */
     async adopt(u) {
@@ -210,6 +213,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     const xml = req.method === 'PUT' ? await readBody(req) : null
     if (xml != null && (!NS.test(xml) || rootAttr(xml, 'id') !== id))
       return send(res, 400, { error: 'body is not a character file for this id' })
+    // the root's attributes as the app writes them (double-quoted, < and > escaped): the server edits that tag (rev, campaign)
+    if (xml != null && !/^<ca2:character(?:\s+[\w:.-]+="[^"<>]*")*\s*>$/.test(xml.match(/<ca2:character\b[^>]*>/)[0]))
+      return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
     return lock(async () => {
       // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
       const me = auth.current(who.id)
@@ -222,7 +228,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (req.method === 'DELETE') {
         if (!existing) return send(res, 404, { error: 'no such runner' })
         await mkdir(join(dir, '.trash'), { recursive: true })
-        await rename(join(dir, existing.file), join(dir, '.trash', `${base(existing.file)}-${Date.now()}.xml`))
+        const to = join(dir, '.trash', `${base(existing.file)}-${Date.now()}.xml`)
+        if (campaignOf(existing.xml)) { // a trashed runner leaves its campaign
+          await writeAtomic(to, setCampaign(existing.xml, null))
+          await unlink(join(dir, existing.file))
+        } else await rename(join(dir, existing.file), to)
         res.writeHead(204).end()
         return
       }
@@ -300,6 +310,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
         await writeFile(tmp, restoredCopy(xml, id), 'utf8')
         await rename(tmp, join(folder(user), name))
         await unlink(path) // a crash before this leaves it in the trash too: nothing is lost
+      } else if (campaignOf(xml) && !await campaigns.holds(user, campaignOf(xml))) { // its campaign is gone, or the owner left it
+        await writeAtomic(join(folder(user), name), setCampaign(xml, null))
+        await unlink(path)
       } else await rename(path, join(folder(user), name))
       const after = await readFile(join(folder(user), name), 'utf8')
       return send(res, 200, { file: name, id, name: unesc(rootAttr(after, 'streetName') || rootAttr(after, 'name') || ''), copy: taken })
@@ -320,8 +333,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       }
       if (url.pathname.startsWith('/custom/')) { // imported book data: signed-in users only
         if (!auth.session(req, res)) return send(res, 401, 'sign in first', 'text/plain')
-        // campaigns.xml (who plays where, GM notes): only through /api/campaigns. Trailing dots and spaces: Windows' names
-        if (resolve(customDir, '.' + url.pathname.slice('/custom'.length)).replace(/[. ]+$/, '').toLowerCase() === join(customDir, 'campaigns.xml').toLowerCase())
+        // campaigns.xml (who plays where, GM notes): only through /api/campaigns. By name (trailing dots and spaces: Windows'),
+        // by Windows' stream and short-name syntax, and by the file itself (a link, a name the check didn't think of)
+        const asked = resolve(customDir, '.' + url.pathname.slice('/custom'.length)), secret = join(customDir, 'campaigns.xml')
+        const [a, b] = await Promise.all([stat(asked).catch(() => null), stat(secret).catch(() => null)])
+        if (/[:~]/.test(url.pathname) || asked.replace(/[. ]+$/, '').toLowerCase() === secret.toLowerCase() || (a && b && a.dev === b.dev && a.ino === b.ino))
           return send(res, 404, 'not found', 'text/plain')
         if (await serveFile(res, customDir, url.pathname.slice('/custom'.length))) return
         return send(res, 404, 'not found', 'text/plain')

@@ -1,7 +1,8 @@
 // Campaigns: custom/campaigns.xml (campaigns.xsd), written by the server under the runners' write lock; never served as a
 // file. See docs/superpowers/specs/2026-09-29-campaigns-ask-rules-design.md §2. A runner joins a campaign with its own
 // campaign="<id>" attribute, which server.mjs keeps through saves (a new file never brings one); it counts while the campaign
-// exists and the runner's owner is one of its GMs or members. Assigning or removing doesn't change the runner's rev.
+// exists and the runner's owner is one of its GMs or members. Assigning or removing doesn't change the runner's rev. A trashed
+// runner leaves its campaign (server.mjs); a restored one keeps a campaign only while its owner is still in it.
 //
 //   GET    /api/campaigns                       -> [campaign] the caller's (the admin: all)
 //   POST   /api/campaigns                       admin, editors: { name, note? } -> 201 campaign; the caller is its GM
@@ -16,9 +17,9 @@
 //                                               another one (one campaign per runner: copy it) or this one is archived
 //   DELETE /api/campaigns/:id/runners/:runner   its owner, or a GM/admin of the campaign -> campaign
 // campaign: { id, name, note, archived, created, you: gm | admin | member, gms: [{ username, name }], members: [same],
-//   runners: [{ id, owner, ownerName, streetName, level, package, file? }] } (file: GM and admin, whose GET /api/characters
-//   has the sheet; a member gets the roster only)
-import { randomBytes } from 'node:crypto'
+//   runners: [{ key, mine, ownerName, streetName, level, package, id, owner, file }] } (key: opaque, for lists; file: the sheet
+//   in GET /api/characters). A member gets the roster only: names without usernames, and no id, owner or file (id: their own)
+import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { attr, esc, rootTag, unesc, writeAtomic } from './books.mjs'
@@ -50,9 +51,9 @@ export function parseCampaigns(xml) {
   }).filter(c => CAMPAIGN_ID.test(c.id ?? ''))
 }
 const campaignsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campaigns (campaigns.xsd). Written by the server. -->\n'
-  + `<ca2:campaigns xmlns:ca2="${NS}" version="1">\n${list.map(c => `  <campaign id="${c.id}" name="${esc(c.name)}" created="${c.created}"${
+  + `<ca2:campaigns xmlns:ca2="${NS}" version="1">\n${list.map(c => `  <campaign id="${esc(c.id)}" name="${esc(c.name)}" created="${esc(c.created)}"${
     c.archived ? ' archived="true"' : ''}>\n${c.note ? `    <note>${esc(c.note)}</note>\n` : ''}${
-    c.gms.map(u => `    <gm user="${u}"/>\n`).join('')}${c.members.map(u => `    <member user="${u}"/>\n`).join('')}  </campaign>\n`).join('')}</ca2:campaigns>\n`
+    c.gms.map(u => `    <gm user="${esc(u)}"/>\n`).join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}  </campaign>\n`).join('')}</ca2:campaigns>\n`
 
 /** `lock`: the runners' write lock (server.mjs), which account changes hold too; `auth`: server/auth.mjs's api;
  *  `runnersOf(username)` -> [{ file, id, rev, xml }]; `writeRunner(username, file, xml)` writes one atomically. */
@@ -73,12 +74,15 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
   }
   async function view(c, me) {
     const you = isGm(c, me.username) ? 'gm' : me.role === 'admin' ? 'admin' : 'member'
-    const person = username => ({ username, name: auth.nameOf(username) })
+    // a member gets names only: no usernames, and a runner's id only for their own (to take it out)
+    const roster = you === 'member'
+    const person = username => roster ? { name: auth.nameOf(username) } : { username, name: auth.nameOf(username) }
     return { id: c.id, name: c.name, note: c.note, archived: c.archived, created: c.created, you, gms: c.gms.map(person), members: c.members.map(person),
       runners: (await runners(c)).map(r => {
         const t = charTag(r.xml), a = n => unesc(t.match(new RegExp(`\\s${n}="([^"]*)"`))?.[1] ?? '')
-        return { id: a('id'), owner: r.owner, ownerName: auth.nameOf(r.owner), streetName: a('streetName') || a('name'), level: a('level'),
-          package: a('package'), ...you === 'member' ? {} : { file: r.file } }
+        const mine = r.owner === me.username, key = createHash('sha256').update(`${c.id}/${r.owner}/${a('id')}`).digest('hex').slice(0, 12)
+        return { key, mine, ownerName: auth.nameOf(r.owner), streetName: a('streetName') || 'Unnamed runner', level: a('level'), package: a('package'),
+          ...roster && !mine ? {} : { id: a('id') }, ...roster ? {} : { owner: r.owner, file: r.file } }
       }) }
   }
   const leave = async (c, owner) => { // `owner`'s runners in `c` leave it
@@ -188,6 +192,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
 
   return {
     handle,
+    /** Whether `owner`'s runner may keep campaign="<id>": it exists and they are a GM or member of it. */
+    holds: async (owner, id) => (await load()).some(c => c.id === id && inIt(c, owner)),
     /** Another account's runners the editor `me` may read: those in the campaigns they GM (the admin reads everyone's). */
     async readable(me) {
       const seen = new Set(), out = []
@@ -206,6 +212,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
      *  a GM gets the first other admin. */
     async drop(u) {
       const list = await load(), admin = auth.usernames().find(x => x !== u && auth.roleOf(x) === 'admin')
+      if (!admin && list.some(c => c.gms.length === 1 && c.gms[0] === u))
+        throw fail(409, 'this account is the only GM of a campaign and there is no other enabled admin to take it over')
       let changed = false
       for (const c of list) {
         if (!inIt(c, u)) continue

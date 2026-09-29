@@ -102,10 +102,13 @@ test('a player puts their own runner in one campaign; its GM reads the sheet, me
   expect((await sheets('ada')).length).toBe(4)
   const roster = await (await call('kim', 'GET', `/api/campaigns/${c1}`)).json()
   expect(roster.you).toBe('member')
+  // names only: no usernames, and a runner id only for kim's own (to take it out)
+  const key = expect.stringMatching(/^[0-9a-f]{12}$/)
   expect(roster.runners).toEqual([
-    { id: 'p1', owner: 'pat', ownerName: 'Pat Player', streetName: 'Ratchet & Co', level: 'runner', package: 'runner-face' },
-    { id: 'k1', owner: 'kim', ownerName: 'kim', streetName: 'Kestrel', level: 'runner', package: 'runner-face' }])
-  expect((await (await call('eve', 'GET', `/api/campaigns/${c1}`)).json()).runners[0]).toMatchObject({ file: 'Ratchet-amp-Co.xml' })
+    { key, mine: false, ownerName: 'Pat Player', streetName: 'Ratchet & Co', level: 'runner', package: 'runner-face' },
+    { key, mine: true, id: 'k1', ownerName: 'kim', streetName: 'Kestrel', level: 'runner', package: 'runner-face' }])
+  expect(roster.gms).toEqual([{ name: 'Eve Editor' }])
+  expect((await (await call('eve', 'GET', `/api/campaigns/${c1}`)).json()).runners[0]).toMatchObject({ id: 'p1', owner: 'pat', file: 'Ratchet-amp-Co.xml' })
   // a GM reads, never writes, a player's runner
   expect((await call('eve', 'PUT', '/api/characters/p1?force=1', runner('p1', 'Hijacked'))).status).toBe(403)
 })
@@ -144,4 +147,53 @@ test('renaming an account renames it in campaigns; deleting one drops it, and a 
   const c = await (await call('ada', 'GET', `/api/campaigns/${c2}`)).json()
   expect(c.gms.map((u: { username: string }) => u.username)).toEqual(['ada'])
   expect(c.members.map((u: { username: string }) => u.username)).toEqual(['pat', 'kira'])
+})
+
+let c3 = ''
+const userId = async (n: string) => ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
+
+test('a GM demoted to player keeps only a member’s view: no changes, no sheets', async () => {
+  c3 = (await (await call('eve', 'POST', '/api/campaigns', { name: 'Demo' })).json()).id
+  expect((await call('eve', 'POST', `/api/campaigns/${c3}/members`, { user: 'pat' })).status).toBe(200)
+  expect((await call('pat', 'POST', `/api/campaigns/${c3}/runners`, { id: 'p2' })).status).toBe(200)
+  expect(await sheets('eve')).toEqual(['pat/p2'])
+  expect((await call('ada', 'PUT', `/api/users/${await userId('eve')}`, { role: 'player' })).status).toBe(200)
+  expect((await call('eve', 'PUT', `/api/campaigns/${c3}`, { name: 'Mine' })).status).toBe(403)
+  expect((await call('eve', 'POST', `/api/campaigns/${c3}/members`, { user: 'kira' })).status).toBe(403)
+  expect((await call('eve', 'DELETE', `/api/campaigns/${c3}/runners/p2`)).status).toBe(403) // only its owner or a GM
+  expect(await sheets('eve')).toEqual([])
+  expect(await (await call('eve', 'GET', `/api/campaigns/${c3}`)).json()).toMatchObject({ you: 'member', gms: [{ name: 'Eve Editor' }] })
+  expect((await call('ada', 'PUT', `/api/users/${await userId('eve')}`, { role: 'editor' })).status).toBe(200)
+  expect(await sheets('eve')).toEqual(['pat/p2'])
+})
+
+test('an archived campaign takes no new runners; runners can still leave it', async () => {
+  expect((await call('eve', 'PUT', `/api/campaigns/${c3}`, { archived: true })).status).toBe(200)
+  expect((await call('pat', 'POST', `/api/campaigns/${c3}/runners`, { id: 'p3' })).status).toBe(409)
+  expect((await call('pat', 'DELETE', `/api/campaigns/${c3}/runners/p2`)).status).toBe(200)
+  expect((await call('eve', 'PUT', `/api/campaigns/${c3}`, { archived: false })).status).toBe(200)
+})
+
+test('trash: a trashed runner leaves its campaign; a restored one keeps a campaign only while its owner is in it', async () => {
+  const restore = async (xml: string) => {
+    writeFileSync(join(chars, 'pat', '.trash', 'Planted-1700000000000.xml'), xml)
+    const r = await (await call('pat', 'POST', '/api/trash/Planted-1700000000000.xml/restore')).json()
+    return file('pat', r.file)
+  }
+  expect((await call('pat', 'POST', `/api/campaigns/${c3}/runners`, { id: 'p2' })).status).toBe(200)
+  expect((await call('pat', 'DELETE', '/api/characters/p2')).status).toBe(204)
+  const [item] = (await (await call('pat', 'GET', '/api/trash')).json()).items
+  expect(readFileSync(join(chars, 'pat', '.trash', item.file), 'utf8')).not.toContain('campaign=')
+  expect(await sheets('eve')).toEqual([])
+  expect(await restore(runner('t1', 'Kept', ` campaign="${c3}"`))).toContain(`campaign="${c3}"`) // pat is in c3
+  expect(await restore(runner('t2', 'Gone', ' campaign="ffffffffffff"'))).not.toContain('campaign=') // no such campaign
+  expect((await call('eve', 'DELETE', `/api/campaigns/${c3}/members/pat`)).status).toBe(200)
+  expect(await restore(runner('t3', 'Left', ` campaign="${c3}"`))).not.toContain('campaign=') // pat left c3
+})
+
+test('a save whose root attributes aren’t well formed is refused; campaigns.xml can’t be read by another name', async () => {
+  expect((await call('pat', 'PUT', '/api/characters/p1?force=1', runner('p1', 'Bad>Name'))).status).toBe(400)
+  expect((await call('pat', 'PUT', '/api/characters/p1?force=1', runner('p1', 'Bad<Name'))).status).toBe(400)
+  for (const p of ['/custom/campaigns.xml::$DATA', '/custom/CAMPAI~1.XML', '/custom/CAMPAIGNS.XML', '/custom/campaigns.xml.'])
+    expect((await call('pat', 'GET', p)).status, p).toBe(404)
 })
