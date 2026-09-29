@@ -110,7 +110,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const config = join(libraryDir, '.config')
   const backups = join(libraryDir, '.backups')
   const queue = []
-  let running = null, child = null, listChild = null
+  let running = null, child = null, listChild = null, testChild = null
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let testing = null; const tests = [] // connection tests: one at a time, 10 a minute (each may cost a few tokens)
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
@@ -139,7 +139,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         // PYTHONIOENCODING: else Windows' code page mangles the ’ in messages; CA2_CUSTOM_DIR: where the core files are
         env: { ...process.env, PYTHONIOENCODING: 'utf-8', CA2_CUSTOM_DIR: customDir },
         stdio: ['pipe', 'pipe', 'pipe'] })
-      if (args[0] === 'list-models' || args[0] === 'test-ai') listChild = p
+      if (args[0] === 'list-models') listChild = p
+      else if (args[0] === 'test-ai') testChild = p
       else if (args[0] === 'backup') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
       else if (!['set-key', 'set-settings', 'edit', 'restore', 'datapack'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
@@ -855,7 +856,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   // shutdown: stop the running importer (the next start marks its book interrupted) and any model list
   // and backups being made; pending restore uploads and unfetched backups are deleted
   const stop = () => {
-    child?.kill(); listChild?.kill()
+    child?.kill(); listChild?.kill(); testChild?.kill()
     for (const p of spawned) p.kill()
     for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
   }

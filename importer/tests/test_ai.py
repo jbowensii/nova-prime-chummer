@@ -322,6 +322,26 @@ class PingTest(unittest.TestCase):
         with self.assertRaisesRegex(AI.ProviderError, "save the workspace first"):
             AI.ping("anythingllm", self.library(s.url, workspace=""))
 
+    def test_a_redirect_never_carries_the_key_elsewhere(self):
+        elsewhere = self.stub(lambda p: (200, ANTHROPIC_MSG))
+        s = self.stub(lambda p: (307, {}, {"Location": elsewhere.url + p}))
+        lib = self.library(s.url)
+        for p in AI.PROVIDER_IDS:
+            with self.assertRaisesRegex(AI.ProviderError, "redirected to another address", msg=p):
+                AI.ping(p, lib)
+        with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):
+            AI.list_models("anthropic", lib)
+        with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):
+            AI.complete({"id": "anthropic", "baseUrl": s.url}, KEY, "s", "u")
+        self.assertEqual(elsewhere.requests, [])
+
+    def test_model_and_workspace_stay_one_path_segment(self):
+        s = self.stub(lambda p: (200, {"candidates": [{"content": {"parts": [{"text": "OK"}]}}], "textResponse": "OK"}))
+        AI.ping("gemini", self.library(s.url, model=' model="../../evil?x=1"'))
+        AI.ping("anythingllm", self.library(s.url, workspace="../admin"))
+        self.assertEqual([r["path"] for r in s.requests],
+                         ["/v1beta/models/..%2F..%2Fevil%3Fx%3D1:generateContent", "/api/v1/workspace/..%2Fadmin/chat"])
+
     def test_cli_prints_json_or_the_reason(self):
         s = self.stub(lambda p: (200, {"choices": [{"message": {"content": "OK"}}]}))
         lib, out, err = self.library(s.url), io.StringIO(), io.StringIO()
