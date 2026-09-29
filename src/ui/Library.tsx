@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, because, isAdmin, useMe } from './auth'
+import { AccountMenu, because, canEdit, isAdmin, useMe } from './auth'
 import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
@@ -156,7 +156,7 @@ export function Library({ c }: { c: Catalog }) {
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={loadSamples}>Load sample characters</button>
           {admin && <a className="btn quiet" href="#/books">Books</a>}
-          <a className="btn quiet" href="#/rules">Rules</a>
+          {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
           <a className="btn quiet" href="#/data">Game data</a>
           <SettingsButton />
           <AccountMenu />

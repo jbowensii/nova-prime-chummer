@@ -1,0 +1,115 @@
+import { test, expect, type Page } from '@playwright/test'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { usersFile } from '../server/auth.mjs'
+import { createServer } from '../server/server.mjs'
+
+// The Rules page is the GMs' (admin and editors): they switch table rules on and off and write house rules; players get
+// a read-only Table rules page. On a server of its own with the made-up books (tests/fixtures/mini/custom): one optional
+// rule, "Long haggles" (TEST p.42), off, and one house rule, on. Runs in order. Screenshots go to .extract/ (not committed).
+const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1' }
+const SHOTS = '.extract/screenshots/0.4.1'
+const PHONE = { width: 390, height: 844 }
+let server: ReturnType<typeof createServer>, base = '', dir = ''
+
+test.describe.configure({ mode: 'serial' })
+test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+
+test.beforeAll(async () => {
+  dir = mkdtempSync(join(tmpdir(), 'ca2-tablerules-'))
+  cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
+  mkdirSync(join(dir, 'library', '.config'), { recursive: true })
+  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
+    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
+  base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
+  mkdirSync(SHOTS, { recursive: true })
+})
+test.afterAll(() => { server.stopJobs(); server.close() })
+
+async function signIn(page: Page, username: keyof typeof PW) {
+  await page.goto('/')
+  await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Password', { exact: true }).fill(PW[username])
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+}
+/** Light, dark and phone (dark) screenshots of the page as it is. */
+async function shots(page: Page, name: string) {
+  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  await theme('light')
+  await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
+  await theme('dark')
+  await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
+  await page.setViewportSize(PHONE)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${name} scrolls sideways`).toBeLessThanOrEqual(0)
+  await page.screenshot({ path: `${SHOTS}/${name}-phone.png`, fullPage: true })
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await theme('light')
+}
+
+test('the admin finds AI settings in Settings', async ({ page }) => {
+  await signIn(page, 'ada')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Open AI settings' }).click()
+  await expect(page).toHaveURL(/#\/books\/ai$/)
+  await expect(page.getByRole('dialog')).toBeHidden()
+})
+
+test('an editor switches table rules on and writes house rules on the Rules page', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  const gm = page.getByRole('region', { name: 'Table rules' })
+  const haggles = gm.getByRole('switch', { name: 'Long haggles' })
+  await expect(haggles).not.toBeChecked()
+  await expect(gm.getByText('Invented: a price is argued over three made-up rounds.')).toBeVisible()
+  await haggles.click() // saved first, then shown on
+  await expect(haggles).toBeChecked()
+  await expect(gm.getByRole('status')).toHaveText('Long haggles is on.')
+
+  await gm.getByRole('button', { name: 'Add a house rule' }).click()
+  let form = page.getByRole('dialog', { name: 'Add a house rule' })
+  await form.getByLabel('Name').fill('Quiet streets')
+  await form.getByLabel('Description').fill('Made up: no drive-bys in the first scene.')
+  await form.getByRole('button', { name: 'Save house rule' }).click()
+  await expect(gm.getByRole('status')).toHaveText('Saved Quiet streets.')
+  await expect(gm.getByRole('switch', { name: 'Quiet streets' })).toBeChecked()
+
+  await gm.getByRole('button', { name: 'Edit Quiet streets' }).click()
+  form = page.getByRole('dialog', { name: 'Edit house rule' })
+  await form.getByLabel('Name').fill('Quieter streets')
+  await form.getByRole('button', { name: 'Save house rule' }).click()
+  await expect(gm.getByRole('status')).toHaveText('Saved Quieter streets.')
+
+  await gm.getByRole('button', { name: 'Remove Made-up house rule' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove house rule' }).click()
+  await expect(gm.getByRole('status')).toHaveText('Removed Made-up house rule.')
+  await page.reload() // saved on the server
+  await expect(gm.getByRole('switch')).toHaveCount(2)
+  await expect(gm.getByRole('switch', { name: 'Long haggles' })).toBeChecked()
+  expect(readFileSync(join(dir, 'custom', 'table-rules.xml'), 'utf8')).toContain('<name>Quieter streets</name>')
+  await expect(page.getByRole('heading', { name: 'Rules reference' })).toBeVisible() // the quick reference stays below
+  await shots(page, 'rules-gm')
+})
+
+test('a player sees the rules switched on, read only; the Rules page isn’t theirs', async ({ page }) => {
+  await signIn(page, 'pat')
+  await expect(page.getByRole('link', { name: 'Rules', exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Table rules' }).click()
+  await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
+  await expect(page.getByRole('listitem')).toHaveCount(2)
+  await expect(page.getByRole('listitem').first()).toContainText('Long haggles')
+  await expect(page.getByRole('listitem').first()).toContainText('TEST p.42')
+  await expect(page.getByText('Made up: no drive-bys in the first scene.')).toBeVisible()
+  await expect(page.getByRole('switch')).toHaveCount(0)
+  await expect(page.getByText('Made-up house rule')).toHaveCount(0)
+  await shots(page, 'table-rules-player')
+  await page.goto('/#/rules')
+  await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Rules reference' })).toHaveCount(0)
+  const r = await page.request.put(`${base}api/table-rules`, { data: { rules: [] }, headers: { Origin: base.replace(/\/$/, '') } })
+  expect(r.status()).toBe(403)
+})

@@ -4,12 +4,13 @@ import { detectRepo, migrateBrowserToServer, RepoContext, type Repo } from './re
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'
-import { AccountMenu, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
+import { AccountMenu, canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
 import { BookReview } from './Review'
 import { RulesScreen } from './Rules'
+import { TableRulesScreen } from './TableRules'
 import { Setup } from './Setup'
 import { Recover, SignIn } from './SignIn'
 import { RESTORED } from './Backup'
@@ -54,7 +55,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
 
   const admin = isAdmin(me)
   // pages a role can't use open the runner list instead (the server refuses their requests anyway)
-  const page = (route[0] === 'books' || route[0] === 'users') && !admin ? '' : route[0]
+  const page = (route[0] === 'books' || route[0] === 'users') && !admin ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
   const [, id, tab] = route
   const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
@@ -70,7 +71,8 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'books' && id === 'ai' ? <AiSettings />
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />
         : page === 'books' ? <BooksScreen c={catalog} reload={() => void refresh()} />
-        : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} /> : <Library c={catalog} />}
+        : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} />
+        : page === 'table-rules' ? <TableRulesScreen c={catalog} /> : <Library c={catalog} />}
     </CatalogEdits></RepoContext.Provider>
   )
 }

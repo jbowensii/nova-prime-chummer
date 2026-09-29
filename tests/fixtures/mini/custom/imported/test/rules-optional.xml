@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up optional rule (sheet="optional"): a seed of the Table rules. Real imports leave <text> empty (the text is private);
+     this one carries an invented description so the tests can show it. -->
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">
+  <rule id="test.optional-long-haggles" sheet="optional" section="Optional rule" source="TEST" page="42"><title>Long haggles</title><text>Invented: a price is argued over three made-up rounds.</text></rule>
+</ca2:data>

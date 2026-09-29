@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
+  <rule id="test.optional-long-haggles" on="false"/>
+  <rule id="house-0a1b" on="true"><name>Made-up house rule</name><text>Invented: every run starts with a free coffee.</text></rule>
+</ca2:tablerules>
