@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- library/.config/users.xml (accounts), sessions.xml (session hashes), device-key.xml and reset.xml (a recovery code's hash, from
+<!-- library/.config/users.xml (accounts), sessions.xml (session hashes), ask-counts.xml (Ask the rules questions today), device-key.xml and reset.xml (a recovery code's hash, from
      `node server/users.mjs reset <user>`). Written by the server (server/auth.mjs); never served, never plain secrets. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:ca2="urn:chummer-anarchy2:config:1"
@@ -46,6 +46,10 @@
             <xs:attribute name="enabled" type="xs:boolean" use="required"/>
             <xs:attribute name="created" type="xs:dateTime" use="required"/>
             <xs:attribute name="lastLogin" type="xs:dateTime"/>
+            <!-- Ask the rules: questions a day (UTC) the admin allows this account; missing = no limit -->
+            <xs:attribute name="dailyQuestions">
+              <xs:simpleType><xs:restriction base="xs:nonNegativeInteger"><xs:maxInclusive value="10000"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
             <!-- an Authelia account, once signed in: the issuer and its subject (sub) it is linked to; later sign-ins match these
                  only (server/oidc.mjs). Cleared by Unlink, a new username/email/method, or a new issuer. -->
             <xs:attribute name="oidcIss" type="xs:string"/>
@@ -81,6 +85,22 @@
     <xs:complexType>
       <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
       <xs:attribute name="key" type="xs:base64Binary" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- ask-counts.xml: each account's answered Ask the rules questions on `date` (UTC), by user id (server/books.mjs) -->
+  <xs:element name="askcounts">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="count" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:attribute name="user" type="ca2:UserId" use="required"/>
+            <xs:attribute name="n" type="xs:positiveInteger" use="required"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="date" type="xs:date" use="required"/>
     </xs:complexType>
   </xs:element>
 
