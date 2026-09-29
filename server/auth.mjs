@@ -317,7 +317,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   function deviceOf(req, ctx, id) {
     const m = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${deviceName(ctx)}=([A-Za-z0-9_-]{22})\\.([A-Za-z0-9_-]{43})(?:;|$)`))
     if (!m) return null
-    return timingSafeEqual(Buffer.from(m[2], 'base64url'), deviceMac(`id:${id}`, m[1])) ? m[1] : null
+    // compare the text itself: base64url's last character has spare bits, so decoding would accept altered copies
+    return timingSafeEqual(Buffer.from(m[2]), Buffer.from(deviceMac(`id:${id}`, m[1]).toString('base64url'))) ? m[1] : null
   }
   const SESSIONS_PER_USER = 20
   function startSession(res, ctx, u) {

@@ -454,6 +454,7 @@ test('known devices: a browser that signed in skips its account’s wait until i
   expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(429)
   expect((await login(s.base, 'player', PW.player, from({ Cookie: other }))).r.status).toBe(429) // another account's device
   expect((await login(s.base, 'player', PW.player, from({ Cookie: device.replace(/.$/, c => c === 'A' ? 'B' : 'A') }))).r.status).toBe(429) // forged
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: device.replace(/(\.[\w-]{10})(.)/, (_, a, c) => a + (c === 'A' ? 'B' : 'A')) }))).r.status).toBe(429) // forged MAC
   expect((await login(s.base, 'player', PW.player, from({ Cookie: device }))).r.status).toBe(200) // and that clears the wait
   expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(200)
 
