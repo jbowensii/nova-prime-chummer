@@ -263,12 +263,32 @@ and its character creation example) writes each runner as a character
 file (`character.xsd`, `origin` = the source) to
 `custom/imported/<source>/samples/<source>.<name>.xml`, and lists it in the
 generated `custom/imported/samples.xml` (`<sample source href name role page/>`,
-`href` relative to `custom/imported/`; schema `samples.xsd`). "Load sample
-characters" reads that list; before any import there are none. It matches samples by source and name, not by id
-(`sampleKey`, docs/character-format.md).
+`href` relative to `custom/imported/`; schema `samples.xsd`). "Load example
+characters" reads that list and the example sets below; before any import the books bring none.
 The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
+
+## Example sets (`custom/samples/<set>/`)
+
+Example characters that don't come from an import: one folder per set, each holding character files (`character.xsd`).
+The admin manages the folder on disk; the app only reads it (`GET /api/samples`, any signed-in account; no route
+writes it), and backups carry it with the rest of `custom/`. An optional `set.xml` names the set and says whether its
+runners are canon (schema `sampleset.xsd`):
+
+```xml
+<ca2:sampleset xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" name="Built-in samples (first release)" canon="true"/>
+```
+
+Without `set.xml` a set is named after its folder and isn't canon, except `builtin` (the first release's runners,
+built from the core rulebook only): "Built-in samples (first release)", canon. `npm run validate:data` checks both
+kinds of file.
+
+**One copy per character.** A character is its name (street name, else name). "Load example characters" picks at most
+one canon version of each (a canon book's over a set's; of several canon books, the newest import) and one non-canon
+version (a book's over a set's), and adds to the signed-in account's library each one whose key
+(`<name slug>|canon` or `<name slug>|noncanon`, saved as the copy's `sampleKey`, docs/character-format.md) it doesn't
+hold yet. A book sample's canon-ness is its source's `canon`; a set's runner's is the set's.
 
 ## Private descriptions (`custom/texts/`)
 

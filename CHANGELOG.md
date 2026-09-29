@@ -1,5 +1,28 @@
 # Release notes
 
+## 0.4.3 — 2026-09-29: the example character library
+
+**Example characters**
+- **Load example characters** (renamed from “Load sample characters”; every
+  role) now brings every example the server has: the imported books’ runners
+  (the core rulebook’s pregens and Lightning, Daegann’s pregen booklet) and
+  the server’s example sets in `custom/samples/<set>/`, such as the first
+  release’s 28 built-in runners in `custom/samples/builtin/`.
+- One copy per character: at most one canon version (a canon book’s over an
+  example set’s; of several canon books, the newest import) and one
+  non-canon version. Loading again, re-importing a book, or already holding
+  an older copy of the same character never adds a second one. Each person
+  gets their own copies, so a player who joins later loads the full set.
+- Example sets are read only: the admin manages `custom/samples/` on disk,
+  the app lists it for everyone signed in (`GET /api/samples`), and backups
+  carry it. An optional `set.xml` names a set and says whether it is canon
+  (schema `sampleset.xsd`); `builtin` without one is “Built-in samples
+  (first release)”, canon.
+- **Tidy up** now offers to move every extra copy beyond one per character
+  and canon-ness to your trash, and lists each one with where it came from.
+  A copy you changed always stays; otherwise the preferred version stays.
+  Other accounts’ runners are never touched.
+
 ## 0.4.2 — 2026-09-29: the last review leftovers
 
 **Books and core data**

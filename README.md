@@ -33,11 +33,14 @@ own API key), and you review its entries before they’re added.
   Creation can be reopened until the first ledger entry.
 - **Printable sheet** laid out like the official one. Your browser’s “Save as
   PDF” makes the PDF.
-- **Sample characters** from your imported books load with one click: the
-  rulebook’s pregens and Lightning, and Daegann’s pregen booklet. Loading them
-  again never adds copies, and each person gets their own. If earlier versions
-  left duplicates, the Library offers **Tidy up**: it moves unchanged
-  duplicates to your trash and never touches one you edited. Each import’s
+- **Example characters** load with one click (**Load example characters**,
+  every role): the rulebook’s pregens and Lightning, Daegann’s pregen
+  booklet, and the server’s example sets in `custom/samples/<set>/` (such as
+  the first release’s built-in runners). Each person gets their own copies:
+  one canon and one non-canon copy of each character, never more, however
+  often they load or the books are re-imported. If a library holds extra
+  copies, the Library offers **Tidy up**: it lists them, moves them to your
+  trash and never touches one you edited. Each import’s
   report lists any printed number the engine doesn’t reproduce; see
   [docs/book-discrepancies.md](docs/book-discrepancies.md) for the rules calls.
 - **Canon and non-canon.** The core rulebook and Conversion Guide are canon.
