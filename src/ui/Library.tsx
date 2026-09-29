@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, because, canEdit, isAdmin, useMe } from './auth'
+import { AccountMenu, because, canEdit, isAdmin, send, useMe } from './auth'
 import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
+import { joined, loadCampaigns, type Campaign } from './Campaigns'
 import { chooseExamples, extraCopies, keyOf, type Example, type Sources } from './samples'
+import { AskButton } from './AskRules'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
@@ -63,8 +65,16 @@ export function Library({ c }: { c: Catalog }) {
     fetch('./api/books', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => setNoBooks(Array.isArray(b) && b.length === 0), () => {})
   }, [repo.mode, c, admin])
   const [trashed, setTrashed] = useState<number | null>(null) // server only: the browser's storage has no trash
+  // server only: the caller's campaigns (the admin: all), for each runner's tag, Add to campaign… and the filter
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [only, setOnly] = useState('') // the filter: '' every runner, '-' none in a campaign, else a campaign's id
+  const [joining, setJoining] = useState<Character | null>(null)
+  const [target, setTarget] = useState('')
   const refresh = () => {
-    if (repo.mode === 'server') loadTrash().then(t => setTrashed(t.items.length), () => setTrashed(null))
+    if (repo.mode === 'server') {
+      loadTrash().then(t => setTrashed(t.items.length), () => setTrashed(null))
+      loadCampaigns().then(setCampaigns, () => setCampaigns([]))
+    }
     return repo.list().then(setList, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
   }
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -148,8 +158,21 @@ export function Library({ c }: { c: Catalog }) {
     void refresh()
   }
 
+  const campaignOf = (ch: Character) => campaigns.find(x => x.id === ch.campaign)
+  const open = campaigns.filter(x => !x.archived && joined(x, me)) // the ones a runner of yours can join
+  const shown = (s: Stored) => !only || (only === '-' ? !campaignOf(s.ch) : s.ch.campaign === only)
+  const assign = async (ch: Character, cid: string | null) => {
+    try {
+      const x = cid ? campaigns.find(k => k.id === cid) : campaignOf(ch), name = ch.identity.streetName || ch.identity.name || 'The runner'
+      await send(cid ? `campaigns/${cid}/runners` : `campaigns/${ch.campaign}/runners/${encodeURIComponent(ch.id)}`, cid ? { id: ch.id } : undefined, cid ? 'POST' : 'DELETE')
+      setMsg(cid ? `${name} is in ${x?.name} now.` : `${name} left ${x?.name ?? 'its campaign'}.`)
+    } catch (e) { setMsg((e as Error).message) }
+    setJoining(null)
+    void refresh()
+  }
+
   const byOwner = new Map<string, Stored[]>()
-  for (const s of list ?? []) if (!mine.includes(s)) byOwner.set(s.owner!, [...byOwner.get(s.owner!) ?? [], s])
+  for (const s of (list ?? []).filter(shown)) if (!mine.includes(s)) byOwner.set(s.owner!, [...byOwner.get(s.owner!) ?? [], s])
   const others = [...byOwner].map(([owner, rows]) => [owner, rows[0].ownerName ?? owner, rows] as const)
   const dossier = ({ ch, rev }: Stored, own: boolean) => (
     <div className="dossier" key={ch.id}>
@@ -161,11 +184,14 @@ export function Library({ c }: { c: Catalog }) {
           {' '}<span className={`mode ${ch.finalizedAt ? 'career' : 'creation'}`}>{ch.finalizedAt ? 'Career' : 'Creation'}</span>
           {ch.origin && !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>}
           {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
+          {campaignOf(ch) && <> <a className="ctag" href={`#/campaigns/${ch.campaign}`} title="Campaign">{campaignOf(ch)!.name}</a></>}
         </div>
       </div>
       {own ? <div className="row">
         <button className="btn small" onClick={async () => { await store(exportCharacter(c, ch), rev); void refresh() }}>Export</button>
         <button className="btn small quiet" onClick={() => void duplicate(ch)}>Duplicate</button>
+        {campaignOf(ch) ? <button className="btn small quiet" onClick={() => void assign(ch, null)}>Remove from campaign</button>
+          : open.length > 0 && <button className="btn small quiet" onClick={() => { setTarget(open[0].id); setJoining(ch) }}>Add to campaign…</button>}
         <button className="btn small quiet" onClick={() => setToDelete(ch)}>Delete</button>
       </div> : <div className="row">
         <button className="btn small" onClick={() => exportCharacter(c, ch)}>Export</button>
@@ -188,8 +214,9 @@ export function Library({ c }: { c: Catalog }) {
           {admin && <a className="btn quiet" href="#/books">Books</a>}
           {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
           <a className="btn quiet" href="#/data">Game data</a>
+          {repo.mode === 'server' && <a className="btn quiet" href="#/campaigns">Campaigns</a>}
           {trashed !== null && <a className="btn quiet" href="#/trash">Trash ({trashed})</a>}
-          <SettingsButton />
+          <AskButton /><SettingsButton />
           <AccountMenu />
         </div>
       </header>
@@ -200,13 +227,20 @@ export function Library({ c }: { c: Catalog }) {
         {dupes.length === 1 ? 'An example character is in your library twice' : `${dupes.length} example characters are extra copies`}, unchanged since they were loaded.{' '}
         <button className="btn small" onClick={() => setTidying(true)}>Tidy up</button></p>}
 
+      {campaigns.length > 0 && <label className="filter">Show
+        <select value={only} onChange={e => setOnly(e.target.value)}>
+          <option value="">Every runner</option>
+          <option value="-">Not in a campaign</option>
+          {campaigns.map(x => <option key={x.id} value={x.id}>{x.name}{x.archived ? ' (archived)' : ''}</option>)}
+        </select></label>}
       {list === null ? <p className="muted">Loading runners…</p> : <>
         {others.length > 0 && <h2>My runners</h2>}
-        {mine.length === 0 ? (
+        {only && mine.length > 0 && !mine.some(shown) ? <p className="muted">None of your runners is {only === '-' ? 'outside a campaign' : 'in that campaign'}.</p>
+        : mine.length === 0 ? (
           <div className="empty">
             <p>No runners yet. Start a new one, import a character file, or load the example characters to look around.</p>
           </div>
-        ) : mine.map(s => dossier(s, true))}
+        ) : mine.filter(shown).map(s => dossier(s, true))}
         {others.map(([owner, name, rows]) => <section key={owner} aria-label={`${name}’s runners`}>
           <h2>{name}’s runners</h2>
           {rows.map(s => dossier(s, false))}
@@ -228,6 +262,14 @@ export function Library({ c }: { c: Catalog }) {
           </label>
         </div>
         <p className="muted" style={{ marginTop: '0.8rem' }}>Both can be changed later on the Concept tab.</p>
+      </Modal>
+
+      <Modal open={!!joining} onClose={() => setJoining(null)} title={`Add ${joining?.identity.streetName || joining?.identity.name || 'this runner'} to a campaign`}
+        actions={<><button className="btn" onClick={() => setJoining(null)}>Cancel</button>
+          <button className="btn primary" disabled={!target} onClick={() => void assign(joining!, target)}>Add to campaign</button></>}>
+        <label>Campaign<select value={target} onChange={e => setTarget(e.target.value)}>
+          {open.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <p className="muted" style={{ marginTop: '0.8rem' }}>A runner plays in one campaign at a time; its GM can read and print it. To play it in another one too, duplicate it.</p>
       </Modal>
 
       <Modal open={tidying} onClose={() => setTidying(false)} title="Tidy up the example characters"

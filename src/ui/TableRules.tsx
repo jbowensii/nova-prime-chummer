@@ -10,6 +10,7 @@ import { Modal } from './bits'
 import { useRepo } from './repo'
 import { SettingsButton } from './settings'
 import { SourceLabel } from './SourceLabel'
+import { AskButton } from './AskRules'
 
 /** A row of custom/table-rules.xml: a book's optional rule by its id, or a house rule with its own name and text. */
 export interface TableRule { id: string; on: boolean; name?: string; text?: string }
@@ -51,7 +52,7 @@ export function TableRulesScreen({ c }: { c: Catalog }) {
     <main className="lib">
       <header>
         <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Table rules</h1></div>
-        <div className="row"><a className="btn quiet" href="#/">Your runners</a><SettingsButton /><AccountMenu /></div>
+        <div className="row"><a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
       </header>
       <p className="muted">The optional rules and house rules your GM plays with.</p>
       {!on ? <p className="muted">Loading table rules…</p> : on.length === 0 ? <p>No table rules are switched on yet. Your GM switches them on.</p>
