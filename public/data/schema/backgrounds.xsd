@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- library/backgrounds/backgrounds.xml: the background art the admin uploaded (Settings, Background art), written by the
+     server (server/backgrounds.mjs). Each image is library/backgrounds/<id>.<type>; the enabled ones show behind every page,
+     one picked at random on each page load. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:config:1"
+           targetNamespace="urn:chummer-anarchy2:config:1"
+           elementFormDefault="unqualified">
+  <xs:element name="backgrounds">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="background" minOccurs="0" maxOccurs="50">
+          <xs:complexType>
+            <xs:attribute name="id" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="type" use="required">
+              <xs:simpleType><xs:restriction base="xs:string">
+                <xs:enumeration value="png"/><xs:enumeration value="jpg"/><xs:enumeration value="webp"/>
+              </xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <!-- the uploaded file's name, for the admin's gallery -->
+            <xs:attribute name="name" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="120"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="enabled" type="xs:boolean" use="required"/>
+            <xs:attribute name="uploaded" type="xs:dateTime" use="required"/>
+            <xs:attribute name="size" use="required">
+              <xs:simpleType><xs:restriction base="xs:nonNegativeInteger"><xs:maxInclusive value="10485760"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+    </xs:complexType>
+    <xs:unique name="one-per-id"><xs:selector xpath="background"/><xs:field xpath="@id"/></xs:unique>
+  </xs:element>
+</xs:schema>

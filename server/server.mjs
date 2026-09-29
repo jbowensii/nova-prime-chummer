@@ -21,6 +21,7 @@
 //          ?user=<username>              the admin: another account's trash (everyone else: 403)
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
+//   /api/backgrounds*                    background art from library/backgrounds (server/backgrounds.mjs)
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
 //                                        edits, backup and restore, data packs (server/books.mjs); LIBRARY_DIR is never served
@@ -33,6 +34,7 @@ import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
+import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi, unesc, writeAtomic } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
 import { oidcApi } from './oidc.mjs'
@@ -156,6 +158,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
   const campaigns = campaignsApi({ customDir, lock, auth, runnersOf: u => index(folder(u)),
     writeRunner: (u, file, xml) => writeAtomic(join(folder(u), file), xml) })
+  const backgrounds = backgroundsApi({ libraryDir, auth })
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
@@ -197,6 +200,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
     if (await campaigns.handle(req, res, url, send, who) !== false) return
+    if (await backgrounds.handle(req, res, url, send, who) !== false) return
     if (/^\/api\/trash(\/|$)/.test(url.pathname)) return trash(req, res, url, who)
     if (url.pathname === '/api/characters' && req.method === 'GET') {
       const owners = [who.username, ...(who.role === 'admin' ? auth.usernames().filter(u => u !== who.username) : [])]
