@@ -255,6 +255,87 @@ class ListModelsTest(unittest.TestCase):
         self.assertIn("no model list", err.getvalue())
 
 
+class PingTest(unittest.TestCase):
+    """The AI settings' Test button: a tiny fixed prompt to the saved provider, answered plainly."""
+
+    def library(self, url, key=KEY, model=' model="m-1"', workspace="shadowrun"):
+        lib = tempfile.mkdtemp()
+        config = os.path.join(lib, ".config")
+        xmlio.write_file(os.path.join(config, "ai-providers.xml"),
+                         '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
+                         f'<provider id="anthropic" enabled="true" baseUrl="{url}"{model}/>'
+                         f'<provider id="openai" enabled="true" baseUrl="{url}/v1"{model}/>'
+                         f'<provider id="gemini" enabled="true" baseUrl="{url}"{model}/>'
+                         f'<provider id="anythingllm" enabled="true" baseUrl="{url}" workspace="{workspace}"/></ca2:aiproviders>')
+        for p in AI.PROVIDER_IDS:
+            if key:
+                AI.set_key(config, p, key)
+        return lib
+
+    def stub(self, reply):
+        s = Stub(reply)
+        self.addCleanup(s.close)
+        return s
+
+    def test_each_provider_gets_the_fixed_prompt_and_answers(self):
+        replies = {"/v1/messages": ANTHROPIC_MSG | {"content": [{"type": "text", "text": "OK"}]},
+                   "/v1/chat/completions": {"choices": [{"message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}]},
+                   "/v1beta/models/m-1:generateContent": {"candidates": [{"content": {"parts": [{"text": "OK"}]}, "finishReason": "STOP"}]},
+                   "/api/v1/workspace/shadowrun/chat": {"id": "c1", "type": "textResponse", "textResponse": "OK", "sources": [], "close": True, "error": None}}
+        s = self.stub(lambda p: (200, replies[p]))
+        lib = self.library(s.url)
+        got = {p: AI.ping(p, lib) for p in AI.PROVIDER_IDS}
+        self.assertEqual(got, {"anthropic": ("m-1", "OK"), "openai": ("m-1", "OK"), "gemini": ("m-1", "OK"), "anythingllm": ("workspace shadowrun", "OK")})
+        by = {r["path"]: r for r in s.requests}
+        self.assertEqual(by["/v1/messages"]["body"], {"model": "m-1", "max_tokens": 16, "messages": [{"role": "user", "content": AI.PING}]})
+        self.assertEqual(by["/v1/messages"]["headers"]["x-api-key"], KEY)
+        self.assertEqual(by["/v1/chat/completions"]["body"], {"model": "m-1", "messages": [{"role": "user", "content": AI.PING}]})
+        self.assertEqual(by["/v1/chat/completions"]["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(by["/v1beta/models/m-1:generateContent"]["headers"]["x-goog-api-key"], KEY)
+        self.assertEqual(by["/api/v1/workspace/shadowrun/chat"]["body"], {"message": AI.PING, "mode": "chat"})
+        self.assertEqual(by["/api/v1/workspace/shadowrun/chat"]["headers"]["authorization"], f"Bearer {KEY}")
+
+    def test_common_failures_read_plainly_and_never_show_the_key(self):
+        for code, why in ((401, "didn’t accept the API key"), (403, "didn’t accept the API key"), (404, "wasn’t found"),
+                          (429, "rate limiting"), (503, "had an error on its side")):
+            s = self.stub(lambda p, code=code: (code, {"error": {"type": "x", "message": f"nope {KEY}"}}))
+            lib = self.library(s.url)
+            for p in AI.PROVIDER_IDS:
+                with self.assertRaises(AI.ProviderError, msg=f"{p} {code}") as cm:
+                    AI.ping(p, lib)
+                self.assertNotIn(KEY, str(cm.exception), p)
+                if not (p == "anthropic" and code == 503):  # the SDK's own words for a 5xx
+                    self.assertIn(why, str(cm.exception), f"{p} {code}")
+        with self.assertRaisesRegex(AI.ProviderError, "couldn’t reach 127.0.0.1:1"):
+            AI.ping("openai", self.library("http://127.0.0.1:1"))
+
+    def test_anythingllm_error_field_and_missing_settings(self):
+        s = self.stub(lambda p: (200, {"textResponse": None, "error": "No workspace found"}))
+        with self.assertRaisesRegex(AI.ProviderError, "AnythingLLM answered: No workspace found"):
+            AI.ping("anythingllm", self.library(s.url))
+        with self.assertRaisesRegex(AI.ProviderError, "save this provider’s settings first"):
+            AI.ping("openai", tempfile.mkdtemp())
+        with self.assertRaisesRegex(AI.ProviderError, "no API key is set for gemini"):
+            AI.ping("gemini", self.library(s.url, key=""))
+        with self.assertRaisesRegex(AI.ProviderError, "choose a model first"):
+            AI.ping("openai", self.library(s.url, model=""))
+        with self.assertRaisesRegex(AI.ProviderError, "save the workspace first"):
+            AI.ping("anythingllm", self.library(s.url, workspace=""))
+
+    def test_cli_prints_json_or_the_reason(self):
+        s = self.stub(lambda p: (200, {"choices": [{"message": {"content": "OK"}}]}))
+        lib, out, err = self.library(s.url), io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(main(["test-ai", "openai", "--library", lib]), 0)
+        r = json.loads(out.getvalue())
+        self.assertEqual((r["model"], r["reply"]), ("m-1", "OK"))
+        self.assertIsInstance(r["ms"], int)
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(main(["test-ai", "gemini", "--library", tempfile.mkdtemp()]), 3)
+            self.assertEqual(main(["test-ai", "evil", "--library", lib]), 2)
+        self.assertIn("save this provider’s settings first", err.getvalue())
+
+
 PROVIDERS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="{use}">
   <provider id="anthropic" enabled="true" model="claude-opus-5"/>

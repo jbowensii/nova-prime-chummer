@@ -274,6 +274,10 @@ AnythingLLM under **AI settings**. The key is stored on the server in a file
 of its own and never shown again. Once a key is saved, **Load models** asks
 the provider (with that key, at the saved address) for its model list to pick
 from; AnythingLLM has none, and you can always type a model name instead.
+**Test** (each provider, once its settings are saved) sends the provider a tiny
+fixed prompt with the saved settings and key and shows its reply and how long
+it took, or why it failed (key refused, model or workspace not found, address
+unreachable, no answer within 30 seconds).
 If the core rulebook’s recipe can’t read a core table, the same AI can read it
 (any of the core tables, not just weapons and armor); those rows are marked
 for you to check against the book. Before anything is sent the page names the

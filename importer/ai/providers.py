@@ -24,6 +24,11 @@ LIST_TIMEOUT = 20  # model lists: fail well inside the server's 60 s cap
 ANTHROPIC_TIMEOUT = 600  # a 16k-token structured reply can take minutes
 DEFAULT_MODEL = {"anthropic": "claude-opus-5", "gemini": "gemini-2.5-pro"}
 GEMINI_URL = "https://generativelanguage.googleapis.com"
+PING = "Reply with the single word OK."
+PING_TIMEOUT = 25  # a connection test: fail well inside the server's 30 s cap
+# what a status means for a connection test (the provider's own words stay out: they may be long, or echo a header)
+HTTP_SAYS = {401: "the provider didn’t accept the API key", 403: "the provider didn’t accept the API key",
+             404: "the address, model or workspace wasn’t found", 429: "the provider is rate limiting this key; try again later"}
 
 
 class ProviderError(Exception):
@@ -232,6 +237,53 @@ def list_models(provider_id, library_dir):
     return sorted(set(ids))
 
 
+def ping(provider_id, library_dir):
+    """(model, reply) for a tiny fixed prompt: is the provider connected? Like list_models, only the saved address,
+    model and key are used (the providers file is read before the key); the request only names the provider."""
+    config = os.path.join(library_dir, ".config")
+    if provider_id not in PROVIDER_IDS:
+        raise ProviderError(f"unknown provider “{provider_id}”")
+    p = (read_providers(config)[1] if os.path.exists(os.path.join(config, "ai-providers.xml")) else {}).get(provider_id)
+    if not p:
+        raise ProviderError("save this provider’s settings first")
+    key = read_key(config, provider_id) or ""
+    if not key and provider_id in ("anthropic", "gemini"):
+        raise ProviderError(f"no API key is set for {provider_id}")
+    model = p.get("model") or DEFAULT_MODEL.get(provider_id, "")
+    try:
+        if provider_id == "anthropic":
+            client = anthropic.Anthropic(api_key=key, base_url=p.get("baseUrl") or None, timeout=PING_TIMEOUT, max_retries=0)
+            with _anthropic_errors():
+                resp = client.messages.create(model=model, max_tokens=16, messages=[{"role": "user", "content": PING}])
+            return model, next((b.text for b in resp.content if b.type == "text"), "")
+        if not p.get("baseUrl") and provider_id != "gemini":
+            raise ProviderError("save the address first")
+        if provider_id == "openai":
+            if not model:
+                raise ProviderError("choose a model first")
+            # ponytail: no output cap: OpenAI's reasoning models refuse max_tokens and spend a small cap on thinking; the prompt keeps it short
+            out = _request(p["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key),
+                           {"model": model, "messages": [{"role": "user", "content": PING}]}, timeout=PING_TIMEOUT)
+            return model, out["choices"][0]["message"].get("content") or ""
+        if provider_id == "gemini":
+            url = f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models/{urllib.parse.quote(model)}:generateContent"
+            out = _request(url, {"x-goog-api-key": key}, {"contents": [{"role": "user", "parts": [{"text": PING}]}]}, timeout=PING_TIMEOUT)
+            return model, "".join(x.get("text", "") for x in out["candidates"][0].get("content", {}).get("parts", []))
+        if not p.get("workspace"):
+            raise ProviderError("save the workspace first")
+        url = f"{p['baseUrl'].rstrip('/')}/api/v1/workspace/{urllib.parse.quote(p['workspace'])}/chat"
+        out = _request(url, _bearer(key), {"message": PING, "mode": "chat"}, timeout=PING_TIMEOUT)
+        if out.get("error"):
+            raise ProviderError(f"AnythingLLM answered: {out['error']}")
+        return f"workspace {p['workspace']}", out["textResponse"] or ""
+    except ProviderError as e:
+        status = getattr(e, "status", None)
+        why = HTTP_SAYS.get(status) or ("the provider had an error on its side" if status and status >= 500 else None)
+        raise ProviderError(f"{why} (HTTP {status})" if why else _redact(str(e), key)) from None
+    except (KeyError, IndexError, TypeError, AttributeError) as e:
+        raise ProviderError(f"{provider_id} sent an answer in an unexpected shape (missing {e})") from None
+
+
 def _redact(text, key):
     return text.replace(key, "[key]") if key else text
 
@@ -259,7 +311,9 @@ def _request(url, headers, body=None, timeout=TIMEOUT):
         with _OPENER.open(req, timeout=timeout) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
-        raise ProviderError(f"{host} answered HTTP {e.code}: {e.read(500).decode('utf8', 'replace')}") from None
+        err = ProviderError(f"{host} answered HTTP {e.code}: {e.read(500).decode('utf8', 'replace')}")
+        err.status = e.code
+        raise err from None
     except (urllib.error.URLError, OSError) as e:
         raise ProviderError(f"couldn’t reach {host}: {getattr(e, 'reason', e)}") from None
     except ValueError:
@@ -270,8 +324,10 @@ def _request(url, headers, body=None, timeout=TIMEOUT):
 def _anthropic_errors():
     try:
         yield
-    except anthropic.AuthenticationError:
+    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError):
         raise ProviderError("Anthropic didn’t accept the API key") from None
+    except anthropic.NotFoundError:
+        raise ProviderError("the address, model or workspace wasn’t found (HTTP 404)") from None
     except anthropic.RateLimitError:
         raise ProviderError("Anthropic is rate limiting this key; try again later") from None
     except anthropic.APIStatusError as e:

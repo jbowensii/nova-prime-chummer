@@ -378,7 +378,9 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .provider .keyrow { align-items: end; margin-top: 0.8rem; }
 .provider .modelrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: end; }
 .provider .modelrow label { flex: 1 1 14rem; min-width: 0; }
-.provider .modelrow .wide { flex-basis: 100%; }
+.provider .modelrow .wide, .provider .testrow .wide { flex-basis: 100%; }
+.provider .testrow { margin-top: 0.4rem; }
+.provider .testrow p { margin: 0; overflow-wrap: anywhere; }
 .provider p { margin: 0.4rem 0; font-size: 0.95rem; }
 .decision { font-size: 0.85rem; font-weight: 700; }
 .decision.accepted, .decision.edited { color: var(--ok); }

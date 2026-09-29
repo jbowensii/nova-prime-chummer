@@ -20,6 +20,20 @@
   docs/character-format.md).
 - Browser-only storage has no trash (deleting there is for good), so the
   page isn’t offered there.
+- Only regular files in a trash count (never links, or folders named like
+  runners). **Empty trash** deletes the runners the page showed and says how
+  many went; a trash file named only by its time restores as `runner.xml`.
+
+**AI settings**
+- A **Test** button for each provider (admin only) checks that it’s
+  connected: it sends “Reply with the single word OK.” with the saved
+  settings and key and shows, for example, “Connected — gemini-2.5-flash
+  replied “OK” in 1.2 s.” Otherwise it says why in plain words: the key was
+  refused, the model or workspace wasn’t found, the address can’t be
+  reached, or there was no answer within 30 seconds. Works for Anthropic,
+  OpenAI-compatible servers, Gemini and AnythingLLM. The key is never shown
+  or logged; one test runs at a time, at most 10 a minute
+  (`POST /api/ai-test?provider=`).
 
 ## 0.4.3 — 2026-09-29: the example character library
 
