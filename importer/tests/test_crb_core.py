@@ -519,6 +519,16 @@ class AiFallbackTest(unittest.TestCase):
             self.assertIn("the cha range’s minimum is above its maximum", refused["metatype.sprite"])
             self.assertIn("luck", refused["skill.haggle"])
 
+    def test_nested_row_checks_cover_blank_names_bad_ids_and_non_ascii_digits(self):
+        from importer.ai import propose as P
+        ranges = "".join(f'<range attr="{a}" min="1" max="6"/>' for a in ("str", "agi", "wil", "log"))
+        meta = ET.fromstring(f'<metatype id="gnome"><name>G</name>{ranges}<range attr="cha" min="²" max="1"/></metatype>')
+        self.assertEqual(P.ref_notes("metatypes", meta, {}), [])  # "²" is a digit but not decimal: no crash (the schema refuses it)
+        skill = ET.fromstring('<skill id="sneak" attr="agi"><name>Sneak</name><spec id="sneak.quiet" attr="agi"> </spec>'
+                              '<spec id="sneak." attr="agi">!!</spec></skill>')
+        self.assertEqual(P.ref_notes("skills", skill, {}), ['specialization "sneak.quiet" has no name',
+                                                            'specialization id "sneak." must start and end with a letter or digit'])
+
     def test_a_row_may_name_a_row_of_the_same_review_and_a_replaced_table_counts_only_its_rows(self):
         from importer.ai import propose as P
         refs = P.core_refs(["level.mythic", "amptype.spirit"], replacing={"levels"})

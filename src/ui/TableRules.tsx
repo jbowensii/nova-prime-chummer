@@ -64,7 +64,7 @@ export function TableRulesScreen({ c }: { c: Catalog }) {
 export function TableRulesManager({ c }: { c: Catalog }) {
   const repo = useRepo()
   const [saved, setSaved] = useState<TableRule[] | null>(null)
-  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
+  const [msg, setMsg] = useState<{ text: string; err?: boolean; save?: boolean } | null>(null)
   const [editing, setEditing] = useState<TableRule | null>(null)
   const [removing, setRemoving] = useState<Row | null>(null)
   // saves go one at a time, each built from the list the one before it saved: two quick clicks both count
@@ -85,10 +85,10 @@ export function TableRulesManager({ c }: { c: Catalog }) {
       await send('table-rules', { rules }, 'PUT')
       latest.current = rules
       setSaved(rules)
-      setMsg({ text: done(next) })
+      setMsg(m => m?.save ? m : { text: done(next) }) // an earlier save's error stays until dismissed
       return true
     } catch (e) {
-      setMsg({ text: `Couldn’t save the table rules. ${(e as Error).message}`, err: true })
+      setMsg({ text: `Couldn’t save the table rules. ${(e as Error).message}`, err: true, save: true })
       return false
     }
   })
@@ -98,6 +98,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
     e.preventDefault()
     const t = editing!, name = t.name!.trim()
     if (!name) return setMsg({ text: 'Give the house rule a name.', err: true })
+    if (!msg?.save) setMsg(null)
     const row = { id: t.id, on: t.on, name, text: (t.text ?? '').trim() }
     if (await save(rs => rs.some(r => r.id === t.id) ? rs.map(r => r.id === t.id ? row : r) : [...rs, row], () => `Saved ${name}.`)) setEditing(null)
   }
@@ -106,7 +107,8 @@ export function TableRulesManager({ c }: { c: Catalog }) {
     <section className="table-rules-gm" aria-labelledby="table-rules-title">
       <h2 id="table-rules-title">Table rules</h2>
       <p className="muted">Optional rules from your books and your own house rules. Players see the ones switched on under Table rules.</p>
-      {msg && !editing && <p className={msg.err ? 'banner bad' : 'banner'} role={msg.err ? 'alert' : 'status'}>{msg.text}</p>}
+      {msg && !editing && <p className={msg.err ? 'banner bad' : 'banner'} role={msg.err ? 'alert' : 'status'}>{msg.text}
+        {msg.save && <> <button className="btn small quiet" onClick={() => setMsg(null)}>Dismiss</button></>}</p>}
       {all.length === 0 && <p className="muted">No optional rules yet: they come with the core rulebook’s import. Add a house rule of your own.</p>}
       <ul className="table-rules">
         {all.map(r => <li key={r.id}><div className="head">
@@ -118,7 +120,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
           </div><Text row={r} />
         </li>)}
       </ul>
-      <button className="btn" onClick={() => { setMsg(null); setEditing({ id: `house-${newId().replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase()}`, on: true, name: '', text: '' }) }}>Add a house rule</button>
+      <button className="btn" onClick={() => { if (!msg?.save) setMsg(null); setEditing({ id: `house-${newId().replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase()}`, on: true, name: '', text: '' }) }}>Add a house rule</button>
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={all.some(r => r.id === editing?.id) ? 'Edit house rule' : 'Add a house rule'}
         actions={<><button className="btn" onClick={() => setEditing(null)}>Cancel</button><button className="btn primary" form="ca2-house">Save house rule</button></>}>

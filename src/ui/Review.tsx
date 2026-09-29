@@ -40,6 +40,7 @@ export function nestedProblem(n: Nested, skill = ''): string | null {
   for (const s of n.specs ?? []) {
     if (!s.name.trim()) return 'Each specialization needs a name.'
     const id = specId(skill, s)
+    if (!/[a-z0-9]$/.test(id)) return `The specialization “${s.name.trim()}” needs a letter or digit in its name.`
     if (ids.has(id)) return `Two specializations have the id ${id}.`
     ids.add(id)
   }

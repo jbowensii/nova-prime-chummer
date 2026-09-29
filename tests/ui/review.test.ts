@@ -30,6 +30,7 @@ test('a skill’s specializations: added (id from the name), renamed, removed; b
   expect(new XMLSerializer().serializeToString(e)).toBe('<skill id="sneak" attr="agi" source="CRB" page="3"><name>Sneak</name>'
     + '<spec id="sneak.quiet" attr="agi">Very quiet</spec><spec id="sneak.soft-steps" attr="wil">Soft Steps!</spec></skill>')
   expect(nestedProblem({ specs: [{ id: '', attr: 'agi', name: ' ' }] }, 'sneak')).toBe('Each specialization needs a name.')
+  expect(nestedProblem({ specs: [{ id: '', attr: 'agi', name: '!?' }] }, 'sneak')).toBe('The specialization “!?” needs a letter or digit in its name.')
   expect(nestedProblem({ specs: [{ id: '', attr: 'agi', name: 'Quiet' }, { id: 'sneak.quiet', attr: 'wil', name: 'Other' }] }, 'sneak'))
     .toBe('Two specializations have the id sneak.quiet.')
   expect(nestedOf(el('<level id="street"><name>Street</name></level>'))).toEqual({})

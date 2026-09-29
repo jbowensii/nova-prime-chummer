@@ -207,7 +207,8 @@ def core_refs(rows=(), replacing=()):
 def ref_notes(table, el, refs):
     """What a core row names that doesn't exist: attributes (the app's five), a package's level, an effect's amp types and
     the effects it requires or excludes, an amp type's required effect. The engine looks all of these up by id. Also what the
-    schema can't say of nested rows: a range's minimum above its maximum, a skill's specialization id used twice."""
+    schema can't say of nested rows: a range's minimum above its maximum, a skill's specialization id used twice, a
+    specialization with no name or an id that doesn't start and end with a letter or digit."""
     from importer.recipes import crb_core
     attrs, notes = set(crb_core.ATTR_LETTER.values()), []
 
@@ -220,6 +221,10 @@ def ref_notes(table, el, refs):
         specs = [s.get("id") for s in el.iter("spec")]
         for s in el.iter("spec"):
             need(f"attribute of {s.get('id')}", s.get("attr"), attrs)
+            if not (s.text or "").strip():
+                notes.append(f'specialization "{s.get("id")}" has no name')
+            if not re.fullmatch(r"[a-z0-9]([a-z0-9.-]*[a-z0-9])?", s.get("id") or ""):
+                notes.append(f'specialization id "{s.get("id")}" must start and end with a letter or digit')
         notes += [f'two specializations have the id "{i}"' for i in sorted({i for i in specs if specs.count(i) > 1})]
     if table == "metatypes":
         got = [r.get("attr") for r in el.iter("range")]
@@ -228,7 +233,7 @@ def ref_notes(table, el, refs):
         if sorted(got) != sorted(attrs):
             notes.append("needs one range for each attribute")
         for r in el.iter("range"):
-            if (r.get("min") or "").isdigit() and (r.get("max") or "").isdigit() and int(r.get("min")) > int(r.get("max")):
+            if (r.get("min") or "").isdecimal() and (r.get("max") or "").isdecimal() and int(r.get("min")) > int(r.get("max")):
                 notes.append(f'the {r.get("attr")} range’s minimum is above its maximum')
     if table == "packages":
         need("level", el.get("level"), refs.get("levels", set()))
