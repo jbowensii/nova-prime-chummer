@@ -81,7 +81,7 @@ will convert from this format; the format itself is ours and stays stable.
 | `GET /api/trash` | `{ user, name, items: [{ file, id, name, deletedAt }] }`: your trash, newest first |
 | `POST /api/trash/:file/restore` | `{ file, id, name, copy }`: back in the library; `copy`: its id was taken, so it came back with a new id and "(restored copy)" |
 | `DELETE /api/trash/:file` | `204`; deleted for good |
-| `DELETE /api/trash` | `{ deleted }`: the trash emptied |
+| `DELETE /api/trash` (body `{ files: [...] }`, optional) | `{ deleted }`: those files (the page sends the ones it showed), or the whole trash; `deleted` is how many went |
 | `…/api/trash…?user=<username>` | the admin: another account's trash (anyone else: `403`) |
 
 Every request needs a signed-in session (`server/auth.mjs`). `PUT` and `DELETE` act on your own runners only: a

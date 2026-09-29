@@ -507,10 +507,10 @@ Deleting a runner moves its file to its owner's `.trash/` as
 suffix is when it was deleted (files without one use their modified time).
 The Trash page (server only; a browser's own storage deletes for good) lists
 them and restores one to `characters/<username>/` under its old file name
-(or the next free one). When a runner with the same `id` is already in any
+(or the next free one; `runner.xml` when the name was only the time). When a runner with the same `id` is already in any
 account's library, the restore is a copy: a new `id`, `rev="1"` and
 "(restored copy)" after its street name. Delete forever and Empty trash
-remove the files for good. Only `*.xml` files there count; the server refuses
+remove the files for good. Only regular `*.xml` files there count (not links or folders); the server refuses
 any other name, and anything with a separator or a leading dot.
 
 ## Backup zip

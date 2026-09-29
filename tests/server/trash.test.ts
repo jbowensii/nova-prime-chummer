@@ -1,7 +1,7 @@
 // @vitest-environment node
 // The Trash page's routes (server.mjs /api/trash): each account's own trash, the admin's ?user=, strict file names,
 // restore (as a copy when the id is taken), deleting one for good, emptying.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
@@ -129,4 +129,37 @@ test('file names are checked strictly: no traversal, only *.xml in that accountâ
   writeFileSync(join(chars, 'pat', '.trash', 'odd.xml'), '<html/>')
   expect((await call('pat', 'POST', '/api/trash/odd.xml/restore')).status).toBe(400)
   expect(existsSync(join(chars, 'pat', '.trash', 'odd.xml'))).toBe(true)
+})
+
+test('only regular files count: folders named *.xml and links are never listed, restored or deleted', async () => {
+  const trash = join(chars, 'pat', '.trash')
+  mkdirSync(join(trash, 'folder.xml'), { recursive: true })
+  let linked = true
+  try { symlinkSync(join(chars, 'kim', 'Kim-secret.xml'), join(trash, 'link.xml')) } catch { linked = false } // Windows without the privilege
+  const shown = (await list('pat')).items.map((i: { file: string }) => i.file)
+  expect(shown).not.toContain('folder.xml')
+  expect(shown).not.toContain('link.xml')
+  for (const f of ['folder.xml', ...linked ? ['link.xml'] : []]) {
+    expect((await call('pat', 'POST', `/api/trash/${f}/restore`)).status).toBe(404)
+    expect((await call('pat', 'DELETE', `/api/trash/${f}`)).status).toBe(404)
+  }
+  await call('pat', 'DELETE', '/api/trash')
+  expect(existsSync(join(trash, 'folder.xml'))).toBe(true)
+  expect(existsSync(join(chars, 'kim', 'Kim-secret.xml'))).toBe(true)
+})
+
+test('emptying with a list deletes only those; the count is what went', async () => {
+  const trash = join(chars, 'pat', '.trash')
+  for (const f of ['A-1700000000001.xml', 'B-1700000000002.xml', 'C-1700000000003.xml']) writeFileSync(join(trash, f), runner(f[0], f[0]))
+  const del = (body: string) => fetch(`${base}/api/trash`, { method: 'DELETE', body, headers: { Origin: base, Cookie: jar.pat, 'Content-Type': 'application/json' } })
+  expect(await (await del(JSON.stringify({ files: ['A-1700000000001.xml', 'B-1700000000002.xml', 'gone.xml', '../x.xml'] }))).json()).toEqual({ deleted: 2 })
+  expect(readdirSync(trash)).toContain('C-1700000000003.xml')
+  for (const bad of ['nope', '{"files":"x"}', '{"files":[1]}']) expect((await del(bad)).status).toBe(400)
+  expect(existsSync(join(trash, 'C-1700000000003.xml'))).toBe(true)
+})
+
+test('a trash file named only by its time restores as runner.xml', async () => {
+  writeFileSync(join(chars, 'pat', '.trash', '-1700000000000.xml'), runner('t1', 'Timeless'))
+  expect(await (await call('pat', 'POST', '/api/trash/-1700000000000.xml/restore')).json()).toMatchObject({ file: 'runner.xml', copy: false })
+  expect(existsSync(join(chars, 'pat', 'runner.xml'))).toBe(true)
 })

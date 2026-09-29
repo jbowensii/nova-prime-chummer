@@ -15,6 +15,7 @@
 //   POST   /api/trash/:file/restore      back into the library -> { file, id, name, copy }; copy: the id was taken, so it came
 //                                        back with a new id and "(restored copy)" after its street name
 //   DELETE /api/trash/:file              deletes that file for good; DELETE /api/trash empties the trash -> { deleted }
+//                                        (body { files: [...] }: only those, e.g. the ones the page showed)
 //          ?user=<username>              the admin: another account's trash (everyone else: 403)
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
@@ -25,7 +26,7 @@
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
@@ -244,9 +245,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (!auth.usernames().includes(u)) throw fail(404, 'no such account')
       return u
     }
+    /** The runner files in a trash folder: regular files with a trash name (no links, no folders called *.xml). */
+    const files = async dir => (await readdir(dir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && TRASH_FILE.test(d.name)).map(d => d.name)
     if (req.method === 'GET') {
       const user = whose(who), dir = join(folder(user), '.trash'), items = []
-      for (const f of (await readdir(dir).catch(() => [])).filter(f => TRASH_FILE.test(f))) {
+      for (const f of await files(dir)) {
         const [xml, s] = await Promise.all([readFile(join(dir, f), 'utf8'), stat(join(dir, f))]).catch(() => [])
         if (!xml) continue
         const at = Number(f.match(/-(\d{13})\.xml$/)?.[1] ?? s.mtimeMs)
@@ -260,12 +263,19 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (!me) return send(res, 401, { error: 'sign in first' })
       const user = whose(me), dir = join(folder(user), '.trash')
       if (!file) {
+        // { files: [...] }: only those (what the page showed), each checked; no body: all of them
+        const body = await readBody(req)
+        let only = null
+        if (body.trim()) {
+          try { only = JSON.parse(body).files } catch { /* checked below */ }
+          if (!Array.isArray(only) || only.length > 10000 || !only.every(f => typeof f === 'string')) return send(res, 400, { error: 'body is { files: [file names] }' })
+        }
         let deleted = 0
-        for (const f of (await readdir(dir).catch(() => [])).filter(f => TRASH_FILE.test(f))) { await unlink(join(dir, f)); deleted++ }
+        for (const f of await files(dir)) if (!only || only.includes(f)) { await unlink(join(dir, f)); deleted++ }
         return send(res, 200, { deleted })
       }
       const path = join(dir, file)
-      if (!inside(path, dir) || !await exists(path)) return send(res, 404, { error: 'no such runner in the trash' })
+      if (!inside(path, dir) || !(await lstat(path).catch(() => null))?.isFile()) return send(res, 404, { error: 'no such runner in the trash' })
       if (req.method === 'DELETE') { await unlink(path); res.writeHead(204).end(); return }
       const xml = await readFile(path, 'utf8')
       if (!NS.test(xml)) return send(res, 400, { error: 'this file isn’t a runner, so it can’t be restored' })
@@ -273,7 +283,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       let taken = !ID.test(id)
       for (const u of auth.usernames()) if (!taken && (await index(folder(u))).some(c => c.id === id)) taken = true
       await mkdir(folder(user), { recursive: true })
-      const name = await freeName(folder(user), base(file).replace(/-\d{13}$/, ''))
+      const name = await freeName(folder(user), base(file).replace(/-\d{13}$/, '') || 'runner')
       if (taken) {
         id = randomUUID()
         const tmp = join(folder(user), `.${name}.tmp`)

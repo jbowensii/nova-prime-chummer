@@ -46,7 +46,7 @@ export function TrashScreen({ user: asked }: { user?: string }) {
   }, `Couldn’t restore ${t.name}`)
   const erase = (t: TrashItem) => act(async () => { await send(`trash/${encodeURIComponent(t.file)}${q(user)}`, undefined, 'DELETE'); return `Deleted ${t.name} for good.` },
     `Couldn’t delete ${t.name}`)
-  const empty = () => act(async () => { const { deleted } = await (await send(`trash${q(user)}`, undefined, 'DELETE')).json(); return `Emptied the trash: ${runners(deleted)} deleted for good.` },
+  const empty = () => act(async () => { const { deleted } = await (await send(`trash${q(user)}`, { files: items.map(t => t.file) }, 'DELETE')).json(); return `Emptied the trash: ${runners(deleted)} deleted for good.` },
     'Couldn’t empty the trash')
 
   const items = trash?.items ?? []
