@@ -33,7 +33,7 @@ export const browserRepo: Repo = {
 export function serverRepo(base = './'): Repo {
   const list = async (): Promise<Stored[]> => {
     const r = await fetch(`${base}api/characters`, { cache: 'no-store' })
-    if (!r.ok) throw new Error(`tower04 answered ${r.status}`)
+    if (!r.ok) throw new Error(`the server answered ${r.status}`)
     const rows: { file: string; rev: number; xml: string; owner?: string; ownerName?: string }[] = await r.json()
     return rows.flatMap(row => { const p = xmlToCharacter(row.xml)
       return p.ok ? [{ ch: p.character, rev: row.rev, file: row.file, owner: row.owner, ownerName: row.ownerName }] : [] })
@@ -54,10 +54,10 @@ export function serverRepo(base = './'): Repo {
         })
         const res = await r.json().catch(() => ({}))
         if (r.status === 409) return { ok: false, conflict: { rev: res.rev, file: res.file, updatedAt: res.updatedAt } }
-        if (!r.ok) return { ok: false, error: res.error ?? `tower04 answered ${r.status}` }
+        if (!r.ok) return { ok: false, error: res.error ?? `the server answered ${r.status}` }
         return { ok: true, rev: res.rev, file: res.file }
       } catch (e) {
-        return { ok: false, error: `Couldn’t reach tower04: ${(e as Error).message}` }
+        return { ok: false, error: `Couldn’t reach the server: ${(e as Error).message}` }
       }
     })()),
     remove: id => track(fetch(`${base}api/characters/${encodeURIComponent(id)}`, { method: 'DELETE' }).then(() => {})),

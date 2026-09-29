@@ -64,7 +64,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         Some game data is missing: {catalog.coreMissing.join(', ')}. {admin
           ? <>Import the core rulebook again on the <a href="#/books">Books page</a>, or upload a data pack.</>
           : 'Ask the admin to import the core rulebook again.'}</p>}
-      {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to tower04.</p>}
+      {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to the server.</p>}
       {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'users' ? <UsersScreen />
         : page === 'books' && id === 'ai' ? <AiSettings />

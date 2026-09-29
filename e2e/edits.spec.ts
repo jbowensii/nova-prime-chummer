@@ -96,7 +96,7 @@ test('edit a book add-on from the amp picker; an unsaved runner change survives 
   await saved
   await page.route('**/api/characters/**', r => r.request().method() === 'PUT' ? r.abort() : r.continue()) // the next change stays unsaved
   await page.getByLabel('Street name').fill('After, unsaved')
-  await expect(page.getByText(/Couldn’t reach tower04/)).toBeVisible()
+  await expect(page.getByText(/Couldn’t reach the server/)).toBeVisible()
 
   await page.getByRole('link', { name: 'Shadow Amps' }).click()
   await page.getByRole('button', { name: 'Add an amp' }).click()
