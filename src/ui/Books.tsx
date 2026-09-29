@@ -85,7 +85,6 @@ export function BooksHeader({ title, children }: { title: string; children?: Rea
 }
 
 interface PackSummary { app: string; created: string; files: string[]; replaces: string[] }
-const tables = (files: string[]) => files.map(f => f.replace(/\.xml$/, '')).join(', ')
 
 /** The core data as a data pack (server/books.mjs /api/datapack): download it, or load one onto this server — the way to
  *  core data without the core rulebook's PDF. Loading is two steps, like a restore: upload + check (a summary with a
