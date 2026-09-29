@@ -631,7 +631,7 @@ if __name__ == "__main__":
 OPTIONAL_MD = """<!-- page 70 -->
 **SHADOWRUN**
 Made-up prose before the note ends here.
-You can, optionally, decide to use the rules for vehi-
+Tables may optionally borrow the rules for vehi-
 **Note:**
 cles for made-up folks too. It makes them sturdier in
 an invented way.
@@ -665,7 +665,7 @@ class OptionalRulesTest(unittest.TestCase):
     def test_texts(self):
         self.assertEqual(self.texts, {
             "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",
-            "optional-vehicle-damage-for-all": "You can, optionally, decide to use the rules for vehicles for made-up folks too. "
+            "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "
                                                "It makes them sturdier in an invented way.",
         })
 
