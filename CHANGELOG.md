@@ -1,5 +1,24 @@
 # Release notes
 
+## 0.4.2 — 2026-09-29: the last review leftovers
+
+**Books and core data**
+- The review screen edits every part of an AI-read core row: a metatype’s
+  attribute ranges (min and max per attribute) and a skill’s
+  specializations (add, rename, remove). The edits are checked on the
+  screen and again when the rows are added, like any other edit; a range
+  whose minimum is above its maximum and a specialization id used twice
+  are now flagged too.
+- The Books page’s “Read by AI” note goes for a table a data pack later
+  replaced (a re-import already cleared it).
+
+**Fixes**
+- Table rules: two quick switches on the Rules page both save; the second
+  no longer undoes the first.
+- Renaming a username: if saving the accounts fails and the runner folder
+  can’t move back either, the original error is still reported, and the
+  server log says which folder to move by hand.
+
 ## 0.4.1 — 2026-09-29: table rules, self-service Authelia link and fixes
 
 **Rules and samples**
