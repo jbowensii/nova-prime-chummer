@@ -756,8 +756,9 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       // one subject, one account; no name for the other one (it isn't this user's to know)
       if (users.some(x => x !== u && x.oidcSub === sub && x.oidcIss === iss)) throw no('taken', `that Authelia user is linked to another account (${u.username} tried)`)
       // someone else's Authelia sign-in (a shared browser's SSO session): it names its own account here, never this one
-      const other = named({ username, email, emailVerified })
-      if (other && other !== u) throw no('other-account', `that Authelia user names another account (${u.username} tried)`)
+      // either claim on its own: the username, and a verified email even when there is a username
+      const others = [named({ username }), named({ email, emailVerified })]
+      if (others.some(x => x && x !== u)) throw no('other-account', `that Authelia user names another account (${u.username} tried)`)
       Object.assign(u, { method: 'authelia', password: null, oidcIss: iss, oidcSub: sub })
       await saveUsers()
       // under the same lock as the password sign-in's check: no password session can start after this

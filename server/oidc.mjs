@@ -383,8 +383,10 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
         if (!who || who.id !== link.user || !timingSafeEqual(sha256(binding(who.session)), sha256(link.binding)))
           throw refuse('session', 'the session that started the link isn’t this browser’s any more')
         // prompt=login + max_age=0: an Authelia sign-in from before this link began isn't one made for it
-        if (id.auth_time !== undefined && !(typeof id.auth_time === 'number' && id.auth_time >= link.started / 1000 - LEEWAY))
-          throw refuse('stale', 'Authelia didn’t ask for the password again (auth_time is before the link began)')
+        // required here (max_age makes the issuer send it): missing, not a number, before the link began or in the future: refused
+        const at = id.auth_time
+        if (!(typeof at === 'number' && at >= link.started / 1000 - LEEWAY && at <= Date.now() / 1000 + LEEWAY))
+          throw refuse('stale', 'Authelia didn’t ask for the password again (auth_time missing or outside the link’s time)')
         await auth.linkExternal(ctx, who, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
           emailVerified: claims.email_verified })
         return go(res, '/?link=done')

@@ -439,13 +439,21 @@ describe('link my Authelia account', () => {
     await as({ sub: 'u-kai', preferred_username: 'kai' }, async () => { expect((await link(lee)).location).toBe('/?link=other-account') })
     await as({ sub: 'u-kai', preferred_username: 'KAI' }, async () => { expect((await link(lee)).location).toBe('/?link=other-account') })
     await as({ sub: 'u-kai', email: 'kai@example.test', email_verified: true }, async () => { expect((await link(lee)).location).toBe('/?link=other-account') })
+    // R2: a username naming lee itself doesn't excuse a verified email that is kai's
+    await as({ sub: 'u-kai', preferred_username: 'lee', email: 'kai@example.test', email_verified: true }, async () => {
+      expect((await link(lee)).location).toBe('/?link=other-account')
+    })
     expect([s.account('kai').oidcSub, s.account('lee').method]).toEqual(['', 'password'])
     // an Authelia sign-in from before the link began (the issuer ignored prompt=login)
     s.f.claims = { auth_time: Math.floor(Date.now() / 1000) - 3600 }
     try {
       await as({ sub: 'u-lee', preferred_username: 'lee' }, async () => { expect((await link(lee)).location).toBe('/?link=stale') })
-      s.f.claims = { auth_time: 'yesterday' }
-      await as({ sub: 'u-lee', preferred_username: 'lee' }, async () => { expect((await link(lee)).location).toBe('/?link=stale') })
+      for (const auth_time of ['yesterday', undefined, Math.floor(Date.now() / 1000) + 600]) { // not a number, missing, in the future
+        s.f.claims = { auth_time }
+        await as({ sub: 'u-lee', preferred_username: 'lee' }, async () => {
+          expect((await link(lee)).location, String(auth_time)).toBe('/?link=stale')
+        })
+      }
     } finally { s.f.claims = {} }
     expect(s.account('lee')).toMatchObject({ method: 'password', oidcSub: '' })
   })
