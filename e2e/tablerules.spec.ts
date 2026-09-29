@@ -113,3 +113,27 @@ test('a player sees the rules switched on, read only; the Rules page isn’t the
   const r = await page.request.put(`${base}api/table-rules`, { data: { rules: [] }, headers: { Origin: base.replace(/\/$/, '') } })
   expect(r.status()).toBe(403)
 })
+
+test('two quick switches both count: the second save waits for the first and builds on it', async ({ page }) => {
+  await signIn(page, 'ada')
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  const gm = page.getByRole('region', { name: 'Table rules' })
+  const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
+  await expect(haggles).toBeChecked()
+  await expect(streets).toBeChecked()
+  let first = true
+  await page.route('**/api/table-rules', async r => { // the first save is slow to reach the server
+    if (first) { first = false; await new Promise(ok => setTimeout(ok, 800)) }
+    await r.continue()
+  })
+  await haggles.click()
+  await streets.click()
+  await expect(gm.getByRole('status')).toHaveText('Quieter streets is off.')
+  await page.unroute('**/api/table-rules')
+  await page.reload()
+  await expect(haggles).not.toBeChecked()
+  await expect(streets).not.toBeChecked()
+  const saved = readFileSync(join(dir, 'custom', 'table-rules.xml'), 'utf8')
+  expect(saved).toContain('<rule id="test.optional-long-haggles" on="false"></rule>')
+  expect(saved).toMatch(/on="false"><name>Quieter streets<\/name>/)
+})

@@ -2,7 +2,7 @@
 // sheet="optional", e.g. the core rulebook's); the GM adds house rules of their own. The GM switches them on and off on the
 // Rules page (admin and editors; server/books.mjs PUT /api/table-rules, the server enforces the role); everyone reads
 // custom/table-rules.xml (tablerules.xsd) and players see the ones switched on here.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Catalog, Rule } from '../model/types'
 import { newId } from '../model/types'
 import { AccountMenu, send } from './auth'
@@ -67,34 +67,39 @@ export function TableRulesManager({ c }: { c: Catalog }) {
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   const [editing, setEditing] = useState<TableRule | null>(null)
   const [removing, setRemoving] = useState<Row | null>(null)
-  useEffect(() => { void loadTableRules().then(setSaved) }, [])
+  // saves go one at a time, each built from the list the one before it saved: two quick clicks both count
+  const latest = useRef<TableRule[]>([]), queue = useRef(Promise.resolve(true))
+  useEffect(() => { void loadTableRules().then(r => { latest.current = r; setSaved(r) }) }, [])
   if (repo.mode !== 'server') return <section className="table-rules-gm"><h2>Table rules</h2>
     <p className="muted">Table rules are kept on the server. This copy of the app runs without one, so they can’t be set here.</p></section>
   if (!saved) return null
   const all = rows(c, saved)
 
-  // a book's rule whose book is gone keeps its switch, for when the book comes back
-  const orphans = saved.filter(s => s.name === undefined && !all.some(r => r.id === s.id))
-  const save = async (next: Row[], done: string) => {
+  /** Saves change(the rows as last saved), after any save still under way. */
+  const save = (change: (rows: Row[]) => Row[], done: (rows: Row[]) => string) => queue.current = queue.current.then(async () => {
+    const now = rows(c, latest.current), next = change(now)
+    // a book's rule whose book is gone keeps its switch, for when the book comes back
+    const orphans = latest.current.filter(s => s.name === undefined && !now.some(r => r.id === s.id))
     const rules = [...next.map(r => r.rule ? { id: r.id, on: r.on } : { id: r.id, on: r.on, name: r.name, text: r.text }), ...orphans]
     try {
       await send('table-rules', { rules }, 'PUT')
+      latest.current = rules
       setSaved(rules)
-      setMsg({ text: done })
+      setMsg({ text: done(next) })
       return true
     } catch (e) {
       setMsg({ text: `Couldn’t save the table rules. ${(e as Error).message}`, err: true })
       return false
     }
-  }
-  const toggle = (row: Row) => save(all.map(r => r.id === row.id ? { ...r, on: !r.on } : r), `${row.name} is ${row.on ? 'off' : 'on'}.`)
+  })
+  const toggle = (row: Row) => save(rs => rs.map(r => r.id === row.id ? { ...r, on: !r.on } : r),
+    rs => `${row.name} is ${rs.find(r => r.id === row.id)?.on ? 'on' : 'off'}.`)
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const t = editing!, name = t.name!.trim()
     if (!name) return setMsg({ text: 'Give the house rule a name.', err: true })
     const row = { id: t.id, on: t.on, name, text: (t.text ?? '').trim() }
-    const next = all.some(r => r.id === t.id) ? all.map(r => r.id === t.id ? row : r) : [...all, row]
-    if (await save(next, `Saved ${name}.`)) setEditing(null)
+    if (await save(rs => rs.some(r => r.id === t.id) ? rs.map(r => r.id === t.id ? row : r) : [...rs, row], () => `Saved ${name}.`)) setEditing(null)
   }
 
   return (
@@ -125,7 +130,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
       </Modal>
       <Modal open={!!removing} onClose={() => setRemoving(null)} title={`Remove ${removing?.name ?? 'this house rule'}?`}
         actions={<><button className="btn" onClick={() => setRemoving(null)}>Keep</button>
-          <button className="btn danger" onClick={async () => { const r = removing!; setRemoving(null); await save(all.filter(x => x.id !== r.id), `Removed ${r.name}.`) }}>Remove house rule</button></>}>
+          <button className="btn danger" onClick={async () => { const r = removing!; setRemoving(null); await save(rs => rs.filter(x => x.id !== r.id), () => `Removed ${r.name}.`) }}>Remove house rule</button></>}>
         <p>Players stop seeing it. This can’t be undone.</p>
       </Modal>
     </section>
