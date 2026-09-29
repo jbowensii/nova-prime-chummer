@@ -2,6 +2,6 @@
 <!-- Made-up implant grades a book adds to the core effects (as DHSA adds its grades). -->
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="ampeffects" version="1">
   <effect id="grade-cultivated" category="grade" rating="2" types="bioware" max="1" essence="-0.125" source="TESTC" page="13"><name>Grown bioware (Essence 0.25 → 0.125)</name></effect>
-  <effect id="grade-delta" category="grade" rating="2" types="cyberware" max="1" excludes="grade-omega" essence="-0.5" source="TESTC" page="13"><name>Fine grade (Essence 1.25 → 0.75)</name></effect>
-  <effect id="grade-omega" category="grade" rating="-2" types="cyberware" max="1" excludes="grade-delta" essence="0.5" source="TESTC" page="13"><name>Rough grade (Essence 1.25 → 1.75)</name></effect>
+  <effect id="grade-delta" category="grade" rating="2" types="cyberware" max="1" excludes="grade-omega" essence="-0.25" source="TESTC" page="13"><name>Fine grade (Essence 1.25 → 1)</name></effect>
+  <effect id="grade-omega" category="grade" rating="-2" types="cyberware" max="1" excludes="grade-delta" essence="0.75" source="TESTC" page="13"><name>Rough grade (Essence 1.25 → 2)</name></effect>
 </ca2:data>

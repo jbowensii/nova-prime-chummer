@@ -4,9 +4,9 @@
   <effect id="rr-spec" category="odds" rating="3" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" param="spec" source="CRB" page="50"><name>Luck with one specialization</name></effect>
   <effect id="rr-skill" category="odds" rating="4" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" max="2" param="skill" source="CRB" page="50"><name>Luck with one Skill</name></effect>
   <effect id="rr-attr" category="odds" rating="8" types="cyberware quality bioware adept equipment cyberdeck vehicle contact" max="2" param="attribute" source="CRB" page="50"><name>Luck with one Attribute</name></effect>
-  <effect id="init-1" category="tempo" rating="3" types="cyberware bioware quality adept" max="1" source="CRB" page="50"><name>Quick I</name></effect>
-  <effect id="init-2" category="tempo" rating="4" types="cyberware bioware quality adept" max="1" requires="init-1" source="CRB" page="50"><name>Quick II</name></effect>
-  <effect id="init-3" category="tempo" rating="1" types="cyberware bioware quality adept" max="1" requires="init-2" source="CRB" page="50"><name>Quick III</name></effect>
+  <effect id="init-1" category="tempo" rating="3" types="cyberware bioware quality adept" max="2" source="CRB" page="50"><name>Quick I</name></effect>
+  <effect id="init-2" category="tempo" rating="4" types="cyberware bioware quality adept" max="2" requires="init-1" source="CRB" page="50"><name>Quick II</name></effect>
+  <effect id="init-3" category="tempo" rating="1" types="cyberware bioware quality adept" max="2" requires="init-2" source="CRB" page="50"><name>Quick III</name></effect>
   <effect id="init-realm" category="tempo" rating="-2" types="cyberware bioware quality adept" max="2" requires="init-1" param="realm" source="CRB" page="51"><name>Quick in one world only</name></effect>
   <effect id="dv-plus" category="body" rating="2" types="cyberware adept equipment vehicle" max="3" source="CRB" page="51"><name>Harder hits</name></effect>
   <effect id="range-improve" category="body" rating="1" types="equipment vehicle adept" param="text" source="CRB" page="51"><name>Longer reach</name></effect>

@@ -100,7 +100,7 @@ AMPS_MD = """<!-- page 140 -->
 <!-- page 157 -->
 | MADE UP HEADWARE |
 |---|
-| **Brain box:** (Rating 10, Cyberware Amp, Essence -1, 55,000 ¥) RR 1 on all Logic-<br>based Tests�<br>**Jack plug:** (Rating 5 Cyberware Amp, Essence -1, 20,000¥) Direct neural interface; cold-<br>sim VR; allows the user to jump into vehicles� |
+| **Brain box:** (Rating 10, Cyberware Amp, Essence -1, 55,000 ¥) RR 1 on all Logic-<br>based Tests�<br>**Jack plug:** (Rating 5 Cyberware Amp, Essence -1, 20,000¥) Socket for a cable; cold-<br>sim VR; lets you jump into vehicles� |
 | MADE UP CONTACTS |
 |---|
 | **Fence:** (Rating 4 Contact Amp, 10,000¥) RR 1 on Network (gutter) Tests�<br>(Rating 7 Contact Amp, 20,000¥) RR 1<br>**Night clerk:**<br>on Network (gutter and underworld) Tests� |
@@ -118,7 +118,7 @@ AMPS_MD = """<!-- page 140 -->
 <!-- page 240 -->
 | MADE UP VEHICLES |
 |---|
-| **Hover sled:** (Rating 8 Vehicle Amp, 20,000¥) Pilot 5, Body 6, Handling 1, Speed 12, Armor 2; flying�<br>**Sports Car:** (Rating 2 Vehicle Amp, 5,000¥) Pilot 5, Body 4, Handling 3, Speed 7, Armor 0�<br>**Big Van:** Pilot 5, Body 9, Handling 2, Speed 2, Armor 9�<br>**Nurse bot:** (Rating 6 Drone Amp, 15,000¥) Small drone, Pilot 7, stationary�<br>C<br>**Tiny Scout:** (Rating 2 Drone Amp, 5,000¥) Pilot 5, Body 1, Handling 9, Speed 1 (Flying 2), Armor 0; no weapon mount� |
+| **Hover sled:** (Rating 8 Vehicle Amp, 20,000¥) Pilot 5, Body 6, Handling 1, Speed 12, Armor 2; flying�<br>**Sports Car:** (Rating 2 Vehicle Amp, 6,500¥) Pilot 5, Body 4, Handling 3, Speed 7, Armor 0�<br>**Big Van:** Pilot 5, Body 9, Handling 2, Speed 2, Armor 9�<br>**Nurse bot:** (Rating 6 Drone Amp, 15,000¥) Small drone, Pilot 7, stationary�<br>C<br>**Tiny Scout:** (Rating 2 Drone Amp, 6,500¥) Pilot 5, Body 1, Handling 9, Speed 1 (Flying 2), Armor 0; no weapon mount� |
 **238**
 """
 
@@ -173,19 +173,19 @@ KNOWLEDGE SKILLS
 Made-up lore, Toy trains
 SHADOW AMPS ESSENCE RATING
 **Toy Jack (cyberware)** 1.25 7
-Direct neural interface; cold- and hot-sim VR
+Head socket; cold- and hot-sim VR
 **Toy Arm with a Heavy pistol (cyberware)** 1.25 7
 RR 1 on Ranged Weapons (handguns) Tests
 **Rusty Sedan (vehicle)** 4
 Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1
-Front-facing weapon mount
+Gun on the roof
 **2 Buzz Copter (drones)** 7
 Flying Drone: Pilot 5, Body 2, Handling 8, Speed 6, Armor 0
 **Old Pal, fixer (contact)** 4
 RR 1 on Tests for Network (gutter) Tests
 **Jolt (equipment)** 3
-BTL: DV +1 in melee� RR 1 on Close Combat Tests
-Must take a High Risk for all their
+Chip: DV +1 in melee� RR 1 on Close Combat Tests
+Disadvantage on all their other
 Tests
 WEAPONS & SPELLS TYPE
 **Unarmed** DV 3 [OK/–/–/–] Weapon
@@ -236,12 +236,12 @@ class PregensTest(unittest.TestCase):
             ("Piloting", 5, "agi", 9, []),
         ])
         self.assertEqual([(a["name"], a["type"], a["ess"], a["rating"], a["count"], a["lines"]) for a in b["amps"]], [
-            ("Toy Jack", "cyberware", 1.25, 7, 1, ["Direct neural interface", "Cold-sim and hot-sim VR"]),
+            ("Toy Jack", "cyberware", 1.25, 7, 1, ["Head socket", "Cold-sim and hot-sim VR"]),
             ("Toy Arm with a Heavy pistol", "cyberware", 1.25, 7, 1, ["Integrated heavy pistol", "RR 1 on Ranged Weapons (handguns) Tests"]),
-            ("Rusty Sedan", "vehicle", None, 4, 1, ["Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1", "Front-facing weapon mount"]),
+            ("Rusty Sedan", "vehicle", None, 4, 1, ["Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1", "Gun on the roof"]),
             ("Buzz Copter", "drones", None, 7, 2, ["Flying Drone: Pilot 5, Body 2, Handling 8, Speed 6, Armor 0"]),
             ("Old Pal, fixer", "contact", None, 4, 1, ["RR 1 on Network (gutter) Tests"]),
-            ("Jolt", "equipment", None, 3, 1, ["BTL: DV +1 in melee", "RR 1 on Close Combat Tests", "Must take a High Risk for all their Tests"]),
+            ("Jolt", "equipment", None, 3, 1, ["Chip: DV +1 in melee", "RR 1 on Close Combat Tests", "Disadvantage on all their other Tests"]),
         ])
         self.assertEqual([(w["name"], w["kind"], w["dv"], w["count"]) for w in b["weapons"]],
                          [("Unarmed", None, "3", 1), ("Wrench", "club", "5", 2), ("Zap Pistol", "heavy pistol", "5", 1),
@@ -306,7 +306,7 @@ class PregensTest(unittest.TestCase):
         self.assertEqual([(f.get("ref"), f.get("param"), f.get("note")) for f in arm.findall("effect")],
                          [("rr-spec", "ranged-weapons.pistols", None), ("narrative", None, "balances printed rating")])
         self.assertIsNone(arm.find("narrative").text)
-        self.assertIn('<text of="amps" id="toy-jack">Direct neural interface; Cold-sim and hot-sim VR</text>', res.texts)
+        self.assertIn('<text of="amps" id="toy-jack">Head socket; Cold-sim and hot-sim VR</text>', res.texts)
         # the same words in another order or number are the box's amp
         rows = [{"type": "cyberware", "name": "Jacks toy", "id": "jacks-toy"}, {"type": "vehicle", "name": "Rusty Sedan Deluxe", "id": "x"}]
         got = crb.sheet_amps([(88, self.block)], rows, statblock.load_rules())
@@ -408,7 +408,7 @@ class AmpsTest(unittest.TestCase):
     def test_texts_hold_the_entry_without_furniture(self):
         texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
         self.assertEqual(texts["zoom-goggles"], "RR 1 on Perception (watching) and Stealth (physical) Tests; night vision.")
-        self.assertEqual(texts["jack-plug"], "Direct neural interface; cold-sim VR; allows the user to jump into vehicles.")
+        self.assertEqual(texts["jack-plug"], "Socket for a cable; cold-sim VR; lets you jump into vehicles.")
         self.assertEqual(texts["gear-glow-stick"], "makes a dim light.")
         for a in self.amps.values():
             self.assertEqual(a.find("narrative").text or "", "")

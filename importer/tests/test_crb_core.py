@@ -47,7 +47,7 @@ Only characters with a cyberdeck can use this Skill.
 | GENErAL SKILLS<br>**Sneaking:** hiding (+A), picking<br>locks (+A/L)<br>TEChNICAL SKILLS<br>**Tinkering:** gizmos B&R (+L) |
 <!-- page 60 -->
 AWAKENED
-**Base rating 0**
+**Base rating 1**
 • **Glow sight:** rating +1
 • **Glow sight and flight:** rating +2
 GIZMOWARE
@@ -121,7 +121,7 @@ POINT ALLOCATION
 <!-- page 144 -->
 | WEAPONS |
 |---|
-| Made-up intro text<br>RANGE<br>CLOSE SHORT MEDIUM LONG<br>WEAPONS DV (≤ 2 M) (3 TO 15 M)(16 TO 60 M) (> 60 M)<br>**Unarmed** STR OK – – –<br>**Short weapons** (spoon, fork, (STR+1) OK – – –<br>ladle)<br>**Zap pistols** (Toy Zapper*) 4 OK OK Dis� –<br>d<br>L **Cannons**** (Big Bertha) 11 (Anti- – – Dis� OK<br>N vehicle 15)<br>**Gas jars*** depends on OK OK Dis� –<br>E toxins<br>u * These weapons use toxins, made up� |
+| Made-up intro text<br>RANGE<br>CLOSE SHORT MEDIUM LONG<br>WEAPONS DV (≤ 2 M) (3 TO 15 M)(16 TO 60 M) (> 60 M)<br>**Unarmed** STR OK – – –<br>**Short weapons** (spoon, fork, (STR+3) OK Dis� – –<br>ladle)<br>**Zap pistols** (Toy Zapper*) 4 OK OK Dis� –<br>d<br>L **Cannons**** (Big Bertha) 11 (Anti- – – Dis� OK<br>N vehicle 15)<br>**Gas jars*** depends on OK OK Dis� –<br>E toxins<br>u * These weapons use toxins, made up� |
 <!-- page 150 -->
 | ARMOR |
 |---|
@@ -170,7 +170,7 @@ class CoreTablesTest(unittest.TestCase):
     def test_amp_types_and_vehicles(self):
         t = by_id(self.files["amptypes.xml"])
         self.assertEqual({i: (e.get("base"), e.get("essence"), e.get("requires")) for i, e in t.items()},
-                         {"awakened": ("0", "0", None), "gizmoware": ("2", "0.7", "awk-tinker"), "punchbag": ("1", "0", None)})
+                         {"awakened": ("1", "0", None), "gizmoware": ("2", "0.7", "awk-tinker"), "punchbag": ("1", "0", None)})
         v = by_id(self.files["vehicles.xml"])
         self.assertEqual({i: (e.get("pilot"), e.get("body"), e.get("handling"), e.get("speed"), e.get("flyingSpeed"), e.get("armor"), e.get("mount"))
                           for i, e in v.items()},
@@ -203,7 +203,7 @@ class CoreTablesTest(unittest.TestCase):
         w = by_id(self.files["weapons.xml"])
         self.assertNotIn("unarmed", w)
         self.assertEqual({i: (e.findtext("name"), e.get("dv"), e.get("ranges"), e.get("specialist")) for i, e in w.items() if i != "cannon"},
-                         {"short-weapon": ("Short weapon", "STR+1", "OK/-/-/-", None), "zap-pistol": ("Zap pistol", "4", "OK/OK/Dis/-", None),
+                         {"short-weapon": ("Short weapon", "STR+3", "OK/Dis/-/-", None), "zap-pistol": ("Zap pistol", "4", "OK/OK/Dis/-", None),
                           "gas-jar": ("Gas jar", "toxin", "OK/OK/Dis/-", None)})
         self.assertEqual((w["cannon"].get("dv"), w["cannon"].get("specialist")), ("11 (anti-vehicle 15)", "true"))
         a = by_id(self.files["armor.xml"])
