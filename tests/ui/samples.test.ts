@@ -82,8 +82,26 @@ test('tidy-up: one copy per key; edited copies stay; else the preferred version 
   expect(extraCopies([at(newc), at(preg)], sources)).toEqual([]) // canon and non-canon: both stay
 })
 
-test('tidy-up: a copy from before loads recorded their date is edited when it is newer than the other copies from its source', () => {
-  const a = runner('Mo Ray', { origin: 'PREG' }), b = runner('Mo Ray', { origin: 'PREG' })
-  const changed = runner('Mo Ray', { origin: 'PREG', updatedAt: '2026-09-12T00:00:00Z' })
-  expect(extraCopies([a, changed, b].map(ch => ({ ch })), sources)).toEqual([a, b])
+test('tidy-up: copies loaded before 0.4.1 (lastExportedAt = load time): identical ones are duplicates, the oldest stays', () => {
+  // what 0.4.0 wrote: updatedAt the book file's date, lastExportedAt the moment it was loaded; no sampleKey
+  const loaded = (at: string, extra: Partial<Character> = {}) => runner('Dusty Hat', { origin: 'OLDC', lastExportedAt: at, ...extra })
+  const first = loaded('2026-09-02T10:00:00Z', { updatedAt: '2026-09-01T00:00:00Z' })
+  const second = loaded('2026-09-03T10:00:00Z', { updatedAt: '2026-09-01T00:00:00Z' })
+  // the reviewer's case: the book's face loaded twice by 0.4.0, neither changed -> one goes, the oldest stays
+  expect(extraCopies([second, first].map(ch => ({ ch })), sources)).toEqual([second])
+  // a copy changed and saved (content differs, rev 2) stays, and so does the oldest unchanged one
+  const edited = { ...loaded('2026-09-04T10:00:00Z', { updatedAt: '2026-09-05T00:00:00Z' }), level: 'street' }
+  expect(extraCopies([{ ch: first }, { ch: second }, { ch: edited, rev: 2 }], sources)).toEqual([second])
+  // edited then exported in browser storage (lastExportedAt after updatedAt), different content: never a duplicate
+  const exported = { ...loaded('2026-09-06T10:00:00Z', { updatedAt: '2026-09-05T00:00:00Z' }), level: 'street' }
+  expect(extraCopies([{ ch: first }, { ch: exported }], sources)).toEqual([])
+  // a 0.4.3 copy of the same character next to the old one: the unedited new one goes, the old one stays
+  const fresh = runner('Dusty Hat', { origin: 'NEWC', sampleKey: 'dusty-hat|canon', lastExportedAt: '2026-09-01T00:00:00Z' })
+  expect(extraCopies([{ ch: first }, { ch: fresh }], sources)).toEqual([fresh])
+})
+
+test('two runners of one name in one book are two characters (“-2”, as 0.4.1’s keys); across books they pair', () => {
+  const rows = [book('OLDC', 'Mo Ray', 1), book('OLDC', 'Mo Ray', 2), book('NEWC', 'Mo Ray')]
+  expect(chooseExamples(rows, sources).map(e => `${e.key} ${e.source}`).sort()).toEqual(['mo-ray-2|canon OLDC', 'mo-ray|canon NEWC'])
+  expect(keyOf(runner('Mo Ray', { sampleKey: 'oldc.mo-ray-2' }), sources)).toBe('mo-ray-2|canon')
 })

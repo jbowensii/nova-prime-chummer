@@ -3,6 +3,7 @@
 // book or a canon set) and one non-canon version. A library holds one copy per key "<name slug>|canon" or
 // "<name slug>|noncanon", recorded on the copy as sampleKey, so loading again, a re-import with new ids or an old copy
 // of the same character never adds a second one.
+import { characterToXml } from '../engine'
 import type { Character } from '../model/types'
 
 /** What the library needs of a source: canon, and when its book was imported. Looked up case-insensitively. */
@@ -32,11 +33,14 @@ export function keyOf(ch: Character, sources: Sources): string | null {
 /** A row of the example list: `source` is the book's source id, or none for an example set's runner (canon: the set's). */
 export interface Example { url: string; name: string; source?: string; set?: string; canon: boolean }
 
-/** The version to load of each key: a canon book's over a set's (the newest import among books), the first on a tie. */
+/** The version to load of each key: a canon book's over a set's (the newest import among books), the first on a tie.
+ *  Two runners of the same name in one book or set are two characters: the second gets "-2" (as 0.4.1's keys did). */
 export function chooseExamples(rows: Example[], sources: Sources): (Example & { key: string })[] {
-  const best = new Map<string, Example & { key: string }>()
+  const best = new Map<string, Example & { key: string }>(), seen = new Map<string, number>()
   for (const r of rows) {
-    const key = exampleKey(r.name, r.canon), have = best.get(key)
+    const base = slug(r.name), from = `${r.source ?? ''}/${r.set ?? ''}/${base}`, n = (seen.get(from) ?? 0) + 1
+    seen.set(from, n)
+    const key = exampleKey(n > 1 ? `${base}-${n}` : base, r.canon), have = best.get(key)
     if (!have || rank(r.source ? sources(r.source) : undefined) > rank(have.source ? sources(have.source) : undefined)) best.set(key, { ...r, key })
   }
   return [...best.values()]
@@ -50,9 +54,13 @@ export const unedited = (ch: Character, rev?: number, loaded = ch.updatedAt) => 
 /** Where a copy came from: its book (origin, or a 0.4.1 sampleKey's source), else none (an example set). */
 const sourceOf = (ch: Character) => ch.origin ?? (ch.sampleKey && !ch.sampleKey.includes('|') ? ch.sampleKey.split('.')[0] : undefined)
 
-/** The extra copies among `runners` (one account's own): per key, every copy beyond one. Edited copies always stay (and
- *  then every unedited one is extra); otherwise the preferred version stays (a book's over a set's, the newest import),
- *  the oldest on a tie. */
+/** Everything but the id, the timestamps and the key: two copies with the same fingerprint are the same runner. */
+const fingerprint = (ch: Character) => characterToXml({ ...ch, id: '', updatedAt: '', lastExportedAt: undefined, sampleKey: undefined })
+
+/** The extra copies among `runners` (one account's own): per key, every copy beyond one. First, copies from before the
+ *  "|" keys (0.4.0 and 0.4.1 stamped lastExportedAt at load time, so the date rule can't tell) that are identical apart
+ *  from ids, dates and keys: the oldest stays, the rest are extra. Then edited copies always stay (and every unedited
+ *  one is extra); otherwise the preferred version stays (a book's over a set's, the newest import), the oldest on a tie. */
 export function extraCopies(runners: { ch: Character; rev?: number }[], sources: Sources): Character[] {
   const groups = new Map<string, { ch: Character; rev?: number }[]>()
   for (const r of runners) {
@@ -61,6 +69,14 @@ export function extraCopies(runners: { ch: Character; rev?: number }[], sources:
   }
   const out: Character[] = []
   for (const g of groups.values()) {
+    if (g.length < 2) continue
+    const old = new Map<string, { ch: Character; rev?: number }>()
+    const when = (ch: Character) => `${ch.updatedAt}|${ch.lastExportedAt ?? ''}` // the oldest: then the first loaded
+    for (const r of [...g].sort((a, b) => when(a.ch).localeCompare(when(b.ch)))) {
+      if (r.ch.sampleKey?.includes('|')) continue
+      const f = fingerprint(r.ch), first = old.get(f)
+      if (first) { out.push(r.ch); g.splice(g.indexOf(r), 1) } else old.set(f, r)
+    }
     if (g.length < 2) continue
     const loaded = new Map<string, string>()
     for (const { ch } of g) { const k = sourceOf(ch) ?? ''; if (!loaded.has(k) || ch.updatedAt < loaded.get(k)!) loaded.set(k, ch.updatedAt) }

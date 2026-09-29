@@ -131,3 +131,13 @@ test('tidy-up that fails halfway says what moved and what didn’t, and closes',
   await expect(page.getByRole('status')).toHaveText('Moved to your trash: Old Timer.')
   await expect(page.getByRole('button', { name: 'Tidy up' })).toHaveCount(0)
 })
+
+test('when the example sets can’t be read, the books’ examples still load and the error is shown', async ({ page }) => {
+  const mine = readdirSync(join(dir, 'characters', 'pat')).find(f => readFileSync(join(dir, 'characters', 'pat', f), 'utf8').includes('origin="PREGENS"'))!
+  renameSync(join(dir, 'characters', 'pat', mine), join(dir, 'pat-pregens-copy.xml')) // Pat's PREGENS copy is gone
+  await signIn(page, 'pat')
+  await page.route('**/api/samples', r => r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'server error' }) }))
+  await load(page)
+  await expect(page.getByRole('status')).toHaveText('Added 1 example character. Couldn’t read the server’s example sets: server error.')
+  expect(own('pat').filter(x => x.includes('origin="PREGENS"'))).toHaveLength(1)
+})

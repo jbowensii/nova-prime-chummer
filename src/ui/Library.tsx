@@ -23,19 +23,24 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
 export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
 
 /** Every example character there is: the imported books' sample runners (custom/imported/samples.xml; none before any
- *  import) and, on the server, its example sets (GET /api/samples). Canon: the book's source, or the set's flag. */
-async function exampleList(c: Catalog, server: boolean): Promise<Example[]> {
+ *  import) and, on the server, its example sets (GET /api/samples). Canon: the book's source, or the set's flag. The
+ *  books' rows still come when the sets can't be read (`error`: why). */
+async function exampleList(sources: Sources, server: boolean): Promise<{ rows: Example[]; error?: string }> {
   const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
   const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
   const books = xml?.documentElement.localName === 'samples' ? [...xml.documentElement.getElementsByTagName('sample')].map(s => {
     const source = s.getAttribute('source') ?? ''
-    return { url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source, canon: isCanonSource(c, source) }
+    return { url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source, canon: !!sources(source)?.canon }
   }) : []
-  if (!server) return books
-  const r = await fetch('./api/samples', { cache: 'no-store' })
-  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
-  const { sets }: { sets: { name: string; canon: boolean; samples: { name: string; href: string }[] }[] } = await r.json()
-  return [...books, ...sets.flatMap(set => set.samples.map(s => ({ url: `./custom/${s.href}`, name: s.name, set: set.name, canon: set.canon })))]
+  if (!server) return { rows: books }
+  try {
+    const r = await fetch('./api/samples', { cache: 'no-store' })
+    if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
+    const { sets }: { sets: { name: string; canon: boolean; samples: { name: string; href: string }[] }[] } = await r.json()
+    return { rows: [...books, ...sets.flatMap(set => set.samples.map(s => ({ url: `./custom/${s.href}`, name: s.name, set: set.name, canon: set.canon })))] }
+  } catch (e) {
+    return { rows: books, error: because('Couldn’t read the server’s example sets', (e as Error).message ?? String(e)) }
+  }
 }
 
 export function Library({ c }: { c: Catalog }) {
@@ -94,8 +99,10 @@ export function Library({ c }: { c: Catalog }) {
       const have = new Set(mine.map(s => keyOf(s.ch, sources)))
       let n = 0
       const bad: string[] = []
-      const examples = chooseExamples(await exampleList(c, repo.mode === 'server'), sources)
-      if (!examples.length) return setMsg('No example characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet) and the server’s example sets.')
+      const { rows, error } = await exampleList(sources, repo.mode === 'server')
+      const examples = chooseExamples(rows, sources)
+      if (error) bad.push(error)
+      if (!examples.length) return setMsg(error ?? 'No example characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet) and the server’s example sets.')
       for (const { url, key } of examples.filter(s => !have.has(s.key))) {
         const file = url.split('/').pop()
         const res = await fetch(url).catch(() => null)
