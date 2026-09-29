@@ -60,6 +60,19 @@ for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--'))) {
   for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
 }
 
+// the example sets (custom/samples/<set>/, managed on disk by the admin): set.xml and each character file
+for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--'))) {
+  const root = join(dir, 'samples');
+  if (!existsSync(root)) continue;
+  for (const set of readdirSync(root, { withFileTypes: true }).filter(d => d.isDirectory() && !d.name.startsWith('.')))
+    for (const f of readdirSync(join(root, set.name)).filter(f => f.endsWith('.xml'))) {
+      const file = join(root, set.name, f), xsd = f === 'set.xml' ? 'sampleset.xsd' : 'character.xsd';
+      const res = await validateXML({ xml: { fileName: file, contents: readFileSync(file, 'utf8') },
+        schema: { fileName: xsd, contents: readFileSync(join(SCHEMA, xsd), 'utf8') } });
+      for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
+    }
+}
+
 // ---- reference integrity ----
 const ids = {};
 for (const { file, kind, doc } of docs) {

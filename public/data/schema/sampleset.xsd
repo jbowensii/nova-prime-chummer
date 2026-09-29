@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- custom/samples/<set>/set.xml: optional, names an example set and says whether its runners are canon (built from the
+     game's official rules only). The admin manages custom/samples/ on disk; the server only reads it (GET /api/samples).
+     Without set.xml a set is named after its folder and isn't canon, except "builtin" (the first release's runners). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:config:1"
+           targetNamespace="urn:chummer-anarchy2:config:1"
+           elementFormDefault="unqualified">
+  <xs:element name="sampleset">
+    <xs:complexType>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="name" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="120"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="canon" type="xs:boolean" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

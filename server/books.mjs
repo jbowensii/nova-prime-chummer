@@ -1,6 +1,7 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
-// edits and the table rules (admin and editors; GET /api/edits: anyone signed in); `who` is the signed-in user.
+// edits and the table rules (admin and editors; GET /api/edits: anyone signed in) and the example sets (GET, anyone
+// signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -24,6 +25,9 @@
 //                                     the entry is saved with by="<username>"
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
+//   GET    /api/samples               anyone signed in: the example sets in custom/samples/<set>/ -> { sets: [{ id, name, canon,
+//                                     samples: [{ name, href }] }] } (href relative to /custom/). Read only: the admin manages
+//                                     the folder on disk; set.xml (sampleset.xsd) names a set and says whether it is canon
 //   PUT    /api/table-rules           admin and editors: { rules: [{ id, on, name?, text? }] } -> 204; replaces custom/table-rules.xml
 //                                     (tablerules.xsd: a book's optional rule by its id, a house rule with its name and text);
 //                                     anyone signed in reads the file at /custom/table-rules.xml
@@ -65,6 +69,8 @@ const MAX_TABLE_RULES = 200 // tablerules.xsd
 const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its description, plus the <edit> wrapper
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
+const SET_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/ // a folder in custom/samples/, and each file in it
+const BUILTIN = { name: 'Built-in samples (first release)', canon: true } // custom/samples/builtin/ without a set.xml
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
@@ -360,6 +366,24 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id]), 'result'), 'removed') === 'true' })
     return send(res, 405, { error: 'method not allowed' })
+  }
+
+  /** The example sets: every custom/samples/<set>/ folder and its character files. A set without set.xml is named after
+   *  its folder and isn't canon, except "builtin" (the first release's runners, built from the core rulebook only). */
+  async function sampleSets(req, res, send) {
+    if (req.method !== 'GET') return send(res, 405, { error: 'method not allowed' })
+    const root = join(customDir, 'samples'), sets = []
+    for (const d of (await readdir(root, { withFileTypes: true }).catch(() => [])).filter(d => d.isDirectory() && SET_ID.test(d.name))) {
+      const tag = rootTag(await readOr(join(root, d.name, 'set.xml')), 'ca2:sampleset')
+      const def = d.name === 'builtin' ? BUILTIN : { name: d.name, canon: false }
+      const samples = []
+      for (const f of (await readdir(join(root, d.name)).catch(() => [])).filter(f => f.endsWith('.xml') && f !== 'set.xml' && SET_ID.test(f)).sort()) {
+        const ch = rootTag(await readOr(join(root, d.name, f), ''), 'ca2:character')
+        if (ch) samples.push({ name: attr(ch, 'streetName') || attr(ch, 'name') || f.replace(/\.xml$/, ''), href: `samples/${d.name}/${f}` })
+      }
+      sets.push({ id: d.name, name: attr(tag, 'name') || def.name, canon: tag ? ['true', '1'].includes(attr(tag, 'canon')) : def.canon, samples })
+    }
+    return send(res, 200, { sets: sets.sort((a, b) => a.id.localeCompare(b.id)) })
   }
 
   /** The GM's table rules, all at once: the Rules page sends the whole list on every change. */
@@ -725,6 +749,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (p === '/api/ai-models' && method === 'GET') return send(res, 200, { models: await listModels(url.searchParams.get('provider') ?? '') })
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/table-rules') return tableRules(req, res, send)
+    if (p === '/api/samples') return sampleSets(req, res, send)
     if (p === '/api/ai-keys' && method === 'PUT') {
       await putKeys(req)
       return send(res, 204, '', 'text/plain')
