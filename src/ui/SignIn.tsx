@@ -1,7 +1,7 @@
 // The sign-in page (also shown over the app when a session ends; "Sign in with Authelia" when Settings → Sign-in turned it on)
 // and the recovery page (#/setup/reset), which takes the one-time code `node server/users.mjs reset <username>` prints.
 import { useEffect, useState, type ReactNode } from 'react'
-import { fetchMe, PasswordField, send, type User } from './auth'
+import { fetchMe, PasswordField, send, takeLinkNote, type User } from './auth'
 
 /** A page with one form: the brand, a title, the fields, one error line (role=alert). */
 export function GatePage({ title, intro, err, onSubmit, busy, action, children, after }: { title: string; intro?: ReactNode; err: string;
@@ -41,7 +41,7 @@ let oidcNote = (() => {
 /** `over`: shown over a page whose session ended (the default when there is a `note`). */
 export function SignIn({ onSignedIn, note, oidc, over = !!note }: { onSignedIn: (u: User) => void; note?: ReactNode; oidc?: boolean; over?: boolean }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
-  const [err, setErr] = useState(() => oidcNote), [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(() => oidcNote || takeLinkNote()), [busy, setBusy] = useState(false)
   useEffect(() => { oidcNote = '' }, []) // shown once
   // over a page (a session that ended): Authelia opens in a new tab, so this page keeps its unsaved changes
   const back = async () => {

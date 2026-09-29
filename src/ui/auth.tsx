@@ -46,9 +46,53 @@ export async function send(path: string, body?: unknown, method = 'POST'): Promi
   return r
 }
 
+/** Sign in with Authelia is on (the last /api/auth/me said so): the account menu offers linking a password account. */
+let oidcOn = false
 export async function fetchMe(): Promise<{ user: User | null; setup: boolean; oidc?: boolean }> {
   const r = await fetch('./api/auth/me', { cache: 'no-store' }).catch(() => null)
-  return r?.ok ? r.json() : { user: null, setup: false }
+  const me = r?.ok ? await r.json() : { user: null, setup: false }
+  oidcOn = !!me.oidc
+  return me
+}
+
+// how "Link my Authelia account" came back (server/oidc.mjs sends /?link=<key>)
+const LINK_RESULTS: Record<string, string> = {
+  done: 'Your account is now linked to Authelia. From now on, sign in with Authelia: your password no longer works, and your other devices are signed out.',
+  taken: 'That Authelia user is already linked to another account here, so nothing changed. Ask the admin if that’s wrong.',
+  session: 'Nothing changed: the link was started from a sign-in that has ended or changed. Sign in and try again.',
+  expired: 'Nothing changed: the link took too long or was already used. Try again.',
+  denied: 'Nothing changed: Authelia didn’t sign you in. Try again.',
+  failed: 'Nothing changed: linking to Authelia didn’t work. Try again, and if it keeps failing ask the admin to check the sign-in settings.',
+}
+/** The ?link= the browser came back with: read once, and taken off the address. */
+let linkNote = (() => {
+  const key = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('link')
+  if (key === null) return ''
+  history.replaceState(null, '', location.pathname + location.hash)
+  return LINK_RESULTS[key] ?? LINK_RESULTS.failed
+})()
+/** The link result, once (the account menu shows it; the sign-in page when nobody is signed in any more). */
+export function takeLinkNote() { const n = linkNote; linkNote = ''; return n }
+
+/** "Link my Authelia account": what changes, then off to Authelia (the server checks everything again). */
+function LinkAuthelia({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
+  const go = async () => {
+    setBusy(true); setErr('')
+    try {
+      if (!await saved()) throw new Error('A runner’s change is still saving. Try again in a moment.')
+      location.assign((await (await send('auth/oidc/link/start')).json()).url)
+    } catch (x) { setErr((x as Error).message); setBusy(false) }
+  }
+  return (
+    <Modal open={open} onClose={() => { setErr(''); onClose() }} title="Link my Authelia account" actions={<>
+      <button className="btn" onClick={() => { setErr(''); onClose() }}>Cancel</button>
+      <button className="btn primary" disabled={busy} onClick={() => void go()}>{busy ? 'One moment…' : 'Continue to Authelia'}</button></>}>
+      <p>You’ll sign in with Authelia to show it’s you. After that, this account signs in with Authelia only: <b>your password stops
+        working</b> and your other devices are signed out. Only the admin can switch it back.</p>
+      {err && <p className="err" role="alert">{err}</p>}
+    </Modal>
+  )
 }
 
 // Every request goes through fetch: a 401 from /api or /custom (other than a wrong password at sign-in) means the session
@@ -84,17 +128,21 @@ export function onSessionEnd(fn: (() => void) | null) {
   }
 }
 
+/** Before the page goes (sign-out, off to Authelia): the open runner sends its last change and every save finishes; false
+ *  when one is still running after `wait` ms. */
+async function saved(wait = SIGN_OUT_WAIT) {
+  dispatchEvent(new Event('ca2-leaving'))
+  const late = new Promise<'late'>(ok => setTimeout(ok, wait, 'late'))
+  while (saving.size) if (await Promise.race([Promise.allSettled([...saving]), late]) === 'late') return false
+  return true
+}
 /** How long sign-out waits for the saves under way before it asks: a save that hangs mustn't keep anyone signed in. */
 export const SIGN_OUT_WAIT = 10_000
 /** Sign out: the open runner sends its last change and every save finishes, then the session ends (nothing is sent after
  *  it), then a reload so nothing stays in memory. Waits at most `wait` ms: false when a save is still running then (the
  *  caller warns; `force` signs out without waiting). */
 export async function signOut(force = false, wait = SIGN_OUT_WAIT): Promise<boolean> {
-  if (!force) {
-    dispatchEvent(new Event('ca2-leaving'))
-    const late = new Promise<'late'>(ok => setTimeout(ok, wait, 'late'))
-    while (saving.size) if (await Promise.race([Promise.allSettled([...saving]), late]) === 'late') return false
-  }
+  if (!force && !await saved(wait)) return false
   session.held = true
   await fetch('./api/auth/logout', { method: 'POST' }).catch(() => {})
   location.hash = '#/'
@@ -145,10 +193,11 @@ function ChangePassword({ open, onClose }: { open: boolean; onClose: () => void 
   )
 }
 
-/** The header's account menu: name, role, Users (admin), Change password, Sign out. Nothing without accounts. */
+/** The header's account menu: name, role, Users (admin), Change password, Link my Authelia account, Sign out. Nothing without accounts. */
 export function AccountMenu() {
   const me = useMe()
-  const [open, setOpen] = useState(false), [pw, setPw] = useState(false)
+  const [open, setOpen] = useState(false), [pw, setPw] = useState(false), [link, setLink] = useState(false)
+  const [linked, setLinked] = useState(takeLinkNote)
   const [leaving, setLeaving] = useState<'no' | 'waiting' | 'stuck'>('no')
   const leave = async (force = false) => {
     setLeaving('waiting')
@@ -171,6 +220,7 @@ export function AccountMenu() {
         <p><b>{me.name}</b><br /><span className="muted">{ROLE_NAMES[me.role]} · {me.username}</span></p>
         {me.role === 'admin' && <a className="btn quiet" href="#/users" onClick={() => setOpen(false)}>Users</a>}
         {me.method === 'password' && <button className="btn quiet" onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
+        {me.method === 'password' && oidcOn && <button className="btn quiet" onClick={() => { setOpen(false); setLink(true) }}>Link my Authelia account</button>}
         <button className="btn quiet" disabled={leaving === 'waiting'} onClick={() => void leave()}>{leaving === 'waiting' ? 'Signing out…' : 'Sign out'}</button>
       </div>
       <Modal open={leaving === 'stuck'} onClose={() => setLeaving('no')} title="A change is still saving"
@@ -179,6 +229,8 @@ export function AccountMenu() {
         <p>A runner’s change hasn’t reached the server after {SIGN_OUT_WAIT / 1000} seconds. Keep waiting, or sign out now and lose that change.</p>
       </Modal>
       <ChangePassword open={pw} onClose={() => { setPw(false); btn.current?.focus() }} />
+      <LinkAuthelia open={link} onClose={() => { setLink(false); btn.current?.focus() }} />
+      <Modal open={!!linked} onClose={() => setLinked('')} title="Link my Authelia account"><p role="status">{linked}</p></Modal>
     </div>
   )
 }
