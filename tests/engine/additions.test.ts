@@ -55,8 +55,8 @@ test('technomancer (a book adds Tasking and Emerged; made-up base 6): Emerged co
 })
 
 test('implant grades a book adds change Essence', () => {
-  expect(ampEssence(cat, amp('d', 'cyberware', ['grade-delta']))).toBe(0.75)
-  expect(ampEssence(cat, amp('o', 'cyberware', ['grade-omega']))).toBe(1.75)
+  expect(ampEssence(cat, amp('d', 'cyberware', ['grade-delta']))).toBe(1)
+  expect(ampEssence(cat, amp('o', 'cyberware', ['grade-omega']))).toBe(2)
   expect(ampEssence(cat, amp('c', 'bioware', ['grade-cultivated']))).toBe(0.125)
   expect(ampRating(cat, amp('d', 'cyberware', ['grade-delta']), first)).toBe(2 + 2)
 })

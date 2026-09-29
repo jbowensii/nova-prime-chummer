@@ -57,8 +57,8 @@ SHADOW AMPS ESS COST
 **Natural Low-Light Vision** (Elf) **0**
 **Big Grin** (Quality) **4**
 RR 1 on Influence tests (first meeting only).
-**Toy Eyes** (Cyberware) **-0.75 9**
-Delta Grade (-0.5 Essence)
+**Toy Eyes** (Cyberware) **-1 9**
+Delta Grade (-0.25 Essence)
 RR 1 on Ranged Weapons (Handguns) tests
 Glows in the dark
 **Zap Pistol** (Weapon) **4**
@@ -120,8 +120,8 @@ class ParseTest(unittest.TestCase):
         self.assertEqual([(a["name"], a["armor"], a["l"]) for a in b["armor"]],
                          [("No armor", None, 2), ("Padded coat", "2", 4), ("Padded coat and hat", "+1", 5), ("Mental", None, 3)])
         eyes = b["amps"][2]
-        self.assertEqual((eyes["name"], eyes["type"], eyes["ess"], eyes["rating"], eyes["count"]), ("Toy Eyes", "Cyberware", 0.75, 9, 1))
-        self.assertEqual(eyes["lines"], ["Delta Grade (-0.5 Essence)", "RR 1 on Ranged Weapons (Handguns) tests", "Glows in the dark"])
+        self.assertEqual((eyes["name"], eyes["type"], eyes["ess"], eyes["rating"], eyes["count"]), ("Toy Eyes", "Cyberware", 1.0, 9, 1))
+        self.assertEqual(eyes["lines"], ["Delta Grade (-0.25 Essence)", "RR 1 on Ranged Weapons (Handguns) tests", "Glows in the dark"])
 
 
 class CharacterTest(unittest.TestCase):
@@ -172,7 +172,7 @@ class CharacterTest(unittest.TestCase):
         self.assertEqual(rows[("pool", "athletics.ranged-defense@wil")]["status"], "ok")
         self.assertEqual(rows[("pool", "perception@log")]["status"], "ok")
         self.assertEqual((rows[("threshold", "physicalAlt")]["printed"], rows[("threshold", "physicalAlt")]["status"]), (5, "ok"))
-        self.assertEqual((rows[("essence", None)]["printed"], rows[("essence", None)]["status"]), (5.25, "ok"))
+        self.assertEqual((rows[("essence", None)]["printed"], rows[("essence", None)]["status"]), (5, "ok"))
         self.assertEqual(rows[("amp", "amp-4")]["status"], "ok")  # the drone: 1 + Flying + one narrative
         friend = rows[("amp", "amp-5")]
         self.assertEqual((friend["printed"], friend["computed"], friend["status"]), (0, 4, "mismatch"))
