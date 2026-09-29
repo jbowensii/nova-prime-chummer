@@ -7,8 +7,9 @@ import { Modal, NonCanon } from './bits'
 import { useRepo, type Stored } from './repo'
 import { SettingsButton } from './settings'
 import { needsExportReminder } from './storage'
+import { duplicateSamples, keyed, keyOf } from './samples'
 
-/** Download the runner as an XML file (same format as the files on tower04). Returns it stamped as exported. */
+/** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
   const out = { ...snapshotEntries(c, ch), lastExportedAt: new Date().toISOString() }
   const url = URL.createObjectURL(new Blob([characterToXml(out)], { type: 'application/xml' }))
@@ -21,12 +22,13 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
 /** A character file: our XML, or the older .ca2.json. */
 export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
 
-/** The sample runners the imported books brought (custom/imported/samples.xml); none before any import. */
-async function sampleUrls(): Promise<string[]> {
+/** The sample runners the imported books brought (custom/imported/samples.xml), each with its key (samples.ts); none
+ *  before any import. */
+async function sampleList() {
   const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
   const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
-  return xml?.documentElement.localName === 'samples'
-    ? [...xml.documentElement.getElementsByTagName('sample')].map(s => `./custom/imported/${s.getAttribute('href')}`) : []
+  return xml?.documentElement.localName === 'samples' ? keyed([...xml.documentElement.getElementsByTagName('sample')].map(s =>
+    ({ url: `./custom/imported/${s.getAttribute('href')}`, source: s.getAttribute('source') ?? '', name: s.getAttribute('name') ?? '' }))) : []
 }
 
 export function Library({ c }: { c: Catalog }) {
@@ -38,6 +40,7 @@ export function Library({ c }: { c: Catalog }) {
   const [level, setLevel] = useState('runner')
   const [meta, setMeta] = useState('human')
   const [toDelete, setToDelete] = useState<Character | null>(null)
+  const [tidying, setTidying] = useState(false)
   const file = useRef<HTMLInputElement>(null)
   const [noBooks, setNoBooks] = useState(false)
   // a fresh install: no book uploaded (server), or no amps at all (a static host has no Books page)
@@ -48,7 +51,9 @@ export function Library({ c }: { c: Catalog }) {
   }, [repo.mode, c, admin])
   const refresh = () => repo.list().then(setList, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const where = repo.mode === 'server' ? 'tower04' : 'this browser'
+  const where = repo.mode === 'server' ? 'the server' : 'this browser'
+  // admin and editors also get everyone else's runners (read-only): theirs first, then one group per owner
+  const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
 
   const store = async (ch: Character, rev?: number) => {
     const r = await repo.save(ch, rev)
@@ -75,20 +80,21 @@ export function Library({ c }: { c: Catalog }) {
     void refresh()
   }
 
+  // each account gets copies of its own (new ids), matched by the sample's key: never twice, whatever ids a re-import gave
   const loadSamples = async () => {
     try {
-      const have = new Set((list ?? []).map(s => s.ch.id))
+      const have = new Set(mine.map(s => keyOf(s.ch)))
       let n = 0
       const bad: string[] = []
-      const urls = await sampleUrls()
-      if (!urls.length) return setMsg('No sample characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet).')
-      for (const url of urls) {
+      const samples = await sampleList()
+      if (!samples.length) return setMsg('No sample characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet).')
+      for (const { url, key } of samples.filter(s => !have.has(s.key))) {
         const file = url.split('/').pop()
         const res = await fetch(url).catch(() => null)
         if (!res?.ok) { bad.push(`${file}: couldn’t be fetched.`); continue }
         const r = readCharacterFile(await res.text())
         if (!r.ok) { bad.push(`${file}: ${r.reason}`); continue }
-        if (!have.has(r.character.id) && await store({ ...r.character, lastExportedAt: r.character.updatedAt })) n++
+        if (await store({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })) n++
       }
       setMsg([n ? `Added ${n} sample characters.` : bad.length ? '' : 'The sample characters are already in your library.', ...bad].filter(Boolean).join(' '))
       void refresh()
@@ -97,13 +103,21 @@ export function Library({ c }: { c: Catalog }) {
     }
   }
 
+  // the unmodified duplicate samples of your own runners (loaded twice before samples had keys): to your trash
+  const dupes = duplicateSamples(mine.map(s => s.ch))
+  const tidy = async () => {
+    const moved: string[] = []
+    for (const ch of dupes) { await repo.remove(ch.id); moved.push(ch.identity.streetName || ch.identity.name) }
+    setTidying(false)
+    setMsg(`${repo.mode === 'server' ? 'Moved to your trash' : 'Removed'}: ${moved.join(', ')}.`)
+    void refresh()
+  }
+
   const duplicate = async (ch: Character) => {
     await store({ ...structuredClone(ch), id: newId(), identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
     void refresh()
   }
 
-  // admin and editors also get everyone else's runners (read-only): theirs first, then one group per owner
-  const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
   const byOwner = new Map<string, Stored[]>()
   for (const s of list ?? []) if (!mine.includes(s)) byOwner.set(s.owner!, [...byOwner.get(s.owner!) ?? [], s])
   const others = [...byOwner].map(([owner, rows]) => [owner, rows[0].ownerName ?? owner, rows] as const)
@@ -151,6 +165,9 @@ export function Library({ c }: { c: Catalog }) {
       <p className="muted">Saved on {where}{repo.mode === 'server' ? ' (appdata/chummer-anarchy2/characters)' : '. Export files to keep them safe.'}</p>
       {noBooks && <p className="banner">Upload your books to add amps, spells and gear. <a href="#/books">Open the Books page</a></p>}
       {msg && <p className="banner" role="status">{msg}</p>}
+      {dupes.length > 0 && <p className="banner">
+        {dupes.length === 1 ? 'A sample character is in your library twice' : `${dupes.length} sample characters are extra copies`}, unchanged since they were loaded.{' '}
+        <button className="btn small" onClick={() => setTidying(true)}>Tidy up</button></p>}
 
       {list === null ? <p className="muted">Loading runners…</p> : <>
         {others.length > 0 && <h2>My runners</h2>}
@@ -180,6 +197,16 @@ export function Library({ c }: { c: Catalog }) {
           </label>
         </div>
         <p className="muted" style={{ marginTop: '0.8rem' }}>Both can be changed later on the Concept tab.</p>
+      </Modal>
+
+      <Modal open={tidying} onClose={() => setTidying(false)} title="Tidy up the sample characters"
+        actions={<><button className="btn" onClick={() => setTidying(false)}>Keep them</button>
+          <button className="btn primary" onClick={() => void tidy()}>{repo.mode === 'server' ? 'Move to trash' : 'Remove copies'}</button></>}>
+        <p>These copies are the same as another copy in your library, apart from when they were saved:</p>
+        <ul>{dupes.map(ch => <li key={ch.id}>{ch.identity.streetName || ch.identity.name}</li>)}</ul>
+        <p className="muted">{repo.mode === 'server'
+          ? 'They move to your .trash folder on the server, so they can still be recovered there. Copies you changed stay.'
+          : 'They’re removed from this browser. Copies you changed stay.'}</p>
       </Modal>
 
       <Modal open={!!toDelete} onClose={() => setToDelete(null)} title={`Delete ${toDelete?.identity.streetName || toDelete?.identity.name || 'this runner'}?`}

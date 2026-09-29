@@ -243,7 +243,8 @@ file (`character.xsd`, `origin` = the source) to
 `custom/imported/<source>/samples/<source>.<name>.xml`, and lists it in the
 generated `custom/imported/samples.xml` (`<sample source href name role page/>`,
 `href` relative to `custom/imported/`; schema `samples.xsd`). "Load sample
-characters" reads that list; before any import there are none.
+characters" reads that list; before any import there are none. It matches samples by source and name, not by id
+(`sampleKey`, docs/character-format.md).
 The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
