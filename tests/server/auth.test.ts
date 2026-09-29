@@ -442,7 +442,8 @@ test('known devices: a browser that signed in skips its account’s wait until i
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player }, { trustProxy: '127.0.0.1' })
   let ip = 0
   const from = (extra: Record<string, string> = {}) => ({ 'X-Forwarded-For': `198.51.100.${++ip}`, ...extra })
-  const lockOut = async (name = 'player') => { for (let i = 0; i < 11; i++) await login(s.base, name, 'wrong-password', from()) }
+  // 13 failures: the wait reaches 4 s, so a slow CI box can't outlast it between steps
+  const lockOut = async (name = 'player') => { for (let i = 0; i < 13; i++) await login(s.base, name, 'wrong-password', from()) }
   const first = await login(s.base, 'player', PW.player, from())
   expect(first.deviceSet).toMatch(/^ca2_device=[\w-]{22}\.[\w-]{43}; Path=\/; HttpOnly; SameSite=Lax; Max-Age=31536000$/)
   const device = first.device, other = (await login(s.base, 'admin', PW.admin, from())).device
