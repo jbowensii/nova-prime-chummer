@@ -597,13 +597,19 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const u = await lock(async () => {
         const u = byId(id), f = fields(b, u), after = { ...u, ...f }
         keepAnAdmin(u, after)
-        if (f.username && f.username !== u.username) await runners.rename(u.username, f.username)
+        const before = { ...u }, moved = f.username && f.username !== u.username
+        if (moved) await runners.rename(u.username, f.username)
         const end = after.enabled === false || after.method !== u.method
         if (f.method && f.method !== 'password') f.password = null // an Authelia account has no app password
         // a new name, email or method: the Authelia link goes, and the next Authelia sign-in matches afresh
         if (['username', 'email', 'method'].some(k => k in f && f[k] !== u[k])) Object.assign(f, { oidcIss: '', oidcSub: '' })
         Object.assign(u, f)
-        await saveUsers()
+        try { await saveUsers() } catch (e) {
+          // users.xml still has the old name: the account and its runner folder go back to it
+          Object.assign(u, before)
+          if (moved) await runners.rename(f.username, before.username)
+          throw e
+        }
         if (end) await endSessions(u.id)
         return u
       })

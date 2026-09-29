@@ -2,7 +2,7 @@
 // Accounts (server/auth.mjs): roles on every route, sign-in and lockout, sessions, setup and recovery codes, the Origin
 // check, the trusted proxy, runner folders. Plain fetch here: every request says who it is.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -543,6 +543,26 @@ test('runners: a save waiting while its account is renamed lands in the new fold
   mkdirSync(join(s.chars, 'leftover'))
   const add = await call(s.base, 'POST', '/api/users', { cookie: admin, ...json({ username: 'leftover', name: 'L', role: 'player', password: 'long-enough-1' }) })
   expect([add.status, (await add.json()).error]).toEqual([409, 'characters/leftover already exists; move it away first'])
+  s.srv.close()
+})
+
+test('rename: when users.xml can’t be saved the runner folder moves back and the account keeps its name', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player })
+  const admin = (await login(s.base, 'admin', PW.admin)).cookie, player = (await login(s.base, 'player', PW.player)).cookie
+  expect((await call(s.base, 'PUT', '/api/characters/p1', { cookie: player, body: runner('p1', 'Pats Runner') })).status).toBe(201)
+  const id = (await (await call(s.base, 'GET', '/api/auth/me', { cookie: player })).json()).user.id
+  const users = join(s.lib, '.config', 'users.xml'), saved = readFileSync(users, 'utf8')
+  rmSync(users)
+  mkdirSync(users) // the atomic write's rename onto users.xml fails
+  expect((await call(s.base, 'PUT', `/api/users/${id}`, { cookie: admin, ...json({ username: 'kim' }) })).status).toBe(500)
+  expect(readdirSync(s.chars)).toEqual(['player'])
+  expect(readdirSync(join(s.chars, 'player'))).toEqual(['Pats-Runner.xml'])
+  const list = await (await call(s.base, 'GET', '/api/users', { cookie: admin })).json()
+  expect(list.find((u: { id: string }) => u.id === id).username).toBe('player')
+  rmSync(users, { recursive: true })
+  writeFileSync(users, saved)
+  expect((await call(s.base, 'PUT', `/api/users/${id}`, { cookie: admin, ...json({ username: 'kim' }) })).status).toBe(200)
+  expect(readdirSync(s.chars)).toEqual(['kim'])
   s.srv.close()
 })
 
