@@ -3,9 +3,11 @@
 // server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/.
 //
 //   GET    /api/health                   -> { ok, storage: "server" }
-//   GET    /api/characters               -> [{ file, rev, xml, owner, ownerName }] the caller's runners; admin and editors:
-//                                           everyone's (owner: the username, ownerName: the account's name). PUT and DELETE act on the caller's own only (403 on
-//                                           a runner id another account holds)
+//   GET    /api/characters               -> [{ file, rev, xml, owner, ownerName }] the caller's runners; the admin: everyone's;
+//                                           an editor: also those in the campaigns they GM (owner: the username, ownerName: the
+//                                           account's name). PUT and DELETE act on the caller's own only (403 on a runner id another
+//                                           account holds). A save keeps the stored runner's campaign="…" (a new one gets none):
+//                                           /api/campaigns sets it
 //   PUT    /api/characters/:id           body: character XML
 //          If-Match: <rev>                  refuse with 409 if the stored file has moved on
 //          ?force=1                         overwrite anyway
@@ -18,10 +20,11 @@
 //                                        (body { files: [...] }: only those, e.g. the ones the page showed)
 //          ?user=<username>              the admin: another account's trash (everyone else: 403)
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
+//   /api/campaigns*                      campaigns (server/campaigns.mjs)
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
 //                                        edits, backup and restore, data packs (server/books.mjs); LIBRARY_DIR is never served
-//   /custom/*                            house-rule overlays from CUSTOM_DIR
+//   /custom/*                            house-rule overlays from CUSTOM_DIR (never campaigns.xml)
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
@@ -30,7 +33,8 @@ import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
-import { booksApi, unesc } from './books.mjs'
+import { booksApi, unesc, writeAtomic } from './books.mjs'
+import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
 import { oidcApi } from './oidc.mjs'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
@@ -60,7 +64,8 @@ function setRev(xml, rev) {
 export function restoredCopy(xml, id) {
   return setRev(xml.replace(/<ca2:character\b[^>]*>/, tag => {
     const street = tag.match(/\sstreetName="([^"]*)"/)?.[1] || tag.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
-    return tag.replace(/\s(id|streetName)="[^"]*"/g, '').replace(/^<ca2:character/, `$& id="${id}" streetName="${street} (restored copy)"`)
+    // a copy is in no campaign
+    return tag.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(/^<ca2:character/, `$& id="${id}" streetName="${street} (restored copy)"`)
   }), 1)
 }
 
@@ -116,9 +121,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (await exists(folder(u))) throw fail(409, `characters/${u} already exists; move it away first`)
     },
     async rename(from, to) {
-      if (!await exists(folder(from))) return
-      if (await exists(folder(to))) throw fail(409, `characters/${to} already exists; move it away first`)
-      await rename(folder(from), folder(to))
+      const move = await exists(folder(from))
+      if (move && await exists(folder(to))) throw fail(409, `characters/${to} already exists; move it away first`)
+      await campaigns.rename(from, to)
+      if (move) await rename(folder(from), folder(to))
     },
     /** The upgrade: runners at the top of characters/ (and its .trash/) from before accounts go to the first admin. */
     async adopt(u) {
@@ -137,6 +143,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     },
     /** A deleted account (no runners left): its trash goes to characters/.trash/, named after it; then its folder goes. */
     async retire(u) {
+      await campaigns.drop(u)
       await moveAll(join(folder(u), '.trash'), join(charDir, '.trash'), `${u}-`)
       await rmdir(join(folder(u), '.trash')).catch(() => {})
       await rmdir(folder(u)).catch(() => {})
@@ -144,6 +151,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   }
   let oidc = null
   auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
+  const campaigns = campaignsApi({ customDir, lock, auth, runnersOf: u => index(folder(u)),
+    writeRunner: (u, file, xml) => writeAtomic(join(folder(u), file), xml) })
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
@@ -184,11 +193,13 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (await oidc.handle(req, res, url, send, who) !== false) return
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
+    if (await campaigns.handle(req, res, url, send, who) !== false) return
     if (/^\/api\/trash(\/|$)/.test(url.pathname)) return trash(req, res, url, who)
     if (url.pathname === '/api/characters' && req.method === 'GET') {
-      const owners = [who.username, ...(who.role === 'player' ? [] : auth.usernames().filter(u => u !== who.username))]
+      const owners = [who.username, ...(who.role === 'admin' ? auth.usernames().filter(u => u !== who.username) : [])]
       const out = []
       for (const owner of owners) for (const { file, rev, xml } of await index(folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
+      if (who.role === 'editor') for (const { file, rev, xml, owner } of await campaigns.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
       return send(res, 200, out)
     }
     const m = url.pathname.match(/^\/api\/characters\/([^/]+)$/)
@@ -221,9 +232,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       const rev = (existing?.rev ?? 0) + 1
       await mkdir(dir, { recursive: true })
       const file = existing?.file ?? await freeName(dir, slug(url.searchParams.get('filename') || rootAttr(xml, 'streetName') || rootAttr(xml, 'name')))
-      const tmp = join(dir, `.${file}.tmp`)
-      await writeFile(tmp, setRev(xml, rev), 'utf8')
-      await rename(tmp, join(dir, file))
+      // the campaign is the stored runner's (set by /api/campaigns), never the body's
+      await writeAtomic(join(dir, file), setRev(setCampaign(xml, existing && campaignOf(existing.xml)), rev))
       return send(res, existing ? 200 : 201, { rev, file })
     })
   }
@@ -310,6 +320,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       }
       if (url.pathname.startsWith('/custom/')) { // imported book data: signed-in users only
         if (!auth.session(req, res)) return send(res, 401, 'sign in first', 'text/plain')
+        // campaigns.xml (who plays where, GM notes): only through /api/campaigns. Trailing dots and spaces: Windows' names
+        if (resolve(customDir, '.' + url.pathname.slice('/custom'.length)).replace(/[. ]+$/, '').toLowerCase() === join(customDir, 'campaigns.xml').toLowerCase())
+          return send(res, 404, 'not found', 'text/plain')
         if (await serveFile(res, customDir, url.pathname.slice('/custom'.length))) return
         return send(res, 404, 'not found', 'text/plain')
       }

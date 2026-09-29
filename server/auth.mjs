@@ -192,6 +192,7 @@ export function need(path, method) {
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
   if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|ai-test|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
   if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
+  if (path === '/api/campaigns' && method === 'POST') return 'editor' // the rest of /api/campaigns: checked per campaign
   return 'user'
 }
 
@@ -790,6 +791,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     usernames: () => users.map(u => u.username),
     /** An account's display name (the runner list's group headings). */
     nameOf: username => users.find(u => u.username === username)?.name ?? username,
+    /** An enabled account's role (campaigns: who may GM), else null. */
+    roleOf: username => users.find(u => u.username === username && u.enabled)?.role ?? null,
     /** The account as it is now (renamed, disabled or deleted since the request began): null when it can't act. */
     current: id => users.find(u => u.id === id && u.enabled) ?? null,
     /** After a restore: the restored accounts; every session ends. No users.xml (a backup from before accounts): setup mode.

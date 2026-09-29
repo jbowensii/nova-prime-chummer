@@ -74,7 +74,7 @@ describe('with an admin, an editor and a player', () => {
     ['GET', '/api/trash', 'user'], ['POST', '/api/trash/zz.xml/restore', 'user'], ['DELETE', '/api/trash/zz.xml', 'user'], ['DELETE', '/api/trash', 'user'],
     ['POST', '/api/auth/password', 'user', '{}'], ['GET', '/custom/index.xml', 'user'], ['GET', '/api/edits', 'user'], ['GET', '/api/nothing', 'user'],
     ['PUT', '/api/edits/items/x', 'editor', '<edit/>'], ['DELETE', '/api/edits/items/x', 'editor'], ['POST', '/api/edits/sources', 'editor', '{}'],
-    ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'], ['GET', '/api/samples', 'user'],
+    ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/api/campaigns', 'user'], ['POST', '/api/campaigns', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'], ['GET', '/api/samples', 'user'],
     ['GET', '/api/books', 'admin'], ['POST', '/api/books', 'admin', 'not a pdf'], ['GET', '/api/books/nope/report', 'admin'],
     ['POST', '/api/books/nope/reimport', 'admin'], ['POST', '/api/books/nope/ai', 'admin'], ['DELETE', '/api/books/nope', 'admin'],
     ['GET', '/api/review/nope', 'admin'], ['PUT', '/api/review/nope', 'admin', '<review/>'],
@@ -149,16 +149,17 @@ describe('with an admin, an editor and a player', () => {
     expect(JSON.parse(list).map((u: { username: string }) => u.username).sort()).toEqual(['admin', 'editor', 'player'])
   })
 
-  test('runners: each account its own folder; admin and editors read everyone’s with the owner, write only their own', async () => {
+  test('runners: each account its own folder; the admin reads everyone’s with the owner (editors: their campaigns’), writes only their own', async () => {
     expect((await call(s.base, 'PUT', '/api/characters/p1', { cookie: jar.player, body: runner('p1', 'Kim') })).status).toBe(201)
     expect((await call(s.base, 'PUT', '/api/characters/a1', { cookie: jar.admin, body: runner('a1', 'Boss') })).status).toBe(201)
     expect(readdirSync(join(s.chars, 'player'))).toEqual(['Kim.xml'])
     const list = async (who: Role) => (await (await call(s.base, 'GET', '/api/characters', { cookie: jar[who] })).json())
       .map((c: { file: string; owner: string }) => `${c.owner}/${c.file}`).sort()
     expect(await list('player')).toEqual(['player/Kim.xml'])
-    expect(await list('editor')).toEqual(['admin/Boss.xml', 'player/Kim.xml'])
+    expect(await list('editor')).toEqual([]) // campaigns.test.ts: an editor reads the runners in the campaigns they GM
+    expect(await list('admin')).toEqual(['admin/Boss.xml', 'player/Kim.xml'])
     // the account's name travels with each row: the runner list groups and labels others' runners by it
-    expect((await (await call(s.base, 'GET', '/api/characters', { cookie: jar.editor })).json()).map((c: { ownerName: string }) => c.ownerName).sort())
+    expect((await (await call(s.base, 'GET', '/api/characters', { cookie: jar.admin })).json()).map((c: { ownerName: string }) => c.ownerName).sort())
       .toEqual(['admin', 'player'])
     for (const who of ['admin', 'editor'] as const) {
       expect((await call(s.base, 'PUT', '/api/characters/p1?force=1', { cookie: jar[who], body: runner('p1', 'Hijacked') })).status).toBe(403)

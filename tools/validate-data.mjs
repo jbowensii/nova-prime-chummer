@@ -51,14 +51,15 @@ for (const file of files) {
   docs.push({ file, kind, doc: new JSDOM(xml, { contentType: 'text/xml' }).window.document });
 }
 
-// the GM's table rules (custom/table-rules.xml, written by the server): their own schema, not a data kind
-for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--'))) {
-  const file = join(dir, 'table-rules.xml');
-  if (!existsSync(file)) continue;
-  const res = await validateXML({ xml: { fileName: file, contents: readFileSync(file, 'utf8') },
-    schema: { fileName: 'tablerules.xsd', contents: readFileSync(join(SCHEMA, 'tablerules.xsd'), 'utf8') } });
-  for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
-}
+// the GM's table rules and the campaigns (custom/table-rules.xml, campaigns.xml, written by the server): their own schemas
+for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--')))
+  for (const [name, xsd] of [['table-rules.xml', 'tablerules.xsd'], ['campaigns.xml', 'campaigns.xsd']]) {
+    const file = join(dir, name);
+    if (!existsSync(file)) continue;
+    const res = await validateXML({ xml: { fileName: file, contents: readFileSync(file, 'utf8') },
+      schema: { fileName: xsd, contents: readFileSync(join(SCHEMA, xsd), 'utf8') } });
+    for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
+  }
 
 // the example sets (custom/samples/<set>/, managed on disk by the admin): set.xml and each character file
 for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--'))) {
