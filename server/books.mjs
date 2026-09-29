@@ -33,7 +33,14 @@
 //   PUT    /api/table-rules           admin and editors: { rules: [{ id, on, name?, text? }] } -> 204; replaces custom/table-rules.xml
 //                                     (tablerules.xsd: a book's optional rule by its id, a house rule with its name and text);
 //                                     anyone signed in reads the file at /custom/table-rules.xml
-//   POST   /api/backup[?keys=1]       makes the zip of characters/, custom/ and library/ (keys=1: with the API keys) -> { token };
+//   GET    /api/ask                   anyone signed in: -> { available, limit, used } (available: an AI provider is chosen, enabled
+//                                     and has its key; limit: the account's dailyQuestions, null for none; used: answered today, UTC)
+//   POST   /api/ask                   anyone signed in: { question } (500 characters at most) -> { answer, sources: [{ source, page,
+//                                     title }], covered, used, limit } through `importer ask` (60 s); one at a time per account and
+//                                     ASK_AT_ONCE on the server (429); every question that reached the provider counts against the day's
+//                                     limit, whatever came back (429 + Retry-After until UTC midnight); one the books don't cover without
+//                                     asking it is free. Only the username and the time are logged; counts in library/.config/ask-counts.xml
+//   POST   /api/backup[?keys=1]     makes the zip of characters/, custom/ and library/ (keys=1: with the API keys) -> { token };
 //                                     one at a time (409); the zip waits 10 min for its token
 //   GET    /api/backup/:token         the zip, once, as chummer-anarchy2-backup-<date>.zip
 //   POST   /api/restore?preview=1     body: a backup zip -> { token, manifest }; the zip waits 30 min for its token
@@ -50,7 +57,7 @@
 //                                     and they exclude each other.
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { createReadStream, createWriteStream, readdirSync, rmSync } from 'node:fs'
+import { createReadStream, createWriteStream, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -73,6 +80,8 @@ const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
 const SET_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/ // a folder in custom/samples/, and each file in it
 const BUILTIN = { name: 'Built-in samples (first release)', canon: true } // custom/samples/builtin/ without a set.xml
+const MAX_QUESTION = 500 // importer/ask.py MAX_QUESTION; its provider call gives up at 50 s, the server's askTimeout (60 s) stops it
+const ASK_AT_ONCE = 3 // questions being answered on the whole server (each is a Python process)
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
@@ -104,7 +113,7 @@ export async function writeAtomic(path, text, mode = 0o666) {
   await rename(tmp, path)
 }
 
-export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000,
+export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000, askTimeout = 60000,
   onRestore = async () => {} }) {
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
@@ -114,7 +123,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let testing = null; const tests = [] // connection tests: one at a time, 10 a minute (each may cost a few tokens)
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
-  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve() }
+  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve(), ask: Promise.resolve() }
   let writes = 0, zipping = 0, restoring = false
   let packing = false // a data pack being made or imported: one at a time, and no job starts meanwhile
   const spawned = new Set() // backup processes, stopped with the server
@@ -141,7 +150,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         stdio: ['pipe', 'pipe', 'pipe'] })
       if (args[0] === 'list-models') listChild = p
       else if (args[0] === 'test-ai') testChild = p
-      else if (args[0] === 'backup') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
+      else if (args[0] === 'backup' || args[0] === 'ask') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
       else if (!['set-key', 'set-settings', 'edit', 'restore', 'datapack'].includes(args[0]) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
@@ -347,6 +356,70 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     try { out = JSON.parse(r.out.trim().split('\n').pop()) } catch { throw fail(502, 'the importer’s answer couldn’t be read') }
     const text = s => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim() // text only, one line
     return { ok: true, model: text(out.model).slice(0, 120), reply: (await redact(text(out.reply))).slice(0, 200), ms: Math.round(Number(out.ms) || 0) }
+  }
+
+  // ---- Ask the rules ----
+  const asking = new Set() // user ids with a question being answered
+  const countsPath = join(config, 'ask-counts.xml')
+  const utcDay = (t = Date.now()) => new Date(t).toISOString().slice(0, 10)
+  /** Today's answered questions per user id; ask-counts.xml (users.xsd askcounts) keeps them over a restart. */
+  let asked = { day: utcDay(), n: new Map() }
+  try {
+    const xml = readFileSync(countsPath, 'utf8')
+    if (attr(rootTag(xml, 'ca2:askcounts'), 'date') === asked.day)
+      for (const [m] of xml.matchAll(/<count\b[^>]*>/g)) if (/^[0-9a-f]{12}$/.test(attr(m, 'user') ?? '')) asked.n.set(attr(m, 'user'), Number(attr(m, 'n')) || 0)
+  } catch { /* none yet */ }
+  const usedToday = id => {
+    if (asked.day !== utcDay()) asked = { day: utcDay(), n: new Map() }
+    return asked.n.get(id) ?? 0
+  }
+  const saveCounts = () => serial('ask', () => writeAtomic(countsPath, `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:askcounts xmlns:ca2="${CONFIG_NS}" version="1" date="${
+    asked.day}">\n${[...asked.n].map(([u, n]) => `  <count user="${u}" n="${n}"/>\n`).join('')}</ca2:askcounts>\n`)).catch(e => console.error(`couldn’t save ask-counts.xml: ${e.message}`))
+
+  /** Is an AI provider chosen, enabled and given its key (an OpenAI-compatible server may need none, but an address)? */
+  async function askAvailable() {
+    const xml = await readOr(join(config, 'ai-providers.xml'), '')
+    const use = attr(rootTag(xml, 'ca2:aiproviders'), 'use')
+    const p = use && [...xml.matchAll(/<provider\b[^>]*>/g)].map(m => m[0]).find(t => attr(t, 'id') === use)
+    if (!p || attr(p, 'enabled') !== 'true') return false
+    const key = new RegExp(`<key\\s+provider="${use}"\\s*>\\s*[^<\\s]`).test(await readOr(join(config, 'ai-keys.xml'), ''))
+    return key || (use === 'openai' && !!attr(p, 'baseUrl'))
+  }
+
+  async function ask(req, who) {
+    if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) throw fail(415, 'send { question } as application/json')
+    let question
+    try { question = JSON.parse(await body(req, 8192)).question } catch (e) { throw e.code === 413 ? e : fail(400, 'send { question } as JSON') }
+    question = typeof question === 'string' ? clean(question).replace(/\s+/g, ' ').trim() : ''
+    if (!question || question.length > MAX_QUESTION) throw fail(400, `a question is 1–${MAX_QUESTION} characters`)
+    if (!await askAvailable()) throw fail(409, 'Ask the rules isn’t set up: the admin chooses an AI provider and its key in AI settings')
+    if (asking.has(who.id)) throw Object.assign(fail(429, 'your last question is still being answered; wait for it'), { retryAfter: 5 })
+    if (asking.size >= ASK_AT_ONCE) throw Object.assign(fail(429, 'Ask the rules is busy; try again in a moment'), { retryAfter: 5 })
+    const limit = who.dailyQuestions ?? null
+    if (limit != null && usedToday(who.id) >= limit)
+      throw Object.assign(fail(429, `You’ve used today’s ${limit} questions. Ask again tomorrow.`),
+        { retryAfter: Math.ceil((Date.parse(`${utcDay()}T00:00:00Z`) + 86400e3 - Date.now()) / 1000) })
+    asking.add(who.id)
+    let r
+    try {
+      r = await importer(['ask', '--custom', customDir, '--library', libraryDir], { input: question, timeout: askTimeout })
+    } finally { asking.delete(who.id) }
+    console.log(`ask: ${who.username} at ${new Date().toISOString()}`) // never the question or the answer
+    let out = null
+    try { out = JSON.parse(r.out.trim().split('\n').pop()) } catch { /* killed or crashed: no JSON */ }
+    // counted unless the importer says it never asked the provider (a timeout or a crash counts: it may have)
+    if (out?.called !== false) {
+      const n = usedToday(who.id) + 1 // first: at midnight this rolls the day over, and the count goes in the new one
+      asked.n.set(who.id, n)
+      await saveCounts()
+    }
+    if (r.signal) throw fail(502, `no answer within ${askTimeout / 1000} seconds; try again`)
+    const why = (await redact(r.err)).trim().split('\n').pop()
+    if (r.code !== 0) throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t answer' + (why ? `: ${why}` : ''))
+    if (!out) throw fail(502, 'the importer’s answer couldn’t be read')
+    const text = s => String(s ?? '').slice(0, 200)
+    const sources = (Array.isArray(out.sources) ? out.sources : []).slice(0, 8).map(s => ({ source: text(s?.source), page: text(s?.page), title: text(s?.title) }))
+    return { answer: (await redact(String(out.answer ?? ''))).slice(0, 6000), sources, covered: out.covered === true, used: usedToday(who.id), limit }
   }
 
   /** One `importer edit …` call after the previous one; exit 3 is a refusal whose reason goes back as a 400. */
@@ -775,6 +848,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       return send(res, 200, provider === 'anythingllm' // the importer prints slug<TAB>name
         ? { workspaces: ids.map(l => ({ slug: l.split('\t')[0], name: l.slice(l.indexOf('\t') + 1) })) } : { models: ids })
     }
+    if (p === '/api/ask' && method === 'GET')
+      return send(res, 200, { available: await askAvailable(), limit: who.dailyQuestions ?? null, used: usedToday(who.id) })
+    if (p === '/api/ask' && method === 'POST') return send(res, 200, await ask(req, who))
+    if (p === '/api/ask') return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/table-rules') return tableRules(req, res, send)
     if (p === '/api/samples') return sampleSets(req, res, send)

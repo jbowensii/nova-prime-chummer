@@ -10,6 +10,7 @@ import re
 import tempfile
 import time
 import urllib.error
+import uuid
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -26,6 +27,8 @@ ANTHROPIC_TIMEOUT = 600  # a 16k-token structured reply can take minutes
 DEFAULT_MODEL = {"anthropic": "claude-opus-5", "gemini": "gemini-2.5-pro"}
 GEMINI_URL = "https://generativelanguage.googleapis.com"
 PING = "Reply with the single word OK."
+GEMINI_THINKING = 512  # a capped call's thinking budget: 2.5 Pro needs at least 128, Flash-Lite 512 when it thinks
+OPENAI_CAP = 4  # a capped call's max_completion_tokens is this many times max_tokens: reasoning models count their thinking in it
 PING_TIMEOUT = 25  # a connection test: fail well inside the server's 30 s cap
 # what a status means for a connection test (the provider's own words stay out: they may be long, or echo a header)
 HTTP_SAYS = {401: "the provider didn’t accept the API key", 403: "the provider didn’t accept the API key",
@@ -158,7 +161,7 @@ def set_key(config_dir, provider, key):
         raise
 
 
-def call(config_dir, system, user, schema=None):
+def call(config_dir, system, user, schema=None, max_tokens=None, timeout=None):
     """Ask the provider ai-providers.xml says to use; its key is read now, never cached."""
     if not os.path.exists(os.path.join(config_dir, "ai-providers.xml")):
         raise ProviderError("AI settings aren’t set up yet")
@@ -169,33 +172,37 @@ def call(config_dir, system, user, schema=None):
     key = read_key(config_dir, use) or ""
     if not key and use in ("anthropic", "gemini"):
         raise ProviderError(f"no API key is set for {use}")
-    return complete(p, key, system, user, schema)
+    return complete(p, key, system, user, schema, max_tokens, timeout)
 
 
-def complete(provider, key, system, user, schema=None):
-    """The model's text reply. `schema` (JSON Schema) is enforced where the provider supports it."""
+def complete(provider, key, system, user, schema=None, max_tokens=None, timeout=None):
+    """The model's text reply. `schema` (JSON Schema) is enforced where the provider supports it. `max_tokens` caps a
+    short reply: Anthropic's max_tokens; Gemini's thinking gets a small budget of its own on top (its thinking counts in
+    maxOutputTokens); OpenAI gets max_completion_tokens with room for a reasoning model's thinking; AnythingLLM has no
+    cap (the prompt keeps it short). `timeout` in seconds replaces the defaults, and a call with one isn't retried."""
     pid, key = provider.get("id"), (key or "").strip()
     model = provider.get("model") or DEFAULT_MODEL.get(pid, "")
     try:
         if pid == "anthropic":
-            return _anthropic(provider, key, model, system, user, schema)
+            return _anthropic(provider, key, model, system, user, schema, max_tokens or 16000, timeout)
         if pid == "openai":
             body = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                    "response_format": {"type": "json_object"}}  # servers without JSON mode ignore it; propose tolerates prose
-            out = _request(provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body)
+                    "response_format": {"type": "json_object"}, **({"max_completion_tokens": max_tokens * OPENAI_CAP} if max_tokens else {})}  # servers without JSON mode ignore it; propose tolerates prose
+            out = _request(provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body, timeout=timeout or TIMEOUT)
             if out["choices"][0].get("finish_reason") == "length":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return out["choices"][0]["message"]["content"]
         if pid == "gemini":
             url = f"{(provider.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models/{urllib.parse.quote(model, safe='')}:generateContent"
             body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"role": "user", "parts": [{"text": user}]}],
-                    "generationConfig": {"responseMimeType": "application/json"}}
-            out = _request(url, {"x-goog-api-key": key}, body)  # header, not ?key=: URLs end up in logs
+                    "generationConfig": {"responseMimeType": "application/json", **({"maxOutputTokens": max_tokens + 2 * GEMINI_THINKING,
+                                                                                         "thinkingConfig": {"thinkingBudget": GEMINI_THINKING}} if max_tokens else {})}}
+            out = _request(url, {"x-goog-api-key": key}, body, timeout=timeout or TIMEOUT)  # header, not ?key=: URLs end up in logs
             if out["candidates"][0].get("finishReason") == "MAX_TOKENS":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return "".join(p.get("text", "") for p in out["candidates"][0]["content"]["parts"])
         if pid == "anythingllm":
-            return _anythingllm_chat(provider, key, f"{system}\n\n{user}", TIMEOUT)["textResponse"]
+            return _anythingllm_chat(provider, key, f"{system}\n\n{user}", timeout or TIMEOUT)["textResponse"]
     except ProviderError as e:
         raise type(e)(_redact(str(e), key)) from None
     except (KeyError, IndexError, TypeError) as e:
@@ -313,7 +320,8 @@ def _anythingllm_chat(p, key, message, timeout):
         raise _no_workspace(ws, spaces)
     try:
         return _request(f"{base}/api/v1/workspace/{urllib.parse.quote(slug, safe='')}/chat", _bearer(key),
-                        {"message": message, "mode": "chat"}, timeout=timeout)
+                        # a session of its own: no earlier question's history (another user's) is added to this one
+                        {"message": message, "mode": "chat", "sessionId": f"ca2-{uuid.uuid4().hex}"}, timeout=timeout)
     except ProviderError as e:
         if getattr(e, "status", None) == 400 and "not a valid workspace" in str(e):  # removed since the list was read
             raise _no_workspace(ws, _workspaces(base, key, timeout, fresh=True)) from None
@@ -379,12 +387,13 @@ def _anthropic_errors():
         raise ProviderError("couldn’t reach Anthropic") from None
 
 
-def _anthropic(provider, key, model, system, user, schema):
-    client = _anthropic_client(key, provider.get("baseUrl"), timeout=ANTHROPIC_TIMEOUT)
+def _anthropic(provider, key, model, system, user, schema, max_tokens, timeout):
+    # a bounded call (Ask the rules) isn't retried: the server stops it at 60 s, the provider's own error reads better
+    client = _anthropic_client(key, provider.get("baseUrl"), timeout=timeout or ANTHROPIC_TIMEOUT, **({"max_retries": 0} if timeout else {}))
     extra = {"output_config": {"format": {"type": "json_schema", "schema": schema}}} if schema else {}
     with _anthropic_errors():
         resp = client.beta.messages.create(
-            model=model, max_tokens=16000, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            model=model, max_tokens=max_tokens, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],  # same for every chunk
             messages=[{"role": "user", "content": user}], **extra)
     if resp.stop_reason == "refusal":

@@ -13,8 +13,9 @@
 //                                   printed; the account signs in with this password from now on, its sessions end
 //   GET    /api/users               admin: -> [user]
 //   POST   /api/users               admin: { username, name, email?, role, method, password? } -> 201 { user }
-//   PUT    /api/users/:id           admin: any of { username, name, email, role, method, enabled } -> { user }; a new
-//                                   username renames the runner folder; disabling ends the sessions
+//   PUT    /api/users/:id           admin: any of { username, name, email, role, method, enabled, dailyQuestions } -> { user }; a
+//                                   new username renames the runner folder; disabling ends the sessions; dailyQuestions: the
+//                                   account's Ask the rules questions a day (null: no limit; books.mjs counts them)
 //   DELETE /api/users/:id           admin: -> 204; 409 while the user has runners
 //   POST   /api/users/:id/reset-password  admin: { password } -> 204; every session of that user ends
 //   POST   /api/users/:id/move-runner     admin: { file, to: <user id> } -> { file } (its name in the new folder)
@@ -37,6 +38,7 @@ const EMAIL = /^[^\s@<>"&]{1,64}@[^\s@<>"&]{1,190}$/
 const ROLES = ['admin', 'editor', 'player'], METHODS = ['password', 'authelia'] // authelia: signs in through OIDC only (server/oidc.mjs)
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1 }
 const MIN_PASSWORD = 10, MAX_PASSWORD = 1024
+const MAX_DAILY = 10000 // dailyQuestions
 const MINUTE = 60e3, DAY = 24 * 60 * MINUTE
 const TTL = 30 * DAY, LOCK = 15 * MINUTE, TRIES = 5, RESET_TTL = 15 * MINUTE
 // on https the __Host- name: only this host, over https, can set it (no cookie tossing from a sibling subdomain)
@@ -109,7 +111,7 @@ export function netKey(ip) {
 const HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
 function usersXml(users) {
   const row = u => `  <user id="${u.id}" username="${u.username}" name="${esc(u.name)}"${u.email ? ` email="${esc(u.email)}"` : ''} role="${u.role
-  }" method="${u.method}" enabled="${u.enabled}" created="${u.created}"${u.lastLogin ? ` lastLogin="${u.lastLogin}"` : ''}${u.oidcSub
+  }" method="${u.method}" enabled="${u.enabled}"${u.dailyQuestions != null ? ` dailyQuestions="${u.dailyQuestions}"` : ''} created="${u.created}"${u.lastLogin ? ` lastLogin="${u.lastLogin}"` : ''}${u.oidcSub
     ? ` oidcIss="${esc(u.oidcIss)}" oidcSub="${esc(u.oidcSub)}"` : ''}${u.password
     ? `>\n    <password algorithm="scrypt" N="${u.password.N}" r="${u.password.r}" p="${u.password.p}" salt="${u.password.salt}" hash="${u.password.hash}"/>\n  </user>`
     : '/>'}\n`
@@ -122,15 +124,17 @@ export function parseUsers(xml) {
     const tag = rootTag(m, 'user'), pw = rootTag(m, 'password'), num = n => Number(attr(pw, n))
     const u = { id: attr(tag, 'id'), username: attr(tag, 'username'), name: attr(tag, 'name') ?? '', email: attr(tag, 'email') ?? '',
       role: attr(tag, 'role'), method: attr(tag, 'method'), enabled: attr(tag, 'enabled') === 'true', created: attr(tag, 'created'),
-      lastLogin: attr(tag, 'lastLogin'), oidcIss: attr(tag, 'oidcIss') ?? '', oidcSub: attr(tag, 'oidcSub') ?? '', password: pw ? { N: num('N'), r: num('r'), p: num('p'), salt: attr(pw, 'salt'), hash: attr(pw, 'hash') } : null }
+      lastLogin: attr(tag, 'lastLogin'), dailyQuestions: attr(tag, 'dailyQuestions') == null ? null : Number(attr(tag, 'dailyQuestions')), oidcIss: attr(tag, 'oidcIss') ?? '', oidcSub: attr(tag, 'oidcSub') ?? '', password: pw ? { N: num('N'), r: num('r'), p: num('p'), salt: attr(pw, 'salt'), hash: attr(pw, 'hash') } : null }
     if (!USER_ID.test(u.id ?? '') || !USERNAME.test(u.username ?? '') || !ROLES.includes(u.role) || !METHODS.includes(u.method)
+      || (u.dailyQuestions != null && !(/^\d{1,5}$/.test(attr(tag, 'dailyQuestions')) && u.dailyQuestions <= MAX_DAILY))
       || (pw && !(u.password.N > 1 && u.password.r > 0 && u.password.p > 0 && u.password.salt && u.password.hash)))
       throw new Error(`a <user> entry isn’t valid: ${m.replace(/\s(salt|hash)="[^"]*"/g, '').slice(0, 200)}`)
     return u
   })
 }
 const pub = u => ({ id: u.id, username: u.username, name: u.name, email: u.email || null, role: u.role, method: u.method,
-  enabled: u.enabled, created: u.created, lastLogin: u.lastLogin ?? null, linked: !!u.oidcSub })
+  enabled: u.enabled, created: u.created, lastLogin: u.lastLogin ?? null, linked: !!u.oidcSub,
+  dailyQuestions: u.dailyQuestions ?? null })
 
 /** The recovery code for `username` (server/users.mjs reset): only its hash goes to library/.config/reset.xml (mode 600),
  *  which the running server reads at /api/setup/reset and deletes when used. A new code replaces the old one. */
@@ -151,8 +155,8 @@ export async function issueReset(libraryDir, username) {
  *  the e2e server. */
 export async function usersFile(list) {
   const users = []
-  for (const { username, password, role = 'admin', name = username, method = 'password', email = '', enabled = true } of list)
-    users.push({ id: randomBytes(6).toString('hex'), username, name, email, role, method, enabled, created: iso(),
+  for (const { username, password, role = 'admin', name = username, method = 'password', email = '', enabled = true, dailyQuestions = null } of list)
+    users.push({ id: randomBytes(6).toString('hex'), username, name, email, role, method, enabled, dailyQuestions, created: iso(),
       password: method === 'password' ? await hashPassword(password) : null })
   return usersXml(users)
 }
@@ -471,6 +475,12 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
       const m = b.method ?? 'password'
       if (!METHODS.includes(m)) throw fail(400, 'method is password or authelia')
       out.method = m
+    }
+    if ('dailyQuestions' in b) {
+      const v = b.dailyQuestions
+      if (!(v === null || v === '' || (Number.isInteger(v) && v >= 0 && v <= MAX_DAILY)))
+        throw fail(400, `questions a day is a whole number from 0 to ${MAX_DAILY.toLocaleString('en')}, or empty for no limit`)
+      out.dailyQuestions = v === '' ? null : v
     }
     if (current && 'enabled' in b) {
       if (typeof b.enabled !== 'boolean') throw fail(400, 'enabled is true or false')

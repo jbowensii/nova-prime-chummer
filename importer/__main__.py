@@ -9,6 +9,8 @@
   python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
   python -m importer list-models <provider> --library <library dir>  (one model id per line, AnythingLLM: slug<TAB>name; exit 3: the reason on stderr)
   python -m importer test-ai <provider> --library <library dir>  (a tiny fixed prompt: {"model", "reply", "ms"} JSON; exit 3: the reason on stderr)
+  python -m importer ask --custom D --library D   (the question on stdin, 500 characters at most: {"answer", "sources", "covered", "called"} JSON;
+                                                  exit 3: the reason on stderr and {"called"} on stdout)
   python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
   python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
   python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
@@ -436,6 +438,41 @@ def _cmd_test_ai(argv):
     return 0
 
 
+def _cmd_ask(argv):
+    """A rules question from stdin, answered from the server's data (importer/ask.py) through the configured provider.
+    Nothing is written or logged. Exit 3 with the reason on stderr (refused question, provider not set up or failing).
+    "called": whether the provider was asked (the server counts those against the daily limit, whatever came back)."""
+    library = _flag(argv, "--library")
+    if not library or not _flag(argv, "--custom"):
+        print(USAGE, file=sys.stderr)
+        return 2
+    import json
+    from importer import ask, custom_dir
+
+    called = False
+
+    def ask_ai(system, user):
+        nonlocal called
+        from importer.ai import providers  # the AI SDK: only when a passage clears the floor
+        called = True
+        return providers.call(os.path.join(library, ".config"), system, user, max_tokens=ask.MAX_TOKENS, timeout=ask.TIMEOUT)
+    try:
+        out = ask.answer(sys.stdin.buffer.read(4 * ask.MAX_QUESTION + 4).decode("utf8", "replace"), custom_dir(), ask_ai)
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        print(json.dumps({"called": called}))
+        return 3
+    except Exception as e:  # ProviderError (already redacted), TruncatedReply
+        from importer.ai import providers
+        if not isinstance(e, providers.ProviderError):
+            raise
+        print("the answer was too long; ask a narrower question" if isinstance(e, providers.TruncatedReply) else e, file=sys.stderr)
+        print(json.dumps({"called": called}))
+        return 3
+    print(json.dumps({**out, "called": called}, ensure_ascii=False))
+    return 0
+
+
 def _cmd_edit(argv):
     """The edits layer (importer/edits.py). A refused edit exits 3 with the reason on stderr."""
     from importer import edits
@@ -518,7 +555,7 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
             "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
-            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "test-ai": _cmd_test_ai, "edit": _cmd_edit,
+            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "test-ai": _cmd_test_ai, "ask": _cmd_ask, "edit": _cmd_edit,
             "backup": _cmd_backup, "restore": _cmd_restore, "datapack": _cmd_datapack}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)

@@ -77,11 +77,11 @@ const VERSION = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, trustProxy = '', publicUrl = '', accountKeys, oidc: oidcOpts = {} }) {
+export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, askTimeout, trustProxy = '', publicUrl = '', accountKeys, oidc: oidcOpts = {} }) {
   staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
   let auth = null
-  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl,
+  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl, askTimeout,
     onRestore: () => auth.reload(oidc.issuer()) }) // the restored auth.xml's issuer
   // runner writes, and the account changes that move runner folders: one at a time
   // ponytail: one lock for every account's runners; per-folder locks if saves ever queue up
