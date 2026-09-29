@@ -233,7 +233,9 @@ Signing out of the app doesn't sign you out of Authelia.
 
 ### Any static host
 
-`npm run build` and serve `dist/`.
+`npm run build` and serve `dist/`. The build ships no core data, so a static copy needs the core files too: unzip
+a data pack (Books → Download data pack on a server) and put its `core/*.xml` in `dist/custom/imported/core/`.
+Without a server there are no accounts, no Books page and no importer; runners stay in the browser.
 
 ## Books
 
