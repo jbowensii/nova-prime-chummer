@@ -206,7 +206,8 @@ def core_refs(rows=(), replacing=()):
 
 def ref_notes(table, el, refs):
     """What a core row names that doesn't exist: attributes (the app's five), a package's level, an effect's amp types and
-    the effects it requires or excludes, an amp type's required effect. The engine looks all of these up by id."""
+    the effects it requires or excludes, an amp type's required effect. The engine looks all of these up by id. Also what the
+    schema can't say of nested rows: a range's minimum above its maximum, a skill's specialization id used twice."""
     from importer.recipes import crb_core
     attrs, notes = set(crb_core.ATTR_LETTER.values()), []
 
@@ -216,14 +217,19 @@ def ref_notes(table, el, refs):
     if table == "skills":
         for a in ("attr", "alt"):
             need(f"attribute {a}", el.get(a), attrs)
+        specs = [s.get("id") for s in el.iter("spec")]
         for s in el.iter("spec"):
             need(f"attribute of {s.get('id')}", s.get("attr"), attrs)
+        notes += [f'two specializations have the id "{i}"' for i in sorted({i for i in specs if specs.count(i) > 1})]
     if table == "metatypes":
         got = [r.get("attr") for r in el.iter("range")]
         for a in got:
             need("range attribute", a, attrs)
         if sorted(got) != sorted(attrs):
             notes.append("needs one range for each attribute")
+        for r in el.iter("range"):
+            if (r.get("min") or "").isdigit() and (r.get("max") or "").isdigit() and int(r.get("min")) > int(r.get("max")):
+                notes.append(f'the {r.get("attr")} range’s minimum is above its maximum')
     if table == "packages":
         need("level", el.get("level"), refs.get("levels", set()))
     if table == "ampeffects":

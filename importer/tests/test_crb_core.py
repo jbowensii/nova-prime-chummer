@@ -464,6 +464,56 @@ class AiFallbackTest(unittest.TestCase):
             self.assertEqual(set(refused), {"skill.bash", "metatype.blob", "package.mythic-x", "attribute.str"})
             self.assertIn('id "brawn" isn’t one the app uses for attributes', refused["attribute.str"])
 
+    def test_nested_rows_edited_on_the_review_screen_are_checked_on_propose_and_apply(self):
+        """A metatype's ranges and a skill's specializations: what the schema can't say (a minimum above its maximum, a
+        specialization id used twice) is noted on propose; the review screen's edits of them land, and a broken edit is
+        refused on apply like any other. Invented rows."""
+        from importer import xmlio
+        from importer.__main__ import apply_core_review
+        from importer.ai import propose as P
+        ranges = [{"attr": a, "min": 1, "max": 6} for a in ("str", "agi", "wil", "log", "cha")]
+        quiet = {"id": "sneak.quiet", "attr": "agi", "name": "Quiet"}
+        self.REPLIES = {"3": {
+            "skills": [{"id": "sneak", "name": "Sneak", "page": 3, "attr": "agi", "alt": None, "requires": None, "specs": [quiet, quiet]},
+                       {"id": "haggle", "name": "Haggle", "page": 3, "attr": "cha", "alt": None, "requires": None, "specs": []}],
+            "metatypes": [{"id": "gnome", "name": "Gnome", "page": 3, "edge": 1, "racialQuality": "Small",
+                           "ranges": [{"attr": "str", "min": 4, "max": 2}, *ranges[1:]]},
+                          {"id": "sprite", "name": "Sprite", "page": 3, "edge": 2, "racialQuality": "Tiny", "ranges": ranges}]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            book, custom = self._book(tmp, [("skills.xml", 3), ("metatypes.xml", 3)]), os.path.join(tmp, "custom")
+            P.propose(book, self._ask([]), core=True)
+            path = os.path.join(book, "review.xml")
+            root = ET.parse(path).getroot()
+            notes = {p.get("id"): [n.text for n in p.findall("note")] for p in root.findall("proposal")}
+            self.assertEqual(notes, {"skill.sneak": ['two specializations have the id "sneak.quiet"'], "skill.haggle": [],
+                                     "metatype.gnome": ["the str range’s minimum is above its maximum"], "metatype.sprite": []})
+            # the review screen's edits: the ranges and specs fixed, a spec added; the sprite's range and haggle's spec broken
+            edit = lambda i: next(e for e in root.find(f"proposal[@id='{i}']") if e.tag != "note")  # noqa: E731
+            for p in root.findall("proposal"):
+                p.set("state", "edited")
+            edit("metatype.gnome").find("range[@attr='str']").attrib.update(min="1", max="3")
+            sneak = edit("skill.sneak")
+            sneak.remove(sneak.findall("spec")[1])
+            ET.SubElement(sneak, "spec", id="sneak.soft-steps", attr="wil").text = "Soft steps"
+            edit("metatype.sprite").find("range[@attr='cha']").attrib.update(min="5", max="2")
+            ET.SubElement(edit("skill.haggle"), "spec", id="haggle.loud", attr="luck").text = "Loud"
+            ET.ElementTree(root).write(path, encoding="unicode")
+            apply_core_review(book, custom)
+            core = Path(custom, "imported", "core")
+            for f in ("skills.xml", "metatypes.xml"):
+                self._valid(core / f, f.replace(".xml", ".xsd"))
+            skills = ET.parse(core / "skills.xml").getroot()
+            self.assertEqual([(s.get("id"), s.get("attr"), s.text) for s in skills.iter("spec")],
+                             [("sneak.quiet", "agi", "Quiet"), ("sneak.soft-steps", "wil", "Soft steps")])
+            self.assertEqual([e.get("id") for e in skills], ["sneak"])
+            metas = ET.parse(core / "metatypes.xml").getroot()
+            self.assertEqual([e.get("id") for e in metas], ["gnome"])
+            self.assertEqual(metas.find("metatype/range[@attr='str']").attrib, {"attr": "str", "min": "1", "max": "3"})
+            refused = {r.get("proposal"): r.get("problem") for r in xmlio.read_import(book).iter("row") if r.get("proposal")}
+            self.assertEqual(set(refused), {"metatype.sprite", "skill.haggle"})
+            self.assertIn("the cha range’s minimum is above its maximum", refused["metatype.sprite"])
+            self.assertIn("luck", refused["skill.haggle"])
+
     def test_a_row_may_name_a_row_of_the_same_review_and_a_replaced_table_counts_only_its_rows(self):
         from importer.ai import propose as P
         refs = P.core_refs(["level.mythic", "amptype.spirit"], replacing={"levels"})
