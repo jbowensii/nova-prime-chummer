@@ -26,6 +26,22 @@ export function ampEssence(c: Catalog, amp: AmpEntry): number {
   return Math.max(0, base + amp.effects.reduce((s, e) => s + (c.ampEffects.get(e.ref)?.essence ?? 0), 0))
 }
 
+/** An effect with a player's change: a changed value is no longer the book's drawback (validate.ts sanctions those). */
+export function patchEffect(e: EffectPick, patch: Partial<EffectPick>): EffectPick {
+  const out = { ...e, ...patch }
+  if (e.note === 'book drawback' && patch.value !== undefined && patch.value !== e.value) delete out.note
+  return out
+}
+
+/** A player's copy of a runner: its amps' book drawbacks need a GM's approval again. */
+export function withoutBookDrawbacks(b: Build): Build {
+  return { ...b, amps: b.amps.map(a => ({ ...a, effects: a.effects.map(e => {
+    if (e.note !== 'book drawback') return e
+    const { note: _, ...rest } = e
+    return rest
+  }) })) }
+}
+
 /** Apply a book add-on (mod="true" template) to an amp: its effects and story text are appended. */
 export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
   return {

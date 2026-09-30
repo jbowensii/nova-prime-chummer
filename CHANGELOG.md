@@ -11,7 +11,10 @@ the book itself prints against a guideline is now said on the runner.
   situations) no longer needs GM approval: it's the book's price.
 - An armor add-on worn over other armor (a ballistic mask, a rigger cocoon)
   costs only its own points and counts on top of the armor under it. It was
-  charged as a whole second armor.
+  charged as a whole second armor. Armor doesn't stack (CRB p.148) except a
+  shield, so Review notes any other add-on.
+- Changing a book drawback's value, or duplicating a runner, makes it a
+  player's drawback again: it needs GM approval.
 
 **Imported examples** (import the books again to get them)
 - Each Equipment amp comes with the item it's bought with (CRB p.60): the one
@@ -24,8 +27,9 @@ the book itself prints against a guideline is now said on the runner.
 - Implanted weapons printed without a type (knuckles, a spur, claws) are bought
   as weapons, as the book prices them; an astral copy of a weapon row isn't a
   second weapon; a specialist weapon (a grenade launcher) is priced as one.
-- A weapon a drone's own mount takes (an SMG on a small drone, an assault rifle
-  on a medium one) no longer costs an Enhanced weapon mount.
+- The first weapon a drone's own mount takes (an SMG on a small drone, an
+  assault rifle on a medium one) no longer costs an Enhanced weapon mount; a
+  second weapon still does.
 - A specialization rolled with two attributes is bought once.
 - The core rulebook's dispositions and cues come from the page layout: one
   that wraps onto two lines, or holds two sentences, stays one.

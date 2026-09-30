@@ -146,6 +146,9 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     const path = `items.${i.uid}`
     if (i.catalogId && !c.items.has(i.catalogId)) add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
+    // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
+    if (i.over && !/\bshield\b/i.test(i.name))
+      add('armor.stack', 'warning', path, `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`, 148)
   }
 
   const n = ch.narrative

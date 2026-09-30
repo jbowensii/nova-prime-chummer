@@ -170,7 +170,9 @@ class CharacterTest(unittest.TestCase):
     def test_book_overrides(self):
         # what the made-up page prints against the guidelines: over budget, Stealth unrated, its own spec, 3/2/2 narrative
         self.assertEqual([(o["code"], o["path"]) for o in self.ch["overrides"]], [
-            ("runner.basics", "skills.stealth"), ("custom.content", "skills.electronics"), ("narrative.count", "narrative")])
+            ("runner.basics", "skills.stealth"), ("custom.content", "skills.electronics"), ("narrative.count", "narrative"),
+            ("armor.stack", "items.it-2")])  # the hat worn over the coat
+        self.assertEqual(self.ch["overrides"][3]["note"], "As printed in the test book p.5: Padded coat and hat stacks on Padded coat.")
         self.assertEqual(self.ch["overrides"][0]["note"], "As printed in the test book p.5: Stealth –.")
         self.assertEqual(self.ch["overrides"][2]["note"], "As printed in the test book p.5: 3 Keywords, 2 Dispositions and 2 Cues.")
 
@@ -222,6 +224,8 @@ class CharacterTest(unittest.TestCase):
         self.assertNotIn("weapon-mount", [f[0] for f in drone(small, "Integrated zap SMG")[1]])  # the made-up "light guns" mount takes it
         self.assertIn("weapon-mount", [f[0] for f in drone(small, "Turret-mounted zap SMG")[1]])  # a turret isn't the chassis' own
         self.assertIn("weapon-mount", [f[0] for f in drone("Microdrone", "Integrated zap pistol")[1]])  # the made-up micro mounts none
+        # one mount per chassis: the second weapon needs an Enhanced weapon mount
+        self.assertEqual([f[0] for f in drone(small, "Integrated zap SMG", "Mounted zap rifle")[1]].count("weapon-mount"), 1)
 
     def test_a_spec_rolled_with_two_attributes_is_bought_once(self):
         stat = STAT.replace("(Dodging +2) WIL 8", "(Dodging +2) WIL 8\n(Dodging +2) STR 7")

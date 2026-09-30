@@ -112,7 +112,9 @@ def _no_core_overrides(files):
     out, rows = dict(files), []
     for name in ("amptypes.xml", "ampeffects.xml"):
         path = find_core_file(name)
-        if name not in out or not path:
+        # the owner's local dev copies (DATA_DIR) aren't a server's core: comparing with them would drop what a book adds
+        # (DHSA's implant grades) when it's imported before the core rulebook, and the rulebook's core then lacks them
+        if name not in out or not path or os.path.dirname(os.path.abspath(path)) == os.path.abspath(DATA_DIR):
             continue
         core = xmlio.top_ids(Path(path).read_text(encoding="utf8"))
         root = xmlio.ET.fromstring(out[name].encode("utf8"))

@@ -93,3 +93,11 @@ test('effects a catalog amp carries are sanctioned even when the effect table fo
   ch.build.amps[0].catalogId = undefined // the same effects on a home-made amp are not
   expect(codes(ch)).toContain('amp.typeIllegal')
 })
+
+test('an armor add-on stacked on other armor is noted (CRB p.148); a shield is not', () => {
+  const ch = base()
+  ch.build.items = [{ uid: 'v', kind: 'armor', name: 'Made-up vest', armor: 2 }, { uid: 'm', kind: 'armor', name: 'Made-up mask', armor: 1, over: 'v' }]
+  expect(count(ch, 'armor.stack')).toBe(1)
+  ch.build.items[1].name = 'Made-up riot shield'
+  expect(count(ch, 'armor.stack')).toBe(0)
+})

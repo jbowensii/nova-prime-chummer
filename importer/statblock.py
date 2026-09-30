@@ -508,11 +508,12 @@ def map_amp(amp, rules, mapper, first_quality):
             fx.insert(0, (pre, None, None, None))
             refs.insert(0, pre)
     vehicle = _chassis(amp, rules) if atype == "vehicle" else None
-    if vehicle:  # a weapon the chassis' own front-facing mount takes (CRB p.60) needs no Enhanced weapon mount
-        own = [f for f in fx if f[0] == "weapon-mount" and not ENHANCED_MOUNT.search(f[1] or "")
-               and _weapon_size(f[1] or "") <= rules["mounts"].get(vehicle, 9)]
-        fx = [f for f in fx if f not in own]
-        loose += [f[1] for f in own]
+    if vehicle:  # the chassis' one front-facing mount (CRB p.60) takes the first weapon that fits: no Enhanced weapon mount
+        own = next((f for f in fx if f[0] == "weapon-mount" and not ENHANCED_MOUNT.search(f[1] or "")
+                    and _weapon_size(f[1] or "") <= rules["mounts"].get(vehicle, 9)), None)
+        if own:
+            fx.remove(own)
+            loose.append(own[1])
     stats = next((m for m in map(VSTATS.search, lines) if m), None) if vehicle else None
     if stats:  # what the printed stats add to the chassis: Pilot over the chassis's, Armor
         # ponytail: handling/speed over the chassis aren't priced (the booklet's printed speeds don't charge them)
@@ -788,6 +789,10 @@ def book_overrides(ch, rules, amp_rating_sum, cite):
     counts = [len([x for x in n[k] if x.strip()]) for k in ("keywords", "dispositions", "cues")]
     if counts != [5, 4, 4]:
         out.append(("narrative.count", "narrative", f"{counts[0]} Keywords, {counts[1]} Dispositions and {counts[2]} Cues"))
+    for i in b["items"]:  # an add-on stacked on armor (only a shield stacks, CRB p.148; validate.ts)
+        if i.get("over") and not re.search(r"\bshield\b", i["name"], re.I):
+            under = next((x["name"] for x in b["items"] if x["uid"] == i["over"]), "the armor")
+            out.append(("armor.stack", f"items.{i['uid']}", f"{i['name']} stacks on {under}"))
     if rated.get("cracking", {}).get("rating", 0) > 0 and not {a["type"] for a in b["amps"]} & {"cyberdeck", "emerged"}:
         out.append(("skill.requiresDeck", "skills.cracking", f"Cracking {rated['cracking']['rating']} with no cyberdeck"))
     return [{"code": c, "path": p, "note": f"As printed in {cite}: {t}."} for c, p, t in out]

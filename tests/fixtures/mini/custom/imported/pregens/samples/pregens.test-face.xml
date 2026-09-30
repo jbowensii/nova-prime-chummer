@@ -15,4 +15,5 @@
   <override code="runner.basics" path="skills.stealth">As printed in the test book p.5: Stealth –.</override>
   <override code="custom.content" path="skills.electronics">As printed in the test book p.5: the book's own specialization Mystery trick.</override>
   <override code="narrative.count" path="narrative">As printed in the test book p.5: 3 Keywords, 2 Dispositions and 2 Cues.</override>
+  <override code="armor.stack" path="items.it-2">As printed in the test book p.5: Padded coat and hat stacks on Padded coat.</override>
 </ca2:character>
