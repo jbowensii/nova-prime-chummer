@@ -56,6 +56,15 @@ test('load example characters: one canon and one non-canon copy of each, once', 
   await expect(faces(page)).toHaveCount(2)
 })
 
+test('a book sample as printed: Review shows where the book’s amp rating isn’t the rules’, nothing approved', async ({ page }) => {
+  await signIn(page, 'ada')
+  const id = own('ada').find(x => x.includes('origin="PREGENS"'))!.match(/ id="([^"]+)"/)![1]
+  await page.goto(`/#/c/${id}/review`)
+  await expect(page.getByText(/Big Grin: the book prints rating 4; the rules give \d+\./)).toBeVisible()
+  await expect(page.getByText('PREGENS p.5').first()).toBeVisible()
+  await expect(page.locator('.viol.approved')).toHaveCount(0)
+})
+
 test('a re-import gives the sample a new id and file: loading again still adds no copy', async ({ page }) => {
   // what the owner saw: the samples were loaded, a re-import renamed the sample's file and id, "Load" added them again
   const imported = join(dir, 'custom', 'imported'), list = join(imported, 'samples.xml')

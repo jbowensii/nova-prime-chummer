@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, withoutBookDrawbacks, xmlToCharacter } from '../engine'
+import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { AccountMenu, because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
@@ -189,7 +189,7 @@ export function Library({ c }: { c: Catalog }) {
   }
 
   const duplicate = async (ch: Character) => {
-    await store({ ...structuredClone(ch), build: withoutBookDrawbacks(structuredClone(ch.build)), id: newId(), sampleKey: undefined, campaign: undefined, identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
+    await store({ ...structuredClone(ch), id: newId(), sampleKey: undefined, campaign: undefined, identity: { ...ch.identity, streetName: `${ch.identity.streetName || ch.identity.name} (copy)` }, lastExportedAt: undefined, updatedAt: new Date().toISOString() })
     void refresh()
   }
 

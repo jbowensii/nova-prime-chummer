@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects, patchEffect, rawAmpRating, withoutBookDrawbacks } from '../../src/engine/amps'
+import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects, rawAmpRating } from '../../src/engine/amps'
 import type { AmpEntry } from '../../src/model/types'
 import { cat } from '../helpers'
 
@@ -62,11 +62,3 @@ test('legalEffects enforces type, max, requires, excludes', () => {
   expect(find(amp('awakened', ['awk-astral-perception']), 'awk-astral-projection')!.allowed).toBe(false)
 })
 
-test('a book drawback stops being one when its value changes, or on a player copy', () => {
-  const d = { ref: 'negative', value: 1, note: 'book drawback' }
-  expect(patchEffect(d, { value: 1 })).toEqual(d)
-  expect(patchEffect(d, { value: 3 })).toEqual({ ref: 'negative', value: 3 })
-  const b = { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], items: [],
-    amps: [{ ...amp('quality'), effects: [d, { ref: 'narrative', note: 'balances printed rating' }] }] }
-  expect(withoutBookDrawbacks(b).amps[0].effects).toEqual([{ ref: 'negative', value: 1 }, { ref: 'narrative', note: 'balances printed rating' }])
-})
