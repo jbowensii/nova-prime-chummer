@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { characterToXml } from '../../src/engine/charxml'
 import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
-import { arrange, initial, sortKey } from '../../src/ui/Library'
+import { arrange, initial, ownerGroups, sortKey } from '../../src/ui/Library'
 import { rootAttr, serverRepo, type Stored } from '../../src/ui/repo'
 
 const runner = (streetName: string, name = '', updatedAt = '2026-09-01T00:00:00Z'): Character => {
@@ -52,4 +52,12 @@ test('the server list keeps files it can’t read (with why); opening one runner
   expect((await repo.get('id-Father O\'Neil'))?.rev).toBe(139)
   await expect(repo.get('id-Broken')).rejects.toThrow(/U\+0002/)
   expect(await repo.get('nobody')).toBeUndefined()
+})
+
+test('other accounts: an owner whose only file can’t be read still gets a section', () => {
+  const theirs = { ch: runner('Zed'), owner: 'pat', ownerName: 'Pat' }
+  const broken = { file: 'x.xml', rev: 1, xml: '', error: 'bad', name: 'X', owner: 'kim', ownerName: 'Kim' }
+  expect(ownerGroups([theirs, { ch: runner('Amy'), owner: 'pat', ownerName: 'Pat' }], [broken], 'az', '')
+    .map(g => [g.owner, g.name, names(g.rows), g.broken.map(b => b.file)])).toEqual([
+    ['pat', 'Pat', ['Amy', 'Zed'], []], ['kim', 'Kim', [], ['x.xml']]])
 })

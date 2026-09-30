@@ -18,7 +18,7 @@ function runner(): Character {
   ch.build.knowledge = [{ name: 'Toy trains', kind: 'knowledge' }, { name: 'Made-up tongue', kind: 'language' }]
   return ch
 }
-const skillsCost = (ch: Character) => priceBuild(cat, ch.build, 'human').skills
+const skillsCost = (ch: Character) => priceBuild(cat, ch.build, 'human', ch.narrative.keywords).skills
 
 test('keywords and skills at 4+ are free entries; only the others cost', () => {
   const ch = runner()
@@ -34,7 +34,7 @@ test('keywords and skills at 4+ are free entries; only the others cost', () => {
   ch.build.knowledge.push({ name: 'Gadget blogs', kind: 'knowledge', from: 'skill:electronics' })
   expect(skillsCost(ch)).toBe(before) // renaming the free slot costs nothing
   expect(derive(cat, ch).knowledge.find(r => r.from === 'skill:electronics')).toMatchObject({ name: 'Gadget blogs', paid: false, at: 2 })
-  ch.build.knowledge.push({ name: 'Tinkerer', kind: 'language', from: 'keyword:0' })
+  ch.build.knowledge.push({ name: 'Tinkerer', kind: 'language', from: 'keyword:Tinkerer' })
   expect(derive(cat, ch).knowledge[0]).toMatchObject({ name: 'Tinkerer', kind: 'language', paid: false })
   expect(skillsCost(ch)).toBe(before)
 })
@@ -48,7 +48,7 @@ test('a skill reaching 4 adds a free entry; dropping below 4 makes its renamed e
   ch.build.skills[1].rating = 3
   const row = derive(cat, ch).knowledge.find(r => r.from === 'skill:athletics')!
   expect(row).toMatchObject({ name: 'Parkour routes', paid: true, source: 'Paid (Athletics below 4)' })
-  expect(priceBuild(cat, { ...ch.build, knowledge: ch.build.knowledge.slice(0, 2) }, 'human').skills + K).toBe(skillsCost(ch))
+  expect(priceBuild(cat, { ...ch.build, knowledge: ch.build.knowledge.slice(0, 2) }, 'human', ch.narrative.keywords).skills + K).toBe(skillsCost(ch))
   expect(validate(cat, ch).find(v => v.code === 'knowledge.lapsed')).toMatchObject({ severity: 'warning', path: 'knowledge.2' })
 })
 
@@ -98,4 +98,17 @@ test('an old career event "Language: X" applies as a language', () => {
   ch.career.push({ id: 'e1', at: '2026-01-01T00:00:00Z', type: 'knowledge-add', name: 'Language: Made-up tongue', cost: K })
   const back = xmlToCharacter(characterToXml(ch))
   expect(back.ok && currentBuild(back.character).knowledge.at(-1)).toEqual({ name: 'Made-up tongue', kind: 'language' })
+})
+
+test('a keyword entry follows the keyword’s text; removing the keyword makes a stored entry paid and flagged', () => {
+  const ch = runner()
+  ch.build.knowledge.push({ name: 'Night owl', kind: 'language', from: 'keyword:Night owl' })
+  ch.narrative.keywords = ['Night owl', 'Tinkerer', '', '', ''] // reordered: still the same free entry
+  expect(derive(cat, ch).knowledge[0]).toMatchObject({ name: 'Night owl', kind: 'language', paid: false, at: 2 })
+  const free = skillsCost(ch)
+  expect(validate(cat, ch).some(v => v.code === 'knowledge.lapsed')).toBe(false)
+  ch.narrative.keywords = ['', 'Tinkerer', '', '', '']
+  expect(derive(cat, ch).knowledge.find(r => r.at === 2)).toMatchObject({ name: 'Night owl', paid: true, source: 'Paid (keyword “Night owl” removed)' })
+  expect(skillsCost(ch) - free).toBe(K)
+  expect(validate(cat, ch).find(v => v.code === 'knowledge.lapsed')?.message).toBe('“Night owl” was free; with keyword “Night owl” removed it’s a paid knowledge skill.')
 })

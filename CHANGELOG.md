@@ -11,7 +11,8 @@
   languages and knowledge skills separately. There’s no free native language.
 - A skill reaching 4 gets its free entry by itself. Lowering it below 4 asks
   first when its entry was renamed, since that entry then costs the knowledge
-  price (Review notes it).
+  price (Review notes it). A keyword’s entry follows the keyword’s text; remove
+  the keyword and an entry you had marked stays as a paid one, noted on Review.
 - In career mode, adding an entry is a ledger entry at the knowledge price;
   renaming a free one is recorded at no cost, and a free entry whose skill
   dropped below 4 can be paid for.

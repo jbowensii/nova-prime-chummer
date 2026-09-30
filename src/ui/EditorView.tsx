@@ -22,13 +22,14 @@ import { AskButton, AskRules } from './AskRules'
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
   ['gear', 'Gear & spells'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
 
-type SaveStatus = { state: 'saved'; at?: string } | { state: 'saving' } | { state: 'failed'; error: string }
+type SaveStatus = { state: 'saved'; at?: string } | { state: 'saving' } | { state: 'failed'; error: string } | { state: 'conflict' }
 
 function SaveLine({ status, onRetry }: { status: SaveStatus; onRetry: () => void }) {
   return (
     <span className={`save-status ${status.state}`} role="status" aria-label="Save status">
       {status.state === 'saving' && 'Saving…'}
       {status.state === 'saved' && `All changes saved${status.at ? ` · ${new Date(status.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+      {status.state === 'conflict' && 'Not saved — changed in another browser; choose which version to keep.'}
       {status.state === 'failed' && <>Not saved — {status.error} <button className="btn small" onClick={onRetry}>Retry</button></>}
     </span>
   )
@@ -88,7 +89,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       st.busy = false
       st.failed = !r.ok && !r.conflict
       if (r.ok) { st.rev = r.rev; st.saved = next; setStatus({ state: 'saved', at: new Date().toISOString() }) }
-      else if (r.conflict) { st.paused = true; setStatus({ state: 'saved' }); setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
+      else if (r.conflict) { st.paused = true; setStatus({ state: 'conflict' }); setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
       else setStatus({ state: 'failed', error: session.held ? 'Signed out. Sign back in and it’s sent.' : r.error ?? 'Saving failed.' })
       const q = st.queued
       st.queued = undefined
@@ -146,7 +147,8 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     if (!ch) return
     if (how === 'overwrite') {
       const r = await repo.save(ch, undefined, { force: true })
-      if (r.ok) sync.current.rev = r.rev
+      if (r.ok) { sync.current.rev = r.rev; sync.current.saved = ch; sync.current.failed = false; setStatus({ state: 'saved', at: new Date().toISOString() }) }
+      else setStatus({ state: 'failed', error: r.error ?? 'Saving failed.' })
     } else if (how === 'copy') {
       const copy = { ...ch, id: newId(), campaign: undefined, identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
       const r = await repo.save(copy, undefined, { filename: copyName.trim() })
@@ -155,6 +157,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       const s = await repo.get(ch.id)
       sync.current.rev = s?.rev; sync.current.loaded = s?.ch
       setCh(s?.ch)
+      setStatus({ state: 'saved', at: s?.ch.updatedAt })
     }
     sync.current.paused = false
     setConflict(null)

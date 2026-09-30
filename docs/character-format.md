@@ -53,13 +53,14 @@ will convert from this format; the format itself is ours and stays stable.
   prints if the entry is later removed from the data.
 - **`<knowledge>`** is a knowledge skill or language (`kind="knowledge"` or `kind="language"`). Each keyword and each
   skill at rating 4+ is a free entry and needs no element; one is written only when the player renames it or changes
-  its kind, with `from` naming the slot: `skill:<id>` (any name related to the skill) or `keyword:<index>` (0-based,
-  the entry keeps the keyword's name). Every other entry costs the pricing file's `knowledge` price, and so does a
-  `from="skill:…"` entry while that skill is below 4 (Review flags it). Before 0.5.2 an entry was plain text and a
+  its kind, with `from` naming the slot: `skill:<id>` (any name related to the skill) or `keyword:<the keyword>` (the
+  entry keeps the keyword's name). Every other entry costs the pricing file's `knowledge` price, and so does a
+  `from="skill:…"` entry while that skill is below 4, or a `from="keyword:…"` entry once that keyword is gone
+  (Review flags both). Before 0.5.2 an entry was plain text and a
   language was written `Language: X`: such a file loads with those as paid knowledge, and `Language: X` as the
   language X.
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
-  that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4).
+  that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
 - **Career events** are never edited. A mistake is undone with a `void`
   event, so the history stays complete.
 - **`allowNonCanon="false"`** on the root marks a runner as canon only: the

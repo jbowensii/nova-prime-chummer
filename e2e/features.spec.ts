@@ -133,6 +133,7 @@ test('a runner saved from two browsers: conflict dialog, save mine as a new file
   await b.waitForTimeout(700)
   await a.getByLabel('Real name').fill('Saved from A')
   await expect(a.getByRole('heading', { name: 'Saved elsewhere' })).toBeVisible()
+  await expect(a.getByRole('status', { name: 'Save status' })).toHaveText('Not saved — changed in another browser; choose which version to keep.')
   await a.getByLabel('File name if you save yours as a new file').fill('Twice A copy')
   await a.getByRole('button', { name: 'Save mine as a new file' }).click()
   await expect(a).not.toHaveURL(url)

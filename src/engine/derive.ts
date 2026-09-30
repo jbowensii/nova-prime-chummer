@@ -3,6 +3,7 @@ import type { AmpEntry, AttrId, Build, Catalog, Character, KnowledgeEntry } from
 import { ATTRS } from '../model/types'
 import { ampEssence } from './amps'
 import { currentBuild } from './career'
+import { slotLapse } from './price'
 
 export type Thresholds = [number, number, number]
 export interface Weapon { uid: string; name: string; dv: string; ranges: string; specialist?: boolean; note?: string }
@@ -33,30 +34,30 @@ export interface Derived {
 }
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
- *  stored yet); source: "Free: keyword", "Free: <Skill> 4+", "Paid" or "Paid (<Skill> below 4)". */
+ *  stored yet); source: "Free: keyword", "Free: <Skill> 4+", "Paid", or "Paid (<Skill> below 4)" / "Paid (keyword “X”
+ *  removed)" for an entry whose free slot is gone. */
 export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number }
 
 /** Every keyword and every skill at 4+ is a free entry (a stored entry with that `from` renames it or marks it a
- *  language; a keyword entry keeps the keyword's name); the other stored entries are paid. */
+ *  language; a keyword entry, keyed by the keyword's text, keeps its name); the other stored entries are paid. */
 export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): KnowledgeRow[] {
   const used = new Set<number>()
   const slot = (from: string) => { const at = b.knowledge.findIndex(k => k.from === from); if (at >= 0) used.add(at); return at }
   const skillName = (id: string) => c.skills.get(id)?.name ?? id
   const rows: KnowledgeRow[] = []
-  keywords.forEach((kw, i) => {
-    if (!kw.trim()) return
-    const from = `keyword:${i}`, at = slot(from)
+  for (const kw of new Set(keywords.map(k => k.trim()).filter(Boolean))) {
+    const from = `keyword:${kw}`, at = slot(from)
     rows.push({ name: kw, kind: b.knowledge[at]?.kind ?? 'knowledge', from, paid: false, source: 'Free: keyword', at })
-  })
+  }
   for (const s of b.skills.filter(s => s.rating >= 4)) {
     const from = `skill:${s.id}`, at = slot(from)
     rows.push({ name: b.knowledge[at]?.name || skillName(s.id), kind: b.knowledge[at]?.kind ?? 'knowledge', from, paid: false,
       source: `Free: ${skillName(s.id)} 4+`, at })
   }
   b.knowledge.forEach((k, at) => {
-    if (used.has(at) || k.from?.startsWith('keyword:')) return
-    const lapsed = k.from?.startsWith('skill:') ? ` (${skillName(k.from.slice(6))} below 4)` : ''
-    rows.push({ ...k, paid: true, source: `Paid${lapsed}`, at })
+    if (used.has(at)) return
+    const lapse = slotLapse(b, keywords, k, skillName)
+    rows.push({ ...k, paid: true, source: lapse ? `Paid (${lapse})` : 'Paid', at })
   })
   return rows
 }

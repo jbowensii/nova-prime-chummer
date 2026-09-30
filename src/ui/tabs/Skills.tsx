@@ -136,7 +136,7 @@ export function SkillsTab() {
           {rows.length === 0 && <tr><td colSpan={4} className="muted">None yet: add keywords, raise a skill to 4 or add one below.</td></tr>}
           {rows.map(r => {
             const lapsed = r.paid && !!r.from
-            const renamable = !r.from?.startsWith('keyword:') && (!career || (!!r.from && !lapsed))
+            const renamable = (!r.from?.startsWith('keyword:') || lapsed) && (!career || (!!r.from && !lapsed))
             return (
               <tr key={r.from ?? `paid-${r.at}`}>
                 <td>{renamable ? <NameField value={r.name} label={`Name of ${r.name}`} onCommit={name => change(r, { name })} /> : <b>{r.name}</b>}</td>

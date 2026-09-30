@@ -62,6 +62,16 @@ export function arrange(rows: Stored[], sort: SortBy, q: string): Stored[] {
     : sort === 'za' ? (a: Stored, b: Stored) => (!sortKey(a.ch) !== !sortKey(b.ch) ? az(a, b) : az(b, a)) : az
   return rows.filter(hit).sort(by)
 }
+/** Other accounts' runners (the admin's view, an editor's campaigns), one group per owner: every owner with a runner
+ *  or with a file that couldn't be read, so nothing is hidden. Rows sorted as the list is. */
+export function ownerGroups(others: Stored[], unreadable: Unreadable[], sort: SortBy, q: string) {
+  const groups = new Map<string, { name: string; rows: Stored[]; broken: Unreadable[] }>()
+  const group = (owner: string, name?: string) => groups.get(owner) ?? groups.set(owner, { name: name ?? owner, rows: [], broken: [] }).get(owner)!
+  for (const s of others) group(s.owner!, s.ownerName).rows.push(s)
+  for (const u of unreadable) group(u.owner!, u.ownerName).broken.push(u)
+  return [...groups].map(([owner, g]) => ({ owner, ...g, rows: arrange(g.rows, sort, q) }))
+}
+
 /** The first letter of a name (a whole emoji, not half of one); "?" for none. */
 export const initial = (ch: Character) => [...(ch.identity.streetName || ch.identity.name).trim()][0]?.toUpperCase() ?? '?'
 
@@ -239,10 +249,7 @@ export function Library({ c }: { c: Catalog }) {
   }
   const rows = arrange(mine.filter(shown), sort, q)
 
-  const byOwner = new Map<string, Stored[]>()
-  for (const s of (list ?? []).filter(shown)) if (!mine.includes(s)) byOwner.set(s.owner!, [...byOwner.get(s.owner!) ?? [], s])
-  for (const [k, rows] of byOwner) byOwner.set(k, arrange(rows, sort, q))
-  const others = [...byOwner].map(([owner, rows]) => [owner, rows[0].ownerName ?? owner, rows] as const)
+  const others = ownerGroups((list ?? []).filter(s => shown(s) && !mine.includes(s)), unreadable.filter(u => u.owner && u.owner !== me?.username), sort, q)
   const dossier = ({ ch, rev }: Stored, own: boolean) => (
     <div className="dossier" key={ch.id}>
       <Face ch={ch} />
@@ -323,9 +330,9 @@ export function Library({ c }: { c: Catalog }) {
           {rows.map(s => dossier(s, true))}
           {q && rows.length === 0 && <p className="muted">No runner’s name contains “{q.trim()}”.</p>}
         </>}
-        {others.map(([owner, name, rows]) => <section key={owner} aria-label={`${name}’s runners`}>
+        {others.map(({ owner, name, rows, broken }) => <section key={owner} aria-label={`${name}’s runners`}>
           <h2>{name}’s runners</h2>
-          {unreadable.filter(u => u.owner === owner).map(brokenRow)}
+          {broken.map(brokenRow)}
           {rows.map(s => dossier(s, false))}
         </section>)}
       </>}

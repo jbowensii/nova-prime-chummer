@@ -75,7 +75,7 @@ export interface AmpEntry { uid: string; catalogId?: string; type: string; name:
 /** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades) */
 export interface ItemEntry { uid: string; catalogId?: string; kind: ItemKind; name: string;
   specialist?: boolean; armor?: number; dv?: string; ranges?: string; price?: number; snapshot?: Item }
-/** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<index>");
+/** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<the keyword>");
  *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price. */
 export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; from?: string }
 export interface Build { attributes: Record<AttrId, number>; skills: SkillEntry[];

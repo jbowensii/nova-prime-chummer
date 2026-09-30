@@ -150,7 +150,7 @@ label > input, label > select { color: var(--text); font-size: 1rem; font-weight
 /* the editor's save line: saved (quiet), saving, not saved (red, with Retry) */
 .savebar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
 .save-status { font-size: 0.85rem; color: var(--text-2); }
-.save-status.failed { color: var(--err); font-weight: 600; }
+.save-status.failed, .save-status.conflict { color: var(--err); font-weight: 600; }
 .save-status .btn { margin-left: 0.3rem; }
 
 .tabs { display: flex; gap: 0.1rem; overflow-x: auto; padding: 0 1.25rem; border-bottom: 1px solid var(--rule); }
