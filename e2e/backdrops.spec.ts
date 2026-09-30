@@ -58,9 +58,9 @@ test('pick a backdrop: it shows behind a transparent portrait in the builder, th
 
   // print: a dark backdrop prints as white; a light one as itself
   await page.goto(`/#/c/${id}/print`)
-  const printed = page.locator('.s-head img')
+  const printed = page.locator('.s-top > img.portrait')
   await expect(printed).toHaveClass(/bd-white/)
-  expect(await bg(page, '.s-head img')).toContain('rgb(255, 255, 255)')
+  expect(await bg(page, '.s-top > img.portrait')).toContain('rgb(255, 255, 255)')
   await page.screenshot({ path: `${SHOTS}/print-neon-as-white.png` })
   await page.goto(`/#/c/${id}/concept`)
   const again = page.waitForResponse(r => r.request().method() === 'PUT')
@@ -68,7 +68,7 @@ test('pick a backdrop: it shows behind a transparent portrait in the builder, th
   expect((await again).status()).toBeLessThan(300)
   await page.goto(`/#/c/${id}/print`)
   await expect(printed).toHaveClass(/bd-grid/)
-  expect(await bg(page, '.s-head img')).toContain('linear-gradient')
+  expect(await bg(page, '.s-top > img.portrait')).toContain('linear-gradient')
   await page.screenshot({ path: `${SHOTS}/print-grid.png` })
 })
 
@@ -115,6 +115,74 @@ test('the background art strength slider fades the layer, live, and is remembere
     await d.getByLabel('Plain page').check()
     await expect(slider).toBeDisabled()
     await d.getByLabel('Show background art').check()
+  } finally {
+    await page.evaluate(id => fetch(`./api/backgrounds/${id}`, { method: 'DELETE' }), artId)
+  }
+})
+
+test('character sheet: weapons and spells apart, knowledge at the bottom, portrait beside the attributes, its own art switches', async ({ page }) => {
+  mkdirSync(SHOTS, { recursive: true })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+  const artId: string = await page.evaluate(async png => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png),
+    headers: { 'Content-Type': 'image/png', 'X-Filename': 'test-stripes.png' } })).json()).id, [...stripes()])
+  try {
+    await page.getByRole('button', { name: 'New runner' }).click()
+    await page.getByRole('button', { name: 'Create runner' }).click()
+    await page.getByLabel('Street name').fill('Sheet Test')
+    await page.getByLabel('Portrait', { exact: true }).setInputFiles({ name: 'test-disc.png', mimeType: 'image/png', buffer: disc() })
+    await page.getByRole('radio', { name: 'Halftone' }).check()
+    await page.getByLabel('keywords 1').fill('Invented street')
+    await page.getByLabel('keywords 2').fill('Made-up origin')
+    await page.waitForTimeout(600)
+    await page.getByRole('link', { name: 'Print' }).click()
+    const sheet = page.locator('.sheet')
+    await expect(sheet.getByRole('heading', { name: 'Weapons', exact: true })).toBeVisible()
+    await expect(sheet.getByRole('heading', { name: /Spells/ })).toHaveCount(0) // none: no section
+    const know = sheet.locator('.s-know')
+    await expect(know.getByRole('heading', { name: 'Languages & knowledge' })).toBeVisible()
+    await expect(know).toContainText('Invented street')
+    expect(await sheet.evaluate(e => e.lastElementChild!.classList.contains('s-know'))).toBe(true) // at the bottom
+    const note = know.getByText('Knowledge skills have no rating')
+    await expect(note).toBeVisible()
+    // the portrait beside the attributes, over its backdrop
+    const pic = sheet.locator('.s-top > img.portrait')
+    await expect(pic).toHaveClass(/bd-halftone/)
+    const [pb, ab] = [await pic.boundingBox(), await sheet.locator('.s-attrs').boundingBox()]
+    expect(pb!.y + pb!.height).toBeGreaterThan(ab!.y) // reaches down to the attributes' line
+    expect(pb!.x).toBeGreaterThanOrEqual(ab!.x + ab!.width) // to their right
+
+    // sheet art: on screen by default, not printed unless asked
+    const art = sheet.locator('.sheet-art')
+    const shown = () => art.evaluate(e => getComputedStyle(e).display !== 'none')
+    expect(await shown()).toBe(true)
+    await page.emulateMedia({ media: 'print' })
+    expect(await shown()).toBe(false)
+    await expect(note).toBeHidden() // screen only
+    await page.emulateMedia({ media: 'screen' })
+    await page.getByLabel('Print it').check()
+    await page.emulateMedia({ media: 'print' })
+    expect(await shown()).toBe(true)
+    await page.emulateMedia({ media: 'screen' })
+    const slider = page.getByRole('slider', { name: 'Art strength' })
+    await expect(slider).toHaveValue('100') // the page's strength until set
+    await slider.focus()
+    await page.keyboard.press('ArrowLeft')
+    await page.keyboard.press('ArrowLeft')
+    expect(await art.evaluate(e => getComputedStyle(e).opacity)).toBe('0.9')
+    await page.reload()
+    expect(await art.evaluate(e => getComputedStyle(e).opacity)).toBe('0.9')
+    await shots(page, 'sheet')
+    await page.emulateMedia({ media: 'print' })
+    await page.screenshot({ path: `${SHOTS}/sheet-print-preview.png`, fullPage: true })
+    await page.setViewportSize(PHONE)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 'print preview scrolls sideways').toBeLessThanOrEqual(0)
+    await page.screenshot({ path: `${SHOTS}/sheet-print-preview-phone.png`, fullPage: true })
+    await page.setViewportSize({ width: 1400, height: 900 })
+    await page.emulateMedia({ media: 'screen' })
+    await page.getByLabel('Background art').uncheck()
+    expect(await shown()).toBe(false)
+    await page.getByLabel('Print it').uncheck()
   } finally {
     await page.evaluate(id => fetch(`./api/backgrounds/${id}`, { method: 'DELETE' }), artId)
   }

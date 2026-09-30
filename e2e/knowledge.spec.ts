@@ -67,7 +67,7 @@ test('knowledge & languages: free keyword and skill entries, rename a free slot,
   await expect(status(page)).toContainText('All changes saved')
   const id = page.url().match(/#\/c\/([^/]+)\//)![1]
   await page.goto(`/#/c/${id}/print`)
-  const sheet = page.locator('.s-cols')
-  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ p')).toHaveText('Made-up tongue (native), Other tongue')
-  await expect(sheet.locator('h3', { hasText: 'Knowledge skills' }).locator('+ p')).toHaveText('Gadget blogs, Tinkerer') // A–Z
+  const sheet = page.locator('.s-know')
+  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ ul li')).toHaveText(['Made-up tongue (native)', 'Other tongue'])
+  await expect(sheet.locator('h3', { hasText: 'Knowledge' }).locator('+ ul li')).toHaveText(['Gadget blogs', 'Tinkerer']) // A–Z
 })

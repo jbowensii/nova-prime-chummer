@@ -134,9 +134,9 @@ test('knowledge and languages: two A–Z lists, drag and keyboard order, Sort A�
 
   const id = page.url().match(/#\/c\/([^/]+)\//)![1]
   await page.goto(`/#/c/${id}/print`)
-  const sheet = page.locator('.s-cols')
-  await expect(sheet.locator('h3', { hasText: 'Knowledge skills' }).locator('+ p')).toHaveText('Bravo lore, Charlie lore')
-  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ p')).toHaveText('Made-up tongue (native), Zed tongue')
+  const sheet = page.locator('.s-know') // at the bottom of the sheet, in the player's order, hidden ones left off
+  await expect(sheet.locator('h3', { hasText: 'Knowledge' }).locator('+ ul li')).toHaveText(['Bravo lore', 'Charlie lore'])
+  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ ul li')).toHaveText(['Made-up tongue (native)', 'Zed tongue'])
 
   // Sort A–Z puts the list back
   await page.goto(`/#/c/${id}/skills`)

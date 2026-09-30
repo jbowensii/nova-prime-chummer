@@ -45,3 +45,16 @@ test('the strength slider only fades the art: 100% is the clamped strength above
   expect([strength(100), strength(250), strength(0), strength(-3), strength(42.4), strength('x'), strength(undefined), strength(NaN)])
     .toEqual([100, 100, 0, 0, 42, 100, 100, 100])
 })
+
+test('the sheet’s own background art keeps the sheet’s ink readable at full strength, and is off in print unless asked', () => {
+  const sheet = readFileSync('src/print/sheet.css', 'utf8'), sa = sheet.slice(sheet.indexOf('/* ---- sheet art'))
+  const cover = Math.min(...[...sa.matchAll(/rgb\(255 255 255 \/ (\d+)%\)/g)].map(m => Number(m[1]) / 100))
+  const k = Number(sa.match(/filter: contrast\(([\d.]+)\)/)![1])
+  expect(cover).toBeGreaterThanOrEqual(0.8)
+  const bg = [255, 255, 255].map(v => v * cover + 0.5 * (1 - k) * 255 * (1 - cover)) // a black image, flattened
+  const s = (n: string) => rgb(sheet.match(new RegExp(`--s-${n}: (#[0-9a-f]{6})`))![1])
+  for (const [name, min] of [['ink', 7], ['ink-2', 4.5], ['rust', 4.5], ['indigo', 4.5]] as const)
+    expect(ratio(s(name), bg), `--s-${name}`).toBeGreaterThanOrEqual(min)
+  expect(sheet).toMatch(/\.sheet-art\.no-print \{ display: none !important; \}/)
+  expect(sheet).toMatch(/prefers-reduced-transparency: reduce\) \{ \.sheet-art \{ display: none/)
+})

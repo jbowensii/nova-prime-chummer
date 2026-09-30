@@ -47,8 +47,13 @@ own API key), and you review its entries before they’re added.
 - **Career ledger.** After Finalize, record earnings and spend them at the
   creation prices. History is append-only, and an entry is undone by voiding it.
   Creation can be reopened until the first ledger entry.
-- **Printable sheet** laid out like the official one. Your browser’s “Save as
-  PDF” makes the PDF.
+- **Printable sheet** laid out like the official one: weapons (with any DVs by
+  ammunition their book text lists) and spells in sections of their own,
+  languages and knowledge at the bottom. Your browser’s “Save as PDF” makes the PDF.
+- **Portrait backdrop** (Concept, next to the portrait): white, neutral grey,
+  dark, or a built-in grid, halftone, neon or rain pattern, shown through the
+  transparent parts of a PNG or WebP portrait in the builder, the runner list
+  and on the sheet. A dark one prints as white, to save ink.
 - **Example characters** load with one click (**Load example characters**,
   every role): the rulebook’s pregens and Lightning, Daegann’s pregen
   booklet, and the server’s example sets in `custom/samples/<set>/` (such as
@@ -192,9 +197,11 @@ Background art** (PNG, JPEG or WebP, 10 MB each, up to 50) and switches each
 one on or off, or deletes it. The ones that are on show behind every page for
 everyone signed in, one picked at random on each page load: faint under the
 text in the middle of the screen, a little stronger toward the edges, tinted
-indigo in the dark theme and fainter still on phones. They're never printed.
-Anyone can turn them off in their own browser (**Settings → Background →
-Plain page**). The images live in `library/backgrounds/`, are in backups (not
+indigo in the dark theme and fainter still on phones. The page layer is never
+printed. Anyone can turn them off or fade them in their own browser
+(**Settings → Background**: Plain page, or Strength 0–100%). The character
+sheet has its own switches above it (on screen: on; printed: off; strength:
+the page's until set), with the same readability limit. The images live in `library/backgrounds/`, are in backups (not
 in data packs), and are only sent to signed-in browsers. No artwork ships
 with the app.
 

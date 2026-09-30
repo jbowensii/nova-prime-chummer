@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { derive } from '../../src/engine/derive'
+import { ammoDVs, derive } from '../../src/engine/derive'
 import { blankCharacter } from '../../src/engine/file'
 import type { AmpEntry, Character } from '../../src/model/types'
 import { cat } from '../helpers'
@@ -75,4 +75,18 @@ test('wound boxes, RR from amps, and the RR cap of 3', () => {
   expect(d.monitor).toEqual({ light: 3, serious: 2, incap: 1 })
   expect(d.pools.find(p => p.spec === 'stealth.physical-sneaking')!.rr).toBe(3)
   expect(d.pools.find(p => p.skill === 'stealth' && !p.spec && p.attr === 'agi')!.rr).toBe(1)
+})
+
+test('alternative DVs by ammunition are read from a weapon’s text; page references and plain DVs are not', () => {
+  expect(ammoDVs('Fires DV 5 (gel) / 6 (explosive) rounds.')).toEqual(['5 (gel)', '6 (explosive)'])
+  expect(ammoDVs('dv: 4 (stick-n-shock), or 6 (APDS)')).toEqual(['4 (stick-n-shock)', '6 (APDS)'])
+  expect(ammoDVs('DV 7 (p.12)')).toEqual([])
+  expect(ammoDVs('DV 7. A heavy pistol.')).toEqual([])
+  expect(ammoDVs()).toEqual([])
+})
+
+test('a weapon lists its ammunition DVs', () => {
+  const ch = blankCharacter('runner', 'human')
+  ch.build.items.push({ uid: 'w1', kind: 'weapon', name: 'Invented pistol', dv: '4', ranges: 'OK/OK/–/–', note: 'DV 4 (regular) / 6 (explosive)' })
+  expect(derive(cat, ch).weapons.find(w => w.uid === 'w1')?.ammo).toEqual(['4 (regular)', '6 (explosive)'])
 })

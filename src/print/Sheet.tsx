@@ -4,6 +4,9 @@ import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
 import { bdClass, printBackdrop } from '../ui/Portrait'
+import { artSrc, useArtId } from '../ui/Background'
+import { loadSettings, saveSettings, type Settings } from '../ui/settings'
+import { useState } from 'react'
 import './sheet.css'
 
 const RISK = [['1 die', '2 dice', '4 dice', '6+ dice'], ['3 dice', '5 dice', '7 dice', '10+ dice'], ['5 dice', '8 dice', '11 dice', '13+ dice'], ['8 dice', '12 dice', '15 dice', 'N/A']]
@@ -25,25 +28,44 @@ export function Sheet() {
   // in the player's order, hidden rows left off
   const shown = (kind: 'knowledge' | 'language') => knowledgeList(d.knowledge, kind, b.knowledgeOrder).filter(k => !k.hidden)
   const gear = b.items.filter(i => i.kind === 'gear' || (i.kind === 'armor' && i.uid !== b.mainArmor && i.uid !== b.altArmor))
+  const langs = shown('language'), know = shown('knowledge')
+  // background art on the sheet: this browser's own switches (screen on, print off by default), the page's strength until set
+  const artId = useArtId()
+  const [s, setS] = useState(loadSettings)
+  const set = (patch: Partial<Settings>) => { const next = { ...loadSettings(), ...patch }; setS(next); saveSettings(next) }
+  const strength = s.sheetArtStrength ?? s.artStrength
 
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
         <a className="btn" href={`#/c/${ch.id}/review`}>Back to editing</a>
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button>
+        {artId && <fieldset className="sheet-art-tools">
+          <legend className="sr-only">Background art on the sheet</legend>
+          <label className="check"><input type="checkbox" checked={s.sheetArt === 'on'} onChange={e => set({ sheetArt: e.target.checked ? 'on' : 'off' })} />Background art</label>
+          <label className="check"><input type="checkbox" checked={s.sheetArtPrint === 'on'} onChange={e => set({ sheetArtPrint: e.target.checked ? 'on' : 'off' })} />Print it</label>
+          <label className="art-strength">Art strength
+            <input type="range" min={0} max={100} step={5} value={strength} aria-valuetext={`${strength}%`} disabled={s.sheetArt === 'off' && s.sheetArtPrint === 'off'}
+              onChange={e => set({ sheetArtStrength: Number(e.target.value) })} />
+            <output>{strength}%</output>
+          </label>
+        </fieldset>}
       </div>
       <article className="sheet">
+        {artId && <div className={`sheet-art${s.sheetArt === 'on' ? '' : ' no-screen'}${s.sheetArtPrint === 'on' ? '' : ' no-print'}`} aria-hidden="true"
+          style={{ opacity: strength / 100 }}><div style={{ backgroundImage: `url("${artSrc(artId)}")` }} /></div>}
+        <div className="s-top">
         <header className="s-head">
           <div><div className="s-label">Street name</div><h1>{name}</h1>
             <div className="s-role">{c.metatypes.get(ch.identity.metatype)?.name}{ch.narrative.keywords[2] ? `, ${ch.narrative.keywords[2]}` : ''}</div>
             {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
-          {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
         </header>
-
+        {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
         <section className="s-attrs">
           {ATTRS.map(a => <div key={a}><span>{c.attributes.get(a)?.name}</span><b>{b.attributes[a]}</b></div>)}
           <div><span>Edge</span><b>{d.edge}</b></div>
         </section>
+        </div>
 
         <div className="s-cols">
           <section>
@@ -59,10 +81,6 @@ export function Sheet() {
                 ))}
               </tbody>
             </table>
-            <h3>Languages</h3>
-            <p>{shown('language').map(k => k.native ? `${k.name} (native)` : k.name).join(', ') || '—'}</p>
-            <h3>Knowledge skills</h3>
-            <p>{shown('knowledge').map(k => k.name).join(', ') || '—'}</p>
           </section>
 
           <section>
@@ -130,11 +148,19 @@ export function Sheet() {
 
         <div className="s-cols">
           <section>
-            <h2>Weapons & spells</h2>
-            <table><tbody>
-              {d.weapons.map(w => <tr key={w.uid}><td><b>{w.name}</b> DV {w.dv} [{w.ranges}]{w.note && <span className="s-small"> ({w.note})</span>}</td><td>{w.specialist ? 'Spec. weapon' : 'Weapon'}</td></tr>)}
-              {spells.map(s => { const cat = c.items.get(s.catalogId ?? '') ?? s.snapshot; return <tr key={s.uid}><td><b>{s.name}</b>{cat?.category && <span className="s-small"> ({cat.category})</span>}</td><td>{s.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
-            </tbody></table>
+            <h2>Weapons</h2>
+            <table className="s-weapons">
+              <thead><tr><th>Weapon</th><th>DV</th><th>Ranges</th></tr></thead>
+              <tbody>{d.weapons.map(w => <tr key={w.uid}>
+                <td><b>{w.name}</b>{w.specialist && <span className="s-small"> (specialist)</span>}{w.note && <div className="s-small">{w.note}</div>}</td>
+                <td><b>{w.dv}</b>{w.ammo && <div className="s-small">by ammo: {w.ammo.join(', ')}</div>}</td><td>{w.ranges}</td></tr>)}</tbody>
+            </table>
+            {spells.length > 0 && <>
+              <h2>{spells.every(x => x.kind === 'spell') ? 'Spells' : spells.every(x => x.kind === 'complex-form') ? 'Complex forms' : 'Spells & complex forms'}</h2>
+              <table className="s-spells"><tbody>
+                {spells.map(x => { const cat = c.items.get(x.catalogId ?? '') ?? x.snapshot; return <tr key={x.uid}><td><b>{x.name}</b>{cat?.category && <span className="s-small"> ({cat.category})</span>}</td><td>{x.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
+              </tbody></table>
+            </>}
             <h2>Equipment</h2>
             <p>{gear.map(g => g.note ? `${g.name} (${g.note})` : g.name).join(', ') || '—'}.</p>
             <h2>Nuyen</h2>
@@ -151,6 +177,18 @@ export function Sheet() {
           </section>
         </div>
         {ch.identity.background && <section><h2>Background</h2><p>{ch.identity.background}</p></section>}
+        <section className="s-know">
+          <h2>Languages & knowledge</h2>
+          <p className="s-small s-screen">Knowledge skills have no rating; the GM picks a Skill + Attribute, usually Logic, if a test is needed.</p>
+          <div className="s-know-cols">
+            <div><h3>Languages</h3>
+              <ul className={langs.length > 6 ? 'two' : undefined}>{langs.map(k => <li key={k.key}>{k.name}{k.native && <span className="s-small"> (native)</span>}</li>)}</ul>
+              {!langs.length && <p>—</p>}</div>
+            <div><h3>Knowledge</h3>
+              <ul className={know.length > 6 ? 'two' : undefined}>{know.map(k => <li key={k.key}>{k.name}</li>)}</ul>
+              {!know.length && <p>—</p>}</div>
+          </div>
+        </section>
       </article>
     </div>
   )
