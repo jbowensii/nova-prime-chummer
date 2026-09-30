@@ -72,7 +72,7 @@ export function characterToXml(ch: Character, rev?: number): string {
     ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
   ].join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: ch.identity.streetName, name: ch.identity.name,
-    metatype: ch.identity.metatype, level: ch.level, package: ch.package, lifestyle: ch.identity.lifestyle,
+    metatype: ch.identity.metatype, level: ch.level, package: ch.package, lifestyle: ch.identity.lifestyle, backdrop: ch.identity.backdrop,
     finalizedAt: ch.finalizedAt, finalRemaining: ch.finalRemaining, allowNonCanon: ch.allowNonCanon === false ? 'false' : undefined,
     origin: ch.origin, sampleKey: ch.sampleKey, campaign: ch.campaign, updatedAt: ch.updatedAt, lastExportedAt: ch.lastExportedAt })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="${CHAR_NS}"${root}>\n  ${body}\n</ca2:character>\n`
@@ -223,6 +223,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
       if (kids(b, k).length) ch.build[k] = kids(b, k).map(e => e.getAttribute('key') ?? '')
     if (kid(r, 'portrait')) ch.identity.portrait = t(kid(r, 'portrait'))
     if (s(r, 'lifestyle') !== undefined) ch.identity.lifestyle = s(r, 'lifestyle')
+    if (s(r, 'backdrop') !== undefined) ch.identity.backdrop = s(r, 'backdrop') as Character['identity']['backdrop'] // checked by migrate()
     if (s(r, 'finalizedAt') !== undefined) ch.finalizedAt = s(r, 'finalizedAt')
     if (n(r, 'finalRemaining') !== undefined) ch.finalRemaining = n(r, 'finalRemaining')
     if (s(r, 'lastExportedAt') !== undefined) ch.lastExportedAt = s(r, 'lastExportedAt')

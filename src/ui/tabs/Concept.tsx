@@ -2,6 +2,7 @@ import { ATTRS } from '../../model/types'
 import { currentBuild, handAddedSinner, hasRealSin, setRealSin, sinnerTemplate } from '../../engine'
 import { useEditor } from '../editor'
 import { NonCanon } from '../bits'
+import { BACKDROP_NAMES, BACKDROPS, Face } from '../Portrait'
 
 const HINTS = {
   keywords: ['Metatype / social status', 'Origins / home', 'Role / occupation', 'Lifestyle', 'Anything else that defines them'],
@@ -9,12 +10,16 @@ const HINTS = {
   cues: ['What they say under stress', 'When they win big', 'When they show off', 'Their catchphrase'],
 }
 
-/** Downscale an image file to a 256px JPEG data URL so the library stays small. */
+/** Downscale an image file to a 256px data URL so the library stays small: JPEG, or PNG when it has transparent
+ *  parts (they show the portrait backdrop). */
 async function portrait(file: File): Promise<string> {
   const img = await createImageBitmap(file)
   const s = 256 / Math.max(img.width, img.height)
   const canvas = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * Math.min(1, s)), height: Math.round(img.height * Math.min(1, s)) })
-  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+  const g = canvas.getContext('2d')!
+  g.drawImage(img, 0, 0, canvas.width, canvas.height)
+  const px = g.getImageData(0, 0, canvas.width, canvas.height).data
+  for (let i = 3; i < px.length; i += 4) if (px[i] < 255) return canvas.toDataURL('image/png')
   return canvas.toDataURL('image/jpeg', 0.85)
 }
 
@@ -64,6 +69,22 @@ export function ConceptTab() {
         <label>Portrait
           <input type="file" accept="image/*" onChange={async e => { const f = e.target.files?.[0]; if (f) { const url = await portrait(f); update(d => { d.identity.portrait = url }) } }} />
         </label>
+      </div>
+      <div className="portrait-row">
+        <Face ch={ch} />
+        <fieldset className="backdrops">
+          <legend>Portrait backdrop</legend>
+          <p className="muted">Shows through the transparent parts of a PNG or WebP portrait; a dark one prints as white.</p>
+          <div className="swatches">
+            {([undefined, ...BACKDROPS] as const).map(b => (
+              <label key={b ?? 'none'} title={b ? BACKDROP_NAMES[b] : 'None'}>
+                <input type="radio" name="backdrop" checked={ch.identity.backdrop === b}
+                  onChange={() => update(d => { if (b) d.identity.backdrop = b; else delete d.identity.backdrop })} />
+                <span className={b ? `bd-${b}` : 'bd-none'} /><span className="sr-only">{b ? BACKDROP_NAMES[b] : 'None'}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
       {meta && <p className="muted">
         {meta.name}: {ATTRS.map(a => `${a.toUpperCase()} ${meta.ranges[a][0]}–${meta.ranges[a][1]}`).join(', ')}; Edge {meta.edge}{meta.racialQuality ? `; ${meta.racialQuality}` : ''}.

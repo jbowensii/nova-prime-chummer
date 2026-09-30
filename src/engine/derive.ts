@@ -6,7 +6,18 @@ import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
 
 export type Thresholds = [number, number, number]
-export interface Weapon { uid: string; name: string; dv: string; ranges: string; specialist?: boolean; note?: string }
+/** ammo: alternative DVs by ammunition, as the item's text or its amp's narrative lists them ("5 (gel)") */
+export interface Weapon { uid: string; name: string; dv: string; ranges: string; specialist?: boolean; note?: string; ammo?: string[] }
+
+/** Alternative DVs by ammunition in a book text: "DV 5 (gel) / 6 (explosive)" -> ["5 (gel)", "6 (explosive)"]. Only a
+ *  word in the brackets counts (not a page reference); the rules don't track ammo, so there's nothing to count. */
+export function ammoDVs(text = ''): string[] {
+  const one = String.raw`\d+\s*\(\s*[A-Za-z][A-Za-z \-]{0,24}\)`
+  const out: string[] = []
+  for (const m of text.matchAll(new RegExp(String.raw`\bDV\s*:?\s*(${one}(?:\s*[/,;]\s*(?:or\s+)?${one})*)`, 'gi')))
+    for (const x of m[1].matchAll(/(\d+)\s*\(\s*([^)]*?)\s*\)/g)) if (!out.includes(`${x[1]} (${x[2]})`)) out.push(`${x[1]} (${x[2]})`)
+  return out
+}
 export interface VehicleStats { uid: string; name: string; chassis: string; pilot: number; body: number; handling: number;
   speed: number; flying: boolean; armor: number; count: number; mount: string; thresholds: Thresholds }
 export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number }
@@ -188,6 +199,8 @@ export function derive(c: Catalog, ch: Character): Derived {
     const range = amp?.effects.find(e => e.ref === 'range-improve')?.param
     weapons.push({ uid: it.uid, name: it.name, dv: weaponDV(it.dv ?? cat?.dv ?? '?', attr('str'), plus),
       ranges: it.ranges ?? cat?.ranges ?? '', specialist: it.specialist, note: range ? `range improved: ${range}` : undefined })
+    const ammo = ammoDVs([cat?.text, amp?.narrative, it.note].filter(Boolean).join('\n'))
+    if (ammo.length) weapons[weapons.length - 1].ammo = ammo
   }
   const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a)).filter((x): x is VehicleStats => !!x)
 
