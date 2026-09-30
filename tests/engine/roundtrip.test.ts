@@ -52,8 +52,8 @@ function runner(seed: number, step: number): Character {
   if (step >= 3) { // skills, specializations (catalog and custom), knowledge
     ch.build.skills = skills.filter(() => r.next() < 0.4).map(s => ({ id: s.id, rating: r.int(0, 8),
       specs: [...s.specs.filter(() => r.next() < 0.3).map(x => x.id), ...(r.next() < 0.3 ? [`custom:${r.word()}`] : [])] }))
-    ch.build.knowledge = Array.from({ length: r.int(0, 4) }, () => ({ name: r.str(), kind: r.pick(['knowledge', 'language'] as const),
-      ...(r.next() < 0.4 ? { from: r.pick([`skill:${r.pick(skills).id}`, `keyword:${r.word()}`]) } : {}),
+    ch.build.knowledge = Array.from({ length: r.int(0, 4) }, (_, i) => ({ name: r.str(), kind: r.pick(['knowledge', 'language'] as const),
+      ...(r.next() < 0.4 ? { from: r.pick([`skill:${r.pick(skills).id}`, `keyword:${r.word()}`]) } : { id: `kn-${seed}-${i}` }),
       ...(r.next() < 0.3 ? { native: true as const } : {}) }))
     // the player's order and hidden rows: keys of rows that may or may not exist
     ch.build.knowledgeOrder = r.maybe(() => Array.from({ length: r.int(1, 4) }, () => r.pick([`skill:${r.pick(skills).id}`, `language:${r.str()}`, `keyword:${r.word()}`])))

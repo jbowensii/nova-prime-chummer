@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { currentBuild, knowledgeKey, knowledgeList, makeAdvance, makeKnowledge, makeSpec, skillCost, type KnowledgeRow } from '../../engine'
-import type { Build, Catalog, Character, KnowledgeEntry } from '../../model/types'
+import { currentBuild, knowledgeList, makeAdvance, makeKnowledge, makeSpec, skillCost, type KnowledgeRow } from '../../engine'
+import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
+import { newId } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
 
@@ -164,26 +165,20 @@ function KnowledgeList({ kind }: { kind: KnowledgeEntry['kind'] }) {
     const h = toggleKey(x.build.knowledgeHidden, key)
     if (h) x.build.knowledgeHidden = h; else delete x.build.knowledgeHidden
   })
-  /** a paid entry's key is its kind and name: a rename or kind change carries its place and visibility along */
-  const rekey = (x: Character, from: string, to: string) => {
-    for (const k of ['knowledgeOrder', 'knowledgeHidden'] as const) if (x.build[k]) x.build[k] = x.build[k]!.map(y => (y === from ? to : y))
-  }
 
   const add = async () => {
     const name = text.trim()
     if (!name) return
     setText('')
-    if (!career) return edit(x => { x.build.knowledge.push({ name, kind, ...(native && { native: true as const }) }) })
+    if (!career) return edit(x => { x.build.knowledge.push({ id: newId(), name, kind, ...(native && { native: true as const }) }) })
     await record(makeKnowledge(c, { name, kind }), `${lang ? 'Language' : 'Knowledge skill'}: ${name}`)
   }
   /** Rename or retype an entry. A free slot not stored yet is stored now; in career a slot change is a free ledger entry. */
   const change = async (r: KnowledgeRow, patch: Partial<KnowledgeEntry>) => {
-    const next: KnowledgeEntry = { name: r.name, kind: r.kind, ...(r.from && { from: r.from }), ...(r.native && { native: true as const }), ...patch }
+    const next: KnowledgeEntry = { name: r.name, kind: r.kind, ...(r.from && { from: r.from }), ...(r.id && { id: r.id }),
+      ...(r.native && { native: true as const }), ...patch }
     if (next.kind !== 'language') delete next.native
-    if (!career) return edit(x => {
-      if (r.at >= 0) x.build.knowledge[r.at] = next; else x.build.knowledge.push(next)
-      rekey(x, r.key, knowledgeKey(next))
-    })
+    if (!career) return edit(x => { if (r.at >= 0) x.build.knowledge[r.at] = next; else x.build.knowledge.push(next) })
     if (r.from) await record(makeKnowledge(c, next, false), `${next.name}: ${r.source.toLowerCase()}, no cost`)
   }
   const setNative = (r: KnowledgeRow, on: boolean) => edit(x => {

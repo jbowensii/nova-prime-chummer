@@ -64,7 +64,7 @@ export function characterToXml(ch: Character, rev?: number): string {
     el('build', { mainArmor: b.mainArmor, altArmor: b.altArmor },
       el('attributes', Object.fromEntries(ATTRS.map(a => [a, b.attributes[a]])))
       + b.skills.map(s => el('skill', { id: s.id, rating: s.rating }, s.specs.map(x => `<spec>${esc(x)}</spec>`).join(''))).join('')
-      + b.knowledge.map(k => el('knowledge', { kind: k.kind, from: k.from, native: k.native }, esc(k.name))).join('')
+      + b.knowledge.map(k => el('knowledge', { id: k.id, kind: k.kind, from: k.from, native: k.native }, esc(k.name))).join('')
       + b.amps.map(ampXml).join('') + b.items.map(itemXml).join('')
       + (b.knowledgeOrder ?? []).map(key => el('knowledgeOrder', { key })).join('')
       + (b.knowledgeHidden ?? []).map(key => el('knowledgeHidden', { key })).join('')),
@@ -210,7 +210,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
         attributes: Object.fromEntries(ATTRS.map(a => [a, Number(at?.getAttribute(a) ?? 1)])) as Character['build']['attributes'],
         skills: each(kids(b, 'skill'), k => ({ id: k.getAttribute('id') ?? '', rating: Number(k.getAttribute('rating') ?? 0), specs: kids(k, 'spec').map(t) }), named, fix),
         knowledge: kids(b, 'knowledge').map(k => knowledgeEntry({ name: t(k), kind: s(k, 'kind') as 'knowledge' | 'language' | undefined, from: s(k, 'from'),
-          native: k.getAttribute('native') === 'true' || undefined })),
+          native: k.getAttribute('native') === 'true' || undefined, id: s(k, 'id') })),
         amps: each(kids(b, 'amp'), readAmp, named, fix), items: each(kids(b, 'item'), readItem, named, fix),
       },
       career: kid(r, 'career') ? each(kids(kid(r, 'career'), 'event'), readEvent, (e, i) => `career event ${i + 1} (${e.getAttribute('type') ?? 'no type'})`, fix) : [],

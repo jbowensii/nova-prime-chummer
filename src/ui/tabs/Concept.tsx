@@ -76,13 +76,15 @@ export function ConceptTab() {
         <span>Allow non-canon content <span className="muted">(published material that isn’t the official rules, marked <NonCanon />). When off, the Review tab flags any on this runner.</span></span>
       </label>
       <label className="check">
-        <input type="checkbox" checked={hasRealSin(career ? currentBuild(ch) : ch.build, c)} onChange={e => {
-          const on = e.target.checked, mine = handAddedSinner(career ? currentBuild(ch) : ch.build, c)
+        {/* ponytail: disabled once finalized (a ledger event could carry it later) */}
+        <input type="checkbox" disabled={career} checked={hasRealSin(career ? currentBuild(ch) : ch.build, c)} onChange={e => {
+          const on = e.target.checked, mine = handAddedSinner(ch.build, c)
           if (!on && mine.length && !confirm(`This also removes the ${mine.map(a => a.name).join(', ')} quality you added on the Shadow Amps tab. Remove the real SIN?`)) return
           update(d => setRealSin(c, d.build, on))
         }} />
         <span>Has a real SIN <span className="muted">(not a core rule: every runner already has a fake SIN. Adds a free Real SIN entry on the Gear tab to name, e.g. national or corporate{sinner ? <>, and the {sinner.name} quality from {c.sources.get(sinner.source)?.name ?? sinner.source}</> : ''}.)
-          {!sinner && ' No imported book has a SINner quality, so only the gear entry is added.'}</span></span>
+          {!sinner && ' No imported book has a SINner quality, so only the gear entry is added.'}
+          {career && ' Set this before finalizing, or ask your GM.'}</span></span>
       </label>
       <hr className="sep" />
       <div className="grid2">{list('keywords')}{list('dispositions')}{list('cues')}</div>

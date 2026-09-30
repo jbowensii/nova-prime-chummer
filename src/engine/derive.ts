@@ -39,8 +39,9 @@ export interface Derived {
  *  printed sheet. */
 export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number; key: string; hidden: boolean }
 
-/** A row's lasting identity for its place and visibility: its free slot, else its kind and name. */
-export const knowledgeKey = (k: Pick<KnowledgeEntry, 'from' | 'kind' | 'name'>) => k.from ?? `${k.kind}:${k.name}`
+/** A row's lasting identity for its place and visibility: its free slot, else the entry's own id (an entry from before
+ *  ids: its kind and name). */
+export const knowledgeKey = (k: Pick<KnowledgeEntry, 'from' | 'kind' | 'name' | 'id'>) => k.from ?? k.id ?? `${k.kind}:${k.name}`
 
 /** One of the two lists (knowledge skills or languages) in display order: the player's order (build.knowledgeOrder)
  *  first, the rest A–Z. */

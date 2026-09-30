@@ -8,9 +8,12 @@
   Gear tab marked **Free (starting gear)**: rename them (the fake SIN’s name)
   and add a description, but they can’t be removed or sold. The printed sheet
   lists them with the rest of the equipment.
-- Never twice: a runner that already has them gets none, and an imported pregen
-  whose stat page lists “Fake SIN, Commlink” keeps exactly one of each, now
-  free. Prices of existing runners are otherwise unchanged.
+- Never twice: a runner that already has them gets none, and a draft (an
+  imported pregen whose stat page lists “Fake SIN, Commlink”) keeps exactly one
+  of each, now free. Only those exact names count: “Commlink (Hermes Ikon)” or
+  “Fake SIN (R4 corp)” stay paid items. A finalized runner’s items are never
+  changed: it only gains the free entries at 0¥, so its receipt and balance
+  stay as recorded.
 
 **A real SIN**
 - **Has a real SIN** on the Concept tab (not a core rule) adds a free **Real
@@ -20,12 +23,16 @@
   SINner quality (added by hand before this release) shows the box ticked,
   gets its Real SIN entry when opened, and never a second quality. Unticking
   removes the entry and the quality, asking first when you added the quality
-  yourself. Without the book, a note says only the entry is added.
+  yourself. Without the book, a note says only the entry is added. Once a
+  runner is finalized the box is locked: set it before finalizing, or ask your
+  GM.
 
 **Knowledge & languages**
 - Two lists, **Knowledge** and **Languages**, each A–Z. Drag a row by its
   handle, or use its ↑ ↓ buttons from the keyboard, to set your own order;
   **Sort A–Z** puts it back.
+- Order and hiding belong to each entry, so two entries of the same name stay
+  independent.
 - **Hide** leaves an entry off the printed sheet; it stays on the runner,
   dimmed with **Show**, and still counts.
 - Mark one language **Native**: it’s free, one per runner, and the first
@@ -35,7 +42,7 @@
 
 **Files**
 - New in the character format: `starting` and `note` on items, `realSin` on the
-  amp the box added, `native` on a knowledge entry, and `knowledgeOrder` /
+  amp the box added, `native` and `id` on a knowledge entry, and `knowledgeOrder` /
   `knowledgeHidden` in the build. Older files load unchanged and gain the
   starting gear. The importer marks a pregen’s fake SIN and commlink as
   starting gear.

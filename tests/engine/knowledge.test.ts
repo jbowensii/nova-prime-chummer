@@ -15,7 +15,7 @@ function runner(): Character {
   const ch = blankCharacter()
   ch.narrative.keywords = ['Tinkerer', '', 'Night owl', '', '']
   ch.build.skills = [{ id: 'electronics', rating: 5, specs: [] }, { id: 'athletics', rating: 2, specs: [] }]
-  ch.build.knowledge = [{ name: 'Toy trains', kind: 'knowledge' }, { name: 'Made-up tongue', kind: 'language' }]
+  ch.build.knowledge = [{ id: 'k0', name: 'Toy trains', kind: 'knowledge' }, { id: 'k1', name: 'Made-up tongue', kind: 'language' }]
   return ch
 }
 const skillsCost = (ch: Character) => priceBuild(cat, ch.build, 'human', ch.narrative.keywords).skills
@@ -56,7 +56,8 @@ test('old files: plain strings load as paid knowledge, "Language: X" as a langua
   const ch = runner() as unknown as { build: { knowledge: unknown[] } } & Character
   ch.build.knowledge = ['Toy trains', 'Language: Made-up tongue', 'language:Other tongue']
   const json = parseCharacterFile(JSON.stringify(ch))
-  const want = [{ name: 'Toy trains', kind: 'knowledge' }, { name: 'Made-up tongue', kind: 'language' }, { name: 'Other tongue', kind: 'language' }]
+  // each gets an id of its own on load (its key for order and hiding)
+  const want = [{ id: 'k0', name: 'Toy trains', kind: 'knowledge' }, { id: 'k1', name: 'Made-up tongue', kind: 'language' }, { id: 'k2', name: 'Other tongue', kind: 'language' }]
   expect(json.ok && json.character.build.knowledge).toEqual(want)
   const oldXml = characterToXml(runner()).replace(/<knowledge[^>]*>([^<]*)<\/knowledge>/g, '')
     .replace('<attributes', '<knowledge>Toy trains</knowledge><knowledge>Language: Made-up tongue</knowledge><attributes')
@@ -89,7 +90,7 @@ test('career: a new entry costs the knowledge price, renaming a free slot is fre
   expect(validate(cat, ch).some(v => v.code === 'knowledge.lapsed')).toBe(true)
   ch = appendEvent(ch, makeKnowledge(cat, { name: 'Lapsed lore', kind: 'knowledge', from: 'skill:athletics' }, true))
   expect(balance(cat, ch)).toBe(start - 2 * K)
-  expect(currentBuild(ch).knowledge.find(k => k.name === 'Lapsed lore')).toEqual({ name: 'Lapsed lore', kind: 'knowledge' })
+  expect(currentBuild(ch).knowledge.find(k => k.name === 'Lapsed lore')).toEqual({ name: 'Lapsed lore', kind: 'knowledge', id: ch.career.at(-1)!.id })
   expect(validate(cat, ch).some(v => v.code === 'knowledge.lapsed')).toBe(false)
 })
 
@@ -97,7 +98,7 @@ test('an old career event "Language: X" applies as a language', () => {
   const ch = finalize(cat, runner()) as Character
   ch.career.push({ id: 'e1', at: '2026-01-01T00:00:00Z', type: 'knowledge-add', name: 'Language: Made-up tongue', cost: K })
   const back = xmlToCharacter(characterToXml(ch))
-  expect(back.ok && currentBuild(back.character).knowledge.at(-1)).toEqual({ name: 'Made-up tongue', kind: 'language' })
+  expect(back.ok && currentBuild(back.character).knowledge.at(-1)).toEqual({ name: 'Made-up tongue', kind: 'language', id: 'e1' })
 })
 
 test('a keyword entry follows the keyword’s text; removing the keyword makes a stored entry paid and flagged', () => {

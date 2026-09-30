@@ -90,7 +90,7 @@ test('knowledge and languages: two A–Z lists, drag and keyboard order, Sort A�
   await expect.poll(() => names(know)).toEqual(['Alpha lore', 'Bravo lore', 'Charlie lore'])
 
   // drag Charlie onto Alpha's row: it takes the top
-  await know.locator('.grip[data-key="knowledge:Charlie lore"]').dragTo(know.locator('tbody tr').first())
+  await know.locator('tbody tr').nth(2).locator('.grip').dragTo(know.locator('tbody tr').first()) // Charlie, last A–Z
   await expect.poll(() => names(know)).toEqual(['Charlie lore', 'Alpha lore', 'Bravo lore'])
   await expect(page.getByRole('button', { name: 'Sort A–Z' })).toBeVisible()
 
@@ -175,4 +175,15 @@ test('a SINner added by hand ticks the real SIN box and brings its entry; untick
   await box.check()
   await tab(page, 'Shadow Amps')
   await expect(page.getByText('SINner', { exact: true })).toHaveCount(1)
+})
+
+test('once finalized, the real SIN box is locked with a note', async ({ page }) => {
+  await newRunner(page, 'Late Paperwork')
+  await tab(page, 'Review')
+  await page.getByRole('button', { name: 'Finalize runner' }).click()
+  await page.getByRole('button', { name: 'Finalize', exact: true }).click()
+  await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  await tab(page, 'Concept')
+  await expect(page.getByRole('checkbox', { name: /Has a real SIN/ })).toBeDisabled()
+  await expect(page.getByText(/Set this before finalizing, or ask your GM\./)).toBeVisible()
 })

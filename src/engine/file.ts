@@ -20,15 +20,19 @@ export function blankCharacter(level = 'runner', metatype = 'human'): Character 
 
 /** What every runner starts with, free (CRB p.84): a commlink with trodes and a fake SIN. */
 export const STARTING_GEAR: Partial<Record<StartingGear, string>> = { commlink: 'Commlink (with trodes)', 'fake-sin': 'Fake SIN' }
-const plain = (s: string) => s.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+/** case and spacing aside; nothing else ("Commlink (Hermes Ikon)" is another item) */
+const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+/** The exact names a plain gear entry may carry to count as the free one (an imported pregen's "Fake SIN, Commlink"). */
+const SAME: Record<string, string[]> = { commlink: ['commlink', 'commlink (with trodes)', 'commlink with trodes'], 'fake-sin': ['fake sin'] }
 
-/** Adds the free starting gear a build lacks. A plain gear entry of the same name (an imported pregen's "Fake SIN,
- *  Commlink") becomes that free entry instead, so there's never a second one. Fixed uids: reading a file twice gives
- *  the same runner. */
-export function ensureStartingGear(b: Build): void {
+/** Adds the free starting gear a build lacks. On a draft, an unpriced gear entry with exactly that name becomes the free
+ *  one instead, so there's never a second; a finalized runner's items are never touched (its recorded baseline stays),
+ *  it only gains the missing free entries at 0¥. Fixed uids: reading a file twice gives the same runner. */
+export function ensureStartingGear(b: Build, finalized = false): void {
   for (const [kind, name] of Object.entries(STARTING_GEAR) as [StartingGear, string][]) {
     if (b.items.some(i => i.starting === kind)) continue
-    const same = b.items.find(i => i.kind === 'gear' && !i.starting && !i.catalogId && i.price == null && plain(i.name) === plain(name))
+    const same = finalized ? undefined
+      : b.items.find(i => i.kind === 'gear' && !i.starting && !i.catalogId && i.price == null && SAME[kind].includes(plain(i.name)))
     if (same) same.starting = kind
     else b.items.unshift({ uid: `start-${kind}`, kind: 'gear', name, starting: kind })
   }
@@ -38,7 +42,7 @@ export function ensureStartingGear(b: Build): void {
 
 /** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
 export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
-/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or the same name). */
+/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or exactly that name, any case). */
 export const isSinner = (a: AmpEntry, c?: Catalog) => !!a.realSin || plain(a.name) === 'sinner' || plain(a.snapshot?.name ?? '') === 'sinner'
   || (!!c && !!a.catalogId && a.catalogId === sinnerTemplate(c)?.id)
 const realSinItem = (): ItemEntry => ({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
@@ -75,6 +79,7 @@ export function knowledgeEntry(k: string | Partial<KnowledgeEntry>): KnowledgeEn
   const out: KnowledgeEntry = { name: lang ? e.name!.slice(lang[0].length) : e.name ?? '', kind: lang ? 'language' : e.kind ?? 'knowledge' }
   if (e.from) out.from = e.from
   if (e.native) out.native = true
+  if (e.id) out.id = e.id
   return out
 }
 
@@ -82,8 +87,20 @@ export function migrate(raw: Record<string, unknown>): Character {
   let v = raw.formatVersion as number
   while (v < FORMAT_VERSION) { raw = MIGRATIONS[v](raw); v = raw.formatVersion as number }
   const ch = raw as unknown as Character
-  if (Array.isArray(ch.build?.knowledge)) ch.build.knowledge = ch.build.knowledge.map(knowledgeEntry)
-  if (Array.isArray(ch.build?.items)) ensureStartingGear(ch.build)
+  if (Array.isArray(ch.build?.knowledge)) {
+    ch.build.knowledge = ch.build.knowledge.map(knowledgeEntry)
+    // 0.5.3 before review keyed a paid entry's order and hidden mark by "<kind>:<name>": each entry gets an id of its
+    // own (deterministic, so an unsaved reload gives the same one) and those keys move to it, one entry per key
+    const byName = new Map<string, string>()
+    ch.build.knowledge.forEach((k, i) => {
+      if (k.from || k.id) return
+      k.id = `k${i}`
+      if (!byName.has(`${k.kind}:${k.name}`)) byName.set(`${k.kind}:${k.name}`, k.id)
+    })
+    for (const f of ['knowledgeOrder', 'knowledgeHidden'] as const)
+      if (Array.isArray(ch.build[f])) ch.build[f] = ch.build[f]!.map(key => byName.get(key) ?? key)
+  }
+  if (Array.isArray(ch.build?.items)) ensureStartingGear(ch.build, !!ch.finalizedAt)
   for (const e of Array.isArray(ch.career) ? ch.career : [])
     if (e.type === 'knowledge-add') Object.assign(e, knowledgeEntry({ name: e.name, kind: e.kind, from: e.from }))
   return ch

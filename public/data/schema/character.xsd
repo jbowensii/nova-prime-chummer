@@ -71,11 +71,12 @@
           <xs:attribute name="kind" type="c:KnowledgeKind"/>
           <xs:attribute name="from" type="xs:string"/>
           <xs:attribute name="native" type="xs:boolean"/>
+          <xs:attribute name="id" type="xs:string"/>
         </xs:extension></xs:simpleContent></xs:complexType>
       </xs:element>
       <xs:element name="amp" type="c:Amp" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="item" type="c:Item" minOccurs="0" maxOccurs="unbounded"/>
-      <!-- Knowledge & languages rows (their free slot, else "<kind>:<name>"): the player's order, top to bottom, and the
+      <!-- Knowledge & languages rows (their free slot, else the entry's id): the player's order, top to bottom, and the
            rows left off the printed sheet -->
       <xs:element name="knowledgeOrder" type="c:KnowledgeKey" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="knowledgeHidden" type="c:KnowledgeKey" minOccurs="0" maxOccurs="unbounded"/>

@@ -82,8 +82,9 @@ export interface ItemEntry { uid: string; catalogId?: string; kind: ItemKind; na
   starting?: StartingGear; note?: string }
 /** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<the keyword>");
  *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price.
- *  native: the runner's native language, free (one per runner). */
-export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; from?: string; native?: true }
+ *  native: the runner's native language, free (one per runner).
+ *  id: a paid entry's own key for its place and hidden mark (a free slot's is its `from`). */
+export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; from?: string; native?: true; id?: string }
 /** knowledgeOrder: row keys (knowledgeKey) in the player's order, both lists; rows not in it follow A–Z.
  *  knowledgeHidden: row keys left off the printed sheet. */
 export interface Build { attributes: Record<AttrId, number>; skills: SkillEntry[];

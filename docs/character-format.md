@@ -66,14 +66,15 @@ will convert from this format; the format itself is ours and stays stable.
   the app's reading of the rules, as knowledge skills cover foreign languages). A second one costs the knowledge price
   and Review notes it. Files before 0.5.3 have none.
 - **`<knowledgeOrder>`** and **`<knowledgeHidden>`** hold row keys: a free entry's slot (`from`), else
-  `<kind>:<name>`. The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off
+  the entry's `id` (paid entries get one when added; older ones on load). The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off
   the printed sheet but still counts. Neither changes a price.
 - **`starting`** on an item marks free gear no one buys: `commlink` and `fake-sin` (every runner, CRB p.84) and
   `real-sin`. It costs nothing and can't be removed or sold; `note` is the player's description. Reading any file adds
-  a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`), and a plain unpriced gear entry of that
-  name becomes it instead, so there's never a second one.
-- **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (found by name); it's
-  free. The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
+  a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`). On a draft, an unpriced gear entry named
+  exactly `Commlink`, `Commlink (with trodes)`, `Commlink with trodes` or `Fake SIN` (any case or spacing) becomes it
+  instead, so there's never a second one; a finalized runner's items are never changed.
+- **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
+  "SINner", any case); it's free. The box can't be changed once the runner is finalized. The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
   or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking
   removes the item and every SINner quality (the app asks first about one the player added).
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of

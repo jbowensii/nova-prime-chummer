@@ -599,10 +599,10 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
             report.append({"kind": "unmatched-item", "sample": sid, "item": "spell", "name": n, "status": "unmatched"})
     for n in block["forms"]:
         item("complex-form", n)
-    starting = {"fake sin": "fake-sin", "commlink": "commlink"}  # every runner's free starting gear (CRB p.84)
+    starting = {"fake sin": "fake-sin", "commlink": "commlink", "commlink (with trodes)": "commlink", "commlink with trodes": "commlink"}  # every runner's free starting gear (CRB p.84)
     for n in block["equipment"]:
         if n.lower() not in (i["name"].lower() for i in items):
-            item("gear", n, starting=starting.get(re.sub(r"[^a-z0-9]+", " ", re.sub(r"\(.*?\)", "", n.lower())).strip()))
+            item("gear", n, starting=starting.get(re.sub(r"\s+", " ", n.lower()).strip()))
 
     def norm(s):
         return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
