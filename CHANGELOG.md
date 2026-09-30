@@ -1,5 +1,46 @@
 # Release notes
 
+## 0.5.4 — 2026-09-30: example characters without unexplained problems
+
+Every example character, imported from the books or one of the first release's
+built-ins, was checked against its book. What was our mistake is fixed; what
+the book itself prints against a guideline is now said on the runner.
+
+**Rules and prices**
+- A drawback the book prints on a sample's amp (an effect limited to some
+  situations) no longer needs GM approval: it's the book's price.
+- An armor add-on worn over other armor (a ballistic mask, a rigger cocoon)
+  costs only its own points and counts on top of the armor under it. It was
+  charged as a whole second armor.
+
+**Imported examples** (import the books again to get them)
+- Each Equipment amp comes with the item it's bought with (CRB p.60): the one
+  of its name, the clothes a well-stocked closet's "Armor 1" is, or the item the
+  stat page leaves out (combat drugs, a focus, a kit). Some came without and
+  showed "needs its item bought first".
+- A branded commlink printed in place of "Commlink" (a high-end one, a secured
+  one) is the free starting commlink; an amp on it upgrades it.
+- Gear an implant has built in (a cyberarm's RCC) isn't bought a second time.
+- Implanted weapons printed without a type (knuckles, a spur, claws) are bought
+  as weapons, as the book prices them; an astral copy of a weapon row isn't a
+  second weapon; a specialist weapon (a grenade launcher) is priced as one.
+- A weapon a drone's own mount takes (an SMG on a small drone, an assault rifle
+  on a medium one) no longer costs an Enhanced weapon mount.
+- A specialization rolled with two attributes is bought once.
+- The core rulebook's dispositions and cues come from the page layout: one
+  that wraps onto two lines, or holds two sentences, stays one.
+- What the book itself prints against a creation guideline (over the budget, a
+  basic skill below 2, its own specialization, no cues, Cracking without a
+  deck) comes as an approved note, such as "As printed in the Pregen booklet
+  p.12: 2,500¥ over the creation budget."
+
+**Gear and the receipt**
+- The free starting gear shows its name like any other gear; **Rename** opens
+  the name and description.
+- Over budget reads **Over budget by N¥**, in red, and adding or removing a
+  priced item says what it cost or gave back ("−2,500¥: Extra Fake SIN
+  removed").
+
 ## 0.5.3 — 2026-09-30: starting gear, a real SIN, native language, knowledge order
 
 **Starting gear**

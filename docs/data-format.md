@@ -305,6 +305,14 @@ The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
 
+How a stat page becomes a runner (0.5.4): each Equipment amp is linked to the item it's bought with (by name, by the
+"Armor N" its clothes give, else the item the page leaves out is added as gear); a model printed in place of
+"Commlink" is the free starting commlink; gear an implant has built in ("Integrated …") isn't bought again; an armor
+row "(+1)" or "(2+1)" is an add-on worn over the one above (`over`); a weapon the chassis' own mount takes needs no
+Enhanced weapon mount; a spec rolled with two attributes is bought once. With the book's PDF, the core rulebook's
+dispositions and cues are read from the page layout (an item that wraps stays one). What the book itself prints against
+a creation guideline becomes an `<override>` with an "As printed in …" note (character-format.md).
+
 ## Example sets (`custom/samples/<set>/`)
 
 Example characters that don't come from an import: one folder per set, each holding character files (`character.xsd`).
