@@ -17,11 +17,18 @@ import { AskButton } from './AskRules'
 export interface TableRule { id: string; on: boolean; name?: string; text?: string }
 
 /** The table rules as saved; [] when none are saved yet (or there is no server). */
-export async function loadTableRules(): Promise<TableRule[]> {
+export async function loadTableRules({ strict = false } = {}): Promise<TableRule[]> {
   const r = await fetch('./custom/table-rules.xml', { cache: 'no-cache' }).catch(() => null)
-  if (!r?.ok) return []
+  if (strict && !r) throw new Error('the table rules couldn’t be fetched (network failure)')
+  if (!r?.ok) {
+    if (strict && r!.status !== 404) throw new Error(`the table rules couldn’t be fetched (status ${r!.status})`)
+    return []
+  }
   const doc = new DOMParser().parseFromString(await r.text(), 'text/xml')
-  if (doc.documentElement.localName !== 'tablerules') return []
+  if (doc.documentElement.localName !== 'tablerules') {
+    if (strict) throw new Error('the saved table rules file isn’t a table rules document')
+    return []
+  }
   return [...doc.documentElement.children].filter(e => e.localName === 'rule').map(e => {
     const name = e.getElementsByTagName('name')[0]?.textContent ?? undefined
     return { id: e.getAttribute('id') ?? '', on: e.getAttribute('on') === 'true', ...name ? { name, text: e.getElementsByTagName('text')[0]?.textContent ?? '' } : {} }

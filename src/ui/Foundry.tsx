@@ -62,11 +62,13 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
   const [picked, setPicked] = useState<Set<string>>(() => new Set(all.map(s => s.id)))
   const [desc, setDesc] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
   const download = async () => {
-    setBusy(true)
+    setBusy(true); setErr('')
     try {
-      const rules = tableRulesForExport(c, await loadTableRules())
+      const rules = tableRulesForExport(c, await loadTableRules({ strict: true }))
       downloadJson(booksFileName(new Date()), exportBooks(c, all.filter(s => picked.has(s.id)).map(s => s.id), rules, exportOpts(desc)))
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e))
     } finally { setBusy(false) }
   }
   return (
@@ -86,6 +88,7 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
       <label className="check"><input type="checkbox" checked={desc} onChange={e => setDesc(e.target.checked)} />
         <span>Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span></span></label>
       <div><button className="btn primary" disabled={!picked.size || busy} onClick={() => void download()}>Download book data</button></div>
+      {err && <p className="err" role="alert">Couldn’t build the book data: {err}</p>}
     </section>
   )
 }

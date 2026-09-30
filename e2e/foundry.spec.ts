@@ -56,3 +56,14 @@ test('the GM downloads ticked books, with or without descriptions', async ({ pag
   expect(f.descriptions).toBe(false)
   expect(JSON.stringify(f.books)).not.toContain('"description"')
 })
+
+test('book data doesn’t go out without the table rules when they can’t be loaded', async ({ page }) => {
+  await page.route('**/custom/table-rules.xml', r => r.fulfill({ status: 500, body: 'boom' }))
+  await page.goto('/#/data')
+  const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
+  let downloaded = false
+  page.on('download', () => { downloaded = true })
+  await panel.getByRole('button', { name: 'Download book data' }).click()
+  await expect(panel.getByRole('alert')).toContainText('Couldn’t build the book data: the table rules couldn’t be fetched (status 500)')
+  expect(downloaded).toBe(false)
+})
