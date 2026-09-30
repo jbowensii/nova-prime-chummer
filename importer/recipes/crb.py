@@ -450,7 +450,7 @@ def sample_runners(md, spell_names, pdf=None):
         if example:
             name, block = example
             s, rows = statblock.sample(block, rules, ID, name, "Character creation example", page,
-                                       f"Character creation example. CRB p.{page}.", updated, samples, spell_ids, cite="the core rulebook")
+                                       f"Character creation example. CRB p.{page}.", updated, samples, spell_ids)
             samples.append(s)
             sheets.append((page, block))
             report += [r for r in rows if r["kind"] in ("amp", "unmatched-item")]  # no pools, thresholds or Essence printed
@@ -462,8 +462,7 @@ def sample_runners(md, spell_names, pdf=None):
         block = statblock.crb_statblock(text)
         if pdf is not None and n <= len(pdf.pages):  # the Markdown's page n is the PDF's
             block.update({k: v for k, v in statblock.pdf_narrative(pdf.pages[n - 1]).items() if v})
-        s, rows = statblock.sample(block, rules, ID, name, role, page, f"{role}. CRB p.{page}.", updated, samples, spell_ids,
-                                   cite="the core rulebook")
+        s, rows = statblock.sample(block, rules, ID, name, role, page, f"{role}. CRB p.{page}.", updated, samples, spell_ids)
         samples.append(s)
         sheets.append((page, block))
         report += rows
@@ -493,7 +492,7 @@ def sheet_amps(sheets, rows, rules):
         for a in block["amps"]:
             if a["type"].lower() in statblock.METATYPES:
                 continue
-            atype, fx, _, vehicle, computed = statblock.map_amp(a, rules, mapper, True)
+            atype, fx, _, vehicle, computed = statblock.map_amp(a, rules, mapper, True, catalog=True)
             if atype in (None, "awakened", "contact") or bag(atype, a["name"]) in bags \
                     or statblock.catalog_id(a["name"], known.get(atype, {})):
                 continue

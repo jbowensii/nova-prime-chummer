@@ -123,8 +123,8 @@ Datajack 2, Unlocked Datajack 4). Merging any of them would be a judgement about
   disposition comes out as two, and cues are split at sentence ends).
 - **Lightning** p.85: the CHARACTER CREATION EXAMPLE box, prose; the GAME CONCEPTS margin tab is stripped.
 - Parity with the 13 hand-encoded runners: derive() gives the same attributes, pools, thresholds and Essence for all
-  13; every printed amp rating equals the engine's (Hercules' and Echo's Well-Stocked Closet included: the Armor 1
-  line stays text, so the rating is the printed 2 and the armor point sits on the Clothes item); every printed pool,
+  13; every printed amp rating is kept on the amp (where the engine rates it otherwise, Review says so: 0.5.6, the
+  runner is as printed); every printed pool,
   threshold and Essence the oracle lists is reproduced. Two printed pools roll with an attribute the rules don't
   give that pool (status "attribute", not tested): Casper's Network (medical) WIL, Mictlan's Stealth (lockpicking) LOG.
 

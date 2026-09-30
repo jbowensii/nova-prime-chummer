@@ -272,15 +272,18 @@ class PregensTest(unittest.TestCase):
     def test_amps(self):
         def fx(root):
             return {a.get("name"): ([e.get("ref") + (f":{e.get('param')}" if e.get("param") else "") for e in a.iter("effect")], a.get("vehicle"))
-                    for a in root.iter("amp")}
+                    for a in root.find("build").findall("amp")}  # not the snapshots' printed amps
         self.assertEqual(fx(self.xml["crb.test-rigger.xml"]), {
             "Toy Jack": (["vr-cold", "vr-hot"], None),
-            "Toy Arm with a Heavy pistol": (["rr-spec:ranged-weapons.pistols", "narrative:Integrated heavy pistol"], None),
+            "Toy Arm with a Heavy pistol": (["rr-spec:ranged-weapons.pistols"], None),  # "Integrated heavy pistol" stays text
             "Rusty Sedan": (["vehicle-armor"], "sedan"),
             "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
             "Old Pal, fixer": (["rr-spec:network.street"], None),
-            "Jolt": (["dv-plus", "rr-skill:close-combat", "negative"], None),
+            "Jolt": (["dv-plus", "rr-skill:close-combat"], None),  # its printed limitation isn't made a Negative effect
         })
+        # the printed ratings, on the snapshots
+        self.assertEqual([(a.get("printedRating"), a.get("source"), a.get("page")) for a in self.xml["crb.test-rigger.xml"].iter("snapshot")
+                          for a in a][:2], [("7", "CRB", "88"), ("7", "CRB", "88")])
         self.assertEqual(fx(self.xml["crb.spark.xml"]), {
             "Awakened": (["awk-sorcery", "awk-astral-projection"], None),
             "Owl mentor spirit": (["rr-spec:sorcery.illusion-spells"], None),
@@ -321,15 +324,17 @@ class PregensTest(unittest.TestCase):
             ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
             ("armor", "Armor jacket", "armored-clothes-coat"), ("weapon", "Traditional knife", "short-weapon"),
-            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None),
-            ("gear", "Sustaining focus", None)])  # the focus amp's item, bought too (CRB p.60)
+            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None)])
+        # the focus amp's item isn't printed: none is made up (Review says it needs one)
+        self.assertIsNone(next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"))
 
     def test_every_printed_number_is_a_report_row(self):
         rows = [r for r in self.res.report if r.get("sample")]
         self.assertEqual({r["sample"] for r in rows}, {"crb.spark", "crb.test-rigger"})
         self.assertEqual({r["kind"] for r in rows if r["sample"] == "crb.spark"}, {"amp"})  # the prose prints no pools
         self.assertEqual([(r["kind"], r.get("key") or r.get("name"), r.get("printed")) for r in rows if r["status"] != "ok"],
-                         [("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
+                         [("amp", "amp-2", 7), ("amp", "amp-6", 3),  # as printed, the rules rate them otherwise
+                          ("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
                           ("unmatched-item", "Fizz", None)])  # not in the book's spell boxes
         self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)
         self.assertEqual([(r["key"], r["printed"]) for r in rows if r["kind"] == "threshold"],

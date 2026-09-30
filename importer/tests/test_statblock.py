@@ -130,7 +130,7 @@ class CharacterTest(unittest.TestCase):
         self.ch, self.rows = statblock.to_character(statblock.parse_statblock(STAT), self.rules,
                                                     sid="pregens.test-face", name="Test Face", role="Made-up face",
                                                     origin="PREGENS", background="Made-up face. Test book p.5.",
-                                                    updated="2026-09-27T00:00:00.000Z", cite="the test book p.5")
+                                                    updated="2026-09-27T00:00:00.000Z", page=5)
         self.b = self.ch["build"]
 
     def test_attributes_are_the_majority_of_the_printed_pools(self):
@@ -150,39 +150,37 @@ class CharacterTest(unittest.TestCase):
         amps = {a["name"]: a for a in self.b["amps"]}
         self.assertNotIn("Natural Low-Light Vision", amps)  # a metatype trait, not an amp
         fx = lambda n: [(e["ref"], e.get("param"), e.get("value")) for e in amps[n]["effects"]]
-        self.assertEqual(fx("Big Grin"), [("rr-skill", "influence", None), ("negative", None, 1)])
-        self.assertEqual(fx("Toy Eyes"), [("grade-delta", None, None), ("rr-spec", "ranged-weapons.pistols", None),
-                                          ("narrative", "Glows in the dark", None)])
+        # as printed: the limitation ("first meeting only") stays part of the line, no Negative effect is made up
+        self.assertEqual(fx("Big Grin"), [("rr-skill", "influence", None)])
+        # a line no effect reads stays the amp's text, it isn't priced as a narrative effect to meet the printed rating
+        self.assertEqual(fx("Toy Eyes"), [("grade-delta", None, None), ("rr-spec", "ranged-weapons.pistols", None)])
+        self.assertEqual(amps["Toy Eyes"]["narrative"], "Glows in the dark")
         self.assertEqual(fx("Zap Pistol"), [("rr-spec", "ranged-weapons.pistols", None)])
         self.assertEqual((amps["Zap Pistol"]["type"], amps["Zap Pistol"]["linkedItem"]), ("equipment", "it-3"))
         self.assertEqual((amps["Pocket Buzzer"]["type"], amps["Pocket Buzzer"]["vehicle"]), ("vehicle", "microdrone"))
-        self.assertEqual(fx("Pocket Buzzer"), [("flying", None, None), ("narrative", "Beeps loudly", None)])
+        self.assertEqual(fx("Pocket Buzzer"), [("flying", None, None)])
+        # the printed rating, kept on the amp's snapshot for Review
+        self.assertEqual({n: (a["snapshot"]["printedRating"], a["snapshot"]["source"], a["snapshot"]["page"]) for n, a in amps.items()},
+                         {"Big Grin": (4, "PREGENS", 5), "Toy Eyes": (9, "PREGENS", 5), "Zap Pistol": (4, "PREGENS", 5),
+                          "Pocket Buzzer": (6, "PREGENS", 5), "Old Friend": (0, "PREGENS", 5)})
 
     def test_items(self):
         its = [(i["uid"], i["kind"], i["name"], i.get("armor"), i.get("catalogId")) for i in self.b["items"]]
         self.assertEqual(its, [("it-1", "armor", "Padded coat", 2, "armored-clothes"),  # the made-up armor with that rating
-                               ("it-2", "armor", "Padded coat and hat", 1, None),  # "(+1)": the hat, worn over the coat
+                               ("it-2", "armor", "Padded coat and hat", 3, "armored-clothes-coat"),  # "(+1)": the row's armor as printed
                                ("it-3", "weapon", "Zap Pistol", None, "heavy-pistol"),
                                ("it-4", "gear", "Fake SIN", None, None), ("it-5", "gear", "Commlink", None, None)])
         self.assertEqual((self.b["mainArmor"], self.b["altArmor"]), ("it-1", "it-2"))
-        self.assertEqual(self.b["items"][1]["over"], "it-1")
 
-    def test_book_overrides(self):
-        # what the made-up page prints against the guidelines: over budget, Stealth unrated, its own spec, 3/2/2 narrative
-        self.assertEqual([(o["code"], o["path"]) for o in self.ch["overrides"]], [
-            ("runner.basics", "skills.stealth"), ("custom.content", "skills.electronics"), ("narrative.count", "narrative"),
-            ("armor.stack", "items.it-2")])  # the hat worn over the coat
-        self.assertEqual(self.ch["overrides"][3]["note"], "As printed in the test book p.5: Padded coat and hat stacks on Padded coat.")
-        self.assertEqual(self.ch["overrides"][0]["note"], "As printed in the test book p.5: Stealth –.")
-        self.assertEqual(self.ch["overrides"][2]["note"], "As printed in the test book p.5: 3 Keywords, 2 Dispositions and 2 Cues.")
-
-    def test_over_the_budget_is_an_override_with_the_amount(self):
-        # the made-up runner level's budget is 455,000; 20 more amp points at the made-up 6,000 each go over it
-        spent = statblock.nuyen(self.ch, self.rules, 0)
-        extra = (455000 - spent) // 6000 + 2
-        o = statblock.book_overrides(self.ch, self.rules, extra, "the test book p.5")[0]
-        self.assertEqual(o, {"code": "budget.over", "path": "budget",
-                             "note": f"As printed in the test book p.5: {spent + extra * 6000 - 455000:,}¥ over the creation budget."})
+    def test_nothing_is_written_to_explain_or_approve_the_book(self):
+        # what the made-up page prints against the guidelines (Stealth unrated, its own spec, 3/2/2 narrative, amp ratings
+        # the rules price otherwise) is left for Review to show: no override, no drawback note, no starting or add-on marker
+        self.assertEqual(self.ch["overrides"], [])
+        self.assertFalse([i for i in self.b["items"] if {"starting", "over", "note", "price"} & set(i)])
+        self.assertFalse([e for a in self.b["amps"] for e in a["effects"] if e["ref"] == "negative" or e.get("note")])
+        xml = statblock.character_xml(self.ch)
+        for marker in ("<override", "starting=", "over=", "book drawback", "As printed in"):
+            self.assertNotIn(marker, xml)
 
     def test_equipment_amps_get_their_items(self):
         stat = STAT.replace("**Old Friend** (Contact) **0**", "**Bag of Tricks** (Equipment) **2**\nRR 1 on Stealth tests\n"
@@ -194,19 +192,22 @@ class CharacterTest(unittest.TestCase):
         ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
                                        origin="PREGENS", background="", updated="")
         items = {i["uid"]: i for i in ch["build"]["items"]}
-        link = {a["name"]: items[a["linkedItem"]]["name"] for a in ch["build"]["amps"] if a["type"] == "equipment"}
-        self.assertEqual(link, {"Zap Pistol": "Zap Pistol", "Bag of Tricks": "Satchel of tricks", "Tailored Wardrobe": "Clothes",
-                                "Hyper-phone": "Hyper-phone commlink"})  # the upgrade is on the free commlink
-        # the phone is the free commlink; the radio is part of the eyes
-        self.assertEqual([(i["name"], i.get("starting")) for i in items.values() if i["kind"] == "gear"],
-                         [("Fake SIN", "fake-sin"), ("Hyper-phone commlink", "commlink"), ("Satchel of tricks", None)])
+        link = {a["name"]: items[a["linkedItem"]]["name"] if a.get("linkedItem") else None for a in ch["build"]["amps"] if a["type"] == "equipment"}
+        # the wardrobe's "Armor 1" isn't read as the clothes: no printed item has its name, Review says it needs one
+        self.assertEqual(link, {"Zap Pistol": "Zap Pistol", "Bag of Tricks": "Satchel of tricks", "Tailored Wardrobe": None,
+                                "Hyper-phone": "Hyper-phone commlink"})
+        # every printed entry as printed: the branded phone isn't the free commlink, the radio the eyes have is bought too
+        self.assertEqual([i["name"] for i in items.values() if i["kind"] == "gear"],
+                         ["Fake SIN", "Hyper-phone commlink", "Integrated toy radio", "Satchel of tricks"])
+        self.assertFalse([i for i in items.values() if "starting" in i])
 
-    def test_an_amp_without_its_item_gets_one(self):
+    def test_an_amp_without_a_printed_item_gets_none(self):
         stat = STAT.replace("**Old Friend** (Contact) **0**", "**Pep Pills** (Equipment) **1**\nWakes you up\n**Old Friend** (Contact) **0**")
         ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
                                        origin="PREGENS", background="", updated="")
         pills = next(a for a in ch["build"]["amps"] if a["name"] == "Pep Pills")
-        self.assertEqual(next(i for i in ch["build"]["items"] if i["uid"] == pills["linkedItem"]), {"uid": "it-6", "kind": "gear", "name": "Pep Pills"})
+        self.assertNotIn("linkedItem", pills)
+        self.assertEqual(len(ch["build"]["items"]), 5)
 
     def test_weapons_without_a_type_and_repeated_rows(self):
         stat = STAT.replace("**Unarmed** 2 [OK/–/–/–]", "**Unarmed** 2 [OK/–/–/–]\n**Hidden knuckles** 4 [OK/–/–/–]\n"
@@ -216,10 +217,24 @@ class CharacterTest(unittest.TestCase):
         self.assertEqual([(i["name"], i.get("catalogId"), i.get("specialist")) for i in ch["build"]["items"] if i["kind"] == "weapon"],
                          [("Hidden knuckles", "short-weapon", None), ("Boom tube", "rocket-launcher", True), ("Zap Pistol", "heavy-pistol", None)])
 
-    def test_a_weapon_the_chassis_mounts_needs_no_enhanced_mount(self):
+    def test_a_runners_amp_is_as_printed_a_catalog_amp_meets_its_printed_rating(self):
         rules = statblock.load_rules()
         mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
-        drone = lambda *lines: statblock.map_amp({"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": list(lines)}, rules, mapper, True)  # noqa: E731
+        grin = {"name": "Grin", "type": "Quality", "rating": 1, "count": 1, "lines": ["RR 1 on Influence tests (first meeting only)."]}
+        self.assertEqual([f[0] for f in statblock.map_amp(grin, rules, mapper, False)[1]], ["rr-skill"])
+        self.assertIn("negative", [f[0] for f in statblock.map_amp(grin, rules, mapper, False, catalog=True)[1]])
+        # a deck printed as a Quality stays a Quality on the runner (Review flags its deck effects); the catalog's is a deck
+        deck = {"name": "Old deck", "type": "Quality", "rating": 3, "count": 1, "lines": ["Firewall 2 – Attack 1"]}
+        self.assertEqual(statblock.map_amp(deck, rules, mapper, False)[0], "quality")
+        self.assertEqual(statblock.map_amp(deck, rules, mapper, False, catalog=True)[0], "cyberdeck")
+        # a mounted weapon on a runner's drone is the effect the line reads, whatever the chassis mounts
+        mounted = {"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": ["Pilot 5, Body 2, Handling 8, Speed 3, Armor 0", "Integrated zap SMG"]}
+        self.assertIn("weapon-mount", [f[0] for f in statblock.map_amp(mounted, rules, mapper, True)[1]])
+
+    def test_a_weapon_the_chassis_mounts_needs_no_enhanced_mount_on_a_catalog_amp(self):
+        rules = statblock.load_rules()
+        mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
+        drone = lambda *lines: statblock.map_amp({"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": list(lines)}, rules, mapper, True, catalog=True)  # noqa: E731
         small = "Pilot 5, Body 2, Handling 8, Speed 3, Armor 0"
         self.assertNotIn("weapon-mount", [f[0] for f in drone(small, "Integrated zap SMG")[1]])  # the made-up "light guns" mount takes it
         self.assertIn("weapon-mount", [f[0] for f in drone(small, "Turret-mounted zap SMG")[1]])  # a turret isn't the chassis' own
@@ -241,7 +256,8 @@ class CharacterTest(unittest.TestCase):
         self.assertEqual(rows[("pool", "perception@log")]["status"], "ok")
         self.assertEqual((rows[("threshold", "physicalAlt")]["printed"], rows[("threshold", "physicalAlt")]["status"]), (5, "ok"))
         self.assertEqual((rows[("essence", None)]["printed"], rows[("essence", None)]["status"]), (5, "ok"))
-        self.assertEqual(rows[("amp", "amp-4")]["status"], "ok")  # the drone: 1 + Flying + one narrative
+        drone = rows[("amp", "amp-4")]  # the drone: its "Beeps loudly" is text, not a narrative effect priced to meet the book
+        self.assertEqual((drone["printed"], drone["status"]), (6, "mismatch"))
         friend = rows[("amp", "amp-5")]
         self.assertEqual((friend["printed"], friend["computed"], friend["status"]), (0, 4, "mismatch"))
         self.assertTrue(all(r["sample"] == "pregens.test-face" for r in self.rows))

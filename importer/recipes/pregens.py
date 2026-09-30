@@ -31,7 +31,7 @@ def extract(md, ctx=None):
             continue
         name, role = toc.get(page) or _story_title(pages.get(page - 1, ""))
         s, rows = statblock.sample(statblock.parse_statblock(text), rules, ID, name, role, page,
-                                   f"{role}. {NAME} p.{page}.", updated, samples, cite="the Pregen booklet")
+                                   f"{role}. {NAME} p.{page}.", updated, samples)
         samples.append(s)
         report += rows
     return Result(files={}, texts=None, samples=samples, report=report,
