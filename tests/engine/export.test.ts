@@ -111,12 +111,38 @@ describe('export: books', () => {
 describe('export: the schema', () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false })
   const check = ajv.compile(JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')))
+  const file = (f: unknown) => JSON.parse(JSON.stringify(f)) // as written to disk (undefined keys gone)
+  const runners = () => file(exportRunners(cat, [rush()], OPTS))
+  const books = () => file(exportBooks(cat, [...cat.sources.keys()], [{ name: 'X', text: 'Y' }], OPTS))
   test('runners and books files are valid', () => {
-    for (const f of [exportRunners(cat, [rush()], OPTS), exportBooks(cat, [...cat.sources.keys()], [{ name: 'X', text: 'Y' }], OPTS)])
-      expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    for (const f of [runners(), books()]) expect(check(f), JSON.stringify(check.errors)).toBe(true)
   })
-  test('a wrong format or a newer version is not', () => {
-    expect(check({ ...exportRunners(cat, [], OPTS), format: 'something-else' })).toBe(false)
-    expect(check({ ...exportRunners(cat, [], OPTS), version: 2 })).toBe(false)
+  test('the example in the format document is valid', () => {
+    const md = readFileSync('docs/export-format.md', 'utf8')
+    const example = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(md)![1])
+    expect(check(example), JSON.stringify(check.errors)).toBe(true)
+  })
+  test('a wrong format, version or kind is not', () => {
+    expect(check({ ...runners(), format: 'something-else' })).toBe(false)
+    expect(check({ ...runners(), version: 2 })).toBe(false)
+    expect(check({ ...runners(), kind: 'characters' })).toBe(false)
+  })
+  test('kind runners without runners is not', () => {
+    const { runners: _r, ...rest } = runners()
+    expect(check(rest)).toBe(false)
+  })
+  test('a bad range value or a mistyped field is not', () => {
+    const f = runners(), ranges = { melee: 'none', short: 'ok', medium: 'ok', long: 'disadvantage' }
+    f.runners[0].items.push({ uid: 'w', kind: 'weapon', name: 'W', canon: false, price: 0,
+      weapon: { dv: '4P', dvText: '4P', ranges, specialist: false, ammo: [] } })
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    f.runners[0].items.at(-1).weapon.ranges.short = 'far'
+    expect(check(f)).toBe(false)
+    const g = runners()
+    g.runners[0].monitor.light = 'four'
+    expect(check(g)).toBe(false)
+    const h = books()
+    delete h.books[0].amps[0]?.mod
+    if (h.books[0].amps[0]) expect(check(h)).toBe(false)
   })
 })
