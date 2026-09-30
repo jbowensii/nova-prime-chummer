@@ -141,8 +141,12 @@ describe('export: the schema', () => {
     const g = runners()
     g.runners[0].monitor.light = 'four'
     expect(check(g)).toBe(false)
-    const h = books()
-    delete h.books[0].amps[0]?.mod
-    if (h.books[0].amps[0]) expect(check(h)).toBe(false)
+    const h = books(), amp = h.books.find((b: { amps: unknown[] }) => b.amps.length)!.amps[0]
+    expect(check(h), JSON.stringify(check.errors)).toBe(true)
+    amp.printedRating = "two"
+    expect(check(h)).toBe(false)
+    amp.printedRating = 2
+    delete amp.mod
+    expect(check(h)).toBe(false)
   })
 })
