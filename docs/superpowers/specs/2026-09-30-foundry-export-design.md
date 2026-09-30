@@ -65,7 +65,7 @@ Built from `currentBuild(ch)` (a finalized runner's build is not `ch.build`) and
   weapon?: { dv, dvText, ranges: { melee, short, medium, long }, specialist, ammo },
   armor?: { value, over }, description? }` — ranges as `"ok" | "disadvantage" | "none"`
 - `vehicles[]` `{ uid, name, chassis, pilot, body, handling, speed, flyingSpeed, armor, mount, flying,
-  thresholds, monitor, weapons: [<item uid>], amp: <amp uid> }`
+  thresholds, monitor }` (a vehicle's weapons are in its `mount` text; Chummer doesn't model them as items)
 - `monitor` `{ light, serious, incap }`, `thresholds`, `armor` `{ main, alt }`, `initiative`, `pools[]`
 - `narrative` `{ keywords[5], dispositions[4], cues[4] }`, `background`, `notes`
 - `nuyen` `{ balance }`, `ledger[]` `{ at, type, summary, amount }` (a summary, not the raw events)
@@ -84,8 +84,8 @@ text? }`. Descriptions only when included.
   opts)` return the objects above. Unit-tested against the schema and the made-up books in
   `tests/fixtures/mini`.
 - **UI**
-  - Runner editor: **Export for Foundry**. Runner list: a multi-select with **Export for Foundry**, and on a
-    campaign page (GMs) **Export campaign for Foundry**.
+  - Runner editor: **Export for Foundry**. Runner list: **Export for Foundry…** opens a dialog to tick runners,
+    with **Tick a campaign** to pick a whole campaign's runners at once (GMs).
   - Game data page (admin and editors): **Export book data for Foundry**: ticked books (Canon / Non-canon),
     **Include book descriptions** (on) with the sharing note, then Download.
 - **Server**: book data is built in the browser from the catalog the signed-in user already reads, so the rule
