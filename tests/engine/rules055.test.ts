@@ -109,3 +109,13 @@ test('a GM price below 0 counts as 0 and is an error on Review', () => {
   expect(price(cat, ch).gear).toBe(0)
   expect(validate(cat, ch).find(v => v.code === 'item.negativePrice')?.severity).toBe('error')
 })
+
+test('a SINner given any effect, a narrative one too, is priced like any Quality and takes the first-Quality slot', () => {
+  const sin = { ...amp('sin', 'quality', []), name: 'SINner' }
+  const told = { ...sin, effects: [{ ref: 'narrative', param: 'a story' }] }
+  const lucky = amp('lucky', 'quality', [])
+  expect([isSinner(sin, cat), isSinner(told, cat)]).toEqual([true, false])
+  expect(price(cat, runner(told, lucky)).amps).toBeGreaterThan(price(cat, runner(sin, lucky)).amps)
+  // the catalog entry with exactly its own effects stays free
+  expect(isSinner({ ...amp('s2', 'quality', []), catalogId: 'test2.sinner', name: 'Paper citizen' }, cat)).toBe(true)
+})

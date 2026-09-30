@@ -95,12 +95,13 @@ export interface Build { attributes: Record<AttrId, number>; skills: SkillEntry[
 /** One thing a finalized runner's edit changed (engine/career.ts diffBuild). from absent: added; to absent: removed. */
 export interface Change { key: string; label: string; from?: string; to?: string }
 /** The ledger. finalize: "Creation finished · N¥ left"; change: an edit after Finalize, logged automatically, cost =
- *  price difference (negative: refunded); earn, note, void. advance to knowledge-add: how runners finalized before
+ *  what it charged (negative: refunded). prices: what each thing (price.ts priceParts keys) was paid, as of that entry:
+ *  the whole build on finalize, the things that change touched on change; a removal refunds that. earn, note, void. advance to knowledge-add: how runners finalized before
  *  0.5.5 recorded changes, kept as history (career.ts settle). */
 export type CareerEvent = { id: string; at: string } & (
   | { type: 'earn'; amount: number; run: string; date: string }
-  | { type: 'finalize'; remaining: number }
-  | { type: 'change'; changes: Change[]; cost: number }
+  | { type: 'finalize'; remaining: number; prices?: Record<string, number> }
+  | { type: 'change'; changes: Change[]; cost: number; prices?: Record<string, number> }
   | { type: 'advance'; path: string; from: number; to: number; cost: number }
   | { type: 'buy'; item: ItemEntry; cost: number }
   | { type: 'sell'; itemUid: string }

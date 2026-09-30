@@ -88,8 +88,8 @@ will convert from this format; the format itself is ours and stays stable.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
   "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
   takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the
-  catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with narrative effects only:
-  another amp renamed SINner, or a SINner given other effects, is priced like any amp. The box works before and after
+  catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with no effects at all:
+  another amp renamed SINner, or a SINner given any other effect (a narrative one too), is priced like any amp and counts for the first-Quality rule. The box works before and after
   Finalize (after, the change is logged). The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
   or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking
   removes the item and every SINner quality (the app asks first about one the player added).
@@ -99,8 +99,10 @@ will convert from this format; the format itself is ours and stays stable.
   event with the same `remaining`. Nothing is locked afterwards: `<build>` is always the runner as it stands, and
   every change to it appends a `change` event (the app writes these itself). Each `<change>` names one thing by `key`
   (`attr:agi`, `skill:stealth`, `spec:<skill>:<spec>`, `knowledge:<row key>`, `amp:<uid>`, `item:<uid>`); no `from`
-  means added, no `to` means removed. `cost` is the build's price difference at that moment: negative when something
-  was removed or lowered (the book price comes back). Consecutive changes to one thing within ten minutes share one
+  means added, no `to` means removed. `cost` is what the change charged: today's price for anything added or
+  raised; for anything removed, minus what was paid for it, and for a lowering, minus that share. What was paid is
+  kept as `<price key="…" value="…"/>` children: every thing's price on the `finalize` event, the things a `change`
+  touched on it (keys as in `<change>`, `skill:<id>` for the points). Consecutive changes to one thing within ten minutes share one
   event. The balance is the ledger's running total: the last `finalize` event's `remaining`, + each non-voided `earn`,
   − each later recorded `cost`. Prices are the ones recorded, so a later catalog or price change never moves it.
 - **`carry`** (a reopened runner only): reopening creation (only while no earnings are recorded) drops `finalizedAt`

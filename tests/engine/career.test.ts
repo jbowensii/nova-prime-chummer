@@ -216,3 +216,22 @@ test('fuzz: whatever is added, removed, changed or renamed after Finalize, balan
     }
   }
 })
+
+test('removing gives back what was paid, not today’s price: a price raise can’t be turned into nuyen', () => {
+  let ch = finalize(cat, runner()) // the knife was bought at creation at the standard weapon price
+  ch = edit(ch, d => { d.build.items.push({ uid: 'rope', kind: 'gear', name: 'Made-up rope' }) }) // after Finalize
+  const start = balance(cat, ch)
+  const dearer = { ...cat, pricing: { ...cat.pricing, weaponStandard: P.weaponStandard * 3, equipment: P.equipment * 3, skillLow: P.skillLow * 3 } }
+  const change = (c: typeof cat, x: Character, fn: (d: Character) => void) => { const d = structuredClone(x); fn(d); return logChange(c, x, d) }
+  // remove both: the creation price and the price paid after Finalize come back
+  let y = change(dearer, ch, d => { d.build.items = d.build.items.filter(i => i.uid !== 'knife' && i.uid !== 'rope') })
+  expect(balance(dearer, y)).toBe(start + P.weaponStandard + P.equipment)
+  // add them again at today's price: no profit
+  y = change(dearer, y, d => { d.build.items.push({ uid: 'knife', kind: 'weapon', name: 'Made-up knife' }, { uid: 'rope', kind: 'gear', name: 'Made-up rope' }) })
+  expect(balance(dearer, y)).toBe(start - 2 * P.weaponStandard - 2 * P.equipment)
+  // lowering a skill gives back the share paid (2 points bought at creation at the old price)
+  y = change(dearer, ch, d => { skill(d, 'stealth').rating = 1 })
+  expect(balance(dearer, y)).toBe(start + P.skillLow)
+  const back = xmlToCharacter(characterToXml(y))
+  expect(back.ok && back.character.career).toEqual(y.career)
+})

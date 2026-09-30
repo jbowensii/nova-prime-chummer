@@ -6,7 +6,7 @@
 import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, ItemEntry, KnowledgeEntry } from '../model/types'
 import { ATTRS, newId } from '../model/types'
 import { ampCtx, ampChangeCost, ampRating } from './amps'
-import { attrCost, attrMax, itemCost, price, skillCost } from './price'
+import { attrCost, attrMax, itemCost, partPrices, price, skillCost } from './price'
 
 type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, 'id' | 'at'> : never) : never
 const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISOString(), ...e }) as CareerEvent
@@ -79,8 +79,10 @@ export function ledgerRunning(ch: Character): { e: CareerEvent; running: number;
 export function settle(c: Catalog, ch: Character): Character {
   if (!legacy(ch)) return ch
   const remaining = ch.finalRemaining ?? price(c, ch).remaining
-  return { ...ch, build: currentBuild(ch), finalRemaining: remaining,
-    career: [{ id: 'finalized', at: ch.finalizedAt!, type: 'finalize', remaining }, ...ch.career] }
+  const next = { ...ch, build: currentBuild(ch), finalRemaining: remaining }
+  // what each thing was paid isn't in the old ledger: today's prices stand for it
+  const prices = Object.fromEntries(partPrices(c, next))
+  return { ...next, career: [{ id: 'finalized', at: ch.finalizedAt!, type: 'finalize', remaining, prices }, ...ch.career] }
 }
 
 /** Career nuyen: the ledger's running balance (what creation left, + earnings, - each change's recorded price). A
@@ -96,7 +98,16 @@ export function finalize(c: Catalog, ch: Character): Character {
   const at = new Date().toISOString()
   const { carry: _, ...rest } = ch
   return { ...rest, finalizedAt: at, finalRemaining: remaining,
-    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining }] }
+    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining, prices: Object.fromEntries(partPrices(c, ch)) }] }
+}
+
+/** What each thing in the build was paid (price.ts priceParts keys): the last Finalize's prices, updated by every
+ *  change since. A thing not in it (from a file before these were kept) goes by today's price. */
+export function recordedPrices(ch: Character): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const e of sinceFinalize(ch, true)) if ((e.type === 'finalize' || e.type === 'change') && e.prices)
+    for (const [k, v] of Object.entries(e.prices)) m.set(k, v)
+  return m
 }
 
 /** Back to creation: only while no earnings are recorded. The ledger keeps its entries, with a note. `carry` keeps
@@ -110,10 +121,10 @@ export function reopen(c: Catalog, ch: Character): Character {
   return { ...rest, ...(carry ? { carry } : {}), career: [...s.career, stamp({ type: 'note', text: 'Creation reopened' })] } as Character
 }
 
-/** Entries since the last Finalize (a reopened runner's earlier log is history). */
-export function sinceFinalize(ch: Character): CareerEvent[] {
+/** Entries since the last Finalize (a reopened runner's earlier log is history); with withIt, that entry too. */
+export function sinceFinalize(ch: Character, withIt = false): CareerEvent[] {
   const at = ch.career.map(e => e.type).lastIndexOf('finalize')
-  return ch.career.slice(at + 1)
+  return ch.career.slice(withIt ? Math.max(0, at) : at + 1)
 }
 
 // ---- the change log ----
@@ -179,22 +190,33 @@ const MERGE_MS = 10 * 60 * 1000
 export function logChange(c: Catalog, before: Character, after: Character): Character {
   if (!before.finalizedAt || !after.finalizedAt) return after
   const lines = diffBuild(c, before.build, after.build)
-  const cost = price(c, after).total - price(c, before).total
-  if (!lines.length && !cost) return after
+  // each thing whose price moved: an addition or a raise costs today's price; a removal gives back what was paid for
+  // it, a lowering that share of it (recordedPrices), so a price changed since can't be turned into nuyen
+  const paid = recordedPrices(before), was = partPrices(c, before), now = partPrices(c, after)
+  const prices: Record<string, number> = {}
+  let cost = 0
+  for (const k of new Set([...was.keys(), ...now.keys()])) {
+    const w = was.get(k), n = now.get(k), r = paid.get(k) ?? w ?? 0
+    if (w === n) continue
+    const next = n === undefined ? 0 : w === undefined ? n : n >= w ? r + n - w : Math.round(r * n / w)
+    cost += next - (w === undefined ? 0 : r)
+    prices[k] = next
+  }
+  if (!lines.length && !cost && !Object.keys(prices).length) return after
   if (!lines.length) lines.push({ key: 'price', label: 'Build price', from: '', to: '' })
-  const last = after.career.at(-1), now = new Date()
+  const last = after.career.at(-1)
   if (lines.length === 1 && last?.type === 'change' && last.changes.length === 1 && last.changes[0].key === lines[0].key
-      && now.getTime() - Date.parse(last.at) < MERGE_MS && !voidedIds(after).has(last.id)) {
+      && Date.now() - Date.parse(last.at) < MERGE_MS && !voidedIds(after).has(last.id)) {
     const first = last.changes[0].from
     const merged: Change = { ...lines[0] }
     if (first === undefined) delete merged.from; else merged.from = first
     const total = last.cost + cost
     const gone = merged.from === merged.to // back where it was, or added and removed again
     const career = after.career.slice(0, -1)
-    if (!(gone && !total)) career.push({ ...last, at: now.toISOString(), changes: [merged], cost: total })
+    if (!(gone && !total)) career.push({ ...last, at: new Date().toISOString(), changes: [merged], cost: total, prices: { ...last.prices, ...prices } })
     return { ...after, career }
   }
-  return { ...after, career: [...after.career, stamp({ type: 'change', changes: lines, cost })] }
+  return { ...after, career: [...after.career, stamp({ type: 'change', changes: lines, cost, prices })] }
 }
 
 /** Qualities added after Finalize (they need a major event and the GM, CRB p.58). */

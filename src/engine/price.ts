@@ -56,23 +56,39 @@ export const nativeLanguage = (b: Build) => b.knowledge.find(k => k.native && k.
 export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) =>
   k !== nativeLanguage(b) && (!k.from || slotLapse(b, keywords, k) !== null)
 
+/** What each thing in a build costs, keyed as the ledger names it (career.ts diffBuild): attr:<a>, skill:<id> (its
+ *  points), spec:<skill>:<spec>, knowledge:<row key>, amp:<uid>, item:<uid>. The parts add up to the build's price. */
+export function priceParts(c: Catalog, b: Build, metatype: string, keywords: string[] = [], negativeOk = new Set<string>()): { key: string; cat: keyof Breakdown; price: number }[] {
+  const p = c.pricing
+  const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
+  return [
+    ...ATTRS.map(a => ({ key: `attr:${a}`, cat: 'attributes' as const, price: attrCost(p, 0, b.attributes[a] ?? 0, attrMax(c, metatype, a)) })),
+    ...b.skills.flatMap(sk => [{ key: `skill:${sk.id}`, cat: 'skills' as const, price: skillCost(p, 0, sk.rating) },
+      ...sk.specs.map(sp => ({ key: `spec:${sk.id}:${sp}`, cat: 'skills' as const, price: p.spec }))]),
+    ...b.knowledge.map(k => ({ key: `knowledge:${k.from ?? k.id ?? `${k.kind}:${k.name}`}`, cat: 'skills' as const, price: knowledgePaid(b, keywords, k) ? p.knowledge : 0 })),
+    ...b.amps.map(a => ({ key: `amp:${a.uid}`, cat: 'amps' as const, price: ampRating(c, a, { ...ampCtx(b, a, c), negativeOk: negativeOk.has(a.uid) }) * p.ampPoint })),
+    ...b.items.map(i => ({ key: `item:${i.uid}`, cat: magic(i) ? 'spells' as const : 'gear' as const, price: itemCost(p, i) })),
+  ]
+}
+
 /** negativeOk: uids of amps the GM approved below rating 0 (validate.ts amp.negativeRating) */
 export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: string[] = [], negativeOk = new Set<string>()): Breakdown {
-  const p = c.pricing
-  const attributes = ATTRS.reduce((s, a) => s + attrCost(p, 0, b.attributes[a] ?? 0, attrMax(c, metatype, a)), 0)
-  const skills = b.skills.reduce((s, sk) => s + skillCost(p, 0, sk.rating) + sk.specs.length * p.spec, 0)
-    + b.knowledge.filter(k => knowledgePaid(b, keywords, k)).length * p.knowledge
-  const amps = b.amps.reduce((s, a) => s + ampRating(c, a, { ...ampCtx(b, a, c), negativeOk: negativeOk.has(a.uid) }) * p.ampPoint, 0)
-  const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
-  const gear = b.items.filter(i => !magic(i)).reduce((s, i) => s + itemCost(p, i), 0)
-  const spells = b.items.filter(magic).reduce((s, i) => s + itemCost(p, i), 0)
-  return { attributes, skills, amps, gear, spells }
+  const out: Breakdown = { attributes: 0, skills: 0, amps: 0, gear: 0, spells: 0 }
+  for (const x of priceParts(c, b, metatype, keywords, negativeOk)) out[x.cat] += x.price
+  return out
+}
+
+export const gmNegativeOk = (ch: Character) => new Set((ch.overrides ?? []).filter(o => o.code === 'amp.negativeRating').map(o => o.path.replace(/^amps\./, '')))
+/** A character's priceParts as key -> price (keys that repeat add up). */
+export function partPrices(c: Catalog, ch: Character): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const x of priceParts(c, ch.build, ch.identity.metatype, ch.narrative.keywords, gmNegativeOk(ch))) m.set(x.key, (m.get(x.key) ?? 0) + x.price)
+  return m
 }
 
 /** Price of the build against the level-of-play budget (+ a reopened runner's carry). */
 export function price(c: Catalog, ch: Character): PriceBreakdown {
-  const ok = new Set((ch.overrides ?? []).filter(o => o.code === 'amp.negativeRating').map(o => o.path.replace(/^amps\./, '')))
-  const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, ok)
+  const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, gmNegativeOk(ch))
   const total = b.attributes + b.skills + b.amps + b.gear + b.spells
   const budget = c.levels.get(ch.level)?.nuyen ?? 0
   // a reopened runner's carry (career.ts reopen): what its earlier ledger held beyond budget - build price

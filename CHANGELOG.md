@@ -18,6 +18,10 @@
 - Reopening creation keeps what the balance held beyond budget minus build
   (an old sale that wasn't refunded, a price changed since), so reopening and
   finalizing again never makes or loses nuyen.
+- Removing something after Finalize gives back what was paid for it (at
+  creation or when it was added), not today's price; lowering gives back that
+  share. A price raised since can't be turned into nuyen by removing and adding
+  it again.
 - **Reopen creation** is on the Review tab, next to Finalize, until earnings
   are recorded. The Review tab also shows the balance once finalized.
 - Runners finalized before 0.5.5 convert when you open them. Their recorded
@@ -45,7 +49,8 @@
   always free and never counts as the first Quality, whether the box added it
   or you did. Existing runners price it that way when opened (a finalized
   runner's balance doesn't move). Only the SINner itself counts: another amp
-  renamed SINner, or a SINner given other effects, costs what it rates.
+  renamed SINner, or a SINner given any effect (a narrative one too), costs
+  what it rates and counts for the first-Quality rule.
 - A GM-set item price below 0 counts as 0 (Review flags it); the price box
   takes no negative value.
 - Page references: levels, budget and starting gear CRB p.85, packages p.86,

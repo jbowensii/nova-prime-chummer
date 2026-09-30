@@ -37,12 +37,15 @@ const ampXml = (a: AmpEntry) => el('amp', { uid: a.uid, type: a.type, name: a.na
 const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price, starting: i.starting, note: i.note, over: i.over },
   i.snapshot ? `<snapshot>${catalogItemXml(i.snapshot)}</snapshot>` : '')
 
+const pricesXml = (p?: Record<string, number>) => Object.entries(p ?? {}).map(([key, value]) => el('price', { key, value })).join('')
+const readPrices = (e: Element) => kids(e, 'price').length ? Object.fromEntries(kids(e, 'price').map(p => [p.getAttribute('key') ?? '', Number(p.getAttribute('value') ?? 0)])) : undefined
+
 function eventXml(e: CareerEvent): string {
   const base = { id: e.id, at: e.at, type: e.type }
   switch (e.type) {
     case 'earn': return el('event', { ...base, amount: e.amount, run: e.run, date: e.date })
-    case 'finalize': return el('event', { ...base, remaining: e.remaining })
-    case 'change': return el('event', { ...base, cost: e.cost }, e.changes.map(x => el('change', { key: x.key, label: x.label, from: x.from, to: x.to })).join(''))
+    case 'finalize': return el('event', { ...base, remaining: e.remaining }, pricesXml(e.prices))
+    case 'change': return el('event', { ...base, cost: e.cost }, e.changes.map(x => el('change', { key: x.key, label: x.label, from: x.from, to: x.to })).join('') + pricesXml(e.prices))
     case 'advance': return el('event', { ...base, path: e.path, from: e.from, to: e.to, cost: e.cost })
     case 'buy': return el('event', { ...base, cost: e.cost }, itemXml(e.item))
     case 'sell': return el('event', { ...base, itemUid: e.itemUid })
@@ -119,8 +122,8 @@ function readEvent(e: Element): CareerEvent {
   const type = e.getAttribute('type')
   switch (type) {
     case 'earn': return { ...base, type, amount: n(e, 'amount')!, run: s(e, 'run') ?? '', date: s(e, 'date') ?? '' }
-    case 'finalize': return { ...base, type, remaining: n(e, 'remaining') ?? 0 }
-    case 'change': return { ...base, type, cost: n(e, 'cost') ?? 0, changes: kids(e, 'change').map(x => {
+    case 'finalize': return { ...base, type, remaining: n(e, 'remaining') ?? 0, ...(readPrices(e) && { prices: readPrices(e) }) }
+    case 'change': return { ...base, type, cost: n(e, 'cost') ?? 0, ...(readPrices(e) && { prices: readPrices(e) }), changes: kids(e, 'change').map(x => {
       const out: Change = { key: s(x, 'key') ?? '', label: s(x, 'label') ?? '' }
       if (s(x, 'from') !== undefined) out.from = s(x, 'from')
       if (s(x, 'to') !== undefined) out.to = s(x, 'to')
