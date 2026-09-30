@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { appendEvent, balance, derive, price, rescope, validate } from '../engine'
 import type { CareerEvent, Catalog, Character } from '../model/types'
 import { AccountMenu, session, track, useMe } from './auth'
-import { fmt, Modal } from './bits'
+import { fmt, Modal, StateBadge } from './bits'
 import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { useRepo } from './repo'
@@ -22,6 +22,18 @@ import { AskButton, AskRules } from './AskRules'
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
   ['gear', 'Gear & spells'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
 
+type SaveStatus = { state: 'saved'; at?: string } | { state: 'saving' } | { state: 'failed'; error: string }
+
+function SaveLine({ status, onRetry }: { status: SaveStatus; onRetry: () => void }) {
+  return (
+    <span className={`save-status ${status.state}`} role="status" aria-label="Save status">
+      {status.state === 'saving' && 'Saving…'}
+      {status.state === 'saved' && `All changes saved${status.at ? ` · ${new Date(status.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+      {status.state === 'failed' && <>Not saved — {status.error} <button className="btn small" onClick={onRetry}>Retry</button></>}
+    </span>
+  )
+}
+
 interface Pending { ev: CareerEvent; summary: string; cost: number; after: number; resolve: (ok: boolean) => void }
 
 export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string }) {
@@ -31,15 +43,20 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const [owner, setOwner] = useState<string | null>(null)
   const [ch, setCh] = useState<Character | undefined>()
   const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const hist = useRef<{ past: Character[]; future: Character[] }>({ past: [], future: [] })
   const [, bump] = useState(0)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  // what the bar says: saved (when), saving, or failed (the server's reason, with Retry)
+  const [status, setStatus] = useState<SaveStatus>({ state: 'saved' })
   const [pending, setPending] = useState<Pending | null>(null)
   const [conflict, setConflict] = useState<{ rev: number; file: string; updatedAt?: string } | null>(null)
   const [copyName, setCopyName] = useState('')
   // saving: one request at a time; the latest unsaved state follows when it finishes
   const sync = useRef({ rev: undefined as number | undefined, loaded: undefined as Character | undefined, saved: undefined as Character | undefined,
-    latest: undefined as Character | undefined, busy: false, queued: undefined as Character | undefined, paused: false })
+    latest: undefined as Character | undefined, busy: false, queued: undefined as Character | undefined, paused: false,
+    run: Promise.resolve(), failed: false })
+  /** changed since it was loaded or last saved, or the last save failed: worth a warning before the page goes */
+  const unsaved = () => { const st = sync.current; return st.failed || (!!st.latest && st.latest !== st.loaded && st.latest !== st.saved) }
 
   // fetched once per runner: a catalog reload (a catalog edit saved) must not replace unsaved or conflicted state
   const cat = useRef(c)
@@ -53,28 +70,39 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       setOwner(theirs ? s!.ownerName ?? s!.owner! : null)
       // old runners can reference unscoped catalog ids; remap them, saved normally when they change
       setCh(s && rescope(cat.current, s.ch))
+      if (s) setStatus({ state: 'saved', at: s.ch.updatedAt })
       setLoaded(true)
-    }, e => { setSaveError(String(e)); setLoaded(true) })
+    }, e => { setLoadError((e as Error).message ?? String(e)); setLoaded(true) })
   }, [repo, id])
   useEffect(() => setCh(x => x && rescope(c, x)), [c]) // same object when nothing needs remapping
 
   // the returned promise covers the queued follow-up too; sign-out waits for it (auth.tsx track)
   const persist = (next: Character, keepalive = false): Promise<void> => {
     const st = sync.current
-    if (st.paused || session.held || next === st.saved) return Promise.resolve()
-    if (st.busy) { st.queued = next; return Promise.resolve() }
+    if (st.paused || session.held || next === st.saved) return st.busy ? st.run : Promise.resolve()
+    if (st.busy) { st.queued = next; return st.run }
     st.busy = true
-    return track((async () => {
+    setStatus({ state: 'saving' })
+    return st.run = track((async () => {
       const r = await repo.save(next, st.rev, { keepalive })
       st.busy = false
-      if (r.ok) { st.rev = r.rev; st.saved = next; setSaveError(null) }
-      else if (r.conflict) { st.paused = true; setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
-      else if (!session.held) setSaveError(r.error ?? 'Saving failed.') // a 401: the sign-in form is up, it's sent once back
+      st.failed = !r.ok && !r.conflict
+      if (r.ok) { st.rev = r.rev; st.saved = next; setStatus({ state: 'saved', at: new Date().toISOString() }) }
+      else if (r.conflict) { st.paused = true; setStatus({ state: 'saved' }); setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
+      else setStatus({ state: 'failed', error: session.held ? 'Signed out. Sign back in and it’s sent.' : r.error ?? 'Saving failed.' })
       const q = st.queued
       st.queued = undefined
       if (q && !st.paused) await persist(q)
     })())
   }
+  /** Save now: the latest state, through the same path as the autosave. True when everything is saved. */
+  const saveNow = async () => {
+    const st = sync.current
+    if (st.latest && st.latest !== st.loaded) await persist(st.latest)
+    await st.run
+    return !unsaved()
+  }
+  const saveAndClose = async () => { if (await saveNow()) location.hash = '#/' }
 
   useEffect(() => {
     sync.current.latest = ch
@@ -92,7 +120,26 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     addEventListener('pagehide', flush)
     addEventListener('ca2-signed-in', flush) // the same account signed back in after the session ended: send what didn't save
     addEventListener('ca2-leaving', flush) // signing out: send it before the session ends
-    return () => { for (const e of ['pagehide', 'ca2-signed-in', 'ca2-leaving']) removeEventListener(e, flush); flush() }
+    // closing or reloading the tab while a change is unsent or failed: the browser asks first
+    const warn = (e: BeforeUnloadEvent) => { if (unsaved() && !sync.current.paused) e.preventDefault() }
+    // a link out of this runner: send the change first; if it can't be saved, ask before leaving it behind
+    const leave = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.('a[href^="#"]') as HTMLAnchorElement | null
+      if (!a || e.defaultPrevented || a.getAttribute('href')!.startsWith(`#/c/${id}/`) || !unsaved() || sync.current.paused) return
+      e.preventDefault()
+      const to = a.getAttribute('href')!
+      void saveNow().then(ok => {
+        if (ok || confirm('This runner’s latest changes aren’t saved. Leave anyway and lose them?')) location.hash = to
+      })
+    }
+    addEventListener('beforeunload', warn)
+    document.addEventListener('click', leave, true)
+    return () => {
+      for (const e of ['pagehide', 'ca2-signed-in', 'ca2-leaving']) removeEventListener(e, flush)
+      removeEventListener('beforeunload', warn)
+      document.removeEventListener('click', leave, true)
+      flush()
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const resolveConflict = async (how: 'overwrite' | 'copy' | 'reload') => {
@@ -116,6 +163,8 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch])
 
   if (!loaded) return <main className="lib"><p className="muted">Loading runner…</p></main>
+  if (loadError) return <main className="lib"><h1>Couldn’t open this runner</h1><p className="err">{loadError}</p>
+    <p><a href="#/">Back to your runners</a>, where you can download its file or try to repair it.</p></main>
   if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on the server' : ' from this browser'}. <a href="#/">Back to your runners</a></p></main>
 
   const career = !!ch.finalizedAt
@@ -161,7 +210,12 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     <Editor.Provider value={ctx}>
       <header className="topbar">
         <a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
-        <div className="who"><span className="name">{name}</span><span className={`mode ${career ? 'career' : 'creation'}`}>{career ? 'Career' : 'Creation'}</span></div>
+        <div className="who"><span className="name">{name}</span><StateBadge finalized={career} /></div>
+        {!ro && <div className="savebar">
+          <SaveLine status={status} onRetry={() => void saveNow()} />
+          <button className="btn quiet" onClick={() => void saveNow()} disabled={status.state === 'saving'}>Save</button>
+          <button className="btn quiet" onClick={() => void saveAndClose()}>Save and close</button>
+        </div>}
         <span className="spacer" />
         {!career && !ro && <>
           <button className="btn quiet" disabled={!ctx.canUndo} onClick={ctx.undo}>Undo</button>
@@ -181,7 +235,6 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       </nav>
       {ro && <p className="banner readonly" role="status">Read only — {owner}’s runner. Only they can change it; you can still
         {' '}<a href={`#/c/${ch.id}/print`}>print it</a> or export a copy.</p>}
-      {saveError && <p className="banner" style={{ margin: '1rem 1.25rem 0' }}>{saveError} Changes are kept in this tab; use Export file if you need to close it.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
         <main className="work"><AskRules /><fieldset className="bare" disabled={ro}>

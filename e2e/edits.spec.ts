@@ -115,7 +115,7 @@ test('edit a book add-on from the amp picker; an unsaved runner change survives 
   page.once('dialog', d => d.accept())
   await dialog(page).getByRole('button', { name: 'Restore book version' }).click()
   await expect(shroud.locator('.edited')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await page.getByRole('link', { name: 'Concept' }).click()
   await expect(page.getByLabel('Street name')).toHaveValue('After, unsaved')
 })

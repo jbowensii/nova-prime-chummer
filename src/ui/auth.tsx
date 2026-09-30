@@ -148,6 +148,11 @@ async function saved(wait = SIGN_OUT_WAIT) {
   while (saving.size) if (await Promise.race([Promise.allSettled([...saving]), late]) === 'late') return false
   return true
 }
+/** Every runner save under way has finished (or `wait` ms passed): the runner list waits for the editor's last save. */
+export async function savesSettled(wait = 5000) {
+  const late = new Promise<'late'>(ok => setTimeout(ok, wait, 'late'))
+  while (saving.size) if (await Promise.race([Promise.allSettled([...saving]), late]) === 'late') return
+}
 /** How long sign-out waits for the saves under way before it asks: a save that hangs mustn't keep anyone signed in. */
 export const SIGN_OUT_WAIT = 10_000
 /** Sign out: the open runner sends its last change and every save finishes, then the session ends (nothing is sent after
