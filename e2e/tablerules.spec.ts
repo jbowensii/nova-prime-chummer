@@ -115,6 +115,13 @@ test('a player sees the rules switched on, read only; the Rules page isn’t the
   expect(r.status()).toBe(403)
 })
 
+test('a player has no book-data export', async ({ page }) => {
+  await signIn(page, 'pat')
+  await page.goto('/#/data')
+  await expect(page.getByRole('heading', { name: 'Game data' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Export book data for Foundry' })).toHaveCount(0)
+})
+
 test('two quick switches both count: the second save waits for the first and builds on it', async ({ page }) => {
   await signIn(page, 'ada')
   await page.getByRole('link', { name: 'Rules', exact: true }).click()

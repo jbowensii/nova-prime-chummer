@@ -40,6 +40,11 @@ const APP_RULES = [
 export const tableFlags = (saved: TableRule[]) =>
   Object.fromEntries(APP_RULES.map(a => [a.flag, saved.find(r => r.id === a.id)?.on ?? true])) as unknown as TableFlags
 
+/** The rules switched on, as the export writes them (the app's own switches aren't rules). */
+export const tableRulesForExport = (c: Catalog, saved: TableRule[]) => saved.filter(r => r.on && !APP_RULES.some(a => a.id === r.id))
+  .flatMap(r => r.name !== undefined ? [{ name: r.name, text: r.text ?? '' }]
+    : c.rules.has(r.id) ? [{ name: c.rules.get(r.id)!.title, text: c.rules.get(r.id)!.text }] : [])
+
 /** The books' optional rules, the seeds of the table rules. */
 export const seeds = (c: Catalog) => [...c.rules.values()].filter(r => r.sheet === 'optional')
 

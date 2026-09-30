@@ -1,9 +1,10 @@
 import type { Catalog } from '../../model/types'
-import { AccountMenu } from '../auth'
+import { AccountMenu, canEdit, useMe } from '../auth'
 import { Brand, NonCanon } from '../bits'
 import { EditButton, editState, STATE_TEXT, useOpenEdit, type EditKind } from '../EditEntry'
 import { SourceLabel } from '../SourceLabel'
 import { AskButton } from '../AskRules'
+import { ExportBooksPanel } from '../Foundry'
 
 const KINDS: [EditKind, string][] = [['amps', 'Amp'], ['items', 'Item'], ['rules', 'Rule']]
 
@@ -19,6 +20,7 @@ function counts(c: Catalog) {
 export function DataScreen({ c }: { c: Catalog }) {
   const count = counts(c)
   const openEdit = useOpenEdit()
+  const me = useMe()
   const edits = KINDS.flatMap(([kind, label]) => [...(c[kind] as Map<string, { id: string; source: string; page: number; edited?: boolean; name?: string; title?: string }>).values()]
     .filter(e => e.edited).map(e => ({ kind, label, e, name: e.name ?? e.title ?? e.id, state: editState(c, kind, e as never) })))
   return (
@@ -28,8 +30,8 @@ export function DataScreen({ c }: { c: Catalog }) {
         (on Unraid: <code>/mnt/user/appdata/chummer-anarchy2/custom</code>), listed in <code>custom/index.xml</code>. Same id replaces a book entry,
         <code> &lt;remove id="…"/&gt;</code> deletes one, a new id adds one. Reload the page after changing them.</p>
       <h2>Sources</h2>
-      <p>Canon is the game’s official rules. Other published material is marked <NonCanon /> wherever it appears; each runner can be set
-        to flag it (Concept tab). Descriptions are private: one file per source in <code>custom/texts/</code>, never part of the app itself.</p>
+      <p>Canon is the game’s official rules. Other published material is marked <NonCanon /> wherever it appears; the GM can flag it
+        at their table (Rules page). Descriptions are private: one file per source in <code>custom/texts/</code>, never part of the app itself.</p>
       <div className="scroll-x"><table className="data"><thead><tr><th>Source</th><th>Publisher</th><th>Status</th><th className="num">Entries</th><th>Descriptions</th><th>File</th><th>Checksum (SHA-256)</th></tr></thead>
         <tbody>{[...c.sources.values()].map(s => (
           <tr key={s.id}><td><b>{s.id}</b> {s.name}</td><td>{s.publisher}</td><td>{s.canon ? 'Canon' : <NonCanon />}</td>
@@ -37,6 +39,7 @@ export function DataScreen({ c }: { c: Catalog }) {
             <td>{!s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/${s.texts}`) ? 'installed' : <span className="muted">not installed</span>}</td>
             <td>{s.file}</td><td className="hash" title={s.sha256}>{s.sha256?.split(' ').map(h => `${h.slice(0, 12)}…`).join(' ')}</td></tr>
         ))}</tbody></table></div>
+      {canEdit(me) && <ExportBooksPanel c={c} />}
       {openEdit && <>
         <h2 style={{ marginTop: '1.5rem' }}>Your catalog edits</h2>
         <p>Fix a book entry with its Edit button (amp and gear pickers, the Rules reference), or add your own under a house-rule source.
