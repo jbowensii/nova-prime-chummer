@@ -276,6 +276,18 @@ table.data.fixed { table-layout: fixed; }
 .chip button { border: 0; background: none; cursor: pointer; color: var(--text-3); padding: 0 0.25rem; }
 .chip button:hover { color: var(--err); }
 .chip.custom { border-style: dashed; }
+.chip.free { padding-right: 0.6rem; border-color: var(--ok); }
+
+/* ---- knowledge lists, starting gear ---- */
+table.knowledge .grip-cell { width: 1.6rem; padding-right: 0; }
+.grip { cursor: grab; color: var(--text-3); user-select: none; padding: 0.2rem; font-size: 1.1rem; }
+table.knowledge td.actions { white-space: nowrap; text-align: right; }
+table.data tr.dim td { color: var(--text-3); }
+table.data tr.dim td > * { opacity: 0.6; }
+table.data tr.dragging td { outline: 1px dashed var(--rust); }
+label.check.tight { margin: 0; color: var(--text); align-items: center; }
+label.check.tight input { margin-top: 0; }
+tr.starting input.note { margin-top: 0.3rem; }
 
 /* ---- library ---- */
 .lib { max-width: 64rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }

@@ -1,17 +1,69 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
-import type { Catalog, Character, KnowledgeEntry } from '../model/types'
+import type { AmpEntry, AmpTemplate, Build, Catalog, Character, ItemEntry, KnowledgeEntry, StartingGear } from '../model/types'
 import { newId } from '../model/types'
+import { ampFromTemplate } from './amps'
 
 export const FORMAT_VERSION = 1
 
 export function blankCharacter(level = 'runner', metatype = 'human'): Character {
-  return {
+  const ch: Character = {
     formatVersion: 1, id: newId(),
     identity: { name: '', streetName: '', metatype, background: '', notes: '' },
     narrative: { keywords: ['', '', '', '', ''], dispositions: ['', '', '', ''], cues: ['', '', '', ''] },
     level, package: 'free',
     build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
     career: [], overrides: [], updatedAt: new Date().toISOString(),
+  }
+  ensureStartingGear(ch.build)
+  return ch
+}
+
+/** What every runner starts with, free (CRB p.84): a commlink with trodes and a fake SIN. */
+export const STARTING_GEAR: Partial<Record<StartingGear, string>> = { commlink: 'Commlink (with trodes)', 'fake-sin': 'Fake SIN' }
+/** case and spacing aside; nothing else ("Commlink (Hermes Ikon)" is another item) */
+const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+/** The exact names a plain gear entry may carry to count as the free one (an imported pregen's "Fake SIN, Commlink"). */
+const SAME: Record<string, string[]> = { commlink: ['commlink', 'commlink (with trodes)', 'commlink with trodes'], 'fake-sin': ['fake sin'] }
+
+/** Adds the free starting gear a build lacks. On a draft, an unpriced gear entry with exactly that name becomes the free
+ *  one instead, so there's never a second; a finalized runner's items are never touched (its recorded baseline stays),
+ *  it only gains the missing free entries at 0¥. Fixed uids: reading a file twice gives the same runner. */
+export function ensureStartingGear(b: Build, finalized = false): void {
+  for (const [kind, name] of Object.entries(STARTING_GEAR) as [StartingGear, string][]) {
+    if (b.items.some(i => i.starting === kind)) continue
+    const same = finalized ? undefined
+      : b.items.find(i => i.kind === 'gear' && !i.starting && !i.catalogId && i.price == null && SAME[kind].includes(plain(i.name)))
+    if (same) same.starting = kind
+    else b.items.unshift({ uid: `start-${kind}`, kind: 'gear', name, starting: kind })
+  }
+  // a SINner quality added by hand (before 0.5.3 had the box) means a real SIN: its free entry comes along
+  if (b.amps.some(a => isSinner(a)) && !b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
+}
+
+/** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
+export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
+/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or exactly that name, any case). */
+export const isSinner = (a: AmpEntry, c?: Catalog) => !!a.realSin || plain(a.name) === 'sinner' || plain(a.snapshot?.name ?? '') === 'sinner'
+  || (!!c && !!a.catalogId && a.catalogId === sinnerTemplate(c)?.id)
+const realSinItem = (): ItemEntry => ({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
+/** The box's state: a Real SIN entry, or a SINner quality however it got there. */
+export const hasRealSin = (b: Build, c?: Catalog) => b.items.some(i => i.starting === 'real-sin') || b.amps.some(a => isSinner(a, c))
+/** SINner qualities the player added by hand: unticking the box removes them too, so the UI asks first. */
+export const handAddedSinner = (b: Build, c?: Catalog) => b.amps.filter(a => !a.realSin && isSinner(a, c))
+
+/** The Concept tab's "Has a real SIN": on adds a free Real SIN entry and, when a book has one and the runner lacks it,
+ *  the SINner quality; off removes the entry and every SINner quality. */
+export function setRealSin(c: Catalog, b: Build, on: boolean): void {
+  if (!on) {
+    b.items = b.items.filter(i => i.starting !== 'real-sin')
+    b.amps = b.amps.filter(a => !isSinner(a, c))
+    return
+  }
+  if (!b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
+  const t = sinnerTemplate(c)
+  if (t && !b.amps.some(a => isSinner(a, c))) {
+    const { amp } = ampFromTemplate(t, () => 'real-sin-amp')
+    b.amps.push({ ...amp, realSin: true })
   }
 }
 
@@ -26,6 +78,8 @@ export function knowledgeEntry(k: string | Partial<KnowledgeEntry>): KnowledgeEn
   const lang = !e.kind && /^language:\s*/i.exec(e.name ?? '')
   const out: KnowledgeEntry = { name: lang ? e.name!.slice(lang[0].length) : e.name ?? '', kind: lang ? 'language' : e.kind ?? 'knowledge' }
   if (e.from) out.from = e.from
+  if (e.native) out.native = true
+  if (e.id) out.id = e.id
   return out
 }
 
@@ -33,7 +87,20 @@ export function migrate(raw: Record<string, unknown>): Character {
   let v = raw.formatVersion as number
   while (v < FORMAT_VERSION) { raw = MIGRATIONS[v](raw); v = raw.formatVersion as number }
   const ch = raw as unknown as Character
-  if (Array.isArray(ch.build?.knowledge)) ch.build.knowledge = ch.build.knowledge.map(knowledgeEntry)
+  if (Array.isArray(ch.build?.knowledge)) {
+    ch.build.knowledge = ch.build.knowledge.map(knowledgeEntry)
+    // 0.5.3 before review keyed a paid entry's order and hidden mark by "<kind>:<name>": each entry gets an id of its
+    // own (deterministic, so an unsaved reload gives the same one) and those keys move to it, one entry per key
+    const byName = new Map<string, string>()
+    ch.build.knowledge.forEach((k, i) => {
+      if (k.from || k.id) return
+      k.id = `k${i}`
+      if (!byName.has(`${k.kind}:${k.name}`)) byName.set(`${k.kind}:${k.name}`, k.id)
+    })
+    for (const f of ['knowledgeOrder', 'knowledgeHidden'] as const)
+      if (Array.isArray(ch.build[f])) ch.build[f] = ch.build[f]!.map(key => byName.get(key) ?? key)
+  }
+  if (Array.isArray(ch.build?.items)) ensureStartingGear(ch.build, !!ch.finalizedAt)
   for (const e of Array.isArray(ch.career) ? ch.career : [])
     if (e.type === 'knowledge-add') Object.assign(e, knowledgeEntry({ name: e.name, kind: e.kind, from: e.from }))
   return ch

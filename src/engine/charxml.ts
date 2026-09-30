@@ -32,9 +32,9 @@ const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, prin
 const catalogItemXml = (i: Item) => el('item', { id: i.id, kind: i.kind, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, source: i.source, page: i.page },
   text('name', i.name) + `<text>${esc(i.text)}</text>`)
 
-const ampXml = (a: AmpEntry) => el('amp', { uid: a.uid, type: a.type, name: a.name, catalogId: a.catalogId, linkedItem: a.linkedItem, vehicle: a.vehicle },
+const ampXml = (a: AmpEntry) => el('amp', { uid: a.uid, type: a.type, name: a.name, catalogId: a.catalogId, linkedItem: a.linkedItem, vehicle: a.vehicle, realSin: a.realSin },
   text('narrative', a.narrative) + a.effects.map(effectXml).join('') + (a.snapshot ? `<snapshot>${templateXml(a.snapshot)}</snapshot>` : ''))
-const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price },
+const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price, starting: i.starting, note: i.note },
   i.snapshot ? `<snapshot>${catalogItemXml(i.snapshot)}</snapshot>` : '')
 
 function eventXml(e: CareerEvent): string {
@@ -64,8 +64,10 @@ export function characterToXml(ch: Character, rev?: number): string {
     el('build', { mainArmor: b.mainArmor, altArmor: b.altArmor },
       el('attributes', Object.fromEntries(ATTRS.map(a => [a, b.attributes[a]])))
       + b.skills.map(s => el('skill', { id: s.id, rating: s.rating }, s.specs.map(x => `<spec>${esc(x)}</spec>`).join(''))).join('')
-      + b.knowledge.map(k => el('knowledge', { kind: k.kind, from: k.from }, esc(k.name))).join('')
-      + b.amps.map(ampXml).join('') + b.items.map(itemXml).join('')),
+      + b.knowledge.map(k => el('knowledge', { id: k.id, kind: k.kind, from: k.from, native: k.native }, esc(k.name))).join('')
+      + b.amps.map(ampXml).join('') + b.items.map(itemXml).join('')
+      + (b.knowledgeOrder ?? []).map(key => el('knowledgeOrder', { key })).join('')
+      + (b.knowledgeHidden ?? []).map(key => el('knowledgeHidden', { key })).join('')),
     ch.career.length ? `<career>${ch.career.map(eventXml).join('')}</career>` : '',
     ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
   ].join('\n  ')
@@ -94,6 +96,7 @@ function readAmp(e: Element): AmpEntry {
   const a: AmpEntry = { uid: e.getAttribute('uid')!, type: e.getAttribute('type')!, name: e.getAttribute('name') ?? '',
     narrative: t(kid(e, 'narrative')), effects: kids(e, 'effect').map(readEffect) }
   for (const k of ['catalogId', 'linkedItem', 'vehicle'] as const) if (s(e, k) !== undefined) a[k] = s(e, k)
+  if (e.getAttribute('realSin') === 'true') a.realSin = true
   const snap = kid(e, 'snapshot')
   if (snap?.firstElementChild) a.snapshot = toAmp(snap.firstElementChild)
   return a
@@ -103,7 +106,8 @@ function readItem(e: Element): ItemEntry {
   if (s(e, 'catalogId') !== undefined) i.catalogId = s(e, 'catalogId')
   if (e.getAttribute('specialist') === 'true') i.specialist = true
   for (const k of ['armor', 'price'] as const) if (n(e, k) !== undefined) i[k] = n(e, k)
-  for (const k of ['dv', 'ranges'] as const) if (s(e, k) !== undefined) i[k] = s(e, k)
+  for (const k of ['dv', 'ranges', 'note'] as const) if (s(e, k) !== undefined) i[k] = s(e, k)
+  if (s(e, 'starting') !== undefined) i.starting = s(e, 'starting') as ItemEntry['starting']
   const snap = kid(e, 'snapshot')
   if (snap?.firstElementChild) i.snapshot = toItem(snap.firstElementChild)
   return i
@@ -205,7 +209,8 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
       build: {
         attributes: Object.fromEntries(ATTRS.map(a => [a, Number(at?.getAttribute(a) ?? 1)])) as Character['build']['attributes'],
         skills: each(kids(b, 'skill'), k => ({ id: k.getAttribute('id') ?? '', rating: Number(k.getAttribute('rating') ?? 0), specs: kids(k, 'spec').map(t) }), named, fix),
-        knowledge: kids(b, 'knowledge').map(k => knowledgeEntry({ name: t(k), kind: s(k, 'kind') as 'knowledge' | 'language' | undefined, from: s(k, 'from') })),
+        knowledge: kids(b, 'knowledge').map(k => knowledgeEntry({ name: t(k), kind: s(k, 'kind') as 'knowledge' | 'language' | undefined, from: s(k, 'from'),
+          native: k.getAttribute('native') === 'true' || undefined, id: s(k, 'id') })),
         amps: each(kids(b, 'amp'), readAmp, named, fix), items: each(kids(b, 'item'), readItem, named, fix),
       },
       career: kid(r, 'career') ? each(kids(kid(r, 'career'), 'event'), readEvent, (e, i) => `career event ${i + 1} (${e.getAttribute('type') ?? 'no type'})`, fix) : [],
@@ -214,6 +219,8 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     }
     if (s(b, 'mainArmor') !== undefined) ch.build.mainArmor = s(b, 'mainArmor')
     if (s(b, 'altArmor') !== undefined) ch.build.altArmor = s(b, 'altArmor')
+    for (const k of ['knowledgeOrder', 'knowledgeHidden'] as const)
+      if (kids(b, k).length) ch.build[k] = kids(b, k).map(e => e.getAttribute('key') ?? '')
     if (kid(r, 'portrait')) ch.identity.portrait = t(kid(r, 'portrait'))
     if (s(r, 'lifestyle') !== undefined) ch.identity.lifestyle = s(r, 'lifestyle')
     if (s(r, 'finalizedAt') !== undefined) ch.finalizedAt = s(r, 'finalizedAt')

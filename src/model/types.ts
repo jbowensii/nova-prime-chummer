@@ -69,18 +69,27 @@ export interface Catalog {
 export interface EffectPick { ref: string; param?: string; value?: number; note?: string }
 /** specs: spec ids ("stealth.physical-sneaking") or "custom:Name" */
 export interface SkillEntry { id: string; rating: number; specs: string[] }
+/** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free) */
 export interface AmpEntry { uid: string; catalogId?: string; type: string; name: string;
   narrative: string; effects: EffectPick[]; linkedItem?: string; vehicle?: string;
-  snapshot?: AmpTemplate }
-/** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades) */
+  snapshot?: AmpTemplate; realSin?: true }
+/** Free gear no one buys: every runner's commlink and fake SIN (CRB p.84), and the real SIN of a runner that has one. */
+export type StartingGear = 'commlink' | 'fake-sin' | 'real-sin'
+/** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades).
+ *  starting: free starting gear (costs nothing, can't be removed or sold); note: the player's description */
 export interface ItemEntry { uid: string; catalogId?: string; kind: ItemKind; name: string;
-  specialist?: boolean; armor?: number; dv?: string; ranges?: string; price?: number; snapshot?: Item }
+  specialist?: boolean; armor?: number; dv?: string; ranges?: string; price?: number; snapshot?: Item;
+  starting?: StartingGear; note?: string }
 /** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<the keyword>");
- *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price. */
-export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; from?: string }
+ *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price.
+ *  native: the runner's native language, free (one per runner).
+ *  id: a paid entry's own key for its place and hidden mark (a free slot's is its `from`). */
+export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; from?: string; native?: true; id?: string }
+/** knowledgeOrder: row keys (knowledgeKey) in the player's order, both lists; rows not in it follow A–Z.
+ *  knowledgeHidden: row keys left off the printed sheet. */
 export interface Build { attributes: Record<AttrId, number>; skills: SkillEntry[];
   knowledge: KnowledgeEntry[]; amps: AmpEntry[]; items: ItemEntry[];
-  mainArmor?: string; altArmor?: string }
+  mainArmor?: string; altArmor?: string; knowledgeOrder?: string[]; knowledgeHidden?: string[] }
 export type CareerEvent = { id: string; at: string } & (
   | { type: 'earn'; amount: number; run: string; date: string }
   | { type: 'advance'; path: string; from: number; to: number; cost: number }

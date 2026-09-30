@@ -64,19 +64,28 @@
           <xs:attribute name="rating" type="xs:nonNegativeInteger" use="required"/>
         </xs:complexType>
       </xs:element>
-      <!-- a knowledge skill or language; from: the free slot it fills (skill:<id>, keyword:<index>), none = paid -->
+      <!-- a knowledge skill or language; from: the free slot it fills (skill:<id>, keyword:<the keyword>), none = paid;
+           native: the free native language -->
       <xs:element name="knowledge" minOccurs="0" maxOccurs="unbounded">
         <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
           <xs:attribute name="kind" type="c:KnowledgeKind"/>
           <xs:attribute name="from" type="xs:string"/>
+          <xs:attribute name="native" type="xs:boolean"/>
+          <xs:attribute name="id" type="xs:string"/>
         </xs:extension></xs:simpleContent></xs:complexType>
       </xs:element>
       <xs:element name="amp" type="c:Amp" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="item" type="c:Item" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- Knowledge & languages rows (their free slot, else the entry's id): the player's order, top to bottom, and the
+           rows left off the printed sheet -->
+      <xs:element name="knowledgeOrder" type="c:KnowledgeKey" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="knowledgeHidden" type="c:KnowledgeKey" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
     <xs:attribute name="mainArmor" type="xs:string"/>
     <xs:attribute name="altArmor" type="xs:string"/>
   </xs:complexType>
+
+  <xs:complexType name="KnowledgeKey"><xs:attribute name="key" type="xs:string" use="required"/></xs:complexType>
 
   <xs:simpleType name="KnowledgeKind"><xs:restriction base="xs:string">
     <xs:enumeration value="knowledge"/><xs:enumeration value="language"/>
@@ -105,6 +114,8 @@
     <xs:attribute name="catalogId" type="xs:string"/>
     <xs:attribute name="linkedItem" type="xs:string"/>
     <xs:attribute name="vehicle" type="xs:string"/>
+    <!-- added by "Has a real SIN" (removed with it; free) -->
+    <xs:attribute name="realSin" type="xs:boolean"/>
   </xs:complexType>
 
   <xs:complexType name="Item">
@@ -123,6 +134,13 @@
     <xs:attribute name="dv" type="xs:string"/>
     <xs:attribute name="ranges" type="xs:string"/>
     <xs:attribute name="price" type="xs:nonNegativeInteger"/>
+    <!-- free gear no one buys: every runner's commlink and fake SIN, a real SIN -->
+    <xs:attribute name="starting">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="commlink"/><xs:enumeration value="fake-sin"/><xs:enumeration value="real-sin"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="note" type="xs:string"/>
   </xs:complexType>
 
   <xs:complexType name="Event">

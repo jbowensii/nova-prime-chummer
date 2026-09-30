@@ -3,7 +3,7 @@ import type { AmpEntry, AttrId, Build, Catalog, Character, KnowledgeEntry } from
 import { ATTRS } from '../model/types'
 import { ampEssence } from './amps'
 import { currentBuild } from './career'
-import { slotLapse } from './price'
+import { nativeLanguage, slotLapse } from './price'
 
 export type Thresholds = [number, number, number]
 export interface Weapon { uid: string; name: string; dv: string; ranges: string; specialist?: boolean; note?: string }
@@ -35,8 +35,22 @@ export interface Derived {
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
  *  stored yet); source: "Free: keyword", "Free: <Skill> 4+", "Paid", or "Paid (<Skill> below 4)" / "Paid (keyword “X”
- *  removed)" for an entry whose free slot is gone. */
-export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number }
+ *  removed)" for an entry whose free slot is gone, "Free: native language". key: knowledgeKey; hidden: left off the
+ *  printed sheet. */
+export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number; key: string; hidden: boolean }
+
+/** A row's lasting identity for its place and visibility: its free slot, else the entry's own id (an entry from before
+ *  ids: its kind and name). */
+export const knowledgeKey = (k: Pick<KnowledgeEntry, 'from' | 'kind' | 'name' | 'id'>) => k.from ?? k.id ?? `${k.kind}:${k.name}`
+
+/** One of the two lists (knowledge skills or languages) in display order: the player's order (build.knowledgeOrder)
+ *  first, the rest A–Z. */
+export function knowledgeList(rows: KnowledgeRow[], kind: KnowledgeEntry['kind'], order: string[] = []): KnowledgeRow[] {
+  const pos = new Map(order.map((k, i) => [k, i]))
+  // Infinity - Infinity is NaN (falsy): two unordered rows fall through to A–Z
+  return rows.filter(r => r.kind === kind).sort((a, b) => ((pos.get(a.key) ?? Infinity) - (pos.get(b.key) ?? Infinity))
+    || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+}
 
 /** Every keyword and every skill at 4+ is a free entry (a stored entry with that `from` renames it or marks it a
  *  language; a keyword entry, keyed by the keyword's text, keeps its name); the other stored entries are paid. */
@@ -44,22 +58,26 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
   const used = new Set<number>()
   const slot = (from: string) => { const at = b.knowledge.findIndex(k => k.from === from); if (at >= 0) used.add(at); return at }
   const skillName = (id: string) => c.skills.get(id)?.name ?? id
-  const rows: KnowledgeRow[] = []
+  const rows: Omit<KnowledgeRow, 'key' | 'hidden'>[] = []
+  const native = (at: number) => b.knowledge[at]?.native ? { native: true as const } : {}
   for (const kw of new Set(keywords.map(k => k.trim()).filter(Boolean))) {
     const from = `keyword:${kw}`, at = slot(from)
-    rows.push({ name: kw, kind: b.knowledge[at]?.kind ?? 'knowledge', from, paid: false, source: 'Free: keyword', at })
+    rows.push({ name: kw, kind: b.knowledge[at]?.kind ?? 'knowledge', from, ...native(at), paid: false, source: 'Free: keyword', at })
   }
   for (const s of b.skills.filter(s => s.rating >= 4)) {
     const from = `skill:${s.id}`, at = slot(from)
-    rows.push({ name: b.knowledge[at]?.name || skillName(s.id), kind: b.knowledge[at]?.kind ?? 'knowledge', from, paid: false,
+    rows.push({ name: b.knowledge[at]?.name || skillName(s.id), kind: b.knowledge[at]?.kind ?? 'knowledge', from, ...native(at), paid: false,
       source: `Free: ${skillName(s.id)} 4+`, at })
   }
+  const first = nativeLanguage(b)
   b.knowledge.forEach((k, at) => {
     if (used.has(at)) return
+    if (k === first) return rows.push({ ...k, paid: false, source: 'Free: native language', at })
     const lapse = slotLapse(b, keywords, k, skillName)
-    rows.push({ ...k, paid: true, source: lapse ? `Paid (${lapse})` : 'Paid', at })
+    rows.push({ ...k, paid: true, source: lapse ? `Paid (${lapse})` : k.native && k.kind === 'language' ? 'Paid (a second native language)' : 'Paid', at })
   })
-  return rows
+  const hidden = new Set(b.knowledgeHidden ?? [])
+  return rows.map(r => ({ ...r, key: knowledgeKey(r), hidden: hidden.has(knowledgeKey(r)) }))
 }
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)

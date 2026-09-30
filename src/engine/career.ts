@@ -36,7 +36,9 @@ export function applyEvent(b: Build, e: CareerEvent): void {
     case 'knowledge-add': {
       const entry: KnowledgeEntry = { name: e.name, kind: e.kind ?? 'knowledge' }
       if (e.from && !e.cost) entry.from = e.from
+      else entry.id = e.id // a paid entry's key: its ledger entry
       const at = e.from ? b.knowledge.findIndex(k => k.from === e.from) : -1
+      if (at >= 0 && b.knowledge[at].native && !e.cost) entry.native = true // a rename keeps the native mark
       if (at >= 0) b.knowledge[at] = entry
       else b.knowledge.push(entry)
       break

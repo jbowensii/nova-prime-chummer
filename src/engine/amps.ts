@@ -11,8 +11,9 @@ export function effectRating(c: Catalog, pick: EffectPick): number {
   return eff.rating
 }
 
-/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects */
+/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects; the real SIN's quality is free */
 export function ampRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
+  if (amp.realSin) return 0
   const t = c.ampTypes.get(amp.type)
   const base = !t ? 0 : amp.type === 'quality' && !ctx.isFirstQuality ? (t.baseAfterFirst ?? t.base) : t.base
   return base + amp.effects.reduce((s, e) => s + effectRating(c, e), 0)
@@ -34,7 +35,7 @@ export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
   }
 }
 
-export const firstQualityUid = (b: Build) => b.amps.find(a => a.type === 'quality')?.uid
+export const firstQualityUid = (b: Build) => b.amps.find(a => a.type === 'quality' && !a.realSin)?.uid
 
 export const ampCtx = (b: Build, amp: AmpEntry): AmpCtx => ({ isFirstQuality: firstQualityUid(b) === amp.uid })
 

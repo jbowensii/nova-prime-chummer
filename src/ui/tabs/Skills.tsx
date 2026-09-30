@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { currentBuild, makeAdvance, makeKnowledge, makeSpec, skillCost, type KnowledgeRow } from '../../engine'
+import { currentBuild, knowledgeList, makeAdvance, makeKnowledge, makeSpec, skillCost, type KnowledgeRow } from '../../engine'
 import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
+import { newId } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
 
@@ -15,7 +16,7 @@ export function lapseWarning(c: Catalog, b: Build, id: string, to: number): stri
 }
 
 /** A text field that commits on Enter or leaving it (career changes are ledger entries, not keystrokes). */
-function NameField({ value, label, onCommit }: { value: string; label: string; onCommit: (v: string) => void }) {
+export function NameField({ value, label, onCommit }: { value: string; label: string; onCommit: (v: string) => void }) {
   const [v, setV] = useState(value)
   const [was, setWas] = useState(value)
   if (value !== was) { setWas(value); setV(value) }
@@ -27,8 +28,6 @@ export function SkillsTab() {
   const { c, ch, d, edit, record, career } = useEditor()
   const b = career ? currentBuild(ch) : ch.build
   const level = c.levels.get(ch.level)
-  const [know, setKnow] = useState('')
-  const [kind, setKind] = useState<KnowledgeEntry['kind']>('knowledge')
   const entry = (id: string) => b.skills.find(s => s.id === id)
 
   const setRating = async (id: string, to: number) => {
@@ -57,21 +56,6 @@ export function SkillsTab() {
     await record(makeSpec(c, id, spec), `New specialization for ${c.skills.get(id)?.name}`)
   }
   const removeSpec = (id: string, spec: string) => edit(x => { const s = x.build.skills.find(s => s.id === id)!; s.specs = s.specs.filter(z => z !== spec) })
-  const addKnowledge = async () => {
-    const name = know.trim()
-    if (!name) return
-    setKnow('')
-    if (!career) return edit(x => { x.build.knowledge.push({ name, kind }) })
-    await record(makeKnowledge(c, { name, kind }), `${kind === 'language' ? 'Language' : 'Knowledge skill'}: ${name}`)
-  }
-  /** Rename or retype an entry. A free slot not stored yet is stored now; in career a slot change is a free ledger entry. */
-  const change = async (r: KnowledgeRow, patch: Partial<KnowledgeEntry>) => {
-    const next: KnowledgeEntry = { name: r.name, kind: r.kind, ...(r.from && { from: r.from }), ...patch }
-    if (!career) return edit(x => { if (r.at >= 0) x.build.knowledge[r.at] = next; else x.build.knowledge.push(next) })
-    if (r.from) await record(makeKnowledge(c, next, false), `${next.name}: ${r.source.toLowerCase()}, no cost`)
-  }
-  const payFor = (r: KnowledgeRow) => record(makeKnowledge(c, { name: r.name, kind: r.kind, from: r.from }, true), `${r.name}: now a paid knowledge skill`)
-  const rows = d.knowledge
 
   return (
     <div className="stack">
@@ -129,25 +113,121 @@ export function SkillsTab() {
 
       <hr className="sep" />
       <h2>Knowledge &amp; languages</h2>
-      <p className="muted">Knowledge skills have no rating, and a language is a knowledge skill. Each keyword and each skill at 4+ gives a free one; rename a skill’s entry to anything related to it. Any other costs {fmt(c.pricing.knowledge)}.</p>
-      <div className="scroll-x"><table className="data knowledge">
-        <thead><tr><th>Name</th><th>Type</th><th>Where it comes from</th><th aria-label="Actions" /></tr></thead>
+      <p className="muted">Knowledge skills have no rating, and a language is a knowledge skill. Each keyword and each skill at 4+ gives a free one; rename a skill’s entry to anything related to it. Any other costs {fmt(c.pricing.knowledge)}. Each list runs A–Z; drag a row by its handle, or use its arrows, to set your own order. <b>Hide</b> leaves an entry off the printed sheet: it stays on the runner and still counts.</p>
+      <KnowledgeList kind="knowledge" />
+      <KnowledgeList kind="language" />
+    </div>
+  )
+}
+
+/** The player's order (build.knowledgeOrder) once one list, whose rows are `keys` in display order, moves `key` to
+ *  position `to`; without a key, that list goes back to A–Z. The other list's keys stay. undefined: no order left. */
+export function reorderKeys(order: string[] | undefined, keys: string[], key?: string, to = 0): string[] | undefined {
+  const rest = (order ?? []).filter(k => !keys.includes(k))
+  const list = key ? keys.filter(k => k !== key) : []
+  if (key) list.splice(to, 0, key)
+  const next = [...rest, ...list]
+  return next.length ? next : undefined
+}
+/** A key added to or taken off a set kept as a list; undefined when it ends empty. */
+export function toggleKey(list: string[] | undefined, key: string): string[] | undefined {
+  const next = list?.includes(key) ? list.filter(k => k !== key) : [...list ?? [], key]
+  return next.length ? next : undefined
+}
+
+/** One of the two Knowledge & languages lists. Order and hiding are the player's layout (either mode, no cost); the
+ *  native mark is part of the build (creation only). */
+function KnowledgeList({ kind }: { kind: KnowledgeEntry['kind'] }) {
+  const { c, ch, d, edit, update, record, career } = useEditor()
+  const b = career ? currentBuild(ch) : ch.build
+  const [text, setText] = useState('')
+  const [drag, setDrag] = useState<string | null>(null)
+  const lang = kind === 'language'
+  const order = b.knowledgeOrder ?? []
+  const rows = knowledgeList(d.knowledge, kind, order)
+  const keys = rows.map(r => r.key)
+  const custom = rows.some(r => order.includes(r.key))
+  const title = lang ? 'Languages' : 'Knowledge'
+  const native = !career && lang && !d.knowledge.some(r => r.kind === 'language')
+
+  const setOrder = (next: string[] | undefined) => update(x => { if (next) x.build.knowledgeOrder = next; else delete x.build.knowledgeOrder })
+  const moveTo = (key: string, to: number) => setOrder(reorderKeys(b.knowledgeOrder, keys, key, to))
+  const move = (i: number, by: -1 | 1) => {
+    moveTo(keys[i], i + by)
+    // the row moved: keep the keyboard on its button (the other one once it reaches an end)
+    requestAnimationFrame(() => {
+      const btn = (dir: number) => document.querySelector<HTMLButtonElement>(`[data-move="${CSS.escape(`${keys[i]}|${dir}`)}"]`)
+      const b1 = btn(by)
+      ;(b1 && !b1.disabled ? b1 : btn(-by))?.focus()
+    })
+  }
+  const toggleHidden = (key: string) => update(x => {
+    const h = toggleKey(x.build.knowledgeHidden, key)
+    if (h) x.build.knowledgeHidden = h; else delete x.build.knowledgeHidden
+  })
+
+  const add = async () => {
+    const name = text.trim()
+    if (!name) return
+    setText('')
+    if (!career) return edit(x => { x.build.knowledge.push({ id: newId(), name, kind, ...(native && { native: true as const }) }) })
+    await record(makeKnowledge(c, { name, kind }), `${lang ? 'Language' : 'Knowledge skill'}: ${name}`)
+  }
+  /** Rename or retype an entry. A free slot not stored yet is stored now; in career a slot change is a free ledger entry. */
+  const change = async (r: KnowledgeRow, patch: Partial<KnowledgeEntry>) => {
+    const next: KnowledgeEntry = { name: r.name, kind: r.kind, ...(r.from && { from: r.from }), ...(r.id && { id: r.id }),
+      ...(r.native && { native: true as const }), ...patch }
+    if (next.kind !== 'language') delete next.native
+    if (!career) return edit(x => { if (r.at >= 0) x.build.knowledge[r.at] = next; else x.build.knowledge.push(next) })
+    if (r.from) await record(makeKnowledge(c, next, false), `${next.name}: ${r.source.toLowerCase()}, no cost`)
+  }
+  const setNative = (r: KnowledgeRow, on: boolean) => edit(x => {
+    for (const k of x.build.knowledge) delete k.native // one native language at a time
+    if (!on) return
+    if (r.at >= 0) x.build.knowledge[r.at].native = true
+    else x.build.knowledge.push({ name: r.name, kind: r.kind, ...(r.from && { from: r.from }), native: true })
+  })
+  const remove = (r: KnowledgeRow) => edit(x => {
+    x.build.knowledge.splice(r.at, 1)
+    for (const k of ['knowledgeOrder', 'knowledgeHidden'] as const) if (x.build[k]) x.build[k] = x.build[k]!.filter(y => y !== r.key)
+  })
+  const payFor = (r: KnowledgeRow) => record(makeKnowledge(c, { name: r.name, kind: r.kind, from: r.from }, true), `${r.name}: now a paid knowledge skill`)
+
+  return (
+    <section className="stack">
+      <div className="row"><h3 style={{ margin: 0 }}>{title}</h3><span className="spacer" />
+        {custom && <button className="btn small quiet" onClick={() => setOrder(reorderKeys(b.knowledgeOrder, keys))}>Sort A–Z</button>}
+      </div>
+      {lang && <p className="muted" style={{ margin: 0 }}>Mark one language <b>Native</b>: it’s free (one per runner), and the first language you add is marked for you. This is the app’s reading of the rules: the book’s knowledge skills cover foreign languages, so the one you grew up with isn’t bought.</p>}
+      <div className="scroll-x"><table className="data knowledge" aria-label={title}>
+        <thead><tr><th aria-label="Drag to reorder" /><th>Name</th><th>Type</th>{lang && <th>Native</th>}<th>Where it comes from</th><th aria-label="Actions" /></tr></thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan={4} className="muted">None yet: add keywords, raise a skill to 4 or add one below.</td></tr>}
-          {rows.map(r => {
+          {rows.length === 0 && <tr><td colSpan={lang ? 6 : 5} className="muted">{lang ? 'None yet: add one below.' : 'None yet: add keywords, raise a skill to 4 or add one below.'}</td></tr>}
+          {rows.map((r, i) => {
             const lapsed = r.paid && !!r.from
             const renamable = (!r.from?.startsWith('keyword:') || lapsed) && (!career || (!!r.from && !lapsed))
             return (
-              <tr key={r.from ?? `paid-${r.at}`}>
-                <td>{renamable ? <NameField value={r.name} label={`Name of ${r.name}`} onCommit={name => change(r, { name })} /> : <b>{r.name}</b>}</td>
+              <tr key={r.key} className={[r.hidden && 'dim', drag === r.key && 'dragging'].filter(Boolean).join(' ') || undefined}
+                onDragOver={e => { if (drag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
+                onDrop={e => { e.preventDefault(); if (drag && drag !== r.key) moveTo(drag, i); setDrag(null) }}>
+                <td className="grip-cell"><span className="grip" draggable title="Drag to reorder" data-key={r.key}
+                  onDragStart={e => { e.dataTransfer.setData('text/plain', r.key); e.dataTransfer.effectAllowed = 'move'; setDrag(r.key) }}
+                  onDragEnd={() => setDrag(null)}>⠿</span></td>
+                <td>{renamable ? <NameField value={r.name} label={`Name of ${r.name}`} onCommit={name => change(r, { name })} /> : <b>{r.name}</b>}
+                  {r.hidden && <span className="muted"> (hidden)</span>}</td>
                 <td>{!career || (r.from && !lapsed)
                   ? <select value={r.kind} aria-label={`Type of ${r.name}`} onChange={e => change(r, { kind: e.target.value as KnowledgeEntry['kind'] })}>
                       <option value="knowledge">Knowledge</option><option value="language">Language</option>
                     </select>
                   : r.kind === 'language' ? 'Language' : 'Knowledge'}</td>
+                {lang && <td>{career ? (r.native ? 'Native' : '') : <label className="check tight">
+                  <input type="checkbox" checked={!!r.native} aria-label={`${r.name} is the native language`} onChange={e => setNative(r, e.target.checked)} /> <span>Native</span></label>}</td>}
                 <td className={lapsed ? 'warn' : r.paid ? '' : 'muted'}>{r.source}{r.paid && ` · ${fmt(c.pricing.knowledge)}`}</td>
-                <td>
-                  {!career && r.paid && <button className="btn small" aria-label={`Remove ${r.name}`} onClick={() => edit(x => { x.build.knowledge.splice(r.at, 1) })}>×</button>}
+                <td className="actions">
+                  <button className="btn small quiet" aria-label={`Move ${r.name} up`} data-move={`${r.key}|-1`} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
+                  <button className="btn small quiet" aria-label={`Move ${r.name} down`} data-move={`${r.key}|1`} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>↓</button>
+                  <button className="btn small quiet" aria-label={`${r.hidden ? 'Show' : 'Hide'} ${r.name}`} onClick={() => toggleHidden(r.key)}>{r.hidden ? 'Show' : 'Hide'}</button>
+                  {!career && r.paid && <button className="btn small" aria-label={`Remove ${r.name}`} onClick={() => remove(r)}>×</button>}
                   {career && lapsed && <button className="btn small" onClick={() => payFor(r)}>Pay for it</button>}
                 </td>
               </tr>
@@ -156,12 +236,9 @@ export function SkillsTab() {
         </tbody>
       </table></div>
       <div className="row">
-        <input value={know} onChange={e => setKnow(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKnowledge()} placeholder={kind === 'language' ? 'e.g. Japanese' : 'e.g. Seattle gangs'} aria-label="New knowledge skill or language" />
-        <select value={kind} aria-label="Type of the new entry" onChange={e => setKind(e.target.value as KnowledgeEntry['kind'])}>
-          <option value="knowledge">Knowledge</option><option value="language">Language</option>
-        </select>
-        <button className="btn small" onClick={addKnowledge}>Add ({fmt(c.pricing.knowledge)})</button>
+        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder={lang ? 'e.g. Japanese' : 'e.g. Seattle gangs'} aria-label={lang ? 'New language' : 'New knowledge skill'} />
+        <button className="btn small" onClick={add}>{lang ? 'Add language' : 'Add knowledge skill'} ({native ? 'native, free' : fmt(c.pricing.knowledge)})</button>
       </div>
-    </div>
+    </section>
   )
 }

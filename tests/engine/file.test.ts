@@ -7,7 +7,7 @@ import { base, cat } from '../helpers'
 const testChar = () => {
   const ch = blankCharacter()
   ch.identity.name = 'Fixture Runner'
-  ch.build.items = [{ uid: 'it-armor', catalogId: 'light-armor', kind: 'armor', name: 'Armor jacket', armor: 3 }]
+  ch.build.items.push({ uid: 'it-armor', catalogId: 'light-armor', kind: 'armor', name: 'Armor jacket', armor: 3 })
   return ch
 }
 

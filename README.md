@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.5.2 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.5.3 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -28,10 +28,15 @@ own API key), and you review its entries before they’re added.
   Tasking skill, a living persona (Firewall = Willpower, Attack = Charisma),
   and the complex forms your books bring.
 - **Lifestyles** (CRB p.165) adjust what each run pays.
-- **Knowledge & languages** in one list on the Skills tab. Each keyword and
-  each skill at 4+ is a free entry (a skill’s can be renamed to anything related
-  to it); any other costs the knowledge price. Mark each one Knowledge or
-  Language; the sheet prints them in two groups.
+- **Knowledge & languages** in two lists on the Skills tab, A–Z unless you
+  drag rows (or use their arrows) into your own order. Each keyword and each
+  skill at 4+ is a free entry (a skill’s can be renamed to anything related to
+  it); one language marked **Native** is free too; any other costs the knowledge
+  price. **Hide** leaves an entry off the printed sheet.
+- **Starting gear.** Every runner carries a free commlink (with trodes) and a
+  fake SIN (CRB p.84): rename and describe them, but they can’t be removed.
+  **Has a real SIN** on the Concept tab adds a free Real SIN entry and, when an
+  imported book has one, its SINner quality.
 - **Saving.** Every change saves on its own; the bar says when (“All changes
   saved · 14:02”), and **Save** / **Save and close** save right away. A save
   that fails turns red with the server’s reason and a **Retry**, and leaving

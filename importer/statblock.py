@@ -599,9 +599,10 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
             report.append({"kind": "unmatched-item", "sample": sid, "item": "spell", "name": n, "status": "unmatched"})
     for n in block["forms"]:
         item("complex-form", n)
+    starting = {"fake sin": "fake-sin", "commlink": "commlink", "commlink (with trodes)": "commlink", "commlink with trodes": "commlink"}  # every runner's free starting gear (CRB p.84)
     for n in block["equipment"]:
         if n.lower() not in (i["name"].lower() for i in items):
-            item("gear", n)
+            item("gear", n, starting=starting.get(re.sub(r"\s+", " ", n.lower()).strip()))
 
     def norm(s):
         return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
@@ -692,7 +693,7 @@ def character_xml(ch):
     fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note")})
     amp = lambda a: _el("amp", {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},
                         _text("narrative", a.get("narrative")) + "".join(map(fx, a["effects"])))
-    item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price")})
+    item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price", "starting")})
     body = [_text("portrait", ch["identity"].get("portrait")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
             *(f"<keyword>{_esc(k)}</keyword>" for k in ch["narrative"]["keywords"]),
             *(f"<disposition>{_esc(k)}</disposition>" for k in ch["narrative"]["dispositions"]),

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
-import { blankCharacter } from '../../src/engine/file'
+import { blankCharacter, ensureStartingGear } from '../../src/engine/file'
 import type { AmpEntry, CareerEvent, Character, ItemEntry } from '../../src/model/types'
 import { ATTRS } from '../../src/model/types'
 import { cat, MINI } from '../helpers'
@@ -52,8 +52,12 @@ function runner(seed: number, step: number): Character {
   if (step >= 3) { // skills, specializations (catalog and custom), knowledge
     ch.build.skills = skills.filter(() => r.next() < 0.4).map(s => ({ id: s.id, rating: r.int(0, 8),
       specs: [...s.specs.filter(() => r.next() < 0.3).map(x => x.id), ...(r.next() < 0.3 ? [`custom:${r.word()}`] : [])] }))
-    ch.build.knowledge = Array.from({ length: r.int(0, 4) }, () => ({ name: r.str(), kind: r.pick(['knowledge', 'language'] as const),
-      ...(r.next() < 0.4 ? { from: r.pick([`skill:${r.pick(skills).id}`, `keyword:${r.word()}`]) } : {}) }))
+    ch.build.knowledge = Array.from({ length: r.int(0, 4) }, (_, i) => ({ name: r.str(), kind: r.pick(['knowledge', 'language'] as const),
+      ...(r.next() < 0.4 ? { from: r.pick([`skill:${r.pick(skills).id}`, `keyword:${r.word()}`]) } : { id: `kn-${seed}-${i}` }),
+      ...(r.next() < 0.3 ? { native: true as const } : {}) }))
+    // the player's order and hidden rows: keys of rows that may or may not exist
+    ch.build.knowledgeOrder = r.maybe(() => Array.from({ length: r.int(1, 4) }, () => r.pick([`skill:${r.pick(skills).id}`, `language:${r.str()}`, `keyword:${r.word()}`])))
+    ch.build.knowledgeHidden = r.maybe(() => Array.from({ length: r.int(1, 3) }, () => r.pick([`knowledge:${r.str()}`, `keyword:${r.word()}`])))
   }
   const amp = (i: number): AmpEntry => {
     const t = r.maybe(() => r.pick(amps))
@@ -63,6 +67,7 @@ function runner(seed: number, step: number): Character {
     if (t) { a.catalogId = t.id; if (r.next() < 0.5) a.snapshot = t }
     if (r.next() < 0.2) a.linkedItem = `it-${seed}-0`
     if (r.next() < 0.2) a.vehicle = r.pick([...cat.vehicles.keys()])
+    if (r.next() < 0.15) a.realSin = true
     return a
   }
   const item = (i: number): ItemEntry => {
@@ -74,11 +79,13 @@ function runner(seed: number, step: number): Character {
     if (r.next() < 0.3) it.dv = r.pick(['STR+2', '5', r.word()])
     if (r.next() < 0.3) it.ranges = r.pick(['OK/-/-/-', r.word()])
     if (r.next() < 0.3) it.price = r.int(0, 50000)
+    if (r.next() < 0.15) it.starting = r.pick(['commlink', 'fake-sin', 'real-sin'] as const)
+    if (r.next() < 0.3) it.note = r.str()
     return it
   }
   if (step >= 4) ch.build.amps = Array.from({ length: r.int(0, 5) }, (_, i) => amp(i)) // amps, half-built ones too
   if (step >= 5) { // gear, spells, armor worn
-    ch.build.items = Array.from({ length: r.int(0, 5) }, (_, i) => item(i))
+    ch.build.items = [...ch.build.items, ...Array.from({ length: r.int(0, 5) }, (_, i) => item(i))] // after the free starting gear
     ch.build.mainArmor = r.maybe(() => ch.build.items[0]?.uid ?? 'gone')
     ch.build.altArmor = r.maybe(() => 'it-missing')
     ch.overrides = r.next() < 0.5 ? [{ code: 'attr.maxCount', path: 'attributes', note: r.str() }] : []
@@ -98,6 +105,7 @@ function runner(seed: number, step: number): Character {
       e({ type: 'note', text: r.str() }, 9), e({ type: 'void', eventId: `ev-${seed}-3`, reason: r.str() }, 10),
     ]
   }
+  ensureStartingGear(ch.build) // as every load leaves it (a hand-added SINner brings its Real SIN entry)
   return ch
 }
 

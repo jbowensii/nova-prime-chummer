@@ -113,7 +113,10 @@ export function validate(c: Catalog, ch: Character): Violation[] {
   if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'warning', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'warning', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
+  const natives = b.knowledge.filter(k => k.native && k.kind === 'language')
+  if (natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free; ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
   b.knowledge.forEach((k, i) => {
+    if (k === natives[0]) return // free whatever its slot does
     const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)
     if (lapse) add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free; with ${lapse} it’s a paid knowledge skill.`)
   })
@@ -140,7 +143,7 @@ export function validate(c: Catalog, ch: Character): Violation[] {
   for (const i of b.items) {
     const path = `items.${i.uid}`
     if (i.catalogId && !c.items.has(i.catalogId)) add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
-    if (i.price != null) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
+    if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
   }
 
   const n = ch.narrative
