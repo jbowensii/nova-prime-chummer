@@ -53,6 +53,13 @@ VEHICLE = re.compile(r"vehicle|drone", re.I)
 WEAPON_ALIASES = {"smg": "submachine-gun", "hand taser": "taser", "stun gloves": "advanced-close-quarter",
                   "mounted assault rifles": "assault-rifle", "blades": "long-weapon", "club": "long-weapon", "knife": "short-weapon",
                   "whip": "advanced-close-quarter"}  # a monofilament whip (CRB p.144)
+# a weapon row printed without a type: an implant or a hand-to-hand weapon named for what it is (short weapons, CRB
+# p.142: knives, knuckles, implanted claws and blades)
+SHORT_WEAPON = re.compile(r"\b(knuckles?|spurs?|claws?|razors?)\b", re.I)
+# a mount the chassis doesn't come with: the effect table's "additional mount, concealed, turret, etc." (CRB p.62)
+ENHANCED_MOUNT = re.compile(r"\b(additional|second|concealed|hidden|turret|retractable)\b", re.I)
+# words too common to tie an Equipment amp to an item by name
+LINK_STOP = {"with", "from", "high", "their", "into", "kit", "and", "the"}
 # spec names the booklet uses for a shipped specialization (DHSA's aliases also apply)
 SPEC_NAMES = {("engineering", "explosives"): "engineering.demolitions", ("piloting", "aerial drones"): "piloting.flying-drones"}
 # a line that limits an effect: the rules' price is above the printed one by a Negative effect
@@ -92,13 +99,23 @@ def load_rules(data=None):
                            "essence": float(t.get("essence"))} for r in roots("amptypes.xml") for t in r}
     chassis = {v.get("id"): (int(v.get("body")), int(v.get("handling")), int(v.get("speed"))) for v in root("vehicles.xml")}
     pilot = {v.get("id"): int(v.get("pilot")) for v in root("vehicles.xml")}
+    mounts = {v.get("id"): _weapon_size(v.get("mount") or "any") for v in root("vehicles.xml")}
     armor = {}
     for i in root("armor.xml"):
         armor.setdefault(int(i.get("armor")), i.get("id"))
     weapons = {i.findtext("name").lower(): i.get("id") for i in root("weapons.xml")}
     weapons.update({i.get("id").replace("-", " "): i.get("id") for i in root("weapons.xml")})
-    return {"skills": skills, "specs": specs, "effects": effects, "types": types, "chassis": chassis, "pilot": pilot,
-            "armor": armor, "weapons": weapons, "names": {v["name"].lower(): k for k, v in skills.items()}}
+    specialist = {i.get("id") for i in root("weapons.xml") if i.get("specialist") == "true"}
+    # prices: the core <pricing>, then a book's partial <prices> over it (the Conversion Guide's complex forms), as load.ts
+    pricing = {}
+    for r in roots("pricing.xml"):
+        for p in r:
+            pricing.update({k: v for k, v in p.attrib.items() if k not in ("id", "source", "page")})
+    levels = {lv.get("id"): int(lv.get("nuyen")) for lv in root("levels.xml")}
+    maxima = {m.get("id"): {g.get("attr"): int(g.get("max")) for g in m.iter("range")} for m in root("metatypes.xml")}
+    return {"skills": skills, "specs": specs, "effects": effects, "types": types, "chassis": chassis, "pilot": pilot, "mounts": mounts,
+            "armor": armor, "weapons": weapons, "specialist": specialist, "names": {v["name"].lower(): k for k, v in skills.items()},
+            "pricing": pricing, "levels": levels, "maxima": maxima}
 
 
 # ---------------------------------------------------------------- parsing
@@ -332,6 +349,36 @@ def crb_statblock(md_page):
     return block
 
 
+def pdf_narrative(page):
+    """{"dispositions", "cues"} as a core rulebook stat page lays them out (a pdfplumber page), or {} when it has neither
+    heading. The Markdown loses where one wraps: a disposition or a cue may take two lines, and a cue two sentences
+    ("There's always a way. I just need …"). On the page each item starts a new slot, further below the line above it
+    than a wrapped line is; so a line more than 1.15 of its type size below the last starts the next item."""
+    chars = sorted((c for c in page.chars if c["x0"] > page.width * 0.62), key=lambda c: c["top"])
+    lines = []  # [top, size, chars]: a slightly tilted line's pieces sit a few points apart
+    for c in chars:
+        if lines and c["top"] - lines[-1][0] < 4.5:
+            lines[-1][2].append(c)
+        else:
+            lines.append([c["top"], c["size"], [c]])
+    out, sec, prev = {}, None, None
+    for top, size, cs in lines:
+        text = re.sub(r"\s+", " ", "".join(c["text"] for c in sorted(cs, key=lambda c: c["x0"]))).strip()
+        head = text.replace(" ", "").upper()
+        if head in ("DISPOSITIONS", "CUES"):
+            sec, prev = head.lower(), None
+            out[sec] = []
+        elif head.startswith(("RISK", "RR", "KEYWORDS")):
+            sec = None
+        elif sec and text:
+            if prev is not None and top - prev <= 1.15 * size:
+                out[sec][-1] += " " + text
+            else:
+                out[sec].append(text)
+            prev = top
+    return {k: [_plain(x).strip("“”\" ") for x in v] for k, v in out.items()}
+
+
 # ---------------------------------------------------------------- effects
 
 def _fx(ref, param=None, value=None, note=None, n=1):
@@ -400,6 +447,16 @@ def amp_essence(rules, atype, fx):
     return max(0, base + sum(rules["effects"][f[0]]["essence"] for f in fx if f[0] in rules["effects"])) if base else 0
 
 
+def _weapon_size(text):
+    """How big a weapon a text names, or a chassis' mount takes ("up to submachine guns", "none", "any"): 0 none,
+    1 pistols, 2 submachine guns, 3 rifles and shotguns, 9 anything bigger or unnamed."""
+    low = text.lower()
+    for size, pat in ((0, r"^none"), (1, r"pistol|holdout|taser"), (2, r"\bsmgs?\b|submachine"), (3, r"rifle|riffle|shotgun")):
+        if re.search(pat, low):
+            return size
+    return 9
+
+
 def _chassis(amp, rules):
     words = " ".join([amp["type"]] + amp["lines"]).lower()
     m = re.search(r"vehicle - ([a-z-]+)", amp["type"].lower())
@@ -451,6 +508,12 @@ def map_amp(amp, rules, mapper, first_quality):
             fx.insert(0, (pre, None, None, None))
             refs.insert(0, pre)
     vehicle = _chassis(amp, rules) if atype == "vehicle" else None
+    if vehicle:  # the chassis' one front-facing mount (CRB p.60) takes the first weapon that fits: no Enhanced weapon mount
+        own = next((f for f in fx if f[0] == "weapon-mount" and not ENHANCED_MOUNT.search(f[1] or "")
+                    and _weapon_size(f[1] or "") <= rules["mounts"].get(vehicle, 9)), None)
+        if own:
+            fx.remove(own)
+            loose.append(own[1])
     stats = next((m for m in map(VSTATS.search, lines) if m), None) if vehicle else None
     if stats:  # what the printed stats add to the chassis: Pilot over the chassis's, Armor
         # ponytail: handling/speed over the chassis aren't priced (the booklet's printed speeds don't charge them)
@@ -497,9 +560,10 @@ def catalog_id(name, ids):
     return ids.get(n) or (hits[0] if len(hits) == 1 else None)
 
 
-def to_character(block, rules, sid, name, role, origin, background, updated, spell_ids=None):
+def to_character(block, rules, sid, name, role, origin, background, updated, spell_ids=None, cite=None):
     """-> (character dict in the .ca2.json shape, report rows). spell_ids (normalized name -> catalog id) links the
-    spells to the book's catalog; one that doesn't resolve is reported."""
+    spells to the book's catalog; one that doesn't resolve is reported. cite ("the Pregen booklet p.12"): where the runner
+    is printed; with it, what the book prints against a creation guideline becomes an override (book_overrides)."""
     mapper = Mapper({**rules["specs"], **SPEC_NAMES})
 
     def spec_id(skill, text):
@@ -517,7 +581,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
         uid = f"amp-{len(amps) + 1}"
         amps.append({"uid": uid, "type": atype, "name": a["name"], "narrative": " ".join(loose),
                      "effects": [{k: v for k, v in zip(("ref", "param", "value", "note"), f) if v not in (None, "")} for f in fx],
-                     **({"vehicle": vehicle} if vehicle else {}), "_fx": fx, "_ess": a["ess"]})
+                     **({"vehicle": vehicle} if vehicle else {}), "_fx": fx, "_ess": a["ess"], "_rating": computed, "_lines": a["lines"]})
         report.append({"kind": "amp", "sample": sid, "key": uid, "name": a["name"], "printed": a["rating"],
                        "computed": computed, "status": "ok" if computed == a["rating"] else "mismatch"})
 
@@ -549,7 +613,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
         if sk is None:
             report.append({"kind": "unknown-skill", "sample": sid, "name": s["name"]})
             continue
-        own = [spec_id(sk, x["name"]) for x in s["specs"] if x["plus2"]]
+        own = list(dict.fromkeys(spec_id(sk, x["name"]) for x in s["specs"] if x["plus2"]))  # a spec rolled with two attributes prints twice
         if s["rating"]:
             skills.append({"id": sk, "rating": s["rating"], "specs": own})
             rows.append((sk, None, s["attr"], s["dp"], s["rating"]))
@@ -574,21 +638,28 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     def item(kind, nm, **kw):
         items.append({"uid": f"it-{len(items) + 1}", "kind": kind, "name": nm, **{k: v for k, v in kw.items() if v is not None}})
         return items[-1]
-    worn, prev = [], 0
+    worn, prev = [], None  # (item, printed row, the armor worn)
     for r in block["armor"]:
         if r["armor"] is None:
             continue
-        v = prev + int(r["armor"][1:]) if r["armor"].startswith("+") else sum(map(int, r["armor"].split("+")))
-        prev = v
-        worn.append((item("armor", r["name"], armor=v, catalogId=rules["armor"].get(v)), r))
+        parts = [int(x) for x in r["armor"].split("+") if x]
+        v = (prev[2] if prev and r["armor"].startswith("+") else 0) + sum(parts)
+        # "(+1)" or "(2+1)" after the armor of 2: an add-on worn over it (a mask, a cocoon), bought for its own points
+        base = prev if prev and (r["armor"].startswith("+") or (len(parts) > 1 and parts[0] == prev[2])) else None
+        it = item("armor", r["name"], armor=v - base[2], over=base[0]["uid"]) if base else \
+            item("armor", r["name"], armor=v, catalogId=rules["armor"].get(v))
+        prev = (it, r, v)
+        worn.append(prev)
     for w in block["weapons"]:
-        # no type printed: a weapon named by its type ("Stun Gloves", "Submachine Gun"), else an attack (unarmed, astral)
-        kind = w["kind"] or (w["name"] if _weapon_id(rules, w["name"]) else None)
-        if kind is None or w["name"] in (i["name"] for i in items):  # repeats
+        # no type printed: a weapon named by its type ("Stun Gloves", "Submachine Gun"), an implant named for what it is
+        # ("Implanted knuckles", bought as a weapon on top of its cyberware), else an attack (unarmed, astral)
+        kind = w["kind"] or (w["name"] if _weapon_id(rules, w["name"]) else "knife" if SHORT_WEAPON.search(w["name"]) else None)
+        # repeats: another configuration of one weapon, or the same weapon's astral row ("Made-up knife in astral")
+        if kind is None or w["name"] in (i["name"] for i in items) or re.search(r"\bin astral\b", w["name"], re.I):
             continue
         cid = _weapon_id(rules, kind)
         for _ in range(w["count"]):  # "2x Sword": two items
-            item("weapon", w["name"], catalogId=cid, specialist=None if cid else True)
+            item("weapon", w["name"], catalogId=cid, specialist=None if cid and cid not in rules["specialist"] else True)
         if not cid:
             report.append({"kind": "unmatched-item", "sample": sid, "item": "weapon", "name": w["name"], "printed": kind,
                            "status": "unmatched"})
@@ -600,18 +671,37 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     for n in block["forms"]:
         item("complex-form", n)
     starting = {"fake sin": "fake-sin", "commlink": "commlink", "commlink (with trodes)": "commlink", "commlink with trodes": "commlink"}  # every runner's free starting gear (CRB p.84)
+    kind_of = lambda n: starting.get(re.sub(r"\s+", " ", n.lower()).strip())  # noqa: E731
+    # a model printed where the list says "Commlink" ("Brand X – high-end commlink", a misprinted "Commlin") is the
+    # runner's free commlink; an Equipment amp on it upgrades that one (the app's "Make it an amp")
+    named = None if any(kind_of(n) == "commlink" for n in block["equipment"]) else \
+        next((n for n in block["equipment"] if re.search(r"\bcommlin", n, re.I)), None)
+    # gear an implant has built in ("Integrated RCC" on a cyberarm): part of that amp, not bought again
+    built_in = {_norm(ln) for a in block["amps"] if AMP_TYPES.get(a["type"].lower()) != "equipment"
+                for ln in a["lines"] if ln.lower().startswith("integrated ")}
     for n in block["equipment"]:
-        if n.lower() not in (i["name"].lower() for i in items):
-            item("gear", n, starting=starting.get(re.sub(r"\s+", " ", n.lower()).strip()))
+        if n.lower() not in (i["name"].lower() for i in items) and _norm(n) not in built_in:
+            item("gear", n, starting="commlink" if n == named else kind_of(n))
 
-    def norm(s):
-        return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
-    for a in amps:
-        if a["type"] == "equipment":
-            hit = next((i for i in items if norm(i["name"]) == norm(a["name"])), None) or \
-                next((i for i in items if norm(a["name"]) in norm(i["name"]) or norm(i["name"]) in norm(a["name"])), None)
-            if hit:
-                a["linkedItem"] = hit["uid"]
+    # Each Equipment amp is an item bought first (CRB p.60): the item of its name (the same name, one name in the other,
+    # else the most shared words), the worn armor its "Armor N" line is (a well-stocked closet's clothes), else the
+    # item the stat page leaves out, added as gear at the equipment price.
+    def words(s):
+        return {w.rstrip("s") for w in _norm(s).replace("-", " ").split() if len(w) >= 4 and w not in LINK_STOP}
+    for a in (a for a in amps if a["type"] == "equipment"):
+        taken = {x.get("linkedItem") for x in amps}
+        # the free commlink too: an amp on it upgrades it (Firewall), it isn't bought again
+        free = [i for i in items if i["kind"] in ("gear", "weapon", "armor") and i.get("starting") in (None, "commlink")
+                and i["uid"] not in taken]
+        n = _norm(a["name"])
+        armor = next((int(m.group(1)) for m in (re.fullmatch(r"armor (\d+)", _norm(ln)) for ln in a["_lines"]) if m), None)
+        shared = max(free, key=lambda i: len(words(i["name"]) & words(a["name"])), default=None)
+        hit = next((i for i in free if _norm(i["name"]) == n), None) \
+            or next((i for i in free if n in _norm(i["name"]) or _norm(i["name"]) in n), None) \
+            or next((i for i in free if i["kind"] == "armor" and armor is not None and i.get("armor") == armor), None) \
+            or (shared if shared and words(shared["name"]) & words(a["name"]) else None) \
+            or item("gear", a["name"])
+        a["linkedItem"] = hit["uid"]
 
     # ---- thresholds and Essence, as the rules give them
     fx_all = [f for a in amps for f in a["_fx"]]
@@ -621,10 +711,10 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     deck = next((a for a in amps if a["type"] == "cyberdeck"), None)
     firewall = attrs["wil"] if emerged else 1 + sum(f[0] == "firewall-plus" for f in deck["_fx"]) if deck else None
     keyed = [("physicalNone", attrs["str"] + always)]
-    for (it, r), key in zip(worn, ("physicalMain", "physicalAlt")):
-        keyed.append((key, attrs["str"] + it["armor"] + always))
+    for (it, r, v), key in zip(worn, ("physicalMain", "physicalAlt")):
+        keyed.append((key, attrs["str"] + v + always))
     by_row = {"no armor": "physicalNone", "mental": "mental", "matrix": "matrix"}
-    worn_rows = {id(r): k for (_, r), k in zip(worn, ("physicalMain", "physicalAlt"))}
+    worn_rows = {id(r): k for (_, r, _), k in zip(worn, ("physicalMain", "physicalAlt"))}
     rules_value = dict(keyed, mental=attrs["wil"] + mental, matrix=firewall)
     for r in block["armor"]:
         key = worn_rows.get(id(r)) or by_row.get(r["name"].lower())
@@ -640,8 +730,9 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
 
     meta = next((a["type"].lower() for a in traits), None) or next(
         (m for k in block["keywords"] for m in METATYPES if re.search(rf"\b{m}\b", k.lower())), "human")
+    rating = sum(a["_rating"] for a in amps)
     for a in amps:
-        del a["_fx"], a["_ess"]
+        del a["_fx"], a["_ess"], a["_rating"], a["_lines"]
     build = {"attributes": attrs, "skills": skills, "knowledge": block.get("knowledge", []), "amps": amps, "items": items}
     if worn:
         build["mainArmor"] = worn[0][0]["uid"]
@@ -652,10 +743,62 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
           "narrative": {"keywords": block["keywords"], "dispositions": block["dispositions"], "cues": block["cues"]},
           "level": "runner", "package": "free", "origin": origin, "build": build, "career": [], "overrides": [],
           "updatedAt": updated}
+    if cite:
+        ch["overrides"] = book_overrides(ch, rules, rating, cite)
     return ch, report
 
 
-def sample(block, rules, src, name, role, page, background, updated, taken, spell_ids=None):
+BASICS = ("athletics", "stealth", "perception", "influence", "network")  # every runner's skills (CRB p.84; validate.ts)
+
+
+def nuyen(ch, rules, amp_rating_sum):
+    """The creation price of a built runner, as price.ts gives it for what the importer writes (no free knowledge slots,
+    no real SIN): attributes, skills, specializations, knowledge, amps (their rating sum), gear and spells."""
+    p = {k: float(v) for k, v in rules["pricing"].items() if re.fullmatch(r"[\d.]+", v)}
+    b, top = ch["build"], rules["maxima"].get(ch["identity"]["metatype"], {})
+    attrs = sum(p["attrLastPoint"] if pt == top.get(a) else p["attrPoint"] for a, v in b["attributes"].items() for pt in range(1, v + 1))
+    skills = sum(p["skillLow"] if pt <= p["skillLowMax"] else p["skillHigh"] for s in b["skills"] for pt in range(1, s["rating"] + 1)) \
+        + sum(len(s["specs"]) for s in b["skills"]) * p["spec"] + len(b["knowledge"]) * p["knowledge"]
+
+    def cost(i):
+        if i.get("starting"):
+            return 0
+        return {"armor": (i.get("armor") or 0) * p["armorPoint"], "weapon": p["weaponSpecialist"] if i.get("specialist") else p["weaponStandard"],
+                "spell": p["spell"], "complex-form": p["complexForm"]}.get(i["kind"], p["equipment"])
+    return int(attrs + skills + amp_rating_sum * p["ampPoint"] + sum(map(cost, b["items"])))
+
+
+def book_overrides(ch, rules, amp_rating_sum, cite):
+    """What the book prints against a creation guideline, as overrides {code, path, note} (validate.ts marks those
+    violations approved and shows the note): over the level's budget, a basic skill below 2, a specialization the
+    skill list doesn't have, Keywords/Dispositions/Cues other than 5/4/4, Cracking without a cyberdeck."""
+    b, out = ch["build"], []
+    over = nuyen(ch, rules, amp_rating_sum) - rules["levels"].get(ch["level"], 0)
+    if over > 0:
+        out.append(("budget.over", "budget", f"{over:,}¥ over the creation budget"))
+    rated = {s["id"]: s for s in b["skills"]}
+    for sid in BASICS:
+        r = rated.get(sid, {}).get("rating", 0)
+        if r < 2:
+            out.append(("runner.basics", f"skills.{sid}", f"{rules['skills'][sid]['name']} {r or '–'}"))
+    for s in b["skills"]:
+        own = [x[7:] for x in s["specs"] if x.startswith("custom:")]
+        if own:
+            out.append(("custom.content", f"skills.{s['id']}", f"the book's own specialization{'s' if len(own) > 1 else ''} {', '.join(own)}"))
+    n = ch["narrative"]
+    counts = [len([x for x in n[k] if x.strip()]) for k in ("keywords", "dispositions", "cues")]
+    if counts != [5, 4, 4]:
+        out.append(("narrative.count", "narrative", f"{counts[0]} Keywords, {counts[1]} Dispositions and {counts[2]} Cues"))
+    for i in b["items"]:  # an add-on stacked on armor (only a shield stacks, CRB p.148; validate.ts)
+        if i.get("over") and not re.search(r"\bshield\b", i["name"], re.I):
+            under = next((x["name"] for x in b["items"] if x["uid"] == i["over"]), "the armor")
+            out.append(("armor.stack", f"items.{i['uid']}", f"{i['name']} stacks on {under}"))
+    if rated.get("cracking", {}).get("rating", 0) > 0 and not {a["type"] for a in b["amps"]} & {"cyberdeck", "emerged"}:
+        out.append(("skill.requiresDeck", "skills.cracking", f"Cracking {rated['cracking']['rating']} with no cyberdeck"))
+    return [{"code": c, "path": p, "note": f"As printed in {cite}: {t}."} for c, p, t in out]
+
+
+def sample(block, rules, src, name, role, page, background, updated, taken, spell_ids=None, cite=None):
     """One runner -> (samples-list entry, report rows with the page). Its id is "<src>.<name>", or -2, -3… when
     that file is already in `taken` (the entries so far)."""
     base = sid = f"{src.lower()}.{_slug(name) or 'runner'}"
@@ -663,7 +806,7 @@ def sample(block, rules, src, name, role, page, background, updated, taken, spel
     while any(x["file"] == f"{sid}.xml" for x in taken):
         sid, n = f"{base}-{n}", n + 1
     ch, rows = to_character(block, rules, sid=sid, name=name, role=role, origin=src, background=background,
-                            updated=updated, spell_ids=spell_ids)
+                            updated=updated, spell_ids=spell_ids, cite=cite and f"{cite} p.{page}")
     return ({"file": f"{sid}.xml", "xml": character_xml(ch), "name": name, "role": role, "page": page},
             [{**r, "page": page} for r in rows])
 
@@ -693,7 +836,7 @@ def character_xml(ch):
     fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note")})
     amp = lambda a: _el("amp", {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},
                         _text("narrative", a.get("narrative")) + "".join(map(fx, a["effects"])))
-    item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price", "starting")})
+    item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price", "starting", "over")})
     body = [_text("portrait", ch["identity"].get("portrait")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
             *(f"<keyword>{_esc(k)}</keyword>" for k in ch["narrative"]["keywords"]),
             *(f"<disposition>{_esc(k)}</disposition>" for k in ch["narrative"]["dispositions"]),
@@ -703,7 +846,8 @@ def character_xml(ch):
                 + "".join(_el("skill", {"id": s["id"], "rating": s["rating"]}, "".join(f"<spec>{_esc(x)}</spec>" for x in s["specs"])) for s in b["skills"])
                 + "".join(f"<knowledge>{_esc(k)}</knowledge>" for k in b["knowledge"])
                 + "".join(map(amp, b["amps"])) + "".join(map(item, b["items"]))),
-            ""]  # no career, no overrides
+            "",  # no career
+            *(_el("override", {"code": o["code"], "path": o["path"]}, _esc(o["note"])) for o in ch["overrides"])]
     idn = ch["identity"]
     root = {"formatVersion": ch["formatVersion"], "id": ch["id"], "streetName": idn.get("streetName"), "name": idn.get("name"),
             "metatype": idn["metatype"], "level": ch["level"], "package": ch["package"], "origin": ch.get("origin"),

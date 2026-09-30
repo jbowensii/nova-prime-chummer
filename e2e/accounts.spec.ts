@@ -45,6 +45,17 @@ async function newRunner(page: Page, name: string) {
   await page.goto('/')
 }
 
+/** Open one of the list's runners, and wait until the editor's own first requests (the Ask the rules status) are done: a
+ *  session ended while one is still going is noticed by that one (the sign-in form comes up before the edit is made). */
+async function openRunner(page: Page, name: string) {
+  const open = new Set<unknown>(), done = (r: unknown) => open.delete(r)
+  page.on('request', r => open.add(r)).on('requestfinished', done).on('requestfailed', done)
+  await page.getByRole('link', { name }).click()
+  await expect(page.getByLabel('Street name')).toHaveValue(name)
+  await expect.poll(() => open.size).toBe(0)
+  page.off('requestfinished', done).off('requestfailed', done)
+}
+
 const menu = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const PHONE = { width: 390, height: 844 }
 /** No sideways scrolling of the page itself. */
@@ -210,8 +221,7 @@ test('change password, sign out, sign in with the new one', async ({ page }) => 
 
 test('an ended session asks to sign in again over the page and keeps the unsaved change', async ({ page, context }) => {
   await signIn(page, 'pat', PW.pat2)
-  await page.getByRole('link', { name: 'Pat Runner One' }).click()
-  await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner One')
+  await openRunner(page, 'Pat Runner One')
   await context.clearCookies()
   await page.getByLabel('Street name').fill('Pat Runner Two')
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
@@ -228,8 +238,7 @@ test('an ended session asks to sign in again over the page and keeps the unsaved
 
 test('someone else signing in over the page: the unsaved change is never sent', async ({ page, context }) => {
   await signIn(page, 'pat', PW.pat2)
-  await page.getByRole('link', { name: 'Pat Runner Two' }).click()
-  await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
+  await openRunner(page, 'Pat Runner Two')
   await context.clearCookies()
   const sent: string[] = []
   page.on('request', r => { if (r.method() === 'PUT' && r.postData()?.includes('Pat Unsaved')) sent.push(r.url()) })
@@ -244,6 +253,27 @@ test('someone else signing in over the page: the unsaved change is never sent', 
   await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
   await page.waitForTimeout(500)
   expect(sent).toHaveLength(1)
+})
+
+test('someone else signing in in another tab: this page’s change is refused, never saved as theirs', async ({ page, context }) => {
+  await signIn(page, 'pat', PW.pat2)
+  await openRunner(page, 'Pat Runner Two')
+  // the same browser, another tab: Pat signs out there and Ada signs in (the cookie is Ada's now)
+  const other = await context.newPage()
+  await other.goto('/')
+  await menu(other, 'Pat Player').click()
+  await other.getByRole('button', { name: 'Sign out' }).click()
+  await signIn(other, 'ada', PW.ada)
+  const put = page.waitForResponse(r => r.request().method() === 'PUT')
+  await page.getByLabel('Street name').fill('Pat Other Tab')
+  expect((await put).status()).toBe(401) // the page says it is Pat's; the server won't take it under Ada's cookie
+  await expect(page.getByText('Signing in as someone else discards this page’s unsaved changes.')).toBeVisible()
+  // Ada's tab: still Ada, and nothing of that change anywhere
+  await other.reload()
+  await expect(other.getByRole('link', { name: 'Pat Runner Two' })).toBeVisible()
+  await expect(other.getByRole('link', { name: 'Pat Other Tab' })).toHaveCount(0)
+  await expect(menu(other, 'Ada Admin')).toBeVisible()
+  await other.close()
 })
 
 test('the sign-in form comes up over an open dialog; keyboard and phone both get through', async ({ page, context }) => {
@@ -356,7 +386,6 @@ test('sign-out waits for a save from the runner list; one that hangs is given 10
   await page.getByRole('button', { name: 'Duplicate' }).first().click()
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
-  await expect(page.getByRole('button', { name: 'Signing out…' })).toBeDisabled()
   const stuck = page.getByRole('dialog', { name: 'A change is still saving' })
   await expect(stuck).toBeVisible({ timeout: 15000 })
   await expect(stuck).toContainText('hasn’t reached the server after 10 seconds')

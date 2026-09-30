@@ -62,6 +62,16 @@ test('catalog-sanctioned negative effects need no approval', () => {
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
+test('a book sample’s printed drawback needs no approval; the same effect on an own runner does', () => {
+  const ch = base()
+  ch.build.amps = [amp('q', 'quality', [{ ref: 'rr-skill', param: 'stealth' }, { ref: 'negative', value: 1, note: 'book drawback' }])]
+  expect(codes(ch)).toContain('amp.negative')
+  ch.origin = 'TEST'
+  expect(codes(ch)).not.toContain('amp.negative')
+  ch.build.amps[0].effects[1].note = undefined // a drawback the player added
+  expect(codes(ch)).toContain('amp.negative')
+})
+
 test('a GM override approves the violation and unblocks Finalize', () => {
   const ch = base()
   ch.build.attributes.str = 5
@@ -82,4 +92,12 @@ test('effects a catalog amp carries are sanctioned even when the effect table fo
   expect(codes(ch)).not.toContain('amp.typeIllegal')
   ch.build.amps[0].catalogId = undefined // the same effects on a home-made amp are not
   expect(codes(ch)).toContain('amp.typeIllegal')
+})
+
+test('an armor add-on stacked on other armor is noted (CRB p.148); a shield is not', () => {
+  const ch = base()
+  ch.build.items = [{ uid: 'v', kind: 'armor', name: 'Made-up vest', armor: 2 }, { uid: 'm', kind: 'armor', name: 'Made-up mask', armor: 1, over: 'v' }]
+  expect(count(ch, 'armor.stack')).toBe(1)
+  ch.build.items[1].name = 'Made-up riot shield'
+  expect(count(ch, 'armor.stack')).toBe(0)
 })

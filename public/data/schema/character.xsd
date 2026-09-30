@@ -141,6 +141,8 @@
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="note" type="xs:string"/>
+    <!-- an armor add-on (mask, helmet) worn over the armor item with this uid: armor = the points it adds -->
+    <xs:attribute name="over" type="xs:string"/>
   </xs:complexType>
 
   <xs:complexType name="Event">

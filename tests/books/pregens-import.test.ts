@@ -13,6 +13,7 @@ import { xmlToCharacter } from '../../src/engine/charxml'
 import { parseCharacterFile } from '../../src/engine/file'
 import { derive } from '../../src/engine/derive'
 import { buildCatalog } from '../../src/engine/load'
+import { price } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
 import type { Character } from '../../src/model/types'
 import { bookFile, books, loadDir } from '../helpers'
@@ -68,6 +69,14 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         expect(validate(imported ?? books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
       })
 
+      test('every error and warning is one the book prints, noted as an override; no override is stale', () => {
+        const c = imported ?? books!, v = validate(c, ch)
+        expect(v.filter(x => !x.approved).map(x => x.message)).toEqual([])
+        expect(ch.overrides.filter(o => !v.some(x => x.approved && x.code === o.code && x.path === o.path))).toEqual([])
+        const over = -price(c, ch).remaining // the importer prices the runner itself: its amount is the engine's
+        expect(ch.overrides.find(o => o.code === 'budget.over')?.note.match(/: ([\d,]+)¥/)?.[1]).toBe(over > 0 ? over.toLocaleString('en-US') : undefined)
+      })
+
       test('pools, thresholds and Essence the recipe marked ok are what the engine gives', () => {
         const wrong = mine.filter(r => r.status === 'ok' || r.kind === 'essence').flatMap(r => {
           const got = r.kind === 'pool' ? dp(r.skill, r.spec ?? null, r.attr)
@@ -119,7 +128,10 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         const ampNames = new Set(ch.build.amps.filter(a => a.type === 'equipment').map(a => norm(a.name)))
         const worn = new Set(ch.build.items.filter(i => i.kind === 'armor').map(i => norm(i.name)))
         const count = (xs: string[]) => xs.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map<string, number>())
-        const mine = count(ch.build.items.filter(i => !i.starting && !(i.kind === 'armor' && handGear.has(norm(i.name)))).map(key))
+        // an Equipment amp's item: the gear the hand listed under the amp's name, or the one the import adds for it
+        const ampItems = new Set(ch.build.amps.filter(a => a.type === 'equipment').map(a => a.linkedItem))
+        const mine = count(ch.build.items.filter(i => !i.starting && !(i.kind === 'armor' && handGear.has(norm(i.name)))
+          && !(i.kind === 'gear' && ampItems.has(i.uid))).map(key))
         const theirs = count(hand.filter(i => !i.starting && !(i.kind === 'gear' && (ampNames.has(norm(i.name)) || worn.has(norm(i.name))))).map(key))
         // the printed "Fake SIN, Commlink" became the free starting gear: exactly one of each (0.5.3)
         expect(ch.build.items.filter(i => i.starting).map(i => i.starting).sort()).toEqual(['commlink', 'fake-sin'])

@@ -115,15 +115,15 @@ export function derive(c: Catalog, ch: Character): Derived {
 
   const essence = 6 - b.amps.reduce((s, a) => s + ampEssence(c, a), 0)
 
-  // Armor: an item's own rating plus armor-plus from equipment amps linked to it;
-  // armor-plus on any other amp (orthoskin, mystic armor...) is always on.
-  const itemArmor = (uid?: string) => {
+  // Armor: an item's own rating plus armor-plus from equipment amps linked to it, plus the armor an add-on is worn
+  // over; armor-plus on any other amp (orthoskin, mystic armor...) is always on.
+  const itemArmor = (uid?: string, depth = 0): number => {
     if (!uid) return 0
     const it = b.items.find(i => i.uid === uid)
     if (!it) return 0
     const linked = b.amps.filter(a => a.type === 'equipment' && a.linkedItem === uid)
       .reduce((s, a) => s + a.effects.filter(e => e.ref === 'armor-plus').length, 0)
-    return (it.armor ?? 0) + linked
+    return (it.armor ?? 0) + linked + (it.over && depth < 3 ? itemArmor(it.over, depth + 1) : 0)
   }
   const alwaysOn = picks.filter(p => p.e.ref === 'armor-plus' && p.amp.type !== 'equipment').length
   // mental protection from Astral/Mystic Armor, biofeedback filters, code shells...: always on

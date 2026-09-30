@@ -5,7 +5,7 @@ import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
-import { AccountMenu, because, sessionEnded } from './auth'
+import { AccountMenu, accountHeader, because, sessionEnded } from './auth'
 import { SettingsButton } from './settings'
 import { AskButton } from './AskRules'
 
@@ -54,7 +54,7 @@ export function sendFile(path: string, file: File, headers: Record<string, strin
   return new Promise((ok, fail) => {
     const x = new XMLHttpRequest()
     x.open('POST', `./api/${path}`)
-    for (const [k, v] of Object.entries(headers)) x.setRequestHeader(k, v)
+    for (const [k, v] of Object.entries({ ...headers, ...accountHeader() })) x.setRequestHeader(k, v)
     x.upload.onprogress = e => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100))
     x.onload = () => {
       if (x.status === 401) { // the sign-in form comes up over the page

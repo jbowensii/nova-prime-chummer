@@ -81,6 +81,7 @@ function runner(seed: number, step: number): Character {
     if (r.next() < 0.3) it.price = r.int(0, 50000)
     if (r.next() < 0.15) it.starting = r.pick(['commlink', 'fake-sin', 'real-sin'] as const)
     if (r.next() < 0.3) it.note = r.str()
+    if (r.next() < 0.15) it.over = `it-${seed}-0`
     return it
   }
   if (step >= 4) ch.build.amps = Array.from({ length: r.int(0, 5) }, (_, i) => amp(i)) // amps, half-built ones too

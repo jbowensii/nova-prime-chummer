@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 
 // 0.5.3: free starting gear, the real SIN box, two knowledge lists (drag and keyboard order, hide, native).
 // Made-up names; the SINner quality is the made-up one in tests/fixtures/mini (TEST2). Screenshots go to .extract/.
-const SHOTS = '.extract/screenshots/0.5.3'
+const SHOTS = '.extract/screenshots/0.5.4'
 
 async function newRunner(page: Page, name: string) {
   await page.goto('/')
@@ -40,15 +40,19 @@ test('starting gear is free and locked; a real SIN adds its entry and the bookâ€
   const left = await page.locator('.receipt .peek').textContent()
   await tab(page, 'Gear & spells')
   for (const n of ['Commlink (with trodes)', 'Fake SIN']) {
-    const row = page.locator('tr.starting', { has: page.getByLabel(`Name of ${n}`) })
+    const row = page.locator('tr.starting', { has: page.locator('b', { hasText: n }) }) // named like any gear (0.5.4)
     await expect(row).toContainText('Free (starting gear)')
     await expect(row).toContainText('CRB p.84')
     await expect(row.getByRole('button', { name: 'Remove' })).toHaveCount(0)
+    await expect(row.getByLabel(`Name of ${n}`)).toHaveCount(0) // the fields open with Rename
   }
+  await page.getByRole('button', { name: 'Rename Fake SIN' }).click()
   const fake = page.getByLabel('Name of Fake SIN')
   await fake.fill('Fake SIN: Jane Roe')
   await fake.press('Enter')
   await page.getByLabel('Description of Fake SIN: Jane Roe').fill('Made-up nation, rating unknown')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('tr.starting').filter({ hasText: 'Fake SIN: Jane Roe' })).toContainText('Made-up nation, rating unknown')
   await expect(page.locator('.receipt .peek')).toHaveText(left!)
   await page.locator('tr.starting').first().scrollIntoViewIfNeeded()
   await shots(page, 'starting-gear', page.locator('tr.starting').first())
@@ -60,15 +64,14 @@ test('starting gear is free and locked; a real SIN adds its entry and the bookâ€
   await box.scrollIntoViewIfNeeded()
   await shots(page, 'real-sin', box)
   await tab(page, 'Gear & spells')
-  await expect(page.getByLabel('Name of Real SIN')).toBeVisible()
-  await expect(page.locator('tr.starting', { has: page.getByLabel('Name of Real SIN') })).toContainText('Free (real SIN)')
+  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toContainText('Free (real SIN)')
   await tab(page, 'Shadow Amps')
   await expect(page.getByText('SINner', { exact: true }).first()).toBeVisible()
   await expect(page.locator('.receipt .peek')).toHaveText(left!)
   await tab(page, 'Concept')
   await box.uncheck()
   await tab(page, 'Gear & spells')
-  await expect(page.getByLabel('Name of Real SIN')).toHaveCount(0)
+  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toHaveCount(0)
   await tab(page, 'Shadow Amps')
   await expect(page.getByText('SINner', { exact: true })).toHaveCount(0)
 
@@ -156,7 +159,7 @@ test('a SINner added by hand ticks the real SIN box and brings its entry; untick
   await expect(status(page)).toContainText('All changes saved')
   await page.reload()
   await tab(page, 'Gear & spells')
-  await expect(page.getByLabel('Name of Real SIN')).toBeVisible()
+  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toBeVisible()
   await tab(page, 'Concept')
   const box = page.getByRole('checkbox', { name: /Has a real SIN/ })
   await expect(box).toBeChecked()
@@ -170,7 +173,7 @@ test('a SINner added by hand ticks the real SIN box and brings its entry; untick
   await tab(page, 'Shadow Amps')
   await expect(page.getByText('SINner', { exact: true })).toHaveCount(0)
   await tab(page, 'Gear & spells')
-  await expect(page.getByLabel('Name of Real SIN')).toHaveCount(0)
+  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toHaveCount(0)
   await tab(page, 'Concept')
   await box.check()
   await tab(page, 'Shadow Amps')
@@ -186,4 +189,21 @@ test('once finalized, the real SIN box is locked with a note', async ({ page }) 
   await tab(page, 'Concept')
   await expect(page.getByRole('checkbox', { name: /Has a real SIN/ })).toBeDisabled()
   await expect(page.getByText(/Set this before finalizing, or ask your GM\./)).toBeVisible()
+})
+
+test('over budget reads as such; adding or removing a priced item says what it cost or gave back', async ({ page }) => {
+  await newRunner(page, 'Tight Wallet')
+  await tab(page, 'Gear & spells')
+  const receipt = page.locator('.receipt')
+  await page.locator('section', { has: page.getByRole('heading', { name: 'Equipment' }) }).getByRole('button', { name: 'Custom' }).click()
+  await page.getByLabel('Name', { exact: true }).fill('Made-up yacht')
+  await page.getByLabel(/Price set by the GM/).fill('900000')
+  await page.getByRole('button', { name: 'Add item' }).click()
+  await expect(receipt.getByRole('status')).toHaveText('+900,000Â¥: Made-up yacht added')
+  await expect(receipt.locator('.err', { hasText: /^Over budget by / })).toBeVisible()
+  await receipt.scrollIntoViewIfNeeded()
+  await shots(page, 'over-budget', receipt)
+  await page.locator('tr', { hasText: 'Made-up yacht' }).getByRole('button', { name: 'Remove' }).click()
+  await expect(receipt.getByRole('status')).toHaveText('âˆ’900,000Â¥: Made-up yacht removed')
+  await expect(receipt).not.toContainText('Over budget by')
 })

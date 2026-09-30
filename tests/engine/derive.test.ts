@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
 import { derive } from '../../src/engine/derive'
 import { blankCharacter } from '../../src/engine/file'
+import { price } from '../../src/engine/price'
 import type { AmpEntry, Character } from '../../src/model/types'
 import { cat } from '../helpers'
 
@@ -40,6 +41,19 @@ test('thresholds with no armor, main armor, alternate armor, and mental', () => 
   expect(t.physicalMain).toEqual([5, 8, 11])
   expect(t.physicalAlt).toEqual([3, 6, 9])
   expect(t.mental).toEqual([2, 5, 8])
+})
+
+test('an armor add-on worn over another armor counts on top of it and pays only its own points', () => {
+  const ch = blankCharacter('runner', 'ork')
+  ch.build.attributes.str = 4
+  ch.build.items = [{ uid: 'jacket', kind: 'armor', name: 'Made-up jacket', armor: 2 },
+    { uid: 'mask', kind: 'armor', name: 'Made-up jacket + mask', armor: 1, over: 'jacket' }]
+  ch.build.mainArmor = 'jacket'
+  ch.build.altArmor = 'mask'
+  const t = derive(cat, ch).thresholds
+  expect(t.physicalMain).toEqual([6, 9, 12])
+  expect(t.physicalAlt).toEqual([7, 10, 13])
+  expect(price(cat, ch).gear).toBe(3 * cat.pricing.armorPoint)
 })
 
 test('dice pools: attribute + skill, +2 per specialization, each with its made-up linked attribute', () => {

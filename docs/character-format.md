@@ -73,6 +73,15 @@ will convert from this format; the format itself is ours and stays stable.
   a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`). On a draft, an unpriced gear entry named
   exactly `Commlink`, `Commlink (with trodes)`, `Commlink with trodes` or `Fake SIN` (any case or spacing) becomes it
   instead, so there's never a second one; a finalized runner's items are never changed.
+- **`over`** on an armor item (0.5.4): an add-on worn over the armor item with that uid (a mask, a helmet, a rigger
+  cocoon). Its `armor` is the points it adds, and all it costs; worn as main or alternate armor it counts on top of
+  that item's armor.
+- **`<override>`** from an import (0.5.4): a book sample carries one for each creation guideline its book itself
+  breaks (over the budget, a basic skill below 2, a specialization of its own, Keywords/Dispositions/Cues other than
+  5/4/4, Cracking without a cyberdeck), with a note such as "As printed in the Pregen booklet p.12: 2,500¥ over the
+  creation budget." Review shows those as approved, with the note.
+- **`note="book drawback"`** on a `negative` effect of a book sample's amp (one with `origin`): the limitation the book
+  prints (an effect limited to some situations) and prices in; it needs no GM approval.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
   "SINner", any case); it's free. The box can't be changed once the runner is finalized. The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
   or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking

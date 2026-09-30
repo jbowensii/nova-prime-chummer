@@ -80,8 +80,10 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       if (e.param && eff.param === 'skill' && !c.skills.has(e.param)) add('ref.unknown', 'warning', ep, `${a.name}: unknown skill "${e.param}".`)
       if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId)) add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
       if (e.ref === 'negative') {
+        // a book sample's own amp: the drawback its book prints (the importer tags it) is the book's price, not a house rule
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
           || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
+          || (!!ch.origin && e.note === 'book drawback')
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 63)
       }
     })
@@ -144,6 +146,9 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     const path = `items.${i.uid}`
     if (i.catalogId && !c.items.has(i.catalogId)) add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
+    // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
+    if (i.over && !/\bshield\b/i.test(i.name))
+      add('armor.stack', 'warning', path, `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`, 148)
   }
 
   const n = ch.narrative

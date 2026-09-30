@@ -71,7 +71,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
 
         xmlio.write_status(book_dir, "extracting")
         out_dir = os.path.join(custom_dir, "imported", recipe.ID.lower())
-        res = recipe.extract(md, {"previous_dir": out_dir})  # the previous import, still in place
+        res = recipe.extract(md, {"previous_dir": out_dir, "pdf": pdf})  # the previous import, still in place; the book's PDF
         src = res.source["id"]
         res.files, refused = _no_core_overrides(res.files)
         res.report += refused
@@ -112,7 +112,9 @@ def _no_core_overrides(files):
     out, rows = dict(files), []
     for name in ("amptypes.xml", "ampeffects.xml"):
         path = find_core_file(name)
-        if name not in out or not path:
+        # the owner's local dev copies (DATA_DIR) aren't a server's core: comparing with them would drop what a book adds
+        # (DHSA's implant grades) when it's imported before the core rulebook, and the rulebook's core then lacks them
+        if name not in out or not path or os.path.dirname(os.path.abspath(path)) == os.path.abspath(DATA_DIR):
             continue
         core = xmlio.top_ids(Path(path).read_text(encoding="utf8"))
         root = xmlio.ET.fromstring(out[name].encode("utf8"))
