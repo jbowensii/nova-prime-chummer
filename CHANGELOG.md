@@ -92,6 +92,16 @@ the book itself prints against a guideline is now said on the runner.
   starting gear. The importer marks a pregen’s fake SIN and commlink as
   starting gear.
 
+**Accounts**
+- A page signed in as one account never saves or reads under another's
+  sign-in: when someone else signs in in another tab of the same browser, the
+  first tab's next request is refused and it asks to sign in again, so its
+  unsaved change can't land in their runners.
+- A backup's, restore's or data pack's download token works only for the admin
+  who made it.
+- On a Windows host, a runner save no longer fails when someone is listing
+  runners at that moment.
+
 ## 0.5.2 — 2026-09-29: knowledge skills, languages, saving and the runner list
 
 **Knowledge & languages**

@@ -125,16 +125,29 @@ export function sessionEnded() {
   session.held = true
   expired()
 }
-export function onSessionEnd(fn: (() => void) | null) {
+/** The account this page was signed in as: every /api request says so (X-CA2-User), and the server refuses one whose
+ *  cookie is now someone else's (signed in as another account in another tab of this browser) with a 401, so nothing
+ *  from this page is ever read or saved under that account. */
+let account: string | null = null
+export const ACCOUNT_HEADER = 'X-CA2-User'
+export const accountHeader = (): Record<string, string> => account ? { [ACCOUNT_HEADER]: account } : {}
+const api = (path: string) => /\/(api|custom)\//.test(path)
+export function onSessionEnd(fn: (() => void) | null, id: string | null = null) {
   expired = fn
+  account = id
   const w = window as typeof window & { ca2Fetch?: typeof fetch }
   if (w.ca2Fetch) return
   const orig = w.ca2Fetch = window.fetch.bind(window)
   window.fetch = async (input, init) => {
+    if (account && !(input instanceof Request) && api(new URL(String(input), location.href).pathname)) {
+      const headers = new Headers(init?.headers)
+      headers.set(ACCOUNT_HEADER, account)
+      init = { ...init, headers }
+    }
     const r = await orig(input, init)
     if (r.status === 401 && expired) {
       const path = new URL(r.url || String(input instanceof Request ? input.url : input), location.href).pathname
-      if (/\/(api|custom)\//.test(path) && !path.endsWith('/api/auth/login')) sessionEnded()
+      if (api(path) && !path.endsWith('/api/auth/login')) sessionEnded()
     }
     return r
   }

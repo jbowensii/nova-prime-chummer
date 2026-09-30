@@ -1,6 +1,7 @@
 // Chummer Anarchy 2.0 server: serves the built app and stores runners as XML files, one folder per account
 // (characters/<username>/, deleted ones in its .trash/). No dependencies. Accounts, sessions and the role table:
-// server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/.
+// server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/. A
+// request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
 //
 //   GET    /api/health                   -> { ok, storage: "server" }
 //   GET    /api/characters               -> [{ file, rev, xml, owner, ownerName }] the caller's runners; the admin: everyone's;

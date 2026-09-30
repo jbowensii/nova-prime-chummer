@@ -113,7 +113,14 @@ export function safeName(header) {
 export async function writeAtomic(path, text, mode = 0o666) {
   const tmp = `${path}.${randomBytes(4).toString('hex')}.tmp`
   await writeFile(tmp, text, { encoding: 'utf8', flag: 'wx', mode })
-  await rename(tmp, path)
+  // Windows refuses to rename over a file another request is reading at that moment (a listing, not under the write
+  // lock): try again for a moment. Elsewhere rename replaces it atomically and this never loops.
+  for (let i = 0; ; i++) {
+    try { return await rename(tmp, path) } catch (e) {
+      if (i >= 20 || !['EPERM', 'EACCES', 'EBUSY'].includes(e.code) || process.platform !== 'win32') { await rm(tmp, { force: true }); throw e }
+      await new Promise(ok => setTimeout(ok, 10 * (i + 1)))
+    }
+  }
 }
 
 export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000, askTimeout = 60000,
@@ -608,19 +615,20 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const tempZip = kind => join(backups, `${kind}-${randomBytes(12).toString('hex')}.zip`)
 
   /** Tokens for a made backup or data pack (downloads, packs) and an uploaded one (uploads, packUploads): random, single
-   *  use, and each map holds one at a time (a new one drops the old). The path is deleted on expiry, on replacement and on stop; on use, by the caller. */
-  const downloads = new Map(), uploads = new Map(), packs = new Map(), packUploads = new Map() // token -> { path, timer }
-  const take = (map, token) => {
+   *  use, and each map holds one at a time (a new one drops the old). The path is deleted on expiry, on replacement and on stop; on use, by the caller.
+   *  A token works only for the account that was given it (`user`: its id; undefined: expiry and stop). */
+  const downloads = new Map(), uploads = new Map(), packs = new Map(), packUploads = new Map() // token -> { path, timer, user }
+  const take = (map, token, user) => {
     const t = map.get(token)
-    if (!t) return null
+    if (!t || (user !== undefined && t.user !== user)) return null
     map.delete(token)
     clearTimeout(t.timer)
     return t.path
   }
-  async function issue(map, path, ttl) {
+  async function issue(map, path, ttl, user) {
     await Promise.all([...map.keys()].map(t => rm(take(map, t), { recursive: true, force: true })))
     const token = randomBytes(16).toString('hex')
-    map.set(token, { path, timer: setTimeout(() => void rm(take(map, token) ?? path, { recursive: true, force: true }), ttl).unref() })
+    map.set(token, { path, user, timer: setTimeout(() => void rm(take(map, token) ?? path, { recursive: true, force: true }), ttl).unref() })
     return token
   }
 
@@ -629,7 +637,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
    *  under it. A client that leaves stops it; the folder goes with a killed backup's partial .tmp. -> { token }
    *  ponytail: not a point-in-time snapshot. Saves and imports may run meanwhile; each file is written atomically, so
    *  every file is whole but two files can be from different moments. Refuse while `writes`/`running` if that matters. */
-  async function makeBackup(req, res, url, send) {
+  async function makeBackup(req, res, url, send, who) {
     noRestore()
     if (zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
     if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
@@ -650,13 +658,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       await rm(folder, { recursive: true, force: true }).catch(() => {}) // after the process has let go of its files (Windows)
       return gone ? undefined : send(res, 500, { error: 'couldn’t make the backup: ' + (await redact(r.err)).trim().split('\n').pop() })
     }
-    return send(res, 200, { token: await issue(downloads, folder, downloadTtl) })
+    return send(res, 200, { token: await issue(downloads, folder, downloadTtl, who.id) })
   }
 
   /** Step 2: the browser goes here, so the zip streams straight to disk with the browser's own progress. `kind`: backup or
    *  datapack (its token map, its zip's name in the token's folder, the download's name). */
-  async function sendZip(kind, token, res) {
-    const folder = /^[0-9a-f]{32}$/.test(token) ? take(kind === 'backup' ? downloads : packs, token) : null
+  async function sendZip(kind, token, res, who) {
+    const folder = /^[0-9a-f]{32}$/.test(token) ? take(kind === 'backup' ? downloads : packs, token, who.id) : null
     if (!folder) throw fail(404, kind === 'backup' ? 'this backup has expired; make it again' : 'this data pack has expired; make it again')
     res.on('close', () => void rm(folder, { recursive: true, force: true }).catch(() => {}))
     const out = join(folder, `${kind}.zip`), date = new Date().toISOString().slice(0, 10)
@@ -666,7 +674,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
 
   /** The upload to a temp zip, checked by `restore --check`; one pending restore at a time (a new preview drops the old). */
-  async function preview(req, res, send) {
+  async function preview(req, res, send, who) {
     noRestore()
     if (Number(req.headers['content-length']) > MAX_ZIP) {
       res.setHeader('Connection', 'close')
@@ -681,7 +689,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       const m = rootTag(r.out, 'backup')
       if (r.code !== 0 || !m) throw Object.assign(fail(500, 'couldn’t check the file: ' + (await redact(r.err)).trim().split('\n').pop()), { say: true })
       const folders = Object.fromEntries([...r.out.matchAll(/<folder\b[^>]*>/g)].map(f => [attr(f[0], 'name'), { files: Number(attr(f[0], 'files')), bytes: Number(attr(f[0], 'bytes')) }]))
-      const token = await issue(uploads, file, restoreTtl)
+      const token = await issue(uploads, file, restoreTtl, who.id)
       return send(res, 200, { token, manifest: { app: attr(m, 'app'), created: attr(m, 'created'), keys: attr(m, 'keys') === 'yes',
         users: Number(attr(m, 'users')), authSecret: attr(m, 'authSecret') === 'yes',
         files: Number(attr(m, 'files')), bytes: Number(attr(m, 'bytes')), folders } })
@@ -695,7 +703,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** Data pack step 1: `datapack export` into its own folder in library/.backups. The request is a counted write (track),
    *  so no restore runs under it. -> { token } for sendZip('datapack'). */
-  async function makePack(res, send) {
+  async function makePack(res, send, who) {
     if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
     // a book's import rewrites the core files one by one: a pack made meanwhile could mix old and new tables
     if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
@@ -715,7 +723,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (r.code === 3) throw fail(409, why || 'there is no core data to put in a pack')
       return send(res, 500, { error: 'couldn’t make the data pack: ' + why })
     }
-    return send(res, 200, { token: await issue(packs, folder, downloadTtl) })
+    return send(res, 200, { token: await issue(packs, folder, downloadTtl, who.id) })
   }
 
   /** The request body to a new temp `file` (0600), `max` bytes at most (413 `big`), refused (415 `notZip`) unless it
@@ -733,7 +741,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** Data pack upload, step 1, like a restore's preview: `datapack check` reads it all (names, sizes, manifest, hashes,
    *  schemas); nothing changes yet. -> { token, pack } for loadPack; one pending pack at a time. */
-  async function previewPack(req, res, send) {
+  async function previewPack(req, res, send, who) {
     if (Number(req.headers['content-length']) > MAX_PACK) {
       res.setHeader('Connection', 'close')
       return send(res, 413, { error: 'the file is larger than 50 MB' })
@@ -749,7 +757,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (r.code !== 0 || !m) throw Object.assign(fail(500, `couldn’t check the data pack (${why})`), { say: true })
       const files = [...r.out.matchAll(/<file\b[^>]*>/g)].map(f => attr(f[0], 'name')).sort()
       const have = new Set(await readdir(join(customDir, 'imported', 'core')).catch(() => []))
-      const token = await issue(packUploads, file, restoreTtl)
+      const token = await issue(packUploads, file, restoreTtl, who.id)
       return send(res, 200, { token, pack: { app: attr(m, 'app'), created: attr(m, 'created'), files, replaces: files.filter(f => have.has(f)) } })
     } catch (e) {
       await rm(file, { force: true })
@@ -761,13 +769,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** Data pack upload, step 2: `datapack import` checks it again and swaps its core files in, all or none. Refused while
    *  a job runs; jobs queued meanwhile wait (pump). A token that gets this far is used up. */
-  async function loadPack(token, res, send) {
+  async function loadPack(token, res, send, who) {
     const gone = () => fail(404, 'this data pack upload has expired; choose the file again')
-    if (!packUploads.has(token)) throw gone()
+    if (packUploads.get(token)?.user !== who.id) throw gone()
     if (packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
     if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     if (zipping) throw fail(409, 'a backup is being made; try again when it’s done') // it would copy the swap's folders
-    const file = take(packUploads, token)
+    const file = take(packUploads, token, who.id)
     packing = true
     try {
       const r = await importer(['datapack', 'import', file, '--custom', customDir], { timeout: 5 * 60000 })
@@ -791,13 +799,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
   }
 
-  async function restore(token, send, res) {
+  async function restore(token, send, res, who) {
     if (!/^[0-9a-f]{32}$/.test(token)) throw fail(404, 'this restore has expired; choose the file again')
     noRestore()
     if (running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     if (writes) throw fail(409, 'a save or an upload is running; try again when it’s done')
     if (zipping) throw fail(409, 'a backup is being made; try again when it’s done')
-    const file = take(uploads, token)
+    const file = take(uploads, token, who.id)
     if (!file) throw fail(404, 'this restore has expired; choose the file again')
     restoring = true
     let r
@@ -818,21 +826,21 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   async function handle(req, res, url, send, who) {
     const p = url.pathname, method = req.method
-    if (p === '/api/backup' && method === 'POST') return makeBackup(req, res, url, send)
+    if (p === '/api/backup' && method === 'POST') return makeBackup(req, res, url, send, who)
     const bt = p.match(/^\/api\/backup\/([^/]+)$/)
-    if (bt && method === 'GET') return sendZip('backup', bt[1], res)
+    if (bt && method === 'GET') return sendZip('backup', bt[1], res, who)
     if (p === '/api/backup' || bt) return send(res, 405, { error: 'method not allowed' })
-    if (p === '/api/restore' && method === 'POST' && url.searchParams.get('preview') === '1') return preview(req, res, send)
+    if (p === '/api/restore' && method === 'POST' && url.searchParams.get('preview') === '1') return preview(req, res, send, who)
     const rt = p.match(/^\/api\/restore\/([^/]+)$/)
-    if (rt && method === 'POST') return restore(rt[1], send, res)
+    if (rt && method === 'POST') return restore(rt[1], send, res, who)
     if (p === '/api/restore' || rt) return send(res, 405, { error: 'method not allowed' })
-    if (p === '/api/datapack' && method === 'POST') return makePack(res, send)
-    if (p === '/api/datapack/import' && method === 'POST') return previewPack(req, res, send)
+    if (p === '/api/datapack' && method === 'POST') return makePack(res, send, who)
+    if (p === '/api/datapack/import' && method === 'POST') return previewPack(req, res, send, who)
     const lt = p.match(/^\/api\/datapack\/import\/([^/]+)$/)
-    if (lt && method === 'POST') return loadPack(lt[1], res, send)
+    if (lt && method === 'POST') return loadPack(lt[1], res, send, who)
     if (lt) return send(res, 405, { error: 'method not allowed' })
     const pt = p.match(/^\/api\/datapack\/([^/]+)$/)
-    if (pt && method === 'GET' && pt[1] !== 'import') return sendZip('datapack', pt[1], res)
+    if (pt && method === 'GET' && pt[1] !== 'import') return sendZip('datapack', pt[1], res, who)
     if (p === '/api/datapack' || pt) return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/books' && method === 'POST') return upload(req, res, send)
     if (p === '/api/books' && method === 'GET') {

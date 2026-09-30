@@ -134,7 +134,7 @@ export default function App() {
   // a session that ends while the app is open: the sign-in form goes over the page, which keeps its state (unsaved
   // runner edits are sent again once signed back in); someone else signing in there starts afresh
   useEffect(() => {
-    onSessionEnd(user ? () => setEnded(true) : null)
+    onSessionEnd(user ? () => setEnded(true) : null, user?.id ?? null)
     return () => onSessionEnd(null)
   }, [user])
 

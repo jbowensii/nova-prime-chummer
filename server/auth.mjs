@@ -362,8 +362,11 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     }
     const level = need(url.pathname, req.method), u = session(req, res, ctx)
     if (level === 'public') return u
-    if (!u) {
-      send(res, 401, { error: 'sign in first' })
+    // the page says which account it was signed in as (X-CA2-User): a cookie that is now another account's (someone signed
+    // in as them in another tab of this browser) never reads or saves anything for that page
+    const claimed = req.headers['x-ca2-user']
+    if (!u || (claimed !== undefined && claimed !== u.id)) {
+      send(res, 401, { error: u ? 'this page was signed in as another account: sign in again' : 'sign in first' })
       return false
     }
     if ((level === 'admin' && u.role !== 'admin') || (level === 'editor' && u.role === 'player')) {
