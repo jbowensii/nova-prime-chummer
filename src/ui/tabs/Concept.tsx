@@ -1,8 +1,7 @@
 import { ATTRS } from '../../model/types'
-import { handAddedSinner, hasRealSin, setRealSin, sinnerTemplate } from '../../engine'
+import { useState } from 'react'
 import { useEditor } from '../editor'
-import { NonCanon } from '../bits'
-import { BACKDROP_NAMES, BACKDROPS, Face } from '../Portrait'
+import { BACKDROP_NAMES, Face, PortraitEditor } from '../Portrait'
 
 const HINTS = {
   keywords: ['Metatype / social status', 'Origins / home', 'Role / occupation', 'Lifestyle', 'Anything else that defines them'],
@@ -10,23 +9,10 @@ const HINTS = {
   cues: ['What they say under stress', 'When they win big', 'When they show off', 'Their catchphrase'],
 }
 
-/** Downscale an image file to a 256px data URL so the library stays small: JPEG, or PNG when it has transparent
- *  parts (they show the portrait backdrop). */
-async function portrait(file: File): Promise<string> {
-  const img = await createImageBitmap(file)
-  const s = 256 / Math.max(img.width, img.height)
-  const canvas = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * Math.min(1, s)), height: Math.round(img.height * Math.min(1, s)) })
-  const g = canvas.getContext('2d')!
-  g.drawImage(img, 0, 0, canvas.width, canvas.height)
-  const px = g.getImageData(0, 0, canvas.width, canvas.height).data
-  for (let i = 3; i < px.length; i += 4) if (px[i] < 255) return canvas.toDataURL('image/png')
-  return canvas.toDataURL('image/jpeg', 0.85)
-}
-
 export function ConceptTab() {
   const { c, ch, update, edit, career } = useEditor()
   const meta = c.metatypes.get(ch.identity.metatype)
-  const sinner = sinnerTemplate(c)
+  const [pe, setPe] = useState(false)
   const packages = [...c.packages.values()].filter(p => p.level === ch.level)
   const list = (k: keyof typeof HINTS) => (
     <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -66,47 +52,26 @@ export function ConceptTab() {
             {[...c.lifestyles.values()].map(l => <option key={l.id} value={l.id}>{l.name}{l.perRun ? ` (${l.perRun > 0 ? '+' : '−'}${Math.abs(l.perRun).toLocaleString('en-US')}¥ per run)` : ''}</option>)}
           </select>
         </label>
-        <label>Portrait
-          <input type="file" accept="image/*" onChange={async e => { const f = e.target.files?.[0]; if (f) { const url = await portrait(f); update(d => { d.identity.portrait = url }) } }} />
-        </label>
       </div>
       <div className="portrait-row">
         <Face ch={ch} />
-        <fieldset className="backdrops">
-          <legend>Portrait backdrop</legend>
-          <p className="muted">Shows through the transparent parts of a PNG or WebP portrait; a dark one prints as white.</p>
-          <div className="swatches">
-            {([undefined, ...BACKDROPS] as const).map(b => (
-              <label key={b ?? 'none'} title={b ? BACKDROP_NAMES[b] : 'None'}>
-                <input type="radio" name="backdrop" checked={ch.identity.backdrop === b}
-                  onChange={() => update(d => { if (b) d.identity.backdrop = b; else delete d.identity.backdrop })} />
-                <span className={b ? `bd-${b}` : 'bd-none'} /><span className="sr-only">{b ? BACKDROP_NAMES[b] : 'None'}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <div className="stack">
+          <button className="btn" onClick={() => setPe(true)}>{ch.identity.portrait ? 'Change portrait…' : 'Add a portrait…'}</button>
+          <span className="muted">Backdrop: {ch.identity.backdrop ? BACKDROP_NAMES[ch.identity.backdrop] : 'none'}</span>
+        </div>
+        <PortraitEditor ch={ch} open={pe} onClose={() => setPe(false)} onSave={(portrait, backdrop) => {
+          setPe(false)
+          update(d => {
+            if (portrait) d.identity.portrait = portrait; else delete d.identity.portrait
+            if (backdrop) d.identity.backdrop = backdrop; else delete d.identity.backdrop
+          })
+        }} />
       </div>
       {meta && <p className="muted">
         {meta.name}: {ATTRS.map(a => `${a.toUpperCase()} ${meta.ranges[a][0]}–${meta.ranges[a][1]}`).join(', ')}; Edge {meta.edge}{meta.racialQuality ? `; ${meta.racialQuality}` : ''}.
         {ch.package !== 'free' && ' The package only guides spending: nuyen can move between categories.'}
         {' '}{c.lifestyles.get(ch.identity.lifestyle ?? 'low')?.text}
       </p>}
-      <label className="check">
-        <input type="checkbox" checked={ch.allowNonCanon !== false}
-          onChange={e => update(d => { if (e.target.checked) delete d.allowNonCanon; else d.allowNonCanon = false })} />
-        <span>Allow non-canon content <span className="muted">(published material that isn’t the official rules, marked <NonCanon />). When off, the Review tab flags any on this runner.</span></span>
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={hasRealSin(ch.build, c)} onChange={e => {
-          const on = e.target.checked, mine = handAddedSinner(ch.build, c)
-          if (!on && mine.length && !confirm(`This also removes the ${mine.map(a => a.name).join(', ')} quality you added on the Shadow Amps tab. Remove the real SIN?`)) return
-          update(d => setRealSin(c, d.build, on))
-        }} />
-        <span>Has a real SIN <span className="muted">(not a core rule: every runner already has a fake SIN. Adds a free Real SIN entry on the Gear tab to name, e.g. national or corporate{sinner ? <>, and the {sinner.name} quality from {c.sources.get(sinner.source)?.name ?? sinner.source}</> : ''}.)
-          {!sinner && ' No imported book has a SINner quality, so only the gear entry is added.'}
-          {sinner && ' House rule: a SINner is always free and never counts as your first Quality, however you add it.'}
-          {career && ' Since Finalize, ticking or unticking it is logged in the ledger for your GM.'}</span></span>
-      </label>
       <hr className="sep" />
       <div className="grid2">{list('keywords')}{list('dispositions')}{list('cues')}</div>
       <hr className="sep" />

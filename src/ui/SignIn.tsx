@@ -2,13 +2,14 @@
 // and the recovery page (#/setup/reset), which takes the one-time code `node server/users.mjs reset <username>` prints.
 import { useEffect, useState, type ReactNode } from 'react'
 import { fetchMe, PasswordField, send, takeLinkNote, type User } from './auth'
+import { Brand } from './bits'
 
 /** A page with one form: the brand, a title, the fields, one error line (role=alert). */
 export function GatePage({ title, intro, err, onSubmit, busy, action, children, after }: { title: string; intro?: ReactNode; err: string;
   onSubmit: () => void; busy: boolean; action: string; children: ReactNode; after?: ReactNode }) {
   return (
     <main className="lib gate">
-      <div><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a></div>
+      <div><Brand /></div>
       <h1>{title}</h1>
       {intro}
       <form className="stack" onSubmit={e => { e.preventDefault(); if (!busy) onSubmit() }}>
@@ -87,7 +88,7 @@ export function Recover() {
   }
   if (done) return (
     <main className="lib gate">
-      <div><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a></div>
+      <div><Brand /></div>
       <h1>Password set</h1>
       <p role="status">Your new password works now, and every other device was signed out.</p>
       <div><a className="btn primary" href="#/" autoFocus>Sign in</a></div>

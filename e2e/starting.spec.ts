@@ -12,6 +12,13 @@ async function newRunner(page: Page, name: string) {
   await expect(page.getByLabel('Street name')).toBeVisible()
   await page.getByLabel('Street name').fill(name)
 }
+/** Adds the made-up book's SINner quality on the Shadow Amps tab. */
+async function addSinner(page: Page) {
+  await page.getByRole('button', { name: 'Add an amp' }).click()
+  await page.getByLabel('Search the book’s amps').fill('SINner')
+  await page.getByText('SINner', { exact: true }).click()
+  await page.getByRole('button', { name: 'Add amp' }).click()
+}
 const status = (page: Page) => page.getByRole('status', { name: 'Save status' })
 const tab = (page: Page, name: string) => page.getByRole('link', { name, exact: true }).click()
 /** the names in a knowledge list, top to bottom (a paid entry's name is in its text field) */
@@ -35,7 +42,7 @@ async function shots(page: Page, name: string, at?: Locator) {
   await theme('light')
 }
 
-test('starting gear is free and locked; a real SIN adds its entry and the book’s SINner, and goes again', async ({ page }) => {
+test('starting gear is free and locked; the SINner quality brings a free Real SIN entry, and takes it away', async ({ page }) => {
   await newRunner(page, 'Paper Trail')
   const left = await page.locator('.receipt .peek').textContent()
   await tab(page, 'Gear & spells')
@@ -57,23 +64,19 @@ test('starting gear is free and locked; a real SIN adds its entry and the book�
   await page.locator('tr.starting').first().scrollIntoViewIfNeeded()
   await shots(page, 'starting-gear', page.locator('tr.starting').first())
 
-  await tab(page, 'Concept')
-  const box = page.getByRole('checkbox', { name: /Has a real SIN/ })
-  await expect(page.getByText(/and the SINner quality from Test Book Two/)).toBeVisible()
-  await box.check()
-  await box.scrollIntoViewIfNeeded()
-  await shots(page, 'real-sin', box)
-  await tab(page, 'Gear & spells')
-  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toContainText('Free (real SIN)')
   await tab(page, 'Shadow Amps')
-  await expect(page.getByText('SINner', { exact: true }).first()).toBeVisible()
+  await addSinner(page)
+  await tab(page, 'Gear & spells')
+  const real = page.locator('tr.starting').filter({ hasText: 'Real SIN' })
+  await expect(real).toContainText('Free (real SIN)')
+  await real.scrollIntoViewIfNeeded()
+  await shots(page, 'real-sin', real)
   await expect(page.locator('.receipt .peek')).toHaveText(left!)
-  await tab(page, 'Concept')
-  await box.uncheck()
-  await tab(page, 'Gear & spells')
-  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toHaveCount(0)
   await tab(page, 'Shadow Amps')
+  await page.locator('tr', { hasText: 'SINner' }).getByRole('button', { name: 'Remove' }).click()
   await expect(page.getByText('SINner', { exact: true })).toHaveCount(0)
+  await tab(page, 'Gear & spells')
+  await expect(real).toHaveCount(0)
 
   await expect(status(page)).toContainText('All changes saved')
   const id = page.url().match(/#\/c\/([^/]+)\//)![1]
@@ -148,53 +151,30 @@ test('knowledge and languages: two A–Z lists, drag and keyboard order, Sort A�
   await expect(page.getByRole('button', { name: 'Sort A–Z' })).toHaveCount(0)
 })
 
-test('a SINner added by hand ticks the real SIN box and brings its entry; unticking asks, then removes it', async ({ page }) => {
+test('a SINner added by hand keeps its Real SIN entry when opened again', async ({ page }) => {
   await newRunner(page, 'Early Adopter')
   await tab(page, 'Shadow Amps')
-  await page.getByRole('button', { name: 'Add an amp' }).click()
-  await page.getByLabel('Search the book’s amps').fill('SINner')
-  await page.getByText('SINner', { exact: true }).click()
-  await page.getByRole('button', { name: 'Add amp' }).click()
-  // saved and opened again: the box is on and the free entry has come along
+  await addSinner(page)
   await expect(status(page)).toContainText('All changes saved')
   await page.reload()
   await tab(page, 'Gear & spells')
-  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toBeVisible()
+  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toHaveCount(1)
   await tab(page, 'Concept')
-  const box = page.getByRole('checkbox', { name: /Has a real SIN/ })
-  await expect(box).toBeChecked()
-  // unticking asks first: cancelled, nothing changes
-  page.once('dialog', d => { expect(d.message()).toContain('SINner quality you added'); void d.dismiss() })
-  await box.click()
-  await expect(box).toBeChecked()
-  page.once('dialog', d => void d.accept())
-  await box.click()
-  await expect(box).not.toBeChecked()
-  await tab(page, 'Shadow Amps')
-  await expect(page.getByText('SINner', { exact: true })).toHaveCount(0)
-  await tab(page, 'Gear & spells')
-  await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toHaveCount(0)
-  await tab(page, 'Concept')
-  await box.check()
-  await tab(page, 'Shadow Amps')
-  await expect(page.getByText('SINner', { exact: true })).toHaveCount(1)
+  await expect(page.getByRole('checkbox', { name: /Has a real SIN|Allow non-canon/ })).toHaveCount(0) // the GM's, on the Rules page
 })
 
-test('once finalized, the real SIN box still works and the ledger logs it (0.5.5: nothing is locked)', async ({ page }) => {
+test('once finalized, a SINner can still be added and the ledger logs it with its Real SIN (0.5.5: nothing is locked)', async ({ page }) => {
   await newRunner(page, 'Late Paperwork')
   await tab(page, 'Review')
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
   const left = await page.locator('.receipt .peek').textContent()
-  await tab(page, 'Concept')
-  const box = page.getByRole('checkbox', { name: /Has a real SIN/ })
-  await expect(box).toBeEnabled()
-  await expect(page.getByText(/House rule: a SINner is always free/)).toBeVisible()
-  await box.check()
+  await tab(page, 'Shadow Amps')
+  await addSinner(page)
   await expect(page.locator('.receipt .peek')).toHaveText(left!)
   await tab(page, 'Ledger')
-  await expect(page.locator('table.data tbody tr', { hasText: 'Added Real SIN' })).toContainText('Added SINner')
+  await expect(page.locator('table.data tbody tr', { hasText: 'Added SINner' })).toContainText('Added Real SIN')
 })
 
 test('over budget reads as such; adding or removing a priced item says what it cost or gave back', async ({ page }) => {

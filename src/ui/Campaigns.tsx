@@ -6,7 +6,7 @@ import { useEffect, useId, useState } from 'react'
 import type { Catalog } from '../model/types'
 import { AccountMenu, because, canEdit, send, useMe, type User } from './auth'
 import { AskButton, AskRules } from './AskRules'
-import { Modal } from './bits'
+import { Brand, Modal } from './bits'
 import { SettingsButton } from './settings'
 
 export interface Person { username?: string; name: string }
@@ -22,7 +22,7 @@ const names = (ps: Person[]) => ps.map(p => p.name).join(', ')
 function Header({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <header>
-      <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>{title}</h1></div>
+      <div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
       <div className="row">{children}<a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
     </header>
   )

@@ -28,24 +28,28 @@ test('pick a backdrop: it shows behind a transparent portrait in the builder, th
   await page.getByRole('button', { name: 'New runner' }).click()
   await page.getByRole('button', { name: 'Create runner' }).click()
   await page.getByLabel('Street name').fill('Backdrop')
-  await page.getByLabel('Portrait', { exact: true }).setInputFiles({ name: 'test-disc.png', mimeType: 'image/png', buffer: disc() })
+  // the portrait dialog: picture, backdrop, then Save
+  await page.getByRole('button', { name: 'Add a portrait…' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Portrait' })
+  await dlg.getByLabel('Portrait file').setInputFiles({ name: 'test-disc.png', mimeType: 'image/png', buffer: disc() })
+  await expect(dlg.locator('.pe-stage img')).toBeVisible()
+  await expect(dlg.getByRole('radio', { name: 'None' })).toBeChecked() // the look before backdrops
+  await dlg.getByRole('radio', { name: 'Neon' }).check()
+  await expect(dlg.locator('.pe-stage')).toHaveClass(/bd-neon/) // the preview shows it
+  // keyboard: arrows move through the swatches
+  await page.keyboard.press('ArrowRight')
+  await expect(dlg.getByRole('radio', { name: 'Rain' })).toBeChecked()
+  await page.keyboard.press('ArrowLeft')
+  await expect(dlg.getByRole('radio', { name: 'Neon' })).toBeChecked()
+  await shots(page, 'portrait-dialog')
+  const saved = page.waitForResponse(r => r.request().method() === 'PUT')
+  await dlg.getByRole('button', { name: 'Save portrait' }).click()
+  expect((await saved).status()).toBeLessThan(300)
   const face = page.locator('.portrait-row img.face')
   await expect(face).toHaveAttribute('src', /^data:image\/png;base64,/) // transparency kept
-  await expect(page.getByRole('radio', { name: 'None' })).toBeChecked() // the look before backdrops
-  expect(await bg(page, '.portrait-row img.face')).toContain('none')
-
-  const saved = page.waitForResponse(r => r.request().method() === 'PUT')
-  await page.getByRole('radio', { name: 'Neon' }).check()
-  expect((await saved).status()).toBeLessThan(300)
   await expect(face).toHaveClass(/bd-neon/)
   expect(await bg(page, '.portrait-row img.face')).toContain('radial-gradient')
   expect(await bg(page, '.topbar .who img.face')).toContain('radial-gradient') // the editor header
-  // keyboard: arrows move through the swatches
-  await page.getByRole('radio', { name: 'Neon' }).focus()
-  await page.keyboard.press('ArrowRight')
-  await expect(page.getByRole('radio', { name: 'Rain' })).toBeChecked()
-  await page.keyboard.press('ArrowLeft')
-  await expect(page.getByRole('radio', { name: 'Neon' })).toBeChecked()
   await page.waitForTimeout(600)
   await shots(page, 'builder')
   const id = page.url().match(/#\/c\/([^/]+)/)![1]
@@ -64,7 +68,9 @@ test('pick a backdrop: it shows behind a transparent portrait in the builder, th
   await page.screenshot({ path: `${SHOTS}/print-neon-as-white.png` })
   await page.goto(`/#/c/${id}/concept`)
   const again = page.waitForResponse(r => r.request().method() === 'PUT')
-  await page.getByRole('radio', { name: 'Grid' }).check()
+  await page.getByRole('button', { name: 'Change portrait…' }).click()
+  await page.getByRole('dialog', { name: 'Portrait' }).getByRole('radio', { name: 'Grid' }).check()
+  await page.getByRole('button', { name: 'Save portrait' }).click()
   expect((await again).status()).toBeLessThan(300)
   await page.goto(`/#/c/${id}/print`)
   await expect(printed).toHaveClass(/bd-grid/)
@@ -130,8 +136,11 @@ test('character sheet: weapons and spells apart, knowledge at the bottom, portra
     await page.getByRole('button', { name: 'New runner' }).click()
     await page.getByRole('button', { name: 'Create runner' }).click()
     await page.getByLabel('Street name').fill('Sheet Test')
-    await page.getByLabel('Portrait', { exact: true }).setInputFiles({ name: 'test-disc.png', mimeType: 'image/png', buffer: disc() })
-    await page.getByRole('radio', { name: 'Halftone' }).check()
+    await page.getByRole('button', { name: 'Add a portrait…' }).click()
+    const dlg = page.getByRole('dialog', { name: 'Portrait' })
+    await dlg.getByLabel('Portrait file').setInputFiles({ name: 'test-disc.png', mimeType: 'image/png', buffer: disc() })
+    await dlg.getByRole('radio', { name: 'Halftone' }).check()
+    await dlg.getByRole('button', { name: 'Save portrait' }).click()
     await page.getByLabel('keywords 1').fill('Invented street')
     await page.getByLabel('keywords 2').fill('Made-up origin')
     await page.waitForTimeout(600)

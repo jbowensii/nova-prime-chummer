@@ -85,7 +85,8 @@ will convert from this format; the format itself is ours and stays stable.
   `note="book drawback"`, no `starting` or `over` marker. What its book prints against the rules shows on Review like
   on any runner, unapproved. A `note="book drawback"` on a runner's own amp no longer approves anything (0.5.4 files
   had them): only a catalog amp's own printed drawback, unchanged, needs no GM.
-- **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
+- **`realSin="true"`** on an amp: added by the "Has a real SIN" box (before 0.5.7; since then a player adds the SINner
+  quality by hand and the free Real SIN entry follows it) with the catalog's SINner quality (named exactly
   "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
   takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the
   catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with no effects at all:
@@ -115,7 +116,8 @@ will convert from this format; the format itself is ours and stays stable.
   `remaining` = `finalRemaining`); their recorded costs keep the balance exactly where the old ledger had it.
 - **Career events** are never edited. A wrong `earn` is undone with a `void`
   event, so the history stays complete.
-- **`allowNonCanon="false"`** on the root marks a runner as canon only: the
+- **`allowNonCanon="false"`** on the root (before 0.5.7; read and kept, no longer used: the GM's table setting on the
+  Rules page decides since 0.5.7) marked a runner as canon only: the
   Review tab flags each non-canon amp, item or specialization. Missing means
   non-canon content is allowed.
 - **`origin`** on a sample runner names the source it was built from

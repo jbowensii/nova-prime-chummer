@@ -37,9 +37,27 @@ test('a broken import file is refused with a reason', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('bad.ca2.json: Missing formatVersion')
 })
 
-test('portrait upload is downscaled and shown in the library', async ({ page }) => {
+test('portrait: chosen, zoomed and dragged in its dialog, saved square, shown in the library', async ({ page }) => {
   await newRunner(page, 'Portrait')
-  await page.getByLabel('Portrait').setInputFiles('unraid/icon.png')
+  await page.getByRole('button', { name: 'Add a portrait…' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Portrait' })
+  await dlg.getByLabel('Portrait file').setInputFiles('unraid/icon.png')
+  const pic = dlg.locator('.pe-stage img')
+  await expect(pic).toBeVisible()
+  await dlg.getByLabel('Zoom').fill('2')
+  const x0 = await pic.evaluate(e => (e as HTMLElement).offsetLeft)
+  const box = (await dlg.locator('.pe-stage').boundingBox())!
+  await page.mouse.move(box.x + 128, box.y + 128)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 168, box.y + 128, { steps: 4 })
+  await page.mouse.up()
+  expect(await pic.evaluate(e => (e as HTMLElement).offsetLeft)).toBe(x0 + 40) // dragged right, still covering the square
+  await dlg.getByRole('button', { name: 'Center' }).click()
+  expect(await pic.evaluate(e => (e as HTMLElement).offsetLeft)).toBe(x0)
+  await dlg.getByRole('button', { name: 'Save portrait' }).click()
+  const face = page.locator('.portrait-row img.face')
+  await expect.poll(() => face.evaluate(e => [(e as HTMLImageElement).naturalWidth, (e as HTMLImageElement).naturalHeight])).toEqual([384, 384])
+  await expect(page.getByRole('button', { name: 'Change portrait…' })).toBeVisible()
   await page.waitForTimeout(600)
   await page.goto('/')
   const img = page.locator('.dossier img.face').first()

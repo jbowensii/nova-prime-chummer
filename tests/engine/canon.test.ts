@@ -32,7 +32,7 @@ describe('sources', () => {
   })
 })
 
-describe('allow non-canon content', () => {
+describe('the table allows non-canon content', () => {
   const rushAmp = (): AmpEntry => ({ uid: 'a', catalogId: 'test.rush', type: 'equipment', name: 'Rush', narrative: '',
     effects: cat.amps.get('test.rush')!.effects, linkedItem: 'i' })
   const rushItem = (): ItemEntry => ({ uid: 'i', kind: 'gear', name: 'Rush' })
@@ -41,8 +41,9 @@ describe('allow non-canon content', () => {
   test('allowed by default: no warning', () => {
     expect(validate(cat, nonCanon()).filter(v => v.code === 'content.nonCanon')).toEqual([])
   })
-  test('canon only: each non-canon use is a warning', () => {
-    const v = validate(cat, { ...nonCanon(), allowNonCanon: false }).filter(x => x.code === 'content.nonCanon')
+  test('a canon-only table: each non-canon use is a warning', () => {
+    expect(validate(cat, nonCanon(), { nonCanon: true, realSin: true }).filter(x => x.code === 'content.nonCanon')).toEqual([])
+    const v = validate(cat, nonCanon(), { nonCanon: false, realSin: true }).filter(x => x.code === 'content.nonCanon')
     expect(v.length).toBe(nonCanonUses(cat, nonCanon().build).length)
     expect(v.length).toBeGreaterThan(0)
     expect(v.every(x => x.severity === 'warning')).toBe(true)

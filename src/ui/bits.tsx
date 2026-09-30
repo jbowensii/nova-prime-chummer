@@ -71,6 +71,9 @@ function trapTab(e: React.KeyboardEvent<HTMLDialogElement>) {
 }
 
 /** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose; Tab stays inside. */
+/** The logo, home link and this build's version (vite.config.ts, from package.json). */
+export const Brand = () => <span className="brand-row"><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><span className="ver">v{__APP_VERSION__}</span></span>
+
 export function Modal({ open, onClose, title, children, actions, className }: { open: boolean; onClose: () => void; title: string; children: ReactNode; actions?: ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null)
   const tid = useId() // two dialogs can be open at once (an edit over a picker)
