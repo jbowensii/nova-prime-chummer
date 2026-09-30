@@ -54,7 +54,7 @@ describe('export: runners', () => {
   test('weapons and armor', () => {
     const ch = rush()
     ch.build.items.push(
-      { uid: 'w', kind: 'weapon', name: 'Made-up pistol', dv: '4P', ranges: 'OK/OK/Dis./�', specialist: true },
+      { uid: 'w', kind: 'weapon', name: 'Made-up pistol', dv: '4P', ranges: 'OK/OK/Dis./–', specialist: true },
       { uid: 'v', kind: 'armor', name: 'Made-up vest', armor: 2 })
     const its = exportRunners(cat, [ch], OPTS).runners![0].items
     const w = its.find(i => i.uid === 'w')!.weapon!, v = its.find(i => i.uid === 'v')!.armor!
@@ -96,6 +96,7 @@ describe('export: books', () => {
     const on = exportBooks(cat, ['TEST'], [{ name: 'Made-up rule', text: 'Invented.' }], OPTS)
     const off = exportBooks(cat, ['TEST'], [], { ...OPTS, descriptions: false })
     expect(on.tableRules).toEqual([{ name: 'Made-up rule', text: 'Invented.' }])
+    expect(JSON.stringify(on.books)).toMatch(/"description"|"text"/)
     expect(JSON.stringify(off.books)).not.toMatch(/"description"|"text"/)
   })
   test('a rules sheet’s entries are the book’s', () => {
