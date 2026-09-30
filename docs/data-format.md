@@ -190,8 +190,8 @@ These are the base chassis for vehicle amps.
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
 - An effect without `param` is an open pick: the player chooses it in the Amp
   Builder (mentor spirits' "choose two RR").
-- `note="balances printed rating"` / `note="book drawback"` mark effects added
-  to reconcile with the book's printed rating (see `docs/book-discrepancies.md`).
+- `note="balances printed rating"` / `note="book drawback"` mark effects added to a catalog amp to reconcile with
+  the book's printed rating (see `docs/book-discrepancies.md`). Never on a sample runner's amp (0.5.6).
 
 - `type` is an amptype id.
 - Each `effect ref` is an ampeffect id, and `param` fills its parameter (a
@@ -305,13 +305,15 @@ The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
 
-How a stat page becomes a runner (0.5.4): each Equipment amp is linked to the item it's bought with (by name, by the
-"Armor N" its clothes give, else the item the page leaves out is added as gear); a model printed in place of
-"Commlink" is the free starting commlink; gear an implant has built in ("Integrated …") isn't bought again; an armor
-row "(+1)" or "(2+1)" is an add-on worn over the one above (`over`); a weapon the chassis' own mount takes needs no
-Enhanced weapon mount; a spec rolled with two attributes is bought once. With the book's PDF, the core rulebook's
-dispositions and cues are read from the page layout (an item that wraps stays one). What the book itself prints against
-a creation guideline becomes an `<override>` with an "As printed in …" note (character-format.md).
+How a stat page becomes a runner (0.5.6): as printed (the owner's rule). Each amp keeps its printed type, the effects
+its lines read (an effect its type can't take too: Review flags it; a line no effect reads stays the amp's text) and
+its printed rating on its snapshot; nothing is added, dropped or retyped to meet that rating. Every printed item is
+bought as printed (a branded commlink too; the app makes a plain "Commlink" and "Fake SIN" its free starting gear
+when it loads the runner); an armor row "(2+1)" or "(+1)" is an armor of that total. An Equipment amp is linked to the
+printed item of its name (or the one with most words in common); with none printed, none is made up. A spec rolled
+with two attributes is bought once; a weapon's astral row isn't a second weapon. With the book's PDF, the core
+rulebook's dispositions and cues are read from the page layout (an item that wraps stays one). The file holds no
+override and no note: what the book prints against the rules shows on Review.
 
 ## Example sets (`custom/samples/<set>/`)
 

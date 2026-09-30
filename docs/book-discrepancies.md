@@ -32,8 +32,14 @@ used.
 
 ## Sample runners
 
-A printed amp rating the rules can't reproduce is a report row too; the
-runner keeps the computed rating. Where a stat block contradicts itself
+The owner's rule (0.5.6): a sample runner is what its book prints. Its amps
+keep the printed type and the effects their lines read (a line no effect
+reads stays the amp's text), with nothing added, dropped or retyped to meet
+the printed rating; its items are every printed entry. The printed rating is
+kept on the amp's snapshot, and where the rules rate the amp otherwise the
+runner's Review tab says so, as it shows everything else the book prints
+against the rules (over budget, a Negative effect's GM approval, an Equipment
+amp with no printed item). Nothing in the file approves or explains it. Where a stat block contradicts itself
 (attributes back-computed from dice pools, unarmed DV and thresholds), the
 majority wins and the odd number isn't tested. A custom specialization rolls
 with its skill's attribute.

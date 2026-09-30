@@ -6,6 +6,7 @@ import { test, expect } from 'vitest'
 import { ampCtx, ampRating } from '../../src/engine/amps'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { derive } from '../../src/engine/derive'
+import { validate } from '../../src/engine/validate'
 import { cat } from '../helpers'
 
 const golden = readFileSync('tests/fixtures/mini/custom/imported/pregens/samples/pregens.test-face.xml', 'utf8')
@@ -18,10 +19,15 @@ test('the importer’s sample XML reads as a character', () => {
   expect([ch.id, ch.origin, ch.identity.streetName, ch.identity.metatype]).toEqual(['pregens.test-face', 'PREGENS', 'Test Face', 'elf'])
   expect(ch.build.attributes).toEqual({ str: 2, agi: 3, wil: 3, log: 3, cha: 4 })
   expect(ch.build.skills.find(s => s.id === 'electronics')?.specs).toEqual(['custom:Mystery trick'])
-  expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([{ ref: 'rr-skill', param: 'influence' }, { ref: 'negative', value: 1, note: 'book drawback' }])
+  // as printed: no drawback made up, no override, the free starting gear is the app's (it takes the printed Fake SIN and Commlink)
+  expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([{ ref: 'rr-skill', param: 'influence' }])
+  expect(ch.overrides).toEqual([])
+  expect(ch.build.amps.map(a => a.snapshot?.printedRating)).toEqual([4, 9, 4, 6, 0])
   expect(ch.narrative.dispositions).toEqual(['Smiles a lot, and then some more.', 'Never early.'])
-  // the app's writer gives the same bytes: both writers stay pinned to this file
-  expect(characterToXml(ch)).toBe(golden)
+  // the app's writer gives the same bytes, but for the app's own marking of the printed Fake SIN and Commlink as the free
+  // starting gear when it reads the runner: both writers stay pinned to this file
+  expect(characterToXml(ch)).toBe(golden.replace('name="Fake SIN"/>', 'name="Fake SIN" starting="fake-sin"/>')
+    .replace('name="Commlink"/>', 'name="Commlink" starting="commlink"/>'))
 })
 
 test('the engine gives the numbers the recipe computed', () => {
@@ -31,6 +37,8 @@ test('the engine gives the numbers the recipe computed', () => {
   const dp = (skill: string, spec: string | null, attr: string) => d.pools.find(p => p.skill === skill && (p.spec ?? null) === spec && p.attr === attr)?.dp
   expect([dp('athletics', 'athletics.ranged-defense', 'wil'), dp('influence', 'influence.bluff', 'log'), dp('electronics', 'custom:Mystery trick', 'wil')]).toEqual([8, 10, 6])
   expect([d.thresholds.physicalNone[0], d.thresholds.physicalMain[0], d.thresholds.physicalAlt[0], d.thresholds.mental[0], d.essence]).toEqual([2, 4, 5, 3, 5])
-  // printed 4, 9, 4, 6, 0: the contact's RR costs rating in the rules (the recipe reports it)
-  expect(ch.build.amps.map(a => ampRating(cat, a, ampCtx(ch.build, a)))).toEqual([4, 9, 4, 6, 4])
+  // printed 4, 9, 4, 6, 0: as printed, the rules rate some otherwise (the recipe reports them, Review notes them)
+  const got = ch.build.amps.map(a => ampRating(cat, a, ampCtx(ch.build, a)))
+  expect(validate(cat, ch).filter(v => v.code === 'amp.printedRating').map(v => v.path))
+    .toEqual(ch.build.amps.filter((a, i) => a.snapshot?.printedRating !== got[i]).map(a => `amps.${a.uid}`))
 })

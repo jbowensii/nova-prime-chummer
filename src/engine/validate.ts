@@ -2,7 +2,7 @@
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { nonCanonUses } from './canon'
-import { FIREWALL_MAX, ampCtx, initLevels, isSinner, rawAmpRating } from './amps'
+import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, rawAmpRating } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { price, slotLapse } from './price'
@@ -81,10 +81,9 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       if (e.param && eff.param === 'skill' && !c.skills.has(e.param)) add('ref.unknown', 'warning', ep, `${a.name}: unknown skill "${e.param}".`)
       if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId)) add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
       if (e.ref === 'negative') {
-        // a book sample's own amp: the drawback its book prints (the importer tags it) is the book's price, not a house rule
+        // a catalog amp's own drawback, as its book prints it (a player's pick); on a runner's own amp, sample or not, the GM approves
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
           || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
-          || (!!ch.origin && e.note === 'book drawback')
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 61)
       }
     })
@@ -109,6 +108,13 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     const r = rawAmpRating(c, a, ampCtx(b, a, c))
     if (r < 0 && !isSinner(a, c))
       add('amp.negativeRating', 'error', path, `${a.name}: rating ${r}. An amp below 0 would give nuyen back, so it counts as 0 unless the GM approves.`, 61)
+    // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry): where the rules give
+    // another, say so. The book's number is never corrected in the file.
+    const printed = !a.catalogId ? a.snapshot?.printedRating : undefined
+    const rules = ampRating(c, a, ampCtx(b, a, c))
+    if (printed != null && printed !== rules)
+      add('amp.printedRating', 'warning', path, `${a.name}: the book prints rating ${printed}; the rules give ${rules}.`, a.snapshot?.page,
+        a.snapshot?.source)
   }
   for (const [ref, what] of [['armor-plus', 'Armor'], ['dv-plus', 'damage']] as const) {
     const n = b.amps.filter(a => a.type !== 'equipment').reduce((s, a) => s + a.effects.filter(e => e.ref === ref).length, 0)

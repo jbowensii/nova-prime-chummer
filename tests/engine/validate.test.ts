@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest'
 import { blankCharacter } from '../../src/engine/file'
+import { ampCtx, ampRating } from '../../src/engine/amps'
 import { canFinalize, validate } from '../../src/engine/validate'
 import { finalize, makeAmpAdd } from '../../src/engine/career'
 import type { AmpEntry, Character } from '../../src/model/types'
@@ -62,14 +63,28 @@ test('catalog-sanctioned negative effects need no approval', () => {
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
-test('a book sample’s printed drawback needs no approval; the same effect on an own runner does', () => {
+test('a negative effect on a runner’s own amp needs the GM, on a book sample too, whatever its note says', () => {
   const ch = base()
   ch.build.amps = [amp('q', 'quality', [{ ref: 'rr-skill', param: 'stealth' }, { ref: 'negative', value: 1, note: 'book drawback' }])]
   expect(codes(ch)).toContain('amp.negative')
   ch.origin = 'TEST'
-  expect(codes(ch)).not.toContain('amp.negative')
-  ch.build.amps[0].effects[1].note = undefined // a drawback the player added
   expect(codes(ch)).toContain('amp.negative')
+})
+
+test('a book sample’s amp: Review notes where the printed rating isn’t the rules’ one', () => {
+  const ch = base()
+  ch.origin = 'TEST'
+  const snap = (printedRating: number) => ({ id: 'test.x.q', type: 'quality', name: 'Q', effects: [], narrative: '', printedRating, source: 'TEST', page: 7 })
+  ch.build.amps = [amp('q', 'quality', [{ ref: 'rr-skill', param: 'stealth' }], { snapshot: snap(1) })]
+  const rating = ampRating(cat, ch.build.amps[0], ampCtx(ch.build, ch.build.amps[0]))
+  const note = validate(cat, ch).find(v => v.code === 'amp.printedRating')!
+  expect(note).toMatchObject({ severity: 'warning', path: 'amps.q', source: 'TEST', page: 7,
+    message: `q: the book prints rating 1; the rules give ${rating}.` })
+  ch.build.amps[0].snapshot = snap(rating)
+  expect(codes(ch)).not.toContain('amp.printedRating')
+  // a catalog amp's snapshot is the catalog entry, not what a runner's book printed: no note
+  ch.build.amps[0] = { ...ch.build.amps[0], catalogId: 'test.x', snapshot: snap(1) }
+  expect(codes(ch)).not.toContain('amp.printedRating')
 })
 
 test('a GM override approves the violation and unblocks Finalize', () => {

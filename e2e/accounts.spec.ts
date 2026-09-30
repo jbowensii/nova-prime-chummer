@@ -244,7 +244,10 @@ test('someone else signing in over the page: the unsaved change is never sent', 
   page.on('request', r => { if (r.method() === 'PUT' && r.postData()?.includes('Pat Unsaved')) sent.push(r.url()) })
   await page.getByLabel('Street name').fill('Pat Unsaved')
   await expect(page.getByText('Signing in as someone else discards this page’s unsaved changes.')).toBeVisible()
-  expect(sent).toHaveLength(1) // the one that found the session gone (401)
+  // at most one attempt reaches the server before the form is up (it gets 401); on a slow machine another request can
+  // find the session gone first and the save is held instead. What matters: nothing is sent once Ada signs in.
+  expect(sent.length).toBeLessThanOrEqual(1)
+  const before = sent.length
   await page.getByLabel('Username').fill('ada')
   await page.getByLabel('Password', { exact: true }).fill(PW.ada)
   await page.getByRole('button', { name: 'Sign in' }).click()
@@ -252,7 +255,7 @@ test('someone else signing in over the page: the unsaved change is never sent', 
   await expect(page.getByText('Read only — Pat Player’s runner.')).toBeVisible()
   await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
   await page.waitForTimeout(500)
-  expect(sent).toHaveLength(1)
+  expect(sent).toHaveLength(before)
 })
 
 test('someone else signing in in another tab: this page’s change is refused, never saved as theirs', async ({ page, context }) => {

@@ -1,5 +1,30 @@
 # Release notes
 
+## 0.5.6 — 2026-09-30: example characters as printed
+
+The owner's rule: every example character is what its book prints. What the book prints against the rules shows
+on the runner's Review tab; nothing in the file corrects, explains or approves it. 0.5.4's adjustments are gone.
+
+**Review**
+- A book sample's amp keeps the rating its book prints. Where the rules give another, Review notes it: "Goliath
+  Cyberarms: the book prints rating 5; the rules give 3" (Pregens p.11). Over budget, a Negative effect's GM approval,
+  an Equipment amp with no printed item and the rest show as on any runner.
+- "Book drawback" no longer approves anything: a Negative effect on a runner's own amp, a book sample's too, needs the
+  GM. A catalog amp's own printed drawback, unchanged, still needs no approval, as before.
+
+**Imported examples** (import the core rulebook and the pregen booklet again to get them)
+- Amps as printed: the printed type (a deck printed as a Quality stays a Quality), the effects the lines read, a
+  line no effect reads kept as the amp's text. No narrative effect is added, no Negative effect made up, no effect
+  dropped or retyped to meet the printed rating.
+- Items as printed: a branded commlink is bought like any gear (the app still adds the free commlink and fake SIN
+  when it loads a runner, taking a printed plain "Commlink" and "Fake SIN"); gear an implant has built in and the
+  equipment list prints is bought; an armor row "(+1)" is an armor of that total; an Equipment amp gets no item the
+  page doesn't print.
+- No overrides ("As printed in …"), no drawback notes, no starting or add-on markers in the files.
+- Kept, as reading: dispositions and cues from the core rulebook's page layout, implanted weapons printed without a
+  type, a weapon's astral row, a spec rolled with two attributes bought once.
+- Catalog amps the rulebook prints only on its sheets are priced as before.
+
 ## 0.5.5 — 2026-09-30: Finalize locks nothing
 
 **Finalize and the ledger**
