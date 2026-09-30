@@ -20,7 +20,8 @@ will convert from this format; the format itself is ours and stays stable.
   <build mainArmor="it-coat" altArmor="it-clothes">
     <attributes str="2" agi="3" wil="2" log="3" cha="4"/>
     <skill id="influence" rating="5"><spec>influence.bluff</spec></skill>
-    <knowledge>Language: Japanese</knowledge>
+    <knowledge kind="language">Japanese</knowledge>
+    <knowledge kind="knowledge" from="skill:influence">Corporate gossip</knowledge>
     <amp uid="amp-3" type="adept" name="Silver tongue" catalogId="…" linkedItem="…" vehicle="…">
       <narrative>…</narrative>
       <effect ref="rr-spec" param="influence.impersonation"/>
@@ -34,6 +35,7 @@ will convert from this format; the format itself is ours and stays stable.
     <event id="…" at="…" type="earn" amount="50000" run="…" date="2086-03-01"/>
     <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>
     <event … type="amp-modify" ampUid="…" cost="12000"><before><amp …/></before><after><amp …/></after></event>
+    <event … type="knowledge-add" name="Corporate gossip" kind="knowledge" slot="skill:influence" cost="0"/>
     <event … type="void" eventId="…" reason="misclick"/>
   </career>
   <override code="attr.maxCount" path="attributes">GM: street legend campaign</override>
@@ -49,6 +51,16 @@ will convert from this format; the format itself is ours and stays stable.
 - **`<snapshot>`** holds a copy of the catalog entry in the data files' own
   format (`amps.xsd` / `items.xsd`). That way a runner still loads and
   prints if the entry is later removed from the data.
+- **`<knowledge>`** is a knowledge skill or language (`kind="knowledge"` or `kind="language"`). Each keyword and each
+  skill at rating 4+ is a free entry and needs no element; one is written only when the player renames it or changes
+  its kind, with `from` naming the slot: `skill:<id>` (any name related to the skill) or `keyword:<the keyword>` (the
+  entry keeps the keyword's name). Every other entry costs the pricing file's `knowledge` price, and so does a
+  `from="skill:…"` entry while that skill is below 4, or a `from="keyword:…"` entry once that keyword is gone
+  (Review flags both). Before 0.5.2 an entry was plain text and a
+  language was written `Language: X`: such a file loads with those as paid knowledge, and `Language: X` as the
+  language X.
+- **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
+  that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
 - **Career events** are never edited. A mistake is undone with a `void`
   event, so the history stays complete.
 - **`allowNonCanon="false"`** on the root marks a runner as canon only: the
@@ -69,6 +81,10 @@ will convert from this format; the format itself is ours and stays stable.
 - **`campaign`** names the campaign the runner plays in (`custom/campaigns.xml`, see data-format.md). Only the server
   sets it (`/api/campaigns`); a save keeps the stored value whatever the body says, a new file (a copy, an import, a
   restored copy) gets none, and it counts only while the runner's owner is a GM or member of that campaign.
+- **Text** is escaped as XML needs; a carriage return is written `&#13;`, and a tab or line break inside an attribute
+  `&#9;` / `&#10;`, so each reads back as typed. Characters XML 1.0 can't hold (control characters other than tab,
+  line feed and carriage return; U+FFFE, U+FFFF; half a surrogate pair) are dropped when writing. A blank value is
+  written as an empty attribute (`metatype=""` on a draft), not left out.
 - Older `.ca2.json` exports still import.
 
 ## Server API

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildCatalog, collectFiles, CORE_FILES, type SourceFile } from '../src/engine/load'
+import { migrate } from '../src/engine/file'
 import type { Catalog, Character } from '../src/model/types'
 
 const dir = (d: string, overlay: boolean): SourceFile[] => readdirSync(d).filter(f => f.endsWith('.xml'))
@@ -60,7 +61,7 @@ const loadBooks = (): Catalog | null => {
  * and for anyone without their own books and core copies. See tests/books/_gate.ts. */
 export const books: Catalog | null = loadBooks()
 
-export const sample = (name: string): Character => JSON.parse(readFileSync(join(BOOKS_DIR, 'samples', `${name}.ca2.json`), 'utf8'))
+export const sample = (name: string): Character => migrate(JSON.parse(readFileSync(join(BOOKS_DIR, 'samples', `${name}.ca2.json`), 'utf8')))
 
 /** Path under the oracle root for any other private book file a books-only test needs
  * (e.g. pregens-printed.json, book-discrepancies.md) — never the committed copy. */

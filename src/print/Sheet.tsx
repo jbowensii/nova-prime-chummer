@@ -56,8 +56,10 @@ export function Sheet() {
                 ))}
               </tbody>
             </table>
+            <h3>Languages</h3>
+            <p>{d.knowledge.filter(k => k.kind === 'language').map(k => k.name).join(', ') || '—'}</p>
             <h3>Knowledge skills</h3>
-            <p>{d.knowledge.join(', ') || '—'}</p>
+            <p>{d.knowledge.filter(k => k.kind === 'knowledge').map(k => k.name).join(', ') || '—'}</p>
           </section>
 
           <section>

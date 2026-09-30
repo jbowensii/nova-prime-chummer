@@ -1,12 +1,13 @@
 // The character library lives in this browser's localStorage. It is a convenience:
 // the .ca2.json export is the durable copy, so every call tolerates storage failing.
 import type { Character } from '../model/types'
+import { migrate } from '../engine'
 
 const KEY = 'ca2.library.v1'
 const WEEK = 7 * 24 * 3600 * 1000
 
 export function listCharacters(): Character[] {
-  try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(KEY) ?? '[]').map(migrate) } catch { return [] }
 }
 
 export function getCharacter(id: string): Character | undefined {

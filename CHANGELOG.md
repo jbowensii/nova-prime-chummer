@@ -1,5 +1,57 @@
 # Release notes
 
+## 0.5.2 — 2026-09-29: knowledge skills, languages, saving and the runner list
+
+**Knowledge & languages**
+- One **Knowledge & languages** list on the Skills tab, each entry saying
+  where it comes from: **Free: keyword** (named after the keyword), **Free:
+  <Skill> 4+** (named after the skill; rename it to anything related, it
+  stays tied to that skill) or **Paid** (the knowledge price).
+- Each entry is marked **Knowledge** or **Language**; the printed sheet lists
+  languages and knowledge skills separately. There’s no free native language.
+- A skill reaching 4 gets its free entry by itself. Lowering it below 4 asks
+  first when its entry was renamed, since that entry then costs the knowledge
+  price (Review notes it). A keyword’s entry follows the keyword’s text; remove
+  the keyword and an entry you had marked stays as a paid one, noted on Review.
+- In career mode, adding an entry is a ledger entry at the knowledge price;
+  renaming a free one is recorded at no cost, and a free entry whose skill
+  dropped below 4 can be paid for.
+- Older files load unchanged: their knowledge skills are paid entries, and a
+  “Language: X” entry becomes the language X.
+
+**Saving**
+- The runner’s bar shows the save state: “All changes saved” with the time,
+  “Saving…”, or “Not saved” in red with the server’s reason and **Retry**.
+- **Save** saves right away; **Save and close** goes back to the runner list
+  once it’s saved.
+- Leaving a runner sends its last change first, and the runner list waits for
+  it. If it can’t be saved, leaving (or closing the tab) asks first.
+
+**Runner list**
+- Sorted A–Z by street name (else real name), ignoring case, accents and
+  punctuation, so Father O’Neil files under F; unnamed runners come last.
+  **Sort** also offers Z–A and Recently edited, and the browser remembers it.
+  Before, the list followed the order of the files on the server, which could
+  put a runner at the very bottom.
+- **Search** by street name or real name.
+- A **Draft** or **Finalized** badge on each runner and on the runner’s page
+  replaces the Creation / Career label. A draft opens where it was left.
+- A portrait that doesn’t load shows the runner’s initial instead.
+- A saved file the app can’t read is no longer left out of the list: it shows
+  as “Couldn’t open …” with the reason (line, column and element), **Download
+  file**, and **Try to repair**, which lists what it would change (characters
+  XML can’t hold removed, a stray “&” escaped, an unreadable part dropped) and
+  saves the repaired runner after you confirm. Opening a runner reads only
+  its own file.
+
+**Saving what you type**
+- Text pasted from a PDF can carry control characters XML can’t hold; they’re
+  now dropped when saving instead of making the file unreadable. Line breaks
+  and tabs in names, and blank fields in a draft (no metatype yet, say), now
+  read back exactly as saved. A test saves random runners at every step of
+  creation and in career, with every feature and awkward text, and reads
+  them back.
+
 ## 0.5.1 — 2026-09-29: background art
 
 - **Settings → Background art** (admin): upload your own images (PNG, JPEG

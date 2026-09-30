@@ -146,11 +146,12 @@ label > input, label > select { color: var(--text); font-size: 1rem; font-weight
 }
 .who { display: flex; align-items: baseline; gap: 0.6rem; min-width: 0; }
 .who .name { font-family: var(--display); font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; color: var(--heading); }
-/* pregen role line: white caps on a rust bar */
-.mode { font-size: 0.78rem; padding: 0.1rem 0.5rem; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--display); color: #fff; background: var(--rust); }
-.mode.career { background: var(--indigo); }
-:root[data-theme='dark'] .mode.career { background: #4a4380; }
 .spacer { flex: 1; }
+/* the editor's save line: saved (quiet), saving, not saved (red, with Retry) */
+.savebar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+.save-status { font-size: 0.85rem; color: var(--text-2); }
+.save-status.failed, .save-status.conflict { color: var(--err); font-weight: 600; }
+.save-status .btn { margin-left: 0.3rem; }
 
 .tabs { display: flex; gap: 0.1rem; overflow-x: auto; padding: 0 1.25rem; border-bottom: 1px solid var(--rule); }
 .tabs a {
@@ -165,6 +166,11 @@ label.check input { width: auto; margin-top: 0.25rem; }
 .noncanon { display: inline-block; font-size: 0.7rem; line-height: 1.3; padding: 0 0.4rem; border: 1px solid var(--indigo);
   color: var(--indigo); font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; vertical-align: 0.1em; white-space: nowrap; }
 :root[data-theme='dark'] .noncanon { border-color: var(--yellow); color: var(--yellow); }
+/* Draft / Finalized: the same badge; a draft outlined in rust, finalized filled */
+.noncanon.runstate.draft { border-color: var(--rust); color: var(--rust); }
+.noncanon.runstate.final { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+:root[data-theme='dark'] .noncanon.runstate.draft { border-color: #ff9d8c; color: #ff9d8c; }
+:root[data-theme='dark'] .noncanon.runstate.final { background: #4a4380; border-color: #4a4380; color: #fff; }
 /* source label (SourceLabel.tsx): "DHSA p.6", quiet; the book tag tells same-status duplicates apart */
 .srcline { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline; }
 .src { font-family: var(--sans); font-size: 0.8rem; color: var(--text-3); white-space: nowrap; }
@@ -280,6 +286,12 @@ table.data.fixed { table-layout: fixed; }
 .dossier .title { font-family: var(--display); font-size: 1.25rem; color: var(--heading); text-decoration: none; text-transform: uppercase; }
 .dossier a.title:hover { color: var(--rust); text-decoration: underline; text-decoration-color: var(--yellow); }
 .dossier .meta { color: var(--text-2); font-size: 0.92rem; }
+.dossier.unreadable .face { background: var(--err); color: #fff; font-family: var(--display); }
+.dossier.unreadable .meta { color: var(--err); }
+/* runner list: search and sort */
+.listtools { margin: 0.6rem 0 0.2rem; gap: 0.8rem; }
+.listtools input[type='search'] { flex: 1 1 14rem; max-width: 24rem; }
+.listtools label.inline { display: flex; align-items: center; gap: 0.5rem; }
 .empty { padding: 2.5rem 0; }
 .trash { list-style: none; margin: 0; padding: 0; }
 .banner { padding: 0.6rem 0.8rem; border-left: 4px solid var(--yellow); background: var(--zebra); margin-bottom: 1rem; }
@@ -503,3 +515,8 @@ dialog.drawer h2 { margin-top: 0; }
 .bg-gallery label.check { margin: 0; color: var(--text); font-size: 0.95rem; align-items: center; }
 .bg-gallery label.check input { margin-top: 0; }
 .bg-gallery .btn { align-self: flex-start; }
+@media (max-width: 600px) {
+  .dossier.unreadable { grid-template-columns: 2.5rem minmax(0, 1fr); }
+  .dossier.unreadable .face { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; }
+  .dossier.unreadable > .row { grid-column: 1 / -1; }
+}

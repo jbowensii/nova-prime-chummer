@@ -1,8 +1,9 @@
 // Derived values shown on the sheet (CRB p.52, 60, 61, 67-68, 77).
-import type { AmpEntry, AttrId, Build, Catalog, Character } from '../model/types'
+import type { AmpEntry, AttrId, Build, Catalog, Character, KnowledgeEntry } from '../model/types'
 import { ATTRS } from '../model/types'
 import { ampEssence } from './amps'
 import { currentBuild } from './career'
+import { slotLapse } from './price'
 
 export type Thresholds = [number, number, number]
 export interface Weapon { uid: string; name: string; dv: string; ranges: string; specialist?: boolean; note?: string }
@@ -26,10 +27,39 @@ export interface Derived {
   pools: Pool[]
   rrAttr: Record<AttrId, number>
   initiative?: { level: number; realm?: string; source: string }
-  knowledge: string[]
+  knowledge: KnowledgeRow[]
   awakened: { perception: boolean; projection: boolean; sorcery: boolean; conjuring: boolean; adept: boolean }
   firewall?: number
   attack?: number
+}
+
+/** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
+ *  stored yet); source: "Free: keyword", "Free: <Skill> 4+", "Paid", or "Paid (<Skill> below 4)" / "Paid (keyword “X”
+ *  removed)" for an entry whose free slot is gone. */
+export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number }
+
+/** Every keyword and every skill at 4+ is a free entry (a stored entry with that `from` renames it or marks it a
+ *  language; a keyword entry, keyed by the keyword's text, keeps its name); the other stored entries are paid. */
+export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): KnowledgeRow[] {
+  const used = new Set<number>()
+  const slot = (from: string) => { const at = b.knowledge.findIndex(k => k.from === from); if (at >= 0) used.add(at); return at }
+  const skillName = (id: string) => c.skills.get(id)?.name ?? id
+  const rows: KnowledgeRow[] = []
+  for (const kw of new Set(keywords.map(k => k.trim()).filter(Boolean))) {
+    const from = `keyword:${kw}`, at = slot(from)
+    rows.push({ name: kw, kind: b.knowledge[at]?.kind ?? 'knowledge', from, paid: false, source: 'Free: keyword', at })
+  }
+  for (const s of b.skills.filter(s => s.rating >= 4)) {
+    const from = `skill:${s.id}`, at = slot(from)
+    rows.push({ name: b.knowledge[at]?.name || skillName(s.id), kind: b.knowledge[at]?.kind ?? 'knowledge', from, paid: false,
+      source: `Free: ${skillName(s.id)} 4+`, at })
+  }
+  b.knowledge.forEach((k, at) => {
+    if (used.has(at)) return
+    const lapse = slotLapse(b, keywords, k, skillName)
+    rows.push({ ...k, paid: true, source: lapse ? `Paid (${lapse})` : 'Paid', at })
+  })
+  return rows
 }
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)
@@ -143,8 +173,7 @@ export function derive(c: Catalog, ch: Character): Derived {
   }
   const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a)).filter((x): x is VehicleStats => !!x)
 
-  const knowledge = [...b.knowledge, ...ch.narrative.keywords.filter(Boolean),
-    ...b.skills.filter(s => s.rating >= 4).map(s => c.skills.get(s.id)?.name ?? s.id)]
+  const knowledge = knowledgeRows(c, b, ch.narrative.keywords)
 
   return {
     build: b,

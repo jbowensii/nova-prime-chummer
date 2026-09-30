@@ -4,7 +4,7 @@ import { ATTRS } from '../model/types'
 import { nonCanonUses } from './canon'
 import { balance, activeEvents, currentBuild } from './career'
 import { derive } from './derive'
-import { price } from './price'
+import { price, slotLapse } from './price'
 
 export function validate(c: Catalog, ch: Character): Violation[] {
   const out: Violation[] = []
@@ -113,8 +113,13 @@ export function validate(c: Catalog, ch: Character): Violation[] {
   if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'warning', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'warning', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
+  b.knowledge.forEach((k, i) => {
+    const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)
+    if (lapse) add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free; with ${lapse} it’s a paid knowledge skill.`)
+  })
+
   // Risk Reduction caps
-  const d = derive(c, { ...ch, build: b, finalizedAt: undefined })
+  const d =derive(c, { ...ch, build: b, finalizedAt: undefined })
   if (creation && level) {
     for (const a of ATTRS) if (d.rrAttr[a] > level.rrAttr) add('rr.cap', 'error', `attributes.${a}`, `RR ${d.rrAttr[a]} on ${a.toUpperCase()}; ${level.name} allows ${level.rrAttr}.`, 84)
   }

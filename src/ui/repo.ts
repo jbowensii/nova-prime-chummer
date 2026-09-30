@@ -8,6 +8,8 @@ import { track, UNREACHABLE } from './auth'
 
 /** owner, ownerName: the account the runner belongs to (server only; the admin also lists everyone else's, an editor their campaigns') */
 export interface Stored { ch: Character; rev?: number; file?: string; owner?: string; ownerName?: string }
+/** A saved file the app can't read: listed (never hidden) with the reason, so it can be downloaded or repaired. */
+export interface Unreadable { file: string; rev: number; xml: string; error: string; name: string; owner?: string; ownerName?: string }
 export type SaveResult =
   | { ok: true; rev?: number; file?: string }
   | { ok: false; conflict?: { rev: number; file: string; updatedAt?: string }; error?: string }
@@ -17,6 +19,9 @@ export interface SaveOpts { force?: boolean; filename?: string; keepalive?: bool
 export interface Repo {
   mode: 'server' | 'browser'
   list(): Promise<Stored[]>
+  /** every runner, and the files that couldn't be read */
+  listAll(): Promise<{ stored: Stored[]; unreadable: Unreadable[] }>
+  /** undefined: no such runner; rejects with the reason when its file can't be read */
   get(id: string): Promise<Stored | undefined>
   save(ch: Character, rev?: number, opts?: SaveOpts): Promise<SaveResult>
   remove(id: string): Promise<void>
@@ -25,23 +30,39 @@ export interface Repo {
 export const browserRepo: Repo = {
   mode: 'browser',
   list: async () => listCharacters().map(ch => ({ ch })),
+  listAll: async () => ({ stored: listCharacters().map(ch => ({ ch })), unreadable: [] }),
   get: async id => { const ch = getCharacter(id); return ch && { ch } },
   save: async ch => (saveCharacter(ch).ok ? { ok: true } : { ok: false, error: 'This browser refused to store the runner. Export it so it isn’t lost.' }),
   remove: async id => { deleteCharacter(id) },
 }
 
 export function serverRepo(base = './'): Repo {
-  const list = async (): Promise<Stored[]> => {
+  type Row = { file: string; rev: number; xml: string; owner?: string; ownerName?: string }
+  const rows = async (): Promise<Row[]> => {
     const r = await fetch(`${base}api/characters`, { cache: 'no-store' })
     if (!r.ok) throw new Error(`the server answered ${r.status}`)
-    const rows: { file: string; rev: number; xml: string; owner?: string; ownerName?: string }[] = await r.json()
-    return rows.flatMap(row => { const p = xmlToCharacter(row.xml)
-      return p.ok ? [{ ch: p.character, rev: row.rev, file: row.file, owner: row.owner, ownerName: row.ownerName }] : [] })
+    return r.json()
+  }
+  const read = (row: Row): Stored | Unreadable => {
+    const p = xmlToCharacter(row.xml)
+    if (p.ok) return { ch: p.character, rev: row.rev, file: row.file, owner: row.owner, ownerName: row.ownerName }
+    return { ...row, error: p.reason, name: rootName(row.xml) || row.file.replace(/\.xml$/, '') }
+  }
+  const listAll = async () => {
+    const all = (await rows()).map(read)
+    return { stored: all.filter((x): x is Stored => 'ch' in x), unreadable: all.filter((x): x is Unreadable => 'error' in x) }
   }
   return {
     mode: 'server',
-    list,
-    get: async id => (await list()).find(s => s.ch.id === id),
+    list: async () => (await listAll()).stored,
+    listAll,
+    // only this runner's file is read: another file that can't be read doesn't matter here
+    get: async id => {
+      const row = (await rows()).find(r => rootAttr(r.xml, 'id') === id)
+      const x = row && read(row)
+      if (x && 'error' in x) throw new Error(x.error)
+      return x
+    },
     // every save and delete, from the editor or the runner list, is tracked: sign-out waits for it (auth.tsx)
     save: (ch, rev, opts = {}) => track((async (): Promise<SaveResult> => {
       const q = new URLSearchParams()
@@ -67,6 +88,15 @@ export function serverRepo(base = './'): Repo {
     })()),
   }
 }
+
+const unesc = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&amp;/g, '&')
+/** An attribute of the file's <ca2:character> tag, read without parsing the file (it may not parse). */
+export const rootAttr = (xml: string, name: string) => {
+  const tag = xml.match(/<ca2:character\b[^>]*>/)?.[0] ?? ''
+  const v = [...tag.matchAll(/\s([\w:.-]+)="([^"]*)"/g)].find(m => m[1] === name)?.[2]
+  return v === undefined ? undefined : unesc(v)
+}
+const rootName = (xml: string) => rootAttr(xml, 'streetName') || rootAttr(xml, 'name')
 
 /** The server repo if this page is served by the Chummer server, else the browser repo. */
 export async function detectRepo(): Promise<Repo> {

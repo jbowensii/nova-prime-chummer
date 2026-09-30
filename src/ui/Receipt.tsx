@@ -24,6 +24,9 @@ export function Receipt() {
         <h2>{c.levels.get(ch.level)?.name ?? ch.level} build</h2>
         <div className="sub">{pkg ? `${pkg.name} package guide` : 'Free allocation'}, budget {fmt(p.budget)}</div>
         {cats.map(([k, label]) => <Line key={k} label={label} amount={fmt(p[k])} guide={guide ? fmt(guide[k]) : undefined} over={!!guide && p[k] > guide[k]} />)}
+        {d.knowledge.length > 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>
+          Knowledge &amp; languages: {d.knowledge.filter(k => !k.paid).length} free, {d.knowledge.filter(k => k.paid).length} paid
+        </div>}
         <div className="total"><Line label="Creation total" amount={fmt(p.total)} /></div>
         {career ? (
           <>

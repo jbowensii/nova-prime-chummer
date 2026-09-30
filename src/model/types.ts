@@ -75,8 +75,11 @@ export interface AmpEntry { uid: string; catalogId?: string; type: string; name:
 /** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades) */
 export interface ItemEntry { uid: string; catalogId?: string; kind: ItemKind; name: string;
   specialist?: boolean; armor?: number; dv?: string; ranges?: string; price?: number; snapshot?: Item }
+/** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<the keyword>");
+ *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price. */
+export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; from?: string }
 export interface Build { attributes: Record<AttrId, number>; skills: SkillEntry[];
-  knowledge: string[]; amps: AmpEntry[]; items: ItemEntry[];
+  knowledge: KnowledgeEntry[]; amps: AmpEntry[]; items: ItemEntry[];
   mainArmor?: string; altArmor?: string }
 export type CareerEvent = { id: string; at: string } & (
   | { type: 'earn'; amount: number; run: string; date: string }
@@ -86,7 +89,8 @@ export type CareerEvent = { id: string; at: string } & (
   | { type: 'amp-add'; amp: AmpEntry; cost: number }
   | { type: 'amp-modify'; ampUid: string; before: AmpEntry; after: AmpEntry; cost: number }
   | { type: 'spec-add'; skill: string; spec: string; cost: number }
-  | { type: 'knowledge-add'; name: string; cost: number }
+  /** from: renames (cost 0) or pays for (cost > 0, the entry becomes a paid one) the entry filling that slot */
+  | { type: 'knowledge-add'; name: string; kind?: KnowledgeEntry['kind']; from?: string; cost: number }
   | { type: 'note'; text: string }
   | { type: 'void'; eventId: string; reason: string });
 export interface Override { code: string; path: string; note: string }

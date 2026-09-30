@@ -59,7 +59,7 @@ test('the admin uploads; editors and players can’t; nobody signed out reaches 
   expect(r.status).toBe(201)
   const b = await r.json()
   expect(b).toMatchObject({ name: 'My Art.png', enabled: true, size: PNG.length })
-  expect(readdirSync(bgDir).sort()).toEqual([`${b.id}.png`, 'backgrounds.xml'])
+  expect(readdirSync(bgDir).sort()).toEqual([`${b.id}.png`, 'backgrounds.xml'].sort())
   expect((await call('nobody', 'GET', '/api/backgrounds')).status).toBe(401)
   expect((await call('nobody', 'GET', `/api/backgrounds/${b.id}`)).status).toBe(401)
   // the Library is never served as files

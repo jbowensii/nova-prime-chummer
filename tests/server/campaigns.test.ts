@@ -8,6 +8,8 @@ import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 // @ts-expect-error plain JS module
 import { createServer, restoredCopy } from '../../server/server.mjs'
+import { characterToXml } from '../../src/engine/charxml'
+import { blankCharacter } from '../../src/engine/file'
 // @ts-expect-error plain JS module
 import { usersFile } from '../../server/auth.mjs'
 
@@ -194,6 +196,16 @@ test('trash: a trashed runner leaves its campaign; a restored one keeps a campai
 test('a save whose root attributes aren’t well formed is refused; campaigns.xml can’t be read by another name', async () => {
   expect((await call('pat', 'PUT', '/api/characters/p1?force=1', runner('p1', 'Bad>Name'))).status).toBe(400)
   expect((await call('pat', 'PUT', '/api/characters/p1?force=1', runner('p1', 'Bad<Name'))).status).toBe(400)
+  // what the app writes is always accepted: apostrophes, quotes, < > & in names and notes
+  const ch = blankCharacter()
+  ch.id = 'p-names'
+  ch.identity = { ...ch.identity, streetName: "Father O'Neil", name: '"Doc" O’Hara <3 & co', notes: 'He said "hi" & left' }
+  ch.build.knowledge = [{ name: 'Tír "lore" & <more>', kind: 'language', from: 'skill:x' }]
+  const r = await call('pat', 'PUT', '/api/characters/p-names', characterToXml(ch))
+  expect(r.status).toBe(201)
+  const saved = file('pat', (await r.json()).file)
+  expect(saved).toContain(`streetName="Father O'Neil"`)
+  expect(saved).toContain('name="&quot;Doc&quot; O’Hara &lt;3 &amp; co"')
   for (const p of ['/custom/campaigns.xml::$DATA', '/custom/CAMPAI~1.XML', '/custom/CAMPAIGNS.XML', '/custom/campaigns.xml.'])
     expect((await call('pat', 'GET', p)).status, p).toBe(404)
 })

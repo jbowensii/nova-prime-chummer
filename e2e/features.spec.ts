@@ -88,9 +88,9 @@ test('Finalize can be undone from the ledger until the first entry', async ({ pa
   await page.getByRole('link', { name: 'Review' }).click()
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
-  await expect(page.locator('.mode')).toHaveText('Career')
+  await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
   await page.getByRole('button', { name: 'Reopen creation' }).click()
-  await expect(page.locator('.mode')).toHaveText('Creation')
+  await expect(page.locator('.topbar .runstate')).toHaveText('Draft')
 })
 
 test('technomancer: Emerged amp, Tasking skill, living persona', async ({ page }) => {
@@ -133,6 +133,7 @@ test('a runner saved from two browsers: conflict dialog, save mine as a new file
   await b.waitForTimeout(700)
   await a.getByLabel('Real name').fill('Saved from A')
   await expect(a.getByRole('heading', { name: 'Saved elsewhere' })).toBeVisible()
+  await expect(a.getByRole('status', { name: 'Save status' })).toHaveText('Not saved — changed in another browser; choose which version to keep.')
   await a.getByLabel('File name if you save yours as a new file').fill('Twice A copy')
   await a.getByRole('button', { name: 'Save mine as a new file' }).click()
   await expect(a).not.toHaveURL(url)

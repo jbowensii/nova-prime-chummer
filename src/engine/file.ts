@@ -1,5 +1,5 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
-import type { Catalog, Character } from '../model/types'
+import type { Catalog, Character, KnowledgeEntry } from '../model/types'
 import { newId } from '../model/types'
 
 export const FORMAT_VERSION = 1
@@ -20,10 +20,23 @@ export const serialize = (ch: Character) => JSON.stringify(ch, null, 2) + '\n'
 // formatVersion -> function upgrading a file of that version to the next one
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {}
 
+/** A knowledge entry from any release: before 0.5.2 a plain string, a language written "Language: X". */
+export function knowledgeEntry(k: string | Partial<KnowledgeEntry>): KnowledgeEntry {
+  const e = typeof k === 'string' ? { name: k } : k
+  const lang = !e.kind && /^language:\s*/i.exec(e.name ?? '')
+  const out: KnowledgeEntry = { name: lang ? e.name!.slice(lang[0].length) : e.name ?? '', kind: lang ? 'language' : e.kind ?? 'knowledge' }
+  if (e.from) out.from = e.from
+  return out
+}
+
 export function migrate(raw: Record<string, unknown>): Character {
   let v = raw.formatVersion as number
   while (v < FORMAT_VERSION) { raw = MIGRATIONS[v](raw); v = raw.formatVersion as number }
-  return raw as unknown as Character
+  const ch = raw as unknown as Character
+  if (Array.isArray(ch.build?.knowledge)) ch.build.knowledge = ch.build.knowledge.map(knowledgeEntry)
+  for (const e of Array.isArray(ch.career) ? ch.career : [])
+    if (e.type === 'knowledge-add') Object.assign(e, knowledgeEntry({ name: e.name, kind: e.kind, from: e.from }))
+  return ch
 }
 
 type Parsed = { ok: true; character: Character } | { ok: false; reason: string }

@@ -35,7 +35,7 @@ export function LedgerTab() {
       case 'amp-add': return `New amp: ${e.amp.name}`
       case 'amp-modify': return `Improved ${e.after.name}`
       case 'spec-add': return `Specialization: ${c.skills.get(e.skill)?.name} (${c.skills.get(e.skill)?.specs.find(s => s.id === e.spec)?.name ?? e.spec.replace(/^custom:/, '')})`
-      case 'knowledge-add': return `Knowledge: ${e.name}`
+      case 'knowledge-add': return `${e.kind === 'language' ? 'Language' : 'Knowledge'}${e.from ? (e.cost ? ', now paid' : ', free slot') : ''}: ${e.name}`
       case 'note': return e.text
       case 'void': return `Voided: ${e.reason}`
     }
