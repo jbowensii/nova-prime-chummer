@@ -2,7 +2,7 @@
 // Chummer Anarchy export v1: runners as the engine sees them (made-up books in tests/fixtures/mini).
 import { describe, expect, test } from 'vitest'
 import { derive } from '../../src/engine/derive'
-import { exportBooks, exportRunners, parseRanges } from '../../src/engine/export'
+import { ampParts, exportBooks, exportRunners, parseRanges } from '../../src/engine/export'
 import { appendEvent, makeBuy } from '../../src/engine/career'
 import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
@@ -105,6 +105,45 @@ describe('export: books', () => {
     const rules = exportBooks(cat, ['TEST'], [], OPTS).books![0].rules
     expect(rules.length).toBeGreaterThan(0)
     expect(rules.every(r => r.title && r.sheet)).toBe(true)
+  })
+})
+
+describe('export: bonuses and vehicles', () => {
+  const amp = (uid: string, refs: string[], type = 'quality') => ({ uid, type, name: 'Amp ' + uid, effects: refs.map(ref => ({ ref })) })
+  test('capped bonuses are counted once, so the amps add up to the sheet', () => {
+    const ch = rush()
+    ch.build.amps = [amp('a', ['wound-light', 'init-1']), amp('b', ['wound-light', 'wound-serious', 'init-2']), amp('c', ['wound-serious', 'init-2']),
+      amp('d', ['wound-light', 'init-3'], 'cyberdeck')] as never
+    const r = exportRunners(cat, [ch], OPTS).runners![0], d = derive(cat, ch)
+    const sum = (k: 'light' | 'serious') => r.amps.reduce((s, a) => s + a.bonuses[k], 0)
+    expect(r.amps.map(a => a.bonuses.light)).toEqual([1, 0, 0, 0])
+    expect(r.amps.map(a => a.bonuses.serious)).toEqual([0, 1, 0, 0])
+    expect(sum('light')).toBe(d.monitor.light - 2)
+    expect(sum('serious')).toBe(d.monitor.serious - 1)
+    // initiative: derive takes the highest level, the first amp on a tie; the deck's 3 is the best here
+    expect(d.initiative).toMatchObject({ level: 3, source: 'Amp d' })
+    expect(r.amps.map(a => a.bonuses.initiative)).toEqual([0, 0, 0, 3])
+    ch.build.amps.pop()
+    expect(exportRunners(cat, [ch], OPTS).runners![0].amps.map(a => a.bonuses.initiative)).toEqual([0, 2, 0])
+  })
+  test('a vehicle amp: its uid, the chassis id, the drone count', () => {
+    const ch = rush()
+    ch.build.amps = [{ uid: 'v1', type: 'vehicle', name: 'My kite', vehicle: 'medium-drone', effects: [{ ref: 'extra-drone' }, { ref: 'extra-drone' }] }] as never
+    const r = exportRunners(cat, [ch], OPTS).runners![0]
+    expect(r.vehicles).toHaveLength(1)
+    expect(r.vehicles[0]).toMatchObject({ uid: 'v1', chassisId: 'medium-drone', count: 3, chassis: 'Kite' })
+    expect(r.vehicles[0].uid).toBe(r.amps[0].uid)
+    expect(r.amps[0].vehicle).toBe('medium-drone')
+  })
+  test('ledger lines name the thing; a spec Risk Reduction line names its skill', () => {
+    let ch: Character = { ...rush(), finalizedAt: OPTS.now }
+    ch = appendEvent(ch, makeBuy(cat, { uid: 'bought', kind: 'gear', name: 'Made-up rope' }))
+    const led = exportRunners(cat, [ch], OPTS).runners![0].ledger
+    expect(led.find(l => l.type === 'buy')!.summary).toBe('Bought Made-up rope')
+    const sk = [...cat.skills.values()].find(s => s.specs.length)!
+    const rr = ampParts(cat, 'quality', [{ ref: 'rr-spec', param: sk.specs[0].id }]).rr
+    expect(rr[0]).toMatchObject({ on: 'spec', skill: sk.id })
+    expect(ampParts(cat, 'quality', [{ ref: 'rr-spec', param: 'custom:x' }], [{ id: 'mine', rating: 1, specs: ['custom:x'] }] as never).rr[0].skill).toBe('mine')
   })
 })
 

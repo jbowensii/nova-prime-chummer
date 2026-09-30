@@ -24,6 +24,8 @@ export async function loadTableRules({ strict = false } = {}): Promise<TableRule
     if (strict && r!.status !== 404) throw new Error(`the table rules couldn’t be fetched (status ${r!.status})`)
     return []
   }
+  // a dev server or static host answers a missing file with index.html (200, not XML): nothing saved yet
+  if (!/xml/i.test(r.headers.get('content-type') ?? '')) return []
   const doc = new DOMParser().parseFromString(await r.text(), 'text/xml')
   if (doc.documentElement.localName !== 'tablerules') {
     if (strict) throw new Error('the saved table rules file isn’t a table rules document')

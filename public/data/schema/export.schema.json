@@ -192,6 +192,10 @@
         "value": {
           "type": "integer",
           "minimum": 1
+        },
+        "skill": {
+          "type": "string",
+          "description": "on a spec line: the skill that owns the spec, when known"
         }
       }
     },
@@ -332,7 +336,27 @@
               {
                 "required": [
                   "uid"
-                ]
+                ],
+                "properties": {
+                  "uid": {
+                    "type": "string"
+                  },
+                  "catalogId": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "page": {
+                    "type": "number"
+                  },
+                  "item": {
+                    "type": "string"
+                  },
+                  "vehicle": {
+                    "type": "string"
+                  }
+                }
               }
             ]
           }
@@ -350,13 +374,7 @@
             ],
             "properties": {
               "kind": {
-                "enum": [
-                  "gear",
-                  "weapon",
-                  "armor",
-                  "spell",
-                  "complex-form"
-                ]
+                "$ref": "#/$defs/itemKind"
               },
               "weapon": {
                 "$ref": "#/$defs/weapon"
@@ -389,6 +407,21 @@
                     "type": "string"
                   }
                 }
+              },
+              "catalogId": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "page": {
+                "type": "number"
+              },
+              "starting": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
               }
             }
           }
@@ -606,7 +639,9 @@
               "mount",
               "flying",
               "thresholds",
-              "monitor"
+              "monitor",
+              "chassisId",
+              "count"
             ],
             "properties": {
               "uid": {
@@ -659,6 +694,15 @@
                     "type": "number"
                   }
                 }
+              },
+              "chassisId": {
+                "type": "string",
+                "description": "the chassis catalog id (the amp's vehicle); uid is the vehicle amp's own uid"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "vehicles or drones in the amp (1 plus each extra-drone)"
               }
             }
           }
@@ -684,10 +728,53 @@
         },
         "thresholds": {
           "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "integer"
+          "required": [
+            "physicalNone",
+            "physicalMain",
+            "physicalAlt",
+            "mental"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "physicalNone": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "physicalMain": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "physicalAlt": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "mental": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "matrix": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3
             }
           }
         },
@@ -853,6 +940,33 @@
                   },
                   "mod": {
                     "type": "boolean"
+                  },
+                  "vehicle": {
+                    "type": "string"
+                  },
+                  "item": {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "specialist"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "$ref": "#/$defs/itemKind"
+                      },
+                      "specialist": {
+                        "type": "boolean"
+                      },
+                      "armor": {
+                        "type": "number"
+                      },
+                      "dv": {
+                        "type": "string"
+                      },
+                      "ranges": {
+                        "$ref": "#/$defs/ranges"
+                      }
+                    }
                   }
                 }
               }
@@ -883,7 +997,7 @@
                 "type": "number"
               },
               "kind": {
-                "type": "string"
+                "$ref": "#/$defs/itemKind"
               },
               "name": {
                 "type": "string"
@@ -1133,6 +1247,15 @@
           }
         }
       }
+    },
+    "itemKind": {
+      "enum": [
+        "gear",
+        "weapon",
+        "armor",
+        "spell",
+        "complex-form"
+      ]
     }
   }
 }

@@ -39,6 +39,7 @@ export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
         <button className="btn primary" disabled={!n} onClick={() => { downloadRunners(c, runners.filter(r => picked.has(r.id))); onClose() }}>
           Download {n} runner{n === 1 ? '' : 's'}</button></>}>
       <p className="muted">For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2): upload the file there with Import from Chummer.</p>
+      <p className="muted">The file includes the text of the runners’ amps and gear. Share it only with people who own the books.</p>
       <div className="row">
         <button className="btn small quiet" onClick={() => set(runners.map(r => r.id))}>All</button>
         <button className="btn small quiet" onClick={() => set([])}>None</button>

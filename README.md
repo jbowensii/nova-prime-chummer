@@ -96,7 +96,7 @@ own API key), and you review its entries before they’re added.
   **Export for Foundry** in the runner editor, or **Export for Foundry…** on the runner list (tick runners, All/None,
   or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors tick
   books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on.
-  **Include book descriptions** is on by default: it is for your own Foundry only, so don’t share that file.
+  **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
   The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
 
 ## Run it

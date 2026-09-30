@@ -13,7 +13,7 @@ Two kinds, told apart by `kind`:
 
 Files are named `runners-YYYY-MM-DD.ca2foundry.json` and `books-YYYY-MM-DD.ca2foundry.json` (the date of the export). The importer goes by `format` and `kind`, never the name.
 
-The export dialog says: "For your own Foundry only. Don't share this file."
+The export dialog says: "For your own Foundry only. Don’t share this file." The runners dialog adds: "The file includes the text of the runners’ amps and gear. Share it only with people who own the books."
 
 ## Envelope
 
@@ -50,28 +50,42 @@ finalized runner (before that, what is left of the build budget).
 | `knowledge` | `[{ name, kind, native }]`: knowledge skills and languages |
 | `amps` | amps (qualities, powers, programs and so on), see below |
 | `items` | gear, weapons, armor, spells and complex forms, see below |
-| `vehicles` | `[{ uid, name, chassis, pilot, body, handling, speed, armor, mount, flying, thresholds, monitor }]` |
+| `vehicles` | `[{ uid, chassisId, name, chassis, count, pilot, body, handling, speed, armor, mount, flying, thresholds, monitor }]`, see below |
 | `monitor` | `{ light, serious, incap }` |
-| `thresholds` | threshold lists by kind |
-| `armor` | `{ main, alt }` |
+| `thresholds` | `{ physicalNone, physicalMain, physicalAlt, mental, matrix? }`, see below |
+| `armor` | `{ main, alt }`: the armor rating with the main and the alternative armor worn (authoritative, see Risk Reduction and bonuses) |
 | `initiative` | `{ level, realm?, source }`, or `null` |
 | `pools` | `[{ skill, spec?, label, attr, dp, rr }]`: dice pool and Risk Reduction per skill |
 | `narrative` | `{ keywords, dispositions, cues }` |
 | `background`, `notes` | free text |
 | `nuyen` | `{ balance }` |
-| `ledger` | `[{ at, type, summary, amount }]`: the active career events, a cost as a negative amount |
+| `ledger` | `[{ at, type, summary, amount }]`: the active career events, a cost as a negative amount; a `finalize` line is "Creation finished" with the nuyen left as its amount; buy, sell, amp, advance, specialization and knowledge lines name the thing |
 
 ### Amps
 
 `uid`, `type`, `typeName`, `name`, `canon`, `rating`, `essence`, `effects`, `rr`, `bonuses`; optionally `catalogId`,
-`source`, `page` (when the amp comes from a book), `item` and `vehicle` (the linked item and vehicle), `description`.
+`source`, `page` (when the amp comes from a book), `item` (the uid of the linked item) and `vehicle` (the chassis catalog id), `description`.
 
 - `effects`: `[{ id, name, category, param?, value?, note? }]`, the picks as made. `value` is a number.
-- `rr` and `bonuses` are described under Risk Reduction and bonuses.
+- `rr` and `bonuses` are described under Risk Reduction and bonuses. On a runner, `bonuses` are attributed so that they add up to the sheet (see there).
+
+### Vehicles
+
+A vehicle amp (`type` `vehicle`) IS the vehicle: `vehicles[].uid` is that amp's own `uid`, and the amp's `vehicle` field is the
+chassis catalog id, which is `vehicles[].chassisId` (and the `id` of a book vehicle). `chassis` is the chassis' name.
+`count` is how many vehicles or drones the amp stands for (1, plus one per Extra Drone pick). `speed` already includes flying
+(doubled or the chassis' flying speed, then Speed upgrades) and is 0 for a fixed one. `thresholds` are the vehicle's three
+damage thresholds and `monitor` its own wound boxes; the rigger's `monitor` does not include them.
+
+### Thresholds
+
+`thresholds` has the keys `physicalNone` (no armor worn), `physicalMain` (main armor), `physicalAlt` (alternative armor) and
+`mental` (all required), and `matrix` (only when the runner has a firewall: a cyberdeck or an emerged technomancer). Each is an
+array of 3 integers: the thresholds for a light, a serious and an incapacitating hit.
 
 ### Items
 
-`uid`, `kind` (`gear`, `weapon`, `armor`, `spell`, `complex-form`), `name`, `canon`, `price`; optionally `catalogId`,
+`uid`, `kind` (`gear`, `weapon`, `armor`, `spell`, `complex-form`; book items use the same kinds), `name`, `canon`, `price`; optionally `catalogId`,
 `source`, `page`, `starting`, `note`, `description`.
 
 - `weapon`: `{ dv, dvText, ranges, specialist, ammo }`. `dv` is the derived damage value, `dvText` what the item prints.
@@ -86,10 +100,12 @@ finalized runner (before that, what is left of the build budget).
   A book amp's `rating` is computed as a non-first quality (`isFirstQuality` false), and a negative rating is clamped to 0.
   `printedRating`, when present, is what the book printed.
 - `items`: `id`, `source`, `page`, `canon`, `kind`, `name`, `specialist`, and optionally `category`, `armor`, `dv`, `ranges`, `description`.
-- `vehicles`: `id`, `source`, `page`, `name`, `pilot`, `body`, `handling`, `speed`, `armor`, `mount`, optionally `flyingSpeed`.
+- `vehicles`: `id`, `source`, `page`, `name`, `pilot`, `body`, `handling`, `speed`, `armor`, `mount`, optionally `flyingSpeed` (the chassis' flying speed, when it has one).
 - `skills`: `id`, `source`, `page`, `name`, `attr`, optionally `alt`, and `specs: [{ id, name, attr }]`.
 - `specs`: this book's specializations on another book's skill: `{ skill, id, name, attr, page? }`.
 - `rules`: `id`, `source`, `page`, `sheet`, `section`, `title`, and `text` when descriptions are on.
+
+Book vehicles, skills and rules carry no `canon` of their own: take it from `source.canon` of the book they are in.
 
 ## Ranges
 
@@ -98,21 +114,27 @@ The catalog writes them as `OK/OK/Dis./–` (melee/short/medium/long); `parseRan
 
 ## Risk Reduction and bonuses
 
-`rr` lists the Risk Reduction lines an amp gives: `{ on, id, name, value }`, where `on` is `attribute`, `skill` or `spec`,
-`id` the attribute, skill or specialization id, and `value` how many times it was picked (1 or more).
+`rr` lists the Risk Reduction lines an amp gives: `{ on, id, name, value, skill? }`, where `on` is `attribute`, `skill` or `spec`,
+`id` the attribute, skill or specialization id, and `value` how many times it was picked (1 or more). On a `spec` line `skill` is the
+id of the skill that owns the specialization, when known.
 
-`bonuses` are the amp's fixed bonuses, whole numbers of 0 or more, from its effects:
+`bonuses` are the amp's fixed bonuses, whole numbers of 0 or more, from its effects. They are per amp, but the sheet caps some of them
+across all amps, so on a runner's amps:
 
 | Bonus | From effect |
 |---|---|
-| `light` | `wound-light` (at most 1; 0 on a cyberdeck or vehicle amp, whose boxes are its own) |
-| `serious` | `wound-serious` (at most 1; 0 on a cyberdeck or vehicle amp) |
+| `light` | `wound-light`: 1 on the first amp (not a cyberdeck or vehicle amp, whose boxes are its own) that has it, 0 on every other, so the amps sum to `monitor.light` - 2 |
+| `serious` | `wound-serious`, the same way: they sum to `monitor.serious` - 1 |
 | `physicalThreshold` | always 0 |
 | `mentalThreshold` | `mental-armor`, one per pick |
 | `matrixThreshold` | `firewall-plus`, one per pick |
-| `armor` | `armor-plus`, one per pick |
+| `armor` | `armor-plus`, one per pick; uncapped raw counts |
 | `anarchy` | always 0 |
-| `initiative` | the highest of `init-1`, `init-2`, `init-3` picked (1, 2 or 3) |
+| `initiative` | the highest of `init-1`, `init-2`, `init-3` picked (1, 2 or 3); on a runner, only the amp that gives the runner's `initiative` (the highest level, the first such amp on a tie) carries it, the others 0 |
+
+The runner's `armor` totals and `thresholds` are authoritative: an amp's `armor` is a raw count, uncapped, and the sheet caps Armor +1
+across all amps and applies it by worn armor, so an importer takes armor from the totals, not by summing amps. A book amp has no
+runner around it, so its `bonuses` are simply its own values.
 
 ## Descriptions
 
@@ -159,8 +181,8 @@ A made-up runner with one amp and one weapon (no description texts):
     "items": [{ "uid": "i-1", "kind": "weapon", "name": "Sample pistol", "canon": false, "price": 500,
       "weapon": { "dv": "4P", "dvText": "4P", "ranges": { "melee": "none", "short": "ok", "medium": "ok", "long": "disadvantage" }, "specialist": false, "ammo": [] } }],
     "vehicles": [],
-    "monitor": { "light": 4, "serious": 3, "incap": 1 },
-    "thresholds": { "physical": [2, 3] },
+    "monitor": { "light": 2, "serious": 1, "incap": 1 },
+    "thresholds": { "physicalNone": [2, 5, 8], "physicalMain": [3, 6, 9], "physicalAlt": [2, 5, 8], "mental": [2, 5, 8] },
     "armor": { "main": 1, "alt": 0 },
     "initiative": null,
     "pools": [{ "skill": "firearms", "label": "Firearms", "attr": "agi", "dp": 6, "rr": 0 }],

@@ -2,7 +2,7 @@
 // Chummer Anarchy export v1 (docs/export-format.md; schema public/data/schema/export.schema.json): runners and book
 // data as JSON for other tools, first the Foundry importer module (jbowensii/chummer-anarchy2-foundry). Every number is
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
-import type { AmpEntry, AttrId, Catalog, Character, EffectPick, ItemEntry } from '../model/types'
+import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry } from '../model/types'
 import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
@@ -13,7 +13,8 @@ export const EXPORT_FORMAT = 'chummer-anarchy2-export', EXPORT_VERSION = 1
 export type Range = 'ok' | 'disadvantage' | 'none'
 export interface ExportOpts { descriptions: boolean; now: string; appVersion: string }
 export interface ExportEffect { id: string; name: string; category: string; param?: string; value?: number; note?: string }
-export interface ExportRR { on: 'attribute' | 'skill' | 'spec'; id: string; name: string; value: number }
+/** skill: on a spec line, the skill that owns the spec, when known */
+export interface ExportRR { on: 'attribute' | 'skill' | 'spec'; id: string; name: string; value: number; skill?: string }
 export interface ExportBonuses { light: number; serious: number; physicalThreshold: number; mentalThreshold: number;
   matrixThreshold: number; armor: number; anarchy: number; initiative: number }
 export interface ExportAmp { uid: string; catalogId?: string; source?: string; page?: number; canon: boolean; type: string;
@@ -31,7 +32,7 @@ export interface ExportRunner {
   skills: { id: string; name: string; attr: string; rating: number; specs: { id: string; name: string; attr: string; custom: boolean }[] }[]
   knowledge: { name: string; kind: string; native: boolean }[]
   amps: ExportAmp[]; items: ExportItem[]
-  vehicles: { uid: string; name: string; chassis: string; pilot: number; body: number; handling: number; speed: number;
+  vehicles: { uid: string; chassisId: string; name: string; chassis: string; count: number; pilot: number; body: number; handling: number; speed: number;
     armor: number; mount: string; flying: boolean; thresholds: number[]; monitor: { light: number; serious: number } }[]
   monitor: { light: number; serious: number; incap: number }
   thresholds: Record<string, number[]>; armor: { main: number; alt: number }
@@ -70,8 +71,9 @@ function specName(c: Catalog, id: string) {
   for (const sk of c.skills.values()) { const s = sk.specs.find(x => x.id === id); if (s) return s.name }
   return id.replace(/^custom:/, '')
 }
-/** An amp's effects by name, its Risk Reduction lines and its fixed bonuses. */
-export function ampParts(c: Catalog, type: string, effects: EffectPick[]) {
+/** An amp's effects by name, its Risk Reduction lines and its fixed bonuses, as the amp alone gives them (a book amp's
+ *  values). exportRunner then attributes the capped ones across a runner's amps. skills: the runner's, to place a custom spec. */
+export function ampParts(c: Catalog, type: string, effects: EffectPick[], skills: Build['skills'] = []) {
   const eff: ExportEffect[] = effects.map(e => {
     const a = c.ampEffects.get(e.ref)
     return { id: e.ref, name: a?.name ?? e.ref, category: a?.category ?? '', ...e.param ? { param: e.param } : {},
@@ -83,7 +85,9 @@ export function ampParts(c: Catalog, type: string, effects: EffectPick[]) {
     if (!on || !e.param) continue
     const name = on === 'attribute' ? c.attributes.get(e.param as AttrId)?.name ?? e.param : on === 'skill' ? c.skills.get(e.param)?.name ?? e.param : specName(c, e.param)
     const k = `${on}|${e.param}`
-    rr.set(k, { on, id: e.param, name, value: (rr.get(k)?.value ?? 0) + 1 })
+    const skill = on !== 'spec' ? undefined : e.param.startsWith('custom:') ? skills.find(s => s.specs.includes(e.param!))?.id
+      : [...c.skills.values()].find(sk => sk.specs.some(x => x.id === e.param))?.id
+    rr.set(k, { on, id: e.param, name, value: (rr.get(k)?.value ?? 0) + 1, ...skill ? { skill } : {} })
   }
   const device = DEVICE_TYPES.includes(type) // a deck's or vehicle's boxes are its own (CRB p.62)
   const init = count(effects, 'init-3') ? 3 : count(effects, 'init-2') ? 2 : count(effects, 'init-1') ? 1 : 0
@@ -94,11 +98,23 @@ export function ampParts(c: Catalog, type: string, effects: EffectPick[]) {
   return { effects: eff, rr: [...rr.values()], bonuses }
 }
 
-function exportAmp(c: Catalog, b: Character['build'], a: AmpEntry, o: ExportOpts): ExportAmp {
+/** derive's own rules for the capped bonuses, per amp so they add up to the sheet: a wound box and the initiative level
+ *  count once, on the first amp that has them (initiative: the amp derive picks). */
+function attribute(amps: AmpEntry[], parts: ReturnType<typeof ampParts>[]) {
+  let light = false, serious = false, best = 0, bestAt = -1
+  amps.forEach((a, i) => { const p = parts[i].bonuses
+    if (p.initiative > best) { best = p.initiative; bestAt = i }
+    if (DEVICE_TYPES.includes(a.type)) return
+    if (p.light && !light) light = true; else p.light = 0
+    if (p.serious && !serious) serious = true; else p.serious = 0 })
+  parts.forEach((p, i) => { if (i !== bestAt) p.bonuses.initiative = 0 })
+}
+
+function exportAmp(c: Catalog, b: Character['build'], a: AmpEntry, o: ExportOpts, parts: ReturnType<typeof ampParts>): ExportAmp {
   const t = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : a.snapshot
   return { uid: a.uid, ...a.catalogId ? { catalogId: a.catalogId } : {}, ...t ? { source: t.source, page: t.page } : {},
     canon: isCanonSource(c, t?.source), type: a.type, typeName: c.ampTypes.get(a.type)?.name ?? a.type, name: a.name,
-    rating: ampRating(c, a, ampCtx(b, a, c)), essence: ampEssence(c, a), ...ampParts(c, a.type, a.effects),
+    rating: ampRating(c, a, ampCtx(b, a, c)), essence: ampEssence(c, a), ...parts,
     ...a.linkedItem ? { item: a.linkedItem } : {}, ...a.vehicle ? { vehicle: a.vehicle } : {},
     ...o.descriptions && a.narrative ? { description: a.narrative } : {} }
 }
@@ -115,12 +131,34 @@ function exportItem(c: Catalog, it: ItemEntry, dv: Map<string, { dv: string; amm
     ...o.descriptions && text ? { description: text } : {} }
 }
 
-const ledgerLine = (e: ReturnType<typeof activeEvents>[number]) => ({ at: e.at, type: e.type,
-  summary: e.type === 'earn' ? e.run : e.type === 'note' ? e.text : e.type === 'change' ? e.changes.map(changeText).join('; ') : e.type,
-  amount: e.type === 'earn' ? e.amount : 'cost' in e && typeof e.cost === 'number' ? -e.cost : 0 })
+const ledgerLine = (e: ReturnType<typeof activeEvents>[number], itemName: (uid: string) => string | undefined) => ({ at: e.at, type: e.type,
+  summary: ledgerSummary(e, itemName),
+  amount: e.type === 'earn' ? e.amount : e.type === 'finalize' ? e.remaining : 'cost' in e && typeof e.cost === 'number' ? -e.cost : 0 })
+function ledgerSummary(e: ReturnType<typeof activeEvents>[number], itemName: (uid: string) => string | undefined): string {
+  const say = (verb: string, what?: string) => what ? `${verb} ${what}` : e.type
+  switch (e.type) {
+    case 'earn': return e.run
+    case 'note': return e.text
+    case 'change': return e.changes.map(changeText).join('; ')
+    case 'finalize': return 'Creation finished'
+    case 'buy': return say('Bought', e.item.name)
+    case 'sell': return say('Sold', itemName(e.itemUid))
+    case 'amp-add': return say('Added amp', e.amp.name)
+    case 'amp-modify': return say('Changed amp', e.after.name)
+    case 'advance': return say('Advanced', `${e.path} from ${e.from} to ${e.to}`)
+    case 'spec-add': return say('Specialization', e.spec.replace(/^custom:/, ''))
+    case 'knowledge-add': return say('Knowledge', e.name)
+    default: return e.type
+  }
+}
 
 export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRunner {
   const d = derive(c, ch), b = d.build, meta = c.metatypes.get(ch.identity.metatype), life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
+  const partsOf = b.amps.map(a => ampParts(c, a.type, a.effects, b.skills))
+  attribute(b.amps, partsOf)
+  const names = new Map<string, string>()
+  for (const e of ch.career) if (e.type === 'buy') names.set(e.item.uid, e.item.name)
+  for (const it of b.items) names.set(it.uid, it.name)
   const dv = new Map(d.weapons.map(w => [w.uid, { dv: w.dv, ammo: w.ammo ?? [] }]))
   return {
     id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: ch.identity.streetName, realName: ch.identity.name,
@@ -134,9 +172,9 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
         specs: s.specs.map(id => { const sp = sk?.specs.find(x => x.id === id)
           return { id, name: sp?.name ?? id.replace(/^custom:/, ''), attr: sp?.attr ?? sk?.attr ?? '', custom: id.startsWith('custom:') } }) } }),
     knowledge: d.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native })),
-    amps: b.amps.map(a => exportAmp(c, b, a, o)),
+    amps: b.amps.map((a, i) => exportAmp(c, b, a, o, partsOf[i])),
     items: b.items.map(it => exportItem(c, it, dv, o)),
-    vehicles: d.vehicles.map(v => ({ uid: v.uid, name: v.name, chassis: v.chassis, pilot: v.pilot, body: v.body, handling: v.handling,
+    vehicles: d.vehicles.map(v => ({ uid: v.uid, chassisId: b.amps.find(a => a.uid === v.uid)?.vehicle ?? '', name: v.name, chassis: v.chassis, count: v.count, pilot: v.pilot, body: v.body, handling: v.handling,
       speed: v.speed, armor: v.armor, mount: v.mount, flying: v.flying, thresholds: v.thresholds, monitor: v.monitor })),
     monitor: d.monitor, thresholds: { ...d.thresholds } as Record<string, number[]>, armor: { main: d.armor.main, alt: d.armor.alt },
     initiative: d.initiative ?? null,
@@ -144,7 +182,7 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
     narrative: { keywords: ch.narrative.keywords, dispositions: ch.narrative.dispositions, cues: ch.narrative.cues },
     background: ch.identity.background, notes: ch.identity.notes,
     nuyen: { balance: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining },
-    ledger: activeEvents(ch).map(ledgerLine),
+    ledger: activeEvents(ch).map(e => ledgerLine(e, uid => names.get(uid))),
   }
 }
 
