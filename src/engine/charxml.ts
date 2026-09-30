@@ -4,15 +4,24 @@
 import type { AmpEntry, AmpTemplate, CareerEvent, Character, EffectPick, Item, ItemEntry } from '../model/types'
 import { ATTRS } from '../model/types'
 import { toAmp, toItem } from './parse'
-import { FORMAT_VERSION, migrate } from './file'
+import { FORMAT_VERSION, knowledgeEntry, migrate } from './file'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+/** What XML 1.0 can't hold (control characters pasted from a PDF, U+FFFE/FFFF, half a surrogate pair): dropped on
+ *  write; a file that has them is refused on read, saying where, and "Try to repair" drops them. */
+// eslint-disable-next-line no-control-regex
+export const BAD_XML_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+// a carriage return would read back as a line feed: kept as a character reference
+const esc = (s: string) => s.replace(BAD_XML_CHAR, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/\r/g, '&#13;')
+// in an attribute, tabs and line breaks would read back as spaces
+const escAttr = (s: string) => esc(s).replace(/\t/g, '&#9;').replace(/\n/g, '&#10;')
 const attrs = (o: Record<string, unknown>) => Object.entries(o)
-  .filter(([, v]) => v !== undefined && v !== null && v !== '')
-  .map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
+  .filter(([, v]) => v !== undefined && v !== null) // an empty value is kept: a draft's blank level or type reads back blank
+  .map(([k, v]) => ` ${k}="${escAttr(String(v))}"`).join('')
 const el = (name: string, a: Record<string, unknown>, children = '') => (children ? `<${name}${attrs(a)}>${children}</${name}>` : `<${name}${attrs(a)}/>`)
+// an empty element is left out: it reads back empty anyway
 const text = (name: string, s: string | undefined) => (s ? `<${name}>${esc(s)}</${name}>` : '')
 
 // ---- catalog snapshots, written in the data files' own format ----
@@ -38,7 +47,7 @@ function eventXml(e: CareerEvent): string {
     case 'amp-add': return el('event', { ...base, cost: e.cost }, ampXml(e.amp))
     case 'amp-modify': return el('event', { ...base, ampUid: e.ampUid, cost: e.cost }, `<before>${ampXml(e.before)}</before><after>${ampXml(e.after)}</after>`)
     case 'spec-add': return el('event', { ...base, skill: e.skill, spec: e.spec, cost: e.cost })
-    case 'knowledge-add': return el('event', { ...base, name: e.name, cost: e.cost })
+    case 'knowledge-add': return el('event', { ...base, name: e.name, kind: e.kind, slot: e.from, cost: e.cost })
     case 'note': return el('event', base, `<text>${esc(e.text)}</text>`)
     case 'void': return el('event', { ...base, eventId: e.eventId, reason: e.reason })
   }
@@ -55,7 +64,7 @@ export function characterToXml(ch: Character, rev?: number): string {
     el('build', { mainArmor: b.mainArmor, altArmor: b.altArmor },
       el('attributes', Object.fromEntries(ATTRS.map(a => [a, b.attributes[a]])))
       + b.skills.map(s => el('skill', { id: s.id, rating: s.rating }, s.specs.map(x => `<spec>${esc(x)}</spec>`).join(''))).join('')
-      + b.knowledge.map(k => `<knowledge>${esc(k)}</knowledge>`).join('')
+      + b.knowledge.map(k => el('knowledge', { kind: k.kind, from: k.from }, esc(k.name))).join('')
       + b.amps.map(ampXml).join('') + b.items.map(itemXml).join('')),
     ch.career.length ? `<career>${ch.career.map(eventXml).join('')}</career>` : '',
     ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
@@ -105,63 +114,117 @@ function readEvent(e: Element): CareerEvent {
   switch (type) {
     case 'earn': return { ...base, type, amount: n(e, 'amount')!, run: s(e, 'run') ?? '', date: s(e, 'date') ?? '' }
     case 'advance': return { ...base, type, path: s(e, 'path')!, from: n(e, 'from')!, to: n(e, 'to')!, cost: n(e, 'cost')! }
-    case 'buy': return { ...base, type, cost: n(e, 'cost')!, item: readItem(kid(e, 'item')) }
+    case 'buy': return { ...base, type, cost: n(e, 'cost')!, item: readItem(need(kid(e, 'item'), 'item', 'event')) }
     case 'sell': return { ...base, type, itemUid: s(e, 'itemUid')! }
-    case 'amp-add': return { ...base, type, cost: n(e, 'cost')!, amp: readAmp(kid(e, 'amp')) }
+    case 'amp-add': return { ...base, type, cost: n(e, 'cost')!, amp: readAmp(need(kid(e, 'amp'), 'amp', 'event')) }
     case 'amp-modify': return { ...base, type, ampUid: s(e, 'ampUid')!, cost: n(e, 'cost')!,
-      before: readAmp(kid(kid(e, 'before'), 'amp')), after: readAmp(kid(kid(e, 'after'), 'amp')) }
+      before: readAmp(need(kid(need(kid(e, 'before'), 'before', 'event'), 'amp'), 'amp', 'before')),
+      after: readAmp(need(kid(need(kid(e, 'after'), 'after', 'event'), 'amp'), 'amp', 'after')) }
     case 'spec-add': return { ...base, type, skill: s(e, 'skill')!, spec: s(e, 'spec')!, cost: n(e, 'cost')! }
-    case 'knowledge-add': return { ...base, type, name: s(e, 'name')!, cost: n(e, 'cost')! }
+    case 'knowledge-add': return { ...base, type, name: s(e, 'name')!, kind: s(e, 'kind') as 'knowledge' | 'language' | undefined, from: s(e, 'slot'), cost: n(e, 'cost')! }
     case 'note': return { ...base, type, text: t(kid(e, 'text')) }
     case 'void': return { ...base, type, eventId: s(e, 'eventId')!, reason: s(e, 'reason') ?? '' }
-    default: throw new Error(`unknown career event "${type}"`)
+    default: throw new Error(`unknown type "${type}"`)
   }
 }
 
 type Parsed = { ok: true; character: Character; rev?: number } | { ok: false; reason: string }
+/** repair: read what can be read, noting here each thing dropped or fixed (the runner list's "Try to repair") */
+export interface ReadOpts { repair?: string[] }
 
-/** Never throws; a bad file comes back with a reason. */
-export function xmlToCharacter(xml: string): Parsed {
+const hex = (ch: string) => `U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`
+/** Where the first character XML can't hold sits: line, column and the element it's in. */
+export function badCharAt(xml: string): string | null {
+  const re = new RegExp(BAD_XML_CHAR.source)
+  const m = re.exec(xml)
+  if (!m) return null
+  const before = xml.slice(0, m.index), line = before.split('\n').length, col = m.index - before.lastIndexOf('\n')
+  const open: string[] = []
+  for (const [, close, name, self] of before.matchAll(/<(\/?)([\w:.-]+)[^<>]*?(\/?)>/g))
+    if (close) open.pop(); else if (!self) open.push(name)
+  const inEl = open.at(-1)
+  return `Line ${line}, column ${col}${inEl ? `, in <${inEl}>` : ''}: character ${hex(m[0])} isn’t allowed in XML.`
+}
+
+/** Reads one child element; a failure names what couldn't be read. In repair mode that element is dropped instead. */
+function each<T>(els: Element[], read: (e: Element) => T, label: (e: Element, i: number) => string, fix?: string[]): T[] {
+  return els.flatMap((e, i) => {
+    try { return [read(e)] } catch (err) {
+      const what = `${label(e, i)}: ${(err as Error).message}`
+      if (!fix) throw new Error(what)
+      fix.push(`Dropped ${what}.`)
+      return []
+    }
+  })
+}
+const need = (e: Element | undefined, name: string, parent: string) => {
+  if (!e) throw new Error(`no <${name}> inside <${parent}>`)
+  return e
+}
+
+/** Never throws; a bad file comes back with a reason saying what and where. */
+export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
+  const fix = opts.repair
+  if (fix) {
+    const bad = xml.match(BAD_XML_CHAR)
+    if (bad) {
+      xml = xml.replace(BAD_XML_CHAR, '')
+      fix.push(`Removed ${bad.length} ${bad.length === 1 ? 'character' : 'characters'} XML can’t hold (${[...new Set(bad.map(hex))].join(', ')}).`)
+    }
+    const amp = /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g
+    const stray = xml.match(amp)
+    if (stray) { xml = xml.replace(amp, '&amp;'); fix.push(`Escaped ${stray.length} stray “&”.`) }
+  } else {
+    const where = badCharAt(xml)
+    if (where) return { ok: false, reason: `Not valid XML. ${where}` }
+  }
   const doc = new DOMParser().parseFromString(xml, 'text/xml')
-  if (doc.getElementsByTagName('parsererror')[0]) return { ok: false, reason: 'Not valid XML.' }
+  const perr = doc.getElementsByTagName('parsererror')[0]
+  if (perr) {
+    const detail = (perr.textContent ?? '').replace(/^This page contains the following errors:/, '').split(/\n|Below is a rendering/)[0].trim()
+    return { ok: false, reason: `Not valid XML${detail ? `: ${detail}` : '.'}` }
+  }
   const r = doc.documentElement
   if (r.localName !== 'character' || r.namespaceURI !== CHAR_NS) return { ok: false, reason: 'Not a Chummer Anarchy 2.0 character file.' }
   const v = n(r, 'formatVersion')
-  if (!v) return { ok: false, reason: 'Missing formatVersion.' }
+  if (!v) return { ok: false, reason: 'The <character> element has no formatVersion.' }
   if (v > FORMAT_VERSION) return { ok: false, reason: `This file is from a newer version of the app (format ${v}).` }
   try {
     const b = kid(r, 'build')
-    if (!b || !r.getAttribute('id') || !r.getAttribute('metatype')) return { ok: false, reason: 'Missing id, metatype or build.' }
+    if (!r.getAttribute('id')) return { ok: false, reason: 'The <character> element has no id.' }
+    if (!b) return { ok: false, reason: 'The file has no <build> element.' }
     const at = kid(b, 'attributes')
+    const named = (e: Element, i: number) => `<${e.localName}> ${e.getAttribute('name') || e.getAttribute('id') || e.getAttribute('uid') || i + 1}`
     const ch: Character = {
       formatVersion: 1, id: r.getAttribute('id')!,
-      identity: { name: s(r, 'name') ?? '', streetName: s(r, 'streetName') ?? '', metatype: r.getAttribute('metatype')!,
+      // a draft may have no metatype yet (Review notes it)
+      identity: { name: s(r, 'name') ?? '', streetName: s(r, 'streetName') ?? '', metatype: s(r, 'metatype') ?? '',
         background: t(kid(r, 'background')), notes: t(kid(r, 'notes')) },
       narrative: { keywords: kids(r, 'keyword').map(t), dispositions: kids(r, 'disposition').map(t), cues: kids(r, 'cue').map(t) },
       level: s(r, 'level') ?? 'runner', package: s(r, 'package') ?? 'free',
       build: {
         attributes: Object.fromEntries(ATTRS.map(a => [a, Number(at?.getAttribute(a) ?? 1)])) as Character['build']['attributes'],
-        skills: kids(b, 'skill').map(k => ({ id: k.getAttribute('id')!, rating: Number(k.getAttribute('rating')), specs: kids(k, 'spec').map(t) })),
-        knowledge: kids(b, 'knowledge').map(t),
-        amps: kids(b, 'amp').map(readAmp), items: kids(b, 'item').map(readItem),
+        skills: each(kids(b, 'skill'), k => ({ id: k.getAttribute('id') ?? '', rating: Number(k.getAttribute('rating') ?? 0), specs: kids(k, 'spec').map(t) }), named, fix),
+        knowledge: kids(b, 'knowledge').map(k => knowledgeEntry({ name: t(k), kind: s(k, 'kind') as 'knowledge' | 'language' | undefined, from: s(k, 'from') })),
+        amps: each(kids(b, 'amp'), readAmp, named, fix), items: each(kids(b, 'item'), readItem, named, fix),
       },
-      career: kid(r, 'career') ? kids(kid(r, 'career'), 'event').map(readEvent) : [],
-      overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code')!, path: o.getAttribute('path')!, note: t(o) })),
+      career: kid(r, 'career') ? each(kids(kid(r, 'career'), 'event'), readEvent, (e, i) => `career event ${i + 1} (${e.getAttribute('type') ?? 'no type'})`, fix) : [],
+      overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: t(o) })),
       updatedAt: s(r, 'updatedAt') ?? new Date().toISOString(),
     }
-    if (s(b, 'mainArmor')) ch.build.mainArmor = s(b, 'mainArmor')
-    if (s(b, 'altArmor')) ch.build.altArmor = s(b, 'altArmor')
+    if (s(b, 'mainArmor') !== undefined) ch.build.mainArmor = s(b, 'mainArmor')
+    if (s(b, 'altArmor') !== undefined) ch.build.altArmor = s(b, 'altArmor')
     if (kid(r, 'portrait')) ch.identity.portrait = t(kid(r, 'portrait'))
-    if (s(r, 'lifestyle')) ch.identity.lifestyle = s(r, 'lifestyle')
-    if (s(r, 'finalizedAt')) ch.finalizedAt = s(r, 'finalizedAt')
+    if (s(r, 'lifestyle') !== undefined) ch.identity.lifestyle = s(r, 'lifestyle')
+    if (s(r, 'finalizedAt') !== undefined) ch.finalizedAt = s(r, 'finalizedAt')
     if (n(r, 'finalRemaining') !== undefined) ch.finalRemaining = n(r, 'finalRemaining')
-    if (s(r, 'lastExportedAt')) ch.lastExportedAt = s(r, 'lastExportedAt')
+    if (s(r, 'lastExportedAt') !== undefined) ch.lastExportedAt = s(r, 'lastExportedAt')
     if (s(r, 'allowNonCanon') === 'false') ch.allowNonCanon = false
-    if (s(r, 'origin')) ch.origin = s(r, 'origin')
-    if (s(r, 'sampleKey')) ch.sampleKey = s(r, 'sampleKey')
-    if (s(r, 'campaign')) ch.campaign = s(r, 'campaign')
+    if (s(r, 'origin') !== undefined) ch.origin = s(r, 'origin')
+    if (s(r, 'sampleKey') !== undefined) ch.sampleKey = s(r, 'sampleKey')
+    if (s(r, 'campaign') !== undefined) ch.campaign = s(r, 'campaign')
     return { ok: true, character: migrate(ch as unknown as Record<string, unknown>), rev: n(r, 'rev') }
   } catch (e) {
-    return { ok: false, reason: `Damaged file: ${(e as Error).message}` }
+    return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }
   }
 }
