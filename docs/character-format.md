@@ -10,7 +10,7 @@ will convert from this format; the format itself is ours and stays stable.
 <?xml version="1.0" encoding="UTF-8"?>
 <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="…"
     streetName="Slick" name="Jan Novak" metatype="dwarf" level="runner" package="free"
-    lifestyle="low" finalizedAt="…" finalRemaining="0" updatedAt="…">
+    lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" updatedAt="…">
   <portrait>data:image/jpeg;base64,…</portrait>
   <background>…</background>
   <notes>…</notes>
@@ -96,6 +96,10 @@ will convert from this format; the format itself is ours and stays stable.
   under a key, the library offers to move the extra ones to that account's trash: a copy someone changed (saved again,
   or dated after it was loaded) always stays; otherwise the preferred version stays (a book's over an example set's,
   the newest import).
+- **`backdrop`** is drawn behind the portrait: `white`, `grey`, `dark`, or a built-in pattern (`grid`, `halftone`,
+  `neon`, `rain`). The transparent parts of a PNG or WebP portrait show it; an opaque image covers it. Missing (every
+  file before 0.5.4) or unknown means none: the portrait as it always looked. It shows in the builder, the runner list
+  and on the printed sheet, where a dark one (`dark`, `neon`, `rain`) prints as white to save ink.
 - **`campaign`** names the campaign the runner plays in (`custom/campaigns.xml`, see data-format.md). Only the server
   sets it (`/api/campaigns`); a save keeps the stored value whatever the body says, a new file (a copy, an import, a
   restored copy) gets none, and it counts only while the runner's owner is a GM or member of that campaign.

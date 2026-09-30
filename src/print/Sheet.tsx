@@ -3,6 +3,7 @@ import { ampCtx, ampEssence, ampRating, knowledgeList, ruleHelp } from '../engin
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
+import { bdClass, printBackdrop } from '../ui/Portrait'
 import './sheet.css'
 
 const RISK = [['1 die', '2 dice', '4 dice', '6+ dice'], ['3 dice', '5 dice', '7 dice', '10+ dice'], ['5 dice', '8 dice', '11 dice', '13+ dice'], ['8 dice', '12 dice', '15 dice', 'N/A']]
@@ -36,7 +37,7 @@ export function Sheet() {
           <div><div className="s-label">Street name</div><h1>{name}</h1>
             <div className="s-role">{c.metatypes.get(ch.identity.metatype)?.name}{ch.narrative.keywords[2] ? `, ${ch.narrative.keywords[2]}` : ''}</div>
             {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
-          {ch.identity.portrait && <img src={ch.identity.portrait} alt="" />}
+          {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
         </header>
 
         <section className="s-attrs">

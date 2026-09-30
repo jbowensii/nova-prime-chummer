@@ -11,6 +11,7 @@ import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
 import { chooseExamples, extraCopies, keyOf, type Example, type Sources } from './samples'
 import { AskButton } from './AskRules'
+import { Face } from './Portrait'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
@@ -72,15 +73,7 @@ export function ownerGroups(others: Stored[], unreadable: Unreadable[], sort: So
   return [...groups].map(([owner, g]) => ({ owner, ...g, rows: arrange(g.rows, sort, q) }))
 }
 
-/** The first letter of a name (a whole emoji, not half of one); "?" for none. */
-export const initial = (ch: Character) => [...(ch.identity.streetName || ch.identity.name).trim()][0]?.toUpperCase() ?? '?'
-
-/** A portrait, or the runner's initial when there's none or it doesn't load. */
-function Face({ ch }: { ch: Character }) {
-  const [broken, setBroken] = useState(false)
-  return ch.identity.portrait && !broken ? <img className="face" src={ch.identity.portrait} alt="" onError={() => setBroken(true)} />
-    : <span className="face" aria-hidden>{initial(ch)}</span>
-}
+export { initial } from './Portrait'
 
 export function Library({ c }: { c: Catalog }) {
   const repo = useRepo()

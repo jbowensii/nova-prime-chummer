@@ -23,7 +23,7 @@
 .sheet td { padding: 0.12rem 0.25rem; border-bottom: 1px solid #e3e1da; vertical-align: top; }
 .sheet tr.spec td:first-child { padding-left: 1rem; color: var(--s-ink-2); }
 .s-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; border-bottom: 4px solid var(--s-yellow); padding-bottom: 0.4rem; }
-.s-head img { width: 5.5rem; height: 5.5rem; object-fit: cover; }
+.s-head img { width: 5.5rem; height: 5.5rem; object-fit: cover; background: var(--bd, none); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .s-label { font-size: 8pt; color: var(--s-ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
 .s-role { display: inline-block; background: none; color: var(--s-rust); font-family: var(--display); text-transform: uppercase; font-size: 9pt; letter-spacing: 0.05em; }
 .s-attrs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; margin: 0.8rem 0 0.2rem; }

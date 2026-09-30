@@ -145,6 +145,7 @@ label > input, label > select { color: var(--text); font-size: 1rem; font-weight
   text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
 }
 .who { display: flex; align-items: baseline; gap: 0.6rem; min-width: 0; }
+.who .face { width: 2rem; height: 2rem; object-fit: cover; align-self: center; background: var(--bd, none); }
 .who .name { font-family: var(--display); font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; color: var(--heading); }
 .spacer { flex: 1; }
 /* the editor's save line: saved (quiet), saving, not saved (red, with Retry) */
@@ -289,12 +290,34 @@ label.check.tight { margin: 0; color: var(--text); align-items: center; }
 label.check.tight input { margin-top: 0; }
 tr.starting input.note { margin-top: 0.3rem; }
 
+/* ---- portrait backdrops (src/ui/Portrait.tsx): behind the portrait's transparent parts; --bd is the whole background ---- */
+.bd-white { --bd: #fff; }
+.bd-grey { --bd: #8e8f8b; }
+.bd-dark { --bd: #16151d; }
+.bd-grid { --bd: linear-gradient(rgb(123 54 30 / 0.22) 1px, transparent 1px) 0 0 / 10px 10px, linear-gradient(90deg, rgb(123 54 30 / 0.22) 1px, transparent 1px) 0 0 / 10px 10px, #f5f4f0; }
+.bd-halftone { --bd: radial-gradient(circle, rgb(18 18 12 / 0.3) 1.3px, transparent 1.6px) 0 0 / 6px 6px, radial-gradient(ellipse at 30% 25%, #ffd84d, #f1bb00 70%); }
+.bd-neon { --bd: radial-gradient(circle at 70% 30%, rgb(255 60 200 / 0.55), transparent 55%), radial-gradient(circle at 20% 85%, rgb(0 230 255 / 0.45), transparent 50%), linear-gradient(160deg, #25204b, #120f24); }
+.bd-rain { --bd: repeating-linear-gradient(100deg, rgb(200 195 230 / 0.2) 0 1px, transparent 1px 9px), var(--grain), linear-gradient(#120f24, #36305b); }
+.portrait-row { display: flex; gap: 1rem; align-items: start; flex-wrap: wrap; }
+.portrait-row .face { width: 6rem; height: 6rem; flex: none; object-fit: cover; background: var(--bd, var(--indigo)); display: grid; place-items: center; font-family: var(--graffiti); font-size: 2.6rem; color: var(--yellow); border: 1px solid var(--rule); }
+.backdrops { border: 0; padding: 0; margin: 0; min-width: 0; flex: 1; }
+.backdrops legend { font-weight: 600; padding: 0; }
+.backdrops p { margin: 0.1rem 0 0.4rem; }
+.swatches { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.swatches label { display: block; margin: 0; cursor: pointer; position: relative; }
+.swatches input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.swatches span:not(.sr-only) { display: block; width: 2.2rem; height: 2.2rem; border: 1px solid var(--rule); background: var(--bd); }
+.swatches .bd-none { background: linear-gradient(135deg, transparent 46%, var(--err) 46% 54%, transparent 54%), var(--surface); }
+.swatches input:checked + span { outline: 3px solid var(--yellow); outline-offset: 1px; }
+.swatches input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 3px; }
+.swatches input:disabled + span { cursor: default; }
+
 /* ---- library ---- */
 .lib { max-width: 64rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 .lib header { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; margin-bottom: 1.5rem; }
 .lib h1 { font-size: 2.4rem; margin-top: 0.4rem; }
 .dossier { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 1rem; align-items: center; padding: 0.8rem 0; border-bottom: 1px solid var(--rule); }
-.dossier .face { width: 3.5rem; height: 3.5rem; background: var(--indigo); object-fit: cover; display: grid; place-items: center; font-family: var(--graffiti); font-size: 1.6rem; color: var(--yellow); }
+.dossier .face { width: 3.5rem; height: 3.5rem; background: var(--bd, var(--indigo)); object-fit: cover; display: grid; place-items: center; font-family: var(--graffiti); font-size: 1.6rem; color: var(--yellow); }
 .dossier .title { font-family: var(--display); font-size: 1.25rem; color: var(--heading); text-decoration: none; text-transform: uppercase; }
 .dossier a.title:hover { color: var(--rust); text-decoration: underline; text-decoration-color: var(--yellow); }
 .dossier .meta { color: var(--text-2); font-size: 0.92rem; }
@@ -508,8 +531,9 @@ dialog.drawer h2 { margin-top: 0; }
    The admin's image behind every page, under the page color: the ::after layer is --bg at ART_CENTER (93%: the art shows at
    7%) across the middle, where the content is, easing to ART_EDGE (82%: 18%) at the corners; phones 95% and 88%. The art
    itself is flattened (contrast .6) so neither a black nor a white image can pull text below its contrast: tests/ui/background.test.ts
-   checks the worst case against the tokens. Dark mode: the overlay is the indigo page, so the art takes its tint. */
-.bg-art { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+   checks the worst case against the tokens. Dark mode: the overlay is the indigo page, so the art takes its tint.
+   Settings → Background → Strength (--art-strength, 0–1, per browser) fades the whole layer: at 1 it's the strengths above. */
+.bg-art { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: var(--art-strength, 1); }
 .bg-art > div { position: absolute; inset: 0; background: center / cover no-repeat; filter: contrast(0.6) saturate(0.8); }
 .bg-art::after { content: ''; position: absolute; inset: 0;
   background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--bg) 93%, transparent) 40%, color-mix(in srgb, var(--bg) 82%, transparent) 100%); }
@@ -527,6 +551,9 @@ dialog.drawer h2 { margin-top: 0; }
 .bg-gallery label.check { margin: 0; color: var(--text); font-size: 0.95rem; align-items: center; }
 .bg-gallery label.check input { margin-top: 0; }
 .bg-gallery .btn { align-self: flex-start; }
+.art-strength { display: flex; flex-direction: row; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
+.art-strength input { flex: 1; max-width: 16rem; accent-color: var(--rust); }
+.art-strength output { min-width: 3.2em; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) {
   .dossier.unreadable { grid-template-columns: 2.5rem minmax(0, 1fr); }
   .dossier.unreadable .face { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; }

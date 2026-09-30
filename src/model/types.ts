@@ -103,8 +103,11 @@ export type CareerEvent = { id: string; at: string } & (
   | { type: 'note'; text: string }
   | { type: 'void'; eventId: string; reason: string });
 export interface Override { code: string; path: string; note: string }
+/** Built-in portrait backdrops (src/ui/Portrait.tsx, app.css .bd-*); none = no backdrop, the look before 0.5.4 */
+export const BACKDROPS = ['white', 'grey', 'dark', 'grid', 'halftone', 'neon', 'rain'] as const
+export type Backdrop = typeof BACKDROPS[number]
 export interface Character { formatVersion: 1; id: string;
-  identity: { name: string; streetName: string; metatype: string; portrait?: string; lifestyle?: string;
+  identity: { name: string; streetName: string; metatype: string; portrait?: string; backdrop?: Backdrop; lifestyle?: string;
     background: string; notes: string };
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] };
   level: string; package: string; build: Build; finalizedAt?: string;

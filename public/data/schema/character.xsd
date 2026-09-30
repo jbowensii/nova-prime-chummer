@@ -35,6 +35,12 @@
       <xs:attribute name="level" type="xs:string" use="required"/>
       <xs:attribute name="package" type="xs:string"/>
       <xs:attribute name="lifestyle" type="xs:string"/>
+      <xs:attribute name="backdrop">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="white"/><xs:enumeration value="grey"/><xs:enumeration value="dark"/><xs:enumeration value="grid"/>
+          <xs:enumeration value="halftone"/><xs:enumeration value="neon"/><xs:enumeration value="rain"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
       <xs:attribute name="finalizedAt" type="xs:string"/>
       <xs:attribute name="finalRemaining" type="xs:integer"/>
       <xs:attribute name="allowNonCanon" type="xs:boolean"/>

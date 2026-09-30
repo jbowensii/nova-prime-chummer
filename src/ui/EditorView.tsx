@@ -18,6 +18,7 @@ import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
 import { AskButton, AskRules } from './AskRules'
+import { Face } from './Portrait'
 
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
   ['gear', 'Gear & spells'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
@@ -213,7 +214,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     <Editor.Provider value={ctx}>
       <header className="topbar">
         <a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
-        <div className="who"><span className="name">{name}</span><StateBadge finalized={career} /></div>
+        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} /></div>
         {!ro && <div className="savebar">
           <SaveLine status={status} onRetry={() => void saveNow()} />
           <button className="btn quiet" onClick={() => void saveNow()} disabled={status.state === 'saving'}>Save</button>

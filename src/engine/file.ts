@@ -1,6 +1,6 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
 import type { AmpEntry, AmpTemplate, Build, Catalog, Character, ItemEntry, KnowledgeEntry, StartingGear } from '../model/types'
-import { newId } from '../model/types'
+import { BACKDROPS, newId } from '../model/types'
 import { ampFromTemplate } from './amps'
 
 export const FORMAT_VERSION = 1
@@ -101,6 +101,8 @@ export function migrate(raw: Record<string, unknown>): Character {
       if (Array.isArray(ch.build[f])) ch.build[f] = ch.build[f]!.map(key => byName.get(key) ?? key)
   }
   if (Array.isArray(ch.build?.items)) ensureStartingGear(ch.build, !!ch.finalizedAt)
+  // an unknown portrait backdrop (or none: files before 0.5.4) is no backdrop
+  if (ch.identity && ch.identity.backdrop !== undefined && !BACKDROPS.includes(ch.identity.backdrop)) delete ch.identity.backdrop
   for (const e of Array.isArray(ch.career) ? ch.career : [])
     if (e.type === 'knowledge-add') Object.assign(e, knowledgeEntry({ name: e.name, kind: e.kind, from: e.from }))
   return ch

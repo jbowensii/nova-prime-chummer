@@ -7,12 +7,16 @@ import { BackgroundSettings } from './Background'
 import { SignInSettings } from './SignInSettings'
 import { Modal } from './bits'
 
-export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color'; art: 'on' | 'off' }
+/** artStrength: the background art's strength in %, 0–100 (100: app.css's own strengths, which keep text readable) */
+export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color'; art: 'on' | 'off'; artStrength: number }
 const KEY = 'ca2.settings.v1'
-export const DEFAULTS: Settings = { theme: 'light', texture: 'accents', print: 'plain', art: 'on' }
+export const DEFAULTS: Settings = { theme: 'light', texture: 'accents', print: 'plain', art: 'on', artStrength: 100 }
+
+/** A whole percentage in 0–100; anything else is the default. Never above 100: that would pass the readability clamp. */
+export const strength = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : 100
 
 export function loadSettings(): Settings {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') } } catch { return DEFAULTS }
+  try { const s = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; return { ...s, artStrength: strength(s.artStrength) } } catch { return DEFAULTS }
 }
 
 /** Set the data-* attributes the CSS keys off. Call before first render to avoid a flash. */
@@ -22,6 +26,7 @@ export function applySettings(s: Settings) {
   el.dataset.texture = s.texture
   el.dataset.print = s.print
   el.dataset.art = s.art
+  el.style.setProperty('--art-strength', String(strength(s.artStrength) / 100)) // .bg-art's opacity
 }
 
 function saveSettings(s: Settings) {
@@ -40,7 +45,7 @@ export function SettingsButton() {
   const [open, setOpen] = useState(false)
   const [s, setS] = useState(loadSettings)
   const me = useMe(), admin = isAdmin(me)
-  const set = (k: keyof Settings, v: string) => { const next = { ...s, [k]: v } as Settings; setS(next); saveSettings(next) }
+  const set = (k: keyof Settings, v: string | number) => { const next = { ...s, [k]: v } as Settings; setS(next); saveSettings(next) }
   return (
     <>
       <button className="btn quiet" onClick={() => setOpen(true)}>Settings</button>
@@ -57,6 +62,11 @@ export function SettingsButton() {
                   </label>
                 ))}
               </div>
+              {g.key === 'art' && <label className="art-strength">Strength
+                <input type="range" min={0} max={100} step={5} value={s.artStrength} disabled={s.art === 'off'} aria-valuetext={`${s.artStrength}%`}
+                  onChange={e => set('artStrength', Number(e.target.value))} />
+                <output>{s.artStrength}%</output>
+              </label>}
             </fieldset>
           ))}
           <p className="muted">Saved in this browser only.</p>

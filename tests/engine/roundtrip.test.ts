@@ -7,7 +7,7 @@ import { validateXML } from 'xmllint-wasm'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { blankCharacter, ensureStartingGear } from '../../src/engine/file'
 import type { AmpEntry, CareerEvent, Character, ItemEntry } from '../../src/model/types'
-import { ATTRS } from '../../src/model/types'
+import { ATTRS, BACKDROPS } from '../../src/model/types'
 import { cat, MINI } from '../helpers'
 
 const C = String.fromCharCode
@@ -39,7 +39,7 @@ function runner(seed: number, step: number): Character {
   ch.id = `id-${seed}`
   if (step >= 1) { // concept, some of it left empty
     ch.identity = { ...ch.identity, streetName: r.str(), name: r.str(), background: r.str(), notes: r.str(),
-      portrait: r.maybe(() => 'data:image/jpeg;base64,/9j/4AAQ'), lifestyle: r.maybe(() => r.pick([...cat.lifestyles.keys()])) }
+      portrait: r.maybe(() => 'data:image/jpeg;base64,/9j/4AAQ'), backdrop: r.maybe(() => r.pick([...BACKDROPS])), lifestyle: r.maybe(() => r.pick([...cat.lifestyles.keys()])) }
     ch.narrative = { keywords: [r.str(), r.str(), '', r.str(), ''], dispositions: [r.str(), '', '', r.str()], cues: [r.str(), r.str(), '', ''] }
     ch.package = r.pick([...cat.packages.keys(), 'free'])
     ch.allowNonCanon = r.maybe(() => false as const)

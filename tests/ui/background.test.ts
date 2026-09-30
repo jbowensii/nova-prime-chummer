@@ -3,6 +3,7 @@
 // image (black in light mode, white in dark mode) still leaves the text tokens their contrast on the page color.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
+import { strength } from '../../src/ui/settings'
 
 const css = readFileSync('src/ui/app.css', 'utf8')
 const art = css.slice(css.indexOf('/* ---- background art'))
@@ -37,4 +38,10 @@ test('never printed, and hidden when asked', () => {
   expect(art).toMatch(/@media print \{ \.bg-art \{ display: none/)
   expect(art).toMatch(/prefers-reduced-transparency: reduce\) \{ \.bg-art \{ display: none/)
   expect(art).toMatch(/\[data-art='off'\] \.bg-art \{ display: none/)
+})
+
+test('the strength slider only fades the art: 100% is the clamped strength above, never more', () => {
+  expect(block('.bg-art')).toMatch(/opacity: var\(--art-strength, 1\);/) // the layer's opacity, nothing scaled up
+  expect([strength(100), strength(250), strength(0), strength(-3), strength(42.4), strength('x'), strength(undefined), strength(NaN)])
+    .toEqual([100, 100, 0, 0, 42, 100, 100, 100])
 })

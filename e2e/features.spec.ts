@@ -44,7 +44,7 @@ test('portrait upload is downscaled and shown in the library', async ({ page }) 
   await page.goto('/')
   const img = page.locator('.dossier img.face').first()
   await expect(img).toBeVisible()
-  expect(await img.getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/)
+  expect(await img.getAttribute('src')).toMatch(/^data:image\/(jpeg|png);base64,/) // PNG when it has transparent parts (the backdrop shows there)
 })
 
 test('phone width: the receipt collapses to a bar and opens on tap', async ({ page }) => {
