@@ -10,7 +10,7 @@ will convert from this format; the format itself is ours and stays stable.
 <?xml version="1.0" encoding="UTF-8"?>
 <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="…"
     streetName="Slick" name="Jan Novak" metatype="dwarf" level="runner" package="free"
-    lifestyle="low" finalizedAt="…" finalRemaining="0" updatedAt="…">
+    lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" updatedAt="…">
   <portrait>data:image/jpeg;base64,…</portrait>
   <background>…</background>
   <notes>…</notes>
@@ -35,8 +35,11 @@ will convert from this format; the format itself is ours and stays stable.
     <knowledgeHidden key="knowledge:Old flames"/>
   </build>
   <career>
+    <event id="…" at="…" type="finalize" remaining="0"/>
     <event id="…" at="…" type="earn" amount="50000" run="…" date="2086-03-01"/>
-    <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>
+    <event … type="change" cost="-2500"><change key="item:it-knife" label="Knife" from=""/></event>
+    <event … type="change" cost="6000"><change key="skill:stealth" label="Stealth" from="5" to="6"/></event>
+    <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>  (before 0.5.5)
     <event … type="amp-modify" ampUid="…" cost="12000"><before><amp …/></before><after><amp …/></after></event>
     <event … type="knowledge-add" name="Corporate gossip" kind="knowledge" slot="skill:influence" cost="0"/>
     <event … type="void" eventId="…" reason="misclick"/>
@@ -68,11 +71,11 @@ will convert from this format; the format itself is ours and stays stable.
 - **`<knowledgeOrder>`** and **`<knowledgeHidden>`** hold row keys: a free entry's slot (`from`), else
   the entry's `id` (paid entries get one when added; older ones on load). The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off
   the printed sheet but still counts. Neither changes a price.
-- **`starting`** on an item marks free gear no one buys: `commlink` and `fake-sin` (every runner, CRB p.84) and
+- **`starting`** on an item marks free gear no one buys: `commlink` and `fake-sin` (every runner, CRB p.85) and
   `real-sin`. It costs nothing and can't be removed or sold; `note` is the player's description. Reading any file adds
   a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`). On a draft, an unpriced gear entry named
   exactly `Commlink`, `Commlink (with trodes)`, `Commlink with trodes` or `Fake SIN` (any case or spacing) becomes it
-  instead, so there's never a second one; a finalized runner's items are never changed.
+  instead, so there's never a second one; a finalized runner's items are never changed by reading it.
 - **`over`** on an armor item (0.5.4): an add-on worn over the armor item with that uid (a mask, a helmet, a rigger
   cocoon). Its `armor` is the points it adds, and all it costs; worn as main or alternate armor it counts on top of
   that item's armor.
@@ -83,12 +86,34 @@ will convert from this format; the format itself is ours and stays stable.
 - **`note="book drawback"`** on a `negative` effect of a book sample's amp (one with `origin`): the limitation the book
   prints (an effect limited to some situations) and prices in; it needs no GM approval.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
-  "SINner", any case); it's free. The box can't be changed once the runner is finalized. The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
+  "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
+  takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the
+  catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with no effects at all:
+  another amp renamed SINner, or a SINner given any other effect (a narrative one too), is priced like any amp and counts for the first-Quality rule. The box works before and after
+  Finalize (after, the change is logged). The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
   or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking
   removes the item and every SINner quality (the app asks first about one the player added).
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
   that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
-- **Career events** are never edited. A mistake is undone with a `void`
+- **The ledger (0.5.5).** Finalize writes `finalizedAt`, `finalRemaining` (what creation left) and a `finalize`
+  event with the same `remaining`. Nothing is locked afterwards: `<build>` is always the runner as it stands, and
+  every change to it appends a `change` event (the app writes these itself). Each `<change>` names one thing by `key`
+  (`attr:agi`, `skill:stealth`, `spec:<skill>:<spec>`, `knowledge:<row key>`, `amp:<uid>`, `item:<uid>`); no `from`
+  means added, no `to` means removed. `cost` is what the change charged: today's price for anything added or
+  raised; for anything removed, minus what was paid for it, and for a lowering, minus that share. What was paid is
+  kept as `<price key="…" value="…"/>` children: every thing's price on the `finalize` event, the things a `change`
+  touched on it (keys as in `<change>`, `skill:<id>` for the points). Consecutive changes to one thing within ten minutes share one
+  event. The balance is the ledger's running total: the last `finalize` event's `remaining`, + each non-voided `earn`,
+  − each later recorded `cost`. Prices are the ones recorded, so a later catalog or price change never moves it.
+- **`carry`** (a reopened runner only): reopening creation (only while no earnings are recorded) drops `finalizedAt`
+  and `finalRemaining`, adds a note (the log stays) and keeps as `carry` whatever the balance held beyond budget −
+  build price (an old sale that wasn't refunded, a price changed since). It counts in what's left to spend, and the
+  next Finalize uses it up, so reopening never makes or loses nuyen.
+- **Runners finalized before 0.5.5** have no `finalize` event: their `<build>` was the creation baseline and the
+  `advance`, `buy`, `sell`, `amp-add`, `amp-modify`, `spec-add` and `knowledge-add` events applied on top. Opened in
+  0.5.5, those events are folded into `<build>` once and kept as history after a `finalize` event (id `finalized`,
+  `remaining` = `finalRemaining`); their recorded costs keep the balance exactly where the old ledger had it.
+- **Career events** are never edited. A wrong `earn` is undone with a `void`
   event, so the history stays complete.
 - **`allowNonCanon="false"`** on the root marks a runner as canon only: the
   Review tab flags each non-canon amp, item or specialization. Missing means
@@ -105,6 +130,10 @@ will convert from this format; the format itself is ours and stays stable.
   under a key, the library offers to move the extra ones to that account's trash: a copy someone changed (saved again,
   or dated after it was loaded) always stays; otherwise the preferred version stays (a book's over an example set's,
   the newest import).
+- **`backdrop`** is drawn behind the portrait: `white`, `grey`, `dark`, or a built-in pattern (`grid`, `halftone`,
+  `neon`, `rain`). The transparent parts of a PNG or WebP portrait show it; an opaque image covers it. Missing (every
+  file before 0.5.4) or unknown means none: the portrait as it always looked. It shows in the builder, the runner list
+  and on the printed sheet, where a dark one (`dark`, `neon`, `rain`) prints as white to save ink.
 - **`campaign`** names the campaign the runner plays in (`custom/campaigns.xml`, see data-format.md). Only the server
   sets it (`/api/campaigns`); a save keeps the stored value whatever the body says, a new file (a copy, an import, a
   restored copy) gets none, and it counts only while the runner's owner is a GM or member of that campaign.

@@ -42,7 +42,7 @@ test('starting gear is free and locked; a real SIN adds its entry and the bookâ€
   for (const n of ['Commlink (with trodes)', 'Fake SIN']) {
     const row = page.locator('tr.starting', { has: page.locator('b', { hasText: n }) }) // named like any gear (0.5.4)
     await expect(row).toContainText('Free (starting gear)')
-    await expect(row).toContainText('CRB p.84')
+    await expect(row).toContainText('CRB p.85')
     await expect(row.getByRole('button', { name: 'Remove' })).toHaveCount(0)
     await expect(row.getByLabel(`Name of ${n}`)).toHaveCount(0) // the fields open with Rename
   }
@@ -137,9 +137,9 @@ test('knowledge and languages: two Aâ€“Z lists, drag and keyboard order, Sort Aâ
 
   const id = page.url().match(/#\/c\/([^/]+)\//)![1]
   await page.goto(`/#/c/${id}/print`)
-  const sheet = page.locator('.s-cols')
-  await expect(sheet.locator('h3', { hasText: 'Knowledge skills' }).locator('+ p')).toHaveText('Bravo lore, Charlie lore')
-  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ p')).toHaveText('Made-up tongue (native), Zed tongue')
+  const sheet = page.locator('.s-know') // at the bottom of the sheet, in the player's order, hidden ones left off
+  await expect(sheet.locator('h3', { hasText: 'Knowledge' }).locator('+ ul li')).toHaveText(['Bravo lore', 'Charlie lore'])
+  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ ul li')).toHaveText(['Made-up tongue (native)', 'Zed tongue'])
 
   // Sort Aâ€“Z puts the list back
   await page.goto(`/#/c/${id}/skills`)
@@ -180,15 +180,21 @@ test('a SINner added by hand ticks the real SIN box and brings its entry; untick
   await expect(page.getByText('SINner', { exact: true })).toHaveCount(1)
 })
 
-test('once finalized, the real SIN box is locked with a note', async ({ page }) => {
+test('once finalized, the real SIN box still works and the ledger logs it (0.5.5: nothing is locked)', async ({ page }) => {
   await newRunner(page, 'Late Paperwork')
   await tab(page, 'Review')
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  const left = await page.locator('.receipt .peek').textContent()
   await tab(page, 'Concept')
-  await expect(page.getByRole('checkbox', { name: /Has a real SIN/ })).toBeDisabled()
-  await expect(page.getByText(/Set this before finalizing, or ask your GM\./)).toBeVisible()
+  const box = page.getByRole('checkbox', { name: /Has a real SIN/ })
+  await expect(box).toBeEnabled()
+  await expect(page.getByText(/House rule: a SINner is always free/)).toBeVisible()
+  await box.check()
+  await expect(page.locator('.receipt .peek')).toHaveText(left!)
+  await tab(page, 'Ledger')
+  await expect(page.locator('table.data tbody tr', { hasText: 'Added Real SIN' })).toContainText('Added SINner')
 })
 
 test('over budget reads as such; adding or removing a priced item says what it cost or gave back', async ({ page }) => {

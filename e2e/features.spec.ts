@@ -44,7 +44,7 @@ test('portrait upload is downscaled and shown in the library', async ({ page }) 
   await page.goto('/')
   const img = page.locator('.dossier img.face').first()
   await expect(img).toBeVisible()
-  expect(await img.getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/)
+  expect(await img.getAttribute('src')).toMatch(/^data:image\/(jpeg|png);base64,/) // PNG when it has transparent parts (the backdrop shows there)
 })
 
 test('phone width: the receipt collapses to a bar and opens on tap', async ({ page }) => {
@@ -83,14 +83,23 @@ test('Settings: theme, texture and print style apply and persist', async ({ page
   expect(await attr('print')).toBe('color')
 })
 
-test('Finalize can be undone from the ledger until the first entry', async ({ page }) => {
+test('Finalize can be undone on the Review tab until earnings are recorded', async ({ page }) => {
   await newRunner(page, 'Oops')
   await page.getByRole('link', { name: 'Review' }).click()
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  await page.getByRole('link', { name: 'Review' }).click()
   await page.getByRole('button', { name: 'Reopen creation' }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Draft')
+  await page.getByRole('button', { name: 'Finalize runner' }).click()
+  await page.getByRole('button', { name: 'Finalize', exact: true }).click()
+  await page.getByLabel('Nuyen earned').fill('1000')
+  await page.getByRole('button', { name: 'Record earnings' }).click()
+  await page.getByRole('button', { name: 'Record it' }).click()
+  await page.getByRole('link', { name: 'Review' }).click()
+  await expect(page.getByRole('button', { name: 'Reopen creation' })).toHaveCount(0)
+  await expect(page.getByText(/the ledger has earnings/)).toBeVisible()
 })
 
 test('technomancer: Emerged amp, Tasking skill, living persona', async ({ page }) => {

@@ -1,7 +1,7 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
-import type { AmpEntry, AmpTemplate, Build, Catalog, Character, ItemEntry, KnowledgeEntry, StartingGear } from '../model/types'
-import { newId } from '../model/types'
-import { ampFromTemplate } from './amps'
+import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, StartingGear } from '../model/types'
+import { BACKDROPS, newId } from '../model/types'
+import { ampFromTemplate, isSinner, plain, sinnerTemplate } from './amps'
 
 export const FORMAT_VERSION = 1
 
@@ -18,10 +18,8 @@ export function blankCharacter(level = 'runner', metatype = 'human'): Character 
   return ch
 }
 
-/** What every runner starts with, free (CRB p.84): a commlink with trodes and a fake SIN. */
+/** What every runner starts with, free (CRB p.85): a commlink with trodes and a fake SIN. */
 export const STARTING_GEAR: Partial<Record<StartingGear, string>> = { commlink: 'Commlink (with trodes)', 'fake-sin': 'Fake SIN' }
-/** case and spacing aside; nothing else ("Commlink (Hermes Ikon)" is another item) */
-const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
 /** The exact names a plain gear entry may carry to count as the free one (an imported pregen's "Fake SIN, Commlink"). */
 const SAME: Record<string, string[]> = { commlink: ['commlink', 'commlink (with trodes)', 'commlink with trodes'], 'fake-sin': ['fake sin'] }
 
@@ -40,11 +38,6 @@ export function ensureStartingGear(b: Build, finalized = false): void {
   if (b.amps.some(a => isSinner(a)) && !b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
 }
 
-/** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
-export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
-/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or exactly that name, any case). */
-export const isSinner = (a: AmpEntry, c?: Catalog) => !!a.realSin || plain(a.name) === 'sinner' || plain(a.snapshot?.name ?? '') === 'sinner'
-  || (!!c && !!a.catalogId && a.catalogId === sinnerTemplate(c)?.id)
 const realSinItem = (): ItemEntry => ({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
 /** The box's state: a Real SIN entry, or a SINner quality however it got there. */
 export const hasRealSin = (b: Build, c?: Catalog) => b.items.some(i => i.starting === 'real-sin') || b.amps.some(a => isSinner(a, c))
@@ -101,6 +94,8 @@ export function migrate(raw: Record<string, unknown>): Character {
       if (Array.isArray(ch.build[f])) ch.build[f] = ch.build[f]!.map(key => byName.get(key) ?? key)
   }
   if (Array.isArray(ch.build?.items)) ensureStartingGear(ch.build, !!ch.finalizedAt)
+  // an unknown portrait backdrop (or none: files before 0.5.4) is no backdrop
+  if (ch.identity && ch.identity.backdrop !== undefined && !BACKDROPS.includes(ch.identity.backdrop)) delete ch.identity.backdrop
   for (const e of Array.isArray(ch.career) ? ch.career : [])
     if (e.type === 'knowledge-add') Object.assign(e, knowledgeEntry({ name: e.name, kind: e.kind, from: e.from }))
   return ch

@@ -123,7 +123,7 @@ One `<pricing>` element. All values are in nuyen.
 | spec, knowledge | per specialization and per knowledge skill |
 | ampPoint | cost per Shadow Amp rating point |
 | equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
-| refundEffectRemoval | `true` refunds rating lost when an amp effect is removed |
+| refundEffectRemoval | only for ledgers from before 0.5.5 (`amp-modify` events): `true` refunded rating lost when an amp effect was removed. Since 0.5.5 anything removed after Finalize gives its book price back |
 
 A book can carry a partial pricing overlay: `imported/<source>/pricing.xml` with one `<prices id source page …/>`
 holding only the attributes it sets (the Conversion Guide's import writes `complexForm`, read from its page). The
@@ -204,7 +204,7 @@ These are the base chassis for vehicle amps.
 ### lifestyles
 
 `<lifestyle id perRun><name/><text/></lifestyle>`. Lifestyle is a Keyword,
-not a purchase (CRB p.165). `perRun` is added to each run's earnings.
+not a purchase (CRB p.166). `perRun` is added to each run's earnings.
 
 ### sources
 

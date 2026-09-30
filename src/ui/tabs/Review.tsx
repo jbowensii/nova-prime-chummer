@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { canFinalize, finalize } from '../../engine'
+import { activeEvents, canFinalize, finalize, reopen } from '../../engine'
 import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
 import { useEditor } from '../editor'
@@ -10,12 +10,13 @@ const tabFor = (path: string) => {
 }
 
 export function ReviewTab() {
-  const { c, ch, v, p, update, replace, career } = useEditor()
+  const { c, ch, v, p, balance, update, replace, career } = useEditor()
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
   const [finalizing, setFinalizing] = useState(false)
   const sorted = [...v].sort((a, b) => Number(!!a.approved) - Number(!!b.approved) || (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1))
   const ready = canFinalize(v)
+  const earned = activeEvents(ch).some(e => e.type === 'earn')
 
   const approve = () => {
     const x = approving!
@@ -48,16 +49,23 @@ export function ReviewTab() {
         })}
       </div>
 
-      {!career && (
-        <>
-          <hr className="sep" />
-          <h2>Finalize</h2>
-          <p>Finalizing ends creation. From then on every change costs nuyen from the ledger, and level-of-play caps no longer apply.
-            {p.remaining > 0 && <> The {fmt(p.remaining)} left over carries into the ledger.</>}</p>
-          <div><button className="btn primary" disabled={!ready} onClick={() => setFinalizing(true)}>Finalize runner</button>
-            {!ready && <span className="muted"> Fix or approve the problems above first.</span>}</div>
-        </>
-      )}
+      <hr className="sep" />
+      <h2>Finalize</h2>
+      {!career ? <>
+        <p>Finalizing is the last check of creation. It locks nothing: afterwards you can still add, change or remove anything.
+          Adding charges its price to your nuyen and removing gives the book price back; every change is logged in the ledger
+          for your GM. The level-of-play creation caps no longer apply.
+          {p.remaining > 0 && <> The {fmt(p.remaining)} left over carries into the ledger.</>}</p>
+        <div><button className="btn primary" disabled={!ready} onClick={() => setFinalizing(true)}>Finalize runner</button>
+          {!ready && <span className="muted"> Fix or approve the problems above first.</span>}</div>
+      </> : <>
+        <p>Finalized{ch.finalizedAt ? ` on ${ch.finalizedAt.slice(0, 10)}` : ''}. Balance {fmt(balance)}. Nothing is locked: every change is logged in the
+          {' '}<a href={`#/c/${ch.id}/ledger`}>ledger</a>, charged or refunded at the book price.</p>
+        {earned
+          ? <p className="muted">Creation can’t be reopened: the ledger has earnings.</p>
+          : <div><button className="btn" onClick={() => replace(reopen(c, ch))}>Reopen creation</button>
+            <span className="muted"> Back to creation (its caps apply again). Possible until the first earnings are recorded.</span></div>}
+      </>}
 
       <Modal open={!!approving} onClose={() => setApproving(null)} title="GM approval"
         actions={<><button className="btn" onClick={() => setApproving(null)}>Cancel</button><button className="btn primary" disabled={!note.trim()} onClick={approve}>Approve</button></>}>
@@ -67,7 +75,7 @@ export function ReviewTab() {
       <Modal open={finalizing} onClose={() => setFinalizing(false)} title={`Finalize ${ch.identity.streetName || ch.identity.name || 'this runner'}?`}
         actions={<><button className="btn" onClick={() => setFinalizing(false)}>Not yet</button>
           <button className="btn primary" onClick={() => { replace(finalize(c, ch)); setFinalizing(false); location.hash = `#/c/${ch.id}/ledger` }}>Finalize</button></>}>
-        <p>Your creation choices become the baseline. Until you record something in the ledger, you can reopen creation from the Ledger tab.</p>
+        <p>The ledger starts with “Creation finished” and what is left. Until you record earnings, you can reopen creation here.</p>
       </Modal>
     </div>
   )

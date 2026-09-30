@@ -11,17 +11,26 @@ const CHANGED = 'ca2-backgrounds'
 const TYPES = ['image/png', 'image/jpeg', 'image/webp'], MAX = 10 * 1024 * 1024
 const src = (id: string) => `./api/backgrounds/${id}`
 
-export function BackgroundArt() {
-  const [id, setId] = useState<string | null>(null)
+/** This page load's pick, shared by the page layer and the character sheet's (src/print/Sheet.tsx). */
+let picked: string | null = null
+export function useArtId() {
+  const [id, setId] = useState(picked)
   useEffect(() => {
     const load = () => fetch('./api/backgrounds', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => {
       const on: string[] = b?.enabled ?? []
-      setId(cur => cur && on.includes(cur) ? cur : on.length ? on[Math.floor(Math.random() * on.length)] : null)
+      picked = picked && on.includes(picked) ? picked : on.length ? on[Math.floor(Math.random() * on.length)] : null
+      setId(picked)
     }, () => {})
     void load()
     addEventListener(CHANGED, load)
     return () => removeEventListener(CHANGED, load)
   }, [])
+  return id
+}
+export const artSrc = (id: string) => src(id)
+
+export function BackgroundArt() {
+  const id = useArtId()
   // the image in its own layer (dimmed by a filter), the page color over it (::after)
   return id && <div className="bg-art" aria-hidden="true"><div style={{ backgroundImage: `url("${src(id)}")` }} /></div>
 }

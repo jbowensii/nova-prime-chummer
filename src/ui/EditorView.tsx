@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { appendEvent, balance, derive, price, rescope, validate } from '../engine'
+import { appendEvent, balance, derive, logChange, price, rescope, settle as settleLedger, validate } from '../engine'
 import type { CareerEvent, Catalog, Character } from '../model/types'
 import { AccountMenu, session, track, useMe } from './auth'
 import { fmt, Modal, StateBadge } from './bits'
@@ -18,6 +18,7 @@ import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
 import { AskButton, AskRules } from './AskRules'
+import { Face } from './Portrait'
 
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
   ['gear', 'Gear & spells'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
@@ -69,8 +70,9 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       const theirs = !!(me && s?.owner && s.owner !== me.username)
       sync.current.paused = theirs // never saved
       setOwner(theirs ? s!.ownerName ?? s!.owner! : null)
-      // old runners can reference unscoped catalog ids; remap them, saved normally when they change
-      setCh(s && rescope(cat.current, s.ch))
+      // old runners can reference unscoped catalog ids; remap them, saved normally when they change. A runner finalized
+      // before 0.5.5 gets its ledger settled (engine/career.ts settle), saved with the next change.
+      setCh(s && settleLedger(cat.current, rescope(cat.current, s.ch)))
       if (s) setStatus({ state: 'saved', at: s.ch.updatedAt })
       setLoaded(true)
     }, e => { setLoadError((e as Error).message ?? String(e)); setLoaded(true) })
@@ -156,7 +158,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     } else {
       const s = await repo.get(ch.id)
       sync.current.rev = s?.rev; sync.current.loaded = s?.ch
-      setCh(s?.ch)
+      setCh(s && settleLedger(c, rescope(c, s.ch)))
       setStatus({ state: 'saved', at: s?.ch.updatedAt })
     }
     sync.current.paused = false
@@ -171,20 +173,20 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on the server' : ' from this browser'}. <a href="#/">Back to your runners</a></p></main>
 
   const career = !!ch.finalizedAt
+  // a finalized runner's build changes go in the ledger by themselves (engine/career.ts logChange); undo takes them back
+  // out, except past recorded earnings (not undoable: history before them is dropped)
   const commit = (next: Character, undoable: boolean) => {
-    if (undoable) {
-      hist.current.past = [...hist.current.past.slice(-99), ch]
-      hist.current.future = []
-    }
-    setCh({ ...next, updatedAt: new Date().toISOString() })
+    hist.current.past = undoable ? [...hist.current.past.slice(-99), ch] : []
+    hist.current.future = []
+    setCh({ ...logChange(c, ch, next), updatedAt: new Date().toISOString() })
   }
   const mutate = (fn: (d: Character) => void) => { const d = structuredClone(ch); fn(d); return d }
 
   const ro = owner !== null
   const ctx: EditorCtx = {
     c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career,
-    edit: fn => { if (!career && !ro) commit(mutate(fn), true) },
-    update: fn => { if (!ro) commit(mutate(fn), !career) },
+    edit: fn => { if (!ro) commit(mutate(fn), true) },
+    update: fn => { if (!ro) commit(mutate(fn), true) },
     record: (ev, summary) => ro ? Promise.resolve(false) : new Promise<boolean>(resolve => {
       const cost = ev.type === 'earn' ? -ev.amount : 'cost' in ev ? ev.cost : 0
       setPending({ ev, summary, cost, after: calc.bal - cost, resolve })
@@ -213,14 +215,14 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     <Editor.Provider value={ctx}>
       <header className="topbar">
         <a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
-        <div className="who"><span className="name">{name}</span><StateBadge finalized={career} /></div>
+        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} /></div>
         {!ro && <div className="savebar">
           <SaveLine status={status} onRetry={() => void saveNow()} />
           <button className="btn quiet" onClick={() => void saveNow()} disabled={status.state === 'saving'}>Save</button>
           <button className="btn quiet" onClick={() => void saveAndClose()}>Save and close</button>
         </div>}
         <span className="spacer" />
-        {!career && !ro && <>
+        {!ro && <>
           <button className="btn quiet" disabled={!ctx.canUndo} onClick={ctx.undo}>Undo</button>
           <button className="btn quiet" disabled={!ctx.canRedo} onClick={ctx.redo}>Redo</button>
         </>}

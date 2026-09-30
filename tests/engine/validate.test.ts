@@ -3,7 +3,7 @@ import { blankCharacter } from '../../src/engine/file'
 import { canFinalize, validate } from '../../src/engine/validate'
 import { finalize, makeAmpAdd } from '../../src/engine/career'
 import type { AmpEntry, Character } from '../../src/model/types'
-import { cat } from '../helpers'
+import { cat, legacy } from '../helpers'
 
 const amp = (uid: string, type: string, effects: AmpEntry['effects'], extra: Partial<AmpEntry> = {}): AmpEntry =>
   ({ uid, type, name: uid, narrative: '', effects, ...extra })
@@ -48,8 +48,8 @@ test('narrative.count and runner.basics are warnings on a blank character', () =
   expect(v.filter(x => x.code === 'runner.basics')).toHaveLength(5)
 })
 
-test('amp.qualityAfterCreation: adding a Quality in career needs a GM', () => {
-  let ch = finalize(cat, blankCharacter())
+test('amp.qualityAfterCreation: a Quality a pre-0.5.5 ledger added needs a GM', () => {
+  let ch = legacy(finalize(cat, blankCharacter()))
   ch = { ...ch, career: [...ch.career, makeAmpAdd(cat, ch, amp('q2', 'quality', [{ ref: 'narrative', param: 'lucky' }]))] }
   expect(codes(ch)).toContain('amp.qualityAfterCreation')
 })

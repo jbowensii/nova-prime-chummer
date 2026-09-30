@@ -144,7 +144,7 @@ the answer key (`importer/tests/test_crb_core.py`, equal but for the pages liste
   apart ("Physical", "Virtual reality", "Rigging", "Miscellaneous": the names first, then "+N types" lines in the same
   order, the Reference column's "Title (p. N)" mixed in; "Adept" and "powers" can be split by it).
 - Vehicles p.60 (bullets; the Large drone's continues after the ESSENCE box and the page number), cost cheat sheet p.83
-  (label, then cost lines), levels pp.84-85, the three package tables p.86 (a row's cells split over lines), the WEAPONS
+  (label, then cost lines), levels p.85 (read from p.84 on), the three package tables p.86 (a row's cells split over lines), the WEAPONS
   box p.142 (examples or DV wrap; "**" specialist, "*" toxins), the ARMOR box p.148, the LIFESTYLE box p.166.
 
 Named exceptions (values the recipe keeps in code, with the owner's rules for them):

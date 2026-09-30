@@ -1,5 +1,71 @@
 # Release notes
 
+## 0.5.5 — 2026-09-30: Finalize locks nothing
+
+**Finalize and the ledger**
+- Finalize is now the last check of creation and a ledger entry: “Creation
+  finished · N¥ left”. Nothing is locked afterwards. You change the runner on
+  any tab as in creation. Adding something charges its price. Removing an item,
+  an amp or a skill or attribute point gives its book price back to spend again.
+- Every change after Finalize is logged in the ledger by itself, with what it
+  cost or gave back, so the GM can follow it. Steps on one thing within ten
+  minutes (Stealth 3 → 4 → 5) are one line. Undo works after Finalize too, up
+  to the last recorded earnings.
+- The balance is what creation left, plus earnings, minus each change at the
+  price it had when made: re-importing a book or editing a price later never
+  moves a balance, and the ledger's running total always matches it. The
+  level-of-play creation caps apply only before Finalize.
+- Reopening creation keeps what the balance held beyond budget minus build
+  (an old sale that wasn't refunded, a price changed since), so reopening and
+  finalizing again never makes or loses nuyen.
+- Removing something after Finalize gives back what was paid for it (at
+  creation or when it was added), not today's price; lowering gives back that
+  share. A price raised since can't be turned into nuyen by removing and adding
+  it again.
+- **Reopen creation** is on the Review tab, next to Finalize, until earnings
+  are recorded. The Review tab also shows the balance once finalized.
+- Runners finalized before 0.5.5 convert when you open them. Their recorded
+  changes become the build, the history and earnings stay in the ledger, and
+  the balance stays exactly what it was (an item sold then, without a refund,
+  stays that way).
+- **Has a real SIN** can be ticked after Finalize too; the ledger logs it.
+
+**Rules**
+- Extra wound boxes on a cyberdeck or a vehicle belong to that device (CRB
+  p.62), no longer to the runner. The sheet shows them with the device.
+- “Limited to one realm” reduces an initiative amp once per initiative level it
+  holds (CRB p.61). An amp's rating no longer goes below 0 (which paid nuyen
+  back at creation) unless the GM approves it on Review.
+- A cyberdeck's Firewall is 5 at most (CRB p.62; the book's own decks top out
+  there).
+- Armor +1 and damage +1 from several amps stack only up to the effect's
+  maximum (CRB p.61). The sheet counts the capped bonus and Review notes it.
+- Flying doubles a vehicle's base Speed only; Speed upgrades add after that.
+- Risk Reduction at creation (owner's reading of CRB p.85, “including from
+  stacking”): the total RR on one Test (Attribute + Skill + specialization) is
+  checked against the level's limit, and Review says where each point comes
+  from.
+- House rule (owner's decision, replaces the DHSA price): a SINner quality is
+  always free and never counts as the first Quality, whether the box added it
+  or you did. Existing runners price it that way when opened (a finalized
+  runner's balance doesn't move). Only the SINner itself counts: another amp
+  renamed SINner, or a SINner given any effect (a narrative one too), costs
+  what it rates and counts for the first-Quality rule.
+- A GM-set item price below 0 counts as 0 (Review flags it); the price box
+  takes no negative value.
+- Page references: levels, budget and starting gear CRB p.85, packages p.86,
+  lifestyles p.166, GM approval of drawbacks p.61. The importer already reads
+  the right pages; core tables imported before cite the old ones until the core
+  rulebook is imported again.
+
+**Character sheet and look** (from the backdrops branch)
+- A portrait backdrop per runner (white, grey, dark, or a grid, halftone, neon
+  or rain pattern) behind a transparent portrait, and a strength slider for the
+  background art.
+- The sheet puts weapons (with DVs by ammunition) and spells in sections of
+  their own, knowledge and languages at the bottom, a bigger portrait and its
+  own background art switches.
+
 ## 0.5.4 — 2026-09-30: example characters without unexplained problems
 
 Every example character, imported from the books or one of the first release's

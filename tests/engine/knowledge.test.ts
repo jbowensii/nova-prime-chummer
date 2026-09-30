@@ -6,7 +6,7 @@ import { blankCharacter, parseCharacterFile } from '../../src/engine/file'
 import { priceBuild } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
 import type { Character } from '../../src/model/types'
-import { cat } from '../helpers'
+import { cat, legacy } from '../helpers'
 
 const K = cat.pricing.knowledge
 
@@ -74,8 +74,8 @@ test('XML round trip keeps kind and from', () => {
   expect(characterToXml(ch)).toContain('<knowledge kind="language" from="skill:electronics">Gadget blogs</knowledge>')
 })
 
-test('career: a new entry costs the knowledge price, renaming a free slot is free, paying for a lapsed one costs', () => {
-  let ch = finalize(cat, runner())
+test('pre-0.5.5 career: a new entry costs the knowledge price, renaming a free slot is free, paying for a lapsed one costs', () => {
+  let ch = legacy(finalize(cat, runner()))
   const start = balance(cat, ch)
   ch = appendEvent(ch, makeKnowledge(cat, { name: 'Street food', kind: 'knowledge' }))
   expect(balance(cat, ch)).toBe(start - K)
@@ -95,7 +95,7 @@ test('career: a new entry costs the knowledge price, renaming a free slot is fre
 })
 
 test('an old career event "Language: X" applies as a language', () => {
-  const ch = finalize(cat, runner()) as Character
+  const ch = legacy(finalize(cat, runner()))
   ch.career.push({ id: 'e1', at: '2026-01-01T00:00:00Z', type: 'knowledge-add', name: 'Language: Made-up tongue', cost: K })
   const back = xmlToCharacter(characterToXml(ch))
   expect(back.ok && currentBuild(back.character).knowledge.at(-1)).toEqual({ name: 'Made-up tongue', kind: 'language', id: 'e1' })
