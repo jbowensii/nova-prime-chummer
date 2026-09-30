@@ -126,10 +126,11 @@ class ParseTest(unittest.TestCase):
 
 class CharacterTest(unittest.TestCase):
     def setUp(self):
-        self.ch, self.rows = statblock.to_character(statblock.parse_statblock(STAT), statblock.load_rules(),
+        self.rules = statblock.load_rules()
+        self.ch, self.rows = statblock.to_character(statblock.parse_statblock(STAT), self.rules,
                                                     sid="pregens.test-face", name="Test Face", role="Made-up face",
                                                     origin="PREGENS", background="Made-up face. Test book p.5.",
-                                                    updated="2026-09-27T00:00:00.000Z")
+                                                    updated="2026-09-27T00:00:00.000Z", cite="the test book p.5")
         self.b = self.ch["build"]
 
     def test_attributes_are_the_majority_of_the_printed_pools(self):
@@ -160,10 +161,73 @@ class CharacterTest(unittest.TestCase):
     def test_items(self):
         its = [(i["uid"], i["kind"], i["name"], i.get("armor"), i.get("catalogId")) for i in self.b["items"]]
         self.assertEqual(its, [("it-1", "armor", "Padded coat", 2, "armored-clothes"),  # the made-up armor with that rating
-                               ("it-2", "armor", "Padded coat and hat", 3, "armored-clothes-coat"),
+                               ("it-2", "armor", "Padded coat and hat", 1, None),  # "(+1)": the hat, worn over the coat
                                ("it-3", "weapon", "Zap Pistol", None, "heavy-pistol"),
                                ("it-4", "gear", "Fake SIN", None, None), ("it-5", "gear", "Commlink", None, None)])
         self.assertEqual((self.b["mainArmor"], self.b["altArmor"]), ("it-1", "it-2"))
+        self.assertEqual(self.b["items"][1]["over"], "it-1")
+
+    def test_book_overrides(self):
+        # what the made-up page prints against the guidelines: over budget, Stealth unrated, its own spec, 3/2/2 narrative
+        self.assertEqual([(o["code"], o["path"]) for o in self.ch["overrides"]], [
+            ("runner.basics", "skills.stealth"), ("custom.content", "skills.electronics"), ("narrative.count", "narrative")])
+        self.assertEqual(self.ch["overrides"][0]["note"], "As printed in the test book p.5: Stealth –.")
+        self.assertEqual(self.ch["overrides"][2]["note"], "As printed in the test book p.5: 3 Keywords, 2 Dispositions and 2 Cues.")
+
+    def test_over_the_budget_is_an_override_with_the_amount(self):
+        # the made-up runner level's budget is 455,000; 20 more amp points at the made-up 6,000 each go over it
+        spent = statblock.nuyen(self.ch, self.rules, 0)
+        extra = (455000 - spent) // 6000 + 2
+        o = statblock.book_overrides(self.ch, self.rules, extra, "the test book p.5")[0]
+        self.assertEqual(o, {"code": "budget.over", "path": "budget",
+                             "note": f"As printed in the test book p.5: {spent + extra * 6000 - 455000:,}¥ over the creation budget."})
+
+    def test_equipment_amps_get_their_items(self):
+        stat = STAT.replace("**Old Friend** (Contact) **0**", "**Bag of Tricks** (Equipment) **2**\nRR 1 on Stealth tests\n"
+                            "**Tailored Wardrobe** (Equipment) **2**\nArmor 1\nRR 1 on Influence tests\n"
+                            "**Hyper-phone** (Equipment) **1**\nFirewall 2\n**Old Friend** (Contact) **0**")
+        stat = stat.replace("**Padded coat and hat (+1)** 5 8 11", "**Clothes (1)** 3 6 9")
+        stat = stat.replace("Fake SIN, Commlink,\nZap Pistol", "Fake SIN, Hyper-phone commlink, Zap Pistol, Integrated toy radio,\nSatchel of tricks")
+        stat = stat.replace("Glows in the dark", "Integrated toy radio")
+        ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
+                                       origin="PREGENS", background="", updated="")
+        items = {i["uid"]: i for i in ch["build"]["items"]}
+        link = {a["name"]: items[a["linkedItem"]]["name"] for a in ch["build"]["amps"] if a["type"] == "equipment"}
+        self.assertEqual(link, {"Zap Pistol": "Zap Pistol", "Bag of Tricks": "Satchel of tricks", "Tailored Wardrobe": "Clothes",
+                                "Hyper-phone": "Hyper-phone commlink"})  # the upgrade is on the free commlink
+        # the phone is the free commlink; the radio is part of the eyes
+        self.assertEqual([(i["name"], i.get("starting")) for i in items.values() if i["kind"] == "gear"],
+                         [("Fake SIN", "fake-sin"), ("Hyper-phone commlink", "commlink"), ("Satchel of tricks", None)])
+
+    def test_an_amp_without_its_item_gets_one(self):
+        stat = STAT.replace("**Old Friend** (Contact) **0**", "**Pep Pills** (Equipment) **1**\nWakes you up\n**Old Friend** (Contact) **0**")
+        ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
+                                       origin="PREGENS", background="", updated="")
+        pills = next(a for a in ch["build"]["amps"] if a["name"] == "Pep Pills")
+        self.assertEqual(next(i for i in ch["build"]["items"] if i["uid"] == pills["linkedItem"]), {"uid": "it-6", "kind": "gear", "name": "Pep Pills"})
+
+    def test_weapons_without_a_type_and_repeated_rows(self):
+        stat = STAT.replace("**Unarmed** 2 [OK/–/–/–]", "**Unarmed** 2 [OK/–/–/–]\n**Hidden knuckles** 4 [OK/–/–/–]\n"
+                            "**Zap Pistol in astral** (Heavy pistol) 5 [OK/OK/Dis/–]\n**Boom tube** (Rocket launcher) 12 [–/–/Dis/OK]")
+        ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
+                                       origin="PREGENS", background="", updated="")
+        self.assertEqual([(i["name"], i.get("catalogId"), i.get("specialist")) for i in ch["build"]["items"] if i["kind"] == "weapon"],
+                         [("Hidden knuckles", "short-weapon", None), ("Boom tube", "rocket-launcher", True), ("Zap Pistol", "heavy-pistol", None)])
+
+    def test_a_weapon_the_chassis_mounts_needs_no_enhanced_mount(self):
+        rules = statblock.load_rules()
+        mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
+        drone = lambda *lines: statblock.map_amp({"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": list(lines)}, rules, mapper, True)  # noqa: E731
+        small = "Pilot 5, Body 2, Handling 8, Speed 3, Armor 0"
+        self.assertNotIn("weapon-mount", [f[0] for f in drone(small, "Integrated zap SMG")[1]])  # the made-up "light guns" mount takes it
+        self.assertIn("weapon-mount", [f[0] for f in drone(small, "Turret-mounted zap SMG")[1]])  # a turret isn't the chassis' own
+        self.assertIn("weapon-mount", [f[0] for f in drone("Microdrone", "Integrated zap pistol")[1]])  # the made-up micro mounts none
+
+    def test_a_spec_rolled_with_two_attributes_is_bought_once(self):
+        stat = STAT.replace("(Dodging +2) WIL 8", "(Dodging +2) WIL 8\n(Dodging +2) STR 7")
+        ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
+                                       origin="PREGENS", background="", updated="")
+        self.assertEqual(next(s for s in ch["build"]["skills"] if s["id"] == "athletics")["specs"], ["athletics.ranged-defense"])
 
     def test_printed_numbers_are_report_rows(self):
         rows = {(r["kind"], r.get("key")): r for r in self.rows}
@@ -188,6 +252,31 @@ def write_golden():
     t.setUp()
     GOLDEN.parent.mkdir(parents=True, exist_ok=True)
     GOLDEN.write_text(statblock.character_xml(t.ch), encoding="utf8", newline="\n")
+
+
+def _line(y, text, x=420, size=11):
+    return f"BT /F1 {size} Tf {x} {y} Td ({text}) Tj ET\n"
+
+
+# A made-up core-rulebook stat page's right column: items start a slot 16-20pt below the last line, a wrapped line
+# sits 11pt below; the left column (skills) must be ignored.
+NARRATIVE_OPS = (_line(700, "ATHLETICS 3", x=72) + _line(600, "KEYWORDS", size=12) + _line(580, "tESt town")
+                 + _line(540, "DISPOSITIONS", size=12) + _line(520, "caLm") + _line(500, "hateS rain anD")
+                 + _line(489, "wet SOckS") + _line(469, "LOuD") + _line(449, "Stubborn")
+                 + _line(420, "CUES", size=12) + _line(400, "hi there. gO nOw,") + _line(389, "pleaSe.")
+                 + _line(372, "trust me.") + _line(355, "nO.") + _line(338, "maybe") + _line(327, "tOmorrow.")
+                 + _line(290, "RISK LEVEL", size=12) + _line(270, "0 1 die 2 dice", size=7))
+
+
+class PdfNarrativeTest(unittest.TestCase):
+    def test_items_are_the_slots_not_the_lines(self):
+        import io
+        import pdfplumber
+        from importer.tests.minipdf import _build_pdf
+        with pdfplumber.open(io.BytesIO(_build_pdf([NARRATIVE_OPS]))) as pdf:
+            got = statblock.pdf_narrative(pdf.pages[0])
+        self.assertEqual(got, {"dispositions": ["Calm", "Hates rain and wet socks", "Loud", "Stubborn"],
+                               "cues": ["Hi there. Go now, please.", "Trust me.", "No.", "Maybe tomorrow."]})
 
 
 class RecipeTest(unittest.TestCase):

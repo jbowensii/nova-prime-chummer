@@ -71,7 +71,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
 
         xmlio.write_status(book_dir, "extracting")
         out_dir = os.path.join(custom_dir, "imported", recipe.ID.lower())
-        res = recipe.extract(md, {"previous_dir": out_dir})  # the previous import, still in place
+        res = recipe.extract(md, {"previous_dir": out_dir, "pdf": pdf})  # the previous import, still in place; the book's PDF
         src = res.source["id"]
         res.files, refused = _no_core_overrides(res.files)
         res.report += refused

@@ -23,6 +23,7 @@ CRB layout path; the character creation example box (p.85) builds its runner fro
 number goes to the report, as the pregen booklet's do. An amp printed only on those sheets (no box has its type and
 name: Concealment on Hercules', the pregens' brand-name gear) is the rulebook's too, so it joins the catalog amps.
 """
+import contextlib
 import functools
 import os
 import re
@@ -434,9 +435,10 @@ def creation_example(text, rules, spell_names):
                   "spells": [n for _, n in sorted(spells)], "forms": [], "amps": amps, "equipment": gear, "attributes": attrs, "knowledge": []}
 
 
-def sample_runners(md, spell_names):
+def sample_runners(md, spell_names, pdf=None):
     """(samples, report rows): the character creation example box, then each pregen's stat page (the page with the
-    SHADOW AMPS header; the story page before it gives the name and role, and the page the runner is cited to)."""
+    SHADOW AMPS header; the story page before it gives the name and role, and the page the runner is cited to).
+    pdf: the book's PDF (pdfplumber), when the import has it: the stat page's dispositions and cues come from its layout."""
     parts = re.split(r"<!-- page (\d+) -->", md)
     pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
     rules = statblock.load_rules()
@@ -448,7 +450,7 @@ def sample_runners(md, spell_names):
         if example:
             name, block = example
             s, rows = statblock.sample(block, rules, ID, name, "Character creation example", page,
-                                       f"Character creation example. CRB p.{page}.", updated, samples, spell_ids)
+                                       f"Character creation example. CRB p.{page}.", updated, samples, spell_ids, cite="the core rulebook")
             samples.append(s)
             sheets.append((page, block))
             report += [r for r in rows if r["kind"] in ("amp", "unmatched-item")]  # no pools, thresholds or Essence printed
@@ -458,7 +460,10 @@ def sample_runners(md, spell_names):
         name, role = _story(pages.get(n - 1, ""))
         page = n - 1 - PAGE_OFFSET
         block = statblock.crb_statblock(text)
-        s, rows = statblock.sample(block, rules, ID, name, role, page, f"{role}. CRB p.{page}.", updated, samples, spell_ids)
+        if pdf is not None and n <= len(pdf.pages):  # the Markdown's page n is the PDF's
+            block.update({k: v for k, v in statblock.pdf_narrative(pdf.pages[n - 1]).items() if v})
+        s, rows = statblock.sample(block, rules, ID, name, role, page, f"{role}. CRB p.{page}.", updated, samples, spell_ids,
+                                   cite="the core rulebook")
         samples.append(s)
         sheets.append((page, block))
         report += rows
@@ -568,8 +573,8 @@ def extract(md, ctx=None):
             return _spells_only(md, core, core_texts, report)
         for path in found.values():
             shutil.copy(path, tmp)
-        with use_core(tmp):
-            res = _extract(md, report)
+        with use_core(tmp), _pdf((ctx or {}).get("pdf")) as pdf:
+            res = _extract(md, report, pdf=pdf)
     res.core, res.core_texts = core, core_texts
     return res
 
@@ -580,7 +585,18 @@ def _spells_only(md, core, core_texts, report):
     return res
 
 
-def _extract(md, report, spells_only=False):
+@contextlib.contextmanager
+def _pdf(path):
+    """The book's PDF, open (pdfplumber), or None without one (an import from Markdown)."""
+    if not path or not os.path.isfile(path):
+        yield None
+        return
+    import pdfplumber
+    with pdfplumber.open(path) as pdf:
+        yield pdf
+
+
+def _extract(md, report, spells_only=False, pdf=None):
     spells, amps, gear, texts, ids = [], [], [], [], set()
     spell_list = spell_rows(md)
     for page, fam, names, text in spell_list:
@@ -602,7 +618,7 @@ def _extract(md, report, spells_only=False):
     rows, items, samples, sample_rows = [], [], [], []
     if not spells_only:
         rows, items = amps_and_gear(md, mapper)
-        samples, sample_rows, sheets = sample_runners(md, [n for r in spell_list for n in r[2]])
+        samples, sample_rows, sheets = sample_runners(md, [n for r in spell_list for n in r[2]], pdf)
         rows += sheet_amps(sheets, rows, statblock.load_rules())
     for r in rows:
         aid = uid(r["id"])
