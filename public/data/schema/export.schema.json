@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chummer-anarchy2:export:1",
+  "title": "Chummer Anarchy export v1",
+  "description": "Runners or book data from Chummer Anarchy 2.0 (docs/export-format.md). Extra properties are allowed so later minor additions stay readable.",
+  "type": "object",
+  "required": ["format", "version", "kind", "exportedAt", "app", "descriptions"],
+  "properties": {
+    "format": { "const": "chummer-anarchy2-export" },
+    "version": { "const": 1 },
+    "kind": { "enum": ["runners", "books"] },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "app": { "type": "object", "required": ["name", "version"], "properties": { "name": { "type": "string" }, "version": { "type": "string" } } },
+    "descriptions": { "type": "boolean" },
+    "runners": { "type": "array", "items": { "$ref": "#/$defs/runner" } },
+    "books": { "type": "array", "items": { "$ref": "#/$defs/book" } },
+    "tableRules": { "type": "array", "items": { "type": "object", "required": ["name", "text"], "properties": { "name": { "type": "string" }, "text": { "type": "string" } } } }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "runners" } } }, "then": { "required": ["runners"] } },
+    { "if": { "properties": { "kind": { "const": "books" } } }, "then": { "required": ["books"] } }
+  ],
+  "$defs": {
+    "range": { "enum": ["ok", "disadvantage", "none"] },
+    "ranges": { "type": "object", "required": ["melee", "short", "medium", "long"], "properties": {
+      "melee": { "$ref": "#/$defs/range" }, "short": { "$ref": "#/$defs/range" }, "medium": { "$ref": "#/$defs/range" }, "long": { "$ref": "#/$defs/range" } } },
+    "effect": { "type": "object", "required": ["id", "name", "category"], "properties": { "id": { "type": "string" }, "name": { "type": "string" },
+      "category": { "type": "string" }, "param": { "type": "string" }, "value": { "type": "number" }, "note": { "type": "string" } } },
+    "rr": { "type": "object", "required": ["on", "id", "name", "value"], "properties": { "on": { "enum": ["attribute", "skill", "spec"] },
+      "id": { "type": "string" }, "name": { "type": "string" }, "value": { "type": "integer", "minimum": 1 } } },
+    "bonuses": { "type": "object", "required": ["light", "serious", "physicalThreshold", "mentalThreshold", "matrixThreshold", "armor", "anarchy", "initiative"],
+      "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "ampParts": { "type": "object", "required": ["type", "typeName", "name", "rating", "essence", "effects", "rr", "bonuses", "canon"], "properties": {
+      "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } }, "rr": { "type": "array", "items": { "$ref": "#/$defs/rr" } },
+      "bonuses": { "$ref": "#/$defs/bonuses" }, "rating": { "type": "number" }, "essence": { "type": "number" }, "canon": { "type": "boolean" },
+      "description": { "type": "string" } } },
+    "runner": { "type": "object",
+      "required": ["id", "updatedAt", "exportedAt", "streetName", "realName", "finalized", "metatype", "level", "lifestyle", "portrait", "attributes",
+        "edge", "essence", "skills", "knowledge", "amps", "items", "vehicles", "monitor", "thresholds", "armor", "initiative", "pools", "narrative",
+        "background", "notes", "nuyen", "ledger"],
+      "properties": {
+        "portrait": { "type": ["string", "null"] },
+        "attributes": { "type": "object", "required": ["str", "agi", "wil", "log", "cha"], "additionalProperties": { "type": "integer" } },
+        "amps": { "type": "array", "items": { "allOf": [{ "$ref": "#/$defs/ampParts" }, { "required": ["uid"] }] } },
+        "items": { "type": "array", "items": { "type": "object", "required": ["uid", "kind", "name", "canon", "price"], "properties": {
+          "kind": { "enum": ["gear", "weapon", "armor", "spell", "complex-form"] },
+          "weapon": { "type": "object", "required": ["dv", "ranges"], "properties": { "ranges": { "$ref": "#/$defs/ranges" } } } } } },
+        "narrative": { "type": "object", "required": ["keywords", "dispositions", "cues"] },
+        "nuyen": { "type": "object", "required": ["balance"], "properties": { "balance": { "type": "number" } } }
+      } },
+    "book": { "type": "object", "required": ["source", "amps", "items", "vehicles", "skills", "specs", "rules"], "properties": {
+      "source": { "type": "object", "required": ["id", "name", "publisher", "canon"] },
+      "amps": { "type": "array", "items": { "allOf": [{ "$ref": "#/$defs/ampParts" }, { "required": ["id", "source", "page"] }] } },
+      "items": { "type": "array", "items": { "type": "object", "required": ["id", "source", "page", "kind", "name", "canon"], "properties": {
+        "ranges": { "$ref": "#/$defs/ranges" } } } },
+      "rules": { "type": "array", "items": { "type": "object", "required": ["id", "source", "page", "sheet", "section", "title"] } } } }
+  }
+}

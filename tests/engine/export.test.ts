@@ -7,6 +7,8 @@ import { appendEvent, makeBuy } from '../../src/engine/career'
 import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
 import { cat } from '../helpers'
+import Ajv2020 from 'ajv/dist/2020'
+import { readFileSync } from 'node:fs'
 
 const OPTS = { descriptions: true, now: '2026-10-02T09:15:00.000Z', appVersion: '0.6.0' }
 const rush = (): Character => {
@@ -103,5 +105,18 @@ describe('export: books', () => {
     const rules = exportBooks(cat, ['TEST'], [], OPTS).books![0].rules
     expect(rules.length).toBeGreaterThan(0)
     expect(rules.every(r => r.title && r.sheet)).toBe(true)
+  })
+})
+
+describe('export: the schema', () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false })
+  const check = ajv.compile(JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')))
+  test('runners and books files are valid', () => {
+    for (const f of [exportRunners(cat, [rush()], OPTS), exportBooks(cat, [...cat.sources.keys()], [{ name: 'X', text: 'Y' }], OPTS)])
+      expect(check(f), JSON.stringify(check.errors)).toBe(true)
+  })
+  test('a wrong format or a newer version is not', () => {
+    expect(check({ ...exportRunners(cat, [], OPTS), format: 'something-else' })).toBe(false)
+    expect(check({ ...exportRunners(cat, [], OPTS), version: 2 })).toBe(false)
   })
 })
