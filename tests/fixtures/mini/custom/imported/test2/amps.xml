@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Made-up test catalog: non-canon TEST2 also has "Keen Eye" (same canon status as TEST's). -->
+<!-- Made-up test catalog: non-canon TEST2 also has "Keen Eye" (same canon status as TEST's), and a made-up "SINner"
+     quality the Concept tab's "Has a real SIN" finds by name. -->
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">
   <amp id="test2.keen-eye" type="quality" printedRating="4" source="TEST2" page="1"><name>Keen eye</name><effect ref="rr-spec" param="perception.social"/><narrative></narrative></amp>
+  <amp id="test2.sinner" type="quality" printedRating="1" source="TEST2" page="2"><name>SINner</name><narrative></narrative></amp>
 </ca2:data>

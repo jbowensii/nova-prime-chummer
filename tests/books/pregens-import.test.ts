@@ -108,7 +108,7 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
 
       // Items as the hand encoding has them, as a multiset of (kind, catalog id or name). Allowed differences are
       // representation only: an equipment Amp the hand also listed as gear, Clothes worn as armor where the hand
-      // kept them as gear, the Fake SIN and Commlink every stat page prints, and a "(…)" note on a name.
+      // kept them as gear, the free starting gear (the Fake SIN and Commlink every stat page prints), and a "(…)" note on a name.
       test.runIf(src === 'CRB')('same items as the hand-encoded runner', () => {
         const r = parseCharacterFile(readFileSync(bookFile(`samples/${id}.ca2.json`), 'utf8'))
         if (!r.ok) throw new Error(r.reason)
@@ -119,9 +119,10 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         const ampNames = new Set(ch.build.amps.filter(a => a.type === 'equipment').map(a => norm(a.name)))
         const worn = new Set(ch.build.items.filter(i => i.kind === 'armor').map(i => norm(i.name)))
         const count = (xs: string[]) => xs.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map<string, number>())
-        const mine = count(ch.build.items.filter(i => !(i.kind === 'gear' && ['fake sin', 'commlink'].includes(norm(i.name)))
-          && !(i.kind === 'armor' && handGear.has(norm(i.name)))).map(key))
-        const theirs = count(hand.filter(i => !(i.kind === 'gear' && (ampNames.has(norm(i.name)) || worn.has(norm(i.name))))).map(key))
+        const mine = count(ch.build.items.filter(i => !i.starting && !(i.kind === 'armor' && handGear.has(norm(i.name)))).map(key))
+        const theirs = count(hand.filter(i => !i.starting && !(i.kind === 'gear' && (ampNames.has(norm(i.name)) || worn.has(norm(i.name))))).map(key))
+        // the printed "Fake SIN, Commlink" became the free starting gear: exactly one of each (0.5.3)
+        expect(ch.build.items.filter(i => i.starting).map(i => i.starting).sort()).toEqual(['commlink', 'fake-sin'])
         const diff = [...new Set([...mine.keys(), ...theirs.keys()])].filter(k => mine.get(k) !== theirs.get(k))
           .map(k => `${k}: generated ${mine.get(k) ?? 0}, hand ${theirs.get(k) ?? 0}`)
         expect(diff).toEqual([])

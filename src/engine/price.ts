@@ -20,6 +20,7 @@ export function skillCost(p: Pricing, from: number, to: number): number {
 }
 
 export function itemCost(p: Pricing, i: ItemEntry): number {
+  if (i.starting) return 0
   if (i.price != null) return i.price
   switch (i.kind) {
     case 'armor': return (i.armor ?? 0) * p.armorPoint
@@ -49,8 +50,11 @@ export function slotLapse(b: Build, keywords: string[], k: KnowledgeEntry, skill
   }
   return null
 }
-/** Paid: no free slot, or a slot that no longer holds (its skill below 4, its keyword gone). */
-export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) => !k.from || slotLapse(b, keywords, k) !== null
+/** The free native language: the first language entry marked native (one per runner). */
+export const nativeLanguage = (b: Build) => b.knowledge.find(k => k.native && k.kind === 'language')
+/** Paid: not the native language, and no free slot or a slot that no longer holds (its skill below 4, its keyword gone). */
+export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) =>
+  k !== nativeLanguage(b) && (!k.from || slotLapse(b, keywords, k) !== null)
 
 export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: string[] = []): Breakdown {
   const p = c.pricing
