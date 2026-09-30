@@ -63,7 +63,7 @@ export function ampParts(c: Catalog, type: string, effects: EffectPick[]) {
   const eff: ExportEffect[] = effects.map(e => {
     const a = c.ampEffects.get(e.ref)
     return { id: e.ref, name: a?.name ?? e.ref, category: a?.category ?? '', ...e.param ? { param: e.param } : {},
-      ...e.value ? { value: e.value } : {}, ...e.note ? { note: e.note } : {} }
+      ...e.value != null ? { value: e.value } : {}, ...e.note ? { note: e.note } : {} }
   })
   const rr = new Map<string, ExportRR>()
   for (const e of effects) {
