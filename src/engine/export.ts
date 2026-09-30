@@ -3,7 +3,7 @@
 // data as JSON for other tools, first the Foundry importer module (jbowensii/chummer-anarchy2-foundry). Every number is
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
 import type { AmpEntry, AttrId, Catalog, Character, EffectPick, ItemEntry } from '../model/types'
-import { ampCtx, ampEssence, ampRating } from './amps'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
 import { DEVICE_TYPES, derive } from './derive'
@@ -43,8 +43,20 @@ export interface ExportRunner {
 export interface ExportFile { format: typeof EXPORT_FORMAT; version: typeof EXPORT_VERSION; kind: 'runners' | 'books'
   exportedAt: string; app: { name: string; version: string }; descriptions: boolean
   runners?: ExportRunner[]; books?: ExportBook[]; tableRules?: { name: string; text: string }[] }
-// ExportBook: Task 2
-export interface ExportBook { source: { id: string; name: string; publisher: string; canon: boolean } }
+export interface ExportBook {
+  source: { id: string; name: string; publisher: string; canon: boolean }
+  amps: { id: string; source: string; page: number; canon: boolean; type: string; typeName: string; name: string; rating: number;
+    essence: number; printedRating?: number; mod: boolean; effects: ExportEffect[]; rr: ExportRR[]; bonuses: ExportBonuses
+    item?: { kind: string; specialist: boolean; armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range> }
+    vehicle?: string; description?: string }[]
+  items: { id: string; source: string; page: number; canon: boolean; kind: string; name: string; category?: string; specialist: boolean
+    armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range>; description?: string }[]
+  vehicles: { id: string; source: string; page: number; name: string; pilot: number; body: number; handling: number; speed: number
+    flyingSpeed?: number; armor: number; mount: string }[]
+  skills: { id: string; source: string; page: number; name: string; attr: string; alt?: string; specs: { id: string; name: string; attr: string }[] }[]
+  specs: { skill: string; id: string; name: string; attr: string; page?: number }[]
+  rules: { id: string; source: string; page: number; sheet: string; section: string; title: string; text?: string }[]
+}
 
 const RANGE = (s = ''): Range => (/^ok/i.test(s.trim()) ? 'ok' : /^dis/i.test(s.trim()) ? 'disadvantage' : 'none')
 /** "OK/OK/Dis./–" (melee/short/medium/long) as the file writes ranges. */
@@ -141,3 +153,37 @@ const envelope = (kind: ExportFile['kind'], o: ExportOpts): ExportFile =>
 
 export const exportRunners = (c: Catalog, chs: Character[], o: ExportOpts): ExportFile =>
   ({ ...envelope('runners', o), runners: chs.map(ch => exportRunner(c, ch, o)) })
+
+/** The ticked books as the app sees them (edits and house rules applied), with the table rules switched on. */
+export function exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts): ExportFile {
+  const books: ExportBook[] = sources.flatMap(id => {
+    const s = c.sources.get(id)
+    if (!s) return []
+    const mine = <T extends { source: string }>(m: Map<string, T>) => [...m.values()].filter(e => e.source === id)
+    return [{
+      source: { id: s.id, name: s.name, publisher: s.publisher, canon: s.canon },
+      amps: mine(c.amps).map(t => {
+        const { amp } = ampFromTemplate(t, () => 'export')
+        return { id: t.id, source: t.source, page: t.page, canon: s.canon, type: t.type, typeName: c.ampTypes.get(t.type)?.name ?? t.type,
+          name: t.name, rating: ampRating(c, amp, { isFirstQuality: false }), essence: ampEssence(c, amp),
+          ...t.printedRating != null ? { printedRating: t.printedRating } : {}, mod: !!t.mod, ...ampParts(c, t.type, t.effects),
+          ...t.item ? { item: { kind: t.item.kind, specialist: !!t.item.specialist, ...t.item.armor != null ? { armor: t.item.armor } : {},
+            ...t.item.dv ? { dv: t.item.dv } : {}, ...t.item.ranges ? { ranges: parseRanges(t.item.ranges) } : {} } } : {},
+          ...t.vehicle ? { vehicle: t.vehicle } : {}, ...o.descriptions && t.narrative ? { description: t.narrative } : {} }
+      }),
+      items: mine(c.items).map(i => ({ id: i.id, source: i.source, page: i.page, canon: s.canon, kind: i.kind, name: i.name,
+        ...i.category ? { category: i.category } : {}, specialist: !!i.specialist, ...i.armor != null ? { armor: i.armor } : {},
+        ...i.dv ? { dv: i.dv } : {}, ...i.ranges ? { ranges: parseRanges(i.ranges) } : {}, ...o.descriptions && i.text ? { description: i.text } : {} })),
+      vehicles: mine(c.vehicles).map(v => ({ id: v.id, source: v.source, page: v.page, name: v.name, pilot: v.pilot, body: v.body,
+        handling: v.handling, speed: v.speed, ...v.flyingSpeed != null ? { flyingSpeed: v.flyingSpeed } : {}, armor: v.armor, mount: v.mount })),
+      skills: mine(c.skills).map(k => ({ id: k.id, source: k.source, page: k.page, name: k.name, attr: k.attr, ...k.alt ? { alt: k.alt } : {},
+        specs: k.specs.filter(p => !p.source || p.source === id).map(p => ({ id: p.id, name: p.name, attr: p.attr })) })),
+      // this book's specs on another book's skill (a new style for the core Close Combat)
+      specs: [...c.skills.values()].filter(k => k.source !== id).flatMap(k => k.specs.filter(p => p.source === id)
+        .map(p => ({ skill: k.id, id: p.id, name: p.name, attr: p.attr, ...p.page ? { page: p.page } : {} }))),
+      rules: mine(c.rules).map(r => ({ id: r.id, source: r.source, page: r.page, sheet: r.sheet, section: r.section, title: r.title,
+        ...o.descriptions && r.text ? { text: r.text } : {} })),
+    }]
+  })
+  return { ...envelope('books', o), books, tableRules: o.descriptions ? tableRules : tableRules.map(r => ({ name: r.name, text: '' })) }
+}

@@ -2,7 +2,7 @@
 // Chummer Anarchy export v1: runners as the engine sees them (made-up books in tests/fixtures/mini).
 import { describe, expect, test } from 'vitest'
 import { derive } from '../../src/engine/derive'
-import { exportRunners, parseRanges } from '../../src/engine/export'
+import { exportBooks, exportRunners, parseRanges } from '../../src/engine/export'
 import { appendEvent, makeBuy } from '../../src/engine/career'
 import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
@@ -77,5 +77,30 @@ describe('export: runners', () => {
   test('nothing about the account', () => {
     const json = JSON.stringify(exportRunners(cat, [{ ...rush(), campaign: 'c1' }], OPTS))
     expect(json).not.toMatch(/"(owner|ownerName|campaign|password|session)"\s*:/)
+  })
+})
+
+describe('export: books', () => {
+  test('only the ticked books, each entry cited, canon flagged', () => {
+    const f = exportBooks(cat, ['TEST', 'TESTC'], [], OPTS)
+    expect(f.kind).toBe('books')
+    expect(f.books!.map(b => b.source.id)).toEqual(['TEST', 'TESTC'])
+    const test = f.books![0], testc = f.books![1]
+    expect(test.source.canon).toBe(false)
+    expect(testc.source.canon).toBe(true)
+    expect(test.amps.some(a => a.id === 'test.rush')).toBe(true)
+    expect(test.amps.every(a => a.source === 'TEST' && typeof a.page === 'number' && a.rating >= 0)).toBe(true)
+    expect(testc.amps.some(a => a.id === 'test.rush')).toBe(false)
+  })
+  test('descriptions only when asked; table rules pass through', () => {
+    const on = exportBooks(cat, ['TEST'], [{ name: 'Made-up rule', text: 'Invented.' }], OPTS)
+    const off = exportBooks(cat, ['TEST'], [], { ...OPTS, descriptions: false })
+    expect(on.tableRules).toEqual([{ name: 'Made-up rule', text: 'Invented.' }])
+    expect(JSON.stringify(off.books)).not.toMatch(/"description"|"text"/)
+  })
+  test('a rules sheet’s entries are the book’s', () => {
+    const rules = exportBooks(cat, ['TEST'], [], OPTS).books![0].rules
+    expect(rules.length).toBeGreaterThan(0)
+    expect(rules.every(r => r.title && r.sheet)).toBe(true)
   })
 })
