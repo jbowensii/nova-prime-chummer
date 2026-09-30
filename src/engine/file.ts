@@ -1,5 +1,5 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
-import type { AmpTemplate, Build, Catalog, Character, KnowledgeEntry, StartingGear } from '../model/types'
+import type { AmpEntry, AmpTemplate, Build, Catalog, Character, ItemEntry, KnowledgeEntry, StartingGear } from '../model/types'
 import { newId } from '../model/types'
 import { ampFromTemplate } from './amps'
 
@@ -32,23 +32,32 @@ export function ensureStartingGear(b: Build): void {
     if (same) same.starting = kind
     else b.items.unshift({ uid: `start-${kind}`, kind: 'gear', name, starting: kind })
   }
+  // a SINner quality added by hand (before 0.5.3 had the box) means a real SIN: its free entry comes along
+  if (b.amps.some(a => isSinner(a)) && !b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
 }
 
 /** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
 export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
-export const hasRealSin = (b: Build) => b.items.some(i => i.starting === 'real-sin')
+/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or the same name). */
+export const isSinner = (a: AmpEntry, c?: Catalog) => !!a.realSin || plain(a.name) === 'sinner' || plain(a.snapshot?.name ?? '') === 'sinner'
+  || (!!c && !!a.catalogId && a.catalogId === sinnerTemplate(c)?.id)
+const realSinItem = (): ItemEntry => ({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
+/** The box's state: a Real SIN entry, or a SINner quality however it got there. */
+export const hasRealSin = (b: Build, c?: Catalog) => b.items.some(i => i.starting === 'real-sin') || b.amps.some(a => isSinner(a, c))
+/** SINner qualities the player added by hand: unticking the box removes them too, so the UI asks first. */
+export const handAddedSinner = (b: Build, c?: Catalog) => b.amps.filter(a => !a.realSin && isSinner(a, c))
 
-/** The Concept tab's "Has a real SIN": on adds a free Real SIN entry and, when a book has one, the SINner quality; off
- *  removes both (the quality only when this added it). */
+/** The Concept tab's "Has a real SIN": on adds a free Real SIN entry and, when a book has one and the runner lacks it,
+ *  the SINner quality; off removes the entry and every SINner quality. */
 export function setRealSin(c: Catalog, b: Build, on: boolean): void {
   if (!on) {
     b.items = b.items.filter(i => i.starting !== 'real-sin')
-    b.amps = b.amps.filter(a => !a.realSin)
+    b.amps = b.amps.filter(a => !isSinner(a, c))
     return
   }
-  if (!hasRealSin(b)) b.items.push({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
+  if (!b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
   const t = sinnerTemplate(c)
-  if (t && !b.amps.some(a => a.realSin || a.catalogId === t.id)) {
+  if (t && !b.amps.some(a => isSinner(a, c))) {
     const { amp } = ampFromTemplate(t, () => 'real-sin-amp')
     b.amps.push({ ...amp, realSin: true })
   }

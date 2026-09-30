@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
-import { blankCharacter } from '../../src/engine/file'
+import { blankCharacter, ensureStartingGear } from '../../src/engine/file'
 import type { AmpEntry, CareerEvent, Character, ItemEntry } from '../../src/model/types'
 import { ATTRS } from '../../src/model/types'
 import { cat, MINI } from '../helpers'
@@ -105,6 +105,7 @@ function runner(seed: number, step: number): Character {
       e({ type: 'note', text: r.str() }, 9), e({ type: 'void', eventId: `ev-${seed}-3`, reason: r.str() }, 10),
     ]
   }
+  ensureStartingGear(ch.build) // as every load leaves it (a hand-added SINner brings its Real SIN entry)
   return ch
 }
 

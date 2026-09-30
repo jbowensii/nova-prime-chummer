@@ -1,5 +1,5 @@
 import { ATTRS } from '../../model/types'
-import { currentBuild, hasRealSin, setRealSin, sinnerTemplate } from '../../engine'
+import { currentBuild, handAddedSinner, hasRealSin, setRealSin, sinnerTemplate } from '../../engine'
 import { useEditor } from '../editor'
 import { NonCanon } from '../bits'
 
@@ -76,7 +76,11 @@ export function ConceptTab() {
         <span>Allow non-canon content <span className="muted">(published material that isn’t the official rules, marked <NonCanon />). When off, the Review tab flags any on this runner.</span></span>
       </label>
       <label className="check">
-        <input type="checkbox" checked={hasRealSin(career ? currentBuild(ch) : ch.build)} onChange={e => update(d => setRealSin(c, d.build, e.target.checked))} />
+        <input type="checkbox" checked={hasRealSin(career ? currentBuild(ch) : ch.build, c)} onChange={e => {
+          const on = e.target.checked, mine = handAddedSinner(career ? currentBuild(ch) : ch.build, c)
+          if (!on && mine.length && !confirm(`This also removes the ${mine.map(a => a.name).join(', ')} quality you added on the Shadow Amps tab. Remove the real SIN?`)) return
+          update(d => setRealSin(c, d.build, on))
+        }} />
         <span>Has a real SIN <span className="muted">(not a core rule: every runner already has a fake SIN. Adds a free Real SIN entry on the Gear tab to name, e.g. national or corporate{sinner ? <>, and the {sinner.name} quality from {c.sources.get(sinner.source)?.name ?? sinner.source}</> : ''}.)
           {!sinner && ' No imported book has a SINner quality, so only the gear entry is added.'}</span></span>
       </label>

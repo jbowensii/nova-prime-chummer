@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import { appendEvent, currentBuild, finalize, makeKnowledge } from '../../src/engine/career'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { derive, knowledgeList } from '../../src/engine/derive'
-import { blankCharacter, ensureStartingGear, hasRealSin, parseCharacterFile, serialize, setRealSin } from '../../src/engine/file'
+import { blankCharacter, ensureStartingGear, handAddedSinner, hasRealSin, parseCharacterFile, serialize, setRealSin } from '../../src/engine/file'
 import { buildCatalog } from '../../src/engine/load'
 import { price, priceBuild } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
@@ -74,13 +74,26 @@ test('real SIN: on adds the free Real SIN and the book’s SINner (free, non-can
   expect(ch.build.amps.map(a => a.uid)).toEqual(['q1'])
 })
 
-test('real SIN: a SINner the player added themselves stays when the box goes off; without the book, only the entry', () => {
+test('real SIN: a SINner added by hand ticks the box, gets its Real SIN entry on load, no second copy; off removes it', () => {
   const ch = blankCharacter()
-  ch.build.amps = [{ uid: 'mine', catalogId: 'test2.sinner', type: 'quality', name: 'SINner', narrative: '', effects: [] }]
+  const mine = { uid: 'mine', catalogId: 'test2.sinner', type: 'quality', name: 'SINner', narrative: '', effects: [] }
+  ch.build.amps = [mine]
+  expect(hasRealSin(ch.build, cat)).toBe(true)
+  expect(handAddedSinner(ch.build, cat).map(a => a.uid)).toEqual(['mine'])
+  const loaded = xmlToCharacter(characterToXml(ch)) // the free entry comes on load
+  if (!loaded.ok) throw new Error(loaded.reason)
+  expect(loaded.character.build.items.filter(i => i.starting === 'real-sin')).toHaveLength(1)
   setRealSin(cat, ch.build, true)
   expect(ch.build.amps.map(a => a.uid)).toEqual(['mine'])
-  setRealSin(cat, ch.build, false)
-  expect(ch.build.amps.map(a => a.uid)).toEqual(['mine'])
+  expect(ch.build.items.filter(i => i.starting === 'real-sin')).toHaveLength(1)
+  setRealSin(cat, ch.build, false) // the UI asks first: handAddedSinner
+  expect([ch.build.amps.length, hasRealSin(ch.build, cat)]).toEqual([0, false])
+  // found by catalog entry even when renamed and without a snapshot
+  ch.build.amps = [{ ...mine, name: 'Paper citizen' }]
+  expect([hasRealSin(ch.build), hasRealSin(ch.build, cat)]).toEqual([false, true])
+})
+
+test('real SIN: without the book, only the entry', () => {
   const noBook = buildCatalog(catFiles.filter(f => !f.file.includes('test2/amps.xml')))
   const other = blankCharacter()
   setRealSin(noBook, other.build, true)

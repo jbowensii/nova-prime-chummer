@@ -73,7 +73,9 @@ will convert from this format; the format itself is ours and stays stable.
   a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`), and a plain unpriced gear entry of that
   name becomes it instead, so there's never a second one.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (found by name); it's
-  free and goes when the box is unticked. The box is on when an item has `starting="real-sin"`.
+  free. The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
+  or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking
+  removes the item and every SINner quality (the app asks first about one the player added).
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
   that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
 - **Career events** are never edited. A mistake is undone with a `void`

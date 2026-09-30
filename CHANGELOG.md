@@ -16,9 +16,11 @@
 - **Has a real SIN** on the Concept tab (not a core rule) adds a free **Real
   SIN** entry to name, e.g. national or corporate, and, when an imported book
   has a quality named SINner (Daegann’s Shadow Amps), that quality, free and
-  marked non-canon like the rest of that book. Unticking removes both (the
-  quality only if the box added it). Without the book, a note says only the
-  entry is added.
+  marked non-canon like the rest of that book. A runner that already has a
+  SINner quality (added by hand before this release) shows the box ticked,
+  gets its Real SIN entry when opened, and never a second quality. Unticking
+  removes the entry and the quality, asking first when you added the quality
+  yourself. Without the book, a note says only the entry is added.
 
 **Knowledge & languages**
 - Two lists, **Knowledge** and **Languages**, each A–Z. Drag a row by its
