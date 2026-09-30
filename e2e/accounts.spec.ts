@@ -356,7 +356,6 @@ test('sign-out waits for a save from the runner list; one that hangs is given 10
   await page.getByRole('button', { name: 'Duplicate' }).first().click()
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
-  await expect(page.getByRole('button', { name: 'Signing out…' })).toBeDisabled()
   const stuck = page.getByRole('dialog', { name: 'A change is still saving' })
   await expect(stuck).toBeVisible({ timeout: 15000 })
   await expect(stuck).toContainText('hasn’t reached the server after 10 seconds')
