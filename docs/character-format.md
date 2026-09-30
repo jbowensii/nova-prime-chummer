@@ -20,7 +20,7 @@ will convert from this format; the format itself is ours and stays stable.
   <build mainArmor="it-coat" altArmor="it-clothes">
     <attributes str="2" agi="3" wil="2" log="3" cha="4"/>
     <skill id="influence" rating="5"><spec>influence.bluff</spec></skill>
-    <knowledge kind="language">Japanese</knowledge>
+    <knowledge kind="language" native="true">Japanese</knowledge>
     <knowledge kind="knowledge" from="skill:influence">Corporate gossip</knowledge>
     <amp uid="amp-3" type="adept" name="Silver tongue" catalogId="…" linkedItem="…" vehicle="…">
       <narrative>…</narrative>
@@ -30,6 +30,9 @@ will convert from this format; the format itself is ours and stays stable.
     <item uid="it-coat" kind="armor" name="Lined coat" catalogId="light-armor" armor="3">
       <snapshot><item id="light-armor" kind="armor" …>…</item></snapshot>
     </item>
+    <item uid="start-fake-sin" kind="gear" name="Fake SIN" starting="fake-sin" note="…"/>
+    <knowledgeOrder key="skill:influence"/>
+    <knowledgeHidden key="knowledge:Old flames"/>
   </build>
   <career>
     <event id="…" at="…" type="earn" amount="50000" run="…" date="2086-03-01"/>
@@ -59,6 +62,18 @@ will convert from this format; the format itself is ours and stays stable.
   (Review flags both). Before 0.5.2 an entry was plain text and a
   language was written `Language: X`: such a file loads with those as paid knowledge, and `Language: X` as the
   language X.
+- **`native="true"`** marks the runner's native language: the first language entry with it is free (one per runner;
+  the app's reading of the rules, as knowledge skills cover foreign languages). A second one costs the knowledge price
+  and Review notes it. Files before 0.5.3 have none.
+- **`<knowledgeOrder>`** and **`<knowledgeHidden>`** hold row keys: a free entry's slot (`from`), else
+  `<kind>:<name>`. The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off
+  the printed sheet but still counts. Neither changes a price.
+- **`starting`** on an item marks free gear no one buys: `commlink` and `fake-sin` (every runner, CRB p.84) and
+  `real-sin`. It costs nothing and can't be removed or sold; `note` is the player's description. Reading any file adds
+  a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`), and a plain unpriced gear entry of that
+  name becomes it instead, so there's never a second one.
+- **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (found by name); it's
+  free and goes when the box is unticked. The box is on when an item has `starting="real-sin"`.
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
   that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
 - **Career events** are never edited. A mistake is undone with a `void`

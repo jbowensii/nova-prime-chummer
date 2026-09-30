@@ -1,5 +1,43 @@
 # Release notes
 
+## 0.5.3 — 2026-09-30: starting gear, a real SIN, native language, knowledge order
+
+**Starting gear**
+- Every runner, new or old, draft or finalized, examples included, carries a
+  free **Commlink (with trodes)** and **Fake SIN** (CRB p.84). They sit on the
+  Gear tab marked **Free (starting gear)**: rename them (the fake SIN’s name)
+  and add a description, but they can’t be removed or sold. The printed sheet
+  lists them with the rest of the equipment.
+- Never twice: a runner that already has them gets none, and an imported pregen
+  whose stat page lists “Fake SIN, Commlink” keeps exactly one of each, now
+  free. Prices of existing runners are otherwise unchanged.
+
+**A real SIN**
+- **Has a real SIN** on the Concept tab (not a core rule) adds a free **Real
+  SIN** entry to name, e.g. national or corporate, and, when an imported book
+  has a quality named SINner (Daegann’s Shadow Amps), that quality, free and
+  marked non-canon like the rest of that book. Unticking removes both (the
+  quality only if the box added it). Without the book, a note says only the
+  entry is added.
+
+**Knowledge & languages**
+- Two lists, **Knowledge** and **Languages**, each A–Z. Drag a row by its
+  handle, or use its ↑ ↓ buttons from the keyboard, to set your own order;
+  **Sort A–Z** puts it back.
+- **Hide** leaves an entry off the printed sheet; it stays on the runner,
+  dimmed with **Show**, and still counts.
+- Mark one language **Native**: it’s free, one per runner, and the first
+  language added to a runner is marked for you. The app’s reading of the rules:
+  knowledge skills cover foreign languages, so the one you grew up with isn’t
+  bought. Older runners have no native mark, so their prices don’t change.
+
+**Files**
+- New in the character format: `starting` and `note` on items, `realSin` on the
+  amp the box added, `native` on a knowledge entry, and `knowledgeOrder` /
+  `knowledgeHidden` in the build. Older files load unchanged and gain the
+  starting gear. The importer marks a pregen’s fake SIN and commlink as
+  starting gear.
+
 ## 0.5.2 — 2026-09-29: knowledge skills, languages, saving and the runner list
 
 **Knowledge & languages**
