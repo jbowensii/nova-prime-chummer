@@ -88,9 +88,9 @@ test('Finalize can be undone from the ledger until the first entry', async ({ pa
   await page.getByRole('link', { name: 'Review' }).click()
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
-  await expect(page.locator('.mode')).toHaveText('Career')
+  await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
   await page.getByRole('button', { name: 'Reopen creation' }).click()
-  await expect(page.locator('.mode')).toHaveText('Creation')
+  await expect(page.locator('.topbar .runstate')).toHaveText('Draft')
 })
 
 test('technomancer: Emerged amp, Tasking skill, living persona', async ({ page }) => {

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, because, canEdit, isAdmin, send, useMe } from './auth'
-import { Modal, NonCanon } from './bits'
-import { useRepo, type Stored } from './repo'
+import { AccountMenu, because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
+import { Modal, NonCanon, StateBadge } from './bits'
+import { useRepo, type Stored, type Unreadable } from './repo'
 import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
@@ -46,10 +46,41 @@ async function exampleList(sources: Sources, server: boolean): Promise<{ rows: E
   }
 }
 
+export type SortBy = 'az' | 'za' | 'recent'
+const SORT_KEY = 'ca2.library.sort'
+const shownName = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
+/** The A–Z key: street name, else real name; accents, case and punctuation (O'Neil, "Doc") don't count. */
+export const sortKey = (ch: Character) => (ch.identity.streetName || ch.identity.name).normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, '').trim().toLowerCase()
+/** The runner list's order: A–Z (the default), Z–A or newest edit first; unnamed runners last. `q` keeps those whose
+ *  street name or real name contains it. */
+export function arrange(rows: Stored[], sort: SortBy, q: string): Stored[] {
+  const want = q.trim().toLowerCase()
+  const hit = (s: Stored) => !want || [s.ch.identity.streetName, s.ch.identity.name].some(n => n.toLowerCase().includes(want))
+  const az = (a: Stored, b: Stored) => { const x = sortKey(a.ch), y = sortKey(b.ch)
+    return !x !== !y ? (x ? -1 : 1) : x.localeCompare(y) }
+  const by = sort === 'recent' ? (a: Stored, b: Stored) => b.ch.updatedAt.localeCompare(a.ch.updatedAt) || az(a, b)
+    : sort === 'za' ? (a: Stored, b: Stored) => (!sortKey(a.ch) !== !sortKey(b.ch) ? az(a, b) : az(b, a)) : az
+  return rows.filter(hit).sort(by)
+}
+/** The first letter of a name (a whole emoji, not half of one); "?" for none. */
+export const initial = (ch: Character) => [...(ch.identity.streetName || ch.identity.name).trim()][0]?.toUpperCase() ?? '?'
+
+/** A portrait, or the runner's initial when there's none or it doesn't load. */
+function Face({ ch }: { ch: Character }) {
+  const [broken, setBroken] = useState(false)
+  return ch.identity.portrait && !broken ? <img className="face" src={ch.identity.portrait} alt="" onError={() => setBroken(true)} />
+    : <span className="face" aria-hidden>{initial(ch)}</span>
+}
+
 export function Library({ c }: { c: Catalog }) {
   const repo = useRepo()
   const me = useMe(), admin = isAdmin(me)
   const [list, setList] = useState<Stored[] | null>(null)
+  const [unreadable, setUnreadable] = useState<Unreadable[]>([])
+  const [repairing, setRepairing] = useState<{ u: Unreadable; ch: Character; changes: string[] } | null>(null)
+  const [sort, setSortState] = useState<SortBy>(() => { try { const v = localStorage.getItem(SORT_KEY); return v === 'za' || v === 'recent' ? v : 'az' } catch { return 'az' } })
+  const setSort = (v: SortBy) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v) } catch { /* this browser won't remember it */ } }
+  const [q, setQ] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [level, setLevel] = useState('runner')
@@ -75,7 +106,8 @@ export function Library({ c }: { c: Catalog }) {
       loadTrash().then(t => setTrashed(t.items.length), () => setTrashed(null))
       loadCampaigns().then(setCampaigns, () => setCampaigns([]))
     }
-    return repo.list().then(setList, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
+    // a runner just left in the editor may still be sending its last change: list it as saved
+    return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored); setUnreadable(r.unreadable) }, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
   }
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const where = repo.mode === 'server' ? 'the server' : 'this browser'
@@ -171,17 +203,54 @@ export function Library({ c }: { c: Catalog }) {
     void refresh()
   }
 
+  // a file that couldn't be read: listed with why; its owner or the admin can download it, its owner can try to repair it
+  const download = (u: Unreadable) => {
+    const url = URL.createObjectURL(new Blob([u.xml], { type: 'application/xml' }))
+    Object.assign(document.createElement('a'), { href: url, download: u.file }).click()
+    URL.revokeObjectURL(url)
+  }
+  const tryRepair = (u: Unreadable) => {
+    const changes: string[] = []
+    const r = xmlToCharacter(u.xml, { repair: changes })
+    if (!r.ok) return setMsg(`${u.name} can’t be repaired here: ${r.reason} Download the file to keep it.`)
+    setRepairing({ u, ch: r.character, changes })
+  }
+  const saveRepaired = async () => {
+    if (!repairing) return
+    if (await store(repairing.ch, repairing.u.rev)) setMsg(`Repaired ${repairing.u.name}.`)
+    setRepairing(null)
+    void refresh()
+  }
+  const brokenRow = (u: Unreadable) => {
+    const own = !u.owner || u.owner === me?.username
+    return (
+      <div className="dossier unreadable" key={`${u.owner}/${u.file}`}>
+        <span className="face" aria-hidden>!</span>
+        <div>
+          <span className="title">Couldn’t open {u.name}</span>
+          <div className="meta err">{u.error}</div>
+        </div>
+        <div className="row">
+          {(own || admin) && <button className="btn small" onClick={() => download(u)}>Download file</button>}
+          {own && <button className="btn small quiet" onClick={() => tryRepair(u)}>Try to repair</button>}
+        </div>
+      </div>
+    )
+  }
+  const rows = arrange(mine.filter(shown), sort, q)
+
   const byOwner = new Map<string, Stored[]>()
   for (const s of (list ?? []).filter(shown)) if (!mine.includes(s)) byOwner.set(s.owner!, [...byOwner.get(s.owner!) ?? [], s])
+  for (const [k, rows] of byOwner) byOwner.set(k, arrange(rows, sort, q))
   const others = [...byOwner].map(([owner, rows]) => [owner, rows[0].ownerName ?? owner, rows] as const)
   const dossier = ({ ch, rev }: Stored, own: boolean) => (
     <div className="dossier" key={ch.id}>
-      {ch.identity.portrait ? <img className="face" src={ch.identity.portrait} alt="" /> : <span className="face" aria-hidden>{(ch.identity.streetName || ch.identity.name || '?')[0]}</span>}
+      <Face ch={ch} />
       <div>
-        <a className="title" href={`#/c/${ch.id}/concept`}>{ch.identity.streetName || ch.identity.name || 'Unnamed runner'}</a>
+        <a className="title" href={`#/c/${ch.id}/concept`}>{shownName(ch)}</a>
         <div className="meta">
-          {c.metatypes.get(ch.identity.metatype)?.name ?? ch.identity.metatype}, {c.levels.get(ch.level)?.name ?? ch.level}
-          {' '}<span className={`mode ${ch.finalizedAt ? 'career' : 'creation'}`}>{ch.finalizedAt ? 'Career' : 'Creation'}</span>
+          {[c.metatypes.get(ch.identity.metatype)?.name ?? ch.identity.metatype, c.levels.get(ch.level)?.name ?? ch.level].filter(Boolean).join(', ')}
+          {' '}<StateBadge finalized={!!ch.finalizedAt} />
           {ch.origin && !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>}
           {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
           {campaignOf(ch) && <> <a className="ctag" href={`#/campaigns/${ch.campaign}`} title="Campaign">{campaignOf(ch)!.name}</a></>}
@@ -233,16 +302,30 @@ export function Library({ c }: { c: Catalog }) {
           <option value="-">Not in a campaign</option>
           {campaigns.map(x => <option key={x.id} value={x.id}>{x.name}{x.archived ? ' (archived)' : ''}</option>)}
         </select></label>}
+      {list !== null && (list.length > 0 || unreadable.length > 0) && <div className="row listtools">
+        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Street name or real name" aria-label="Search runners" />
+        <label className="inline">Sort
+          <select value={sort} onChange={e => setSort(e.target.value as SortBy)}>
+            <option value="az">A–Z</option>
+            <option value="za">Z–A</option>
+            <option value="recent">Recently edited</option>
+          </select></label>
+      </div>}
       {list === null ? <p className="muted">Loading runners…</p> : <>
         {others.length > 0 && <h2>My runners</h2>}
+        {unreadable.filter(u => !u.owner || u.owner === me?.username).map(brokenRow)}
         {only && mine.length > 0 && !mine.some(shown) ? <p className="muted">None of your runners is {only === '-' ? 'outside a campaign' : 'in that campaign'}.</p>
         : mine.length === 0 ? (
           <div className="empty">
             <p>No runners yet. Start a new one, import a character file, or load the example characters to look around.</p>
           </div>
-        ) : mine.filter(shown).map(s => dossier(s, true))}
+        ) : <>
+          {rows.map(s => dossier(s, true))}
+          {q && rows.length === 0 && <p className="muted">No runner’s name contains “{q.trim()}”.</p>}
+        </>}
         {others.map(([owner, name, rows]) => <section key={owner} aria-label={`${name}’s runners`}>
           <h2>{name}’s runners</h2>
+          {unreadable.filter(u => u.owner === owner).map(brokenRow)}
           {rows.map(s => dossier(s, false))}
         </section>)}
       </>}
@@ -280,6 +363,14 @@ export function Library({ c }: { c: Catalog }) {
         <p className="muted">{repo.mode === 'server'
           ? 'They move to your trash, so they can still be restored from there. Copies you changed stay.'
           : 'They’re removed from this browser. Copies you changed stay.'}</p>
+      </Modal>
+
+      <Modal open={!!repairing} onClose={() => setRepairing(null)} title={`Repair ${repairing?.u.name ?? 'this runner'}?`}
+        actions={<><button className="btn" onClick={() => setRepairing(null)}>Cancel</button>
+          <button className="btn primary" onClick={() => void saveRepaired()}>Save repaired runner</button></>}>
+        <p>It reads with these changes:</p>
+        <ul>{repairing?.changes.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        <p className="muted">Saving replaces the file with the repaired runner. Download the file first to keep the original.</p>
       </Modal>
 
       <Modal open={!!toDelete} onClose={() => setToDelete(null)} title={`Delete ${toDelete?.identity.streetName || toDelete?.identity.name || 'this runner'}?`}
