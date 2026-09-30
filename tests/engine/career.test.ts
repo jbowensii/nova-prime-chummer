@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import {
-  appendEvent, balance, changeText, currentBuild, finalize, logChange, makeAdvance, makeAmpAdd, makeAmpModify, makeBuy, makeEarn,
+  appendEvent, balance, changeText, currentBuild, finalize, ledgerRunning, logChange, makeAdvance, makeAmpAdd, makeAmpModify, makeBuy, makeEarn,
   makeSell, reopen, settle, voidEvent,
 } from '../../src/engine/career'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
@@ -29,11 +29,11 @@ const edit = (ch: Character, fn: (d: Character) => void) => { const d = structur
 const changes = (ch: Character) => ch.career.filter(e => e.type === 'change')
 const skill = (ch: Character, id: string) => ch.build.skills.find(s => s.id === id)!
 
-test('Finalize: a "Creation finished" entry with what is left; the balance is budget - build price', () => {
+test('Finalize: a "Creation finished" entry with what is left, which is the balance', () => {
   const ch = finalize(cat, runner())
   const left = price(cat, runner()).remaining
   expect(ch.career).toEqual([expect.objectContaining({ type: 'finalize', remaining: left })])
-  expect([ch.carry, ch.finalRemaining, balance(cat, ch)]).toEqual([0, left, left])
+  expect([ch.carry, ch.finalRemaining, balance(cat, ch)]).toEqual([undefined, left, left])
 })
 
 test('after Finalize every change is logged and priced: a raise charges, lowering refunds, stepping merges into one line', () => {
@@ -97,13 +97,14 @@ test('a Quality added after Finalize needs a GM', () => {
 
 test('reopen: while no earnings are recorded; the log stays, with a note', () => {
   const ch = edit(finalize(cat, runner()), d => { skill(d, 'stealth').rating = 3 })
-  const back = reopen(ch)
+  const back = reopen(cat, ch)
   expect([back.finalizedAt, back.carry, back.finalRemaining]).toEqual([undefined, undefined, undefined])
+  expect(price(cat, back).remaining).toBe(balance(cat, ch))
   expect(back.career.at(-1)).toMatchObject({ type: 'note', text: 'Creation reopened' })
-  expect(() => reopen(appendEvent(ch, makeEarn(500, 'Made-up job', '2086-01-01')))).toThrow(/earnings/)
+  expect(() => reopen(cat, appendEvent(ch, makeEarn(500, 'Made-up job', '2086-01-01')))).toThrow(/earnings/)
   // a voided payout doesn't count
   const e = makeEarn(500, 'Made-up job', '2086-01-01')
-  expect(() => reopen(voidEvent(appendEvent(ch, e), e.id, 'typo'))).not.toThrow()
+  expect(() => reopen(cat, voidEvent(appendEvent(ch, e), e.id, 'typo'))).not.toThrow()
 })
 
 test('a pre-0.5.5 runner converts: build folded, history and earnings kept, balance unchanged; settling twice is the same', () => {
@@ -126,7 +127,8 @@ test('a pre-0.5.5 runner converts: build folded, history and earnings kept, bala
   expect(s.career[0]).toMatchObject({ type: 'finalize', remaining: old.finalRemaining })
   expect(s.career.slice(1)).toEqual(old.career)
   expect(balance(cat, s)).toBe(oldBalance)
-  expect(s.carry).not.toBe(0) // the sold knife and the lowered amp weren't refunded then; they stay that way
+  // the sold knife and the lowered amp weren't refunded then; they stay that way
+  expect(balance(cat, s)).toBeLessThan(price(cat, s).remaining + 40000)
   // from here on it works like any finalized runner
   const next = edit(s, d => { d.build.items = d.build.items.filter(i => i.uid !== 'rope') })
   expect(balance(cat, next)).toBe(oldBalance + P.equipment)
@@ -138,12 +140,12 @@ test('a pre-0.5.5 runner converts: build folded, history and earnings kept, bala
 test('an unchanged pre-0.5.5 runner keeps its balance to the nuyen', () => {
   const old = legacy(finalize(cat, runner()))
   const s = settle(cat, old)
-  expect([s.carry, balance(cat, s), balance(cat, old)]).toEqual([0, old.finalRemaining, old.finalRemaining])
+  expect([balance(cat, s), balance(cat, old)]).toEqual([old.finalRemaining, old.finalRemaining])
   const paid = appendEvent(old, makeEarn(12345, 'Made-up run', '2086-02-01'))
   expect(balance(cat, settle(cat, paid))).toBe(old.finalRemaining! + 12345)
 })
 
-test('the new entries and carry survive XML and match the schema', async () => {
+test('the new entries and a reopened runner’s carry survive XML and match the schema', async () => {
   let ch = finalize(cat, runner())
   ch = edit(ch, d => { skill(d, 'stealth').rating = 3; d.build.items.push({ uid: 'rope', kind: 'gear', name: 'Rope & <knots>' }) })
   ch = { ...ch, carry: -2500 }
@@ -153,4 +155,64 @@ test('the new entries and carry survive XML and match the schema', async () => {
   const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
   const v = await validateXML({ xml: { fileName: 'c.xml', contents: xml }, schema: { fileName: 'character.xsd', contents: xsd } })
   expect(v.errors.map(e => e.message)).toEqual([])
+})
+
+test('balances use the prices recorded when each change was made: a later price change moves nothing', () => {
+  let ch = edit(finalize(cat, runner()), d => { skill(d, 'stealth').rating = 3 })
+  const before = balance(cat, ch)
+  const dearer = { ...cat, pricing: { ...cat.pricing, skillLow: cat.pricing.skillLow * 2, weaponStandard: 1 } }
+  expect(balance(dearer, ch)).toBe(before)
+  const rows = ledgerRunning(ch)
+  expect(rows.at(-1)!.running).toBe(before) // the Ledger's running total is the footer
+  // the next change is priced at the new rate
+  const d = structuredClone(ch)
+  skill(d, 'stealth').rating = 4
+  ch = logChange(dearer, ch, d)
+  expect(balance(dearer, ch)).toBe(before - 2 * cat.pricing.skillLow)
+})
+
+test('reopen and finalize again never makes nuyen: a pre-0.5.5 runner with an unrefunded sale, no earnings', () => {
+  let old = legacy(finalize(cat, runner()))
+  old = appendEvent(old, makeSell('knife')) // sold for nothing then
+  const bal = balance(cat, old)
+  const back = reopen(cat, old)
+  expect(back.carry).toBe(-P.weaponStandard)
+  expect(price(cat, back).remaining).toBe(bal)
+  expect(balance(cat, back)).toBe(bal)
+  const again = finalize(cat, back)
+  expect([balance(cat, again), again.carry]).toEqual([bal, undefined])
+  expect(balance(cat, finalize(cat, reopen(cat, again)))).toBe(bal)
+})
+
+test('fuzz: whatever is added, removed, changed or renamed after Finalize, balance - earnings = budget - build price', () => {
+  let seed = 55
+  const rnd = (n: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n }
+  const pick = <T,>(xs: T[]) => xs[rnd(xs.length)]
+  const effects = ['rr-skill', 'armor-plus', 'dv-plus', 'wound-light', 'init-1', 'narrative', 'negative']
+  for (let run = 0; run < 20; run++) {
+    let ch = finalize(cat, runner())
+    let earned = 0
+    for (let step = 0; step < 60; step++) {
+      const op = rnd(11)
+      if (op === 0) { const e = makeEarn(1000 * (1 + rnd(9)), 'Made-up run', '2086-01-01'); ch = appendEvent(ch, e); earned += e.type === 'earn' ? e.amount : 0 }
+      else ch = edit(ch, d => {
+        const b = d.build
+        switch (op) {
+          case 1: b.items.push({ uid: `i${run}-${step}`, kind: pick(['gear', 'weapon', 'armor', 'spell'] as const), name: `Thing ${step}`, armor: rnd(4), specialist: !!rnd(2), ...(rnd(4) ? {} : { price: rnd(3) * 5000 - 2500 }) }); break
+          case 2: { const it = b.items.filter(i => !i.starting); if (it.length) b.items = b.items.filter(i => i !== pick(it)); break }
+          case 3: { const it = b.items.filter(i => !i.starting); if (it.length) pick(it).name += 'x'; break }
+          case 4: { const id = pick(['stealth', 'athletics', 'perception']); const s = b.skills.find(x => x.id === id); if (s) s.rating = rnd(9); else b.skills.push({ id, rating: rnd(9), specs: [] }); break }
+          case 5: { const s = b.skills[0]; if (s) s.specs = s.specs.length ? [] : ['stealth.palming']; break }
+          case 6: b.amps.push({ uid: `a${run}-${step}`, type: pick(['quality', 'cyberware', 'cyberdeck', 'vehicle']), name: rnd(3) ? `Amp ${step}` : 'SINner', narrative: '', effects: Array.from({ length: rnd(3) }, () => ({ ref: pick(effects), param: 'stealth', value: 1 + rnd(4) })), vehicle: 'sedan' }); break
+          case 7: if (b.amps.length) b.amps = b.amps.filter(a => a !== pick(b.amps)); break
+          case 8: if (b.amps.length) { const a = pick(b.amps); a.effects = rnd(2) ? [] : [...a.effects, { ref: pick(effects), param: 'stealth', value: 1 + rnd(4) }]; if (!rnd(3)) a.name = pick(['SINner', 'Renamed']) } break
+          case 9: b.attributes[pick(['str', 'agi', 'wil', 'log', 'cha'] as const)] = 1 + rnd(5); break
+          case 10: if (rnd(2)) b.knowledge.push({ id: `k${step}`, name: `Lore ${step}`, kind: 'knowledge' }); else b.knowledge.pop(); break
+        }
+      })
+      const p = price(cat, ch)
+      expect(balance(cat, ch) - earned, `run ${run} step ${step}`).toBe(p.budget - p.total)
+      expect(ledgerRunning(ch).at(-1)!.running).toBe(balance(cat, ch))
+    }
+  }
 })

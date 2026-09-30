@@ -131,8 +131,8 @@ export interface Character { formatVersion: 1; id: string;
   campaign?: string;
   /** creation nuyen left over when finalized */
   finalRemaining?: number;
-  /** set on Finalize (0.5.5): the balance is budget + earnings - build price + carry. A runner finalized before 0.5.5
-   *  gets what its old ledger said beyond that when it's settled (engine/career.ts settle), so its balance doesn't move. */
+  /** a reopened runner only (engine/career.ts reopen): what its ledger's balance held beyond budget - build price; it
+   *  counts in what's left to spend and the next Finalize uses it up */
   carry?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }
 export type Severity = 'error' | 'warning';

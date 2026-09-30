@@ -8,10 +8,23 @@ export interface AmpCtx { isFirstQuality: boolean; negativeOk?: boolean }
 export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
 /** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
 export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
-/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or exactly that name, any case).
+const effectKey = (es: EffectPick[]) => es.map(e => `${e.ref}|${e.param ?? ''}|${e.value ?? ''}`).sort().join(';')
+/** An amp that is the SINner quality, and still only that: a Quality that is the catalog's SINner entry (by catalog id
+ *  when the catalog is at hand, else its snapshot's name or its own; added by the box or by hand) with that entry's effects, or a
+ *  hand-built Quality named exactly SINner (any case) with no effect but narrative ones. Renaming another amp, or
+ *  adding effects to a SINner, doesn't make it one.
  *  House rule (owner, 0.5.5): a SINner is always 0¥ and never takes the first-Quality slot, however it got there. */
-export const isSinner = (a: AmpEntry, c?: Catalog) => !!a.realSin || plain(a.name) === 'sinner' || plain(a.snapshot?.name ?? '') === 'sinner'
-  || (!!c && !!a.catalogId && a.catalogId === sinnerTemplate(c)?.id)
+export function isSinner(a: AmpEntry, c?: Catalog): boolean {
+  if (a.type !== 'quality') return false
+  const narrativeOnly = a.effects.every(e => e.ref === 'narrative')
+  if (a.catalogId) {
+    // without the catalog (reading a file): its snapshot, or with none its name
+    const t = c ? (a.catalogId === sinnerTemplate(c)?.id ? c.amps.get(a.catalogId) : undefined)
+      : plain(a.snapshot?.name ?? a.name) === 'sinner' ? a.snapshot ?? { effects: [] } : undefined
+    return !!t && (narrativeOnly || effectKey(a.effects) === effectKey(t.effects))
+  }
+  return (!!a.realSin || plain(a.name) === 'sinner') && narrativeOnly
+}
 
 export function effectRating(c: Catalog, pick: EffectPick): number {
   const eff = c.ampEffects.get(pick.ref)

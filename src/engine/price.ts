@@ -21,7 +21,7 @@ export function skillCost(p: Pricing, from: number, to: number): number {
 
 export function itemCost(p: Pricing, i: ItemEntry): number {
   if (i.starting) return 0
-  if (i.price != null) return i.price
+  if (i.price != null) return Math.max(0, i.price) // a GM price below 0 would pay the runner (validate.ts item.negativePrice)
   switch (i.kind) {
     case 'armor': return (i.armor ?? 0) * p.armorPoint
     case 'weapon': return i.specialist ? p.weaponSpecialist : p.weaponStandard
@@ -69,13 +69,14 @@ export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: str
   return { attributes, skills, amps, gear, spells }
 }
 
-/** Price of the creation build against the level-of-play budget. */
+/** Price of the build against the level-of-play budget (+ a reopened runner's carry). */
 export function price(c: Catalog, ch: Character): PriceBreakdown {
   const ok = new Set((ch.overrides ?? []).filter(o => o.code === 'amp.negativeRating').map(o => o.path.replace(/^amps\./, '')))
   const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, ok)
   const total = b.attributes + b.skills + b.amps + b.gear + b.spells
   const budget = c.levels.get(ch.level)?.nuyen ?? 0
-  return { ...b, total, budget, remaining: budget - total }
+  // a reopened runner's carry (career.ts reopen): what its earlier ledger held beyond budget - build price
+  return { ...b, total, budget, remaining: budget - total + (ch.carry ?? 0) }
 }
 
 /** The book package as nuyen per category (a guide; nuyen may move between categories). */

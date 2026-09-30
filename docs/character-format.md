@@ -10,7 +10,7 @@ will convert from this format; the format itself is ours and stays stable.
 <?xml version="1.0" encoding="UTF-8"?>
 <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="…"
     streetName="Slick" name="Jan Novak" metatype="dwarf" level="runner" package="free"
-    lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" carry="0" updatedAt="…">
+    lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" updatedAt="…">
   <portrait>data:image/jpeg;base64,…</portrait>
   <background>…</background>
   <notes>…</notes>
@@ -87,25 +87,30 @@ will convert from this format; the format itself is ours and stays stable.
   prints (an effect limited to some situations) and prices in; it needs no GM approval.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
   "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
-  takes the first-Quality slot; files from before simply price that way when read. The box works before and after
+  takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the
+  catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with narrative effects only:
+  another amp renamed SINner, or a SINner given other effects, is priced like any amp. The box works before and after
   Finalize (after, the change is logged). The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
   or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking
   removes the item and every SINner quality (the app asks first about one the player added).
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
   that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
-- **The ledger (0.5.5).** Finalize writes `finalizedAt`, `finalRemaining` (what creation left), `carry="0"` and a
-  `finalize` event. Nothing is locked afterwards: `<build>` is always the runner as it stands, and every change to it
-  appends a `change` event (the app writes these itself). Each `<change>` names one thing by `key` (`attr:agi`,
-  `skill:stealth`, `spec:<skill>:<spec>`, `knowledge:<row key>`, `amp:<uid>`, `item:<uid>`); no `from` means added, no
-  `to` means removed. `cost` is the build's price difference: negative when something was removed or lowered (the
-  book price comes back). Consecutive changes to one thing within ten minutes share one event. The balance is the
-  level's budget + non-voided `earn` amounts − the build's price + `carry`. Reopening creation (only while no
-  earnings are recorded) drops `finalizedAt`, `finalRemaining` and `carry` and adds a note; the log stays.
-- **Runners finalized before 0.5.5** have no `carry`: their `<build>` was the creation baseline and the `advance`,
-  `buy`, `sell`, `amp-add`, `amp-modify`, `spec-add` and `knowledge-add` events applied on top. Opened in 0.5.5, those
-  events are folded into `<build>` once and kept as history, a `finalize` event (id `finalized`) is put first, and
-  `carry` is set to what the old ledger said beyond budget + earnings − build price (its unrefunded sales, for
-  instance), so the balance doesn't move.
+- **The ledger (0.5.5).** Finalize writes `finalizedAt`, `finalRemaining` (what creation left) and a `finalize`
+  event with the same `remaining`. Nothing is locked afterwards: `<build>` is always the runner as it stands, and
+  every change to it appends a `change` event (the app writes these itself). Each `<change>` names one thing by `key`
+  (`attr:agi`, `skill:stealth`, `spec:<skill>:<spec>`, `knowledge:<row key>`, `amp:<uid>`, `item:<uid>`); no `from`
+  means added, no `to` means removed. `cost` is the build's price difference at that moment: negative when something
+  was removed or lowered (the book price comes back). Consecutive changes to one thing within ten minutes share one
+  event. The balance is the ledger's running total: the last `finalize` event's `remaining`, + each non-voided `earn`,
+  − each later recorded `cost`. Prices are the ones recorded, so a later catalog or price change never moves it.
+- **`carry`** (a reopened runner only): reopening creation (only while no earnings are recorded) drops `finalizedAt`
+  and `finalRemaining`, adds a note (the log stays) and keeps as `carry` whatever the balance held beyond budget −
+  build price (an old sale that wasn't refunded, a price changed since). It counts in what's left to spend, and the
+  next Finalize uses it up, so reopening never makes or loses nuyen.
+- **Runners finalized before 0.5.5** have no `finalize` event: their `<build>` was the creation baseline and the
+  `advance`, `buy`, `sell`, `amp-add`, `amp-modify`, `spec-add` and `knowledge-add` events applied on top. Opened in
+  0.5.5, those events are folded into `<build>` once and kept as history after a `finalize` event (id `finalized`,
+  `remaining` = `finalRemaining`); their recorded costs keep the balance exactly where the old ledger had it.
 - **Career events** are never edited. A wrong `earn` is undone with a `void`
   event, so the history stays complete.
 - **`allowNonCanon="false"`** on the root marks a runner as canon only: the

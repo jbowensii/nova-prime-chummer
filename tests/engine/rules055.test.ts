@@ -88,10 +88,24 @@ test('RR cap at creation: the total on one Test (Attribute + Skill + specializat
 
 test('SINner house rule: always 0¥, never the first Quality, checkbox or by hand', () => {
   const lucky = amp('lucky', 'quality', [])
-  const byHand = { ...amp('sin', 'quality', ['armor-plus']), name: 'SINner' }
+  const byHand = { ...amp('sin', 'quality', []), name: 'SINner' }
   expect(isSinner(byHand)).toBe(true)
+  // only the SINner itself: not another amp renamed, nor a SINner given real effects
+  expect(isSinner({ ...amp('ware', 'cyberware', []), name: 'SINner' }, cat)).toBe(false)
+  expect(isSinner({ ...byHand, effects: [{ ref: 'armor-plus' }] }, cat)).toBe(false)
+  expect(isSinner({ ...byHand, realSin: true, effects: [{ ref: 'rr-attr', param: 'agi' }] }, cat)).toBe(false)
+  expect(isSinner({ ...amp('q', 'quality', ['armor-plus']), name: 'Paper citizen', catalogId: 'test.keen-eye' }, cat)).toBe(false)
+  expect(isSinner({ ...byHand, name: 'Paper citizen', catalogId: 'test2.sinner' }, cat)).toBe(true) // the entry, renamed
+  expect(ampRating(cat, { ...amp('ware', 'cyberware', ['armor-plus']), name: 'SINner' }, { isFirstQuality: false })).toBeGreaterThan(0)
   const withSin = runner(byHand, lucky)
   const without = runner(lucky)
   expect(price(cat, withSin).amps).toBe(price(cat, without).amps) // Lucky keeps the first-Quality price
   expect(ampRating(cat, byHand, { isFirstQuality: true })).toBe(0)
+})
+
+test('a GM price below 0 counts as 0 and is an error on Review', () => {
+  const ch = runner()
+  ch.build.items.push({ uid: 'x', kind: 'gear', name: 'Made-up refund machine', price: -50000 })
+  expect(price(cat, ch).gear).toBe(0)
+  expect(validate(cat, ch).find(v => v.code === 'item.negativePrice')?.severity).toBe('error')
 })

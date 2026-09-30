@@ -63,7 +63,7 @@ export function ReviewTab() {
           {' '}<a href={`#/c/${ch.id}/ledger`}>ledger</a>, charged or refunded at the book price.</p>
         {earned
           ? <p className="muted">Creation can’t be reopened: the ledger has earnings.</p>
-          : <div><button className="btn" onClick={() => replace(reopen(ch))}>Reopen creation</button>
+          : <div><button className="btn" onClick={() => replace(reopen(c, ch))}>Reopen creation</button>
             <span className="muted"> Back to creation (its caps apply again). Possible until the first earnings are recorded.</span></div>}
       </>}
 

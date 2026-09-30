@@ -11,8 +11,13 @@
   cost or gave back, so the GM can follow it. Steps on one thing within ten
   minutes (Stealth 3 → 4 → 5) are one line. Undo works after Finalize too, up
   to the last recorded earnings.
-- The balance is the creation budget plus earnings minus what the current
-  build costs. The level-of-play creation caps apply only before Finalize.
+- The balance is what creation left, plus earnings, minus each change at the
+  price it had when made: re-importing a book or editing a price later never
+  moves a balance, and the ledger's running total always matches it. The
+  level-of-play creation caps apply only before Finalize.
+- Reopening creation keeps what the balance held beyond budget minus build
+  (an old sale that wasn't refunded, a price changed since), so reopening and
+  finalizing again never makes or loses nuyen.
 - **Reopen creation** is on the Review tab, next to Finalize, until earnings
   are recorded. The Review tab also shows the balance once finalized.
 - Runners finalized before 0.5.5 convert when you open them. Their recorded
@@ -39,7 +44,10 @@
 - House rule (owner's decision, replaces the DHSA price): a SINner quality is
   always free and never counts as the first Quality, whether the box added it
   or you did. Existing runners price it that way when opened (a finalized
-  runner's balance doesn't move).
+  runner's balance doesn't move). Only the SINner itself counts: another amp
+  renamed SINner, or a SINner given other effects, costs what it rates.
+- A GM-set item price below 0 counts as 0 (Review flags it); the price box
+  takes no negative value.
 - Page references: levels, budget and starting gear CRB p.85, packages p.86,
   lifestyles p.166, GM approval of drawbacks p.61. The importer already reads
   the right pages; core tables imported before cite the old ones until the core

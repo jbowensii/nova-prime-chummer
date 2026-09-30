@@ -52,7 +52,8 @@ own API key), and you review its entries before they’re added.
   its price, and removing an item, amp or skill point gives its book price back
   to spend again. Every change is logged in the ledger by itself, for the GM.
   The level-of-play creation caps apply only before Finalize. The balance is
-  the creation budget plus earnings minus what the current build costs. Record
+  what creation left, plus earnings, minus each change at the price it had when
+  you made it (a later price change moves nothing). Record
   earnings on the Ledger tab; a wrong one is undone by voiding it. **Reopen
   creation** (Review tab) works until earnings are recorded. Runners finalized
   before 0.5.5 convert when opened: their history and earnings stay, and so

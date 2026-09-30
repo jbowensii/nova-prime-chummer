@@ -152,7 +152,7 @@ export function GearTab() {
           {custom.kind === 'armor' && <label>Armor rating<input type="number" min={1} max={6} value={custom.armor ?? 1} onChange={e => setCustom({ ...custom, armor: Number(e.target.value) })} /></label>}
           {custom.kind === 'weapon' && <label className="row" style={{ display: 'flex' }}><input type="checkbox" checked={!!custom.specialist} onChange={e => setCustom({ ...custom, specialist: e.target.checked })} /> Specialist weapon</label>}
           <label>Price set by the GM (blank = standard)
-            <input type="number" min={0} step={c.pricing.equipment} value={custom.price ?? ''} onChange={e => setCustom({ ...custom, price: e.target.value === '' ? undefined : Number(e.target.value) })} />
+            <input type="number" min={0} step={c.pricing.equipment} value={custom.price ?? ''} onChange={e => setCustom({ ...custom, price: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0) })} />
           </label>
           <p className="muted">Standard price: {fmt(itemCost(c.pricing, { ...custom, price: undefined }))}</p>
         </div>}

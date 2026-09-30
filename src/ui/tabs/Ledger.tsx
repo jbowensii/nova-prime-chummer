@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { changeText, makeEarn, makeNote, voidEvent, voidedIds } from '../../engine'
+import { changeText, ledgerRunning, makeEarn, makeNote, voidEvent } from '../../engine'
 import type { CareerEvent } from '../../model/types'
 import { fmt } from '../bits'
 import { useEditor } from '../editor'
@@ -13,7 +13,6 @@ export function LedgerTab() {
   const [run, setRun] = useState('')
   const [date, setDate] = useState(today)
   const [note, setNote] = useState('')
-  const voided = voidedIds(ch)
 
   const earn = async () => {
     const pay = Number(amount)
@@ -44,13 +43,8 @@ export function LedgerTab() {
   }
   const delta = (e: CareerEvent) => (e.type === 'earn' ? e.amount : 'cost' in e ? -e.cost : 0)
 
-  // each Finalize starts the running balance at what creation left
-  let running = 0
-  const rows = ch.career.filter(e => e.type !== 'void').map(e => {
-    if (e.type === 'finalize') running = e.remaining
-    else if (!voided.has(e.id)) running += delta(e)
-    return { e, running, voided: voided.has(e.id), reason: (ch.career.find(v => v.type === 'void' && v.eventId === e.id) as { reason?: string } | undefined)?.reason }
-  })
+  // the same running total the balance is (engine/career.ts ledgerRunning)
+  const rows = ledgerRunning(ch).map(r => ({ ...r, reason: (ch.career.find(v => v.type === 'void' && v.eventId === r.e.id) as { reason?: string } | undefined)?.reason }))
 
   return (
     <div className="stack">

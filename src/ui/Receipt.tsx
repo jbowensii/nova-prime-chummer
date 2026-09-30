@@ -1,6 +1,6 @@
 // The fixer's receipt: every nuyen spent, the balance, and the numbers you need at the table.
 import { useEffect, useRef, useState } from 'react'
-import { activeEvents, itemCost, packageGuide } from '../engine'
+import { activeEvents, itemCost, packageGuide, sinceFinalize, voidedIds } from '../engine'
 import type { Character, Pricing } from '../model/types'
 import { fmt, Line } from './bits'
 import { useEditor } from './editor'
@@ -37,6 +37,8 @@ export function Receipt() {
   const cats: [keyof typeof p & keyof NonNullable<typeof guide>, string][] = [['attributes', 'Attributes'], ['skills', 'Skills & knowledge'], ['amps', 'Shadow Amps'], ['gear', 'Gear'], ['spells', 'Spells']]
   const events = career ? activeEvents(ch) : []
   const earned = events.reduce((s, e) => s + (e.type === 'earn' ? e.amount : 0), 0)
+  const voided = voidedIds(ch)
+  const changed = sinceFinalize(ch).reduce((s, e) => s + (!voided.has(e.id) && e.type !== 'earn' && 'cost' in e ? e.cost : 0), 0)
   const T = d.thresholds
 
   return (
@@ -55,9 +57,9 @@ export function Receipt() {
         <div className="total"><Line label={career ? "Build total" : "Creation total"} amount={fmt(p.total)} /></div>
         {career ? (
           <>
-            <Line label="Budget minus build" amount={fmt(p.remaining)} />
+            <Line label="Left at creation" amount={fmt(ch.finalRemaining ?? 0)} />
             <Line label="Earned" amount={fmt(earned)} />
-            {!!ch.carry && <Line label="From the old ledger" amount={fmt(ch.carry)} />}
+            <Line label="Changes since (net)" amount={fmt(changed)} />
             <div className={`left${balance < 0 ? ' neg' : ''}`}>{fmt(balance)}</div>
             <div className="muted">balance</div>
           </>

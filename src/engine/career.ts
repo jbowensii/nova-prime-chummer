@@ -1,6 +1,6 @@
 // Career mode (0.5.5): Finalize is a last check and a ledger entry; nothing is locked. The build stays editable,
-// every change to it is logged in the ledger with what it cost or gave back, and the balance is
-// creation budget + earnings - price of the current build (+ `carry`, see settle()).
+// every change to it is logged in the ledger with the price difference at that moment (a removal refunds), and the
+// balance is the ledger's running total: what creation left + earnings - those recorded prices (ledgerRunning).
 // Runners finalized before 0.5.5 kept a baseline build plus events (advance, buy, sell...) applied on top; settle()
 // folds those into the build once, keeps them as history and carries their balance over unchanged.
 import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, ItemEntry, KnowledgeEntry } from '../model/types'
@@ -50,8 +50,9 @@ export function applyEvent(b: Build, e: CareerEvent): void {
   }
 }
 
-/** A runner finalized before 0.5.5 that hasn't been settled yet: its build is the baseline, its events apply on top. */
-const legacy = (ch: Character) => !!ch.finalizedAt && ch.carry === undefined
+/** A runner finalized before 0.5.5 that hasn't been settled yet (no "Creation finished" entry): its build is the
+ *  baseline, its events apply on top. */
+const legacy = (ch: Character) => !!ch.finalizedAt && !ch.career.some(e => e.type === 'finalize')
 
 /** The runner's build as it stands (a legacy runner's baseline with its events applied). */
 export function currentBuild(ch: Character): Build {
@@ -60,40 +61,53 @@ export function currentBuild(ch: Character): Build {
   return b
 }
 
-const eventCost = (e: CareerEvent) => ('cost' in e ? e.cost : 0)
-const earnings = (ch: Character) => activeEvents(ch).reduce((s, e) => s + (e.type === 'earn' ? e.amount : 0), 0)
+/** The ledger's running balance after each entry: a "Creation finished" entry sets it to what creation left, an
+ *  earning adds, a change (or a pre-0.5.5 event) takes its recorded cost off; voided entries and voids leave it. The
+ *  amounts are the ones recorded when each entry was made, so later catalog or price edits never move a balance. */
+export function ledgerRunning(ch: Character): { e: CareerEvent; running: number; voided: boolean }[] {
+  const v = voidedIds(ch)
+  let running = 0
+  return ch.career.filter(e => e.type !== 'void').map(e => {
+    if (e.type === 'finalize') running = e.remaining
+    else if (!v.has(e.id)) running += e.type === 'earn' ? e.amount : -('cost' in e ? e.cost : 0)
+    return { e, running, voided: v.has(e.id) }
+  })
+}
 
-/** A legacy runner the 0.5.5 way: its events folded into the build (kept in the ledger as history), a "Creation
- *  finished" entry first, and `carry` set so the balance is exactly what the old ledger said. Idempotent. */
+/** A legacy runner the 0.5.5 way: its events folded into the build and kept in the ledger as history, after a
+ *  "Creation finished" entry with what creation left. Its running balance is the old ledger's to the nuyen. Idempotent. */
 export function settle(c: Catalog, ch: Character): Character {
   if (!legacy(ch)) return ch
   const remaining = ch.finalRemaining ?? price(c, ch).remaining
-  const old = activeEvents(ch).reduce((s, e) => s + (e.type === 'earn' ? e.amount : -eventCost(e)), remaining)
-  const next: Character = { ...ch, build: currentBuild(ch), finalRemaining: remaining }
-  if (!ch.career.some(e => e.type === 'finalize'))
-    next.career = [{ id: 'finalized', at: ch.finalizedAt!, type: 'finalize', remaining }, ...ch.career]
-  next.carry = old - (price(c, next).remaining + earnings(next))
-  return next
+  return { ...ch, build: currentBuild(ch), finalRemaining: remaining,
+    career: [{ id: 'finalized', at: ch.finalizedAt!, type: 'finalize', remaining }, ...ch.career] }
 }
 
-/** Career nuyen: creation budget + earnings - price of the current build (+ what a pre-0.5.5 ledger carried over). */
+/** Career nuyen: the ledger's running balance (what creation left, + earnings, - each change's recorded price). A
+ *  draft's: what's left to spend. */
 export function balance(c: Catalog, ch: Character): number {
-  const s = settle(c, ch)
-  return price(c, s).remaining + earnings(s) + (s.carry ?? 0)
+  if (!ch.finalizedAt) return price(c, ch).remaining
+  return ledgerRunning(settle(c, ch)).at(-1)?.running ?? 0
 }
 
+/** What creation leaves (a reopened runner's carry included) becomes the ledger's first entry; the carry is used up. */
 export function finalize(c: Catalog, ch: Character): Character {
   const remaining = price(c, ch).remaining
   const at = new Date().toISOString()
-  return { ...ch, finalizedAt: at, finalRemaining: remaining, carry: 0,
+  const { carry: _, ...rest } = ch
+  return { ...rest, finalizedAt: at, finalRemaining: remaining,
     career: [...ch.career, { id: newId(), at, type: 'finalize', remaining }] }
 }
 
-/** Back to creation: only while no earnings are recorded. The ledger keeps its entries, with a note. */
-export function reopen(ch: Character): Character {
+/** Back to creation: only while no earnings are recorded. The ledger keeps its entries, with a note. `carry` keeps
+ *  whatever the balance holds beyond budget - build price (an old unrefunded sale, a price changed since), so
+ *  reopening and finalizing again never makes or loses nuyen. */
+export function reopen(c: Catalog, ch: Character): Character {
   if (activeEvents(ch).some(e => e.type === 'earn')) throw new Error('the ledger already has earnings')
-  const { finalizedAt: _f, finalRemaining: _r, carry: _c, ...rest } = ch
-  return { ...rest, career: [...ch.career, stamp({ type: 'note', text: 'Creation reopened' })] } as Character
+  const s = settle(c, ch)
+  const { finalizedAt: _f, finalRemaining: _r, carry: _c, ...rest } = s
+  const carry = balance(c, s) - price(c, rest as Character).remaining
+  return { ...rest, ...(carry ? { carry } : {}), career: [...s.career, stamp({ type: 'note', text: 'Creation reopened' })] } as Character
 }
 
 /** Entries since the last Finalize (a reopened runner's earlier log is history). */

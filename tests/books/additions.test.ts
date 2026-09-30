@@ -27,11 +27,11 @@ describeBooks('weapons, vehicles and finalize (book samples)', () => {
     expect(v('charon', 'Eurocar Northstar 20').thresholds).toEqual([8, 15, 22]) // Body 7 + Armor 1; 2x; 3x
   })
 
-  test('Finalize can be undone while the ledger is empty', () => {
+  test('Finalize can be undone while no earnings are recorded', () => {
     const ch = finalize(books!, sample('lightning'))
-    const back = reopen(ch)
+    const back = reopen(books!, ch)
     expect(back.finalizedAt).toBeUndefined()
     expect(price(books!, back).remaining).toBe(0)
-    expect(() => reopen(appendEvent(ch, makeEarn(1000, 'run', '2086-01-01')))).toThrow(/ledger/)
+    expect(() => reopen(books!, appendEvent(ch, makeEarn(1000, 'run', '2086-01-01')))).toThrow(/ledger/)
   })
 })
