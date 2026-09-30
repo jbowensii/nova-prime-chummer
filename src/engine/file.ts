@@ -60,6 +60,14 @@ export function setRealSin(c: Catalog, b: Build, on: boolean): void {
   }
 }
 
+/** After every edit: a SINner quality brings its free Real SIN entry, and taking the last one off takes the entry with it
+ *  (kept when no book has a SINner, so a runner from before stays as it was). */
+export function syncRealSin(c: Catalog, b: Build): void {
+  const has = b.amps.some(a => isSinner(a, c)), entry = b.items.some(i => i.starting === 'real-sin')
+  if (has && !entry) b.items.push(realSinItem())
+  if (!has && entry && sinnerTemplate(c)) b.items = b.items.filter(i => i.starting !== 'real-sin')
+}
+
 export const serialize = (ch: Character) => JSON.stringify(ch, null, 2) + '\n'
 
 // formatVersion -> function upgrading a file of that version to the next one

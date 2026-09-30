@@ -3,7 +3,7 @@
 // admin; its reason is shown as it comes.
 import { useEffect, useState } from 'react'
 import { xmlToCharacter } from '../engine'
-import { Modal } from './bits'
+import { Brand, Modal } from './bits'
 import { AccountMenu, PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
 import { SettingsButton } from './settings'
 import { AskButton } from './AskRules'
@@ -118,7 +118,7 @@ export function UsersScreen() {
   return (
     <main className="lib">
       <header>
-        <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Users</h1></div>
+        <div style={{ flex: 1 }}><Brand /><h1>Users</h1></div>
         <div className="row"><button className="btn primary" onClick={() => open({ at: 'add' })}>Add account</button>
           <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
       </header>

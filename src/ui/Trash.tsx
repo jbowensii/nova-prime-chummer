@@ -3,7 +3,7 @@
 // new id when that id is taken; Delete forever and Empty trash can't be undone. The admin opens anyone's (#/trash/<username>).
 import { useEffect, useState } from 'react'
 import { AccountMenu, because, isAdmin, send, useMe } from './auth'
-import { Modal } from './bits'
+import { Brand, Modal } from './bits'
 import { SettingsButton } from './settings'
 import { AskButton } from './AskRules'
 
@@ -54,7 +54,7 @@ export function TrashScreen({ user: asked }: { user?: string }) {
   return (
     <main className="lib">
       <header>
-        <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
+        <div style={{ flex: 1 }}><Brand />
           <h1>{own ? 'Trash' : `${trash?.name ?? user}’s trash`}</h1></div>
         <div className="row">
           {admin && accounts.length > 1 && <label>Account{' '}

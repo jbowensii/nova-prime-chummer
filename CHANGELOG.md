@@ -1,5 +1,25 @@
 # Release notes
 
+## 0.5.7 — 2026-09-30: portrait window, table-wide switches, version in the header
+
+**Portrait**
+- **Add a portrait…** / **Change portrait…** on the Concept tab opens a window: choose the picture, zoom (slider or
+  mouse wheel) and drag it into the square (arrow keys too), **Center**, **Remove picture**, and pick the backdrop
+  with a live preview. Saved as a 384 px square (PNG when it has transparent parts, JPEG otherwise); a portrait left
+  untouched is kept as it is.
+
+**The GM's table rules**
+- "Allow non-canon content" and "Has a real SIN" left the runner's Concept tab. On the Rules page the GM now has two
+  switches for the whole table, both on until switched off: **Non-canon content allowed** and **Real SINs allowed**.
+  Players see them under Table rules. When one is off, a runner's Review tab flags what uses it.
+- A real SIN is the SINner quality: adding it on the Shadow Amps tab brings the free Real SIN entry on the Gear tab,
+  removing it takes the entry away (kept when no book has a SINner). The house rule is unchanged: a SINner is always
+  free and never the first Quality. After Finalize both are logged in the ledger, as before.
+- A runner file's old canon-only mark is kept but no longer used: the table decides.
+
+**Everywhere**
+- The app's version shows after the logo on every page, sign-in too.
+
 ## 0.5.6 — 2026-09-30: example characters as printed
 
 The owner's rule: every example character is what its book prints. What the book prints against the rules shows

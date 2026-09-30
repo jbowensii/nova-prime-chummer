@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { appendEvent, balance, derive, logChange, price, rescope, settle as settleLedger, validate } from '../engine'
+import { appendEvent, balance, derive, logChange, price, rescope, settle as settleLedger, syncRealSin, validate, type TableFlags } from '../engine'
+import { loadTableRules, tableFlags } from './TableRules'
 import type { CareerEvent, Catalog, Character } from '../model/types'
 import { AccountMenu, session, track, useMe } from './auth'
-import { fmt, Modal, StateBadge } from './bits'
+import { Brand, fmt, Modal, StateBadge } from './bits'
 import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { useRepo } from './repo'
@@ -165,7 +166,9 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     setConflict(null)
   }
 
-  const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch])
+  const [table, setTable] = useState<TableFlags>()
+  useEffect(() => { void loadTableRules().then(r => setTable(tableFlags(r))) }, [])
+  const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
 
   if (!loaded) return <main className="lib"><p className="muted">Loading runner…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this runner</h1><p className="err">{loadError}</p>
@@ -180,7 +183,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     hist.current.future = []
     setCh({ ...logChange(c, ch, next), updatedAt: new Date().toISOString() })
   }
-  const mutate = (fn: (d: Character) => void) => { const d = structuredClone(ch); fn(d); return d }
+  const mutate = (fn: (d: Character) => void) => { const d = structuredClone(ch); fn(d); syncRealSin(c, d.build); return d }
 
   const ro = owner !== null
   const ctx: EditorCtx = {
@@ -214,7 +217,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   return (
     <Editor.Provider value={ctx}>
       <header className="topbar">
-        <a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
+        <Brand />
         <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} /></div>
         {!ro && <div className="savebar">
           <SaveLine status={status} onRetry={() => void saveNow()} />

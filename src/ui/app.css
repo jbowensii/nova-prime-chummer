@@ -560,3 +560,16 @@ dialog.drawer h2 { margin-top: 0; }
   .dossier.unreadable .face { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; }
   .dossier.unreadable > .row { grid-column: 1 / -1; }
 }
+
+/* the version after the logo (bits.tsx Brand) */
+.brand-row { display: inline-flex; align-items: baseline; gap: 0.45rem; }
+.brand-row .ver { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* the portrait dialog (Portrait.tsx PortraitEditor) */
+.portrait-editor .pe-body { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: start; }
+.pe-stage { position: relative; overflow: hidden; flex: none; background: var(--bd, var(--indigo)); border: 1px solid var(--rule); display: grid; place-items: center; touch-action: none; cursor: grab; }
+.pe-stage:active { cursor: grabbing; }
+.pe-stage img { position: absolute; max-width: none; user-select: none; pointer-events: none; }
+.pe-zoom { display: flex; gap: 0.6rem; align-items: center; }
+.pe-zoom input { flex: 1; }
+.portrait-editor .backdrops { flex: 1; min-width: 14rem; }

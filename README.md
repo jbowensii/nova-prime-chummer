@@ -35,10 +35,11 @@ own API key), and you review its entries before they’re added.
   price. **Hide** leaves an entry off the printed sheet.
 - **Starting gear.** Every runner carries a free commlink (with trodes) and a
   fake SIN (CRB p.85): rename and describe them, but they can’t be removed.
-  **Has a real SIN** on the Concept tab adds a free Real SIN entry and, when an
-  imported book has one, its SINner quality. House rule: a SINner is always
-  free and never counts as the first Quality, whether the box added it or you
-  did.
+  A real SIN is the SINner quality (Shadow Amps tab): adding it brings a free
+  Real SIN entry on the Gear tab, removing it takes the entry away. House rule:
+  a SINner is always free and never counts as the first Quality. The GM allows
+  or refuses real SINs, and non-canon content, for the whole table on the
+  Rules page; Review flags a runner that uses what the table doesn’t allow.
 - **Saving.** Every change saves on its own; the bar says when (“All changes
   saved · 14:02”), and **Save** / **Save and close** save right away. A save
   that fails turns red with the server’s reason and a **Retry**, and leaving
@@ -61,7 +62,8 @@ own API key), and you review its entries before they’re added.
 - **Printable sheet** laid out like the official one: weapons (with any DVs by
   ammunition their book text lists) and spells in sections of their own,
   languages and knowledge at the bottom. Your browser’s “Save as PDF” makes the PDF.
-- **Portrait backdrop** (Concept, next to the portrait): white, neutral grey,
+- **Portrait** (Concept, **Add a portrait…**): a window to choose the picture,
+  zoom and drag it into the square, and pick its backdrop: white, neutral grey,
   dark, or a built-in grid, halftone, neon or rain pattern, shown through the
   transparent parts of a PNG or WebP portrait in the builder, the runner list
   and on the sheet. A dark one prints as white, to save ink.

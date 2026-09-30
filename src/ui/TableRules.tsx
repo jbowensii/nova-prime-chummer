@@ -4,9 +4,10 @@
 // custom/table-rules.xml (tablerules.xsd) and players see the ones switched on here.
 import { useEffect, useRef, useState } from 'react'
 import type { Catalog, Rule } from '../model/types'
+import type { TableFlags } from '../engine'
 import { newId } from '../model/types'
 import { AccountMenu, send } from './auth'
-import { Modal } from './bits'
+import { Brand, Modal } from './bits'
 import { useRepo } from './repo'
 import { SettingsButton } from './settings'
 import { SourceLabel } from './SourceLabel'
@@ -27,19 +28,32 @@ export async function loadTableRules(): Promise<TableRule[]> {
   })
 }
 
+/** The app's own switches, kept with the table rules by id (no name): on until the GM switches them off. */
+const APP_RULES = [
+  { id: 'ca2.non-canon', flag: 'nonCanon', name: 'Non-canon content allowed',
+    text: 'Published material that isn’t the official rules, marked Non-canon in the pickers. When off, a runner’s Review tab flags any it uses.' },
+  { id: 'ca2.real-sin', flag: 'realSin', name: 'Real SINs allowed',
+    text: 'Not a core rule: every runner already has a fake SIN. A player gives their runner a real SIN by adding the SINner quality on the Shadow Amps tab; a free Real SIN entry comes with it on the Gear tab. House rule: a SINner is always free and never counts as the first Quality. When off, a runner’s Review tab flags a real SIN.' },
+] as const
+
+/** The switches as the rule checks read them. */
+export const tableFlags = (saved: TableRule[]) =>
+  Object.fromEntries(APP_RULES.map(a => [a.flag, saved.find(r => r.id === a.id)?.on ?? true])) as unknown as TableFlags
+
 /** The books' optional rules, the seeds of the table rules. */
 export const seeds = (c: Catalog) => [...c.rules.values()].filter(r => r.sheet === 'optional')
 
 /** One row as shown: a seed (its catalog entry) or a house rule. */
-type Row = { id: string; on: boolean; name: string; text: string; rule?: Rule }
+type Row = { id: string; on: boolean; name: string; text: string; rule?: Rule; app?: true }
 function rows(c: Catalog, saved: TableRule[]): Row[] {
   const on = new Map(saved.map(r => [r.id, r]))
-  return [...seeds(c).map(rule => ({ id: rule.id, on: !!on.get(rule.id)?.on, name: rule.title, text: rule.text, rule })),
+  return [...APP_RULES.map(a => ({ id: a.id, on: on.get(a.id)?.on ?? true, name: a.name, text: a.text, app: true as const })),
+    ...seeds(c).map(rule => ({ id: rule.id, on: !!on.get(rule.id)?.on, name: rule.title, text: rule.text, rule })),
     ...saved.filter(r => r.name !== undefined).map(r => ({ id: r.id, on: r.on, name: r.name!, text: r.text ?? '' }))]
 }
 
 const Cite = ({ c, row }: { c: Catalog; row: Row }) =>
-  <span className="muted">{row.rule ? <SourceLabel c={c} source={row.rule.source} page={row.rule.page} id={row.rule.id} /> : 'House rule'}</span>
+  <span className="muted">{row.rule ? <SourceLabel c={c} source={row.rule.source} page={row.rule.page} id={row.rule.id} /> : row.app ? 'App setting' : 'House rule'}</span>
 const Text = ({ row }: { row: Row }) =>
   row.text ? <p>{row.text}</p> : row.rule ? <p className="muted">The description is in the book ({row.rule.source} p.{row.rule.page}).</p> : null
 
@@ -51,7 +65,7 @@ export function TableRulesScreen({ c }: { c: Catalog }) {
   return (
     <main className="lib">
       <header>
-        <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Table rules</h1></div>
+        <div style={{ flex: 1 }}><Brand /><h1>Table rules</h1></div>
         <div className="row"><a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
       </header>
       <p className="muted">The optional rules and house rules your GM plays with.</p>
@@ -81,7 +95,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
     const now = rows(c, latest.current), next = change(now)
     // a book's rule whose book is gone keeps its switch, for when the book comes back
     const orphans = latest.current.filter(s => s.name === undefined && !now.some(r => r.id === s.id))
-    const rules = [...next.map(r => r.rule ? { id: r.id, on: r.on } : { id: r.id, on: r.on, name: r.name, text: r.text }), ...orphans]
+    const rules = [...next.map(r => r.rule || r.app ? { id: r.id, on: r.on } : { id: r.id, on: r.on, name: r.name, text: r.text }), ...orphans]
     try {
       await send('table-rules', { rules }, 'PUT')
       latest.current = rules
@@ -115,7 +129,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
         {all.map(r => <li key={r.id}><div className="head">
           <label className="switch"><input type="checkbox" role="switch" checked={r.on} onChange={() => void toggle(r)} /> <b>{r.name}</b></label>
           <Cite c={c} row={r} />
-          {!r.rule && <span className="row">
+          {!r.rule && !r.app && <span className="row">
             <button className="btn small quiet" onClick={() => setEditing({ id: r.id, on: r.on, name: r.name, text: r.text })} aria-label={`Edit ${r.name}`}>Edit</button>
             <button className="btn small quiet" onClick={() => setRemoving(r)} aria-label={`Remove ${r.name}`}>Remove</button></span>}
           </div><Text row={r} />

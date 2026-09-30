@@ -88,7 +88,8 @@ test('an editor switches table rules on and writes house rules on the Rules page
   await page.getByRole('dialog').getByRole('button', { name: 'Remove house rule' }).click()
   await expect(gm.getByRole('status')).toHaveText('Removed Made-up house rule.')
   await page.reload() // saved on the server
-  await expect(gm.getByRole('switch')).toHaveCount(2)
+  await expect(gm.getByRole('switch')).toHaveCount(4) // with the app's two: non-canon content and real SINs, both on
+  await expect(gm.getByRole('switch', { name: 'Real SINs allowed' })).toBeChecked()
   await expect(gm.getByRole('switch', { name: 'Long haggles' })).toBeChecked()
   expect(readFileSync(join(dir, 'custom', 'table-rules.xml'), 'utf8')).toContain('<name>Quieter streets</name>')
   await expect(page.getByRole('heading', { name: 'Rules reference' })).toBeVisible() // the quick reference stays below
@@ -100,9 +101,9 @@ test('a player sees the rules switched on, read only; the Rules page isn’t the
   await expect(page.getByRole('link', { name: 'Rules', exact: true })).toHaveCount(0)
   await page.getByRole('link', { name: 'Table rules' }).click()
   await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
-  await expect(page.getByRole('listitem')).toHaveCount(2)
-  await expect(page.getByRole('listitem').first()).toContainText('Long haggles')
-  await expect(page.getByRole('listitem').first()).toContainText('TEST p.42')
+  await expect(page.getByRole('listitem')).toHaveCount(4)
+  await expect(page.getByRole('listitem').filter({ hasText: 'Long haggles' })).toContainText('TEST p.42')
+  await expect(page.getByRole('listitem').filter({ hasText: 'Real SINs allowed' })).toContainText('App setting')
   await expect(page.getByText('Made up: no drive-bys in the first scene.')).toBeVisible()
   await expect(page.getByRole('switch')).toHaveCount(0)
   await expect(page.getByText('Made-up house rule')).toHaveCount(0)

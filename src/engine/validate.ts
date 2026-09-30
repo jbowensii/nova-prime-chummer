@@ -7,7 +7,10 @@ import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { price, slotLapse } from './price'
 
-export function validate(c: Catalog, ch: Character): Violation[] {
+/** The GM's table-wide switches (Rules page, TableRules.tsx); both on unless the GM switches them off. */
+export interface TableFlags { nonCanon: boolean; realSin: boolean }
+
+export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []
   const add = (code: string, severity: Violation['severity'], path: string, message: string, page?: number, source = 'CRB') =>
     out.push({ code, severity, path, message, source: page ? source : undefined, page })
@@ -193,10 +196,12 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     add('narrative.count', 'warning', 'narrative', `Pick 5 Keywords, 4 Dispositions and 4 Cues (have ${filled(n.keywords)}/${filled(n.dispositions)}/${filled(n.cues)}).`, 84)
 
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
-  // non-canon content, when the runner is set to canon only
-  if (ch.allowNonCanon === false)
+  // the GM's table: non-canon content and real SINs, when switched off
+  if (table?.nonCanon === false)
     for (const u of nonCanonUses(c, b))
-      add('content.nonCanon', 'warning', u.path, `${u.name} isn’t canon (${c.sources.get(u.source)?.name ?? u.source}); this runner is set to canon only.`)
+      add('content.nonCanon', 'warning', u.path, `${u.name} isn’t canon (${c.sources.get(u.source)?.name ?? u.source}); this table is canon only.`)
+  if (table?.realSin === false && (b.items.some(i => i.starting === 'real-sin') || b.amps.some(a => isSinner(a, c))))
+    add('table.realSin', 'warning', 'gear', 'This runner has a real SIN; your GM doesn’t allow real SINs at this table.')
 
   return out.map(v => (approved.has(`${v.code}|${v.path}`) ? { ...v, approved: true } : v))
 }

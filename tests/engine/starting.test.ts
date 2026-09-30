@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import { appendEvent, balance, currentBuild, finalize, makeKnowledge } from '../../src/engine/career'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { derive, knowledgeList } from '../../src/engine/derive'
-import { blankCharacter, ensureStartingGear, handAddedSinner, hasRealSin, parseCharacterFile, serialize, setRealSin } from '../../src/engine/file'
+import { blankCharacter, ensureStartingGear, handAddedSinner, hasRealSin, parseCharacterFile, serialize, setRealSin, syncRealSin } from '../../src/engine/file'
 import { isSinner } from '../../src/engine/amps'
 import { buildCatalog } from '../../src/engine/load'
 import { price, priceBuild } from '../../src/engine/price'
@@ -97,7 +97,7 @@ test('real SIN: on adds the free Real SIN and the book’s SINner (free, non-can
   const amp = ch.build.amps.filter(a => a.realSin)
   expect(amp.map(a => [a.name, a.catalogId, a.type])).toEqual([['SINner', 'test2.sinner', 'quality']])
   expect(price(cat, ch).total).toBe(before) // free, and Lucky stays the first Quality
-  expect(validate(cat, { ...ch, allowNonCanon: false }).some(v => v.code === 'content.nonCanon' && v.message.startsWith('SINner'))).toBe(true)
+  expect(validate(cat, ch, { nonCanon: false, realSin: true }).some(v => v.code === 'content.nonCanon' && v.message.startsWith('SINner'))).toBe(true)
   const back = xmlToCharacter(characterToXml(ch))
   expect(back.ok && hasRealSin(back.character.build) && back.character.build.amps.some(a => a.realSin)).toBe(true)
   setRealSin(cat, ch.build, false)
@@ -197,4 +197,18 @@ test('two lists, A–Z by default; the player’s order and hidden rows persist 
   const back = xmlToCharacter(characterToXml(ch))
   if (!back.ok) throw new Error(back.reason)
   expect([back.character.build.knowledgeOrder, back.character.build.knowledgeHidden]).toEqual([ch.build.knowledgeOrder, ch.build.knowledgeHidden])
+})
+
+test('a table without real SINs flags one; the SINner quality brings its free entry and takes it when removed', () => {
+  const ch = blankCharacter()
+  ch.build.amps = [{ uid: 'mine', catalogId: 'test2.sinner', type: 'quality', name: 'SINner', narrative: '', effects: [] }]
+  syncRealSin(cat, ch.build)
+  syncRealSin(cat, ch.build)
+  expect(ch.build.items.filter(i => i.starting === 'real-sin')).toHaveLength(1)
+  expect(validate(cat, ch).some(v => v.code === 'table.realSin')).toBe(false)
+  expect(validate(cat, ch, { nonCanon: true, realSin: false }).some(v => v.code === 'table.realSin')).toBe(true)
+  ch.build.amps = []
+  syncRealSin(cat, ch.build)
+  expect(hasRealSin(ch.build, cat)).toBe(false)
+  expect(validate(cat, ch, { nonCanon: true, realSin: false }).some(v => v.code === 'table.realSin')).toBe(false)
 })

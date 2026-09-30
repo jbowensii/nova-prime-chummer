@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 // Made-up imported books (tests/fixtures/mini/custom): TEST is non-canon, its rules sheet is "test".
 
-test('non-canon content: badge in the picker, flagged when the runner is canon only', async ({ page }) => {
+test('non-canon content: badge in the picker, flagged when the table is canon only', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New runner' }).click()
   await page.getByRole('button', { name: 'Create runner' }).click()
@@ -18,10 +18,18 @@ test('non-canon content: badge in the picker, flagged when the runner is canon o
 
   await page.getByRole('link', { name: 'Review' }).click()
   await expect(page.getByText(/isn’t canon/)).toHaveCount(0)
-  await page.getByRole('link', { name: 'Concept' }).click()
-  await page.getByLabel(/Allow non-canon content/).uncheck()
-  await page.getByRole('link', { name: 'Review' }).click()
-  await expect(page.getByText(/Hawk Instinct isn’t canon/).first()).toBeVisible()
+  const runner = page.url()
+  const nonCanon = async (on: boolean) => {
+    await page.goto('/#/rules')
+    const sw = page.getByRole('region', { name: 'Table rules' }).getByRole('switch', { name: 'Non-canon content allowed' })
+    if (await sw.isChecked() !== on) await sw.click() // saved first, then shown
+    await expect(page.getByRole('region', { name: 'Table rules' }).getByRole('status')).toHaveText(`Non-canon content allowed is ${on ? 'on' : 'off'}.`)
+  }
+  await nonCanon(false)
+  try {
+    await page.goto(runner)
+    await expect(page.getByText(/Hawk Instinct isn’t canon \(.*\); this table is canon only/).first()).toBeVisible()
+  } finally { await nonCanon(true) }
 })
 
 test('rules reference: search the quick-reference sheets', async ({ page }) => {

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
-import { NonCanon } from './bits'
+import { Brand, NonCanon } from './bits'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
 import { AccountMenu, isAdmin, useMe } from './auth'
 import { SettingsButton } from './settings'
@@ -31,7 +31,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
   return (
     <main className="lib rules">
       <header>
-        <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>Rules</h1></div>
+        <div style={{ flex: 1 }}><Brand /><h1>Rules</h1></div>
         <div className="row">{openEdit && <button className="btn quiet" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>}
           <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
       </header>

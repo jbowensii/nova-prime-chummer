@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
-import { Modal, NonCanon } from './bits'
+import { Brand, Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
 import { AccountMenu, accountHeader, because, sessionEnded } from './auth'
 import { SettingsButton } from './settings'
@@ -79,7 +79,7 @@ async function supportedBooks(): Promise<{ id: string; name: string; canon: bool
 export function BooksHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <header>
-      <div style={{ flex: 1 }}><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><h1>{title}</h1></div>
+      <div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
       <div className="row">{children}<a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
     </header>
   )

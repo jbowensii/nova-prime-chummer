@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { rmSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
@@ -19,6 +19,7 @@ const noCoreData = (): Plugin => {
 
 export default defineConfig({
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync('package.json', 'utf8')).version) },
   plugins: [react(), noCoreData()],
   test: { environment: 'jsdom', include: ['tests/**/*.test.ts'] },
 })

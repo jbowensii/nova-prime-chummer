@@ -3,7 +3,7 @@ import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snap
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { AccountMenu, because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
-import { Modal, NonCanon, StateBadge } from './bits'
+import { Brand, Modal, NonCanon, StateBadge } from './bits'
 import { useRepo, type Stored, type Unreadable } from './repo'
 import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
@@ -272,7 +272,7 @@ export function Library({ c }: { c: Catalog }) {
     <main className="lib">
       <header>
         <div style={{ flex: 1 }}>
-          <a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a>
+          <Brand />
           <h1>Your runners</h1>
         </div>
         <div className="row">
