@@ -1,5 +1,27 @@
 # Release notes
 
+## 0.6.0 — 2026-09-30: export runners and book data for Foundry VTT
+
+**Runners**
+- **Export for Foundry** in the runner editor downloads that runner as a Foundry file.
+- **Export for Foundry…** on the runner list: tick the runners you want (**All** / **None**, or **Tick a campaign**)
+  and download them together.
+
+**Book data (admin and editors)**
+- The **Game data** page has a new panel: tick books (Canon / Non-canon) and download their amps, items, vehicles,
+  skills and rules as they are in your app, with your edits and house rules applied.
+- **Include book descriptions** is on by default, with the note "For your own Foundry only. Don’t share this file."
+- The table rules that are switched on go in the file. If they fail to load, the export refuses to build rather
+  than leave them out.
+
+**Files**
+- Named `runners-YYYY-MM-DD.ca2foundry.json` and `books-YYYY-MM-DD.ca2foundry.json` (your local date).
+- The format is written up in `docs/export-format.md`, with a JSON Schema.
+- The Foundry importer module itself comes next (`jbowensii/chummer-anarchy2-foundry`).
+
+**Fixed**
+- The Game data page no longer says to flag non-canon on the Concept tab; that switch moved to the Rules page in 0.5.7.
+
 ## 0.5.7 — 2026-09-30: portrait window, table-wide switches, version in the header
 
 **Portrait**
