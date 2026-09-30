@@ -56,7 +56,9 @@ will convert from this format; the format itself is ours and stays stable.
   Exports carry no `rev`.
 - **`<snapshot>`** holds a copy of the catalog entry in the data files' own
   format (`amps.xsd` / `items.xsd`). That way a runner still loads and
-  prints if the entry is later removed from the data.
+  prints if the entry is later removed from the data. On a book sample's own amp (no `catalogId`, 0.5.6) it is the
+  amp as printed: its type, name, `printedRating`, `source` and `page`. Where the rules rate the amp otherwise, Review
+  notes it ("the book prints rating 9; the rules give 11"); the file keeps the book's number.
 - **`<knowledge>`** is a knowledge skill or language (`kind="knowledge"` or `kind="language"`). Each keyword and each
   skill at rating 4+ is a free entry and needs no element; one is written only when the player renames it or changes
   its kind, with `from` naming the slot: `skill:<id>` (any name related to the skill) or `keyword:<the keyword>` (the
@@ -76,15 +78,13 @@ will convert from this format; the format itself is ours and stays stable.
   a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`). On a draft, an unpriced gear entry named
   exactly `Commlink`, `Commlink (with trodes)`, `Commlink with trodes` or `Fake SIN` (any case or spacing) becomes it
   instead, so there's never a second one; a finalized runner's items are never changed by reading it.
-- **`over`** on an armor item (0.5.4): an add-on worn over the armor item with that uid (a mask, a helmet, a rigger
+- **`over`** on an armor item: an add-on worn over the armor item with that uid (a mask, a helmet, a rigger
   cocoon). Its `armor` is the points it adds, and all it costs; worn as main or alternate armor it counts on top of
-  that item's armor.
-- **`<override>`** from an import (0.5.4): a book sample carries one for each creation guideline its book itself
-  breaks (over the budget, a basic skill below 2, a specialization of its own, Keywords/Dispositions/Cues other than
-  5/4/4, Cracking without a cyberdeck), with a note such as "As printed in the Pregen booklet p.12: 2,500¥ over the
-  creation budget." Review shows those as approved, with the note.
-- **`note="book drawback"`** on a `negative` effect of a book sample's amp (one with `origin`): the limitation the book
-  prints (an effect limited to some situations) and prices in; it needs no GM approval.
+  that item's armor. Review notes it (armor doesn't stack, CRB p.148). The importer no longer writes it (0.5.6).
+- **Book samples are the book as printed** (0.5.6, the owner's rule): an imported sample holds no `<override>`, no
+  `note="book drawback"`, no `starting` or `over` marker. What its book prints against the rules shows on Review like
+  on any runner, unapproved. A `note="book drawback"` on a runner's own amp no longer approves anything (0.5.4 files
+  had them): only a catalog amp's own printed drawback, unchanged, needs no GM.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
   "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
   takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the

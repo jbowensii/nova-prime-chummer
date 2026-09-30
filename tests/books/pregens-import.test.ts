@@ -1,9 +1,10 @@
 // The sample runners as imported: the pregen booklet (recipe pregens, 15 runners) and the core rulebook's
-// 12 pregens plus the character creation example (recipe crb). The engine must reproduce every number the
-// recipe marked "ok" in library/<book>/import.xml, the printed amp ratings may differ only where the
-// oracle's discrepancy list says so, every number the hand-encoded runners were tested on (oracle
-// pregens-printed.json) must come out of the generated runners too, and derive() on each generated runner
-// must equal derive() on the hand-encoded one.
+// 12 pregens plus the character creation example (recipe crb). Each file is the book as printed (the owner's rule):
+// nothing in it explains, approves or corrects what the book prints (no override, no drawback note, no starting or
+// add-on marker), every amp keeps its printed rating, and where the rules rate it otherwise Review says so. The
+// warnings and errors a runner shows are the book's, for the owner to look into: listed, never required to be none.
+// The engine must reproduce every number the recipe marked "ok" in library/<book>/import.xml, every number the
+// hand-encoded runners were tested on (oracle pregens-printed.json), and derive() on the hand-encoded one.
 // Needs the owner's imports: py -3.12 -m importer run <LIBRARY_DIR>/<pregens|crb> --custom <CUSTOM_DIR> [--md]
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -30,8 +31,6 @@ type Row = Record<string, string>
 type Printed = Record<string, { source?: string; essence: number; thresholds: Record<string, number>; pools: { skill: string; spec: string | null; attr: string; dp: number }[] }>
 
 const oracle: Printed = books && existsSync(bookFile('pregens-printed.json')) ? JSON.parse(readFileSync(bookFile('pregens-printed.json'), 'utf8')) : {}
-const listed = books && existsSync(bookFile('book-discrepancies.md')) ? new Set([...readFileSync(bookFile('book-discrepancies.md'), 'utf8')
-  .matchAll(/^\| ([a-z0-9-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`)) : new Set<string>()
 
 // the CRB's printed runners carry no source in the oracle; the creation example (lightning) prints no numbers
 const imports = [
@@ -69,12 +68,17 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         expect(validate(imported ?? books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
       })
 
-      test('every error and warning is one the book prints, noted as an override; no override is stale', () => {
+      test('the file is the book: nothing explains, approves or corrects it', () => {
+        const xml = readFileSync(join(CUSTOM_DIR, 'imported', dir, 'samples', `${prefix}${id}.xml`), 'utf8')
+        for (const marker of ['<override', 'starting=', 'over=', 'book drawback', 'balances printed rating', 'As printed in'])
+          expect(xml.includes(marker), marker).toBe(false)
+        expect(ch.overrides).toEqual([])
+        // what the book prints against the rules shows as it would on any runner (the owner's to look into)
         const c = imported ?? books!, v = validate(c, ch)
-        expect(v.filter(x => !x.approved).map(x => x.message)).toEqual([])
-        expect(ch.overrides.filter(o => !v.some(x => x.approved && x.code === o.code && x.path === o.path))).toEqual([])
-        const over = -price(c, ch).remaining // the importer prices the runner itself: its amount is the engine's
-        expect(ch.overrides.find(o => o.code === 'budget.over')?.note.match(/: ([\d,]+)¥/)?.[1]).toBe(over > 0 ? over.toLocaleString('en-US') : undefined)
+        expect(v.some(x => x.approved)).toBe(false)
+        const left = price(c, ch).remaining
+        expect(v.some(x => x.code === 'budget.over')).toBe(left < 0)
+        console.info(`${id}: ${v.filter(x => x.severity === 'error').length} errors, ${v.filter(x => x.severity !== 'error').length} warnings`)
       })
 
       test('pools, thresholds and Essence the recipe marked ok are what the engine gives', () => {
@@ -87,16 +91,18 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         expect(wrong).toEqual([])
       })
 
-      test('amp ratings match the book, except where the discrepancy list has them', () => {
+      test('every amp keeps its printed rating; where the rules give another, Review says so', () => {
         const amps = mine.filter(r => r.kind === 'amp')
         expect(amps.map(r => r.key)).toEqual(ch.build.amps.map(a => a.uid))
+        expect(ch.build.amps.map(a => a.snapshot?.printedRating)).toEqual(amps.map(r => Number(r.printed)))
         const wrong = amps.flatMap(r => {
           const a = ch.build.amps.find(x => x.uid === r.key)!
           const got = ampRating(books!, a, ampCtx(ch.build, a))
-          if (got !== Number(r.computed)) return [`${a.name}: recipe computed ${r.computed}, engine ${got}`]
-          return got === Number(r.printed) || listed.has(`${id}/${r.key}`) ? [] : [`${a.name}: printed ${r.printed}, engine ${got}`]
+          return got === Number(r.computed) ? [] : [`${a.name}: recipe computed ${r.computed}, engine ${got}`]
         })
         expect(wrong).toEqual([])
+        const noted = validate(imported ?? books!, ch).filter(v => v.code === 'amp.printedRating').map(v => v.path)
+        expect(noted).toEqual(amps.filter(r => r.status === 'mismatch').map(r => `amps.${r.key}`))
       })
 
       test('same attributes, pools, thresholds and Essence as the hand-encoded runner', () => {
@@ -109,10 +115,13 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
           .map(q => `${key(q)}: generated ${q.dp}, hand ${theirs.get(key(q))}`)
         const t = (x: typeof d) => x!.thresholds
         const worn = (x: typeof d) => [t(x).physicalMain[0], t(x).physicalAlt[0]].sort((a, b) => a - b) // which is "main" is a choice
+        // a Matrix threshold the book doesn't print isn't compared: the hand encoding made Ricky Lean's printed Quality a
+        // Cyberdeck, the import keeps it a Quality (as printed; Review flags its deck effects)
+        const matrix = (x: typeof d) => (!oracle[id] || 'matrix' in oracle[id].thresholds ? t(x).matrix?.[0] : 'not printed')
         expect({ attributes: ch.build.attributes, pools, none: t(d).physicalNone[0], worn: worn(d), mental: t(d).mental[0],
-          matrix: t(d).matrix?.[0], essence: d!.essence })
+          matrix: matrix(d), essence: d!.essence })
           .toEqual({ attributes: r.character.build.attributes, pools: [], none: t(o).physicalNone[0], worn: worn(o),
-            mental: t(o).mental[0], matrix: t(o).matrix?.[0], essence: o.essence })
+            mental: t(o).mental[0], matrix: matrix(o), essence: o.essence })
       })
 
       // Items as the hand encoding has them, as a multiset of (kind, catalog id or name). Allowed differences are
