@@ -76,10 +76,12 @@ export interface AmpEntry { uid: string; catalogId?: string; type: string; name:
 /** Free gear no one buys: every runner's commlink and fake SIN (CRB p.84), and the real SIN of a runner that has one. */
 export type StartingGear = 'commlink' | 'fake-sin' | 'real-sin'
 /** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades).
- *  starting: free starting gear (costs nothing, can't be removed or sold); note: the player's description */
+ *  starting: free starting gear (costs nothing, can't be removed or sold); note: the player's description.
+ *  over: an armor add-on worn over another armor item (its uid), a mask or a helmet: `armor` is the points it adds (and
+ *  pays for); worn, it counts on top of that item's. */
 export interface ItemEntry { uid: string; catalogId?: string; kind: ItemKind; name: string;
   specialist?: boolean; armor?: number; dv?: string; ranges?: string; price?: number; snapshot?: Item;
-  starting?: StartingGear; note?: string }
+  starting?: StartingGear; note?: string; over?: string }
 /** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<the keyword>");
  *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price.
  *  native: the runner's native language, free (one per runner).

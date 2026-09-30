@@ -34,7 +34,7 @@ const catalogItemXml = (i: Item) => el('item', { id: i.id, kind: i.kind, special
 
 const ampXml = (a: AmpEntry) => el('amp', { uid: a.uid, type: a.type, name: a.name, catalogId: a.catalogId, linkedItem: a.linkedItem, vehicle: a.vehicle, realSin: a.realSin },
   text('narrative', a.narrative) + a.effects.map(effectXml).join('') + (a.snapshot ? `<snapshot>${templateXml(a.snapshot)}</snapshot>` : ''))
-const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price, starting: i.starting, note: i.note },
+const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price, starting: i.starting, note: i.note, over: i.over },
   i.snapshot ? `<snapshot>${catalogItemXml(i.snapshot)}</snapshot>` : '')
 
 function eventXml(e: CareerEvent): string {
@@ -106,7 +106,7 @@ function readItem(e: Element): ItemEntry {
   if (s(e, 'catalogId') !== undefined) i.catalogId = s(e, 'catalogId')
   if (e.getAttribute('specialist') === 'true') i.specialist = true
   for (const k of ['armor', 'price'] as const) if (n(e, k) !== undefined) i[k] = n(e, k)
-  for (const k of ['dv', 'ranges', 'note'] as const) if (s(e, k) !== undefined) i[k] = s(e, k)
+  for (const k of ['dv', 'ranges', 'note', 'over'] as const) if (s(e, k) !== undefined) i[k] = s(e, k)
   if (s(e, 'starting') !== undefined) i.starting = s(e, 'starting') as ItemEntry['starting']
   const snap = kid(e, 'snapshot')
   if (snap?.firstElementChild) i.snapshot = toItem(snap.firstElementChild)

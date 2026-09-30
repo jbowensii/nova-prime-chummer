@@ -62,6 +62,16 @@ test('catalog-sanctioned negative effects need no approval', () => {
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
+test('a book sample’s printed drawback needs no approval; the same effect on an own runner does', () => {
+  const ch = base()
+  ch.build.amps = [amp('q', 'quality', [{ ref: 'rr-skill', param: 'stealth' }, { ref: 'negative', value: 1, note: 'book drawback' }])]
+  expect(codes(ch)).toContain('amp.negative')
+  ch.origin = 'TEST'
+  expect(codes(ch)).not.toContain('amp.negative')
+  ch.build.amps[0].effects[1].note = undefined // a drawback the player added
+  expect(codes(ch)).toContain('amp.negative')
+})
+
 test('a GM override approves the violation and unblocks Finalize', () => {
   const ch = base()
   ch.build.attributes.str = 5
