@@ -1,5 +1,5 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
-import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating, knowledgeList, ruleHelp } from '../engine'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
@@ -21,6 +21,8 @@ export function Sheet() {
     return `${def?.name ?? ref}${param && ref !== 'narrative' ? `: ${param}` : ''}`
   }
   const spells = b.items.filter(i => i.kind === 'spell' || i.kind === 'complex-form')
+  // in the player's order, hidden rows left off
+  const shown = (kind: 'knowledge' | 'language') => knowledgeList(d.knowledge, kind, b.knowledgeOrder).filter(k => !k.hidden)
   const gear = b.items.filter(i => i.kind === 'gear' || (i.kind === 'armor' && i.uid !== b.mainArmor && i.uid !== b.altArmor))
 
   return (
@@ -57,9 +59,9 @@ export function Sheet() {
               </tbody>
             </table>
             <h3>Languages</h3>
-            <p>{d.knowledge.filter(k => k.kind === 'language').map(k => k.name).join(', ') || '—'}</p>
+            <p>{shown('language').map(k => k.native ? `${k.name} (native)` : k.name).join(', ') || '—'}</p>
             <h3>Knowledge skills</h3>
-            <p>{d.knowledge.filter(k => k.kind === 'knowledge').map(k => k.name).join(', ') || '—'}</p>
+            <p>{shown('knowledge').map(k => k.name).join(', ') || '—'}</p>
           </section>
 
           <section>
@@ -133,7 +135,7 @@ export function Sheet() {
               {spells.map(s => { const cat = c.items.get(s.catalogId ?? '') ?? s.snapshot; return <tr key={s.uid}><td><b>{s.name}</b>{cat?.category && <span className="s-small"> ({cat.category})</span>}</td><td>{s.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
             </tbody></table>
             <h2>Equipment</h2>
-            <p>Fake SIN, commlink{gear.map(g => `, ${g.name}`).join('')}.</p>
+            <p>{gear.map(g => g.note ? `${g.name} (${g.note})` : g.name).join(', ') || '—'}.</p>
             <h2>Nuyen</h2>
             <p>{ch.finalizedAt ? balance.toLocaleString('en-US') : (balance > 0 ? balance : 0).toLocaleString('en-US')}¥</p>
           </section>

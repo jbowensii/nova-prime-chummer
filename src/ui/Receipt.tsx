@@ -27,6 +27,9 @@ export function Receipt() {
         {d.knowledge.length > 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>
           Knowledge &amp; languages: {d.knowledge.filter(k => !k.paid).length} free, {d.knowledge.filter(k => k.paid).length} paid
         </div>}
+        <div className="muted" style={{ fontSize: '0.85rem' }}>
+          Free: {d.build.items.filter(i => i.starting).map(i => i.name).join(', ')}
+        </div>
         <div className="total"><Line label="Creation total" amount={fmt(p.total)} /></div>
         {career ? (
           <>

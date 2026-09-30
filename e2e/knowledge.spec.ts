@@ -32,7 +32,8 @@ test('knowledge & languages: free keyword and skill entries, rename a free slot,
   await page.getByLabel('keywords 1').fill('Tinkerer')
   await page.getByRole('link', { name: 'Skills' }).click()
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Raise Electronics' }).click()
-  const list = page.locator('table.knowledge')
+  const list = page.getByRole('table', { name: 'Knowledge' })
+  const langs = page.getByRole('table', { name: 'Languages' })
   await expect(list.getByRole('row', { name: /Tinkerer.*Free: keyword/ })).toBeVisible()
   await expect(list.getByRole('row', { name: /Free: Electronics 4\+/ })).toBeVisible()
 
@@ -44,11 +45,14 @@ test('knowledge & languages: free keyword and skill entries, rename a free slot,
   await expect(list.getByLabel('Name of Gadget blogs')).toBeVisible()
   await expect(page.locator('.receipt .peek')).toHaveText(left!)
 
-  // add a paid language
-  await page.getByLabel('New knowledge skill or language').fill('Made-up tongue')
-  await page.getByLabel('Type of the new entry').selectOption('language')
-  await page.getByRole('button', { name: /^Add/ }).click()
-  await expect(list.getByRole('row', { name: /Made-up tongue.*Paid/ })).toBeVisible()
+  // the first language is the free native one; a second one is paid
+  await page.getByLabel('New language').fill('Made-up tongue')
+  await page.getByRole('button', { name: /^Add language \(native, free\)/ }).click()
+  await expect(langs.getByRole('row', { name: /Made-up tongue.*Free: native language/ })).toBeVisible()
+  await expect(page.locator('.receipt .peek')).toHaveText(left!)
+  await page.getByLabel('New language').fill('Other tongue')
+  await page.getByRole('button', { name: /^Add language/ }).click()
+  await expect(langs.getByRole('row', { name: /Other tongue.*Paid/ })).toBeVisible()
   await expect(page.locator('.receipt .peek')).not.toHaveText(left!)
 
   // dropping Electronics below 4 asks first, then the renamed entry is paid (and flagged)
@@ -64,6 +68,6 @@ test('knowledge & languages: free keyword and skill entries, rename a free slot,
   const id = page.url().match(/#\/c\/([^/]+)\//)![1]
   await page.goto(`/#/c/${id}/print`)
   const sheet = page.locator('.s-cols')
-  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ p')).toHaveText('Made-up tongue')
-  await expect(sheet.locator('h3', { hasText: 'Knowledge skills' }).locator('+ p')).toHaveText('Tinkerer, Gadget blogs')
+  await expect(sheet.locator('h3', { hasText: 'Languages' }).locator('+ p')).toHaveText('Made-up tongue (native), Other tongue')
+  await expect(sheet.locator('h3', { hasText: 'Knowledge skills' }).locator('+ p')).toHaveText('Gadget blogs, Tinkerer') // A–Z
 })

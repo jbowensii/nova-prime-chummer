@@ -6,12 +6,13 @@ import { fmt, Modal, Picker } from '../bits'
 import { SourceLabel } from '../SourceLabel'
 import { EditButton } from '../EditEntry'
 import { useEditor } from '../editor'
+import { NameField } from './Skills'
 
 // prices from the core data (pricing.xml)
 const SECTIONS: [ItemKind, string, (p: Pricing) => string][] = [
   ['armor', 'Armor', p => `${fmt(p.armorPoint)} per Armor point. Ratings don’t stack; wear one main and one alternate.`],
   ['weapon', 'Weapons', p => `${fmt(p.weaponStandard)} each; specialist weapons (sniper rifles, machine guns, launchers) ${fmt(p.weaponSpecialist)}.`],
-  ['gear', 'Equipment', p => `${fmt(p.equipment)} each unless the GM sets a higher price. Commlink and fake SIN are free.`],
+  ['gear', 'Equipment', p => `${fmt(p.equipment)} each unless the GM sets a higher price. Every runner starts with a commlink (with trodes) and a fake SIN, free: rename them or describe them, but they can’t be removed or sold.`],
   ['spell', 'Spells', p => `${fmt(p.spell)} each. Casting needs the Sorcery option on the Awakened amp.`],
   ['complex-form', 'Complex forms', p => `${fmt(p.complexForm)} each. Technomancers only: threading needs the Emerged amp.`],
 ]
@@ -74,6 +75,23 @@ export function GearTab() {
                     const amp = b.amps.find(a => a.linkedItem === i.uid)
                     // a book amp's base item has no catalog id of its own: it comes from the amp's book
                     const src = cat ?? (amp?.catalogId ? c.amps.get(amp.catalogId) ?? amp.snapshot : undefined)
+                    if (i.starting) return (
+                      <tr key={i.uid} className="starting">
+                        <td>
+                          <div className="row">
+                            <NameField value={i.name} label={`Name of ${i.name}`} onCommit={name => update(x => { x.build.items.find(y => y.uid === i.uid)!.name = name })} />
+                            <span className="chip free">{i.starting === 'real-sin' ? 'Free (real SIN)' : 'Free (starting gear)'}</span>
+                            {i.starting !== 'real-sin' && <SourceLabel c={c} source="CRB" page={84} />}
+                          </div>
+                          <input className="note" value={i.note ?? ''} aria-label={`Description of ${i.name}`}
+                            placeholder={i.starting === 'commlink' ? 'e.g. model, color, stickers' : 'e.g. the name and nationality on it'}
+                            onChange={e => update(x => { const y = x.build.items.find(y => y.uid === i.uid)!; if (e.target.value) y.note = e.target.value; else delete y.note })} />
+                          {amp && <div className="muted" style={{ fontSize: '0.88rem' }}>Shadow Amp: {amp.name}</div>}
+                        </td>
+                        <td className="num">Free</td>
+                        <td className="num">{!amp && i.starting === 'commlink' && <button className="btn small quiet" onClick={() => toAmp(i)}>Make it an amp</button>}</td>
+                      </tr>
+                    )
                     return (
                       <tr key={i.uid}>
                         <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{' '}{src ? <SourceLabel c={c} source={src.source} page={src.page} id={src.id} /> : <SourceLabel builtByYou />}
