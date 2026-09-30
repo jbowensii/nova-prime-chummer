@@ -6,6 +6,7 @@ import { AccountMenu, session, track, useMe } from './auth'
 import { Brand, fmt, Modal, StateBadge } from './bits'
 import { Editor, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
+import { downloadRunners } from './Foundry'
 import { useRepo } from './repo'
 import { newId } from '../model/types'
 import { Receipt } from './Receipt'
@@ -233,6 +234,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
         <SettingsButton />
         <AccountMenu />
         <button className="btn" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))}>Export file</button>
+        <button className="btn quiet" onClick={() => downloadRunners(c, [ch])}>Export for Foundry</button>
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
