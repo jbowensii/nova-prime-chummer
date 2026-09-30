@@ -249,6 +249,7 @@ td.hash { font-family: ui-monospace, monospace; font-size: 0.8rem; }
   .receipt h2 { margin-inline: -1rem; padding-inline: 1rem; }
 }
 .receipt .peek { display: none; font-weight: 700; margin-bottom: 0.5rem; }
+.receipt .money-note { font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.2em; }
 
 /* ---- tables: the book's indigo head band and cream zebra rows ---- */
 table.data { width: 100%; border-collapse: collapse; background: var(--surface); }

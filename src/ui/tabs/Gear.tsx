@@ -22,6 +22,7 @@ export function GearTab() {
   const b = career ? currentBuild(ch) : ch.build
   const [adding, setAdding] = useState<ItemKind | null>(null)
   const [custom, setCustom] = useState<ItemEntry | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null) // the starting gear row whose name and description are open
 
   const add = async (item: ItemEntry) => {
     setAdding(null); setCustom(null)
@@ -79,13 +80,20 @@ export function GearTab() {
                       <tr key={i.uid} className="starting">
                         <td>
                           <div className="row">
-                            <NameField value={i.name} label={`Name of ${i.name}`} onCommit={name => update(x => { x.build.items.find(y => y.uid === i.uid)!.name = name })} />
+                            {renaming === i.uid
+                              ? <NameField value={i.name} label={`Name of ${i.name}`} onCommit={name => update(x => { x.build.items.find(y => y.uid === i.uid)!.name = name })} />
+                              : <b>{i.name}</b>}
                             <span className="chip free">{i.starting === 'real-sin' ? 'Free (real SIN)' : 'Free (starting gear)'}</span>
                             {i.starting !== 'real-sin' && <SourceLabel c={c} source="CRB" page={84} />}
+                            {renaming === i.uid
+                              ? <button className="btn small quiet" onClick={() => setRenaming(null)}>Done</button>
+                              : <button className="btn small quiet" aria-label={`Rename ${i.name}`} onClick={() => setRenaming(i.uid)}>Rename</button>}
                           </div>
-                          <input className="note" value={i.note ?? ''} aria-label={`Description of ${i.name}`}
-                            placeholder={i.starting === 'commlink' ? 'e.g. model, color, stickers' : 'e.g. the name and nationality on it'}
-                            onChange={e => update(x => { const y = x.build.items.find(y => y.uid === i.uid)!; if (e.target.value) y.note = e.target.value; else delete y.note })} />
+                          {renaming === i.uid
+                            ? <input className="note" value={i.note ?? ''} aria-label={`Description of ${i.name}`}
+                              placeholder={i.starting === 'commlink' ? 'e.g. model, color, stickers' : 'e.g. the name and nationality on it'}
+                              onChange={e => update(x => { const y = x.build.items.find(y => y.uid === i.uid)!; if (e.target.value) y.note = e.target.value; else delete y.note })} />
+                            : i.note && <div className="muted" style={{ fontSize: '0.88rem' }}>{i.note}</div>}
                           {amp && <div className="muted" style={{ fontSize: '0.88rem' }}>Shadow Amp: {amp.name}</div>}
                         </td>
                         <td className="num">Free</td>
@@ -96,7 +104,7 @@ export function GearTab() {
                       <tr key={i.uid}>
                         <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{' '}{src ? <SourceLabel c={c} source={src.source} page={src.page} id={src.id} /> : <SourceLabel builtByYou />}
                           <div className="muted" style={{ fontSize: '0.88rem' }}>
-                            {i.kind === 'armor' && `Armor ${i.armor ?? 0}`}
+                            {i.kind === 'armor' && (i.over ? `Armor +${i.armor ?? 0} over ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}` : `Armor ${i.armor ?? 0}`)}
                             {i.kind === 'weapon' && (() => { const w = d.weapons.find(x => x.uid === i.uid); return w && `DV ${w.dv} [${w.ranges}]${i.specialist ? ', specialist' : ''}${w.note ? `, ${w.note}` : ''}` })()}
                             {(i.kind === 'spell' || i.kind === 'complex-form') && cat?.category}
                             {amp && ` Shadow Amp: ${amp.name}`}

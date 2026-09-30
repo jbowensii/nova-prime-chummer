@@ -1,12 +1,35 @@
 // The fixer's receipt: every nuyen spent, the balance, and the numbers you need at the table.
-import { useState } from 'react'
-import { activeEvents, packageGuide } from '../engine'
+import { useEffect, useRef, useState } from 'react'
+import { activeEvents, itemCost, packageGuide } from '../engine'
+import type { Character, Pricing } from '../model/types'
 import { fmt, Line } from './bits'
 import { useEditor } from './editor'
+
+/** "+2,500¥: Ares Predator added; −2,500¥: Fake SIN removed": what the last change to the items cost or gave back. */
+export function itemChange(pricing: Pricing, before: Character['build']['items'], after: Character['build']['items']): string {
+  const cost = (i: typeof before[number]) => itemCost(pricing, i)
+  return [...after.filter(i => !before.some(j => j.uid === i.uid)).map(i => [cost(i), `${i.name} added`] as const),
+    ...before.filter(i => !after.some(j => j.uid === i.uid)).map(i => [-cost(i), `${i.name} removed`] as const)]
+    .filter(([n]) => n !== 0).map(([n, t]) => `${n > 0 ? '+' : '−'}${fmt(Math.abs(n))}: ${t}`).join('; ')
+}
 
 export function Receipt() {
   const { c, ch, d, v, p, balance, career } = useEditor()
   const [open, setOpen] = useState(false)
+  // a creation build's items changed: say what it cost or gave back, for a few seconds (the total alone can hide a refund)
+  const [note, setNote] = useState('')
+  const last = useRef({ id: ch.id, items: ch.build.items })
+  useEffect(() => {
+    const before = last.current
+    last.current = { id: ch.id, items: ch.build.items }
+    if (career || before.id !== ch.id || before.items === ch.build.items) return
+    const msg = itemChange(c.pricing, before.items, ch.build.items)
+    if (!msg) return
+    setNote(msg)
+    const t = setTimeout(() => setNote(''), 6000)
+    return () => clearTimeout(t)
+  }, [c, ch.id, ch.build.items, career])
+  const over = !career && balance < 0
   const guide = ch.package !== 'free' ? packageGuide(c, ch.package) : undefined
   const pkg = c.packages.get(ch.package)
   const errors = v.filter(x => x.severity === 'error' && !x.approved).length
@@ -19,7 +42,7 @@ export function Receipt() {
 
   return (
     <aside className={`receipt${open ? ' open' : ''}`} aria-label="Nuyen and summary" onClick={() => setOpen(o => !o)}>
-      <div className="peek"><span>{career ? 'Balance' : 'Left to spend'}</span><span className={balance < 0 ? 'err' : ''}>{fmt(balance)}</span></div>
+      <div className="peek"><span>{career ? 'Balance' : over ? 'Over budget by' : 'Left to spend'}</span><span className={balance < 0 ? 'err' : ''}>{fmt(over ? -balance : balance)}</span></div>
       <div onClick={e => e.stopPropagation()}>
         <h2>{c.levels.get(ch.level)?.name ?? ch.level} build</h2>
         <div className="sub">{pkg ? `${pkg.name} package guide` : 'Free allocation'}, budget {fmt(p.budget)}</div>
@@ -41,10 +64,11 @@ export function Receipt() {
           </>
         ) : (
           <>
-            <div className={`left${balance < 0 ? ' neg' : ''}`}>{fmt(balance)}</div>
-            <div className="muted">{balance < 0 ? 'over budget' : 'left to spend'}</div>
+            <div className={`left${over ? ' neg' : ''}`}>{fmt(balance)}</div>
+            {over ? <div className="err">Over budget by {fmt(-balance)}</div> : <div className="muted">left to spend</div>}
           </>
         )}
+        <div className="money-note" role="status" aria-live="polite">{note}</div>
 
         <div className="block">
           <Line label="Edge" amount={d.edge} />
