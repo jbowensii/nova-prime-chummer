@@ -1,7 +1,7 @@
 {
   "name": "chummer-anarchy2",
   "private": true,
-  "version": "0.5.7",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,6 +28,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "ajv": "^8.20.0",
     "jsdom": "^29.1.1",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

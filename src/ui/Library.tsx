@@ -12,6 +12,7 @@ import { joined, loadCampaigns, type Campaign } from './Campaigns'
 import { chooseExamples, extraCopies, keyOf, type Example, type Sources } from './samples'
 import { AskButton } from './AskRules'
 import { Face } from './Portrait'
+import { ExportRunnersDialog } from './Foundry'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
@@ -90,6 +91,7 @@ export function Library({ c }: { c: Catalog }) {
   const [meta, setMeta] = useState('human')
   const [toDelete, setToDelete] = useState<Character | null>(null)
   const [tidying, setTidying] = useState(false)
+  const [foundry, setFoundry] = useState(false)
   const file = useRef<HTMLInputElement>(null)
   const [noBooks, setNoBooks] = useState(false)
   // a fresh install: no book uploaded (server), or no amps at all (a static host has no Books page)
@@ -279,6 +281,7 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn primary" onClick={() => setCreating(true)}>New runner</button>
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
+          <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
           <button className="btn quiet" onClick={loadExamples}>Load example characters</button>
           {admin && <a className="btn quiet" href="#/books">Books</a>}
           {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
@@ -382,6 +385,8 @@ export function Library({ c }: { c: Catalog }) {
           ? 'It moves to your trash, where you can restore it or delete it for good.'
           : 'This removes the runner from this browser. Exported files are not affected.'}</p>
       </Modal>
+
+      <ExportRunnersDialog c={c} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} />
     </main>
   )
 }
