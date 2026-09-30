@@ -113,8 +113,14 @@ export function validate(c: Catalog, ch: Character): Violation[] {
   if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'warning', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'warning', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
+  b.knowledge.forEach((k, i) => {
+    if (!k.from?.startsWith('skill:') || rating(k.from.slice(6)) >= 4) return
+    const sk = c.skills.get(k.from.slice(6))?.name ?? k.from.slice(6)
+    add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free with ${sk} 4+; with ${sk} below 4 it’s a paid knowledge skill.`)
+  })
+
   // Risk Reduction caps
-  const d = derive(c, { ...ch, build: b, finalizedAt: undefined })
+  const d =derive(c, { ...ch, build: b, finalizedAt: undefined })
   if (creation && level) {
     for (const a of ATTRS) if (d.rrAttr[a] > level.rrAttr) add('rr.cap', 'error', `attributes.${a}`, `RR ${d.rrAttr[a]} on ${a.toUpperCase()}; ${level.name} allows ${level.rrAttr}.`, 84)
   }

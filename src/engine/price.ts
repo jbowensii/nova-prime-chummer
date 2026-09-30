@@ -1,5 +1,5 @@
 // Nuyen pricing (CRB p.83). One price list for creation and advancement.
-import type { Build, Catalog, Character, ItemEntry, Pricing } from '../model/types'
+import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, Pricing } from '../model/types'
 import { ATTRS } from '../model/types'
 import { ampCtx, ampRating } from './amps'
 
@@ -36,11 +36,15 @@ export interface PriceBreakdown extends Breakdown { total: number; budget: numbe
 export const attrMax = (c: Catalog, metatype: string, a: keyof Build['attributes']) =>
   c.metatypes.get(metatype)?.ranges[a][1] ?? Infinity
 
+/** Paid: no free slot, or a skill slot whose skill is below 4 (a keyword slot stays free). */
+export const knowledgePaid = (b: Build, k: KnowledgeEntry) =>
+  !k.from || (k.from.startsWith('skill:') && (b.skills.find(s => s.id === k.from!.slice(6))?.rating ?? 0) < 4)
+
 export function priceBuild(c: Catalog, b: Build, metatype: string): Breakdown {
   const p = c.pricing
   const attributes = ATTRS.reduce((s, a) => s + attrCost(p, 0, b.attributes[a] ?? 0, attrMax(c, metatype, a)), 0)
   const skills = b.skills.reduce((s, sk) => s + skillCost(p, 0, sk.rating) + sk.specs.length * p.spec, 0)
-    + b.knowledge.length * p.knowledge
+    + b.knowledge.filter(k => knowledgePaid(b, k)).length * p.knowledge
   const amps = b.amps.reduce((s, a) => s + ampRating(c, a, ampCtx(b, a)) * p.ampPoint, 0)
   const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
   const gear = b.items.filter(i => !magic(i)).reduce((s, i) => s + itemCost(p, i), 0)

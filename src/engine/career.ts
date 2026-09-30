@@ -1,6 +1,6 @@
 // Career mode: the finalized build is the baseline; the current character is the
 // baseline with every non-voided event applied in order.
-import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Character, ItemEntry } from '../model/types'
+import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Character, ItemEntry, KnowledgeEntry } from '../model/types'
 import { newId } from '../model/types'
 import { ampChangeCost, ampCtx, ampRating } from './amps'
 import { attrCost, attrMax, itemCost, price, skillCost } from './price'
@@ -33,7 +33,14 @@ export function applyEvent(b: Build, e: CareerEvent): void {
       else b.skills.push({ id: e.skill, rating: 0, specs: [e.spec] })
       break
     }
-    case 'knowledge-add': b.knowledge.push(e.name); break
+    case 'knowledge-add': {
+      const entry: KnowledgeEntry = { name: e.name, kind: e.kind ?? 'knowledge' }
+      if (e.from && !e.cost) entry.from = e.from
+      const at = e.from ? b.knowledge.findIndex(k => k.from === e.from) : -1
+      if (at >= 0) b.knowledge[at] = entry
+      else b.knowledge.push(entry)
+      break
+    }
   }
 }
 
@@ -82,7 +89,9 @@ export function makeAdvance(c: Catalog, ch: Character, path: string, to: number)
 export const makeBuy = (c: Catalog, item: ItemEntry) => stamp({ type: 'buy', item, cost: itemCost(c.pricing, item) })
 export const makeSell = (itemUid: string) => stamp({ type: 'sell', itemUid })
 export const makeSpec = (c: Catalog, skill: string, spec: string) => stamp({ type: 'spec-add', skill, spec, cost: c.pricing.spec })
-export const makeKnowledge = (c: Catalog, name: string) => stamp({ type: 'knowledge-add', name, cost: c.pricing.knowledge })
+/** A new paid entry; with `from`, renames that free slot (free) or, `pay`, turns it into a paid entry. */
+export const makeKnowledge = (c: Catalog, e: KnowledgeEntry, pay = !e.from) =>
+  stamp({ type: 'knowledge-add', name: e.name, kind: e.kind, from: e.from, cost: pay ? c.pricing.knowledge : 0 })
 
 export function makeAmpAdd(c: Catalog, ch: Character, amp: AmpEntry): CareerEvent {
   const b = currentBuild(ch)
