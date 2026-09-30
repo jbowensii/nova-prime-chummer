@@ -1,7 +1,7 @@
 // Character <-> XML (docs/character-format.md, public/data/schema/character.xsd).
 // The file a runner is saved as on the server, and what Export writes.
 // Summary fields sit on the root element so a server can list files without parsing them.
-import type { AmpEntry, AmpTemplate, CareerEvent, Character, EffectPick, Item, ItemEntry } from '../model/types'
+import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry } from '../model/types'
 import { ATTRS } from '../model/types'
 import { toAmp, toItem } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate } from './file'
@@ -41,6 +41,8 @@ function eventXml(e: CareerEvent): string {
   const base = { id: e.id, at: e.at, type: e.type }
   switch (e.type) {
     case 'earn': return el('event', { ...base, amount: e.amount, run: e.run, date: e.date })
+    case 'finalize': return el('event', { ...base, remaining: e.remaining })
+    case 'change': return el('event', { ...base, cost: e.cost }, e.changes.map(x => el('change', { key: x.key, label: x.label, from: x.from, to: x.to })).join(''))
     case 'advance': return el('event', { ...base, path: e.path, from: e.from, to: e.to, cost: e.cost })
     case 'buy': return el('event', { ...base, cost: e.cost }, itemXml(e.item))
     case 'sell': return el('event', { ...base, itemUid: e.itemUid })
@@ -73,7 +75,7 @@ export function characterToXml(ch: Character, rev?: number): string {
   ].join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: ch.identity.streetName, name: ch.identity.name,
     metatype: ch.identity.metatype, level: ch.level, package: ch.package, lifestyle: ch.identity.lifestyle, backdrop: ch.identity.backdrop,
-    finalizedAt: ch.finalizedAt, finalRemaining: ch.finalRemaining, allowNonCanon: ch.allowNonCanon === false ? 'false' : undefined,
+    finalizedAt: ch.finalizedAt, finalRemaining: ch.finalRemaining, carry: ch.carry, allowNonCanon: ch.allowNonCanon === false ? 'false' : undefined,
     origin: ch.origin, sampleKey: ch.sampleKey, campaign: ch.campaign, updatedAt: ch.updatedAt, lastExportedAt: ch.lastExportedAt })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="${CHAR_NS}"${root}>\n  ${body}\n</ca2:character>\n`
 }
@@ -117,6 +119,13 @@ function readEvent(e: Element): CareerEvent {
   const type = e.getAttribute('type')
   switch (type) {
     case 'earn': return { ...base, type, amount: n(e, 'amount')!, run: s(e, 'run') ?? '', date: s(e, 'date') ?? '' }
+    case 'finalize': return { ...base, type, remaining: n(e, 'remaining') ?? 0 }
+    case 'change': return { ...base, type, cost: n(e, 'cost') ?? 0, changes: kids(e, 'change').map(x => {
+      const out: Change = { key: s(x, 'key') ?? '', label: s(x, 'label') ?? '' }
+      if (s(x, 'from') !== undefined) out.from = s(x, 'from')
+      if (s(x, 'to') !== undefined) out.to = s(x, 'to')
+      return out
+    }) }
     case 'advance': return { ...base, type, path: s(e, 'path')!, from: n(e, 'from')!, to: n(e, 'to')!, cost: n(e, 'cost')! }
     case 'buy': return { ...base, type, cost: n(e, 'cost')!, item: readItem(need(kid(e, 'item'), 'item', 'event')) }
     case 'sell': return { ...base, type, itemUid: s(e, 'itemUid')! }
@@ -226,6 +235,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     if (s(r, 'backdrop') !== undefined) ch.identity.backdrop = s(r, 'backdrop') as Character['identity']['backdrop'] // checked by migrate()
     if (s(r, 'finalizedAt') !== undefined) ch.finalizedAt = s(r, 'finalizedAt')
     if (n(r, 'finalRemaining') !== undefined) ch.finalRemaining = n(r, 'finalRemaining')
+    if (n(r, 'carry') !== undefined) ch.carry = n(r, 'carry')
     if (s(r, 'lastExportedAt') !== undefined) ch.lastExportedAt = s(r, 'lastExportedAt')
     if (s(r, 'allowNonCanon') === 'false') ch.allowNonCanon = false
     if (s(r, 'origin') !== undefined) ch.origin = s(r, 'origin')

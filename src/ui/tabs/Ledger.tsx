@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { makeEarn, makeNote, reopen, voidEvent, voidedIds } from '../../engine'
+import { changeText, makeEarn, makeNote, voidEvent, voidedIds } from '../../engine'
 import type { CareerEvent } from '../../model/types'
 import { fmt } from '../bits'
 import { useEditor } from '../editor'
 
 export function LedgerTab() {
-  const { c, ch, balance, record, update, replace } = useEditor()
+  const { c, ch, balance, record, update } = useEditor()
   const life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
   const [withLife, setWithLife] = useState(true)
   const today = new Date().toISOString().slice(0, 10)
@@ -26,12 +26,14 @@ export function LedgerTab() {
   const describe = (e: CareerEvent): string => {
     switch (e.type) {
       case 'earn': return `Earned: ${e.run} (${e.date})`
+      case 'finalize': return `Creation finished · ${fmt(e.remaining)} left`
+      case 'change': return e.changes.map(changeText).join('; ')
       case 'advance': {
         const [k, id] = e.path.split('.')
         return `${k === 'attributes' ? c.attributes.get(id as never)?.name : c.skills.get(id)?.name ?? id} ${e.from} → ${e.to}`
       }
       case 'buy': return `Bought ${e.item.name}`
-      case 'sell': return `Sold ${ch.build.items.find(i => i.uid === e.itemUid)?.name ?? 'an item'}`
+      case 'sell': return `Sold ${ch.career.map(x => x.type === 'buy' && x.item.uid === e.itemUid ? x.item.name : '').find(Boolean) ?? 'an item'}`
       case 'amp-add': return `New amp: ${e.amp.name}`
       case 'amp-modify': return `Improved ${e.after.name}`
       case 'spec-add': return `Specialization: ${c.skills.get(e.skill)?.name} (${c.skills.get(e.skill)?.specs.find(s => s.id === e.spec)?.name ?? e.spec.replace(/^custom:/, '')})`
@@ -42,20 +44,20 @@ export function LedgerTab() {
   }
   const delta = (e: CareerEvent) => (e.type === 'earn' ? e.amount : 'cost' in e ? -e.cost : 0)
 
-  let running = ch.finalRemaining ?? 0
+  // each Finalize starts the running balance at what creation left
+  let running = 0
   const rows = ch.career.filter(e => e.type !== 'void').map(e => {
-    if (!voided.has(e.id)) running += delta(e)
+    if (e.type === 'finalize') running = e.remaining
+    else if (!voided.has(e.id)) running += delta(e)
     return { e, running, voided: voided.has(e.id), reason: (ch.career.find(v => v.type === 'void' && v.eventId === e.id) as { reason?: string } | undefined)?.reason }
   })
 
   return (
     <div className="stack">
       <h2>Ledger</h2>
-      <p className="muted">In Anarchy 2.0, nuyen is experience too: runs pay out, and you spend it to improve the runner at the creation prices (CRB p.83).</p>
-      {ch.career.length === 0 && (
-        <p>Finalized by mistake? <button className="btn small" onClick={() => { replace(reopen(ch)); location.hash = `#/c/${ch.id}/review` }}>Reopen creation</button>
-          <span className="muted"> Available until the first ledger entry.</span></p>
-      )}
+      <p className="muted">In Anarchy 2.0, nuyen is experience too: runs pay out, and you spend it to improve the runner at the creation prices (CRB p.83).
+        Nothing is locked: change the runner on any tab and the change is logged here by itself, charged at the book price or, for anything removed, refunded.
+        Mistakes are undone with Undo or by changing it back.</p>
       <div className="row">
         <label>Nuyen earned<input type="number" min={0} step={1000} value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '9rem' }} /></label>
         <label style={{ flex: 1 }}>Run<input value={run} onChange={e => setRun(e.target.value)} placeholder="e.g. Renraku extraction" /></label>
@@ -76,14 +78,13 @@ export function LedgerTab() {
       <div className="scroll-x"><table className="data">
         <thead><tr><th>When</th><th>What</th><th className="num">Nuyen</th><th className="num">Balance</th><th /></tr></thead>
         <tbody>
-          <tr><td className="muted">{ch.finalizedAt?.slice(0, 10)}</td><td>Finalized; left over from creation</td><td className="num">{fmt(ch.finalRemaining ?? 0)}</td><td className="num">{fmt(ch.finalRemaining ?? 0)}</td><td /></tr>
           {rows.map(({ e, running, voided, reason }) => (
             <tr key={e.id} style={voided ? { textDecoration: 'line-through', color: 'var(--ink-3)' } : undefined}>
               <td className="muted">{e.at.slice(0, 10)}</td>
               <td>{describe(e)}{voided && reason && <span className="muted" style={{ textDecoration: 'none', display: 'block' }}>Voided: {reason}</span>}</td>
               <td className="num">{delta(e) ? fmt(delta(e)) : ''}</td>
               <td className="num">{voided ? '' : fmt(running)}</td>
-              <td className="num">{!voided && e.type !== 'note' && <button className="btn small quiet" onClick={() => {
+              <td className="num">{!voided && e.type === 'earn' && <button className="btn small quiet" onClick={() => {
                 const why = prompt('Why void this entry?')?.trim()
                 if (why) update(d => { Object.assign(d, voidEvent(d, e.id, why)) })
               }}>Void</button>}</td>

@@ -1,7 +1,17 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
 import type { AmpEffect, AmpEntry, AmpTemplate, Build, Catalog, EffectPick, ItemEntry } from '../model/types'
 
-export interface AmpCtx { isFirstQuality: boolean }
+/** negativeOk: the GM approved this amp's rating below 0 (validate.ts amp.negativeRating); otherwise it counts as 0 */
+export interface AmpCtx { isFirstQuality: boolean; negativeOk?: boolean }
+
+/** case and spacing aside */
+export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+/** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
+export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
+/** An amp that is the SINner quality: added by the box, or by hand (that catalog entry, or exactly that name, any case).
+ *  House rule (owner, 0.5.5): a SINner is always 0¥ and never takes the first-Quality slot, however it got there. */
+export const isSinner = (a: AmpEntry, c?: Catalog) => !!a.realSin || plain(a.name) === 'sinner' || plain(a.snapshot?.name ?? '') === 'sinner'
+  || (!!c && !!a.catalogId && a.catalogId === sinnerTemplate(c)?.id)
 
 export function effectRating(c: Catalog, pick: EffectPick): number {
   const eff = c.ampEffects.get(pick.ref)
@@ -11,9 +21,15 @@ export function effectRating(c: Catalog, pick: EffectPick): number {
   return eff.rating
 }
 
-/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects; the real SIN's quality is free */
+/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects, never below 0 without
+ *  the GM (no creation credit, CRB p.61); a SINner is free (house rule) */
 export function ampRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
-  if (amp.realSin) return 0
+  if (isSinner(amp, c)) return 0
+  const r = rawAmpRating(c, amp, ctx)
+  return ctx.negativeOk ? r : Math.max(0, r)
+}
+/** The rating as its effects add up, below 0 included (validate.ts). */
+export function rawAmpRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
   const t = c.ampTypes.get(amp.type)
   const base = !t ? 0 : amp.type === 'quality' && !ctx.isFirstQuality ? (t.baseAfterFirst ?? t.base) : t.base
   return base + amp.effects.reduce((s, e) => s + effectRating(c, e), 0)
@@ -51,9 +67,14 @@ export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
   }
 }
 
-export const firstQualityUid = (b: Build) => b.amps.find(a => a.type === 'quality' && !a.realSin)?.uid
+export const firstQualityUid = (b: Build, c?: Catalog) => b.amps.find(a => a.type === 'quality' && !isSinner(a, c))?.uid
 
-export const ampCtx = (b: Build, amp: AmpEntry): AmpCtx => ({ isFirstQuality: firstQualityUid(b) === amp.uid })
+export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog): AmpCtx => ({ isFirstQuality: firstQualityUid(b, c) === amp.uid })
+
+/** Initiative levels an amp holds (init-1..3): the most "limited to one realm" reductions it may take (CRB p.61). */
+export const initLevels = (amp: AmpEntry) => new Set(amp.effects.map(e => e.ref).filter(r => /^init-[123]$/.test(r))).size
+/** A cyberdeck's Firewall: 1, +1 per Firewall effect, 5 at most (CRB p.62, p.210-211). */
+export const FIREWALL_MAX = 5
 
 /** Advancing an amp costs the rating difference x ampPoint; lowering refunds only if pricing says so. */
 export function ampChangeCost(c: Catalog, before: AmpEntry, after: AmpEntry, ctx: AmpCtx): number {
@@ -67,6 +88,8 @@ export function effectBlocked(c: Catalog, amp: AmpEntry, eff: AmpEffect): string
   if (!eff.types.includes(amp.type)) return `not available for ${c.ampTypes.get(amp.type)?.name ?? amp.type}`
   const count = amp.effects.filter(e => e.ref === eff.id).length
   if (eff.max != null && count >= eff.max) return `max ${eff.max} per amp`
+  if (eff.id === 'init-realm' && count >= initLevels(amp)) return 'one per initiative level held'
+  if (eff.id === 'firewall-plus' && amp.type === 'cyberdeck' && 1 + count >= FIREWALL_MAX) return `Firewall ${FIREWALL_MAX} at most`
   if (eff.requires && !amp.effects.some(e => e.ref === eff.requires)) return `requires ${c.ampEffects.get(eff.requires)?.name ?? eff.requires}`
   if (eff.excludes && amp.effects.some(e => e.ref === eff.excludes)) return `not with ${c.ampEffects.get(eff.excludes)?.name ?? eff.excludes}`
   return undefined

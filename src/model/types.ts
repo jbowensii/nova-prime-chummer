@@ -69,11 +69,11 @@ export interface Catalog {
 export interface EffectPick { ref: string; param?: string; value?: number; note?: string }
 /** specs: spec ids ("stealth.physical-sneaking") or "custom:Name" */
 export interface SkillEntry { id: string; rating: number; specs: string[] }
-/** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free) */
+/** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free, like every SINner: house rule) */
 export interface AmpEntry { uid: string; catalogId?: string; type: string; name: string;
   narrative: string; effects: EffectPick[]; linkedItem?: string; vehicle?: string;
   snapshot?: AmpTemplate; realSin?: true }
-/** Free gear no one buys: every runner's commlink and fake SIN (CRB p.84), and the real SIN of a runner that has one. */
+/** Free gear no one buys: every runner's commlink and fake SIN (CRB p.85), and the real SIN of a runner that has one. */
 export type StartingGear = 'commlink' | 'fake-sin' | 'real-sin'
 /** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades).
  *  starting: free starting gear (costs nothing, can't be removed or sold); note: the player's description.
@@ -92,8 +92,15 @@ export interface KnowledgeEntry { name: string; kind: 'knowledge' | 'language'; 
 export interface Build { attributes: Record<AttrId, number>; skills: SkillEntry[];
   knowledge: KnowledgeEntry[]; amps: AmpEntry[]; items: ItemEntry[];
   mainArmor?: string; altArmor?: string; knowledgeOrder?: string[]; knowledgeHidden?: string[] }
+/** One thing a finalized runner's edit changed (engine/career.ts diffBuild). from absent: added; to absent: removed. */
+export interface Change { key: string; label: string; from?: string; to?: string }
+/** The ledger. finalize: "Creation finished · N¥ left"; change: an edit after Finalize, logged automatically, cost =
+ *  price difference (negative: refunded); earn, note, void. advance to knowledge-add: how runners finalized before
+ *  0.5.5 recorded changes, kept as history (career.ts settle). */
 export type CareerEvent = { id: string; at: string } & (
   | { type: 'earn'; amount: number; run: string; date: string }
+  | { type: 'finalize'; remaining: number }
+  | { type: 'change'; changes: Change[]; cost: number }
   | { type: 'advance'; path: string; from: number; to: number; cost: number }
   | { type: 'buy'; item: ItemEntry; cost: number }
   | { type: 'sell'; itemUid: string }
@@ -122,8 +129,11 @@ export interface Character { formatVersion: 1; id: string;
   sampleKey?: string;
   /** the campaign it plays in (server only, set through /api/campaigns; a copy is in none) */
   campaign?: string;
-  /** creation nuyen left over when finalized; the career balance starts here */
+  /** creation nuyen left over when finalized */
   finalRemaining?: number;
+  /** set on Finalize (0.5.5): the balance is budget + earnings - build price + carry. A runner finalized before 0.5.5
+   *  gets what its old ledger said beyond that when it's settled (engine/career.ts settle), so its balance doesn't move. */
+  carry?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }
 export type Severity = 'error' | 'warning';
 export interface Violation { code: string; severity: Severity; path: string;

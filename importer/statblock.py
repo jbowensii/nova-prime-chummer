@@ -670,7 +670,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
             report.append({"kind": "unmatched-item", "sample": sid, "item": "spell", "name": n, "status": "unmatched"})
     for n in block["forms"]:
         item("complex-form", n)
-    starting = {"fake sin": "fake-sin", "commlink": "commlink", "commlink (with trodes)": "commlink", "commlink with trodes": "commlink"}  # every runner's free starting gear (CRB p.84)
+    starting = {"fake sin": "fake-sin", "commlink": "commlink", "commlink (with trodes)": "commlink", "commlink with trodes": "commlink"}  # every runner's free starting gear (CRB p.85)
     kind_of = lambda n: starting.get(re.sub(r"\s+", " ", n.lower()).strip())  # noqa: E731
     # a model printed where the list says "Commlink" ("Brand X – high-end commlink", a misprinted "Commlin") is the
     # runner's free commlink; an Equipment amp on it upgrades that one (the app's "Make it an amp")

@@ -1,5 +1,5 @@
 // Editor context: the open character plus everything the engine says about it.
-// Creation edits mutate a draft (with undo); career edits become ledger events after a confirm.
+// Edits mutate a draft (with undo); once finalized, each build change is also logged in the ledger (engine/career.ts logChange).
 import { createContext, useContext } from 'react'
 import type { CareerEvent, Catalog, Character, Violation } from '../model/types'
 import type { Derived, PriceBreakdown } from '../engine'
@@ -14,11 +14,11 @@ export interface EditorCtx {
   p: PriceBreakdown
   balance: number
   career: boolean
-  /** creation-mode build edit (undoable) */
+  /** a build edit (undoable; logged in the ledger once finalized) */
   edit: (fn: (draft: Character) => void) => void
-  /** edits allowed in both modes: identity, narrative, overrides, worn armor */
+  /** any other edit: identity, narrative, overrides, layout (undoable) */
   update: (fn: (draft: Character) => void) => void
-  /** career mode: confirm, then append the event */
+  /** finalized: confirm, then append an event (earnings); not undoable */
   record: (ev: CareerEvent, summary: string) => Promise<boolean>
   replace: (ch: Character) => void
   undo: () => void

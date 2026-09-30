@@ -2,7 +2,8 @@
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { nonCanonUses } from './canon'
-import { balance, activeEvents, currentBuild } from './career'
+import { FIREWALL_MAX, ampCtx, initLevels, isSinner, rawAmpRating } from './amps'
+import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { price, slotLapse } from './price'
 
@@ -20,7 +21,7 @@ export function validate(c: Catalog, ch: Character): Violation[] {
   // budget
   if (creation) {
     const p = price(c, ch)
-    if (p.remaining < 0) add('budget.over', 'error', 'budget', `Over budget by ${(-p.remaining).toLocaleString('en-US')}¥.`, 84)
+    if (p.remaining < 0) add('budget.over', 'error', 'budget', `Over budget by ${(-p.remaining).toLocaleString('en-US')}¥.`, 85)
   } else {
     const bal = balance(c, ch)
     if (bal < 0) add('budget.over', 'error', 'budget', `Career balance is ${bal.toLocaleString('en-US')}¥.`, 83)
@@ -35,7 +36,7 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       if (v === max) atMax++
     }
     if (creation && level && atMax > level.attrAtMax)
-      add('attr.maxCount', 'error', 'attributes', `${atMax} Attributes at max; ${level.name} allows ${level.attrAtMax}.`, 84)
+      add('attr.maxCount', 'error', 'attributes', `${atMax} Attributes at max; ${level.name} allows ${level.attrAtMax}.`, 85)
   }
 
   // skills
@@ -43,7 +44,7 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     const sk = c.skills.get(s.id)
     if (!sk) { add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown skill "${s.id}".`); continue }
     const cap = creation && level ? level.skillCap : 8
-    if (s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 84 : 52)
+    if (s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 85 : 52)
     if (s.specs.length && s.rating < 1) add('spec.noSkill', 'error', `skills.${s.id}`, `${sk.name} specializations need at least rating 1.`, 52)
     for (const sp of s.specs) {
       if (sp.startsWith('custom:')) add('custom.content', 'warning', `skills.${s.id}`, `Custom specialization "${sp.slice(7)}" (GM should approve).`, 52)
@@ -84,7 +85,7 @@ export function validate(c: Catalog, ch: Character): Violation[] {
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
           || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
           || (!!ch.origin && e.note === 'book drawback')
-        if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 63)
+        if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 61)
       }
     })
     for (const eff of new Set(a.effects.map(e => e.ref))) {
@@ -100,10 +101,26 @@ export function validate(c: Catalog, ch: Character): Violation[] {
       const armor = a.effects.filter(e => e.ref === 'vehicle-armor').length
       if (armor > body) add('vehicle.armor', 'error', path, `${a.name}: vehicle Armor +${armor} is above its Body ${body}.`, 62)
     }
+    const realms = a.effects.filter(e => e.ref === 'init-realm').length
+    if (realms > initLevels(a))
+      add('amp.initRealm', 'error', path, `${a.name}: ${realms} “limited to one realm” reductions, but ${initLevels(a)} initiative ${initLevels(a) === 1 ? 'level' : 'levels'}; one per level held.`, 61)
+    const fw = 1 + a.effects.filter(e => e.ref === 'firewall-plus').length
+    if (a.type === 'cyberdeck' && fw > FIREWALL_MAX) add('amp.firewallMax', 'error', path, `${a.name}: Firewall ${fw}; a cyberdeck’s Firewall is ${FIREWALL_MAX} at most.`, 62)
+    const r = rawAmpRating(c, a, ampCtx(b, a, c))
+    if (r < 0 && !isSinner(a, c))
+      add('amp.negativeRating', 'error', path, `${a.name}: rating ${r}. An amp below 0 would give nuyen back, so it counts as 0 unless the GM approves.`, 61)
   }
-  if (!creation) for (const e of activeEvents(ch))
-    if (e.type === 'amp-add' && e.amp.type === 'quality')
-      add('amp.qualityAfterCreation', 'error', `amps.${e.amp.uid}`, `${e.amp.name}: new Qualities after creation need a major event (GM).`, 58)
+  for (const [ref, what] of [['armor-plus', 'Armor'], ['dv-plus', 'damage']] as const) {
+    const n = b.amps.filter(a => a.type !== 'equipment').reduce((s, a) => s + a.effects.filter(e => e.ref === ref).length, 0)
+    const def = c.ampEffects.get(ref)
+    if (def?.max != null && n > def.max)
+      add('amp.stackMax', 'warning', 'amps', `${def.name} ${n} times across amps: stacked, the ${what} bonus is +${def.max} at most; the sheet counts +${def.max}.`, 61)
+  }
+  if (!creation) for (const uid of qualitiesAddedAfter(ch)) {
+    const a = b.amps.find(x => x.uid === uid)
+    if (a?.type === 'quality' && !isSinner(a, c))
+      add('amp.qualityAfterCreation', 'error', `amps.${uid}`, `${a.name}: new Qualities after creation need a major event (GM).`, 58)
+  }
 
   const rating = (id: string) => b.skills.find(s => s.id === id)?.rating ?? 0
   if (rating('sorcery') > 0 && !allRefs.has('awk-sorcery')) add('skill.requiresAwakened', 'error', 'skills.sorcery', 'Sorcery needs the Awakened amp with Sorcery.', 57)
@@ -123,21 +140,33 @@ export function validate(c: Catalog, ch: Character): Violation[] {
     if (lapse) add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free; with ${lapse} it’s a paid knowledge skill.`)
   })
 
-  // Risk Reduction caps
-  const d =derive(c, { ...ch, build: b, finalizedAt: undefined })
-  if (creation && level) {
-    for (const a of ATTRS) if (d.rrAttr[a] > level.rrAttr) add('rr.cap', 'error', `attributes.${a}`, `RR ${d.rrAttr[a]} on ${a.toUpperCase()}; ${level.name} allows ${level.rrAttr}.`, 84)
+  // Risk Reduction caps at creation: the total on one Test (Attribute + Skill + specialization RR, stacked) against the
+  // level's limit for that kind of Test (owner's reading of CRB p.85 "including from stacking")
+  const d = derive(c, { ...ch, build: b, finalizedAt: undefined })
+  const cap = (total: number, limit: number, path: string, test: string, parts: [string, number][]) => {
+    if (creation && level && total > limit)
+      add('rr.cap', 'error', path, `RR ${total} on ${test} Tests (${parts.filter(([, n]) => n).map(([w, n]) => `${w} ${n}`).join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`, 85)
+    else if (total > 3) add('rr.cap', 'warning', path, `RR ${total} on ${test} Tests: only 3 applies to one Test.`, 61)
   }
+  const attrName = (a: AttrId) => a.toUpperCase()
+  for (const a of ATTRS) if (level) cap(d.rrAttr[a], level.rrAttr, `attributes.${a}`, attrName(a), [[attrName(a), d.rrAttr[a]]])
   const raw = rawRR(b)
   for (const s of b.skills) {
     const sk = c.skills.get(s.id)
-    if (!sk) continue
+    if (!sk || !level) continue
     const skillRR = raw.skill.get(s.id) ?? 0
-    if (creation && level && skillRR > level.rrSkill) add('rr.cap', 'error', `skills.${s.id}`, `RR ${skillRR} on ${sk.name}; ${level.name} allows ${level.rrSkill}.`, 84)
+    // the attribute this Test adds the most RR from
+    const worst = (as: AttrId[]) => as.reduce((m, a) => (d.rrAttr[a] > d.rrAttr[m] ? a : m))
+    const sa = worst([sk.attr, ...(sk.alt ? [sk.alt] : [])])
+    if (skillRR) cap(skillRR + d.rrAttr[sa], level.rrSkill, `skills.${s.id}`, `${sk.name} + ${attrName(sa)}`, [[sk.name, skillRR], [attrName(sa), d.rrAttr[sa]]])
     for (const sp of s.specs) {
-      const total = skillRR + (raw.spec.get(sp) ?? 0)
-      if (creation && level && total > level.rrSpec) add('rr.cap', 'error', `skills.${s.id}`, `RR ${total} on ${sk.name} (${sp.split('.')[1] ?? sp}); ${level.name} allows ${level.rrSpec}.`, 84)
-      else if (total > 3) add('rr.cap', 'warning', `skills.${s.id}`, `RR ${total} on ${sp}: only 3 applies to one Test.`, 61)
+      const spRR = raw.spec.get(sp) ?? 0
+      if (!skillRR && !spRR) continue
+      const spec = sk.specs.find(x => x.id === sp)
+      const pa = worst([spec?.attr ?? sk.attr, ...(sk.alt ? [sk.alt] : [])])
+      const name = spec?.name ?? sp.replace(/^custom:/, '')
+      cap(skillRR + spRR + d.rrAttr[pa], level.rrSpec, `skills.${s.id}`, `${sk.name} (${name}) + ${attrName(pa)}`,
+        [[sk.name, skillRR], [name, spRR], [attrName(pa), d.rrAttr[pa]]])
     }
   }
   if (d.essenceEffects.dead) add('essence.dead', 'error', 'amps', `Essence ${d.essence}: the character dies.`, 60)

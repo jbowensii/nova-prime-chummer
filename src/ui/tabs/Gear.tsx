@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { currentBuild, itemCost, makeAmpAdd, makeBuy, makeSell } from '../../engine'
+import { itemCost } from '../../engine'
 import type { ItemEntry, ItemKind, Pricing } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
@@ -18,39 +18,36 @@ const SECTIONS: [ItemKind, string, (p: Pricing) => string][] = [
 ]
 
 export function GearTab() {
-  const { c, ch, d, edit, update, record, career } = useEditor()
-  const b = career ? currentBuild(ch) : ch.build
+  const { c, ch, d, edit, update } = useEditor()
+  const b = ch.build
   const [adding, setAdding] = useState<ItemKind | null>(null)
   const [custom, setCustom] = useState<ItemEntry | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null) // the starting gear row whose name and description are open
 
-  const add = async (item: ItemEntry) => {
+  const add = (item: ItemEntry) => {
     setAdding(null); setCustom(null)
-    if (!career) return edit(x => {
+    edit(x => {
       x.build.items.push(item)
       if (item.kind === 'armor' && !x.build.mainArmor) x.build.mainArmor = item.uid
     })
-    await record(makeBuy(c, item), `Buy ${item.name}`)
   }
   const pick = (id: string) => {
     const it = c.items.get(id)!
     add({ uid: newId(), catalogId: it.id, kind: it.kind, name: it.name, specialist: it.specialist, armor: it.armor, snapshot: it })
   }
-  const remove = async (item: ItemEntry) => {
+  const remove = (item: ItemEntry) => {
     const linked = b.amps.filter(a => a.linkedItem === item.uid)
     if (linked.length && !confirm(`${linked.map(a => a.name).join(', ')} depends on this item. Remove it anyway?`)) return
-    if (!career) return edit(x => {
+    edit(x => {
       x.build.items = x.build.items.filter(i => i.uid !== item.uid)
       if (x.build.mainArmor === item.uid) x.build.mainArmor = undefined
       if (x.build.altArmor === item.uid) x.build.altArmor = undefined
     })
-    await record(makeSell(item.uid), `Sell or discard ${item.name} (no refund)`)
   }
-  const toAmp = async (item: ItemEntry) => {
+  const toAmp = (item: ItemEntry) => {
     const amp = { uid: newId(), type: 'equipment', name: item.name, narrative: '', effects: [], linkedItem: item.uid }
     sessionStorage.setItem('ca2.editAmp', amp.uid)
-    if (!career) edit(x => { x.build.amps.push(amp) })
-    else if (!(await record(makeAmpAdd(c, ch, amp), `Turn ${item.name} into an Equipment amp`))) return
+    edit(x => { x.build.amps.push(amp) })
     location.hash = `#/c/${ch.id}/amps`
   }
 
@@ -84,7 +81,7 @@ export function GearTab() {
                               ? <NameField value={i.name} label={`Name of ${i.name}`} onCommit={name => update(x => { x.build.items.find(y => y.uid === i.uid)!.name = name })} />
                               : <b>{i.name}</b>}
                             <span className="chip free">{i.starting === 'real-sin' ? 'Free (real SIN)' : 'Free (starting gear)'}</span>
-                            {i.starting !== 'real-sin' && <SourceLabel c={c} source="CRB" page={84} />}
+                            {i.starting !== 'real-sin' && <SourceLabel c={c} source="CRB" page={85} />}
                             {renaming === i.uid
                               ? <button className="btn small quiet" onClick={() => setRenaming(null)}>Done</button>
                               : <button className="btn small quiet" aria-label={`Rename ${i.name}`} onClick={() => setRenaming(i.uid)}>Rename</button>}
@@ -124,7 +121,7 @@ export function GearTab() {
                         <td className="num">{fmt(itemCost(c.pricing, i))}</td>
                         <td className="num">
                           {kind !== 'spell' && kind !== 'complex-form' && !amp && <button className="btn small quiet" onClick={() => toAmp(i)}>Make it an amp</button>}
-                          <button className="btn small quiet" onClick={() => remove(i)}>{career ? 'Sell' : 'Remove'}</button>
+                          <button className="btn small quiet" onClick={() => remove(i)}>Remove</button>
                         </td>
                       </tr>
                     )

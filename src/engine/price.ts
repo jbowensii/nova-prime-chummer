@@ -56,12 +56,13 @@ export const nativeLanguage = (b: Build) => b.knowledge.find(k => k.native && k.
 export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) =>
   k !== nativeLanguage(b) && (!k.from || slotLapse(b, keywords, k) !== null)
 
-export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: string[] = []): Breakdown {
+/** negativeOk: uids of amps the GM approved below rating 0 (validate.ts amp.negativeRating) */
+export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: string[] = [], negativeOk = new Set<string>()): Breakdown {
   const p = c.pricing
   const attributes = ATTRS.reduce((s, a) => s + attrCost(p, 0, b.attributes[a] ?? 0, attrMax(c, metatype, a)), 0)
   const skills = b.skills.reduce((s, sk) => s + skillCost(p, 0, sk.rating) + sk.specs.length * p.spec, 0)
     + b.knowledge.filter(k => knowledgePaid(b, keywords, k)).length * p.knowledge
-  const amps = b.amps.reduce((s, a) => s + ampRating(c, a, ampCtx(b, a)) * p.ampPoint, 0)
+  const amps = b.amps.reduce((s, a) => s + ampRating(c, a, { ...ampCtx(b, a, c), negativeOk: negativeOk.has(a.uid) }) * p.ampPoint, 0)
   const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
   const gear = b.items.filter(i => !magic(i)).reduce((s, i) => s + itemCost(p, i), 0)
   const spells = b.items.filter(magic).reduce((s, i) => s + itemCost(p, i), 0)
@@ -70,7 +71,8 @@ export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: str
 
 /** Price of the creation build against the level-of-play budget. */
 export function price(c: Catalog, ch: Character): PriceBreakdown {
-  const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords)
+  const ok = new Set((ch.overrides ?? []).filter(o => o.code === 'amp.negativeRating').map(o => o.path.replace(/^amps\./, '')))
+  const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, ok)
   const total = b.attributes + b.skills + b.amps + b.gear + b.spells
   const budget = c.levels.get(ch.level)?.nuyen ?? 0
   return { ...b, total, budget, remaining: budget - total }

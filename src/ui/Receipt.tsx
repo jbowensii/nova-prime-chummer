@@ -22,13 +22,13 @@ export function Receipt() {
   useEffect(() => {
     const before = last.current
     last.current = { id: ch.id, items: ch.build.items }
-    if (career || before.id !== ch.id || before.items === ch.build.items) return
+    if (before.id !== ch.id || before.items === ch.build.items) return
     const msg = itemChange(c.pricing, before.items, ch.build.items)
     if (!msg) return
     setNote(msg)
     const t = setTimeout(() => setNote(''), 6000)
     return () => clearTimeout(t)
-  }, [c, ch.id, ch.build.items, career])
+  }, [c, ch.id, ch.build.items])
   const over = !career && balance < 0
   const guide = ch.package !== 'free' ? packageGuide(c, ch.package) : undefined
   const pkg = c.packages.get(ch.package)
@@ -37,7 +37,6 @@ export function Receipt() {
   const cats: [keyof typeof p & keyof NonNullable<typeof guide>, string][] = [['attributes', 'Attributes'], ['skills', 'Skills & knowledge'], ['amps', 'Shadow Amps'], ['gear', 'Gear'], ['spells', 'Spells']]
   const events = career ? activeEvents(ch) : []
   const earned = events.reduce((s, e) => s + (e.type === 'earn' ? e.amount : 0), 0)
-  const spent = events.reduce((s, e) => s + ('cost' in e ? e.cost : 0), 0)
   const T = d.thresholds
 
   return (
@@ -53,12 +52,12 @@ export function Receipt() {
         <div className="muted" style={{ fontSize: '0.85rem' }}>
           Free: {d.build.items.filter(i => i.starting).map(i => i.name).join(', ')}
         </div>
-        <div className="total"><Line label="Creation total" amount={fmt(p.total)} /></div>
+        <div className="total"><Line label={career ? "Build total" : "Creation total"} amount={fmt(p.total)} /></div>
         {career ? (
           <>
-            <Line label="Left at creation" amount={fmt(ch.finalRemaining ?? p.remaining)} />
-            <Line label="Earned since" amount={fmt(earned)} />
-            <Line label="Spent since" amount={fmt(spent)} />
+            <Line label="Budget minus build" amount={fmt(p.remaining)} />
+            <Line label="Earned" amount={fmt(earned)} />
+            {!!ch.carry && <Line label="From the old ledger" amount={fmt(ch.carry)} />}
             <div className={`left${balance < 0 ? ' neg' : ''}`}>{fmt(balance)}</div>
             <div className="muted">balance</div>
           </>

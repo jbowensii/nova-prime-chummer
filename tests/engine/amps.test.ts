@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects, patchEffect, withoutBookDrawbacks } from '../../src/engine/amps'
+import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects, patchEffect, rawAmpRating, withoutBookDrawbacks } from '../../src/engine/amps'
 import type { AmpEntry } from '../../src/model/types'
 import { cat } from '../helpers'
 
@@ -44,10 +44,11 @@ test('adept, contact and awakened amp ratings', () => {
 })
 
 test('catalog amps reproduce their printed rating (the made-up books have no discrepancies)', () => {
-  // a mod has no base rating of its own: it adds its effects to an existing amp
+  // a mod has no base rating of its own: it adds its effects to an existing amp; the rating as the book adds it up (the
+  // SINner house rule prices it at 0 after that)
   const rating = (t: typeof cat.amps extends Map<string, infer V> ? V : never) => t.mod
     ? t.effects.reduce((n, e) => n + effectRating(cat, e), 0)
-    : ampRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)
+    : rawAmpRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)
   const bad = [...cat.amps.values()].filter(t => rating(t) !== t.printedRating)
   expect(bad.map(t => t.id)).toEqual([])
 })

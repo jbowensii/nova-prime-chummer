@@ -1,7 +1,7 @@
 // Build or change a Shadow Amp: type + effects -> rating, cost, Essence (CRB p.58-63).
 // catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
 import { useState } from 'react'
-import { ampChangeCost, ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, patchEffect, ruleHelp, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, patchEffect, ruleHelp, vehicleStats } from '../../engine'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
 import { fmt, signed } from '../bits'
@@ -14,14 +14,15 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
   const [amp, setAmp] = useState<AmpEntry>(initial)
   const [pickFx, setPickFx] = useState('')
   const inBuild: Build = { ...build, amps: build.amps.some(a => a.uid === amp.uid) ? build.amps.map(a => (a.uid === amp.uid ? amp : a)) : [...build.amps, amp] }
-  const ctx = ampCtx(inBuild, amp)
+  const ctx = ampCtx(inBuild, amp, c)
   const rating = ampRating(c, amp, ctx)
   const type = c.ampTypes.get(amp.type)
   const legal = legalEffects(c, amp)
   const set = (patch: Partial<AmpEntry>) => setAmp(a => ({ ...a, ...patch }))
   const setFx = (i: number, patch: Partial<EffectPick>) => set({ effects: amp.effects.map((e, j) => (j === i ? patchEffect(e, patch) : e)) })
   const addFx = (ref: string) => { if (ref) set({ effects: [...amp.effects, { ref }] }); setPickFx('') }
-  const change = before ? ampChangeCost(c, before, amp, ctx) : 0
+  // since Finalize the build's price is what counts: a lower rating gives its nuyen back
+  const change = before ? (rating - ampRating(c, before, ctx)) * c.pricing.ampPoint : 0
   const mods = [...c.amps.values()].filter(t => t.mod && t.type === amp.type)
   const vs = amp.type === 'vehicle' ? vehicleStats(c, amp) : undefined
 
@@ -118,7 +119,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
         <span>Rating <b>{rating}</b></span>
         <span>Cost <b>{fmt(rating * c.pricing.ampPoint)}</b></span>
         {ampEssence(c, amp) > 0 && <span>Essence <b>−{ampEssence(c, amp)}</b></span>}
-        {career && before && <span>This change <b>{fmt(change)}</b></span>}
+        {career && before && <span>This change {change < 0 ? 'refunds' : 'costs'} <b>{fmt(Math.abs(change))}</b></span>}
       </div>
       <div className="actions" style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
         <button className="btn" onClick={onCancel}>Cancel</button>

@@ -5,7 +5,7 @@ import { validateXML } from 'xmllint-wasm'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { appendEvent, finalize, makeAdvance, makeAmpAdd, makeAmpModify, makeBuy, makeEarn, makeNote, voidEvent } from '../../src/engine/career'
 import { snapshotEntries } from '../../src/engine/file'
-import { books, BOOKS_DIR, sample } from '../helpers'
+import { books, BOOKS_DIR, legacy, sample } from '../helpers'
 import { describeBooks } from './_gate'
 
 const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
@@ -25,7 +25,7 @@ describeBooks('character XML (book samples)', () => {
   })
 
   test('career events of every kind survive the round trip', async () => {
-    let ch = finalize(books!, sample('lightning'))
+    let ch = legacy(finalize(books!, sample('lightning')))
     ch = appendEvent(ch, makeEarn(80000, 'Run <with> "quotes" & ampersands', '2086-03-01'))
     const adv = makeAdvance(books!, ch, 'skills.stealth', 6)
     ch = appendEvent(ch, adv)

@@ -1,15 +1,16 @@
-// Career-mode mechanics exercised against Lightning, a book pregen finalized exactly on budget.
+// Runners finalized before 0.5.5 (ledger events on a baseline), against Lightning, a book pregen finalized exactly on
+// budget: settled the 0.5.5 way, their balance and build stay what the old ledger said.
 import { test, expect } from 'vitest'
 import {
   appendEvent, balance, currentBuild, finalize, makeAdvance, makeAmpAdd, makeAmpModify, makeBuy, makeEarn, makeSell, voidEvent,
 } from '../../src/engine/career'
 import type { AmpEntry } from '../../src/model/types'
-import { books, sample } from '../helpers'
+import { books, legacy, sample } from '../helpers'
 import { describeBooks } from './_gate'
 
-const start = () => finalize(books!, sample('lightning'))
+const start = () => legacy(finalize(books!, sample('lightning')))
 
-describeBooks('career (book samples)', () => {
+describeBooks('pre-0.5.5 career (book samples)', () => {
   test('finalized Lightning starts at balance 0; earnings add', () => {
     let ch = start()
     expect(balance(books!, ch)).toBe(0)

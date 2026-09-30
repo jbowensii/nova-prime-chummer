@@ -1,7 +1,7 @@
 // Derived values shown on the sheet (CRB p.52, 60, 61, 67-68, 77).
 import type { AmpEntry, AttrId, Build, Catalog, Character, KnowledgeEntry } from '../model/types'
 import { ATTRS } from '../model/types'
-import { ampEssence } from './amps'
+import { ampEssence, FIREWALL_MAX } from './amps'
 import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
 
@@ -18,8 +18,9 @@ export function ammoDVs(text = ''): string[] {
     for (const x of m[1].matchAll(/(\d+)\s*\(\s*([^)]*?)\s*\)/g)) if (!out.includes(`${x[1]} (${x[2]})`)) out.push(`${x[1]} (${x[2]})`)
   return out
 }
+/** monitor: the vehicle's own wound boxes (its extra-box effects count here, not on the rigger, CRB p.62) */
 export interface VehicleStats { uid: string; name: string; chassis: string; pilot: number; body: number; handling: number;
-  speed: number; flying: boolean; armor: number; count: number; mount: string; thresholds: Thresholds }
+  speed: number; flying: boolean; armor: number; count: number; mount: string; thresholds: Thresholds; monitor: { light: number; serious: number } }
 export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number }
 export interface Derived {
   build: Build
@@ -42,6 +43,8 @@ export interface Derived {
   awakened: { perception: boolean; projection: boolean; sorcery: boolean; conjuring: boolean; adept: boolean }
   firewall?: number
   attack?: number
+  /** the cyberdeck's own wound boxes (its extra-box effects count here, not on the runner, CRB p.62) */
+  deckMonitor?: { light: number; serious: number }
 }
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
@@ -92,21 +95,26 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
 }
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)
+/** Amps whose extra wound boxes belong to a device, not the character (CRB p.62). */
+export const DEVICE_TYPES = ['cyberdeck', 'vehicle']
+const boxes = (effects: { ref: string }[]) => ({ light: 2 + (effects.some(e => e.ref === 'wound-light') ? 1 : 0), serious: 1 + (effects.some(e => e.ref === 'wound-serious') ? 1 : 0) })
+/** An effect's most a character gets from all amps together (Armor +1, DV +1: p.61 "can't exceed the maximum bonus"). */
+export const capped = (c: Catalog, ref: string, n: number) => Math.min(n, c.ampEffects.get(ref)?.max ?? Infinity)
 const t3 = (x: number): Thresholds => [x, x + 3, x + 6]
 
-/** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles base Speed. */
+/** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles the base Speed only (the chassis' flying
+ *  speed when it has one); Speed upgrades add after that. */
 export function vehicleStats(c: Catalog, a: AmpEntry): VehicleStats | undefined {
   const ch = a.vehicle ? c.vehicles.get(a.vehicle) : undefined
   if (!ch) return undefined
   const n = (ref: string) => a.effects.filter(e => e.ref === ref).length
   const flying = n('flying') > 0
   const fixed = n('fixed') > 0
-  const ground = ch.speed + n('speed-plus')
-  const speed = fixed ? 0 : flying ? (n('speed-plus') === 0 && ch.flyingSpeed != null ? ch.flyingSpeed : Math.max(1, ground * 2)) : ground
+  const speed = fixed ? 0 : (flying ? ch.flyingSpeed ?? Math.max(1, ch.speed * 2) : ch.speed) + n('speed-plus')
   const armor = ch.armor + n('vehicle-armor')
   return { uid: a.uid, name: a.name, chassis: ch.name, pilot: ch.pilot + n('pilot-plus'), body: ch.body, handling: ch.handling + n('handling-plus'),
     speed, flying, armor, count: 1 + n('extra-drone'), mount: ch.mount,
-    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor] }
+    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor], monitor: boxes(a.effects) }
 }
 
 /** "STR+1", "S+2", "STR", "5", "12 (anti-vehicle 16)" -> damage value with this Strength. */
@@ -126,20 +134,21 @@ export function derive(c: Catalog, ch: Character): Derived {
 
   const essence = 6 - b.amps.reduce((s, a) => s + ampEssence(c, a), 0)
 
-  // Armor: an item's own rating plus armor-plus from equipment amps linked to it, plus the armor an add-on is worn
-  // over; armor-plus on any other amp (orthoskin, mystic armor...) is always on.
-  const itemArmor = (uid?: string, depth = 0): number => {
-    if (!uid) return 0
-    const it = b.items.find(i => i.uid === uid)
-    if (!it) return 0
-    const linked = b.amps.filter(a => a.type === 'equipment' && a.linkedItem === uid)
-      .reduce((s, a) => s + a.effects.filter(e => e.ref === 'armor-plus').length, 0)
-    return (it.armor ?? 0) + linked + (it.over && depth < 3 ? itemArmor(it.over, depth + 1) : 0)
-  }
+  // Armor: an item's own rating plus the armor an add-on is worn over; Armor +1 from equipment amps linked to those
+  // items, and on any other amp (orthoskin, mystic armor...) always on, all together no more than the effect's max.
   const alwaysOn = picks.filter(p => p.e.ref === 'armor-plus' && p.amp.type !== 'equipment').length
+  const worn = (uid?: string) => {
+    let base = 0, plus = alwaysOn
+    for (let it = b.items.find(i => i.uid === uid), depth = 0; it && depth < 4; it = b.items.find(i => i.uid === it!.over), depth++) {
+      base += it.armor ?? 0
+      plus += b.amps.filter(a => a.type === 'equipment' && a.linkedItem === it!.uid).reduce((s, a) => s + a.effects.filter(e => e.ref === 'armor-plus').length, 0)
+      if (!it.over) break
+    }
+    return base + capped(c, 'armor-plus', plus)
+  }
   // mental protection from Astral/Mystic Armor, biofeedback filters, code shells...: always on
   const mentalProtection = picks.filter(p => p.e.ref === 'mental-armor').length
-  const armor = { none: alwaysOn, main: itemArmor(b.mainArmor) + alwaysOn, alt: itemArmor(b.altArmor) + alwaysOn }
+  const armor = { none: worn(), main: worn(b.mainArmor), alt: worn(b.altArmor) }
 
   // Risk Reduction from amps
   const rrAttr = Object.fromEntries(ATTRS.map(a => [a, 0])) as Record<AttrId, number>
@@ -184,18 +193,18 @@ export function derive(c: Catalog, ch: Character): Derived {
 
   const emerged = b.amps.some(a => a.type === 'emerged')
   const deck = b.amps.find(a => a.type === 'cyberdeck')
-  const firewall = emerged ? attr('wil') : deck ? 1 + deck.effects.filter(e => e.ref === 'firewall-plus').length : undefined
+  const firewall = emerged ? attr('wil') : deck ? Math.min(FIREWALL_MAX, 1 + deck.effects.filter(e => e.ref === 'firewall-plus').length) : undefined
   const attack = emerged ? attr('cha') : deck ? deck.effects.filter(e => e.ref === 'attack-plus').length : undefined
 
   // Weapons with damage worked out: unarmed is STR (CRB p.142) plus DV bonuses from implants and
   // adept powers; a weapon's own Equipment amp adds its DV bonuses, unless the book already printed
   // the final DV on the item (named book weapons).
-  const unarmedPlus = picks.filter(p => p.e.ref === 'dv-plus' && p.amp.type !== 'equipment').length
+  const unarmedPlus = capped(c, 'dv-plus', picks.filter(p => p.e.ref === 'dv-plus' && p.amp.type !== 'equipment').length)
   const weapons: Weapon[] = [{ uid: 'unarmed', name: 'Unarmed', dv: weaponDV('STR', attr('str'), unarmedPlus), ranges: 'OK/–/–/–' }]
   for (const it of b.items.filter(i => i.kind === 'weapon')) {
     const cat = (it.catalogId ? c.items.get(it.catalogId) : undefined) ?? it.snapshot
     const amp = b.amps.find(a => a.type === 'equipment' && a.linkedItem === it.uid)
-    const plus = it.dv ? 0 : amp?.effects.filter(e => e.ref === 'dv-plus').length ?? 0
+    const plus = it.dv ? 0 : capped(c, 'dv-plus', amp?.effects.filter(e => e.ref === 'dv-plus').length ?? 0)
     const range = amp?.effects.find(e => e.ref === 'range-improve')?.param
     weapons.push({ uid: it.uid, name: it.name, dv: weaponDV(it.dv ?? cat?.dv ?? '?', attr('str'), plus),
       ranges: it.ranges ?? cat?.ranges ?? '', specialist: it.specialist, note: range ? `range improved: ${range}` : undefined })
@@ -216,7 +225,8 @@ export function derive(c: Catalog, ch: Character): Derived {
       socialDisadvantage: essence <= 1,
       dead: essence <= 0,
     },
-    monitor: { light: 2 + (has('wound-light') ? 1 : 0), serious: 1 + (has('wound-serious') ? 1 : 0), incap: 1 },
+    monitor: { ...boxes(picks.filter(p => !DEVICE_TYPES.includes(p.amp.type)).map(p => p.e)), incap: 1 },
+    deckMonitor: deck && boxes(deck.effects),
     armor,
     thresholds: {
       physicalNone: t3(attr('str') + armor.none), physicalMain: t3(attr('str') + armor.main),

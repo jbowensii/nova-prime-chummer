@@ -97,7 +97,7 @@ export function Sheet() {
                 {b.mainArmor && <tr><td>Main armor ({item(b.mainArmor)?.name} {d.armor.main})</td>{d.thresholds.physicalMain.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                 {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {d.armor.alt})</td>{d.thresholds.physicalAlt.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                 <tr><td>Mental{d.mentalProtection ? ` (armor ${d.mentalProtection})` : ''}</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall})</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}){d.deckMonitor && (d.deckMonitor.light > 2 || d.deckMonitor.serious > 1) && <span className="s-small"> deck boxes {d.deckMonitor.light} light, {d.deckMonitor.serious} serious</span>}</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
               </tbody>
             </table>
 
@@ -128,7 +128,7 @@ export function Sheet() {
                       .map(([e, n], i) => <div key={i} className="s-small" title={ruleHelp(c, e.ref)}>{effectText(e.ref, e.param, e.value, n)}{!e.ref.startsWith('rr-') && n > 1 ? ` ×${n}` : ''}</div>)}
                   </td>
                   <td className="s-src">{(t => t ? <SourceLabel c={c} source={t.source} page={t.page} id={t.id} /> : <SourceLabel builtByYou />)(a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined)}</td>
-                  <td>{ampEssence(c, a) || ''}</td><td><b>{ampRating(c, a, ampCtx(b, a))}</b></td>
+                  <td>{ampEssence(c, a) || ''}</td><td><b>{ampRating(c, a, ampCtx(b, a, c))}</b></td>
                 </tr>
               ))}
             </tbody>
@@ -140,7 +140,7 @@ export function Sheet() {
             <h2>Vehicles & drones</h2>
             <table>
               <thead><tr><th>Vehicle</th><th>Pilot</th><th>Body</th><th>Handling</th><th>Speed</th><th>Armor</th><th>Damage L/S/I</th></tr></thead>
-              <tbody>{d.vehicles.map(v => <tr key={v.uid}><td><b>{v.count > 1 ? `${v.count}× ` : ''}{v.name}</b> <span className="s-small">({v.chassis}{v.flying ? ', flying' : ''})</span></td>
+              <tbody>{d.vehicles.map(v => <tr key={v.uid}><td><b>{v.count > 1 ? `${v.count}× ` : ''}{v.name}</b> <span className="s-small">({v.chassis}{v.flying ? ', flying' : ''}{v.monitor.light > 2 || v.monitor.serious > 1 ? `; wound boxes ${v.monitor.light} light, ${v.monitor.serious} serious` : ''})</span></td>
                 <td>{v.pilot}</td><td>{v.body}</td><td>{v.handling}</td><td>{v.speed}</td><td>{v.armor}</td><td>{v.thresholds.join(' / ')}</td></tr>)}</tbody>
             </table>
           </section>

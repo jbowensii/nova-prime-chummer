@@ -10,7 +10,7 @@ will convert from this format; the format itself is ours and stays stable.
 <?xml version="1.0" encoding="UTF-8"?>
 <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="…"
     streetName="Slick" name="Jan Novak" metatype="dwarf" level="runner" package="free"
-    lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" updatedAt="…">
+    lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" carry="0" updatedAt="…">
   <portrait>data:image/jpeg;base64,…</portrait>
   <background>…</background>
   <notes>…</notes>
@@ -35,8 +35,11 @@ will convert from this format; the format itself is ours and stays stable.
     <knowledgeHidden key="knowledge:Old flames"/>
   </build>
   <career>
+    <event id="…" at="…" type="finalize" remaining="0"/>
     <event id="…" at="…" type="earn" amount="50000" run="…" date="2086-03-01"/>
-    <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>
+    <event … type="change" cost="-2500"><change key="item:it-knife" label="Knife" from=""/></event>
+    <event … type="change" cost="6000"><change key="skill:stealth" label="Stealth" from="5" to="6"/></event>
+    <event … type="advance" path="skills.stealth" from="5" to="6" cost="6000"/>  (before 0.5.5)
     <event … type="amp-modify" ampUid="…" cost="12000"><before><amp …/></before><after><amp …/></after></event>
     <event … type="knowledge-add" name="Corporate gossip" kind="knowledge" slot="skill:influence" cost="0"/>
     <event … type="void" eventId="…" reason="misclick"/>
@@ -68,11 +71,11 @@ will convert from this format; the format itself is ours and stays stable.
 - **`<knowledgeOrder>`** and **`<knowledgeHidden>`** hold row keys: a free entry's slot (`from`), else
   the entry's `id` (paid entries get one when added; older ones on load). The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off
   the printed sheet but still counts. Neither changes a price.
-- **`starting`** on an item marks free gear no one buys: `commlink` and `fake-sin` (every runner, CRB p.84) and
+- **`starting`** on an item marks free gear no one buys: `commlink` and `fake-sin` (every runner, CRB p.85) and
   `real-sin`. It costs nothing and can't be removed or sold; `note` is the player's description. Reading any file adds
   a missing commlink or fake SIN (uids `start-commlink`, `start-fake-sin`). On a draft, an unpriced gear entry named
   exactly `Commlink`, `Commlink (with trodes)`, `Commlink with trodes` or `Fake SIN` (any case or spacing) becomes it
-  instead, so there's never a second one; a finalized runner's items are never changed.
+  instead, so there's never a second one; a finalized runner's items are never changed by reading it.
 - **`over`** on an armor item (0.5.4): an add-on worn over the armor item with that uid (a mask, a helmet, a rigger
   cocoon). Its `armor` is the points it adds, and all it costs; worn as main or alternate armor it counts on top of
   that item's armor.
@@ -83,12 +86,27 @@ will convert from this format; the format itself is ours and stays stable.
 - **`note="book drawback"`** on a `negative` effect of a book sample's amp (one with `origin`): the limitation the book
   prints (an effect limited to some situations) and prices in; it needs no GM approval.
 - **`realSin="true"`** on an amp: added by "Has a real SIN" with the catalog's SINner quality (named exactly
-  "SINner", any case); it's free. The box can't be changed once the runner is finalized. The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
+  "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
+  takes the first-Quality slot; files from before simply price that way when read. The box works before and after
+  Finalize (after, the change is logged). The box is on when an item has `starting="real-sin"` or the runner has a SINner quality (that catalog entry,
   or an amp or snapshot of that name); reading a file with such a quality adds the missing `real-sin` item. Unticking
   removes the item and every SINner quality (the app asks first about one the player added).
 - **`knowledge-add`** events: without `slot`, a new paid entry; with `slot` and `cost="0"`, a rename or kind change of
   that free slot; with `slot` and a cost, that slot's entry becomes a paid one (after its skill dropped below 4 or its keyword was removed).
-- **Career events** are never edited. A mistake is undone with a `void`
+- **The ledger (0.5.5).** Finalize writes `finalizedAt`, `finalRemaining` (what creation left), `carry="0"` and a
+  `finalize` event. Nothing is locked afterwards: `<build>` is always the runner as it stands, and every change to it
+  appends a `change` event (the app writes these itself). Each `<change>` names one thing by `key` (`attr:agi`,
+  `skill:stealth`, `spec:<skill>:<spec>`, `knowledge:<row key>`, `amp:<uid>`, `item:<uid>`); no `from` means added, no
+  `to` means removed. `cost` is the build's price difference: negative when something was removed or lowered (the
+  book price comes back). Consecutive changes to one thing within ten minutes share one event. The balance is the
+  level's budget + non-voided `earn` amounts − the build's price + `carry`. Reopening creation (only while no
+  earnings are recorded) drops `finalizedAt`, `finalRemaining` and `carry` and adds a note; the log stays.
+- **Runners finalized before 0.5.5** have no `carry`: their `<build>` was the creation baseline and the `advance`,
+  `buy`, `sell`, `amp-add`, `amp-modify`, `spec-add` and `knowledge-add` events applied on top. Opened in 0.5.5, those
+  events are folded into `<build>` once and kept as history, a `finalize` event (id `finalized`) is put first, and
+  `carry` is set to what the old ledger said beyond budget + earnings − build price (its unrefunded sales, for
+  instance), so the balance doesn't move.
+- **Career events** are never edited. A wrong `earn` is undone with a `void`
   event, so the history stays complete.
 - **`allowNonCanon="false"`** on the root marks a runner as canon only: the
   Review tab flags each non-canon amp, item or specialization. Missing means

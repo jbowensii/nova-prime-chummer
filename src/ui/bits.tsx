@@ -21,7 +21,7 @@ export const NonCanon = ({ source }: { source?: string }) =>
 /** A runner's state, in the Non-canon badge's family: a draft still in creation (reopens where it was left), or
  *  finalized (career). */
 export const StateBadge = ({ finalized }: { finalized: boolean }) =>
-  <span className={`noncanon runstate ${finalized ? 'final' : 'draft'}`} title={finalized ? 'Finalized: in career mode' : 'Draft: still in creation'}>{finalized ? 'Finalized' : 'Draft'}</span>
+  <span className={`noncanon runstate ${finalized ? 'final' : 'draft'}`} title={finalized ? 'Finalized: every change is logged in the ledger' : 'Draft: still in creation'}>{finalized ? 'Finalized' : 'Draft'}</span>
 
 /** action: a control in the row (an Edit button) that doesn't pick it; disabled: listed (for its action) but not pickable */
 export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string; action?: ReactNode; disabled?: boolean }

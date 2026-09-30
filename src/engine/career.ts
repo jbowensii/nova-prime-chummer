@@ -1,8 +1,11 @@
-// Career mode: the finalized build is the baseline; the current character is the
-// baseline with every non-voided event applied in order.
-import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Character, ItemEntry, KnowledgeEntry } from '../model/types'
-import { newId } from '../model/types'
-import { ampChangeCost, ampCtx, ampRating } from './amps'
+// Career mode (0.5.5): Finalize is a last check and a ledger entry; nothing is locked. The build stays editable,
+// every change to it is logged in the ledger with what it cost or gave back, and the balance is
+// creation budget + earnings - price of the current build (+ `carry`, see settle()).
+// Runners finalized before 0.5.5 kept a baseline build plus events (advance, buy, sell...) applied on top; settle()
+// folds those into the build once, keeps them as history and carries their balance over unchanged.
+import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, ItemEntry, KnowledgeEntry } from '../model/types'
+import { ATTRS, newId } from '../model/types'
+import { ampCtx, ampChangeCost, ampRating } from './amps'
 import { attrCost, attrMax, itemCost, price, skillCost } from './price'
 
 type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, 'id' | 'at'> : never) : never
@@ -11,6 +14,7 @@ const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISO
 export const voidedIds = (ch: Character) => new Set(ch.career.filter(e => e.type === 'void').map(e => (e as { eventId: string }).eventId))
 export const activeEvents = (ch: Character) => { const v = voidedIds(ch); return ch.career.filter(e => e.type !== 'void' && !v.has(e.id)) }
 
+/** Applies a pre-0.5.5 event to a build (settle() folds them in once). */
 export function applyEvent(b: Build, e: CareerEvent): void {
   switch (e.type) {
     case 'advance': {
@@ -46,33 +50,154 @@ export function applyEvent(b: Build, e: CareerEvent): void {
   }
 }
 
+/** A runner finalized before 0.5.5 that hasn't been settled yet: its build is the baseline, its events apply on top. */
+const legacy = (ch: Character) => !!ch.finalizedAt && ch.carry === undefined
+
+/** The runner's build as it stands (a legacy runner's baseline with its events applied). */
 export function currentBuild(ch: Character): Build {
   const b = structuredClone(ch.build)
-  for (const e of activeEvents(ch)) applyEvent(b, e)
+  if (legacy(ch)) for (const e of activeEvents(ch)) applyEvent(b, e)
   return b
 }
 
 const eventCost = (e: CareerEvent) => ('cost' in e ? e.cost : 0)
+const earnings = (ch: Character) => activeEvents(ch).reduce((s, e) => s + (e.type === 'earn' ? e.amount : 0), 0)
 
-/** Career nuyen: creation leftover at Finalize + earnings - costs (voided events excluded). */
+/** A legacy runner the 0.5.5 way: its events folded into the build (kept in the ledger as history), a "Creation
+ *  finished" entry first, and `carry` set so the balance is exactly what the old ledger said. Idempotent. */
+export function settle(c: Catalog, ch: Character): Character {
+  if (!legacy(ch)) return ch
+  const remaining = ch.finalRemaining ?? price(c, ch).remaining
+  const old = activeEvents(ch).reduce((s, e) => s + (e.type === 'earn' ? e.amount : -eventCost(e)), remaining)
+  const next: Character = { ...ch, build: currentBuild(ch), finalRemaining: remaining }
+  if (!ch.career.some(e => e.type === 'finalize'))
+    next.career = [{ id: 'finalized', at: ch.finalizedAt!, type: 'finalize', remaining }, ...ch.career]
+  next.carry = old - (price(c, next).remaining + earnings(next))
+  return next
+}
+
+/** Career nuyen: creation budget + earnings - price of the current build (+ what a pre-0.5.5 ledger carried over). */
 export function balance(c: Catalog, ch: Character): number {
-  const start = ch.finalRemaining ?? price(c, ch).remaining
-  return activeEvents(ch).reduce((s, e) => s + (e.type === 'earn' ? e.amount : -eventCost(e)), start)
+  const s = settle(c, ch)
+  return price(c, s).remaining + earnings(s) + (s.carry ?? 0)
 }
 
 export function finalize(c: Catalog, ch: Character): Character {
-  return { ...ch, finalizedAt: new Date().toISOString(), finalRemaining: price(c, ch).remaining }
+  const remaining = price(c, ch).remaining
+  const at = new Date().toISOString()
+  return { ...ch, finalizedAt: at, finalRemaining: remaining, carry: 0,
+    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining }] }
 }
 
-/** Undo Finalize: only while the ledger has no entries, so no recorded history is lost. */
+/** Back to creation: only while no earnings are recorded. The ledger keeps its entries, with a note. */
 export function reopen(ch: Character): Character {
-  if (ch.career.length) throw new Error('the ledger already has entries')
-  const { finalizedAt: _f, finalRemaining: _r, ...rest } = ch
-  return rest as Character
+  if (activeEvents(ch).some(e => e.type === 'earn')) throw new Error('the ledger already has earnings')
+  const { finalizedAt: _f, finalRemaining: _r, carry: _c, ...rest } = ch
+  return { ...rest, career: [...ch.career, stamp({ type: 'note', text: 'Creation reopened' })] } as Character
+}
+
+/** Entries since the last Finalize (a reopened runner's earlier log is history). */
+export function sinceFinalize(ch: Character): CareerEvent[] {
+  const at = ch.career.map(e => e.type).lastIndexOf('finalize')
+  return ch.career.slice(at + 1)
+}
+
+// ---- the change log ----
+
+const qty = (n: number) => String(n)
+/** What changed between two builds, one line per thing (attribute, skill, spec, knowledge entry, amp, item). */
+export function diffBuild(c: Catalog, a: Build, b: Build): Change[] {
+  const out: Change[] = []
+  const put = (key: string, label: string, from?: string, to?: string) => {
+    if (from === to) return
+    const x: Change = { key, label }
+    if (from !== undefined) x.from = from
+    if (to !== undefined) x.to = to
+    out.push(x)
+  }
+  for (const at of ATTRS) put(`attr:${at}`, c.attributes.get(at)?.name ?? at.toUpperCase(), qty(a.attributes[at] ?? 0), qty(b.attributes[at] ?? 0))
+  const skillName = (id: string) => c.skills.get(id)?.name ?? id
+  const specName = (skill: string, sp: string) => c.skills.get(skill)?.specs.find(s => s.id === sp)?.name ?? sp.replace(/^custom:/, '')
+  for (const id of new Set([...a.skills, ...b.skills].map(s => s.id))) {
+    const x = a.skills.find(s => s.id === id), y = b.skills.find(s => s.id === id)
+    put(`skill:${id}`, skillName(id), qty(x?.rating ?? 0), qty(y?.rating ?? 0))
+    for (const sp of new Set([...x?.specs ?? [], ...y?.specs ?? []])) {
+      const had = !!x?.specs.includes(sp), has = !!y?.specs.includes(sp)
+      if (had !== has) put(`spec:${id}:${sp}`, `${skillName(id)} specialization ${specName(id, sp)}`, had ? '' : undefined, has ? '' : undefined)
+    }
+  }
+  const kn = (k: KnowledgeEntry) => `${k.name}${k.kind === 'language' ? ' (language' + (k.native ? ', native)' : ')') : ''}`
+  const key = (k: KnowledgeEntry) => k.from ?? k.id ?? `:` // derive.ts knowledgeKey
+  const ka = new Map(a.knowledge.map(k => [key(k), k])), kb = new Map(b.knowledge.map(k => [key(k), k]))
+  for (const k of new Set([...ka.keys(), ...kb.keys()])) {
+    const x = ka.get(k), y = kb.get(k)
+    put(`knowledge:${k}`, x && y ? 'Knowledge' : kn((y ?? x)!), x && (y ? kn(x) : ''), y && (x ? kn(y) : ''))
+  }
+  const rated = (amp: AmpEntry, bb: Build) => `rating ${ampRating(c, amp, ampCtx(bb, amp, c))}`
+  const aa = new Map(a.amps.map(x => [x.uid, x])), ab = new Map(b.amps.map(x => [x.uid, x]))
+  for (const uid of new Set([...aa.keys(), ...ab.keys()])) {
+    const x = aa.get(uid), y = ab.get(uid)
+    if (x && y && JSON.stringify(x) === JSON.stringify(y)) continue
+    const from = x && rated(x, a), to = y && rated(y, b)
+    put(`amp:${uid}`, x && y && x.name !== y.name ? `${x.name} (now ${y.name})` : (y ?? x)!.name, from, x && y && from === to ? `${to}, edited` : to)
+  }
+  const ia = new Map(a.items.map(x => [x.uid, x])), ib = new Map(b.items.map(x => [x.uid, x]))
+  for (const uid of new Set([...ia.keys(), ...ib.keys()])) {
+    const x = ia.get(uid), y = ib.get(uid)
+    if (x && y && JSON.stringify(x) === JSON.stringify(y)) continue
+    if (x && y) put(`item:${uid}`, x.name === y.name ? y.name : 'Renamed', x.name === y.name ? '' : x.name, x.name === y.name ? 'edited' : y.name)
+    else put(`item:${uid}`, (y ?? x)!.name, x && '', y && '')
+  }
+  return out
+}
+
+/** A ledger line. from absent: added; to absent: removed; else changed ("Stealth: 3 → 4", "Ares Predator: edited"). */
+export function changeText(x: Change): string {
+  if (x.from === undefined) return `Added ${x.label}${x.to ? ` (${x.to})` : ''}`
+  if (x.to === undefined) return `Removed ${x.label}`
+  return x.from ? `${x.label}: ${x.from} → ${x.to}` : `${x.label}: ${x.to}`
+}
+
+const MERGE_MS = 10 * 60 * 1000
+/** A finalized runner's edit, logged: one "change" entry with the lines diffBuild finds and the price difference
+ *  (positive: charged, negative: refunded). A single-line change to the same thing as the last entry, within ten
+ *  minutes, updates that entry instead (stepping a skill 3 → 4 → 5 is one line); undone completely, it goes. */
+export function logChange(c: Catalog, before: Character, after: Character): Character {
+  if (!before.finalizedAt || !after.finalizedAt) return after
+  const lines = diffBuild(c, before.build, after.build)
+  const cost = price(c, after).total - price(c, before).total
+  if (!lines.length && !cost) return after
+  if (!lines.length) lines.push({ key: 'price', label: 'Build price', from: '', to: '' })
+  const last = after.career.at(-1), now = new Date()
+  if (lines.length === 1 && last?.type === 'change' && last.changes.length === 1 && last.changes[0].key === lines[0].key
+      && now.getTime() - Date.parse(last.at) < MERGE_MS && !voidedIds(after).has(last.id)) {
+    const first = last.changes[0].from
+    const merged: Change = { ...lines[0] }
+    if (first === undefined) delete merged.from; else merged.from = first
+    const total = last.cost + cost
+    const gone = merged.from === merged.to // back where it was, or added and removed again
+    const career = after.career.slice(0, -1)
+    if (!(gone && !total)) career.push({ ...last, at: now.toISOString(), changes: [merged], cost: total })
+    return { ...after, career }
+  }
+  return { ...after, career: [...after.career, stamp({ type: 'change', changes: lines, cost })] }
+}
+
+/** Qualities added after Finalize (they need a major event and the GM, CRB p.58). */
+export function qualitiesAddedAfter(ch: Character): Set<string> {
+  const v = voidedIds(ch), out = new Set<string>()
+  for (const e of sinceFinalize(ch)) {
+    if (v.has(e.id)) continue
+    if (e.type === 'amp-add' && e.amp.type === 'quality') out.add(e.amp.uid)
+    if (e.type === 'change') for (const x of e.changes) if (x.key.startsWith('amp:') && (x.from === undefined || x.from === '')) out.add(x.key.slice(4))
+  }
+  return out
 }
 
 export const makeEarn = (amount: number, run: string, date: string) => stamp({ type: 'earn', amount, run, date })
 export const makeNote = (text: string) => stamp({ type: 'note', text })
+
+// ---- pre-0.5.5 events: nothing makes them any more; tests build legacy runners with these ----
 
 export function makeAdvance(c: Catalog, ch: Character, path: string, to: number): CareerEvent {
   const b = currentBuild(ch)
@@ -87,20 +212,16 @@ export function makeAdvance(c: Catalog, ch: Character, path: string, to: number)
   }
   throw new Error(`cannot advance "${path}"`)
 }
-
 export const makeBuy = (c: Catalog, item: ItemEntry) => stamp({ type: 'buy', item, cost: itemCost(c.pricing, item) })
 export const makeSell = (itemUid: string) => stamp({ type: 'sell', itemUid })
 export const makeSpec = (c: Catalog, skill: string, spec: string) => stamp({ type: 'spec-add', skill, spec, cost: c.pricing.spec })
-/** A new paid entry; with `from`, renames that free slot (free) or, `pay`, turns it into a paid entry. */
 export const makeKnowledge = (c: Catalog, e: KnowledgeEntry, pay = !e.from) =>
   stamp({ type: 'knowledge-add', name: e.name, kind: e.kind, from: e.from, cost: pay ? c.pricing.knowledge : 0 })
-
 export function makeAmpAdd(c: Catalog, ch: Character, amp: AmpEntry): CareerEvent {
   const b = currentBuild(ch)
   b.amps.push(amp)
   return stamp({ type: 'amp-add', amp, cost: ampRating(c, amp, ampCtx(b, amp)) * c.pricing.ampPoint })
 }
-
 export function makeAmpModify(c: Catalog, ch: Character, after: AmpEntry): CareerEvent {
   const b = currentBuild(ch)
   const before = b.amps.find(a => a.uid === after.uid)

@@ -373,7 +373,7 @@ def pricing(pages):
 
 
 def levels(pages):
-    """LEVELS OF PLAY, pp.84-85: a heading per level, then Nuyen / Attributes / Skills / Risk Reduction bullets."""
+    """LEVELS OF PLAY, p.85 (the scan starts on p.84, where the section heading can fall): a heading per level, then Nuyen / Attributes / Skills / Risk Reduction bullets."""
     lines = _lines(pages, 84, 85)
     i = next((i for i, (_, l) in enumerate(lines) if l == "LEVELS OF PLAY"), None)
     if i is None:
@@ -583,7 +583,7 @@ def build(md):
         files["pricing.xml"] = _file("pricing", "Character cost cheat sheet, CRB p.83; complexForm and refundEffectRemoval are app defaults.",
                                      [f'  <pricing{_attrs({"id": "core", **_ref(p), **costs})}/>'])
     if "levels" in got:
-        files["levels.xml"] = _file("levels", "Levels of play, CRB p.84-85. Caps apply during creation only.", [
+        files["levels.xml"] = _file("levels", "Levels of play, CRB p.85. Caps apply during creation only.", [
             f'  <level{_attrs({k: lv[k] for k in ("id", "nuyen", "attrAtMax", "skillCap", "rrAttr", "rrSkill", "rrSpec")})}{_attrs(_ref(lv))}>'
             f'<name>{escape(lv["name"])}</name></level>' for lv in got["levels"]])
     if "packages" in got:

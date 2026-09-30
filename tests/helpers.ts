@@ -66,3 +66,10 @@ export const sample = (name: string): Character => migrate(JSON.parse(readFileSy
 /** Path under the oracle root for any other private book file a books-only test needs
  * (e.g. pregens-printed.json, book-discrepancies.md) — never the committed copy. */
 export const bookFile = (name: string): string => join(BOOKS_DIR, name)
+
+/** A runner finalized the way releases before 0.5.5 did: no `carry`, no "Creation finished" entry; its ledger events
+ *  apply on top of the build (engine/career.ts settle converts it). */
+export const legacy = (ch: Character): Character => {
+  const { carry: _, ...rest } = ch
+  return { ...rest, career: ch.career.filter(e => e.type !== 'finalize') }
+}

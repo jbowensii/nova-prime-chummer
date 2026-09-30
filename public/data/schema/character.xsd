@@ -43,6 +43,7 @@
       </xs:attribute>
       <xs:attribute name="finalizedAt" type="xs:string"/>
       <xs:attribute name="finalRemaining" type="xs:integer"/>
+      <xs:attribute name="carry" type="xs:integer"/>
       <xs:attribute name="allowNonCanon" type="xs:boolean"/>
       <xs:attribute name="origin" type="xs:string"/>
       <xs:attribute name="sampleKey" type="xs:string"/>
@@ -160,18 +161,27 @@
         <xs:element name="after"><xs:complexType><xs:sequence><xs:element name="amp" type="c:Amp"/></xs:sequence></xs:complexType></xs:element>
       </xs:sequence>
       <xs:element name="text" type="xs:string"/>
+      <xs:element name="change" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="key" type="xs:string" use="required"/>
+          <xs:attribute name="label" type="xs:string" use="required"/>
+          <xs:attribute name="from" type="xs:string"/>
+          <xs:attribute name="to" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
     </xs:choice>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="at" type="xs:string" use="required"/>
     <xs:attribute name="type" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
-        <xs:enumeration value="earn"/><xs:enumeration value="advance"/><xs:enumeration value="buy"/>
+        <xs:enumeration value="earn"/><xs:enumeration value="finalize"/><xs:enumeration value="change"/><xs:enumeration value="advance"/><xs:enumeration value="buy"/>
         <xs:enumeration value="sell"/><xs:enumeration value="amp-add"/><xs:enumeration value="amp-modify"/>
         <xs:enumeration value="spec-add"/><xs:enumeration value="knowledge-add"/><xs:enumeration value="note"/>
         <xs:enumeration value="void"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="amount" type="xs:integer"/>
+    <xs:attribute name="remaining" type="xs:integer"/>
     <xs:attribute name="run" type="xs:string"/>
     <xs:attribute name="date" type="xs:string"/>
     <xs:attribute name="path" type="xs:string"/>

@@ -27,16 +27,18 @@ own API key), and you review its entries before they’re added.
 - **Technomancers** (from the CGL Conversion Guide): the Emerged amp, the
   Tasking skill, a living persona (Firewall = Willpower, Attack = Charisma),
   and the complex forms your books bring.
-- **Lifestyles** (CRB p.165) adjust what each run pays.
+- **Lifestyles** (CRB p.166) adjust what each run pays.
 - **Knowledge & languages** in two lists on the Skills tab, A–Z unless you
   drag rows (or use their arrows) into your own order. Each keyword and each
   skill at 4+ is a free entry (a skill’s can be renamed to anything related to
   it); one language marked **Native** is free too; any other costs the knowledge
   price. **Hide** leaves an entry off the printed sheet.
 - **Starting gear.** Every runner carries a free commlink (with trodes) and a
-  fake SIN (CRB p.84): rename and describe them, but they can’t be removed.
+  fake SIN (CRB p.85): rename and describe them, but they can’t be removed.
   **Has a real SIN** on the Concept tab adds a free Real SIN entry and, when an
-  imported book has one, its SINner quality.
+  imported book has one, its SINner quality. House rule: a SINner is always
+  free and never counts as the first Quality, whether the box added it or you
+  did.
 - **Saving.** Every change saves on its own; the bar says when (“All changes
   saved · 14:02”), and **Save** / **Save and close** save right away. A save
   that fails turns red with the server’s reason and a **Retry**, and leaving
@@ -44,9 +46,17 @@ own API key), and you review its entries before they’re added.
 - **Runner list** in A–Z order (or Z–A, or recently edited), with a search
   box and a **Draft** / **Finalized** badge on each runner. A file the app
   can’t read is listed with the reason, to download or repair.
-- **Career ledger.** After Finalize, record earnings and spend them at the
-  creation prices. History is append-only, and an entry is undone by voiding it.
-  Creation can be reopened until the first ledger entry.
+- **Finalize and the ledger.** Finalize is the last check of creation and
+  starts the ledger with “Creation finished · N¥ left”. Nothing is locked:
+  afterwards you still change the runner on any tab. Adding something charges
+  its price, and removing an item, amp or skill point gives its book price back
+  to spend again. Every change is logged in the ledger by itself, for the GM.
+  The level-of-play creation caps apply only before Finalize. The balance is
+  the creation budget plus earnings minus what the current build costs. Record
+  earnings on the Ledger tab; a wrong one is undone by voiding it. **Reopen
+  creation** (Review tab) works until earnings are recorded. Runners finalized
+  before 0.5.5 convert when opened: their history and earnings stay, and so
+  does their balance.
 - **Printable sheet** laid out like the official one: weapons (with any DVs by
   ammunition their book text lists) and spells in sections of their own,
   languages and knowledge at the bottom. Your browser’s “Save as PDF” makes the PDF.

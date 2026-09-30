@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ampCtx, ampEssence, ampFromTemplate, ampRating, currentBuild, makeAmpAdd, makeAmpModify, makeBuy, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating, vehicleStats } from '../../engine'
 import type { AmpEntry, ItemEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
@@ -11,8 +11,8 @@ import { AmpBuilder } from './AmpBuilder'
 type Editing = { amp: AmpEntry; item?: ItemEntry; before?: AmpEntry }
 
 export function AmpsTab() {
-  const { c, ch, v, edit, record, career } = useEditor()
-  const b = career ? currentBuild(ch) : ch.build
+  const { c, ch, v, edit } = useEditor()
+  const b = ch.build
   const [choosing, setChoosing] = useState(false)
   const [editing, setEditing] = useState<Editing | null>(null)
 
@@ -41,18 +41,15 @@ export function AmpsTab() {
     setEditing({ amp: { uid: newId(), type, name: '', narrative: '', effects: [], vehicle: type === 'vehicle' ? 'small-drone' : undefined } })
   }
 
-  const save = async (amp: AmpEntry) => {
+  const save = (amp: AmpEntry) => {
     const e = editing!
     setEditing(null)
-    if (!career) return edit(x => {
+    edit(x => {
       if (e.item && !x.build.items.some(i => i.uid === e.item!.uid)) x.build.items.push(e.item)
       const at = x.build.amps.findIndex(a => a.uid === amp.uid)
       if (at >= 0) x.build.amps[at] = amp
       else x.build.amps.push(amp)
     })
-    if (e.before) return void record(makeAmpModify(c, ch, amp), `Change ${amp.name}`)
-    if (e.item && !(await record(makeBuy(c, e.item), `Buy ${e.item.name} (base item for the amp)`))) return
-    await record(makeAmpAdd(c, ch, amp), `Add ${amp.name}`)
   }
 
   const types = [...c.ampTypes.values()]
@@ -72,7 +69,7 @@ export function AmpsTab() {
             <h3>{t.id === 'contact' ? 'Contacts' : t.name}</h3>
             <div className="scroll-x"><table className="data fixed"><colgroup><col /><col style={{ width: '6.5rem' }} /><col style={{ width: '7rem' }} /><col style={{ width: '5.5rem' }} /><col style={{ width: '9.5rem' }} /></colgroup><tbody>
               {list.map(a => {
-                const r = ampRating(c, a, ampCtx(b, a))
+                const r = ampRating(c, a, ampCtx(b, a, c))
                 const probs = problems(a)
                 const tpl = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
                 return (
@@ -86,8 +83,8 @@ export function AmpsTab() {
                     <td className="num">{fmt(r * c.pricing.ampPoint)}</td>
                     <td className="num">{ampEssence(c, a) ? `Ess −${ampEssence(c, a)}` : ''}</td>
                     <td className="num">
-                      <button className="btn small quiet" onClick={() => setEditing({ amp: a, before: a })}>{career ? 'Improve' : 'Edit'}</button>
-                      {!career && <button className="btn small quiet" onClick={() => edit(x => { x.build.amps = x.build.amps.filter(z => z.uid !== a.uid) })}>Remove</button>}
+                      <button className="btn small quiet" onClick={() => setEditing({ amp: a, before: a })}>Edit</button>
+                      <button className="btn small quiet" onClick={() => edit(x => { x.build.amps = x.build.amps.filter(z => z.uid !== a.uid) })}>Remove</button>
                     </td>
                   </tr>
                 )
