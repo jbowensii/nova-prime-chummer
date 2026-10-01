@@ -23,9 +23,15 @@
 .sheet th { text-align: left; font-weight: 700; font-size: 8pt; color: var(--s-indigo); text-transform: uppercase; border-bottom: 1.5px solid var(--s-indigo); padding: 0.1rem 0.25rem; }
 .sheet td { padding: 0.12rem 0.25rem; border-bottom: 1px solid #e3e1da; vertical-align: top; }
 .sheet tr.spec td:first-child { padding-left: 1rem; color: var(--s-ink-2); }
+/* page 1 is its own block: page 2 starts at Shadow Amps */
+.s-page1 { break-after: page; }
+/* the logo on its yellow/rust paint swish on the sheet too, whatever the texture setting; backgrounds print */
+.s-head .brand { color: var(--s-ink); font-size: 0.9rem; }
+.s-head .brand b { color: #fff; background: var(--stroke) center / 100% 100% no-repeat; text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 /* the top: name over the attributes on the left, the portrait (over its backdrop) reaching down beside them */
 .s-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-.s-top > .portrait { grid-column: 2; grid-row: 1 / span 2; width: 8.5rem; height: 8.5rem; margin-left: 1rem; object-fit: cover;
+.s-top > .portrait { grid-column: 2; grid-row: 1 / span 2; width: 11.5rem; height: 11.5rem; margin-left: 1rem; object-fit: cover;
   background: var(--bd, none); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .s-head { grid-column: 1; display: flex; justify-content: space-between; align-items: start; gap: 1rem; border-bottom: 4px solid var(--s-yellow); padding-bottom: 0.4rem; }
 .s-label { font-size: 8pt; color: var(--s-ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -80,7 +86,7 @@
 @media (max-width: 700px) {
   .s-cols { grid-template-columns: 1fr; }
   .s-attrs { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .s-top > .portrait { grid-row: 1; width: 6rem; height: 6rem; }
+  .s-top > .portrait { grid-row: 1; width: 7.5rem; height: 7.5rem; }
 }
 @media print {
   @page { margin: 12mm; }

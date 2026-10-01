@@ -54,11 +54,13 @@ export function Sheet() {
       <article className="sheet">
         {artId && <div className={`sheet-art${s.sheetArt === 'on' ? '' : ' no-screen'}${s.sheetArtPrint === 'on' ? '' : ' no-print'}`} aria-hidden="true"
           style={{ opacity: strength / 100 }}><div style={{ backgroundImage: `url("${artSrc(artId)}")` }} /></div>}
+        <div className="s-page1">
         <div className="s-top">
         <header className="s-head">
           <div><div className="s-label">Street name</div><h1>{name}</h1>
             <div className="s-role">{c.metatypes.get(ch.identity.metatype)?.name}{ch.narrative.keywords[2] ? `, ${ch.narrative.keywords[2]}` : ''}</div>
             {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
+          <span className="brand" role="img" aria-label="Chummer Anarchy 2.0">Chummer <b>Anarchy</b> 2.0</span>
         </header>
         {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
         <section className="s-attrs">
@@ -81,6 +83,18 @@ export function Sheet() {
                 ))}
               </tbody>
             </table>
+            <section className="s-know">
+              <h2>Languages & knowledge</h2>
+              <p className="s-small s-screen">Knowledge skills have no rating; the GM picks a Skill + Attribute, usually Logic, if a test is needed.</p>
+              <div className="s-know-cols">
+                <div><h3>Languages</h3>
+                  <ul className={langs.length > 6 ? 'two' : undefined}>{langs.map(k => <li key={k.key}>{k.name}{k.native && <span className="s-small"> (native)</span>}</li>)}</ul>
+                  {!langs.length && <p>—</p>}</div>
+                <div><h3>Knowledge</h3>
+                  <ul className={know.length > 6 ? 'two' : undefined}>{know.map(k => <li key={k.key}>{k.name}</li>)}</ul>
+                  {!know.length && <p>—</p>}</div>
+              </div>
+            </section>
           </section>
 
           <section>
@@ -113,6 +127,7 @@ export function Sheet() {
               {d.essenceEffects.socialDisadvantage && ' Disadvantage on most social Tests.'}</p>
             {d.initiative && <p className="s-small">Initiative enhancement {d.initiative.level}{d.initiative.realm ? ` (${d.initiative.realm} only)` : ''}: {d.initiative.source}.</p>}
           </section>
+        </div>
         </div>
 
         <section>
@@ -177,18 +192,6 @@ export function Sheet() {
           </section>
         </div>
         {ch.identity.background && <section><h2>Background</h2><p>{ch.identity.background}</p></section>}
-        <section className="s-know">
-          <h2>Languages & knowledge</h2>
-          <p className="s-small s-screen">Knowledge skills have no rating; the GM picks a Skill + Attribute, usually Logic, if a test is needed.</p>
-          <div className="s-know-cols">
-            <div><h3>Languages</h3>
-              <ul className={langs.length > 6 ? 'two' : undefined}>{langs.map(k => <li key={k.key}>{k.name}{k.native && <span className="s-small"> (native)</span>}</li>)}</ul>
-              {!langs.length && <p>—</p>}</div>
-            <div><h3>Knowledge</h3>
-              <ul className={know.length > 6 ? 'two' : undefined}>{know.map(k => <li key={k.key}>{k.name}</li>)}</ul>
-              {!know.length && <p>—</p>}</div>
-          </div>
-        </section>
       </article>
     </div>
   )
