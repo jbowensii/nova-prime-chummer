@@ -100,7 +100,7 @@ own API key), and you review its entries before they’re added.
   switches turn the book’s optional rules on or off, and the GM can add house
   rules. Players get a read-only **Table rules** page listing what’s on.
 - **Foundry VTT.** Runners and book data export as one JSON file for the Foundry importer module
-  (sra2 system; the module is coming next, in [jbowensii/chummer-anarchy2-foundry](https://github.com/jbowensii/chummer-anarchy2-foundry)).
+  (sra2 system; install it in Foundry from [jbowensii/chummer-anarchy2-foundry](https://github.com/jbowensii/chummer-anarchy2-foundry) by its manifest URL, https://github.com/jbowensii/chummer-anarchy2-foundry/releases/latest/download/module.json).
   **Export for Foundry** in the runner editor, or **Export for Foundry…** on the runner list (tick runners, All/None,
   or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors tick
   books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
