@@ -105,7 +105,7 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
       <div><button className="btn primary" disabled={!picked.size || busy} onClick={() => void download()}>Download book data</button></div>
       {err && <p className="err" role="alert">Couldn’t build the book data: {err}</p>}
       {skipped.length > 0 && <div role="status"><p>Downloaded without these sample characters:</p>
-        <ul>{skipped.map(b => <li key={b}>{b}</li>)}</ul></div>}
+        <ul>{skipped.map((b, i) => <li key={i}>{b}</li>)}</ul></div>}
     </section>
   )
 }

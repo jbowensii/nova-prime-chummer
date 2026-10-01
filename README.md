@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.6.1 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.6.2 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -103,7 +103,7 @@ own API key), and you review its entries before they’re added.
   (sra2 system; the module is coming next, in [jbowensii/chummer-anarchy2-foundry](https://github.com/jbowensii/chummer-anarchy2-foundry)).
   **Export for Foundry** in the runner editor, or **Export for Foundry…** on the runner list (tick runners, All/None,
   or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors tick
-  books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on.
+  books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
   **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
   The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
 
