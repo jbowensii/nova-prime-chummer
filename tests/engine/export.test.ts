@@ -141,6 +141,14 @@ describe('export: sections, metatypes, skills', () => {
       mine.forEach((k, i) => expect(b.skills[i].specs.map(p => p.id)).toEqual(k.specs.filter(p => !p.source || p.source === b.source.id).map(p => p.id)))
     }
   })
+  test('a book’s sample characters go out as runners, under that book only', () => {
+    const ch = rush(), f = exportBooks(cat, ['TEST', 'TESTC'], [], OPTS, { TESTC: [ch] })
+    const [test, testc] = f.books!
+    expect(test.characters).toBeUndefined()
+    expect(testc.characters).toEqual(exportRunners(cat, [ch], OPTS).runners)
+    expect(testc.characters![0].streetName).toBe('Test Runner')
+    expect(exportBooks(cat, ['TEST'], [], OPTS).books![0].characters).toBeUndefined()
+  })
 })
 
 describe('export: bonuses and vehicles', () => {
@@ -205,6 +213,11 @@ describe('export: the schema', () => {
     b.metatypes = [{ id: 'm', source: 'TEST', page: 1, canon: false, name: 'M', edge: 2, ranges: { str: [1, 5] }, racialQuality: '' }]
     expect(check(f), JSON.stringify(check.errors)).toBe(true)
     b.metatypes[0].edge = 'two'
+    expect(check(f)).toBe(false)
+    b.metatypes[0].edge = 2
+    b.characters = [runners().runners[0]]
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.characters[0].streetName = 5
     expect(check(f)).toBe(false)
   })
   test('a wrong format, version or kind is not', () => {

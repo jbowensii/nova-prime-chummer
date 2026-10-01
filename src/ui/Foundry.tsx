@@ -6,6 +6,7 @@ import type { Catalog, Character } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { loadTableRules, tableRulesForExport } from './TableRules'
 import type { Campaign } from './Campaigns'
+import { bookSamples, readSample } from './samples'
 
 export const exportOpts = (descriptions: boolean): ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })
 const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD
@@ -64,11 +65,24 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
   const [desc, setDesc] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [skipped, setSkipped] = useState<string[]>([])
   const download = async () => {
-    setBusy(true); setErr('')
+    setBusy(true); setErr(''); setSkipped([])
     try {
       const rules = tableRulesForExport(c, await loadTableRules({ strict: true }))
-      downloadJson(booksFileName(new Date()), exportBooks(c, all.filter(s => picked.has(s.id)).map(s => s.id), rules, exportOpts(desc)))
+      const ids = all.filter(s => picked.has(s.id)).map(s => s.id)
+      // the ticked books' own sample characters (source matched case-insensitively); one that can't be read is left out and named
+      const byLower = new Map(ids.map(id => [id.toLowerCase(), id]))
+      const characters: Record<string, Character[]> = {}, bad: string[] = []
+      for (const s of await bookSamples(() => undefined)) {
+        const id = byLower.get((s.source ?? '').toLowerCase())
+        if (!id) continue
+        const r = await readSample(s.url)
+        if (r.ok) (characters[id] ??= []).push(r.character)
+        else bad.push(`${s.name || s.url.split('/').pop()} (${id}): ${r.reason}`)
+      }
+      downloadJson(booksFileName(new Date()), exportBooks(c, ids, rules, exportOpts(desc), characters))
+      setSkipped(bad)
     } catch (e) { setErr(e instanceof Error ? e.message : String(e))
     } finally { setBusy(false) }
   }
@@ -90,6 +104,8 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
         <span>Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span></span></label>
       <div><button className="btn primary" disabled={!picked.size || busy} onClick={() => void download()}>Download book data</button></div>
       {err && <p className="err" role="alert">Couldn’t build the book data: {err}</p>}
+      {skipped.length > 0 && <div role="status"><p>Downloaded without these sample characters:</p>
+        <ul>{skipped.map(b => <li key={b}>{b}</li>)}</ul></div>}
     </section>
   )
 }
