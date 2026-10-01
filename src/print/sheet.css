@@ -23,9 +23,15 @@
 .sheet th { text-align: left; font-weight: 700; font-size: 8pt; color: var(--s-indigo); text-transform: uppercase; border-bottom: 1.5px solid var(--s-indigo); padding: 0.1rem 0.25rem; }
 .sheet td { padding: 0.12rem 0.25rem; border-bottom: 1px solid #e3e1da; vertical-align: top; }
 .sheet tr.spec td:first-child { padding-left: 1rem; color: var(--s-ink-2); }
+/* page 1's block: the flow decides where the page ends */
+.sheet h2 { break-after: avoid; }
+/* the logo on its yellow/rust paint swish on the sheet too, whatever the texture setting; backgrounds print */
+.s-head .brand { color: var(--s-ink); font-size: 0.9rem; }
+.s-head .brand b { color: #fff; background: var(--stroke) center / 100% 100% no-repeat; text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 /* the top: name over the attributes on the left, the portrait (over its backdrop) reaching down beside them */
 .s-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-.s-top > .portrait { grid-column: 2; grid-row: 1 / span 2; width: 8.5rem; height: 8.5rem; margin-left: 1rem; object-fit: cover;
+.s-top > .portrait { grid-column: 2; grid-row: 1 / span 2; width: 11.5rem; height: 11.5rem; margin-left: 1rem; object-fit: cover;
   background: var(--bd, none); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .s-head { grid-column: 1; display: flex; justify-content: space-between; align-items: start; gap: 1rem; border-bottom: 4px solid var(--s-yellow); padding-bottom: 0.4rem; }
 .s-label { font-size: 8pt; color: var(--s-ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -55,7 +61,6 @@
 :root[data-print='color'] .sheet h2 { background: var(--s-indigo); color: #fff; border: 0; padding: 0.2rem 0.4rem; }
 :root[data-print='color'] .sheet th { background: var(--s-yellow); color: var(--s-ink); border: 0; }
 :root[data-print='color'] .sheet tbody tr:nth-child(even) td { background: var(--s-cream); }
-:root[data-print='color'] .s-head { background: var(--stroke) right top / 42% 2.2rem no-repeat; }
 :root[data-print='color'] .s-role { background: var(--s-rust); color: #fff; padding: 0.05rem 0.4rem; }
 :root[data-print='color'] .s-attrs div { background: #fff; }
 
@@ -80,7 +85,7 @@
 @media (max-width: 700px) {
   .s-cols { grid-template-columns: 1fr; }
   .s-attrs { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .s-top > .portrait { grid-row: 1; width: 6rem; height: 6rem; }
+  .s-top > .portrait { grid-row: 1; width: 7.5rem; height: 7.5rem; }
 }
 @media print {
   @page { margin: 12mm; }
@@ -93,3 +98,7 @@
   .sheet-wrap { padding: 0; }
   .sheet { box-shadow: none; padding: 0; max-width: none; }
 }
+.sheet-art-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 1rem; border: 0; padding: 0; margin: 0; }
+.sheet-art-pick legend { float: left; padding: 0; margin-right: 1rem; }
+.sheet-art-pick label.check { margin: 0; align-items: center; }
+.sheet-art-pick img { width: 3rem; height: 2rem; object-fit: cover; border: 1px solid currentColor; border-radius: 3px; }

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
+import { balance, blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { AccountMenu, because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
-import { Brand, Modal, NonCanon, StateBadge } from './bits'
+import { Brand, Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from './bits'
 import { useRepo, type Stored, type Unreadable } from './repo'
 import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
@@ -245,7 +245,7 @@ export function Library({ c }: { c: Catalog }) {
   const rows = arrange(mine.filter(shown), sort, q)
 
   const others = ownerGroups((list ?? []).filter(s => shown(s) && !mine.includes(s)), unreadable.filter(u => u.owner && u.owner !== me?.username), sort, q)
-  const dossier = ({ ch, rev }: Stored, own: boolean) => (
+  const dossier = ({ ch, rev }: Stored, own: boolean) => { const bal = balance(c, ch); return (
     <div className="dossier" key={ch.id}>
       <Face ch={ch} />
       <div>
@@ -253,7 +253,9 @@ export function Library({ c }: { c: Catalog }) {
         <div className="meta">
           {[c.metatypes.get(ch.identity.metatype)?.name ?? ch.identity.metatype, c.levels.get(ch.level)?.name ?? ch.level].filter(Boolean).join(', ')}
           {' '}<StateBadge finalized={!!ch.finalizedAt} />
-          {ch.origin && !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>}
+          {ch.origin ? !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>
+            : !ch.sampleKey && <> <UserDefined /></>}
+          {bal < 0 && <> <OverspentChip by={-bal} /></>}
           {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
           {campaignOf(ch) && <> <a className="ctag" href={`#/campaigns/${ch.campaign}`} title="Campaign">{campaignOf(ch)!.name}</a></>}
         </div>
@@ -268,7 +270,7 @@ export function Library({ c }: { c: Catalog }) {
         <button className="btn small" onClick={() => exportCharacter(c, ch)}>Export</button>
       </div>}
     </div>
-  )
+  ) }
 
   return (
     <main className="lib">

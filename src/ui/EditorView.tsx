@@ -10,7 +10,7 @@ import { downloadRunners } from './Foundry'
 import { useRepo } from './repo'
 import { newId } from '../model/types'
 import { Receipt } from './Receipt'
-import { SettingsButton } from './settings'
+import { loadSettings, SettingsButton } from './settings'
 import { AmpsTab } from './tabs/Amps'
 import { AttributesTab } from './tabs/Attributes'
 import { ConceptTab } from './tabs/Concept'
@@ -19,6 +19,7 @@ import { LedgerTab } from './tabs/Ledger'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
+import { BookSheet } from '../print/BookSheet'
 import { AskButton, AskRules } from './AskRules'
 import { Face } from './Portrait'
 
@@ -213,7 +214,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
   const tabs = TABS.filter(([k]) => k !== 'ledger' || career)
 
-  if (tab === 'print') return <Editor.Provider value={ctx}><Sheet /></Editor.Provider>
+  if (tab === 'print') return <Editor.Provider value={ctx}>{loadSettings().print === 'book' ? <BookSheet /> : <Sheet />}</Editor.Provider>
 
   return (
     <Editor.Provider value={ctx}>

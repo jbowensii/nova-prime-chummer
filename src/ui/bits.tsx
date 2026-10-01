@@ -18,6 +18,13 @@ export function Stepper({ value, min, max, onChange, label }: { value: number; m
 export const NonCanon = ({ source }: { source?: string }) =>
   <span className="noncanon" title={`Published, not canon${source ? ` (${source})` : ''}`}>Non-canon</span>
 
+/** A runner the player made (not an example or an import of a book's). */
+export const UserDefined = () => <span className="noncanon userdef" title="Made by a player, not a book example">User defined</span>
+
+/** Red chip on an overspent runner; its accessible name says by how much. */
+export const OverspentChip = ({ by }: { by: number }) =>
+  <span className="noncanon overspent" role="img" aria-label={`Error: overspent by ${fmt(by)}`} title={`Overspent by ${fmt(by)}`}>Error</span>
+
 /** A runner's state, in the Non-canon badge's family: a draft still in creation (reopens where it was left), or
  *  finalized (career). */
 export const StateBadge = ({ finalized }: { finalized: boolean }) =>

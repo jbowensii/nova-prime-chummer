@@ -1,7 +1,7 @@
 {
   "name": "chummer-anarchy2",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "serve": "npm run build && node server/server.mjs"
   },
   "dependencies": {
+    "@fontsource/caveat": "^5.3.0",
     "@fontsource/crimson-pro": "^5.3.0",
     "@fontsource/goldman": "^5.3.0",
     "@fontsource/permanent-marker": "^5.3.0",

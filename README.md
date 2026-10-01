@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.6.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.6.1 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -45,7 +45,9 @@ own API key), and you review its entries before they’re added.
   that fails turns red with the server’s reason and a **Retry**, and leaving
   the page asks first.
 - **Runner list** in A–Z order (or Z–A, or recently edited), with a search
-  box and a **Draft** / **Finalized** badge on each runner. A file the app
+  box and a **Draft** / **Finalized** badge on each runner. A blue **User
+  defined** chip marks runners you made (copies of examples count) and a red
+  **Error** chip marks a runner that is overspent (“Overspent by N¥”). A file the app
   can’t read is listed with the reason, to download or repair.
 - **Finalize and the ledger.** Finalize is the last check of creation and
   starts the ledger with “Creation finished · N¥ left”. Nothing is locked:
@@ -60,8 +62,14 @@ own API key), and you review its entries before they’re added.
   before 0.5.5 convert when opened: their history and earnings stay, and so
   does their balance.
 - **Printable sheet** laid out like the official one: weapons (with any DVs by
-  ammunition their book text lists) and spells in sections of their own,
-  languages and knowledge at the bottom. Your browser’s “Save as PDF” makes the PDF.
+  ammunition their book text lists) and spells in sections of their own.
+  Languages and knowledge sit on page 1 under Skills, the portrait is bigger,
+  the logo sits on the yellow paint swish, and there is no forced page break.
+  The sheet’s background image can be chosen per runner (in this browser):
+  “Same as the app” or one of the admin’s images. **Settings → Printed sheet →
+  Book style** prints a one-page sheet laid out like the rulebook’s example
+  (free fonts, no book art); long runners flow onto a second page. Your
+  browser’s “Save as PDF” makes the PDF.
 - **Portrait** (Concept, **Add a portrait…**): a window to choose the picture,
   zoom and drag it into the square, and pick its backdrop: white, neutral grey,
   dark, or a built-in grid, halftone, neon or rain pattern, shown through the

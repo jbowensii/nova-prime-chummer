@@ -10,7 +10,7 @@ import { Modal } from './bits'
 /** artStrength: the background art's strength in %, 0–100 (100: app.css's own strengths, which keep text readable) */
 /** sheetArt / sheetArtPrint: the background art on the character sheet on screen / when printed; sheetArtStrength: its
  *  strength, the page's until set */
-export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color'; art: 'on' | 'off'; artStrength: number
+export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book'; art: 'on' | 'off'; artStrength: number
   sheetArt: 'on' | 'off'; sheetArtPrint: 'on' | 'off'; sheetArtStrength?: number }
 const KEY = 'ca2.settings.v1'
 export const DEFAULTS: Settings = { theme: 'light', texture: 'accents', print: 'plain', art: 'on', artStrength: 100, sheetArt: 'on', sheetArtPrint: 'off' }
@@ -40,7 +40,7 @@ export function saveSettings(s: Settings) {
 const GROUPS: { key: keyof Settings; label: string; options: [string, string, string][] }[] = [
   { key: 'theme', label: 'Theme', options: [['light', 'Book (light)', 'The printed page: paper, ink, rust and yellow.'], ['dark', 'Indigo (dark)', 'The book’s sidebar colors as a dark page.']] },
   { key: 'texture', label: 'Texture', options: [['flat', 'Flat', 'Colors and fonts only.'], ['accents', 'Accents', 'Paper grain, paint stroke, halftone panels.'], ['full', 'Full book', 'Adds graffiti tabs, a chapter tab and painted panel edges.']] },
-  { key: 'print', label: 'Printed sheet', options: [['plain', 'Printer-friendly', 'Book styling on white, no textures.'], ['color', 'Full color', 'Paper and paint, like a page from the PDF.']] },
+  { key: 'print', label: 'Printed sheet', options: [['plain', 'Printer-friendly', 'Book styling on white, no textures.'], ['color', 'Full color', 'Paper and paint, like a page from the PDF.'], ['book', 'Book style', 'Laid out like the rulebook’s example sheet.']] },
   { key: 'art', label: 'Background', options: [['on', 'Show background art', 'The admin’s images, faint behind every page.'], ['off', 'Plain page', 'No background art in this browser.']] },
 ]
 

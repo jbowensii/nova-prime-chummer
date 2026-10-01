@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
-import { stripes } from '../tests/png'
+import { makePng, stripes } from '../tests/png'
 
 // Background art end to end, on a server of its own: Ada (admin) uploads a generated test image (no artwork is committed)
 // in Settings; it shows faintly behind the pages for her and for Pat (a player), never when printing, and not in a browser
@@ -129,4 +129,40 @@ test('the admin deletes it after a confirm', async ({ page }) => {
   await c.getByRole('button', { name: 'Delete' }).click()
   await expect(d.getByRole('group', { name: 'Background art' }).getByRole('status')).toContainText('Deleted test-stripes.png.')
   await expect(art(page)).toHaveCount(0)
+})
+
+test('the sheet lets the player choose the background image, remembered per runner', async ({ page }) => {
+  await signIn(page, 'ada')
+  const up = (name: string, rgb: number[]) => page.evaluate(async ([n, png]) => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png as number[]),
+    headers: { 'Content-Type': 'image/png', 'X-Filename': n as string } })).json()).id as string, [name, [...makePng(8, 8, () => rgb)]] as const)
+  const ids: string[] = []
+  try {
+    ids.push(await up('pick-one.png', [200, 40, 40]))
+    ids.push(await up('pick-two.png', [40, 40, 200]))
+    const enabled: string[] = await page.evaluate(async () => (await (await fetch('./api/backgrounds')).json()).enabled)
+    const runner = async (name: string) => {
+      await page.goto('/')
+      await page.getByRole('button', { name: 'New runner' }).click()
+      await page.getByRole('button', { name: 'Create runner' }).click()
+      await page.getByLabel('Street name').fill(name)
+      await page.waitForTimeout(600)
+      await page.getByRole('link', { name: 'Print' }).click()
+    }
+    const picker = page.getByRole('group', { name: 'Background image' }), layer = page.locator('.sheet-art > div')
+    await runner('Pick A')
+    await expect(picker.getByRole('radio', { name: 'Same as the app' })).toBeChecked()
+    await expect(picker.getByRole('radio')).toHaveCount(1 + enabled.length)
+    await picker.getByRole('radio', { name: 'Background image 2' }).check()
+    await expect(layer).toHaveAttribute('style', new RegExp(enabled[1]))
+    await page.reload()
+    await expect(picker.getByRole('radio', { name: 'Background image 2' })).toBeChecked()
+    await expect(layer).toHaveAttribute('style', new RegExp(enabled[1]))
+    await page.getByLabel('Background art', { exact: true }).uncheck()
+    await expect(picker).toHaveCount(0)
+    await page.getByLabel('Background art', { exact: true }).check()
+    await runner('Pick B')
+    await expect(picker.getByRole('radio', { name: 'Same as the app' })).toBeChecked()
+  } finally {
+    for (const id of ids) await page.evaluate(id => fetch(`./api/backgrounds/${id}`, { method: 'DELETE' }), id)
+  }
 })
