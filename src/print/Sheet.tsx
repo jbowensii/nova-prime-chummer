@@ -1,76 +1,29 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
-import { ampCtx, ampEssence, ampRating, knowledgeList, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
 import { bdClass, printBackdrop } from '../ui/Portrait'
-import { artSrc, useArtId, useArtIds } from '../ui/Background'
-import { loadSettings, saveSettings, type Settings } from '../ui/settings'
-import { useEffect, useState } from 'react'
+import { ampLines, lists, RISK, useSheetArt } from './shared'
 import './sheet.css'
-
-const RISK = [['1 die', '2 dice', '4 dice', '6+ dice'], ['3 dice', '5 dice', '7 dice', '10+ dice'], ['5 dice', '8 dice', '11 dice', '13+ dice'], ['8 dice', '12 dice', '15 dice', 'N/A']]
 
 export function Sheet() {
   const { c, ch, d, balance } = useEditor()
   const b = d.build
   const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
   const item = (uid?: string) => b.items.find(i => i.uid === uid)
-  const effectText = (ref: string, param?: string, value?: number, n = 1) => {
-    const def = c.ampEffects.get(ref)
-    const skill = param && (c.skills.get(param)?.name ?? (() => { const s = c.skills.get(param.split('.')[0]); const sp = s?.specs.find(x => x.id === param); return sp && `${s!.name} (${sp.name})` })())
-    const who = skill || (param && (c.attributes.get(param as never)?.name ?? param.replace(/^custom:/, '')))
-    if (ref === 'rr-spec' || ref === 'rr-skill' || ref === 'rr-attr') return `RR ${n} on ${who ?? '(to choose)'} Tests`
-    if (ref === 'negative') return `Drawback (−${value ?? 1})`
-    return `${def?.name ?? ref}${param && ref !== 'narrative' ? `: ${param}` : ''}`
-  }
-  const spells = b.items.filter(i => i.kind === 'spell' || i.kind === 'complex-form')
-  // in the player's order, hidden rows left off
-  const shown = (kind: 'knowledge' | 'language') => knowledgeList(d.knowledge, kind, b.knowledgeOrder).filter(k => !k.hidden)
-  const gear = b.items.filter(i => i.kind === 'gear' || (i.kind === 'armor' && i.uid !== b.mainArmor && i.uid !== b.altArmor))
-  const langs = shown('language'), know = shown('knowledge')
-  // background art on the sheet: this browser's own switches (screen on, print off by default), the page's strength until set
-  const artId = useArtId()
-  const [s, setS] = useState(loadSettings)
-  const set = (patch: Partial<Settings>) => { const next = { ...loadSettings(), ...patch }; setS(next); saveSettings(next) }
-  const strength = s.sheetArtStrength ?? s.artStrength
-  // which image: this runner's pick in this browser (ignored once that image is off), else the app's
-  const ids = useArtIds(), key = `ca2.sheetArt.${ch.id}`
-  const read = () => { try { return localStorage.getItem(key) } catch { return null } }
-  const [pick, setPick] = useState(read)
-  useEffect(() => setPick(read()), [key]) // eslint-disable-line react-hooks/exhaustive-deps -- another runner: its own pick
-  const choose = (id: string | null) => {
-    setPick(id)
-    try { id ? localStorage.setItem(key, id) : localStorage.removeItem(key) } catch { /* private mode: this visit only */ }
-  }
-  const mine = pick && ids.includes(pick) ? pick : null
-  const shownId = mine ?? artId
+  const { langs, know, spells, gear } = lists(d, b)
+  const art = useSheetArt(ch.id)
 
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
         <a className="btn" href={`#/c/${ch.id}/review`}>Back to editing</a>
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button>
-        {artId && <fieldset className="sheet-art-tools">
-          <legend className="sr-only">Background art on the sheet</legend>
-          <label className="check"><input type="checkbox" checked={s.sheetArt === 'on'} onChange={e => set({ sheetArt: e.target.checked ? 'on' : 'off' })} />Background art</label>
-          <label className="check"><input type="checkbox" checked={s.sheetArtPrint === 'on'} onChange={e => set({ sheetArtPrint: e.target.checked ? 'on' : 'off' })} />Print it</label>
-          <label className="art-strength">Art strength
-            <input type="range" min={0} max={100} step={5} value={strength} aria-valuetext={`${strength}%`} disabled={s.sheetArt === 'off' && s.sheetArtPrint === 'off'}
-              onChange={e => set({ sheetArtStrength: Number(e.target.value) })} />
-            <output>{strength}%</output>
-          </label>
-        </fieldset>}
-        {artId && s.sheetArt === 'on' && ids.length > 0 && <fieldset className="sheet-art-pick">
-          <legend>Background image</legend>
-          <label className="check"><input type="radio" name="sheet-art-pick" checked={!mine} onChange={() => choose(null)} />Same as the app</label>
-          {ids.map((id, i) => <label key={id} className="check"><input type="radio" name="sheet-art-pick" aria-label={`Background image ${i + 1}`}
-            checked={mine === id} onChange={() => choose(id)} /><img src={artSrc(id)} alt="" /></label>)}
-        </fieldset>}
+        {art.tools}
       </div>
       <article className="sheet">
-        {shownId && <div className={`sheet-art${s.sheetArt === 'on' ? '' : ' no-screen'}${s.sheetArtPrint === 'on' ? '' : ' no-print'}`} aria-hidden="true"
-          style={{ opacity: strength / 100 }}><div style={{ backgroundImage: `url("${artSrc(shownId)}")` }} /></div>}
+        {art.layer}
         <div className="s-page1">
         <div className="s-top">
         <header className="s-head">
@@ -156,8 +109,7 @@ export function Sheet() {
                 <tr key={a.uid}>
                   <td><b>{a.name}</b> {!a.name.toLowerCase().includes(a.type) && <span className="s-small">({c.ampTypes.get(a.type)?.name.toLowerCase()})</span>}
                     {a.narrative && <div className="s-small">{a.narrative}</div>}
-                    {[...a.effects.filter(e => e.ref !== 'narrative' || e.param).reduce((m, e) => { const k = `${e.ref}|${e.param}|${e.value}`; m.set(k, [e, (m.get(k)?.[1] ?? 0) + 1]); return m }, new Map<string, [typeof a.effects[number], number]>()).values()]
-                      .map(([e, n], i) => <div key={i} className="s-small" title={ruleHelp(c, e.ref)}>{effectText(e.ref, e.param, e.value, n)}{!e.ref.startsWith('rr-') && n > 1 ? ` ×${n}` : ''}</div>)}
+                    {ampLines(c, a).map(({ e, text }, i) => <div key={i} className="s-small" title={ruleHelp(c, e.ref)}>{text}</div>)}
                   </td>
                   <td className="s-src">{(t => t ? <SourceLabel c={c} source={t.source} page={t.page} id={t.id} /> : <SourceLabel builtByYou />)(a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined)}</td>
                   <td>{ampEssence(c, a) || ''}</td><td><b>{ampRating(c, a, ampCtx(b, a, c))}</b></td>
