@@ -28,6 +28,9 @@ test('print sheet page 1: knowledge under Skills, bigger portrait, logo on the s
     const skills = await first.getByRole('heading', { name: 'Skills' }).boundingBox()
     const know = await first.locator('.s-know').boundingBox()
     expect(know!.y).toBeGreaterThan(skills!.y)
+    expect(know!.x).toBeGreaterThanOrEqual(skills!.x - 1)
+    expect(know!.x + know!.width).toBeLessThanOrEqual(skills!.x + skills!.width + 1)
+    expect(await first.evaluate(e => getComputedStyle(e).breakAfter)).not.toBe('page') // the flow decides, no forced break
     expect((await page.locator('.s-top > img.portrait').boundingBox())!.width).toBeGreaterThanOrEqual(144) // 9rem
     const logo = page.locator('.s-head .brand b')
     await expect(logo).toHaveText('Anarchy')
@@ -39,7 +42,7 @@ test('print sheet page 1: knowledge under Skills, bigger portrait, logo on the s
     await check()
     await page.screenshot({ path: `${SHOTS}/print-page1-${t}.png`, fullPage: true })
   }
-  await page.evaluate(t => { document.documentElement.dataset.theme = 'light' }, 0)
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'light' })
   await page.emulateMedia({ media: 'print' })
   await check()
   await page.screenshot({ path: `${SHOTS}/print-page1-print.png`, fullPage: true })

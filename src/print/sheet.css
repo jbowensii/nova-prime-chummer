@@ -23,8 +23,8 @@
 .sheet th { text-align: left; font-weight: 700; font-size: 8pt; color: var(--s-indigo); text-transform: uppercase; border-bottom: 1.5px solid var(--s-indigo); padding: 0.1rem 0.25rem; }
 .sheet td { padding: 0.12rem 0.25rem; border-bottom: 1px solid #e3e1da; vertical-align: top; }
 .sheet tr.spec td:first-child { padding-left: 1rem; color: var(--s-ink-2); }
-/* page 1 is its own block: page 2 starts at Shadow Amps */
-.s-page1 { break-after: page; }
+/* page 1's block: the flow decides where the page ends */
+.sheet h2 { break-after: avoid; }
 /* the logo on its yellow/rust paint swish on the sheet too, whatever the texture setting; backgrounds print */
 .s-head .brand { color: var(--s-ink); font-size: 0.9rem; }
 .s-head .brand b { color: #fff; background: var(--stroke) center / 100% 100% no-repeat; text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
