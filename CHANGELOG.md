@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.6.1 — 2026-09-30: runner-list markers, print page 1, background picker, Book style sheet
+
+**Runner list**
+- A blue **User defined** chip marks runners you made yourself (copies of examples count).
+- A red **Error** chip marks a runner that is overspent, with the amount: “Overspent by N¥”.
+
+**Printed sheet**
+- Languages & Knowledge now sit on page 1 under Skills.
+- Bigger portrait, and the logo sits on the yellow paint swish.
+- No forced page break; the sheet flows naturally.
+- The sheet’s background image can be chosen per runner (kept in this browser): “Same as the app” or one of the
+  admin’s images.
+- **Settings → Printed sheet → Book style**: a one-page sheet laid out like the rulebook’s example, using free fonts
+  and no book art. Long runners flow onto a second page.
+
 ## 0.6.0 — 2026-09-30: export runners and book data for Foundry VTT
 
 **Runners**
