@@ -172,6 +172,11 @@ label.check input { width: auto; margin-top: 0.25rem; }
 .noncanon.runstate.final { background: var(--indigo); border-color: var(--indigo); color: #fff; }
 :root[data-theme='dark'] .noncanon.runstate.draft { border-color: #ff9d8c; color: #ff9d8c; }
 :root[data-theme='dark'] .noncanon.runstate.final { background: #4a4380; border-color: #4a4380; color: #fff; }
+/* User defined (medium blue) and the red Error chip on an overspent runner */
+.noncanon.userdef { border-color: #2f6fb3; color: #2f6fb3; }
+.noncanon.overspent { background: var(--err); border-color: var(--err); color: #fff; }
+:root[data-theme='dark'] .noncanon.userdef { border-color: #7db4ee; color: #7db4ee; }
+:root[data-theme='dark'] .noncanon.overspent { background: var(--err); border-color: var(--err); color: #1a1a1a; }
 /* source label (SourceLabel.tsx): "DHSA p.6", quiet; the book tag tells same-status duplicates apart */
 .srcline { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline; }
 .src { font-family: var(--sans); font-size: 0.8rem; color: var(--text-3); white-space: nowrap; }
