@@ -172,12 +172,12 @@ test('a runner saved from two browsers: conflict dialog, save mine as a new file
 test('runners saved in the browser move to the server on first load', async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => localStorage.setItem('ca2.library.v1', JSON.stringify([{ formatVersion: 1, id: 'legacy-1',
-    identity: { name: '', streetName: 'Old Timer', metatype: 'human', background: '', notes: '' },
+    identity: { name: '', streetName: 'Legacy Browser Runner', metatype: 'human', background: '', notes: '' },
     narrative: { keywords: [], dispositions: [], cues: [] }, level: 'runner', package: 'free',
     build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
     career: [], overrides: [], updatedAt: '2026-09-01T00:00:00Z' }])))
   await page.reload()
   await expect(page.getByRole('status').first()).toContainText('Moved 1 runner from this browser to the server')
-  await expect(page.getByRole('link', { name: 'Old Timer' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Legacy Browser Runner' })).toBeVisible()
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ca2.library.v1') ?? '[]').length)).toBe(0)
 })
