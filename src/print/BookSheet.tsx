@@ -21,6 +21,8 @@ export function BookSheet() {
   const b = d.build
   const street = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
   const item = (uid?: string) => b.items.find(i => i.uid === uid)
+  /** the item's category as the catalog (or its snapshot) gives it, in lower case as the book writes it: "heavy pistol" */
+  const category = (uid?: string) => { const it = item(uid); return (c.items.get(it?.catalogId ?? '') ?? it?.snapshot)?.category?.toLowerCase() }
   const { langs, know, spells, gear } = lists(d, b)
   const art = useSheetArt(ch.id)
   const lifestyle = c.lifestyles.get(ch.identity.lifestyle ?? 'low')?.name ?? 'Low'
@@ -57,10 +59,10 @@ export function BookSheet() {
               <thead><tr><th scope="col"><span className="sr-only">Skill</span></th><th scope="col">Rating</th><th scope="col">+Att.</th><th scope="col">= DP</th><th scope="col">RR</th></tr></thead>
               <tbody>
                 {d.pools.map((p, i) => {
-                  const alt = !p.spec && i > 0 && d.pools[i - 1].skill === p.skill
-                  return <tr key={i} className={p.spec || alt ? 'b-spec' : undefined}>
-                    <td>{p.spec ? `${p.label.replace(/^.*\(|\)$/g, '')} +2` : alt ? `(with ${p.attr.toUpperCase()})` : p.label}</td>
-                    <td>{p.spec || alt ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td><td><Dots n={p.rr} /></td>
+                  const under = !!p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) // as Sheet.tsx: indented, no rating
+                  return <tr key={i} className={under ? 'b-spec' : undefined}>
+                    <td>{p.spec ? `${p.label.replace(/^.*\(|\)$/g, '')} +2` : under && !d.pools[i - 1].spec ? `(with ${p.attr.toUpperCase()})` : p.label}</td>
+                    <td>{under ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td><td><Dots n={p.rr} /></td>
                   </tr>
                 })}
               </tbody>
@@ -95,10 +97,10 @@ export function BookSheet() {
                 <th scope="col"><span className="sr-only">Ranges</span></th><th scope="col">Type</th></tr></thead>
               <tbody>
                 {d.weapons.map(w => <tr key={w.uid}>
-                  <td><b>{w.name}</b> {[w.specialist && 'specialist', w.note, w.ammo && `by ammo: ${w.ammo.join(', ')}`].filter(Boolean).join(', ')}</td>
+                  <td><b>{w.name}</b> {[category(w.uid), w.specialist && 'specialist', w.note, w.ammo && `by ammo: ${w.ammo.join(', ')}`].filter(Boolean).join(', ')}</td>
                   <td><b>DV {w.dv}</b></td><td>{ranges(w.ranges)}</td><td>Weapon</td></tr>)}
                 {spells.map(x => { const cat = c.items.get(x.catalogId ?? '') ?? x.snapshot; return <tr key={x.uid}>
-                  <td><b>{x.name}</b> {cat?.category}</td><td /><td /><td>{x.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
+                  <td><b>{x.name}</b> {cat?.category?.toLowerCase()}</td><td /><td /><td>{x.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
               </tbody>
             </table>
           </section>
