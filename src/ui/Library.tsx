@@ -245,7 +245,7 @@ export function Library({ c }: { c: Catalog }) {
   const rows = arrange(mine.filter(shown), sort, q)
 
   const others = ownerGroups((list ?? []).filter(s => shown(s) && !mine.includes(s)), unreadable.filter(u => u.owner && u.owner !== me?.username), sort, q)
-  const dossier = ({ ch, rev }: Stored, own: boolean) => (
+  const dossier = ({ ch, rev }: Stored, own: boolean) => { const bal = balance(c, ch); return (
     <div className="dossier" key={ch.id}>
       <Face ch={ch} />
       <div>
@@ -255,7 +255,7 @@ export function Library({ c }: { c: Catalog }) {
           {' '}<StateBadge finalized={!!ch.finalizedAt} />
           {ch.origin ? !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>
             : !ch.sampleKey && <> <UserDefined /></>}
-          {balance(c, ch) < 0 && <> <OverspentChip by={-balance(c, ch)} /></>}
+          {bal < 0 && <> <OverspentChip by={-bal} /></>}
           {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
           {campaignOf(ch) && <> <a className="ctag" href={`#/campaigns/${ch.campaign}`} title="Campaign">{campaignOf(ch)!.name}</a></>}
         </div>
@@ -270,7 +270,7 @@ export function Library({ c }: { c: Catalog }) {
         <button className="btn small" onClick={() => exportCharacter(c, ch)}>Export</button>
       </div>}
     </div>
-  )
+  ) }
 
   return (
     <main className="lib">

@@ -61,7 +61,6 @@
 :root[data-print='color'] .sheet h2 { background: var(--s-indigo); color: #fff; border: 0; padding: 0.2rem 0.4rem; }
 :root[data-print='color'] .sheet th { background: var(--s-yellow); color: var(--s-ink); border: 0; }
 :root[data-print='color'] .sheet tbody tr:nth-child(even) td { background: var(--s-cream); }
-:root[data-print='color'] .s-head { background: var(--stroke) right top / 42% 2.2rem no-repeat; }
 :root[data-print='color'] .s-role { background: var(--s-rust); color: #fff; padding: 0.05rem 0.4rem; }
 :root[data-print='color'] .s-attrs div { background: #fff; }
 

@@ -126,7 +126,7 @@ test('the background art strength slider fades the layer, live, and is remembere
   }
 })
 
-test('character sheet: weapons and spells apart, knowledge at the bottom, portrait beside the attributes, its own art switches', async ({ page }) => {
+test('character sheet: weapons and spells apart, knowledge under the skills, portrait beside the attributes, its own art switches', async ({ page }) => {
   mkdirSync(SHOTS, { recursive: true })
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()

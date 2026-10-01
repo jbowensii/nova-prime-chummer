@@ -17,6 +17,8 @@
   -webkit-print-color-adjust: exact; print-color-adjust: exact; page: book;
 }
 .book-sheet .sheet-art { z-index: -1; }
+/* the art's veil in the paper's own colour, not white, so the book paper doesn't wash out to a flat white */
+.book-sheet .sheet-art::after { background: radial-gradient(ellipse at 50% 50%, rgb(245 243 238 / 93%) 40%, rgb(245 243 238 / 82%) 100%); }
 .b-paper { padding: 1.4rem 1.4rem 1rem 1.6rem; min-width: 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; } /* page 2 keeps its padding */
 .book-sheet h2 { font: 400 10pt/1.2 var(--b-label); text-transform: uppercase; letter-spacing: 0.04em; color: var(--b-rust); margin: 0.7rem 0 0.15rem; break-after: avoid; }
 .book-sheet p { margin: 0 0 0.15rem; max-width: none; }

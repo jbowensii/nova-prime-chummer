@@ -63,7 +63,7 @@ export function useSheetArt(runner: string): { tools: ReactNode; layer: ReactNod
           <output>{strength}%</output>
         </label>
       </fieldset>}
-      {artId && s.sheetArt === 'on' && ids.length > 0 && <fieldset className="sheet-art-pick">
+      {artId && (s.sheetArt === 'on' || s.sheetArtPrint === 'on') && ids.length > 0 && <fieldset className="sheet-art-pick">
         <legend>Background image</legend>
         <label className="check"><input type="radio" name="sheet-art-pick" checked={!mine} onChange={() => choose(null)} />Same as the app</label>
         {ids.map((id, i) => <label key={id} className="check"><input type="radio" name="sheet-art-pick" aria-label={`Background image ${i + 1}`}
