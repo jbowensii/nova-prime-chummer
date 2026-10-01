@@ -29,6 +29,18 @@ export function useArtId() {
 }
 export const artSrc = (id: string) => src(id)
 
+/** Every image that's on, for the sheet's picker (the admin's order). */
+export function useArtIds() {
+  const [ids, setIds] = useState<string[]>([])
+  useEffect(() => {
+    const load = () => fetch('./api/backgrounds', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => setIds(b?.enabled ?? []), () => {})
+    void load()
+    addEventListener(CHANGED, load)
+    return () => removeEventListener(CHANGED, load)
+  }, [])
+  return ids
+}
+
 export function BackgroundArt() {
   const id = useArtId()
   // the image in its own layer (dimmed by a filter), the page color over it (::after)

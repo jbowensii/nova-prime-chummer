@@ -4,7 +4,7 @@ import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { useEditor } from '../ui/editor'
 import { bdClass, printBackdrop } from '../ui/Portrait'
-import { artSrc, useArtId } from '../ui/Background'
+import { artSrc, useArtId, useArtIds } from '../ui/Background'
 import { loadSettings, saveSettings, type Settings } from '../ui/settings'
 import { useState } from 'react'
 import './sheet.css'
@@ -34,6 +34,15 @@ export function Sheet() {
   const [s, setS] = useState(loadSettings)
   const set = (patch: Partial<Settings>) => { const next = { ...loadSettings(), ...patch }; setS(next); saveSettings(next) }
   const strength = s.sheetArtStrength ?? s.artStrength
+  // which image: this runner's pick in this browser (ignored once that image is off), else the app's
+  const ids = useArtIds(), key = `ca2.sheetArt.${ch.id}`
+  const [pick, setPick] = useState(() => { try { return localStorage.getItem(key) } catch { return null } })
+  const choose = (id: string | null) => {
+    setPick(id)
+    try { id ? localStorage.setItem(key, id) : localStorage.removeItem(key) } catch { /* private mode: this visit only */ }
+  }
+  const mine = pick && ids.includes(pick) ? pick : null
+  const shownId = mine ?? artId
 
   return (
     <div className="sheet-wrap">
@@ -50,10 +59,16 @@ export function Sheet() {
             <output>{strength}%</output>
           </label>
         </fieldset>}
+        {artId && s.sheetArt === 'on' && ids.length > 0 && <fieldset className="sheet-art-pick">
+          <legend>Background image</legend>
+          <label className="check"><input type="radio" name="sheet-art-pick" checked={!mine} onChange={() => choose(null)} />Same as the app</label>
+          {ids.map((id, i) => <label key={id} className="check"><input type="radio" name="sheet-art-pick" aria-label={`Background image ${i + 1}`}
+            checked={mine === id} onChange={() => choose(id)} /><img src={artSrc(id)} alt="" /></label>)}
+        </fieldset>}
       </div>
       <article className="sheet">
-        {artId && <div className={`sheet-art${s.sheetArt === 'on' ? '' : ' no-screen'}${s.sheetArtPrint === 'on' ? '' : ' no-print'}`} aria-hidden="true"
-          style={{ opacity: strength / 100 }}><div style={{ backgroundImage: `url("${artSrc(artId)}")` }} /></div>}
+        {shownId && <div className={`sheet-art${s.sheetArt === 'on' ? '' : ' no-screen'}${s.sheetArtPrint === 'on' ? '' : ' no-print'}`} aria-hidden="true"
+          style={{ opacity: strength / 100 }}><div style={{ backgroundImage: `url("${artSrc(shownId)}")` }} /></div>}
         <div className="s-page1">
         <div className="s-top">
         <header className="s-head">
