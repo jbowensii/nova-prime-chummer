@@ -2,7 +2,7 @@
 // Chummer Anarchy export v1: runners as the engine sees them (made-up books in tests/fixtures/mini).
 import { describe, expect, test } from 'vitest'
 import { derive } from '../../src/engine/derive'
-import { ampParts, exportBooks, exportRunners, parseRanges } from '../../src/engine/export'
+import { ampParts, exportBooks, exportRunners, parseRanges, sheetDisplayName } from '../../src/engine/export'
 import { appendEvent, makeBuy } from '../../src/engine/career'
 import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
@@ -108,6 +108,41 @@ describe('export: books', () => {
   })
 })
 
+describe('export: sections, metatypes, skills', () => {
+  const rule = (id: string, sheet: string, section: string) => ({ id, source: 'TEST', page: 1, sheet, section, title: id, effects: [], text: '' })
+  const meta = { id: 'test.imp', source: 'TEST', page: 7, name: 'Made-up kin', edge: 3, racialQuality: 'Invented sense',
+    ranges: { str: [1, 4], agi: [1, 5], wil: [1, 5], log: [1, 5], cha: [2, 6] } }
+  const withExtras = { ...cat, metatypes: new Map(cat.metatypes).set(meta.id, meta as never),
+    rules: new Map(cat.rules).set('t.a', rule('t.a', 'base', '')).set('t.b', rule('t.b', 'technomancers', '  ')).set('t.c', rule('t.c', 'x-files', ''))
+      .set('t.d', rule('t.d', 'optional', 'Kept name')) } as typeof cat
+  test('sheet display names', () => {
+    expect(['base', 'technomancers', 'optional', 'vehicles', 'street-gear'].map(sheetDisplayName))
+      .toEqual(['Basics', 'Technomancers', 'Optional rules', 'Vehicles & Drones', 'Street Gear'])
+  })
+  test('an empty section becomes the sheet name; sheetName on every rule', () => {
+    const rules = exportBooks(withExtras, ['TEST'], [], OPTS).books![0].rules, by = (id: string) => rules.find(r => r.id === id)!
+    expect(by('t.a')).toMatchObject({ section: 'Basics', sheetName: 'Basics' })
+    expect(by('t.b')).toMatchObject({ section: 'Technomancers', sheetName: 'Technomancers' })
+    expect(by('t.c')).toMatchObject({ section: 'X Files', sheetName: 'X Files' })
+    expect(by('t.d')).toMatchObject({ section: 'Kept name', sheetName: 'Optional rules' })
+    expect(rules.every(r => r.section && r.sheetName)).toBe(true)
+  })
+  test('a book’s metatypes', () => {
+    const b = exportBooks(withExtras, ['TEST', 'TESTC'], [], OPTS).books!
+    expect(b[0].metatypes).toEqual([{ id: 'test.imp', source: 'TEST', page: 7, canon: false, name: 'Made-up kin', edge: 3,
+      ranges: meta.ranges, racialQuality: 'Invented sense' }])
+    expect(b[1].metatypes).toEqual([])
+  })
+  test('every skill of the book, with all its specs', () => {
+    const f = exportBooks(cat, [...cat.sources.keys()], [], OPTS)
+    for (const b of f.books!) {
+      const mine = [...cat.skills.values()].filter(k => k.source === b.source.id)
+      expect(b.skills.map(k => k.id)).toEqual(mine.map(k => k.id))
+      mine.forEach((k, i) => expect(b.skills[i].specs.map(p => p.id)).toEqual(k.specs.filter(p => !p.source || p.source === b.source.id).map(p => p.id)))
+    }
+  })
+})
+
 describe('export: bonuses and vehicles', () => {
   const amp = (uid: string, refs: string[], type = 'quality') => ({ uid, type, name: 'Amp ' + uid, effects: refs.map(ref => ({ ref })) })
   test('capped bonuses are counted once, so the amps add up to the sheet', () => {
@@ -160,6 +195,17 @@ describe('export: the schema', () => {
     const md = readFileSync('docs/export-format.md', 'utf8')
     const example = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(md)![1])
     expect(check(example), JSON.stringify(check.errors)).toBe(true)
+  })
+  test('new optional fields are accepted, and absent ones too', () => {
+    const f = books(), b = f.books[0]
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    for (const r of b.rules) delete r.sheetName
+    delete b.metatypes
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.metatypes = [{ id: 'm', source: 'TEST', page: 1, canon: false, name: 'M', edge: 2, ranges: { str: [1, 5] }, racialQuality: '' }]
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.metatypes[0].edge = 'two'
+    expect(check(f)).toBe(false)
   })
   test('a wrong format, version or kind is not', () => {
     expect(check({ ...runners(), format: 'something-else' })).toBe(false)
