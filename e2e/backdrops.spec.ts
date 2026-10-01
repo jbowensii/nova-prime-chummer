@@ -151,7 +151,8 @@ test('character sheet: weapons and spells apart, knowledge at the bottom, portra
     const know = sheet.locator('.s-know')
     await expect(know.getByRole('heading', { name: 'Languages & knowledge' })).toBeVisible()
     await expect(know).toContainText('Invented street')
-    expect(await sheet.evaluate(e => e.lastElementChild!.classList.contains('s-know'))).toBe(true) // at the bottom
+    expect(await know.evaluate(e => e.previousElementSibling!.tagName)).toBe('TABLE') // on page 1, directly under the Skills table
+    expect(await sheet.evaluate(e => e.lastElementChild!.classList.contains('s-know'))).toBe(false) // no longer last
     const note = know.getByText('Knowledge skills have no rating')
     await expect(note).toBeVisible()
     // the portrait beside the attributes, over its backdrop

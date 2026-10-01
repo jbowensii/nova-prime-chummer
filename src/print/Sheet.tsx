@@ -6,7 +6,7 @@ import { useEditor } from '../ui/editor'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { artSrc, useArtId, useArtIds } from '../ui/Background'
 import { loadSettings, saveSettings, type Settings } from '../ui/settings'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './sheet.css'
 
 const RISK = [['1 die', '2 dice', '4 dice', '6+ dice'], ['3 dice', '5 dice', '7 dice', '10+ dice'], ['5 dice', '8 dice', '11 dice', '13+ dice'], ['8 dice', '12 dice', '15 dice', 'N/A']]
@@ -36,7 +36,9 @@ export function Sheet() {
   const strength = s.sheetArtStrength ?? s.artStrength
   // which image: this runner's pick in this browser (ignored once that image is off), else the app's
   const ids = useArtIds(), key = `ca2.sheetArt.${ch.id}`
-  const [pick, setPick] = useState(() => { try { return localStorage.getItem(key) } catch { return null } })
+  const read = () => { try { return localStorage.getItem(key) } catch { return null } }
+  const [pick, setPick] = useState(read)
+  useEffect(() => setPick(read()), [key]) // eslint-disable-line react-hooks/exhaustive-deps -- another runner: its own pick
   const choose = (id: string | null) => {
     setPick(id)
     try { id ? localStorage.setItem(key, id) : localStorage.removeItem(key) } catch { /* private mode: this visit only */ }

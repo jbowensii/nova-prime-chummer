@@ -135,8 +135,10 @@ test('the sheet lets the player choose the background image, remembered per runn
   await signIn(page, 'ada')
   const up = (name: string, rgb: number[]) => page.evaluate(async ([n, png]) => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png as number[]),
     headers: { 'Content-Type': 'image/png', 'X-Filename': n as string } })).json()).id as string, [name, [...makePng(8, 8, () => rgb)]] as const)
-  const ids = [await up('pick-one.png', [200, 40, 40]), await up('pick-two.png', [40, 40, 200])]
+  const ids: string[] = []
   try {
+    ids.push(await up('pick-one.png', [200, 40, 40]))
+    ids.push(await up('pick-two.png', [40, 40, 200]))
     const enabled: string[] = await page.evaluate(async () => (await (await fetch('./api/backgrounds')).json()).enabled)
     const runner = async (name: string) => {
       await page.goto('/')
