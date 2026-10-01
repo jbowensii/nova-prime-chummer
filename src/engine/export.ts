@@ -56,8 +56,15 @@ export interface ExportBook {
     flyingSpeed?: number; armor: number; mount: string }[]
   skills: { id: string; source: string; page: number; name: string; attr: string; alt?: string; specs: { id: string; name: string; attr: string }[] }[]
   specs: { skill: string; id: string; name: string; attr: string; page?: number }[]
-  rules: { id: string; source: string; page: number; sheet: string; section: string; title: string; text?: string }[]
+  metatypes?: { id: string; source: string; page: number; canon: boolean; name: string; edge: number; ranges: Record<AttrId, [number, number]>; racialQuality: string }[]
+  /** The book's own sample characters, each as a runner. */
+  characters?: ExportRunner[]
+  rules: { id: string; source: string; page: number; sheet: string; sheetName?: string; section: string; title: string; text?: string }[]
 }
+
+const SHEETS: Record<string, string> = { base: 'Basics', technomancers: 'Technomancers', optional: 'Optional rules', vehicles: 'Vehicles & Drones' }
+/** A rules sheet's display name: a small table for the nicer names, else the sheet id title-cased. */
+export const sheetDisplayName = (sheet: string) => SHEETS[sheet] ?? (sheet.split(/[-_\s]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ') || 'Rules')
 
 const RANGE = (s = ''): Range => (/^ok/i.test(s.trim()) ? 'ok' : /^dis/i.test(s.trim()) ? 'disadvantage' : 'none')
 /** "OK/OK/Dis./–" (melee/short/medium/long) as the file writes ranges. */
@@ -192,8 +199,10 @@ const envelope = (kind: ExportFile['kind'], o: ExportOpts): ExportFile =>
 export const exportRunners = (c: Catalog, chs: Character[], o: ExportOpts): ExportFile =>
   ({ ...envelope('runners', o), runners: chs.map(ch => exportRunner(c, ch, o)) })
 
-/** The ticked books as the app sees them (edits and house rules applied), with the table rules switched on. */
-export function exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts): ExportFile {
+/** The ticked books as the app sees them (edits and house rules applied), with the table rules switched on, and each
+ *  book's sample characters (`characters`, by source id) as runners. */
+export function exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts,
+  characters: Record<string, Character[]> = {}): ExportFile {
   const books: ExportBook[] = sources.flatMap(id => {
     const s = c.sources.get(id)
     if (!s) return []
@@ -219,8 +228,12 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
       // this book's specs on another book's skill (a new style for the core Close Combat)
       specs: [...c.skills.values()].filter(k => k.source !== id).flatMap(k => k.specs.filter(p => p.source === id)
         .map(p => ({ skill: k.id, id: p.id, name: p.name, attr: p.attr, ...p.page ? { page: p.page } : {} }))),
-      rules: mine(c.rules).map(r => ({ id: r.id, source: r.source, page: r.page, sheet: r.sheet, section: r.section, title: r.title,
+      metatypes: mine(c.metatypes).map(m => ({ id: m.id, source: m.source, page: m.page, canon: s.canon, name: m.name, edge: m.edge,
+        ranges: m.ranges, racialQuality: m.racialQuality })),
+      rules: mine(c.rules).map(r => ({ id: r.id, source: r.source, page: r.page, sheet: r.sheet, sheetName: sheetDisplayName(r.sheet),
+        section: r.section.trim() || sheetDisplayName(r.sheet), title: r.title,
         ...o.descriptions && r.text ? { text: r.text } : {} })),
+      ...characters[id]?.length ? { characters: characters[id].map(ch => exportRunner(c, ch, o)) } : {},
     }]
   })
   return { ...envelope('books', o), books, tableRules: o.descriptions ? tableRules : tableRules.map(r => ({ name: r.name, text: '' })) }

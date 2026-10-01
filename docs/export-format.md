@@ -93,7 +93,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 
 ## Book
 
-`{ source, amps, items, vehicles, skills, specs, rules }`.
+`{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes` and `characters`.
 
 - `source`: `{ id, name, publisher, canon }`.
 - `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`.
@@ -101,9 +101,11 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
   `printedRating`, when present, is what the book printed.
 - `items`: `id`, `source`, `page`, `canon`, `kind`, `name`, `specialist`, and optionally `category`, `armor`, `dv`, `ranges`, `description`.
 - `vehicles`: `id`, `source`, `page`, `name`, `pilot`, `body`, `handling`, `speed`, `armor`, `mount`, optionally `flyingSpeed` (the chassis' flying speed, when it has one).
-- `skills`: `id`, `source`, `page`, `name`, `attr`, optionally `alt`, and `specs: [{ id, name, attr }]`.
+- `skills`: every skill whose source is this book (core skills belong to the core book): `id`, `source`, `page`, `name`, `attr`, optionally `alt`, and `specs: [{ id, name, attr }]`.
+- `metatypes` (optional): `{ id, source, page, canon, name, edge, ranges, racialQuality }` for each metatype whose source is this book; `ranges` as on a runner's metatype.
+- `characters` (optional): the book's own sample (pregen) characters, each exactly as a runner in a runners file (see Runner), descriptions per the file's `descriptions`. Only the imported book's samples (`custom/imported/samples.xml` rows whose `source` is this book, matched case-insensitively); the server's example sets are not books and never appear. Absent when the book has none.
 - `specs`: this book's specializations on another book's skill: `{ skill, id, name, attr, page? }`.
-- `rules`: `id`, `source`, `page`, `sheet`, `section`, `title`, and `text` when descriptions are on.
+- `rules`: `id`, `source`, `page`, `sheet`, `section`, `title`, optionally `sheetName`, and `text` when descriptions are on. `sheetName` is the sheet's display name (`base` is "Basics", `technomancers` "Technomancers", `optional` "Optional rules", `vehicles` "Vehicles & Drones"; any other sheet id title-cased). A rule whose section is empty gets its `sheetName` as `section`.
 
 Book vehicles, skills and rules carry no `canon` of their own: take it from `source.canon` of the book they are in.
 

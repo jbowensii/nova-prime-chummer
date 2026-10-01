@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.6.2 — 2026-10-01: book export adds topics, metatypes and pregens
+
+**Book data for Foundry**
+- Every rule now gets a section. A rule without one gets its topic name (for example, the Conversion Guide's
+  Technomancer rules).
+- Each rule also tells its topic.
+- The books' metatypes and their pregen/sample characters are included. A sample that can't be read is listed and
+  skipped, and the rest still download.
+- Every skill of a book, with its specs, is in the file (as before).
+- The new parts need Foundry importer 0.3.0. Older importers ignore them.
+
 ## 0.6.1 — 2026-09-30: runner-list markers, print page 1, background picker, Book style sheet
 
 **Runner list**

@@ -3,7 +3,7 @@
 // book or a canon set) and one non-canon version. A library holds one copy per key "<name slug>|canon" or
 // "<name slug>|noncanon", recorded on the copy as sampleKey, so loading again, a re-import with new ids or an old copy
 // of the same character never adds a second one.
-import { characterToXml } from '../engine'
+import { characterToXml, parseCharacterFile, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
 
 /** What the library needs of a source: canon, and when its book was imported. Looked up case-insensitively. */
@@ -12,6 +12,27 @@ export type Sources = (id: string) => SourceInfo | undefined
 
 const slug = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-') || 'runner'
 export const exampleKey = (name: string, canon: boolean) => `${slug(name)}|${canon ? 'canon' : 'noncanon'}`
+
+/** A character file: our XML, or the older .ca2.json. */
+export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
+
+/** The imported books' sample runners (custom/imported/samples.xml; none before any import or when it can't be read).
+ *  Canon: the book's source. */
+export async function bookSamples(sources: Sources): Promise<Example[]> {
+  const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
+  const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
+  return xml?.documentElement.localName === 'samples' ? [...xml.documentElement.getElementsByTagName('sample')].map(s => {
+    const source = s.getAttribute('source') ?? ''
+    return { url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source, canon: !!sources(source)?.canon }
+  }) : []
+}
+
+/** Fetches and reads one example character file; a fetch that fails reads as "couldn’t be fetched.". */
+export async function readSample(url: string) {
+  const res = await fetch(url).catch(() => null)
+  if (!res?.ok) return { ok: false as const, reason: 'couldn’t be fetched.' }
+  return readCharacterFile(await res.text())
+}
 
 /** Which version wins, as a sortable string: a book's over a set's, then the newest import. */
 const rank = (source: SourceInfo | undefined) => source ? `1|${source.imported ?? ''}` : '0|'

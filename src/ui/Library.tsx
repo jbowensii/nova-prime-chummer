@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { balance, blankCharacter, characterToXml, isCanonSource, parseCharacterFile, snapshotEntries, xmlToCharacter } from '../engine'
+import { balance, blankCharacter, characterToXml, isCanonSource, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { AccountMenu, because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
@@ -9,7 +9,7 @@ import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
-import { chooseExamples, extraCopies, keyOf, type Example, type Sources } from './samples'
+import { bookSamples, chooseExamples, extraCopies, keyOf, readCharacterFile, readSample, type Example, type Sources } from './samples'
 import { AskButton } from './AskRules'
 import { Face } from './Portrait'
 import { ExportRunnersDialog } from './Foundry'
@@ -24,19 +24,11 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
   return out
 }
 
-/** A character file: our XML, or the older .ca2.json. */
-export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
-
-/** Every example character there is: the imported books' sample runners (custom/imported/samples.xml; none before any
- *  import) and, on the server, its example sets (GET /api/samples). Canon: the book's source, or the set's flag. The
- *  books' rows still come when the sets can't be read (`error`: why). */
+/** Every example character there is: the imported books' sample runners (none before any import) and, on the server,
+ *  its example sets (GET /api/samples). Canon: the book's source, or the set's flag. The books' rows still come when the
+ *  sets can't be read (`error`: why). */
 async function exampleList(sources: Sources, server: boolean): Promise<{ rows: Example[]; error?: string }> {
-  const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
-  const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
-  const books = xml?.documentElement.localName === 'samples' ? [...xml.documentElement.getElementsByTagName('sample')].map(s => {
-    const source = s.getAttribute('source') ?? ''
-    return { url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source, canon: !!sources(source)?.canon }
-  }) : []
+  const books = await bookSamples(sources)
   if (!server) return { rows: books }
   try {
     const r = await fetch('./api/samples', { cache: 'no-store' })
@@ -156,11 +148,8 @@ export function Library({ c }: { c: Catalog }) {
       if (error) bad.push(error)
       if (!examples.length) return setMsg(error ?? 'No example characters yet: they come with imported books (the core rulebook and Daegann’s pregen booklet) and the server’s example sets.')
       for (const { url, key } of examples.filter(s => !have.has(s.key))) {
-        const file = url.split('/').pop()
-        const res = await fetch(url).catch(() => null)
-        if (!res?.ok) { bad.push(`${file}: couldn’t be fetched.`); continue }
-        const r = readCharacterFile(await res.text())
-        if (!r.ok) { bad.push(`${file}: ${r.reason}`); continue }
+        const r = await readSample(url)
+        if (!r.ok) { bad.push(`${url.split('/').pop()}: ${r.reason}`); continue }
         if (await store({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })) { n++; have.add(key) }
       }
       setMsg([n ? `Added ${n} example character${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The example characters are already in your library.', ...bad].filter(Boolean).join(' '))
