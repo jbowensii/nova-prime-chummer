@@ -376,7 +376,7 @@ test('sign-out waits for a save from the runner list; one that hangs is given 10
   await signIn(page, 'pat.new', PW.pat2)
   // a slow save from the runner list (Duplicate) still lands before the session ends
   await page.route('**/api/characters/**', async r => { if (r.request().method() === 'PUT') await new Promise(ok => setTimeout(ok, 1500)); await r.continue() })
-  await page.getByRole('button', { name: 'Duplicate' }).first().click()
+  await page.getByRole('button', { name: 'Duplicate', exact: true }).first().click()
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
@@ -386,7 +386,7 @@ test('sign-out waits for a save from the runner list; one that hangs is given 10
 
   // a save that never answers: after 10 s the app says so; Keep waiting, then Sign out anyway
   await page.route('**/api/characters/**', r => { if (r.request().method() !== 'PUT') return r.continue() }) // PUTs hang
-  await page.getByRole('button', { name: 'Duplicate' }).first().click()
+  await page.getByRole('button', { name: 'Duplicate', exact: true }).first().click()
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
   const stuck = page.getByRole('dialog', { name: 'A change is still saving' })
