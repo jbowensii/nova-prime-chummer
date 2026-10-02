@@ -90,7 +90,8 @@ test('an editor makes a compendium and fills it; its entries reach their NPC’s
   await dialog(page).getByLabel('Amp type').selectOption('quality')
   await dialog(page).getByLabel('Name', { exact: true }).fill('Lucky Charm')
   await dialog(page).getByLabel('Description', { exact: true }).fill('Made-up luck.')
-  await dialog(page).getByRole('button', { name: 'Save to the catalog' }).click()
+  await expect(dialog(page).getByRole('button', { name: 'Save to the catalog' })).toHaveCount(0)
+  await dialog(page).getByRole('button', { name: 'Save to the compendium' }).click()
   await toast(page, 'Added Lucky Charm.')
 
   await page.getByRole('button', { name: 'Add a vehicle' }).click()
@@ -142,6 +143,16 @@ test('an editor makes a compendium and fills it; its entries reach their NPC’s
   const amp = page.locator('.picker li', { hasText: 'Lucky Charm' })
   await expect(amp.locator('.noncanon')).toBeVisible()
   await expect(amp.locator('.t')).toHaveText('Made-up luck.')
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+
+  // a compendium entry's Edit in a picker opens it in its compendium, not the catalog edits
+  await page.getByRole('link', { name: 'Gear' }).click()
+  await page.locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) }).getByRole('button', { name: 'Add from the book' }).click()
+  await page.getByLabel('Search').fill('Lead Pipe')
+  await page.locator('.picker li', { hasText: 'Lead Pipe' }).getByRole('link', { name: 'Edit Lead Pipe' }).click()
+  await expect(page.getByRole('heading', { name: 'Street Gear', level: 1 })).toBeVisible()
+  await expect(dialog(page).getByLabel('Damage (DV)')).toHaveValue('STR+3')
+  await dialog(page).getByRole('button', { name: 'Cancel' }).click()
 
   await page.goto('/#/compendiums')
   await shots(page, 'compendiums')
@@ -166,6 +177,18 @@ test('sharing with the table: another editor reads it, read only', async ({ page
   await expect(group(page, 'Weapons')).toContainText('Lead Pipe')
   await expect(page.getByRole('button', { name: /^(Add|Edit|Delete)/ })).toHaveCount(0)
   await shots(page, 'compendium-shared')
+
+  // not his: no Edit on it in his pickers (it would write a catalog edit)
+  await page.goto('/#/npcs')
+  await page.getByRole('button', { name: 'New NPC' }).click()
+  await page.getByRole('dialog', { name: 'New NPC' }).getByRole('button', { name: 'Create NPC' }).click()
+  await page.getByRole('link', { name: 'Gear' }).click()
+  await page.locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) }).getByRole('button', { name: 'Add from the book' }).click()
+  await page.getByLabel('Search').fill('Lead Pipe')
+  const row = page.locator('.picker li', { hasText: 'Lead Pipe' })
+  await expect(row.locator('.src')).toHaveText('STREET p.1')
+  await expect(row.getByRole('link', { name: 'Edit Lead Pipe' })).toHaveCount(0)
+  await expect(row.getByRole('button', { name: 'Edit Lead Pipe' })).toHaveCount(0)
 })
 
 test('a book shows as a read-only compendium', async ({ page }) => {

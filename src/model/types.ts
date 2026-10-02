@@ -46,7 +46,9 @@ export interface Lifestyle extends Ref { name: string; perRun: number; text: str
 /** origin: which sources file defined it last (shipped public/data, generated custom/imported, the user's custom).
  * Imported sources also carry the uploaded file name(s) ("; "-separated), SHA-256(s) (space-separated) and import date. */
 export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string;
-  file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user' }
+  file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user'
+  /** a GM's compendium (catalog only): its id and owner, where its entries are edited */
+  compendium?: { id: string; owner: string } }
 /** rules reference entry (quick-reference sheets); effects = amp effects it explains */
 export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string; edited?: boolean }
 export interface LoadError { file: string; line?: number; message: string }

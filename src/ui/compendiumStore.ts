@@ -20,7 +20,7 @@ export async function listCompendiums(base = './'): Promise<CompendiumRow[]> {
 /** The rows as catalog overlay files (loadCatalog's `extra`), in owner then id order. */
 export const readable = (rows: CompendiumRow[]): SourceFile[] =>
   [...rows].sort((a, b) => a.owner.localeCompare(b.owner) || a.id.localeCompare(b.id))
-    .map(r => ({ file: `compendiums/${r.owner}/${r.id}.xml`, xml: r.xml, overlay: true, publisher: r.ownerName }))
+    .map(r => ({ file: `compendiums/${r.owner}/${r.id}.xml`, xml: r.xml, overlay: true, publisher: r.ownerName, owner: r.owner }))
 
 /** The rows read; a file that can't be read comes back with why (the catalog load reports it too). */
 export function parseRows(rows: CompendiumRow[]): { comps: StoredCompendium[]; bad: { row: CompendiumRow; error: string }[] } {

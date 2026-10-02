@@ -20,6 +20,7 @@ type Target = { kind: EditKind; id?: string } // no id: add an entry
 export type Entry = AmpTemplate | Item | Rule | VehicleBase
 
 const OpenEdit = createContext<((t: Target) => void) | null>(null)
+const EditCatalog = createContext<Catalog | null>(null)
 /** Opens the edit form; null when there's no server to save to (browser storage). */
 export const useOpenEdit = () => useContext(OpenEdit)
 
@@ -42,8 +43,12 @@ export const STATE_TEXT = { book: '', changed: 'Changed from the book', added: '
 
 export const EditedMark = () => <span className="edited" title="Changed in this app (Game data lists your edits)">Edited</span>
 
+/** A compendium's entry is edited in its compendium (its owner only), never in the edits layer. */
 export function EditButton({ kind, id, name }: { kind: EditKind; id: string; name: string }) {
-  const open = useOpenEdit()
+  const open = useOpenEdit(), c = useContext(EditCatalog), me = useMe()
+  const comp = c?.sources.get(c[kind].get(id)?.source ?? '')?.compendium
+  if (comp) return open && comp.owner === me?.username
+    && <a className="btn small quiet" aria-label={`Edit ${name}`} href={`#/compendiums/${comp.id}/${encodeURIComponent(id)}`}>Edit</a>
   return open && <button type="button" className="btn small quiet" aria-label={`Edit ${name}`} onClick={() => open({ kind, id })}>Edit</button>
 }
 
@@ -71,7 +76,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
       body: `<edit>${entryXml(kind, e as AmpTemplate | Item | Rule)}<description>${esc(desc)}</description></edit>` })
   }
   return (
-    <OpenEdit.Provider value={repo.mode === 'server' && editor ? t => { setMsg(''); setTarget(t) } : null}>
+    <OpenEdit.Provider value={repo.mode === 'server' && editor ? t => { setMsg(''); setTarget(t) } : null}><EditCatalog.Provider value={c}>
       {children}
       {/* no role=status: pages keep their own single status region */}
       {(() => { const p = <p className={live.text ? 'toast' : 'sr-only'} aria-live="polite">{live.text}</p>; return live.host?.isConnected ? createPortal(p, live.host) : p })()}
@@ -79,7 +84,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
         title={entry ? `Edit ${nameOf(entry)}` : target ? `Add ${target.kind === 'items' ? 'an' : 'a'} ${NOUN[target.kind]}` : ''}>
         {target && <EntryForm key={`${target.kind} ${target.id}`} c={c} kind={target.kind} entry={entry} save={put(target.kind)} onDone={done} onCancel={() => setTarget(null)} />}
       </Modal>
-    </OpenEdit.Provider>
+    </EditCatalog.Provider></OpenEdit.Provider>
   )
 }
 
@@ -204,7 +209,7 @@ export function EntryForm({ c, kind, entry, sources, save: put, onDone, onCancel
             <option value="">Choose a type…</option>{[...c.ampTypes.values()].map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select></label>}
         {start && <Editor.Provider value={{ c, career: false } as EditorCtx /* the builder reads only c and career */}>
-          <AmpBuilder key={start.type} initial={start} build={build} catalog saveDisabled={!canSave} onSave={saveAmp} onCancel={onCancel} />
+          <AmpBuilder key={start.type} initial={start} build={build} catalog={sources ? 'Save to the compendium' : true} saveDisabled={!canSave} onSave={saveAmp} onCancel={onCancel} />
         </Editor.Provider>}
         {!start && <div className="actions"><button className="btn" onClick={onCancel}>Cancel</button></div>}
         {foot}

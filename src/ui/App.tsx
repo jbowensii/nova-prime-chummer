@@ -85,7 +85,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to the server.</p>}
       {gmOnly ? gate(gmOnly === 'NPCs' ? 'NPCs & Critters' : 'Compendiums', `Only GMs can see ${gmOnly}.`)
         : page === 'compendiums' && repo.mode !== 'server' ? gate('Compendiums', 'Compendiums need the server: this copy of the app saves in the browser.')
-        : page === 'compendiums' ? <CompendiumsScreen key={id ?? ''} c={catalog} id={id} reload={refresh} />
+        : page === 'compendiums' ? <CompendiumsScreen key={`${id}/${tab}`} c={catalog} id={id} edit={tab && decodeURIComponent(tab)} reload={refresh} />
         : page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'n' && id ? <RepoContext.Provider value={npcs}><EditorView key={`n/${id}`} c={catalog} id={id} tab={tab ?? 'concept'} /></RepoContext.Provider>
         : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />

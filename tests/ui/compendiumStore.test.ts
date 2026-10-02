@@ -15,10 +15,10 @@ afterEach(() => vi.unstubAllGlobals())
 test('the list maps to overlay files in owner/id order', async () => {
   vi.stubGlobal('fetch', answer(200, [row('bbbbbbbbbbbb', 'TWO', 'zed', 'Zed GM'), row('aaaaaaaaaaaa', 'ONE', 'eve', 'Eve GM'), row('cccccccccccc', 'THREE', 'eve', 'Eve GM')]))
   const rows = await listCompendiums()
-  expect(readable(rows).map(f => [f.file, f.overlay, f.publisher])).toEqual([
-    ['compendiums/eve/aaaaaaaaaaaa.xml', true, 'Eve GM'],
-    ['compendiums/eve/cccccccccccc.xml', true, 'Eve GM'],
-    ['compendiums/zed/bbbbbbbbbbbb.xml', true, 'Zed GM'],
+  expect(readable(rows).map(f => [f.file, f.overlay, f.publisher, f.owner])).toEqual([
+    ['compendiums/eve/aaaaaaaaaaaa.xml', true, 'Eve GM', 'eve'],
+    ['compendiums/eve/cccccccccccc.xml', true, 'Eve GM', 'eve'],
+    ['compendiums/zed/bbbbbbbbbbbb.xml', true, 'Zed GM', 'zed'],
   ])
   expect(readable(rows)[0].xml).toContain('source="ONE"')
 })

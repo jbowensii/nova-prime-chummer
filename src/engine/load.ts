@@ -20,7 +20,8 @@ export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skil
 export const CORE_FILES = DATA_FILES.filter(n => n !== 'sources')
 
 /** publisher: a compendium's owner's name (its source's publisher) */
-export interface SourceFile { file: string; xml: string; overlay: boolean; publisher?: string }
+/** publisher, owner: a compendium's owner's name and account (its source's publisher, where to edit it) */
+export interface SourceFile { file: string; xml: string; overlay: boolean; publisher?: string; owner?: string }
 
 const IMPORTED = 'custom/imported/'
 const originOf = (f: SourceFile): Source['origin'] => !f.overlay ? 'shipped' : f.file.startsWith(IMPORTED) ? 'imported' : 'user'
@@ -102,7 +103,7 @@ export function buildCatalog(files: SourceFile[]): Catalog {
       const r = readCompendium(f.xml)
       if (!r.ok) { c.errors.push({ file: f.file, message: r.error }); continue }
       const comp = r.compendium
-      c.sources.set(comp.source, compendiumSource({ ...comp, ownerName: f.publisher }))
+      c.sources.set(comp.source, { ...compendiumSource({ ...comp, ownerName: f.publisher }), compendium: { id: comp.id, owner: f.owner ?? '' } })
       for (const a of comp.amps) c.amps.set(a.id, a)
       for (const i of comp.items) c.items.set(i.id, i)
       for (const v of comp.vehicles) c.vehicles.set(v.id, v)

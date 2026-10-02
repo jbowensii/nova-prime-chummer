@@ -42,8 +42,8 @@ function Header({ title, children }: { title: string; children?: React.ReactNode
       <AskButton /><SettingsButton /><AccountMenu /></div></header>
 }
 
-/** #/compendiums and #/compendiums/<id or book source id>. reload: the catalog again (after a save). */
-export function CompendiumsScreen({ c, id, reload }: { c: Catalog; id?: string; reload: () => Promise<void> }) {
+/** #/compendiums and #/compendiums/<id or book source id>[/<entry id>: its form open (a picker's Edit)]. reload: the catalog again (after a save). */
+export function CompendiumsScreen({ c, id, edit, reload }: { c: Catalog; id?: string; edit?: string; reload: () => Promise<void> }) {
   const me = useMe()
   const [comps, setComps] = useState<StoredCompendium[] | null>(null)
   const [bad, setBad] = useState<string[]>([])
@@ -59,7 +59,7 @@ export function CompendiumsScreen({ c, id, reload }: { c: Catalog; id?: string; 
   const mine = (x: StoredCompendium) => x.owner === me?.username
   if (id) {
     const comp = comps.find(x => x.id === id)
-    if (comp) return <CompendiumPage key={comp.id} c={c} comp={comp} own={mine(comp)} campaigns={campaigns} changed={changed} />
+    if (comp) return <CompendiumPage key={comp.id} c={c} comp={comp} own={mine(comp)} campaigns={campaigns} changed={changed} edit={edit} />
     const book = c.sources.get(id)
     if (book && !comps.some(x => x.source === id)) return <BookPage c={c} id={id} />
     return <main className="lib"><Header title="Compendiums" /><p className="banner">No such compendium. <a href="#/compendiums">All compendiums</a></p></main>
@@ -191,9 +191,12 @@ function Entries({ c, rows, q, actions }: { c: Catalog; rows: Map<string, Row[]>
   </section>)}</>
 }
 
-function CompendiumPage({ c, comp, own, campaigns, changed }: { c: Catalog; comp: StoredCompendium; own: boolean; campaigns: Campaign[]; changed: () => Promise<void> }) {
+function CompendiumPage({ c, comp, own, campaigns, changed, edit }: { c: Catalog; comp: StoredCompendium; own: boolean; campaigns: Campaign[]; changed: () => Promise<void>; edit?: string }) {
   const [q, setQ] = useState('')
-  const [form, setForm] = useState<{ kind: FormKind; entry?: Entry } | null>(null)
+  const [form, setForm] = useState<{ kind: FormKind; entry?: Entry } | null>(() => {
+    const a = comp.amps.find(x => x.id === edit), i = comp.items.find(x => x.id === edit), v = comp.vehicles.find(x => x.id === edit)
+    return !own ? null : a ? { kind: 'amps', entry: a } : i ? { kind: 'items', entry: i } : v ? { kind: 'vehicles', entry: v } : null
+  })
   const [msg, setMsg] = useState('')
   useEffect(() => { if (msg) { const t = setTimeout(() => setMsg(''), 5000); return () => clearTimeout(t) } }, [msg])
   const rows = groupRows(c, comp.amps, comp.items, comp.vehicles, comp.npcs)
