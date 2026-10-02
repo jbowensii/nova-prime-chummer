@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { compendiumXml } from '../../src/engine'
 import type { Compendium } from '../../src/model/types'
-import { deleteCompendium, listCompendiums, readable, saveCompendium } from '../../src/ui/compendiums'
+import { deleteCompendium, listCompendiums, readable, saveCompendium } from '../../src/ui/compendiumStore'
 
 // made-up compendiums; fetch is mocked
 const comp = (id: string, source: string): Compendium =>

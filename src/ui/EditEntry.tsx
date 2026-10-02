@@ -5,7 +5,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml } from '../engine'
-import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule } from '../model/types'
+import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule, Source, VehicleBase } from '../model/types'
 import { because, canEdit, useMe } from './auth'
 import { Modal } from './bits'
 import { api } from './Books'
@@ -14,8 +14,10 @@ import { useRepo } from './repo'
 import { AmpBuilder } from './tabs/AmpBuilder'
 
 export type EditKind = 'amps' | 'items' | 'rules'
+/** What the entry form makes: the edits layer's kinds, and (a compendium's) vehicles. */
+export type FormKind = EditKind | 'vehicles'
 type Target = { kind: EditKind; id?: string } // no id: add an entry
-type Entry = AmpTemplate | Item | Rule
+export type Entry = AmpTemplate | Item | Rule | VehicleBase
 
 const OpenEdit = createContext<((t: Target) => void) | null>(null)
 /** Opens the edit form; null when there's no server to save to (browser storage). */
@@ -23,15 +25,15 @@ export const useOpenEdit = () => useContext(OpenEdit)
 
 const ITEM_KINDS: [ItemKind, string][] = [['gear', 'Gear'], ['weapon', 'Weapon'], ['armor', 'Armor'], ['spell', 'Spell'], ['complex-form', 'Complex form']]
 const CATEGORIES: Partial<Record<ItemKind, string[]>> = { spell: ['combat', 'detection', 'health', 'illusion', 'manipulation'], 'complex-form': ['sustained', 'instant'] }
-const NOUN: Record<EditKind, string> = { amps: 'amp', items: 'item', rules: 'rule' }
+export const NOUN: Record<FormKind, string> = { amps: 'amp', items: 'item', rules: 'rule', vehicles: 'vehicle' }
 
 // eslint-disable-next-line no-control-regex
 const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const nameOf = (e: Entry) => 'title' in e ? e.title : e.name
-const textOf = (e: Entry) => 'narrative' in e ? e.narrative : e.text
+export const nameOf = (e: Entry) => 'title' in e ? e.title : e.name
+const textOf = (e: Entry) => 'narrative' in e ? e.narrative : 'text' in e ? e.text : ''
 
 /** How an entry stands in the edits layer. An edit whose book is gone has no original and no house-rule source. */
-export function editState(c: Catalog, kind: EditKind, e: Entry): 'book' | 'changed' | 'added' | 'orphan' {
+export function editState(c: Catalog, kind: EditKind, e: AmpTemplate | Item | Rule): 'book' | 'changed' | 'added' | 'orphan' {
   if (!e.edited) return 'book'
   if (c.original[kind].has(e.id)) return 'changed'
   return c.sources.get(e.source)?.origin === 'user' ? 'added' : 'orphan'
@@ -63,6 +65,11 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
   }, [msg])
   const entry = target?.id ? c[target.kind].get(target.id) : undefined
   const done = async (text: string) => { await reload(); setTarget(null); setMsg(text) }
+  // the edits layer: the entry without its text, the Description apart (empty: the book's)
+  const put = (kind: EditKind) => async (e: Entry, desc: string) => {
+    await api(`edits/${kind}/${encodeURIComponent(e.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
+      body: `<edit>${entryXml(kind, e as AmpTemplate | Item | Rule)}<description>${esc(desc)}</description></edit>` })
+  }
   return (
     <OpenEdit.Provider value={repo.mode === 'server' && editor ? t => { setMsg(''); setTarget(t) } : null}>
       {children}
@@ -70,7 +77,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
       {(() => { const p = <p className={live.text ? 'toast' : 'sr-only'} aria-live="polite">{live.text}</p>; return live.host?.isConnected ? createPortal(p, live.host) : p })()}
       <Modal open={!!target} onClose={() => setTarget(null)} actions={<></>}
         title={entry ? `Edit ${nameOf(entry)}` : target ? `Add ${target.kind === 'items' ? 'an' : 'a'} ${NOUN[target.kind]}` : ''}>
-        {target && <EntryForm key={`${target.kind} ${target.id}`} c={c} kind={target.kind} entry={entry} onDone={done} onCancel={() => setTarget(null)} />}
+        {target && <EntryForm key={`${target.kind} ${target.id}`} c={c} kind={target.kind} entry={entry} save={put(target.kind)} onDone={done} onCancel={() => setTarget(null)} />}
       </Modal>
     </OpenEdit.Provider>
   )
@@ -78,12 +85,16 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
 
 const slug = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'entry'
 
-function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: EditKind; entry?: Entry; onDone: (msg: string) => Promise<void>; onCancel: () => void }) {
-  const house = [...c.sources.values()].filter(s => s.origin === 'user' && !s.canon)
-  const state = entry ? editState(c, kind, entry) : 'added'
-  const original = entry && c.original[kind].get(entry.id)
+/** The form for one entry. `save` puts it (and its Description) where it belongs: the edits layer (CatalogEdits), or a
+ *  compendium, which passes its own source as `sources` (no edit states, no new sources, the text is the GM's own). */
+export function EntryForm({ c, kind, entry, sources, save: put, onDone, onCancel }: { c: Catalog; kind: FormKind; entry?: Entry; sources?: Source[]
+  save: (e: Entry, description: string) => Promise<void>; onDone: (msg: string) => Promise<void>; onCancel: () => void }) {
+  const edits = !sources && kind !== 'vehicles'
+  const house = sources ?? [...c.sources.values()].filter(s => s.origin === 'user' && !s.canon)
+  const state = edits && entry ? editState(c, kind, entry as AmpTemplate | Item | Rule) : 'added'
+  const original = edits && entry && c.original[kind].get(entry.id)
   // the book's text: what an empty Description shows (an unedited entry's own text is the book's)
-  const bookText = original ? textOf(original) : entry && !entry.edited ? textOf(entry) : ''
+  const bookText = !edits ? '' : original ? textOf(original) : entry && !('edited' in entry && entry.edited) ? textOf(entry) : ''
   const [source, setSource] = useState(house[0]?.id ?? '')
   const [newSource, setNewSource] = useState({ id: '', name: '' })
   const [page, setPage] = useState(entry?.page ?? 1)
@@ -94,6 +105,8 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
     : { id: '', kind: 'gear', name: '', text: '', source: '', page: 1 })
   const [rule, setRule] = useState<Rule>(() => kind === 'rules' && entry ? { ...(entry as Rule) }
     : { id: '', sheet: 'house', section: '', title: '', effects: [], text: '', source: '', page: 1 })
+  const [vehicle, setVehicle] = useState<VehicleBase>(() => kind === 'vehicles' && entry ? { ...(entry as VehicleBase) }
+    : { id: '', name: '', pilot: 1, body: 1, handling: 1, speed: 1, armor: 0, mount: 'none', source: '', page: 1 })
   const [ampType, setAmpType] = useState('')
   const [desc, setDesc] = useState(entry ? textOf(entry) : '') // items and rules; the Amp Builder has its own box
   const [effectsText, setEffectsText] = useState(rule.effects.join(' '))
@@ -110,13 +123,11 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
   async function save(e: Entry, description: string) {
     setBusy(true); setErr('')
     try {
-      if (adding && source === '+') {
+      if (edits && adding && source === '+') {
         await api('edits/sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newSource) })
         setSource(newSource.id) // made: a retry after a refused entry doesn't make it again
       }
-      const desc = description.trim() === bookText.trim() ? '' : description
-      await api(`edits/${kind}/${encodeURIComponent(e.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
-        body: `<edit>${entryXml(kind, e)}<description>${esc(desc)}</description></edit>` })
+      await put(e, edits && description.trim() === bookText.trim() ? '' : description)
       await onDone(`${adding ? 'Added' : 'Saved'} ${nameOf(e)}.`)
     } catch (x) {
       setErr(`${because('Couldn’t save', (x as Error).message)} Fix it and save again.`)
@@ -140,7 +151,7 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
 
   const head = (
     <>
-      {entry && state !== 'book' ? (
+      {edits && entry && state !== 'book' ? (
         <div className="row editstate">
           <span className={state === 'orphan' ? 'warn' : 'muted'}>{STATE_TEXT[state]}</span><span className="spacer" />
           <button type="button" className="btn small" disabled={busy} onClick={() => void drop()}>
@@ -149,13 +160,13 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
       {state === 'orphan' && <p className="muted">The book this entry came from was removed, so the edit can’t be saved again. Remove it, or re-import the book.</p>}
       {adding && (
         <div className="grid2">
-          <label>House-rule source
+          {edits && <label>House-rule source
             <select value={source} onChange={e => setSource(e.target.value)}>
               {house.map(s => <option key={s.id} value={s.id}>{s.id}: {s.name}</option>)}
               <option value="+">New source…</option>
             </select>
-          </label>
-          {source === '+' && <>
+          </label>}
+          {edits && source === '+' && <>
             <label>Source id<input value={newSource.id} maxLength={20} placeholder="TABLE" aria-invalid={!!newSource.id && !idOk}
               aria-describedby={newSource.id && !idOk ? 'src-id-err' : undefined} onChange={e => setNewSource({ ...newSource, id: e.target.value.toUpperCase() })} /></label>
             <label>Source name<input value={newSource.name} maxLength={120} placeholder="Our table’s house rules" onChange={e => setNewSource({ ...newSource, name: e.target.value })} /></label>
@@ -168,9 +179,10 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
       {adding && <p className="muted">New entries are house rules: marked Non-canon and cited as {src || 'the source'} p.{page}.</p>}
     </>
   )
+  const name = kind === 'items' ? item.name : kind === 'vehicles' ? vehicle.name : rule.title
   // why Save is off (an orphan says so above)
   const why = busy || state === 'orphan' ? '' : !sourceOk ? (source === '+' ? 'Give the new source a valid id and a name to save.' : 'Choose a house-rule source to save.')
-    : kind !== 'amps' && !(kind === 'items' ? item.name : rule.title).trim() ? `Enter a ${kind === 'items' ? 'name' : 'title'} to save.` : ''
+    : kind !== 'amps' && !name.trim() ? `Enter a ${kind === 'rules' ? 'title' : 'name'} to save.` : ''
   const foot = <>{why && <p className="muted">{why}</p>}<div role="alert">{err && <p className="err">{err}</p>}</div></>
 
   if (kind === 'amps') {
@@ -200,12 +212,14 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
     )
   }
 
-  const name = kind === 'items' ? item.name : rule.title
   const submit = () => {
     const ref = { id: entry?.id ?? newId(name), source: src, page: entry?.page ?? page }
     void save(kind === 'items' ? { ...item, ...ref, name: item.name.trim(), text: '', armor: item.kind === 'armor' ? item.armor ?? 1 : item.armor }
-      : { ...rule, ...ref, title: rule.title.trim(), effects: effectsText.split(/\s+/).filter(Boolean), text: '' }, desc)
+      : kind === 'vehicles' ? { ...vehicle, ...ref, name: vehicle.name.trim(), mount: vehicle.mount.trim() }
+      : { ...rule, ...ref, title: rule.title.trim(), effects: effectsText.split(/\s+/).filter(Boolean), text: '' }, kind === 'vehicles' ? '' : desc)
   }
+  const num = (k: 'pilot' | 'body' | 'handling' | 'speed' | 'armor', label: string) =>
+    <label>{label}<input type="number" min={0} value={vehicle[k]} onChange={e => setVehicle({ ...vehicle, [k]: Math.max(0, Number(e.target.value) || 0) })} /></label>
   const cats = CATEGORIES[item.kind]
   return (
     <form className="stack" onSubmit={e => { e.preventDefault(); if (canSave && name.trim()) submit() }}>
@@ -226,6 +240,15 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
           </>}
           {item.kind === 'armor' && <label>Armor<input type="number" min={1} value={item.armor ?? 1} onChange={e => setItem({ ...item, armor: Math.max(1, Number(e.target.value) || 1) })} /></label>}
         </div>
+      ) : kind === 'vehicles' ? (
+        <div className="grid2">
+          <label>Name<input autoFocus value={vehicle.name} onChange={e => setVehicle({ ...vehicle, name: e.target.value })} /></label>
+          {num('pilot', 'Pilot')}{num('body', 'Body')}{num('handling', 'Handling')}{num('speed', 'Speed')}
+          <label>Flying speed (optional)<input type="number" min={0} value={vehicle.flyingSpeed ?? ''}
+            onChange={e => setVehicle({ ...vehicle, flyingSpeed: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0) })} /></label>
+          {num('armor', 'Armor')}
+          <label>Mount<input value={vehicle.mount} placeholder="none" onChange={e => setVehicle({ ...vehicle, mount: e.target.value })} /></label>
+        </div>
       ) : (
         <div className="grid2">
           <label>Title<input autoFocus value={rule.title} onChange={e => setRule({ ...rule, title: e.target.value })} /></label>
@@ -235,12 +258,12 @@ function EntryForm({ c, kind, entry, onDone, onCancel }: { c: Catalog; kind: Edi
           <label>Amp effects it explains (ids)<input value={effectsText} placeholder="rr-spec" onChange={e => setEffectsText(e.target.value)} /></label>
         </div>
       )}
-      <label>Description<textarea value={desc} rows={6} onChange={e => setDesc(e.target.value)}
-        placeholder={adding || bookText ? '' : 'Empty: the book’s text shows (when the book has one)'} /></label>
+      {kind !== 'vehicles' && <label>Description<textarea value={desc} rows={6} onChange={e => setDesc(e.target.value)}
+        placeholder={adding || bookText || !edits ? '' : 'Empty: the book’s text shows (when the book has one)'} /></label>}
       {foot}
       <div className="actions">
         <button type="button" className="btn" onClick={onCancel}>Cancel</button>
-        <button className="btn primary" disabled={!canSave || !name.trim()}>{adding ? `Add ${NOUN[kind]}` : 'Save changes'}</button>
+        <button className="btn primary" disabled={!canSave || !name.trim() || (kind === 'vehicles' && !vehicle.mount.trim())}>{adding ? `Add ${NOUN[kind]}` : 'Save changes'}</button>
       </div>
     </form>
   )
