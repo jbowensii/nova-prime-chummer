@@ -2,7 +2,7 @@
 // The two games' stores (server.mjs gameStore, server/games.mjs): Anarchy at the unprefixed /api routes and today's folders,
 // Shadowrun 6 at /api/sr6/* in characters/sr6/ and custom/sr6/. Nothing of one game is listed, saved, restored or shared in
 // the other; accounts span both; an account called sr6 from before blocks the SR6 area until it is renamed. Made-up files.
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
@@ -101,6 +101,15 @@ test('refusals: the other game’s body, a runner in the NPC store, the other ga
     ['/api/characters/x', sr6('x', 'X', ca2('x', 'X').replace('<?xml version="1.0"?>', ''))]]
   for (const [i, [path, body]] of bad.entries()) expect([i, path, (await call('eve', 'PUT', path, body)).status]).toEqual([i, path, 400])
   expect(existsSync(join(s.chars, 'eve', 'X.xml')) || existsSync(join(s.chars, 'sr6', 'eve', 'X.xml'))).toBe(false)
+  // many comments before a wrong root: refused at once (a lazy comment pattern backtracked exponentially and hung the server)
+  for (const path of ['/api/characters/x', '/api/sr6/characters/x']) {
+    const t = Date.now()
+    expect((await call('pat', 'PUT', path, '<!---->'.repeat(5000) + '<x/>')).status).toBe(400)
+    expect(Date.now() - t).toBeLessThan(5000)
+  }
+  // comments before the root are still fine
+  expect((await call('pat', 'PUT', '/api/sr6/characters/cm', sr6('cm', 'Commented').replace('?>', '?><!-- a -- b --><!---->'))).status).toBe(201)
+  rmSync(join(s.chars, 'sr6', 'pat', 'Commented.xml')) // the later tests count pat's runners
 
   mkdirSync(join(s.chars, 'sr6', 'pat', '.trash'), { recursive: true })
   writeFileSync(join(s.chars, 'sr6', 'pat', '.trash', 'planted-1700000000000.xml'), ca2('p1', 'Planted'))

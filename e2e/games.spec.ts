@@ -43,6 +43,10 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Choose your game' })).toBeVisible()
   await expect(page.getByLabel('Username')).toHaveCount(0)
+  // no game picked yet: the neutral name and the version, neither game's brand
+  await expect(page.locator('.gamepick .brand-row .brand')).toHaveText('Chummer')
+  await expect(page.locator('.gamepick .brand-row .ver')).toHaveText(/^v\d/)
+  await expect(page.getByRole('link', { name: /Chummer/ })).toHaveCount(0)
   const ca2 = page.getByRole('button', { name: 'Shadowrun Anarchy 2.0' }), sr6 = page.getByRole('button', { name: 'Shadowrun 6th World' })
   await expect(ca2).toHaveAccessibleDescription(/story-first/)
   await expect(sr6).toHaveAccessibleDescription(/full rules/)

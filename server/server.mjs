@@ -185,7 +185,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
    *  in its namespace. Its routes are the unprefixed ones (api() strips /api/sr6). */
   function gameStore(g) {
     const tag = g.tag, home = g.sub ? join(charDir, g.sub) : charDir, label = g.sub ? `characters/${g.sub}/` : 'characters/'
-    const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--[\\s\\S]*?-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
+    // a comment never runs past its own -->: with a lazy [\s\S]*? one comment could swallow the next ones, and a body of
+    // ~40 empty comments then took the whole server minutes to refuse (exponential backtracking)
+    const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--(?:(?!-->)[\\s\\S])*-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
     const ROOT = new RegExp(`<${tag}\\b[^>]*>`), WELL = new RegExp(`^<${tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>$`)
     const NPC = new RegExp(`<${tag}\\b[^>]*>\\s*<npc[\\s/>]`)
     const attrOf = (xml, name) => rootAttr(xml, name, tag)

@@ -1,6 +1,5 @@
 // The first screen of a browser that hasn't picked a game yet (App.tsx): two big choices. A pick is remembered here
 // (game.ts) and opens that game's home; the header's switch (nav.tsx) changes it later.
-import { Brand } from './bits'
 import { homeOf, storeGame, type Game } from './game'
 
 const GAMES: [Game, string, string, string][] = [
@@ -16,7 +15,8 @@ export function GamePicker({ onPick }: { onPick: (g: Game) => void }) {
   }
   return (
     <main className="lib gamepick">
-      <div><Brand /></div>
+      {/* no game yet: the neutral name, not either game's brand (bits.tsx Brand) */}
+      <div><span className="brand-row"><span className="brand">Chummer</span><span className="ver">v{__APP_VERSION__}</span></span></div>
       <h1>Choose your game</h1>
       <p>Each game keeps its own runners, NPCs and campaigns. You can switch at any time from the icon in the header.</p>
       <div className="games">
