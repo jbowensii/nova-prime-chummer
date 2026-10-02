@@ -163,6 +163,8 @@ function ledgerSummary(e: ReturnType<typeof activeEvents>[number], itemName: (ui
   }
 }
 
+/** what a critter or spirit without a metatype is shown as */
+const NO_META: Record<string, string> = { critter: 'Critter', spirit: 'Spirit' }
 export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRunner {
   const d = derive(c, ch), b = d.build, meta = c.metatypes.get(ch.identity.metatype), life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
   const partsOf = b.amps.map(a => ampParts(c, a.type, a.effects, b.skills))
@@ -197,8 +199,6 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
     ...ch.npc ? { npc: { ...ch.npc } } : {},
   }
 }
-/** what a critter or spirit without a metatype is shown as */
-const NO_META: Record<string, string> = { critter: 'Critter', spirit: 'Spirit' }
 
 const envelope = (kind: ExportFile['kind'], o: ExportOpts): ExportFile =>
   ({ format: EXPORT_FORMAT, version: EXPORT_VERSION, kind, exportedAt: o.now, app: { name: 'Chummer Anarchy 2.0', version: o.appVersion }, descriptions: o.descriptions })

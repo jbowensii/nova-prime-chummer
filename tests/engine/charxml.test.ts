@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
+import Ajv2020 from 'ajv/dist/2020'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
+import { exportRunners } from '../../src/engine/export'
+import { cat } from '../helpers'
 
 test('bad files are refused with a reason', () => {
   expect(xmlToCharacter('<x')).toMatchObject({ ok: false, reason: expect.stringMatching(/^Not valid XML/) })
@@ -54,4 +57,32 @@ test('an NPC’s npc block survives the round trip as the root’s first child; 
     expect(await valid(back)).toEqual([])
   }
   expect(await valid(NPC_XML('<npc kind="dragon" tier="prime"/>'))).not.toEqual([])
+})
+
+test('an unknown npc block reads as a regular NPC; repair says what it fixed; the result validates', async () => {
+  const xml = NPC_XML('<npc kind="dragon" tier="x" fightingSpirit="wild"/>')
+  const plain = xmlToCharacter(xml)
+  expect(plain.ok && plain.character.npc).toEqual({ kind: 'npc', tier: 'regular' })
+  const fix: string[] = []
+  const r = xmlToCharacter(xml, { repair: fix })
+  if (!r.ok) throw new Error(r.reason)
+  expect(r.character.npc).toEqual({ kind: 'npc', tier: 'regular' })
+  expect(fix).toEqual([expect.stringContaining('"dragon"'), expect.stringContaining('"x"'), expect.stringContaining('"wild"')])
+  const back = characterToXml(r.character)
+  const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
+  expect((await validateXML({ xml: { fileName: 'n.xml', contents: back }, schema: { fileName: 'character.xsd', contents: xsd } })).errors).toEqual([])
+  const check = new Ajv2020({ allErrors: true, strict: false, validateFormats: false })
+    .compile(JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')))
+  const f = JSON.parse(JSON.stringify(exportRunners(cat, [r.character], { descriptions: true, now: 'x', appVersion: '0' })))
+  expect(check(f), JSON.stringify(check.errors)).toBe(true)
+  expect(f.runners[0].npc).toEqual({ kind: 'npc', tier: 'regular' })
+  const missing = xmlToCharacter(NPC_XML('<npc/>'))
+  expect(missing.ok && missing.character.npc).toEqual({ kind: 'npc', tier: 'regular' })
+})
+
+test('NPCs get no free starting gear; runners do', () => {
+  const npc = xmlToCharacter(NPC_XML('<npc kind="critter" tier="regular"/>', ''))
+  expect(npc.ok && npc.character.build.items).toEqual([])
+  const runner = xmlToCharacter(NPC_XML(''))
+  expect(runner.ok && runner.character.build.items.map(i => i.starting)).toEqual(expect.arrayContaining(['commlink', 'fake-sin']))
 })

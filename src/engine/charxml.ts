@@ -4,7 +4,7 @@
 import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry, Npc } from '../model/types'
 import { ATTRS } from '../model/types'
 import { toAmp, toItem } from './parse'
-import { FORMAT_VERSION, knowledgeEntry, migrate } from './file'
+import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
 
@@ -249,6 +249,8 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     if (npc) {
       ch.npc = { kind: s(npc, 'kind') as Npc['kind'], tier: s(npc, 'tier') as Npc['tier'] }
       if (s(npc, 'fightingSpirit') !== undefined) ch.npc.fightingSpirit = s(npc, 'fightingSpirit') as Npc['fightingSpirit']
+      const fixed = normalizeNpc(ch.npc) // migrate does it too; here repair mode says what it fixed
+      if (fix) fix.push(...fixed)
     }
     return { ok: true, character: migrate(ch as unknown as Record<string, unknown>), rev: n(r, 'rev') }
   } catch (e) {
