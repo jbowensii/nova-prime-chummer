@@ -6,6 +6,7 @@ import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, rawAmpRating } f
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { price, slotLapse } from './price'
+import { hasNoMetatype } from './npc'
 
 /** The GM's table-wide switches (Rules page, TableRules.tsx); both on unless the GM switches them off. */
 export interface TableFlags { nonCanon: boolean; realSin: boolean }
@@ -15,14 +16,17 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   const add = (code: string, severity: Violation['severity'], path: string, message: string, page?: number, source = 'CRB') =>
     out.push({ code, severity, path, message, source: page ? source : undefined, page })
   const creation = !ch.finalizedAt
+  // an NPC isn't built on a budget at a level of play: no budget, creation caps, basics or narrative picks
+  const npc = !!ch.npc
+  const limited = creation && !npc
   const b = creation ? ch.build : currentBuild(ch)
   const level = c.levels.get(ch.level)
   const meta = c.metatypes.get(ch.identity.metatype)
-  if (!level) add('ref.unknown', 'warning', 'level', `Unknown level of play "${ch.level}".`)
-  if (!meta) add('ref.unknown', 'warning', 'identity.metatype', `Unknown metatype "${ch.identity.metatype}".`)
+  if (!level && !npc) add('ref.unknown', 'warning', 'level', `Unknown level of play "${ch.level}".`)
+  if (!meta && !(npc && (hasNoMetatype(ch) || !ch.identity.metatype))) add('ref.unknown', 'warning', 'identity.metatype', `Unknown metatype "${ch.identity.metatype}".`)
 
   // budget
-  if (creation) {
+  if (npc) { /* no budget */ } else if (creation) {
     const p = price(c, ch)
     if (p.remaining < 0) add('budget.over', 'error', 'budget', `Over budget by ${(-p.remaining).toLocaleString('en-US')}¥.`, 85)
   } else {
@@ -31,14 +35,14 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   }
 
   // attributes
-  if (meta) {
+  if (meta && !hasNoMetatype(ch)) {
     let atMax = 0
     for (const a of ATTRS) {
       const [min, max] = meta.ranges[a], v = b.attributes[a] ?? 0
       if (v < min || v > max) add('attr.range', 'error', `attributes.${a}`, `${a.toUpperCase()} ${v} is outside ${meta.name} range ${min}-${max}.`, 52)
       if (v === max) atMax++
     }
-    if (creation && level && atMax > level.attrAtMax)
+    if (limited && level && atMax > level.attrAtMax)
       add('attr.maxCount', 'error', 'attributes', `${atMax} Attributes at max; ${level.name} allows ${level.attrAtMax}.`, 85)
   }
 
@@ -47,14 +51,14 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     const sk = c.skills.get(s.id)
     if (!sk) { add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown skill "${s.id}".`); continue }
     const cap = creation && level ? level.skillCap : 8
-    if (s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 85 : 52)
+    if (!npc && s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 85 : 52)
     if (s.specs.length && s.rating < 1) add('spec.noSkill', 'error', `skills.${s.id}`, `${sk.name} specializations need at least rating 1.`, 52)
     for (const sp of s.specs) {
       if (sp.startsWith('custom:')) add('custom.content', 'warning', `skills.${s.id}`, `Custom specialization "${sp.slice(7)}" (GM should approve).`, 52)
       else if (!sk.specs.some(x => x.id === sp)) add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown specialization "${sp}".`)
     }
   }
-  if (creation) for (const id of ['athletics', 'stealth', 'perception', 'influence', 'network']) {
+  if (limited) for (const id of ['athletics', 'stealth', 'perception', 'influence', 'network']) {
     const r = b.skills.find(s => s.id === id)?.rating ?? 0
     if (r < 2) add('runner.basics', 'warning', `skills.${id}`, `${c.skills.get(id)?.name ?? id} below 2: every runner needs it, or a conscious reason not to.`, 84)
   }
@@ -153,7 +157,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   // level's limit for that kind of Test (owner's reading of CRB p.85 "including from stacking")
   const d = derive(c, { ...ch, build: b, finalizedAt: undefined })
   const cap = (total: number, limit: number, path: string, test: string, parts: [string, number][]) => {
-    if (creation && level && total > limit)
+    if (limited && level && total > limit)
       add('rr.cap', 'error', path, `RR ${total} on ${test} Tests (${parts.filter(([, n]) => n).map(([w, n]) => `${w} ${n}`).join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`, 85)
     else if (total > 3) add('rr.cap', 'warning', path, `RR ${total} on ${test} Tests: only 3 applies to one Test.`, 61)
   }
@@ -192,7 +196,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   const n = ch.narrative
   const filled = (xs: string[]) => xs.filter(x => x.trim()).length
-  if (filled(n.keywords) !== 5 || filled(n.dispositions) !== 4 || filled(n.cues) !== 4)
+  if (!npc && (filled(n.keywords) !== 5 || filled(n.dispositions) !== 4 || filled(n.cues) !== 4))
     add('narrative.count', 'warning', 'narrative', `Pick 5 Keywords, 4 Dispositions and 4 Cues (have ${filled(n.keywords)}/${filled(n.dispositions)}/${filled(n.cues)}).`, 84)
 
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
