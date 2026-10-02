@@ -17,6 +17,10 @@ let srv: { close: () => void; listen: (p: number, cb: () => void) => void; addre
 beforeAll(() => new Promise<void>(ok => {
   mkdirSync(join(library, 'stale-1'), { recursive: true }) // left mid-import by a restart
   writeFileSync(join(library, 'stale-1', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
+  // library/sr6/: the Shadowrun 6 area's books (S1), never an Anarchy book, even holding a made-up core import mid-job
+  mkdirSync(join(library, 'sr6'), { recursive: true })
+  writeFileSync(join(library, 'sr6', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
+  writeFileSync(join(library, 'sr6', 'import.xml'), '<import recipe="crb" source="MADEUP" file="made-up.pdf" sha256="00"><files/><report/></import>')
   srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
@@ -145,6 +149,14 @@ test('model lists: the provider is checked, errors come back plainly and never w
   expect(r.status).toBe(502)
   expect(text).toContain('HTTP 401: invalid key [key]')
   expect(text).not.toContain('LEAKME')
+})
+
+test('library/sr6/ is never an Anarchy book: not listed, not swept, never re-imported as the core', async () => {
+  await (srv as unknown as { started: Promise<void> }).started
+  expect((await list()).map(b => b.id)).not.toContain('sr6')
+  expect(readFileSync(join(library, 'sr6', 'status.xml'), 'utf8')).toContain('state="converting"')
+  expect(existsSync(join(library, 'sr6', 'core-rebuild.xml'))).toBe(false)
+  expect((await fetch(`${base}/api/books/sr6/report`)).status).toBe(400)
 })
 
 test('a book left mid-job by a restart is marked interrupted', async () => {

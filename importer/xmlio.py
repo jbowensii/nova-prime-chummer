@@ -116,6 +116,8 @@ def update_sources(custom_dir, library_dir):
     A source imported from several files (the four quick-reference sheets) lists them all."""
     by_id = {}
     for b in sorted(os.listdir(library_dir)):
+        if b.lower() == "sr6":  # library/sr6/: the Shadowrun 6 area's books, never an Anarchy source
+            continue
         imp = read_import(os.path.join(library_dir, b)) if os.path.isdir(os.path.join(library_dir, b)) else None
         if imp is None or not imp.get("source"):  # needs-ai / failed books have no source yet
             continue

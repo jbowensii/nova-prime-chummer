@@ -28,6 +28,7 @@ import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { attr, esc, rootTag, writeAtomic } from './books.mjs'
+import { RESERVED, scoped } from './games.mjs'
 
 const scrypt = promisify(scryptCb)
 const NS = 'urn:chummer-anarchy2:config:1'
@@ -190,8 +191,10 @@ export function publicOrigin(spec = '') {
   return u.origin
 }
 
-/** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. */
+/** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. A game's route
+ *  (/api/sr6/...) needs what the same route without the prefix needs. */
 export function need(path, method) {
+  path = scoped(path).path
   if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
   if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|ai-test|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
@@ -459,6 +462,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (!current || 'username' in b) {
       const n = oneLine(b.username).toLowerCase()
       if (!USERNAME.test(n)) throw fail(400, 'a username is 2–32 characters: a–z, 0–9, dots, dashes and underscores, starting with a letter or digit')
+      // characters/sr6/ is the Shadowrun 6 area's; an account called sr6 from before it keeps its name until renamed
+      if (RESERVED.includes(n) && n !== current?.username) throw fail(400, 'sr6 is reserved for the Shadowrun 6 area')
       if (users.some(u => u.username === n && u !== current)) throw fail(409, `the username ${n} is taken`)
       out.username = n
     }

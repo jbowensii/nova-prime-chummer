@@ -137,7 +137,7 @@ def _same_source(book_dir, source):
     """import.xml of the other books in the library that name `source`."""
     library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
     imps = (xmlio.read_import(os.path.join(library, b)) for b in os.listdir(library)
-            if b != me and os.path.isdir(os.path.join(library, b)))
+            if b != me and b.lower() != "sr6" and os.path.isdir(os.path.join(library, b)))  # sr6/: the Shadowrun 6 area's books
     return [i for i in imps if i is not None and (i.get("source") or "").lower() == source.lower()]
 
 

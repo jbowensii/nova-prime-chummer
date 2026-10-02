@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
@@ -66,4 +66,17 @@ test('serves the app and data files', async () => {
   const r = await fetch(`${base}/data/sources.xml`)
   expect(r.status).toBe(200)
   expect(await r.text()).toContain('kind="sources"')
+})
+
+test('/custom/sr6/ is never served here (S1 gives the Shadowrun 6 area its own route); the rest of /custom/ is', async () => {
+  const custom = join(dir, 'custom')
+  mkdirSync(join(custom, 'sr6'), { recursive: true })
+  writeFileSync(join(custom, 'index.xml'), '<overlays/>')
+  writeFileSync(join(custom, 'sr6', 'campaigns.xml'), '<campaigns/>')
+  writeFileSync(join(custom, 'sr6', 'x.xml'), '<x/>')
+  for (const p of ['/custom/sr6/campaigns.xml', '/custom/sr6/x.xml', '/custom/sr6', '/custom/sr6/', '/custom/SR6/x.xml', '/custom/sr6./x.xml',
+    '/custom//sr6/x.xml', '/custom/a/../sr6/x.xml'])
+    expect((await fetch(`${base}${p}`)).status, p).toBe(404)
+  const ok = await fetch(`${base}/custom/index.xml`)
+  expect([ok.status, await ok.text()]).toEqual([200, '<overlays/>'])
 })

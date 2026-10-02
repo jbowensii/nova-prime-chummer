@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from importer import xmlio
-from importer.__main__ import main, remove, run
+from importer.__main__ import _same_source, main, remove, run
 from importer.recipes import qref
 from importer.tests.test_qref import MD
 
@@ -177,6 +177,20 @@ class RemoveTest(unittest.TestCase):
         os.makedirs(book)
         remove(book, os.path.join(tmp, "custom"), forget=True)
         self.assertFalse(os.path.exists(book))
+
+
+class Sr6FolderTest(unittest.TestCase):
+    def test_library_sr6_is_never_an_anarchy_book(self):
+        """library/sr6/ holds the Shadowrun 6 area's books (S1): never in custom/imported/sources.xml, never the same source."""
+        tmp = tempfile.mkdtemp()
+        lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+        for b in ("sr6", "b1"):
+            os.makedirs(os.path.join(lib, b))
+        xmlio.write_import(os.path.join(lib, "sr6"), source="MADEUP", file="made-up.pdf", sha256="00", name="Made-up book",
+                           imported="2026-10-02T00:00:00Z")
+        xmlio.update_sources(custom, lib)
+        self.assertNotIn("MADEUP", Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))
+        self.assertEqual(_same_source(os.path.join(lib, "b1"), "MADEUP"), [])
 
 
 if __name__ == "__main__":

@@ -31,13 +31,13 @@
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
 //                                        edits, backup and restore, data packs (server/books.mjs); LIBRARY_DIR is never served
-//   /custom/*                            house-rule overlays from CUSTOM_DIR (never campaigns.xml)
+//   /custom/*                            house-rule overlays from CUSTOM_DIR (never campaigns.xml, never custom/sr6/)
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
-import { dirname, extname, join, resolve, sep } from 'node:path'
+import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
@@ -377,10 +377,13 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (url.pathname.startsWith('/custom/')) { // imported book data: signed-in users only
         if (!auth.session(req, res)) return send(res, 401, 'sign in first', 'text/plain')
         // campaigns.xml (who plays where, GM notes): only through /api/campaigns. By name (trailing dots and spaces: Windows'),
-        // by Windows' stream and short-name syntax, and by the file itself (a link, a name the check didn't think of)
+        // by Windows' stream and short-name syntax, and by the file itself (a link, a name the check didn't think of).
+        // custom/sr6/ (the Shadowrun 6 area's, with its own campaigns.xml): never here, in any case or spelling
         const asked = resolve(customDir, '.' + url.pathname.slice('/custom'.length)), secret = join(customDir, 'campaigns.xml')
-        const [a, b] = await Promise.all([stat(asked).catch(() => null), stat(secret).catch(() => null)])
-        if (/[:~]/.test(url.pathname) || asked.replace(/[. ]+$/, '').toLowerCase() === secret.toLowerCase() || (a && b && a.dev === b.dev && a.ino === b.ino))
+        const top = relative(customDir, asked).split(sep)[0].replace(/[. ]+$/, '').toLowerCase()
+        const [a, ...b] = await Promise.all([asked, secret, join(customDir, 'sr6', 'campaigns.xml')].map(p => stat(p).catch(() => null)))
+        if (/[:~]/.test(url.pathname) || top === 'sr6' || asked.replace(/[. ]+$/, '').toLowerCase() === secret.toLowerCase()
+          || b.some(f => a && f && a.dev === f.dev && a.ino === f.ino))
           return send(res, 404, 'not found', 'text/plain')
         if (await serveFile(res, customDir, url.pathname.slice('/custom'.length))) return
         return send(res, 404, 'not found', 'text/plain')
