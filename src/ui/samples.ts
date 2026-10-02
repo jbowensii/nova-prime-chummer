@@ -42,11 +42,15 @@ export async function readSample(url: string) {
 /** Which version wins, as a sortable string: a book's over a set's, then the newest import. */
 const rank = (source: SourceInfo | undefined) => source ? `1|${source.imported ?? ''}` : '0|'
 
-/** The key a runner counts under: its recorded key; for a copy loaded before keys had this form, its sampleKey
- *  ("<source>.<name slug>", 0.4.1) or origin gives the source and so the canon-ness; a first-release built-in copy (id
- *  "sample-…", no origin) is canon. null: not an example character. */
+/** The key a runner counts under: its recorded key, with a book's copy's canon-ness as its book (origin) has it now (the
+ *  flag may have changed since the copy was loaded; the copy is the same book's character); for a copy loaded before keys
+ *  had this form, its sampleKey ("<source>.<name slug>", 0.4.1) or origin gives the source and so the canon-ness; a
+ *  first-release built-in copy (id "sample-…", no origin) is canon. null: not an example character. */
 export function keyOf(ch: Character, sources: Sources): string | null {
-  if (ch.sampleKey?.includes('|')) return ch.sampleKey
+  if (ch.sampleKey?.includes('|')) {
+    const book = ch.origin ? sources(ch.origin) : undefined
+    return book ? `${ch.sampleKey.slice(0, ch.sampleKey.lastIndexOf('|'))}|${book.canon ? 'canon' : 'noncanon'}` : ch.sampleKey
+  }
   if (ch.sampleKey) {
     const dot = ch.sampleKey.indexOf('.')
     return `${ch.sampleKey.slice(dot + 1)}|${sources(ch.sampleKey.slice(0, dot))?.canon ? 'canon' : 'noncanon'}`
@@ -72,23 +76,27 @@ export function chooseExamples(rows: Example[], sources: Sources): (Example & { 
   return [...best.values()]
 }
 
-/** Loaded and never changed since: saved once (rev 1, or no rev in browser storage) and still dated as loaded (a load
- *  records that date as lastExportedAt; a copy from before that counts as loaded at the earliest date among copies of the
- *  same character from the same source: `loaded`). */
-export const unedited = (ch: Character, rev?: number, loaded = ch.updatedAt) => (rev ?? 1) <= 1 && ch.updatedAt === (ch.lastExportedAt ?? loaded)
+/** Loaded and never changed since. A load records the file's date as lastExportedAt (a copy from before that counts as
+ *  loaded at the earliest date among copies of the same character from the same source: `loaded`). On the server: saved
+ *  once (rev 1; any save after the load is an edit) and not dated after that load (a file changed outside the app). In
+ *  browser storage (no rev): still dated exactly as loaded. */
+export const unedited = (ch: Character, rev?: number, loaded = ch.updatedAt) =>
+  rev != null ? rev <= 1 && ch.updatedAt <= (ch.lastExportedAt ?? loaded) : ch.updatedAt === (ch.lastExportedAt ?? loaded)
 
 /** Where a copy came from: its book (origin, or a 0.4.1 sampleKey's source), else none (an example set). */
 const sourceOf = (ch: Character) => ch.origin ?? (ch.sampleKey && !ch.sampleKey.includes('|') ? ch.sampleKey.split('.')[0] : undefined)
 
-/** Everything but the id, the timestamps and the key: two copies with the same fingerprint are the same runner. */
-const fingerprint = (ch: Character) => characterToXml({ ...ch, id: '', updatedAt: '', lastExportedAt: undefined, sampleKey: undefined })
+/** Everything but the id, the timestamps, the key and the campaign: two copies with the same fingerprint are the same runner. */
+const fingerprint = (ch: Character) => characterToXml({ ...ch, id: '', updatedAt: '', lastExportedAt: undefined, sampleKey: undefined, campaign: undefined })
 
-/** The extra copies among `runners` (one account's own): per key, every copy beyond one. First, copies from before the
- *  "|" keys (0.4.0 and 0.4.1 stamped lastExportedAt at load time, so the date rule can't tell) that are identical apart
- *  from ids, dates and keys: the oldest stays, the rest are extra. Then edited copies always stay (and every unedited
- *  one is extra); otherwise the preferred version stays (a book's over a set's, the newest import), the oldest on a tie. */
-export function extraCopies(runners: { ch: Character; rev?: number }[], sources: Sources): Character[] {
-  const groups = new Map<string, { ch: Character; rev?: number }[]>()
+type Row = { ch: Character; rev?: number }
+
+/** The extra copies among `runners` (one account's own): per key (keyOf), every copy beyond one. First, copies from before the "|" keys (0.4.0 and 0.4.1 stamped lastExportedAt at load time, so the
+ *  date rule can't tell) that are identical apart from ids, dates and keys: the oldest stays, the rest are extra. Then
+ *  edited copies always stay (and every unedited one is extra); otherwise the preferred version stays (a book's over a
+ *  set's, the newest import), then the newest copy (the newer example file), the first on a tie. */
+export function extraCopies(runners: Row[], sources: Sources): Character[] {
+  const groups = new Map<string, Row[]>()
   for (const r of runners) {
     const key = keyOf(r.ch, sources)
     if (key) groups.set(key, [...groups.get(key) ?? [], r])
@@ -96,7 +104,7 @@ export function extraCopies(runners: { ch: Character; rev?: number }[], sources:
   const out: Character[] = []
   for (const g of groups.values()) {
     if (g.length < 2) continue
-    const old = new Map<string, { ch: Character; rev?: number }>()
+    const old = new Map<string, Row>()
     const when = (ch: Character) => `${ch.updatedAt}|${ch.lastExportedAt ?? ''}` // the oldest: then the first loaded
     for (const r of [...g].sort((a, b) => when(a.ch).localeCompare(when(b.ch)))) {
       if (r.ch.sampleKey?.includes('|')) continue
@@ -108,9 +116,18 @@ export function extraCopies(runners: { ch: Character; rev?: number }[], sources:
     for (const { ch } of g) { const k = sourceOf(ch) ?? ''; if (!loaded.has(k) || ch.updatedAt < loaded.get(k)!) loaded.set(k, ch.updatedAt) }
     const fresh = g.filter(r => unedited(r.ch, r.rev, loaded.get(sourceOf(r.ch) ?? '')))
     if (fresh.length < g.length) { out.push(...fresh.map(r => r.ch)); continue }
-    const score = (ch: Character) => rank(sourceOf(ch) ? sources(sourceOf(ch)!) : undefined)
-    const keep = g.reduce((a, b) => score(b.ch) > score(a.ch) || (score(b.ch) === score(a.ch) && b.ch.updatedAt < a.ch.updatedAt) ? b : a)
+    const score = (ch: Character) => `${rank(sourceOf(ch) ? sources(sourceOf(ch)!) : undefined)}|${ch.updatedAt}`
+    const keep = g.reduce((a, b) => score(b.ch) > score(a.ch) ? b : a)
     out.push(...g.filter(r => r !== keep).map(r => r.ch))
   }
   return out
+}
+
+/** Find duplicates: runners (or NPCs) identical apart from id, file, dates, rev, example key and campaign. Each group
+ *  lists the copy that stays first (one in a campaign, else the most saved, else the newest), then the extra copies. */
+export function identicalCopies(runners: Row[]): Character[][] {
+  const groups = new Map<string, Row[]>()
+  for (const r of runners) { const f = fingerprint(r.ch); groups.set(f, [...groups.get(f) ?? [], r]) }
+  const score = (r: Row) => `${r.ch.campaign ? 1 : 0}|${String(r.rev ?? 0).padStart(9, '0')}|${r.ch.updatedAt}`
+  return [...groups.values()].filter(g => g.length > 1).map(g => [...g].sort((a, b) => score(b).localeCompare(score(a))).map(r => r.ch))
 }

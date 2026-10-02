@@ -1,5 +1,30 @@
 # Release notes
 
+## 0.8.2 — 2026-10-02: Tokens, spell categories and duplicates
+
+**Token**
+- A runner or NPC now has a **token** picture beside its portrait on the Concept tab, shown round. **Set a token…**
+  opens the portrait's dialog (choose a picture, zoom, drag, center) with a round preview and **Same as portrait**,
+  ticked by default: no token of its own, the portrait serves. Untick it to frame the portrait for the circle, or
+  choose other art.
+- The token is saved in the character file (`<token>`, after `<portrait>`; the XSD and the importer's writer have it
+  too) and exported for Foundry as `runners[].token` (a data URL, or `null`: use the portrait). The Foundry module
+  0.7.0 reads it.
+
+**Export**
+- A runner's items carry their catalog **category** (`items[].category`), as book items already did: a spell's
+  combat, detection, health, illusion or manipulation. In the schema and docs/export-format.md.
+
+**Duplicates**
+- **Tidy up** finds more extra copies of the example characters: a copy loaded from an older version of a book's
+  example file, recorded under the book's earlier canon flag, now pairs with the current one, and on the server a copy
+  counts as unchanged while it's saved once (rev 1), whatever its dates. The newest unchanged copy stays; a copy you
+  edited (saved again) is never moved.
+- **Find duplicates** (an icon on Your runners and on NPCs & Critters, server only) lists your runners or NPCs that
+  are identical apart from their ids, files and dates, by name, and moves the extra copies to your trash after you
+  confirm. The one in a campaign stays, else the most saved, else the newest. Everything can be restored from the
+  trash.
+
 ## 0.8.1 — 2026-10-02: Icon menus and a stronger sheet background
 
 **Menus**

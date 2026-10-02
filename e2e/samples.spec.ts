@@ -150,3 +150,67 @@ test('when the example sets can’t be read, the books’ examples still load an
   await expect(page.getByRole('status')).toHaveText('Added 1 example character. Couldn’t read the server’s example sets: server error.')
   expect(own('pat').filter(x => x.includes('origin="PREGENS"'))).toHaveLength(1)
 })
+
+test('tidy-up (0.8.2): a book example loaded twice, once from an older version of its file under the other canon flag, both unedited: the newer stays', async ({ page }) => {
+  await signIn(page, 'pat')
+  // the owner's server: the same book's character, an older file (other dates and text) recorded as non-canon, rev 1
+  const cur = own('pat').find(x => x.includes('origin="TESTC"'))!
+  const older = cur.replace(/ id="[^"]+"/, ' id="older-test-face"').replace(/ rev="\d+"/, '').replace('sampleKey="test-face|canon"', 'sampleKey="test-face|noncanon"')
+    .replace(/updatedAt="[^"]+"/, 'updatedAt="2026-08-01T00:00:00.000Z"').replace(/lastExportedAt="[^"]+"/, 'lastExportedAt="2026-08-01T00:00:00.000Z"')
+    .replace(/<background>[^<]*<\/background>/, '<background>The older text.</background>')
+  expect(older).toContain('The older text.')
+  expect((await put(page, 'older-test-face', older)).status()).toBe(201)
+  await page.reload()
+  await expect(page.getByText('An example character is in your library twice, unchanged since they were loaded.')).toBeVisible()
+  await page.getByRole('button', { name: 'Tidy up' }).click()
+  await expect(page.getByRole('dialog').getByRole('listitem')).toHaveText(['Test Face (Test Book Canon)'])
+  await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click()
+  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Test Face.')
+  expect(own('pat').filter(x => x.includes('The older text.'))).toHaveLength(0)
+  expect(own('pat').filter(x => x.includes('origin="TESTC"'))).toHaveLength(1)
+  expect(own('pat').filter(x => x.includes('origin="PREGENS"'))).toHaveLength(1) // the other book's stays
+})
+
+test('find duplicates: exact copies of a runner, listed by name, go to the trash after a confirm', async ({ page }) => {
+  await signIn(page, 'pat')
+  await page.getByRole('button', { name: 'Find duplicates' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Duplicate runners' })
+  await expect(dlg).toContainText('No duplicates')
+  await dlg.getByRole('button', { name: 'Close' }).click()
+  // an exact copy of Old Timer under another id (and a later date), and one that differs: only the copy is a duplicate
+  const timer = own('pat').find(x => x.includes('streetName="Old Timer"'))!.replace(/ rev="\d+"/, '')
+  expect((await put(page, 'timer-copy', timer.replace(/ id="[^"]+"/, ' id="timer-copy"').replace(/updatedAt="[^"]+"/, 'updatedAt="2026-09-30T00:00:00.000Z"'))).status()).toBe(201)
+  expect((await put(page, 'timer-other', timer.replace(/ id="[^"]+"/, ' id="timer-other"').replace(/<background>[^<]*<\/background>/, '<background>Mine now.</background>'))).status()).toBe(201)
+  const trash = () => readdirSync(join(dir, 'characters', 'pat', '.trash')).length
+  const before = trash()
+  await page.reload()
+  await page.getByRole('button', { name: 'Find duplicates' }).click()
+  await expect(dlg.getByRole('listitem')).toHaveText(['Old Timer: one extra copy'])
+  await dlg.getByRole('button', { name: 'Keep them' }).click()
+  expect(own('pat').filter(x => x.includes('streetName="Old Timer"'))).toHaveLength(3)
+  await page.getByRole('button', { name: 'Find duplicates' }).click()
+  await dlg.getByRole('button', { name: 'Move 1 to trash' }).click()
+  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Old Timer.')
+  expect(own('pat').filter(x => x.includes('streetName="Old Timer"'))).toHaveLength(2)
+  expect(own('pat').filter(x => x.includes('Mine now.'))).toHaveLength(1)
+  expect(trash()).toBe(before + 1)
+
+})
+
+test('find duplicates on NPCs & Critters: the extra copy goes to the NPC trash', async ({ page }) => {
+  await signIn(page, 'ada')
+  const npc = readFileSync('tests/fixtures/npc-critter.xml', 'utf8')
+  for (const id of ['hound-1', 'hound-2']) {
+    const r = await page.request.put(`${base}api/npcs/${id}`, { data: npc.replace('id="npc.test-hound"', `id="${id}"`),
+      headers: { 'Content-Type': 'application/xml', Origin: base.replace(/\/$/, '') } })
+    expect(r.status()).toBe(201)
+  }
+  await page.goto(`${base}#/npcs`)
+  await page.getByRole('button', { name: 'Find duplicates' }).click()
+  const nd = page.getByRole('dialog', { name: 'Duplicate NPCs' })
+  await expect(nd.getByRole('listitem')).toHaveText(['Test Hound: one extra copy'])
+  await nd.getByRole('button', { name: 'Move 1 to trash' }).click()
+  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Test Hound.')
+  expect(readdirSync(join(dir, 'characters', '.npcs', 'ada')).filter(f => f.endsWith('.xml'))).toHaveLength(1)
+  expect(readdirSync(join(dir, 'characters', '.npcs', 'ada', '.trash'))).toHaveLength(1)
+})

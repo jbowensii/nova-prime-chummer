@@ -305,7 +305,7 @@ tr.starting input.note { margin-top: 0.3rem; }
 .bd-neon { --bd: radial-gradient(circle at 70% 30%, rgb(255 60 200 / 0.55), transparent 55%), radial-gradient(circle at 20% 85%, rgb(0 230 255 / 0.45), transparent 50%), linear-gradient(160deg, #25204b, #120f24); }
 .bd-rain { --bd: repeating-linear-gradient(100deg, rgb(200 195 230 / 0.2) 0 1px, transparent 1px 9px), var(--grain), linear-gradient(#120f24, #36305b); }
 .portrait-row { display: flex; gap: 1rem; align-items: start; flex-wrap: wrap; }
-.portrait-row .face { width: 6rem; height: 6rem; flex: none; object-fit: cover; background: var(--bd, var(--indigo)); display: grid; place-items: center; font-family: var(--graffiti); font-size: 2.6rem; color: var(--yellow); border: 1px solid var(--rule); }
+.portrait-row .face, .portrait-row .tokenface { width: 6rem; height: 6rem; flex: none; object-fit: cover; background: var(--bd, var(--indigo)); display: grid; place-items: center; font-family: var(--graffiti); font-size: 2.6rem; color: var(--yellow); border: 1px solid var(--rule); }
 .backdrops { border: 0; padding: 0; margin: 0; min-width: 0; flex: 1; }
 .backdrops legend { font-weight: 600; padding: 0; }
 .backdrops p { margin: 0.1rem 0 0.4rem; }
@@ -574,6 +574,7 @@ dialog.drawer h2 { margin-top: 0; }
 .pe-stage { position: relative; overflow: hidden; flex: none; background: var(--bd, var(--indigo)); border: 1px solid var(--rule); display: grid; place-items: center; touch-action: none; cursor: grab; }
 .pe-stage:active { cursor: grabbing; }
 .pe-stage img { position: absolute; max-width: none; user-select: none; pointer-events: none; }
+.pe-stage.round, .portrait-row .tokenface { border-radius: 50%; }
 .pe-zoom { display: flex; gap: 0.6rem; align-items: center; }
 .pe-zoom input { flex: 1; }
 .portrait-editor .backdrops { flex: 1; min-width: 14rem; }

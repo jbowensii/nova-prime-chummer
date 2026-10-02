@@ -13,7 +13,7 @@ import { loadCampaigns, type Campaign } from './Campaigns'
 import { listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { editHref } from './editor'
 import { downloadRunners, ExportRunnersDialog } from './Foundry'
-import { arrange, exportCharacter, ownerGroups, type SortBy } from './Library'
+import { arrange, exportCharacter, FindDuplicates, ownerGroups, type SortBy } from './Library'
 import { Face } from './Portrait'
 import { npcRepoFor, useRepo, type Stored, type Unreadable } from './repo'
 import { bookNpcs, readCharacterFile, readSample } from './samples'
@@ -179,6 +179,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
         <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         {comps.length > 0 && <IconButton icon="move" label="Move to compendium…" onClick={() => pickMove([])} disabled={!mine.length} />}
+        {repo.mode === 'server' && <FindDuplicates rows={mine} noun="NPCs" remove={repo.remove} done={m => { setMsg(m); void refresh() }} />}
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/npcs/trash" badge={trashed || undefined} />}
       </PageHeader>
       <p className="muted">Your NPCs, critters and spirits, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.

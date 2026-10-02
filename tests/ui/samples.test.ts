@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { blankCharacter } from '../../src/engine/file'
 import { characterToXml, xmlToCharacter } from '../../src/engine'
-import { chooseExamples, exampleKey, extraCopies, keyOf, type Example, type Sources } from '../../src/ui/samples'
+import { chooseExamples, exampleKey, extraCopies, identicalCopies, keyOf, type Example, type Sources } from '../../src/ui/samples'
 import type { Character } from '../../src/model/types'
 
 // Made up: two canon books OLDC (imported 2026-09-01) and NEWC (2026-09-20), a non-canon booklet PREG, and the
@@ -104,4 +104,35 @@ test('two runners of one name in one book are two characters (“-2”, as 0.4.1
   const rows = [book('OLDC', 'Mo Ray', 1), book('OLDC', 'Mo Ray', 2), book('NEWC', 'Mo Ray')]
   expect(chooseExamples(rows, sources).map(e => `${e.key} ${e.source}`).sort()).toEqual(['mo-ray-2|canon OLDC', 'mo-ray|canon NEWC'])
   expect(keyOf(runner('Mo Ray', { sampleKey: 'oldc.mo-ray-2' }), sources)).toBe('mo-ray-2|canon')
+})
+
+test('tidy-up on the server: two unedited copies (rev 1) of one book’s example from two versions of its file pair, the newest stays', () => {
+  // the owner's case: loaded twice the same day, one copy from an older version of the example file (other text and
+  // dates), and the book's canon flag differing between the loads (so the keys' canon-ness differs)
+  const older = runner('Dusty Hat', { origin: 'OLDC', sampleKey: 'dusty-hat|noncanon', updatedAt: '2026-08-01T00:00:00Z', lastExportedAt: '2026-08-01T00:00:00Z' })
+  older.identity = { ...older.identity, background: 'Older text.' }
+  const newer = runner('Dusty Hat', { origin: 'OLDC', sampleKey: 'dusty-hat|canon', updatedAt: '2026-09-01T00:00:00Z', lastExportedAt: '2026-09-02T00:00:00Z' })
+  expect(extraCopies([{ ch: older, rev: 1 }, { ch: newer, rev: 1 }], sources)).toEqual([older])
+  expect(extraCopies([{ ch: newer, rev: 1 }, { ch: older, rev: 1 }], sources)).toEqual([older])
+  // an edited copy (rev 2) is never extra: the unedited ones go, however new
+  expect(extraCopies([{ ch: older, rev: 2 }, { ch: newer, rev: 1 }], sources)).toEqual([newer])
+  expect(extraCopies([{ ch: older, rev: 2 }, { ch: newer, rev: 3 }], sources)).toEqual([])
+  // another book's non-canon copy is another character: it stays
+  const preg = runner('Dusty Hat', { origin: 'PREG', sampleKey: 'dusty-hat|noncanon', lastExportedAt: '2026-09-01T00:00:00Z' })
+  expect(extraCopies([{ ch: older, rev: 1 }, { ch: newer, rev: 1 }, { ch: preg, rev: 1 }], sources)).toEqual([older])
+  // two characters of one name in one book stay two
+  const second = runner('Dusty Hat', { origin: 'OLDC', sampleKey: 'dusty-hat-2|canon' })
+  expect(extraCopies([{ ch: newer, rev: 1 }, { ch: second, rev: 1 }], sources)).toEqual([])
+})
+
+test('find duplicates: identical apart from id, dates, rev, key and campaign; the one in a campaign, else the most saved, stays', () => {
+  const a = runner('Dusty Hat', { id: 'a', updatedAt: '2026-09-01T00:00:00Z' })
+  const b = { ...a, id: 'b', updatedAt: '2026-09-03T00:00:00Z', lastExportedAt: '2026-09-04T00:00:00Z', sampleKey: 'dusty-hat|canon' }
+  const c = { ...a, id: 'c', campaign: 'k1' }
+  const other = { ...a, id: 'd', identity: { ...a.identity, notes: 'Changed.' } }
+  const ids = (g: Character[][]) => g.map(x => x.map(ch => ch.id))
+  expect(ids(identicalCopies([{ ch: a, rev: 3 }, { ch: b, rev: 1 }, { ch: other }]))).toEqual([['a', 'b']])
+  expect(ids(identicalCopies([{ ch: a, rev: 1 }, { ch: b, rev: 1 }]))).toEqual([['b', 'a']]) // the newest
+  expect(ids(identicalCopies([{ ch: a, rev: 3 }, { ch: b }, { ch: c }]))).toEqual([['c', 'a', 'b']])
+  expect(identicalCopies([{ ch: a }, { ch: other }])).toEqual([])
 })

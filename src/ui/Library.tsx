@@ -10,7 +10,7 @@ import { useRepo, type Stored, type Unreadable } from './repo'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
-import { bookSamples, chooseExamples, extraCopies, keyOf, readCharacterFile, readSample, type Example, type Sources } from './samples'
+import { bookSamples, chooseExamples, extraCopies, identicalCopies, keyOf, readCharacterFile, readSample, type Example, type Sources } from './samples'
 import { Face } from './Portrait'
 import { ExportRunnersDialog } from './Foundry'
 
@@ -22,6 +22,39 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
   a.click()
   URL.revokeObjectURL(url)
   return out
+}
+
+/** Find duplicates (server only: the extra copies go to the trash, where they can be restored): the page's own runners
+ *  or NPCs that are identical apart from id, file, dates and rev, shown by name before anything moves. */
+export function FindDuplicates({ rows, noun, remove, done }: {
+  rows: Stored[]; noun: string; remove: (id: string) => Promise<void>; done: (msg: string) => void
+}) {
+  const [groups, setGroups] = useState<Character[][] | null>(null)
+  const name = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed'
+  const extra = (groups ?? []).flatMap(g => g.slice(1))
+  const move = async () => {
+    const moved: string[] = []
+    try {
+      for (const ch of extra) { await remove(ch.id); moved.push(name(ch)) } // stops at the first that fails
+      done(`Moved to your trash: ${moved.join(', ')}.`)
+    } catch (e) {
+      done([moved.length ? `Moved to your trash: ${moved.join(', ')}.` : '', because(`Couldn’t move ${name(extra[moved.length])}`, (e as Error).message ?? String(e))].filter(Boolean).join(' '))
+    }
+    setGroups(null)
+  }
+  return <>
+    <IconButton icon="copies" label="Find duplicates" onClick={() => setGroups(identicalCopies(rows))} disabled={rows.length < 2} />
+    <Modal open={!!groups} onClose={() => setGroups(null)} title={`Duplicate ${noun}`}
+      actions={extra.length ? <><button className="btn" onClick={() => setGroups(null)}>Keep them</button>
+        <button className="btn primary" onClick={() => void move()}>Move {extra.length} to trash</button></>
+        : <button className="btn" onClick={() => setGroups(null)}>Close</button>}>
+      {extra.length ? <>
+        <p>These {noun} are identical apart from their ids, files and dates. One of each stays (the one in a campaign, else the most saved, else the newest); the extra copies move to your trash:</p>
+        <ul>{groups!.map(g => <li key={g[0].id}>{name(g[0])}: {g.length - 1 === 1 ? 'one extra copy' : `${g.length - 1} extra copies`}</li>)}</ul>
+        <p className="muted">They can be restored from the trash.</p>
+      </> : <p>No duplicates: none of your {noun} is an exact copy of another.</p>}
+    </Modal>
+  </>
 }
 
 /** Every example character there is: the imported books' sample runners (none before any import) and, on the server,
@@ -143,7 +176,7 @@ export function Library({ c }: { c: Catalog }) {
   // each account gets copies of its own (new ids): one per character and canon-ness, whatever ids a re-import gave
   const loadExamples = async () => {
     try {
-      const have = new Set(mine.map(s => keyOf(s.ch, sources)))
+      const have = new Set(mine.flatMap(s => [keyOf(s.ch, sources), s.ch.sampleKey])) // as recorded too: a set's copy of a book's runner
       let n = 0
       const bad: string[] = []
       const { rows, error } = await exampleList(sources, repo.mode === 'server')
@@ -272,6 +305,7 @@ export function Library({ c }: { c: Catalog }) {
         <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         <IconButton icon="examples" label="Load example characters" onClick={loadExamples} />
+        {repo.mode === 'server' && <FindDuplicates rows={mine} noun="runners" remove={repo.remove} done={m => { setMsg(m); void refresh() }} />}
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/trash" badge={trashed || undefined} />}
       </PageHeader>
       <p className="muted">Saved on {where}{repo.mode === 'server' ? ' (appdata/chummer-anarchy2/characters)' : '. Export files to keep them safe.'}</p>

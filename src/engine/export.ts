@@ -21,14 +21,16 @@ export interface ExportAmp { uid: string; catalogId?: string; source?: string; p
   typeName: string; name: string; rating: number; essence: number; effects: ExportEffect[]; rr: ExportRR[];
   bonuses: ExportBonuses; item?: string; vehicle?: string; description?: string }
 export interface ExportItem { uid: string; catalogId?: string; kind: string; name: string; source?: string; page?: number;
-  canon: boolean; price: number; starting?: string; note?: string; description?: string
+  /** the catalog item's category (spells: combat, detection, health, illusion, manipulation), as book items carry it */
+  category?: string; canon: boolean; price: number; starting?: string; note?: string; description?: string
   weapon?: { dv: string; dvText: string; ranges: Record<'melee' | 'short' | 'medium' | 'long', Range>; specialist: boolean; ammo: string[] }
   armor?: { value: number; over?: string } }
 export interface ExportRunner {
   id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; finalized: boolean
   metatype: { id: string; name: string; ranges: Record<AttrId, [number, number]>; edge: number }
   level: { id: string; name: string }; lifestyle: { id: string; name: string; perRun: number }
-  portrait: string | null; attributes: Record<AttrId, number>; edge: number; essence: number
+  /** token: the round token picture, null: none (use the portrait) */
+  portrait: string | null; token?: string | null; attributes: Record<AttrId, number>; edge: number; essence: number
   skills: { id: string; name: string; attr: string; rating: number; specs: { id: string; name: string; attr: string; custom: boolean }[] }[]
   knowledge: { name: string; kind: string; native: boolean }[]
   amps: ExportAmp[]; items: ExportItem[]
@@ -135,7 +137,8 @@ function exportItem(c: Catalog, it: ItemEntry, dv: Map<string, { dv: string; amm
   const cat = it.catalogId ? c.items.get(it.catalogId) ?? it.snapshot : it.snapshot
   const text = cat?.text
   return { uid: it.uid, ...it.catalogId ? { catalogId: it.catalogId } : {}, kind: it.kind, name: it.name,
-    ...cat ? { source: cat.source, page: cat.page } : {}, canon: isCanonSource(c, cat?.source), price: itemCost(c.pricing, it),
+    ...cat ? { source: cat.source, page: cat.page } : {}, ...cat?.category ? { category: cat.category } : {},
+    canon: isCanonSource(c, cat?.source), price: itemCost(c.pricing, it),
     ...it.starting ? { starting: it.starting } : {}, ...it.note ? { note: it.note } : {},
     ...it.kind === 'weapon' ? { weapon: { dv: dv.get(it.uid)?.dv ?? it.dv ?? cat?.dv ?? '', dvText: it.dv ?? cat?.dv ?? '',
       ranges: parseRanges(it.ranges ?? cat?.ranges), specialist: !!(it.specialist ?? cat?.specialist), ammo: dv.get(it.uid)?.ammo ?? [] } } : {},
@@ -180,7 +183,7 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
     metatype: { id: ch.identity.metatype, name: meta?.name ?? (ch.identity.metatype || NO_META[ch.npc?.kind ?? ''] || ''), ranges: meta?.ranges ?? {} as never, edge: d.edge },
     level: { id: ch.level, name: c.levels.get(ch.level)?.name ?? ch.level },
     lifestyle: { id: ch.identity.lifestyle ?? 'low', name: life?.name ?? '', perRun: life?.perRun ?? 0 },
-    portrait: ch.identity.portrait ?? null, attributes: b.attributes, edge: d.edge, essence: d.essence,
+    portrait: ch.identity.portrait ?? null, token: ch.identity.token ?? null, attributes: b.attributes, edge: d.edge, essence: d.essence,
     skills: b.skills.map(s => { const sk = c.skills.get(s.id)
       return { id: s.id, name: sk?.name ?? s.id, attr: sk?.attr ?? '', rating: s.rating,
         specs: s.specs.map(id => { const sp = sk?.specs.find(x => x.id === id)
