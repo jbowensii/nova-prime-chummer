@@ -9,6 +9,7 @@ import { AccountMenu, because, savesSettled, send, useMe } from './auth'
 import { AskButton } from './AskRules'
 import { Brand, Modal, NPC_KINDS, NPC_TIERS, NpcChips } from './bits'
 import { loadCampaigns, type Campaign } from './Campaigns'
+import { listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { editHref } from './editor'
 import { downloadRunners, ExportRunnersDialog } from './Foundry'
 import { arrange, exportCharacter, ownerGroups, type SortBy } from './Library'
@@ -39,12 +40,16 @@ export function NpcsScreen({ c }: { c: Catalog }) {
   const [toDelete, setToDelete] = useState<Character | null>(null)
   const [foundry, setFoundry] = useState(false)
   const [trashed, setTrashed] = useState<number | null>(null) // server only
+  const [comps, setComps] = useState<StoredCompendium[]>([]) // yours, where NPCs can move (server only)
+  const [moving, setMoving] = useState<Set<string> | null>(null)
+  const [into, setInto] = useState('')
   const file = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
     if (repo.mode === 'server') {
       loadCampaigns().then(setCampaigns, () => setCampaigns([]))
       loadTrash(undefined, true).then(t => setTrashed(t.items.length), () => setTrashed(null))
+      listCompendiums().then(rows => setComps(parseRows(rows).comps.filter(x => x.owner === me?.username)), () => setComps([]))
     }
     // an NPC just left in the editor may still be sending its last change: list it as saved
     return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored); setUnreadable(r.unreadable) },
@@ -68,6 +73,18 @@ export function NpcsScreen({ c }: { c: Catalog }) {
     const ch = blankNpc(kind, tier, meta)
     if (await store(ch)) location.hash = editHref(ch, 'concept')
   }
+  // into one of your compendiums: saved there first (unshared), then deleted here (to the NPC trash); a failed save moves nothing
+  const moveIn = async () => {
+    const comp = comps.find(x => x.id === into)!, chs = mine.filter(s => moving!.has(s.ch.id)).map(s => ({ ...s.ch, campaign: undefined }))
+    setMoving(null)
+    const r = await saveCompendium({ ...comp, npcs: [...comp.npcs.filter(n => !moving!.has(n.id)), ...chs] }, comp.rev)
+    if (!r.ok) { setMsg(because('Couldn’t move them', r.conflict ? `${comp.name} changed elsewhere; reload the page` : r.error ?? '')); return }
+    const left: string[] = []
+    for (const ch of chs) await repo.remove(ch.id).catch(() => left.push(nameOf(ch)))
+    setMsg(`Moved ${chs.map(nameOf).join(', ')} to ${comp.name}.${left.length ? ` Couldn’t take ${left.join(', ')} out of your NPCs: delete ${left.length === 1 ? 'it' : 'them'} here.` : ''}`)
+    void refresh()
+  }
+  const pickMove = (ids: string[]) => { setInto(comps[0]?.id ?? ''); setMoving(new Set(ids)) }
   const pickKind = (k: Npc['kind']) => { setKind(k); setMeta(k === 'npc' ? 'human' : '') }
 
   // an NPC file joins the area; a runner file (no npc block) is refused: it belongs on the runner list
@@ -141,6 +158,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
         {mineToo && repo.mode === 'server' && (ch.campaign
           ? <button className="btn small quiet" aria-label={`Unshare ${nameOf(ch)}`} onClick={() => void share(ch, null)}>Unshare</button>
           : gmOf.length > 0 && <button className="btn small quiet" aria-label={`Share ${nameOf(ch)}…`} onClick={() => { setTarget(gmOf[0].id); setSharing(ch) }}>Share with campaign…</button>)}
+        {mineToo && comps.length > 0 && <button className="btn small quiet" aria-label={`Move ${nameOf(ch)} to a compendium…`} onClick={() => pickMove([ch.id])}>Move to compendium…</button>}
         {mineToo && <button className="btn small quiet" aria-label={`Delete ${nameOf(ch)}`} onClick={() => setToDelete(ch)}>Delete</button>}
       </div>
     </div>
@@ -162,6 +180,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
           <button className="btn quiet" onClick={() => void loadBook()}>Load book NPCs</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
+          {comps.length > 0 && <button className="btn quiet" onClick={() => pickMove([])} disabled={!mine.length}>Move to compendium…</button>}
           {trashed !== null && <a className="btn quiet" href="#/npcs/trash">Trash ({trashed})</a>}
           <a className="btn quiet" href="#/">Your runners</a>
           <AskButton /><SettingsButton /><AccountMenu />
@@ -219,6 +238,16 @@ export function NpcsScreen({ c }: { c: Catalog }) {
             try { await repo.remove(toDelete!.id) } catch (e) { setMsg(because('Couldn’t delete the NPC', (e as Error).message ?? String(e))) }
             setToDelete(null); void refresh() }}>Delete NPC</button></>}>
         <p>{repo.mode === 'server' ? 'It moves to your NPC trash on the server.' : 'This removes the NPC from this browser. Exported files are not affected.'}</p>
+      </Modal>
+
+      <Modal open={!!moving} onClose={() => setMoving(null)} title="Move NPCs to a compendium"
+        actions={<><button className="btn" onClick={() => setMoving(null)}>Cancel</button>
+          <button className="btn primary" disabled={!moving?.size || !into} onClick={() => void moveIn()}>Move</button></>}>
+        <label>Compendium<select value={into} onChange={e => setInto(e.target.value)}>
+          {comps.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <fieldset><legend>NPCs</legend>{mine.map(({ ch }) => <label className="check" key={ch.id}><input type="checkbox" checked={!!moving?.has(ch.id)}
+          onChange={e => { const s = new Set(moving); if (e.target.checked) s.add(ch.id); else s.delete(ch.id); setMoving(s) }} />{nameOf(ch)}</label>)}</fieldset>
+        <p className="muted" style={{ marginTop: '0.8rem' }}>They leave your NPCs (to the NPC trash) and any campaign they’re shared with. Move one back out on the compendium’s page to edit it.</p>
       </Modal>
 
       <ExportRunnersDialog c={c} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC" />

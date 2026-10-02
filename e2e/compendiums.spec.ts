@@ -200,6 +200,97 @@ test('a book shows as a read-only compendium', async ({ page }) => {
   await expect(page.getByRole('button', { name: /^(Add|Edit|Delete)/ })).toHaveCount(0)
 })
 
+const compXml = (page: Page, source: string) => page.evaluate(async s =>
+  ((await (await fetch('./api/compendiums')).json()) as { xml: string }[]).find(r => r.xml.includes(`source="${s}"`))?.xml ?? '', source)
+
+test('copy a book entry into a compendium: a new id, its source, no description; the book is unchanged', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.goto('/#/compendiums/CRB')
+  const shiv = () => group(page, 'Weapons').locator('tr', { hasText: 'Shiv' })
+  await shiv().getByRole('button', { name: 'Copy Shiv to…' }).click()
+  const d = page.getByRole('dialog', { name: 'Copy Shiv' })
+  await expect(d.getByLabel('Compendium')).toHaveValue(/.+/)
+  await d.getByRole('button', { name: 'Copy' }).click()
+  await toast(page, 'Copied Shiv to Street Gear.')
+  await expect(shiv()).toContainText('A made-up weapon.')
+  await expect(shiv().locator('.src')).toHaveText('CRB p.70')
+
+  const xml = await compXml(page, 'STREET')
+  const item = xml.match(/<item id="street\.shiv"[^]*?<\/item>|<item id="street\.shiv"[^>]*\/>/)?.[0] ?? ''
+  expect(item).toContain('source="STREET"')
+  expect(item).toContain('page="1"')
+  expect(item).toContain('dv="STR+2"')
+  expect(item).not.toContain('made-up weapon')
+
+  await page.goto('/#/compendiums')
+  await page.getByRole('region', { name: 'Your compendiums' }).getByRole('link', { name: 'Street Gear' }).click()
+  const copied = group(page, 'Weapons').locator('tr', { hasText: 'Shiv' })
+  await expect(copied.locator('.src')).toHaveText('STREET p.1')
+  await expect(copied).not.toContainText('A made-up weapon.')
+})
+
+test('copy from a shared compendium into your own', async ({ page }) => {
+  await signIn(page, 'gus')
+  await page.goto('/#/compendiums')
+  await page.getByRole('button', { name: 'New compendium' }).click()
+  const d = page.getByRole('dialog', { name: 'New compendium' })
+  await d.getByLabel('Name').fill('Gus Bits')
+  await d.getByLabel('Source id').fill('GUS')
+  await d.getByRole('button', { name: 'Create compendium' }).click()
+  await expect(page.getByRole('heading', { name: 'Gus Bits', level: 1 })).toBeVisible()
+  await page.goto('/#/compendiums')
+  await page.getByRole('region', { name: 'Shared with you' }).getByRole('link', { name: 'Street Gear' }).click()
+  await group(page, 'Weapons').getByRole('button', { name: 'Copy Lead Pipe to…' }).click()
+  await page.getByRole('dialog', { name: 'Copy Lead Pipe' }).getByRole('button', { name: 'Copy' }).click()
+  await toast(page, 'Copied Lead Pipe to Gus Bits.')
+  const item = (await compXml(page, 'GUS')).match(/<item id="gus\.lead-pipe"[^]*?<\/item>|<item id="gus\.lead-pipe"[^>]*\/>/)?.[0] ?? ''
+  expect(item).toContain('source="GUS"')
+  expect(item).not.toContain('Heavy and made up.')
+})
+
+test('move an NPC into a compendium and back out; a failed save leaves it where it was', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.goto('/#/npcs')
+  await page.getByRole('link', { name: 'Unnamed NPC' }).click()
+  await page.getByLabel('Street name').fill('Made-up Fixer')
+  await page.goto('/#/npcs')
+  const fixer = page.locator('.dossier', { hasText: 'Made-up Fixer' })
+  await expect(fixer).toBeVisible()
+
+  const move = async () => {
+    await fixer.getByRole('button', { name: 'Move Made-up Fixer to a compendium…' }).click()
+    const d = page.getByRole('dialog', { name: 'Move NPCs to a compendium' })
+    await expect(d.getByRole('checkbox', { name: 'Made-up Fixer' })).toBeChecked()
+    await d.getByLabel('Compendium').selectOption({ label: 'Street Gear' })
+    await d.getByRole('button', { name: 'Move' }).click()
+  }
+  // the compendium save fails: the NPC stays
+  await page.route('**/api/compendiums/*', r => r.request().method() === 'PUT'
+    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'made-up failure' }) }) : r.continue())
+  await move()
+  await expect(page.getByRole('status')).toContainText('made-up failure')
+  await expect(fixer).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Trash (0)' })).toBeVisible()
+  await page.unroute('**/api/compendiums/*')
+
+  await move()
+  await expect(page.getByRole('status')).toHaveText('Moved Made-up Fixer to Street Gear.')
+  await expect(fixer).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Trash (1)' })).toBeVisible()
+
+  await page.goto('/#/compendiums')
+  await page.getByRole('region', { name: 'Your compendiums' }).getByRole('link', { name: 'Street Gear' }).click()
+  await expect(group(page, 'NPCs')).toContainText('Made-up Fixer')
+  await group(page, 'NPCs').getByRole('button', { name: 'Move Made-up Fixer to my NPCs' }).click()
+  await toast(page, 'Moved Made-up Fixer to your NPCs.')
+  await expect(group(page, 'NPCs')).toHaveCount(0)
+
+  await page.goto('/#/npcs')
+  await fixer.getByRole('link', { name: 'Made-up Fixer' }).click()
+  await expect(page.getByLabel('Street name')).toBeEnabled()
+  await expect(page.getByLabel('Street name')).toHaveValue('Made-up Fixer')
+})
+
 test('a player has no Compendiums link, and #/compendiums says only GMs can see compendiums', async ({ page }) => {
   await signIn(page, 'pat')
   await expect(page.getByRole('link', { name: 'Compendiums' })).toHaveCount(0)

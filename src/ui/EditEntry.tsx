@@ -88,7 +88,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
   )
 }
 
-const slug = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'entry'
+export const slug = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'entry'
 
 /** The form for one entry. `save` puts it (and its Description) where it belongs: the edits layer (CatalogEdits), or a
  *  compendium, which passes its own source as `sources` (no edit states, no new sources, the text is the GM's own). */
