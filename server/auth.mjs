@@ -197,6 +197,7 @@ export function need(path, method) {
   if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|ai-test|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
   if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   if (/^\/api\/backgrounds(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'admin'
+  if (/^\/api\/npcs(\/|$)/.test(path)) return 'editor' // NPCs: the GMs' own area, never a player's
   if (path === '/api/campaigns' && method === 'POST') return 'editor' // the rest of /api/campaigns: checked per campaign
   return 'user'
 }
