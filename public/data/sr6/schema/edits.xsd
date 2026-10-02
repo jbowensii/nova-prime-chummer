@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="edits" (custom/sr6/edits/edits.xml): catalog entries edited in the app, full entries of any
+     kind, each with by="<username>" (who saved it; the server sets it). Each replaces the loaded entry with the same id. See docs/sr6-data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:sr6="urn:chummer-sr6:data:1"
+           targetNamespace="urn:chummer-sr6:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="priority"><xs:complexType><xs:complexContent><xs:extension base="sr6:Priority">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="metatype"><xs:complexType><xs:complexContent><xs:extension base="sr6:Metatype">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="attribute"><xs:complexType><xs:complexContent><xs:extension base="sr6:Attribute">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="skill"><xs:complexType><xs:complexContent><xs:extension base="sr6:Skill">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="quality"><xs:complexType><xs:complexContent><xs:extension base="sr6:Quality">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="weapon"><xs:complexType><xs:complexContent><xs:extension base="sr6:Weapon">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="armor"><xs:complexType><xs:complexContent><xs:extension base="sr6:Armor">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="augmentation"><xs:complexType><xs:complexContent><xs:extension base="sr6:Augmentation">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="device"><xs:complexType><xs:complexContent><xs:extension base="sr6:Device">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="gear"><xs:complexType><xs:complexContent><xs:extension base="sr6:Gear">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="vehicle"><xs:complexType><xs:complexContent><xs:extension base="sr6:Vehicle">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="spell"><xs:complexType><xs:complexContent><xs:extension base="sr6:Spell">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="ritual"><xs:complexType><xs:complexContent><xs:extension base="sr6:Ritual">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="adeptpower"><xs:complexType><xs:complexContent><xs:extension base="sr6:AdeptPower">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="complexform"><xs:complexType><xs:complexContent><xs:extension base="sr6:ComplexForm">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="metamagic"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="echo"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="critterpower"><xs:complexType><xs:complexContent><xs:extension base="sr6:CritterPower">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="critter"><xs:complexType><xs:complexContent><xs:extension base="sr6:Being">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="spirit"><xs:complexType><xs:complexContent><xs:extension base="sr6:Being">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="npc"><xs:complexType><xs:complexContent><xs:extension base="sr6:Being">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="sprite"><xs:complexType><xs:complexContent><xs:extension base="sr6:Sprite">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="lifestyle"><xs:complexType><xs:complexContent><xs:extension base="sr6:Lifestyle">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="contact"><xs:complexType><xs:complexContent><xs:extension base="sr6:Contact">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="rule"><xs:complexType><xs:complexContent><xs:extension base="sr6:Rule">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="edits"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="sr6:version"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="by">
+    <xs:attribute name="by"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:pattern value="[a-z0-9][a-z0-9._-]{1,31}"/></xs:restriction></xs:simpleType></xs:attribute>
+  </xs:attributeGroup>
+</xs:schema>

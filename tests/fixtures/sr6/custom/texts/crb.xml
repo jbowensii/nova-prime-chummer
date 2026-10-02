@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Private descriptions (made up for the tests). -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="texts" version="1">
+  <text of="weapons" id="crb.zap-gun">A made-up gun that zaps.</text>
+  <text of="qualities" id="crb.lucky-streak">Invented luck, a little at a time.</text>
+  <text of="spells" id="crb.glow-ward">An invented ward that glows.</text>
+  <text of="critters" id="crb.fuzzbeast">A made-up beast, mostly fuzz.</text>
+  <text of="rules" id="crb.making-trouble">Invented rule text about trouble.</text>
+</sr6:data>

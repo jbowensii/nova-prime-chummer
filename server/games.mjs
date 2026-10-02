@@ -5,6 +5,14 @@ export const GAMES = {
   ca2: { id: 'ca2', tag: 'ca2:character', ns: 'urn:chummer-anarchy2:character:1', sub: '' },
   sr6: { id: 'sr6', tag: 'sr6:character', ns: 'urn:chummer-sr6:character:1', sub: 'sr6' },
 }
+/** SR6 catalog kind (its file) -> entry tag, as KINDS in importer/sr6/__init__.py and src/sr6/model/types.ts. */
+export const SR6_KINDS = {
+  priorities: 'priority', metatypes: 'metatype', attributes: 'attribute', skills: 'skill', qualities: 'quality',
+  weapons: 'weapon', armor: 'armor', augmentations: 'augmentation', electronics: 'device', gear: 'gear',
+  vehicles: 'vehicle', spells: 'spell', rituals: 'ritual', adeptpowers: 'adeptpower', complexforms: 'complexform',
+  metamagics: 'metamagic', echoes: 'echo', critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit',
+  npcs: 'npc', sprites: 'sprite', lifestyles: 'lifestyle', contacts: 'contact', rules: 'rule',
+}
 /** Names an Anarchy listing must never reach: not an account (its folder would be characters/sr6/) nor a book id. */
 export const RESERVED = ['sr6']
 
