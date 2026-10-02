@@ -2,7 +2,7 @@
 import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
-import { useEditor } from '../ui/editor'
+import { editHref, useEditor } from '../ui/editor'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { ampLines, lists, RISK, useSheetArt } from './shared'
 import './sheet.css'
@@ -18,7 +18,7 @@ export function Sheet() {
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
-        <a className="btn" href={`#/c/${ch.id}/review`}>Back to editing</a>
+        <a className="btn" href={editHref(ch, 'review')}>Back to editing</a>
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button>
         {art.tools}
       </div>

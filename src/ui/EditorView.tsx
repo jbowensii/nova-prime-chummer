@@ -3,8 +3,8 @@ import { appendEvent, balance, derive, logChange, price, rescope, settle as sett
 import { loadTableRules, tableFlags } from './TableRules'
 import type { CareerEvent, Catalog, Character } from '../model/types'
 import { AccountMenu, session, track, useMe } from './auth'
-import { Brand, fmt, Modal, StateBadge } from './bits'
-import { Editor, type EditorCtx } from './editor'
+import { Brand, fmt, Modal, NpcChips, StateBadge } from './bits'
+import { Editor, editHref, homeHref, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { downloadRunners } from './Foundry'
 import { useRepo } from './repo'
@@ -108,7 +108,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     await st.run
     return !unsaved()
   }
-  const saveAndClose = async () => { if (await saveNow()) location.hash = '#/' }
+  const saveAndClose = async () => { if (await saveNow()) location.hash = homeHref(sync.current.loaded) }
 
   useEffect(() => {
     sync.current.latest = ch
@@ -131,7 +131,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     // a link out of this runner: send the change first; if it can't be saved, ask before leaving it behind
     const leave = (e: MouseEvent) => {
       const a = (e.target as Element | null)?.closest?.('a[href^="#"]') as HTMLAnchorElement | null
-      if (!a || e.defaultPrevented || a.getAttribute('href')!.startsWith(`#/c/${id}/`) || !unsaved() || sync.current.paused) return
+      if (!a || e.defaultPrevented || /^#\/[cn]\//.test(a.getAttribute('href')!) && a.getAttribute('href')!.slice(4).startsWith(`${id}/`) || !unsaved() || sync.current.paused) return
       e.preventDefault()
       const to = a.getAttribute('href')!
       void saveNow().then(ok => {
@@ -157,7 +157,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     } else if (how === 'copy') {
       const copy = { ...ch, id: newId(), campaign: undefined, identity: { ...ch.identity, streetName: copyName.trim() || `${ch.identity.streetName} copy` } }
       const r = await repo.save(copy, undefined, { filename: copyName.trim() })
-      if (r.ok) location.hash = `#/c/${copy.id}/${tab}`
+      if (r.ok) location.hash = editHref(copy, tab)
     } else {
       const s = await repo.get(ch.id)
       sync.current.rev = s?.rev; sync.current.loaded = s?.ch
@@ -172,10 +172,12 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   useEffect(() => { void loadTableRules().then(r => setTable(tableFlags(r))) }, [])
   const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
 
-  if (!loaded) return <main className="lib"><p className="muted">Loading runner…</p></main>
-  if (loadError) return <main className="lib"><h1>Couldn’t open this runner</h1><p className="err">{loadError}</p>
-    <p><a href="#/">Back to your runners</a>, where you can download its file or try to repair it.</p></main>
-  if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on the server' : ' from this browser'}. <a href="#/">Back to your runners</a></p></main>
+  const npcRoute = location.hash.startsWith('#/n/')
+  const noun = npcRoute ? 'NPC' : 'runner', back = npcRoute ? <a href="#/npcs">Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
+  if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
+  if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
+    <p>{back}, where you can download its file or try to repair it.</p></main>
+  if (!ch || !calc) return <main className="lib"><h1>{npcRoute ? 'NPC' : 'Runner'} not found</h1><p>It may have been deleted{repo.mode === 'server' ? ' on the server' : ' from this browser'}. {back}</p></main>
 
   const career = !!ch.finalizedAt
   // a finalized runner's build changes go in the ledger by themselves (engine/career.ts logChange); undo takes them back
@@ -211,8 +213,10 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   }
 
   const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length
-  const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
-  const tabs = TABS.filter(([k]) => k !== 'ledger' || career)
+  const npc = !!ch.npc
+  const name = ch.identity.streetName || ch.identity.name || (npc ? 'Unnamed NPC' : 'Unnamed runner')
+  // an NPC has no budget, Finalize or career: no ledger tab and no receipt
+  const tabs = TABS.filter(([k]) => k !== 'ledger' || (career && !npc))
 
   if (tab === 'print') return <Editor.Provider value={ctx}>{loadSettings().print === 'book' ? <BookSheet /> : <Sheet />}</Editor.Provider>
 
@@ -220,7 +224,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
     <Editor.Provider value={ctx}>
       <header className="topbar">
         <Brand />
-        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} /></div>
+        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span>{ch.npc ? <NpcChips npc={ch.npc} /> : <StateBadge finalized={career} />}</div>
         {!ro && <div className="savebar">
           <SaveLine status={status} onRetry={() => void saveNow()} />
           <button className="btn quiet" onClick={() => void saveNow()} disabled={status.state === 'saving'}>Save</button>
@@ -239,13 +243,13 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
-          <a key={k} href={`#/c/${ch.id}/${k}`} aria-current={tab === k ? 'page' : undefined}>
+          <a key={k} href={editHref(ch, k)} aria-current={tab === k ? 'page' : undefined}>
             {label}{k === 'review' && errors > 0 && <span className="badge err">{errors}</span>}
           </a>
         ))}
       </nav>
-      {ro && <p className="banner readonly" role="status">Read only — {owner}’s runner. Only they can change it; you can still
-        {' '}<a href={`#/c/${ch.id}/print`}>print it</a> or export a copy.</p>}
+      {ro && <p className="banner readonly" role="status">Read only — {owner}’s {npc ? 'NPC' : 'runner'}. Only they can change it; you can still
+        {' '}<a href={editHref(ch, 'print')}>print it</a> or export a copy.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
         <main className="work"><AskRules /><fieldset className="bare" disabled={ro}>
@@ -257,7 +261,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
           {tab === 'review' && <ReviewTab />}
           {tab === 'ledger' && <LedgerTab />}
         </fieldset></main>
-        <Receipt />
+        {!npc && <Receipt />}
       </div>
       <Modal open={!!conflict} onClose={() => void resolveConflict('reload')} title="Saved elsewhere"
         actions={<>

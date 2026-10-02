@@ -1,4 +1,4 @@
-import { attrCost } from '../../engine'
+import { attrCost, hasNoMetatype } from '../../engine'
 import { ATTRS } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
@@ -24,7 +24,8 @@ export function AttributesTab() {
         <thead><tr><th>Attribute</th><th>Range</th><th>Rating</th><th className="num">Next point</th><th className="num">RR</th></tr></thead>
         <tbody>
           {ATTRS.map(a => {
-            const [min, max] = meta?.ranges[a] ?? [1, 6]
+            // a critter or spirit has no metatype range (validate skips it): up to 12, as the book's critters go
+            const [min, max] = hasNoMetatype(ch) ? [1, 12] : meta?.ranges[a] ?? [1, 6]
             const v = b.attributes[a] ?? 0
             return (
               <tr key={a}>

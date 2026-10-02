@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react'
 import { characterToXml, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
-import { deleteCharacter, getCharacter, listCharacters, saveCharacter } from './storage'
+import { deleteCharacter, getCharacter, listCharacters, NPC_KEY, saveCharacter } from './storage'
 import { track, UNREACHABLE } from './auth'
 
 /** owner, ownerName: the account the runner belongs to (server only; the admin also lists everyone else's, an editor their campaigns') */
@@ -27,19 +27,22 @@ export interface Repo {
   remove(id: string): Promise<void>
 }
 
-export const browserRepo: Repo = {
+/** A repo over one localStorage key: the runners', or (NPC_KEY) the NPCs'. */
+const browserStore = (key?: string, noun = 'runner'): Repo => ({
   mode: 'browser',
-  list: async () => listCharacters().map(ch => ({ ch })),
-  listAll: async () => ({ stored: listCharacters().map(ch => ({ ch })), unreadable: [] }),
-  get: async id => { const ch = getCharacter(id); return ch && { ch } },
-  save: async ch => (saveCharacter(ch).ok ? { ok: true } : { ok: false, error: 'This browser refused to store the runner. Export it so it isn’t lost.' }),
-  remove: async id => { deleteCharacter(id) },
-}
+  list: async () => listCharacters(key).map(ch => ({ ch })),
+  listAll: async () => ({ stored: listCharacters(key).map(ch => ({ ch })), unreadable: [] }),
+  get: async id => { const ch = getCharacter(id, key); return ch && { ch } },
+  save: async ch => (saveCharacter(ch, key).ok ? { ok: true } : { ok: false, error: `This browser refused to store the ${noun}. Export it so it isn’t lost.` }),
+  remove: async id => { deleteCharacter(id, key) },
+})
+export const browserRepo: Repo = browserStore()
 
-export function serverRepo(base = './'): Repo {
+/** `api`: 'characters' (runners) or 'npcs' (the GMs' NPC area, same shapes). */
+export function serverRepo(base = './', api: 'characters' | 'npcs' = 'characters'): Repo {
   type Row = { file: string; rev: number; xml: string; owner?: string; ownerName?: string }
   const rows = async (): Promise<Row[]> => {
-    const r = await fetch(`${base}api/characters`, { cache: 'no-store' })
+    const r = await fetch(`${base}api/${api}`, { cache: 'no-store' })
     if (!r.ok) throw new Error(`the server answered ${r.status}`)
     return r.json()
   }
@@ -70,7 +73,7 @@ export function serverRepo(base = './'): Repo {
       if (opts.filename) q.set('filename', opts.filename)
       try {
         const body = characterToXml(ch)
-        const r = await fetch(`${base}api/characters/${encodeURIComponent(ch.id)}${q.size ? `?${q}` : ''}`, {
+        const r = await fetch(`${base}api/${api}/${encodeURIComponent(ch.id)}${q.size ? `?${q}` : ''}`, {
           method: 'PUT', body, keepalive: !!opts.keepalive && body.length < 60000, headers: { 'Content-Type': 'application/xml', ...(rev != null ? { 'If-Match': String(rev) } : {}) },
         })
         const res = await r.json().catch(() => ({}))
@@ -83,7 +86,7 @@ export function serverRepo(base = './'): Repo {
     })()),
     // a refused or failed delete rejects with the server's reason (the runner stays where it was)
     remove: id => track((async () => {
-      const r = await fetch(`${base}api/characters/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => { throw new Error(UNREACHABLE) })
+      const r = await fetch(`${base}api/${api}/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => { throw new Error(UNREACHABLE) })
       if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
     })()),
   }
@@ -119,6 +122,9 @@ export async function migrateBrowserToServer(server: Repo): Promise<number> {
   }
   return moved
 }
+
+/** The NPC area next to a runner repo: the server's /api/npcs, or this browser's own NPC key. */
+export const npcRepoFor = (runners: Repo): Repo => runners.mode === 'server' ? serverRepo('./', 'npcs') : browserStore(NPC_KEY, 'NPC')
 
 export const RepoContext = createContext<Repo>(browserRepo)
 export const useRepo = () => useContext(RepoContext)

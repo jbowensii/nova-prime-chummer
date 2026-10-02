@@ -25,9 +25,10 @@ export const downloadRunners = (c: Catalog, chs: Character[]) =>
 
 const label = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
-/** The runner list's dialog: tick runners (or a whole campaign), download one file. */
-export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
-  c: Catalog; runners: Character[]; campaigns: Campaign[]; open: boolean; onClose: () => void
+/** The runner list's dialog: tick runners (or a whole campaign), download one file. The NPC area's too (`noun` 'NPC'):
+ *  the same runners file, each with its npc block. */
+export function ExportRunnersDialog({ c, runners, campaigns, open, onClose, noun = 'runner' }: {
+  c: Catalog; runners: Character[]; campaigns: Campaign[]; open: boolean; onClose: () => void; noun?: 'runner' | 'NPC'
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [camp, setCamp] = useState('')
@@ -35,12 +36,12 @@ export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
   const set = (ids: string[]) => { setPicked(new Set(ids)); setCamp('') }
   const n = runners.filter(r => picked.has(r.id)).length
   return (
-    <Modal open={open} onClose={onClose} title="Export runners for Foundry"
+    <Modal open={open} onClose={onClose} title={`Export ${noun}s for Foundry`}
       actions={<><button className="btn" onClick={onClose}>Cancel</button>
         <button className="btn primary" disabled={!n} onClick={() => { downloadRunners(c, runners.filter(r => picked.has(r.id))); onClose() }}>
-          Download {n} runner{n === 1 ? '' : 's'}</button></>}>
+          Download {n} {noun}{n === 1 ? '' : 's'}</button></>}>
       <p className="muted">For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2): upload the file there with Import from Chummer.</p>
-      <p className="muted">The file includes the text of the runners’ amps and gear. Share it only with people who own the books.</p>
+      <p className="muted">The file includes the text of the {noun}s’ amps and gear. Share it only with people who own the books.</p>
       <div className="row">
         <button className="btn small quiet" onClick={() => set(runners.map(r => r.id))}>All</button>
         <button className="btn small quiet" onClick={() => set([])}>None</button>

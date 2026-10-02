@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { loadCatalog } from '../engine'
-import { detectRepo, migrateBrowserToServer, RepoContext, type Repo } from './repo'
+import { detectRepo, migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'
@@ -9,6 +9,7 @@ import { BooksScreen } from './Books'
 import { CampaignScreen, CampaignsScreen } from './Campaigns'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
+import { NpcsScreen } from './Npcs'
 import { BookReview } from './Review'
 import { RulesScreen } from './Rules'
 import { TableRulesScreen } from './TableRules'
@@ -50,6 +51,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(0)
+  const npcs = useMemo(() => npcRepoFor(repo), [repo])
   useEffect(() => {
     loadCatalog('./').then(setCatalog, e => setFailed(String(e)))
     if (repo.mode === 'server') migrateBrowserToServer(repo).then(setMoved, () => {})
@@ -63,6 +65,8 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   // the trash and campaigns are the server's: the browser's own storage deletes for good, and has no accounts
   const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (['trash', 'campaigns'].includes(route[0]) && repo.mode !== 'server') ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
   const [, id, tab] = route
+  // NPCs: the GMs' area (admin and editors; the server answers players 403 anyway)
+  const gmOnly = (page === 'npcs' || page === 'n') && !canEdit(me)
   const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
   return (
@@ -72,7 +76,12 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
           ? <>Import the core rulebook again on the <a href="#/books">Books page</a>, or upload a data pack.</>
           : 'Ask the admin to import the core rulebook again.'}</p>}
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to the server.</p>}
-      {page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
+      {gmOnly ? <main className="lib"><header><div style={{ flex: 1 }}><Brand /><h1>NPCs &amp; Critters</h1></div>
+          <div className="row"><a className="btn quiet" href="#/">Your runners</a><AccountMenu /></div></header>
+          <p className="banner">Only GMs can see NPCs.</p></main>
+        : page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
+        : page === 'n' && id ? <RepoContext.Provider value={npcs}><EditorView key={`n/${id}`} c={catalog} id={id} tab={tab ?? 'concept'} /></RepoContext.Provider>
+        : page === 'npcs' ? <NpcsScreen c={catalog} />
         : page === 'users' ? <UsersScreen />
         : page === 'campaigns' && id ? <CampaignScreen key={id} c={catalog} id={id} />
         : page === 'campaigns' ? <CampaignsScreen />
@@ -131,7 +140,7 @@ export default function App() {
     return () => removeEventListener('hashchange', on)
   }, [])
   const user = me?.user
-  useFocusTitle(`${route[0] ?? ''}/${route[0] === 'c' ? route[1] : ''}/${me?.setup}/${!!user}`)
+  useFocusTitle(`${route[0] ?? ''}/${route[0] === 'c' || route[0] === 'n' ? route[1] : ''}/${me?.setup}/${!!user}`)
   // a session that ends while the app is open: the sign-in form goes over the page, which keeps its state (unsaved
   // runner edits are sent again once signed back in); someone else signing in there starts afresh
   useEffect(() => {

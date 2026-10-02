@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { activeEvents, canFinalize, finalize, reopen } from '../../engine'
 import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
-import { useEditor } from '../editor'
+import { editHref, useEditor } from '../editor'
 
 const tabFor = (path: string) => {
   const head = path.split('.')[0]
@@ -28,7 +28,8 @@ export function ReviewTab() {
   return (
     <div className="stack">
       <h2>Review</h2>
-      <p className="muted">Rule problems block finalizing until they’re fixed or a GM approves them. Notes never block.</p>
+      <p className="muted">{ch.npc ? 'An NPC skips the creation checks (budget, caps); what’s left are problems with the build itself.'
+        : 'Rule problems block finalizing until they’re fixed or a GM approves them. Notes never block.'}</p>
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>
         {sorted.map((x, i) => {
@@ -39,7 +40,7 @@ export function ReviewTab() {
               <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>{x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}</span>
               <span className="msg">{x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
               <span className="row">
-                {tab && !x.approved && <a className="btn small quiet" href={`#/c/${ch.id}/${tab}`}>Fix</a>}
+                {tab && !x.approved && <a className="btn small quiet" href={editHref(ch, tab)}>Fix</a>}
                 {x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
                 {x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
               </span>
@@ -49,7 +50,7 @@ export function ReviewTab() {
         })}
       </div>
 
-      <hr className="sep" />
+      {!ch.npc && <><hr className="sep" />
       <h2>Finalize</h2>
       {!career ? <>
         <p>Finalizing is the last check of creation. It locks nothing: afterwards you can still add, change or remove anything.
@@ -60,12 +61,12 @@ export function ReviewTab() {
           {!ready && <span className="muted"> Fix or approve the problems above first.</span>}</div>
       </> : <>
         <p>Finalized{ch.finalizedAt ? ` on ${ch.finalizedAt.slice(0, 10)}` : ''}. Balance {fmt(balance)}. Nothing is locked: every change is logged in the
-          {' '}<a href={`#/c/${ch.id}/ledger`}>ledger</a>, charged or refunded at the book price.</p>
+          {' '}<a href={editHref(ch, 'ledger')}>ledger</a>, charged or refunded at the book price.</p>
         {earned
           ? <p className="muted">Creation can’t be reopened: the ledger has earnings.</p>
           : <div><button className="btn" onClick={() => replace(reopen(c, ch))}>Reopen creation</button>
             <span className="muted"> Back to creation (its caps apply again). Possible until the first earnings are recorded.</span></div>}
-      </>}
+      </>}</>}
 
       <Modal open={!!approving} onClose={() => setApproving(null)} title="GM approval"
         actions={<><button className="btn" onClick={() => setApproving(null)}>Cancel</button><button className="btn primary" disabled={!note.trim()} onClick={approve}>Approve</button></>}>

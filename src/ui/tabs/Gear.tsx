@@ -5,7 +5,7 @@ import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
 import { SourceLabel } from '../SourceLabel'
 import { EditButton } from '../EditEntry'
-import { useEditor } from '../editor'
+import { editHref, useEditor } from '../editor'
 import { NameField } from './Skills'
 
 // prices from the core data (pricing.xml)
@@ -48,7 +48,7 @@ export function GearTab() {
     const amp = { uid: newId(), type: 'equipment', name: item.name, narrative: '', effects: [], linkedItem: item.uid }
     sessionStorage.setItem('ca2.editAmp', amp.uid)
     edit(x => { x.build.amps.push(amp) })
-    location.hash = `#/c/${ch.id}/amps`
+    location.hash = editHref(ch, 'amps')
   }
 
   return (
