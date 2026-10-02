@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { anarchyState } from './session'
 
 // The Rules page is the GMs' (admin and editors): they switch table rules on and off and write house rules; players get
 // a read-only Table rules page. On a server of its own with the made-up books (tests/fixtures/mini/custom): one optional
@@ -14,7 +15,7 @@ const PHONE = { width: 390, height: 844 }
 let server: ReturnType<typeof createServer>, base = '', dir = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'ca2-tablerules-'))

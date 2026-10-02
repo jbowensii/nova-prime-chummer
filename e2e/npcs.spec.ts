@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { anarchyState } from './session'
 
 // 0.7.0 NPCs & Critters end to end, on a server of its own (all names made up): Eve and Gus are editors (GMs), Ada the
 // admin, Pat a player. Runs in order. Screenshots go to .extract/ (not committed).
@@ -12,7 +13,7 @@ const SHOTS = '.extract/screenshots/0.7.0'
 let server: ReturnType<typeof createServer>, base = '', origin = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-npcs-e2e-')), config = join(dir, 'library', '.config')

@@ -3,6 +3,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { APIRequestContext } from '@playwright/test'
+import { GAME_KEY } from '../src/ui/game'
+export { GAME_KEY }
 
 export const STATE = join(process.env.CA2_E2E_DIR!, 'e2e-state.json')
 const ORIGIN = 'http://localhost:4173'
@@ -13,3 +15,8 @@ export async function signIn(request: APIRequestContext) {
   const r = await request.post(`${ORIGIN}/api/auth/login`, { data: admin, headers: { Origin: ORIGIN } })
   if (!r.ok()) throw new Error(`e2e sign-in failed: ${r.status()}`)
 }
+
+/** A browser that already picked Anarchy (no picker) and has no session: the specs that run their own server. Playwright
+ *  also resolves this for the beforeAll hook that starts that server, while `base` is still '': no origin then. */
+export const anarchyState = (base: string) =>
+  ({ cookies: [], origins: base ? [{ origin: new URL(base).origin, localStorage: [{ name: GAME_KEY, value: 'ca2' }] }] : [] })

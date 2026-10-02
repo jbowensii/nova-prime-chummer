@@ -26,7 +26,7 @@ import './app.css'
 import { BackgroundArt } from './Background'
 import { GamePicker } from './GamePicker'
 import { Sr6Main } from '../sr6/ui/Sr6App'
-import { homeOf, storedGame } from './game'
+import { gameOf, homeOf, storedGame } from './game'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
 /** The route the app opens on: a bare #/ opens the remembered game's home (links inside the app keep #/ as Anarchy's). */
@@ -138,7 +138,9 @@ function useFocusTitle(key: string) {
 
 export default function App() {
   const [route, setRoute] = useState(firstRoute)
-  const [game, setGame] = useState(storedGame) // null: this browser hasn't picked a game yet
+  // null: the picker. A browser that opened on a deep link is in that link's game (not remembered), so a link to #/ inside
+  // the app stays Anarchy's home rather than bringing the picker up
+  const [game, setGame] = useState(() => storedGame() ?? (route.length ? gameOf(route) : null))
   const [repo, setRepo] = useState<Repo | null>(null)
   // server: the signed-in account (null: sign in) and whether no account exists yet; browser storage: no accounts at all
   const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean } | null>(null)

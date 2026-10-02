@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { anarchyState } from './session'
 
 // The AI review of core tables, end to end: a core rulebook import that couldn't read its weapons, metatypes and skills
 // tables; the (stub) AI proposes made-up rows for them; the admin edits a metatype's ranges and a skill's specializations,
@@ -14,7 +15,7 @@ const PW = 'ada-password-1'
 let server: ReturnType<typeof createServer>, base = '', dir = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'ca2-coreai-'))

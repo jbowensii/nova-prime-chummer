@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 import { makePng, stripes } from '../tests/png'
+import { anarchyState } from './session'
 
 // Background art end to end, on a server of its own: Ada (admin) uploads a generated test image (no artwork is committed)
 // in Settings; it shows faintly behind the pages for her and for Pat (a player), never when printing, and not in a browser
@@ -15,7 +16,7 @@ const PHONE = { width: 390, height: 844 }
 let server: ReturnType<typeof createServer>, base = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-backgrounds-')), config = join(dir, 'library', '.config')
