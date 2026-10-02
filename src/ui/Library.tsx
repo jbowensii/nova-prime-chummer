@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { PageHeader } from './nav'
 import { IconButton, IconLink } from './icons'
 import { balance, blankCharacter, characterToXml, isCanonSource, snapshotEntries, xmlToCharacter } from '../engine'
@@ -10,7 +10,7 @@ import { useRepo, type Stored, type Unreadable } from './repo'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
-import { bookSamples, chooseExamples, extraCopies, identicalCopies, keyOf, readCharacterFile, readSample, type Example, type Sources } from './samples'
+import { bookSamples, chooseExamples, extraCopies, keyOf, sameRunners, readCharacterFile, readSample, type Example, type Sources } from './samples'
 import { Face } from './Portrait'
 import { ExportRunnersDialog } from './Foundry'
 
@@ -24,14 +24,22 @@ export function exportCharacter(c: Catalog, ch: Character): Character {
   return out
 }
 
-/** Find duplicates (server only: the extra copies go to the trash, where they can be restored): the page's own runners
- *  or NPCs that are identical apart from id, file, dates and rev, shown by name before anything moves. */
-export function FindDuplicates({ rows, noun, remove, done }: {
-  rows: Stored[]; noun: string; remove: (id: string) => Promise<void>; done: (msg: string) => void
+const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+
+/** Find duplicates (server only: the copies not kept go to the trash, where they can be restored): the page's own runners
+ *  or NPCs with the same street name, real name and metatype (samples.ts sameRunners), each copy shown with what tells it
+ *  apart. The kept copy is picked per group (the edited, else the newest, to start with); nothing moves before the confirm.
+ *  chips: the list's own chips for a copy (state, canon, error, campaign). */
+export function FindDuplicates({ rows, noun, remove, done, chips }: {
+  rows: Stored[]; noun: string; remove: (id: string) => Promise<void>; done: (msg: string) => void; chips: (ch: Character) => ReactNode
 }) {
-  const [groups, setGroups] = useState<Character[][] | null>(null)
+  const [groups, setGroups] = useState<Stored[][] | null>(null)
+  const [keep, setKeep] = useState<string[]>([]) // per group, the id of the copy that stays ('': all of them)
+  const [sure, setSure] = useState(false) // the confirm step
   const name = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed'
-  const extra = (groups ?? []).flatMap(g => g.slice(1))
+  const extra = (groups ?? []).flatMap((g, i) => keep[i] ? g.filter(r => r.ch.id !== keep[i]).map(r => r.ch) : []) // '': keep every copy
+  const find = () => { const g = sameRunners(rows); setGroups(g); setKeep(g.map(x => x[0].ch.id)); setSure(false) }
+  const close = () => { setGroups(null); setSure(false) }
   const move = async () => {
     const moved: string[] = []
     try {
@@ -40,19 +48,34 @@ export function FindDuplicates({ rows, noun, remove, done }: {
     } catch (e) {
       done([moved.length ? `Moved to your trash: ${moved.join(', ')}.` : '', because(`Couldn’t move ${name(extra[moved.length])}`, (e as Error).message ?? String(e))].filter(Boolean).join(' '))
     }
-    setGroups(null)
+    close()
   }
+  const edited = (r: Stored) => (r.rev ?? 1) > 1 ? `edited (rev ${r.rev})` : 'unedited (rev 1)'
   return <>
-    <IconButton icon="copies" label="Find duplicates" onClick={() => setGroups(identicalCopies(rows))} disabled={rows.length < 2} />
-    <Modal open={!!groups} onClose={() => setGroups(null)} title={`Duplicate ${noun}`}
-      actions={extra.length ? <><button className="btn" onClick={() => setGroups(null)}>Keep them</button>
-        <button className="btn primary" onClick={() => void move()}>Move {extra.length} to trash</button></>
-        : <button className="btn" onClick={() => setGroups(null)}>Close</button>}>
-      {extra.length ? <>
-        <p>These {noun} are identical apart from their ids, files and dates. One of each stays (the one in a campaign, else the most saved, else the newest); the extra copies move to your trash:</p>
-        <ul>{groups!.map(g => <li key={g[0].id}>{name(g[0])}: {g.length - 1 === 1 ? 'one extra copy' : `${g.length - 1} extra copies`}</li>)}</ul>
-        <p className="muted">They can be restored from the trash.</p>
-      </> : <p>No duplicates: none of your {noun} is an exact copy of another.</p>}
+    <IconButton icon="copies" label="Find duplicates" onClick={find} disabled={rows.length < 2} />
+    <Modal open={!!groups} onClose={close} title={`Duplicate ${noun}`} className="dupes"
+      actions={!groups?.length ? <button className="btn" onClick={close}>Close</button>
+        : sure ? <><button className="btn" onClick={() => setSure(false)}>Back</button>
+          <button className="btn primary" onClick={() => void move()}>Move {extra.length} to trash</button></>
+        : <><button className="btn" onClick={close}>Keep them all</button>
+          <button className="btn primary" disabled={!extra.length} onClick={() => setSure(true)}>Move {extra.length} to trash…</button></>}>
+      {!groups?.length ? <p>No duplicates: none of your {noun} shares a street name, real name and metatype with another.</p>
+        : sure ? <>
+          <p>Move {extra.length === 1 ? 'this copy' : `these ${extra.length} copies`} to your trash?</p>
+          <ul>{extra.map(ch => <li key={ch.id}>{name(ch)}, last edited {when(ch.updatedAt)}</li>)}</ul>
+          <p className="muted">They can be restored from the trash.</p>
+        </> : <>
+          <p>These {noun} share a street name, real name and metatype. Pick the copy to keep in each; the others move to your trash, where they can be restored.</p>
+          {groups!.map((g, i) => <fieldset key={g[0].ch.id} className="dupe-group">
+            <legend>{name(g[0].ch)}</legend>
+            {g.map(r => <label key={r.ch.id} className="check">
+              <input type="radio" name={`dupe-${i}`} checked={keep[i] === r.ch.id} onChange={() => setKeep(k => k.map((x, j) => j === i ? r.ch.id : x))} />
+              <span>Last edited {when(r.ch.updatedAt)}, {edited(r)} {chips(r.ch)}</span>
+            </label>)}
+            <label className="check"><input type="radio" name={`dupe-${i}`} checked={keep[i] === ''} onChange={() => setKeep(k => k.map((x, j) => j === i ? '' : x))} />
+              <span>Keep every copy</span></label>
+          </fieldset>)}
+        </>}
     </Modal>
   </>
 }
@@ -270,17 +293,21 @@ export function Library({ c }: { c: Catalog }) {
   const rows = arrange(mine.filter(shown), sort, q)
 
   const others = ownerGroups((list ?? []).filter(s => shown(s) && !mine.includes(s)), unreadable.filter(u => u.owner && u.owner !== me?.username), sort, q)
-  const dossier = ({ ch, rev }: Stored, own: boolean) => { const bal = balance(c, ch); return (
+  /** a runner's chips: draft or finalized, non-canon or user defined, overspent */
+  const chips = (ch: Character) => { const bal = balance(c, ch); return <>
+    <StateBadge finalized={!!ch.finalizedAt} />
+    {ch.origin ? !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>
+      : !ch.sampleKey && <> <UserDefined /></>}
+    {bal < 0 && <> <OverspentChip by={-bal} /></>}
+  </> }
+  const dossier = ({ ch, rev }: Stored, own: boolean) => (
     <div className="dossier" key={ch.id}>
       <Face ch={ch} />
       <div>
         <a className="title" href={`#/c/${ch.id}/concept`}>{shownName(ch)}</a>
         <div className="meta">
           {[c.metatypes.get(ch.identity.metatype)?.name ?? ch.identity.metatype, c.levels.get(ch.level)?.name ?? ch.level].filter(Boolean).join(', ')}
-          {' '}<StateBadge finalized={!!ch.finalizedAt} />
-          {ch.origin ? !isCanonSource(c, ch.origin) && <> <NonCanon source={c.sources.get(ch.origin)?.name ?? ch.origin} /></>
-            : !ch.sampleKey && <> <UserDefined /></>}
-          {bal < 0 && <> <OverspentChip by={-bal} /></>}
+          {' '}{chips(ch)}
           {repo.mode === 'browser' && needsExportReminder(ch) && <span className="warn"> Not exported since it changed</span>}
           {campaignOf(ch) && <> <a className="ctag" href={`#/campaigns/${ch.campaign}`} title="Campaign">{campaignOf(ch)!.name}</a></>}
         </div>
@@ -295,17 +322,18 @@ export function Library({ c }: { c: Catalog }) {
         <button className="btn small" onClick={() => exportCharacter(c, ch)}>Export</button>
       </div>}
     </div>
-  ) }
+  )
 
   return (
     <main className="lib">
       <PageHeader title="Your runners">
-        <IconButton className="primary" icon="plus" label="New runner" text="New runner" onClick={() => setCreating(true)} />
+        <IconButton className="primary" icon="runner-add" label="New runner" onClick={() => setCreating(true)} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
         <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         <IconButton icon="examples" label="Load example characters" onClick={loadExamples} />
-        {repo.mode === 'server' && <FindDuplicates rows={mine} noun="runners" remove={repo.remove} done={m => { setMsg(m); void refresh() }} />}
+        {repo.mode === 'server' && <FindDuplicates rows={mine} noun="runners" remove={repo.remove} done={m => { setMsg(m); void refresh() }}
+          chips={ch => <>{chips(ch)}{campaignOf(ch) && <> <span className="ctag">{campaignOf(ch)!.name}</span></>}</>} />}
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/trash" badge={trashed || undefined} />}
       </PageHeader>
       <p className="muted">Saved on {where}{repo.mode === 'server' ? ' (appdata/chummer-anarchy2/characters)' : '. Export files to keep them safe.'}</p>

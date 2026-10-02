@@ -123,11 +123,13 @@ export function extraCopies(runners: Row[], sources: Sources): Character[] {
   return out
 }
 
-/** Find duplicates: runners (or NPCs) identical apart from id, file, dates, rev, example key and campaign. Each group
- *  lists the copy that stays first (one in a campaign, else the most saved, else the newest), then the extra copies. */
-export function identicalCopies(runners: Row[]): Character[][] {
-  const groups = new Map<string, Row[]>()
-  for (const r of runners) { const f = fingerprint(r.ch); groups.set(f, [...groups.get(f) ?? [], r]) }
-  const score = (r: Row) => `${r.ch.campaign ? 1 : 0}|${String(r.rev ?? 0).padStart(9, '0')}|${r.ch.updatedAt}`
-  return [...groups.values()].filter(g => g.length > 1).map(g => [...g].sort((a, b) => score(b).localeCompare(score(a))).map(r => r.ch))
+/** Find duplicates: runners (or NPCs) that are the same character, by street name, real name (trimmed, any case) and
+ *  metatype, whatever else differs (two loads of one example from two versions of its file, an edited copy). Each group
+ *  lists the copy to keep first: an edited one (saved again: rev 2 or more) over an unedited one, then the newest. */
+export function sameRunners<R extends Row>(runners: R[]): R[][] {
+  const key = ({ ch }: Row) => [ch.identity.streetName, ch.identity.name].map(x => (x ?? '').trim().toLowerCase()).join('|') + `|${ch.identity.metatype}`
+  const groups = new Map<string, R[]>()
+  for (const r of runners) if (r.ch.identity.streetName?.trim() || r.ch.identity.name?.trim()) groups.set(key(r), [...groups.get(key(r)) ?? [], r]) // unnamed: can't tell
+  const score = (r: Row) => `${(r.rev ?? 1) > 1 ? 1 : 0}|${r.ch.updatedAt}`
+  return [...groups.values()].filter(g => g.length > 1).map(g => [...g].sort((a, b) => score(b).localeCompare(score(a))))
 }

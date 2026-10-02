@@ -173,13 +173,14 @@ export function NpcsScreen({ c }: { c: Catalog }) {
   return (
     <main className="lib">
       <PageHeader title="NPCs & Critters">
-        <IconButton className="primary" icon="plus" label="New NPC" text="New NPC" onClick={() => setCreating(true)} />
+        <IconButton className="primary" icon="npc-add" label="New NPC" onClick={() => setCreating(true)} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
         <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} />
         <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         {comps.length > 0 && <IconButton icon="move" label="Move to compendium…" onClick={() => pickMove([])} disabled={!mine.length} />}
-        {repo.mode === 'server' && <FindDuplicates rows={mine} noun="NPCs" remove={repo.remove} done={m => { setMsg(m); void refresh() }} />}
+        {repo.mode === 'server' && <FindDuplicates rows={mine} noun="NPCs" remove={repo.remove} done={m => { setMsg(m); void refresh() }}
+          chips={ch => <>{ch.npc && <NpcChips npc={ch.npc} />}{campaignOf(ch) && <> <span className="ctag">{campaignOf(ch)!.name}</span></>}</>} />}
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/npcs/trash" badge={trashed || undefined} />}
       </PageHeader>
       <p className="muted">Your NPCs, critters and spirits, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.

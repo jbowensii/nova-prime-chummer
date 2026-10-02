@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { blankCharacter } from '../../src/engine/file'
 import { characterToXml, xmlToCharacter } from '../../src/engine'
-import { chooseExamples, exampleKey, extraCopies, identicalCopies, keyOf, type Example, type Sources } from '../../src/ui/samples'
+import { chooseExamples, exampleKey, extraCopies, keyOf, sameRunners, type Example, type Sources } from '../../src/ui/samples'
 import type { Character } from '../../src/model/types'
 
 // Made up: two canon books OLDC (imported 2026-09-01) and NEWC (2026-09-20), a non-canon booklet PREG, and the
@@ -125,14 +125,20 @@ test('tidy-up on the server: two unedited copies (rev 1) of one book’s example
   expect(extraCopies([{ ch: newer, rev: 1 }, { ch: second, rev: 1 }], sources)).toEqual([])
 })
 
-test('find duplicates: identical apart from id, dates, rev, key and campaign; the one in a campaign, else the most saved, stays', () => {
-  const a = runner('Dusty Hat', { id: 'a', updatedAt: '2026-09-01T00:00:00Z' })
-  const b = { ...a, id: 'b', updatedAt: '2026-09-03T00:00:00Z', lastExportedAt: '2026-09-04T00:00:00Z', sampleKey: 'dusty-hat|canon' }
-  const c = { ...a, id: 'c', campaign: 'k1' }
-  const other = { ...a, id: 'd', identity: { ...a.identity, notes: 'Changed.' } }
-  const ids = (g: Character[][]) => g.map(x => x.map(ch => ch.id))
-  expect(ids(identicalCopies([{ ch: a, rev: 3 }, { ch: b, rev: 1 }, { ch: other }]))).toEqual([['a', 'b']])
-  expect(ids(identicalCopies([{ ch: a, rev: 1 }, { ch: b, rev: 1 }]))).toEqual([['b', 'a']]) // the newest
-  expect(ids(identicalCopies([{ ch: a, rev: 3 }, { ch: b }, { ch: c }]))).toEqual([['c', 'a', 'b']])
-  expect(identicalCopies([{ ch: a }, { ch: other }])).toEqual([])
+test('find duplicates (0.8.3): same street name, real name and metatype, whatever else differs; an edited copy, else the newest, kept', () => {
+  // the owner's case: one example loaded twice, once from an older version of its file (other background, other dates), both rev 1
+  const older = runner('Dusty Hat', { id: 'old', sampleKey: 'dusty-hat|noncanon', updatedAt: '2026-08-01T00:00:00Z', lastExportedAt: '2026-08-01T00:00:00Z' })
+  older.identity = { ...older.identity, background: 'Older text.' }
+  const newer = runner('Dusty Hat', { id: 'new', sampleKey: 'dusty-hat|canon', updatedAt: '2026-09-01T00:00:00Z', lastExportedAt: '2026-09-02T00:00:00Z' })
+  const ids = (g: { ch: Character }[][]) => g.map(x => x.map(r => r.ch.id))
+  expect(ids(sameRunners([{ ch: older, rev: 1 }, { ch: newer, rev: 1 }]))).toEqual([['new', 'old']]) // both unedited: the newest
+  expect(ids(sameRunners([{ ch: newer, rev: 1 }, { ch: older, rev: 2 }]))).toEqual([['old', 'new']]) // the edited one, however old
+  // case and spaces don't matter; another metatype, or another real name, is another character
+  const shouty = { ...newer, id: 'shout', identity: { ...newer.identity, streetName: '  DUSTY hat ', name: ' dusty HAT' } }
+  const troll = { ...newer, id: 'troll', identity: { ...newer.identity, metatype: 'troll' } }
+  const other = { ...newer, id: 'other', identity: { ...newer.identity, name: 'Someone Else' } }
+  expect(ids(sameRunners([{ ch: older }, { ch: shouty }, { ch: troll }, { ch: other }]))).toEqual([['shout', 'old']])
+  // unnamed runners can't be told apart by name: never offered
+  const blank = (id: string) => ({ ch: { ...newer, id, identity: { ...newer.identity, streetName: '', name: '' } } })
+  expect(sameRunners([blank('a'), blank('b')])).toEqual([])
 })
