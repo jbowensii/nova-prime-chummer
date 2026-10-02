@@ -83,6 +83,21 @@ test('a book’s own sample characters go out under that book', async ({ page })
   await expect(panel.getByRole('status')).toHaveCount(0)
 })
 
+test('a book’s NPCs go out under that book', async ({ page }) => {
+  await page.goto('/#/data')
+  const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
+  await panel.getByRole('button', { name: 'None' }).click()
+  await panel.getByRole('checkbox', { name: /^TESTC\b/ }).check()
+  await panel.getByRole('checkbox', { name: /^PREGENS\b/ }).check()
+  const dl = page.waitForEvent('download')
+  await panel.getByRole('button', { name: 'Download book data' }).click()
+  const f = await json(dl)
+  const by = (id: string) => f.books.find((b: { source: { id: string } }) => b.source.id === id)
+  expect(by('TESTC').npcs.map((r: { streetName: string; npc: unknown }) => [r.streetName, r.npc]))
+    .toEqual([['Made-Up Goon', { kind: 'npc', tier: 'regular', fightingSpirit: 'low' }]])
+  expect(by('PREGENS').npcs).toBeUndefined()
+})
+
 test('a sample that can’t be read is left out and named; the book data still downloads', async ({ page }) => {
   await page.route('**/custom/imported/pregens/samples/*.xml', r => r.fulfill({ status: 404, body: '' }))
   await page.goto('/#/data')

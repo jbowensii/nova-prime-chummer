@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="testc.npc-made-up-goon" streetName="Made-Up Goon" name="Made-Up Goon" metatype="human" level="runner" package="free" origin="TESTC" updatedAt="2026-10-02T00:00:00.000Z">
+  <npc kind="npc" tier="regular" fightingSpirit="low"/>
+  
+  <background>Test canon book p.250.</background>
+  <notes>Other metatypes: STR 4 (orks), WIL 3 (dwarfs).
+Fizzy pop (drug): +1 action per fight.
+Grumpy (quality): Advantage when made-up things happen; high fighting spirit.
+Shotgun DV 8 [Dis./OK/Dis./–]</notes>
+  <build mainArmor="it-1"><attributes str="3" agi="2" wil="2" log="2" cha="2"/><skill id="athletics" rating="3"/><skill id="close-combat" rating="4"><spec>close-combat.grappling</spec></skill><skill id="influence" rating="1"/><amp uid="amp-1" type="cyberware" name="Toy arm"><effect ref="rr-skill" param="close-combat"/></amp><item uid="it-1" kind="armor" name="Padded jacket" catalogId="armored-clothes" armor="2"/><item uid="it-2" kind="gear" name="Commlink"/><item uid="it-3" kind="weapon" name="Knife" catalogId="short-weapon" dv="4" ranges="OK/-/-/-"/><item uid="it-4" kind="weapon" name="Light pistol" catalogId="light-pistol" dv="4" ranges="OK/OK/Dis/-"/></build>
+  
+</ca2:character>

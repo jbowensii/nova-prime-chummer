@@ -14,7 +14,7 @@ import { downloadRunners, ExportRunnersDialog } from './Foundry'
 import { arrange, exportCharacter, ownerGroups, type SortBy } from './Library'
 import { Face } from './Portrait'
 import { npcRepoFor, useRepo, type Stored, type Unreadable } from './repo'
-import { readCharacterFile } from './samples'
+import { bookNpcs, readCharacterFile, readSample } from './samples'
 import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
 
@@ -89,6 +89,29 @@ export function NpcsScreen({ c }: { c: Catalog }) {
     void refresh()
   }
 
+  // the imported books' NPCs, copied (new ids) as example characters are; one already loaded (its book and name, kept on
+  // the copy as sampleKey, so a renamed copy still counts) isn't loaded again
+  const loadBook = async () => {
+    try {
+      const rows = await bookNpcs()
+      if (!rows.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
+      const key = (source: string, name: string) => `${source}|${name}`
+      const have = new Set(mine.map(s => s.ch.sampleKey ?? key(s.ch.origin ?? '', nameOf(s.ch))))
+      let n = 0
+      const bad: string[] = []
+      for (const r of rows.filter(r => !have.has(key(r.source, r.name)))) {
+        const got = await readSample(r.url)
+        if (!got.ok) { bad.push(`${r.name || r.url.split('/').pop()}: ${got.reason}`); continue }
+        const k = key(r.source, r.name)
+        if (await store({ ...got.character, id: newId(), sampleKey: k, lastExportedAt: got.character.updatedAt })) { n++; have.add(k) }
+      }
+      setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The book NPCs are already in your NPCs.', ...bad].filter(Boolean).join(' '))
+      void refresh()
+    } catch (e) {
+      setMsg(because('Couldn’t load the book NPCs', (e as Error).message ?? String(e)))
+    }
+  }
+
   const share = async (ch: Character, cid: string | null) => {
     try {
       const x = cid ? campaigns.find(k => k.id === cid) : campaignOf(ch)
@@ -136,6 +159,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
         <div className="row">
           <button className="btn primary" onClick={() => setCreating(true)}>New NPC</button>
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
+          <button className="btn quiet" onClick={() => void loadBook()}>Load book NPCs</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
           {trashed !== null && <a className="btn quiet" href="#/npcs/trash">Trash ({trashed})</a>}
@@ -156,7 +180,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
       {list === null ? <p className="muted">Loading NPCs…</p> : <>
         {others.length > 0 && <h2>My NPCs</h2>}
         {unreadable.filter(own).map(broken)}
-        {mine.length === 0 ? <div className="empty"><p>No NPCs yet. Make one, or import an NPC file.</p></div> : <>
+        {mine.length === 0 ? <div className="empty"><p>No NPCs yet. Make one, import an NPC file, or load the book’s NPCs.</p></div> : <>
           {rows.map(s => row(s, true))}
           {q && rows.length === 0 && <p className="muted">No NPC’s name contains “{q.trim()}”.</p>}
         </>}

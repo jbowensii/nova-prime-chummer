@@ -82,6 +82,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                  if res.texts or res.core_texts else None)
         samples_path = os.path.join(custom_dir, "imported", "samples.xml")
         samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
+        npcs_path = os.path.join(custom_dir, "imported", "npcs.xml")
+        npcs = xmlio.merged_npcs(custom_dir, src, res.npcs) if res.npcs or os.path.exists(npcs_path) else None
         for name, xml in res.core.items():  # the rules engine's core files (the CRB's), ids unscoped
             xmlio.write_file(os.path.join(custom_dir, "imported", "core", name), xml)
         for name, xml in res.files.items():
@@ -92,6 +94,10 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
         if samples:
             xmlio.write_file(samples_path, samples)
+        for n in res.npcs:
+            xmlio.write_file(os.path.join(out_dir, "npcs", n["file"]), n["xml"])
+        if npcs:
+            xmlio.write_file(npcs_path, npcs)
         xmlio.write_import(book_dir, report=res.report, files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
                            recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
                            name=res.source["name"], publisher=res.source["publisher"],
@@ -163,6 +169,9 @@ def remove(book_dir, custom_dir, forget=False, status=True):
                 os.remove(texts)
             if os.path.exists(samples):
                 xmlio.write_file(samples, xmlio.merged_samples(custom_dir, src, []))
+            npcs = os.path.join(custom_dir, "imported", "npcs.xml")
+            if os.path.exists(npcs):
+                xmlio.write_file(npcs, xmlio.merged_npcs(custom_dir, src, []))
         elif gone and os.path.exists(texts):
             xmlio.write_file(texts, xmlio.merged_texts(texts, [], drop=gone))
     if forget:

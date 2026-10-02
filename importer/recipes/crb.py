@@ -22,6 +22,9 @@ Sample runners: the 12 pregens (a story page, then a stat page; printed pp.88-11
 CRB layout path; the character creation example box (p.85) builds its runner from the prose. Every printed
 number goes to the report, as the pregen booklet's do. An amp printed only on those sheets (no box has its type and
 name: Concealment on Hercules', the pregens' brand-name gear) is the rulebook's too, so it joins the catalog amps.
+
+NPCs, critters and spirits (pp.244-265): crb_npcs.py reads them from the PDF's layout into Result.npcs (an import from
+Markdown alone, with no PDF, has none).
 """
 import contextlib
 import functools
@@ -614,11 +617,18 @@ def _extract(md, report, spells_only=False, pdf=None):
         return s
 
     mapper = Mapper({} if spells_only else load_skills(dhsa_specs=False)[1])
-    rows, items, samples, sample_rows = [], [], [], []
+    rows, items, samples, sample_rows, npcs = [], [], [], [], []
     if not spells_only:
         rows, items = amps_and_gear(md, mapper)
-        samples, sample_rows, sheets = sample_runners(md, [n for r in spell_list for n in r[2]], pdf)
+        names = [n for r in spell_list for n in r[2]]
+        samples, sample_rows, sheets = sample_runners(md, names, pdf)
         rows += sheet_amps(sheets, rows, statblock.load_rules())
+        if pdf is not None:  # the NPC chapter is read from the PDF's layout (an import from Markdown alone has none)
+            from importer.recipes import crb_npcs
+            spell_ids = {statblock._norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in names}  # scoped as run() scopes them
+            npcs, npc_rows = crb_npcs.npcs(crb_npcs.chapter(pdf), statblock.load_rules(), spell_ids,
+                                           datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+            sample_rows += npc_rows
     for r in rows:
         aid = uid(r["id"])
         if r["computed"] != r["rating"]:
@@ -654,4 +664,4 @@ def _extract(md, report, spells_only=False, pdf=None):
              "gear.xml": data("gear", "Plain equipment (not Amps).", gear),
              "rules-optional.xml": data("rules", "The book's optional rules (the app's Table rules); texts in custom/texts/crb.xml.", rules)}
     return Result(files=files, texts=data("texts", "PRIVATE: book text. Do not commit.", texts), samples=samples, report=report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON}, npcs=npcs)

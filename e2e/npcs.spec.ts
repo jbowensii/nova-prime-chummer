@@ -254,3 +254,26 @@ test('the NPC block on Review and on both printed sheets: average hits, fighting
   await expect(prime).toContainText('Fighting spirit: Extreme')
   await shots(page, 'npc-sheet-prime')
 })
+
+test('Load book NPCs copies the imported books’ NPCs once, even after a rename', async ({ page }) => {
+  await signIn(page, 'gus')
+  await page.goto('/#/npcs')
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(page.getByRole('status')).toHaveText('Added 1 book NPC.')
+  const r = row(page, 'Made-Up Goon')
+  await expect(r.locator('.npckind')).toHaveText('NPC')
+  await expect(r.locator('.npctier')).toHaveText('Regular')
+  const goon = (await (await api(page, 'GET', 'npcs')).json()).find((x: { xml: string }) => x.xml.includes('Made-Up Goon'))
+  expect(goon.xml).toContain('origin="TESTC"')
+  expect(goon.xml).not.toContain('id="testc.npc-made-up-goon"') // a copy with an id of its own
+
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(page.getByRole('status')).toHaveText('The book NPCs are already in your NPCs.')
+  await r.getByRole('link', { name: 'Made-Up Goon' }).click()
+  await page.getByLabel('Street name').fill('Renamed Goon')
+  await saved(page)
+  await page.goto('/#/npcs')
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(page.getByRole('status')).toHaveText('The book NPCs are already in your NPCs.')
+  await expect(row(page, 'Made-Up Goon')).toHaveCount(0)
+})
