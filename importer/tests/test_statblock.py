@@ -1,6 +1,7 @@
 """Stat-block parser and the pregen recipe, on a made-up runner ("Test Face") laid out as the converter prints
 the pregen booklet: a story page ("# NAME", "(ROLE)"), then a stat page with section anchors, bold skill rows,
 "(Spec +2) ATT DP RR" rows, bold weapon/armor/amp names, "•" bullets that wrap."""
+import json
 import os
 import subprocess
 import tempfile
@@ -14,6 +15,7 @@ from importer.recipes import identify, pregens
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "mini" / "custom" / "imported" / "pregens" / "samples" / "pregens.test-face.xml"
+NPC_GOLDEN = ROOT / "tests" / "fixtures" / "npc-critter.xml"
 
 STAT = """## S HADOWRUN
 KEYWORDS
@@ -265,6 +267,11 @@ class CharacterTest(unittest.TestCase):
     def test_character_xml_matches_the_fixture_the_ts_reader_is_tested_on(self):
         # regenerate after an intended change: py -3.12 -c "from importer.tests.test_statblock import write_golden; write_golden()"
         self.assertEqual(statblock.character_xml(self.ch), GOLDEN.read_text(encoding="utf8"))
+
+    def test_character_xml_of_an_npc_matches_the_apps(self):
+        # tests/engine/pregen-sample.test.ts holds the app's writer to the same file
+        npc = json.loads(NPC_GOLDEN.with_suffix(".json").read_text(encoding="utf8"))
+        self.assertEqual(statblock.character_xml(npc), NPC_GOLDEN.read_text(encoding="utf8"))
 
 
 def write_golden():

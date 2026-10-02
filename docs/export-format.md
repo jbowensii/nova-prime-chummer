@@ -40,7 +40,7 @@ finalized runner (before that, what is left of the build budget).
 | `id`, `updatedAt`, `exportedAt` | the runner's id, last change, this export's time |
 | `streetName`, `realName` | identity |
 | `finalized` | true once the build is finalized and career play has begun |
-| `metatype` | `{ id, name, ranges, edge }`: attribute ranges `[min, max]` per attribute, and the edge |
+| `metatype` | `{ id, name, ranges, edge }`: attribute ranges `[min, max]` per attribute, and the edge. A critter or spirit may have none: `id` `""`, `name` "Critter" or "Spirit" |
 | `level` | `{ id, name }` of the build level |
 | `lifestyle` | `{ id, name, perRun }` |
 | `portrait` | a data URL, or `null` |
@@ -60,6 +60,7 @@ finalized runner (before that, what is left of the build budget).
 | `background`, `notes` | free text |
 | `nuyen` | `{ balance }` |
 | `ledger` | `[{ at, type, summary, amount }]`: the active career events, a cost as a negative amount; a `finalize` line is "Creation finished" with the nuyen left as its amount; buy, sell, amp, advance, specialization and knowledge lines name the thing |
+| `npc` | optional, an NPC only (absent: a runner): `{ kind, tier, fightingSpirit? }`, `kind` `npc`, `critter` or `spirit`; `tier` `prime` (managed like a runner, with Edge) or `regular` (no Edge, average hits); `fightingSpirit` `null`, `low`, `high` or `extreme`. GM-only data: an NPC's attributes may lie outside its metatype's ranges |
 
 ### Amps
 
@@ -93,7 +94,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 
 ## Book
 
-`{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes` and `characters`.
+`{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes`, `characters` and `npcs`.
 
 - `source`: `{ id, name, publisher, canon }`.
 - `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`.
@@ -104,6 +105,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 - `skills`: every skill whose source is this book (core skills belong to the core book): `id`, `source`, `page`, `name`, `attr`, optionally `alt`, and `specs: [{ id, name, attr }]`.
 - `metatypes` (optional): `{ id, source, page, canon, name, edge, ranges, racialQuality }` for each metatype whose source is this book; `ranges` as on a runner's metatype.
 - `characters` (optional): the book's own sample (pregen) characters, each exactly as a runner in a runners file (see Runner), descriptions per the file's `descriptions`. Only the imported book's samples (`custom/imported/samples.xml` rows whose `source` is this book, matched case-insensitively); the server's example sets are not books and never appear. Absent when the book has none.
+- `npcs` (optional): the book's NPCs, critters and spirits, each as a runner with its `npc` block. Absent when the book has none.
 - `specs`: this book's specializations on another book's skill: `{ skill, id, name, attr, page? }`.
 - `rules`: `id`, `source`, `page`, `sheet`, `section`, `title`, optionally `sheetName`, and `text` when descriptions are on. `sheetName` is the sheet's display name (`base` is "Basics", `technomancers` "Technomancers", `optional` "Optional rules", `vehicles` "Vehicles & Drones"; any other sheet id title-cased). A rule whose section is empty gets its `sheetName` as `section`.
 

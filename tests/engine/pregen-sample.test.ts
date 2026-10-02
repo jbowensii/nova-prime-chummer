@@ -7,6 +7,7 @@ import { ampCtx, ampRating } from '../../src/engine/amps'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { derive } from '../../src/engine/derive'
 import { validate } from '../../src/engine/validate'
+import type { Character } from '../../src/model/types'
 import { cat } from '../helpers'
 
 const golden = readFileSync('tests/fixtures/mini/custom/imported/pregens/samples/pregens.test-face.xml', 'utf8')
@@ -41,4 +42,14 @@ test('the engine gives the numbers the recipe computed', () => {
   const got = ch.build.amps.map(a => ampRating(cat, a, ampCtx(ch.build, a)))
   expect(validate(cat, ch).filter(v => v.code === 'amp.printedRating').map(v => v.path))
     .toEqual(ch.build.amps.filter((a, i) => a.snapshot?.printedRating !== got[i]).map(a => `amps.${a.uid}`))
+})
+
+// An NPC (a critter: no metatype, an npc block): the importer's writer (importer/tests/test_statblock.py) and the app's
+// give the same bytes for tests/fixtures/npc-critter.json, and the app reads them back to it.
+test('both writers give the same bytes for an NPC', () => {
+  const npc = JSON.parse(readFileSync('tests/fixtures/npc-critter.json', 'utf8')) as Character
+  const xml = readFileSync('tests/fixtures/npc-critter.xml', 'utf8')
+  expect(characterToXml(npc)).toBe(xml)
+  const back = xmlToCharacter(xml)
+  expect(back.ok && [back.character.npc, back.character.identity.metatype]).toEqual([npc.npc, ''])
 })

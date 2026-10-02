@@ -9,6 +9,26 @@
   <xs:element name="character">
     <xs:complexType>
       <xs:sequence>
+        <!-- set: an NPC (absent: a runner). A critter or spirit may have metatype="" -->
+        <xs:element name="npc" minOccurs="0">
+          <xs:complexType>
+            <xs:attribute name="kind" use="required">
+              <xs:simpleType><xs:restriction base="xs:string">
+                <xs:enumeration value="npc"/><xs:enumeration value="critter"/><xs:enumeration value="spirit"/>
+              </xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="tier" use="required">
+              <xs:simpleType><xs:restriction base="xs:string">
+                <xs:enumeration value="prime"/><xs:enumeration value="regular"/>
+              </xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="fightingSpirit">
+              <xs:simpleType><xs:restriction base="xs:string">
+                <xs:enumeration value="null"/><xs:enumeration value="low"/><xs:enumeration value="high"/><xs:enumeration value="extreme"/>
+              </xs:restriction></xs:simpleType>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
         <xs:element name="portrait" type="xs:string" minOccurs="0"/>
         <xs:element name="background" type="xs:string" minOccurs="0"/>
         <xs:element name="notes" type="xs:string" minOccurs="0"/>

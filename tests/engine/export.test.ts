@@ -149,6 +149,21 @@ describe('export: sections, metatypes, skills', () => {
     expect(testc.characters![0].streetName).toBe('Test Runner')
     expect(exportBooks(cat, ['TEST'], [], OPTS).books![0].characters).toBeUndefined()
   })
+  test('an NPC carries its npc block, a runner none; a critter without a metatype is named for its kind', () => {
+    const npc: Character = { ...rush(), npc: { kind: 'critter', tier: 'regular', fightingSpirit: 'low' } }
+    npc.identity = { ...npc.identity, metatype: '' }
+    const [r, n] = exportRunners(cat, [rush(), npc], OPTS).runners!
+    expect('npc' in r).toBe(false)
+    expect(n.npc).toEqual({ kind: 'critter', tier: 'regular', fightingSpirit: 'low' })
+    expect(n.metatype).toMatchObject({ id: '', name: 'Critter' })
+  })
+  test('a book’s NPCs go out as runners with their npc block, under that book only', () => {
+    const npc: Character = { ...rush(), npc: { kind: 'npc', tier: 'prime' } }
+    const [test, testc] = exportBooks(cat, ['TEST', 'TESTC'], [], OPTS, {}, { TESTC: [npc] }).books!
+    expect(test.npcs).toBeUndefined()
+    expect(testc.npcs).toEqual(exportRunners(cat, [npc], OPTS).runners)
+    expect(testc.npcs![0].npc).toEqual({ kind: 'npc', tier: 'prime' })
+  })
 })
 
 describe('export: bonuses and vehicles', () => {
@@ -218,6 +233,13 @@ describe('export: the schema', () => {
     b.characters = [runners().runners[0]]
     expect(check(f), JSON.stringify(check.errors)).toBe(true)
     b.characters[0].streetName = 5
+    expect(check(f)).toBe(false)
+    b.characters[0].streetName = 'S'
+    b.npcs = [{ ...runners().runners[0], npc: { kind: 'spirit', tier: 'regular', fightingSpirit: 'extreme' } }]
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    delete b.npcs[0].npc.fightingSpirit
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.npcs[0].npc.kind = 'dragon'
     expect(check(f)).toBe(false)
   })
   test('a wrong format, version or kind is not', () => {

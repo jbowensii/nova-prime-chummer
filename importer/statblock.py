@@ -768,7 +768,7 @@ def _text(name, s):
 
 
 def character_xml(ch):
-    """Byte for byte what characterToXml writes (formatVersion 1), for a character without career or item snapshots;
+    """Byte for byte what characterToXml writes (formatVersion 1), for a character (or NPC) without career or item snapshots;
     an amp's snapshot is the printed amp: its type, name, printed rating, source and page
     (tests/engine/pregen-sample.test.ts holds both writers to the same file)."""
     b = ch["build"]
@@ -778,7 +778,9 @@ def character_xml(ch):
     amp = lambda a: _el("amp", {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},
                         _text("narrative", a.get("narrative")) + "".join(map(fx, a["effects"])) + (snap(a["snapshot"]) if a.get("snapshot") else ""))
     item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price")})
-    body = [_text("portrait", ch["identity"].get("portrait")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
+    npc = ch.get("npc")
+    body = [*([_el("npc", {k: npc.get(k) for k in ("kind", "tier", "fightingSpirit")})] if npc else []),
+            _text("portrait", ch["identity"].get("portrait")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
             *(f"<keyword>{_esc(k)}</keyword>" for k in ch["narrative"]["keywords"]),
             *(f"<disposition>{_esc(k)}</disposition>" for k in ch["narrative"]["dispositions"]),
             *(f"<cue>{_esc(k)}</cue>" for k in ch["narrative"]["cues"]),
@@ -792,6 +794,6 @@ def character_xml(ch):
     root = {"formatVersion": ch["formatVersion"], "id": ch["id"], "streetName": idn.get("streetName"), "name": idn.get("name"),
             "metatype": idn["metatype"], "level": ch["level"], "package": ch["package"], "origin": ch.get("origin"),
             "updatedAt": ch["updatedAt"]}
-    a = "".join(f' {k}="{_esc(v)}"' for k, v in root.items() if v not in (None, ""))
+    a = "".join(f' {k}="{_esc(v)}"' for k, v in root.items() if v is not None)  # an empty value is kept, as in characterToXml
     return (f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="{CHAR_NS}"{a}>\n  '
             + "\n  ".join(body) + "\n</ca2:character>\n")
