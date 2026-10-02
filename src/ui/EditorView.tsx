@@ -10,7 +10,6 @@ import { downloadRunners } from './Foundry'
 import { useRepo } from './repo'
 import { newId } from '../model/types'
 import { Receipt } from './Receipt'
-import { loadSettings } from './settings'
 import { AmpsTab } from './tabs/Amps'
 import { AttributesTab } from './tabs/Attributes'
 import { ConceptTab } from './tabs/Concept'
@@ -20,10 +19,14 @@ import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
 import { BookSheet } from '../print/BookSheet'
+import { usePrintStyle } from '../print/shared'
 import { AskRules } from './AskRules'
 import { IconButton } from './icons'
 import { MainMenu } from './nav'
 import { Face } from './Portrait'
+
+/** The print page: the sheet the toolbar's Sheet type (or Settings) picks. */
+function PrintSheet() { return usePrintStyle() === 'book' ? <BookSheet /> : <Sheet /> }
 
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
   ['gear', 'Gear & spells'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
@@ -220,7 +223,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   // an NPC has no budget, Finalize or career: no ledger tab and no receipt
   const tabs = TABS.filter(([k]) => k !== 'ledger' || (career && !npc))
 
-  if (tab === 'print') return <Editor.Provider value={ctx}>{loadSettings().print === 'book' ? <BookSheet /> : <Sheet />}</Editor.Provider>
+  if (tab === 'print') return <Editor.Provider value={ctx}><PrintSheet /></Editor.Provider>
 
   return (
     <Editor.Provider value={ctx}>

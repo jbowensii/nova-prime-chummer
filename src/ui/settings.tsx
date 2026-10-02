@@ -38,10 +38,13 @@ export function saveSettings(s: Settings) {
   try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* settings just won't persist */ }
 }
 
+/** The printed sheet's styles: here and on the print page's toolbar (print/shared.tsx SheetType). */
+export const PRINT_STYLES: [Settings['print'], string, string][] = [['plain', 'Printer-friendly', 'Book styling on white, no textures.'], ['color', 'Full color', 'Paper and paint, like a page from the PDF.'], ['book', 'Book style', 'Laid out like the rulebook’s example sheet.']]
+
 const GROUPS: { key: keyof Settings; label: string; options: [string, string, string][] }[] = [
   { key: 'theme', label: 'Theme', options: [['light', 'Book (light)', 'The printed page: paper, ink, rust and yellow.'], ['dark', 'Indigo (dark)', 'The book’s sidebar colors as a dark page.']] },
   { key: 'texture', label: 'Texture', options: [['flat', 'Flat', 'Colors and fonts only.'], ['accents', 'Accents', 'Paper grain, paint stroke, halftone panels.'], ['full', 'Full book', 'Adds graffiti tabs, a chapter tab and painted panel edges.']] },
-  { key: 'print', label: 'Printed sheet', options: [['plain', 'Printer-friendly', 'Book styling on white, no textures.'], ['color', 'Full color', 'Paper and paint, like a page from the PDF.'], ['book', 'Book style', 'Laid out like the rulebook’s example sheet.']] },
+  { key: 'print', label: 'Printed sheet', options: PRINT_STYLES },
   { key: 'art', label: 'Background', options: [['on', 'Show background art', 'The admin’s images, faint behind every page.'], ['off', 'Plain page', 'No background art in this browser.']] },
 ]
 
