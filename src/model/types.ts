@@ -46,7 +46,9 @@ export interface Lifestyle extends Ref { name: string; perRun: number; text: str
 /** origin: which sources file defined it last (shipped public/data, generated custom/imported, the user's custom).
  * Imported sources also carry the uploaded file name(s) ("; "-separated), SHA-256(s) (space-separated) and import date. */
 export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string;
-  file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user' }
+  file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user'
+  /** a GM's compendium (catalog only): its id and owner, where its entries are edited */
+  compendium?: { id: string; owner: string } }
 /** rules reference entry (quick-reference sheets); effects = amp effects it explains */
 export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string; edited?: boolean }
 export interface LoadError { file: string; line?: number; message: string }
@@ -141,6 +143,11 @@ export interface Character { formatVersion: 1; id: string;
    *  counts in what's left to spend and the next Finalize uses it up */
   carry?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }
+/** A GM's own collection of entries (docs/data-format.md "Compendiums"): every entry cites `source`, its NPCs carry `npc`.
+ *  owner/ownerName come from the server (the folder it's stored in), never the file. */
+export interface Compendium { id: string; name: string; source: string; sharing: 'private' | 'campaign' | 'table'; campaign?: string;
+  rev?: number; updatedAt: string; owner?: string; ownerName?: string
+  amps: AmpTemplate[]; items: Item[]; vehicles: VehicleBase[]; npcs: Character[] }
 export type Severity = 'error' | 'warning';
 export interface Violation { code: string; severity: Severity; path: string;
   message: string; source?: string; page?: number; approved?: boolean }

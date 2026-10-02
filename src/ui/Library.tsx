@@ -279,6 +279,7 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn quiet" onClick={loadExamples}>Load example characters</button>
           {admin && <a className="btn quiet" href="#/books">Books</a>}
           {canEdit(me) && <a className="btn quiet" href="#/npcs">NPCs</a>}
+          {canEdit(me) && repo.mode === 'server' && <a className="btn quiet" href="#/compendiums">Compendiums</a>}
           {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
           <a className="btn quiet" href="#/data">Game data</a>
           {repo.mode === 'server' && <a className="btn quiet" href="#/campaigns">Campaigns</a>}

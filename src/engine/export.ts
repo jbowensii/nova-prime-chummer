@@ -47,7 +47,8 @@ export interface ExportFile { format: typeof EXPORT_FORMAT; version: typeof EXPO
   exportedAt: string; app: { name: string; version: string }; descriptions: boolean
   runners?: ExportRunner[]; books?: ExportBook[]; tableRules?: { name: string; text: string }[] }
 export interface ExportBook {
-  source: { id: string; name: string; publisher: string; canon: boolean }
+  /** compendium: a GM's compendium (publisher: its owner's name), not a book */
+  source: { id: string; name: string; publisher: string; canon: boolean; compendium?: true }
   amps: { id: string; source: string; page: number; canon: boolean; type: string; typeName: string; name: string; rating: number;
     essence: number; printedRating?: number; mod: boolean; effects: ExportEffect[]; rr: ExportRR[]; bonuses: ExportBonuses
     item?: { kind: string; specialist: boolean; armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range> }
@@ -206,7 +207,7 @@ const envelope = (kind: ExportFile['kind'], o: ExportOpts): ExportFile =>
 export const exportRunners = (c: Catalog, chs: Character[], o: ExportOpts): ExportFile =>
   ({ ...envelope('runners', o), runners: chs.map(ch => exportRunner(c, ch, o)) })
 
-/** The ticked books as the app sees them (edits and house rules applied), with the table rules switched on, and each
+/** The ticked books (or a GM's compendium: its source, marked `compendium`) as the app sees them (edits and house rules applied), with the table rules switched on, and each
  *  book's sample characters (`characters`, by source id) and NPCs (`npcs`, by source id) as runners. */
 export function exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts,
   characters: Record<string, Character[]> = {}, npcs: Record<string, Character[]> = {}): ExportFile {
@@ -215,7 +216,7 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
     if (!s) return []
     const mine = <T extends { source: string }>(m: Map<string, T>) => [...m.values()].filter(e => e.source === id)
     return [{
-      source: { id: s.id, name: s.name, publisher: s.publisher, canon: s.canon },
+      source: { id: s.id, name: s.name, publisher: s.publisher, canon: s.canon, ...s.compendium ? { compendium: true as const } : {} },
       amps: mine(c.amps).map(t => {
         const { amp } = ampFromTemplate(t, () => 'export')
         return { id: t.id, source: t.source, page: t.page, canon: s.canon, type: t.type, typeName: c.ampTypes.get(t.type)?.name ?? t.type,

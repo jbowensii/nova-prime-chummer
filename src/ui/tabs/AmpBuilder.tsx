@@ -1,5 +1,6 @@
 // Build or change a Shadow Amp: type + effects -> rating, cost, Essence (CRB p.58-63).
 // catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
+// A string catalog is the save button's label (a compendium's).
 import { useState } from 'react'
 import { ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
@@ -8,7 +9,7 @@ import { fmt, signed } from '../bits'
 import { useEditor } from '../editor'
 
 export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, saveDisabled }: {
-  initial: AmpEntry; before?: AmpEntry; build: Build; onSave: (a: AmpEntry) => void; onCancel: () => void; catalog?: boolean; saveDisabled?: boolean
+  initial: AmpEntry; before?: AmpEntry; build: Build; onSave: (a: AmpEntry) => void; onCancel: () => void; catalog?: boolean | string; saveDisabled?: boolean
 }) {
   const { c, career } = useEditor()
   const [amp, setAmp] = useState<AmpEntry>(initial)
@@ -123,7 +124,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
       </div>
       <div className="actions" style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
         <button className="btn" onClick={onCancel}>Cancel</button>
-        <button className="btn primary" disabled={!amp.name.trim() || saveDisabled} onClick={() => onSave({ ...amp, name: amp.name.trim() })}>{catalog ? 'Save to the catalog' : before ? 'Save changes' : 'Add amp'}</button>
+        <button className="btn primary" disabled={!amp.name.trim() || saveDisabled} onClick={() => onSave({ ...amp, name: amp.name.trim() })}>{catalog ? (typeof catalog === 'string' ? catalog : 'Save to the catalog') : before ? 'Save changes' : 'Add amp'}</button>
       </div>
     </div>
   )

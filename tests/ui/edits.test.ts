@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest'
 import { buildCatalog } from '../../src/engine/load'
 import { toAmp, toItem, toRule } from '../../src/engine/parse'
-import { editState, entryXml } from '../../src/ui/EditEntry'
+import { entryXml } from '../../src/engine/compendium'
+import { editState } from '../../src/ui/EditEntry'
 import { cat, catFiles } from '../helpers'
 
 const el = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml').documentElement

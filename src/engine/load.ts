@@ -4,12 +4,14 @@
 // (custom/imported/) carry ids scoped by source, so two books' same-named entries both stay;
 // sources merge by id across the three sources files instead of replacing, and an imported skill
 // adds its specs to the base skill of that id. The edits layer (custom/edits/, kind="edits") replaces
-// entries by id after the imports and before the house rules; the replaced entries stay in c.original.
+// entries by id after the imports and before the house rules; the replaced entries stay in c.original. A GM's compendium
+// (kind="compendium", an extra overlay) adds its entries under its own house source.
 import type { AttrId, Catalog, Pricing, Source } from '../model/types'
 import {
   parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPrices, toPricing, toRule, toSkill,
   toSource, toVehicle,
 } from './parse'
+import { compendiumSource, readCompendium } from './compendium'
 
 export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
   'packages', 'vehicles', 'weapons', 'armor', 'lifestyles']
@@ -17,7 +19,8 @@ export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skil
  * development the owner's local copies in public/data load first. Everything but sources.xml. */
 export const CORE_FILES = DATA_FILES.filter(n => n !== 'sources')
 
-export interface SourceFile { file: string; xml: string; overlay: boolean }
+/** publisher, owner: a compendium's owner's name and account (its source's publisher, where to edit it) */
+export interface SourceFile { file: string; xml: string; overlay: boolean; publisher?: string; owner?: string }
 
 const IMPORTED = 'custom/imported/'
 const originOf = (f: SourceFile): Source['origin'] => !f.overlay ? 'shipped' : f.file.startsWith(IMPORTED) ? 'imported' : 'user'
@@ -94,6 +97,19 @@ export function buildCatalog(files: SourceFile[]): Catalog {
         c.errors.push({ file: f.file, message: `bad entry: ${(e as Error).message}` }); continue
       }
       for (const el of p.entries) if (el.getAttribute('source')) cites.push([f.file, el.getAttribute('source')!])
+    } else if (p.kind === 'compendium') {
+      // entries all cite the compendium's source (readCompendium checks); its NPCs aren't catalog entries
+      const r = readCompendium(f.xml)
+      if (!r.ok) { c.errors.push({ file: f.file, message: r.error }); continue }
+      const comp = r.compendium
+      // a book or house source with its id (imported or added after it was made): the book keeps it, the compendium waits
+      if (c.sources.has(comp.source)) { c.errors.push({ file: f.file, message: `its source id ${comp.source} is already a book’s or a house source’s; its entries didn’t load` }); continue }
+      c.sources.set(comp.source, { ...compendiumSource({ ...comp, ownerName: f.publisher }), compendium: { id: comp.id, owner: f.owner ?? '' } })
+      for (const a of comp.amps) c.amps.set(a.id, a)
+      for (const i of comp.items) c.items.set(i.id, i)
+      for (const v of comp.vehicles) c.vehicles.set(v.id, v)
+      c.files.push({ file: f.file, kind: p.kind, entries: comp.amps.length + comp.items.length + comp.vehicles.length, overlay: f.overlay })
+      continue
     } else {
       const t = targets[p.kind]
       if (!t) { c.errors.push({ file: f.file, message: `unknown kind "${p.kind}"` }); continue }
@@ -133,11 +149,11 @@ const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').match
 
 /** Every file the app loads, in load order: data/*.xml, custom/imported/core/*.xml, custom/imported/sources.xml, custom/sources.xml,
  * the files listed in custom/imported/index.xml, the private texts files named by any source (plus the
- * older single custom/texts.xml), the edits layer (custom/edits/sources.xml, edits.xml, texts.xml), then the
- * house rules listed in custom/index.xml. `get` returns a
+ * older single custom/texts.xml), the edits layer (custom/edits/sources.xml, edits.xml, texts.xml), the `extra` overlay
+ * files (a GM's compendiums), then the house rules listed in custom/index.xml. `get` returns a
  * file's text, or null when it isn't there; `missing` lists data and listed files that weren't, `coreMissing` the core
  * files found in neither data/ nor custom/imported/core/ (the app then opens on its setup screen). */
-export async function collectFiles(get: (path: string) => Promise<string | null>): Promise<{ files: SourceFile[]; missing: string[]; coreMissing: string[] }> {
+export async function collectFiles(get: (path: string) => Promise<string | null>, extra: SourceFile[] = []): Promise<{ files: SourceFile[]; missing: string[]; coreMissing: string[] }> {
   const files: SourceFile[] = []
   const missing: string[] = []
   const data = await Promise.all(DATA_FILES.map(n => get(`data/${n}.xml`)))
@@ -159,16 +175,17 @@ export async function collectFiles(get: (path: string) => Promise<string | null>
   const texts = new Set([...sourceXml.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => m[1]))
   for (const t of [...texts, 'texts.xml']) await optional(`custom/${t}`)
   for (const e of ['sources', 'edits', 'texts']) await optional(`custom/edits/${e}.xml`)
+  files.push(...extra)
   await listed('custom/')
   return { files, missing, coreMissing }
 }
 
-/** Fetch base data, imported books and house-rule overlays (see collectFiles; missing indexes = none). */
-export async function loadCatalog(baseUrl = './'): Promise<Catalog> {
+/** Fetch base data, imported books and house-rule overlays, plus `extra` overlay files (see collectFiles; missing indexes = none). */
+export async function loadCatalog(baseUrl = './', extra: SourceFile[] = []): Promise<Catalog> {
   // an unreachable server fails the load (the app's failure screen); custom/ files are optional extras
   const get = (path: string) => fetch(baseUrl + path, { cache: 'no-cache' })
     .then(r => r.ok ? r.text() : null, e => { if (path.startsWith('data/')) throw e; return null })
-  const { files, missing, coreMissing } = await collectFiles(get)
+  const { files, missing, coreMissing } = await collectFiles(get, extra)
   const c = buildCatalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
   c.coreMissing = coreMissing

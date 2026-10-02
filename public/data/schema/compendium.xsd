@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="compendium": a GM's own collection, stored by the server in characters/.compendiums/<owner>/<id>.xml.
+     See docs/data-format.md "Compendiums". Every entry cites the root's source (the app checks); an embedded NPC is a
+     character file's root element (character.xsd) with an <npc> block (the app checks). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ca2="urn:chummer-anarchy2:data:1"
+           xmlns:c="urn:chummer-anarchy2:character:1"
+           targetNamespace="urn:chummer-anarchy2:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:import namespace="urn:chummer-anarchy2:character:1" schemaLocation="character.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="amp" type="ca2:Amp"/>
+        <xs:element name="item" type="ca2:Item"/>
+        <xs:element name="vehicle" type="ca2:Vehicle"/>
+        <xs:element ref="c:character"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="compendium"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="ca2:root"/>
+      <xs:attribute name="id" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="name" type="xs:string" use="required"/>
+      <!-- the compendium's own source id: unique on the server, fixed once made -->
+      <xs:attribute name="source" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-Z][A-Z0-9\-]{0,19}"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="sharing" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="private"/><xs:enumeration value="campaign"/><xs:enumeration value="table"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <!-- sharing="campaign" only: the campaign whose GMs read it -->
+      <xs:attribute name="campaign">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="rev" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="updatedAt" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

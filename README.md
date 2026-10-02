@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.7.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.8.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -106,6 +106,7 @@ own API key), and you review its entries before they’re added.
   books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
   **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
   NPCs export the same way (**Export for Foundry…** on the NPCs page), each carrying its NPC block, and the books' NPCs ride along in the book data file.
+  A compendium exports as its own compendium (**Export for Foundry** on the Compendiums page), with your descriptions; it needs importer module 0.6.0.
   The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
 
 ## Run it
@@ -173,6 +174,7 @@ folder.
 | Everyone's runners: view, print | ✓ | – | – |
 | Start and run campaigns; view and print their runners | ✓ | ✓ | – |
 | NPCs & Critters page: make, edit, share NPCs | ✓ | ✓ | – |
+| Compendiums page: make, fill, share your own compendiums | ✓ | ✓ | – |
 | Play in campaigns (put own runners in; see the roster) | ✓ | ✓ | ✓ |
 | Ask the rules (up to the admin's daily limit) | ✓ | ✓ | ✓ |
 | Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
@@ -223,6 +225,17 @@ Deleting an NPC sends it to the **NPC trash**, where it can be restored. **Load 
 critters and spirits read from the core rulebook import (once each, even after a rename). You can also import an
 NPC file (a runner file is refused) and export NPCs for Foundry. NPCs live apart from runners on the server and in
 backups.
+
+**Compendiums** (runner list → **Compendiums**; admin and editors only, players never see it; server only). Your own
+named collections of amps, weapons, armor, gear, spells, complex forms, vehicles and NPCs. **New compendium** asks
+for a name, its own **source id** (fixed afterwards, and unique across the books and every compendium) and
+who can read it: **private**, the GMs of **one campaign**, or **all GMs**. Add entries from scratch, or **Copy to…**
+one from a book; a copy gets a new id and your source and does not carry the book's description, so you write your
+own. **Move to compendium…** on the NPCs page puts NPCs in (the original waits in the NPC trash), and **Move to my
+NPCs** takes them back out to edit. Only the owner edits; GMs it is shared with read it and can copy from it. Its
+entries appear in the catalogs (pickers, Amp Builder) of every GM who can read it, marked House. **Export for
+Foundry** downloads it as its own compendium (descriptions included; importer module 0.6.0 or later). Compendiums
+live in `characters/.compendiums/` on the server and are in backups.
 
 **Ask the rules.** Once the admin has chosen an AI provider in AI settings,
 enabled it and saved its key, everyone signed in can ask a rules question:

@@ -198,6 +198,7 @@ export function need(path, method) {
   if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   if (/^\/api\/backgrounds(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'admin'
   if (/^\/api\/npcs(\/|$)/.test(path)) return 'editor' // NPCs: the GMs' own area, never a player's
+  if (/^\/api\/compendiums(\/|$)/.test(path)) return 'editor' // compendiums: the same (phase 3 adds a player-readable route)
   if (path === '/api/campaigns' && method === 'POST') return 'editor' // the rest of /api/campaigns: checked per campaign
   return 'user'
 }

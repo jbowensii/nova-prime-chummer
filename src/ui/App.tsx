@@ -7,6 +7,8 @@ import { AiSettings } from './AiSettings'
 import { AccountMenu, canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CampaignScreen, CampaignsScreen } from './Campaigns'
+import { listCompendiums, readable } from './compendiumStore'
+import { CompendiumsScreen } from './Compendiums'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
 import { NpcsScreen } from './Npcs'
@@ -52,10 +54,13 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(0)
   const npcs = useMemo(() => npcRepoFor(repo), [repo])
+  // staff on the server: the compendiums they can read join their catalog (a failed list loads it without them)
+  const staff = repo.mode === 'server' && canEdit(me)
+  const load = async () => loadCatalog('./', staff ? readable(await listCompendiums().catch(() => [])) : [])
   useEffect(() => {
-    loadCatalog('./').then(setCatalog, e => setFailed(String(e)))
+    load().then(setCatalog, e => setFailed(String(e)))
     if (repo.mode === 'server') migrateBrowserToServer(repo).then(setMoved, () => {})
-  }, [repo])
+  }, [repo, staff]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (failed) return <main className="lib"><h1>Game data didn’t load</h1><p>{failed}</p><p>Check that the <code>data/</code> folder is served next to this page, then reload.</p></main>
   if (!catalog) return <main className="lib"><p className="muted">Loading game data…</p></main>
@@ -66,8 +71,10 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (['trash', 'campaigns'].includes(route[0]) && repo.mode !== 'server') ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
   const [, id, tab] = route
   // NPCs: the GMs' area (admin and editors; the server answers players 403 anyway)
-  const gmOnly = (page === 'npcs' || page === 'n') && !canEdit(me)
-  const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
+  const gmOnly = (page === 'npcs' || page === 'n') && !canEdit(me) ? 'NPCs' : page === 'compendiums' && !canEdit(me) ? 'compendiums' : ''
+  const gate = (title: string, text: string) => <main className="lib"><header><div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
+    <div className="row"><a className="btn quiet" href="#/">Your runners</a><AccountMenu /></div></header><p className="banner">{text}</p></main>
+  const refresh = () => load().then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
   return (
     <RepoContext.Provider value={repo}><CatalogEdits c={catalog} reload={refresh}>
@@ -76,9 +83,9 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
           ? <>Import the core rulebook again on the <a href="#/books">Books page</a>, or upload a data pack.</>
           : 'Ask the admin to import the core rulebook again.'}</p>}
       {moved > 0 && <p className="banner" role="status" style={{ margin: 0 }}>Moved {moved} runner{moved === 1 ? '' : 's'} from this browser to the server.</p>}
-      {gmOnly ? <main className="lib"><header><div style={{ flex: 1 }}><Brand /><h1>NPCs &amp; Critters</h1></div>
-          <div className="row"><a className="btn quiet" href="#/">Your runners</a><AccountMenu /></div></header>
-          <p className="banner">Only GMs can see NPCs.</p></main>
+      {gmOnly ? gate(gmOnly === 'NPCs' ? 'NPCs & Critters' : 'Compendiums', `Only GMs can see ${gmOnly}.`)
+        : page === 'compendiums' && repo.mode !== 'server' ? gate('Compendiums', 'Compendiums need the server: this copy of the app saves in the browser.')
+        : page === 'compendiums' ? <CompendiumsScreen key={`${id}/${tab}`} c={catalog} id={id} edit={tab && decodeURIComponent(tab)} reload={refresh} />
         : page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'n' && id ? <RepoContext.Provider value={npcs}><EditorView key={`n/${id}`} c={catalog} id={id} tab={tab ?? 'concept'} /></RepoContext.Provider>
         : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />
