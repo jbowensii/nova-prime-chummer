@@ -2,7 +2,8 @@
 import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
-import { useEditor } from '../ui/editor'
+import { editHref, useEditor } from '../ui/editor'
+import { NpcBlock } from '../ui/NpcBlock'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { ampLines, lists, RISK, useSheetArt } from './shared'
 import './sheet.css'
@@ -18,7 +19,7 @@ export function Sheet() {
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
-        <a className="btn" href={`#/c/${ch.id}/review`}>Back to editing</a>
+        <a className="btn" href={editHref(ch, 'review')}>Back to editing</a>
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button>
         {art.tools}
       </div>
@@ -35,10 +36,11 @@ export function Sheet() {
         {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
         <section className="s-attrs">
           {ATTRS.map(a => <div key={a}><span>{c.attributes.get(a)?.name}</span><b>{b.attributes[a]}</b></div>)}
-          <div><span>Edge</span><b>{d.edge}</b></div>
+          {ch.npc?.tier !== 'regular' && <div><span>Edge</span><b>{d.edge}</b></div>}
         </section>
         </div>
 
+        <NpcBlock c={c} ch={ch} d={d} />
         <div className="s-cols">
           <section>
             <h2>Skills</h2>

@@ -67,6 +67,7 @@ Every file has the same root:
 | rules | imported only | `<rule>` | rules.xsd |
 | texts | `custom/texts/<source>.xml` | `<text>` | texts.xsd |
 | samples | `custom/imported/samples.xml` | `<sample>` | samples.xsd |
+| npcs | `custom/imported/npcs.xml` | `<npc>` | npcs.xsd |
 
 The importer's own records (`library/<book>/import.xml`, `review.xml`,
 `library/.config/ai-providers.xml`, `ai-keys.xml`) have schemas too:
@@ -301,6 +302,10 @@ file (`character.xsd`, `origin` = the source) to
 generated `custom/imported/samples.xml` (`<sample source href name role page/>`,
 `href` relative to `custom/imported/`; schema `samples.xsd`). "Load example
 characters" reads that list and the example sets below; before any import the books bring none.
+The `crb` recipe also reads the rulebook's NPC chapter (pp.244-265, from the PDF's layout) into
+`custom/imported/crb/npcs/crb.npc-<name>.xml` (a spirit once per Force: `… (Minor)`, `(Regular)`, `(Major)`), listed in
+`custom/imported/npcs.xml` (`<npc source href name kind tier page/>`, schema `npcs.xsd`); "Load book NPCs" on the NPCs page
+copies them, and the book data export carries them as the book's `npcs`.
 The numbers the book prints for each runner are report rows in
 `library/<book>/import.xml` (`kind` pool, threshold, essence or amp, with a
 `status`).
@@ -431,6 +436,7 @@ it by hand, re-import instead.
 | `imported/sources.xml` | one `<source>` per imported book (see sources above) |
 | `imported/<source>/*.xml` | the book's data: `amps.xml`, `spells.xml`, `gear.xml`, `complexforms.xml`, `skills.xml` (spec additions), `rules-<sheet>.xml`, `pricing.xml` (a partial `<prices>`) |
 | `imported/<source>/samples/` | its sample runners, listed in `imported/samples.xml` |
+| `imported/<source>/npcs/` | its NPCs, critters and spirits (character files with an `<npc>` block), listed in `imported/npcs.xml` |
 | `texts/<source>.xml` | its private descriptions |
 
 Load order: `public/data/`, `imported/core/`, then `imported/index.xml`, then the

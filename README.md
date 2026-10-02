@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.6.2 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.7.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -105,6 +105,7 @@ own API key), and you review its entries before they’re added.
   or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors tick
   books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
   **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
+  NPCs export the same way (**Export for Foundry…** on the NPCs page), each carrying its NPC block, and the books' NPCs ride along in the book data file.
   The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
 
 ## Run it
@@ -171,6 +172,7 @@ folder.
 | Own runners: create, edit, delete | ✓ | ✓ | ✓ |
 | Everyone's runners: view, print | ✓ | – | – |
 | Start and run campaigns; view and print their runners | ✓ | ✓ | – |
+| NPCs & Critters page: make, edit, share NPCs | ✓ | ✓ | – |
 | Play in campaigns (put own runners in; see the roster) | ✓ | ✓ | ✓ |
 | Ask the rules (up to the admin's daily limit) | ✓ | ✓ | ✓ |
 | Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
@@ -207,6 +209,20 @@ remove players (their runners leave the campaign, but stay theirs), rename,
 a note for the table, archive (no runners can join) and delete (once no
 runners are in it). Campaigns live in `custom/campaigns.xml`, are in backups,
 and are never served as a file.
+
+**NPCs & Critters** (runner list → **NPCs & Critters**; admin and editors only, players never see it). A
+GM's own area for the people, critters and spirits of the table, kept apart from the runner list. **New NPC**
+asks for a kind (NPC, critter or spirit) and a tier, and opens the same editor as a runner in **NPC mode**: a GM
+can set attributes outside the metatype's range, and a critter needs no metatype. A **regular** NPC has no Edge
+and its sheet shows **average hits** (the dice pool turned into a flat number, so the GM rolls less); a **prime**
+NPC is managed like a runner, Edge included. A spirit or critter can be a **fighting spirit** (low, high or
+extreme). Review and both printed sheets show the average hits and the fighting spirit. **Share with a campaign…**
+lets the GMs of one campaign (one campaign per NPC) read and print the NPC; it is read-only for them, and the
+campaign's page lists the shared NPCs for its GMs and the admin, never for players. **Unshare** takes it back.
+Deleting an NPC sends it to the **NPC trash**, where it can be restored. **Load book NPCs** copies the NPCs,
+critters and spirits read from the core rulebook import (once each, even after a rename). You can also import an
+NPC file (a runner file is refused) and export NPCs for Foundry. NPCs live apart from runners on the server and in
+backups.
 
 **Ask the rules.** Once the admin has chosen an AI provider in AI settings,
 enabled it and saved its key, everyone signed in can ask a rules question:

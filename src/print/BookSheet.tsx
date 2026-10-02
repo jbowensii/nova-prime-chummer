@@ -3,7 +3,8 @@
 import '@fontsource/caveat/700.css'
 import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
 import { ATTRS } from '../model/types'
-import { useEditor } from '../ui/editor'
+import { editHref, useEditor } from '../ui/editor'
+import { NpcBlock } from '../ui/NpcBlock'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { ampLines, lists, RISK, useSheetArt } from './shared'
 import './sheet.css'
@@ -36,7 +37,7 @@ export function BookSheet() {
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
-        <a className="btn" href={`#/c/${ch.id}/review`}>Back to editing</a>
+        <a className="btn" href={editHref(ch, 'review')}>Back to editing</a>
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button>
         {art.tools}
       </div>
@@ -49,9 +50,11 @@ export function BookSheet() {
           </header>
           <div className="b-attrs" role="group" aria-label="Attributes">
             {ATTRS.map(a => <div key={a}><span>{c.attributes.get(a)?.name}</span><b>{b.attributes[a]}</b></div>)}
-            <div><span>Edge</span><b>{d.edge}</b></div>
+            {ch.npc?.tier !== 'regular' && <div><span>Edge</span><b>{d.edge}</b></div>}
           </div>
           <p className="b-essence">Essence: <b>{d.essence}</b></p>
+
+          <NpcBlock c={c} ch={ch} d={d} />
 
           <section aria-labelledby="b-skills">
             <h2 id="b-skills" className="b-th">Skills</h2>

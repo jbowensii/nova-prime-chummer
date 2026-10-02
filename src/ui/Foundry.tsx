@@ -6,7 +6,7 @@ import type { Catalog, Character } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { loadTableRules, tableRulesForExport } from './TableRules'
 import type { Campaign } from './Campaigns'
-import { bookSamples, readSample } from './samples'
+import { bookNpcs, bookSamples, readSample } from './samples'
 
 export const exportOpts = (descriptions: boolean): ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })
 const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD
@@ -25,9 +25,10 @@ export const downloadRunners = (c: Catalog, chs: Character[]) =>
 
 const label = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
-/** The runner list's dialog: tick runners (or a whole campaign), download one file. */
-export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
-  c: Catalog; runners: Character[]; campaigns: Campaign[]; open: boolean; onClose: () => void
+/** The runner list's dialog: tick runners (or a whole campaign), download one file. The NPC area's too (`noun` 'NPC'):
+ *  the same runners file, each with its npc block. */
+export function ExportRunnersDialog({ c, runners, campaigns, open, onClose, noun = 'runner' }: {
+  c: Catalog; runners: Character[]; campaigns: Campaign[]; open: boolean; onClose: () => void; noun?: 'runner' | 'NPC'
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [camp, setCamp] = useState('')
@@ -35,12 +36,12 @@ export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
   const set = (ids: string[]) => { setPicked(new Set(ids)); setCamp('') }
   const n = runners.filter(r => picked.has(r.id)).length
   return (
-    <Modal open={open} onClose={onClose} title="Export runners for Foundry"
+    <Modal open={open} onClose={onClose} title={`Export ${noun}s for Foundry`}
       actions={<><button className="btn" onClick={onClose}>Cancel</button>
         <button className="btn primary" disabled={!n} onClick={() => { downloadRunners(c, runners.filter(r => picked.has(r.id))); onClose() }}>
-          Download {n} runner{n === 1 ? '' : 's'}</button></>}>
+          Download {n} {noun}{n === 1 ? '' : 's'}</button></>}>
       <p className="muted">For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2): upload the file there with Import from Chummer.</p>
-      <p className="muted">The file includes the text of the runners’ amps and gear. Share it only with people who own the books.</p>
+      <p className="muted">The file includes the text of the {noun}s’ amps and gear. Share it only with people who own the books.</p>
       <div className="row">
         <button className="btn small quiet" onClick={() => set(runners.map(r => r.id))}>All</button>
         <button className="btn small quiet" onClick={() => set([])}>None</button>
@@ -71,17 +72,22 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
     try {
       const rules = tableRulesForExport(c, await loadTableRules({ strict: true }))
       const ids = all.filter(s => picked.has(s.id)).map(s => s.id)
-      // the ticked books' own sample characters (source matched case-insensitively); one that can't be read is left out and named
-      const byLower = new Map(ids.map(id => [id.toLowerCase(), id]))
-      const characters: Record<string, Character[]> = {}, bad: string[] = []
-      for (const s of await bookSamples(() => undefined)) {
-        const id = byLower.get((s.source ?? '').toLowerCase())
-        if (!id) continue
-        const r = await readSample(s.url)
-        if (r.ok) (characters[id] ??= []).push(r.character)
-        else bad.push(`${s.name || s.url.split('/').pop()} (${id}): ${r.reason}`)
+      // the ticked books' own sample characters and NPCs (source matched case-insensitively); one that can't be read is
+      // left out and named
+      const byLower = new Map(ids.map(id => [id.toLowerCase(), id])), bad: string[] = []
+      const read = async (rows: { url: string; name: string; source?: string }[]) => {
+        const out: Record<string, Character[]> = {}
+        for (const s of rows) {
+          const id = byLower.get((s.source ?? '').toLowerCase())
+          if (!id) continue
+          const r = await readSample(s.url)
+          if (r.ok) (out[id] ??= []).push(r.character)
+          else bad.push(`${s.name || s.url.split('/').pop()} (${id}): ${r.reason}`)
+        }
+        return out
       }
-      downloadJson(booksFileName(new Date()), exportBooks(c, ids, rules, exportOpts(desc), characters))
+      const characters = await read(await bookSamples(() => undefined)), npcs = await read(await bookNpcs())
+      downloadJson(booksFileName(new Date()), exportBooks(c, ids, rules, exportOpts(desc), characters, npcs))
       setSkipped(bad)
     } catch (e) { setErr(e instanceof Error ? e.message : String(e))
     } finally { setBusy(false) }
@@ -104,7 +110,7 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
         <span>Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span></span></label>
       <div><button className="btn primary" disabled={!picked.size || busy} onClick={() => void download()}>Download book data</button></div>
       {err && <p className="err" role="alert">Couldn’t build the book data: {err}</p>}
-      {skipped.length > 0 && <div role="status"><p>Downloaded without these sample characters:</p>
+      {skipped.length > 0 && <div role="status"><p>Downloaded without these sample characters and NPCs:</p>
         <ul>{skipped.map((b, i) => <li key={i}>{b}</li>)}</ul></div>}
     </section>
   )

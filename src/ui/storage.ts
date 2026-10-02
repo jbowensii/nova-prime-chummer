@@ -4,29 +4,31 @@ import type { Character } from '../model/types'
 import { migrate } from '../engine'
 
 const KEY = 'ca2.library.v1'
+/** NPCs in browser mode: a key of their own, so the runner list never sees them */
+export const NPC_KEY = 'ca2.npcs.v1'
 const WEEK = 7 * 24 * 3600 * 1000
 
-export function listCharacters(): Character[] {
-  try { return JSON.parse(localStorage.getItem(KEY) ?? '[]').map(migrate) } catch { return [] }
+export function listCharacters(key = KEY): Character[] {
+  try { return JSON.parse(localStorage.getItem(key) ?? '[]').map(migrate) } catch { return [] }
 }
 
-export function getCharacter(id: string): Character | undefined {
-  return listCharacters().find(c => c.id === id)
+export function getCharacter(id: string, key = KEY): Character | undefined {
+  return listCharacters(key).find(c => c.id === id)
 }
 
-export function saveCharacter(ch: Character): { ok: boolean } {
+export function saveCharacter(ch: Character, key = KEY): { ok: boolean } {
   try {
-    const all = listCharacters().filter(c => c.id !== ch.id)
-    localStorage.setItem(KEY, JSON.stringify([ch, ...all]))
+    const all = listCharacters(key).filter(c => c.id !== ch.id)
+    localStorage.setItem(key, JSON.stringify([ch, ...all]))
     return { ok: true }
   } catch {
     return { ok: false }
   }
 }
 
-export function deleteCharacter(id: string): { ok: boolean } {
+export function deleteCharacter(id: string, key = KEY): { ok: boolean } {
   try {
-    localStorage.setItem(KEY, JSON.stringify(listCharacters().filter(c => c.id !== id)))
+    localStorage.setItem(key, JSON.stringify(listCharacters(key).filter(c => c.id !== id)))
     return { ok: true }
   } catch {
     return { ok: false }

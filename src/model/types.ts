@@ -116,7 +116,12 @@ export interface Override { code: string; path: string; note: string }
 /** Built-in portrait backdrops (src/ui/Portrait.tsx, app.css .bd-*); none = no backdrop, the look before 0.5.4 */
 export const BACKDROPS = ['white', 'grey', 'dark', 'grid', 'halftone', 'neon', 'rain'] as const
 export type Backdrop = typeof BACKDROPS[number]
+/** A GM's non-player character (book p.81-82). prime: managed like a runner, with Edge; regular: no Edge, average hits.
+ *  A critter or spirit may have no metatype ('') and attributes outside metatype ranges. */
+export interface Npc { kind: 'npc' | 'critter' | 'spirit'; tier: 'prime' | 'regular'; fightingSpirit?: 'null' | 'low' | 'high' | 'extreme' }
 export interface Character { formatVersion: 1; id: string;
+  /** set: an NPC (character XML <npc>, the root's first child); absent: a runner */
+  npc?: Npc;
   identity: { name: string; streetName: string; metatype: string; portrait?: string; backdrop?: Backdrop; lifestyle?: string;
     background: string; notes: string };
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] };

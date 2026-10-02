@@ -1,10 +1,10 @@
 // Character <-> XML (docs/character-format.md, public/data/schema/character.xsd).
 // The file a runner is saved as on the server, and what Export writes.
 // Summary fields sit on the root element so a server can list files without parsing them.
-import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry } from '../model/types'
+import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry, Npc } from '../model/types'
 import { ATTRS } from '../model/types'
 import { toAmp, toItem } from './parse'
-import { FORMAT_VERSION, knowledgeEntry, migrate } from './file'
+import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
 
@@ -62,6 +62,7 @@ function eventXml(e: CareerEvent): string {
 export function characterToXml(ch: Character, rev?: number): string {
   const b = ch.build
   const body = [
+    ...(ch.npc ? [el('npc', { kind: ch.npc.kind, tier: ch.npc.tier, fightingSpirit: ch.npc.fightingSpirit })] : []),
     text('portrait', ch.identity.portrait), text('background', ch.identity.background), text('notes', ch.identity.notes),
     ...ch.narrative.keywords.map(k => `<keyword>${esc(k)}</keyword>`),
     ...ch.narrative.dispositions.map(k => `<disposition>${esc(k)}</disposition>`),
@@ -244,6 +245,13 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     if (s(r, 'origin') !== undefined) ch.origin = s(r, 'origin')
     if (s(r, 'sampleKey') !== undefined) ch.sampleKey = s(r, 'sampleKey')
     if (s(r, 'campaign') !== undefined) ch.campaign = s(r, 'campaign')
+    const npc = kid(r, 'npc')
+    if (npc) {
+      ch.npc = { kind: s(npc, 'kind') as Npc['kind'], tier: s(npc, 'tier') as Npc['tier'] }
+      if (s(npc, 'fightingSpirit') !== undefined) ch.npc.fightingSpirit = s(npc, 'fightingSpirit') as Npc['fightingSpirit']
+      const fixed = normalizeNpc(ch.npc) // migrate does it too; here repair mode says what it fixed
+      if (fix) fix.push(...fixed)
+    }
     return { ok: true, character: migrate(ch as unknown as Record<string, unknown>), rev: n(r, 'rev') }
   } catch (e) {
     return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }

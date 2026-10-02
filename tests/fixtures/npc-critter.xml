@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="npc.test-hound" streetName="Test Hound" name="Test Hound" metatype="" level="runner" package="free" origin="TEST" updatedAt="2026-10-02T00:00:00.000Z">
+  <npc kind="critter" tier="regular" fightingSpirit="low"/>
+  
+  <background>A made-up critter &amp; its &lt;bark&gt;.</background>
+  
+  <keyword>Made-up beast</keyword>
+  <disposition>Bites first.</disposition>
+  <build><attributes str="9" agi="4" wil="2" log="1" cha="1"/><skill id="athletics" rating="3"/><amp uid="amp-1" type="quality" name="Made-up Fangs"><effect ref="armor-plus"/></amp><item uid="item-1" kind="weapon" name="Bite" dv="4P" ranges="OK/–/–/–"/></build>
+  
+</ca2:character>

@@ -16,16 +16,21 @@ export const exampleKey = (name: string, canon: boolean) => `${slug(name)}|${can
 /** A character file: our XML, or the older .ca2.json. */
 export const readCharacterFile = (text: string) => (text.trimStart().startsWith('<') ? xmlToCharacter(text) : parseCharacterFile(text))
 
-/** The imported books' sample runners (custom/imported/samples.xml; none before any import or when it can't be read).
- *  Canon: the book's source. */
-export async function bookSamples(sources: Sources): Promise<Example[]> {
-  const res = await fetch('./custom/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
+/** The rows of an importer list, custom/imported/samples.xml (<sample>) or npcs.xml (<npc>): url, name and source of each
+ *  file (none before any import or when it can't be read). */
+async function importedList(kind: 'samples' | 'npcs') {
+  const res = await fetch(`./custom/imported/${kind}.xml`, { cache: 'no-cache' }).catch(() => null)
   const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
-  return xml?.documentElement.localName === 'samples' ? [...xml.documentElement.getElementsByTagName('sample')].map(s => {
-    const source = s.getAttribute('source') ?? ''
-    return { url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source, canon: !!sources(source)?.canon }
-  }) : []
+  return xml?.documentElement.localName === kind ? [...xml.documentElement.getElementsByTagName(kind.slice(0, -1))].map(s =>
+    ({ url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source: s.getAttribute('source') ?? '' })) : []
 }
+
+/** The imported books' sample runners (custom/imported/samples.xml). Canon: the book's source. */
+export const bookSamples = async (sources: Sources): Promise<Example[]> =>
+  (await importedList('samples')).map(s => ({ ...s, canon: !!sources(s.source)?.canon }))
+
+/** The imported books' NPCs, critters and spirits (custom/imported/npcs.xml). */
+export const bookNpcs = () => importedList('npcs')
 
 /** Fetches and reads one example character file; a fetch that fails reads as "couldn’t be fetched.". */
 export async function readSample(url: string) {

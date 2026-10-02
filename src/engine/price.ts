@@ -90,6 +90,8 @@ export function partPrices(c: Catalog, ch: Character): Map<string, number> {
 export function price(c: Catalog, ch: Character): PriceBreakdown {
   const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, gmNegativeOk(ch))
   const total = b.attributes + b.skills + b.amps + b.gear + b.spells
+  // an NPC has no budget (budget 0, nothing remaining to overspend)
+  if (ch.npc) return { ...b, total, budget: 0, remaining: 0 }
   const budget = c.levels.get(ch.level)?.nuyen ?? 0
   // a reopened runner's carry (career.ts reopen): what its earlier ledger held beyond budget - build price
   return { ...b, total, budget, remaining: budget - total + (ch.carry ?? 0) }

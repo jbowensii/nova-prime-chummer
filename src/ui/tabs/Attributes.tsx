@@ -1,4 +1,4 @@
-import { attrCost } from '../../engine'
+import { attrCost, hasNoMetatype } from '../../engine'
 import { ATTRS } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
@@ -17,14 +17,15 @@ export function AttributesTab() {
       <h2>Attributes</h2>
       <p className="muted">
         {fmt(c.pricing.attrPoint)} a point; the point that reaches your metatype’s maximum costs {fmt(c.pricing.attrLastPoint)}.
-        {!career && level && <> {level.name} allows {level.attrAtMax} at maximum: <b className={atMax > level.attrAtMax ? 'err' : ''}>{atMax} of {level.attrAtMax} used</b>.</>}
+        {!career && !ch.npc && level && <> {level.name} allows {level.attrAtMax} at maximum: <b className={atMax > level.attrAtMax ? 'err' : ''}>{atMax} of {level.attrAtMax} used</b>.</>}
         {career && ' Since Finalize, each change is logged in the ledger: a raise is charged, a lowered point refunded.'}
       </p>
       <div className="scroll-x"><table className="data">
         <thead><tr><th>Attribute</th><th>Range</th><th>Rating</th><th className="num">Next point</th><th className="num">RR</th></tr></thead>
         <tbody>
           {ATTRS.map(a => {
-            const [min, max] = meta?.ranges[a] ?? [1, 6]
+            // a critter or spirit has no metatype range (validate skips it): up to 12, as the book's critters go
+            const [min, max] = hasNoMetatype(ch) ? [1, 12] : meta?.ranges[a] ?? [1, 6]
             const v = b.attributes[a] ?? 0
             return (
               <tr key={a}>

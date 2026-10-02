@@ -16,9 +16,15 @@
 //   POST   /api/campaigns/:id/runners           the owner, a GM or member of it: { id } -> campaign; 409 while the runner is in
 //                                               another one (one campaign per runner: copy it) or this one is archived
 //   DELETE /api/campaigns/:id/runners/:runner   its owner, or a GM/admin of the campaign -> campaign
+//   POST   /api/campaigns/:id/npcs              a GM of it: { id } (one of their own NPCs) -> campaign; 409 while it is shared
+//                                               with another campaign (unshare it there first) or this one is archived
+//   DELETE /api/campaigns/:id/npcs/:npc         a GM/admin of the campaign -> campaign
+//                                               (/npcs: 404 for anyone else, so nobody else learns what is shared)
 // campaign: { id, name, note, archived, created, you: gm | admin | member, gms: [{ username, name }], members: [same],
 //   runners: [{ key, mine, ownerName, streetName, level, package, id, owner, file }] } (key: opaque, for lists; file: the sheet
 //   in GET /api/characters). A member gets the roster only: names without usernames, and no id, owner or file (id: their own)
+//   GMs and the admin also get npcs: [{ id, name, owner, ownerName }], the NPCs its GMs shared with it (an NPC's campaign
+//   counts while its owner is a GM of it); a member's view never has npcs.
 import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -56,8 +62,9 @@ const campaignsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campa
     c.gms.map(u => `    <gm user="${esc(u)}"/>\n`).join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}  </campaign>\n`).join('')}</ca2:campaigns>\n`
 
 /** `lock`: the runners' write lock (server.mjs), which account changes hold too; `auth`: server/auth.mjs's api;
- *  `runnersOf(username)` -> [{ file, id, rev, xml }]; `writeRunner(username, file, xml)` writes one atomically. */
-export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) {
+ *  `runnersOf(username)` -> [{ file, id, rev, xml }]; `writeRunner(username, file, xml)` writes one atomically;
+ *  `npcsOf` and `writeNpc`: the same for the account's NPCs. */
+export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, npcsOf = async () => [], writeNpc }) {
   const path = join(customDir, 'campaigns.xml')
   const load = async () => parseCampaigns(await readFile(path, 'utf8').catch(e => { if (e.code === 'ENOENT') return ''; throw e }))
   const save = async list => { await mkdir(customDir, { recursive: true }); await writeAtomic(path, campaignsXml(list)) }
@@ -72,6 +79,15 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
     for (const owner of new Set([...c.gms, ...c.members])) for (const r of await runnersOf(owner)) if (campaignOf(r.xml) === c.id) out.push({ ...r, owner })
     return out
   }
+  /** The NPCs shared with `c`: its GMs' with campaign="<id>". */
+  async function npcs(c) {
+    const out = []
+    for (const owner of c.gms) if (isGm(c, owner)) for (const r of await npcsOf(owner)) if (campaignOf(r.xml) === c.id) out.push({ ...r, owner })
+    return out
+  }
+  const unshare = async (c, owner) => { // `owner`'s NPCs leave `c`
+    for (const r of await npcsOf(owner)) if (campaignOf(r.xml) === c.id) await writeNpc(owner, r.file, setCampaign(r.xml, null))
+  }
   async function view(c, me) {
     const you = isGm(c, me.username) ? 'gm' : me.role === 'admin' ? 'admin' : 'member'
     // a member gets names only: no usernames, and a runner's id only for their own (to take it out)
@@ -83,7 +99,11 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
         const mine = r.owner === me.username, key = createHash('sha256').update(`${c.id}/${r.owner}/${a('id')}`).digest('hex').slice(0, 12)
         return { key, mine, ownerName: auth.nameOf(r.owner), streetName: a('streetName') || 'Unnamed runner', level: a('level'), package: a('package'),
           ...roster && !mine ? {} : { id: a('id') }, ...roster ? {} : { owner: r.owner, file: r.file } }
-      }) }
+      }),
+      ...roster ? {} : { npcs: (await npcs(c)).map(r => {
+        const t = charTag(r.xml), a = n => attr(t, n) ?? ''
+        return { id: a('id'), name: a('streetName') || a('name') || 'Unnamed NPC', owner: r.owner, ownerName: auth.nameOf(r.owner) }
+      }) } }
   }
   const leave = async (c, owner) => { // `owner`'s runners in `c` leave it
     for (const r of await runnersOf(owner)) if (campaignOf(r.xml) === c.id) await writeRunner(owner, r.file, setCampaign(r.xml, null))
@@ -114,7 +134,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
   async function handle(req, res, url, send, who) {
     const p = url.pathname
     if (p !== '/api/campaigns' && !p.startsWith('/api/campaigns/')) return false
-    const m = p.match(/^\/api\/campaigns(?:\/([0-9a-f]{12})(?:\/(members|gms|runners)(?:\/([^/]+))?)?)?$/)
+    const m = p.match(/^\/api\/campaigns(?:\/([0-9a-f]{12})(?:\/(members|gms|runners|npcs)(?:\/([^/]+))?)?)?$/)
     if (!m) return send(res, 404, { error: 'not found' })
     const [, id, part, raw] = m
     let key = null
@@ -163,12 +183,31 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
         await writeRunner(r.owner, r.file, setCampaign(r.xml, null))
         return done(false)
       }
+      if (part === 'npcs') {
+        // only its GMs and the admin learn anything about its NPCs: everyone else gets the same 404, shared or not
+        if (!manages(c, me)) throw fail(404, 'no such campaign')
+        if (req.method === 'POST') {
+          if (!isGm(c, me.username)) throw fail(403, 'only a GM of this campaign shares NPCs with it')
+          const r = (await npcsOf(me.username)).find(x => x.id === String(b.id ?? ''))
+          if (!r) throw fail(404, 'no such NPC of yours')
+          if (c.archived) throw fail(409, 'this campaign is archived')
+          const other = campaignOf(r.xml), there = other && other !== id && list.find(x => x.id === other)
+          if (there && isGm(there, me.username)) throw fail(409, `That NPC is shared with ${there.name}; unshare it there first.`)
+          if (other !== id) await writeNpc(me.username, r.file, setCampaign(r.xml, id))
+          return done(false)
+        }
+        const r = (await npcs(c)).find(x => x.id === key) // its owner is a GM of it, so a manager
+        if (!r) throw fail(404, 'that NPC isn’t shared with this campaign')
+        await writeNpc(r.owner, r.file, setCampaign(r.xml, null))
+        return done(false)
+      }
       if (!manages(c, me)) throw fail(403, 'only its GMs and the admin can change a campaign')
       if (!part && req.method === 'PUT') { Object.assign(c, fields(b, c)); return done() }
       if (!part) { // DELETE
         if ((await runners(c)).length) throw fail(409, 'this campaign still has runners: they leave it first')
         list.splice(list.indexOf(c), 1)
         await save(list)
+        for (const u of c.gms) await unshare(c, u)
         return send(res, 204, '', 'text/plain')
       }
       const role = part === 'gms' ? 'gms' : 'members'
@@ -186,6 +225,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
       c[role] = c[role].filter(x => x !== u)
       await save(list)
       if (!inIt(c, u)) await leave(c, u)
+      if (role === 'gms') await unshare(c, u)
       return done(false)
     })
   }
@@ -194,6 +234,15 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner }) 
     handle,
     /** Whether `owner`'s runner may keep campaign="<id>": it exists and they are a GM or member of it. */
     holds: async (owner, id) => (await load()).some(c => c.id === id && inIt(c, owner)),
+    /** Whether `owner`'s NPC may keep campaign="<id>": it exists and they are a GM of it. */
+    leads: async (owner, id) => (await load()).some(c => c.id === id && isGm(c, owner)),
+    /** Another account's NPCs the editor `me` may read: those shared with the campaigns they GM. */
+    async readableNpcs(me) {
+      const seen = new Set(), out = []
+      for (const c of await load()) if (isGm(c, me.username)) for (const r of await npcs(c))
+        if (r.owner !== me.username && !seen.has(`${r.owner}/${r.file}`)) { seen.add(`${r.owner}/${r.file}`); out.push(r) }
+      return out
+    },
     /** Another account's runners the editor `me` may read: those in the campaigns they GM (the admin reads everyone's). */
     async readable(me) {
       const seen = new Set(), out = []

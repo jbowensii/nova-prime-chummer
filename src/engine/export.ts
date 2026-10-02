@@ -2,7 +2,7 @@
 // Chummer Anarchy export v1 (docs/export-format.md; schema public/data/schema/export.schema.json): runners and book
 // data as JSON for other tools, first the Foundry importer module (jbowensii/chummer-anarchy2-foundry). Every number is
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
-import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry } from '../model/types'
+import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry, Npc } from '../model/types'
 import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
@@ -40,6 +40,8 @@ export interface ExportRunner {
   pools: { skill: string; spec?: string; label: string; attr: string; dp: number; rr: number }[]
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] }; background: string; notes: string
   nuyen: { balance: number }; ledger: { at: string; type: string; summary: string; amount: number }[]
+  /** an NPC's block (absent: a runner) */
+  npc?: Npc
 }
 export interface ExportFile { format: typeof EXPORT_FORMAT; version: typeof EXPORT_VERSION; kind: 'runners' | 'books'
   exportedAt: string; app: { name: string; version: string }; descriptions: boolean
@@ -59,6 +61,8 @@ export interface ExportBook {
   metatypes?: { id: string; source: string; page: number; canon: boolean; name: string; edge: number; ranges: Record<AttrId, [number, number]>; racialQuality: string }[]
   /** The book's own sample characters, each as a runner. */
   characters?: ExportRunner[]
+  /** The book's NPCs, critters and spirits, each as a runner with its `npc` block. */
+  npcs?: ExportRunner[]
   rules: { id: string; source: string; page: number; sheet: string; sheetName?: string; section: string; title: string; text?: string }[]
 }
 
@@ -159,6 +163,8 @@ function ledgerSummary(e: ReturnType<typeof activeEvents>[number], itemName: (ui
   }
 }
 
+/** what a critter or spirit without a metatype is shown as */
+const NO_META: Record<string, string> = { critter: 'Critter', spirit: 'Spirit' }
 export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRunner {
   const d = derive(c, ch), b = d.build, meta = c.metatypes.get(ch.identity.metatype), life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
   const partsOf = b.amps.map(a => ampParts(c, a.type, a.effects, b.skills))
@@ -170,7 +176,7 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
   return {
     id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: ch.identity.streetName, realName: ch.identity.name,
     finalized: !!ch.finalizedAt,
-    metatype: { id: ch.identity.metatype, name: meta?.name ?? ch.identity.metatype, ranges: meta?.ranges ?? {} as never, edge: d.edge },
+    metatype: { id: ch.identity.metatype, name: meta?.name ?? (ch.identity.metatype || NO_META[ch.npc?.kind ?? ''] || ''), ranges: meta?.ranges ?? {} as never, edge: d.edge },
     level: { id: ch.level, name: c.levels.get(ch.level)?.name ?? ch.level },
     lifestyle: { id: ch.identity.lifestyle ?? 'low', name: life?.name ?? '', perRun: life?.perRun ?? 0 },
     portrait: ch.identity.portrait ?? null, attributes: b.attributes, edge: d.edge, essence: d.essence,
@@ -190,6 +196,7 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
     background: ch.identity.background, notes: ch.identity.notes,
     nuyen: { balance: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining },
     ledger: activeEvents(ch).map(e => ledgerLine(e, uid => names.get(uid))),
+    ...ch.npc ? { npc: { ...ch.npc } } : {},
   }
 }
 
@@ -200,9 +207,9 @@ export const exportRunners = (c: Catalog, chs: Character[], o: ExportOpts): Expo
   ({ ...envelope('runners', o), runners: chs.map(ch => exportRunner(c, ch, o)) })
 
 /** The ticked books as the app sees them (edits and house rules applied), with the table rules switched on, and each
- *  book's sample characters (`characters`, by source id) as runners. */
+ *  book's sample characters (`characters`, by source id) and NPCs (`npcs`, by source id) as runners. */
 export function exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts,
-  characters: Record<string, Character[]> = {}): ExportFile {
+  characters: Record<string, Character[]> = {}, npcs: Record<string, Character[]> = {}): ExportFile {
   const books: ExportBook[] = sources.flatMap(id => {
     const s = c.sources.get(id)
     if (!s) return []
@@ -234,6 +241,7 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
         section: r.section.trim() || sheetDisplayName(r.sheet), title: r.title,
         ...o.descriptions && r.text ? { text: r.text } : {} })),
       ...characters[id]?.length ? { characters: characters[id].map(ch => exportRunner(c, ch, o)) } : {},
+      ...npcs[id]?.length ? { npcs: npcs[id].map(ch => exportRunner(c, ch, o)) } : {},
     }]
   })
   return { ...envelope('books', o), books, tableRules: o.descriptions ? tableRules : tableRules.map(r => ({ name: r.name, text: '' })) }

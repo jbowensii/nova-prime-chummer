@@ -1,4 +1,5 @@
-import { ATTRS } from '../../model/types'
+import { ATTRS, type Npc } from '../../model/types'
+import { NPC_KINDS, NPC_TIERS } from '../bits'
 import { useState } from 'react'
 import { useEditor } from '../editor'
 import { BACKDROP_NAMES, Face, PortraitEditor } from '../Portrait'
@@ -24,19 +25,43 @@ export function ConceptTab() {
     </fieldset>
   )
 
+  const npc = ch.npc, noMeta = npc?.kind === 'critter' || npc?.kind === 'spirit'
+  const setNpc = (fn: (n: Npc) => void) => update(d => { if (d.npc) fn(d.npc) })
   return (
     <div className="stack">
       <h2>Concept</h2>
+      {npc && <fieldset className="npc-panel grid2" aria-label="NPC">
+        <label>Kind
+          <select value={npc.kind} onChange={e => update(d => { // an NPC (not a critter or spirit) has a metatype: human when it had none
+            if (!d.npc) return
+            d.npc.kind = e.target.value as Npc['kind']
+            if (d.npc.kind === 'npc' && !d.identity.metatype) d.identity.metatype = 'human'
+          })}>
+            {Object.entries(NPC_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select></label>
+        <label>Tier
+          <select value={npc.tier} onChange={e => setNpc(n => { n.tier = e.target.value as Npc['tier'] })}>
+            {Object.entries(NPC_TIERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select></label>
+        <label>Fighting spirit
+          <select value={npc.fightingSpirit ?? ''} onChange={e => setNpc(n => { if (e.target.value) n.fightingSpirit = e.target.value as Npc['fightingSpirit']; else delete n.fightingSpirit })}>
+            <option value="">Not set</option>
+            {['null', 'low', 'high', 'extreme'].map(f => <option key={f} value={f}>{f[0].toUpperCase() + f.slice(1)}</option>)}
+          </select></label>
+        <p className="muted" style={{ alignSelf: 'end' }}>{npc.tier === 'prime' ? 'A prime NPC is run like a runner, with Edge.'
+          : 'A regular NPC has no Edge; its sheet gives each pool’s average hits (CRB p.81).'}</p>
+      </fieldset>}
       <p className="muted">Who are they, what do they do on a run, and what makes them fun to play? Pick 5 Keywords, 4 Dispositions and 4 Cues that fit (CRB p.50, 84).</p>
       <div className="grid2">
         <label>Street name<input value={ch.identity.streetName} onChange={e => update(d => { d.identity.streetName = e.target.value })} /></label>
         <label>Real name<input value={ch.identity.name} onChange={e => update(d => { d.identity.name = e.target.value })} /></label>
         <label>Metatype
           <select value={ch.identity.metatype} disabled={career} onChange={e => edit(d => { d.identity.metatype = e.target.value })}>
+            {(noMeta || !ch.identity.metatype) && <option value="">— none ({npc?.kind === 'spirit' ? 'spirit' : 'critter'}) —</option>}
             {[...c.metatypes.values()].map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </label>
-        <label>Level of play
+        {!npc && <><label>Level of play
           <select value={ch.level} disabled={career} onChange={e => edit(d => { d.level = e.target.value; d.package = 'free' })}>
             {[...c.levels.values()].map(l => <option key={l.id} value={l.id}>{l.name}: {l.nuyen.toLocaleString('en-US')}¥</option>)}
           </select>
@@ -46,7 +71,7 @@ export function ConceptTab() {
             <option value="free">Free allocation</option>
             {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-        </label>
+        </label></>}
         <label>Lifestyle
           <select value={ch.identity.lifestyle ?? 'low'} onChange={e => update(d => { d.identity.lifestyle = e.target.value })}>
             {[...c.lifestyles.values()].map(l => <option key={l.id} value={l.id}>{l.name}{l.perRun ? ` (${l.perRun > 0 ? '+' : '−'}${Math.abs(l.perRun).toLocaleString('en-US')}¥ per run)` : ''}</option>)}

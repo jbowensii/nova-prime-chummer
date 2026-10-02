@@ -136,6 +136,10 @@ is built from this data; the format itself is ours and stays stable.
   `neon`, `rain`). The transparent parts of a PNG or WebP portrait show it; an opaque image covers it. Missing (every
   file before 0.5.4) or unknown means none: the portrait as it always looked. It shows in the builder, the runner list
   and on the printed sheet, where a dark one (`dark`, `neon`, `rain`) prints as white to save ink.
+- **`<npc kind tier fightingSpirit?/>`**, the root's first child when present, makes the file an NPC (absent: a
+  runner). `kind`: `npc`, `critter` or `spirit`; `tier`: `prime` (managed like a runner, with Edge) or `regular` (no
+  Edge, average hits); `fightingSpirit` (optional): `null`, `low`, `high` or `extreme`. A critter or spirit may have
+  `metatype=""` (shown as "Critter" / "Spirit") and attributes outside metatype ranges.
 - **`campaign`** names the campaign the runner plays in (`custom/campaigns.xml`, see data-format.md). Only the server
   sets it (`/api/campaigns`); a save keeps the stored value whatever the body says, a new file (a copy, an import, a
   restored copy) gets none, and it counts only while the runner's owner is a GM or member of that campaign.

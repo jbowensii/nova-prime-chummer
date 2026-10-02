@@ -1,5 +1,5 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
-import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, StartingGear } from '../model/types'
+import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, Npc, StartingGear } from '../model/types'
 import { BACKDROPS, newId } from '../model/types'
 import { ampFromTemplate, isSinner, plain, sinnerTemplate } from './amps'
 
@@ -84,6 +84,20 @@ export function knowledgeEntry(k: string | Partial<KnowledgeEntry>): KnowledgeEn
   return out
 }
 
+const NPC_KINDS: Npc['kind'][] = ['npc', 'critter', 'spirit'], NPC_TIERS: Npc['tier'][] = ['prime', 'regular']
+const FIGHTING_SPIRITS: NonNullable<Npc['fightingSpirit']>[] = ['null', 'low', 'high', 'extreme']
+/** Makes an npc block one the app knows, in place: an unknown or missing kind is 'npc', tier 'regular', an unknown
+ *  fighting spirit is dropped. Returns what it fixed (charxml's repair notes). */
+export function normalizeNpc(npc: Npc): string[] {
+  const fixed: string[] = []
+  if (!NPC_KINDS.includes(npc.kind)) { fixed.push(`Set the NPC kind "${npc.kind ?? ''}" to "npc".`); npc.kind = 'npc' }
+  if (!NPC_TIERS.includes(npc.tier)) { fixed.push(`Set the NPC tier "${npc.tier ?? ''}" to "regular".`); npc.tier = 'regular' }
+  if (npc.fightingSpirit !== undefined && !FIGHTING_SPIRITS.includes(npc.fightingSpirit)) {
+    fixed.push(`Dropped the unknown fighting spirit "${npc.fightingSpirit}".`); delete npc.fightingSpirit
+  }
+  return fixed
+}
+
 export function migrate(raw: Record<string, unknown>): Character {
   let v = raw.formatVersion as number
   while (v < FORMAT_VERSION) { raw = MIGRATIONS[v](raw); v = raw.formatVersion as number }
@@ -101,7 +115,9 @@ export function migrate(raw: Record<string, unknown>): Character {
     for (const f of ['knowledgeOrder', 'knowledgeHidden'] as const)
       if (Array.isArray(ch.build[f])) ch.build[f] = ch.build[f]!.map(key => byName.get(key) ?? key)
   }
-  if (Array.isArray(ch.build?.items)) ensureStartingGear(ch.build, !!ch.finalizedAt)
+  if (ch.npc && typeof ch.npc === 'object') normalizeNpc(ch.npc)
+  // NPCs get no free starting gear (a critter has no commlink)
+  if (Array.isArray(ch.build?.items) && !ch.npc) ensureStartingGear(ch.build, !!ch.finalizedAt)
   // an unknown portrait backdrop (or none: files before 0.5.4) is no backdrop
   if (ch.identity && ch.identity.backdrop !== undefined && !BACKDROPS.includes(ch.identity.backdrop)) delete ch.identity.backdrop
   for (const e of Array.isArray(ch.career) ? ch.career : [])

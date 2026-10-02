@@ -1,5 +1,6 @@
 // Small shared UI pieces: money format, stepper, catalog picker, dialog, receipt line.
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { Npc } from '../model/types'
 
 export const fmt = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('en-US')}¥`
 export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
@@ -29,6 +30,12 @@ export const OverspentChip = ({ by }: { by: number }) =>
  *  finalized (career). */
 export const StateBadge = ({ finalized }: { finalized: boolean }) =>
   <span className={`noncanon runstate ${finalized ? 'final' : 'draft'}`} title={finalized ? 'Finalized: every change is logged in the ledger' : 'Draft: still in creation'}>{finalized ? 'Finalized' : 'Draft'}</span>
+
+export const NPC_KINDS = { npc: 'NPC', critter: 'Critter', spirit: 'Spirit' } as const
+export const NPC_TIERS = { prime: 'Prime', regular: 'Regular' } as const
+/** An NPC's kind and tier, as chips (the NPC list and the editor's bar). */
+export const NpcChips = ({ npc }: { npc: Npc }) => <>
+  <span className="noncanon npckind">{NPC_KINDS[npc.kind]}</span> <span className="noncanon npctier">{NPC_TIERS[npc.tier]}</span></>
 
 /** action: a control in the row (an Edit button) that doesn't pick it; disabled: listed (for its action) but not pickable */
 export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string; action?: ReactNode; disabled?: boolean }

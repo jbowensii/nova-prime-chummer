@@ -104,7 +104,8 @@ export function Library({ c }: { c: Catalog }) {
       loadCampaigns().then(setCampaigns, () => setCampaigns([]))
     }
     // a runner just left in the editor may still be sending its last change: list it as saved
-    return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored); setUnreadable(r.unreadable) }, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
+    return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored.filter(s => !s.ch.npc)); // the runner list never shows an NPC
+ setUnreadable(r.unreadable) }, e => { setMsg(because('Couldn’t load your runners', (e as Error).message ?? String(e))); setList([]) })
   }
   useEffect(() => { void refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const where = repo.mode === 'server' ? 'the server' : 'this browser'
@@ -125,11 +126,13 @@ export function Library({ c }: { c: Catalog }) {
 
   const importFiles = async (files: FileList | null) => {
     if (!files) return
+    const picked = [...files] // before the first await: the input is cleared right after this call, and its FileList with it
     const have = new Set((list ?? []).map(s => s.ch.id))
     const done: string[] = [], bad: string[] = []
-    for (const f of files) {
+    for (const f of picked) {
       const r = readCharacterFile(await f.text())
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
+      if (r.character.npc) { bad.push(`${f.name}: this is an NPC, not a runner. ${canEdit(me) ? 'Import it on NPCs & Critters.' : 'Only GMs keep NPCs.'}`); continue }
       const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() }
       if (await store(ch)) done.push(ch.identity.streetName || ch.identity.name)
     }
@@ -275,6 +278,7 @@ export function Library({ c }: { c: Catalog }) {
           <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
           <button className="btn quiet" onClick={loadExamples}>Load example characters</button>
           {admin && <a className="btn quiet" href="#/books">Books</a>}
+          {canEdit(me) && <a className="btn quiet" href="#/npcs">NPCs</a>}
           {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
           <a className="btn quiet" href="#/data">Game data</a>
           {repo.mode === 'server' && <a className="btn quiet" href="#/campaigns">Campaigns</a>}
