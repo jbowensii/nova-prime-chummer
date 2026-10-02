@@ -25,6 +25,7 @@ import { UsersScreen } from './Users'
 import './app.css'
 import { BackgroundArt } from './Background'
 import { GamePicker } from './GamePicker'
+import { Sr6Main } from '../sr6/ui/Sr6App'
 import { homeOf, storedGame } from './game'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
@@ -180,7 +181,8 @@ export default function App() {
   return (
     <Me.Provider value={user ?? null}>
       {user && <BackgroundArt />}
-      <div inert={ended} aria-hidden={ended || undefined}><Main repo={repo} route={route} /></div>
+      <div inert={ended} aria-hidden={ended || undefined}>
+        {route[0] === 'sr6' ? <Sr6Main repo={repo} route={route.slice(1)} /> : <Main repo={repo} route={route} />}</div>
       {ended && <Over><SignIn oidc={me.oidc} onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to
         carry on, and unsaved changes on this page are saved then. <b>Signing in as someone else discards this page’s unsaved changes.</b></>} /></Over>}
     </Me.Provider>

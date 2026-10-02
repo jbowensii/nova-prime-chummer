@@ -84,8 +84,10 @@ function trapTab(e: React.KeyboardEvent<HTMLDialogElement>) {
   if (e.shiftKey ? document.activeElement === first : document.activeElement === last) { e.preventDefault(); (e.shiftKey ? last : first).focus() }
 }
 
-/** The logo, home link and this build's version (vite.config.ts, from package.json). */
-export const Brand = () => <span className="brand-row"><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><span className="ver">v{__APP_VERSION__}</span></span>
+/** The logo, home link and this build's version (vite.config.ts, from package.json): the game's own on #/sr6... */
+export const Brand = () => /^#\/?sr6(\/|$)/.test(location.hash)
+  ? <span className="brand-row"><a className="brand" href="#/sr6">Chummer <b>Shadowrun</b> 6</a><span className="ver">v{__APP_VERSION__}</span></span>
+  : <span className="brand-row"><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><span className="ver">v{__APP_VERSION__}</span></span>
 
 /** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose; Tab stays inside; closing puts
  *  focus back where it was. light: a click outside it closes it too (a small settings popover, nothing to lose). */

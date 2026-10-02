@@ -608,6 +608,7 @@ dialog.drawer h2 { margin-top: 0; }
 .btn.ibtn.primary, .btn.ibtn.primary:hover:not(:disabled) { color: var(--accent-ink); background: var(--yellow); border-color: var(--yellow); }
 .btn.ibtn.primary:hover:not(:disabled) { filter: brightness(1.06); }
 .btn.ibtn[aria-current='page'] { color: var(--heading); box-shadow: inset 0 -3px 0 var(--yellow); }
+.btn.ibtn[aria-disabled='true'] { opacity: 0.4; cursor: not-allowed; background: none; color: var(--text-2); }
 .tip { position: fixed; inset: auto; margin: 0; z-index: 60; max-width: calc(100vw - 8px); overflow: hidden; text-overflow: ellipsis;
   padding: 0.3rem 0.55rem; background: var(--panel); color: var(--panel-text); border: 0; border-left: 3px solid var(--yellow);
   font: 600 0.8rem/1.2 var(--sans); white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }
