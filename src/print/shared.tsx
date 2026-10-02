@@ -5,7 +5,7 @@ import { knowledgeList } from '../engine'
 import type { Derived } from '../engine/derive'
 import type { AmpEntry, Build, Catalog } from '../model/types'
 import { artSrc, useArtId, useArtIds } from '../ui/Background'
-import { loadSettings, saveSettings, type Settings } from '../ui/settings'
+import { loadSettings, PRINT_STYLES, saveSettings, type Settings } from '../ui/settings'
 import { Modal } from '../ui/bits'
 import { IconButton } from '../ui/icons'
 
@@ -85,4 +85,20 @@ export function useSheetArt(runner: string): { tools: ReactNode; layer: ReactNod
       <div style={{ backgroundImage: `url("${artSrc(shownId)}")` }} /></div>,
     vars: { '--art-screen': s.sheetArt === 'on' ? k : 0, '--art-print': s.sheetArtPrint === 'on' ? k : 0 } as CSSProperties,
   }
+}
+
+/** The sheet to print (Settings → Printed sheet, on the print page's toolbar too since 0.8.3): kept in this browser as
+ *  before; the print page (EditorView PrintSheet, usePrintStyle) follows it at once. */
+const PRINT_STYLE = 'ca2-print-style'
+export function SheetType() {
+  const [p, setP] = useState(() => loadSettings().print)
+  const pick = (v: Settings['print']) => { saveSettings({ ...loadSettings(), print: v }); setP(v); dispatchEvent(new Event(PRINT_STYLE)) }
+  return <select className="sheet-type" aria-label="Sheet type" data-tip="Sheet type" value={p} onChange={e => pick(e.target.value as Settings['print'])}>
+    {PRINT_STYLES.map(([v, label, hint]) => <option key={v} value={v} title={hint}>{label}</option>)}
+  </select>
+}
+export function usePrintStyle() {
+  const [p, setP] = useState(() => loadSettings().print)
+  useEffect(() => { const f = () => setP(loadSettings().print); addEventListener(PRINT_STYLE, f); return () => removeEventListener(PRINT_STYLE, f) }, [])
+  return p
 }

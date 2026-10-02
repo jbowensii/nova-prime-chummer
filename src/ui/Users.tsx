@@ -117,7 +117,7 @@ export function UsersScreen() {
   const theirs = d && d.at !== 'add' ? runners.filter(r => r.owner === d.u.username) : []
   return (
     <main className="lib">
-      <PageHeader title="Users"><IconButton className="primary" icon="plus" label="Add account" text="Add account" onClick={() => open({ at: 'add' })} /></PageHeader>
+      <PageHeader title="Users"><IconButton className="primary" icon="account-add" label="Add account" onClick={() => open({ at: 'add' })} /></PageHeader>
       <p className="muted">Admins manage books, backups and accounts. Editors can also change the catalog and run campaigns, and read the runners in them.
         Players see only their own runners.</p>
       {msg && <p className={`banner${msg.err ? ' bad' : ''}`} role={msg.err ? 'alert' : 'status'}>{msg.text}</p>}

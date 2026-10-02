@@ -580,39 +580,37 @@ dialog.drawer h2 { margin-top: 0; }
 .portrait-editor .backdrops { flex: 1; min-width: 14rem; }
 
 /* ---- headers (nav.tsx PageHeader, icons.tsx): the page's actions, then the main menu, then Ask, Settings and the account,
-   all as one row of icons. Every icon says what it is in a tooltip (an indigo tab with the yellow edge, like the book's
-   callouts) on hover and on keyboard focus; the current page has the yellow underline the editor's tabs use. ---- */
+   all as one row of icons on its own line under the title, from the left (0.8.3). Every icon says what it is in a tooltip
+   (.tip: an indigo tab with the yellow edge, like the book's callouts) above it on hover and on keyboard focus; the
+   current page has the yellow underline the editor's tabs use; a page's main action ("New runner") is the yellow one. ---- */
 .icon { flex: none; display: block; }
-.iconbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; }
-.btn.ibtn { position: relative; justify-content: center; width: 2.4rem; height: 2.4rem; padding: 0; color: var(--text-2); border-radius: var(--r-md); }
+.iconbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem; }
+/* 0.8.3: 20% bigger than 0.8.1's 20px glyph in a 2.4rem square */
+.btn.ibtn { position: relative; justify-content: center; width: 2.88rem; height: 2.88rem; padding: 0; color: var(--text-2); border-radius: var(--r-md); }
 .btn.ibtn:hover:not(:disabled), .btn.ibtn.open { color: var(--rust); background: var(--zebra); }
+.btn.ibtn.primary, .btn.ibtn.primary:hover:not(:disabled) { color: var(--accent-ink); background: var(--yellow); border-color: var(--yellow); }
+.btn.ibtn.primary:hover:not(:disabled) { filter: brightness(1.06); }
 .btn.ibtn[aria-current='page'] { color: var(--heading); box-shadow: inset 0 -3px 0 var(--yellow); }
-.btn.ibtn[data-tip]::after {
-  content: attr(data-tip); display: none; position: absolute; z-index: 30; top: calc(100% + 0.35rem); left: 50%; transform: translateX(-50%);
-  padding: 0.3rem 0.55rem; background: var(--panel); color: var(--panel-text); border-left: 3px solid var(--yellow);
-  font: 600 0.8rem/1.2 var(--sans); white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
-}
-.btn.ibtn[data-tip]:hover::after, .btn.ibtn[data-tip]:focus-visible::after { display: block; }
-.btn.ibtn.open::after { display: none !important; } /* its menu is open below it */
-/* at the row's ends the tip lines up with the icon's outer edge, so it never runs off the screen */
-.iconbar > .ibtn:first-child::after { left: 0; transform: none; }
-.menubar .tools .ibtn::after, .iconbar > .ibtn:last-child::after { left: auto; right: 0; transform: none; }
-.ibadge { position: absolute; top: 0.1rem; right: 0.05rem; min-width: 1rem; height: 1rem; padding: 0 0.2rem; border-radius: 999px;
-  display: grid; place-items: center; background: var(--yellow); color: var(--ink); font: 700 0.65rem/1 var(--sans); }
-.btn.primary .icon { width: 18px; height: 18px; margin-left: -0.15rem; }
-.menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; }
+.tip { position: fixed; inset: auto; margin: 0; z-index: 60; max-width: calc(100vw - 8px); overflow: hidden; text-overflow: ellipsis;
+  padding: 0.3rem 0.55rem; background: var(--panel); color: var(--panel-text); border: 0; border-left: 3px solid var(--yellow);
+  font: 600 0.8rem/1.2 var(--sans); white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }
+.tip[hidden] { display: none; }
+@media print { .tip { display: none !important; } }
+.ibadge { position: absolute; top: 0.15rem; right: 0.1rem; min-width: 1.1rem; height: 1.1rem; padding: 0 0.2rem; border-radius: 999px;
+  display: grid; place-items: center; background: var(--yellow); color: var(--ink); font: 700 0.7rem/1 var(--sans); }
+.menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem; }
 .menubar .tools { padding-left: 0.35rem; margin-left: 0.2rem; border-left: 1px solid var(--rule); }
-.bars { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.4rem 0.5rem; min-width: 0; }
-.bars > .actions { gap: 0.3rem; padding-right: 0.55rem; border-right: 1px solid var(--rule); }
-/* the title keeps its line; the bars sit beside it while they fit, under it (right-aligned) once they don't */
+.bars { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.4rem 0.5rem; min-width: 0; }
+.bars > .actions { gap: 0.2rem; padding-right: 0.55rem; border-right: 1px solid var(--rule); }
 .lib header.pagehead { gap: 0.8rem 1.5rem; }
 .pagehead .titles { flex: 1 0 auto; max-width: 100%; min-width: 0; }
-.pagehead .bars { flex: 0 1 auto; margin-left: auto; }
+.pagehead .bars, .topbar > .bars { flex: 1 1 100%; }
 .pagehead .titles .brand-row { display: flex; }
 .pagehead label.inline { display: flex; align-items: center; gap: 0.4rem; }
-@media (max-width: 900px) {
-  .pagehead .bars { justify-content: flex-start; margin-left: 0; }
-}
+/* Find duplicates (Library.tsx): one box per character, a radio per copy */
+dialog.dupes .dupe-group { display: grid; gap: 0.35rem; margin: 0 0 0.8rem; padding: 0.5rem 0.8rem 0.7rem; border: 1px solid var(--rule); }
+dialog.dupes .dupe-group legend { font-weight: 700; padding: 0 0.3rem; }
+dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size: 0.95rem; align-items: baseline; }
 @media (max-width: 600px) {
   .bars > .actions { border-right: 0; padding-right: 0; }
   .menubar .tools { border-left: 0; padding-left: 0; margin-left: 0; }

@@ -2,7 +2,9 @@
    Printer-friendly (default): book colors as lines and type only, no fills or textures.
    Full color (Settings): filled indigo bands, cream zebra rows, paper grain and paint. */
 .sheet-wrap { padding: 1rem; }
-.sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; justify-content: center; margin-bottom: 1rem; }
+.sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.4rem; justify-content: flex-start; max-width: 56rem; margin: 0 auto 1rem; }
+.sheet-wrap:has(> .sheet) > .sheet-tools { max-width: 52rem; } /* the toolbar starts where the sheet does */
+.sheet-tools select.sheet-type { width: auto; }
 .sheet {
   --s-ink: #12120c; --s-ink-2: #4a4a44; --s-line: #b9b6ab; --s-rust: #7b361e; --s-yellow: #f1bb00;
   --s-indigo: #36305b; --s-cream: #fcf1d1;
@@ -53,6 +55,10 @@
 .s-risk td, .s-risk th { text-align: center; }
 .s-small { font-size: 8.5pt; color: var(--s-ink-2); }
 .sheet section { break-inside: avoid; }
+/* the long blocks (the page-1 columns, Shadow Amps, Background) break between rows, never inside one: kept whole, a Skills
+   column taller than what was left of page 1 went to page 2 whole and left page 1 holding only the name (0.8.3) */
+.sheet .s-cols > section, .sheet > section { break-inside: auto; }
+.sheet tr, .sheet li { break-inside: avoid; }
 
 /* ---- full color: the page as printed in the PDF ---- */
 :root[data-print='color'] .sheet {

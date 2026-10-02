@@ -47,14 +47,15 @@ test('every menu as icons with tooltips; the print page background behind one bu
       await expect(nav.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
       // hover text: a visible tooltip on hover and on keyboard focus
       const npcs = nav.getByRole('link', { name: 'NPCs & Critters' })
+      // (0.8.3: one tooltip element above the icon, icons.tsx installTips; e2e/v083.spec.ts checks where it goes)
+      const tip = page.getByRole('tooltip')
       await npcs.hover()
-      expect(await npcs.evaluate(e => getComputedStyle(e, '::after').content)).toBe('"NPCs & Critters"')
-      expect(await npcs.evaluate(e => getComputedStyle(e, '::after').display)).not.toBe('none')
+      await expect(tip).toHaveText('NPCs & Critters')
       await page.mouse.move(0, 0)
-      expect(await npcs.evaluate(e => getComputedStyle(e, '::after').display)).toBe('none')
+      await expect(tip).toBeHidden()
       await npcs.focus()
       await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab') // keyboard focus: :focus-visible
-      expect(await npcs.evaluate(e => getComputedStyle(e, '::after').display)).not.toBe('none')
+      await expect(tip).toHaveText('NPCs & Critters')
       await page.screenshot({ path: `${SHOTS}/${TAG}-tooltip.png`, clip: { x: 0, y: 0, width: 1400, height: 260 } })
     }
     await shots(page, 'runners')

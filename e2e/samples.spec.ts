@@ -10,6 +10,8 @@ import { createServer } from '../server/server.mjs'
 // (custom/samples/builtin/, canon, no set.xml) and a non-canon house set (custom/samples/house/set.xml); "Old Timer" only
 // from the built-in set. One copy per character and canon-ness: TESTC's and PREGENS's Test Face, and Old Timer.
 // Ada is the admin, Pat a player. Runs in order.
+const SHOTS = '.extract/screenshots/0.8.3'
+const TAG = process.env.V083_TAG ?? 'after'
 const PW = { ada: 'ada-password-1', pat: 'pat-password-1' }
 let server: ReturnType<typeof createServer>, base = '', dir = ''
 
@@ -171,30 +173,66 @@ test('tidy-up (0.8.2): a book example loaded twice, once from an older version o
   expect(own('pat').filter(x => x.includes('origin="PREGENS"'))).toHaveLength(1) // the other book's stays
 })
 
-test('find duplicates: exact copies of a runner, listed by name, go to the trash after a confirm', async ({ page }) => {
+test('find duplicates (0.8.3): copies of one runner by name and metatype, told apart, the edited else newest kept, moved after a confirm', async ({ page }) => {
   await signIn(page, 'pat')
-  await page.getByRole('button', { name: 'Find duplicates' }).click()
-  const dlg = page.getByRole('dialog', { name: 'Duplicate runners' })
-  await expect(dlg).toContainText('No duplicates')
-  await dlg.getByRole('button', { name: 'Close' }).click()
-  // an exact copy of Old Timer under another id (and a later date), and one that differs: only the copy is a duplicate
+  // Pat has the canon and the non-canon Test Face (two books' copies: also the same runner by name) and Old Timer.
+  // The owner's case: Old Timer loaded again from an older version of its example file (other text, older dates, rev 1),
+  // and a pair of Twin Timer where the older copy was edited (rev 2) and the newer one wasn't.
   const timer = own('pat').find(x => x.includes('streetName="Old Timer"'))!.replace(/ rev="\d+"/, '')
-  expect((await put(page, 'timer-copy', timer.replace(/ id="[^"]+"/, ' id="timer-copy"').replace(/updatedAt="[^"]+"/, 'updatedAt="2026-09-30T00:00:00.000Z"'))).status()).toBe(201)
-  expect((await put(page, 'timer-other', timer.replace(/ id="[^"]+"/, ' id="timer-other"').replace(/<background>[^<]*<\/background>/, '<background>Mine now.</background>'))).status()).toBe(201)
+  const older = timer.replace(/ id="[^"]+"/, ' id="timer-older"').replace(/updatedAt="[^"]+"/, 'updatedAt="2025-06-01T12:00:00.000Z"')
+    .replace(/lastExportedAt="[^"]+"/, 'lastExportedAt="2025-06-01T12:00:00.000Z"').replace(/<background>[^<]*<\/background>/, '<background>The older text.</background>')
+  expect(older).toContain('The older text.')
+  expect((await put(page, 'timer-older', older)).status()).toBe(201)
+  const twin = (id: string, at: string) => timer.replace(/ id="[^"]+"/, ` id="${id}"`).replaceAll('Old Timer', 'Twin Timer').replace(/updatedAt="[^"]+"/, `updatedAt="${at}"`)
+  expect((await put(page, 'twin-new', twin('twin-new', '2026-09-20T12:00:00.000Z'))).status()).toBe(201)
+  expect((await put(page, 'twin-edited', twin('twin-edited', '2026-09-10T12:00:00.000Z'))).status()).toBe(201)
+  const again = await page.request.put(`${base}api/characters/twin-edited`, { data: twin('twin-edited', '2026-09-11T12:00:00.000Z'),
+    headers: { 'Content-Type': 'application/xml', 'If-Match': '1', Origin: base.replace(/\/$/, '') } }) // saved again: rev 2
+  expect(again.status()).toBeLessThan(300)
+  expect(own('pat').find(x => x.includes('id="twin-edited"'))).toMatch(/ rev="2"/)
   const trash = () => readdirSync(join(dir, 'characters', 'pat', '.trash')).length
   const before = trash()
   await page.reload()
   await page.getByRole('button', { name: 'Find duplicates' }).click()
-  await expect(dlg.getByRole('listitem')).toHaveText(['Old Timer: one extra copy'])
-  await dlg.getByRole('button', { name: 'Keep them' }).click()
-  expect(own('pat').filter(x => x.includes('streetName="Old Timer"'))).toHaveLength(3)
+  const dlg = page.getByRole('dialog', { name: 'Duplicate runners' })
+  if (TAG === 'before') return void await page.screenshot({ path: `${SHOTS}/${TAG}-find-duplicates.png` }) // 0.8.2: "No duplicates"
+  await expect(dlg.getByRole('group')).toHaveCount(3)
+  // each copy says when it was last edited, whether it was, and its chips; the one to keep is picked to start with
+  const timers = dlg.getByRole('group', { name: 'Old Timer' })
+  await expect(timers.getByRole('radio')).toHaveCount(3) // two copies and "Keep every copy"
+  await expect(timers.getByRole('radio', { checked: true })).not.toHaveAccessibleName(/Jun 1, 2025/)
+  await expect(timers.getByRole('radio', { name: /Jun 1, 2025.*unedited \(rev 1\)/ })).not.toBeChecked()
+  await expect(timers).toContainText('Draft')
+  const twins = dlg.getByRole('group', { name: 'Twin Timer' })
+  await expect(twins.getByRole('radio', { checked: true })).toHaveAccessibleName(/edited \(rev 2\)/) // edited beats newer
+  const faces = dlg.getByRole('group', { name: 'Test Face' })
+  await expect(faces).toContainText('Non-canon')
+  await page.screenshot({ path: `${SHOTS}/${TAG}-find-duplicates.png` })
+  // the user changes their mind: both Test Faces stay
+  await faces.getByRole('radio', { name: 'Keep every copy' }).check()
+  await dlg.getByRole('button', { name: 'Move 2 to trash…' }).click()
+  // the confirm lists what moves
+  await expect(dlg.getByRole('listitem')).toHaveText([/^Old Timer, last edited Jun 1, 2025/, /^Twin Timer, last edited Sep 20, 2026/])
+  await page.screenshot({ path: `${SHOTS}/${TAG}-find-duplicates-confirm.png` })
+  await dlg.getByRole('button', { name: 'Back' }).click()
+  await expect(faces.getByRole('radio', { name: 'Keep every copy' })).toBeChecked()
+  await dlg.getByRole('button', { name: 'Keep them all' }).click()
+  await expect(dlg).toBeHidden()
+  expect(trash()).toBe(before) // nothing moved without the confirm
   await page.getByRole('button', { name: 'Find duplicates' }).click()
-  await dlg.getByRole('button', { name: 'Move 1 to trash' }).click()
-  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Old Timer.')
-  expect(own('pat').filter(x => x.includes('streetName="Old Timer"'))).toHaveLength(2)
-  expect(own('pat').filter(x => x.includes('Mine now.'))).toHaveLength(1)
-  expect(trash()).toBe(before + 1)
-
+  await faces.getByRole('radio', { name: 'Keep every copy' }).check()
+  await dlg.getByRole('button', { name: 'Move 2 to trash…' }).click()
+  await dlg.getByRole('button', { name: 'Move 2 to trash', exact: true }).click()
+  await expect(page.getByRole('status')).toHaveText('Moved to your trash: Old Timer, Twin Timer.')
+  expect(own('pat').filter(x => x.includes('The older text.'))).toHaveLength(0)
+  expect(own('pat').filter(x => x.includes('streetName="Old Timer"'))).toHaveLength(1)
+  expect(own('pat').filter(x => x.includes('streetName="Twin Timer"')).map(x => x.match(/ id="([^"]+)"/)![1])).toEqual(['twin-edited'])
+  expect(own('pat').filter(x => x.includes('streetName="Test Face"'))).toHaveLength(2)
+  expect(trash()).toBe(before + 2) // restorable
+  await page.getByRole('button', { name: 'Find duplicates' }).click()
+  await faces.getByRole('radio', { name: 'Keep every copy' }).check()
+  await expect(dlg.getByRole('button', { name: 'Move 0 to trash…' })).toBeDisabled()
+  await dlg.getByRole('button', { name: 'Keep them all' }).click()
 })
 
 test('find duplicates on NPCs & Critters: the extra copy goes to the NPC trash', async ({ page }) => {
@@ -208,8 +246,10 @@ test('find duplicates on NPCs & Critters: the extra copy goes to the NPC trash',
   await page.goto(`${base}#/npcs`)
   await page.getByRole('button', { name: 'Find duplicates' }).click()
   const nd = page.getByRole('dialog', { name: 'Duplicate NPCs' })
-  await expect(nd.getByRole('listitem')).toHaveText(['Test Hound: one extra copy'])
-  await nd.getByRole('button', { name: 'Move 1 to trash' }).click()
+  await expect(nd.getByRole('group', { name: 'Test Hound' }).getByRole('radio')).toHaveCount(3)
+  await nd.getByRole('button', { name: 'Move 1 to trash…' }).click()
+  await expect(nd.getByRole('listitem')).toHaveText([/^Test Hound, last edited /])
+  await nd.getByRole('button', { name: 'Move 1 to trash', exact: true }).click()
   await expect(page.getByRole('status')).toHaveText('Moved to your trash: Test Hound.')
   expect(readdirSync(join(dir, 'characters', '.npcs', 'ada')).filter(f => f.endsWith('.xml'))).toHaveLength(1)
   expect(readdirSync(join(dir, 'characters', '.npcs', 'ada', '.trash'))).toHaveLength(1)

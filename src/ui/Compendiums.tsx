@@ -128,7 +128,7 @@ function ListPage({ c, comps, bad, mine, campaigns, msg, setMsg, changed }: { c:
 
   return (
     <main className="lib">
-      <Header title="Compendiums"><IconButton className="primary" icon="plus" label="New compendium" text="New compendium" onClick={() => setDetails('new')} /></Header>
+      <Header title="Compendiums"><IconButton className="primary" icon="compendium-add" label="New compendium" onClick={() => setDetails('new')} /></Header>
       <p className="muted">Your own amps, gear, spells, vehicles and NPCs, in collections you can share with a campaign’s GMs or the whole table. Their entries are house content (Non-canon) and show in your pickers. Books are listed as read-only compendiums.</p>
       {msg && <p className="banner" role="status">{msg}</p>}
       {bad.map(b => <p className="err" key={b}>Couldn’t open {b}</p>)}
