@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.8.0 — 2026-10-02: Your own compendiums
+
+**Compendiums (admin and editors)**
+- A new **Compendiums** page for GMs and the admin. It needs the server. Players never see it.
+- **New compendium** takes a name, its **own source id** and who can read it. The source id is fixed afterwards and
+  can't clash with a book or another compendium.
+- Add **amps, weapons, armor, gear, spells, complex forms and vehicles** from scratch, or **copy** one from a book.
+  A copy gets a new id and your source, and does not carry the book's description; write your own.
+- **Move NPCs** in from the NPCs page, and back out to edit them. A moved NPC waits in the NPC trash.
+- **Sharing**: private, with the GMs of one campaign, or with all GMs. Shared compendiums are read-only for the
+  others, who can copy from them.
+- A compendium's entries show up in the catalogs (pickers and the Amp Builder) of every GM who can read it, marked
+  House.
+
+**Foundry**
+- **Export for Foundry** on a compendium downloads it as its own compendium. It needs the Foundry importer
+  module 0.6.0.
+
 ## 0.7.0 — 2026-10-02: NPCs and critters
 
 **NPCs & Critters (admin and editors)**
