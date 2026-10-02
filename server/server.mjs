@@ -26,6 +26,7 @@
 //                                        campaigns they GM (read only). /api/campaigns/:id/npcs shares one
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
+//   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs)
 //   /api/backgrounds*                    background art from library/backgrounds (server/backgrounds.mjs)
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
@@ -42,6 +43,7 @@ import { authApi } from './auth.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi, unesc, writeAtomic } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
+import { compendiumsApi } from './compendiums.mjs'
 import { oidcApi } from './oidc.mjs'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
@@ -125,14 +127,14 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   /** Runner folders for auth.mjs, which calls these under `lock`. */
   const runners = {
     count: async u => (await readdir(folder(u)).catch(() => [])).filter(f => f.endsWith('.xml')).length,
-    /** A new account's folders must not exist yet: runners or NPCs left there would silently become the new account's. */
+    /** A new account's folders must not exist yet: runners, NPCs or compendiums left there would silently become the new
+     *  account's. */
     async free(u) {
-      if (await exists(folder(u))) throw fail(409, `characters/${u} already exists; move it away first`)
-      if (await exists(npcFolder(u))) throw fail(409, `characters/.npcs/${u} already exists; move it away first`)
+      for (const [f, label] of stores()) if (await exists(f(u))) throw fail(409, `${label}${u} already exists; move it away first`)
     },
     async rename(from, to) {
-      const moves = [] // runners, then NPCs
-      for (const m of [[folder, 'characters/'], [npcFolder, 'characters/.npcs/']]) if (await exists(m[0](from))) moves.push(m)
+      const moves = [] // runners, then NPCs, then compendiums
+      for (const m of stores()) if (await exists(m[0](from))) moves.push(m)
       for (const [f, label] of moves) if (await exists(f(to))) throw fail(409, `${label}${to} already exists; move it away first`)
       const done = []
       try {
@@ -158,15 +160,15 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await rename(join(folder(from), file), join(folder(to), name))
       return name
     },
-    /** A deleted account (no runners left): its trash goes to characters/.trash/, named after it; its NPCs and their trash
-     *  to characters/.npcs/.trash/, the same way; then its folders go. */
+    /** A deleted account (no runners left): its trash goes to characters/.trash/, named after it; its NPCs, its compendiums
+     *  and their trash to characters/.npcs/.trash/ and characters/.compendiums/.trash/, the same way; then its folders go. */
     async retire(u) {
       await campaigns.drop(u)
       await moveAll(join(folder(u), '.trash'), join(charDir, '.trash'), `${u}-`)
       await rmdir(join(folder(u), '.trash')).catch(() => {})
       await rmdir(folder(u)).catch(() => {})
-      for (const d of [join(npcFolder(u), '.trash'), npcFolder(u)]) {
-        await moveAll(d, join(npcRoot, '.trash'), `${u}-`)
+      for (const [f, r] of [[npcFolder, npcRoot], [compendiums.folder, compendiums.root]]) for (const d of [join(f(u), '.trash'), f(u)]) {
+        await moveAll(d, join(r, '.trash'), `${u}-`)
         await rmdir(d).catch(() => {})
       }
     },
@@ -178,6 +180,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     npcsOf: u => index(npcFolder(u)), writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml) })
   // the two stores the character and trash routes serve; NPCs: admin and editors only (need() gates /api/npcs, and a
   // request that waited for the lock checks the role again)
+  const compendiums = compendiumsApi({ charDir, customDir, staticDir, lock, auth, campaigns })
+  const stores = () => [[folder, 'characters/'], [npcFolder, 'characters/.npcs/'], [compendiums.folder, 'characters/.compendiums/']]
   const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }
   const NPCS = { folder: npcFolder, noun: 'NPC', npc: true, holds: (u, c) => campaigns.leads(u, c), readable: me => campaigns.readableNpcs(me) }
   const refused = (kind, me) => kind.npc && !['admin', 'editor'].includes(me.role)
@@ -223,6 +227,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
     if (await campaigns.handle(req, res, url, send, who) !== false) return
+    if (await compendiums.handle(req, res, url, send, who) !== false) return
     if (await backgrounds.handle(req, res, url, send, who) !== false) return
     const t = url.pathname.match(/^\/api\/(npcs\/)?trash(\/|$)/)
     if (t) return trash(req, res, url, who, t[1] ? NPCS : RUNNERS)
