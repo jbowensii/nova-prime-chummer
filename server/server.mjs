@@ -91,7 +91,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
   let auth = null
   const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl, askTimeout,
-    onRestore: () => auth.reload(oidc.issuer()) }) // the restored auth.xml's issuer
+    onRestore: () => auth.reload(oidc.issuer()), // the restored auth.xml's issuer
+    compendiumSources: () => compendiums.sources() }) // a house source never takes a compendium's id
   // runner writes, and the account changes that move runner folders: one at a time
   // ponytail: one lock for every account's runners; per-folder locks if saves ever queue up
   let chain = Promise.resolve()

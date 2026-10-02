@@ -105,6 +105,11 @@ export function CompendiumsScreen({ c, id, edit, reload }: { c: Catalog; id?: st
   if (id) {
     const comp = comps.find(x => x.id === id)
     const targets = comps.filter(mine)
+    // not in this catalog (its source id clashes, or the catalog loaded without it): read only, so a new entry's id can't
+    // overwrite one of its own and Export can't pick up another source's entries
+    const loaded = !!comp && c.sources.get(comp.source)?.compendium?.id === comp.id
+    if (comp && !loaded) return <main className="lib"><Header title={comp.name} /><p className="banner">{comp.name}’s entries didn’t load into the catalog
+      (Game data lists why). Reload the page; if its source id {comp.source} is now a book’s, ask the admin. <a href="#/compendiums">All compendiums</a></p></main>
     if (comp) return <CompendiumPage key={comp.id} c={c} comp={comp} own={mine(comp)} campaigns={campaigns} changed={changed} edit={edit} targets={targets} />
     const book = c.sources.get(id)
     if (book && !comps.some(x => x.source === id)) return <BookPage c={c} id={id} targets={targets} changed={changed} />

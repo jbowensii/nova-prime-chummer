@@ -124,7 +124,7 @@ export async function writeAtomic(path, text, mode = 0o666) {
 }
 
 export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000, askTimeout = 60000,
-  onRestore = async () => {} }) {
+  onRestore = async () => {}, compendiumSources = async () => new Set() }) {
   const [cmd, ...pre] = [].concat(python)
   const config = join(libraryDir, '.config')
   const backups = join(libraryDir, '.backups')
@@ -457,6 +457,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       try { b = JSON.parse(await body(req, 4096)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { id, name } as JSON') }
       const name = clean(String(b?.name ?? '')).trim()
       if (!SOURCE_ID.test(b?.id ?? '') || !name || name.length > 120) throw fail(400, 'a source needs an id (A–Z, 0–9, -, starting with a letter) and a name')
+      if ((await compendiumSources()).has(b.id)) throw fail(409, `the source id ${b.id} is a compendium’s; choose another`)
       await edit(['add-source', b.id, `--name=${name}`]) // one argument: a name starting with "-" isn't an option
       return send(res, 204, '', 'text/plain')
     }

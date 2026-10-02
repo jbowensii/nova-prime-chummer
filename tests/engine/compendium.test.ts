@@ -71,6 +71,11 @@ test('a compendium overlay adds its entries under its own house source; its NPCs
   const broken = buildCatalog([...catFiles, file(compendiumXml({ ...street, npcs: [{ ...npc, npc: undefined }] }))])
   expect(broken.errors).toEqual([expect.objectContaining({ file: extra.file })])
   expect(broken.items.has('street.pipe')).toBe(false)
+  // a book or house source that took its id later keeps it: the compendium is reported and skipped
+  const book = [...buildCatalog(catFiles).sources.keys()][0]
+  const clash = buildCatalog([...catFiles, file(compendiumXml({ ...street, source: book, amps: [], items: [], vehicles: [] }))])
+  expect(clash.errors).toEqual([expect.objectContaining({ file: extra.file })])
+  expect(clash.sources.get(book)!.compendium).toBeUndefined()
 })
 
 test('extras load after the edits layer and before custom/index.xml, so a house rule with the same id wins', async () => {

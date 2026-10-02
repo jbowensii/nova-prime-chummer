@@ -103,6 +103,8 @@ test('a source id that clashes with a book or another compendium: 409; changing 
   expect((await put('eve', E2, comp(E2, 'EVE'))).status).toBe(409) // her own other one too
   expect((await put('eve', E1, comp(E1, 'OTHER'), 4)).status).toBe(400)
   expect((await put('ed', D1, comp(D1, 'ED'))).status).toBe(201)
+  // and the other way: a new house source can't take a compendium's id
+  expect((await call('ed', 'POST', '/api/edits/sources', { id: 'EVE', name: 'Clash' })).status).toBe(409)
   const huge = comp(D1, 'ED').replace('</ca2:data>', `<!-- ${'x'.repeat(21 * 1024 * 1024)} --></ca2:data>`)
   const r = await put('ed', D1, huge, 1).catch(() => null)
   if (r) expect(r.status).toBe(413) // the server may close the connection before fetch reads the answer

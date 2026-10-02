@@ -129,5 +129,7 @@ export function compendiumsApi({ charDir, customDir, staticDir, lock, auth, camp
     })
   }
 
-  return { handle, root, folder }
+  /** Every compendium's source id (books.mjs refuses them for a new house source). */
+  const sources = async () => new Set((await all()).map(c => attr(c.tag, 'source')))
+  return { handle, root, folder, sources }
 }
