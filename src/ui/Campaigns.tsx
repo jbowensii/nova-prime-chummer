@@ -62,7 +62,7 @@ export function CampaignsScreen() {
   const staff = canEdit(me)
   return (
     <main className="lib">
-      <Header title="Campaigns">{staff && <IconButton className="primary" icon="plus" label="New campaign" text="New campaign" onClick={() => setCreating(true)} />}</Header>
+      <Header title="Campaigns">{staff && <IconButton className="primary" icon="campaign-add" label="New campaign" onClick={() => setCreating(true)} />}</Header>
       <p className="muted">{staff ? 'Run a campaign: add your players, and they put their runners in it. You can read and print the runners in the campaigns you run.'
         : 'The campaigns you play in. Put a runner in one from your runner list; the GM can then read and print it.'}</p>
       {msg && <p className="banner bad" role="alert">{msg}</p>}

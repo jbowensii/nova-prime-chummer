@@ -1,5 +1,35 @@
 # Release notes
 
+## 0.8.3 — 2026-10-02: Duplicates by name, left-aligned icons, print fixes
+
+**Find duplicates**
+- Finds copies of the same runner (or NPC) by **street name, real name and metatype** (any case, extra spaces
+  ignored), however much else differs: an example loaded twice from two versions of its file, or a copy you edited.
+  0.8.2 only found exact copies, so it found none of those.
+- Each character gets a box listing its copies with what tells them apart: when each was last edited, whether it was
+  edited (saved again: rev 2 or more) or not, its chips (Draft or Finalized, Non-canon, Error) and its campaign. The
+  copy to keep is picked to start with: an edited one over an unedited one, then the newest. Pick another, or **Keep
+  every copy** for that character.
+- **Move N to trash…** then lists the copies that will move and asks again; nothing moves before that. Everything
+  goes to your trash and can be restored. **Tidy up** is unchanged.
+
+**Menus**
+- The icon row (the page's actions, the main menu, Ask, Settings and the account) sits on its own line under the
+  title and starts at the left, on a computer and on a phone; the runner editor's too.
+- Icons are 20% bigger (24 px in a 46 px square).
+- **New runner**, **New NPC**, **New campaign**, **New compendium** and **Add account** are icons too (the page's own
+  icon with a plus, in yellow), with their names in the tooltip; so is **Print or save as PDF**.
+- Tooltips show **above** the icon, not under the pointer; below it only when there's no room above, and never past
+  the edges of the window. They show over dialogs too.
+
+**Printed sheet**
+- **Sheet type** is back on the print page's toolbar (Printer-friendly, Full color, Book style; with a tooltip), kept
+  in this browser as in Settings → Printed sheet. It went missing when the toolbar became icons in 0.8.1.
+- No more near-empty pages: on the default sheet each block (Skills with Languages & knowledge, Wounds, Shadow Amps,
+  the bottom columns, Background) was kept whole, so a Skills column taller than what was left of page 1 moved to
+  page 2 and left page 1 with only the name and attributes. Blocks now break between rows (never inside a row, and
+  never right after a heading). Checked as PDFs on Letter and A4 for the default and Book style.
+
 ## 0.8.2 — 2026-10-02: Tokens, spell categories and duplicates
 
 **Token**

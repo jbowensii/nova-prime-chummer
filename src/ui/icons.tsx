@@ -1,5 +1,5 @@
 // The header icons (24px line icons, drawn in currentColor) and the icon button/link that carries one: the label is its
-// accessible name and its tooltip (app.css .ibtn[data-tip], shown on hover and keyboard focus).
+// accessible name and its tooltip (data-tip: installTips below shows it above the icon on hover and keyboard focus).
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react'
 
 const P: Record<string, ReactNode> = {
@@ -31,23 +31,55 @@ const P: Record<string, ReactNode> = {
   copies: <><rect x="8" y="8" width="14" height="14" rx="2" /><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2" /></>,
   ai: <><path d="M12 8V4H8" /><rect x="4" y="8" width="16" height="12" rx="2" /><path d="M2 14h2M20 14h2M15 13v2M9 13v2" /></>,
 }
-export type IconName = keyof typeof P
+/** "New …": the page's own icon, a little smaller, with a plus at its top right */
+const plus = (p: ReactNode) => <><g transform="translate(0 6) scale(0.75)" strokeWidth={2.5}>{p}</g><path d="M19.5 1v6M16.5 4h6" /></>
+Object.assign(P, { 'runner-add': plus(P.runners), 'npc-add': plus(P.npcs), 'campaign-add': plus(P.campaigns),
+  'compendium-add': plus(P.compendiums), 'account-add': plus(P.account) })
+export type IconName = keyof typeof P | 'runner-add' | 'npc-add' | 'campaign-add' | 'compendium-add' | 'account-add'
 
 export const Icon = ({ name }: { name: IconName }) =>
-  <svg className="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9"
+  <svg className="icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{P[name]}</svg>
 
-type Common = { icon: IconName; label: string; badge?: ReactNode; text?: ReactNode }
-const inner = ({ icon, badge, text }: Common) => <><Icon name={icon} />{text}{badge != null && <span className="ibadge" aria-hidden="true">{badge}</span>}</>
-/** text: a visible word beside the icon (primary actions); the tooltip then stays off, the word says it. */
-const cls = (c: Common, extra?: string) => `btn ${c.text ? '' : 'quiet ibtn '}${extra ?? ''}`.trim()
+type Common = { icon: IconName; label: string; badge?: ReactNode }
+const inner = ({ icon, badge }: Common) => <><Icon name={icon} />{badge != null && <span className="ibadge" aria-hidden="true">{badge}</span>}</>
+const cls = (extra?: string) => `btn quiet ibtn ${extra ?? ''}`.trim()
 
-export function IconButton({ icon, label, badge, text, className, ...rest }: Common & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button type="button" {...rest} className={cls({ icon, label, text }, className)} aria-label={text ? undefined : label}
-    data-tip={text ? undefined : label}>{inner({ icon, label, badge, text })}</button>
+export function IconButton({ icon, label, badge, className, ...rest }: Common & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button type="button" {...rest} className={cls(className)} aria-label={label} data-tip={label}>{inner({ icon, label, badge })}</button>
 }
 
-export function IconLink({ icon, label, badge, text, className, ...rest }: Common & AnchorHTMLAttributes<HTMLAnchorElement>) {
-  return <a {...rest} className={cls({ icon, label, text }, className)} aria-label={text ? undefined : label}
-    data-tip={text ? undefined : label}>{inner({ icon, label, badge, text })}</a>
+export function IconLink({ icon, label, badge, className, ...rest }: Common & AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return <a {...rest} className={cls(className)} aria-label={label} data-tip={label}>{inner({ icon, label, badge })}</a>
+}
+
+/** One tooltip for every [data-tip] control (installed once, main.tsx): shown on hover and on keyboard focus, ABOVE the
+ *  control, below it only when there's no room above, and always inside the window (a popover, so it's over dialogs
+ *  too). Not while the control's menu is open (.open). */
+export function installTips() {
+  const tip = Object.assign(document.createElement('div'), { className: 'tip', role: 'tooltip', hidden: true })
+  if ('popover' in tip) tip.popover = 'manual'
+  document.body.append(tip)
+  let on: HTMLElement | null = null
+  const hide = () => { on = null; tip.hidden = true; if (tip.matches(':popover-open')) tip.hidePopover() }
+  const show = (el: HTMLElement) => {
+    if (el.classList.contains('open') || !el.dataset.tip) return hide()
+    on = el
+    tip.textContent = el.dataset.tip
+    tip.hidden = false
+    if ('popover' in tip && !tip.matches(':popover-open')) tip.showPopover()
+    const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, gap = 6, edge = 4
+    const above = r.top - gap - h >= edge
+    tip.dataset.side = above ? 'above' : 'below'
+    tip.style.top = `${above ? r.top - gap - h : r.bottom + gap}px`
+    tip.style.left = `${Math.max(edge, Math.min(r.left + r.width / 2 - w / 2, document.documentElement.clientWidth - w - edge))}px`
+  }
+  const target = (e: Event) => (e.target instanceof Element ? e.target.closest<HTMLElement>('[data-tip]') : null)
+  document.addEventListener('pointerover', e => { const t = target(e); if (t !== on) { if (t) show(t); else hide() } })
+  document.addEventListener('pointerout', e => { if (on && !on.contains(e.relatedTarget as Node | null)) hide() })
+  document.addEventListener('focusin', e => { const t = target(e); if (t?.matches(':focus-visible')) show(t) })
+  document.addEventListener('focusout', hide)
+  document.addEventListener('pointerdown', hide)
+  addEventListener('scroll', hide, true)
+  addEventListener('resize', hide)
 }
