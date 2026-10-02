@@ -24,8 +24,17 @@ import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
 import { BackgroundArt } from './Background'
+import { GamePicker } from './GamePicker'
+import { homeOf, storedGame } from './game'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+/** The route the app opens on: a bare #/ opens the remembered game's home (links inside the app keep #/ as Anarchy's). */
+function firstRoute() {
+  const r = parseHash()
+  if (r.length || storedGame() !== 'sr6') return r
+  history.replaceState(null, '', location.pathname + location.search + homeOf('sr6'))
+  return parseHash()
+}
 
 /** Core tables a runner can't be built without: while one is missing the app opens on its setup screen. */
 const ESSENTIAL = ['attributes', 'metatypes', 'levels', 'packages', 'pricing', 'skills']
@@ -127,7 +136,8 @@ function useFocusTitle(key: string) {
 }
 
 export default function App() {
-  const [route, setRoute] = useState(parseHash)
+  const [route, setRoute] = useState(firstRoute)
+  const [game, setGame] = useState(storedGame) // null: this browser hasn't picked a game yet
   const [repo, setRepo] = useState<Repo | null>(null)
   // server: the signed-in account (null: sign in) and whether no account exists yet; browser storage: no accounts at all
   const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean } | null>(null)
@@ -155,7 +165,8 @@ export default function App() {
 
   if (!repo || !me) return <main className="lib"><p className="muted">Loading…</p></main>
   if (route[0] === 'setup' && route[1] === 'reset') return <Recover />
-  if (repo.mode === 'server' && me.setup) return <Setup onDone={u => { location.hash = '#/'; setMe({ user: u, setup: false }) }} />
+  if (!route.length && !game) return <GamePicker onPick={setGame} />
+  if (repo.mode === 'server' && me.setup) return <Setup onDone={u => { location.hash = homeOf(storedGame() ?? 'ca2'); setMe({ user: u, setup: false }) }} />
   if (repo.mode === 'server' && !user) return <SignIn oidc={me.oidc} onSignedIn={u => setMe({ user: u, setup: false, oidc: me.oidc })} over={false}
     note={restored ? 'The server was restored from a backup. Sign in with the accounts in that backup.' : undefined} />
 

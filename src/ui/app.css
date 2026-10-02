@@ -465,6 +465,23 @@ table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-to
 .picker li.off:hover { background: inherit; color: inherit; }
 .picker li.off:hover .t, .picker li.off:hover .muted { color: var(--text-2); }
 
+/* ---- game picker (GamePicker.tsx): the first screen. Each game is an indigo slab like the book's sidebar, its name in the
+   brand's graffiti on the paint stroke; the yellow edge widens under the pointer and on keyboard focus. ---- */
+.gamepick { max-width: 56rem; }
+.gamepick .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; margin-top: 1.6rem; }
+.game { display: grid; align-content: end; gap: 0.9rem; min-height: 15rem; padding: 1.4rem 1.4rem 1.3rem 1.6rem; text-align: left; cursor: pointer;
+  background: var(--panel); color: var(--panel-text); border: 0; border-left: 6px solid var(--yellow); border-radius: var(--r-sm);
+  transition: border-left-width 0.12s ease-out; }
+.game:hover, .game:focus-visible { border-left-width: 14px; }
+:root[data-texture='accents'] .game, :root[data-texture='full'] .game { background: var(--dots), var(--panel); }
+.game .name { font-family: var(--display); font-size: clamp(1.5rem, 5vw, 2.2rem); line-height: 1.15; text-transform: uppercase; letter-spacing: 0.02em; }
+.game .name b { display: block; width: fit-content; margin: 0.1em 0 0 -0.25em; padding: 0.05em 0.45em 0.1em; font-family: var(--graffiti); font-weight: 400;
+  font-size: 1.15em; text-transform: none; letter-spacing: 0; color: var(--yellow); }
+:root[data-texture='accents'] .game .name b, :root[data-texture='full'] .game .name b { color: var(--ink); background: var(--stroke) center / 100% 100% no-repeat; }
+.game .what { font-family: var(--serif); font-size: 1.08rem; line-height: 1.4; color: var(--panel-muted); max-width: 34ch; }
+.game:hover .what, .game:focus-visible .what { color: var(--panel-text); }
+@media (max-width: 600px) { .game { min-height: 11rem; } }
+
 /* ---- accounts (auth.tsx, SignIn.tsx, Setup.tsx, Users.tsx) ---- */
 .gate { max-width: 30rem; }
 .gate form { margin-top: 1.2rem; }
