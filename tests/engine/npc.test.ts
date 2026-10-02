@@ -60,3 +60,9 @@ test('a critter with STR 9 and no metatype has no range error and no unknown-met
   const run = { ...ch, npc: undefined, identity: { ...ch.identity, metatype: 'human' } }
   expect(codes(run)).toContain('attr.range')
 })
+
+test('an NPC (not a critter or spirit) with no metatype gets a warning', () => {
+  const ch = blankNpc('npc', 'regular', '')
+  expect(validate(cat, ch).find(v => v.path === 'identity.metatype')).toMatchObject({ code: 'npc.noMetatype', severity: 'warning' })
+  expect(codes(blankNpc('npc', 'regular'))).not.toContain('npc.noMetatype')
+})

@@ -16,6 +16,7 @@ import { Face } from './Portrait'
 import { npcRepoFor, useRepo, type Stored, type Unreadable } from './repo'
 import { readCharacterFile } from './samples'
 import { SettingsButton } from './settings'
+import { loadTrash } from './Trash'
 
 const nameOf = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
 
@@ -37,10 +38,14 @@ export function NpcsScreen({ c }: { c: Catalog }) {
   const [target, setTarget] = useState('')
   const [toDelete, setToDelete] = useState<Character | null>(null)
   const [foundry, setFoundry] = useState(false)
+  const [trashed, setTrashed] = useState<number | null>(null) // server only
   const file = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
-    if (repo.mode === 'server') loadCampaigns().then(setCampaigns, () => setCampaigns([]))
+    if (repo.mode === 'server') {
+      loadCampaigns().then(setCampaigns, () => setCampaigns([]))
+      loadTrash(undefined, true).then(t => setTrashed(t.items.length), () => setTrashed(null))
+    }
     // an NPC just left in the editor may still be sending its last change: list it as saved
     return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored); setUnreadable(r.unreadable) },
       e => { setMsg(because('Couldn’t load your NPCs', (e as Error).message ?? String(e))); setList([]) })
@@ -75,7 +80,9 @@ export function NpcsScreen({ c }: { c: Catalog }) {
       const r = readCharacterFile(await f.text())
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
       if (!r.character.npc) { bad.push(`${f.name}: this is a runner, not an NPC (it has no NPC block). Import it on Your runners.`); continue }
-      const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, campaign: undefined }
+      // an NPC has no career: a finalized runner's ledger never comes along
+      const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, campaign: undefined, finalizedAt: undefined,
+        finalRemaining: undefined, carry: undefined, career: [], lastExportedAt: new Date().toISOString() }
       if (await store(ch)) { done.push(nameOf(ch)); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
@@ -92,7 +99,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
     void refresh()
   }
 
-  const row = ({ ch }: Stored, mineToo: boolean) => (
+  const row = ({ ch, rev }: Stored, mineToo: boolean) => (
     <div className="dossier" key={ch.id}>
       <Face ch={ch} />
       <div>
@@ -105,12 +112,13 @@ export function NpcsScreen({ c }: { c: Catalog }) {
       </div>
       <div className="row">
         {!mineToo && <a className="btn small" href={editHref(ch, 'print')} aria-label={`Print ${nameOf(ch)}`}>Print</a>}
-        <button className="btn small" onClick={() => exportCharacter(c, ch)}>Export</button>
-        <button className="btn small quiet" onClick={() => downloadRunners(c, [ch])}>Export for Foundry</button>
+        <button className="btn small" aria-label={`Export ${nameOf(ch)}`}
+          onClick={async () => { const out = exportCharacter(c, ch); if (mineToo) { await store(out, rev); void refresh() } }}>Export</button>
+        <button className="btn small quiet" aria-label={`Export ${nameOf(ch)} for Foundry`} onClick={() => downloadRunners(c, [ch])}>Export for Foundry</button>
         {mineToo && repo.mode === 'server' && (ch.campaign
-          ? <button className="btn small quiet" onClick={() => void share(ch, null)}>Unshare</button>
-          : gmOf.length > 0 && <button className="btn small quiet" onClick={() => { setTarget(gmOf[0].id); setSharing(ch) }}>Share with campaign…</button>)}
-        {mineToo && <button className="btn small quiet" onClick={() => setToDelete(ch)}>Delete</button>}
+          ? <button className="btn small quiet" aria-label={`Unshare ${nameOf(ch)}`} onClick={() => void share(ch, null)}>Unshare</button>
+          : gmOf.length > 0 && <button className="btn small quiet" aria-label={`Share ${nameOf(ch)}…`} onClick={() => { setTarget(gmOf[0].id); setSharing(ch) }}>Share with campaign…</button>)}
+        {mineToo && <button className="btn small quiet" aria-label={`Delete ${nameOf(ch)}`} onClick={() => setToDelete(ch)}>Delete</button>}
       </div>
     </div>
   )
@@ -130,11 +138,13 @@ export function NpcsScreen({ c }: { c: Catalog }) {
           <button className="btn" onClick={() => file.current?.click()}>Import file</button>
           <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
           <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
+          {trashed !== null && <a className="btn quiet" href="#/npcs/trash">Trash ({trashed})</a>}
           <a className="btn quiet" href="#/">Your runners</a>
           <AskButton /><SettingsButton /><AccountMenu />
         </div>
       </header>
-      <p className="muted">Your NPCs, critters and spirits, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.</p>
+      <p className="muted">Your NPCs, critters and spirits, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.
+        {repo.mode === 'browser' && ' Saved on this browser. Export files to keep them safe.'}</p>
       {msg && <p className="banner" role="status">{msg}</p>}
       {list !== null && list.length > 0 && <div className="row listtools">
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search NPCs" />

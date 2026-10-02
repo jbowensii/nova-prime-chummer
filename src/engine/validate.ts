@@ -23,7 +23,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   const level = c.levels.get(ch.level)
   const meta = c.metatypes.get(ch.identity.metatype)
   if (!level && !npc) add('ref.unknown', 'warning', 'level', `Unknown level of play "${ch.level}".`)
-  if (!meta && !(npc && (hasNoMetatype(ch) || !ch.identity.metatype))) add('ref.unknown', 'warning', 'identity.metatype', `Unknown metatype "${ch.identity.metatype}".`)
+  if (!meta && npc && !hasNoMetatype(ch) && !ch.identity.metatype) add('npc.noMetatype', 'warning', 'identity.metatype', 'An NPC (not a critter or spirit) needs a metatype.')
+  else if (!meta && !(npc && hasNoMetatype(ch))) add('ref.unknown', 'warning', 'identity.metatype', `Unknown metatype "${ch.identity.metatype}".`)
 
   // budget
   if (npc) { /* no budget */ } else if (creation) {

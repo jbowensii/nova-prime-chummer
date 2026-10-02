@@ -63,7 +63,7 @@ async function shots(page: Page, name: string) {
   await theme('light')
 }
 const NPC_FILE = `<?xml version="1.0" encoding="UTF-8"?>
-<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="npc-wisp-1" streetName="Made-up Wisp" metatype="" level="runner" package="free" updatedAt="2026-10-02T00:00:00.000Z">
+<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="npc-wisp-1" streetName="Made-up Wisp" metatype="" level="runner" package="free" finalizedAt="2026-10-01T00:00:00.000Z" updatedAt="2026-10-02T00:00:00.000Z">
   <npc kind="spirit" tier="regular" fightingSpirit="low"/>
   <build><attributes str="2" agi="5" wil="4" log="3" cha="3"/></build>
 </ca2:character>
@@ -127,6 +127,9 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
   await expect(msg).toContainText('Imported Made-up Wisp.')
   await expect(msg).toContainText('runner.xml: this is a runner, not an NPC')
   await expect(row(page, 'Made-up Wisp').locator('.npckind')).toHaveText('Spirit')
+  // an NPC has no career: the imported file's Finalize doesn't come along
+  const wisp = (await (await api(page, 'GET', 'npcs')).json()).find((r: { xml: string }) => r.xml.includes('Made-up Wisp'))
+  expect(wisp.xml).not.toContain('finalizedAt')
   await shots(page, 'npcs-list')
 
   await page.getByRole('button', { name: 'Export for Foundry…' }).click()
@@ -153,7 +156,7 @@ test('share with a campaign: its co-GM reads and prints it; unshare', async ({ p
 
   await signIn(page, 'eve')
   await page.goto('/#/npcs')
-  await row(page, 'Ganger Boss').getByRole('button', { name: 'Share with campaign…' }).click()
+  await row(page, 'Ganger Boss').getByRole('button', { name: 'Share Ganger Boss…' }).click()
   const d = page.getByRole('dialog', { name: 'Share Ganger Boss with a campaign' })
   await d.getByLabel('Campaign').selectOption({ label: 'Made-up Run' })
   await d.getByRole('button', { name: 'Share' }).click()
@@ -164,7 +167,7 @@ test('share with a campaign: its co-GM reads and prints it; unshare', async ({ p
   await page.goto('/#/npcs')
   const theirs = page.getByRole('region', { name: 'Eve Editor’s NPCs' })
   await expect(theirs.getByRole('link', { name: 'Ganger Boss', exact: true })).toBeVisible()
-  await expect(theirs.getByRole('button', { name: 'Delete' })).toHaveCount(0)
+  await expect(theirs.getByRole('button', { name: /^Delete/ })).toHaveCount(0)
   await expect(theirs.getByRole('link', { name: 'Print Ganger Boss' })).toBeVisible()
   await shots(page, 'npcs-shared')
   await theirs.getByRole('link', { name: 'Ganger Boss', exact: true }).click()
@@ -173,9 +176,25 @@ test('share with a campaign: its co-GM reads and prints it; unshare', async ({ p
 
   await signIn(page, 'eve')
   await page.goto('/#/npcs')
-  await row(page, 'Ganger Boss').getByRole('button', { name: 'Unshare' }).click()
+  await row(page, 'Ganger Boss').getByRole('button', { name: 'Unshare Ganger Boss' }).click()
   await expect(page.getByRole('status')).toHaveText('Ganger Boss is no longer shared with Made-up Run.')
   await expect(row(page, 'Ganger Boss').getByRole('link', { name: 'Made-up Run' })).toHaveCount(0)
+})
+
+test('delete an NPC: it waits in the NPC trash and is restored from there', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.goto('/#/npcs')
+  await page.getByRole('button', { name: 'Delete Made-up Wisp' }).click()
+  await page.getByRole('dialog', { name: 'Delete Made-up Wisp?' }).getByRole('button', { name: 'Delete NPC' }).click()
+  await expect(row(page, 'Made-up Wisp')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Trash (1)' }).click()
+  await expect(page.getByRole('heading', { name: 'NPC trash' })).toBeVisible()
+  await shots(page, 'npc-trash')
+  await page.getByRole('button', { name: 'Restore Made-up Wisp' }).click()
+  await expect(page.getByRole('status')).toHaveText('Restored Made-up Wisp to your NPCs.')
+  await page.getByRole('link', { name: 'NPCs & Critters' }).click()
+  await expect(row(page, 'Made-up Wisp').locator('.npckind')).toHaveText('Spirit')
+  await expect(page.getByRole('link', { name: 'Trash (0)' })).toBeVisible()
 })
 
 test('a player has no NPCs link, and #/npcs says only GMs can see NPCs', async ({ page }) => {

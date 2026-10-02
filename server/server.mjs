@@ -247,6 +247,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
     if (xml != null && kind.npc && !/<ca2:character\b[^>]*>\s*<npc[\s/>]/.test(xml))
       return send(res, 400, { error: 'an NPC file has an <npc> block' })
+    // and the other way: an NPC never lands in a runner folder, which players' paths list
+    if (xml != null && !kind.npc && /<ca2:character\b[^>]*>\s*<npc[\s/>]/.test(xml))
+      return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
     return lock(async () => {
       // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
       const me = auth.current(who.id)

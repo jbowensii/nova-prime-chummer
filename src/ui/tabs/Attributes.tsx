@@ -17,7 +17,7 @@ export function AttributesTab() {
       <h2>Attributes</h2>
       <p className="muted">
         {fmt(c.pricing.attrPoint)} a point; the point that reaches your metatype’s maximum costs {fmt(c.pricing.attrLastPoint)}.
-        {!career && level && <> {level.name} allows {level.attrAtMax} at maximum: <b className={atMax > level.attrAtMax ? 'err' : ''}>{atMax} of {level.attrAtMax} used</b>.</>}
+        {!career && !ch.npc && level && <> {level.name} allows {level.attrAtMax} at maximum: <b className={atMax > level.attrAtMax ? 'err' : ''}>{atMax} of {level.attrAtMax} used</b>.</>}
         {career && ' Since Finalize, each change is logged in the ledger: a raise is charged, a lowered point refunded.'}
       </p>
       <div className="scroll-x"><table className="data">

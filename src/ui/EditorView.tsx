@@ -94,7 +94,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       st.busy = false
       st.failed = !r.ok && !r.conflict
       if (r.ok) { st.rev = r.rev; st.saved = next; setStatus({ state: 'saved', at: new Date().toISOString() }) }
-      else if (r.conflict) { st.paused = true; setStatus({ state: 'conflict' }); setCopyName(`${next.identity.streetName || next.identity.name || 'runner'} copy`); setConflict(r.conflict) }
+      else if (r.conflict) { st.paused = true; setStatus({ state: 'conflict' }); setCopyName(`${next.identity.streetName || next.identity.name || (next.npc ? 'NPC' : 'runner')} copy`); setConflict(r.conflict) }
       else setStatus({ state: 'failed', error: session.held ? 'Signed out. Sign back in and it’s sent.' : r.error ?? 'Saving failed.' })
       const q = st.queued
       st.queued = undefined
@@ -135,7 +135,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       e.preventDefault()
       const to = a.getAttribute('href')!
       void saveNow().then(ok => {
-        if (ok || confirm('This runner’s latest changes aren’t saved. Leave anyway and lose them?')) location.hash = to
+        if (ok || confirm(`This ${sync.current.loaded?.npc ? 'NPC' : 'runner'}’s latest changes aren’t saved. Leave anyway and lose them?`)) location.hash = to
       })
     }
     addEventListener('beforeunload', warn)

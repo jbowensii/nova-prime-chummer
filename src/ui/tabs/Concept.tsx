@@ -32,7 +32,11 @@ export function ConceptTab() {
       <h2>Concept</h2>
       {npc && <fieldset className="npc-panel grid2" aria-label="NPC">
         <label>Kind
-          <select value={npc.kind} onChange={e => setNpc(n => { n.kind = e.target.value as Npc['kind'] })}>
+          <select value={npc.kind} onChange={e => update(d => { // an NPC (not a critter or spirit) has a metatype: human when it had none
+            if (!d.npc) return
+            d.npc.kind = e.target.value as Npc['kind']
+            if (d.npc.kind === 'npc' && !d.identity.metatype) d.identity.metatype = 'human'
+          })}>
             {Object.entries(NPC_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select></label>
         <label>Tier

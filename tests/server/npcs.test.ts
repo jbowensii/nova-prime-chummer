@@ -175,3 +175,13 @@ test('an account rename moves its NPC folder; a delete retires it to .npcs/.tras
   expect(await ids('ada')).toEqual(['eve/n1'])
 })
 
+
+test('PUT /api/characters refuses an NPC file: an NPC never lands in a runner folder players can list', async () => {
+  for (const who of ['eve', 'pat'] as Who[]) {
+    const r = await call(who, 'PUT', '/api/characters/sneaky-1', npc('sneaky-1', 'Sneaky'))
+    expect(r.status).toBe(400)
+    expect((await r.json()).error).toMatch(/NPC/)
+  }
+  expect(existsSync(join(chars, 'eve', 'Sneaky.xml'))).toBe(false)
+  expect(existsSync(join(chars, 'pat', 'Sneaky.xml'))).toBe(false)
+})

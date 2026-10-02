@@ -81,6 +81,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
           <p className="banner">Only GMs can see NPCs.</p></main>
         : page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'n' && id ? <RepoContext.Provider value={npcs}><EditorView key={`n/${id}`} c={catalog} id={id} tab={tab ?? 'concept'} /></RepoContext.Provider>
+        : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />
         : page === 'npcs' ? <NpcsScreen c={catalog} />
         : page === 'users' ? <UsersScreen />
         : page === 'campaigns' && id ? <CampaignScreen key={id} c={catalog} id={id} />
