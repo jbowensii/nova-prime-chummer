@@ -2,6 +2,13 @@
 // (characters/<username>/, deleted ones in its .trash/). No dependencies. Accounts, sessions and the role table:
 // server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/. A
 // request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
+// Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
+// .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
+// characters/sr6/ and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters, npcs, trash, npcs/trash and campaigns (every
+// other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
+// in its namespace); a campaign holds only its game's runners and NPCs. Accounts span both: a rename moves both games'
+// folders and memberships, a delete retires both. While an account called sr6 from before exists (its runners are in
+// characters/sr6/), every /api/sr6/ route answers 409 and nothing of the SR6 area is read or written.
 //
 //   GET    /api/health                   -> { ok, storage: "server" }
 //   GET    /api/characters               -> [{ file, rev, xml, owner, ownerName }] the caller's runners; the admin: everyone's;
@@ -44,6 +51,7 @@ import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi, unesc, writeAtomic } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
 import { compendiumsApi } from './compendiums.mjs'
+import { GAMES, scoped } from './games.mjs'
 import { oidcApi } from './oidc.mjs'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
@@ -51,9 +59,9 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const MAX_BODY = 5 * 1024 * 1024
 const ID = /^[A-Za-z0-9._-]{1,80}$/
 const TRASH_FILE = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,150}\.xml$/ // a file in .trash/: no separators, no leading dot
-const NS = /<ca2:character\b[^>]*xmlns:ca2="urn:chummer-anarchy2:character:1"/
+const CA2 = GAMES.ca2.tag
 
-const rootAttr = (xml, name) => xml.match(new RegExp(`<ca2:character\\b[^>]*\\s${name}="([^"]*)"`))?.[1]
+const rootAttr = (xml, name, tag = CA2) => xml.match(new RegExp(`<${tag}\\b[^>]*\\s${name}="([^"]*)"`))?.[1]
 const slug = s => (s || '').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'runner'
 const fail = (code, message) => Object.assign(new Error(message), { code })
 // on every response. The built app loads only its own scripts, styles and fonts; inline style attributes (React) and
@@ -64,18 +72,18 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY',
 }
 
-function setRev(xml, rev) {
-  return xml.replace(/<ca2:character\b[^>]*>/, tag =>
-    /\srev="[^"]*"/.test(tag) ? tag.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : tag.replace(/\sid="/, ` rev="${rev}" id="`))
+function setRev(xml, rev, tag = CA2) {
+  return xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t =>
+    /\srev="[^"]*"/.test(t) ? t.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : t.replace(/\sid="/, ` rev="${rev}" id="`))
 }
 
 /** A trashed runner restored next to one with its id: a new id, rev 1 and "(restored copy)" after its street name (or name). */
-export function restoredCopy(xml, id) {
-  return setRev(xml.replace(/<ca2:character\b[^>]*>/, tag => {
-    const street = tag.match(/\sstreetName="([^"]*)"/)?.[1] || tag.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
+export function restoredCopy(xml, id, tag = CA2) {
+  return setRev(xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
+    const street = t.match(/\sstreetName="([^"]*)"/)?.[1] || t.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
     // a copy is in no campaign
-    return tag.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(/^<ca2:character/, `$& id="${id}" streetName="${street} (restored copy)"`)
-  }), 1)
+    return t.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(new RegExp(`^<${tag}`), `$& id="${id}" streetName="${street} (restored copy)"`)
+  }), 1, tag)
 }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..') // where `python -m importer` runs
@@ -97,19 +105,6 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   // ponytail: one lock for every account's runners; per-folder locks if saves ever queue up
   let chain = Promise.resolve()
   const lock = fn => { const run = chain.then(fn); chain = run.catch(() => {}); return run }
-  const folder = username => join(charDir, username) // auth.mjs's USERNAME: no separators, never starts with a dot
-  // NPCs: characters/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
-  const npcRoot = join(charDir, '.npcs'), npcFolder = username => join(npcRoot, username)
-
-  async function index(dir) {
-    const out = []
-    for (const file of (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))) {
-      const xml = await readFile(join(dir, file), 'utf8')
-      out.push({ file, id: rootAttr(xml, 'id'), rev: Number(rootAttr(xml, 'rev') ?? 0), xml })
-    }
-    return out
-  }
-
   async function freeName(dir, base) {
     const taken = new Set((await readdir(dir).catch(() => [])).map(f => f.toLowerCase()))
     for (let i = 1; ; i++) {
@@ -125,29 +120,40 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (files.length) await mkdir(to, { recursive: true })
     for (const f of files) await rename(join(from, f.name), join(to, await freeName(to, prefix + base(f.name))))
   }
-  /** Runner folders for auth.mjs, which calls these under `lock`. */
+  // the games whose folders account changes touch: while an account called sr6 from before SR6 exists, its runner folder is
+  // characters/sr6/, so nothing of the SR6 area is read or written (its routes answer 409)
+  const legacy = () => auth.usernames().includes(GAMES.sr6.sub)
+  const live = () => legacy() ? [games.ca2] : [games.ca2, games.sr6]
+  /** Runner folders for auth.mjs, which calls these under `lock`. Both games' (adopt and move: Anarchy's). */
   const runners = {
-    count: async u => (await readdir(folder(u)).catch(() => [])).filter(f => f.endsWith('.xml')).length,
+    async count(u) {
+      let n = 0
+      for (const g of live()) n += (await readdir(g.folder(u)).catch(() => [])).filter(f => f.endsWith('.xml')).length
+      return n
+    },
     /** A new account's folders must not exist yet: runners, NPCs or compendiums left there would silently become the new
      *  account's. */
     async free(u) {
       for (const [f, label] of stores()) if (await exists(f(u))) throw fail(409, `${label}${u} already exists; move it away first`)
     },
     async rename(from, to) {
-      const moves = [] // runners, then NPCs, then compendiums
+      const moves = [] // runners, then NPCs, then compendiums; Anarchy's, then SR6's
       for (const m of stores()) if (await exists(m[0](from))) moves.push(m)
       for (const [f, label] of moves) if (await exists(f(to))) throw fail(409, `${label}${to} already exists; move it away first`)
-      const done = []
+      const done = [], renamed = []
       try {
         for (const [f] of moves) { await rename(f(from), f(to)); done.push(f) }
-        await campaigns.rename(from, to)
+        for (const g of live()) { await g.campaigns.rename(from, to); renamed.push(g) }
       } catch (e) {
-        for (const f of done.reverse()) await rename(f(to), f(from)) // users.xml keeps the old name: so do the folders
+        // users.xml keeps the old name: so do the campaigns and the folders
+        for (const g of renamed.reverse()) await g.campaigns.rename(to, from).catch(e2 => console.error(`campaigns keep ${to} for ${from}: ${e2.message}`))
+        for (const f of done.reverse()) await rename(f(to), f(from))
         throw e
       }
     },
     /** The upgrade: runners at the top of characters/ (and its .trash/) from before accounts go to the first admin. */
     async adopt(u) {
+      const folder = games.ca2.folder
       const top = (await readdir(charDir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && d.name.endsWith('.xml'))
       if (top.length) await mkdir(folder(u), { recursive: true })
       for (const f of top) await rename(join(charDir, f.name), join(folder(u), await freeName(folder(u), base(f.name))))
@@ -155,37 +161,210 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await rmdir(join(charDir, '.trash')).catch(() => {})
     },
     async move(from, file, to) {
+      const folder = games.ca2.folder
       if (!await exists(join(folder(from), file))) throw fail(404, 'no such runner')
       await mkdir(folder(to), { recursive: true })
       const name = await freeName(folder(to), base(file))
       await rename(join(folder(from), file), join(folder(to), name))
       return name
     },
-    /** A deleted account (no runners left): its trash goes to characters/.trash/, named after it; its NPCs, its compendiums
-     *  and their trash to characters/.npcs/.trash/ and characters/.compendiums/.trash/, the same way; then its folders go. */
+    /** A deleted account (no runners left): each game's part (gameStore retire), then its compendiums and their trash go to
+     *  characters/.compendiums/.trash/, named after it. */
     async retire(u) {
-      await campaigns.drop(u)
-      await moveAll(join(folder(u), '.trash'), join(charDir, '.trash'), `${u}-`)
-      await rmdir(join(folder(u), '.trash')).catch(() => {})
-      await rmdir(folder(u)).catch(() => {})
-      for (const [f, r] of [[npcFolder, npcRoot], [compendiums.folder, compendiums.root]]) for (const d of [join(f(u), '.trash'), f(u)]) {
-        await moveAll(d, join(r, '.trash'), `${u}-`)
+      for (const g of live()) await g.campaigns.drop(u, true) // refused before anything moves
+      for (const g of live()) await g.retire(u)
+      for (const d of [join(compendiums.folder(u), '.trash'), compendiums.folder(u)]) {
+        await moveAll(d, join(compendiums.root, '.trash'), `${u}-`)
         await rmdir(d).catch(() => {})
       }
     },
   }
+
+  /** One game's runner and NPC stores, campaigns and trash (server/games.mjs): Anarchy's in characters/ and custom/ as
+   *  always, SR6's the same shape in characters/sr6/ and custom/sr6/. A body must have the game's root, first in the file,
+   *  in its namespace. Its routes are the unprefixed ones (api() strips /api/sr6). */
+  function gameStore(g) {
+    const tag = g.tag, home = g.sub ? join(charDir, g.sub) : charDir, label = g.sub ? `characters/${g.sub}/` : 'characters/'
+    const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--[\\s\\S]*?-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
+    const ROOT = new RegExp(`<${tag}\\b[^>]*>`), WELL = new RegExp(`^<${tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>$`)
+    const NPC = new RegExp(`<${tag}\\b[^>]*>\\s*<npc[\\s/>]`)
+    const attrOf = (xml, name) => rootAttr(xml, name, tag)
+    const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
+    // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
+    const npcRoot = join(home, '.npcs'), npcFolder = username => join(npcRoot, username)
+
+    async function index(dir) {
+      const out = []
+      for (const file of (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))) {
+        const xml = await readFile(join(dir, file), 'utf8')
+        out.push({ file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml })
+      }
+      return out
+    }
+
+    const campaigns = campaignsApi({ customDir: g.sub ? join(customDir, g.sub) : customDir, tag, lock, auth, runnersOf: u => index(folder(u)),
+      writeRunner: (u, file, xml) => writeAtomic(join(folder(u), file), xml),
+      npcsOf: u => index(npcFolder(u)), writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml) })
+    // the two stores the character and trash routes serve; NPCs: admin and editors only (need() gates /api/npcs, and a
+    // request that waited for the lock checks the role again)
+    const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }
+    const NPCS = { folder: npcFolder, noun: 'NPC', npc: true, holds: (u, c) => campaigns.leads(u, c), readable: me => campaigns.readableNpcs(me) }
+    const refused = (kind, me) => kind.npc && !['admin', 'editor'].includes(me.role)
+
+    /** The character, NPC and trash routes (see the top of this file). */
+    async function handle(req, res, url, who) {
+      const t = url.pathname.match(/^\/api\/(npcs\/)?trash(\/|$)/)
+      if (t) return trash(req, res, url, who, t[1] ? NPCS : RUNNERS)
+      const kind = /^\/api\/npcs(\/|$)/.test(url.pathname) ? NPCS : RUNNERS
+      if (url.pathname === (kind.npc ? '/api/npcs' : '/api/characters') && req.method === 'GET') {
+        const owners = [who.username, ...(who.role === 'admin' ? auth.usernames().filter(u => u !== who.username) : [])]
+        const out = []
+        for (const owner of owners) for (const { file, rev, xml } of await index(kind.folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
+        if (who.role === 'editor') for (const { file, rev, xml, owner } of await kind.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
+        return send(res, 200, out)
+      }
+      const m = url.pathname.match(kind.npc ? /^\/api\/npcs\/([^/]+)$/ : /^\/api\/characters\/([^/]+)$/)
+      if (!m) return send(res, 404, { error: 'not found' })
+      const id = decodeURIComponent(m[1])
+      if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
+      if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
+      const xml = req.method === 'PUT' ? await readBody(req) : null
+      if (xml != null && (!NS.test(xml) || attrOf(xml, 'id') !== id))
+        return send(res, 400, { error: 'body is not a character file for this id' })
+      // the root's attributes as the app writes them (double-quoted, < and > escaped): the server edits that tag (rev, campaign)
+      if (xml != null && !WELL.test(xml.match(ROOT)[0]))
+        return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
+      if (xml != null && kind.npc && !NPC.test(xml))
+        return send(res, 400, { error: 'an NPC file has an <npc> block' })
+      // and the other way: an NPC never lands in a runner folder, which players' paths list
+      if (xml != null && !kind.npc && NPC.test(xml))
+        return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
+      return lock(async () => {
+        // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
+        const me = auth.current(who.id)
+        if (!me) return send(res, 401, { error: 'sign in first' })
+        if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
+        const dir = kind.folder(me.username)
+        const existing = (await index(dir)).find(c => c.id === id)
+        if (!existing) for (const u of auth.usernames())
+          if (u !== me.username && (await index(kind.folder(u))).some(c => c.id === id))
+            return send(res, 403, { error: `this ${kind.noun} belongs to another account; only its owner can change it` })
+        if (req.method === 'DELETE') {
+          if (!existing) return send(res, 404, { error: `no such ${kind.noun}` })
+          await mkdir(join(dir, '.trash'), { recursive: true })
+          const to = join(dir, '.trash', `${base(existing.file)}-${Date.now()}.xml`)
+          if (campaignOf(existing.xml, tag)) { // a trashed runner leaves its campaign
+            await writeAtomic(to, setCampaign(existing.xml, null, tag))
+            await unlink(join(dir, existing.file))
+          } else await rename(join(dir, existing.file), to)
+          res.writeHead(204).end()
+          return
+        }
+        const ifMatch = req.headers['if-match']
+        if (existing && url.searchParams.get('force') !== '1' && String(existing.rev) !== String(ifMatch ?? ''))
+          return send(res, 409, { error: 'conflict', rev: existing.rev, file: existing.file, updatedAt: attrOf(existing.xml, 'updatedAt') })
+        const rev = (existing?.rev ?? 0) + 1
+        await mkdir(dir, { recursive: true })
+        const file = existing?.file ?? await freeName(dir, slug(url.searchParams.get('filename') || attrOf(xml, 'streetName') || attrOf(xml, 'name')))
+        // the campaign is the stored runner's (set by /api/campaigns), never the body's
+        await writeAtomic(join(dir, file), setRev(setCampaign(xml, existing && campaignOf(existing.xml, tag), tag), rev, tag))
+        return send(res, existing ? 200 : 201, { rev, file })
+      })
+    }
+
+    /** The Trash page's routes (see the top of this file), for runners or NPCs (`kind`). Players and editors: their own trash
+     *  only; the admin: ?user=. */
+    async function trash(req, res, url, who, kind) {
+      const m = url.pathname.match(/^\/api\/(?:npcs\/)?trash(?:\/([^/]+)(\/restore)?)?$/)
+      if (!m) return send(res, 404, { error: 'not found' })
+      let file = null
+      if (m[1] != null) {
+        try { file = decodeURIComponent(m[1]) } catch { file = '' }
+        if (!TRASH_FILE.test(file) || file.includes('..')) return send(res, 400, { error: 'bad file name' })
+      }
+      const want = !file ? ['GET', 'DELETE'] : m[2] ? ['POST'] : ['DELETE']
+      if (!want.includes(req.method)) return send(res, 405, { error: 'method not allowed' })
+      const whose = me => {
+        const u = url.searchParams.get('user') ?? me.username
+        if (u !== me.username && me.role !== 'admin') throw fail(403, 'only the admin can open another account’s trash')
+        if (!auth.usernames().includes(u)) throw fail(404, 'no such account')
+        return u
+      }
+      /** The runner files in a trash folder: regular files with a trash name (no links, no folders called *.xml). */
+      const files = async dir => (await readdir(dir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && TRASH_FILE.test(d.name)).map(d => d.name)
+      if (req.method === 'GET') {
+        const user = whose(who), dir = join(kind.folder(user), '.trash'), items = []
+        for (const f of await files(dir)) {
+          const [xml, s] = await Promise.all([readFile(join(dir, f), 'utf8'), stat(join(dir, f))]).catch(() => [])
+          if (!xml) continue
+          const at = Number(f.match(/-(\d{13})\.xml$/)?.[1] ?? s.mtimeMs)
+          items.push({ file: f, id: attrOf(xml, 'id') ?? '', name: unesc(attrOf(xml, 'streetName') || attrOf(xml, 'name') || '') || base(f),
+            deletedAt: new Date(at).toISOString() })
+        }
+        return send(res, 200, { user, name: auth.nameOf(user), items: items.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)) })
+      }
+      return lock(async () => {
+        const me = auth.current(who.id) // as it is now (renamed, disabled or deleted while this waited)
+        if (!me) return send(res, 401, { error: 'sign in first' })
+        if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
+        const user = whose(me), home = kind.folder(user), dir = join(home, '.trash')
+        if (!file) {
+          // { files: [...] }: only those (what the page showed), each checked; no body: all of them
+          const body = await readBody(req)
+          let only = null
+          if (body.trim()) {
+            try { only = JSON.parse(body).files } catch { /* checked below */ }
+            if (!Array.isArray(only) || only.length > 10000 || !only.every(f => typeof f === 'string')) return send(res, 400, { error: 'body is { files: [file names] }' })
+          }
+          let deleted = 0
+          for (const f of await files(dir)) if (!only || only.includes(f)) { await unlink(join(dir, f)); deleted++ }
+          return send(res, 200, { deleted })
+        }
+        const path = join(dir, file)
+        if (!inside(path, dir) || !(await lstat(path).catch(() => null))?.isFile()) return send(res, 404, { error: `no such ${kind.noun} in the trash` })
+        if (req.method === 'DELETE') { await unlink(path); res.writeHead(204).end(); return }
+        const xml = await readFile(path, 'utf8')
+        // the other game's file (or anything else) never comes back here
+        if (!NS.test(xml)) return send(res, 400, { error: `this file isn’t a${kind.npc ? 'n' : ''} ${kind.noun}, so it can’t be restored` })
+        let id = attrOf(xml, 'id') ?? ''
+        let taken = !ID.test(id)
+        for (const u of auth.usernames()) if (!taken && (await index(kind.folder(u))).some(c => c.id === id)) taken = true
+        await mkdir(home, { recursive: true })
+        const name = await freeName(home, base(file).replace(/-\d{13}$/, '') || 'runner')
+        if (taken) {
+          id = randomUUID()
+          const tmp = join(home, `.${name}.tmp`)
+          await writeFile(tmp, restoredCopy(xml, id, tag), 'utf8')
+          await rename(tmp, join(home, name))
+          await unlink(path) // a crash before this leaves it in the trash too: nothing is lost
+        } else if (campaignOf(xml, tag) && !await kind.holds(user, campaignOf(xml, tag))) { // its campaign is gone, or the owner left it
+          await writeAtomic(join(home, name), setCampaign(xml, null, tag))
+          await unlink(path)
+        } else await rename(path, join(home, name))
+        const after = await readFile(join(home, name), 'utf8')
+        return send(res, 200, { file: name, id, name: unesc(attrOf(after, 'streetName') || attrOf(after, 'name') || ''), copy: taken })
+      })
+    }
+
+    /** A deleted account (no runners left), after its campaign roles are dropped: its trash goes to <home>/.trash/, its
+     *  NPCs and their trash to <home>/.npcs/.trash/, named after it; then its folders go. */
+    async function retire(u) {
+      await campaigns.drop(u)
+      for (const [d, to] of [[join(folder(u), '.trash'), join(home, '.trash')], [folder(u), null],
+        [join(npcFolder(u), '.trash'), join(npcRoot, '.trash')], [npcFolder(u), join(npcRoot, '.trash')]]) {
+        if (to) await moveAll(d, to, `${u}-`)
+        await rmdir(d).catch(() => {})
+      }
+    }
+
+    return { handle, campaigns, retire, folder, stores: [[folder, label], [npcFolder, `${label}.npcs/`]] }
+  }
+
   let oidc = null
   auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
-  const campaigns = campaignsApi({ customDir, lock, auth, runnersOf: u => index(folder(u)),
-    writeRunner: (u, file, xml) => writeAtomic(join(folder(u), file), xml),
-    npcsOf: u => index(npcFolder(u)), writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml) })
-  // the two stores the character and trash routes serve; NPCs: admin and editors only (need() gates /api/npcs, and a
-  // request that waited for the lock checks the role again)
-  const compendiums = compendiumsApi({ charDir, customDir, staticDir, lock, auth, campaigns })
-  const stores = () => [[folder, 'characters/'], [npcFolder, 'characters/.npcs/'], [compendiums.folder, 'characters/.compendiums/']]
-  const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }
-  const NPCS = { folder: npcFolder, noun: 'NPC', npc: true, holds: (u, c) => campaigns.leads(u, c), readable: me => campaigns.readableNpcs(me) }
-  const refused = (kind, me) => kind.npc && !['admin', 'editor'].includes(me.role)
+  const games = { ca2: gameStore(GAMES.ca2), sr6: gameStore(GAMES.sr6) }
+  const compendiums = compendiumsApi({ charDir, customDir, staticDir, lock, auth, campaigns: games.ca2.campaigns }) // Anarchy's only (S4: SR6's)
+  const stores = () => [...games.ca2.stores, [compendiums.folder, 'characters/.compendiums/'], ...legacy() ? [] : games.sr6.stores]
   const backgrounds = backgroundsApi({ libraryDir, auth })
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
@@ -224,142 +403,22 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
 
   async function api(req, res, url, who) {
     if (url.pathname === '/api/health') return send(res, 200, { ok: true, storage: 'server' })
+    const s = scoped(url.pathname)
+    if (s.game === 'sr6') { // the SR6 area: its game stores only, as the same routes without the prefix
+      if (legacy()) return send(res, 409, { error: 'rename the account sr6 first' })
+      const u = new URL(url)
+      u.pathname = s.path
+      if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
+      if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
+      return send(res, 404, { error: 'not found' })
+    }
     if (await oidc.handle(req, res, url, send, who) !== false) return
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
-    if (await campaigns.handle(req, res, url, send, who) !== false) return
+    if (await games.ca2.campaigns.handle(req, res, url, send, who) !== false) return
     if (await compendiums.handle(req, res, url, send, who) !== false) return
     if (await backgrounds.handle(req, res, url, send, who) !== false) return
-    const t = url.pathname.match(/^\/api\/(npcs\/)?trash(\/|$)/)
-    if (t) return trash(req, res, url, who, t[1] ? NPCS : RUNNERS)
-    const kind = /^\/api\/npcs(\/|$)/.test(url.pathname) ? NPCS : RUNNERS
-    if (url.pathname === (kind.npc ? '/api/npcs' : '/api/characters') && req.method === 'GET') {
-      const owners = [who.username, ...(who.role === 'admin' ? auth.usernames().filter(u => u !== who.username) : [])]
-      const out = []
-      for (const owner of owners) for (const { file, rev, xml } of await index(kind.folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
-      if (who.role === 'editor') for (const { file, rev, xml, owner } of await kind.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
-      return send(res, 200, out)
-    }
-    const m = url.pathname.match(kind.npc ? /^\/api\/npcs\/([^/]+)$/ : /^\/api\/characters\/([^/]+)$/)
-    if (!m) return send(res, 404, { error: 'not found' })
-    const id = decodeURIComponent(m[1])
-    if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
-    if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
-    const xml = req.method === 'PUT' ? await readBody(req) : null
-    if (xml != null && (!NS.test(xml) || rootAttr(xml, 'id') !== id))
-      return send(res, 400, { error: 'body is not a character file for this id' })
-    // the root's attributes as the app writes them (double-quoted, < and > escaped): the server edits that tag (rev, campaign)
-    if (xml != null && !/^<ca2:character(?:\s+[\w:.-]+="[^"<>]*")*\s*>$/.test(xml.match(/<ca2:character\b[^>]*>/)[0]))
-      return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
-    if (xml != null && kind.npc && !/<ca2:character\b[^>]*>\s*<npc[\s/>]/.test(xml))
-      return send(res, 400, { error: 'an NPC file has an <npc> block' })
-    // and the other way: an NPC never lands in a runner folder, which players' paths list
-    if (xml != null && !kind.npc && /<ca2:character\b[^>]*>\s*<npc[\s/>]/.test(xml))
-      return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
-    return lock(async () => {
-      // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
-      const me = auth.current(who.id)
-      if (!me) return send(res, 401, { error: 'sign in first' })
-      if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
-      const dir = kind.folder(me.username)
-      const existing = (await index(dir)).find(c => c.id === id)
-      if (!existing) for (const u of auth.usernames())
-        if (u !== me.username && (await index(kind.folder(u))).some(c => c.id === id))
-          return send(res, 403, { error: `this ${kind.noun} belongs to another account; only its owner can change it` })
-      if (req.method === 'DELETE') {
-        if (!existing) return send(res, 404, { error: `no such ${kind.noun}` })
-        await mkdir(join(dir, '.trash'), { recursive: true })
-        const to = join(dir, '.trash', `${base(existing.file)}-${Date.now()}.xml`)
-        if (campaignOf(existing.xml)) { // a trashed runner leaves its campaign
-          await writeAtomic(to, setCampaign(existing.xml, null))
-          await unlink(join(dir, existing.file))
-        } else await rename(join(dir, existing.file), to)
-        res.writeHead(204).end()
-        return
-      }
-      const ifMatch = req.headers['if-match']
-      if (existing && url.searchParams.get('force') !== '1' && String(existing.rev) !== String(ifMatch ?? ''))
-        return send(res, 409, { error: 'conflict', rev: existing.rev, file: existing.file, updatedAt: rootAttr(existing.xml, 'updatedAt') })
-      const rev = (existing?.rev ?? 0) + 1
-      await mkdir(dir, { recursive: true })
-      const file = existing?.file ?? await freeName(dir, slug(url.searchParams.get('filename') || rootAttr(xml, 'streetName') || rootAttr(xml, 'name')))
-      // the campaign is the stored runner's (set by /api/campaigns), never the body's
-      await writeAtomic(join(dir, file), setRev(setCampaign(xml, existing && campaignOf(existing.xml)), rev))
-      return send(res, existing ? 200 : 201, { rev, file })
-    })
-  }
-
-  /** The Trash page's routes (see the top of this file), for runners or NPCs (`kind`). Players and editors: their own trash
-   *  only; the admin: ?user=. */
-  async function trash(req, res, url, who, kind) {
-    const m = url.pathname.match(/^\/api\/(?:npcs\/)?trash(?:\/([^/]+)(\/restore)?)?$/)
-    if (!m) return send(res, 404, { error: 'not found' })
-    let file = null
-    if (m[1] != null) {
-      try { file = decodeURIComponent(m[1]) } catch { file = '' }
-      if (!TRASH_FILE.test(file) || file.includes('..')) return send(res, 400, { error: 'bad file name' })
-    }
-    const want = !file ? ['GET', 'DELETE'] : m[2] ? ['POST'] : ['DELETE']
-    if (!want.includes(req.method)) return send(res, 405, { error: 'method not allowed' })
-    const whose = me => {
-      const u = url.searchParams.get('user') ?? me.username
-      if (u !== me.username && me.role !== 'admin') throw fail(403, 'only the admin can open another account’s trash')
-      if (!auth.usernames().includes(u)) throw fail(404, 'no such account')
-      return u
-    }
-    /** The runner files in a trash folder: regular files with a trash name (no links, no folders called *.xml). */
-    const files = async dir => (await readdir(dir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && TRASH_FILE.test(d.name)).map(d => d.name)
-    if (req.method === 'GET') {
-      const user = whose(who), dir = join(kind.folder(user), '.trash'), items = []
-      for (const f of await files(dir)) {
-        const [xml, s] = await Promise.all([readFile(join(dir, f), 'utf8'), stat(join(dir, f))]).catch(() => [])
-        if (!xml) continue
-        const at = Number(f.match(/-(\d{13})\.xml$/)?.[1] ?? s.mtimeMs)
-        items.push({ file: f, id: rootAttr(xml, 'id') ?? '', name: unesc(rootAttr(xml, 'streetName') || rootAttr(xml, 'name') || '') || base(f),
-          deletedAt: new Date(at).toISOString() })
-      }
-      return send(res, 200, { user, name: auth.nameOf(user), items: items.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)) })
-    }
-    return lock(async () => {
-      const me = auth.current(who.id) // as it is now (renamed, disabled or deleted while this waited)
-      if (!me) return send(res, 401, { error: 'sign in first' })
-      if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
-      const user = whose(me), home = kind.folder(user), dir = join(home, '.trash')
-      if (!file) {
-        // { files: [...] }: only those (what the page showed), each checked; no body: all of them
-        const body = await readBody(req)
-        let only = null
-        if (body.trim()) {
-          try { only = JSON.parse(body).files } catch { /* checked below */ }
-          if (!Array.isArray(only) || only.length > 10000 || !only.every(f => typeof f === 'string')) return send(res, 400, { error: 'body is { files: [file names] }' })
-        }
-        let deleted = 0
-        for (const f of await files(dir)) if (!only || only.includes(f)) { await unlink(join(dir, f)); deleted++ }
-        return send(res, 200, { deleted })
-      }
-      const path = join(dir, file)
-      if (!inside(path, dir) || !(await lstat(path).catch(() => null))?.isFile()) return send(res, 404, { error: `no such ${kind.noun} in the trash` })
-      if (req.method === 'DELETE') { await unlink(path); res.writeHead(204).end(); return }
-      const xml = await readFile(path, 'utf8')
-      if (!NS.test(xml)) return send(res, 400, { error: `this file isn’t a${kind.npc ? 'n' : ''} ${kind.noun}, so it can’t be restored` })
-      let id = rootAttr(xml, 'id') ?? ''
-      let taken = !ID.test(id)
-      for (const u of auth.usernames()) if (!taken && (await index(kind.folder(u))).some(c => c.id === id)) taken = true
-      await mkdir(home, { recursive: true })
-      const name = await freeName(home, base(file).replace(/-\d{13}$/, '') || 'runner')
-      if (taken) {
-        id = randomUUID()
-        const tmp = join(home, `.${name}.tmp`)
-        await writeFile(tmp, restoredCopy(xml, id), 'utf8')
-        await rename(tmp, join(home, name))
-        await unlink(path) // a crash before this leaves it in the trash too: nothing is lost
-      } else if (campaignOf(xml) && !await kind.holds(user, campaignOf(xml))) { // its campaign is gone, or the owner left it
-        await writeAtomic(join(home, name), setCampaign(xml, null))
-        await unlink(path)
-      } else await rename(path, join(home, name))
-      const after = await readFile(join(home, name), 'utf8')
-      return send(res, 200, { file: name, id, name: unesc(rootAttr(after, 'streetName') || rootAttr(after, 'name') || ''), copy: taken })
-    })
+    return games.ca2.handle(req, res, url, who)
   }
 
   const server = httpServer(async (req, res) => {
