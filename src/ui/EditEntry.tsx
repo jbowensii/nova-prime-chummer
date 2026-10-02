@@ -4,7 +4,7 @@
 // the book's own text, unchanged) means "use the book's text".
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ampCtx, ampFromTemplate, ampRating, blankCharacter } from '../engine'
+import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule } from '../model/types'
 import { because, canEdit, useMe } from './auth'
 import { Modal } from './bits'
@@ -27,28 +27,8 @@ const NOUN: Record<EditKind, string> = { amps: 'amp', items: 'item', rules: 'rul
 
 // eslint-disable-next-line no-control-regex
 const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const attrs = (o: Record<string, string | number | boolean | undefined>) =>
-  Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
 const nameOf = (e: Entry) => 'title' in e ? e.title : e.name
 const textOf = (e: Entry) => 'narrative' in e ? e.narrative : e.text
-
-/** One entry in the data format, its text left empty: descriptions travel in <description>. */
-export function entryXml(kind: EditKind, e: Entry): string {
-  const ref = { source: e.source, page: e.page }
-  if (kind === 'amps') {
-    const a = e as AmpTemplate
-    return `<amp${attrs({ id: a.id, type: a.type, printedRating: a.printedRating, vehicle: a.vehicle, mod: a.mod, ...ref })}><name>${esc(a.name)}</name>` +
-      (a.item ? `<item${attrs({ ...a.item })}/>` : '') + a.effects.map(f => `<effect${attrs({ ref: f.ref, param: f.param, value: f.value, note: f.note })}/>`).join('') +
-      '<narrative></narrative></amp>'
-  }
-  if (kind === 'items') {
-    const i = e as Item
-    return `<item${attrs({ id: i.id, kind: i.kind, specialist: i.specialist, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, ...ref })}>` +
-      `<name>${esc(i.name)}</name><text></text></item>`
-  }
-  const r = e as Rule
-  return `<rule${attrs({ id: r.id, sheet: r.sheet, section: r.section, effects: r.effects.join(' '), ...ref })}><title>${esc(r.title)}</title><text></text></rule>`
-}
 
 /** How an entry stands in the edits layer. An edit whose book is gone has no original and no house-rule source. */
 export function editState(c: Catalog, kind: EditKind, e: Entry): 'book' | 'changed' | 'added' | 'orphan' {

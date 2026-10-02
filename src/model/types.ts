@@ -141,6 +141,11 @@ export interface Character { formatVersion: 1; id: string;
    *  counts in what's left to spend and the next Finalize uses it up */
   carry?: number;
   career: CareerEvent[]; overrides: Override[]; lastExportedAt?: string; updatedAt: string }
+/** A GM's own collection of entries (docs/data-format.md "Compendiums"): every entry cites `source`, its NPCs carry `npc`.
+ *  owner/ownerName come from the server (the folder it's stored in), never the file. */
+export interface Compendium { id: string; name: string; source: string; sharing: 'private' | 'campaign' | 'table'; campaign?: string;
+  rev?: number; updatedAt: string; owner?: string; ownerName?: string
+  amps: AmpTemplate[]; items: Item[]; vehicles: VehicleBase[]; npcs: Character[] }
 export type Severity = 'error' | 'warning';
 export interface Violation { code: string; severity: Severity; path: string;
   message: string; source?: string; page?: number; approved?: boolean }

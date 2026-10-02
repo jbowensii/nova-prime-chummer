@@ -17,15 +17,4 @@
       <xs:attributeGroup ref="ca2:root"/>
     </xs:complexType>
   </xs:element>
-  <xs:complexType name="Vehicle">
-    <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
-    <xs:attributeGroup ref="ca2:ref"/>
-    <xs:attribute name="pilot" type="xs:nonNegativeInteger" use="required"/>
-    <xs:attribute name="body" type="xs:nonNegativeInteger" use="required"/>
-    <xs:attribute name="handling" type="xs:nonNegativeInteger" use="required"/>
-    <xs:attribute name="speed" type="xs:nonNegativeInteger" use="required"/>
-    <xs:attribute name="flyingSpeed" type="xs:nonNegativeInteger"/>
-    <xs:attribute name="armor" type="xs:nonNegativeInteger" use="required"/>
-    <xs:attribute name="mount" type="xs:string" use="required"/>
-  </xs:complexType>
 </xs:schema>

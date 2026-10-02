@@ -485,6 +485,39 @@ edits win over the book. The loader marks an edits-layer entry `edited: true`
 and keeps the entry it replaced (`original`) so the app can show "Edited"
 and offer "Restore book version".
 
+## Compendiums (`characters/.compendiums/<owner>/`)
+
+A GM's own collection of entries, one file per compendium, kept by the
+server (behind `/api/compendiums`, never under the public `/custom/` path):
+
+```xml
+<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="compendium" version="1"
+  id="0123456789ab" name="Street Gear" source="STREET" sharing="campaign" campaign="abcdef012345"
+  rev="3" updatedAt="2026-10-02T00:00:00.000Z">
+  <amp id="street.zap-glove" type="cyberware" source="STREET" page="1"><name>Zap Glove</name><effect ref="init-1"/><narrative>The GM's own words.</narrative></amp>
+  <item id="street.pipe" kind="weapon" dv="STR+1" ranges="OK/-/-/-" source="STREET" page="1"><name>Lead Pipe</name><text>…</text></item>
+  <vehicle id="street.scooter" pilot="1" body="4" handling="3" speed="2" armor="0" mount="none" source="STREET" page="1"><name>Scooter</name></vehicle>
+  <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="…" …><npc kind="critter" tier="regular"/>…</ca2:character>
+</ca2:data>
+```
+
+- The root names the compendium: `id` (12 hex), `name`, its own `source`
+  id (`[A-Z][A-Z0-9-]{0,19}`, chosen when it's made, fixed afterwards, and
+  unique among every compendium and every sources file), `sharing`
+  (`private`, `campaign`: the GMs of `campaign`, or `table`), and the
+  server's `rev` and `updatedAt`. The owner is the folder, never the file.
+- Children, in any order: `<amp>`, `<item>` (any item kind) and `<vehicle>`
+  entries in the data format, every one citing the compendium's `source`,
+  with the GM's own text in `<narrative>`/`<text>` (never a book's); and
+  NPCs as `<ca2:character>` elements exactly as a character file's root
+  (`docs/character-format.md`), each with its `<npc>` block.
+- In the app the compendiums a GM can read load as overlays after the edits
+  layer and before the `custom/index.xml` house rules. Their entries join
+  the catalog under the compendium's source, `canon="false"`, origin user
+  ("House"), published by the owner; its NPCs are not catalog entries. A
+  file that cites another source, or holds an NPC without `<npc>`, is
+  skipped and reported.
+
 ## Overlays (`custom/`)
 
 House rules and extra content go in `custom/` (served at `/custom/`; in

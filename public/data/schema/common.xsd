@@ -38,7 +38,7 @@
     <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
   </xs:attributeGroup>
 
-  <!-- entry types of amps.xsd, items.xsd and rules.xsd (also the edits layer, edits.xsd) -->
+  <!-- entry types of amps.xsd, items.xsd and rules.xsd (also the edits layer, edits.xsd, and compendium.xsd) -->
   <xs:complexType name="Amp">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
@@ -93,5 +93,17 @@
     <xs:attribute name="sheet" type="ca2:Id" use="required"/>
     <xs:attribute name="section" type="xs:string"/>
     <xs:attribute name="effects" type="ca2:IdList"/>
+  </xs:complexType>
+  <!-- vehicles.xsd and compendium.xsd -->
+  <xs:complexType name="Vehicle">
+    <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
+    <xs:attributeGroup ref="ca2:ref"/>
+    <xs:attribute name="pilot" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="body" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="handling" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="speed" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="flyingSpeed" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="armor" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="mount" type="xs:string" use="required"/>
   </xs:complexType>
 </xs:schema>
