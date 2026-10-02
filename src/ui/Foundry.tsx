@@ -2,7 +2,7 @@
 // (docs/export-format.md). Runners from the editor and the runner list; book data on Game data (GMs).
 import { useEffect, useState } from 'react'
 import { exportBooks, exportRunners, type ExportOpts } from '../engine'
-import type { Catalog, Character } from '../model/types'
+import type { Catalog, Character, Compendium } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { loadTableRules, tableRulesForExport } from './TableRules'
 import type { Campaign } from './Campaigns'
@@ -22,6 +22,10 @@ export function downloadJson(name: string, data: unknown) {
 /** One or more runners as a runners file. Runner descriptions are the amps' own text, always included. */
 export const downloadRunners = (c: Catalog, chs: Character[]) =>
   downloadJson(runnersFileName(new Date()), exportRunners(c, chs, exportOpts(true)))
+
+/** A GM's compendium as a books file of one book (marked compendium): its own text always, its NPCs, no table rules. */
+export const downloadCompendium = (c: Catalog, comp: Compendium) =>
+  downloadJson(`compendium-${comp.source}-${fileDate(new Date())}.ca2foundry.json`, exportBooks(c, [comp.source], [], exportOpts(true), {}, { [comp.source]: comp.npcs }))
 
 const label = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 

@@ -5,8 +5,9 @@ import { derive } from '../../src/engine/derive'
 import { ampParts, exportBooks, exportRunners, parseRanges, sheetDisplayName } from '../../src/engine/export'
 import { appendEvent, makeBuy } from '../../src/engine/career'
 import { blankCharacter } from '../../src/engine/file'
-import type { Character } from '../../src/model/types'
-import { cat } from '../helpers'
+import { blankNpc, buildCatalog, compendiumXml } from '../../src/engine'
+import type { Character, Compendium } from '../../src/model/types'
+import { cat, catFiles } from '../helpers'
 import Ajv2020 from 'ajv/dist/2020'
 import { readFileSync } from 'node:fs'
 
@@ -166,6 +167,33 @@ describe('export: sections, metatypes, skills', () => {
   })
 })
 
+// a made-up compendium, loaded as a GM's overlay
+const ref = { source: 'ALLEY', page: 1 }
+const alleyNpc = (() => { const ch = blankNpc('critter', 'regular'); ch.identity.name = 'Alley Rat'; return ch })()
+const alley: Compendium = { id: '00000000beef', name: 'Alley Finds', source: 'ALLEY', sharing: 'private', updatedAt: '2026-10-02T00:00:00.000Z',
+  amps: [{ id: 'alley.grip', type: 'quality', name: 'Grip', effects: [{ ref: 'init-1' }], narrative: 'Our own grip text.', ...ref }],
+  items: [{ id: 'alley.brick', kind: 'weapon', name: 'Brick', dv: 'STR+1', ranges: 'OK/OK/-/-', text: 'Our own brick text.', ...ref }],
+  vehicles: [{ id: 'alley.cart', name: 'Cart', pilot: 1, body: 3, handling: 2, speed: 1, armor: 0, mount: 'none', ...ref }],
+  npcs: [alleyNpc] }
+const withAlley = buildCatalog([...catFiles, { file: `compendiums/gm1/${alley.id}.xml`, xml: compendiumXml(alley), overlay: true, publisher: 'Game Master', owner: 'gm1' }])
+
+describe('export: a compendium', () => {
+  test('exports as one book marked compendium, non-canon, with its own text and its NPCs', () => {
+    const [b] = exportBooks(withAlley, ['ALLEY'], [], OPTS, {}, { ALLEY: alley.npcs }).books!
+    expect(b.source).toEqual({ id: 'ALLEY', name: 'Alley Finds', publisher: 'Game Master', canon: false, compendium: true })
+    expect(b.amps).toEqual([expect.objectContaining({ id: 'alley.grip', canon: false, description: 'Our own grip text.' })])
+    expect(b.items).toEqual([expect.objectContaining({ id: 'alley.brick', kind: 'weapon', canon: false, dv: 'STR+1', description: 'Our own brick text.' })])
+    expect(b.vehicles).toEqual([expect.objectContaining({ id: 'alley.cart', body: 3 })])
+    expect(b.npcs!.map(n => [n.realName, n.npc])).toEqual([['Alley Rat', { kind: 'critter', tier: 'regular' }]])
+  })
+  test('a book export has no compendium field, the same with a compendium loaded or not', () => {
+    const books = [...cat.sources.keys()]
+    const plain = JSON.stringify(exportBooks(cat, books, [], OPTS))
+    expect(plain).not.toContain('"compendium"')
+    expect(JSON.stringify(exportBooks(withAlley, books, [], OPTS))).toBe(plain)
+  })
+})
+
 describe('export: bonuses and vehicles', () => {
   const amp = (uid: string, refs: string[], type = 'quality') => ({ uid, type, name: 'Amp ' + uid, effects: refs.map(ref => ({ ref })) })
   test('capped bonuses are counted once, so the amps add up to the sheet', () => {
@@ -213,6 +241,8 @@ describe('export: the schema', () => {
   const books = () => file(exportBooks(cat, [...cat.sources.keys()], [{ name: 'X', text: 'Y' }], OPTS))
   test('runners and books files are valid', () => {
     for (const f of [runners(), books()]) expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    const comp = file(exportBooks(withAlley, ['ALLEY'], [], OPTS, {}, { ALLEY: alley.npcs }))
+    expect(check(comp), JSON.stringify(check.errors)).toBe(true)
   })
   test('the example in the format document is valid', () => {
     const md = readFileSync('docs/export-format.md', 'utf8')
@@ -240,6 +270,11 @@ describe('export: the schema', () => {
     delete b.npcs[0].npc.fightingSpirit
     expect(check(f), JSON.stringify(check.errors)).toBe(true)
     b.npcs[0].npc.kind = 'dragon'
+    expect(check(f)).toBe(false)
+    b.npcs[0].npc.kind = 'spirit'
+    b.source.compendium = true
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.source.compendium = 'yes'
     expect(check(f)).toBe(false)
   })
   test('a wrong format, version or kind is not', () => {

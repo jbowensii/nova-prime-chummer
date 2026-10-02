@@ -12,6 +12,7 @@ import { loadCampaigns, type Campaign } from './Campaigns'
 import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
 import { npcRepoFor, useRepo } from './repo'
+import { downloadCompendium } from './Foundry'
 import { SettingsButton } from './settings'
 import { SourceLabel } from './SourceLabel'
 
@@ -278,7 +279,8 @@ function CompendiumPage({ c, comp, own, campaigns, changed, edit, targets }: { c
 
   return (
     <main className="lib">
-      <Header title={comp.name}><a className="btn quiet" href="#/compendiums">All compendiums</a></Header>
+      <Header title={comp.name}><button className="btn quiet" onClick={() => downloadCompendium(c, comp)}>Export for Foundry</button>
+        <a className="btn quiet" href="#/compendiums">All compendiums</a></Header>
       <p className="muted">Source {comp.source} · {own ? 'yours' : `${comp.ownerName}’s, read only`} · {sharing} · {entries(count)}{comp.npcs.length ? `, ${comp.npcs.length} NPC${comp.npcs.length === 1 ? '' : 's'}` : ''}</p>
       {own && <div className="row">
         <button className="btn" onClick={() => setForm({ kind: 'amps' })}>Add an amp</button>

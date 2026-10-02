@@ -96,7 +96,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 
 `{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes`, `characters` and `npcs`.
 
-- `source`: `{ id, name, publisher, canon }`.
+- `source`: `{ id, name, publisher, canon }`, and `compendium: true` (optional) when the "book" is a GM's compendium rather than a book: its own source id, `publisher` the owner's name, `canon` false, descriptions always included (the GM's own text), and its NPCs in `npcs`. Absent on books.
 - `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`.
   A book amp's `rating` is computed as a non-first quality (`isFirstQuality` false), and a negative rating is clamped to 0.
   `printedRating`, when present, is what the book printed.
