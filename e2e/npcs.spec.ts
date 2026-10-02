@@ -204,3 +204,53 @@ test('a player has no NPCs link, and #/npcs says only GMs can see NPCs', async (
   await expect(page.getByText('Only GMs can see NPCs.')).toBeVisible()
   await shots(page, 'npcs-player')
 })
+
+const SHOOTER = `<?xml version="1.0" encoding="UTF-8"?>
+<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="npc-shooter-1" streetName="Made-up Shooter" metatype="human" level="runner" package="free" updatedAt="2026-10-02T00:00:00.000Z">
+  <npc kind="npc" tier="regular" fightingSpirit="low"/>
+  <build><attributes str="2" agi="3" wil="2" log="2" cha="2"/><skill id="ranged-weapons" rating="5"/>
+    <amp uid="a1" type="cyberware" name="Made-up Smartlink"><narrative></narrative><effect ref="rr-skill" param="ranged-weapons"/></amp></build>
+</ca2:character>
+`
+
+test('the NPC block on Review and on both printed sheets: average hits, fighting spirit, Edge only for a prime NPC', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.goto('/#/npcs')
+  await page.locator('input[type=file]').setInputFiles({ name: 'shooter.xml', mimeType: 'application/xml', buffer: Buffer.from(SHOOTER) })
+  await expect(page.getByRole('status')).toContainText('Imported Made-up Shooter.')
+  await row(page, 'Made-up Shooter').getByRole('link', { name: 'Made-up Shooter' }).click()
+  const id = page.url().split('/')[5]
+  const line = 'Ranged Weapons 5 (5+A, RR 1)'
+
+  await page.goto(`/#/n/${id}/review`)
+  const block = page.getByRole('region', { name: 'NPC' })
+  await expect(block.getByText(line, { exact: true })).toBeVisible()
+  await expect(block).toContainText('No Edge')
+  await expect(block).toContainText('Fighting spirit: Low. Stops at the first light wound')
+  await shots(page, 'npc-sheet-review')
+
+  for (const [label, sel] of [['Printer-friendly', '.sheet'], ['Book style', 'article.book-sheet']] as const) {
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('dialog', { name: 'Settings' }).getByRole('radio', { name: label }).check()
+    await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Close' }).click()
+    await page.goto(`/#/n/${id}/print`)
+    await expect(page.locator(sel)).toBeVisible()
+    const b = page.locator(sel).getByRole('region', { name: 'NPC' })
+    await expect(b.getByText(line, { exact: true })).toBeVisible()
+    await expect(b).toContainText('Fighting spirit: Low')
+    await expect(page.locator(sel).getByText('Edge', { exact: true })).toHaveCount(0)
+    await page.screenshot({ path: `${SHOTS}/npc-sheet-${label === 'Book style' ? 'book' : 'plain'}.png`, fullPage: true })
+    await page.goto(`/#/n/${id}/review`)
+  }
+
+  // a prime NPC shows Edge and the usual pools
+  await newNpc(page, 'NPC', 'Prime')
+  await page.getByLabel('Fighting spirit').selectOption('extreme')
+  await saved(page)
+  await page.getByRole('link', { name: 'Review' }).click()
+  const prime = page.getByRole('region', { name: 'NPC' })
+  await expect(prime).toContainText(/Edge \d/)
+  await expect(prime).not.toContainText('No Edge')
+  await expect(prime).toContainText('Fighting spirit: Extreme')
+  await shots(page, 'npc-sheet-prime')
+})

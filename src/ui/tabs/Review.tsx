@@ -3,6 +3,7 @@ import { activeEvents, canFinalize, finalize, reopen } from '../../engine'
 import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
 import { editHref, useEditor } from '../editor'
+import { NpcBlock } from '../NpcBlock'
 
 const tabFor = (path: string) => {
   const head = path.split('.')[0]
@@ -10,7 +11,7 @@ const tabFor = (path: string) => {
 }
 
 export function ReviewTab() {
-  const { c, ch, v, p, balance, update, replace, career } = useEditor()
+  const { c, ch, d, v, p, balance, update, replace, career } = useEditor()
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
   const [finalizing, setFinalizing] = useState(false)
@@ -28,6 +29,7 @@ export function ReviewTab() {
   return (
     <div className="stack">
       <h2>Review</h2>
+      <NpcBlock c={c} ch={ch} d={d} />
       <p className="muted">{ch.npc ? 'An NPC skips the creation checks (budget, caps); what’s left are problems with the build itself.'
         : 'Rule problems block finalizing until they’re fixed or a GM approves them. Notes never block.'}</p>
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
