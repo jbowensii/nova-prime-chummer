@@ -16,9 +16,10 @@
 //   POST   /api/campaigns/:id/runners           the owner, a GM or member of it: { id } -> campaign; 409 while the runner is in
 //                                               another one (one campaign per runner: copy it) or this one is archived
 //   DELETE /api/campaigns/:id/runners/:runner   its owner, or a GM/admin of the campaign -> campaign
-//   POST   /api/campaigns/:id/npcs              a GM of it: { id } (one of their own NPCs) -> campaign; it moves from any
-//                                               other campaign; 409 when this one is archived
-//   DELETE /api/campaigns/:id/npcs/:npc         its owner, or a GM/admin of the campaign -> campaign
+//   POST   /api/campaigns/:id/npcs              a GM of it: { id } (one of their own NPCs) -> campaign; 409 while it is shared
+//                                               with another campaign (unshare it there first) or this one is archived
+//   DELETE /api/campaigns/:id/npcs/:npc         a GM/admin of the campaign -> campaign
+//                                               (/npcs: 404 for anyone else, so nobody else learns what is shared)
 // campaign: { id, name, note, archived, created, you: gm | admin | member, gms: [{ username, name }], members: [same],
 //   runners: [{ key, mine, ownerName, streetName, level, package, id, owner, file }] } (key: opaque, for lists; file: the sheet
 //   in GET /api/characters). A member gets the roster only: names without usernames, and no id, owner or file (id: their own)
@@ -183,17 +184,20 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
         return done(false)
       }
       if (part === 'npcs') {
+        // only its GMs and the admin learn anything about its NPCs: everyone else gets the same 404, shared or not
+        if (!manages(c, me)) throw fail(404, 'no such campaign')
         if (req.method === 'POST') {
           if (!isGm(c, me.username)) throw fail(403, 'only a GM of this campaign shares NPCs with it')
           const r = (await npcsOf(me.username)).find(x => x.id === String(b.id ?? ''))
           if (!r) throw fail(404, 'no such NPC of yours')
           if (c.archived) throw fail(409, 'this campaign is archived')
-          if (campaignOf(r.xml) !== id) await writeNpc(me.username, r.file, setCampaign(r.xml, id))
+          const other = campaignOf(r.xml), there = other && other !== id && list.find(x => x.id === other)
+          if (there && isGm(there, me.username)) throw fail(409, `That NPC is shared with ${there.name}; unshare it there first.`)
+          if (other !== id) await writeNpc(me.username, r.file, setCampaign(r.xml, id))
           return done(false)
         }
-        const r = (await npcs(c)).find(x => x.id === key)
+        const r = (await npcs(c)).find(x => x.id === key) // its owner is a GM of it, so a manager
         if (!r) throw fail(404, 'that NPC isn’t shared with this campaign')
-        if (r.owner !== me.username && !manages(c, me)) throw fail(403, 'only its owner or a GM can take an NPC out of a campaign')
         await writeNpc(r.owner, r.file, setCampaign(r.xml, null))
         return done(false)
       }

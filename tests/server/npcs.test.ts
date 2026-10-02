@@ -88,12 +88,24 @@ test('an NPC shared with a campaign: its GMs see it (read only for others), its 
   expect((await call('ada', 'POST', `/api/campaigns/${cid}/gms`, { user: 'ed' })).status).toBe(200)
   expect((await call('pat', 'PUT', '/api/characters/p1', npc('p1', 'Pat’s runner').replace(/<npc[^>]*\/>/, ''))).status).toBe(201)
   expect((await call('pat', 'POST', `/api/campaigns/${cid}/runners`, { id: 'p1' })).status).toBe(200)
-  expect((await call('pat', 'POST', `/api/campaigns/${cid}/npcs`, { id: 'n1' })).status).toBe(403) // a member doesn't share
+  expect((await call('pat', 'POST', `/api/campaigns/${cid}/npcs`, { id: 'n1' })).status).toBe(404) // a member learns nothing
   expect((await call('eve', 'POST', `/api/campaigns/${cid}/npcs`, { id: 'nope' })).status).toBe(404)
   const shared = await call('eve', 'POST', `/api/campaigns/${cid}/npcs`, { id: 'n1' })
   expect(shared.status).toBe(200)
   expect((await shared.json()).npcs).toEqual([{ id: 'n1', name: 'Ganger', owner: 'eve', ownerName: 'Eve Editor' }])
   expect(readFileSync(join(npcs, 'eve', 'Ganger-amp-Co.xml'), 'utf8')).toContain(`campaign="${cid}"`)
+  // a member gets the same 404 to unshare whether or not the NPC is shared; so does an editor outside a campaign
+  for (const npcId of ['n1', 'zz']) {
+    const r = await call('pat', 'DELETE', `/api/campaigns/${cid}/npcs/${npcId}`)
+    expect([r.status, await r.json()]).toEqual([404, { error: 'no such campaign' }])
+  }
+  const c2 = (await (await call('ed', 'POST', '/api/campaigns', { name: 'Ed’s table' })).json()).id
+  expect((await call('eve', 'POST', `/api/campaigns/${c2}/npcs`, { id: 'n1' })).status).toBe(404)
+  // one campaign per NPC: unshare it there first
+  expect((await call('ed', 'POST', `/api/campaigns/${c2}/npcs`, { id: 'e1' })).status).toBe(200)
+  const twice = await call('ed', 'POST', `/api/campaigns/${cid}/npcs`, { id: 'e1' })
+  expect([twice.status, await twice.json()]).toEqual([409, { error: 'That NPC is shared with Ed’s table; unshare it there first.' }])
+  expect((await call('ed', 'DELETE', `/api/campaigns/${c2}/npcs/e1`)).status).toBe(200)
   // the co-GM reads it, can't change it; the admin sees it in the campaign too
   expect(await ids('ed')).toEqual(['ed/e1', 'eve/n1'])
   expect((await call('ed', 'PUT', '/api/npcs/n1', npc('n1', 'Mine'), { 'If-Match': '2' })).status).toBe(403)
