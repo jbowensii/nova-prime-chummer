@@ -63,7 +63,7 @@ export function characterToXml(ch: Character, rev?: number): string {
   const b = ch.build
   const body = [
     ...(ch.npc ? [el('npc', { kind: ch.npc.kind, tier: ch.npc.tier, fightingSpirit: ch.npc.fightingSpirit })] : []),
-    text('portrait', ch.identity.portrait), text('background', ch.identity.background), text('notes', ch.identity.notes),
+    text('portrait', ch.identity.portrait) + text('token', ch.identity.token), text('background', ch.identity.background), text('notes', ch.identity.notes),
     ...ch.narrative.keywords.map(k => `<keyword>${esc(k)}</keyword>`),
     ...ch.narrative.dispositions.map(k => `<disposition>${esc(k)}</disposition>`),
     ...ch.narrative.cues.map(k => `<cue>${esc(k)}</cue>`),
@@ -235,6 +235,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     for (const k of ['knowledgeOrder', 'knowledgeHidden'] as const)
       if (kids(b, k).length) ch.build[k] = kids(b, k).map(e => e.getAttribute('key') ?? '')
     if (kid(r, 'portrait')) ch.identity.portrait = t(kid(r, 'portrait'))
+    if (kid(r, 'token')) ch.identity.token = t(kid(r, 'token'))
     if (s(r, 'lifestyle') !== undefined) ch.identity.lifestyle = s(r, 'lifestyle')
     if (s(r, 'backdrop') !== undefined) ch.identity.backdrop = s(r, 'backdrop') as Character['identity']['backdrop'] // checked by migrate()
     if (s(r, 'finalizedAt') !== undefined) ch.finalizedAt = s(r, 'finalizedAt')

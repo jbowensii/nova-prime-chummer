@@ -13,7 +13,7 @@ const HINTS = {
 export function ConceptTab() {
   const { c, ch, update, edit, career } = useEditor()
   const meta = c.metatypes.get(ch.identity.metatype)
-  const [pe, setPe] = useState(false)
+  const [pe, setPe] = useState(false), [te, setTe] = useState(false)
   const packages = [...c.packages.values()].filter(p => p.level === ch.level)
   const list = (k: keyof typeof HINTS) => (
     <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -90,6 +90,15 @@ export function ConceptTab() {
             if (portrait) d.identity.portrait = portrait; else delete d.identity.portrait
             if (backdrop) d.identity.backdrop = backdrop; else delete d.identity.backdrop
           })
+        }} />
+        <Face ch={ch} token />
+        <div className="stack">
+          <button className="btn" onClick={() => setTe(true)}>{ch.identity.token ? 'Change token…' : 'Set a token…'}</button>
+          <span className="muted">Token: {ch.identity.token ? 'its own picture' : 'same as portrait'}</span>
+        </div>
+        <PortraitEditor token ch={ch} open={te} onClose={() => setTe(false)} onSave={token => {
+          setTe(false)
+          update(d => { if (token) d.identity.token = token; else delete d.identity.token })
         }} />
       </div>
       {meta && <p className="muted">

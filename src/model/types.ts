@@ -124,7 +124,9 @@ export interface Npc { kind: 'npc' | 'critter' | 'spirit'; tier: 'prime' | 'regu
 export interface Character { formatVersion: 1; id: string;
   /** set: an NPC (character XML <npc>, the root's first child); absent: a runner */
   npc?: Npc;
-  identity: { name: string; streetName: string; metatype: string; portrait?: string; backdrop?: Backdrop; lifestyle?: string;
+  identity: { name: string; streetName: string; metatype: string; portrait?: string;
+    /** the round token picture (Foundry etc.); absent: the portrait serves as the token */
+    token?: string; backdrop?: Backdrop; lifestyle?: string;
     background: string; notes: string };
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] };
   level: string; package: string; build: Build; finalizedAt?: string;

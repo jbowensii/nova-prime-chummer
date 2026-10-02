@@ -780,7 +780,7 @@ def character_xml(ch):
     item = lambda i: _el("item", {k: i.get(k) for k in ("uid", "kind", "name", "catalogId", "specialist", "armor", "dv", "ranges", "price")})
     npc = ch.get("npc")
     body = [*([_el("npc", {k: npc.get(k) for k in ("kind", "tier", "fightingSpirit")})] if npc else []),
-            _text("portrait", ch["identity"].get("portrait")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
+            _text("portrait", ch["identity"].get("portrait")) + _text("token", ch["identity"].get("token")), _text("background", ch["identity"].get("background")), _text("notes", ch["identity"].get("notes")),
             *(f"<keyword>{_esc(k)}</keyword>" for k in ch["narrative"]["keywords"]),
             *(f"<disposition>{_esc(k)}</disposition>" for k in ch["narrative"]["dispositions"]),
             *(f"<cue>{_esc(k)}</cue>" for k in ch["narrative"]["cues"]),

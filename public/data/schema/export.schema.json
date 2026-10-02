@@ -313,6 +313,12 @@
             "null"
           ]
         },
+        "token": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "attributes": {
           "type": "object",
           "required": [
@@ -390,6 +396,9 @@
               },
               "price": {
                 "type": "number"
+              },
+              "category": {
+                "type": "string"
               },
               "description": {
                 "type": "string"

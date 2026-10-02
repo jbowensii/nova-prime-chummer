@@ -53,3 +53,13 @@ test('both writers give the same bytes for an NPC', () => {
   const back = xmlToCharacter(xml)
   expect(back.ok && [back.character.npc, back.character.identity.metatype]).toEqual([npc.npc, ''])
 })
+
+// a portrait and a separate token: the same bytes as importer/tests/test_statblock.py writes, read back as they were
+test('both writers give the same bytes for a portrait and a token', () => {
+  const npc = JSON.parse(readFileSync('tests/fixtures/npc-critter.json', 'utf8')) as Character
+  npc.identity = { ...npc.identity, portrait: 'data:image/jpeg;base64,/9j/P', token: 'data:image/png;base64,iVBO' }
+  const xml = characterToXml(npc)
+  expect(xml).toContain('\n  <portrait>data:image/jpeg;base64,/9j/P</portrait><token>data:image/png;base64,iVBO</token>\n  <background>')
+  const back = xmlToCharacter(xml)
+  expect(back.ok && [back.character.identity.portrait, back.character.identity.token]).toEqual([npc.identity.portrait, npc.identity.token])
+})

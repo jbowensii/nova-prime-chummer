@@ -73,6 +73,18 @@ describe('export: runners', () => {
     expect(get(true).description).toBe('Kit text.')
     expect(get(false).description).toBeUndefined()
   })
+  test('an item carries its catalog category, as book items do; the token goes out beside the portrait', () => {
+    const ch = rush()
+    ch.identity.portrait = 'data:image/jpeg;base64,/9j/P'
+    ch.build.items.push({ uid: 's', kind: 'spell', name: 'Made-up bolt',
+      snapshot: { id: 'x.bolt', source: 'TESTC', page: 1, name: 'Made-up bolt', kind: 'spell', category: 'combat' } as never })
+    const r = exportRunners(cat, [ch], OPTS).runners![0]
+    expect(r.items.find(i => i.uid === 's')!.category).toBe('combat')
+    expect('category' in r.items.find(i => i.uid === 'i')!).toBe(false)
+    expect([r.portrait, r.token]).toEqual(['data:image/jpeg;base64,/9j/P', null])
+    ch.identity.token = 'data:image/png;base64,iVBO'
+    expect(exportRunners(cat, [ch], OPTS).runners![0].token).toBe('data:image/png;base64,iVBO')
+  })
   test('ranges become ok / disadvantage / none', () => {
     expect(parseRanges('OK/OK/Dis./–')).toEqual({ melee: 'ok', short: 'ok', medium: 'disadvantage', long: 'none' })
     expect(parseRanges('')).toEqual({ melee: 'none', short: 'none', medium: 'none', long: 'none' })
@@ -274,6 +286,14 @@ describe('export: the schema', () => {
     b.npcs[0].npc.kind = 'spirit'
     b.source.compendium = true
     expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.npcs[0].token = 'data:image/png;base64,iVBO'
+    b.npcs[0].items = [{ uid: 'i', kind: 'spell', name: 'S', canon: false, price: 0, category: 'combat' }]
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    delete b.npcs[0].token
+    expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    b.npcs[0].token = 5
+    expect(check(f)).toBe(false)
+    b.npcs[0].token = null
     b.source.compendium = 'yes'
     expect(check(f)).toBe(false)
   })

@@ -44,6 +44,7 @@ finalized runner (before that, what is left of the build budget).
 | `level` | `{ id, name }` of the build level |
 | `lifestyle` | `{ id, name, perRun }` |
 | `portrait` | a data URL, or `null` |
+| `token` | optional, the round token picture: a data URL (`data:image/png` or `data:image/jpeg`, base64), or `null`: none, use the portrait |
 | `attributes` | `str`, `agi`, `wil`, `log`, `cha` as built |
 | `edge`, `essence` | derived |
 | `skills` | `[{ id, name, attr, rating, specs: [{ id, name, attr, custom }] }]` |
@@ -87,7 +88,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 ### Items
 
 `uid`, `kind` (`gear`, `weapon`, `armor`, `spell`, `complex-form`; book items use the same kinds), `name`, `canon`, `price`; optionally `catalogId`,
-`source`, `page`, `starting`, `note`, `description`.
+`source`, `page`, `category` (the catalog category, as on book items; spells: `combat`, `detection`, `health`, `illusion`, `manipulation`), `starting`, `note`, `description`.
 
 - `weapon`: `{ dv, dvText, ranges, specialist, ammo }`. `dv` is the derived damage value, `dvText` what the item prints.
 - `armor`: `{ value, over? }`.
@@ -174,7 +175,7 @@ A made-up runner with one amp and one weapon (no description texts):
     "metatype": { "id": "human", "name": "Human", "ranges": { "str": [1, 6], "agi": [1, 6], "wil": [1, 6], "log": [1, 6], "cha": [1, 6] }, "edge": 2 },
     "level": { "id": "runner", "name": "Runner" },
     "lifestyle": { "id": "low", "name": "Low", "perRun": 5000 },
-    "portrait": null,
+    "portrait": null, "token": null,
     "attributes": { "str": 2, "agi": 3, "wil": 2, "log": 3, "cha": 2 },
     "edge": 2, "essence": 6,
     "skills": [{ "id": "firearms", "name": "Firearms", "attr": "agi", "rating": 3, "specs": [] }],
