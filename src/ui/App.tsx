@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { PageHeader } from './nav'
 import { loadCatalog } from '../engine'
 import { detectRepo, migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'
-import { AccountMenu, canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
+import { canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CampaignScreen, CampaignsScreen } from './Campaigns'
 import { listCompendiums, readable } from './compendiumStore'
@@ -22,9 +23,7 @@ import { DataScreen } from './tabs/Data'
 import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
-import { AskButton } from './AskRules'
 import { BackgroundArt } from './Background'
-import { Brand } from './bits'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
 
@@ -36,8 +35,7 @@ function NoCoreData({ missing }: { missing: string[] }) {
   const admin = isAdmin(useMe())
   return (
     <main className="lib">
-      <header><div style={{ flex: 1 }}><Brand /><h1>The game data isn’t set up yet</h1></div>
-        <div className="row"><AskButton /><AccountMenu /></div></header>
+      <PageHeader title="The game data isn’t set up yet" />
       {admin ? <>
         <p>Import the core rulebook on the Books page, or upload a data pack.</p>
         {missing.length < 12 && <p className="muted">Missing: {missing.join(', ')}.</p>}
@@ -72,8 +70,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [, id, tab] = route
   // NPCs: the GMs' area (admin and editors; the server answers players 403 anyway)
   const gmOnly = (page === 'npcs' || page === 'n') && !canEdit(me) ? 'NPCs' : page === 'compendiums' && !canEdit(me) ? 'compendiums' : ''
-  const gate = (title: string, text: string) => <main className="lib"><header><div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
-    <div className="row"><a className="btn quiet" href="#/">Your runners</a><AccountMenu /></div></header><p className="banner">{text}</p></main>
+  const gate = (title: string, text: string) => <main className="lib"><PageHeader title={title} /><p className="banner">{text}</p></main>
   const refresh = () => load().then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
   return (

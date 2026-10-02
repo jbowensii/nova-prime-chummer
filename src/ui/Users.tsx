@@ -1,12 +1,12 @@
 // Users (admin): every account, add one, edit name/username/email/role/sign-in method, disable or enable, reset a password, move
 // runners to another account, delete (only with no runners). The server refuses anything that would leave no enabled
 // admin; its reason is shown as it comes.
+import { PageHeader } from './nav'
+import { IconButton } from './icons'
 import { useEffect, useState } from 'react'
 import { xmlToCharacter } from '../engine'
-import { Brand, Modal } from './bits'
-import { AccountMenu, PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
-import { SettingsButton } from './settings'
-import { AskButton } from './AskRules'
+import { Modal } from './bits'
+import { PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
 
 type Account = User & { runners: number }
 type Dialog = { at: 'add' } | { at: 'edit' | 'reset' | 'delete' | 'move'; u: Account }
@@ -117,11 +117,7 @@ export function UsersScreen() {
   const theirs = d && d.at !== 'add' ? runners.filter(r => r.owner === d.u.username) : []
   return (
     <main className="lib">
-      <header>
-        <div style={{ flex: 1 }}><Brand /><h1>Users</h1></div>
-        <div className="row"><button className="btn primary" onClick={() => open({ at: 'add' })}>Add account</button>
-          <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
-      </header>
+      <PageHeader title="Users"><IconButton className="primary" icon="plus" label="Add account" text="Add account" onClick={() => open({ at: 'add' })} /></PageHeader>
       <p className="muted">Admins manage books, backups and accounts. Editors can also change the catalog and run campaigns, and read the runners in them.
         Players see only their own runners.</p>
       {msg && <p className={`banner${msg.err ? ' bad' : ''}`} role={msg.err ? 'alert' : 'status'}>{msg.text}</p>}

@@ -1,14 +1,14 @@
 // Rules (admin and editors, the GMs): the table rules they switch on for their players (TableRules.tsx), then the rules
 // reference: the imported quick-reference sheets (rules kind), text from the private texts file.
+import { PageHeader } from './nav'
+import { IconButton } from './icons'
 import { useMemo, useState } from 'react'
 import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
-import { Brand, NonCanon } from './bits'
+import { NonCanon } from './bits'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
-import { AccountMenu, isAdmin, useMe } from './auth'
-import { SettingsButton } from './settings'
+import { isAdmin, useMe } from './auth'
 import { TableRulesManager } from './TableRules'
-import { AskButton } from './AskRules'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
 
@@ -30,11 +30,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
 
   return (
     <main className="lib rules">
-      <header>
-        <div style={{ flex: 1 }}><Brand /><h1>Rules</h1></div>
-        <div className="row">{openEdit && <button className="btn quiet" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>}
-          <a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
-      </header>
+      <PageHeader title="Rules">{openEdit && <IconButton icon="plus" label="Add a rule" onClick={() => openEdit({ kind: 'rules' })} />}</PageHeader>
       <TableRulesManager c={c} />
       <h2>Rules reference</h2>
       {rules.length === 0 && <p className="banner">No rules yet. {admin ? <>Upload the quick-reference sheets on the <a href="#/books">Books page</a>.</> : 'The admin hasn’t uploaded the quick-reference sheets yet.'}</p>}

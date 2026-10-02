@@ -1,13 +1,14 @@
 // NPCs & Critters (#/npcs): the GMs' own area (admin and editors; spec 2026-10-02 §1, §3). NPCs are characters with an
 // npc block, kept apart from runners (server: /api/npcs; browser: their own localStorage key). A GM shares one with a
 // campaign they run, so its other GMs can read and print it; players never see any. The server enforces all of it.
+import { PageHeader } from './nav'
+import { IconButton, IconLink } from './icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { blankNpc } from '../engine'
 import type { Catalog, Character, Npc } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, because, savesSettled, send, useMe } from './auth'
-import { AskButton } from './AskRules'
-import { Brand, Modal, NPC_KINDS, NPC_TIERS, NpcChips } from './bits'
+import { because, savesSettled, send, useMe } from './auth'
+import { Modal, NPC_KINDS, NPC_TIERS, NpcChips } from './bits'
 import { loadCampaigns, type Campaign } from './Campaigns'
 import { listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { editHref } from './editor'
@@ -16,7 +17,6 @@ import { arrange, exportCharacter, ownerGroups, type SortBy } from './Library'
 import { Face } from './Portrait'
 import { npcRepoFor, useRepo, type Stored, type Unreadable } from './repo'
 import { bookNpcs, readCharacterFile, readSample } from './samples'
-import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
 
 const nameOf = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
@@ -172,20 +172,15 @@ export function NpcsScreen({ c }: { c: Catalog }) {
 
   return (
     <main className="lib">
-      <header>
-        <div style={{ flex: 1 }}><Brand /><h1>NPCs &amp; Critters</h1></div>
-        <div className="row">
-          <button className="btn primary" onClick={() => setCreating(true)}>New NPC</button>
-          <button className="btn" onClick={() => file.current?.click()}>Import file</button>
-          <button className="btn quiet" onClick={() => void loadBook()}>Load book NPCs</button>
-          <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
-          <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
-          {comps.length > 0 && <button className="btn quiet" onClick={() => pickMove([])} disabled={!mine.length}>Move to compendium…</button>}
-          {trashed !== null && <a className="btn quiet" href="#/npcs/trash">Trash ({trashed})</a>}
-          <a className="btn quiet" href="#/">Your runners</a>
-          <AskButton /><SettingsButton /><AccountMenu />
-        </div>
-      </header>
+      <PageHeader title="NPCs & Critters">
+        <IconButton className="primary" icon="plus" label="New NPC" text="New NPC" onClick={() => setCreating(true)} />
+        <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
+        <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} />
+        <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
+        <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
+        {comps.length > 0 && <IconButton icon="move" label="Move to compendium…" onClick={() => pickMove([])} disabled={!mine.length} />}
+        {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/npcs/trash" badge={trashed || undefined} />}
+      </PageHeader>
       <p className="muted">Your NPCs, critters and spirits, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.
         {repo.mode === 'browser' && ' Saved on this browser. Export files to keep them safe.'}</p>
       {msg && <p className="banner" role="status">{msg}</p>}

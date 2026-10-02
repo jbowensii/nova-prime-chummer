@@ -1,5 +1,27 @@
 # Release notes
 
+## 0.8.1 — 2026-10-02: Icon menus and a stronger sheet background
+
+**Menus**
+- Every page's header is now **one icon bar**: the page's own actions, then the main menu (Your runners, NPCs &
+  Critters, Compendiums, Campaigns, Books, Rules or Table rules, Game data), then Ask the rules, Settings and your
+  account. Each icon names itself in a **tooltip** on hover and on keyboard focus, and the page you're on is
+  **underlined in yellow**. Only the pages your role can use are listed.
+- The main menu is on **every page**, the runner and NPC editor included, so you no longer go back to Your runners to
+  get anywhere. The editor's Save, Save and close, Undo, Redo, Export file and Export for Foundry are icons too.
+- Primary actions keep their words: **New runner**, **New NPC**, **New campaign**, **New compendium**, **Add account**
+  and **Print or save as PDF**.
+- Tidied: the duplicate back links (Campaigns, Books, All compendiums, NPCs & Critters) are gone, since the main menu
+  marks where you are; Game data and the setup page now have Settings; the trash count shows as a badge; the title
+  no longer runs into the logo; the account button no longer stretches with your name (it's in the tooltip).
+
+**Printed sheet**
+- The sheet's **background art** sits behind one **Background** button: strength, on screen, print it and the image
+  pick open in a small dialog (Escape or a click outside closes it).
+- **100% now shows the image nearly whole**. The text keeps a soft wash of paper behind it so it stays readable, on
+  both sheet styles. The default is 60%, a clear but quiet image; a strength you set before keeps its number.
+- On a phone the sheet's logo no longer runs off the screen.
+
 ## 0.8.0 — 2026-10-02: Your own compendiums
 
 **Compendiums (admin and editors)**

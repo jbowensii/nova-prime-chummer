@@ -2,12 +2,13 @@
 // the caller's campaigns, and one campaign's page — its runners grouped by player (the GM and the admin open them read-only
 // and print them; a member sees roster rows), who plays, and the GM's tools. The server enforces every rule; hiding a
 // control here is only convenience.
+import { PageHeader } from './nav'
+import { IconButton } from './icons'
 import { useEffect, useId, useState } from 'react'
 import type { Catalog } from '../model/types'
-import { AccountMenu, because, canEdit, send, useMe, type User } from './auth'
-import { AskButton, AskRules } from './AskRules'
-import { Brand, Modal } from './bits'
-import { SettingsButton } from './settings'
+import { because, canEdit, send, useMe, type User } from './auth'
+import { AskRules } from './AskRules'
+import { Modal } from './bits'
 
 export interface Person { username?: string; name: string }
 export interface CampaignRunner { key: string; mine: boolean; ownerName: string; streetName: string; level: string; package: string; id?: string; owner?: string }
@@ -22,10 +23,7 @@ const names = (ps: Person[]) => ps.map(p => p.name).join(', ')
 
 function Header({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <header>
-      <div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
-      <div className="row">{children}<a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
-    </header>
+    <PageHeader title={title}>{children}</PageHeader>
   )
 }
 
@@ -64,7 +62,7 @@ export function CampaignsScreen() {
   const staff = canEdit(me)
   return (
     <main className="lib">
-      <Header title="Campaigns">{staff && <button className="btn primary" onClick={() => setCreating(true)}>New campaign</button>}</Header>
+      <Header title="Campaigns">{staff && <IconButton className="primary" icon="plus" label="New campaign" text="New campaign" onClick={() => setCreating(true)} />}</Header>
       <p className="muted">{staff ? 'Run a campaign: add your players, and they put their runners in it. You can read and print the runners in the campaigns you run.'
         : 'The campaigns you play in. Put a runner in one from your runner list; the GM can then read and print it.'}</p>
       {msg && <p className="banner bad" role="alert">{msg}</p>}
@@ -131,7 +129,7 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
 
   return (
     <main className="lib campaign">
-      <Header title={camp.name}><a className="btn quiet" href="#/campaigns">Campaigns</a></Header>
+      <Header title={camp.name} />
       <p className="muted">GM: {names(camp.gms)} · {camp.members.length} player{camp.members.length === 1 ? '' : 's'}
         {camp.archived && <> <span className="state removed">Archived</span></>}</p>
       {camp.note && <p className="campaign-note">{camp.note}</p>}

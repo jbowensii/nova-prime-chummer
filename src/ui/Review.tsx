@@ -148,7 +148,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
 
   return (
     <main className="lib review">
-      <BooksHeader title="Review"><a className="btn quiet" href="#/books">Books</a></BooksHeader>
+      <BooksHeader title="Review" />
       <p>{book?.file ?? id}: {proposals.length} {proposals.length === 1 ? 'entry' : 'entries'} proposed
         {doc.documentElement.getAttribute('provider') ? ` by ${PROVIDER_NAMES[doc.documentElement.getAttribute('provider')!] ?? doc.documentElement.getAttribute('provider')}` : ''}. Check each against the book:
         accept it, fix it, or drop it. Only accepted and edited entries are added.</p>

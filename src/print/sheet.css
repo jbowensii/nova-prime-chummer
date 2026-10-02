@@ -68,22 +68,33 @@
 .sheet .src, .sheet .booktag { color: var(--s-ink-2); border-color: var(--s-ink-2); }
 .sheet .noncanon, :root[data-theme] .sheet .noncanon { color: var(--s-indigo); border-color: var(--s-indigo); }
 
-/* ---- sheet art: the admin's background art on the sheet (Sheet.tsx; its own switches and strength, per browser) ----
-   Same clamp as the page's (app.css .bg-art): the art flattened (contrast .6) under white at 93% in the middle, 82% at
-   the edges, faded by the strength; tests/ui/background.test.ts checks the sheet's ink against the worst image. */
+/* ---- sheet art: the admin's background art on the sheet (shared.tsx useSheetArt; its own switches and strength, per browser) ----
+   --art: the strength, 0–1 (--art-screen on screen, --art-print in print). The art (contrast .7) fades in with it under a
+   veil that thins as it rises: white at 93%→35% in the middle, 82%→25% at the edges, so 100% shows the image nearly whole.
+   The text blocks keep a wash of paper behind them (up to 60%), so the ink stays readable over any image;
+   tests/ui/background.test.ts checks the sheet's ink against the worst image at every strength. */
+.sheet, .book-sheet { --art: var(--art-screen, 0); }
 .sheet-art { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.sheet-art > div { position: absolute; inset: 0; background: center / cover no-repeat; filter: contrast(0.6) saturate(0.8); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.sheet-art > div { position: absolute; inset: 0; background: center / cover no-repeat; filter: contrast(0.7) saturate(0.9); opacity: var(--art);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .sheet-art::after { content: ''; position: absolute; inset: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact;
-  background: radial-gradient(ellipse at 50% 50%, rgb(255 255 255 / 93%) 40%, rgb(255 255 255 / 82%) 100%); }
+  background: radial-gradient(ellipse at 50% 50%, rgb(255 255 255 / calc(0.93 - 0.58 * var(--art))) 40%, rgb(255 255 255 / calc(0.82 - 0.57 * var(--art))) 100%); }
+.sheet .s-top, .sheet .npc-block, .sheet .s-cols > section, .sheet > section {
+  --wash: rgb(255 255 255 / calc(0.6 * var(--art)));
+  background-color: var(--wash); box-shadow: 0 0 0.8rem 0.3rem var(--wash); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .sheet-art.no-screen { display: none; }
-@media (prefers-reduced-transparency: reduce) { .sheet-art { display: none; } }
-.sheet-art-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 1rem; border: 0; padding: 0; margin: 0; }
+@media (prefers-reduced-transparency: reduce) { .sheet-art { display: none; } .sheet, .book-sheet { --art: 0 !important; } }
+/* the Background button's dialog (the strength, the switches and the image) */
+dialog.sheet-art-dialog { max-width: min(30rem, calc(100vw - 2rem)); }
+.sheet-art-tools { display: grid; gap: 0.6rem; border: 0; padding: 0; margin: 0; }
 .sheet-art-tools label.check { margin: 0; align-items: center; }
-.sheet-art-tools .art-strength { margin-top: 0; }
-.sheet-art-tools .art-strength input { width: 8rem; }
+.sheet-art-tools .art-strength { margin-top: 0; display: flex; align-items: center; gap: 0.6rem; }
+.sheet-art-tools .art-strength input { flex: 1; accent-color: var(--yellow); }
+.sheet-art-tools .art-strength output { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 700px) {
   .s-cols { grid-template-columns: 1fr; }
+  .s-head { flex-wrap: wrap; } /* the logo under the name: it ran off a phone's screen */
   .s-attrs { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .s-top > .portrait { grid-row: 1; width: 7.5rem; height: 7.5rem; }
 }
@@ -92,13 +103,14 @@
   body { background: #fff !important; }
   .sheet-tools { display: none; }
   .s-screen { display: none; }
+  .sheet, .book-sheet { --art: var(--art-print, 0); }
   .sheet-art.no-screen { display: block; }
   .sheet-art.no-print { display: none !important; }
   .s-src { display: none; }
   .sheet-wrap { padding: 0; }
   .sheet { box-shadow: none; padding: 0; max-width: none; }
 }
-.sheet-art-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 1rem; border: 0; padding: 0; margin: 0; }
-.sheet-art-pick legend { float: left; padding: 0; margin-right: 1rem; }
+.sheet-art-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; border: 0; border-top: 1px solid var(--rule); padding: 0.8rem 0 0; margin: 0.9rem 0 0; }
+.sheet-art-pick legend { float: left; width: 100%; padding: 0; margin-bottom: 0.4rem; font-weight: 600; }
 .sheet-art-pick label.check { margin: 0; align-items: center; }
-.sheet-art-pick img { width: 3rem; height: 2rem; object-fit: cover; border: 1px solid currentColor; border-radius: 3px; }
+.sheet-art-pick img { width: 4rem; height: 2.6rem; object-fit: cover; border: 1px solid currentColor; border-radius: 3px; }

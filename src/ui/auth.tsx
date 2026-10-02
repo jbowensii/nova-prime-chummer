@@ -1,5 +1,6 @@
 // Accounts in the app (server/auth.mjs does the enforcing; hiding a control here is only convenience): who is signed
 // in, what their role may do, the account menu, and noticing a session that ended (any 401 from the server).
+import { Icon } from './icons'
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import { Modal } from './bits'
 
@@ -243,8 +244,9 @@ export function AccountMenu() {
   if (!me) return null
   return (
     <div className="account" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false) }}>
-      <button ref={btn} className="btn quiet" aria-expanded={open} aria-controls={panel} onClick={() => setOpen(o => !o)}>
-        {me.name} <span aria-hidden>▾</span>
+      <button ref={btn} className={`btn quiet ibtn${open ? ' open' : ''}`} aria-label={me.name} data-tip={`${me.name} (${ROLE_NAMES[me.role]})`}
+        aria-expanded={open} aria-controls={panel} onClick={() => setOpen(o => !o)}>
+        <Icon name="account" />
       </button>
       <div id={panel} className="account-panel" hidden={!open}>
         <p><b>{me.name}</b><br /><span className="muted">{ROLE_NAMES[me.role]} · {me.username}</span></p>
