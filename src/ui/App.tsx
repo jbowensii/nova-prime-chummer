@@ -7,6 +7,7 @@ import { AiSettings } from './AiSettings'
 import { AccountMenu, canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CampaignScreen, CampaignsScreen } from './Campaigns'
+import { listCompendiums, readable } from './compendiums'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
 import { NpcsScreen } from './Npcs'
@@ -52,10 +53,13 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(0)
   const npcs = useMemo(() => npcRepoFor(repo), [repo])
+  // staff on the server: the compendiums they can read join their catalog (a failed list loads it without them)
+  const staff = repo.mode === 'server' && canEdit(me)
+  const load = async () => loadCatalog('./', staff ? readable(await listCompendiums().catch(() => [])) : [])
   useEffect(() => {
-    loadCatalog('./').then(setCatalog, e => setFailed(String(e)))
+    load().then(setCatalog, e => setFailed(String(e)))
     if (repo.mode === 'server') migrateBrowserToServer(repo).then(setMoved, () => {})
-  }, [repo])
+  }, [repo, staff]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (failed) return <main className="lib"><h1>Game data didn’t load</h1><p>{failed}</p><p>Check that the <code>data/</code> folder is served next to this page, then reload.</p></main>
   if (!catalog) return <main className="lib"><p className="muted">Loading game data…</p></main>
@@ -67,7 +71,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [, id, tab] = route
   // NPCs: the GMs' area (admin and editors; the server answers players 403 anyway)
   const gmOnly = (page === 'npcs' || page === 'n') && !canEdit(me)
-  const refresh = () => loadCatalog('./').then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
+  const refresh = () => load().then(setCatalog, () => {}) // a failed reload keeps the loaded catalog
   if (catalog.coreMissing.some(n => ESSENTIAL.includes(n)) && page !== 'books') return <NoCoreData missing={catalog.coreMissing} />
   return (
     <RepoContext.Provider value={repo}><CatalogEdits c={catalog} reload={refresh}>
