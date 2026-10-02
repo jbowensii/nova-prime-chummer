@@ -146,8 +146,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'warning', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
   const natives = b.knowledge.filter(k => k.native && k.kind === 'language')
-  if (natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free; ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
-  b.knowledge.forEach((k, i) => {
+  if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free; ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
+  if (!npc) b.knowledge.forEach((k, i) => { // knowledge slots are a player rule
     if (k === natives[0]) return // free whatever its slot does
     const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)
     if (lapse) add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free; with ${lapse} it’s a paid knowledge skill.`)
@@ -159,6 +159,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   const cap = (total: number, limit: number, path: string, test: string, parts: [string, number][]) => {
     if (limited && level && total > limit)
       add('rr.cap', 'error', path, `RR ${total} on ${test} Tests (${parts.filter(([, n]) => n).map(([w, n]) => `${w} ${n}`).join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`, 85)
+    // kept for NPCs on purpose: only 3 RR applies to one Test whoever rolls it
     else if (total > 3) add('rr.cap', 'warning', path, `RR ${total} on ${test} Tests: only 3 applies to one Test.`, 61)
   }
   const attrName = (a: AttrId) => a.toUpperCase()

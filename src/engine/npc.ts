@@ -10,9 +10,9 @@ export const hasNoMetatype = (ch: Pick<Character, 'npc'>): boolean => ch.npc?.ki
 export const averageHits = (dp: number, rr: number): number => Math.round(dp / 3) + rr + 1
 
 /** "Ranged Weapons 5 (5+A, RR 1)": the pool's average hits, then skill rating + attribute initial and RR; the
- *  specialization's name follows the skill on a spec row. */
+ *  specialization's name follows the skill on a spec row, and its +2 counts in the pool (not in the printed rating). */
 export function npcPoolLabel(skill: string, spec: string | undefined, rating: number, attr: AttrId, attrValue: number, rr: number): string {
-  return `${skill}${spec ? ` (${spec})` : ''} ${averageHits(rating + attrValue, rr)} (${rating}+${attr[0].toUpperCase()}, RR ${rr})`
+  return `${skill}${spec ? ` (${spec})` : ''} ${averageHits(rating + attrValue + (spec ? 2 : 0), rr)} (${rating}+${attr[0].toUpperCase()}, RR ${rr})`
 }
 
 /** A blank NPC: the npc block, no starting gear; a critter or spirit has no metatype unless one is given. */

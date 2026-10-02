@@ -17,6 +17,9 @@ test('averageHits holds across each whole band', () => {
 
 test('npcPoolLabel', () => {
   expect(npcPoolLabel('Ranged Weapons', undefined, 5, 'agi', 3, 1)).toBe('Ranged Weapons 5 (5+A, RR 1)')
+  // a specialization's +2 counts in the pool: 4+3 = 7 -> 3, 4+3+2 = 9 -> 4
+  expect(npcPoolLabel('Ranged Weapons', undefined, 4, 'agi', 3, 0)).toBe('Ranged Weapons 3 (4+A, RR 0)')
+  expect(npcPoolLabel('Ranged Weapons', 'Pistols', 4, 'agi', 3, 0)).toBe('Ranged Weapons (Pistols) 4 (4+A, RR 0)')
   expect(npcPoolLabel('Close Combat', 'Blades', 4, 'str', 4, 0)).toBe('Close Combat (Blades) 4 (4+S, RR 0)')
 })
 
@@ -33,9 +36,8 @@ test('blankNpc: npc block, no gear, no metatype for critters and spirits unless 
 
 test('a regular NPC skips budget, caps, basics and narrative but keeps structural checks', () => {
   const ch = blankNpc('npc', 'regular')
-  ch.build.attributes = { str: 2, agi: 2, wil: 2, log: 2, cha: 2 }
   ch.build.skills = [{ id: 'stealth', rating: 12, specs: [] }, { id: 'sorcery', rating: 3, specs: [] }, { id: 'athletics', rating: 0, specs: ['no-such'] }]
-  ch.build.attributes.str = 5; ch.build.attributes.agi = 5; ch.build.attributes.wil = 5
+  ch.build.attributes = { str: 5, agi: 5, wil: 5, log: 2, cha: 2 }
   ch.build.items = [{ uid: 'x', kind: 'gear', name: 'Ghost', catalogId: 'no-such-thing' }]
   ch.level = 'no-such-level'
   const got = codes(ch)
