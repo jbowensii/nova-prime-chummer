@@ -151,7 +151,20 @@ test('the GM opens every runner read-only and prints it; sees them in the runner
   await signIn(page, 'eve')
   await expect(page.getByRole('heading', { name: 'Pat Player’s runners' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Ratchet (copy)' })).toHaveCount(0) // not in the campaign: not Eve's to read
+  await page.goto('/#/npcs')
+  await page.getByRole('button', { name: 'New NPC' }).click()
+  await page.getByRole('dialog', { name: 'New NPC' }).getByRole('button', { name: 'Create NPC' }).click()
+  await page.getByLabel('Street name').fill('Table Goon')
+  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await page.goto('/#/npcs')
+  await dossier(page, 'Table Goon').getByRole('button', { name: 'Share Table Goon…' }).click()
+  const share = page.getByRole('dialog', { name: 'Share Table Goon with a campaign' })
+  await share.getByLabel('Campaign').selectOption({ label: CAMPAIGN })
+  await share.getByRole('button', { name: 'Share' }).click()
+  await expect(page.getByRole('status')).toHaveText(`Table Goon is shared with ${CAMPAIGN}.`)
   await openCampaign(page)
+  await expect(page.getByRole('heading', { name: 'NPCs', level: 2 })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Table Goon' })).toHaveAttribute('href', /^#\/n\/[^/]+\/concept$/)
   await expect(page.getByRole('link', { name: 'Print Glitch' })).toBeVisible()
   await shots(page, 'campaign-gm')
   await page.getByRole('link', { name: 'Ratchet', exact: true }).click()
@@ -159,6 +172,11 @@ test('the GM opens every runner read-only and prints it; sees them in the runner
   await openCampaign(page)
   await page.getByRole('link', { name: 'Print Ratchet' }).click()
   await expect(page.locator('.sheet, main').first()).toContainText('Ratchet')
+  await signIn(page, 'pat') // a member's view never lists the NPCs
+  await openCampaign(page)
+  await expect(page.getByRole('heading', { name: 'NPCs', level: 2 })).toHaveCount(0)
+  await expect(page.getByText('Table Goon')).toHaveCount(0)
+  expect(JSON.stringify(await (await page.request.get(`${base}api/campaigns`)).json())).not.toContain('Table Goon')
 })
 
 test('the admin sees every campaign, adds a co-GM; the GM removes a player, whose runner leaves; archive and delete', async ({ page }) => {

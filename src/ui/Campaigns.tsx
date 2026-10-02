@@ -12,7 +12,8 @@ import { SettingsButton } from './settings'
 export interface Person { username?: string; name: string }
 export interface CampaignRunner { key: string; mine: boolean; ownerName: string; streetName: string; level: string; package: string; id?: string; owner?: string }
 export interface Campaign { id: string; name: string; note: string; archived: boolean; created: string; you: 'gm' | 'admin' | 'member'
-  gms: Person[]; members: Person[]; runners: CampaignRunner[] }
+  gms: Person[]; members: Person[]; runners: CampaignRunner[]
+  npcs?: { id: string; name: string; owner: string; ownerName: string }[] } // the NPCs shared with it: the GM's and the admin's view only
 
 export const loadCampaigns = async (): Promise<Campaign[]> => (await send('campaigns', undefined, 'GET')).json()
 /** Whether `me` plays in or runs `c` (only then can they put a runner in it); the admin sees every campaign without being in it. */
@@ -159,6 +160,11 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
             })}
           </div>)}
       </section>
+
+      {manages && !!camp.npcs?.length && <section aria-labelledby={`${listId}-n`}>
+        <h2 id={`${listId}-n`}>NPCs</h2>
+        <ul className="roster">{camp.npcs.map(n => <li key={n.id}><a href={`#/n/${n.id}/concept`}>{n.name}</a><span className="muted"> · {n.ownerName}</span></li>)}</ul>
+      </section>}
 
       <section aria-labelledby={`${listId}-t`}>
         <h2 id={`${listId}-t`}>The table</h2>

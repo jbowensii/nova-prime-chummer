@@ -1,5 +1,25 @@
 # Release notes
 
+## 0.7.0 — 2026-10-02: NPCs and critters
+
+**NPCs & Critters (admin and editors)**
+- A new **NPCs & Critters** page holds your NPCs, critters and spirits, apart from your runners. Players never see it.
+- **New NPC** picks a kind (NPC, critter or spirit) and a tier, then opens the runner editor in **NPC mode**:
+  attributes can go outside the metatype's range, and a critter needs no metatype.
+- **Regular** NPCs have no Edge; **prime** NPCs are managed like runners, with Edge.
+- A **fighting spirit** setting (low, high or extreme) is kept on the NPC.
+- The sheet (Review and both printed sheets) shows **average hits** and the fighting spirit.
+- **Share with a campaign…** lets that campaign's GMs read and print an NPC (one campaign per NPC). **Unshare** takes
+  it back.
+- A campaign's page now lists its shared NPCs for its GMs and the admin, each linking to the NPC. Players never see
+  them.
+- Deleted NPCs wait in the **NPC trash** and can be restored.
+- **Load book NPCs** copies the NPCs, critters and spirits found in the core rulebook import.
+- NPC files can be imported (a runner file is refused) and exported.
+
+**Foundry**
+- Exports carry NPCs: the NPCs page's **Export for Foundry…**, and the book data file's NPCs.
+
 ## 0.6.2 — 2026-10-01: book export adds topics, metatypes and pregens
 
 **Book data for Foundry**
