@@ -84,11 +84,12 @@ function trapTab(e: React.KeyboardEvent<HTMLDialogElement>) {
   if (e.shiftKey ? document.activeElement === first : document.activeElement === last) { e.preventDefault(); (e.shiftKey ? last : first).focus() }
 }
 
-/** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose; Tab stays inside. */
 /** The logo, home link and this build's version (vite.config.ts, from package.json). */
 export const Brand = () => <span className="brand-row"><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><span className="ver">v{__APP_VERSION__}</span></span>
 
-export function Modal({ open, onClose, title, children, actions, className }: { open: boolean; onClose: () => void; title: string; children: ReactNode; actions?: ReactNode; className?: string }) {
+/** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose; Tab stays inside; closing puts
+ *  focus back where it was. light: a click outside it closes it too (a small settings popover, nothing to lose). */
+export function Modal({ open, onClose, title, children, actions, className, light }: { open: boolean; onClose: () => void; title: string; children: ReactNode; actions?: ReactNode; className?: string; light?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null)
   const tid = useId() // two dialogs can be open at once (an edit over a picker)
   useEffect(() => {
@@ -100,6 +101,10 @@ export function Modal({ open, onClose, title, children, actions, className }: { 
   return (
     // React passes a nested dialog's close and cancel up to this one too: only its own count
     <dialog ref={ref} className={className} onClose={e => e.target === e.currentTarget && onClose()} onKeyDown={trapTab}
+      onClick={light ? e => { // the backdrop is the dialog itself: a click outside its box
+        const r = e.currentTarget.getBoundingClientRect()
+        if (e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) onClose()
+      } : undefined}
       onCancel={e => { if (e.target !== e.currentTarget) return; e.preventDefault(); onClose() }} aria-labelledby={tid}>
       {open && (
         <>

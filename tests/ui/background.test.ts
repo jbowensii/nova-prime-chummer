@@ -46,15 +46,25 @@ test('the strength slider only fades the art: 100% is the clamped strength above
     .toEqual([100, 100, 0, 0, 42, 100, 100, 100])
 })
 
-test('the sheet’s own background art keeps the sheet’s ink readable at full strength, and is off in print unless asked', () => {
+test('the sheet’s own background art keeps the sheet’s ink readable at every strength, and is off in print unless asked', () => {
+  // 0.8.1: the art fades in with the strength under a veil that thins as it rises, and the text blocks keep a wash of paper
   const sheet = readFileSync('src/print/sheet.css', 'utf8'), sa = sheet.slice(sheet.indexOf('/* ---- sheet art'))
-  const cover = Math.min(...[...sa.matchAll(/rgb\(255 255 255 \/ (\d+)%\)/g)].map(m => Number(m[1]) / 100))
+  const veils = [...sa.matchAll(/rgb\(255 255 255 \/ calc\(([\d.]+) - ([\d.]+) \* var\(--art\)\)\)/g)].map(m => [Number(m[1]), Number(m[2])])
+  const wash = Number(sa.match(/--wash: rgb\(255 255 255 \/ calc\(([\d.]+) \* var\(--art\)\)\)/)![1])
   const k = Number(sa.match(/filter: contrast\(([\d.]+)\)/)![1])
-  expect(cover).toBeGreaterThanOrEqual(0.8)
-  const bg = [255, 255, 255].map(v => v * cover + 0.5 * (1 - k) * 255 * (1 - cover)) // a black image, flattened
+  expect(veils).toHaveLength(2)
+  expect(sa).toMatch(/\.sheet-art > div \{[^}]*opacity: var\(--art\);/) // the image itself fades with the strength
   const s = (n: string) => rgb(sheet.match(new RegExp(`--s-${n}: (#[0-9a-f]{6})`))![1])
-  for (const [name, min] of [['ink', 7], ['ink-2', 4.5], ['rust', 4.5], ['indigo', 4.5]] as const)
-    expect(ratio(s(name), bg), `--s-${name}`).toBeGreaterThanOrEqual(min)
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20
+    const art = Math.max(...veils.map(([a, b]) => t * (1 - (a - b * t)))) * (1 - wash * t) // how much of the image shows behind text
+    expect(art).toBeLessThanOrEqual(0.31)
+    const bg = [255, 255, 255].map(v => v * (1 - art) + 0.5 * (1 - k) * 255 * art) // a black image, flattened
+    for (const [name, min] of [['ink', 7], ['ink-2', 4.5], ['rust', 4.5], ['indigo', 4.5]] as const)
+      expect(ratio(s(name), bg), `--s-${name} at ${t * 100}%`).toBeGreaterThanOrEqual(min)
+  }
+  // at 100% the image itself shows strongly where there's no text: at least 65% of it
+  expect(Math.min(...veils.map(([a, b]) => 1 - (a - b)))).toBeGreaterThanOrEqual(0.649)
   expect(sheet).toMatch(/\.sheet-art\.no-print \{ display: none !important; \}/)
   expect(sheet).toMatch(/prefers-reduced-transparency: reduce\) \{ \.sheet-art \{ display: none/)
 })

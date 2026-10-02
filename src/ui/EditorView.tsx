@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { appendEvent, balance, derive, logChange, price, rescope, settle as settleLedger, syncRealSin, validate, type TableFlags } from '../engine'
 import { loadTableRules, tableFlags } from './TableRules'
 import type { CareerEvent, Catalog, Character } from '../model/types'
-import { AccountMenu, session, track, useMe } from './auth'
+import { session, track, useMe } from './auth'
 import { Brand, fmt, Modal, NpcChips, StateBadge } from './bits'
 import { Editor, editHref, homeHref, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
@@ -10,7 +10,7 @@ import { downloadRunners } from './Foundry'
 import { useRepo } from './repo'
 import { newId } from '../model/types'
 import { Receipt } from './Receipt'
-import { loadSettings, SettingsButton } from './settings'
+import { loadSettings } from './settings'
 import { AmpsTab } from './tabs/Amps'
 import { AttributesTab } from './tabs/Attributes'
 import { ConceptTab } from './tabs/Concept'
@@ -20,7 +20,9 @@ import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
 import { BookSheet } from '../print/BookSheet'
-import { AskButton, AskRules } from './AskRules'
+import { AskRules } from './AskRules'
+import { IconButton } from './icons'
+import { MainMenu } from './nav'
 import { Face } from './Portrait'
 
 const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attributes'], ['skills', 'Skills'], ['amps', 'Shadow Amps'],
@@ -225,21 +227,21 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       <header className="topbar">
         <Brand />
         <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span>{ch.npc ? <NpcChips npc={ch.npc} /> : <StateBadge finalized={career} />}</div>
-        {!ro && <div className="savebar">
-          <SaveLine status={status} onRetry={() => void saveNow()} />
-          <button className="btn quiet" onClick={() => void saveNow()} disabled={status.state === 'saving'}>Save</button>
-          <button className="btn quiet" onClick={() => void saveAndClose()}>Save and close</button>
-        </div>}
+        {!ro && <div className="savebar"><SaveLine status={status} onRetry={() => void saveNow()} /></div>}
         <span className="spacer" />
-        {!ro && <>
-          <button className="btn quiet" disabled={!ctx.canUndo} onClick={ctx.undo}>Undo</button>
-          <button className="btn quiet" disabled={!ctx.canRedo} onClick={ctx.redo}>Redo</button>
-        </>}
-        <AskButton />
-        <SettingsButton />
-        <AccountMenu />
-        <button className="btn" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))}>Export file</button>
-        <button className="btn quiet" onClick={() => downloadRunners(c, [ch])}>Export for Foundry</button>
+        <div className="bars">
+          <div className="iconbar actions">
+            {!ro && <>
+              <IconButton icon="save" label="Save" onClick={() => void saveNow()} disabled={status.state === 'saving'} />
+              <IconButton icon="close" label="Save and close" onClick={() => void saveAndClose()} />
+              <IconButton icon="undo" label="Undo" disabled={!ctx.canUndo} onClick={ctx.undo} />
+              <IconButton icon="redo" label="Redo" disabled={!ctx.canRedo} onClick={ctx.redo} />
+            </>}
+            <IconButton icon="download" label="Export file" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))} />
+            <IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadRunners(c, [ch])} />
+          </div>
+          <MainMenu />
+        </div>
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (

@@ -29,7 +29,7 @@ test('create, finalize, earn, advance, print', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Ledger' })).toBeVisible()
 
   await page.getByLabel('Nuyen earned').fill('50000')
-  await page.getByLabel('Run').fill('Smoke run')
+  await page.getByLabel('Run', { exact: true }).fill('Smoke run')
   await page.getByRole('button', { name: 'Record earnings' }).click()
   await page.getByRole('button', { name: 'Record it' }).click()
 

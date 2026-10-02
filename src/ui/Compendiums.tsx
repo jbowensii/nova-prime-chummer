@@ -1,19 +1,19 @@
 // Compendiums (#/compendiums): the GMs' own collections of amps, gear, spells, vehicles and NPCs (spec 2026-10-02 §1,
 // plan phase 2). Yours (edit, share, delete), the ones shared with you (read only), and the books as read-only
 // compendiums. A compendium's entries are saved into its file (compendiumStore.ts) with the catalog's own entry form.
+import { PageHeader } from './nav'
+import { IconButton } from './icons'
 import { useEffect, useState } from 'react'
 import { compendiumSource, SOURCE_ID } from '../engine'
 import type { AmpTemplate, Catalog, Character, Compendium, Item, VehicleBase } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, because, useMe } from './auth'
-import { AskButton } from './AskRules'
-import { Brand, Modal, NpcChips } from './bits'
+import { because, useMe } from './auth'
+import { Modal, NpcChips } from './bits'
 import { loadCampaigns, type Campaign } from './Campaigns'
 import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
 import { npcRepoFor, useRepo } from './repo'
 import { downloadCompendium } from './Foundry'
-import { SettingsButton } from './settings'
 import { SourceLabel } from './SourceLabel'
 
 const SHARING: Record<Compendium['sharing'], string> = { private: 'Private', campaign: 'Shared with a campaign’s GMs', table: 'Shared with the table' }
@@ -82,9 +82,7 @@ const CopyButton = ({ r, copy }: { r: Row; copy: (r: Row) => void }) =>
   <button className="btn small quiet" aria-label={`Copy ${r.name} to…`} onClick={() => copy(r)}>Copy to…</button>
 
 function Header({ title, children }: { title: string; children?: React.ReactNode }) {
-  return <header><div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
-    <div className="row">{children}<a className="btn quiet" href="#/npcs">NPCs</a><a className="btn quiet" href="#/">Your runners</a>
-      <AskButton /><SettingsButton /><AccountMenu /></div></header>
+  return <PageHeader title={title}>{children}</PageHeader>
 }
 
 /** #/compendiums and #/compendiums/<id or book source id>[/<entry id>: its form open (a picker's Edit)]. reload: the catalog again (after a save). */
@@ -130,7 +128,7 @@ function ListPage({ c, comps, bad, mine, campaigns, msg, setMsg, changed }: { c:
 
   return (
     <main className="lib">
-      <Header title="Compendiums"><button className="btn primary" onClick={() => setDetails('new')}>New compendium</button></Header>
+      <Header title="Compendiums"><IconButton className="primary" icon="plus" label="New compendium" text="New compendium" onClick={() => setDetails('new')} /></Header>
       <p className="muted">Your own amps, gear, spells, vehicles and NPCs, in collections you can share with a campaign’s GMs or the whole table. Their entries are house content (Non-canon) and show in your pickers. Books are listed as read-only compendiums.</p>
       {msg && <p className="banner" role="status">{msg}</p>}
       {bad.map(b => <p className="err" key={b}>Couldn’t open {b}</p>)}
@@ -284,8 +282,7 @@ function CompendiumPage({ c, comp, own, campaigns, changed, edit, targets }: { c
 
   return (
     <main className="lib">
-      <Header title={comp.name}><button className="btn quiet" onClick={() => downloadCompendium(c, comp)}>Export for Foundry</button>
-        <a className="btn quiet" href="#/compendiums">All compendiums</a></Header>
+      <Header title={comp.name}><IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadCompendium(c, comp)} /></Header>
       <p className="muted">Source {comp.source} · {own ? 'yours' : `${comp.ownerName}’s, read only`} · {sharing} · {entries(count)}{comp.npcs.length ? `, ${comp.npcs.length} NPC${comp.npcs.length === 1 ? '' : 's'}` : ''}</p>
       {own && <div className="row">
         <button className="btn" onClick={() => setForm({ kind: 'amps' })}>Add an amp</button>
@@ -319,7 +316,7 @@ function BookPage({ c, id, targets, changed }: { c: Catalog; id: string; targets
   const rows = groupRows(c, of(c.amps), of(c.items), of(c.vehicles), [])
   return (
     <main className="lib">
-      <Header title={s.name}><a className="btn quiet" href="#/compendiums">All compendiums</a></Header>
+      <Header title={s.name} />
       <p className="muted">Book {id}{s.publisher ? ` · ${s.publisher}` : ''} · {s.canon ? 'canon' : 'non-canon'} · read only</p>
       <div className="row listtools"><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search entries" /></div>
       <Entries c={c} rows={rows} q={q} actions={targets.length ? r => <CopyButton r={r} copy={setCopying} /> : undefined} />

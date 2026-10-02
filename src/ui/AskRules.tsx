@@ -2,6 +2,7 @@
 // top of the builder and a campaign's runner list, and the header's "?" drawer on any page. Only shown when the server says
 // an AI provider is set up. Nothing is kept: no history, no browser storage; asking again or closing clears the answer.
 // The answer and sources are model output: rendered as plain text only (React text nodes), never HTML, markdown or links.
+import { IconButton } from './icons'
 import { useEffect, useId, useState } from 'react'
 import { because, sentence, UNREACHABLE, useMe } from './auth'
 import { Modal } from './bits'
@@ -100,7 +101,7 @@ export function AskButton() {
   if (!status?.available) return null
   return (
     <>
-      <button className="btn quiet ask-btn" aria-label="Ask the rules" title="Ask the rules" onClick={() => setOpen(true)}>?</button>
+      <IconButton icon="ask" label="Ask the rules" onClick={() => setOpen(true)} />
       <Modal open={open} onClose={() => setOpen(false)} title="Ask the rules" className="drawer">
         <AskForm status={status} onStatus={setStatus} drawer />
       </Modal>

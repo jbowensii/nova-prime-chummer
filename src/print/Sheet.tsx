@@ -5,6 +5,7 @@ import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'
 import { NpcBlock } from '../ui/NpcBlock'
 import { bdClass, printBackdrop } from '../ui/Portrait'
+import { IconButton, IconLink } from '../ui/icons'
 import { ampLines, lists, RISK, useSheetArt } from './shared'
 import './sheet.css'
 
@@ -19,11 +20,11 @@ export function Sheet() {
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
-        <a className="btn" href={editHref(ch, 'review')}>Back to editing</a>
-        <button className="btn primary" onClick={() => print()}>Print or save as PDF</button>
+        <IconLink icon="back" label="Back to editing" href={editHref(ch, 'review')} />
+        <IconButton className="primary" icon="print" label="Print or save as PDF" text="Print or save as PDF" onClick={() => print()} />
         {art.tools}
       </div>
-      <article className="sheet">
+      <article className="sheet" style={art.vars}>
         {art.layer}
         <div className="s-page1">
         <div className="s-top">

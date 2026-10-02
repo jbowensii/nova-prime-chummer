@@ -1,5 +1,6 @@
 // Per-browser display settings: theme, texture level, print style (docs/design-system.md), and on a server whether the
 // background art shows; on a server, also AI settings (a link to the page under Books), Background art, Sign-in and Backup (admin).
+import { IconButton } from './icons'
 import { useState } from 'react'
 import { isAdmin, useMe } from './auth'
 import { BackupSettings } from './Backup'
@@ -8,8 +9,8 @@ import { SignInSettings } from './SignInSettings'
 import { Modal } from './bits'
 
 /** artStrength: the background art's strength in %, 0–100 (100: app.css's own strengths, which keep text readable) */
-/** sheetArt / sheetArtPrint: the background art on the character sheet on screen / when printed; sheetArtStrength: its
- *  strength, the page's until set */
+/** sheetArt / sheetArtPrint: the background art on the character sheet on screen / when printed; sheetArtStrength: its own
+ *  strength (print/shared.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
 export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book'; art: 'on' | 'off'; artStrength: number
   sheetArt: 'on' | 'off'; sheetArtPrint: 'on' | 'off'; sheetArtStrength?: number }
 const KEY = 'ca2.settings.v1'
@@ -52,7 +53,7 @@ export function SettingsButton() {
     setS(next); saveSettings(next) }
   return (
     <>
-      <button className="btn quiet" onClick={() => setOpen(true)}>Settings</button>
+      <IconButton icon="settings" label="Settings" onClick={() => setOpen(true)} />
       <Modal open={open} onClose={() => setOpen(false)} title="Settings">
         <div className="settings">
           {GROUPS.filter(g => g.key !== 'art' || me).map(g => ( /* background art: a server's */

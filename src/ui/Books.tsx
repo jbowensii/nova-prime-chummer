@@ -1,13 +1,13 @@
 // Books: upload PDFs, see what each import produced, re-import or remove, and send unknown books to the AI
 // (server/books.mjs). Progress comes from each book's status.xml, polled every 2 s while anything runs.
+import { IconLink } from './icons'
+import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
 import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
-import { Brand, Modal, NonCanon } from './bits'
+import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
-import { AccountMenu, accountHeader, because, sessionEnded } from './auth'
-import { SettingsButton } from './settings'
-import { AskButton } from './AskRules'
+import { accountHeader, because, sessionEnded } from './auth'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
@@ -78,10 +78,7 @@ async function supportedBooks(): Promise<{ id: string; name: string; canon: bool
 
 export function BooksHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <header>
-      <div style={{ flex: 1 }}><Brand /><h1>{title}</h1></div>
-      <div className="row">{children}<a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
-    </header>
+    <PageHeader title={title}>{children}</PageHeader>
   )
 }
 
@@ -277,7 +274,7 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
 
   return (
     <main className="lib books">
-      <BooksHeader title="Books"><a className="btn quiet" href="#/books/ai">AI settings</a></BooksHeader>
+      <BooksHeader title="Books"><IconLink icon="ai" label="AI settings" href="#/books/ai" /></BooksHeader>
       <p>Upload the PDFs you own. Books the app knows are imported at once; any other book can be read by an AI you set up, and you
         check its entries before they’re added. The PDFs stay on this server and are never served to anyone.</p>
       <div role="status" aria-live="polite">

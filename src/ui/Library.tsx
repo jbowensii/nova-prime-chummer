@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { PageHeader } from './nav'
+import { IconButton, IconLink } from './icons'
 import { balance, blankCharacter, characterToXml, isCanonSource, snapshotEntries, xmlToCharacter } from '../engine'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { AccountMenu, because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
-import { Brand, Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from './bits'
+import { because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
+import { Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from './bits'
 import { useRepo, type Stored, type Unreadable } from './repo'
-import { SettingsButton } from './settings'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
 import { bookSamples, chooseExamples, extraCopies, keyOf, readCharacterFile, readSample, type Example, type Sources } from './samples'
-import { AskButton } from './AskRules'
 import { Face } from './Portrait'
 import { ExportRunnersDialog } from './Foundry'
 
@@ -266,28 +266,14 @@ export function Library({ c }: { c: Catalog }) {
 
   return (
     <main className="lib">
-      <header>
-        <div style={{ flex: 1 }}>
-          <Brand />
-          <h1>Your runners</h1>
-        </div>
-        <div className="row">
-          <button className="btn primary" onClick={() => setCreating(true)}>New runner</button>
-          <button className="btn" onClick={() => file.current?.click()}>Import file</button>
-          <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
-          <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
-          <button className="btn quiet" onClick={loadExamples}>Load example characters</button>
-          {admin && <a className="btn quiet" href="#/books">Books</a>}
-          {canEdit(me) && <a className="btn quiet" href="#/npcs">NPCs</a>}
-          {canEdit(me) && repo.mode === 'server' && <a className="btn quiet" href="#/compendiums">Compendiums</a>}
-          {canEdit(me) ? <a className="btn quiet" href="#/rules">Rules</a> : <a className="btn quiet" href="#/table-rules">Table rules</a>}
-          <a className="btn quiet" href="#/data">Game data</a>
-          {repo.mode === 'server' && <a className="btn quiet" href="#/campaigns">Campaigns</a>}
-          {trashed !== null && <a className="btn quiet" href="#/trash">Trash ({trashed})</a>}
-          <AskButton /><SettingsButton />
-          <AccountMenu />
-        </div>
-      </header>
+      <PageHeader title="Your runners">
+        <IconButton className="primary" icon="plus" label="New runner" text="New runner" onClick={() => setCreating(true)} />
+        <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
+        <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
+        <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
+        <IconButton icon="examples" label="Load example characters" onClick={loadExamples} />
+        {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/trash" badge={trashed || undefined} />}
+      </PageHeader>
       <p className="muted">Saved on {where}{repo.mode === 'server' ? ' (appdata/chummer-anarchy2/characters)' : '. Export files to keep them safe.'}</p>
       {noBooks && <p className="banner">Upload your books to add amps, spells and gear. <a href="#/books">Open the Books page</a></p>}
       {msg && <p className="banner" role="status">{msg}</p>}

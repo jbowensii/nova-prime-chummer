@@ -170,18 +170,22 @@ test('character sheet: weapons and spells apart, knowledge under the skills, por
     expect(await shown()).toBe(false)
     await expect(note).toBeHidden() // screen only
     await page.emulateMedia({ media: 'screen' })
-    await page.getByLabel('Print it').check()
+    // 0.8.1: the switches and the strength sit behind the toolbar's Background button
+    const bgButton = page.getByRole('button', { name: 'Background', exact: true }), bgDlg = page.getByRole('dialog', { name: 'Background' })
+    await bgButton.click()
+    await bgDlg.getByLabel('Print it').check()
     await page.emulateMedia({ media: 'print' })
     expect(await shown()).toBe(true)
     await page.emulateMedia({ media: 'screen' })
-    const slider = page.getByRole('slider', { name: 'Art strength' })
-    await expect(slider).toHaveValue('100') // the page's strength until set
+    const slider = bgDlg.getByRole('slider', { name: 'Art strength' })
+    await expect(slider).toHaveValue('60') // the sheet's own default until set
     await slider.focus()
-    await page.keyboard.press('ArrowLeft')
-    await page.keyboard.press('ArrowLeft')
-    expect(await art.evaluate(e => getComputedStyle(e).opacity)).toBe('0.9')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    const strength = () => sheet.evaluate(e => getComputedStyle(e).getPropertyValue('--art').trim())
+    expect(await strength()).toBe('0.7')
     await page.reload()
-    expect(await art.evaluate(e => getComputedStyle(e).opacity)).toBe('0.9')
+    expect(await strength()).toBe('0.7')
     await shots(page, 'sheet')
     await page.emulateMedia({ media: 'print' })
     await page.screenshot({ path: `${SHOTS}/sheet-print-preview.png`, fullPage: true })
@@ -190,9 +194,11 @@ test('character sheet: weapons and spells apart, knowledge under the skills, por
     await page.screenshot({ path: `${SHOTS}/sheet-print-preview-phone.png`, fullPage: true })
     await page.setViewportSize({ width: 1400, height: 900 })
     await page.emulateMedia({ media: 'screen' })
-    await page.getByLabel('Background art').uncheck()
+    await bgButton.click()
+    await bgDlg.getByLabel('Background art').uncheck()
     expect(await shown()).toBe(false)
-    await page.getByLabel('Print it').uncheck()
+    await bgDlg.getByLabel('Print it').uncheck()
+    await bgDlg.getByRole('button', { name: 'Close' }).click()
   } finally {
     await page.evaluate(id => fetch(`./api/backgrounds/${id}`, { method: 'DELETE' }), artId)
   }

@@ -2,16 +2,15 @@
 // sheet="optional", e.g. the core rulebook's); the GM adds house rules of their own. The GM switches them on and off on the
 // Rules page (admin and editors; server/books.mjs PUT /api/table-rules, the server enforces the role); everyone reads
 // custom/table-rules.xml (tablerules.xsd) and players see the ones switched on here.
+import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
 import type { Catalog, Rule } from '../model/types'
 import type { TableFlags } from '../engine'
 import { newId } from '../model/types'
-import { AccountMenu, send } from './auth'
-import { Brand, Modal } from './bits'
+import { send } from './auth'
+import { Modal } from './bits'
 import { useRepo } from './repo'
-import { SettingsButton } from './settings'
 import { SourceLabel } from './SourceLabel'
-import { AskButton } from './AskRules'
 
 /** A row of custom/table-rules.xml: a book's optional rule by its id, or a house rule with its own name and text. */
 export interface TableRule { id: string; on: boolean; name?: string; text?: string }
@@ -78,10 +77,7 @@ export function TableRulesScreen({ c }: { c: Catalog }) {
   const on = saved && rows(c, saved).filter(r => r.on)
   return (
     <main className="lib">
-      <header>
-        <div style={{ flex: 1 }}><Brand /><h1>Table rules</h1></div>
-        <div className="row"><a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu /></div>
-      </header>
+      <PageHeader title="Table rules" />
       <p className="muted">The optional rules and house rules your GM plays with.</p>
       {!on ? <p className="muted">Loading table rules…</p> : on.length === 0 ? <p>No table rules are switched on yet. Your GM switches them on.</p>
         : <ul className="table-rules">{on.map(r => <li key={r.id}><div className="head"><b>{r.name}</b> <Cite c={c} row={r} /></div><Text row={r} /></li>)}</ul>}

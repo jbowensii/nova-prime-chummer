@@ -2,11 +2,10 @@
 // characters/<username>/.trash/ (server.mjs /api/trash). Restore puts one back in its owner's library, as a copy with a
 // new id when that id is taken; Delete forever and Empty trash can't be undone. The admin opens anyone's (#/trash/<username>).
 // The NPC area's trash (`npcs`: /api/npcs/trash, #/npcs/trash[/<username>]) is the same page for NPCs.
+import { PageHeader } from './nav'
 import { useEffect, useState } from 'react'
-import { AccountMenu, because, isAdmin, send, useMe } from './auth'
-import { Brand, Modal } from './bits'
-import { SettingsButton } from './settings'
-import { AskButton } from './AskRules'
+import { because, isAdmin, send, useMe } from './auth'
+import { Modal } from './bits'
 
 export interface TrashItem { file: string; id: string; name: string; deletedAt: string }
 interface Trash { user: string; name: string; items: TrashItem[] }
@@ -55,17 +54,12 @@ export function TrashScreen({ user: asked, npcs = false }: { user?: string; npcs
   const items = trash?.items ?? []
   return (
     <main className="lib">
-      <header>
-        <div style={{ flex: 1 }}><Brand />
-          <h1>{npcs ? (own ? 'NPC trash' : `${trash?.name ?? user}’s NPC trash`) : own ? 'Trash' : `${trash?.name ?? user}’s trash`}</h1></div>
-        <div className="row">
-          {admin && accounts.length > 1 && <label>Account{' '}
+      <PageHeader title={npcs ? (own ? 'NPC trash' : `${trash?.name ?? user}’s NPC trash`) : own ? 'Trash' : `${trash?.name ?? user}’s trash`}>
+          {admin && accounts.length > 1 && <label className="inline">Account{' '}
             <select value={user ?? me?.username} onChange={e => { location.hash = e.target.value === me?.username ? home : `${home}/${encodeURIComponent(e.target.value)}` }}>
               {accounts.map(a => <option key={a.username} value={a.username}>{a.name} ({a.username})</option>)}
             </select></label>}
-          {npcs && <a className="btn quiet" href="#/npcs">NPCs &amp; Critters</a>}<a className="btn quiet" href="#/">Your runners</a><AskButton /><SettingsButton /><AccountMenu />
-        </div>
-      </header>
+      </PageHeader>
       <p className="muted">Deleted {noun}s wait here until {own ? 'you restore them or empty the trash' : 'they’re restored or the trash is emptied'}.
         Restore puts one back in {whose}.</p>
       {msg && <p className={`banner${msg.err ? ' bad' : ''}`} role={msg.err ? 'alert' : 'status'}>{msg.text}</p>}
