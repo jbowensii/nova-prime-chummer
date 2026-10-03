@@ -1,6 +1,8 @@
 """CLI for the SR6 importer (python -m importer sr6 ...).
   python -m importer sr6 run <library/sr6/book-id> --custom <custom/sr6> [--md] [--file NAME]
   python -m importer sr6 remove <library/sr6/book-id> --custom <custom/sr6> [--files]
+  python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3: refused)
+  python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6>
   python -m importer sr6 regroup <book.md> <regrouped.md>        (with the CRB recipe's aliases and name headers)
   python -m importer sr6 summary <library/sr6/book-id>           (counts per file, report rows by kind with names)
   python -m importer sr6 check <pdf> --out <scratch dir>         (the owner's local real-book check: a fresh
@@ -82,6 +84,27 @@ def _cmd_remove(argv):
     return 0
 
 
+def _cmd_edit(argv):
+    """The SR6 edits layer (importer/sr6/edits.py). A refused edit exits 3 with the reason on stderr."""
+    from importer.__main__ import _flag
+    from importer.sr6 import edits
+    sub, custom = (argv[0] if argv else None), _flag(argv, "--custom")
+    by = _flag(argv, "--by") if sub == "set" else None
+    if not custom or sub not in ("set", "remove") or len(argv) != (7 if by else 5):
+        print(USAGE, file=sys.stderr)
+        return 2
+    try:
+        if sub == "set":
+            edits.set_entry(custom, argv[1], argv[2], sys.stdin.buffer.read(edits.MAX_BODY + 1), by=by)
+            print('<result state="saved" />')
+        else:
+            print(f'<result removed="{str(edits.remove_entry(custom, argv[1], argv[2])).lower()}" />')
+    except edits.EditError as e:
+        print(e, file=sys.stderr)
+        return 3
+    return 0
+
+
 def _cmd_regroup(argv):
     from pathlib import Path
 
@@ -129,7 +152,8 @@ def _cmd_check(argv):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    cmds = {"run": _cmd_run, "remove": _cmd_remove, "regroup": _cmd_regroup, "summary": _cmd_summary, "check": _cmd_check}
+    cmds = {"run": _cmd_run, "remove": _cmd_remove, "regroup": _cmd_regroup, "summary": _cmd_summary, "check": _cmd_check,
+            "edit": _cmd_edit}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
