@@ -228,9 +228,10 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     cur.box_labels = True
                     continue
             elif label and not v.startswith("•") and (listy or not _SENTENCE_END.search(last) and (
-                    not v[:1].isupper() or last.endswith((",", "-")))):
-                # a wrapped value (a capital after an unbroken line starts the text), or the next entry of a label
-                # printed alone on its line (`**Weapons:**` over one weapon a line)
+                    (mode == "box" and cur.stats) or not v[:1].isupper() or last.endswith((",", "-")))):
+                # a wrapped value, or the next entry of a label printed alone on its line (`**Weapons:**` over one
+                # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text;
+                # a stat box has no text after its labels.
                 u, key = label
                 prev = u.labels[key]
                 joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
@@ -274,8 +275,23 @@ def _merge_boxes(units, aliases, report):
                        "page": d.page, "chapter": d.chapter})
 
 
+def _share_runs(units, report):
+    """Items printed side by side (two spells, each a heading, tags and a band) share the text under the last one:
+    a run of same-level items with tables and no labels or text ends at such an item with text."""
+    run = []
+    for u in [u for u in units if not u.merged]:
+        boxed = u.kind == "item" and u.stats and not u.labels and (not run or u.level == run[-1].level)
+        if boxed and u.has_text() and run:
+            for r in run:
+                r.body = [b for b in u.body if isinstance(b, str)]
+            report.append({"kind": "shared-description", "name": u.name, "rows": "; ".join(r.name for r in run + [u]),
+                           "page": u.page, "chapter": u.chapter})
+        run = run + [u] if boxed and not u.has_text() else []
+
+
 def _chapter(units, aliases, name_headers, report):
     _merge_boxes(units, aliases, report)
+    _share_runs(units, report)
     descs = [u for u in units if u.kind == "item" and not u.merged]
     chapter = units[0].chapter
     exact, loose, first = {}, {}, {}  # key -> descriptions in reading order; primary key -> first description

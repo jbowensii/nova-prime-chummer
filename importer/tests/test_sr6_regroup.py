@@ -308,3 +308,16 @@ class RegroupSectionsAndBoxesTest(unittest.TestCase):
     def test_box_joins_a_description_with_labels(self):
         t = self.blocks["Teacher"]
         self.assertEqual((t.labels, t.stats, t.text), ({"Uses": "Lessons"}, [{"B": "1", "A": "1"}], "Teachers teach."))
+
+
+class SideBySideTest(unittest.TestCase):
+    def test_items_side_by_side_share_the_text(self):
+        md = ("# SPELLS\n#### Glow Dart\n##### (Glow)\n| RANGE | DV |\n|---|---|\n| LOS | 2 |\n"
+              "#### Glow Storm\n##### (Glow, Area)\n| RANGE | DV |\n|---|---|\n| LOS (A) | 3 |\n<!-- page 9 -->\n"
+              "Dart hits one, storm hits all.\n#### Dim Ward\n##### (Dim)\n| RANGE | DV |\n|---|---|\n| T | 1 |\n"
+              "#### Dim Veil\n**Cost:** 2 Karma\nVeils dim.\n")
+        text, report = regroup.regroup(md)
+        b = {b.name: b for b in blocks(text)}
+        self.assertEqual([b["Glow Dart"].text, b["Glow Storm"].text], ["Dart hits one, storm hits all."] * 2)
+        self.assertEqual(b["Dim Ward"].text, "")  # Dim Veil has no band: not side by side
+        self.assertEqual([(r["kind"], r["rows"]) for r in report], [("shared-description", "Glow Dart; Glow Storm")])
