@@ -150,11 +150,11 @@ def _gutter_crossings(rows, x, tol=0):
     left, right, cross = [], [], 0
     for row in rows:
         for line in _split_at(row, x, tol):
-            x0, x1 = _line_extent(line)
             span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
-            if x1 <= x:
+            side = _kind(*_line_extent(line), x, tol)
+            if side == "left":
                 left.append(span)
-            elif x0 >= x:
+            elif side == "right":
                 right.append(span)
             else:
                 cross += 1
@@ -188,13 +188,14 @@ def _find_gutter(rows, right, left=0, tol=0):
     return min(scored)[1] if scored else None
 
 
-def _kind(x0, x1, mid):
-    """Classify an item spanning [x0, x1) as 'left', 'right', or a full-width 'band'."""
+def _kind(x0, x1, mid, tol=0):
+    """Classify an item spanning [x0, x1) as 'left', 'right', or a full-width 'band'. tol (the SR6 layout): a line
+    split up to tol off mid (a boxed sidebar's gutter) still sits in its column."""
     if mid is None:
         return "single"
-    if x1 <= mid:
+    if x1 <= mid + tol:
         return "left"
-    if x0 >= mid:
+    if x0 >= mid - tol:
         return "right"
     return "band"
 
@@ -323,7 +324,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 # headings stay unmarked (their size already says it); bold only matters in body lines
                 text = ("#" * level + " " + " ".join(w["text"] for w in line)) if level else _line_text(line)
                 x0, x1 = _line_extent(line)
-                blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid), text))
+                blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid, tol), text))
                 geo.append((level, max(w["bottom"] for w in line), size))
             if sr6:
                 blocks = layout.join_headings(blocks, geo)
@@ -332,7 +333,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 if md:
                     blocks.append((t.bbox[1], _kind(t.bbox[0], t.bbox[2], mid), "\n".join(md)))
             for bbox, rows, _ in bands:
-                blocks.append((bbox[1], _kind(bbox[0], bbox[2], mid), "\n".join(_table_md(rows))))
+                blocks.append((bbox[1], _kind(bbox[0], bbox[2], mid, tol), "\n".join(_table_md(rows))))
 
             out += _reading_order(blocks, mid)
         title = (pdf.metadata or {}).get("Title", "") or ""

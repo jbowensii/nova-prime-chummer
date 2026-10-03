@@ -60,6 +60,19 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertIn("**Skills:** Sneaking 3", self.lines)
         self.assertNotIn("Skills", self.lines[self.lines.index("| Touch | 2 |") - 1])
 
+    def test_shaded_table_by_cell_rects(self):
+        i = self.lines.index("| THING | UNIT PRICE | NOTES |")
+        self.assertEqual(self.lines[i + 2:i + 9], [
+            "| Widget | 5 | a small note |", "| Big Long Widget | 8 | a big note |", "| Gizmo | 7 | b note |",
+            "| Extras: spare parts |  |  |", "| Doohickey | 9 | c note |", "| Spare Kit |  |  |",
+            "| Sprocket | 2 | d note |"])
+
+    def test_offset_sidebar_columns_read_column_by_column(self):
+        order = [next(i for i, ln in enumerate(self.lines) if ln.endswith(" " + t) or ln.startswith(t + " "))
+                 for t in ("a3", "b0", "b3", "c0", "c3", "d0")]
+        self.assertEqual(order, sorted(order))
+        self.assertLess(self.lines.index("#### A Sidebar Title Across The Two Text Columns"), order[3])
+
     def test_anarchy_mode_unchanged(self):
         _, lines = _convert(sr6=False)
         self.assertNotIn("| GADGET | DV | COST |", lines)  # no header-band tables
