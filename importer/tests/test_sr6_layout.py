@@ -30,7 +30,7 @@ class Sr6LayoutTest(unittest.TestCase):
 
     def test_headings_by_font(self):
         for h in ["# GADGETS", "## Gadget Shop", "### Shop Rules", "#### zappers", "#### Zap Gun",
-                  "##### (made up tags)"]:
+                  "##### (made up tags)", "#### Sledge Hammer Time"]:
             self.assertIn(h, self.lines)
 
     def test_band_table_with_wrapped_cell_and_long_name(self):

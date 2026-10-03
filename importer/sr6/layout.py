@@ -361,7 +361,10 @@ def join_headings(blocks, geo):
     for (top, kind, text), (level, bottom, size) in zip(blocks, geo):
         prev = next((i for i in range(len(out) - 1, -1, -1) if out[i][1] == kind or "band" in (out[i][1], kind)), None)
         if level and prev is not None and info[prev][0] == level and top - info[prev][1] < size * 0.6:
-            out[prev] = (out[prev][0], out[prev][1], out[prev][2] + " " + text.split(" ", 1)[1])
+            head, more = out[prev][2], text.split(" ", 1)[1]
+            # a word hyphenated at the line end joins up again (`Fire-` + `wall`)
+            head = head[:-1] + more if head.endswith("-") and more[:1].islower() else head + " " + more
+            out[prev] = (out[prev][0], out[prev][1], head)
             info[prev] = (level, bottom)
             continue
         out.append((top, kind, text))
