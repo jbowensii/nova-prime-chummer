@@ -1,10 +1,12 @@
 // Books: upload PDFs, see what each import produced, re-import or remove, and send unknown books to the AI
-// (server/books.mjs). Progress comes from each book's status.xml, polled every 2 s while anything runs.
+// (server/books.mjs). Progress comes from each book's status.xml, polled every 2 s while anything runs. game="sr6": the
+// Shadowrun 6 area's books (/api/sr6/books*), with no AI, review, data pack or dupes.
 import { IconLink } from './icons'
 import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
 import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
+import { SR6_KINDS, type Sr6Kind } from '../sr6/model/types'
 import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
 import { accountHeader, because, sessionEnded } from './auth'
@@ -25,8 +27,9 @@ const KINDS: [RegExp, string, string][] = [[/^amps/, 'amp', 'amps'], [/^spells/,
   [/^gear/, 'gear item', 'gear items'], [/^weapons/, 'weapon', 'weapons'], [/^armor/, 'armor', 'armor'], [/^rules/, 'rule', 'rules'],
   [/^skills/, 'skill', 'skills']]
 
-/** "148 amps, 33 spells": entries per kind of overlay file (rules-base.xml and rules-magic.xml add up). */
-function counts(c: Record<string, number>) {
+/** "148 amps, 33 spells": entries per kind of overlay file (rules-base.xml and rules-magic.xml add up). SR6: "Weapons 2". */
+function counts(c: Record<string, number>, sr6?: boolean) {
+  if (sr6) return Object.entries(c).map(([f, n]) => `${SR6_KINDS[f.replace(/\.xml$/, '') as Sr6Kind]?.label ?? f} ${n}`).join(', ')
   const n = new Map<string, number>()
   for (const [file, k] of Object.entries(c)) {
     const kind = KINDS.find(([re]) => re.test(file))
@@ -68,9 +71,10 @@ export function sendFile(path: string, file: File, headers: Record<string, strin
   })
 }
 
-/** Supported books: public/data/sources.xml as shipped (the merged catalog can't tell a shipped source from an import). */
-async function supportedBooks(): Promise<{ id: string; name: string; canon: boolean }[]> {
-  const r = await fetch('./data/sources.xml', { cache: 'no-cache' }).catch(() => null)
+/** Supported books: public/data/sources.xml (SR6: data/sr6/sources.xml) as shipped (the merged catalog can't tell a
+ *  shipped source from an import). */
+async function supportedBooks(path: string): Promise<{ id: string; name: string; canon: boolean }[]> {
+  const r = await fetch(`./${path}`, { cache: 'no-cache' }).catch(() => null)
   if (!r?.ok) return []
   const doc = new DOMParser().parseFromString(await r.text(), 'text/xml')
   return [...doc.getElementsByTagName('source')].map(s => ({ id: s.getAttribute('id')!, name: s.getElementsByTagName('name')[0]?.textContent ?? '', canon: s.getAttribute('canon') === 'true' }))
@@ -182,8 +186,9 @@ function DataPack({ reload }: { reload: () => void }) {
   )
 }
 
-export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
+export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => void; game?: 'sr6' }) {
   const repo = useRepo()
+  const sr6 = game === 'sr6', bookApi = sr6 ? 'sr6/books' : 'books'
   const [books, setBooks] = useState<Book[] | null>(null)
   const [supported, setSupported] = useState<{ id: string; name: string; canon: boolean }[]>([])
   const [msg, setMsg] = useState<string | null>(null)
@@ -199,8 +204,8 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
   const states = useRef(new Map<string, string>())
 
   // a failed poll keeps the last list and keeps polling; only a real answer replaces it
-  const refresh = () => api<Book[]>('books').then(b => { setOffline(false); setBooks(b) }, () => setOffline(true))
-  useEffect(() => { if (repo.mode === 'server') { void refresh(); void supportedBooks().then(setSupported) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const refresh = () => api<Book[]>(bookApi).then(b => { setOffline(false); setBooks(b) }, () => setOffline(true))
+  useEffect(() => { if (repo.mode === 'server') { void refresh(); void supportedBooks(sr6 ? 'data/sr6/sources.xml' : 'data/sources.xml').then(setSupported) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const running = books?.some(b => b.busy || LIVE.includes(b.state))
   useEffect(() => {
@@ -209,12 +214,15 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
     return () => clearInterval(t)
   }, [running, offline]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // a finished import or removal changes the catalog: load it again
+  // a finished import or removal changes the catalog: load it again, once nothing runs (a book removed with its files
+  // leaves the list only after its job: settling while it ran reloaded before the files were gone)
   useEffect(() => {
     if (!books) return
-    const key = books.filter(b => !b.busy && !LIVE.includes(b.state)).map(b => `${b.id}:${b.state}:${b.imported}`).join(' ')
-    if (settled.current !== null && settled.current !== key) reload()
-    settled.current = key
+    const key = books.map(b => `${b.id}:${b.state}:${b.imported}`).join(' ')
+    if (!running) {
+      if (settled.current !== null && settled.current !== key) reload()
+      settled.current = key
+    } else settled.current ??= '(running)' // opened while a job ran: reload once it's done
     const changed = books.filter(b => states.current.has(b.id) && states.current.get(b.id) !== b.state)
     if (changed.length) setLive(changed.map(b => `${b.name ?? b.file ?? b.id}: ${STATE[b.state] ?? b.state}`).join('. '))
     states.current = new Map(books.map(b => [b.id, b.state]))
@@ -235,7 +243,7 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
       setUploading({ name: f.name, pct: 0 })
       setLive(`Uploading ${f.name}`)
       try {
-        await sendFile('books', f, { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(f.name) }, pct => setUploading({ name: f.name, pct }))
+        await sendFile(bookApi, f, { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(f.name) }, pct => setUploading({ name: f.name, pct }))
         setLive(`Uploaded ${f.name}`)
       }
       catch (e) { setMsg(`${because(`Couldn’t upload ${f.name}`, (e as Error).message)}${(e as { status?: number }).status === 413 ? ' Books can be up to 500 MB.' : (e as { status?: number }).status === 401 ? '' : ' Try again.'}`) }
@@ -261,22 +269,24 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
 
   const openReport = async (book: Book) => {
     try {
-      const doc = new DOMParser().parseFromString(await api<string>(`books/${book.id}/report`), 'text/xml')
+      const doc = new DOMParser().parseFromString(await api<string>(`${bookApi}/${book.id}/report`), 'text/xml')
       setReport({ book, rows: [...doc.getElementsByTagName('row')].map(r => Object.fromEntries([...r.attributes].map(a => [a.name, a.value]))) })
     } catch (e) { setMsg(because('Couldn’t open the report', (e as Error).message)) }
   }
 
   const importedSources = new Set((books ?? []).filter(b => b.state === 'done' && b.source).map(b => b.source))
-  const dupes = report?.book.source ? [...dupeGroups(c).values()]
+  const dupes = c && !sr6 && report?.book.source ? [...dupeGroups(c).values()]
     .map(ids => ids.map(id => c.amps.get(id) ?? c.items.get(id) ?? c.rules.get(id)!).filter(Boolean))
     .filter(g => g.some(e => e.source === report.book.source)) : []
   const provider = asking?.provider ? PROVIDER_NAMES[asking.provider] ?? asking.provider : null
 
   return (
     <main className="lib books">
-      <BooksHeader title="Books"><IconLink icon="ai" label="AI settings" href="#/books/ai" /></BooksHeader>
-      <p>Upload the PDFs you own. Books the app knows are imported at once; any other book can be read by an AI you set up, and you
-        check its entries before they’re added. The PDFs stay on this server and are never served to anyone.</p>
+      <BooksHeader title="Books">{!sr6 && <IconLink icon="ai" label="AI settings" href="#/books/ai" />}</BooksHeader>
+      {sr6 ? <p>Upload the Shadowrun 6 core rulebook PDF you own. It’s imported at once into the SR6 catalog and rules. The PDF stays
+        on this server and is never served to anyone.</p>
+        : <p>Upload the PDFs you own. Books the app knows are imported at once; any other book can be read by an AI you set up, and you
+        check its entries before they’re added. The PDFs stay on this server and are never served to anyone.</p>}
       <div role="status" aria-live="polite">
         {offline && <p className="banner err">The server can’t be reached — retrying.</p>}
         {msg && <p className="banner">{msg} <button className="btn small quiet" onClick={() => setMsg(null)}>Dismiss</button></p>}
@@ -292,14 +302,14 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
           onChange={e => { void upload(e.target.files); e.target.value = '' }} />
       </label>
 
-      <DataPack reload={reload} />
+      {!sr6 && <DataPack reload={reload} />}
 
       <h2>Your books</h2>
       {books === null ? <p className="muted">Loading books…</p> : books.length === 0 ? <p className="muted">No books uploaded yet.</p> : books.map(b => (
         <div className="book" key={b.id}>
           <div>
             <div className="title">{b.name ?? b.file ?? b.id}
-              {b.source && <> <span className="src" title={c.sources.get(b.source)?.name}>{b.source}</span></>}
+              {b.source && <> <span className="src" title={c?.sources.get(b.source)?.name ?? b.name}>{b.source}</span></>}
               {b.canon === false && <> <NonCanon /></>}
             </div>
             <div className="meta">
@@ -307,7 +317,7 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
               {b.name && b.file && <> {b.file}</>}
               {b.recipe && <> · {b.recipe === 'ai' ? 'read by AI' : `recipe ${b.recipe}`}</>}
               {b.imported && <> · {new Date(b.imported).toLocaleDateString()}</>}
-              {b.state === 'done' && Object.keys(b.counts).length > 0 && <> · {counts(b.counts)}</>}
+              {b.state === 'done' && Object.keys(b.counts).length > 0 && <> · {counts(b.counts, sr6)}</>}
             </div>
             {b.message && b.state !== 'done' && <div className={b.state === 'failed' ? 'err' : 'muted'}>{b.message}</div>}
             {b.state === 'done' && b.message && <div className="muted">{b.message}</div>}
@@ -316,23 +326,24 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
             {!!b.coreAi?.length && <div className="warn">Read by AI from this book: {tables(b.coreAi)}. Check them against the book.</div>}
           </div>
           <div className="row">
-            {b.state === 'needs-ai' && (b.review === 'done'
+            {!sr6 && b.state === 'needs-ai' && (b.review === 'done'
               ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Extract with AI again</button>
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Extract with AI</button>)}
-            {canCoreAi(b) && ['done', 'failed', 'review'].includes(b.state) && (b.review === 'done'
+            {!sr6 && canCoreAi(b) && ['done', 'failed', 'review'].includes(b.state) && (b.review === 'done'
               ? <button className="btn small quiet" disabled={b.busy} onClick={() => void ask(b, true)}>Read the tables with AI again</button>
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Read the tables with AI</button>)}
-            {b.review && (!b.source || canCoreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
+            {!sr6 && b.review && (!b.source || canCoreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
             {b.state === 'done' && <button className="btn small quiet" onClick={() => void openReport(b)}>Report</button>}
             {['done', 'failed', 'removed', 'needs-ai'].includes(b.state) && b.recipe !== 'ai' &&
-              <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`books/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}
+              <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`${bookApi}/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}
             {!LIVE.includes(b.state) && <button className="btn small quiet" disabled={b.busy} onClick={() => { setWithFiles(b.state === 'removed'); setRemoving(b) }}>Remove</button>}
           </div>
         </div>
       ))}
 
       <h2 style={{ marginTop: '1.5rem' }}>Supported books</h2>
-      <p className="muted">These are read by a recipe, with no AI. Upload the PDF and its amps, spells, gear, rules and sample runners are added.</p>
+      <p className="muted">{sr6 ? 'These are read by a recipe. Upload the PDF and its catalog entries and rules are added.'
+        : 'These are read by a recipe, with no AI. Upload the PDF and its amps, spells, gear, rules and sample runners are added.'}</p>
       <ul className="supported">
         {supported.map(s => (
           <li key={s.id}>
@@ -344,8 +355,8 @@ export function BooksScreen({ c, reload }: { c: Catalog; reload: () => void }) {
 
       <Modal open={!!removing} onClose={() => setRemoving(null)} title={`Remove ${removing?.name ?? removing?.file ?? 'this book'}?`}
         actions={<><button className="btn" onClick={() => setRemoving(null)}>Keep</button>
-          <button className="btn danger" onClick={() => { const b = removing!; setRemoving(null); void act('remove the book', () => api(`books/${b.id}${withFiles ? '?files=1' : ''}`, { method: 'DELETE' })) }}>Remove book</button></>}>
-        <p>Its amps, spells, gear, rules, descriptions and sample runners leave the app. Runners that use them keep working from their own copies.</p>
+          <button className="btn danger" onClick={() => { const b = removing!; setRemoving(null); void act('remove the book', () => api(`${bookApi}/${b.id}${withFiles ? '?files=1' : ''}`, { method: 'DELETE' })) }}>Remove book</button></>}>
+        <p>{sr6 ? 'Its catalog entries and descriptions leave the app.' : 'Its amps, spells, gear, rules, descriptions and sample runners leave the app.'} Runners that use them keep working from their own copies.</p>
         <label className="check"><input type="checkbox" checked={withFiles} onChange={e => setWithFiles(e.target.checked)} />
           Also delete the PDF and its text. Without them the book can’t be re-imported until you upload it again.</label>
       </Modal>
