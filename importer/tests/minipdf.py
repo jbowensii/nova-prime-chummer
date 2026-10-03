@@ -437,7 +437,10 @@ BT /F2 6 Tf 72 600 Td (TONIC IS:) Tj ET
 BT /F2 6 Tf 150 600 Td (AVAIL) Tj ET
 BT /F2 6 Tf 220 600 Td (COST) Tj ET
 """ + _sr6_cell(72, 590, "Fizz Pop") + _sr6_cell(150, 590, "2(L)") + _sr6_cell(220, 590, "20")
-                     + _sr6_cell(72, 580, "Glow Juice") + _sr6_cell(150, 580, "4") + _sr6_cell(220, 580, "75"))
+                     + _sr6_cell(72, 580, "Glow Juice") + _sr6_cell(150, 580, "4") + _sr6_cell(220, 580, "75/")
+                     + _sr6_cell(220, 572, "80")
+                     + _sr6_cell(72, 562, "Zing-") + _sr6_cell(72, 555, "Zang") + _sr6_cell(150, 558.5, "1")
+                     + _sr6_cell(220, 558.5, "5"))
 
 
 def sr6_layout_pdf() -> bytes:

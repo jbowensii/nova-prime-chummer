@@ -77,9 +77,10 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertFalse(any(ln.startswith(("| 1.", "| and talking", "| Made Powers")) for ln in self.lines))
         self.assertTrue(any("**Made Powers:**" in ln for ln in self.lines))
 
-    def test_header_smaller_than_rows(self):
+    def test_header_smaller_than_rows_and_wraps_after_dash_or_slash(self):
         i = self.lines.index("| TONIC IS: | AVAIL | COST |")
-        self.assertEqual(self.lines[i + 2:i + 4], ["| Fizz Pop | 2(L) | 20 |", "| Glow Juice | 4 | 75 |"])
+        self.assertEqual(self.lines[i + 2:i + 5], ["| Fizz Pop | 2(L) | 20 |", "| Glow Juice | 4 | 75/80 |",
+                                                   "| Zing-Zang | 1 | 5 |"])
 
     def test_header_sign_stays_in_its_cell(self):
         i = self.lines.index("| # OF ZAPS | EFFECT |")

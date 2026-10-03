@@ -106,7 +106,12 @@ def _split_x(words, gap):
 
 
 def _text(words):
-    return " ".join(w["text"] for line in _cluster_lines(words) for w in line)
+    """A cell's words in reading order; a line wrapped after `-` or `/` (`Shin-` `hyung`) joins without a space."""
+    out = ""
+    for line in _cluster_lines(words):
+        text = " ".join(w["text"] for w in line)
+        out += ("" if not out or out.endswith(("-", "/")) else " ") + text
+    return out
 
 
 def _opens_with_label(line):
