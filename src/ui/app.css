@@ -633,3 +633,11 @@ dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size:
   .bars > .actions { border-right: 0; padding-right: 0; }
   .menubar .tools { border-left: 0; padding-left: 0; margin-left: 0; }
 }
+
+/* SR6 Rules: subsections indented under their section, paragraphs kept; Game data: the short kinds table; the edit dialog’s read-only parts */
+.sr6-rules .rule-list dd { white-space: pre-line; }
+.sr6-rules .rule-list .lvl2 { padding-left: 1rem; }
+.sr6-rules .rule-list .lvl3 { padding-left: 2rem; }
+.sr6-rules .rule-list .lvl4 { padding-left: 3rem; }
+table.data.sr6-kinds { width: auto; min-width: min(20rem, 100%); }
+.sr6-parts { margin: 0.2rem 0 0; padding-left: 1.2rem; font-size: 0.93rem; color: var(--text-2); }

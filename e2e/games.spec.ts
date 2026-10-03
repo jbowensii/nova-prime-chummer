@@ -69,7 +69,7 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.getByRole('link', { name: 'Chummer Shadowrun 6' })).toHaveAttribute('href', '#/sr6')
   await signIn(page, 'ada')
   await expect(page.getByText('SR6 builder coming')).toBeVisible()
-  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Books'])
+  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Books', 'Rules', 'Game data'])
   await expect(page.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('button', { name: 'Ask the rules' })).toHaveCount(0)
   await page.screenshot({ path: `${SHOTS}/sr6-shell.png`, fullPage: true })
@@ -79,18 +79,14 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await page.setViewportSize({ width: 1400, height: 900 })
 })
 
-test('SR6 Books: empty, Upload off and says why', async ({ page }) => {
+test('SR6 Books: empty, the upload is on', async ({ page }) => {
   await page.goto('/#/sr6')
   await signIn(page, 'ada')
   await page.getByRole('link', { name: 'Books' }).click()
   await expect(page).toHaveURL(/#\/sr6\/books$/)
-  await expect(page.getByRole('heading', { name: 'Books' })).toBeVisible()
-  await expect(page.getByText('No SR6 books yet.')).toBeVisible()
-  const upload = page.getByRole('button', { name: 'Upload a book' })
-  await expect(upload).toHaveAttribute('aria-disabled', 'true')
-  await upload.focus()
-  await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab') // keyboard focus shows the tip
-  await expect(page.getByRole('tooltip')).toHaveText('SR6 book import comes in the next update')
+  await expect(page.getByRole('heading', { name: 'Books', exact: true })).toBeVisible()
+  await expect(page.getByText('No books uploaded yet.')).toBeVisible()
+  await expect(page.getByLabel('Choose PDF files')).toBeEnabled()
   await expect(page.getByRole('link', { name: 'Books' })).toHaveAttribute('aria-current', 'page')
 })
 
@@ -152,6 +148,6 @@ test('a player sees no SR6 Books', async ({ page }) => {
   await page.goto('/#/sr6/books')
   await signIn(page, 'pat')
   await expect(page.getByText('SR6 builder coming')).toBeVisible()
-  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners'])
-  await expect(page.getByText('No SR6 books yet.')).toHaveCount(0)
+  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Rules', 'Game data'])
+  await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)
 })

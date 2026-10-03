@@ -14,9 +14,11 @@ import { SettingsButton } from './settings'
 export function MainMenu() {
   const me = useMe(), server = useRepo().mode === 'server'
   const [here, sub] = location.hash.replace(/^#\/?/, '').split('/')
-  if (here === 'sr6') return <Bar section={sub === 'books' && isAdmin(me) ? 'sr6/books' : 'sr6'} sr6 items={[
+  if (here === 'sr6') return <Bar section={(sub === 'books' && isAdmin(me)) || sub === 'rules' || sub === 'data' ? `sr6/${sub}` : 'sr6'} sr6 items={[
     ['sr6', 'runners', 'Your runners', true],
     ['sr6/books', 'books', 'Books', isAdmin(me)],
+    ['sr6/rules', 'rules', 'Rules', true],
+    ['sr6/data', 'data', 'Game data', true],
   ]} />
   const section = here === 'c' ? '' : here === 'n' ? 'npcs' : here // a runner's or NPC's editor: its list
   return <Bar section={section} items={[
