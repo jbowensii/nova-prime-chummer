@@ -9,6 +9,7 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
+SR6_CONVERTER_VERSION = "sr6-1"  # convert(..., sr6=True), importer/sr6/layout.py
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -116,14 +117,24 @@ def _line_extent(line):
     return min(w["x0"] for w in line), max(w["x1"] for w in line)
 
 
-def _split_at(row, x):
-    """Split a row at gutter x, unless a word runs through the gutter strip."""
-    if any(w["x0"] < x + _GUTTER_HALF and w["x1"] > x - _GUTTER_HALF for w in row):
+def _split_at(row, x, tol=0):
+    """Split a row at gutter x, unless a word runs through the gutter strip. tol (the SR6 layout): the row splits in
+    its widest gap that holds a strip up to tol from x (a boxed sidebar's gutter sits a few points off the body
+    text's) and is wider than a word space at its words' size (a chapter title's word spaces are a strip wide)."""
+    if tol:
+        gaps = [(b["x0"] - a["x1"], min(max(x, a["x1"] + _GUTTER_HALF), b["x0"] - _GUTTER_HALF))
+                for a, b in zip(row, row[1:])
+                if b["x0"] - a["x1"] >= max(2 * _GUTTER_HALF, (a["size"] + b["size"]) / 4)]
+        gaps = [g for g in gaps if abs(g[1] - x) <= tol]
+        if not gaps:
+            return [row]
+        x = max(gaps)[1]
+    elif any(w["x0"] < x + _GUTTER_HALF and w["x1"] > x - _GUTTER_HALF for w in row):
         return [row]
     return [part for part in ([w for w in row if w["x1"] <= x], [w for w in row if w["x0"] >= x]) if part]
 
 
-def _gutter_crossings(rows, x):
+def _gutter_crossings(rows, x, tol=0):
     """Crossing-line count if x is a real gutter, else None.
 
     With rows split at x: what marks a real gutter is that lines stop
@@ -138,7 +149,7 @@ def _gutter_crossings(rows, x):
     """
     left, right, cross = [], [], 0
     for row in rows:
-        for line in _split_at(row, x):
+        for line in _split_at(row, x, tol):
             x0, x1 = _line_extent(line)
             span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
             if x1 <= x:
@@ -154,7 +165,7 @@ def _gutter_crossings(rows, x):
     return cross if beside >= _MIN_LINES_PER_SIDE else None
 
 
-def _find_gutter(rows, right, left=0):
+def _find_gutter(rows, right, left=0, tol=0):
     """Return a column-split x, or None if the page doesn't look 2-column.
 
     Candidates are the centres of whitespace gaps (a strip >= 2*_GUTTER_HALF
@@ -173,7 +184,7 @@ def _find_gutter(rows, right, left=0):
         for a, b in zip(row, row[1:])
         if b["x0"] - a["x1"] >= 2 * _GUTTER_HALF and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
-    scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x)) is not None]
+    scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
 
 
@@ -270,45 +281,63 @@ def _reading_order(blocks, mid):
     return out
 
 
-def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None) -> dict:
-    """pages: optional 1-based inclusive (first, last) range to convert."""
+def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, sr6: bool = False) -> dict:
+    """pages: optional 1-based inclusive (first, last) range to convert. sr6: the Shadowrun 6 layout
+    (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped)."""
+    if sr6:
+        from importer.sr6 import layout
     with open(pdf_path, "rb") as f:
         sha = hashlib.sha256(f.read()).hexdigest()
     out = []
     with pdfplumber.open(pdf_path) as pdf:
-        _, big = _bands(pdf)
+        fonts = layout.fonts(pdf) if sr6 else None
+        big = None if sr6 else _bands(pdf)[1]
         first, last = pages or (1, len(pdf.pages))
         for n, page in enumerate(pdf.pages[first - 1 : last], first):
             out.append(f"<!-- page {n} -->")
-            found = page.find_tables()
+            # the SR6 layout's tables have no rules: the lattice finder only sees their striped row backgrounds
+            found = [] if sr6 else page.find_tables()
             # a table nested in another is a fragment of it (its words are in the outer one's cells);
             # of two with the same box, the first is kept
             tables = [t for i, t in enumerate(found)
                       if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
-            boxes = [t.bbox for t in tables]
             all_words = pdfplumber.utils.extract_words(_even_sizes(page.chars), extra_attrs=["size"],
                                                        keep_blank_chars=False, return_chars=True)
-            words = [w for w in all_words if not _in_table(w, boxes)]
+            bands = []
+            if sr6:
+                all_words = layout.furniture(page, all_words)
+                bands = layout.band_tables(all_words, fonts, page.rects)
+            boxes = [t.bbox for t in tables]
+            # a band table's own words leave the text (not its box: a long last cell can reach past the text column)
+            banded = {id(w) for _, _, used in bands for w in used}
+            words = [w for w in all_words if not _in_table(w, boxes) and id(w) not in banded]
             rows = _cluster_lines(words)
-            mid = _find_gutter(rows, page.width)
-            lines = [part for row in rows for part in _split_at(row, mid)] if mid else rows
+            tol = layout.GUTTER_TOL if sr6 else 0
+            mid = _find_gutter(rows, page.width, tol=tol)
+            lines = [part for row in rows for part in _split_at(row, mid, tol)] if mid else rows
 
-            blocks = []
+            blocks, geo = [], []
             for line in lines:
                 size = round(max(w["size"] for w in line), 1)
-                level = _heading_level(size, big)
+                level = layout.heading_level(line, fonts) if sr6 else _heading_level(size, big)
                 # headings stay unmarked (their size already says it); bold only matters in body lines
                 text = ("#" * level + " " + " ".join(w["text"] for w in line)) if level else _line_text(line)
                 x0, x1 = _line_extent(line)
                 blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid), text))
+                geo.append((level, max(w["bottom"] for w in line), size))
+            if sr6:
+                blocks = layout.join_headings(blocks, geo)
             for t in tables:
                 md = _table_md(_table_cells(t, all_words))
                 if md:
                     blocks.append((t.bbox[1], _kind(t.bbox[0], t.bbox[2], mid), "\n".join(md)))
+            for bbox, rows, _ in bands:
+                blocks.append((bbox[1], _kind(bbox[0], bbox[2], mid), "\n".join(_table_md(rows))))
 
             out += _reading_order(blocks, mid)
         title = (pdf.metadata or {}).get("Title", "") or ""
         pages = len(pdf.pages)
     with open(md_path, "w", encoding="utf8", newline="\n") as f:
         f.write("\n".join(out) + "\n")
-    return {"pages": pages, "converter": CONVERTER_VERSION, "sha256": sha, "title": title}
+    return {"pages": pages, "converter": SR6_CONVERTER_VERSION if sr6 else CONVERTER_VERSION, "sha256": sha,
+            "title": title}
