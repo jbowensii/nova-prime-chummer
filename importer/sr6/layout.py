@@ -9,7 +9,7 @@ import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 
-from importer.convert import _LINE_TOLERANCE, _cluster_lines, _is_bold
+from importer.convert import _BOLD, _LINE_TOLERANCE, _cluster_lines, _is_bold
 
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
 _LEVEL_REL = 0.05
@@ -119,6 +119,12 @@ def _opens_with_label(line):
     return bool(run) and run[-1]["text"].endswith(":")
 
 
+def _is_head_bold(w):
+    """Bold, or a sign with no letters or digits set in a bold face (a header's `#`)."""
+    return _is_bold(w) or (not any(c["text"].isalnum() for c in w["chars"])
+                           and all(_BOLD.search(c["fontname"]) for c in w["chars"]))
+
+
 def _side_by_side(words):
     """A header line's words split into k >= 2 runs of the same >= 2 cells (tables set side by side, such as two
     spells' stat bands), else one run. Not by gap width: a wide table's own column gaps are wider than the gap
@@ -140,7 +146,7 @@ def _headers(lines, height):
     no header."""
     groups = []
     for line in lines:
-        bold = [w for w in line if _is_bold(w)]
+        bold = [w for w in line if _is_head_bold(w)]
         if not (len(bold) >= 2 or len(line) == len(bold) == 1) or _opens_with_label(line):
             continue
         # a bold run-in of prose (a numbered list's lead-in) is no header: header cells are a few words each

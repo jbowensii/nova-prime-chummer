@@ -429,6 +429,10 @@ BT /F2 7 Tf 330 650 Td (Made Powers:) Tj ET
 BT /F1 7 Tf 330 641 Td (Zip 3, Zap) Tj ET
 BT /F4 13 Tf 72 540 Td (Sledge Ham-) Tj ET
 BT /F4 13 Tf 72 527 Td (mer Time) Tj ET
+BT /F2 7 Tf 72 500 Td (# OF ZAPS) Tj ET
+BT /F2 7 Tf 150 500 Td (EFFECT) Tj ET
+BT /F1 7 Tf 72 490 Td (1) Tj ET
+BT /F1 7 Tf 150 490 Td (Tingle) Tj ET
 BT /F2 6 Tf 72 600 Td (TONIC IS:) Tj ET
 BT /F2 6 Tf 150 600 Td (AVAIL) Tj ET
 BT /F2 6 Tf 220 600 Td (COST) Tj ET

@@ -81,6 +81,11 @@ class Sr6LayoutTest(unittest.TestCase):
         i = self.lines.index("| TONIC IS: | AVAIL | COST |")
         self.assertEqual(self.lines[i + 2:i + 4], ["| Fizz Pop | 2(L) | 20 |", "| Glow Juice | 4 | 75 |"])
 
+    def test_header_sign_stays_in_its_cell(self):
+        i = self.lines.index("| # OF ZAPS | EFFECT |")
+        self.assertEqual(self.lines[i + 2], "| 1 | Tingle |")
+        self.assertNotIn("#", self.lines)
+
     def test_anarchy_mode_unchanged(self):
         _, lines = _convert(sr6=False)
         self.assertNotIn("| GADGET | DV | COST |", lines)  # no header-band tables
