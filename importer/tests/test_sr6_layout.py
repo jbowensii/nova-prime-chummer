@@ -78,7 +78,7 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertTrue(any("**Made Powers:**" in ln for ln in self.lines))
 
     def test_header_smaller_than_rows(self):
-        i = self.lines.index("| TONIC | AVAIL | COST |")
+        i = self.lines.index("| TONIC IS: | AVAIL | COST |")
         self.assertEqual(self.lines[i + 2:i + 4], ["| Fizz Pop | 2(L) | 20 |", "| Glow Juice | 4 | 75 |"])
 
     def test_anarchy_mode_unchanged(self):

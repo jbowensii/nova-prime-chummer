@@ -147,7 +147,8 @@ def _headers(lines, height):
         if max(len(c) for c in _split_x(bold, _CELL_GAP)) > _CELL_WORDS:
             continue
         for g in _side_by_side(bold):
-            if any(w["text"].endswith(":") for w in g):  # a stat-box label alone on its line (`Adept Powers:`)
+            # a stat-box label alone in its column (`Adept Powers:`); a header cell may still end in ':'
+            if len(_split_x(g, _CELL_GAP)) == 1 and g[-1]["text"].endswith(":"):
                 continue
             x0, x1 = min(w["x0"] for w in g), max(w["x1"] for w in g)
             # never a group on this same line: that is a side-by-side table

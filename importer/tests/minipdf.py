@@ -427,7 +427,7 @@ BT /F2 8 Tf 90 690 Td (and talking.) Tj /F1 8 Tf ( More plain words) Tj ET
 BT /F1 7 Tf 72 650 Td (Quick Step 2,) Tj ET
 BT /F2 7 Tf 330 650 Td (Made Powers:) Tj ET
 BT /F1 7 Tf 330 641 Td (Zip 3, Zap) Tj ET
-BT /F2 6 Tf 72 600 Td (TONIC) Tj ET
+BT /F2 6 Tf 72 600 Td (TONIC IS:) Tj ET
 BT /F2 6 Tf 150 600 Td (AVAIL) Tj ET
 BT /F2 6 Tf 220 600 Td (COST) Tj ET
 """ + _sr6_cell(72, 590, "Fizz Pop") + _sr6_cell(150, 590, "2(L)") + _sr6_cell(220, 590, "20")
