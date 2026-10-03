@@ -32,3 +32,24 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   contacts: { tag: 'contact', label: 'Contacts' },
   rules: { tag: 'rule', label: 'Rules' },
 }
+
+/** An entry's child element other than <name> and <text> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
+export interface Sr6Part { tag: string; attrs: Record<string, string>; text: string }
+/** One catalog entry, generic in S1 (S2 adds typed views). attrs: every attribute but id, source and page, as printed;
+ * text: its description (the texts files); edited/by: from the edits layer (custom/sr6/edits/edits.xml). */
+export interface Sr6Entry {
+  id: string; kind: Sr6Kind; name: string; source: string; page: number; attrs: Record<string, string>; parts: Sr6Part[]; text: string
+  edited?: boolean; by?: string
+}
+export interface Sr6Source {
+  id: string; name: string; publisher: string; canon: boolean; texts?: string; file?: string; sha256?: string; imported?: string
+  origin: 'shipped' | 'imported'
+}
+/** original: the book's version of each edited entry, keyed by entryKey(kind, id) (src/sr6/engine/load.ts). */
+export interface Sr6Catalog {
+  entries: Record<Sr6Kind, Map<string, Sr6Entry>>
+  sources: Map<string, Sr6Source>
+  original: Map<string, Sr6Entry>
+  files: { file: string; kind: string; entries: number }[]
+  errors: { file: string; message: string }[]
+}
