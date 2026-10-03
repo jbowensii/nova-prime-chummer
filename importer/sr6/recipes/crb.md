@@ -34,3 +34,15 @@ Printed page = PDF page − 1 (`PAGE_OFFSET`).
 - The spell, ritual, skill and lifestyle label names (`Linked Attribute`, `Untrained`, `Keywords`, `Cost`) and the
   priority cell formats are the probe's reading; the first real run reports what misses (`missing-value`,
   `book-value`, `unknown-column`, `unmapped`).
+
+## Real-book check (local, nothing committed)
+
+    python -m importer sr6 check "<the core rulebook PDF>" --out "%TEMP%\sr6-check"
+
+It recreates `<out>/library/sr6/book1/` (a copy of the PDF) and `<out>/custom/sr6/`, runs the full import (convert,
+identify, regroup, extract, write) and prints: the wall time; the status; recipe, source, pages, converter and match
+score; every written `<kind>.xml` with its entry count; the report rows grouped by kind with a count and every row
+(regroup's unpaired-row, unpaired-description, unpaired-box, duplicate, shared-description; the recipe's unmapped,
+unknown-column, book-value, missing-value, duplicate-id); then `xsd: all valid` or each file its XSD refuses (exit 1).
+`book.md`, `regrouped.md` and `import.xml` stay in `<out>/library/sr6/book1/` for inspection;
+`python -m importer sr6 summary <out>/library/sr6/book1` prints the summary again.
