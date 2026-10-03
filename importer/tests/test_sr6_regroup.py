@@ -146,7 +146,7 @@ class RegroupTest(unittest.TestCase):
                          ["GADGETS", "Gadget Shop", "Making Trouble", "LORE"])
 
     def test_catalog_without_name_header(self):
-        # 3 of 5 rows pair: a catalog table even when GADGET isn't a name header
+        # 3 of 5 rows pair (at least half): a catalog table even when GADGET is not a name header
         self.assertEqual(_items(regroup.regroup(MD)[0])["Zap Gun"].row["DV"], "3P")
 
     def test_alias(self):
@@ -158,3 +158,83 @@ class RegroupTest(unittest.TestCase):
 
     def test_round_trip(self):
         self.assertEqual("".join(render(b) for b in self.blocks), self.text[self.text.index("\n") + 1:])
+
+
+MD2 = """<!-- page 20 -->
+# WIDGETS
+#### Blinkers
+#### Blinkers
+Blinkers blink.
+#### blinker XI on a desk
+#### Glowware
+Glowware glows (the implant).
+<!-- page 21 -->
+#### Hum Box MK-2/MK-4
+Hum boxes hum.
+#### Sparkle Kit
+Kits sparkle.
+#### Glowware
+Glowware glows (the gadget).
+#### hand tools
+| TOOL | AVAIL | COST |
+|---|---|---|
+| Glowware | 1 | 10 |
+| Hum Box MK-2 | 2 | 20 |
+| Hum Box MK-4 | 2 | 40 |
+| Sparkle kit, small | 1 | 5 |
+| Sparkle kit, large | 2 | 9 |
+| Blinker 2 | 1 | 1 |
+**Wireless bonus:** Tools hum along.
+<!-- page 22 -->
+#### implants
+| IMPLANT | ESSENCE | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|
+| Glowware | 0.1 | 1 | 2 | 100 |
+| Eyes basic system |  |  |  |  |
+| Rating 1 | 0.1 | 1 | 2 | 1,000 |
+| Rating 2 | 0.2 | 4 | 2 | 3,000 |
+| Coat | 0.2 | 1 | 1 | 50 |
+| w/hood | 0.3 | 1 | 1 | 70 |
+#### Coat
+Coats coat.
+#### Eyes
+Eyes see.
+"""
+
+
+class RegroupRulesTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.text, cls.report = regroup.regroup(MD2, aliases={"eyes basic system": "eyes"})
+        cls.blocks = blocks(cls.text)
+
+    def rows(self, name):
+        return [b for b in self.blocks if b.name == name]
+
+    def test_repeated_heading_and_capitalised_caption(self):
+        self.assertEqual([b.text for b in self.blocks if b.name.startswith("Blinker")], ["Blinkers blink."])
+        self.assertFalse([r for r in self.report if r["kind"] == "duplicate" and r["name"] == "Blinkers"])
+
+    def test_loose_keys(self):
+        self.assertEqual(self.rows("Blinker 2")[0].text, "Blinkers blink.")  # number and plural s
+        for n in ("Sparkle kit, small", "Sparkle kit, large"):
+            self.assertEqual(self.rows(n)[0].text, "Kits sparkle.")
+        for n in ("Hum Box MK-2", "Hum Box MK-4"):
+            self.assertEqual(self.rows(n)[0].text, "Hum boxes hum.")
+
+    def test_title_over_a_list_is_not_a_box(self):
+        self.assertFalse([r for r in self.report if r["kind"] == "unpaired-box"])
+        self.assertEqual(self.rows("Hum Box MK-2")[0].label, "hand tools")
+
+    def test_same_name_in_two_tables_takes_the_nearest(self):
+        g = {b.row["COST"]: b.text for b in self.rows("Glowware")}
+        # the wider implant table chooses first and takes the nearer heading; both rows are reported
+        self.assertEqual(g, {"100": "Glowware glows (the gadget).\n**Wireless bonus:** Tools hum along.",
+                             "10": "Glowware glows (the implant)."})
+        self.assertEqual([r["of"] for r in self.report if r["kind"] == "duplicate"], ["heading", "row"])
+
+    def test_rating_and_variant_rows(self):
+        self.assertEqual([b.name for b in self.blocks if b.text in ("Eyes see.", "Coats coat.")],
+                         ["Coat", "Coat w/hood", "Eyes basic system (Rating 1)", "Eyes basic system (Rating 2)"])
+        self.assertFalse(self.rows("Eyes basic system"))
+        self.assertEqual(self.rows("Coat w/hood")[0].row["COST"], "70")

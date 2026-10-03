@@ -48,18 +48,25 @@ def norm(name, aliases=None):
     return (aliases or {}).get(s, s)
 
 
+# a name's looser forms, each cut from the one before: a trailing ( … ), `, …`, `w/…` or number
+_CUTS = [re.compile(p) for p in (r"\s*\([^()]*\)\s*$", r"\s*,[^,]*$", r"\s+w/.*$", r"\s+\d+$")]
+
+
 def keys(name, aliases=None):
-    """The name's keys, most exact first: itself, then without a trailing ( … )."""
-    out = [norm(name, aliases)]
-    bare = re.sub(r"\s*\([^()]*\)\s*$", "", name)
-    if bare and bare != name and norm(bare, aliases) not in out:
-        out.append(norm(bare, aliases))
-    return out
+    """The name's keys, most exact first: itself, then cut by _CUTS, then each without a plural s."""
+    forms = [name]
+    for cut in _CUTS:
+        c = cut.sub("", forms[-1])
+        if c and c != forms[-1]:
+            forms.append(c)
+    out = [norm(f, aliases) for f in forms]
+    out += [k[:-1] for k in out if k.endswith("s") and not k.endswith("ss")]
+    return [k for k in dict.fromkeys(out) if k] or [""]
 
 
 def _names(name):
     """A heading `A 70/75` stands for `A 70` and `A 75`."""
-    m = re.match(r"(.*\s)(\w+(?:/\w+)+)$", name)
+    m = re.match(r"(.*\s)([\w-]+(?:/[\w-]+)+)$", name)
     return [m.group(1) + p for p in m.group(2).split("/")] if m else [name]
 
 
@@ -77,6 +84,8 @@ class _Table:
     title: str = ""
     section: str = ""
     catalog: bool = False
+    pos: int = 0  # its place in the book's elements
+    unpaired: list = field(default_factory=list)  # catalog rows no description took
 
 
 def _elements(md):
@@ -92,10 +101,11 @@ def _elements(md):
         elif ln.startswith("|") and i < len(lines) and _SEP.match(lines[i]):
             rows = []
             i += 1
-            while i < len(lines) and lines[i].startswith("|"):
+            # rows run to the next header (a header line has its rule under it)
+            while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
                 rows.append(_cells(lines[i]))
                 i += 1
-            out.append(("t", page, _Table(_cells(ln), rows, page)))
+            out.append(("t", page, _Table(_cells(ln), rows, page, pos=len(out))))
         elif m := _HEADING.match(ln):
             level, text = len(m.group(1)), m.group(2).strip()
             prev = out[-1] if out else None
@@ -103,7 +113,7 @@ def _elements(md):
             if (prev and prev[0] == "h" and prev[2][0] == level and text[0].islower() and _UPPER.search(text)
                     and _UPPER.search(prev[2][1])):
                 out[-1] = ("h", prev[1], (level, prev[2][1] + " " + text))
-            else:
+            elif not (prev and prev[0] == "h" and prev[2] == (level, text)):  # a heading printed twice in a row
                 out.append(("h", page, (level, text)))
         else:
             out.append(("x", page, ln))
@@ -126,19 +136,23 @@ class _Unit:
     body: list = field(default_factory=list)  # text lines and _Table
     rows: list = field(default_factory=list)  # (table, row) paired with this description
     merged: bool = False
+    pos: int = 0
+    box_labels: bool = False  # labelled lines taken as a stat box (not lines met in the description)
 
     def has_box(self):
-        return bool(self.stats or self.labels)
+        return bool(self.stats) or self.box_labels
 
     def has_text(self):
         return any(isinstance(b, str) for b in self.body)
 
 
 def _is_label(level, text):
-    return level > 1 and not _UPPER.search(text)
+    """A table title, box title or art caption: its first letter is lower case (`ares predator VI`)."""
+    first = re.search(r"[^\W\d_]", text)
+    return level > 1 and (not first or first.group().islower())
 
 
-def _units(els, start, end, chapter, item_keys):
+def _units(els, start, end, chapter, item_keys, aliases):
     """The chapter's units in reading order. item_keys: the norm keys of its item headings (a lower-case title
     with one of them is a stat box)."""
     units, section = [], ""
@@ -164,11 +178,12 @@ def _units(els, start, end, chapter, item_keys):
                 nxt = els[i] if i < end else None
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
                     continue  # an art caption: dropped, the text flows on
+                # a stat box: a title an item heading has, or one-row bands followed by labelled lines
                 j = i
-                while j < end and els[j][0] == "t":
+                while j < end and els[j][0] == "t" and len(els[j][2].rows) == 1:
                     j += 1
                 boxed = (j < end and els[j][0] == "x" and _LABEL.match(els[j][2])) or \
-                    any(k in item_keys for k in keys(text))
+                    any(k in item_keys for k in keys(text, aliases))
                 if not boxed:  # a table title: its tables join the flow, the text goes on in the same unit
                     while i < end and els[i][0] == "t":
                         t = els[i][2]
@@ -185,6 +200,7 @@ def _units(els, start, end, chapter, item_keys):
                 continue
             else:
                 cur = _Unit("item", text, level, page, chapter, section)
+            cur.pos = i - 1
             units.append(cur)
             mode, fresh = "box", cur.kind == "item"
         elif kind == "t":
@@ -199,6 +215,7 @@ def _units(els, start, end, chapter, item_keys):
                 label, last = ((cur, key) if key not in cur.labels else None), v
                 cur.labels.setdefault(key, value)
                 if mode == "box":
+                    cur.box_labels = True
                     continue
             elif label and not v.startswith("•") and not _SENTENCE_END.search(last):
                 u, key = label
@@ -228,7 +245,7 @@ def _merge_boxes(units, aliases):
         if not cands:
             continue
         d = min(cands, key=lambda d: abs(units.index(d) - n))
-        d.stats, d.labels, d.tags = u.stats, u.labels, d.tags or u.tags
+        d.stats, d.labels, d.box_labels, d.tags = u.stats, {**d.labels, **u.labels}, u.box_labels, d.tags or u.tags
         d.body += u.body
         u.merged = True
 
@@ -236,28 +253,32 @@ def _merge_boxes(units, aliases):
 def _chapter(units, aliases, name_headers, report):
     _merge_boxes(units, aliases)
     descs = [u for u in units if u.kind == "item" and not u.merged]
-    index, dup_heads = {}, set()
+    chapter = units[0].chapter
+    exact, loose, first = {}, {}, {}  # key -> descriptions in reading order; primary key -> first description
     for d in descs:
-        ks = [k for nm in _names(d.name) for k in keys(nm, aliases)]
-        if ks[0] in index:
-            dup_heads.add(id(d))
-            report.append({"kind": "duplicate", "of": "heading", "name": d.name, "page": d.page, "chapter": d.chapter})
-            continue
-        for k in ks:
-            index.setdefault(k, d)
+        for nm in dict.fromkeys([d.name] + _names(d.name)):
+            ks = keys(nm, aliases)
+            for tier, group in ((exact, ks[:1]), (loose, ks[1:])):
+                for k in group:
+                    if d not in tier.setdefault(k, []):
+                        tier[k].append(d)
+        if keys(d.name, aliases)[0] in first:
+            report.append({"kind": "duplicate", "of": "heading", "name": d.name, "page": d.page, "chapter": chapter})
+        first.setdefault(keys(d.name, aliases)[0], d)
 
-    def find(name):
-        return next((index[k] for k in keys(name, aliases) if k in index), None)
+    def found(name):
+        ks = keys(name, aliases)
+        return next((tier[k] for tier in (exact, loose) for k in ks if k in tier), [])
 
     def is_catalog(t):
         if len(t.header) < 2 or not t.rows:
             return False
         if t.header[0].upper() in name_headers:
             return True
-        return 3 * sum(1 for r in t.rows if r and find(r[0])) >= len(t.rows)
+        return 2 * sum(1 for r in t.rows if r and found(r[0])) >= len(t.rows)  # half its rows pair
 
     tables = []
-    for u in units:
+    for u in [u for u in units if not u.merged]:
         for t in [b for b in u.body if isinstance(b, _Table)]:
             t.catalog = is_catalog(t)
             tables += [t] if t.catalog else []
@@ -267,33 +288,41 @@ def _chapter(units, aliases, name_headers, report):
                 u.stats.remove(t)
                 u.body.append(t)
                 tables.append(t)
-
-    seen, unpaired, dups = set(), [], []
     for t in tables:
+        t.rows = _rating_groups(t.rows)
+
+    # each row takes the nearest description with its key that no row with the same name took yet; the widest
+    # tables (the stat tables, not a list of names) choose first
+    seen, unpaired, taken = set(), [], set()
+    for t in sorted(tables, key=lambda t: -len(t.header)):
         for r in t.rows:
-            k = keys(r[0], aliases)[0] if r and r[0] else ""
-            d = find(r[0]) if k else None
-            if k in seen:
-                report.append({"kind": "duplicate", "of": "row", "name": r[0], "table": t.title or t.header[0],
-                               "page": t.page, "chapter": units[0].chapter})
-                dups.append((t, r))
-                continue
-            seen.add(k)
+            k = norm(r[0]) if r else ""  # duplicates are by the printed name, not its alias
+            cands = [d for d in found(r[0]) if (id(d), k) not in taken] if k else []
+            d = min(cands, key=lambda d: abs(d.pos - t.pos)) if cands else None
             if d:
+                taken.add((id(d), k))
                 d.rows.append((t, r))
-            else:
+            if k and k in seen:
+                report.append({"kind": "duplicate", "of": "row", "name": r[0], "table": t.title or t.header[0],
+                               "page": t.page, "chapter": chapter, "paired": d.name if d else ""})
+            elif not d:
                 unpaired.append((t, r))
+            seen.add(k)
+            if not d:
+                t.unpaired.append(r)
     # a heading ending in "series" takes every unpaired row starting with the rest of its key
     for d in descs:
         k = keys(d.name, aliases)[0]
-        if k.endswith(" series") and id(d) not in dup_heads:
+        if k.endswith(" series"):
             stem = k[:-len(" series")]
             took = [(t, r) for t, r in unpaired if (keys(r[0], aliases)[0] + " ").startswith(stem + " ")]
             d.rows += took
             unpaired = [p for p in unpaired if p not in took]
+            for t, r in took:
+                t.unpaired.remove(r)
     for t, r in unpaired:
         report.append({"kind": "unpaired-row", "name": r[0] if r else "", "table": t.title or t.header[0],
-                       "page": t.page, "chapter": units[0].chapter})
+                       "page": t.page, "chapter": chapter})
     for d in descs:
         if len(d.rows) > 1:
             report.append({"kind": "shared-description", "name": d.name, "rows": "; ".join(r[0] for _, r in d.rows),
@@ -303,7 +332,29 @@ def _chapter(units, aliases, name_headers, report):
     for u in units:
         if u.kind == "box" and not u.merged:
             report.append({"kind": "unpaired-box", "name": u.name, "page": u.page, "chapter": u.chapter})
-    return {id(p[1]) for p in unpaired + dups}
+
+
+_RATING_ROW = re.compile(r"Rating \d+$")
+
+
+def _rating_groups(rows):
+    """A row with only its name (`Cyberears basic system`) over `Rating N` rows: those rows are `<name> (Rating N)`,
+    and the name-only row goes. A row named in lower case (`w/helmet`) is a variant of the row above."""
+    out, group = [], None
+    for r in rows:
+        if r and r[0][:1].islower() and out and out[-1][0]:
+            out.append([f"{out[-1][0]} {r[0]}"] + list(r[1:]))
+        elif r and r[0] and not any(r[1:]):
+            group = r[0]
+            out.append(r)
+        elif group and r and _RATING_ROW.match(r[0]):
+            if out and out[-1][0] == group and not any(out[-1][1:]):
+                out.pop()
+            out.append([f"{group} ({r[0]})"] + list(r[1:]))
+        else:
+            group = None
+            out.append(r)
+    return out
 
 
 def _text(body):
@@ -322,7 +373,7 @@ def _row(header, r):
     return dict(zip(header, r))
 
 
-def _emit(units, unpaired):
+def _emit(units):
     out = []
     for u in units:
         if u.merged:
@@ -339,7 +390,7 @@ def _emit(units, unpaired):
                                  _row(t.header, r) if t else None, stats, u.tags, dict(u.labels), text, u.level))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
             out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r))
-                    for r in t.rows if id(r) in unpaired]
+                    for r in t.unpaired]
     return out
 
 
@@ -355,11 +406,12 @@ def regroup(md, aliases=None, name_headers=frozenset()):
             continue
         chapter = els[start][2][1] if els[start][0] == "h" and els[start][2][0] == 1 else ""
         item_keys = {k for _, _, (lv, tx) in (e for e in els[start:end] if e[0] == "h")
-                     if lv >= 4 and _UPPER.search(tx) for nm in _names(tx) for k in keys(nm, aliases)}
-        units = _units(els, start, end, chapter, item_keys)
+                     if lv >= 4 and not _is_label(lv, tx) for nm in _names(tx) for k in keys(nm, aliases)}
+        units = _units(els, start, end, chapter, item_keys, aliases)
         if not chapter and not units[0].body and len(units) == 1:
             continue
-        blks += _emit(units, _chapter(units, aliases, name_headers, report))
+        _chapter(units, aliases, name_headers, report)
+        blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
 
 
