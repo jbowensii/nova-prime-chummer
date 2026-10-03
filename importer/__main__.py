@@ -21,6 +21,7 @@
   python -m importer datapack check F                    (the manifest on stdout; exit 3: refused, the reason on stderr)
   python -m importer datapack import F --custom D        (exit 3: refused, nothing changed)
   python -m importer datapack recover --custom D          (puts back what a killed import had moved aside)
+  python -m importer sr6 run|remove|regroup|summary|check ...  (Shadowrun 6 books: python -m importer sr6 for its usage)
 """
 import contextlib
 import hashlib
@@ -564,6 +565,9 @@ def _cmd_datapack(argv):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["sr6"]:  # the Shadowrun 6 importer: its own commands, no Anarchy core data
+        from importer.sr6.__main__ import main as sr6_main
+        return sr6_main(argv[1:])
     cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
             "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
             "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "test-ai": _cmd_test_ai, "ask": _cmd_ask, "edit": _cmd_edit,
