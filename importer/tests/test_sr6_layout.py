@@ -73,6 +73,14 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertLess(self.lines.index("#### A Sidebar Title Across The Two Text Columns"), order[3])
 
+    def test_lookalikes_are_no_tables(self):
+        self.assertFalse(any(ln.startswith(("| 1.", "| and talking", "| Made Powers")) for ln in self.lines))
+        self.assertTrue(any("**Made Powers:**" in ln for ln in self.lines))
+
+    def test_header_smaller_than_rows(self):
+        i = self.lines.index("| TONIC | AVAIL | COST |")
+        self.assertEqual(self.lines[i + 2:i + 4], ["| Fizz Pop | 2(L) | 20 |", "| Glow Juice | 4 | 75 |"])
+
     def test_anarchy_mode_unchanged(self):
         _, lines = _convert(sr6=False)
         self.assertNotIn("| GADGET | DV | COST |", lines)  # no header-band tables

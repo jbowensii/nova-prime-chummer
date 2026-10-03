@@ -419,7 +419,22 @@ SR6_GRID_OPS = ("0.9 g 72 690 78 16 re f 150 690 80 16 re f 230 690 100 16 re f\
                           f"BT /F3 10.5 Tf 314 {450 - 13 * i} Td (d{i} lorem lorem lorem lorem) Tj ET\n" for i in range(4)))
 
 
+# Lookalikes that are no tables: a numbered list with bold run-in lead-ins, and a stat-box label alone in its column
+# (prose beside it in the other). Then a table whose header is set a point smaller than its rows.
+SR6_LOOKALIKE_OPS = ("""BT /F2 8 Tf 72 700 Td (1.) Tj ET
+BT /F2 8 Tf 90 700 Td (Easy thing to do for a made up person) Tj ET
+BT /F2 8 Tf 90 690 Td (and talking.) Tj /F1 8 Tf ( More plain words) Tj ET
+BT /F1 7 Tf 72 650 Td (Quick Step 2,) Tj ET
+BT /F2 7 Tf 330 650 Td (Made Powers:) Tj ET
+BT /F1 7 Tf 330 641 Td (Zip 3, Zap) Tj ET
+BT /F2 6 Tf 72 600 Td (TONIC) Tj ET
+BT /F2 6 Tf 150 600 Td (AVAIL) Tj ET
+BT /F2 6 Tf 220 600 Td (COST) Tj ET
+""" + _sr6_cell(72, 590, "Fizz Pop") + _sr6_cell(150, 590, "2(L)") + _sr6_cell(220, 590, "20")
+                     + _sr6_cell(72, 580, "Glow Juice") + _sr6_cell(150, 580, "4") + _sr6_cell(220, 580, "75"))
+
+
 def sr6_layout_pdf() -> bytes:
-    """Four-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
-    with a stat-box label, and a shaded table over body text and an offset sidebar."""
-    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS])
+    """Five-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
+    with a stat-box label, a shaded table over body text and an offset sidebar, and table lookalikes."""
+    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS])

@@ -14,6 +14,7 @@ from importer.convert import _LINE_TOLERANCE, _cluster_lines, _is_bold
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
 _LEVEL_REL = 0.05
 _CELL_GAP = 6  # pt; header words closer than this are one cell
+_CELL_WORDS = 4  # a header cell has at most this many words
 _FIRST_PAD, _LAST_PAD = 10, 60  # pt; the name column reaches left, the last column right (long values)
 _SIZE_TOL = 0.5  # pt; a row's words are set at its header's size
 _HEADER_STACK = 1.6  # header lines up to this many line heights apart are one (multi-line) header
@@ -142,7 +143,12 @@ def _headers(lines, height):
         bold = [w for w in line if _is_bold(w)]
         if not (len(bold) >= 2 or len(line) == len(bold) == 1) or _opens_with_label(line):
             continue
+        # a bold run-in of prose (a numbered list's lead-in) is no header: header cells are a few words each
+        if max(len(c) for c in _split_x(bold, _CELL_GAP)) > _CELL_WORDS:
+            continue
         for g in _side_by_side(bold):
+            if any(w["text"].endswith(":") for w in g):  # a stat-box label alone on its line (`Adept Powers:`)
+                continue
             x0, x1 = min(w["x0"] for w in g), max(w["x1"] for w in g)
             # never a group on this same line: that is a side-by-side table
             prev = next((h for h in groups if g[0]["top"] - max(w["top"] for w in h) <= _HEADER_STACK * height
@@ -241,11 +247,13 @@ def band_tables(words, fonts, rects=()):
             reach = min([w["x0"] - 2 for h in heads if h is not head for w in h if w["x0"] > ends[-1]]
                         + [ends[-1] + _LAST_PAD])
             bounds = [cells[0][0]["x0"] - _FIRST_PAD] + [(e + c[0]["x0"]) / 2 for e, c in zip(ends, cells[1:])] + [reach]
+        if len(cells) < 2:  # a one-cell header is a title or a sub-heading row, never a table of its own
+            continue
         lo, hi = bounds[0], bounds[-1]
         under = max(w["x1"] for w in head) + _FIRST_PAD  # text stops the rows only under the header, not the reach
         last = max(w["top"] for w in head)
         last_bottom = max([w["bottom"] for w in head] + ([edge] if hr else []))
-        size = statistics.median(w["size"] for w in head)
+        size = None  # the rows' size, from the first row (a header may be set a point smaller)
         # a one-cell header inside a table of >= 2 columns is a sub-heading row of it (a category in its first column)
         subs = [h for h in heads if len(cells) >= 2 and id(h) in single and h is not head
                 and all(lo <= _cx(w) <= hi for w in h)]
@@ -258,6 +266,7 @@ def band_tables(words, fonts, rects=()):
             if not line or line[0]["top"] <= last + 1:
                 continue
             t = line[0]["top"]
+            size = statistics.median(w["size"] for w in line) if size is None else size
             left = [w["x1"] for w in full if w["x1"] <= line[0]["x0"]]
             if (t - last > _ROW_GAP * pitch
                     or (left and line[0]["x0"] - max(left) <= 2 * _CELL_GAP)  # a line running on left of the table
