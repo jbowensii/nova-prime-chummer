@@ -238,3 +238,73 @@ class RegroupRulesTest(unittest.TestCase):
                          ["Coat", "Coat w/hood", "Eyes basic system (Rating 1)", "Eyes basic system (Rating 2)"])
         self.assertFalse(self.rows("Eyes basic system"))
         self.assertEqual(self.rows("Coat w/hood")[0].row["COST"], "70")
+
+
+MD3 = """<!-- page 30 -->
+# CRITTERS
+### Pest Control
+##### (Made Up, Tags)
+**Threshold:** 3
+**Untrained:** No
+Pests are controlled.
+### Hack the Gizmo
+##### (legal) Gizmo + Logic (Major)
+##### Outsider/User
+Gizmos get hacked.
+### Small Homes
+##### Cost: 5 nuyen a month
+Small homes are small.
+##### mud rat
+| B | A |
+|---|---|
+| 1 | 2 |
+**Skills:** Biting 2
+#### Mud Rat/Dust Rat
+Rats of mud and dust.
+##### dust rat
+| B | A |
+|---|---|
+| 2 | 1 |
+**Skills:** Biting 3
+#### Sky Whale
+##### SKY WHALE
+| B | A |
+|---|---|
+| 9 | 1 |
+**Skills:** Floating 5
+#### Teacher
+**Uses:** Lessons
+Teachers teach.
+##### teacher
+| B | A |
+|---|---|
+| 1 | 1 |
+"""
+
+
+class RegroupSectionsAndBoxesTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.text, cls.report = regroup.regroup(MD3)
+        cls.blocks = {b.name: b for b in blocks(cls.text)}
+
+    def test_section_tag_lines_and_labels(self):
+        p = self.blocks["Pest Control"]
+        self.assertEqual((p.type, p.tags, p.labels, p.text),
+                         ("section", "Made Up, Tags", {"Threshold": "3", "Untrained": "No"}, "Pests are controlled."))
+        self.assertEqual(self.blocks["Hack the Gizmo"].tags, "(legal) Gizmo + Logic (Major); Outsider/User")
+        self.assertEqual(self.blocks["Small Homes"].labels, {"Cost": "5 nuyen a month"})
+
+    def test_boxes_sharing_a_description(self):
+        for n, s in (("mud rat", {"B": "1", "A": "2"}), ("dust rat", {"B": "2", "A": "1"})):
+            self.assertEqual((self.blocks[n].stats, self.blocks[n].text), ([s], "Rats of mud and dust."))
+        self.assertNotIn("Mud Rat/Dust Rat", self.blocks)
+        self.assertEqual([r["kind"] for r in self.report], ["shared-description"])
+
+    def test_box_title_right_under_its_heading(self):
+        self.assertEqual(self.blocks["Sky Whale"].labels, {"Skills": "Floating 5"})
+        self.assertNotIn("SKY WHALE", self.blocks)
+
+    def test_box_joins_a_description_with_labels(self):
+        t = self.blocks["Teacher"]
+        self.assertEqual((t.labels, t.stats, t.text), ({"Uses": "Lessons"}, [{"B": "1", "A": "1"}], "Teachers teach."))

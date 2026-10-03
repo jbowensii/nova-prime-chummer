@@ -65,9 +65,10 @@ def keys(name, aliases=None):
 
 
 def _names(name):
-    """A heading `A 70/75` stands for `A 70` and `A 75`."""
+    """A heading `A 70/75` stands for `A 70` and `A 75`, `Devil Rat/Demon Rat` for each."""
     m = re.match(r"(.*\s)([\w-]+(?:/[\w-]+)+)$", name)
-    return [m.group(1) + p for p in m.group(2).split("/")] if m else [name]
+    parts = [m.group(1) + p for p in m.group(2).split("/")] if m else []
+    return parts + [p.strip() for p in name.split("/") if p.strip()] if "/" in name else [name]
 
 
 # --- reading book.md -------------------------------------------------------------------------------------------
@@ -113,7 +114,8 @@ def _elements(md):
             if (prev and prev[0] == "h" and prev[2][0] == level and text[0].islower() and _UPPER.search(text)
                     and _UPPER.search(prev[2][1])):
                 out[-1] = ("h", prev[1], (level, prev[2][1] + " " + text))
-            elif not (prev and prev[0] == "h" and prev[2] == (level, text)):  # a heading printed twice in a row
+            # a heading printed twice in a row (`Spirits of Air` over its box `SPIRITS OF AIR`) is one
+            elif not (prev and prev[0] == "h" and norm(prev[2][1]) == norm(text)):
                 out.append(("h", page, (level, text)))
         else:
             out.append(("x", page, ln))
@@ -138,6 +140,7 @@ class _Unit:
     merged: bool = False
     pos: int = 0
     box_labels: bool = False  # labelled lines taken as a stat box (not lines met in the description)
+    shared: bool = False  # a box holding a description it shares with other boxes
 
     def has_box(self):
         return bool(self.stats) or self.box_labels
@@ -162,6 +165,7 @@ def _units(els, start, end, chapter, item_keys, aliases):
     fresh = False  # nothing taken since the item heading (a "(tags)" heading may follow)
     label = None  # (unit, key) of the labelled line still open for a wrapped value
     last = ""  # the open label's last line
+    listy = False  # the open label's value starts on the next line
     i = start
     while i < end:
         kind, page, v = els[i]
@@ -171,9 +175,17 @@ def _units(els, start, end, chapter, item_keys, aliases):
             label = None
             if level == 1:  # the chapter heading itself
                 continue
-            if fresh and text.startswith("(") and text.endswith(")"):
-                cur.tags, fresh = text[1:-1], False
-                continue
+            if fresh and level == 5:  # a tag line right under a heading: `(tags)`, `Cost: …`, or under a section any
+                if m := re.fullmatch(r"\(([^()]*)\)", text):
+                    cur.tags = "; ".join(filter(None, [cur.tags, m.group(1)]))
+                    continue
+                if m := re.fullmatch(r"([A-Z][^:]{0,30}):\s*(.+)", text):
+                    cur.labels.setdefault(m.group(1), m.group(2))
+                    cur.box_labels = True
+                    continue
+                if cur.kind == "section":
+                    cur.tags = "; ".join(filter(None, [cur.tags, text]))
+                    continue
             if _is_label(level, text):
                 nxt = els[i] if i < end else None
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
@@ -195,29 +207,30 @@ def _units(els, start, end, chapter, item_keys, aliases):
             elif level <= 3:
                 section = text
                 cur = _Unit("section", text, level, page, chapter, section)
-                mode, fresh = "text", False
-                units.append(cur)
-                continue
             else:
                 cur = _Unit("item", text, level, page, chapter, section)
             cur.pos = i - 1
             units.append(cur)
-            mode, fresh = "box", cur.kind == "item"
+            mode, fresh = "box", cur.kind != "box"
         elif kind == "t":
             fresh, label = False, None
             v.section = section
-            (cur.stats if mode == "box" else cur.body).append(v)
+            # a section's tables are its text; an item's or box's tables right under its heading are its stat box
+            (cur.stats if mode == "box" and cur.kind != "section" else cur.body).append(v)
         else:
             fresh = False
             m = _LABEL.match(v)
             if m:
                 key, value = m.group(2).strip(), m.group(3).strip()
-                label, last = ((cur, key) if key not in cur.labels else None), v
+                label, last, listy = ((cur, key) if key not in cur.labels else None), v, not value
                 cur.labels.setdefault(key, value)
                 if mode == "box":
                     cur.box_labels = True
                     continue
-            elif label and not v.startswith("•") and not _SENTENCE_END.search(last):
+            elif label and not v.startswith("•") and (listy or not _SENTENCE_END.search(last) and (
+                    not v[:1].isupper() or last.endswith((",", "-")))):
+                # a wrapped value (a capital after an unbroken line starts the text), or the next entry of a label
+                # printed alone on its line (`**Weapons:**` over one weapon a line)
                 u, key = label
                 prev = u.labels[key]
                 joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
@@ -233,25 +246,36 @@ def _units(els, start, end, chapter, item_keys, aliases):
 
 # --- pairing ----------------------------------------------------------------------------------------------------
 
-def _merge_boxes(units, aliases):
-    """A titled stat box joins the description with its key that has no box of its own (the nearest one)."""
-    descs = [u for u in units if u.kind == "item"]
-    for n, u in enumerate(units):
-        if u.kind == "section" or not u.has_box() or u.merged:
+def _merge_boxes(units, aliases, report):
+    """A titled stat box joins the nearest description with its key that has no box of its own. Several boxes
+    taking one description (`Devil Rat/Demon Rat`) each keep their own block and share its text."""
+    descs = [u for u in units if u.kind == "item" and not u.stats and u.has_text()]
+    took = {}
+    for u in units:
+        if u.kind == "section" or not u.has_box() or any(u is d for d in descs):
             continue
         ks = keys(u.name, aliases)
-        cands = [d for d in descs if d is not u and not d.merged and not d.has_box() and d.has_text()
-                 and any(k in ks for k in keys(d.name, aliases))]
-        if not cands:
+        cands = [d for d in descs if any(k in ks for nm in _names(d.name) for k in keys(nm, aliases))]
+        if cands:
+            d = min(cands, key=lambda d: abs(d.pos - u.pos))
+            took.setdefault(id(d), (d, []))[1].append(u)
+    for d, boxes in took.values():
+        if len(boxes) == 1:
+            u = boxes[0]
+            d.stats, d.labels, d.box_labels, d.tags = u.stats, {**d.labels, **u.labels}, u.box_labels, d.tags or u.tags
+            d.body += u.body
+            u.merged = True
             continue
-        d = min(cands, key=lambda d: abs(units.index(d) - n))
-        d.stats, d.labels, d.box_labels, d.tags = u.stats, {**d.labels, **u.labels}, u.box_labels, d.tags or u.tags
-        d.body += u.body
-        u.merged = True
+        for u in boxes:
+            u.body, u.labels, u.tags = d.body + u.body, {**d.labels, **u.labels}, u.tags or d.tags
+            u.shared = True
+        d.merged = True
+        report.append({"kind": "shared-description", "name": d.name, "rows": "; ".join(u.name for u in boxes),
+                       "page": d.page, "chapter": d.chapter})
 
 
 def _chapter(units, aliases, name_headers, report):
-    _merge_boxes(units, aliases)
+    _merge_boxes(units, aliases, report)
     descs = [u for u in units if u.kind == "item" and not u.merged]
     chapter = units[0].chapter
     exact, loose, first = {}, {}, {}  # key -> descriptions in reading order; primary key -> first description
@@ -330,7 +354,7 @@ def _chapter(units, aliases, name_headers, report):
         if tables and not d.rows and not d.has_box():
             report.append({"kind": "unpaired-description", "name": d.name, "page": d.page, "chapter": d.chapter})
     for u in units:
-        if u.kind == "box" and not u.merged:
+        if u.kind == "box" and not u.merged and not u.shared:
             report.append({"kind": "unpaired-box", "name": u.name, "page": u.page, "chapter": u.chapter})
 
 
@@ -380,7 +404,8 @@ def _emit(units):
             continue
         text = _text(u.body)
         if u.kind == "section":
-            out.append(Block("section", u.name, u.chapter, u.section, "", u.page, text=text, level=u.level))
+            out.append(Block("section", u.name, u.chapter, u.section, "", u.page, tags=u.tags, labels=dict(u.labels),
+                             text=text, level=u.level))
         else:
             stats = [_row(t.header, r) for t in u.stats for r in t.rows]
             label = u.name if u.kind == "box" else ""
