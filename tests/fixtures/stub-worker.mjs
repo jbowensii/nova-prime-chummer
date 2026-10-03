@@ -9,18 +9,32 @@
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
 // anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts); datapack
 // export/import likewise (importer/datapack.py, run for real in datapack-python.test.ts).
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+// `sr6 <command> …` (the Shadowrun 6 importer): run copies the made-up SR6 fixture (tests/fixtures/sr6/custom: imported/,
+// texts/) into --custom with an import.xml (CRB, recipe crb, the counts, one unpaired-row); remove deletes imported/crb and
+// texts/crb.xml; edit set|remove as below, in <custom>/edits/ with the SR6 root and kinds.
+import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const [, , , , cmd, target, ...rest] = process.argv
-// STUB_LOG: one line per call, "<command> <book folder> <CA2_CUSTOM_DIR>" (tests of the job order)
-if (process.env.STUB_LOG) appendFileSync(process.env.STUB_LOG, `${cmd} ${basename(target ?? '')} ${process.env.CA2_CUSTOM_DIR ?? ''}\n`)
+const args0 = process.argv.slice(4)
+const sr6 = args0[0] === 'sr6'
+if (sr6) args0.shift()
+const [cmd, target, ...rest] = args0
+// STUB_LOG: one line per call, "<command> <book folder> <CA2_CUSTOM_DIR>" (tests of the job order; SR6's: "sr6:<command>")
+if (process.env.STUB_LOG) appendFileSync(process.env.STUB_LOG, `${sr6 ? 'sr6:' : ''}${cmd} ${basename(target ?? '')} ${process.env.CA2_CUSTOM_DIR ?? ''}\n`)
 const opt = name => rest.find(a => a.startsWith(`${name}=`))?.slice(name.length + 1) ?? rest[rest.indexOf(name) + 1]
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 const status = (dir, state, msg = '') => writeFileSync(join(dir, 'status.xml'), `<status state="${state}" updated="${now}">${msg}</status>\n`)
 const importXml = (dir, attrs = '', files = '') =>
   writeFileSync(join(dir, 'import.xml'), `<import file="stub.pdf" sha256="00" converter="stub" pages="1" score="1.00"${attrs}><files>${files}</files><report/></import>\n`)
 const NS = 'xmlns:ca2="urn:chummer-anarchy2:data:1"'
+const SR6_NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
+const SR6_KINDS = { priorities: 'priority', metatypes: 'metatype', attributes: 'attribute', skills: 'skill', qualities: 'quality',
+  weapons: 'weapon', armor: 'armor', augmentations: 'augmentation', electronics: 'device', gear: 'gear', vehicles: 'vehicle', spells: 'spell',
+  rituals: 'ritual', adeptpowers: 'adeptpower', complexforms: 'complexform', metamagics: 'metamagic', echoes: 'echo',
+  critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit', npcs: 'npc', sprites: 'sprite', lifestyles: 'lifestyle',
+  contacts: 'contact', rules: 'rule' }
+const SR6_FIXTURE = fileURLToPath(new URL('./sr6/custom/', import.meta.url))
 
 /** custom/imported/index.xml lists every source folder's overlay files; sources.xml gains or loses `src`. */
 function sync(custom, src, add) {
@@ -40,7 +54,26 @@ const overlay = (custom, src, name, entries) => {
   sync(custom, src, `<source id="${src}" publisher="Stub" canon="false" file="stub.pdf" sha256="00" imported="2026-09-28"><name>${name}</name></source>`)
 }
 
-if (cmd === 'run') {
+if (sr6 && cmd === 'run') {
+  const custom = opt('--custom'), crb = join(SR6_FIXTURE, 'imported', 'crb')
+  for (const d of ['imported', 'texts']) cpSync(join(SR6_FIXTURE, d), join(custom, d), { recursive: true })
+  const files = readdirSync(crb).map(f => `<file name="${f}" entries="${readFileSync(join(crb, f), 'utf8').match(/^ {2}<\w+ id="/gm)?.length ?? 0}"/>`)
+  writeFileSync(join(target, 'import.xml'), `<import file="made-up-sr6.pdf" sha256="00" converter="sr6-1" pages="1" score="1.00" recipe="crb" source="CRB" ${
+    ''}name="Shadowrun, Sixth World Core Rulebook" publisher="Catalyst Game Labs" canon="true" imported="2026-10-02T00:00:00+00:00"><files>${files.join('')}</files>${
+    ''}<report><row kind="unpaired-row" name="Made-up Ray" page="250" problem="no description found"/></report></import>\n`)
+  status(target, 'done')
+} else if (sr6 && cmd === 'remove') {
+  const custom = opt('--custom')
+  rmSync(join(custom, 'imported', 'crb'), { recursive: true, force: true })
+  rmSync(join(custom, 'imported', 'sources.xml'), { force: true })
+  rmSync(join(custom, 'texts', 'crb.xml'), { force: true })
+  if (existsSync(join(custom, 'imported'))) writeFileSync(join(custom, 'imported', 'index.xml'), '<overlays>\n</overlays>\n')
+  if (rest.includes('--files')) rmSync(target, { recursive: true, force: true })
+  else { importXml(target); status(target, 'removed') }
+} else if (sr6 && cmd !== 'edit') {
+  process.stderr.write(`stub: unknown sr6 command ${cmd}\n`)
+  process.exit(2)
+} else if (cmd === 'run') {
   const pdf = readFileSync(join(target, 'original.pdf'), 'latin1')
   if (pdf.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500)
   if (pdf.includes('crash')) {
@@ -165,8 +198,9 @@ ${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
     : { answer: `Invented answer [ZZ p.61].${q.includes('leak') ? ` ${key}` : ''}`, sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping' }], covered: true, called: true }))
 } else if (cmd === 'edit') { // target: set | remove | add-source; the real checks are importer/edits.py's (books-python.test.ts)
   const dir = join(opt('--custom'), 'edits'), [kind, id] = rest
-  const tag = { amps: 'amp', items: 'item', rules: 'rule' }[kind]
-  const read = (f, root) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), 'utf8') : `<ca2:data ${NS} kind="${root}" version="1">\n</ca2:data>\n`
+  const tag = (sr6 ? SR6_KINDS : { amps: 'amp', items: 'item', rules: 'rule' })[kind]
+  const p = sr6 ? 'sr6' : 'ca2', END = `</${p}:data>`
+  const read = (f, root) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), 'utf8') : `<${p}:data ${sr6 ? SR6_NS : NS} kind="${root}" version="1">\n${END}\n`
   const refuse = why => { process.stderr.write(`${why}\n`); process.exit(3) }
   mkdirSync(dir, { recursive: true })
   const drop = (xml, re) => xml.replace(re, '')
@@ -187,8 +221,8 @@ ${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
     const edits = drop(read('edits.xml', 'edits'), entryRe), texts = drop(read('texts.xml', 'texts'), textRe)
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 150) // widen the read-modify-write window
     const by = rest.includes('--by') ? ` by="${opt('--by')}"` : ''
-    writeFileSync(join(dir, 'edits.xml'), edits.replace('</ca2:data>', `  ${entry.replace(/\sby="[^"]*"/, '').replace(/^(<\w+\b[^>]*?)(\/?>)/, `$1${by}$2`)}\n</ca2:data>`))
-    writeFileSync(join(dir, 'texts.xml'), desc.trim() ? texts.replace('</ca2:data>', `  <text of="${kind}" id="${id}">${desc}</text>\n</ca2:data>`) : texts)
+    writeFileSync(join(dir, 'edits.xml'), edits.replace(END, `  ${entry.replace(/\sby="[^"]*"/, '').replace(/^(<\w+\b[^>]*?)(\/?>)/, `$1${by}$2`)}\n${END}`))
+    writeFileSync(join(dir, 'texts.xml'), desc.trim() ? texts.replace(END, `  <text of="${kind}" id="${id}">${desc}</text>\n${END}`) : texts)
     console.log('<result state="saved" />')
   } else if (target === 'remove') {
     const edits = read('edits.xml', 'edits'), texts = read('texts.xml', 'texts')

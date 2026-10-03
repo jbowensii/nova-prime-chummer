@@ -4,8 +4,8 @@
 // request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
 // Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
 // .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
-// characters/sr6/ and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters, npcs, trash, npcs/trash and campaigns (every
-// other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
+// characters/sr6/ and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters, npcs, trash, npcs/trash, campaigns, books and
+// edits (books.mjs in its SR6 area: library/sr6/, custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
 // in its namespace); a campaign holds only its game's runners and NPCs. Accounts span both: a rename moves both games'
 // folders and memberships, a delete retires both. While an account called sr6 from before exists (its runners are in
 // characters/sr6/), every /api/sr6/ route answers 409 and nothing of the SR6 area is read or written.
@@ -38,7 +38,8 @@
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
 //                                        edits, backup and restore, data packs (server/books.mjs); LIBRARY_DIR is never served
-//   /custom/*                            house-rule overlays from CUSTOM_DIR (never campaigns.xml, never custom/sr6/)
+//   /custom/sr6/*                        the Shadowrun 6 catalog from CUSTOM_DIR/sr6 (this exact lowercase prefix; never campaigns.xml)
+//   /custom/*                            house-rule overlays from CUSTOM_DIR (never campaigns.xml, never custom/sr6/ in any other spelling)
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
@@ -403,6 +404,16 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     return true
   }
 
+  /** Is `asked` (a path under `dir`, the request's `path`) one of the campaigns.xml files, which hold who plays where and GM
+   *  notes and go only through /api/campaigns? By name in `dir` (any case, trailing dots and spaces: Windows'), by Windows'
+   *  stream and short-name syntax, and by the file itself against both games' (a hard link, a name the check didn't think of). */
+  async function customGuard(dir, asked, path) {
+    const secret = join(dir, 'campaigns.xml')
+    if (/[:~]/.test(path) || asked.replace(/[. ]+$/, '').toLowerCase() === secret.toLowerCase()) return true
+    const [a, ...b] = await Promise.all([asked, join(customDir, 'campaigns.xml'), join(customDir, 'sr6', 'campaigns.xml')].map(p => stat(p).catch(() => null)))
+    return b.some(f => a && f && a.dev === f.dev && a.ino === f.ino)
+  }
+
   async function api(req, res, url, who) {
     if (url.pathname === '/api/health') return send(res, 200, { ok: true, storage: 'server' })
     const s = scoped(url.pathname)
@@ -412,6 +423,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       u.pathname = s.path
       if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
       if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
+      if (/^\/api\/(books|edits)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
       return send(res, 404, { error: 'not found' })
     }
     if (await oidc.handle(req, res, url, send, who) !== false) return
@@ -437,16 +449,15 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       }
       if (url.pathname.startsWith('/custom/')) { // imported book data: signed-in users only
         if (!auth.session(req, res)) return send(res, 401, 'sign in first', 'text/plain')
-        // campaigns.xml (who plays where, GM notes): only through /api/campaigns. By name (trailing dots and spaces: Windows'),
-        // by Windows' stream and short-name syntax, and by the file itself (a link, a name the check didn't think of).
-        // custom/sr6/ (the Shadowrun 6 area's, with its own campaigns.xml): never here, in any case or spelling
-        const asked = resolve(customDir, '.' + url.pathname.slice('/custom'.length)), secret = join(customDir, 'campaigns.xml')
+        // the Shadowrun 6 area's catalog: only at this exact lowercase prefix, only from custom/sr6/
+        const sr6 = url.pathname.startsWith('/custom/sr6/')
+        if (sr6 && legacy()) return send(res, 404, 'not found', 'text/plain') // an account called sr6 from before: no SR6 area
+        const dir = sr6 ? join(customDir, 'sr6') : customDir, rel = url.pathname.slice(sr6 ? '/custom/sr6'.length : '/custom'.length)
+        const asked = resolve(dir, '.' + rel)
+        // Anarchy's /custom/: custom/sr6/ never, in any case or spelling (SR6's is the branch above)
         const top = relative(customDir, asked).split(sep)[0].replace(/[. ]+$/, '').toLowerCase()
-        const [a, ...b] = await Promise.all([asked, secret, join(customDir, 'sr6', 'campaigns.xml')].map(p => stat(p).catch(() => null)))
-        if (/[:~]/.test(url.pathname) || top === 'sr6' || asked.replace(/[. ]+$/, '').toLowerCase() === secret.toLowerCase()
-          || b.some(f => a && f && a.dev === f.dev && a.ino === f.ino))
-          return send(res, 404, 'not found', 'text/plain')
-        if (await serveFile(res, customDir, url.pathname.slice('/custom'.length))) return
+        if ((!sr6 && top === 'sr6') || await customGuard(dir, asked, url.pathname)) return send(res, 404, 'not found', 'text/plain')
+        if (await serveFile(res, dir, rel)) return
         return send(res, 404, 'not found', 'text/plain')
       }
       if (await serveFile(res, staticDir, url.pathname)) return

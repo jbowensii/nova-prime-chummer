@@ -68,15 +68,15 @@ test('serves the app and data files', async () => {
   expect(await r.text()).toContain('kind="sources"')
 })
 
-test('/custom/sr6/ is never served here (S1 gives the Shadowrun 6 area its own route); the rest of /custom/ is', async () => {
+test('/custom/sr6/ has its own route (never campaigns.xml); other spellings of it 404; the rest of /custom/ is served', async () => {
   const custom = join(dir, 'custom')
   mkdirSync(join(custom, 'sr6'), { recursive: true })
   writeFileSync(join(custom, 'index.xml'), '<overlays/>')
   writeFileSync(join(custom, 'sr6', 'campaigns.xml'), '<campaigns/>')
   writeFileSync(join(custom, 'sr6', 'x.xml'), '<x/>')
-  for (const p of ['/custom/sr6/campaigns.xml', '/custom/sr6/x.xml', '/custom/sr6', '/custom/sr6/', '/custom/SR6/x.xml', '/custom/sr6./x.xml',
-    '/custom//sr6/x.xml', '/custom/a/../sr6/x.xml'])
+  for (const p of ['/custom/sr6/campaigns.xml', '/custom/sr6', '/custom/sr6/', '/custom/SR6/x.xml', '/custom/sr6./x.xml', '/custom//sr6/x.xml'])
     expect((await fetch(`${base}${p}`)).status, p).toBe(404)
+  for (const p of ['/custom/sr6/x.xml', '/custom/a/../sr6/x.xml']) expect((await fetch(`${base}${p}`)).status, p).toBe(200)
   const ok = await fetch(`${base}/custom/index.xml`)
   expect([ok.status, await ok.text()]).toEqual([200, '<overlays/>'])
 })
