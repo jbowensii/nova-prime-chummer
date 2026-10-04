@@ -1,7 +1,7 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
-// edits and the table rules (admin and editors; GET /api/edits: anyone signed in) and the example sets (GET, anyone
-// signed in); `who` is the signed-in user.
+// edits, the table rules and SR6's creation rules (admin and editors; GET /api/edits and /api/sr6/creation: anyone
+// signed in) and the example sets (GET, anyone signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -27,6 +27,13 @@
 //                                     the entry is saved with by="<username>"
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
+//   /api/sr6/books, /api/sr6/books/:id[/report|/reimport], /api/sr6/edits[/:kind/:id]   the same for the Shadowrun 6 area
+//                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS, existing entries only);
+//                                     no AI, review, data pack or house sources there (404). One job queue for both games
+//   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
+//   PUT    /api/sr6/creation          admin and editors: { settings: [{ key, value, source?, page? }] } -> 204; replaces
+//                                     custom/sr6/creation.xml (creation.xsd: the numbers the book prints only in its text);
+//                                     anyone signed in reads the file at /custom/sr6/creation.xml. Anarchy has none (404)
 //   GET    /api/samples               anyone signed in: the example sets in custom/samples/<set>/ -> { sets: [{ id, name, canon,
 //                                     samples: [{ name, href }] }] } (href relative to /custom/). Read only: the admin manages
 //                                     the folder on disk; set.xml (sampleset.xsd) names a set and says whether it is canon
@@ -61,6 +68,7 @@ import { createReadStream, createWriteStream, readdirSync, readFileSync, rmSync 
 import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
+import { SR6_KINDS } from './games.mjs'
 
 const MAX_PDF = 500 * 1024 * 1024
 const MAX_PACK = 50 * 1024 * 1024
@@ -70,11 +78,13 @@ const RESTORE_TIMEOUT = 4 * 3600 * 1000 // the safety backup and the unpack each
 const TEMP_ZIP = /^(download|pack)-[0-9a-f]+$|^(upload|pack)-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/
 const MAX_XML = 5 * 1024 * 1024
 const JOB_TIMEOUT = 6 * 3600 * 1000 // ponytail: one cap for all jobs; an AI run over a big book takes hours (it resumes if cut)
-const BOOK_ID = /^(?!backgrounds$)[a-z0-9][a-z0-9-]{0,40}$/ // library/backgrounds: the background art (server/backgrounds.mjs)
+// library/backgrounds: the background art (server/backgrounds.mjs); library/sr6: the Shadowrun 6 area's books
+const BOOK_ID = /^(?!(backgrounds|sr6)$)[a-z0-9][a-z0-9-]{0,40}$/
 const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
 const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }
 const ENTRY_ID = /^[a-z0-9][a-z0-9.-]{0,99}$/ // importer/edits.py's ID, bounded
 const MAX_TABLE_RULES = 200 // tablerules.xsd
+const MAX_SETTINGS = 500, SETTING_KEY = /^[A-Za-z0-9.:_-]{1,80}$/ // creation.xsd (SR6)
 const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its description, plus the <edit> wrapper
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
@@ -135,21 +145,25 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const config = join(libraryDir, '.config')
   const backups = join(libraryDir, '.backups')
   const queue = []
-  let stopped = false // stop(): no job step starts afterwards (a step that ended as it was killed queued the next one)
   let running = null, child = null, listChild = null, testChild = null
+  let stopped = false // stop(): no job step starts afterwards (a step that ended as it was killed queued the next one)
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let testing = null; const tests = [] // connection tests: one at a time, 10 a minute (each may cost a few tokens)
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
-  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve(), ask: Promise.resolve() }
+  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve(), ask: Promise.resolve(), creation: Promise.resolve() }
   let writes = 0, zipping = 0, restoring = false
   let packing = false // a data pack being made or imported: one at a time, and no job starts meanwhile
   const spawned = new Set() // backup processes, stopped with the server
 
-  const bookDir = id => {
+  // each game's books and catalog (server/games.mjs): Anarchy's at the top of library/ and custom/, SR6's in their sr6/
+  // folders, run as `python -m importer sr6 …`. One job queue for both.
+  const AREAS = { ca2: { library: libraryDir, custom: customDir, pre: [], kinds: EDIT_KINDS },
+    sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: SR6_KINDS } }
+  const bookDir = (id, game = 'ca2') => {
     if (!BOOK_ID.test(id)) throw fail(400, 'bad book id')
-    return join(libraryDir, id)
+    return join(AREAS[game].library, id)
   }
-  const busy = id => running?.id === id || queue.some(j => j.id === id)
+  const busy = (id, game = 'ca2') => (running?.game === game && running.id === id) || queue.some(j => j.game === game && j.id === id)
 
   /** Keys, bearer tokens and key-looking strings out of worker output before it reaches status.xml. */
   async function redact(text) {
@@ -165,10 +179,11 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         // PYTHONIOENCODING: else Windows' code page mangles the ’ in messages; CA2_CUSTOM_DIR: where the core files are
         env: { ...process.env, PYTHONIOENCODING: 'utf-8', CA2_CUSTOM_DIR: customDir },
         stdio: ['pipe', 'pipe', 'pipe'] })
-      if (args[0] === 'list-models') listChild = p
-      else if (args[0] === 'test-ai') testChild = p
-      else if (args[0] === 'backup' || args[0] === 'ask') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
-      else if (!['set-key', 'set-settings', 'edit', 'restore', 'datapack'].includes(args[0]) && !args.includes('--dry-run')) child = p
+      const cmd0 = args[0] === 'sr6' ? args[1] : args[0] // `sr6 edit` is an edit, never the job
+      if (cmd0 === 'list-models') listChild = p
+      else if (cmd0 === 'test-ai') testChild = p
+      else if (cmd0 === 'backup' || cmd0 === 'ask') { p.tag = tag; spawned.add(p); p.on('close', () => spawned.delete(p)) }
+      else if (!['set-key', 'set-settings', 'edit', 'restore', 'datapack'].includes(cmd0) && !args.includes('--dry-run')) child = p
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
@@ -178,9 +193,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     })
   }
 
-  async function setStatus(id, state, message = '') {
+  async function setStatus(id, state, message = '', game = 'ca2') {
     const text = `<?xml version="1.0" encoding="UTF-8"?>\n<status state="${state}" updated="${new Date().toISOString().replace(/\.\d+Z$/, 'Z')}">${esc(clean(message))}</status>\n`
-    await writeAtomic(join(libraryDir, id, 'status.xml'), text).catch(() => {}) // the folder may be gone (delete with files)
+    await writeAtomic(join(AREAS[game].library, id, 'status.xml'), text).catch(() => {}) // the folder may be gone (delete with files)
   }
 
   /** A request that writes: refused (409) during a restore, and counted from its first line to its last so a restore waits
@@ -193,8 +208,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   const noRestore = () => { if (restoring) throw fail(409, 'a restore is running; try again when it’s done') }
 
-  function enqueue(id, steps) {
-    queue.push({ id, steps })
+  function enqueue(id, steps, game = 'ca2') {
+    queue.push({ game, id, steps })
     pump()
   }
 
@@ -206,10 +221,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
         if (stopped) break
         const r = await importer(args)
         if (r.code === 0) continue
-        const st = attr(rootTag(await readOr(join(libraryDir, running.id, 'status.xml')), 'status'), 'state')
+        const st = attr(rootTag(await readOr(join(AREAS[running.game].library, running.id, 'status.xml')), 'status'), 'state')
         const why = (await redact(r.err)).trim().split('\n').slice(-12).join('\n')
         // the importer records its own failures cleanly; anything else (crash, timeout, no Python) is ours to report
-        if (st !== 'failed' || r.signal) await setStatus(running.id, 'failed', why || `the importer stopped with exit code ${r.code}`)
+        if (st !== 'failed' || r.signal) await setStatus(running.id, 'failed', why || `the importer stopped with exit code ${r.code}`, running.game)
         break
       }
     } finally {
@@ -227,17 +242,17 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return buf.subarray(0, bytesRead).toString('utf8')
   }
 
-  async function book(id) {
-    const dir = join(libraryDir, id)
+  async function book(id, game = 'ca2') {
+    const dir = join(AREAS[game].library, id)
     const [imp, status, upload, reviewHead] = await Promise.all([...['import.xml', 'status.xml', 'upload.xml'].map(f => readOr(join(dir, f))), head(join(dir, 'review.xml'))])
     const rv = rootTag(reviewHead, 'review')
     const it = rootTag(imp, 'import'), st = rootTag(status, 'status')
     const counts = Object.fromEntries([...(imp ?? '').matchAll(/<file\b[^>]*>/g)].map(m => [attr(m[0], 'name'), Number(attr(m[0], 'entries'))]))
     return {
-      id, file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'), state: busy(id) && running?.id !== id ? 'queued' : attr(st, 'state') ?? 'queued',
+      id, file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'), state: busy(id, game) && !(running?.game === game && running.id === id) ? 'queued' : attr(st, 'state') ?? 'queued',
       message: status ? unesc(status.replace(/^[\s\S]*?<status\b[^>]*>|<\/status>[\s\S]*$/g, '')) : '',
       source: attr(it, 'source'), name: attr(it, 'name'), canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
-      recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id),
+      recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id, game),
       review: rv ? (attr(rv, 'done') === attr(rv, 'parts') ? 'done' : 'partial') : undefined,
       coreUnread: coreUnread(imp), coreAi: coreRows(imp, 'core-ai'),
     }
@@ -260,14 +275,15 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return text
   }
 
-  async function upload(req, res, send) {
+  async function upload(req, res, send, game = 'ca2') {
+    const area = AREAS[game]
     if (!/^application\/pdf\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'only PDF files can be uploaded' })
     if (Number(req.headers['content-length']) > MAX_PDF) {
       res.setHeader('Connection', 'close')
       return send(res, 413, { error: 'the file is larger than 500 MB' })
     }
     const id = `${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`
-    const dir = join(libraryDir, id), file = safeName(req.headers['x-filename'])
+    const dir = join(area.library, id), file = safeName(req.headers['x-filename'])
     await mkdir(dir, { recursive: true })
     const sha = createHash('sha256')
     let size = 0
@@ -290,9 +306,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     const hex = sha.digest('hex')
     await writeAtomic(join(dir, 'upload.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<upload file="${esc(file)}" size="${size}" sha256="${hex}" uploaded="${new Date().toISOString()}"/>\n`)
-    await dropPackMarks(hex) // a book file uploaded again: chosen over a loaded data pack, as with Re-import
-    await setStatus(id, 'queued')
-    enqueue(id, [['run', dir, '--custom', customDir, '--file', file]])
+    if (game === 'ca2') await dropPackMarks(hex) // a book file uploaded again: chosen over a loaded data pack, as with Re-import
+    await setStatus(id, 'queued', '', game)
+    enqueue(id, [[...area.pre, 'run', dir, '--custom', area.custom, '--file', file]], game)
     return send(res, 202, { id })
   }
 
@@ -441,9 +457,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
 
   /** One `importer edit …` call after the previous one; exit 3 is a refusal whose reason goes back as a 400. */
-  function edit(args, input) {
+  function edit(args, input, area = AREAS.ca2) {
     return serial('edit', async () => {
-      const r = await importer(['edit', ...args, '--custom', customDir], { input, timeout: 60000 })
+      const r = await importer([...area.pre, 'edit', ...args, '--custom', area.custom], { input, timeout: 60000 })
       const why = (await redact(r.err)).trim().split('\n').pop()
       if (r.code === 3) throw fail(400, why || 'the importer refused the edit')
       if (r.code !== 0) throw fail(500, 'couldn’t save the edit: ' + why)
@@ -451,13 +467,16 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     })
   }
 
-  async function edits(req, res, url, send, who) {
-    const p = url.pathname, method = req.method
+  async function edits(req, res, url, send, who, game = 'ca2') {
+    const p = url.pathname, method = req.method, area = AREAS[game]
     if (p === '/api/edits' && method === 'GET') {
-      const xml = (await readOr(join(customDir, 'edits', 'edits.xml'), '')).replace(/<!--[\s\S]*?-->/g, '')
-      const kind = Object.fromEntries(Object.entries(EDIT_KINDS).map(([k, t]) => [t, k]))
-      return send(res, 200, [...xml.matchAll(/<(amp|item|rule)\b[^>]*>/g)].map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })))
+      const xml = (await readOr(join(area.custom, 'edits', 'edits.xml'), '')).replace(/<!--[\s\S]*?-->/g, '')
+      const kind = Object.fromEntries(Object.entries(area.kinds).map(([k, t]) => [t, k]))
+      // entries only: an SR6 entry's parts can share a kind's tag (a priority's <metatype>, a critter's <gear>) but have no id
+      return send(res, 200, [...xml.matchAll(/<([a-z]+)\b[^>]*>/g)].filter(m => Object.hasOwn(kind, m[1]) && attr(m[0], 'id'))
+        .map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })))
     }
+    if (p === '/api/edits/sources' && game === 'sr6') return send(res, 404, { error: 'not found' }) // S1: no SR6 house sources
     if (p === '/api/edits/sources') {
       if (method !== 'POST') return send(res, 405, { error: 'method not allowed' })
       if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the source as application/json' })
@@ -473,13 +492,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (!m) return send(res, 404, { error: 'not found' })
     let id
     try { id = decodeURIComponent(m[2]) } catch { throw fail(400, 'bad entry id') }
-    if (!EDIT_KINDS[m[1]]) throw fail(400, 'kind is amps, items or rules')
+    if (!Object.hasOwn(area.kinds, m[1])) throw fail(400, game === 'ca2' ? 'kind is amps, items or rules' : 'unknown kind')
     if (!ENTRY_ID.test(id)) throw fail(400, 'bad entry id')
     if (method === 'PUT') {
-      await edit(['set', m[1], id, '--by', who.username], xmlBody(await body(req, MAX_EDIT), 'edit'))
+      await edit(['set', m[1], id, '--by', who.username], xmlBody(await body(req, MAX_EDIT), 'edit'), area)
       return send(res, 204, '', 'text/plain')
     }
-    if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id]), 'result'), 'removed') === 'true' })
+    if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id], undefined, area), 'result'), 'removed') === 'true' })
     return send(res, 405, { error: 'method not allowed' })
   }
 
@@ -523,13 +542,45 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 204, '', 'text/plain')
   }
 
+  /** The SR6 creation rules (custom/sr6/creation.xml), all at once: Game data sends the whole list on every save. */
+  async function creation(req, res, send) {
+    const path = join(AREAS.sr6.custom, 'creation.xml')
+    if (req.method === 'GET') return send(res, 200, [...(await readOr(path, '')).matchAll(/<setting\b[^>]*>/g)].map(([t]) => {
+      const source = attr(t, 'source'), page = attr(t, 'page')
+      return { key: attr(t, 'key'), value: attr(t, 'value'), ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
+    }))
+    if (req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
+    if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the creation rules as application/json' })
+    let b
+    try { b = JSON.parse(await body(req, 1024 * 1024)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { settings: [{ key, value, source?, page? }] } as JSON') }
+    if (!Array.isArray(b?.settings) || b.settings.length > MAX_SETTINGS) throw fail(400, `send { settings: [{ key, value, source?, page? }] }, ${MAX_SETTINGS} settings at most`)
+    const seen = new Set()
+    const rows = b.settings.map(s => {
+      const key = String(s?.key ?? ''), value = clean(String(s?.value ?? '')).trim()
+      const source = s?.source == null ? '' : String(s.source), page = s?.page == null ? '' : String(s.page)
+      if (!SETTING_KEY.test(key)) throw fail(400, 'a setting’s key is 1 to 80 letters, digits and . : _ -')
+      if (seen.has(key)) throw fail(400, `the setting ${key} is set twice`)
+      seen.add(key)
+      if (!value || value.length > 200) throw fail(400, `the value of ${key} is 1 to 200 characters`)
+      if (source && !SOURCE_ID.test(source)) throw fail(400, `the source of ${key} is a book id such as CRB`)
+      if (page && !/^[1-9]\d{0,5}$/.test(page)) throw fail(400, `the page of ${key} is a whole number from 1`)
+      return `  <setting key="${key}" value="${esc(value)}"${source ? ` source="${source}"` : ''}${page ? ` page="${page}"` : ''}/>\n`
+    })
+    await mkdir(AREAS.sr6.custom, { recursive: true })
+    await serial('creation', () => writeAtomic(path, '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + `<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">\n${rows.join('')}</sr6:creation>\n`))
+    return send(res, 204, '', 'text/plain')
+  }
+
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
   async function sweep() {
     const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
-    for (const d of await readdir(libraryDir, { withFileTypes: true }).catch(() => [])) {
-      if (!d.isDirectory() || !BOOK_ID.test(d.name) || busy(d.name)) continue
-      const st = attr(rootTag(await readOr(join(libraryDir, d.name, 'status.xml')), 'status'), 'state')
-      if (live.includes(st)) await setStatus(d.name, 'failed', 'Interrupted by a restart — re-import')
+    for (const [game, area] of Object.entries(AREAS)) {
+      for (const d of await readdir(area.library, { withFileTypes: true }).catch(() => [])) {
+        if (!d.isDirectory() || !BOOK_ID.test(d.name) || busy(d.name, game)) continue
+        const st = attr(rootTag(await readOr(join(area.library, d.name, 'status.xml')), 'status'), 'state')
+        if (live.includes(st)) await setStatus(d.name, 'failed', 'Interrupted by a restart — re-import', game)
+      }
     }
   }
   /** The upgrade path to core data built by the import: a server whose custom/imported/core/ lacks any of the 12 core files
@@ -833,8 +884,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 200, { ok: true })
   }
 
-  async function handle(req, res, url, send, who) {
+  /** `game` 'sr6': an /api/sr6/… request with the prefix taken off (server.mjs); see sr6(). */
+  async function handle(req, res, url, send, who, game = 'ca2') {
     const p = url.pathname, method = req.method
+    if (game === 'sr6') return sr6(req, res, url, send, who)
     if (p === '/api/backup' && method === 'POST') return makeBackup(req, res, url, send, who)
     const bt = p.match(/^\/api\/backup\/([^/]+)$/)
     if (bt && method === 'GET') return sendZip('backup', bt[1], res, who)
@@ -851,12 +904,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     const pt = p.match(/^\/api\/datapack\/([^/]+)$/)
     if (pt && method === 'GET' && pt[1] !== 'import') return sendZip('datapack', pt[1], res, who)
     if (p === '/api/datapack' || pt) return send(res, 405, { error: 'method not allowed' })
-    if (p === '/api/books' && method === 'POST') return upload(req, res, send)
-    if (p === '/api/books' && method === 'GET') {
-      await mkdir(libraryDir, { recursive: true })
-      const ids = (await readdir(libraryDir, { withFileTypes: true })).filter(d => d.isDirectory() && BOOK_ID.test(d.name)).map(d => d.name).sort()
-      return send(res, 200, await Promise.all(ids.map(book)))
-    }
+    if (p === '/api/books' && (method === 'POST' || method === 'GET')) return books(req, res, send)
     if (p === '/api/ai-settings' && method === 'GET') return send(res, 200, await aiSettings(), 'application/xml; charset=utf-8')
     if (p === '/api/ai-settings' && method === 'PUT') {
       const cleared = await putSettings(await body(req))
@@ -881,19 +929,44 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
 
     const m = p.match(/^\/api\/(books|review)\/([^/]+)(?:\/(report|reimport|ai))?$/)
-    if (!m) return false
-    const [, area, rawId, action] = m
+    return m ? bookRoute(req, res, url, send, m) : false
+  }
+
+  /** GET /api/books (the list) and POST (an upload) in the game's area. */
+  async function books(req, res, send, game = 'ca2') {
+    if (req.method === 'POST') return upload(req, res, send, game)
+    const lib = AREAS[game].library
+    await mkdir(lib, { recursive: true })
+    const ids = (await readdir(lib, { withFileTypes: true })).filter(d => d.isDirectory() && BOOK_ID.test(d.name)).map(d => d.name).sort()
+    return send(res, 200, await Promise.all(ids.map(id => book(id, game))))
+  }
+
+  /** The SR6 area: the books routes without AI, review or data pack, the edits without house sources (S1), and the
+   *  creation rules (S2). Any other path: false (server.mjs answers 404). */
+  async function sr6(req, res, url, send, who) {
+    const p = url.pathname
+    if (p === '/api/books' && (req.method === 'POST' || req.method === 'GET')) return books(req, res, send, 'sr6')
+    if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who, 'sr6')
+    if (p === '/api/creation') return creation(req, res, send)
+    const m = p.match(/^\/api\/(books)\/([^/]+)(?:\/(report|reimport))?$/)
+    return m ? bookRoute(req, res, url, send, m, 'sr6') : false
+  }
+
+  /** One book's routes: m = [, books|review, id, action]. */
+  async function bookRoute(req, res, url, send, m, game = 'ca2') {
+    const method = req.method, area = AREAS[game]
+    const [, kind, rawId, action] = m
     let id
     try { id = decodeURIComponent(rawId) } catch { throw fail(400, 'bad book id') }
-    const dir = bookDir(id)
+    const dir = bookDir(id, game)
     const status = await readOr(join(dir, 'status.xml'))
     const hasUpload = await readOr(join(dir, 'upload.xml')) ?? await readOr(join(dir, 'import.xml'))
     if (status == null && hasUpload == null) return send(res, 404, { error: 'no such book' })
     const imp = rootTag(await readOr(join(dir, 'import.xml')), 'import')
     const state = attr(rootTag(status, 'status'), 'state')
-    const needsQuiet = () => { if (busy(id)) throw fail(409, 'this book is busy; wait for it to finish') }
+    const needsQuiet = () => { if (busy(id, game)) throw fail(409, 'this book is busy; wait for it to finish') }
 
-    if (area === 'review') {
+    if (kind === 'review') {
       if (method === 'GET') {
         const xml = await readOr(join(dir, 'review.xml'))
         return xml == null ? send(res, 404, { error: 'no proposals for this book' }) : send(res, 200, xml, 'application/xml; charset=utf-8')
@@ -922,10 +995,12 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (attr(imp, 'recipe') === 'ai') throw fail(409, 'a book read by AI can’t be re-imported; remove it, or apply its review again')
       const file = attr(imp, 'file') ?? attr(rootTag(hasUpload, 'upload'), 'file')
       // the admin chose the book over a loaded data pack: its pack marks go (this folder's, and any for the same file)
-      if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
-      await dropPackMarks(attr(imp, 'sha256'))
-      await setStatus(id, 'queued')
-      enqueue(id, [['remove', dir, '--custom', customDir], ['run', dir, '--custom', customDir, ...(file ? ['--file', file] : [])]])
+      if (game === 'ca2') {
+        if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
+        await dropPackMarks(attr(imp, 'sha256'))
+      }
+      await setStatus(id, 'queued', '', game)
+      enqueue(id, [[...area.pre, 'remove', dir, '--custom', area.custom], [...area.pre, 'run', dir, '--custom', area.custom, ...(file ? ['--file', file] : [])]], game)
       return send(res, 202, { id })
     }
     if (action === 'ai' && method === 'POST') {
@@ -947,8 +1022,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (!action && method === 'DELETE') {
       needsQuiet()
-      await setStatus(id, 'queued')
-      enqueue(id, [['remove', dir, '--custom', customDir, ...(url.searchParams.get('files') === '1' ? ['--files'] : [])]])
+      await setStatus(id, 'queued', '', game)
+      enqueue(id, [[...area.pre, 'remove', dir, '--custom', area.custom, ...(url.searchParams.get('files') === '1' ? ['--files'] : [])]], game)
       return send(res, 202, { id })
     }
     return send(res, 405, { error: 'method not allowed' })

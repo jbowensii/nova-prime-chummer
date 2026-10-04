@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="sources" (SR6): the shipped public/data/sr6/sources.xml (the books a recipe supports) and the
+     importer's custom/sr6/imported/sources.xml. See docs/sr6-data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:sr6="urn:chummer-sr6:data:1"
+           targetNamespace="urn:chummer-sr6:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="source">
+          <xs:complexType>
+            <xs:sequence><xs:element name="name" type="xs:string"/></xs:sequence>
+            <xs:attribute name="id" type="sr6:SourceId" use="required"/>
+            <xs:attribute name="publisher" type="xs:string" use="required"/>
+            <xs:attribute name="canon" type="xs:boolean" use="required"/>
+            <!-- the private description file, relative to custom/sr6/ -->
+            <xs:attribute name="texts" type="xs:string"/>
+            <!-- imported sources: uploaded file name(s) ("; "-separated), SHA-256(s) (space-separated), latest import -->
+            <xs:attribute name="file" type="xs:string"/>
+            <xs:attribute name="sha256" type="xs:string"/>
+            <xs:attribute name="imported" type="xs:date"/>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="remove">
+          <xs:complexType><xs:attribute name="id" type="sr6:SourceId" use="required"/></xs:complexType>
+        </xs:element>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="sources"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="sr6:version"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

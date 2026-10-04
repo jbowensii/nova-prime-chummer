@@ -1,16 +1,19 @@
 // Users (admin): every account, add one, edit name/username/email/role/sign-in method, disable or enable, reset a password, move
-// runners to another account, delete (only with no runners). The server refuses anything that would leave no enabled
-// admin; its reason is shown as it comes.
+// runners (either game's) to another account, delete (only with no runners). The server refuses anything that would leave no
+// enabled admin; its reason is shown as it comes. `game` 'sr6': the page opened from the Shadowrun 6 side (its Trash links).
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useEffect, useState } from 'react'
 import { xmlToCharacter } from '../engine'
 import { Modal } from './bits'
 import { PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
+import type { Game } from './game'
+import { rootAttr } from './repo'
 
 type Account = User & { runners: number }
 type Dialog = { at: 'add' } | { at: 'edit' | 'reset' | 'delete' | 'move'; u: Account }
-interface Runner { file: string; name: string; owner: string }
+interface Runner { file: string; name: string; owner: string; game: Game }
+const key = (r: Runner) => `${r.game}/${r.file}`
 
 const METHOD_NAMES = { password: 'App password', authelia: 'Authelia' }
 const when = (iso: string | null) => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Never'
@@ -72,7 +75,7 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
   )
 }
 
-export function UsersScreen() {
+export function UsersScreen({ game = 'ca2' }: { game?: Game }) {
   const me = useMe()
   const [list, setList] = useState<Account[] | null>(null)
   const [runners, setRunners] = useState<Runner[]>([])
@@ -84,14 +87,18 @@ export function UsersScreen() {
     try {
       setList(await (await send('users', undefined, 'GET')).json())
       const rows: { file: string; xml: string; owner: string }[] = await (await send('characters', undefined, 'GET')).json()
-      setRunners(rows.map(r => { const p = xmlToCharacter(r.xml); return { file: r.file, owner: r.owner,
-        name: p.ok ? p.character.identity.streetName || p.character.identity.name || r.file : r.file } }))
+      // SR6's: none while an account called sr6 from before holds its folder (409); names from the root, as the file may not parse
+      const six: { file: string; xml: string; owner: string }[] = await send('sr6/characters', undefined, 'GET').then(r => r.json(), () => [])
+      setRunners([...rows.map(r => { const p = xmlToCharacter(r.xml); return { file: r.file, owner: r.owner, game: 'ca2' as const,
+        name: p.ok ? p.character.identity.streetName || p.character.identity.name || r.file : r.file } }),
+      ...six.map(r => ({ file: r.file, owner: r.owner, game: 'sr6' as const,
+        name: rootAttr(r.xml, 'streetName', 'sr6:character') || rootAttr(r.xml, 'name', 'sr6:character') || r.file }))])
     } catch (e) { setMsg({ text: (e as Error).message, err: true }); setList(l => l ?? []) }
   }
   useEffect(() => { void refresh() }, [])
 
   const open = (d: Dialog) => { setErr(''); setPw(''); setMsg(null); setDialog(d)
-    if (d.at === 'move') { setMoveFile(runners.find(r => r.owner === d.u.username)?.file ?? ''); setMoveTo(list?.find(x => x.id !== d.u.id)?.id ?? '') } }
+    if (d.at === 'move') { const r = runners.find(r => r.owner === d.u.username); setMoveFile(r ? key(r) : ''); setMoveTo(list?.find(x => x.id !== d.u.id)?.id ?? '') } }
   const close = () => setDialog(null)
   const done = (text: string) => { setDialog(null); setMsg({ text }); void refresh() }
   /** One request from a dialog: its refusal shows in the dialog. */
@@ -139,7 +146,7 @@ export function UsersScreen() {
                     <button className="btn small quiet" aria-label={`${u.enabled ? 'Disable' : 'Enable'} ${u.name}`} onClick={() => void toggle(u)}>{u.enabled ? 'Disable' : 'Enable'}</button>
                     {u.linked && <button className="btn small quiet" aria-label={`Unlink ${u.name} from Authelia`} onClick={() => void unlink(u)}>Unlink Authelia</button>}
                     {u.runners > 0 && <button className="btn small quiet" aria-label={`Move ${u.name}’s runners`} onClick={() => open({ at: 'move', u })}>Move runners</button>}
-                    <a className="btn small quiet" aria-label={`Open ${u.name}’s trash`} href={`#/trash/${u.username}`}>Trash</a>
+                    <a className="btn small quiet" aria-label={`Open ${u.name}’s trash`} href={`#/${game === 'sr6' ? 'sr6/' : ''}trash/${u.username}`}>Trash</a>
                     <button className="btn small quiet" aria-label={`Delete ${u.name}`} onClick={() => open({ at: 'delete', u })}>Delete</button>
                   </div></td>
                 </tr>
@@ -166,11 +173,11 @@ export function UsersScreen() {
       <Modal open={d?.at === 'move'} onClose={close} title={d?.at === 'move' ? `Move ${d.u.name}’s runners` : ''}
         actions={<><button className="btn" onClick={close}>Close</button><button className="btn primary" form="ca2-move">Move runner</button></>}>
         {d?.at === 'move' && <form id="ca2-move" className="stack" onSubmit={e => { e.preventDefault()
-          const r = theirs.find(x => x.file === moveFile), to = list?.find(x => x.id === moveTo)
-          if (r && to) void act(() => send(`users/${d.u.id}/move-runner`, { file: r.file, to: to.id }), `Moved ${r.name} to ${to.name}.`) }}>
+          const r = theirs.find(x => key(x) === moveFile), to = list?.find(x => x.id === moveTo)
+          if (r && to) void act(() => send(`users/${d.u.id}/move-runner`, { file: r.file, to: to.id, game: r.game }), `Moved ${r.name} to ${to.name}.`) }}>
           {theirs.length === 0 ? <p>{d.u.name} has no runners left.</p> : <>
             <label>Runner<select value={moveFile} onChange={e => setMoveFile(e.target.value)} autoFocus>
-              {theirs.map(r => <option key={r.file} value={r.file}>{r.name} ({r.file})</option>)}</select></label>
+              {theirs.map(r => <option key={key(r)} value={key(r)}>{r.name} ({r.game === 'sr6' ? 'Shadowrun 6' : r.file})</option>)}</select></label>
             <label>Move to<select value={moveTo} onChange={e => setMoveTo(e.target.value)}>
               {list?.filter(x => x.id !== d.u.id).map(x => <option key={x.id} value={x.id}>{x.name} ({x.username})</option>)}</select></label>
           </>}

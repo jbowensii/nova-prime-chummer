@@ -145,7 +145,8 @@ def _build_pdf(pages_ops: list[str]) -> bytes:
     pages_id = 2
     page_ids = list(range(3, 3 + n_pages))
     font_id = page_ids[-1] + 1
-    content_ids = list(range(font_id + 2, font_id + 2 + n_pages))  # F1 then F2 (bold)
+    fonts = [b"Helvetica", b"Helvetica-Bold", b"Times-Roman", b"Courier"]  # F1..F4
+    content_ids = list(range(font_id + len(fonts), font_id + len(fonts) + n_pages))
 
     objects = [
         b"<< /Type /Catalog /Pages %d 0 R >>" % pages_id,
@@ -156,12 +157,12 @@ def _build_pdf(pages_ops: list[str]) -> bytes:
         objects.append(
             (
                 b"<< /Type /Page /Parent %d 0 R /MediaBox [0 0 612 792] "
-                b"/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> >> /Contents %d 0 R >>"
+                b"/Resources << /Font << %s >> >> /Contents %d 0 R >>"
             )
-            % (pages_id, font_id, font_id + 1, content_id)
+            % (pages_id, b" ".join(b"/F%d %d 0 R" % (i + 1, font_id + i) for i in range(len(fonts))), content_id)
         )
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
+    for name in fonts:
+        objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /%s >>" % name)
     for ops in pages_ops:
         objects.append(_content_stream(ops))
 
@@ -336,3 +337,113 @@ BT /F1 10.5 Tf 72 670 Td (M) Tj /F1 10 Tf (ADE UP) Tj ET
 def tilted_line_pdf() -> bytes:
     """One-page PDF: a slightly rotated line and a line with a bigger initial."""
     return _build_pdf([TILTED_OPS])
+
+
+# The SR6 layout (convert(..., sr6=True)), all made up: F3 Times-Roman 10.5 body, F4 Courier display headings at
+# 60/21/15/13/9, F1/F2 Helvetica 7 tables with a Helvetica-Bold header row and no rules. Each page has a margin tab
+# letter at x=595 and a page number in the bottom band.
+def _sr6_lines(x, y, words, n, size=10.5, font="F3", step=14):
+    return "".join(f"BT /{font} {size} Tf {x} {y - step * i} Td ({words} {i}) Tj ET\n" for i in range(n))
+
+
+SR6_CHAPTER_OPS = """BT /F4 60 Tf 72 650 Td (GADGETS) Tj ET
+BT /F4 15 Tf 72 560 Td (Shop Rules) Tj ET
+BT /F4 9 Tf 72 540 Td ((made up tags)) Tj ET
+BT /F4 10 Tf 595 600 Td (G) Tj ET
+BT /F3 10.5 Tf 300 20 Td (6) Tj ET
+""" + _sr6_lines(72, 520, "Opening words of the chapter line", 6)
+
+# A header band across both columns over three rows: the second row's cost wraps onto a second line, and the first
+# column has a three-word name. Then a heading and two text columns.
+SR6_SHOP_OPS = """BT /F4 21 Tf 72 740 Td (Gadget Shop) Tj ET
+BT /F4 13 Tf 72 715 Td (zappers) Tj ET
+BT /F2 7 Tf 80 700 Td (GADGET) Tj ET
+BT /F2 7 Tf 300 700 Td (DV) Tj ET
+BT /F2 7 Tf 420 700 Td (COST) Tj ET
+BT /F1 7 Tf 72 690 Td (Zap Gun) Tj ET
+BT /F1 7 Tf 300 690 Td (3P) Tj ET
+BT /F1 7 Tf 420 690 Td (250) Tj ET
+BT /F1 7 Tf 72 681 Td (Big Fizz Rifle) Tj ET
+BT /F1 7 Tf 300 681 Td (5P) Tj ET
+BT /F1 7 Tf 420 681 Td (1,200) Tj ET
+BT /F1 7 Tf 420 672 Td ((each)) Tj ET
+BT /F1 7 Tf 72 660 Td (Tiny Zapper) Tj ET
+BT /F1 7 Tf 300 660 Td (2S) Tj ET
+BT /F1 7 Tf 420 660 Td (100) Tj ET
+BT /F4 13 Tf 72 620 Td (Zap Gun) Tj ET
+BT /F4 10 Tf 595 500 Td (G) Tj ET
+BT /F3 10.5 Tf 540 20 Td (7) Tj ET
+""" + _sr6_lines(72, 604, "Left column text runs on and on", 4) + _sr6_lines(320, 620, "Right text", 4)
+
+# Two side-by-side bands with the same two-column header, a bold stat-box label line under the left one, then two
+# text columns.
+SR6_BANDS_OPS = """BT /F2 7 Tf 72 700 Td (RANGE) Tj ET
+BT /F2 7 Tf 130 700 Td (DV) Tj ET
+BT /F2 7 Tf 330 700 Td (RANGE) Tj ET
+BT /F2 7 Tf 388 700 Td (DV) Tj ET
+BT /F1 7 Tf 72 691 Td (Touch) Tj ET
+BT /F1 7 Tf 132 691 Td (2) Tj ET
+BT /F1 7 Tf 330 691 Td (LOS) Tj ET
+BT /F1 7 Tf 390 691 Td (4) Tj ET
+BT /F2 7 Tf 72 680 Td (Skills:) Tj /F1 7 Tf ( Sneaking 3) Tj ET
+""" + _sr6_lines(72, 650, "Lower left", 3) + _sr6_lines(320, 650, "Lower right", 3)
+
+
+def _sr6_cell(x, y, text, font="F1"):
+    return f"BT /{font} 7 Tf {x} {y} Td ({text}) Tj ET\n"
+
+
+# A shaded table: header cell rects (x 72/150/230/330) and row stripes. The header is three lines: UNIT over PRICE
+# with THING and NOTES centred between them, and NOTES' values start left of its header's centre. Rows: a plain row,
+# a striped row with a name wrapped around values set centred, a plain row, a striped labelled row, a plain row, a
+# striped one-cell sub-heading and a last plain row. Then text in two columns, a full-width heading and a sidebar in
+# two columns whose gutter sits 10 pt right of the body's (no one strip is clear in both).
+_SR6_LEFT = "lorem lorem lorem lorem lorem lorem lorem "  # 7 x (2333 + 250) / 1000 x 10.5 = 189.84 pt, then 'aN'
+SR6_GRID_OPS = ("0.9 g 72 690 78 16 re f 150 690 80 16 re f 230 690 100 16 re f\n"
+                "72 660 78 16 re f 150 660 80 16 re f 230 660 100 16 re f\n"
+                "72 630 258 15 re f 72 600 258 15 re f 0 g\n"
+                + _sr6_cell(162, 701.5, "UNIT", "F2") + _sr6_cell(80, 697, "THING", "F2")
+                + _sr6_cell(275, 697, "NOTES", "F2") + _sr6_cell(162, 692.5, "PRICE", "F2")
+                + _sr6_cell(80, 681, "Widget") + _sr6_cell(170, 681, "5") + _sr6_cell(233, 681, "a small note")
+                + _sr6_cell(80, 671, "Big Long") + _sr6_cell(80, 664, "Widget") + _sr6_cell(170, 667.5, "8")
+                + _sr6_cell(233, 667.5, "a big note")
+                + _sr6_cell(80, 651, "Gizmo") + _sr6_cell(170, 651, "7") + _sr6_cell(233, 651, "b note")
+                + "BT /F2 7 Tf 80 635 Td (Extras:) Tj /F1 7 Tf ( spare parts) Tj ET\n"
+                + _sr6_cell(80, 621, "Doohickey") + _sr6_cell(170, 621, "9") + _sr6_cell(233, 621, "c note")
+                + _sr6_cell(80, 605, "Spare Kit", "F2")
+                + _sr6_cell(80, 590, "Sprocket") + _sr6_cell(170, 590, "2") + _sr6_cell(233, 590, "d note")
+                + "".join(f"BT /F3 10.5 Tf 90.16 {540 - 13 * i} Td ({_SR6_LEFT}a{i}) Tj ET\n"
+                          f"BT /F3 10.5 Tf 304 {540 - 13 * i} Td (b{i} lorem lorem lorem lorem) Tj ET\n" for i in range(4))
+                + "BT /F4 13 Tf 72 470 Td (A Sidebar Title Across The Two Text Columns) Tj ET\n"
+                + "".join(f"BT /F3 10.5 Tf 100.16 {450 - 13 * i} Td ({_SR6_LEFT}c{i}) Tj ET\n"
+                          f"BT /F3 10.5 Tf 314 {450 - 13 * i} Td (d{i} lorem lorem lorem lorem) Tj ET\n" for i in range(4)))
+
+
+# Lookalikes that are no tables: a numbered list with bold run-in lead-ins, and a stat-box label alone in its column
+# (prose beside it in the other). Then a table whose header is set a point smaller than its rows.
+SR6_LOOKALIKE_OPS = ("""BT /F2 8 Tf 72 700 Td (1.) Tj ET
+BT /F2 8 Tf 90 700 Td (Easy thing to do for a made up person) Tj ET
+BT /F2 8 Tf 90 690 Td (and talking.) Tj /F1 8 Tf ( More plain words) Tj ET
+BT /F1 7 Tf 72 650 Td (Quick Step 2,) Tj ET
+BT /F2 7 Tf 330 650 Td (Made Powers:) Tj ET
+BT /F1 7 Tf 330 641 Td (Zip 3, Zap) Tj ET
+BT /F4 13 Tf 72 540 Td (Sledge Ham-) Tj ET
+BT /F4 13 Tf 72 527 Td (mer Time) Tj ET
+BT /F2 7 Tf 72 500 Td (# OF ZAPS) Tj ET
+BT /F2 7 Tf 150 500 Td (EFFECT) Tj ET
+BT /F1 7 Tf 72 490 Td (1) Tj ET
+BT /F1 7 Tf 150 490 Td (Tingle) Tj ET
+BT /F2 6 Tf 72 600 Td (TONIC IS:) Tj ET
+BT /F2 6 Tf 150 600 Td (AVAIL) Tj ET
+BT /F2 6 Tf 220 600 Td (COST) Tj ET
+""" + _sr6_cell(72, 590, "Fizz Pop") + _sr6_cell(150, 590, "2(L)") + _sr6_cell(220, 590, "20")
+                     + _sr6_cell(72, 580, "Glow Juice") + _sr6_cell(150, 580, "4") + _sr6_cell(220, 580, "75/")
+                     + _sr6_cell(220, 572, "80")
+                     + _sr6_cell(72, 562, "Zing-") + _sr6_cell(72, 555, "Zang") + _sr6_cell(150, 558.5, "1")
+                     + _sr6_cell(220, 558.5, "5"))
+
+
+def sr6_layout_pdf() -> bytes:
+    """Five-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
+    with a stat-box label, a shaded table over body text and an offset sidebar, and table lookalikes."""
+    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS])

@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Repo: new public `jbowensii/chummer-anarchy2-foundry`, local clone `C:\Users\johnb\OneDrive\Documents\Projects\chummer-anarchy2-foundry`, MIT license, default branch `main`; work lands through a branch + PR.
+- Repo: new public `jbowensii/chummer-anarchy2-foundry`, local clone `C:\dev\chummer-anarchy2-foundry`, MIT license, default branch `main`; work lands through a branch + PR.
 - Module id `chummer-anarchy2-importer`, title "Chummer Anarchy 2.0 Importer", `compatibility { minimum: 14, verified: 14 }`, `relationships.systems: [{ id: "sra2", type: "system" }]`, `relationships.recommends: [{ id: "quench", type: "module" }]`. Tested sra2 version constant `TESTED_SRA2 = "14.3.3"`; a newer sra2 shows a warning, never a block.
 - Reads only files with `format: "chummer-anarchy2-export"`, `version: 1`, `kind: "runners"`; anything else is refused with the reason and nothing changes. (`kind: "books"` says "Book data import comes in a later version.")
 - GM only: the button shows only for `game.user.isGM`.
@@ -36,7 +36,7 @@
 - [ ] **Step 1: Create the repo**
 
 ```bash
-mkdir -p "C:/Users/johnb/OneDrive/Documents/Projects/chummer-anarchy2-foundry" && cd "C:/Users/johnb/OneDrive/Documents/Projects/chummer-anarchy2-foundry"
+mkdir -p "C:/dev/chummer-anarchy2-foundry" && cd "C:/dev/chummer-anarchy2-foundry"
 git init -b main
 gh repo create jbowensii/chummer-anarchy2-foundry --public --source . --description "Foundry VTT (sra2) importer for Chummer Anarchy 2.0 exports" --remote origin
 ```

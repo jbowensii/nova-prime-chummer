@@ -465,6 +465,23 @@ table.proposals .acts { display: flex; flex-wrap: wrap; gap: 0 0.2rem; margin-to
 .picker li.off:hover { background: inherit; color: inherit; }
 .picker li.off:hover .t, .picker li.off:hover .muted { color: var(--text-2); }
 
+/* ---- game picker (GamePicker.tsx): the first screen. Each game is an indigo slab like the book's sidebar, its name in the
+   brand's graffiti on the paint stroke; the yellow edge widens under the pointer and on keyboard focus. ---- */
+.gamepick { max-width: 56rem; }
+.gamepick .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; margin-top: 1.6rem; }
+.game { display: grid; align-content: end; gap: 0.9rem; min-height: 15rem; padding: 1.4rem 1.4rem 1.3rem 1.6rem; text-align: left; cursor: pointer;
+  background: var(--panel); color: var(--panel-text); border: 0; border-left: 6px solid var(--yellow); border-radius: var(--r-sm);
+  transition: border-left-width 0.12s ease-out; }
+.game:hover, .game:focus-visible { border-left-width: 14px; }
+:root[data-texture='accents'] .game, :root[data-texture='full'] .game { background: var(--dots), var(--panel); }
+.game .name { font-family: var(--display); font-size: clamp(1.5rem, 5vw, 2.2rem); line-height: 1.15; text-transform: uppercase; letter-spacing: 0.02em; }
+.game .name b { display: block; width: fit-content; margin: 0.1em 0 0 -0.25em; padding: 0.05em 0.45em 0.1em; font-family: var(--graffiti); font-weight: 400;
+  font-size: 1.15em; text-transform: none; letter-spacing: 0; color: var(--yellow); }
+:root[data-texture='accents'] .game .name b, :root[data-texture='full'] .game .name b { color: var(--ink); background: var(--stroke) center / 100% 100% no-repeat; }
+.game .what { font-family: var(--serif); font-size: 1.08rem; line-height: 1.4; color: var(--panel-muted); max-width: 34ch; }
+.game:hover .what, .game:focus-visible .what { color: var(--panel-text); }
+@media (max-width: 600px) { .game { min-height: 11rem; } }
+
 /* ---- accounts (auth.tsx, SignIn.tsx, Setup.tsx, Users.tsx) ---- */
 .gate { max-width: 30rem; }
 .gate form { margin-top: 1.2rem; }
@@ -591,6 +608,7 @@ dialog.drawer h2 { margin-top: 0; }
 .btn.ibtn.primary, .btn.ibtn.primary:hover:not(:disabled) { color: var(--accent-ink); background: var(--yellow); border-color: var(--yellow); }
 .btn.ibtn.primary:hover:not(:disabled) { filter: brightness(1.06); }
 .btn.ibtn[aria-current='page'] { color: var(--heading); box-shadow: inset 0 -3px 0 var(--yellow); }
+.btn.ibtn[aria-disabled='true'] { opacity: 0.4; cursor: not-allowed; background: none; color: var(--text-2); }
 .tip { position: fixed; inset: auto; margin: 0; z-index: 60; max-width: calc(100vw - 8px); overflow: hidden; text-overflow: ellipsis;
   padding: 0.3rem 0.55rem; background: var(--panel); color: var(--panel-text); border: 0; border-left: 3px solid var(--yellow);
   font: 600 0.8rem/1.2 var(--sans); white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); }
@@ -615,3 +633,50 @@ dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size:
   .bars > .actions { border-right: 0; padding-right: 0; }
   .menubar .tools { border-left: 0; padding-left: 0; margin-left: 0; }
 }
+
+/* SR6 Rules: subsections indented under their section, paragraphs kept; Game data: the short kinds table; the edit dialog’s read-only parts */
+.sr6-rules .rule-list dd { white-space: pre-line; }
+.sr6-rules .rule-list .lvl2 { padding-left: 1rem; }
+.sr6-rules .rule-list .lvl3 { padding-left: 2rem; }
+.sr6-rules .rule-list .lvl4 { padding-left: 3rem; }
+table.data.sr6-kinds { width: auto; min-width: min(20rem, 100%); }
+.sr6-creation td:first-child { width: 45%; min-width: 12rem; }
+.sr6-creation input[type=number] { width: 7rem; }
+.sr6-creation input.src-id { width: 5rem; }
+.sr6-parts { margin: 0.2rem 0 0; padding-left: 1.2rem; font-size: 0.93rem; color: var(--text-2); }
+a.noncanon { text-decoration: none; }
+
+/* SR6 editor: the skills table's attribute rows; the budgets panel's rows that open to their lines */
+table.data tr.group td { background: none !important; font-family: var(--display); color: var(--heading); padding-top: 0.9rem; border-bottom-color: var(--yellow); }
+.sr6-budgets .budget { display: block; }
+.sr6-budgets summary { list-style: none; cursor: pointer; }
+.sr6-budgets summary::-webkit-details-marker { display: none; }
+.sr6-budgets summary .lbl::after { content: ' ▸'; color: var(--yellow); }
+.sr6-budgets details[open] summary .lbl::after { content: ' ▾'; }
+.sr6-budgets .bud-lines { list-style: none; margin: 0 0 0.5rem; padding: 0 0 0 0.8rem; font-size: 0.85rem; }
+.sr6-budgets .bud-lines a { color: var(--panel-muted); text-decoration: none; }
+.sr6-budgets .bud-lines a:hover, .sr6-budgets .bud-lines a:focus-visible { color: var(--yellow); }
+.missing ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
+.sr6-derived { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.2rem 1.2rem; margin: 0; }
+.sr6-derived div { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid var(--rule); padding: 0.15rem 0; }
+.sr6-derived dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* SR6 Ledger tab: the balances, voided rows struck through with their reason; career budgets link to it */
+.sr6-balances { display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem; margin: 0; font-size: 1.1rem; }
+.sr6-balances b { font-variant-numeric: tabular-nums; }
+.sr6-ledger h3 { margin: 0.4rem 0 0; }
+.sr6-ledger tbody td:first-child { white-space: nowrap; }
+.sr6-ledger tr.voided td { text-decoration: line-through; color: var(--text-3); }
+.sr6-ledger tr.voided .why { display: inline-block; width: 100%; text-decoration: none; }
+.sr6-budgets a.budget { color: inherit; text-decoration: none; }
+/* SR6 NPC block (the Stat block tab's preview; src/sr6/print/sheet.css has its print look) and the stat editor */
+.sr6-npc h3 { margin: 0; }
+.sr6-npc-head { margin: 0 0 0.5rem; color: var(--text-2); }
+.sr6-npc-stats { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.5rem; }
+.sr6-npc-stats div { border: 1px solid var(--rule); padding: 0.1rem 0.4rem; text-align: center; min-width: 3.2rem; }
+.sr6-npc-stats span { display: block; font-size: 0.75rem; color: var(--text-2); }
+.sr6-npc-stats b { font-variant-numeric: tabular-nums; }
+.sr6-npc-lines { margin: 0; }
+.sr6-npc-lines div { display: flex; gap: 0.6rem; border-bottom: 1px solid var(--rule); padding: 0.15rem 0; }
+.sr6-npc-lines dt { flex: 0 0 9.5rem; font-weight: 600; }
+.sr6-npc-lines dd { margin: 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sr6-npc-edit input { width: 100%; min-width: 7rem; }

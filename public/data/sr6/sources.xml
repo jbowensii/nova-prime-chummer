@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Shadowrun 6 books an SR6 recipe supports. Every SR6 entry's source="" names one of these. texts: the private
+     description file for that source, in custom/sr6/ (never committed; loaded when present). See docs/sr6-data-format.md. -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="sources" version="1">
+  <source id="CRB" publisher="Catalyst Game Labs" canon="true" texts="texts/crb.xml"><name>Shadowrun, Sixth World Core Rulebook</name></source>
+</sr6:data>

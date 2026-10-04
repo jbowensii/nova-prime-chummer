@@ -1,18 +1,31 @@
 // Every page's header: the brand and title, the page's own actions, then the one main menu (icons with tooltips, the
-// current page marked) and Ask, Settings and the account. Pages a role can't use aren't listed (App.tsx sends them home anyway).
+// current page marked) and the game switch, Ask, Settings and the account. Pages a role can't use aren't listed (App.tsx
+// sends them home anyway). On the Shadowrun 6 pages (#/sr6/...) the menu is SR6's and Ask is hidden (it answers from the
+// Anarchy books).
 import type { ReactNode } from 'react'
 import { AskButton } from './AskRules'
 import { AccountMenu, canEdit, isAdmin, useMe } from './auth'
 import { Brand } from './bits'
+import { homeOf, storeGame } from './game'
 import { IconLink, type IconName } from './icons'
 import { useRepo } from './repo'
 import { SettingsButton } from './settings'
 
 export function MainMenu() {
   const me = useMe(), server = useRepo().mode === 'server'
-  const here = location.hash.replace(/^#\/?/, '').split('/')[0]
+  const [here, sub] = location.hash.replace(/^#\/?/, '').split('/')
+  if (here === 'sr6') return <Bar section={(sub === 'books' && isAdmin(me)) || sub === 'rules' || sub === 'data' || sub === 'campaigns' ? `sr6/${sub}`
+    : (sub === 'npcs' || sub === 'n') && canEdit(me) ? 'sr6/npcs' : sub === 'compendiums' && canEdit(me) && server ? 'sr6/compendiums' : 'sr6'} sr6 items={[
+    ['sr6', 'runners', 'Your runners', true],
+    ['sr6/npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
+    ['sr6/compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
+    ['sr6/campaigns', 'campaigns', 'Campaigns', server],
+    ['sr6/books', 'books', 'Books', isAdmin(me)],
+    ['sr6/rules', 'rules', 'Rules', true],
+    ['sr6/data', 'data', 'Game data', true],
+  ]} />
   const section = here === 'c' ? '' : here === 'n' ? 'npcs' : here // a runner's or NPC's editor: its list
-  const items: [string, IconName, string, boolean][] = [
+  return <Bar section={section} items={[
     ['', 'runners', 'Your runners', true],
     ['npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
     ['compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
@@ -20,14 +33,21 @@ export function MainMenu() {
     ['books', 'books', 'Books', isAdmin(me)],
     canEdit(me) ? ['rules', 'rules', 'Rules', true] : ['table-rules', 'rules', 'Table rules', true],
     ['data', 'data', 'Game data', true],
-  ]
+  ]} />
+}
+
+function Bar({ items, section, sr6 }: { items: [string, IconName, string, boolean][]; section: string; sr6?: boolean }) {
+  const other = sr6 ? 'ca2' : 'sr6'
   return (
     <div className="menubar">
       <nav aria-label="Main menu" className="iconbar">
         {items.filter(i => i[3]).map(([page, icon, label]) =>
           <IconLink key={page} href={`#/${page}`} icon={icon} label={label} aria-current={section === page ? 'page' : undefined} />)}
       </nav>
-      <div className="iconbar tools"><AskButton /><SettingsButton /><AccountMenu /></div>
+      <div className="iconbar tools">
+        <IconLink href={homeOf(other)} icon="switch" label={sr6 ? 'Switch to Shadowrun Anarchy' : 'Switch to Shadowrun 6'} onClick={() => storeGame(other)} />
+        {!sr6 && <AskButton />}<SettingsButton /><AccountMenu />
+      </div>
     </div>
   )
 }

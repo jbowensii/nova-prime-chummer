@@ -24,8 +24,18 @@ import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
 import { BackgroundArt } from './Background'
+import { GamePicker } from './GamePicker'
+import { Sr6Main } from '../sr6/ui/Sr6App'
+import { gameOf, homeOf, storedGame } from './game'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+/** The route the app opens on: a bare #/ opens the remembered game's home (links inside the app keep #/ as Anarchy's). */
+function firstRoute() {
+  const r = parseHash()
+  if (r.length || storedGame() !== 'sr6') return r
+  history.replaceState(null, '', location.pathname + location.search + homeOf('sr6'))
+  return parseHash()
+}
 
 /** Core tables a runner can't be built without: while one is missing the app opens on its setup screen. */
 const ESSENTIAL = ['attributes', 'metatypes', 'levels', 'packages', 'pricing', 'skills']
@@ -88,7 +98,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />
         : page === 'npcs' ? <NpcsScreen c={catalog} />
         : page === 'users' ? <UsersScreen />
-        : page === 'campaigns' && id ? <CampaignScreen key={id} c={catalog} id={id} />
+        : page === 'campaigns' && id ? <CampaignScreen key={id} id={id} label={r => [catalog.packages.get(r.package)?.name, catalog.levels.get(r.level)?.name ?? r.level].filter(Boolean).join(', ')} />
         : page === 'campaigns' ? <CampaignsScreen />
         : page === 'trash' ? <TrashScreen user={id} />
         : page === 'books' && id === 'ai' ? <AiSettings />
@@ -127,7 +137,10 @@ function useFocusTitle(key: string) {
 }
 
 export default function App() {
-  const [route, setRoute] = useState(parseHash)
+  const [route, setRoute] = useState(firstRoute)
+  // null: the picker. A browser that opened on a deep link is in that link's game (not remembered), so a link to #/ inside
+  // the app stays Anarchy's home rather than bringing the picker up
+  const [game, setGame] = useState(() => storedGame() ?? (route.length ? gameOf(route) : null))
   const [repo, setRepo] = useState<Repo | null>(null)
   // server: the signed-in account (null: sign in) and whether no account exists yet; browser storage: no accounts at all
   const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean } | null>(null)
@@ -155,7 +168,8 @@ export default function App() {
 
   if (!repo || !me) return <main className="lib"><p className="muted">Loading…</p></main>
   if (route[0] === 'setup' && route[1] === 'reset') return <Recover />
-  if (repo.mode === 'server' && me.setup) return <Setup onDone={u => { location.hash = '#/'; setMe({ user: u, setup: false }) }} />
+  if (!route.length && !game) return <GamePicker onPick={setGame} />
+  if (repo.mode === 'server' && me.setup) return <Setup onDone={u => { location.hash = homeOf(storedGame() ?? 'ca2'); setMe({ user: u, setup: false }) }} />
   if (repo.mode === 'server' && !user) return <SignIn oidc={me.oidc} onSignedIn={u => setMe({ user: u, setup: false, oidc: me.oidc })} over={false}
     note={restored ? 'The server was restored from a backup. Sign in with the accounts in that backup.' : undefined} />
 
@@ -169,7 +183,8 @@ export default function App() {
   return (
     <Me.Provider value={user ?? null}>
       {user && <BackgroundArt />}
-      <div inert={ended} aria-hidden={ended || undefined}><Main repo={repo} route={route} /></div>
+      <div inert={ended} aria-hidden={ended || undefined}>
+        {route[0] === 'sr6' ? <Sr6Main repo={repo} route={route.slice(1)} /> : <Main repo={repo} route={route} />}</div>
       {ended && <Over><SignIn oidc={me.oidc} onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to
         carry on, and unsaved changes on this page are saved then. <b>Signing in as someone else discards this page’s unsaved changes.</b></>} /></Over>}
     </Me.Provider>

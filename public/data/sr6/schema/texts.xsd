@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="texts" (SR6): private descriptions, game effects and rule text (book-derived, never committed),
+     merged by (of, id) at load. of = the entry's kind. See docs/sr6-data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:sr6="urn:chummer-sr6:data:1"
+           targetNamespace="urn:chummer-sr6:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="text" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+            <xs:attribute name="of" type="sr6:Kind" use="required"/>
+            <xs:attribute name="id" type="sr6:Id" use="required"/>
+          </xs:extension></xs:simpleContent></xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="texts"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="sr6:version"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

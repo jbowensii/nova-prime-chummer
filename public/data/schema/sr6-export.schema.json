@@ -1,0 +1,1332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chummer-sr6:export:1",
+  "title": "Chummer SR6 export v1",
+  "description": "Shadowrun 6 runners, NPCs or book data from Chummer Anarchy 2.0 (docs/sr6-export-format.md). Every number in values is Chummer’s own; attrs and parts keep the entry as printed. The envelope, book and NPC block allow extra properties so later minor additions stay readable; the runner, items, purchases and values are closed (unevaluatedProperties false where a def extends item).",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "kind",
+    "exportedAt",
+    "app",
+    "descriptions"
+  ],
+  "properties": {
+    "format": {
+      "const": "chummer-sr6-export"
+    },
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "enum": [
+        "runners",
+        "books"
+      ]
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "app": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "descriptions": {
+      "type": "boolean"
+    },
+    "runners": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/runner"
+      }
+    },
+    "books": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/book"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "runners"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "runners"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "books"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "books"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "attr": {
+      "enum": [
+        "bod",
+        "agi",
+        "rea",
+        "str",
+        "wil",
+        "log",
+        "int",
+        "cha",
+        "edg",
+        "mag",
+        "res"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "priorities",
+        "metatypes",
+        "attributes",
+        "skills",
+        "qualities",
+        "weapons",
+        "armor",
+        "augmentations",
+        "electronics",
+        "gear",
+        "vehicles",
+        "spells",
+        "rituals",
+        "adeptpowers",
+        "complexforms",
+        "metamagics",
+        "echoes",
+        "critterpowers",
+        "critters",
+        "spirits",
+        "npcs",
+        "sprites",
+        "lifestyles",
+        "contacts",
+        "lifemodules",
+        "rules"
+      ]
+    },
+    "values": {
+      "description": "Chummer’s numbers for an entry at a rating; a key is absent when the book prints nothing or Chummer can’t read it (never NaN or null).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rating": {
+          "type": "number"
+        },
+        "cost": {
+          "type": "number"
+        },
+        "avail": {
+          "type": "number"
+        },
+        "legality": {
+          "enum": [
+            "L",
+            "I",
+            "F"
+          ]
+        },
+        "essence": {
+          "type": "number"
+        },
+        "capacity": {
+          "type": "number"
+        },
+        "dv": {
+          "type": "number"
+        },
+        "stun": {
+          "type": "boolean"
+        },
+        "ar": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ammo": {
+          "type": "number"
+        },
+        "defense": {
+          "type": "number"
+        },
+        "karma": {
+          "type": "number"
+        },
+        "powerCost": {
+          "type": "number"
+        },
+        "drain": {
+          "type": "number"
+        },
+        "fade": {
+          "type": "number"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "vehicle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "handling": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "accel": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "interval": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "topSpeed": {
+              "type": "number"
+            },
+            "body": {
+              "type": "number"
+            },
+            "armor": {
+              "type": "number"
+            },
+            "pilot": {
+              "type": "number"
+            },
+            "sensor": {
+              "type": "number"
+            },
+            "seats": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "bonus": {
+      "description": "Evaluated: × rating when perRating, × qty.",
+      "type": "object",
+      "required": [
+        "target",
+        "value"
+      ],
+      "properties": {
+        "target": {
+          "enum": [
+            "bod",
+            "agi",
+            "rea",
+            "str",
+            "wil",
+            "log",
+            "int",
+            "cha",
+            "edg",
+            "mag",
+            "res",
+            "initDice"
+          ]
+        },
+        "value": {
+          "type": "number"
+        }
+      }
+    },
+    "part": {
+      "type": "object",
+      "required": [
+        "tag",
+        "text"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "item": {
+      "description": "A thing on a runner or in a book: the catalog entry as printed (attrs, parts) plus Chummer’s values. A base: each def that uses it closes it with unevaluatedProperties false.",
+      "type": "object",
+      "required": [
+        "kind",
+        "name",
+        "canon",
+        "attrs",
+        "parts",
+        "values"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/kind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "canon": {
+          "type": "boolean"
+        },
+        "attrs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/part"
+          }
+        },
+        "values": {
+          "$ref": "#/$defs/values"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "purchase": {
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "qty",
+        "worn",
+        "bonuses",
+        "accessories"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "qty": {
+          "type": "number"
+        },
+        "grade": {
+          "type": "string"
+        },
+        "worn": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        },
+        "bonuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bonus"
+          }
+        },
+        "accessories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/purchase"
+          }
+        }
+      }
+    },
+    "quality": {
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "positive",
+        "level",
+        "free"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "positive": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": "number"
+        },
+        "free": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "pick": {
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "pick",
+        "bonuses"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "pick": {
+          "enum": [
+            "spells",
+            "rituals",
+            "adeptpowers",
+            "complexforms",
+            "metamagics",
+            "echoes"
+          ]
+        },
+        "level": {
+          "type": "number"
+        },
+        "bonuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bonus"
+          }
+        }
+      }
+    },
+    "entry": {
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "id",
+        "source",
+        "page"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "npc": {
+          "$ref": "#/$defs/npc"
+        }
+      }
+    },
+    "npc": {
+      "type": "object",
+      "required": [
+        "kind",
+        "stats",
+        "lines",
+        "pools"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "grunt",
+            "critter",
+            "spirit",
+            "sprite"
+          ]
+        },
+        "rating": {
+          "type": "number"
+        },
+        "group": {
+          "type": "string"
+        },
+        "from": {
+          "type": "object",
+          "required": [
+            "kind",
+            "id",
+            "name",
+            "source",
+            "page"
+          ],
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/kind"
+            },
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "page": {
+              "type": "integer"
+            }
+          }
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "label",
+              "printed",
+              "value",
+              "ok"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "printed": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "part",
+              "text"
+            ],
+            "properties": {
+              "part": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "pools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "rating",
+              "printed"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "rating": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "attr": {
+                "type": "string"
+              },
+              "pool": {
+                "type": "number"
+              },
+              "printed": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "pool": {
+      "type": "object",
+      "required": [
+        "skill",
+        "label",
+        "rank",
+        "attr",
+        "dp"
+      ],
+      "properties": {
+        "skill": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "number"
+        },
+        "attr": {
+          "type": "string"
+        },
+        "dp": {
+          "type": "number"
+        },
+        "spec": {
+          "type": "string"
+        },
+        "expertise": {
+          "type": "string"
+        },
+        "specDp": {
+          "type": "number"
+        },
+        "expertiseDp": {
+          "type": "number"
+        }
+      }
+    },
+    "init": {
+      "type": "object",
+      "required": [
+        "base",
+        "dice"
+      ],
+      "properties": {
+        "base": {
+          "type": "number"
+        },
+        "dice": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "updatedAt",
+        "exportedAt",
+        "streetName",
+        "realName",
+        "finalized",
+        "metatype",
+        "magic",
+        "portrait",
+        "token",
+        "attributes",
+        "essence",
+        "edge",
+        "skills",
+        "knowledge",
+        "qualities",
+        "picks",
+        "purchases",
+        "contacts",
+        "lifestyle",
+        "sins",
+        "karma",
+        "nuyen",
+        "background",
+        "notes",
+        "ledger"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "exportedAt": {
+          "type": "string"
+        },
+        "streetName": {
+          "type": "string"
+        },
+        "realName": {
+          "type": "string"
+        },
+        "finalized": {
+          "type": "boolean"
+        },
+        "metatype": {
+          "type": "object",
+          "required": [
+            "id",
+            "name"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "magic": {
+          "type": "object",
+          "required": [
+            "kind",
+            "initiation",
+            "submersion"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "full",
+                "aspected",
+                "mystic-adept",
+                "adept",
+                "technomancer",
+                "mundane"
+              ]
+            },
+            "tradition": {
+              "type": "string"
+            },
+            "drainAttr": {
+              "enum": [
+                "log",
+                "int",
+                "cha"
+              ]
+            },
+            "aspectedSkill": {
+              "type": "string"
+            },
+            "initiation": {
+              "type": "number"
+            },
+            "submersion": {
+              "type": "number"
+            }
+          }
+        },
+        "portrait": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^data:image/(png|jpeg);base64,"
+        },
+        "token": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^data:image/(png|jpeg);base64,"
+        },
+        "attributes": {
+          "type": "object",
+          "required": [
+            "bod",
+            "agi",
+            "rea",
+            "str",
+            "wil",
+            "log",
+            "int",
+            "cha",
+            "edg",
+            "mag",
+            "res"
+          ],
+          "properties": {
+            "bod": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "agi": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "rea": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "str": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "wil": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "log": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "int": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "cha": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "edg": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "mag": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            },
+            "res": {
+              "type": "object",
+              "required": [
+                "natural",
+                "augmented"
+              ],
+              "properties": {
+                "natural": {
+                  "type": "number"
+                },
+                "augmented": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "essence": {
+          "type": "number"
+        },
+        "edge": {
+          "type": "number"
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "attr",
+              "rank"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "attr": {
+                "type": "string"
+              },
+              "rank": {
+                "type": "number"
+              },
+              "spec": {
+                "type": "string"
+              },
+              "expertise": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "knowledge": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "kind",
+              "native",
+              "rank"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "knowledge",
+                  "language"
+                ]
+              },
+              "native": {
+                "type": "boolean"
+              },
+              "rank": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "qualities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/quality"
+          }
+        },
+        "picks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pick"
+          }
+        },
+        "purchases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/purchase"
+          }
+        },
+        "contacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "uid",
+              "name",
+              "archetype",
+              "connection",
+              "loyalty"
+            ],
+            "properties": {
+              "uid": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "archetype": {
+                "type": "string"
+              },
+              "connection": {
+                "type": "number"
+              },
+              "loyalty": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "lifestyle": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "id",
+            "name",
+            "months"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "months": {
+              "type": "number"
+            },
+            "cost": {
+              "type": "number"
+            }
+          }
+        },
+        "sins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "uid",
+              "name",
+              "kind",
+              "licences"
+            ],
+            "properties": {
+              "uid": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "real",
+                  "fake"
+                ]
+              },
+              "rating": {
+                "type": "number"
+              },
+              "licences": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "rating"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "rating": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "karma": {
+          "type": "number"
+        },
+        "nuyen": {
+          "type": "number"
+        },
+        "derived": {
+          "description": "For reading only: the module writes none of it (Eden derives its own). Left out for an NPC.",
+          "type": "object",
+          "required": [
+            "initiative",
+            "monitors",
+            "defenseRating",
+            "composure",
+            "judgeIntentions",
+            "memory",
+            "liftCarry",
+            "pools"
+          ],
+          "properties": {
+            "initiative": {
+              "$ref": "#/$defs/init"
+            },
+            "astralInit": {
+              "$ref": "#/$defs/init"
+            },
+            "monitors": {
+              "type": "object",
+              "required": [
+                "physical",
+                "stun",
+                "overflow"
+              ],
+              "properties": {
+                "physical": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stun": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "overflow": {
+                  "type": "number"
+                }
+              }
+            },
+            "defenseRating": {
+              "type": "number"
+            },
+            "composure": {
+              "type": "number"
+            },
+            "judgeIntentions": {
+              "type": "number"
+            },
+            "memory": {
+              "type": "number"
+            },
+            "liftCarry": {
+              "type": "number"
+            },
+            "drain": {
+              "type": "number"
+            },
+            "fading": {
+              "type": "number"
+            },
+            "pools": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/pool"
+              }
+            }
+          }
+        },
+        "background": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "ledger": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "at",
+              "type",
+              "summary",
+              "karma",
+              "nuyen"
+            ],
+            "properties": {
+              "at": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "finalize",
+                  "earn",
+                  "advance",
+                  "note",
+                  "void"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "karma": {
+                "type": "number"
+              },
+              "nuyen": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "npc": {
+          "$ref": "#/$defs/npc"
+        }
+      }
+    },
+    "book": {
+      "type": "object",
+      "required": [
+        "source",
+        "entries"
+      ],
+      "properties": {
+        "source": {
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "publisher",
+            "canon"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "publisher": {
+              "type": "string"
+            },
+            "canon": {
+              "type": "boolean"
+            },
+            "compendium": {
+              "const": true
+            }
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entry"
+          }
+        },
+        "npcs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runner"
+          }
+        }
+      }
+    }
+  }
+}

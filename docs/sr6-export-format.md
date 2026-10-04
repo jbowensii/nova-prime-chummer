@@ -1,0 +1,185 @@
+# SR6 export format (Chummer SR6 export v1)
+
+One JSON file of Shadowrun 6 runners, NPCs or book data, read by the Foundry VTT importer module
+`jbowensii/chummer-sr6-foundry` (module id `chummer-sr6-importer`, system `shadowrun6-eden`). It is separate from the SR6
+runner file (`docs/sr6-character-format.md`), which stays the format the app stores, and from Anarchy's export
+(`docs/export-format.md`): each Foundry module refuses the other game's file. The schema is
+`public/data/schema/sr6-export.schema.json` (JSON Schema draft 2020-12, `$id` `urn:chummer-sr6:export:1`); the module ships
+the same file. The producer is `src/sr6/engine/export.ts`.
+
+Two kinds, told apart by `kind`:
+
+- `runners`: one or more runners or NPCs as they stand (a finalized runner with its career spends replayed).
+- `books`: the ticked books' entries of every kind, as the app sees them (catalog edits applied), or one GM compendium.
+
+Files are named `runners-YYYY-MM-DD.sr6foundry.json`, `books-YYYY-MM-DD.sr6foundry.json` and
+`compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json` (the local date of the export). The importer goes by `format` and `kind`,
+never the name.
+
+Where it's made: Export for Foundry on the SR6 runner list (a dialog: tick runners or a campaign), in a runner's or NPC's
+editor, on NPCs & Critters (the header's dialog and each row), on Game data (GMs: "Export book data for Foundry") and on
+a compendium's page. The book panel says: "Include book descriptions — For your own Foundry only. Don’t share this file."
+The runners dialog adds: "The file includes the text of the runners’ amps and gear. Share it only with people who own the
+books."
+
+Every number is Chummer's own: `deriveSr6` for attributes, Essence, Edge and the derived values, `priced` for a
+purchase's cost, Availability and Essence, `rated` for an entry's printed values, `npcValues` and `npcPools` for an NPC
+block. Each entry also keeps what the book prints (`attrs`, `parts`), so a reader can show it.
+
+## Envelope
+
+| Field | Meaning |
+|---|---|
+| `format` | always `"chummer-sr6-export"` |
+| `version` | `1` |
+| `kind` | `"runners"` or `"books"` |
+| `exportedAt` | ISO 8601 time of the export |
+| `app` | `{ name, version }`: `"Chummer Anarchy 2.0"` (the app's name, both games) and its version |
+| `descriptions` | `true` if description texts are included (see Descriptions) |
+| `runners` | kind `runners` (required there, at least one): runners and NPCs |
+| `books` | kind `books` (required there, at least one): books |
+
+## Runner
+
+The runner as it stands: a draft's build, or the finalized build with the live career spends replayed. The runner object
+is closed (no other keys).
+
+| Field | Meaning |
+|---|---|
+| `id`, `updatedAt`, `exportedAt` | the runner's id, last change, this export's time |
+| `streetName`, `realName` | identity |
+| `finalized` | true once the runner is finalized (career play) |
+| `metatype` | `{ id, name }`; an NPC may have none (`""`) |
+| `magic` | `{ kind, tradition?, drainAttr?, aspectedSkill?, initiation, submersion }`; `kind` `full`, `aspected`, `mystic-adept`, `adept`, `technomancer` or `mundane` |
+| `portrait`, `token` | a data URL (`data:image/png` or `data:image/jpeg`, base64), or `null`; no token: use the portrait |
+| `attributes` | `{ bod … cha, edg, mag, res }`, each `{ natural, augmented }`: natural is the rating (Magic or Resonance less the Essence loss), augmented adds the entered bonuses |
+| `essence`, `edge` | Essence left and the augmented Edge |
+| `skills` | `[{ id, name, attr, rank, spec?, expertise? }]`: `id` the catalog's (it carries the source, e.g. `crb.firearms`), so a reader matches by `name` |
+| `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |
+| `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
+| `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
+| `purchases` | purchases (below): weapons, armor, augmentations, electronics, gear, vehicles |
+| `contacts` | `[{ uid, name, archetype, connection, loyalty }]` |
+| `lifestyle` | `{ id, name, months, cost? }` or `null`; `cost` is the lifestyle's price per month |
+| `sins` | `[{ uid, name, kind, rating?, licences: [{ name, rating }] }]`; `kind` `real` or `fake` |
+| `karma`, `nuyen` | a finalized runner's balances (the ledger); a draft's: what the build budgets leave |
+| `derived` | a runner only (an NPC has none), for reading: `{ initiative, astralInit?, monitors, defenseRating, composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. The importer writes none of it: the system derives its own |
+| `background`, `notes` | free text |
+| `ledger` | `[{ at, type, summary, karma, nuyen }]`: the live entries with the Ledger tab's label (`Creation finished`, `Earned: <run> (<date>)`, the spend's label, the note); a voided entry and its void are left out |
+| `npc` | an NPC only: the NPC block (below) |
+
+`initiative` and `astralInit` are `{ base, dice }` (`dice` `null` when its creation setting isn't set); `monitors`
+`{ physical, stun, overflow }`; `pools` `[{ skill, label, rank, attr, dp, spec?, expertise?, specDp?, expertiseDp? }]`.
+
+### Items and purchases
+
+An item is a catalog entry as printed plus Chummer's values. Closed: no other keys.
+
+| Field | Meaning |
+|---|---|
+| `uid` | the line on the runner (absent on a book entry) |
+| `id`, `source`, `page` | the catalog entry; absent on a custom line |
+| `kind` | the catalog kind (`weapons`, `spells`, `qualities`, … the 26 of `SR6_KINDS`) |
+| `name` | as printed (a custom line: the player's) |
+| `canon` | the source is canon; a custom line or a GM compendium's entry: `false` |
+| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`) |
+| `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
+| `values` | Chummer's numbers (below) |
+| `description` | the entry's text (see Descriptions), absent when empty |
+
+A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
+`avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
+`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute or `initDice`), evaluated: × the
+rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too.
+
+### Values
+
+A key is absent when the book prints nothing or Chummer can't read it: never `NaN`, never `null` (only `ar` holds nulls,
+for a dash).
+
+| Key | From |
+|---|---|
+| `rating` | the line's rating, else the lowest of the entry's `rating` range (`"1-3"` → 1); none for an unrated item |
+| `cost` | `cost` at the rating (`rated`); a purchase: `priced`. Not on adept powers |
+| `avail`, `legality` | `avail` at the rating, and its letter `L`, `I` or `F` |
+| `essence`, `capacity`, `defense`, `threshold`, `karma`, `fade` | the attribute of that name at the rating (`capacity` `"[1]"` reads as 1) |
+| `powerCost` | an adept power's `cost` (per level when it's leveled) |
+| `drain` | a spell's `dv` |
+| `dv`, `stun` | a weapon's `dv`: `"3P"` → 3, false; `"4S(e)"` → 4, true |
+| `ar` | `ar` split in five bands, a dash `null`; absent when a band can't be read |
+| `modes` | `modes` as `SS`, `SA`, `BF`, `FA` |
+| `ammo` | the leading number of `ammo` (`"30(c)"` → 30) |
+| `vehicle` | `{ handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats }`; the first three as `[on, off]` (`"4/3"`, one number for both) |
+
+## NPC block
+
+`{ kind, rating?, group?, from?, stats, lines, pools }`. `kind` `grunt`, `critter`, `spirit` or `sprite`; `rating` the
+Professional Rating, Force or Level; `group` a grunt's; `from` `{ kind, id, name, source, page }`, the catalog entry it was
+copied from. `stats` `[{ key, label, printed, value, ok }]` in stat-block order: the printed value and its value at the
+rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `value` is the printed text). `lines`
+`[{ part, text }]` (skills, powers, optional powers, weaknesses, attacks, augmentations, gear, weapons). `pools`
+`[{ name, rating, attr?, pool?, printed }]`: the skills line resolved against the catalog's skills, pool = rating + the
+attribute's value; a skill the catalog doesn't have keeps its printed text only. The block is GM-only data.
+
+## Book
+
+`{ source, entries, npcs? }`.
+
+| Field | Meaning |
+|---|---|
+| `source` | `{ id, name, publisher, canon, compendium? }`; `compendium: true` for a GM's compendium (`publisher` its owner's name) |
+| `entries` | the book's entries of every kind, in `SR6_KINDS` order, then catalog order: items with `id`, `source` and `page` set, and, for `npcs`, `critters`, `spirits` and `sprites`, an `npc` block (a grunt at its Professional Rating, a spirit or sprite at rating 1) |
+| `npcs` | a compendium's own NPCs, each as a runner with its `npc` block |
+
+The file holds every kind; the importer decides what the system uses (priorities, metatypes or life modules make no
+compendium there and it says so).
+
+### Compendium
+
+A GM's compendium exports from its page as a books file of one book: `source.compendium` is `true`, its entries carry their
+own text always, its NPCs come in `npcs`, and the envelope says `descriptions: true`. The Game data panel lists books
+only; compendiums export from their own page.
+
+## Descriptions
+
+With `descriptions: true` a book's entries carry their text (`description`); with `false` it is left out. A runners file
+always carries the text of the runner's things (as Anarchy's: the dialog says so), and a compendium its own text. Share
+a file with book descriptions only with people who own the books.
+
+## What the importer does with it
+
+The module reads the file, refuses another format (Anarchy's export names the Anarchy module), version or a file with
+nothing to import before anything changes, and writes raw inputs only: attribute bases, Edge, skill points, magic, money and
+the things as items (an augmentation's bonuses as effects), letting `shadowrun6-eden` derive pools, monitors, initiative and
+Essence. Runners become Player actors, NPCs NPC, Critter, Spirit or sprite actors with their block in the GM notes, and books
+and compendiums world compendiums per book and topic. Re-importing replaces, adds a new version or skips, and keeps art the
+user chose.
+
+## What never goes in a file
+
+Passwords, sessions, keys, owner usernames, other users' data beyond the runners exported, campaign membership, PDFs and the
+server's paths. A runner's portrait and free text are the player's own and are included.
+
+## Versioning
+
+A breaking change is version 2. The module refuses a `version` it doesn't know. Additions within v1 are optional fields,
+except that the runner, items, purchases and values are closed in the schema: a new key there needs the module's schema
+updated with it.
+
+## Example
+
+The module's samples (`samples/test-*.json` in `chummer-sr6-foundry`) are written by Chummer's own tests from made-up data:
+`WRITE_SR6_SAMPLES=<dir> npx vitest run tests/sr6/export.test.ts` (`tests/sr6/samples.ts`). A made-up purchase:
+
+```json
+{
+  "uid": "c1", "id": "mus.reflex-booster", "kind": "augmentations", "name": "Made-up Reflex Booster", "source": "MUS", "page": 10,
+  "canon": true, "attrs": { "type": "cyberware", "category": "Bodyware", "rating": "1-3", "essence": "Rating × 0.1", "avail": "4(I)", "cost": "Rating × 1000" },
+  "parts": [], "values": { "rating": 1, "cost": 1200, "avail": 4, "legality": "I", "essence": 0.12 },
+  "qty": 1, "grade": "used", "worn": false,
+  "bonuses": [{ "target": "rea", "value": 1 }, { "target": "initDice", "value": 1 }],
+  "accessories": [{ "uid": "c1a", "id": "mur.booster-port", "kind": "augmentations", "name": "Booster Port", "source": "MUR", "page": 10, "canon": true,
+    "attrs": { "type": "cyberware", "category": "Bodyware", "capacity": "[1]", "cost": "100" }, "parts": [],
+    "values": { "cost": 100, "capacity": 1 }, "qty": 1, "worn": false, "bonuses": [], "accessories": [] }]
+}
+```

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Catalog entries edited in the app. Written by the importer. (Made-up test edit.) -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="edits" version="1">
+  <weapon id="crb.zap-gun" source="CRB" page="250" category="zappers" dv="3P" modes="SS" ar="9/7/—/—/—" ammo="8(c)" avail="2" cost="290" by="eve"><name>Zap Gun</name><text/></weapon>
+</sr6:data>

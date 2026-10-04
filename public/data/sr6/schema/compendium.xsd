@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="compendium": a GM's own SR6 collection, stored by the server in
+     characters/sr6/.compendiums/<owner>/<id>.xml. See docs/sr6-data-format.md "Compendiums". Entries are the compendium
+     kinds (COMP_KINDS in src/sr6/engine/compendium.ts) under their SR6 tags; every entry cites the root's source (the app
+     checks) and carries its own text; an embedded NPC is an SR6 character file's root element (character.xsd) with an
+     <npc> block (the app checks). Never an Anarchy runner or entry. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:sr6="urn:chummer-sr6:data:1"
+           xmlns:c="urn:chummer-sr6:character:1"
+           targetNamespace="urn:chummer-sr6:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:import namespace="urn:chummer-sr6:character:1" schemaLocation="character.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="quality" type="sr6:Quality"/>
+        <xs:element name="weapon" type="sr6:Weapon"/>
+        <xs:element name="armor" type="sr6:Armor"/>
+        <xs:element name="augmentation" type="sr6:Augmentation"/>
+        <xs:element name="device" type="sr6:Device"/>
+        <xs:element name="gear" type="sr6:Gear"/>
+        <xs:element name="vehicle" type="sr6:Vehicle"/>
+        <xs:element name="spell" type="sr6:Spell"/>
+        <xs:element name="ritual" type="sr6:Ritual"/>
+        <xs:element name="adeptpower" type="sr6:AdeptPower"/>
+        <xs:element name="complexform" type="sr6:ComplexForm"/>
+        <xs:element name="metamagic" type="sr6:Entry"/>
+        <xs:element name="echo" type="sr6:Entry"/>
+        <xs:element name="critterpower" type="sr6:CritterPower"/>
+        <xs:element name="critter" type="sr6:Being"/>
+        <xs:element name="spirit" type="sr6:Being"/>
+        <xs:element name="npc" type="sr6:Being"/>
+        <xs:element name="sprite" type="sr6:Sprite"/>
+        <xs:element name="lifestyle" type="sr6:Lifestyle"/>
+        <xs:element name="contact" type="sr6:Contact"/>
+        <xs:element ref="c:character"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="compendium"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="sr6:version"/>
+      <xs:attribute name="id" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="name" type="xs:string" use="required"/>
+      <!-- the compendium's own source id: unique among the SR6 books and compendiums on the server, fixed once made -->
+      <xs:attribute name="source" type="sr6:SourceId" use="required"/>
+      <xs:attribute name="sharing" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="private"/><xs:enumeration value="campaign"/><xs:enumeration value="table"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <!-- sharing="campaign" only: the SR6 campaign whose GMs read it -->
+      <xs:attribute name="campaign">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="rev" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="updatedAt" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

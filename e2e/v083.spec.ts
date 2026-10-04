@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync, readFileSync } from 'node:fs'
-import { inflateSync, constants } from 'node:zlib'
+import { pageGlyphs } from './pdf'
 
 // 0.8.3, the owner's report on 0.8.2: the header's icon row from the left, 20% bigger icons, "New runner" (and the other
 // main actions) as icons, tooltips above the icon; on the print page the sheet type back on the toolbar and no page that
@@ -9,25 +9,6 @@ import { inflateSync, constants } from 'node:zlib'
 const SHOTS = '.extract/screenshots/0.8.3'
 const TAG = process.env.V083_TAG ?? 'after'
 const PHONE = { width: 390, height: 844 }
-
-/** The glyphs each page of a Chromium PDF shows, in page order (the hex strings its content streams draw). */
-function pageGlyphs(pdf: Buffer): number[] {
-  const s = pdf.toString('latin1')
-  const obj = (n: string) => { const i = s.search(new RegExp(`(^|\\s)${n} 0 obj\\b`)); return i < 0 ? '' : s.slice(i, s.indexOf('endobj', i)) }
-  const refs = (x: string) => x.match(/\d+(?= 0 R)/g) ?? []
-  const stream = (n: string) => {
-    const at = s.search(new RegExp(`(^|\\s)${n} 0 obj\\b`)), a = s.indexOf('stream', at) + 6, b = s.indexOf('endstream', a)
-    const raw = pdf.subarray(s[a] === '\r' ? a + 2 : a + 1, b)
-    return /\/FlateDecode/.test(s.slice(at, a)) ? inflateSync(raw, { finishFlush: constants.Z_SYNC_FLUSH }).toString('latin1') : raw.toString('latin1')
-  }
-  const pages = (n: string): string[] => { const o = obj(n); return /\/Type\s*\/Pages\b/.test(o) ? refs(o.match(/\/Kids\s*\[([^\]]*)\]/)![1]).flatMap(pages) : [n] }
-  const root = refs(s.match(/\/Root\s+\d+ 0 R/)![0])[0]
-  return pages(refs(obj(root).match(/\/Pages\s+\d+ 0 R/)![0])[0]).map(p => {
-    const c = obj(p).match(/\/Contents\s*(\[[^\]]*\]|\d+ 0 R)/)
-    return (c ? refs(c[1]) : []).reduce((n, r) => n + (stream(r).match(/<([0-9A-Fa-f]+)>\s*Tj|\[[^\]]*\]\s*TJ/g) ?? [])
-      .reduce((m, t) => m + (t.match(/<([0-9A-Fa-f]+)>/g) ?? []).reduce((k, h) => k + (h.length - 2) / 4, 0), 0), 0)
-  })
-}
 
 const settings = (page: Page, patch: object) => page.evaluate(p => { const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
   localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, ...p })) }, patch)

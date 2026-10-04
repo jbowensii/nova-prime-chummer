@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { anarchyState } from './session'
 
 // The Trash page: each account's deleted runners, restored or deleted for good; the admin opens anyone's. On a server of
 // its own (an admin and two players, made-up names). Runs in order. Screenshots go to .extract/ (not committed).
@@ -13,7 +14,7 @@ const PHONE = { width: 390, height: 844 }
 let server: ReturnType<typeof createServer>, base = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-trash-'))

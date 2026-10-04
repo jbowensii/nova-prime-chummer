@@ -9,7 +9,7 @@ import type { Campaign } from './Campaigns'
 import { bookNpcs, bookSamples, readSample } from './samples'
 
 export const exportOpts = (descriptions: boolean): ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })
-const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD
+export const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD
 export const runnersFileName = (now: Date) => `runners-${fileDate(now)}.ca2foundry.json`
 export const booksFileName = (now: Date) => `books-${fileDate(now)}.ca2foundry.json`
 
@@ -27,12 +27,14 @@ export const downloadRunners = (c: Catalog, chs: Character[]) =>
 export const downloadCompendium = (c: Catalog, comp: Compendium) =>
   downloadJson(`compendium-${comp.source}-${fileDate(new Date())}.ca2foundry.json`, exportBooks(c, [comp.source], [], exportOpts(true), {}, { [comp.source]: comp.npcs }))
 
-const label = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
+type Exportable = Pick<Character, 'id' | 'identity' | 'campaign'>
+const label = (ch: Exportable) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
 /** The runner list's dialog: tick runners (or a whole campaign), download one file. The NPC area's too (`noun` 'NPC'):
- *  the same runners file, each with its npc block. */
-export function ExportRunnersDialog({ c, runners, campaigns, open, onClose, noun = 'runner' }: {
-  c: Catalog; runners: Character[]; campaigns: Campaign[]; open: boolean; onClose: () => void; noun?: 'runner' | 'NPC'
+ *  the same runners file, each with its npc block. Either game: `download` writes the file, `about` names the importer. */
+export function ExportRunnersDialog<R extends Exportable>({ runners, campaigns, open, onClose, noun = 'runner', download,
+  about = 'For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2): upload the file there with Import from Chummer.' }: {
+  runners: R[]; campaigns: Campaign[]; open: boolean; onClose: () => void; noun?: 'runner' | 'NPC'; download: (picked: R[]) => void; about?: string
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [camp, setCamp] = useState('')
@@ -42,9 +44,9 @@ export function ExportRunnersDialog({ c, runners, campaigns, open, onClose, noun
   return (
     <Modal open={open} onClose={onClose} title={`Export ${noun}s for Foundry`}
       actions={<><button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn primary" disabled={!n} onClick={() => { downloadRunners(c, runners.filter(r => picked.has(r.id))); onClose() }}>
+        <button className="btn primary" disabled={!n} onClick={() => { download(runners.filter(r => picked.has(r.id))); onClose() }}>
           Download {n} {noun}{n === 1 ? '' : 's'}</button></>}>
-      <p className="muted">For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2): upload the file there with Import from Chummer.</p>
+      <p className="muted">{about}</p>
       <p className="muted">The file includes the text of the {noun}s’ amps and gear. Share it only with people who own the books.</p>
       <div className="row">
         <button className="btn small quiet" onClick={() => set(runners.map(r => r.id))}>All</button>

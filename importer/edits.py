@@ -128,9 +128,10 @@ def _refs(entry):
     return notes + [f'unknown effect "{e}"' for e in (entry.get("effects") or "").split() if e not in m["effects"]]
 
 
-def parse_edit(kind, id, body):
-    """(entry, description or None) from `body`: one entry, or <edit> holding one entry and an optional <description>."""
-    if kind not in TAG:
+def parse_edit(kind, id, body, tags=TAG):
+    """(entry, description or None) from `body`: one entry, or <edit> holding one entry and an optional <description>.
+    tags: edit kind -> entry tag (SR6's KINDS for importer/sr6/edits.py)."""
+    if kind not in tags:
         raise EditError(f'unknown kind "{kind}" (amps, items or rules)')
     body = body.encode("utf8") if isinstance(body, str) else body
     if len(body) > MAX_BODY:
@@ -144,8 +145,8 @@ def parse_edit(kind, id, body):
     kids = list(root) if root.tag == "edit" else [root]
     entries = [k for k in kids if k.tag != "description"]
     desc = [k for k in kids if k.tag == "description"]
-    if len(entries) != 1 or entries[0].tag != TAG[kind] or len(desc) > 1:
-        raise EditError(f"an edit of {kind} needs one <{TAG[kind]}> entry and at most one <description>")
+    if len(entries) != 1 or entries[0].tag != tags[kind] or len(desc) > 1:
+        raise EditError(f"an edit of {kind} needs one <{tags[kind]}> entry and at most one <description>")
     if entries[0].get("id") != id:
         raise EditError(f'the entry’s id "{entries[0].get("id")}" isn’t "{id}"')
     if desc and (len(desc[0]) or desc[0].attrib):

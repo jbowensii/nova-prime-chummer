@@ -1,9 +1,10 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type Route } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { anarchyState, savedOnServer } from './session'
 
 // 0.7.0 NPCs & Critters end to end, on a server of its own (all names made up): Eve and Gus are editors (GMs), Ada the
 // admin, Pat a player. Runs in order. Screenshots go to .extract/ (not committed).
@@ -12,7 +13,7 @@ const SHOTS = '.extract/screenshots/0.7.0'
 let server: ReturnType<typeof createServer>, base = '', origin = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-npcs-e2e-')), config = join(dir, 'library', '.config')
@@ -148,6 +149,22 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
   await expect(page.getByRole('status')).toContainText('wisp.xml: this is an NPC, not a runner')
 })
 
+test('a failed save on import says why, on NPCs & Critters and on Your runners', async ({ page }) => {
+  await signIn(page, 'eve')
+  const full = (r: Route) => r.request().method() === 'PUT'
+    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) }) : r.fallback()
+  await page.route('**/api/npcs/*', full)
+  await page.route('**/api/characters/*', full)
+  await page.goto('/#/npcs')
+  await expect(page.getByRole('heading', { name: 'NPCs & Critters' })).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles({ name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-fail-1')) })
+  await expect(page.getByRole('status')).toHaveText('wisp.xml: the disk is full (test)')
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles({ name: 'runner.xml', mimeType: 'application/xml', buffer: Buffer.from(RUNNER_FILE.replace('runner-1', 'runner-fail-1')) })
+  await expect(page.getByRole('status')).toHaveText('runner.xml: the disk is full (test)')
+})
+
 test('share with a campaign: its co-GM reads and prints it; unshare', async ({ page }) => {
   await signIn(page, 'eve')
   const camp = await (await api(page, 'POST', 'campaigns', { name: 'Made-up Run', note: '' })).json()
@@ -271,7 +288,7 @@ test('Load book NPCs copies the imported books’ NPCs once, even after a rename
   await expect(page.getByRole('status')).toHaveText('The book NPCs are already in your NPCs.')
   await r.getByRole('link', { name: 'Made-Up Goon' }).click()
   await page.getByLabel('Street name').fill('Renamed Goon')
-  await saved(page)
+  await savedOnServer(page, 'Renamed Goon')
   await page.goto('/#/npcs')
   await page.getByRole('button', { name: 'Load book NPCs' }).click()
   await expect(page.getByRole('status')).toHaveText('The book NPCs are already in your NPCs.')

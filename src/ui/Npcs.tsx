@@ -64,11 +64,12 @@ export function NpcsScreen({ c }: { c: Catalog }) {
   const gmOf = campaigns.filter(x => x.you === 'gm' && !x.archived) // where an NPC of yours can be shared
   const campaignOf = (ch: Character) => campaigns.find(x => x.id === ch.campaign)
 
-  const store = async (ch: Character, rev?: number) => {
+  /** saved: null; else why not */
+  const saveError = async (ch: Character, rev?: number) => {
     const r = await repo.save(ch, rev)
-    if (!r.ok) setMsg(r.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.`)
-    return r.ok
+    return r.ok ? null : r.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.`
   }
+  const store = async (ch: Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
   const create = async () => {
     const ch = blankNpc(kind, tier, meta)
     if (await store(ch)) location.hash = editHref(ch, 'concept')
@@ -100,7 +101,8 @@ export function NpcsScreen({ c }: { c: Catalog }) {
       // an NPC has no career: a finalized runner's ledger never comes along
       const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, campaign: undefined, finalizedAt: undefined,
         finalRemaining: undefined, carry: undefined, career: [], lastExportedAt: new Date().toISOString() }
-      if (await store(ch)) { done.push(nameOf(ch)); have.add(ch.id) }
+      const err = await saveError(ch) // the summary below replaces the message: a failed save goes in it
+      if (err) bad.push(`${f.name}: ${err}`); else { done.push(nameOf(ch)); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
@@ -120,7 +122,8 @@ export function NpcsScreen({ c }: { c: Catalog }) {
         const got = await readSample(r.url)
         if (!got.ok) { bad.push(`${r.name || r.url.split('/').pop()}: ${got.reason}`); continue }
         const k = key(r.source, r.name)
-        if (await store({ ...got.character, id: newId(), sampleKey: k, lastExportedAt: got.character.updatedAt })) { n++; have.add(k) }
+        const err = await saveError({ ...got.character, id: newId(), sampleKey: k, lastExportedAt: got.character.updatedAt })
+        if (err) bad.push(`${r.name || r.url.split('/').pop()}: ${err}`); else { n++; have.add(k) }
       }
       setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The book NPCs are already in your NPCs.', ...bad].filter(Boolean).join(' '))
       void refresh()
@@ -247,7 +250,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
         <p className="muted" style={{ marginTop: '0.8rem' }}>They leave your NPCs (to the NPC trash) and any campaign they’re shared with. Move one back out on the compendium’s page to edit it.</p>
       </Modal>
 
-      <ExportRunnersDialog c={c} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC" />
+      <ExportRunnersDialog download={chs => downloadRunners(c, chs)} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC" />
     </main>
   )
 }

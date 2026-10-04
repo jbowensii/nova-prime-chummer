@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { anarchyState } from './session'
 
 // Example characters on a server of its own, all made up (tests/fixtures/mini/custom): "Test Face" comes from a canon
 // book (TESTC), a non-canon one (PREGENS; both in custom/imported/samples.xml), the first-release built-in set
@@ -16,7 +17,7 @@ const PW = { ada: 'ada-password-1', pat: 'pat-password-1' }
 let server: ReturnType<typeof createServer>, base = '', dir = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'ca2-samples-'))

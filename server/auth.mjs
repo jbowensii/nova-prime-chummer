@@ -18,7 +18,8 @@
 //                                   account's Ask the rules questions a day (null: no limit; books.mjs counts them)
 //   DELETE /api/users/:id           admin: -> 204; 409 while the user has runners
 //   POST   /api/users/:id/reset-password  admin: { password } -> 204; every session of that user ends
-//   POST   /api/users/:id/move-runner     admin: { file, to: <user id> } -> { file } (its name in the new folder)
+//   POST   /api/users/:id/move-runner     admin: { file, to: <user id>, game? } -> { file } (its name in the new folder); game:
+//                                   'ca2' (Anarchy, the default) or 'sr6', the store it moves between (else 400)
 //   POST   /api/users/:id/unlink          admin: -> { user }; the account's link to an Authelia subject goes (server/oidc.mjs)
 // There is always an enabled admin: the last one can't be demoted, disabled or deleted (409).
 import { createHash, createHmac, randomBytes, randomInt, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
@@ -28,6 +29,7 @@ import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { attr, esc, rootTag, writeAtomic } from './books.mjs'
+import { RESERVED, scoped } from './games.mjs'
 
 const scrypt = promisify(scryptCb)
 const NS = 'urn:chummer-anarchy2:config:1'
@@ -190,12 +192,14 @@ export function publicOrigin(spec = '') {
   return u.origin
 }
 
-/** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. */
+/** Who may call a route: public, user (any signed-in account), editor (admin or editor) or admin. A game's route
+ *  (/api/sr6/...) needs what the same route without the prefix needs. */
 export function need(path, method) {
+  path = scoped(path).path
   if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
   if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|ai-test|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
-  if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
+  if (/^\/api\/(edits|table-rules|creation)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   if (/^\/api\/backgrounds(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'admin'
   if (/^\/api\/npcs(\/|$)/.test(path)) return 'editor' // NPCs: the GMs' own area, never a player's
   if (/^\/api\/compendiums(\/|$)/.test(path)) return 'editor' // compendiums: the same (phase 3 adds a player-readable route)
@@ -459,6 +463,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (!current || 'username' in b) {
       const n = oneLine(b.username).toLowerCase()
       if (!USERNAME.test(n)) throw fail(400, 'a username is 2–32 characters: a–z, 0–9, dots, dashes and underscores, starting with a letter or digit')
+      // characters/sr6/ is the Shadowrun 6 area's; an account called sr6 from before it keeps its name until renamed
+      if (RESERVED.includes(n) && n !== current?.username) throw fail(400, 'sr6 is reserved for the Shadowrun 6 area')
       if (users.some(u => u.username === n && u !== current)) throw fail(409, `the username ${n} is taken`)
       out.username = n
     }
@@ -683,10 +689,12 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (action === 'move-runner' && method === 'POST') {
       const b = await json(req)
       if (typeof b.file !== 'string' || !/^[^/\\]{1,120}\.xml$/.test(b.file) || b.file.startsWith('.')) throw fail(400, 'file is a runner’s file name')
+      const game = b.game === undefined ? 'ca2' : b.game
+      if (game !== 'ca2' && game !== 'sr6') throw fail(400, 'game is ca2 or sr6')
       const file = await lock(async () => {
         const from = byId(id), to = byId(String(b.to))
         if (from === to) throw fail(400, 'that runner already belongs to this account')
-        return runners.move(from.username, b.file, to.username)
+        return runners.move(from.username, b.file, to.username, game)
       })
       return send(res, 200, { file })
     }

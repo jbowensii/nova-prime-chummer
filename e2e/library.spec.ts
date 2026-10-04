@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { savedOnServer } from './session'
 
 // 0.5.2 runner list: A–Z by default (Z–A, Recently edited; remembered), search, Draft / Finalized badges, and a file the
 // app can't read listed with why, downloadable and repairable. Screenshots go to .extract/ (not committed).
@@ -12,7 +13,7 @@ async function newRunner(page: Page, name: string) {
   await page.getByRole('button', { name: 'New runner' }).click()
   await page.getByRole('button', { name: 'Create runner' }).click()
   await page.getByLabel('Street name').fill(name)
-  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await savedOnServer(page, `streetName="${name}"`) // the next page.goto('/') reloads the page
 }
 
 test('A–Z by default, then Recently edited puts a new runner on top; search; Draft and Finalized badges', async ({ page }) => {
@@ -22,6 +23,7 @@ test('A–Z by default, then Recently edited puts a new runner on top; search; D
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: every change is logged in the ledger')
   await newRunner(page, 'Aardvark')
   await page.getByRole('link', { name: /Chummer Anarchy/ }).click()
   await expect(page.getByRole('link', { name: 'Aardvark' })).toBeVisible()

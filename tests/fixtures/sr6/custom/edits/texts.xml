@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up edited descriptions (the app writes custom/sr6/edits/texts.xml). -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="texts" version="1">
+  <text of="weapons" id="crb.zap-gun">A made-up gun that zaps, now cheaper.</text>
+</sr6:data>

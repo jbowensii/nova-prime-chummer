@@ -3,6 +3,7 @@ import { cpSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer } from '../server/server.mjs'
+import { anarchyState } from './session'
 
 // Accounts end to end, on a server of its own that starts with no accounts (the shared e2e server already has its admin):
 // setup makes the first admin, who adds a player and an editor; each role sees what it should. The tests run in order and
@@ -12,7 +13,7 @@ let server: ReturnType<typeof createServer>, code = '', base = ''
 
 test.describe.configure({ mode: 'serial' })
 // a free port on 127.0.0.1 (a dev tool may hold one on ::1, where "localhost" would go), known once beforeAll has run
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-accounts-'))

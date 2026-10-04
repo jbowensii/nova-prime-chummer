@@ -7,7 +7,7 @@ import { deleteCharacter, getCharacter, listCharacters, NPC_KEY, saveCharacter }
 import { track, UNREACHABLE } from './auth'
 
 /** owner, ownerName: the account the runner belongs to (server only; the admin also lists everyone else's, an editor their campaigns') */
-export interface Stored { ch: Character; rev?: number; file?: string; owner?: string; ownerName?: string }
+export interface Stored<T = Character> { ch: T; rev?: number; file?: string; owner?: string; ownerName?: string }
 /** A saved file the app can't read: listed (never hidden) with the reason, so it can be downloaded or repaired. */
 export interface Unreadable { file: string; rev: number; xml: string; error: string; name: string; owner?: string; ownerName?: string }
 export type SaveResult =
@@ -16,14 +16,14 @@ export type SaveResult =
 /** keepalive: the request may outlive the page (flush on leave); only honored for bodies under 60 KB */
 export interface SaveOpts { force?: boolean; filename?: string; keepalive?: boolean }
 
-export interface Repo {
+export interface Repo<T = Character> {
   mode: 'server' | 'browser'
-  list(): Promise<Stored[]>
+  list(): Promise<Stored<T>[]>
   /** every runner, and the files that couldn't be read */
-  listAll(): Promise<{ stored: Stored[]; unreadable: Unreadable[] }>
+  listAll(): Promise<{ stored: Stored<T>[]; unreadable: Unreadable[] }>
   /** undefined: no such runner; rejects with the reason when its file can't be read */
-  get(id: string): Promise<Stored | undefined>
-  save(ch: Character, rev?: number, opts?: SaveOpts): Promise<SaveResult>
+  get(id: string): Promise<Stored<T> | undefined>
+  save(ch: T, rev?: number, opts?: SaveOpts): Promise<SaveResult>
   remove(id: string): Promise<void>
 }
 
@@ -38,22 +38,30 @@ const browserStore = (key?: string, noun = 'runner'): Repo => ({
 })
 export const browserRepo: Repo = browserStore()
 
-/** `api`: 'characters' (runners) or 'npcs' (the GMs' NPC area, same shapes). */
-export function serverRepo(base = './', api: 'characters' | 'npcs' = 'characters'): Repo {
+/** One game's file format: its root tag (`rootAttr`), writer and reader. */
+export interface Codec<T> {
+  tag: string
+  toXml(doc: T): string
+  fromXml(xml: string): { ok: true; character: T } | { ok: false; reason: string }
+}
+export const ca2Codec: Codec<Character> = { tag: 'ca2:character', toXml: ch => characterToXml(ch), fromXml: xml => xmlToCharacter(xml) }
+
+/** `api`: 'characters' (runners), 'npcs' (the GMs' NPC area, same shapes) or another game's ('sr6/characters', with its codec). */
+export function serverRepo<T = Character>(base = './', api: string = 'characters', codec: Codec<T> = ca2Codec as unknown as Codec<T>): Repo<T> {
   type Row = { file: string; rev: number; xml: string; owner?: string; ownerName?: string }
   const rows = async (): Promise<Row[]> => {
     const r = await fetch(`${base}api/${api}`, { cache: 'no-store' })
     if (!r.ok) throw new Error(`the server answered ${r.status}`)
     return r.json()
   }
-  const read = (row: Row): Stored | Unreadable => {
-    const p = xmlToCharacter(row.xml)
+  const read = (row: Row): Stored<T> | Unreadable => {
+    const p = codec.fromXml(row.xml)
     if (p.ok) return { ch: p.character, rev: row.rev, file: row.file, owner: row.owner, ownerName: row.ownerName }
-    return { ...row, error: p.reason, name: rootName(row.xml) || row.file.replace(/\.xml$/, '') }
+    return { ...row, error: p.reason, name: rootName(row.xml, codec.tag) || row.file.replace(/\.xml$/, '') }
   }
   const listAll = async () => {
     const all = (await rows()).map(read)
-    return { stored: all.filter((x): x is Stored => 'ch' in x), unreadable: all.filter((x): x is Unreadable => 'error' in x) }
+    return { stored: all.filter((x): x is Stored<T> => 'ch' in x), unreadable: all.filter((x): x is Unreadable => 'error' in x) }
   }
   return {
     mode: 'server',
@@ -61,7 +69,7 @@ export function serverRepo(base = './', api: 'characters' | 'npcs' = 'characters
     listAll,
     // only this runner's file is read: another file that can't be read doesn't matter here
     get: async id => {
-      const row = (await rows()).find(r => rootAttr(r.xml, 'id') === id)
+      const row = (await rows()).find(r => rootAttr(r.xml, 'id', codec.tag) === id)
       const x = row && read(row)
       if (x && 'error' in x) throw new Error(x.error)
       return x
@@ -72,8 +80,8 @@ export function serverRepo(base = './', api: 'characters' | 'npcs' = 'characters
       if (opts.force) q.set('force', '1')
       if (opts.filename) q.set('filename', opts.filename)
       try {
-        const body = characterToXml(ch)
-        const r = await fetch(`${base}api/${api}/${encodeURIComponent(ch.id)}${q.size ? `?${q}` : ''}`, {
+        const body = codec.toXml(ch)
+        const r = await fetch(`${base}api/${api}/${encodeURIComponent((ch as { id: string }).id)}${q.size ? `?${q}` : ''}`, {
           method: 'PUT', body, keepalive: !!opts.keepalive && body.length < 60000, headers: { 'Content-Type': 'application/xml', ...(rev != null ? { 'If-Match': String(rev) } : {}) },
         })
         const res = await r.json().catch(() => ({}))
@@ -93,13 +101,13 @@ export function serverRepo(base = './', api: 'characters' | 'npcs' = 'characters
 }
 
 const unesc = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&amp;/g, '&')
-/** An attribute of the file's <ca2:character> tag, read without parsing the file (it may not parse). */
-export const rootAttr = (xml: string, name: string) => {
-  const tag = xml.match(/<ca2:character\b[^>]*>/)?.[0] ?? ''
+/** An attribute of the file's root tag (<ca2:character>, or a codec's `tag`), read without parsing the file (it may not parse). */
+export const rootAttr = (xml: string, name: string, root = 'ca2:character') => {
+  const tag = xml.match(new RegExp(`<${root}\\b[^>]*>`))?.[0] ?? ''
   const v = [...tag.matchAll(/\s([\w:.-]+)="([^"]*)"/g)].find(m => m[1] === name)?.[2]
   return v === undefined ? undefined : unesc(v)
 }
-const rootName = (xml: string) => rootAttr(xml, 'streetName') || rootAttr(xml, 'name')
+const rootName = (xml: string, root?: string) => rootAttr(xml, 'streetName', root) || rootAttr(xml, 'name', root)
 
 /** The server repo if this page is served by the Chummer server, else the browser repo. */
 export async function detectRepo(): Promise<Repo> {

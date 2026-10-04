@@ -29,7 +29,7 @@ const CATEGORIES: Partial<Record<ItemKind, string[]>> = { spell: ['combat', 'det
 export const NOUN: Record<FormKind, string> = { amps: 'amp', items: 'item', rules: 'rule', vehicles: 'vehicle' }
 
 // eslint-disable-next-line no-control-regex
-const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const nameOf = (e: Entry) => 'title' in e ? e.title : e.name
 const textOf = (e: Entry) => 'narrative' in e ? e.narrative : 'text' in e ? e.text : ''
 

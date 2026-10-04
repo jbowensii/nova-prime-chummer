@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for kind="critters" (SR6 catalog: <critter> entries, <remove id> in overlays). See docs/sr6-data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:sr6="urn:chummer-sr6:data:1"
+           targetNamespace="urn:chummer-sr6:data:1"
+           elementFormDefault="unqualified">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="data">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="critter" type="sr6:Being"/>
+        <xs:element name="remove" type="sr6:Remove"/>
+      </xs:choice>
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="critters"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="sr6:version"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

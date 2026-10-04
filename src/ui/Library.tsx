@@ -12,7 +12,7 @@ import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
 import { bookSamples, chooseExamples, extraCopies, keyOf, sameRunners, readCharacterFile, readSample, type Example, type Sources } from './samples'
 import { Face } from './Portrait'
-import { ExportRunnersDialog } from './Foundry'
+import { downloadRunners, ExportRunnersDialog } from './Foundry'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
@@ -97,25 +97,27 @@ async function exampleList(sources: Sources, server: boolean): Promise<{ rows: E
 }
 
 export type SortBy = 'az' | 'za' | 'recent'
+/** What the list's sort and search read (a runner of either game). */
+type Listed = Pick<Character, 'identity' | 'updatedAt'>
 const SORT_KEY = 'ca2.library.sort'
 const shownName = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 /** The A–Z key: street name, else real name; accents, case and punctuation (O'Neil, "Doc") don't count. */
-export const sortKey = (ch: Character) => (ch.identity.streetName || ch.identity.name).normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, '').trim().toLowerCase()
+export const sortKey = (ch: Pick<Character, 'identity'>) => (ch.identity.streetName || ch.identity.name).normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, '').trim().toLowerCase()
 /** The runner list's order: A–Z (the default), Z–A or newest edit first; unnamed runners last. `q` keeps those whose
  *  street name or real name contains it. */
-export function arrange(rows: Stored[], sort: SortBy, q: string): Stored[] {
+export function arrange<T extends Listed>(rows: Stored<T>[], sort: SortBy, q: string): Stored<T>[] {
   const want = q.trim().toLowerCase()
-  const hit = (s: Stored) => !want || [s.ch.identity.streetName, s.ch.identity.name].some(n => n.toLowerCase().includes(want))
-  const az = (a: Stored, b: Stored) => { const x = sortKey(a.ch), y = sortKey(b.ch)
+  const hit = (s: Stored<T>) => !want || [s.ch.identity.streetName, s.ch.identity.name].some(n => n.toLowerCase().includes(want))
+  const az = (a: Stored<T>, b: Stored<T>) => { const x = sortKey(a.ch), y = sortKey(b.ch)
     return !x !== !y ? (x ? -1 : 1) : x.localeCompare(y) }
-  const by = sort === 'recent' ? (a: Stored, b: Stored) => b.ch.updatedAt.localeCompare(a.ch.updatedAt) || az(a, b)
-    : sort === 'za' ? (a: Stored, b: Stored) => (!sortKey(a.ch) !== !sortKey(b.ch) ? az(a, b) : az(b, a)) : az
+  const by = sort === 'recent' ? (a: Stored<T>, b: Stored<T>) => b.ch.updatedAt.localeCompare(a.ch.updatedAt) || az(a, b)
+    : sort === 'za' ? (a: Stored<T>, b: Stored<T>) => (!sortKey(a.ch) !== !sortKey(b.ch) ? az(a, b) : az(b, a)) : az
   return rows.filter(hit).sort(by)
 }
 /** Other accounts' runners (the admin's view, an editor's campaigns), one group per owner: every owner with a runner
  *  or with a file that couldn't be read, so nothing is hidden. Rows sorted as the list is. */
-export function ownerGroups(others: Stored[], unreadable: Unreadable[], sort: SortBy, q: string) {
-  const groups = new Map<string, { name: string; rows: Stored[]; broken: Unreadable[] }>()
+export function ownerGroups<T extends Listed>(others: Stored<T>[], unreadable: Unreadable[], sort: SortBy, q: string) {
+  const groups = new Map<string, { name: string; rows: Stored<T>[]; broken: Unreadable[] }>()
   const group = (owner: string, name?: string) => groups.get(owner) ?? groups.set(owner, { name: name ?? owner, rows: [], broken: [] }).get(owner)!
   for (const s of others) group(s.owner!, s.ownerName).rows.push(s)
   for (const u of unreadable) group(u.owner!, u.ownerName).broken.push(u)
@@ -169,11 +171,12 @@ export function Library({ c }: { c: Catalog }) {
   const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
   const sources: Sources = id => { const k = id.toLowerCase(); return [...c.sources.values()].find(s => s.id.toLowerCase() === k) }
 
-  const store = async (ch: Character, rev?: number) => {
+  /** saved: null; else why not */
+  const saveError = async (ch: Character, rev?: number) => {
     const r = await repo.save(ch, rev)
-    if (!r.ok) setMsg(r.error ?? `${ch.identity.streetName || 'That runner'} changed elsewhere; open it to sort it out.`)
-    return r.ok
+    return r.ok ? null : r.error ?? `${ch.identity.streetName || 'That runner'} changed elsewhere; open it to sort it out.`
   }
+  const store = async (ch: Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
 
   const create = async () => {
     const ch = blankCharacter(level, meta)
@@ -190,7 +193,8 @@ export function Library({ c }: { c: Catalog }) {
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
       if (r.character.npc) { bad.push(`${f.name}: this is an NPC, not a runner. ${canEdit(me) ? 'Import it on NPCs & Critters.' : 'Only GMs keep NPCs.'}`); continue }
       const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() }
-      if (await store(ch)) done.push(ch.identity.streetName || ch.identity.name)
+      const err = await saveError(ch) // the summary below replaces the message: a failed save goes in it
+      if (err) bad.push(`${f.name}: ${err}`); else done.push(ch.identity.streetName || ch.identity.name)
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
@@ -209,7 +213,8 @@ export function Library({ c }: { c: Catalog }) {
       for (const { url, key } of examples.filter(s => !have.has(s.key))) {
         const r = await readSample(url)
         if (!r.ok) { bad.push(`${url.split('/').pop()}: ${r.reason}`); continue }
-        if (await store({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })) { n++; have.add(key) }
+        const err = await saveError({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })
+        if (err) bad.push(`${url.split('/').pop()}: ${err}`); else { n++; have.add(key) }
       }
       setMsg([n ? `Added ${n} example character${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The example characters are already in your library.', ...bad].filter(Boolean).join(' '))
       void refresh()
@@ -430,7 +435,7 @@ export function Library({ c }: { c: Catalog }) {
           : 'This removes the runner from this browser. Exported files are not affected.'}</p>
       </Modal>
 
-      <ExportRunnersDialog c={c} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} />
+      <ExportRunnersDialog download={chs => downloadRunners(c, chs)} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} />
     </main>
   )
 }

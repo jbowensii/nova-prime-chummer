@@ -1,6 +1,11 @@
-// Compendiums: a GM's own amps, items, vehicles and NPCs in one data-format file (<ca2:data kind="compendium">, see
-// docs/data-format.md), kept in characters/.compendiums/<owner>/<id>.xml (+ .trash/). Editors and the admin only: need()
-// gives players 403 on every /api/compendiums route, and a request that waited for the lock checks the role again.
+// Compendiums: a GM's own entries and NPCs in one data-format file of their game, one store per game (server.mjs makes two):
+//   Anarchy: <ca2:data kind="compendium"> (docs/data-format.md) in characters/.compendiums/<owner>/<id>.xml (+ .trash/) at
+//            /api/compendiums*
+//   SR6:     <sr6:data kind="compendium"> (docs/sr6-data-format.md) in characters/sr6/.compendiums/<owner>/<id>.xml at
+//            /api/sr6/compendiums* (api() strips /sr6; the routes below are the same)
+// Editors and the admin only: need() gives players 403 on every route, and a request that waited for the lock checks the role
+// again. Each store takes only its own game's root and refuses a body naming the other game's namespaces anywhere (an
+// embedded runner or entry from the other game); campaign sharing and source ids are that game's only.
 //
 //   GET    /api/compendiums        -> [{ id, file, rev, xml, owner, ownerName }] those the caller may read: their own; the
 //                                    admin: everyone's; an editor: sharing="table" ones, and sharing="campaign" ones whose
@@ -12,29 +17,35 @@
 import { mkdir, readdir, readFile, rename, rmdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { attr, writeAtomic } from './books.mjs'
+import { GAMES } from './games.mjs'
 
 const MAX = 20 * 1024 * 1024 // embedded NPC portraits
 const ID = /^[0-9a-f]{12}$/
 const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/ // books.mjs's
 const SHARING = ['private', 'campaign', 'table']
-// the root first (after the XML declaration), in the data namespace, its attributes as the app writes them (double-quoted,
-// < and > escaped): the server edits that tag (rev, updatedAt)
-const ROOT = /^\s*(?:<\?xml[^?]*\?>\s*)?(<ca2:data(?:\s+[\w:.-]+="[^"<>]*")*\s*>)/
 const fail = (code, message) => Object.assign(new Error(message), { code })
+// the other game's namespace where a plain-text check can't see it: written with a character or entity reference, or
+// declared in a DTD. Linear: an xmlns value ends at its closing quote.
+const HIDDEN_NS = /<!DOCTYPE|\sxmlns(?::[\w.-]+)?="[^"]*&/i
 
-/** The file's root tag, when it is a compendium's; else null. */
-function rootOf(xml) {
-  const tag = xml.match(ROOT)?.[1]
-  return tag && attr(tag, 'xmlns:ca2') === 'urn:chummer-anarchy2:data:1' && attr(tag, 'kind') === 'compendium' ? tag : null
-}
-function setAttr(xml, name, value) {
-  const tag = xml.match(ROOT)[1], re = new RegExp(`\\s${name}="[^"]*"`)
-  const next = re.test(tag) ? tag.replace(re, ` ${name}="${value}"`) : tag.replace(/\s*>$/, ` ${name}="${value}">`)
-  return xml.replace(tag, next)
-}
-
-export function compendiumsApi({ charDir, customDir, staticDir, lock, auth, campaigns }) {
-  const root = join(charDir, '.compendiums'), folder = u => join(root, u) // a username never starts with a dot
+/** game: GAMES.ca2 or GAMES.sr6 (its data root and the other game's namespace); home: that game's characters folder;
+ *  sourceFiles: its books' source lists (missing ones are skipped); campaigns: that game's. */
+export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth, campaigns }) {
+  const root = join(home, '.compendiums'), folder = u => join(root, u) // a username never starts with a dot
+  // the root first (after the XML declaration), in the game's data namespace, its attributes as the app writes them
+  // (double-quoted, < and > escaped): the server edits that tag (rev, updatedAt). Linear: each attribute ends at its quote.
+  const ROOT = new RegExp(`^\\s*(?:<\\?xml[^?]*\\?>\\s*)?(<${game.data.tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>)`)
+  const xmlns = `xmlns:${game.data.tag.split(':')[0]}`
+  /** The file's root tag, when it is a compendium of this game; else null. */
+  function rootOf(xml) {
+    const tag = xml.match(ROOT)?.[1]
+    return tag && attr(tag, xmlns) === game.data.ns && attr(tag, 'kind') === 'compendium' ? tag : null
+  }
+  function setAttr(xml, name, value) {
+    const tag = xml.match(ROOT)[1], re = new RegExp(`\\s${name}="[^"]*"`)
+    const next = re.test(tag) ? tag.replace(re, ` ${name}="${value}"`) : tag.replace(/\s*>$/, ` ${name}="${value}">`)
+    return xml.replace(tag, next)
+  }
 
   async function index(owner) {
     const out = []
@@ -45,10 +56,9 @@ export function compendiumsApi({ charDir, customDir, staticDir, lock, auth, camp
     return out
   }
   const all = async () => (await Promise.all(auth.usernames().map(index))).flat()
-  /** Every source id the books use: the shipped list, the imported books', house sources, the catalog edits'. */
+  /** Every source id this game's books use: the shipped list, the imported books', house sources, the catalog edits'. */
   async function bookSources() {
-    const files = [join(staticDir, 'data', 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(customDir, f))]
-    const texts = await Promise.all(files.map(f => readFile(f, 'utf8').catch(() => '')))
+    const texts = await Promise.all(sourceFiles.map(f => readFile(f, 'utf8').catch(() => '')))
     return new Set(texts.flatMap(t => [...t.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<source\b[^>]*\sid="([^"]*)"/g)].map(m => m[1])))
   }
   async function readable(me) {
@@ -90,6 +100,7 @@ export function compendiumsApi({ charDir, customDir, staticDir, lock, auth, camp
     const xml = req.method === 'PUT' ? await body(req, res) : null
     let tag = null
     if (xml != null) {
+      if (xml.includes(game.foreign) || HIDDEN_NS.test(xml)) return send(res, 400, { error: 'this is the other game’s file' })
       tag = rootOf(xml)
       if (!tag || attr(tag, 'id') !== id) return send(res, 400, { error: 'body is not a compendium file for this id' })
       const name = attr(tag, 'name')?.trim(), sharing = attr(tag, 'sharing'), cid = attr(tag, 'campaign')

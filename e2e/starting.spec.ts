@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
+import { savedOnServer } from './session'
 
 // 0.5.3: free starting gear, the real SIN box, two knowledge lists (drag and keyboard order, hide, native).
 // Made-up names; the SINner quality is the made-up one in tests/fixtures/mini (TEST2). Screenshots go to .extract/.
@@ -132,7 +133,7 @@ test('knowledge and languages: two Aâ€“Z lists, drag and keyboard order, Sort Aâ
   await shots(page, 'knowledge-lists', langs)
 
   // all of it persists
-  await expect(status(page)).toContainText('All changes saved')
+  await savedOnServer(page, 'native="true">Made-up tongue<')
   await page.reload()
   await expect.poll(() => names(page.getByRole('table', { name: 'Knowledge' }))).toEqual(['Bravo lore', 'Alpha lore', 'Charlie lore'])
   await expect(page.getByRole('button', { name: 'Show Alpha lore' })).toBeVisible()
@@ -155,7 +156,7 @@ test('a SINner added by hand keeps its Real SIN entry when opened again', async 
   await newRunner(page, 'Early Adopter')
   await tab(page, 'Shadow Amps')
   await addSinner(page)
-  await expect(status(page)).toContainText('All changes saved')
+  await savedOnServer(page, 'Real SIN')
   await page.reload()
   await tab(page, 'Gear & spells')
   await expect(page.locator('tr.starting').filter({ hasText: 'Real SIN' })).toHaveCount(1)

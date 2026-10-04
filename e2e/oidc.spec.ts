@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 import { fakeIssuer } from '../tests/fixtures/fake-issuer.mjs'
+import { anarchyState } from './session'
 
 // Sign in with Authelia end to end, against the made-up issuer (tests/fixtures/fake-issuer.mjs) on a server of its own:
 // the admin sets it up in Settings → Sign-in, then Kim (an Authelia account) signs in through it; someone without an
@@ -13,7 +14,7 @@ const ADMIN_PW = 'ada-password-1', PAT_PW = 'pat-password-1'
 let server: ReturnType<typeof createServer>, issuer: Awaited<ReturnType<typeof fakeIssuer>>, base = ''
 
 test.describe.configure({ mode: 'serial' })
-test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
   process.env.ALLOW_INSECURE_OIDC = '1' // the fake issuer is plain http on 127.0.0.1

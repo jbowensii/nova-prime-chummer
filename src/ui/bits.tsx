@@ -28,8 +28,9 @@ export const OverspentChip = ({ by }: { by: number }) =>
 
 /** A runner's state, in the Non-canon badge's family: a draft still in creation (reopens where it was left), or
  *  finalized (career). */
-export const StateBadge = ({ finalized }: { finalized: boolean }) =>
-  <span className={`noncanon runstate ${finalized ? 'final' : 'draft'}`} title={finalized ? 'Finalized: every change is logged in the ledger' : 'Draft: still in creation'}>{finalized ? 'Finalized' : 'Draft'}</span>
+/** finalTip: what a finalized runner's badge says (SR6 passes its own: spends are recorded on its Ledger tab). */
+export const StateBadge = ({ finalized, finalTip = 'Finalized: every change is logged in the ledger' }: { finalized: boolean; finalTip?: string }) =>
+  <span className={`noncanon runstate ${finalized ? 'final' : 'draft'}`} title={finalized ? finalTip : 'Draft: still in creation'}>{finalized ? 'Finalized' : 'Draft'}</span>
 
 export const NPC_KINDS = { npc: 'NPC', critter: 'Critter', spirit: 'Spirit' } as const
 export const NPC_TIERS = { prime: 'Prime', regular: 'Regular' } as const
@@ -84,8 +85,10 @@ function trapTab(e: React.KeyboardEvent<HTMLDialogElement>) {
   if (e.shiftKey ? document.activeElement === first : document.activeElement === last) { e.preventDefault(); (e.shiftKey ? last : first).focus() }
 }
 
-/** The logo, home link and this build's version (vite.config.ts, from package.json). */
-export const Brand = () => <span className="brand-row"><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><span className="ver">v{__APP_VERSION__}</span></span>
+/** The logo, home link and this build's version (vite.config.ts, from package.json): the game's own on #/sr6... */
+export const Brand = () => /^#\/?sr6(\/|$)/.test(location.hash)
+  ? <span className="brand-row"><a className="brand" href="#/sr6">Chummer <b>Shadowrun</b> 6</a><span className="ver">v{__APP_VERSION__}</span></span>
+  : <span className="brand-row"><a className="brand" href="#/">Chummer <b>Anarchy</b> 2.0</a><span className="ver">v{__APP_VERSION__}</span></span>
 
 /** A modal <dialog> that opens when `open` is true. Esc or the close button calls onClose; Tab stays inside; closing puts
  *  focus back where it was. light: a click outside it closes it too (a small settings popover, nothing to lose). */

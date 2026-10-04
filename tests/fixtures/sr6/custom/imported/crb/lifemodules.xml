@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test entries, no book text: two opening modules and nine adult ones, invented grants. -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="lifemodules" version="1">
+  <lifemodule id="crb.hatchling-days" source="CRB" page="31" stage="opening" attributePoints="3" skillPoints="1" nuyen="1000"><name>Hatchling Days</name><text/></lifemodule>
+  <lifemodule id="crb.schoolyard-scrapes" source="CRB" page="31" stage="opening" adjustmentPoints="1" skillPoints="3" knowledgeSkills="1"><name>Schoolyard Scrapes</name><text/></lifemodule>
+  <lifemodule id="crb.street-sweeper" source="CRB" page="33" stage="adult" attributePoints="1" skillPoints="3" contactPoints="3"><name>Street Sweeper</name><text/></lifemodule>
+  <lifemodule id="crb.wage-drone" source="CRB" page="33" stage="adult" skillPoints="5" nuyen="7000"><name>Wage Drone</name><text/></lifemodule>
+  <lifemodule id="crb.back-alley-medic" source="CRB" page="34" stage="adult" skillPoints="3" knowledgeSkills="1" contactPoints="1"><name>Back-Alley Medic</name><text/></lifemodule>
+  <lifemodule id="crb.glow-apprentice" source="CRB" page="34" stage="adult" requires="awakened" skillPoints="3"><name>Glow Apprentice</name><choice kind="mixed" points="1" options="edg skill:crb.hexing nuyen:3000"/><text/></lifemodule>
+  <lifemodule id="crb.rooftop-runner" source="CRB" page="35" stage="adult" attributePoints="3" adjustmentPoints="1"><name>Rooftop Runner</name><text/></lifemodule>
+  <lifemodule id="crb.dock-rat" source="CRB" page="35" stage="adult" skillPoints="3" nuyen="5000" contactPoints="1"><name>Dock Rat</name><text/></lifemodule>
+  <lifemodule id="crb.gutter-poet" source="CRB" page="36" stage="adult" knowledgeSkills="3" contactPoints="1"><name>Gutter Poet</name><text/></lifemodule>
+  <lifemodule id="crb.static-chaser" source="CRB" page="36" stage="adult" skillPoints="5" knowledgeSkills="1"><name>Static Chaser</name><text/></lifemodule>
+  <lifemodule id="crb.night-courier" source="CRB" page="37" stage="adult" attributePoints="1" skillPoints="1" nuyen="9000"><name>Night Courier</name><text/></lifemodule>
+</sr6:data>

@@ -1,6 +1,10 @@
 // Validates every data file against its XSD, then checks that every
 // cross-reference (ref/requires/excludes/types/level/vehicle/param) resolves.
-// Usage: node tools/validate-data.mjs [extra custom dirs...]  (e.g. tests/fixtures/mini/custom)
+// Usage: node tools/validate-data.mjs [extra custom dirs...] [--sr6=<SR6 custom dir>...]
+//   (an SR6 dir: its catalog files and creation.xml)
+//   (e.g. tests/fixtures/mini/custom --sr6=tests/fixtures/sr6/custom)
+// A file whose root is <sr6:data> (Shadowrun 6, docs/sr6-data-format.md) is checked against public/data/sr6/schema/
+// and skips the Anarchy cross-reference checks.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateXML } from 'xmllint-wasm';
@@ -13,7 +17,11 @@ const schemaFor = kind => (['gear', 'weapons', 'armor', 'spells', 'complexforms'
 for (const dir of ['public/custom/texts', '.extract/private/texts'])
   if (existsSync(dir)) for (const f of readdirSync(dir).filter(f => f.endsWith('.xml'))) process.argv.push('--texts=' + join(dir, f));
 if (existsSync('public/custom/texts.xml')) process.argv.push('--texts=public/custom/texts.xml');
-const common = { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') };
+const SR6_SCHEMA = join(DATA, 'sr6', 'schema');
+const GAME = {
+  ca2: { schema: SCHEMA, xsd: schemaFor, common: { fileName: 'common.xsd', contents: readFileSync(join(SCHEMA, 'common.xsd'), 'utf8') } },
+  sr6: { schema: SR6_SCHEMA, xsd: k => k, common: { fileName: 'common.xsd', contents: readFileSync(join(SR6_SCHEMA, 'common.xsd'), 'utf8') } },
+};
 
 // base files (public/data: sources.xml, and the owner's local core copies when present), then each custom dir the way the
 // app loads it: imported/core/ (the core files), imported/sources.xml, sources.xml,
@@ -33,21 +41,31 @@ for (const dir of ['public/custom', ...process.argv.slice(2).filter(a => !a.star
   for (const e of ['sources', 'edits', 'texts']) if (existsSync(join(dir, 'edits', `${e}.xml`))) files.push(join(dir, 'edits', `${e}.xml`));
   listed(dir);
 }
+// SR6: the shipped sources, then each --sr6= dir the way the SR6 app loads it (imported/sources.xml, the files in
+// imported/index.xml, the texts, the edits layer)
+files.push(join(DATA, 'sr6', 'sources.xml'));
+for (const dir of process.argv.filter(a => a.startsWith('--sr6=')).map(a => a.slice(6))) {
+  if (existsSync(join(dir, 'imported', 'sources.xml'))) files.push(join(dir, 'imported', 'sources.xml'));
+  listed(join(dir, 'imported'));
+  if (existsSync(join(dir, 'texts'))) for (const f of readdirSync(join(dir, 'texts')).filter(f => f.endsWith('.xml'))) files.push(join(dir, 'texts', f));
+  for (const e of ['edits', 'texts']) if (existsSync(join(dir, 'edits', `${e}.xml`))) files.push(join(dir, 'edits', `${e}.xml`));
+}
 
 const errors = [];
 const docs = [];
 for (const file of files) {
   const xml = readFileSync(file, 'utf8');
-  const kind = xml.match(/<ca2:data[^>]*\bkind="([^"]+)"/)?.[1];
-  if (!kind) { errors.push(`${file}: no <ca2:data kind="..."> root`); continue; }
-  const xsd = join(SCHEMA, `${schemaFor(kind)}.xsd`);
+  const [, game, kind] = xml.match(/<(ca2|sr6):data[^>]*\bkind="([^"]+)"/) ?? [];
+  if (!kind) { errors.push(`${file}: no <ca2:data kind="..."> or <sr6:data kind="..."> root`); continue; }
+  const g = GAME[game], xsd = join(g.schema, `${g.xsd(kind)}.xsd`);
   if (!existsSync(xsd)) { errors.push(`${file}: unknown kind "${kind}"`); continue; }
   const res = await validateXML({
     xml: { fileName: file, contents: xml },
-    schema: { fileName: `${schemaFor(kind)}.xsd`, contents: readFileSync(xsd, 'utf8') },
-    preload: [common],
+    schema: { fileName: `${g.xsd(kind)}.xsd`, contents: readFileSync(xsd, 'utf8') },
+    preload: [g.common],
   });
   for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
+  if (game === 'sr6') continue; // SR6 cross-references are names until S2: the Anarchy checks below don't apply
   docs.push({ file, kind, doc: new JSDOM(xml, { contentType: 'text/xml' }).window.document });
 }
 
@@ -60,6 +78,15 @@ for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--')))
       schema: { fileName: xsd, contents: readFileSync(join(SCHEMA, xsd), 'utf8') } });
     for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
   }
+
+// SR6's creation rules (custom/sr6/creation.xml, written by the server): creation.xsd
+for (const dir of process.argv.filter(a => a.startsWith('--sr6=')).map(a => a.slice(6))) {
+  const file = join(dir, 'creation.xml');
+  if (!existsSync(file)) continue;
+  const res = await validateXML({ xml: { fileName: file, contents: readFileSync(file, 'utf8') },
+    schema: { fileName: 'creation.xsd', contents: readFileSync(join(SR6_SCHEMA, 'creation.xsd'), 'utf8') } });
+  for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
+}
 
 // the example sets (custom/samples/<set>/, managed on disk by the admin): set.xml and each character file
 for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--'))) {
@@ -127,4 +154,4 @@ if (errors.length) {
   console.error(`\nFAILED: ${errors.length} error(s)`);
   process.exit(1);
 }
-console.log(`OK ${docs.length} files`);
+console.log(`OK ${files.length} files`);

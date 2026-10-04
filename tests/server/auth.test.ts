@@ -12,7 +12,7 @@ import { validateXML } from 'xmllint-wasm'
 // @ts-expect-error plain JS module
 import { createServer } from '../../server/server.mjs'
 // @ts-expect-error plain JS module
-import { authApi, issueReset, netKey, usersFile } from '../../server/auth.mjs'
+import { authApi, issueReset, need, netKey, usersFile } from '../../server/auth.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
 const PW = { admin: 'admin-password-1', editor: 'editor-password-1', player: 'player-password-1' }
@@ -200,6 +200,22 @@ describe('with an admin, an editor and a player', () => {
     expect((await put('editor', { role: 'editor' })).status).toBe(200)
   })
 
+  test('sr6 is reserved for the Shadowrun 6 area: no new account or rename takes it, in any case', async () => {
+    const add = (username: string) => call(s.base, 'POST', '/api/users', { cookie: jar.admin, ...json({ username, name: 'x', role: 'player', password: 'long-enough-1' }) })
+    for (const n of ['sr6', 'SR6']) {
+      const r = await add(n)
+      expect([r.status, (await r.json()).error], n).toEqual([400, 'sr6 is reserved for the Shadowrun 6 area'])
+    }
+    const ids: string[] = []
+    for (const n of ['sr6x', 'sr-6']) {
+      const r = await add(n)
+      expect(r.status, n).toBe(201)
+      ids.push((await r.json()).user.id)
+    }
+    for (const n of ['sr6', 'Sr6']) expect((await call(s.base, 'PUT', `/api/users/${ids[0]}`, { cookie: jar.admin, ...json({ username: n }) })).status, n).toBe(400)
+    for (const id of ids) expect((await call(s.base, 'DELETE', `/api/users/${id}`, { cookie: jar.admin })).status).toBe(204)
+  })
+
   test('accounts: add, rename (the runner folder moves), move a runner, disable ends the sessions, delete', async () => {
     const add = await call(s.base, 'POST', '/api/users', { cookie: jar.admin, ...json({ username: 'Kim', name: 'Kim', role: 'player', password: 'kim-password-1', email: 'kim@example.com' }) })
     expect(add.status).toBe(201)
@@ -230,6 +246,15 @@ describe('with an admin, an editor and a player', () => {
     expect((await call(s.base, 'DELETE', `/api/users/${kim.id}`, { cookie: jar.admin })).status).toBe(204)
     expect(existsSync(join(s.chars, 'kimberly'))).toBe(false)
   })
+})
+
+test('need(): an /api/sr6/ path needs what the same path without the prefix needs', () => {
+  expect(need('/api/sr6/npcs', 'GET')).toBe('editor')
+  expect(need('/api/sr6/books', 'POST')).toBe('admin')
+  expect(need('/api/sr6/characters', 'GET')).toBe('user')
+  expect(need('/api/sr6/campaigns', 'POST')).toBe('editor')
+  expect(need('/api/sr6', 'GET')).toBe('user')
+  expect(need('/api/sr6x/npcs', 'GET')).toBe('user') // not the prefix
 })
 
 test('sign-in: wrong passwords, lockout after 5 per username and address, sessions that survive a restart and end on reset', async () => {

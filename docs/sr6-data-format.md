@@ -1,0 +1,259 @@
+# Chummer SR6 data format
+
+The Shadowrun 6 (SR6) catalog is XML, like Anarchy's (`docs/data-format.md`), but in its own namespace, folders and
+schemas: neither game reads the other's files. The app ships only `public/data/sr6/sources.xml` (the books an SR6
+recipe supports) and the schemas in `public/data/sr6/schema/`. Everything else comes from the PDFs the admin uploads on
+the SR6 Books page. `npm run validate:data` checks the shipped file and the made-up test catalog
+(`tests/fixtures/sr6/custom`), and `node tools/validate-data.mjs --sr6=<dir>` checks any SR6 custom folder.
+
+## Common rules
+
+Every file has the same root, and one file holds one kind:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="weapons" version="1">
+  ...entries...
+</sr6:data>
+```
+
+- `kind` names the catalog and picks the schema (`public/data/sr6/schema/<kind>.xsd`, sharing `common.xsd`).
+  `version` is the schema version, currently `1`. Child elements are unqualified.
+- Every entry has `id` (pattern `[a-z0-9][a-z0-9.-]*`, unique within its kind), `source` (a source id, pattern
+  `[A-Z][A-Z0-9-]{0,19}`) and `page` (the printed page). Then a `<name>`, the kind's own children, and an optional
+  `<text>`, which is empty in imported files.
+- An overlay removes an entry loaded before it with `<remove id="..."/>`.
+- **Values are kept as printed**, as strings: dashes are normalized to `—`, `¥` and thousands commas are dropped from
+  costs, and nothing else changes. Formulas such as `Rating × 500` or `F+1` stay formulas (the builder parses them).
+  Only the attributes marked *int* below are integers. Book errors stay as printed: the import report lists a value
+  that doesn't fit its column, and fixes go through the edits layer.
+- **Prices** (`cost`, `avail`, a focus's `karma`, an implant's `essence`) are a number or a formula the app evaluates at
+  the rating the item is bought at: numbers, `Rating` (also `Capacity`, `Force` or `Level`, any case: the same
+  rating), `+`, `×`/`x`/`*`, `/` (rounded up), `^` and parentheses, an optional leading `+` (an add-on's price) and a
+  legality suffix on `avail` (`(L)`, `I`, …). An item priced by its capacity takes its capacity range as its `rating`.
+  `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
+  `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
+  table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
+  (`900 + Gizmo`) stays as printed and is reported.
+- **Cross-references are names** for now: metatype traits, critter powers, NPC gear and weapons are lists as printed.
+- **No prose in the catalog files.** Descriptions, game effects and rule text go only to the source's texts file.
+
+## Kinds
+
+Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`. `*` = required.
+
+| file / kind | tag | attributes | children |
+|---|---|---|---|
+| priorities | priority | letter* (A–E) | metatype (name*, points* int)×n, attributes (points* int), skills (points* int), magic (kind* full\|aspected\|mystic-adept\|adept\|technomancer\|mundane, rating int)×n, resources (nuyen* int) |
+| metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n |
+| attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
+| skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
+| qualities | quality | kind* positive\|negative, karma int, perLevel true, maxLevel int | — |
+| weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
+| armor | armor | category*, defense, capacity, avail, cost | — |
+| augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
+| electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per | — |
+| vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
+| spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
+| rituals | ritual | keywords, threshold | — |
+| adeptpowers | adeptpower | cost, perLevel true, maxLevel int, activation | — |
+| complexforms | complexform | duration, fade | — |
+| metamagics | metamagic | — | — |
+| echoes | echo | — | — |
+| critterpowers | critterpower | type, action, range, duration | — |
+| critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
+| sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
+| lifestyles | lifestyle | cost (per month) | — |
+| contacts | contact | connection, loyalty, archetype | — |
+| lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
+| rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
+
+Life modules (lifepath creation) are structured grants with no prose. No recipe writes them yet (the core rulebook
+prints none); they come with a book that prints them.
+
+The same kind → tag map is `KINDS` in `importer/sr6/__init__.py`, `SR6_KINDS` in `server/games.mjs` and `SR6_KINDS`
+in `src/sr6/model/types.ts`.
+
+Three more kinds complete the set:
+
+- `sources`: `<source id* publisher* canon* texts file sha256 imported><name>`. `texts` is the source's private
+  descriptions file, relative to `custom/sr6/`. `file`, `sha256` and `imported` (a date) are set by the importer.
+- `texts`: `<text of="<kind>" id="<entry id>">…</text>`, merged into the entry's `<text>` by (kind, id).
+- `edits`: entries of any kind above, each with `by` (the account that saved it).
+
+## Layout and load order
+
+```
+library/sr6/<book-id>/   original.pdf, upload.xml, status.xml, import.xml, book.md, regrouped.md
+custom/sr6/
+  imported/index.xml               the overlay files, in load order
+  imported/sources.xml             the imported books (file, checksum, date)
+  imported/crb/<kind>.xml          one file per kind, ids scoped crb.<slug>
+  texts/crb.xml                    private descriptions (never committed)
+  edits/edits.xml, edits/texts.xml the catalog edits and their descriptions
+  creation.xml                     the table's creation rules (Game data; creation.xsd)
+```
+
+The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
+`custom/sr6/imported/index.xml` (the same id replaces, `<remove>` deletes), then the texts file each source names, then
+`custom/sr6/edits/edits.xml` and `edits/texts.xml`, then (a GM's catalog only) the compendiums they can read
+(see Compendiums below).
+
+**Scoping.** Every imported id is scoped by its source (`crb.zap-gun`), as the Anarchy books are, so two books never
+clash. Attribute `abbr` and skill `attr` values are never scoped.
+
+**Edits.** An edit is a full entry of its kind with `by`. It replaces the loaded entry with the same id and survives
+re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means the book's text.
+
+## Creation rules
+
+`custom/sr6/creation.xml` (`<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds the
+numbers the core rulebook prints only in its text: starting karma, caps, exchange rates, point-buy prices, lifepath
+counts, augmentation grades. Each is `<setting key value source? page?/>` (500 at most, each key once). The admin or an
+editor fills them in on Game data from their own book (`PUT /api/sr6/creation`); the app ships none. Keys, types and
+the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
+`metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
+`lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
+
+Every key, in the order Game data shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
+every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
+a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
+chosen while its Essence factor is unset). `maxKarmaLeft` and `karmaToNuyenMax` aren't printed in the core rulebook:
+unset, there is no limit (a table that uses one enters it from the book or house rule that gives it). A number may be a decimal; `true/false` is the word; a quality id names a catalog quality (`crb.<slug>`).
+
+| group | key | type | needed by | what it is |
+|---|---|---|---|---|
+| General | `startingKarma` | number | all | Starting karma |
+| General | `qualityNetBonusCap` | number | all | Most net karma from qualities |
+| General | `qualityMaxCount` | number | all | Most paid qualities |
+| General | `oneAttributeAtMax` | true/false | all | Only one attribute at its maximum |
+| General | `attributeBaseMax` | number | optional | Adjustment points go on attributes whose metatype maximum is above |
+| General | `skillCap` | number | all | Highest skill rank |
+| General | `skillCapAptitude` | number | all | Highest skill rank with the aptitude quality |
+| General | `aptitudeQuality` | quality id | all | Aptitude quality |
+| General | `skillPointsSpec` | number | all | Skill points for a specialization |
+| General | `skillPointsExpertise` | number | all | Skill points for an expertise |
+| General | `magicMax` | number | all | Highest Magic or Resonance |
+| General | `essence` | number | all | Starting Essence |
+| General | `contactPointsPerCha` | number | all | Contact points per Charisma |
+| General | `knowledgePerLog` | number | all | Free knowledge skills per Logic |
+| General | `maxAvailability` | number | all | Highest Availability |
+| General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
+| General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
+| General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
+| General | `maxKarmaLeft` | number | optional | Most karma kept after creation (unset: no limit, and Review gives no warning) |
+| Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
+| Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |
+| Karma prices | `karmaSpec` | number | all | Specialization |
+| Karma prices | `karmaKnowledge` | number | all | Knowledge or language rank |
+| Karma prices | `karmaSpell` | number | all | Extra spell or ritual |
+| Karma prices | `karmaForm` | number | all | Extra complex form |
+| Karma prices | `karmaInitiationBase` | number | all | Initiation or submersion: base |
+| Karma prices | `karmaInitiationPerGrade` | number | all | Initiation or submersion: per grade |
+| Karma prices | `positiveQualityFactor` | number | optional | Positive qualities cost their karma times (unset: 1) |
+| Advancement | `advance.expertise` | number | optional | Expertise after creation |
+| Advancement | `advance.qualityFactor` | number | optional | A positive quality after creation costs its karma times |
+| Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |
+| Advancement | `advance.skillMax` | number | optional | Highest skill rank after creation (unset: no cap) |
+| Advancement | `advance.powerPoint` | number | optional | Karma per power point (mystic adepts) |
+| Advancement | `advance.karmaToNuyenRate` | number | optional | Nuyen per karma after creation (unset: not offered) |
+| Advancement | `advance.nuyenToKarmaRate` | number | optional | Nuyen per karma, nuyen to karma (optional rule; unset: off) |
+| Nuyen | `karmaToNuyenRate` | number | all | Nuyen per karma |
+| Nuyen | `karmaToNuyenRateInDebt` | number | all | Nuyen per karma with the in-debt quality |
+| Nuyen | `inDebtQuality` | quality id | all | In-debt quality |
+| Nuyen | `karmaToNuyenMax` | number | optional | Most karma turned into nuyen (unset: no limit) |
+| Nuyen | `fakeSinPerRating` | number | all | Fake SIN: nuyen per rating |
+| Nuyen | `licencePerRating` | number | all | Fake licence: nuyen per rating |
+| Sum to ten | `sumToTenTarget` | number | sum to ten | The letters’ values add up to at most |
+| Sum to ten | `letterValue:A` | number | sum to ten | Value of priority A |
+| Sum to ten | `letterValue:B` | number | sum to ten | Value of priority B |
+| Sum to ten | `letterValue:C` | number | sum to ten | Value of priority C |
+| Sum to ten | `letterValue:D` | number | sum to ten | Value of priority D |
+| Sum to ten | `letterValue:E` | number | sum to ten | Value of priority E |
+| Point buy | `pointBuy.total` | number | point buy | Character points |
+| Point buy | `pointBuy.awakened` | number | point buy | Character points to be awakened or emerged |
+| Point buy | `pointBuy.free.attribute` | number | point buy | Free attribute points |
+| Point buy | `pointBuy.max.attribute` | number | point buy | Most attribute points |
+| Point buy | `pointBuy.free.skill` | number | point buy | Free skill points |
+| Point buy | `pointBuy.max.skill` | number | point buy | Most skill points |
+| Point buy | `pointBuy.free.adjustment` | number | point buy | Free adjustment points |
+| Point buy | `pointBuy.max.adjustment` | number | point buy | Most adjustment points |
+| Point buy | `pointBuy.free.nuyen` | number | point buy | Free nuyen |
+| Point buy | `pointBuy.max.nuyen` | number | point buy | Most nuyen |
+| Point buy | `pointBuy.cost.attribute` | number | point buy | Character points per attribute point |
+| Point buy | `pointBuy.cost.skill` | number | point buy | Character points per skill point |
+| Point buy | `pointBuy.cost.adjustment` | number | point buy | Character points per adjustment point |
+| Point buy | `pointBuy.cost.powerPoint` | number | point buy | Character points per power point |
+| Point buy | `pointBuy.cost.mysticPowerPoint` | number | point buy | Character points per power point (mystic adept) |
+| Point buy | `pointBuy.cost.spell` | number | point buy | Character points per spell |
+| Point buy | `pointBuy.cost.complexForm` | number | point buy | Character points per complex form |
+| Point buy | `pointBuy.nuyenPerCp` | number | point buy | Nuyen per character point |
+| Point buy | `pointBuy.oneSpecialization` | true/false | point buy | Only one specialization |
+| Karma build | `karmaBuild.start` | number | karma | Starting karma (karma build) |
+| Karma build | `karmaBuild.startRating` | number | karma | Starting Magic or Resonance (karma build) |
+| Lifepath | `lifepath.moduleCount` | number | lifepath | Adult life modules to take |
+| Lifepath | `lifepath.contactRatingCap` | number | lifepath | Highest contact rating |
+| Augmentation grades | `grade:standard:essence` | number | optional | Standard: Essence times |
+| Augmentation grades | `grade:standard:cost` | number | optional | Standard: cost times |
+| Augmentation grades | `grade:standard:avail` | number | optional | Standard: Availability plus |
+| Augmentation grades | `grade:alpha:essence` | number | optional | Alpha: Essence times |
+| Augmentation grades | `grade:alpha:cost` | number | optional | Alpha: cost times |
+| Augmentation grades | `grade:alpha:avail` | number | optional | Alpha: Availability plus |
+| Augmentation grades | `grade:beta:essence` | number | optional | Beta: Essence times |
+| Augmentation grades | `grade:beta:cost` | number | optional | Beta: cost times |
+| Augmentation grades | `grade:beta:avail` | number | optional | Beta: Availability plus |
+| Augmentation grades | `grade:delta:essence` | number | optional | Delta: Essence times |
+| Augmentation grades | `grade:delta:cost` | number | optional | Delta: cost times |
+| Augmentation grades | `grade:delta:avail` | number | optional | Delta: Availability plus |
+| Augmentation grades | `grade:used:essence` | number | optional | Used: Essence times |
+| Augmentation grades | `grade:used:cost` | number | optional | Used: cost times |
+| Augmentation grades | `grade:used:avail` | number | optional | Used: Availability plus |
+| Derived values | `monitorBase` | number | optional | Condition monitor: boxes before the attribute |
+| Derived values | `monitorDivisor` | number | optional | Condition monitor: the attribute divided by (rounded up) |
+| Derived values | `initiativeDice` | number | optional | Initiative dice |
+| Derived values | `initiativeDiceMax` | number | optional | Most initiative dice, after bonuses, astral too (unset: no cap) |
+| Derived values | `astralInitiativeDice` | number | optional | Astral initiative dice |
+| Derived values | `specDice` | number | optional | Dice for a specialization |
+| Derived values | `expertiseDice` | number | optional | Dice for an expertise |
+| Derived values | `untrainedPenalty` | number | optional | Dice off the attribute for an untrained skill |
+| Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma | the metatype's karma (one per catalog metatype) |
+| Point buy | `pointBuy.startRating:<kind>` | number | point buy | starting Magic or Resonance per awakened or emerged kind |
+| Karma build | `magicKarma:<kind>` | number | karma | karma to be that kind |
+| Lifepath | `lifepath.startRating:<kind>` | number | lifepath | starting Magic or Resonance per kind |
+
+The kinds are `full`, `aspected`, `mystic-adept`, `adept` and `technomancer`. An unknown key, or a value that isn't of
+its key's type, is listed as an error on Game data and skipped.
+
+## Compendiums (`characters/sr6/.compendiums/<owner>/`)
+
+A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by the server behind `/api/sr6/compendiums`
+(GMs only, never under `/custom/`). Schema: `compendium.xsd` (with `common.xsd` and `character.xsd`).
+
+```xml
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="compendium" version="1"
+  id="0123456789ab" name="Street Kit" source="STREET" sharing="campaign" campaign="abcdef012345"
+  rev="3" updatedAt="2026-10-04T00:00:00.000Z">
+  <weapon id="street.zap-stick" source="STREET" page="1" category="Clubs" dv="3S" modes="SS" cost="120"><name>Zap Stick</name><text>The GM's own words.</text></weapon>
+  <spirit id="street.gutter-spirit" source="STREET" page="1" bod="F+1" agi="F"><name>Gutter Spirit</name><skills>Astral, Fumbling</skills><text/></spirit>
+  <sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="…" …><npc kind="grunt" …>…</npc>…</sr6:character>
+</sr6:data>
+```
+
+- The root names the compendium: `id` (12 hex), `name`, its own `source` id (`[A-Z][A-Z0-9-]{0,19}`, chosen when it's
+  made, fixed afterwards, unique among the SR6 books' sources and every SR6 compendium; an Anarchy compendium may use
+  the same id), `sharing` (`private`, `campaign`: the GMs of that SR6 `campaign`, or `table`), and the server's `rev`
+  and `updatedAt`. The owner is the folder, never the file.
+- Children, in any order: entries of the compendium kinds (every kind but priorities, metatypes, attributes, skills,
+  life modules and rules; `COMP_KINDS` in `src/sr6/engine/compendium.ts`) under their usual tags, with only that kind's
+  attributes and string children, every one citing the compendium's `source` with a `page` of 1 or more and the GM's
+  own text in `<text>` (never a book's: a copy from a book keeps the stats and drops the description); and NPCs as
+  `<sr6:character>` elements exactly as an SR6 runner file's root (`docs/sr6-character-format.md`), each with its `<npc>`
+  block.
+- Never the other game's: the server refuses a body that names an Anarchy namespace anywhere, and the app refuses an
+  Anarchy compendium, an embedded Anarchy runner and any entry in another namespace.
+- In the catalog: a GM's SR6 catalog loads every compendium they can read after the edits layer (players' load none).
+  Its source joins as a house source (`origin: user`, non-canon, publisher: the owner's name); its entries join their
+  kinds, its NPCs none. It never replaces anything: a compendium whose source id is already a book's is skipped (Game
+  data lists why), and so is one entry whose id another source's entry of that kind already holds. Load book NPCs
+  never copies a compendium's NPCs.
