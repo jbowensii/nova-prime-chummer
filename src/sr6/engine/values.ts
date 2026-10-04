@@ -31,6 +31,34 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
   return i === tokens.length && Number.isFinite(n) ? { n, ok: true } : { n: null, ok: false }
 }
 
+/** A spirit's or sprite's stat at its Force or Level: numbers, the letter (or `Rating`), `+ - × x * /` and parentheses,
+ *  × and / before + and -; division rounds up (R, verify Task 10); a trailing `+ ND6` comes back as `dice`. A dash or
+ *  nothing is no value; anything else is not ok (never NaN). */
+export function formula(s: string | undefined, rating: number, letter: 'F' | 'L'): { n: number | null; dice?: string; ok: boolean } {
+  if (s == null) return { n: null, ok: true }
+  if (s.length > MAX_VALUE) return { n: null, ok: false }
+  if (NONE.test(s)) return { n: null, ok: true }
+  const m = s.match(/^(.*?)\s*\+\s*(\d+)D6\s*$/)
+  const src = (m ? m[1] : s).replace(/[×x*]/g, ' * ').replace(new RegExp(`\\b(?:Rating|${letter})\\b`, 'g'), ' R ').trim()
+  const tokens = src.split(/\s*([*/+\-()])\s*|\s+/).filter(Boolean)
+  let i = 0
+  const factor = (): number => {
+    const t = tokens[i++]
+    if (t === 'R') return rating
+    if (t === '(') { const v = expr(); if (tokens[i++] !== ')') return NaN; return v }
+    return t !== undefined && /^\d+(\.\d+)?$/.test(t) ? Number(t) : NaN
+  }
+  const term = (): number => {
+    let v = factor()
+    while (tokens[i] === '*' || tokens[i] === '/') v = tokens[i++] === '*' ? v * factor() : Math.ceil(v / factor())
+    return v
+  }
+  const expr = (): number => { let v = term(); while (tokens[i] === '+' || tokens[i] === '-') v = tokens[i++] === '+' ? v + term() : v - term(); return v }
+  const n = expr()
+  if (i !== tokens.length || !Number.isFinite(n)) return { n: null, ok: false }
+  return m ? { n, dice: `${m[2]}D6`, ok: true } : { n, ok: true }
+}
+
 /** The legality letter of an availability ("5(L)" → L), or none. */
 export function legality(s: string | undefined): 'L' | 'I' | 'F' | undefined {
   const m = s && s.length <= MAX_VALUE ? s.match(LEGAL) : null

@@ -1,6 +1,6 @@
 // Book values as the catalog keeps them (strings as printed) read as numbers (src/sr6/engine/values.ts). Made-up strings.
 import { expect, test } from 'vitest'
-import { attackRatings, legality, rated, ratingRange } from '../../src/sr6/engine/values'
+import { attackRatings, formula, legality, rated, ratingRange } from '../../src/sr6/engine/values'
 
 test('rated reads plain numbers, Rating formulas and add-ons; avail suffixes are ignored', () => {
   expect(rated('350')).toEqual({ n: 350, ok: true })
@@ -54,4 +54,21 @@ test('a value too long to be a printed one is unreadable at once (no quadratic b
   expect(legality(huge)).toBeUndefined()
   expect(attackRatings(huge)).toEqual({ bands: [null, null, null, null, null], ok: false })
   expect(Date.now() - t).toBeLessThan(200)
+})
+
+test('formula reads F and L stats at a rating: × and / first, division rounds up, a trailing dice term kept', () => {
+  expect(formula('F × 2 + 2D6', 4, 'F')).toEqual({ n: 8, dice: '2D6', ok: true })
+  expect(formula('8 + F/2', 3, 'F')).toEqual({ n: 10, ok: true })
+  expect(formula('F+1', 4, 'F')).toEqual({ n: 5, ok: true })
+  expect(formula('F-1', 4, 'F')).toEqual({ n: 3, ok: true })
+  expect(formula('(L × 2) + 1', 3, 'L')).toEqual({ n: 7, ok: true })
+  expect(formula('6 + 1D6', 3, 'F')).toEqual({ n: 6, dice: '1D6', ok: true })
+  expect(formula('Rating x 3', 2, 'L')).toEqual({ n: 6, ok: true })
+  expect(formula('2 + F * 3 - 1', 2, 'F')).toEqual({ n: 7, ok: true })
+  expect(formula('F/0', 2, 'F')).toEqual({ n: null, ok: false })
+})
+
+test('formula: a dash or nothing is no value; anything else unreadable, never NaN', () => {
+  for (const s of ['—', '', undefined]) expect(formula(s, 4, 'F'), String(s)).toEqual({ n: null, ok: true })
+  for (const s of ['F+?', 'L + 1', 'F +', '(F × 2', '2D6', 'lots', ' '.repeat(200) + 'F']) expect(formula(s, 4, 'F'), s).toEqual({ n: null, ok: false })
 })
