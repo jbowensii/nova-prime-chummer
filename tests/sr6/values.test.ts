@@ -19,6 +19,18 @@ test('rated reads plain numbers, Rating formulas and add-ons; avail suffixes are
   expect(rated('Rating × 150')).toEqual({ n: 150, ok: true })
 })
 
+test('rated: Capacity, Force and Level are the rating, any case; / rounds up; ^ is a power', () => {
+  expect(rated('Capacity x 70', 3)).toEqual({ n: 210, ok: true })
+  expect(rated('Force x 1500', 2)).toEqual({ n: 3000, ok: true })
+  expect(rated('(Force +2) L', 4)).toEqual({ n: 6, ok: true })
+  expect(rated('20 + (rating x 5)', 3)).toEqual({ n: 35, ok: true })
+  expect(rated('(Rating/3)(L)', 7)).toEqual({ n: 3, ok: true })
+  expect(rated('Rating^2 x 100', 3)).toEqual({ n: 900, ok: true })
+  expect(rated('(Rating x Rating) x 10', 4)).toEqual({ n: 160, ok: true })
+  expect(rated('+1(I)')).toEqual({ n: 1, ok: true })
+  for (const s of ['900 + Gizmo', '5/7', 'Rating^', 'Level x']) expect(rated(s, 2), s).toEqual({ n: null, ok: false })
+})
+
 test('a dash or nothing is no value; anything else is unreadable, never NaN', () => {
   for (const s of ['—', '-', '', '  ', undefined]) expect(rated(s), String(s)).toEqual({ n: null, ok: true })
   for (const s of ['12x', 'Rating × ?', '9/x', 'lots', '3 +', '(Rating × 2', 'x']) expect(rated(s, 2), s).toEqual({ n: null, ok: false })
@@ -66,6 +78,14 @@ test('formula reads F and L stats at a rating: × and / first, division rounds u
   expect(formula('Rating x 3', 2, 'L')).toEqual({ n: 6, ok: true })
   expect(formula('2 + F * 3 - 1', 2, 'F')).toEqual({ n: 7, ok: true })
   expect(formula('F/0', 2, 'F')).toEqual({ n: null, ok: false })
+})
+
+test('formula: an en dash is a minus, square brackets are parentheses', () => {
+  expect(formula('F–3', 5, 'F')).toEqual({ n: 2, ok: true })
+  expect(formula('F – 1', 5, 'F')).toEqual({ n: 4, ok: true })
+  expect(formula('[(F x 3) + 1] + 2D6', 2, 'F')).toEqual({ n: 7, dice: '2D6', ok: true })
+  expect(formula('(F/2)+7', 5, 'F')).toEqual({ n: 10, ok: true })
+  expect(formula('L–2', 4, 'L')).toEqual({ n: 2, ok: true })
 })
 
 test('formula: a dash or nothing is no value; anything else unreadable, never NaN', () => {
