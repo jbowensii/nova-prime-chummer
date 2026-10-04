@@ -2,6 +2,12 @@
 
 ## Unreleased (next build)
 
+- **Load book NPCs on SR6 NPCs & Critters now loads the whole book**: the critters, spirits and sprites as well as the
+  grunts and sample contacts, each once (pressing it again adds only what's missing). Spirits come in at Force 3 and
+  sprites at Level 3, a starting point you change on the NPC's Stat block tab. The sample contacts are their own kind
+  now, **Contact**, instead of showing as "Grunt · Contact"; contacts you loaded with 0.9.0 are switched over the next
+  time you press Load book NPCs. New NPC lists contacts under Contact. In a Foundry export a contact goes out as an NPC
+  (a grunt with group Contact). Players still never see NPCs.
 - **Load settings file** on the SR6 creation rules form (the server's on Rules, and a campaign's own on its page): pick a
   `creation.xml` from your computer (the format of `custom/sr6/creation.xml`). It is checked and its values fill the form,
   in place of what it showed, for you to review; anything it couldn't use is listed. Nothing is saved until you click

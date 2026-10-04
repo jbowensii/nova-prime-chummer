@@ -226,7 +226,7 @@ const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatV
 const xmlFile = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
 const npcRow = (page: Page, name: string) => page.locator('.dossier').filter({ has: page.getByRole('link', { name, exact: true }) })
 
-test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; loads the book NPCs; imports, shares, trashes', async ({ page }) => {
+test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imports, shares, trashes', async ({ page }) => {
   await signIn(page, '/#/sr6', 'gil')
   await page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'NPCs & Critters' }).click()
   await expect(page).toHaveURL(/#\/sr6\/npcs$/)
@@ -256,25 +256,21 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; loa
   await make('Sprite', 'Glitch Sprite', '3')
   await make('Critter', 'Fuzzbeast')
   await make('Grunt', 'Blank')
+  await make('Grunt', 'Lot Boss') // the editor test below opens it
   await expect(npcRow(page, 'Corner Goon')).toContainText('Grunt PR 2')
   await expect(npcRow(page, 'Spirit of Puddles')).toContainText('Spirit F 4')
   await expect(npcRow(page, 'Glitch Sprite')).toContainText('Sprite L 3')
   await expect(npcRow(page, 'Fuzzbeast')).toContainText('Critter')
   await expect(npcRow(page, 'Unnamed NPC')).toContainText('Grunt')
 
-  // the book NPCs: the ones made from the catalog above don't count, and a second load adds nothing
-  await page.getByRole('button', { name: 'Load book NPCs' }).click()
-  await expect(status).toHaveText('Added 3 book NPCs.')
-  await expect(npcRow(page, 'Corner Goon')).toHaveCount(2)
-  await page.getByRole('button', { name: 'Load book NPCs' }).click()
-  await expect(status).toHaveText('The book NPCs are already in your NPCs.')
+  // Load book NPCs: e2e/sr6-examples.spec.ts (its own server, so the copies don't crowd these rows)
 
   // import: an NPC file joins; a runner and an Anarchy file are refused, each saying where it belongs
   await page.locator('input[type=file]').setInputFiles([xmlFile('goon.xml', readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')),
     xmlFile('wisp.xml', readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')), xmlFile('anarchy.xml', CA2)])
   await expect(status).toHaveText('Imported Corner Goon. wisp.xml: This is a runner, not an NPC. Import it on Your runners. '
     + 'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.')
-  await expect(npcRow(page, 'Corner Goon')).toHaveCount(3)
+  await expect(npcRow(page, 'Corner Goon')).toHaveCount(2)
 
   // search, export
   await page.getByLabel('Search NPCs').fill('sprite')
