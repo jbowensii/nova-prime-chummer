@@ -7,6 +7,7 @@ import { parseCreation, type CreationRules, type CreationValue } from '../../src
 import { sr6Data, type Sr6Data } from '../../src/sr6/engine/data'
 import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/engine/load'
 import type { Sr6Catalog } from '../../src/sr6/model/types'
+import { blankBuild, PRIORITY_COLUMNS, type Letter, type MagicKind, type Sr6Build, type Sr6Method } from '../../src/sr6/model/character'
 
 export const FIXTURE = 'tests/fixtures/sr6/custom'
 const get = async (path: string) => {
@@ -30,4 +31,15 @@ export function made(over: { rules?: Record<string, CreationValue>; unset?: stri
   for (const key of over.unset ?? []) cr.delete(key)
   over.data?.(data)
   return { data, cr }
+}
+
+export const GLIM = 'crb.glimmerkin', STONE = 'crb.stonefolk'
+/** A blank build of `method`; letters: the five priority letters in PRIORITY_COLUMNS order (metatype, attributes, magic,
+ *  skills, resources), e.g. 'CABDE'. */
+export function buildOf(method: Sr6Method, o: { letters?: string; metatype?: string; magic?: MagicKind } = {}): Sr6Build {
+  const b = blankBuild(method)
+  if (o.letters) PRIORITY_COLUMNS.forEach((col, i) => { b.priorities[col] = o.letters![i] as Letter })
+  b.metatype = o.metatype ?? ''
+  b.magic = o.magic ?? 'mundane'
+  return b
 }

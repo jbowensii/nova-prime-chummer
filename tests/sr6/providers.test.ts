@@ -1,19 +1,10 @@
 // Budget providers for the five creation methods (src/sr6/engine/providers.ts), on the made-up fixture catalog and its
 // invented creation rules (tests/fixtures/sr6/custom). Each SR6 Forge provider test re-expressed with invented numbers.
 import { expect, test } from 'vitest'
-import { blankBuild, type Letter, type MagicKind, type PriorityColumn, type Sr6Build, type Sr6Method } from '../../src/sr6/model/character'
+import type { MagicKind, Sr6Build, Sr6Method } from '../../src/sr6/model/character'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { made } from './fixture'
+import { buildOf as build, GLIM, made, STONE } from './fixture'
 
-const GLIM = 'crb.glimmerkin', STONE = 'crb.stonefolk'
-function build(method: Sr6Method, o: { letters?: string; metatype?: string; magic?: MagicKind } = {}): Sr6Build {
-  const b = blankBuild(method)
-  if (o.letters) (['metatype', 'attributes', 'magic', 'skills', 'resources'] as PriorityColumn[])
-    .forEach((col, i) => { b.priorities[col] = o.letters![i] as Letter })
-  b.metatype = o.metatype ?? ''
-  b.magic = o.magic ?? 'mundane'
-  return b
-}
 const setup = (method: Sr6Method, over?: Parameters<typeof made>[0]) => { const { data, cr } = made(over); return makeProvider(method, data, cr) }
 
 // priority budgets

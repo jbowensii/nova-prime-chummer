@@ -5,6 +5,7 @@
   <setting key="qualityNetBonusCap" value="17" source="CRB" page="60"/>
   <setting key="qualityMaxCount" value="5" source="CRB" page="60"/>
   <setting key="oneAttributeAtMax" value="true" source="CRB" page="61"/>
+  <setting key="attributeBaseMax" value="6" source="CRB" page="61"/>
   <setting key="skillCap" value="5" source="CRB" page="61"/>
   <setting key="skillCapAptitude" value="6" source="CRB" page="61"/>
   <setting key="aptitudeQuality" value="crb.knack" source="CRB" page="61"/>

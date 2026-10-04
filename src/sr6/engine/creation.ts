@@ -31,6 +31,8 @@ export const CREATION_KEYS: CreationKey[] = [
   ...n('General', 'all', [['startingKarma', 'Starting karma'], ['qualityNetBonusCap', 'Most net karma from qualities'],
     ['qualityMaxCount', 'Most paid qualities']]),
   { key: 'oneAttributeAtMax', label: 'Only one attribute at its maximum', type: 'bool', group: 'General', methods: 'all' },
+  // optional: unset, the adjustment-target rule is skipped with a warning
+  ...n('General', [], [['attributeBaseMax', 'Adjustment points go on attributes whose metatype maximum is above']]),
   ...n('General', 'all', [['skillCap', 'Highest skill rank'], ['skillCapAptitude', 'Highest skill rank with the aptitude quality']]),
   { key: 'aptitudeQuality', label: 'Aptitude quality', type: 'quality', group: 'General', methods: 'all' },
   ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization'], ['skillPointsExpertise', 'Skill points for an expertise'],
