@@ -87,4 +87,11 @@
   <setting key="grade:alpha:essence" value="0.7" source="CRB" page="283"/>
   <setting key="grade:alpha:cost" value="1.5" source="CRB" page="283"/>
   <setting key="grade:alpha:avail" value="3" source="CRB" page="283"/>
+  <setting key="monitorBase" value="9" source="CRB" page="76"/>
+  <setting key="monitorDivisor" value="3" source="CRB" page="76"/>
+  <setting key="initiativeDice" value="2" source="CRB" page="77"/>
+  <setting key="astralInitiativeDice" value="3" source="CRB" page="77"/>
+  <setting key="specDice" value="4" source="CRB" page="78"/>
+  <setting key="expertiseDice" value="5" source="CRB" page="78"/>
+  <setting key="untrainedPenalty" value="2" source="CRB" page="78"/>
 </sr6:creation>

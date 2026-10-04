@@ -19,7 +19,7 @@ export interface CreationCatalog {
 }
 
 /** The groups, in the order Game data shows them. */
-export const CREATION_GROUPS = ['General', 'Karma prices', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades']
+export const CREATION_GROUPS = ['General', 'Karma prices', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values']
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 const AWAKENED = (Object.keys(MAGIC_KIND_LABELS) as MagicKind[]).filter(k => k !== 'mundane')
 
@@ -63,6 +63,11 @@ export const CREATION_KEYS: CreationKey[] = [
   ...n('Lifepath', ['lifepath'], [['lifepath.moduleCount', 'Adult life modules to take'], ['lifepath.contactRatingCap', 'Highest contact rating']]),
   ...GRADES.flatMap(g => n('Augmentation grades', [], [[`grade:${g}:essence`, `${cap(g)}: Essence times`], [`grade:${g}:cost`, `${cap(g)}: cost times`],
     [`grade:${g}:avail`, `${cap(g)}: Availability plus`]])),
+  // the constants in derive.ts's formulas (optional: unset, the value shows empty)
+  ...n('Derived values', [], [['monitorBase', 'Condition monitor: boxes before the attribute'],
+    ['monitorDivisor', 'Condition monitor: the attribute divided by (rounded up)'], ['initiativeDice', 'Initiative dice'],
+    ['astralInitiativeDice', 'Astral initiative dice'], ['specDice', 'Dice for a specialization'], ['expertiseDice', 'Dice for an expertise'],
+    ['untrainedPenalty', 'Dice off the attribute for an untrained skill']]),
 ]
 function cap(s: string) { return s[0].toUpperCase() + s.slice(1) }
 
