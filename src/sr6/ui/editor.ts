@@ -20,6 +20,8 @@ export interface Sr6Ctx {
   ro: boolean
   /** finalized: ch is then the runner as it stands (its build with the ledger's live spends replayed) */
   career: boolean
+  /** an NPC (#/sr6/n/<id>/<tab>): tabs Concept, Stat block and Print */
+  npc: boolean
   edit(fn: (b: Sr6Build) => void): void
   /** an engine step; null when done, else why not (a sentence) */
   act(op: Op): string | null
@@ -45,6 +47,8 @@ export const useSr6Editor = () => {
 export const SR6_FINAL_TIP = 'Finalized: spend karma and nuyen on the Ledger tab'
 export const sr6EditHref = (id: string, tab: string) => `#/sr6/c/${id}/${tab}`
 export const sr6NpcHref = (id: string, tab = 'stats') => `#/sr6/n/${id}/${tab}`
+/** The editor link for a runner or an NPC. */
+export const sr6Href = (ch: { id: string; npc?: unknown }, tab: string) => ch.npc ? sr6NpcHref(ch.id, tab) : sr6EditHref(ch.id, tab)
 
 export const ATTR_NAMES: Record<Sr6Attr, string> = { bod: 'Body', agi: 'Agility', rea: 'Reaction', str: 'Strength', wil: 'Willpower',
   log: 'Logic', int: 'Intuition', cha: 'Charisma', edg: 'Edge', mag: 'Magic', res: 'Resonance' }

@@ -5,3 +5,11 @@
 .sr6-sheet tr.untrained td { color: var(--s-ink-2); }
 .sr6-sheet .sr6-derived-t { margin-top: 0.5rem; }
 .sr6-sheet .sr6-weapons td:last-child { white-space: nowrap; }
+.sr6-sheet .sr6-npc { margin-top: 0.6rem; }
+.sr6-sheet .sr6-npc > h3 { display: none; } /* the sheet's header names it */
+.sr6-sheet .sr6-npc-head { display: none; }
+.sr6-sheet .sr6-npc-stats div { border: 1.5px solid var(--s-indigo); background: #fff; }
+.sr6-sheet .sr6-npc-stats span { color: var(--s-indigo); font-family: var(--display); text-transform: uppercase; font-size: 7pt; }
+.sr6-sheet .sr6-npc-stats b { font-family: var(--display); font-weight: 400; font-size: 13pt; color: var(--s-rust); }
+.sr6-sheet .sr6-npc-lines div { border-bottom-color: var(--s-line); }
+.sr6-sheet .sr6-npc-lines dd { color: var(--s-ink); }

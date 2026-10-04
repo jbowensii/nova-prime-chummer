@@ -207,10 +207,76 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; loa
   expect(await (await page.request.get('/api/npcs')).text()).not.toContain('urn:chummer-sr6')
 })
 
+test('NPC editor: the Stat block tab reads stats at the rating, and an NPC prints its block', async ({ page }) => {
+  await signIn(page, '/#/sr6/npcs', 'gil')
+  const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
+  const work = page.locator('main.work'), block = page.getByRole('region', { name: 'NPC block' })
+  const row = (label: string) => work.locator('table.sr6-npc-edit tr').filter({ has: page.getByRole('cell', { name: label, exact: true }) })
+
+  // a grunt: NPC tabs only, its chip, no budgets; its skills with pools
+  await npcRow(page, 'Lot Boss').getByRole('link', { name: 'Lot Boss' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/stats$/)
+  await expect(tabs).toHaveText(['Concept', 'Stat block', 'Print'])
+  await expect(page.locator('.topbar .npckind')).toHaveText('Grunt PR 4')
+  await expect(page.locator('.sr6-budgets')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toHaveAttribute('aria-current', 'page')
+  await expect(work).toContainText('Made from Lot Boss (CRB p.207).')
+  await expect(row('BOD').locator('td').last()).toHaveText('5')
+  await expect(block).toContainText('Grunt, Professional Rating 4 · Street Crew')
+  await expect(block).toContainText('Gab 5 (pool 10), Tinkering 3 (pool 6), Close Combat 6')
+  await expect(block).toContainText('Made-up Knuckle Spurs')
+  await tabs.filter({ hasText: 'Concept' }).click()
+  await expect(work).not.toContainText('Metatype')
+
+  // a spirit at Force 4, then 6; a value it can't read
+  await page.goto('/#/sr6/npcs')
+  await npcRow(page, 'Spirit of Puddles').getByRole('link', { name: 'Spirit of Puddles' }).click()
+  await expect(row('AGI').locator('td').last()).toHaveText('5')
+  await expect(row('Defense Rating').locator('td').last()).toHaveText('8')
+  await expect(row('Initiative').locator('td').last()).toHaveText('8 + 2D6')
+  await page.getByRole('button', { name: 'Raise Force' }).click()
+  await page.getByRole('button', { name: 'Raise Force' }).click()
+  await expect(row('AGI').locator('td').last()).toHaveText('7')
+  await expect(page.locator('.topbar .npckind')).toHaveText('Spirit F 6')
+  await page.getByLabel('Magic as printed').fill('F+?')
+  await page.getByLabel('Magic as printed').press('Enter')
+  await expect(row('Magic').locator('td').last()).toHaveText('⚠ Can’t read this')
+  await expect(block.getByLabel('Can’t read this')).toBeVisible()
+  await page.getByLabel('Add stat').selectOption({ label: 'Attack' })
+  await expect(page.getByLabel('Attack as printed')).toHaveValue('0')
+  await page.getByRole('textbox', { name: /^Powers/ }).fill('Glimmer, Made-up Drizzle')
+  await expect(block).toContainText('Glimmer, Made-up Drizzle')
+  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await shoot(page, 'stats')
+
+  // its print: header, block, background
+  await tabs.filter({ hasText: 'Concept' }).click()
+  await work.getByLabel('Background').fill('Lives in the made-up gutter.')
+  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await tabs.filter({ hasText: 'Print' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/print$/)
+  const sheet = page.locator('article.sheet')
+  await expect(sheet.locator('.s-role')).toHaveText('Spirit, Force 6')
+  await expect(sheet.locator('.sr6-npc-stats')).toContainText('AGI7')
+  await expect(sheet).toContainText('Lives in the made-up gutter.')
+  await expect(sheet).not.toContainText('Condition monitors')
+  await expect(page.getByRole('link', { name: 'Back to editing' })).toHaveAttribute('href', /#\/sr6\/n\/[^/]+\/stats$/)
+
+  // a sprite at Level 3
+  await page.goto('/#/sr6/npcs')
+  await npcRow(page, 'Glitch Sprite').getByRole('link', { name: 'Glitch Sprite' }).click()
+  await expect(row('Sleaze').locator('td').last()).toHaveText('4')
+  await expect(page.getByRole('textbox', { name: /^Weapons/ })).toHaveCount(0) // sprites: skills and powers only
+})
+
 test('NPCs: the admin sees Gil’s under his name, with Print', async ({ page }) => {
   await signIn(page, '/#/sr6/npcs', 'ada')
   await expect(page.getByRole('region', { name: 'Gil Editor’s NPCs' }).getByRole('link', { name: 'Print Fuzzbeast' }))
     .toHaveAttribute('href', /#\/sr6\/n\/[^/]+\/print$/)
+  // opened from there: read only
+  await page.getByRole('region', { name: 'Gil Editor’s NPCs' }).getByRole('link', { name: 'Fuzzbeast', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: /^Read only — .*’s NPC\./ })).toBeVisible()
+  await expect(page.getByLabel('BOD as printed')).toBeDisabled()
 })
 
 test('NPCs: a player gets no menu, no page and no data', async ({ page }) => {

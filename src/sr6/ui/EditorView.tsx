@@ -2,7 +2,8 @@
 // receipt is) over useAutosave (save, conflict, undo). Read only for someone else's runner. Once finalized (career) the
 // tabs show the runner as it stands (its build with the ledger's live spends replayed, src/sr6/engine/career.ts) and are
 // read only but Concept, Review and Ledger: spends are recorded on the Ledger tab. A refused step shows its reason under
-// the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx).
+// the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
+// opens from the NPC store with tabs Concept, Stat block and Print, and its kind chip where a runner's state badge is.
 import { useEffect, useMemo, useState } from 'react'
 import { Brand, StateBadge } from '../../ui/bits'
 import { IconButton } from '../../ui/icons'
@@ -20,8 +21,9 @@ import { MAGIC_KINDS } from '../engine/data'
 import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
-import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, type Sr6Ctx } from './editor'
-import { exportSr6, sr6Repo } from './repo'
+import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, type Sr6Ctx } from './editor'
+import { npcChip } from './Npcs'
+import { exportSr6, sr6NpcRepo, sr6Repo } from './repo'
 import { AttributesTab } from './tabs/Attributes'
 import { AugmentationsTab } from './tabs/Augmentations'
 import { ConceptTab } from './tabs/Concept'
@@ -33,6 +35,7 @@ import { MethodTab } from './tabs/Method'
 import { QualitiesTab } from './tabs/Qualities'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
+import { StatsTab } from './tabs/Stats'
 import { VehiclesTab } from './tabs/Vehicles'
 import { Sr6Sheet } from '../print/Sheet'
 
@@ -45,11 +48,13 @@ export const sr6Tabs = (magic: MagicKind, career = false): [string, string][] =>
   .filter(([k]) => (k !== 'magic' || magic !== 'mundane') && (k !== 'ledger' || career))
   .map(([k, l]) => [k, k === 'magic' && MAGIC_KINDS[magic].resonance ? 'Resonance' : l])
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
+export const NPC_TABS: [string, string][] = [['concept', 'Concept'], ['stats', 'Stat block'], ['print', 'Print']]
 
-export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string }) {
-  const repo = useMemo(() => sr6Repo(), [])
-  const save = useAutosave(repo, id, { noun: 'runner', tab, prepare: ch => ch, editHref: (ch, t) => sr6EditHref(ch.id, t), home: () => '#/sr6',
-    inEditor: href => href.startsWith(`#/sr6/c/${id}/`) })
+export function Sr6EditorView({ c, data, cr, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
+  const repo = useMemo(() => npc ? sr6NpcRepo() : sr6Repo(), [npc])
+  const href = npc ? sr6NpcHref : sr6EditHref, noun = npc ? 'NPC' : 'runner'
+  const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: () => npc ? '#/sr6/npcs' : '#/sr6',
+    inEditor: h => h.startsWith(href(id, '')) })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)
   useEffect(() => { if (!refusal) return; const t = setTimeout(() => setRefusal(null), 6000); return () => clearTimeout(t) }, [refusal])
@@ -62,15 +67,15 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
       v: ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, ch) }
   }, [ch, data, cr])
 
-  const back = <a href="#/sr6">Back to your runners</a>
-  if (!loaded) return <main className="lib"><p className="muted">Loading runner…</p></main>
-  if (loadError) return <main className="lib"><h1>Couldn’t open this runner</h1><p className="err">{loadError}</p>
-    <p>{back}, where you can download its file or try to repair it.</p></main>
-  if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted on the server. {back}</p></main>
+  const back = npc ? <a href="#/sr6/npcs">Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
+  if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
+  if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
+    <p>{back}{npc ? '.' : ', where you can download its file or try to repair it.'}</p></main>
+  if (!ch || !calc) return <main className="lib"><h1>{npc ? 'NPC' : 'Runner'} not found</h1><p>It may have been deleted on the server. {back}</p></main>
 
   const theirs = owner !== null, career = !!ch.finalizedAt
   const { view, ...derived } = calc
-  const tabs = sr6Tabs(view.build.magic, career && !ch.npc)
+  const tabs = npc ? NPC_TABS : sr6Tabs(view.build.magic, career && !ch.npc)
   const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
   const locked = career && !OPEN_IN_CAREER.has(shown), ro = theirs || locked
   const commit = (next: Sr6Character, undoable = true) => { setRefusal(null); save.commit(next, undoable) }
@@ -81,7 +86,7 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
     return null
   }
   const ctx: Sr6Ctx = {
-    c, data, cr, ch: view, ...derived, ro, career,
+    c, data, cr, ch: view, ...derived, ro, career, npc,
     edit: fn => { if (!ro) { const n = structuredClone(ch); fn(n.build); commit(n) } },
     update: fn => { if (!ro) { const n = structuredClone(ch); fn(n); commit(n) } },
     replace: next => { if (!ro) commit(next) },
@@ -99,13 +104,14 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
   }
   if (tab === 'print') return <Sr6Editor.Provider value={ctx}><Sr6Sheet /></Sr6Editor.Provider>
   const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length
-  const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
+  const name = ch.identity.streetName || ch.identity.name || (npc ? 'Unnamed NPC' : 'Unnamed runner')
 
   return (
     <Sr6Editor.Provider value={ctx}>
       <header className="topbar">
         <Brand />
-        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} finalTip={SR6_FINAL_TIP} /></div>
+        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span>
+          {ch.npc ? <span className="noncanon npckind">{npcChip(ch.npc)}</span> : <StateBadge finalized={career} finalTip={SR6_FINAL_TIP} />}</div>
         {!theirs && <div className="savebar"><SaveLine status={status} onRetry={() => void saveNow()} /></div>}
         <span className="spacer" />
         <div className="bars">
@@ -123,12 +129,12 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
-          <a key={k} href={sr6EditHref(ch.id, k)} aria-current={shown === k ? 'page' : undefined}>
+          <a key={k} href={href(ch.id, k)} aria-current={shown === k ? 'page' : undefined}>
             {label}{k === 'review' && errors > 0 && <span className="badge err">{errors}</span>}
           </a>
         ))}
       </nav>
-      {theirs && <p className="banner readonly" role="status">Read only — {owner}’s runner. Only they can change it; you can still export a copy.</p>}
+      {theirs && <p className="banner readonly" role="status">Read only — {owner}’s {noun}. Only they can change it; you can still export a copy.</p>}
       {!theirs && locked && <p className="banner readonly" role="status">Finalized: spend karma and nuyen on the <a href={sr6EditHref(ch.id, 'ledger')}>Ledger tab</a>.</p>}
       {refusal && <p className="banner err" role="alert">{refusal}</p>}
       <div className="layout">
@@ -146,8 +152,9 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
           {shown === 'contacts' && <ContactsTab />}
           {shown === 'review' && <ReviewTab />}
           {shown === 'ledger' && <LedgerTab />}
+          {shown === 'stats' && <StatsTab />}
         </fieldset></main>
-        <Budgets />
+        {!npc && <Budgets />}
       </div>
       <ConflictDialog s={save} name={name} />
     </Sr6Editor.Provider>

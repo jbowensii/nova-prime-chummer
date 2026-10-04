@@ -83,3 +83,19 @@ export function npcPools(npc: Sr6Npc, data: Pick<Sr6Data, 'skills'>): { name: st
     return { name: skill.name, rating, attr: skill.attr, ...(rating != null && attr != null ? { pool: rating + attr } : {}), printed }
   })
 }
+
+/** The NPC block's headline: "Grunt, Professional Rating 2 · Street Crew", "Spirit, Force 4", "Sprite, Level 3", "Critter". */
+export function npcHeadline(npc: Sr6Npc): string {
+  const k = NPC_KINDS[npc.kind]
+  return [k.label, k.rating && npc.rating != null && `${k.rating.label} ${npc.rating}`].filter(Boolean).join(', ')
+    + (npc.kind === 'grunt' && npc.group ? ` · ${npc.group}` : '')
+}
+
+/** A skill as the NPC block prints it: "Gab 5 (pool 10)", or as printed when it has no pool. */
+export const poolText = (p: ReturnType<typeof npcPools>[number]) => p.pool != null ? `${p.name}${p.rating != null ? ` ${p.rating}` : ''} (pool ${p.pool})` : p.printed
+
+const PART_LABELS: Record<(typeof SR6_NPC_PARTS)[number], string> = { skills: 'Skills', powers: 'Powers', optionalPowers: 'Optional powers',
+  weaknesses: 'Weaknesses', attacks: 'Attacks', augmentations: 'Augmentations', gear: 'Gear', weapons: 'Weapons' }
+/** The line parts a kind uses, with their labels: a sprite has skills and powers, the others every part. */
+export const npcParts = (kind: Sr6NpcKind): [string, string][] =>
+  SR6_NPC_PARTS.filter(p => kind !== 'sprite' || p === 'skills' || p === 'powers').map(p => [p, PART_LABELS[p]])

@@ -1,7 +1,7 @@
 // SR6 NPC stat blocks (src/sr6/engine/npc.ts): copied from the made-up fixture's catalog entries and read at a rating.
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { blankSr6Npc, bookNpcKey, NPC_KINDS, npcFromEntry, npcPools, npcValues } from '../../src/sr6/engine/npc'
+import { blankSr6Npc, bookNpcKey, NPC_KINDS, npcFromEntry, npcHeadline, npcParts, npcPools, npcValues, poolText } from '../../src/sr6/engine/npc'
 import type { Sr6Character } from '../../src/sr6/model/character'
 import type { Sr6Kind } from '../../src/sr6/model/types'
 import { fixtureCatalog, made } from './fixture'
@@ -87,4 +87,20 @@ test('blank NPCs and the book key', () => {
   expect(blankSr6Npc('grunt').npc).toEqual({ kind: 'grunt', stats: {}, lines: [] })
   expect(blankSr6Npc('grunt').ledger).toEqual([])
   expect(bookNpcKey(entry('npcs', 'crb.corner-goon'))).toBe('CRB|crb.corner-goon')
+})
+
+test('the NPC block’s headline: the four forms', () => {
+  expect(npcHeadline(npcFromEntry(entry('npcs', 'crb.corner-goon'), undefined, NOW).npc!)).toBe('Grunt, Professional Rating 2 · Street Crew')
+  expect(npcHeadline(npcFromEntry(entry('spirits', 'crb.spirit-of-puddles'), 4, NOW).npc!)).toBe('Spirit, Force 4')
+  expect(npcHeadline(npcFromEntry(entry('sprites', 'crb.glitch-sprite'), 3, NOW).npc!)).toBe('Sprite, Level 3')
+  expect(npcHeadline(npcFromEntry(entry('critters', 'crb.fuzzbeast'), undefined, NOW).npc!)).toBe('Critter')
+  expect(npcHeadline(blankSr6Npc('grunt').npc!)).toBe('Grunt')
+})
+
+test('a skill with its pool, or as printed; the line parts each kind uses', () => {
+  const boss = npcFromEntry(entry('npcs', 'crb.lot-boss'), undefined, NOW)
+  expect(npcPools(boss.npc!, data).map(poolText)).toEqual(['Gab 5 (pool 10)', 'Tinkering 3 (pool 6)', 'Close Combat 6'])
+  expect(npcParts('sprite').map(([k]) => k)).toEqual(['skills', 'powers'])
+  expect(npcParts('grunt').map(([, l]) => l)).toEqual(['Skills', 'Powers', 'Optional powers', 'Weaknesses', 'Attacks', 'Augmentations', 'Gear', 'Weapons'])
+  expect(npcParts('critter')).toEqual(npcParts('spirit'))
 })

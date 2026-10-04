@@ -1,5 +1,5 @@
 // Concept: who the runner is. Names, portrait and token (the Anarchy dialog), backdrop, background and notes; the metatype
-// is shown here and picked on Creation method. Still editable once finalized.
+// is shown here and picked on Creation method (an NPC has none). Still editable once finalized.
 import { useState } from 'react'
 import { BACKDROP_NAMES, Face, PortraitEditor } from '../../../ui/Portrait'
 import { sr6EditHref, useSr6Editor } from '../editor'
@@ -11,12 +11,12 @@ export function ConceptTab() {
   return (
     <div className="stack">
       <h2>Concept</h2>
-      <p className="muted">Who are they, what do they do on a run, and what makes them fun to play?</p>
+      <p className="muted">{ch.npc ? 'Who are they, and what are they doing in your story?' : 'Who are they, what do they do on a run, and what makes them fun to play?'}</p>
       <div className="grid2">
         <label>Street name<input value={ch.identity.streetName} onChange={e => update(d => { d.identity.streetName = e.target.value })} /></label>
         <label>Real name<input value={ch.identity.name} onChange={e => update(d => { d.identity.name = e.target.value })} /></label>
       </div>
-      <p>Metatype: <b>{meta?.name ?? (ch.build.metatype || 'none yet')}</b>. <a href={sr6EditHref(ch.id, 'method')}>Pick it on Creation method</a>.</p>
+      {!ch.npc && <p>Metatype: <b>{meta?.name ?? (ch.build.metatype || 'none yet')}</b>. <a href={sr6EditHref(ch.id, 'method')}>Pick it on Creation method</a>.</p>}
       <div className="portrait-row">
         <Face ch={ch} />
         <div className="stack">

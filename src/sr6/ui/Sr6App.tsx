@@ -1,6 +1,7 @@
 // The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog) and the creation rules (loadCreation) load once here, then the page: Books (admin; the
 // Anarchy Books page with game="sr6"), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
-// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, Editor.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/trash]). SR6 is server only (R): with browser storage the runners page says so.
+// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/trash]) and an NPC's
+// editor (#/sr6/n/<id>/<tab>). SR6 is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { BooksScreen } from '../../ui/Books'
@@ -28,7 +29,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   useEffect(() => { void refresh(); void refreshCreation() }, [])
   const data = useMemo(() => c && sr6Data(c), [c])
   // pages a role can't use show the runners (players never get the NPC area: the server refuses them too)
-  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (route[0] === 'npcs' && !canEdit(me)) ? '' : route[0]
+  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || ((route[0] === 'npcs' || route[0] === 'n') && !canEdit(me)) ? '' : route[0]
 
   const body = page === 'books' ? <BooksScreen game="sr6" reload={() => void refresh()} />
     : page === 'users' ? <UsersScreen game="sr6" />
@@ -38,6 +39,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       : <main className="lib"><PageHeader title={page === 'rules' ? 'Rules' : 'Game data'} />{!failed && <p className="muted">Loading game data…</p>}</main>)
     : repo.mode !== 'server' ? <main className="lib"><PageHeader title="Your runners" /><div className="empty"><p>Shadowrun 6 runners need the Chummer server.</p></div></main>
     : c && data ? page === 'npcs' ? <Sr6Npcs c={c} />
+      : page === 'n' && route[1] ? <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       : page === 'c' && route[1] ? <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} />
       : <Sr6Runners c={c} data={data} cr={cr.rules} />
     : <main className="lib"><PageHeader title="Your runners" />{!failed && <p className="muted">Loading game data…</p>}</main>

@@ -1,6 +1,6 @@
 // The printable SR6 sheet (#/sr6/c/<id>/print): the Anarchy print page's toolbar (Back, Print, Sheet type, Background)
 // and paper (src/print/sheet.css: its page-break rules, art veil and print styles) with the SR6 runner's blocks.
-// Browser "Save as PDF" makes the PDF.
+// Browser "Save as PDF" makes the PDF. An NPC prints its header, its NPC block (NpcBlock.tsx), background and notes.
 import { PRINT_STYLES } from '../../ui/settings'
 import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { IconButton, IconLink } from '../../ui/icons'
@@ -11,7 +11,9 @@ import { entryOf, priced } from '../engine/budgets'
 import { balances } from '../engine/career'
 import { MAGIC_KINDS } from '../engine/data'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, type PickKind, type PurchaseKind, type Sr6Attr } from '../model/character'
-import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../ui/editor'
+import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
+import { npcHeadline } from '../engine/npc'
+import { NpcBlock } from './NpcBlock'
 
 /** the SR6 sheet has no book-style layout: the two paper styles */
 const STYLES = PRINT_STYLES.filter(([v]) => v !== 'book')
@@ -24,7 +26,7 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
 export function Sr6Sheet() {
   const { ch, data, cr, d, career } = useSr6Editor()
   const b = ch.build, art = useSheetArt(ch.id), k = MAGIC_KINDS[b.magic]
-  const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
+  const name = ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner')
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
   const nameOf = (x: (typeof b.purchases)[number]) => entryOf(x, data)?.name ?? x.name ?? 'Custom item'
   const rated = (x: (typeof b.purchases)[number]) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', ')
@@ -40,12 +42,25 @@ export function Sr6Sheet() {
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools">
-        <IconLink icon="back" label="Back to editing" href={sr6EditHref(ch.id, 'review')} />
+        <IconLink icon="back" label="Back to editing" href={sr6Href(ch, ch.npc ? 'stats' : 'review')} />
         <IconButton className="primary" icon="print" label="Print or save as PDF" onClick={() => print()} />
         <SheetType styles={STYLES} />
         {art.tools}
       </div>
-      <article className="sheet sr6-sheet" style={art.vars}>
+      {ch.npc ? <article className="sheet sr6-sheet" style={art.vars}>
+        {art.layer}
+        <div className="s-top">
+          <header className="s-head">
+            <div><div className="s-label">NPC</div><h1>{name}</h1><div className="s-role">{npcHeadline(ch.npc)}</div>
+              {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
+            <span className="brand" role="img" aria-label="Chummer Shadowrun 6">Chummer <b>Shadowrun</b> 6</span>
+          </header>
+          {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
+        </div>
+        <NpcBlock npc={ch.npc} name={name} data={data} />
+        {ch.identity.background && <section><h2>Background</h2><p>{ch.identity.background}</p></section>}
+        {ch.identity.notes && <section><h2>Notes</h2><p>{ch.identity.notes}</p></section>}
+      </article> : <article className="sheet sr6-sheet" style={art.vars}>
         {art.layer}
         <div className="s-top">
           <header className="s-head">
@@ -154,7 +169,7 @@ export function Sr6Sheet() {
               return <tr key={x.uid}><td><b>{nameOf(x)}</b>{acc(x)}</td><td>{a.handling}</td><td>{a.body}</td><td>{a.armor}</td><td>{a.pilot}</td><td>{a.sensor}</td></tr> })}</tbody></table>
         </section>}
         {ch.identity.background && <section><h2>Background</h2><p>{ch.identity.background}</p></section>}
-      </article>
+      </article>}
     </div>
   )
 }
