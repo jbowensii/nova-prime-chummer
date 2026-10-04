@@ -153,6 +153,6 @@ test('a player sees no SR6 Books', async ({ page }) => {
   await page.goto('/#/sr6/books')
   await signIn(page, 'pat')
   await expect(page.getByText('No runners yet.')).toBeVisible()
-  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Campaigns', 'Rules', 'Game data'])
+  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Campaigns', 'Table rules', 'Game data'])
   await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)
 })

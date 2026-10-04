@@ -1,7 +1,8 @@
 // The table's SR6 creation rules (custom/sr6/creation.xml, public/data/sr6/schema/creation.xsd): every number the core
-// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered once on
-// Game data by the admin or an editor from their own book. The app ships no values: a method whose settings are unset
-// can't be picked (missingFor), and a rule whose setting is unset is skipped. Formulas stay in code.
+// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered on the Rules
+// page by the admin from their own book: the server's default. A campaign's GM may give it its own (server/campaigns.mjs),
+// which its runners use instead. The app ships no values: a method whose settings are unset can't be picked (missingFor),
+// and a rule whose setting is unset is skipped. Formulas stay in code.
 import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method } from '../model/character'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
@@ -18,7 +19,7 @@ export interface CreationCatalog {
   lifemodules: Record<string, { stage: string }>
 }
 
-/** The groups, in the order Game data shows them. */
+/** The groups, in the order the creation rules form shows them. */
 export const CREATION_GROUPS = ['General', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values']
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 const AWAKENED = (Object.keys(MAGIC_KIND_LABELS) as MagicKind[]).filter(k => k !== 'mundane')
@@ -117,21 +118,31 @@ function typed(type: CreationType, raw: string): CreationValue | undefined {
   return s && Number.isFinite(Number(s)) ? Number(s) : undefined
 }
 
-/** The rules in a creation.xml. A value that isn't of its key's type, or an unknown key, is an error and is skipped. */
-export function parseCreation(xml: string): { rules: CreationRules; errors: string[] } {
+/** A setting as the server stores and sends it: every value a string. */
+export interface CreationRow { key: string; value: string; source?: string; page?: number | string }
+
+/** The rules from stored rows (a creation.xml's settings, or a campaign's own). A value that isn't of its key's type, or an
+ *  unknown key, is an error and is skipped. */
+export function rulesFrom(rows: CreationRow[]): { rules: CreationRules; errors: string[] } {
   const rules: CreationRules = new Map(), errors: string[] = []
-  const doc = new DOMParser().parseFromString(xml, 'text/xml'), root = doc.documentElement
-  if (doc.getElementsByTagName('parsererror').length || root.localName !== 'creation' || root.namespaceURI !== CREATION_NS)
-    return { rules, errors: ['The saved creation rules file isn’t a creation rules document.'] }
-  for (const el of [...root.children].filter(e => e.localName === 'setting')) {
-    const key = el.getAttribute('key') ?? '', raw = el.getAttribute('value') ?? '', type = keyType(key)
+  for (const { key, value: raw, source, page: p } of rows) {
+    const type = keyType(key)
     if (!type) { errors.push(`“${key}” isn’t a creation setting.`); continue }
     const value = typed(type, raw)
     if (value === undefined) { errors.push(`${key}: “${raw}” isn’t ${type === 'bool' ? 'true or false' : type === 'number' ? 'a number' : 'a quality id'}.`); continue }
-    const source = el.getAttribute('source') || undefined, page = Number(el.getAttribute('page')) || undefined
+    const page = Number(p) || undefined
     rules.set(key, { key, value, ...(source ? { source } : {}), ...(page ? { page } : {}) })
   }
   return { rules, errors }
+}
+
+/** The rules in a creation.xml (see rulesFrom). */
+export function parseCreation(xml: string): { rules: CreationRules; errors: string[] } {
+  const doc = new DOMParser().parseFromString(xml, 'text/xml'), root = doc.documentElement
+  if (doc.getElementsByTagName('parsererror').length || root.localName !== 'creation' || root.namespaceURI !== CREATION_NS)
+    return { rules: new Map(), errors: ['The saved creation rules file isn’t a creation rules document.'] }
+  return rulesFrom([...root.children].filter(e => e.localName === 'setting').map(el => ({ key: el.getAttribute('key') ?? '',
+    value: el.getAttribute('value') ?? '', source: el.getAttribute('source') || undefined, page: el.getAttribute('page') ?? undefined })))
 }
 
 export const num = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'number' ? v : undefined }

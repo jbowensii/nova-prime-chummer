@@ -18,7 +18,7 @@ export const sr6BooksFileName = (now: Date) => `books-${fileDate(now)}.sr6foundr
 export const sr6CompendiumFileName = (source: string, now: Date) => `compendium-${source}-${fileDate(now)}.sr6foundry.json`
 
 /** One or more runners (or NPCs) as a runners file; their things' text always (the runner's own, as Anarchy's). */
-export const downloadSr6Runners = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules, chs: Sr6Character[]) =>
+export const downloadSr6Runners = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules | ((ch: Sr6Character) => CreationRules), chs: Sr6Character[]) =>
   downloadJson(sr6RunnersFileName(new Date()), exportSr6Runners(c, data, cr, chs, sr6ExportOpts(true)))
 /** A GM's compendium as a books file of one book marked compendium: its own text always, its NPCs. */
 export const downloadSr6Compendium = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules, comp: Sr6Compendium) =>

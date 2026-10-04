@@ -2,6 +2,15 @@
 
 ## Unreleased (next build)
 
+- **SR6 creation rules are on the Rules page now**, not Game data (Game data points there), as Anarchy keeps its table
+  rules: the admin edits the server's settings at the top of **Rules**; editors read them there; players' menu shows
+  **Table rules**, with the settings in effect (read only) above the book's rules.
+- **A campaign can have its own SR6 creation rules.** The admin's settings are the server's default. On an SR6
+  campaign's page its GMs (and the admin) choose **Use the server's settings** or **Use this campaign's own settings**,
+  which starts as a copy of the server's to change and save. Runners in that campaign are built, checked and priced with
+  its settings (budgets, Review, the career ledger, Foundry export); every other runner uses the server's. The campaign's
+  players see its settings read only; nobody else sees them. Only the admin can change the server's settings now (editors
+  could before); editors set their own per campaign.
 - **Shadowrun 6 has its own background art.** The SR6 side's app background, printed sheet and the sheet's Background
   picker use only SR6 images; Anarchy keeps its own. The admin uploads SR6 art the same way as Anarchy's: open **Settings**
   while on an SR6 page and use **Background art (Shadowrun 6)** (PNG, JPEG or WebP, 10 MB each, 50 at most). The app ships

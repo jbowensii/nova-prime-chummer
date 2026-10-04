@@ -135,13 +135,15 @@ no book numbers.
   Book errors stay as printed; fixes go through **Game data**, survive
   re-imports and can be undone. Later books come one per release.
 - **Game data** (everyone; changes: admin and GMs). Browse the catalog, edit an
-  entry, export book data for Foundry, and fill in the **Creation rules**: the
+  entry and export book data for Foundry.
+- **Rules** (players: **Table rules**). At the top, the **Creation rules**: the
   numbers the rulebook prints only in its text (starting karma, caps, exchange
   rates, karma prices, point-buy prices, augmentation grades, the constants
   of derived values, advancement prices), each with the page you read it on.
-  The app ships none of them; a creation method whose settings aren’t set
-  can’t be picked, and its row says which are missing.
-- **Rules.** The rulebook’s rule sections, searchable.
+  The admin sets the server’s; a GM can give a campaign its own on its page,
+  and that campaign’s runners use them. The app ships none of them; a creation
+  method whose settings aren’t set can’t be picked, and its row says which are
+  missing. Below, the rulebook’s rule sections, searchable.
 - **Builder** with all five creation methods: **priority**, **sum to ten**,
   **point buy**, **karma** and **lifepath** (lifepath needs life modules,
   which come with a book that prints them). Itemized budgets (attribute,

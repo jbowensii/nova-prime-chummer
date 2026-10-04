@@ -168,8 +168,9 @@ const envelope = (kind: Sr6ExportFile['kind'], o: Sr6ExportOpts) => ({ format: S
   exportedAt: o.now, app: { name: 'Chummer Anarchy 2.0', version: o.appVersion }, descriptions: o.descriptions }) as const
 
 /** A runners file: each runner (or NPC) as it stands. */
-export const exportSr6Runners = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules, chs: Sr6Character[], o: Sr6ExportOpts): Sr6ExportFile =>
-  ({ ...envelope('runners', o), runners: chs.map(ch => exportSr6Runner(c, data, cr, ch, o)) })
+/** `cr`: the creation rules, or each runner's (its campaign's own or the server's). */
+export const exportSr6Runners = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules | ((ch: Sr6Character) => CreationRules), chs: Sr6Character[], o: Sr6ExportOpts): Sr6ExportFile =>
+  ({ ...envelope('runners', o), runners: chs.map(ch => exportSr6Runner(c, data, typeof cr === 'function' ? cr(ch) : cr, ch, o)) })
 
 const BEINGS = new Set<Sr6Kind>(Object.values(NPC_KINDS).map(k => k.kind))
 function bookEntry(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean): Sr6ExportEntry {

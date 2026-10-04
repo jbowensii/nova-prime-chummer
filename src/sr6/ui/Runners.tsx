@@ -19,6 +19,7 @@ import { ExportRunnersDialog } from '../../ui/Foundry'
 import { validateSr6 } from '../engine/rules'
 import { blankSr6, SR6_METHOD_LABELS, SR6_METHODS, type Sr6Character, type Sr6Method } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
+import { campaignRules } from './Creation'
 import { SR6_FINAL_TIP } from './editor'
 import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
 import { exportSr6, readSr6Import, repairSr6, sr6Repo } from './repo'
@@ -69,9 +70,11 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
   const rows = arrange(mine, sort, q)
   const others = ownerGroups((list ?? []).filter(s => !mine.includes(s)), unreadable.filter(u => u.owner && u.owner !== me?.username), sort, q)
-  const errorsOf = (ch: Sr6Character) => validateSr6(data, cr, ch).filter(v => v.severity === 'error' && !v.approved).length
-
   const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
+  // a runner in a campaign with its own creation settings is checked and exported with those
+  const rulesOf = (ch: Sr6Character) => campaignRules(campaignOf(ch)) ?? cr
+  const errorsOf = (ch: Sr6Character) => validateSr6(data, rulesOf(ch), ch).filter(v => v.severity === 'error' && !v.approved).length
+
   const open = campaigns.filter(x => !x.archived && joined(x, me)) // the ones a runner of yours can join
   const assign = async (ch: Sr6Character, cid: string | null) => {
     try {
@@ -236,7 +239,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
       </Modal>
 
       <ExportRunnersDialog runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)}
-        download={chs => downloadSr6Runners(c, data, cr, chs)} about={SR6_FOUNDRY_ABOUT} />
+        download={chs => downloadSr6Runners(c, data, rulesOf, chs)} about={SR6_FOUNDRY_ABOUT} />
     </main>
   )
 }
@@ -246,7 +249,7 @@ export function MissingList({ missing }: { missing: Record<Sr6Method, string[]> 
   const blocked = SR6_METHODS.filter(m => missing[m].length)
   if (!blocked.length) return null
   return <div className="missing">
-    <p className="muted">These need creation settings first (Game data → Creation rules):</p>
+    <p className="muted">These need creation settings first (Rules → Creation rules):</p>
     <ul>{blocked.map(m => <li key={m}><b>{SR6_METHOD_LABELS[m]}</b>: {missing[m].join(', ')}</li>)}</ul>
   </div>
 }

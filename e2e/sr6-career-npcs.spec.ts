@@ -96,7 +96,7 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   // nuyen to karma is an optional rule, off without its setting
   await work.getByRole('combobox', { name: /^What/ }).selectOption('n2k')
   await work.getByLabel('Karma', { exact: true }).last().fill('1')
-  await expect(price).toHaveText('That optional rule is off: Game data → Creation rules.')
+  await expect(price).toHaveText('That optional rule is off: Rules → Creation rules.')
   await expect(work.getByRole('button', { name: 'Record', exact: true })).toBeDisabled()
 
   // only the newest spend can be voided
@@ -134,9 +134,10 @@ test('career, continued: more spends, an unset price, print, export and import, 
   const balances = work.locator('.sr6-balances')
   await expect(balances).toHaveText(/Karma 28\s*Nuyen 7,450¥/)
 
-  // Gil takes the specialization price off Game data: that spend is refused naming it; then he puts it back
+  // Ada (the admin) takes the specialization price off the server's creation rules: that spend is refused naming it; then
+  // she puts it back
   const gil = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
-  await signIn(gil, '/#/sr6', 'gil')
+  await signIn(gil, '/#/sr6', 'ada')
   const settings = await (await gil.request.get('/api/sr6/creation')).json() as { key: string }[]
   const put = (list: unknown[]) => gil.request.put('/api/sr6/creation', { data: { settings: list }, headers: { Origin: base.replace(/\/$/, '') } })
   expect((await put(settings.filter(x => x.key !== 'karmaSpec'))).status()).toBe(204)
@@ -144,7 +145,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await what('spec')
   await work.getByRole('combobox', { name: /^Skill/ }).selectOption('crb.tinkering')
   await work.getByRole('combobox', { name: 'Specialization', exact: true }).fill('Gizmos')
-  await expect(price).toHaveText('Specialization isn’t set: Game data → Creation rules.')
+  await expect(price).toHaveText('Specialization isn’t set: Rules → Creation rules.')
   expect((await put(settings)).status()).toBe(204)
   await gil.close()
   await page.reload()

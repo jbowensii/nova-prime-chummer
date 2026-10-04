@@ -13,8 +13,8 @@ export function AugmentationsTab() {
       <h2>Augmentations</h2>
       <p className="muted">Essence: <b className={es.left < 0 ? 'err' : ''}>{n(es.left)} left</b> of {n(es.max)}.
         {es.magicLoss > 0 && (k.spells || k.powers || k.resonance) && ` It costs ${es.magicLoss} ${k.resonance ? 'Resonance' : 'Magic'}.`}
-        {num(cr, 'essence') === undefined && ' Essence isn’t set: Game data → Creation rules.'}
-        {gradesSet(cr).length === 0 && ' No grades are set up yet (Game data → Creation rules), so ware is bought without one.'}</p>
+        {num(cr, 'essence') === undefined && ' Essence isn’t set: Rules → Creation rules.'}
+        {gradesSet(cr).length === 0 && ' No grades are set up yet (Rules → Creation rules), so ware is bought without one.'}</p>
       <PurchaseSection kind="augmentations" title="Cyberware and bioware" one="an augmentation" grades bonuses
         accessories={{ kinds: ['gear'], filter: isAccessory }} />
     </div>

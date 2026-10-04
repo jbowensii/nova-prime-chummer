@@ -15,7 +15,8 @@ export interface Person { username?: string; name: string }
 export interface CampaignRunner { key: string; mine: boolean; ownerName: string; streetName: string; level: string; package: string; id?: string; owner?: string }
 export interface Campaign { id: string; name: string; note: string; archived: boolean; created: string; you: 'gm' | 'admin' | 'member'
   gms: Person[]; members: Person[]; runners: CampaignRunner[]
-  npcs?: { id: string; name: string; owner: string; ownerName: string }[] } // the NPCs shared with it: the GM's and the admin's view only
+  npcs?: { id: string; name: string; owner: string; ownerName: string }[] // the NPCs shared with it: the GM's and the admin's view only
+  creation?: { key: string; value: string; source?: string; page?: number }[] | null } // SR6: its own creation settings (null: the server's)
 
 /** `game`'s campaign API paths (for send) and page links. */
 export function campaignLinks(game: Game = 'ca2') {
@@ -98,8 +99,10 @@ export function CampaignsScreen({ game = 'ca2' }: { game?: Game }) {
 
 type Confirm = { title: string; body: string; label: string; run: () => Promise<unknown> }
 
-/** `label`: a runner row's line under its name (Anarchy: its package and level). */
-export function CampaignScreen({ id, label, game = 'ca2' }: { id: string; label: (r: CampaignRunner) => string; game?: Game }) {
+/** `label`: a runner row's line under its name (Anarchy: its package and level); `extra`: a game's own section after the
+ *  runners (SR6: its creation rules), given the campaign and a way to put back the one a change returns. */
+export function CampaignScreen({ id, label, game = 'ca2', extra }: { id: string; label: (r: CampaignRunner) => string; game?: Game
+  extra?: (camp: Campaign, set: (c: Campaign) => void) => React.ReactNode }) {
   const me = useMe(), L = campaignLinks(game)
   const [camp, setCamp] = useState<Campaign | null>(null)
   const [missing, setMissing] = useState('')
@@ -165,6 +168,8 @@ export function CampaignScreen({ id, label, game = 'ca2' }: { id: string; label:
             })}
           </div>)}
       </section>
+
+      {extra?.(camp, setCamp)}
 
       {manages && !!camp.npcs?.length && <section aria-labelledby={`${listId}-n`}>
         <h2 id={`${listId}-n`}>NPCs</h2>

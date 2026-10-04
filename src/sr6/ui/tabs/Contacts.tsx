@@ -60,7 +60,7 @@ export function ContactsTab() {
       <h2>Karma to nuyen</h2>
       <p className="row">Karma turned into nuyen
         <Stepper label="Karma turned into nuyen" value={b.karmaToNuyen} min={0} max={most ?? 999} onChange={to => act({ op: 'karmaToNuyen', delta: to - b.karmaToNuyen })} />
-        <span className="muted">{rate !== undefined ? `${n(rate)}¥ each` : 'The rate isn’t set: Game data → Creation rules.'}{most !== undefined && `, at most ${most}`}</span></p>
+        <span className="muted">{rate !== undefined ? `${n(rate)}¥ each` : 'The rate isn’t set: Rules → Creation rules.'}{most !== undefined && `, at most ${most}`}</span></p>
     </div>
   )
 }

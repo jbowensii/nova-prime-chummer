@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
-import { CREATION_GROUPS, CREATION_KEYS, cite, expandKeys, flag, missingFor, num, parseCreation, str, type CreationCatalog } from '../../src/sr6/engine/creation'
+import { CREATION_GROUPS, CREATION_KEYS, cite, expandKeys, flag, missingFor, num, parseCreation, rulesFrom, str, type CreationCatalog } from '../../src/sr6/engine/creation'
 import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/engine/load'
 
 const FIXTURE = 'tests/fixtures/sr6/custom'
@@ -99,4 +99,15 @@ test('the Advancement group (career prices and caps) follows Karma prices; every
   for (const m of ['priority', 'sumtoten', 'pointbuy', 'karma', 'lifepath'] as const)
     for (const k of adv) expect(missingFor(m, new Map(), data), m).not.toContain(k.key)
   expect(missingFor('priority', parseCreation(XML.replace(/\s*<setting key="advance\.[^"]*"[^>]*\/>/g, '')).rules, data)).toEqual([])
+})
+
+test('a campaign’s stored rows read like a file’s: typed, with source and page; a bad row is an error and is skipped', () => {
+  const { rules, errors } = rulesFrom([{ key: 'startingKarma', value: '55', source: 'HOUSE', page: 3 }, { key: 'oneAttributeAtMax', value: 'false' },
+    { key: 'skillCap', value: 'lots' }, { key: 'noSuchSetting', value: '1' }, { key: 'metatypeKarma:x.made-up', value: '7', page: '12' }])
+  expect(rules.get('startingKarma')).toEqual({ key: 'startingKarma', value: 55, source: 'HOUSE', page: 3 })
+  expect(flag(rules, 'oneAttributeAtMax')).toBe(false)
+  expect(num(rules, 'metatypeKarma:x.made-up')).toBe(7)
+  expect(cite(rules, 'metatypeKarma:x.made-up')).toEqual({ page: 12 })
+  expect(rules.has('skillCap')).toBe(false)
+  expect(errors).toEqual(['skillCap: “lots” isn’t a number.', '“noSuchSetting” isn’t a creation setting.'])
 })

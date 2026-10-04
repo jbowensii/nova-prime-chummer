@@ -92,7 +92,7 @@ custom/sr6/
   imported/crb/<kind>.xml          one file per kind, ids scoped crb.<slug>
   texts/crb.xml                    private descriptions (never committed)
   edits/edits.xml, edits/texts.xml the catalog edits and their descriptions
-  creation.xml                     the table's creation rules (Game data; creation.xsd)
+  creation.xml                     the server's creation rules (Rules page; creation.xsd)
 ```
 
 The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
@@ -110,13 +110,16 @@ re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means
 
 `custom/sr6/creation.xml` (`<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds the
 numbers the core rulebook prints only in its text: starting karma, caps, exchange rates, point-buy prices, lifepath
-counts, augmentation grades. Each is `<setting key value source? page?/>` (500 at most, each key once). The admin or an
-editor fills them in on Game data from their own book (`PUT /api/sr6/creation`); the app ships none. Keys, types and
+counts, augmentation grades. Each is `<setting key value source? page?/>` (500 at most, each key once). The admin fills
+them in at the top of the Rules page from their own book (`PUT /api/sr6/creation`): the server's default. A GM may give a
+campaign they run its own copy on its page; it is kept in `custom/sr6/campaigns.xml` as the campaign's `<creation>` with the
+same `<setting/>` rows (`campaigns.xsd`, `PUT /api/sr6/campaigns/<id> { creation }`, its GMs and the admin; its players
+read it), and that campaign's runners are built, checked and priced with it. The app ships none. Keys, types and
 the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
 
-Every key, in the order Game data shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
+Every key, in the order the Rules page shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
 a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
 chosen while its Essence factor is unset). `maxKarmaLeft` and `karmaToNuyenMax` aren't printed in the core rulebook:

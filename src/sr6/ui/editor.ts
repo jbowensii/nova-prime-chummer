@@ -63,7 +63,7 @@ export const REASONS: Record<string, string> = {
   'unknown-entry': 'That isn’t in the catalog.',
   'unknown-line': 'That isn’t on the runner any more.',
   'unknown-host': 'The item to fit it on isn’t on the runner any more.',
-  'unknown-grade': 'That grade isn’t set up: Game data → Creation rules.',
+  'unknown-grade': 'That grade isn’t set up: Rules → Creation rules.',
   'unknown-choice': 'That life module has no such choice.',
   'unknown-option': 'That isn’t one of the choice’s options.',
   'skill-untrained': 'Give the skill a rank first.',
@@ -98,7 +98,7 @@ export const REASONS: Record<string, string> = {
   'cannot-learn': 'This runner’s magic kind can’t learn that.',
   'no-power-points': 'Not enough power points left.',
   'mundane-cannot-initiate': 'Only an awakened or emerged runner can initiate or submerge.',
-  'optional-rule-off': 'That optional rule is off: Game data → Creation rules.',
+  'optional-rule-off': 'That optional rule is off: Rules → Creation rules.',
   'book-value': 'Its price isn’t a number the app can read: buy it as a custom item.',
   'not-latest': 'Only the newest spend can be voided: void the later ones first.',
   'not-voidable': 'That entry can’t be voided.',
@@ -107,7 +107,7 @@ export const REASONS: Record<string, string> = {
 const LABELS = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
 /** A refusal code as a sentence; `unset:<key>` names the setting and where it's set. */
 export const reasonText = (code: string) => code.startsWith('unset:')
-  ? `${(LABELS.get(code.slice(6)) ?? code.slice(6)).replace(/ \(unset:[^)]*\)$/, '')} isn’t set: Game data → Creation rules.`
+  ? `${(LABELS.get(code.slice(6)) ?? code.slice(6)).replace(/ \(unset:[^)]*\)$/, '')} isn’t set: Rules → Creation rules.`
   : REASONS[code] ?? `${code[0].toUpperCase()}${code.slice(1).replace(/-/g, ' ')}.`
 
 /** One engine step on a copy of the runner: the changed copy, or why not. */

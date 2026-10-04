@@ -562,8 +562,8 @@ test('a point-buy runner: character points left, Review cites the rule; two tabs
   await b.close()
 })
 
-test('Gil, an editor, lowers the skill cap: Pat’s runner shows it on Review', async ({ page }) => {
-  await signIn(page, '/#/sr6/data', 'gil')
+test('Ada, the admin, lowers the server’s skill cap on Rules: Pat’s runner shows it on Review', async ({ page }) => {
+  await signIn(page, '/#/sr6/rules', 'ada')
   await page.getByLabel('Highest skill rank', { exact: true }).fill('2')
   await page.getByRole('button', { name: 'Save creation rules' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
@@ -587,6 +587,67 @@ test('Gil, an editor, lowers the skill cap: Pat’s runner shows it on Review', 
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
   // the later tests open it from the server: approved, then finalized again (the ledger's last entry)
   await savedOnServer(page, /type="finalize"[^>]*\/>\s*<\/ledger>[\s\S]*Old cap/)
+})
+
+test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat’s runner in it uses them, Pat reads them', async ({ page, browser }) => {
+  const origin = base.replace(/\/$/, '')
+  await signIn(page, '/#/sr6', 'gil')
+  const camp = await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Table' }, headers: { Origin: origin } })).json() as { id: string }
+  expect((await page.request.post(`/api/sr6/campaigns/${camp.id}/members`, { data: { user: 'pat' }, headers: { Origin: origin } })).ok()).toBe(true)
+  // Pat makes a runner and puts it in the campaign
+  const pat = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
+  await signIn(pat, '/#/sr6', 'pat')
+  await pat.getByRole('button', { name: 'New runner' }).click()
+  await pat.getByRole('dialog', { name: 'New runner' }).getByLabel('Street name').fill('Camp Kid')
+  await pat.getByRole('button', { name: 'Create runner' }).click()
+  await expect(pat).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
+  const kid = pat.url(), kidId = kid.split('/c/')[1].split('/')[0]
+  await savedOnServer(pat, /streetName="Camp Kid"/)
+  expect((await pat.request.post(`/api/sr6/campaigns/${camp.id}/runners`, { data: { id: kidId }, headers: { Origin: origin } })).ok()).toBe(true)
+  const karma = pat.locator('.sr6-budgets .budget', { hasText: 'Karma' }).first()
+  await pat.reload()
+  await expect(karma).toContainText('left of 40') // the server's settings
+
+  // Gil gives the campaign its own: a copy of the server's to start from
+  await page.goto(`/#/sr6/campaigns/${camp.id}`)
+  const sec = page.locator('.sr6-creation')
+  await expect(sec.getByRole('radio', { name: 'Use the server’s settings' })).toBeChecked()
+  await sec.getByRole('radio', { name: 'Use this campaign’s own settings' }).check()
+  await expect(sec.getByLabel('Starting karma', { exact: true })).toHaveValue('40')
+  await sec.getByLabel('Starting karma', { exact: true }).fill('77')
+  await sec.getByRole('button', { name: 'Save creation rules' }).click()
+  await expect(sec.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
+  await page.reload()
+  await expect(sec.getByRole('radio', { name: 'Use this campaign’s own settings' })).toBeChecked()
+  await expect(sec.getByLabel('Starting karma', { exact: true })).toHaveValue('77')
+  await shoot(page, 'campaign-creation')
+
+  // Pat's runner in it uses them; the server's are unchanged; Pat reads the campaign's, read only
+  await pat.goto(kid)
+  await pat.reload()
+  await expect(karma).toContainText('left of 77')
+  await pat.goto('/#/sr6/table-rules')
+  await expect(pat.getByLabel('Starting karma', { exact: true })).toHaveValue('40')
+  await expect(pat.getByRole('link', { name: 'Made-up Table' })).toBeVisible()
+  await pat.goto(`/#/sr6/campaigns/${camp.id}`)
+  const psec = pat.locator('.sr6-creation')
+  await expect(psec).toContainText('This campaign has its own settings')
+  await expect(psec.getByLabel('Starting karma', { exact: true })).toHaveValue('77')
+  await expect(psec.getByLabel('Starting karma', { exact: true })).toBeDisabled()
+  await expect(psec.getByRole('radio')).toHaveCount(0)
+  await expect(psec.getByRole('button', { name: 'Save creation rules' })).toHaveCount(0)
+  expect((await pat.request.put(`/api/sr6/campaigns/${camp.id}`, { data: { creation: [] }, headers: { Origin: origin } })).status()).toBe(403)
+
+  // back to the server's
+  await sec.getByRole('radio', { name: 'Use the server’s settings' }).check()
+  await sec.getByRole('button', { name: 'Save: use the server’s settings' }).click()
+  await expect(sec.getByRole('status').filter({ hasText: 'This campaign uses the server’s settings again.' })).toBeVisible()
+  await pat.goto(kid)
+  await pat.reload()
+  await expect(karma).toContainText('left of 40')
+  // Camp Kid leaves, for the tests after this one
+  expect((await pat.request.delete(`/api/sr6/campaigns/${camp.id}/runners/${kidId}`, { headers: { Origin: origin } })).ok()).toBe(true)
+  await pat.close()
 })
 
 test('the legacy server: the SR6 runners page says who is in the way', async ({ page }) => {

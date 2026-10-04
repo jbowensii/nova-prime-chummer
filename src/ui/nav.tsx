@@ -14,14 +14,15 @@ import { SettingsButton } from './settings'
 export function MainMenu() {
   const me = useMe(), server = useRepo().mode === 'server'
   const [here, sub] = location.hash.replace(/^#\/?/, '').split('/')
-  if (here === 'sr6') return <Bar section={(sub === 'books' && isAdmin(me)) || sub === 'rules' || sub === 'data' || sub === 'campaigns' ? `sr6/${sub}`
+  if (here === 'sr6') return <Bar section={sub === 'rules' || sub === 'table-rules' ? canEdit(me) ? 'sr6/rules' : 'sr6/table-rules'
+    : (sub === 'books' && isAdmin(me)) || sub === 'data' || sub === 'campaigns' ? `sr6/${sub}`
     : (sub === 'npcs' || sub === 'n') && canEdit(me) ? 'sr6/npcs' : sub === 'compendiums' && canEdit(me) && server ? 'sr6/compendiums' : 'sr6'} sr6 items={[
     ['sr6', 'runners', 'Your runners', true],
     ['sr6/npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
     ['sr6/compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
     ['sr6/campaigns', 'campaigns', 'Campaigns', server],
     ['sr6/books', 'books', 'Books', isAdmin(me)],
-    ['sr6/rules', 'rules', 'Rules', true],
+    canEdit(me) ? ['sr6/rules', 'rules', 'Rules', true] : ['sr6/table-rules', 'rules', 'Table rules', true],
     ['sr6/data', 'data', 'Game data', true],
   ]} />
   const section = here === 'c' ? '' : here === 'n' ? 'npcs' : here // a runner's or NPC's editor: its list

@@ -21,6 +21,7 @@ import { MAGIC_KINDS } from '../engine/data'
 import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
+import { useCampaignRules } from './Creation'
 import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
 import { downloadSr6Runners } from './Foundry'
@@ -51,13 +52,15 @@ export const sr6Tabs = (magic: MagicKind, career = false): [string, string][] =>
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
 export const NPC_TABS: [string, string][] = [['concept', 'Concept'], ['stats', 'Stat block'], ['print', 'Print']]
 
-export function Sr6EditorView({ c, data, cr, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
+/** `cr`: the server's creation rules; a runner in a campaign with its own settings uses those instead. */
+export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
   const repo = useMemo(() => npc ? sr6NpcRepo() : sr6Repo(), [npc])
   const href = npc ? sr6NpcHref : sr6EditHref, noun = npc ? 'NPC' : 'runner'
   const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: () => npc ? '#/sr6/npcs' : '#/sr6',
     inEditor: h => h.startsWith(href(id, '')) })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)
+  const campRules = useCampaignRules(npc ? undefined : ch?.campaign), cr = campRules ?? serverRules
   useEffect(() => { if (!refusal) return; const t = setTimeout(() => setRefusal(null), 6000); return () => clearTimeout(t) }, [refusal])
   const calc = useMemo(() => {
     if (!ch) return undefined
@@ -69,7 +72,7 @@ export function Sr6EditorView({ c, data, cr, id, tab, npc = false }: { c: Sr6Cat
   }, [ch, data, cr])
 
   const back = npc ? <a href="#/sr6/npcs">Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
-  if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
+  if (!loaded || campRules === undefined) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
     <p>{back}{npc ? '.' : ', where you can download its file or try to repair it.'}</p></main>
   if (!ch || !calc) return <main className="lib"><h1>{npc ? 'NPC' : 'Runner'} not found</h1><p>It may have been deleted on the server. {back}</p></main>

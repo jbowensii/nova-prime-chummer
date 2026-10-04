@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- custom/campaigns.xml: the campaigns (Campaigns page), written by the server (server/campaigns.mjs); never served as a
      file. Each has one or more GMs (admins or editors) and any number of members; a runner joins one with its own
-     campaign="<id>" attribute (character.xsd). -->
+     campaign="<id>" attribute (character.xsd). An SR6 campaign (custom/sr6/campaigns.xml) may have its own creation
+     settings: <creation> with creation.xsd's <setting/> rows; none, it uses the server's (custom/sr6/creation.xml). -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:ca2="urn:chummer-anarchy2:config:1"
            targetNamespace="urn:chummer-anarchy2:config:1"
@@ -18,6 +19,26 @@
               <xs:element name="note" minOccurs="0"><xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="4000"/></xs:restriction></xs:simpleType></xs:element>
               <xs:element name="gm" type="ca2:Person" maxOccurs="unbounded"/>
               <xs:element name="member" type="ca2:Person" minOccurs="0" maxOccurs="unbounded"/>
+              <xs:element name="creation" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="setting" minOccurs="0" maxOccurs="500">
+                      <xs:complexType>
+                        <xs:attribute name="key" use="required">
+                          <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-Za-z0-9.:_\-]{1,80}"/></xs:restriction></xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="value" use="required">
+                          <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="200"/></xs:restriction></xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="source">
+                          <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-Z][A-Z0-9\-]{0,19}"/></xs:restriction></xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="page" type="xs:positiveInteger"/>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
             </xs:sequence>
             <xs:attribute name="id" use="required">
               <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>

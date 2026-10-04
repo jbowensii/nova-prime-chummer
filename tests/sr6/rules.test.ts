@@ -318,7 +318,7 @@ test('an unset setting is one warning naming it, and the rule it feeds is skippe
   buy(ch.build, 'electronics', 'crb.buzz-box', { rating: 6 })
   const v = check(ch, { unset: ['maxAvailability'] })
   expect(v.filter(x => x.code === 'gear.availCap')).toEqual([])
-  expect(v.filter(x => x.code === 'setting.unset')).toMatchObject([{ severity: 'warning', message: 'Highest Availability isn’t set: Game data → Creation rules.' }])
+  expect(v.filter(x => x.code === 'setting.unset')).toMatchObject([{ severity: 'warning', message: 'Highest Availability isn’t set: Rules → Creation rules.' }])
 })
 
 test('a line whose entry left the catalog is an error naming it from its snapshot or stored name', () => {

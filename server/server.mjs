@@ -216,7 +216,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
 
     const campaigns = campaignsApi({ customDir: g.sub ? join(customDir, g.sub) : customDir, tag, lock, auth, runnersOf: u => index(folder(u)),
       writeRunner: (u, file, xml) => writeAtomic(join(folder(u), file), xml),
-      npcsOf: u => index(npcFolder(u)), writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml) })
+      npcsOf: u => index(npcFolder(u)), writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml), creation: g.id === 'sr6' })
     // the two stores the character and trash routes serve; NPCs: admin and editors only (need() gates /api/npcs, and a
     // request that waited for the lock checks the role again)
     const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }

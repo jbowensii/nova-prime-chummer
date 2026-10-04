@@ -199,7 +199,8 @@ export function need(path, method) {
   if (path === '/api/health' || (method === 'GET' && ['/api/auth/me', '/api/auth/oidc/start', '/api/auth/oidc/callback'].includes(path))
     || (method === 'POST' && ['/api/auth/login', '/api/setup', '/api/setup/reset'].includes(path))) return 'public'
   if (/^\/api\/(books|review|ai-settings|ai-keys|ai-models|ai-test|backup|restore|datapack|users|auth-settings)(\/|$)/.test(path)) return 'admin'
-  if (/^\/api\/(edits|table-rules|creation)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
+  if (/^\/api\/creation(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'admin' // SR6's server default
+  if (/^\/api\/(edits|table-rules)(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'editor'
   if (/^\/api\/backgrounds(\/|$)/.test(path) && method !== 'GET' && method !== 'HEAD') return 'admin'
   if (/^\/api\/npcs(\/|$)/.test(path)) return 'editor' // NPCs: the GMs' own area, never a player's
   if (/^\/api\/compendiums(\/|$)/.test(path)) return 'editor' // compendiums: the same (phase 3 adds a player-readable route)
@@ -432,7 +433,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   }
 
   // ---- checks ----
-  async function json(req) {
+  /** `max`: a bigger cap for a route that needs one (an SR6 campaign's creation settings). */
+  async function json(req, max = MAX_JSON) {
     if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) throw fail(415, 'send JSON (application/json)')
     const chunks = []
     let size = 0
@@ -440,7 +442,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     const timer = setTimeout(() => req.destroy(), BODY_TIMEOUT)
     try {
       for await (const c of req) {
-        if ((size += c.length) > MAX_JSON) throw fail(413, 'too large')
+        if ((size += c.length) > max) throw fail(413, 'too large')
         chunks.push(c)
       }
     } catch (e) {
