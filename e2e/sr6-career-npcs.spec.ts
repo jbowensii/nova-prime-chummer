@@ -40,6 +40,13 @@ async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByLabel('Username')).toHaveCount(0)
 }
+/** Save now (the editor's Save button) and wait until the server's copy of runner `id` holds `text`: the save bar's
+ *  "All changes saved" is also what it says before the first autosave. */
+async function saved(page: Page, id: string, text: string, store = 'characters') {
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(async () => ((await (await page.request.get(`/api/sr6/${store}`)).json()) as { xml: string }[])
+    .find(r => r.xml.includes(` id="${id}"`))?.xml ?? '').toContain(text)
+}
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
 async function shoot(page: Page, name: string) {
@@ -115,7 +122,109 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   await expect(page.getByRole('button', { name: 'Back to draft' })).toBeDisabled()
   await expect(work).toContainText('Void the ledger’s earnings and spends first (newest first).')
   await expect(work).toContainText('The ledger now holds 28 karma and 7,450¥.')
-  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await saved(page, RUNNER, 'Picked the wrong one')
+})
+
+test('career, continued: more spends, an unset price, print, export and import, then void it all and finalize again', async ({ page, browser }) => {
+  await signIn(page, '/#/sr6', 'pat')
+  await page.goto(`/#/sr6/c/${RUNNER}/ledger`)
+  const work = page.locator('main.work'), dlg = page.getByRole('dialog'), price = page.getByRole('status', { name: 'Price' })
+  const what = (op: string) => work.getByRole('combobox', { name: /^What/ }).selectOption(op)
+  const recordIt = async () => { await work.getByRole('button', { name: 'Record', exact: true }).click(); await dlg.getByRole('button', { name: 'Record it' }).click() }
+  const voidIt = async (label: string) => {
+    await work.getByRole('button', { name: `Void ${label}` }).click()
+    await dlg.getByLabel('Why').fill('Made-up undo')
+    await dlg.getByRole('button', { name: 'Void' }).click()
+    await expect(work.getByRole('button', { name: `Void ${label}` })).toHaveCount(0)
+  }
+  const balances = work.locator('.sr6-balances')
+  await expect(balances).toHaveText(/Karma 28\s*Nuyen 7,450¥/)
+
+  // Gil takes the specialization price off Game data: that spend is refused naming it; then he puts it back
+  const gil = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
+  await signIn(gil, '/#/sr6', 'gil')
+  const settings = await (await gil.request.get('/api/sr6/creation')).json() as { key: string }[]
+  const put = (list: unknown[]) => gil.request.put('/api/sr6/creation', { data: { settings: list }, headers: { Origin: base.replace(/\/$/, '') } })
+  expect((await put(settings.filter(x => x.key !== 'karmaSpec'))).status()).toBe(204)
+  await page.reload()
+  await what('spec')
+  await work.getByRole('combobox', { name: /^Skill/ }).selectOption('crb.tinkering')
+  await work.getByRole('combobox', { name: 'Specialization', exact: true }).fill('Gizmos')
+  await expect(price).toHaveText('Specialization isn’t set: Game data → Creation rules.')
+  expect((await put(settings)).status()).toBe(204)
+  await gil.close()
+  await page.reload()
+
+  // a specialization, the Zap Gun (nuyen), the spell again, an initiation with a metamagic
+  await what('spec')
+  await work.getByRole('combobox', { name: /^Skill/ }).selectOption('crb.tinkering')
+  await work.getByRole('combobox', { name: 'Specialization', exact: true }).fill('Gizmos')
+  await expect(price).toHaveText('Tinkering: Gizmos · 7 karma · after: 21 karma, 7,450¥')
+  await recordIt()
+  await expect(balances).toHaveText(/Karma 21/)
+  await what('purchase')
+  await work.getByRole('button', { name: 'Pick from the catalog…' }).click()
+  await dlg.getByText('Zap Gun', { exact: true }).click()
+  if (await dlg.getByRole('button', { name: 'Add', exact: true }).isVisible()) await dlg.getByRole('button', { name: 'Add', exact: true }).click() // grades are set up
+  await expect(price).toHaveText('Zap Gun · 290¥ · after: 21 karma, 7,160¥')
+  await recordIt()
+  await expect(balances).toHaveText(/Nuyen 7,160¥/)
+  await what('pick')
+  await work.getByRole('button', { name: 'Pick from the catalog…' }).click()
+  await dlg.getByText('Glow Ward').click()
+  await recordIt()
+  await expect(balances).toHaveText(/Karma 14/)
+  await what('initiate')
+  await work.getByRole('combobox', { name: /^Metamagic/ }).selectOption({ label: 'Soft Echo' })
+  await expect(price).toHaveText('Initiation grade 1 (Soft Echo) · 12 karma · after: 2 karma, 7,160¥')
+  await recordIt()
+  await expect(balances).toHaveText(/Karma 2\s*Nuyen/)
+  await what('attribute')
+  await work.getByRole('combobox', { name: /^Attribute/ }).selectOption({ label: 'Agility (4)' })
+  await expect(price).toHaveText('Not enough karma.')
+
+  // void the initiation: karma back; then the spell is the newest, the older raise still not
+  await voidIt('Initiation grade 1 (Soft Echo)')
+  await expect(balances).toHaveText(/Karma 14\s*Nuyen 7,160¥/)
+  await expect(work.getByRole('button', { name: 'Void Spell: Glow Ward' })).toBeVisible()
+  await expect(work.getByRole('button', { name: 'Void AGI 3 → 4' })).toHaveCount(0)
+  await saved(page, RUNNER, 'Made-up undo')
+
+  // print: the runner as it stands, and the ledger's balances
+  await page.goto(`/#/sr6/c/${RUNNER}/print`)
+  const sheet = page.locator('article.sheet')
+  await expect(sheet.locator('.s-attrs div').filter({ hasText: 'Agility' }).locator('b')).toHaveText('4')
+  await expect(sheet.locator('.sr6-weapons')).toContainText('Zap Gun')
+  await expect(sheet).toContainText('14 karma · 7,160¥')
+
+  // export, then import the file: the copy keeps the ledger
+  await page.goto(`/#/sr6/c/${RUNNER}/ledger`)
+  const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export file' }).click()])
+  const file = readFileSync(await down.path(), 'utf8')
+  await page.goto('/#/sr6')
+  await expect(page.getByRole('link', { name: 'Wisp Lantern', exact: true })).toBeVisible() // the list is in: its ids are taken
+  await page.locator('input[type=file]').setInputFiles([xmlFile('wisp.xml', file)])
+  await expect(page.locator('p.banner[role=status]')).toHaveText('Imported Wisp Lantern.')
+  const rows = await (await page.request.get('/api/sr6/characters')).json() as { xml: string }[]
+  const copy = rows.map(r => r.xml.match(/ id="([^"]+)"/)![1]).find(id => id !== RUNNER)!
+  await page.goto(`/#/sr6/c/${copy}/ledger`)
+  await expect(balances).toHaveText(/Karma 14\s*Nuyen 7,160¥/)
+  await expect(work.locator('tr.voided')).toHaveCount(2)
+  expect((await page.request.delete(`/api/sr6/characters/${copy}`, { headers: { Origin: base.replace(/\/$/, '') } })).ok()).toBe(true)
+
+  // void every spend (newest first) and the earning: Back to draft, then Finalize again
+  await page.goto(`/#/sr6/c/${RUNNER}/ledger`)
+  for (const label of ['Spell: Glow Ward', 'Zap Gun', 'Tinkering: Gizmos', 'AGI 3 → 4', `Earned: Made-up run (${new Date().toISOString().slice(0, 10)})`]) await voidIt(label)
+  await expect(balances).toHaveText(/Karma 31\s*Nuyen 4,350¥/)
+  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Review' }).click()
+  await page.getByRole('button', { name: 'Back to draft' }).click()
+  await dlg.getByRole('button', { name: 'Back to draft' }).click()
+  await expect(page.getByRole('button', { name: 'Finalize runner' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Finalize runner' }).click()
+  await dlg.getByRole('button', { name: 'Finalize' }).click()
+  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Ledger' }).click()
+  await expect(work.locator('tbody tr').filter({ hasText: 'Creation finished' })).toHaveCount(2)
+  await saved(page, RUNNER, 'Back to draft')
 })
 
 const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
@@ -246,13 +355,15 @@ test('NPC editor: the Stat block tab reads stats at the rating, and an NPC print
   await expect(page.getByLabel('Attack as printed')).toHaveValue('0')
   await page.getByRole('textbox', { name: /^Powers/ }).fill('Glimmer, Made-up Drizzle')
   await expect(block).toContainText('Glimmer, Made-up Drizzle')
-  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  const spirit = page.url().split('/').at(-2)!
+  await saved(page, spirit, 'Made-up Drizzle', 'npcs')
+  expect((await (await page.request.get('/api/sr6/npcs')).json() as { xml: string }[]).find(r => r.xml.includes(` id="${spirit}"`))!.xml).toContain('rating="6"')
   await shoot(page, 'stats')
 
   // its print: header, block, background
   await tabs.filter({ hasText: 'Concept' }).click()
   await work.getByLabel('Background').fill('Lives in the made-up gutter.')
-  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await saved(page, spirit, 'made-up gutter', 'npcs')
   await tabs.filter({ hasText: 'Print' }).click()
   await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/print$/)
   const sheet = page.locator('article.sheet')
