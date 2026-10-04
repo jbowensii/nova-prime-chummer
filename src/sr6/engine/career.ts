@@ -93,6 +93,9 @@ export function ledgerRows(ch: Sr6Character): LedgerRow[] {
     return { e, karma, nuyen, voided, ...(voided ? { reason: voids.get(e.id) } : {}) }
   })
 }
+/** An entry as the ledger shows it (and the SR6 export writes it). */
+export const ledgerLabel = (e: Sr6LedgerEntry) => e.type === 'finalize' ? 'Creation finished' : e.type === 'earn' ? `Earned: ${e.run} (${e.date})`
+  : e.type === 'advance' ? e.label : e.type === 'note' ? e.text : `Voided: ${e.reason}`
 export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
   const last = ledgerRows(ch).at(-1)
   return last ? { karma: last.karma, nuyen: last.nuyen } : ch.final ?? { karma: 0, nuyen: 0 }

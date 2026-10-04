@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
-import { balances, earn, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
+import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, picksFor } from '../../engine/data'
 import { CORE_ATTRS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
 import type { Sr6Kind } from '../../model/types'
@@ -84,8 +84,6 @@ export function LedgerTab() {
   const earnOk = [gain.karma || '0', gain.nuyen || '0'].every(v => whole(v) >= 0) && (whole(gain.karma || '0') > 0 || whole(gain.nuyen || '0') > 0)
   const doVoid = () => { if (voiding && !ledger(x => voidEntry(x, voiding.id, why.trim()))) { setVoiding(null); setWhy('') } }
 
-  const describe = (e: Sr6LedgerEntry) => e.type === 'finalize' ? 'Creation finished' : e.type === 'earn' ? `Earned: ${e.run} (${e.date})`
-    : e.type === 'advance' ? e.label : e.type === 'note' ? e.text : `Voided: ${e.reason}`
   const amount = (e: Sr6LedgerEntry, k: 'karma' | 'nuyen', unit = '') =>
     e.type === 'earn' ? (e[k] ? `+${n(e[k])}${unit}` : '') : e.type === 'advance' && e[k] ? (e[k] > 0 ? `−${n(e[k])}${unit}` : `+${n(-e[k])}${unit}`) : ''
   const rows = ledgerRows(ch), voidable = voidableIds(ch)
@@ -174,12 +172,12 @@ export function LedgerTab() {
         <tbody>{rows.map(({ e, karma, nuyen, voided, reason }) => (
           <tr key={e.id} className={voided ? 'voided' : undefined}>
             <td className="muted">{e.at.slice(0, 10)}</td>
-            <td>{describe(e)}{voided && reason && <span className="muted why">Voided: {reason}</span>}</td>
+            <td>{ledgerLabel(e)}{voided && reason && <span className="muted why">Voided: {reason}</span>}</td>
             <td className="num">{amount(e, 'karma')}</td>
             <td className="num">{amount(e, 'nuyen', '¥')}</td>
             <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : n(karma)}</td>
             <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : `${n(nuyen)}¥`}</td>
-            <td className="num">{voidable.has(e.id) && <button className="btn small quiet" aria-label={`Void ${describe(e)}`} onClick={() => setVoiding(e)}>Void</button>}</td>
+            <td className="num">{voidable.has(e.id) && <button className="btn small quiet" aria-label={`Void ${ledgerLabel(e)}`} onClick={() => setVoiding(e)}>Void</button>}</td>
           </tr>
         ))}</tbody>
         <tfoot><tr><td /><td><b>Balance</b></td><td /><td /><td className={`num${bal.karma < 0 ? ' err' : ''}`}><b>{n(bal.karma)}</b></td>
@@ -198,7 +196,7 @@ export function LedgerTab() {
       </Modal>
       <Modal open={!!voiding} onClose={() => setVoiding(null)} title="Void this entry?"
         actions={<><button className="btn" onClick={() => setVoiding(null)}>Cancel</button><button className="btn primary" disabled={!why.trim()} onClick={doVoid}>Void</button></>}>
-        <p>{voiding && describe(voiding)}</p>
+        <p>{voiding && ledgerLabel(voiding)}</p>
         <label>Why<input autoFocus value={why} onChange={e => setWhy(e.target.value)} placeholder="e.g. Picked the wrong one" /></label>
       </Modal>
     </div>
