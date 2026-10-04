@@ -72,7 +72,7 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
   b.metatype = id
   ch.identity.metatype = id
   b.qualities = b.qualities.filter(q => !q.free)
-  for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: 1, free: true, name: data.qualities[t]?.name })
+  for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: m?.traitLevels?.[t] ?? 1, free: true, name: data.qualities[t]?.name })
 }
 
 /** Pick the magic kind: picks it can't have go, as do bought power points (unless it buys them), an initiation or

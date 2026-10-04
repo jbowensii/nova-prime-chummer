@@ -2,6 +2,8 @@
 import { expect, test } from 'vitest'
 import { MAGIC_KINDS, normName, sr6Data } from '../../src/sr6/engine/data'
 import { missingFor } from '../../src/sr6/engine/creation'
+import { setMetatype } from '../../src/sr6/engine/actions'
+import { blankSr6 } from '../../src/sr6/model/character'
 import { fixtureCatalog, fixtureCreation, made } from './fixture'
 
 test('priorities A–E with metatype ids, attribute/skill points, nuyen and magic ratings per kind', () => {
@@ -24,6 +26,14 @@ test('metatypes: ranges per attribute, traits resolved to quality ids; an unreso
     message: 'Stonefolk’s trait “Unresolved Trait” isn’t a quality in the catalog.', source: 'CRB', page: 43 })
   expect(unresolved.map(p => p.message)).toHaveLength(3) // Glimmerkin's Moonsight and Quick Fingers aren't fixture qualities either
   expect(d.problems.filter(p => p.code !== 'data.unresolved')).toEqual([])
+})
+
+test('a trait printed with a level resolves to the leveled quality at that level; picking the metatype gives it', () => {
+  const d = sr6Data(fixtureCatalog((f, x) => (f.endsWith('metatypes.xml') ? x.replace('<trait>Unresolved Trait</trait>', '<trait>Lucky Streak 2</trait>') : x)))
+  expect(d.metatypes['crb.stonefolk']).toMatchObject({ traits: ['crb.stoneskin', 'crb.lucky-streak'], traitLevels: { 'crb.lucky-streak': 2 } })
+  const ch = blankSr6('priority', 'r', '2026-10-04T00:00:00Z')
+  setMetatype(ch, 'crb.stonefolk', d)
+  expect(ch.build.qualities.map(q => [q.id, q.level, q.free])).toEqual([['crb.stoneskin', 1, true], ['crb.lucky-streak', 2, true]])
 })
 
 test('skills, qualities, powers and life modules', () => {

@@ -20,6 +20,7 @@ export const NPC_STATS: [string, string][] = [['bod', 'BOD'], ['agi', 'AGI'], ['
   ['attack', 'Attack'], ['sleaze', 'Sleaze'], ['data', 'Data Processing'], ['firewall', 'Firewall'],
   ['dr', 'Defense Rating'], ['init', 'Initiative'], ['actions', 'Actions'], ['cm', 'Condition monitor'], ['move', 'Movement']]
 const NOT_STATS = new Set(['category', 'rating', 'group'])
+const SPIRIT_ATTRS = new Set(['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'ess', 'mag'])
 const PARTS = new Set<string>(SR6_NPC_PARTS)
 
 const kindOf = (e: Sr6Entry): Sr6NpcKind => {
@@ -57,14 +58,16 @@ export const bookNpcKey = (e: Sr6Entry) => `${e.source}|${e.id}`
 export function npcValues(npc: Sr6Npc): { key: string; label: string; printed: string; value: string; ok: boolean }[] {
   const letter = NPC_KINDS[npc.kind].rating?.letter
   const has = new RegExp(`\\b(?:Rating|${letter})\\b`)
-  const read = (printed: string) => {
+  const read = (key: string, printed: string) => {
     if (!letter || !has.test(printed)) return { value: printed, ok: true }
     const f = formula(printed, npc.rating ?? 1, letter)
-    return !f.ok ? { value: printed, ok: false } : { value: f.n == null ? printed : f.dice ? `${f.n} + ${f.dice}` : String(f.n), ok: true }
+    // CRB p. 147: a spirit's attribute is never below 1, whatever its adjustment
+    const n = f.n != null && npc.kind === 'spirit' && SPIRIT_ATTRS.has(key) ? Math.max(1, f.n) : f.n
+    return !f.ok ? { value: printed, ok: false } : { value: n == null ? printed : f.dice ? `${n} + ${f.dice}` : String(n), ok: true }
   }
   const known = new Map(NPC_STATS)
   const keys = [...NPC_STATS.map(([k]) => k).filter(k => k in npc.stats), ...Object.keys(npc.stats).filter(k => !known.has(k))]
-  return keys.map(key => ({ key, label: known.get(key) ?? key, printed: npc.stats[key], ...read(npc.stats[key]) }))
+  return keys.map(key => ({ key, label: known.get(key) ?? key, printed: npc.stats[key], ...read(key, npc.stats[key]) }))
 }
 
 /** The skills line as dice pools: "Name N" or a bare name (a spirit's or sprite's at its rating, R), resolved against the

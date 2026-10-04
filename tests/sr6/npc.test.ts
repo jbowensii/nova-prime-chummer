@@ -32,6 +32,11 @@ test('a spirit at a Force: its F stats follow the Force', () => {
   expect(s.npc!.lines.map(l => l.part)).toEqual(['skills', 'powers', 'optionalPowers'])
 })
 
+test('a spirit attribute is never below 1 at a low Force; other stats may be', () => {
+  const v = npcValues({ kind: 'spirit', rating: 1, stats: { str: 'F–3', mag: 'F', dr: 'F – 3' }, lines: [] })
+  expect(v.map(x => [x.key, x.value])).toEqual([['str', '1'], ['mag', '1'], ['dr', '-2']])
+})
+
 test('a grunt: its Professional Rating, group and source; printed values as they are; lines in order', () => {
   const g = npcFromEntry(entry('npcs', 'crb.corner-goon'), undefined, NOW)
   expect(g.npc).toMatchObject({ kind: 'grunt', rating: 2, group: 'Street Crew', from: { kind: 'npcs', source: 'CRB', page: 205 } })

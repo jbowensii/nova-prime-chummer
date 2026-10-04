@@ -34,7 +34,11 @@ export interface Sr6PriorityRow {
   /** magic kind → rating (0: none printed, e.g. mundane) */
   magic: Partial<Record<MagicKind, number>>; nuyen: number; page: number
 }
-export interface Sr6MetatypeView { id: string; name: string; ranges: Record<RangeAttr, [number, number]>; traits: string[]; page: number }
+export interface Sr6MetatypeView {
+  id: string; name: string; ranges: Record<RangeAttr, [number, number]>; traits: string[]; page: number
+  /** a trait printed with its level (`Hardy 2`: a leveled quality at level 2), by quality id; absent: level 1 */
+  traitLevels?: Record<string, number>
+}
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
 export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; perLevel: boolean; maxLevel: number; page: number }
 export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
@@ -109,12 +113,15 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
       if (!r) warn('data.bookValue', e, `${e.name} has no range for ${a.toUpperCase()}.`)
       return [a, [count(e, r?.attrs.min, `${a} minimum`), count(e, r?.attrs.max, `${a} maximum`)]]
     })) as Sr6MetatypeView['ranges']
+    const traitLevels: Record<string, number> = {}
     const traits = parts(e, 'trait').flatMap(p => {
-      const id = qualityIds.get(normName(p.text))
+      const name = normName(p.text), lv = name.match(/^(.*) (\d+)$/)
+      let id = qualityIds.get(name)
+      if (!id && lv && (id = qualityIds.get(lv[1]))) traitLevels[id] = Number(lv[2])  // `Hardy 2`: the quality at level 2
       if (!id) warn('data.unresolved', e, `${e.name}’s trait “${p.text}” isn’t a quality in the catalog.`)
       return id ? [id] : []
     })
-    return [e.id, { id: e.id, name: e.name, ranges, traits, page: e.page }]
+    return [e.id, { id: e.id, name: e.name, ranges, traits, page: e.page, ...(Object.keys(traitLevels).length ? { traitLevels } : {}) }]
   }))
 
   const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: count(e, e.attrs.maxLevel, 'highest level', 1) })
