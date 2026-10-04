@@ -1,8 +1,9 @@
 // Shadowrun 6 NPCs & Critters (#/sr6/npcs): the GMs' own area (admin and editors), as Anarchy's NpcsScreen. An SR6 NPC
 // is an SR6 runner file with an <npc> block (server: /api/sr6/npcs, which refuses players and runner files). New NPC copies
 // a catalog grunt, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the catalog's
-// npcs entries not loaded yet; Import file takes SR6 NPC files only; a GM shares one with an SR6 campaign they run.
-// Left out (R): Foundry export (F1), Move to compendium (S4), the duplicates finder.
+// npcs entries not loaded yet; Import file takes SR6 NPC files only; a GM shares one with an SR6 campaign they run; Move to
+// compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn).
+// Left out (R): Foundry export (F1), the duplicates finder.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, savesSettled, send, useMe } from '../../ui/auth'
 import { Modal } from '../../ui/bits'
@@ -11,11 +12,13 @@ import { IconButton, IconLink } from '../../ui/icons'
 import { arrange, ownerGroups, type SortBy } from '../../ui/Library'
 import { PageHeader } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
+import type { Stored as StoredComp } from '../../ui/compendiumStore'
 import type { Stored, Unreadable } from '../../ui/repo'
 import { loadTrash } from '../../ui/Trash'
 import { blankSr6Npc, bookNpcKey, NPC_KINDS, npcFromEntry } from '../engine/npc'
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
-import type { Sr6Catalog, Sr6Entry } from '../model/types'
+import type { Sr6Catalog, Sr6Compendium, Sr6Entry } from '../model/types'
+import { listSr6Compendiums, moveNpcsIn, parseSr6Rows } from './compendiumStore'
 import { sr6NpcHref } from './editor'
 import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
 
@@ -60,11 +63,15 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
   const [target, setTarget] = useState('')
   const [toDelete, setToDelete] = useState<Sr6Character | null>(null)
   const [trashed, setTrashed] = useState<number | null>(null)
+  const [comps, setComps] = useState<StoredComp<Sr6Compendium>[]>([]) // yours, where an NPC can move
+  const [moving, setMoving] = useState<Sr6Character | null>(null)
+  const [into, setInto] = useState('')
   const file = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
     loadCampaigns('sr6').then(setCampaigns, () => setCampaigns([]))
     loadTrash(undefined, true, 'sr6').then(t => setTrashed(t.items.length), () => setTrashed(null))
+    listSr6Compendiums().then(rows => setComps(parseSr6Rows(rows).comps.filter(x => x.owner === me?.username)), () => setComps([]))
     return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored); setUnreadable(r.unreadable) },
       e => { setMsg(because('Couldn’t load your NPCs', (e as Error).message ?? String(e))); setList([]) })
   }
@@ -123,6 +130,16 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
     void refresh()
   }
 
+  // saved into the compendium first (unshared), then deleted here (to the NPC trash); a failed save moves nothing
+  const moveIn = async () => {
+    const comp = comps.find(x => x.id === into)!, ch = moving!
+    setMoving(null)
+    const r = await moveNpcsIn(comp, [ch], id => repo.remove(id))
+    setMsg(!r.ok ? because('Couldn’t move it', r.error) : r.left.length ? `Moved ${nameOf(ch)} to ${comp.name}, but couldn’t take it out of your NPCs: delete it here.`
+      : `Moved ${nameOf(ch)} to ${comp.name}.`)
+    void refresh()
+  }
+
   const share = async (ch: Sr6Character, cid: string | null) => {
     try {
       const x = cid ? campaigns.find(k => k.id === cid) : campaignOf(ch)
@@ -151,6 +168,8 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
         {mineToo && (ch.campaign
           ? <button className="btn small quiet" aria-label={`Unshare ${nameOf(ch)}`} onClick={() => void share(ch, null)}>Unshare</button>
           : gmOf.length > 0 && <button className="btn small quiet" aria-label={`Share ${nameOf(ch)}…`} onClick={() => { setTarget(gmOf[0].id); setSharing(ch) }}>Share with campaign…</button>)}
+        {mineToo && comps.length > 0 && <button className="btn small quiet" aria-label={`Move ${nameOf(ch)} to a compendium…`}
+          onClick={() => { setInto(comps[0].id); setMoving(ch) }}>Move to compendium…</button>}
         {mineToo && <button className="btn small quiet" aria-label={`Delete ${nameOf(ch)}`} onClick={() => setToDelete(ch)}>Delete</button>}
       </div>
     </div>
@@ -218,6 +237,14 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
         <label>Campaign<select value={target} onChange={e => setTarget(e.target.value)}>
           {gmOf.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
         <p className="muted" style={{ marginTop: '0.8rem' }}>The campaign’s other GMs can read and print it; its players can’t see it. An NPC is shared with one campaign at a time.</p>
+      </Modal>
+
+      <Modal open={!!moving} onClose={() => setMoving(null)} title={`Move ${moving ? nameOf(moving) : 'this NPC'} to a compendium`}
+        actions={<><button className="btn" onClick={() => setMoving(null)}>Cancel</button>
+          <button className="btn primary" disabled={!into} onClick={() => void moveIn()}>Move</button></>}>
+        <label>Compendium<select value={into} onChange={e => setInto(e.target.value)}>
+          {comps.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <p className="muted" style={{ marginTop: '0.8rem' }}>It leaves your NPCs (to the NPC trash) and any campaign it’s shared with. Move it back out on the compendium’s page to edit it.</p>
       </Modal>
 
       <Modal open={!!toDelete} onClose={() => setToDelete(null)} title={`Delete ${toDelete ? nameOf(toDelete) : 'this NPC'}?`}

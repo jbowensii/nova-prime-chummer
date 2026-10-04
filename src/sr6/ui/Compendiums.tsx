@@ -1,20 +1,22 @@
 // SR6 Compendiums (#/sr6/compendiums[/<id>[/<entry id>]], admin and editors): the shell both games share
 // (src/ui/CompendiumShell.tsx) with SR6's store (compendiumStore.ts), catalog and pages. A compendium's entries are grouped by
 // kind in COMP_KINDS order, then its NPCs; its owner adds, edits and deletes entries with Sr6EntryFields (EditEntry.tsx),
-// which fills what common.xsd requires, so the file always validates. A book (#/sr6/compendiums/<book source id>) is
-// listed read only. Never Anarchy's: the adapter lists, saves and checks only SR6 compendiums, campaigns and sources.
+// which fills what common.xsd requires, so the file always validates, and moves an NPC back out to NPCs & Critters. A
+// book (#/sr6/compendiums/<book source id>) and another GM's compendium are read only, with Copy to… into one of yours
+// (copySr6Entry: the stats, no description). Never Anarchy's: the adapter lists, saves and checks only SR6 compendiums, campaigns and sources.
 import { useEffect, useMemo, useState } from 'react'
 import { because } from '../../ui/auth'
 import { Modal } from '../../ui/bits'
-import { CompendiumShell, Entries, entries, sharingOf, type BookProps, type CompGame, type PageProps, type ShellRow } from '../../ui/CompendiumShell'
+import { CompendiumShell, CopyButton, CopyDialog, Entries, entries, sharingOf, type BookProps, type CompGame, type PageProps, type ShellRow } from '../../ui/CompendiumShell'
 import { deleteCompendium } from '../../ui/compendiumStore'
 import { PageHeader } from '../../ui/nav'
-import { blankSr6Entry, COMP_KINDS, entryProblem, newEntryId } from '../engine/compendium'
+import { blankSr6Entry, COMP_KINDS, copySr6Entry, entryProblem, newEntryId } from '../engine/compendium'
 import type { Sr6Character } from '../model/character'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../model/types'
-import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
+import { listSr6Compendiums, moveNpcOut, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
 import { Sr6EntryFields } from './EditEntry'
 import { npcChip } from './Npcs'
+import { sr6NpcRepo } from './repo'
 
 /** One listed entry or NPC. */
 export interface Sr6Row extends ShellRow { entry?: Sr6Entry; npc?: Sr6Character }
@@ -61,6 +63,9 @@ export function Sr6Compendiums({ c, id, edit, reload }: { c: Sr6Catalog; id?: st
     book={p => <BookPage c={c} g={g} {...p} />} />
 }
 
+/** the compendium with a copy of the row's entry added: its stats, no description */
+const into = (c: Sr6Catalog) => (comp: Sr6Compendium, r: Sr6Row): Sr6Compendium => ({ ...comp, entries: [...comp.entries, copySr6Entry(c, r.entry!, comp)] })
+
 /** A message that clears itself after a while. */
 function useToast() {
   const [msg, setMsg] = useState('')
@@ -68,8 +73,9 @@ function useToast() {
   return [msg, setMsg] as const
 }
 
-function CompendiumPage({ c, g, comp, own, campaigns, changed, edit }: PageProps<Sr6Compendium> & { c: Sr6Catalog; g: CompGame<Sr6Compendium>; edit?: string }) {
+function CompendiumPage({ c, g, comp, own, campaigns, changed, edit, targets }: PageProps<Sr6Compendium> & { c: Sr6Catalog; g: CompGame<Sr6Compendium>; edit?: string }) {
   const [q, setQ] = useState('')
+  const [copying, setCopying] = useState<Sr6Row | null>(null)
   const [form, setForm] = useState<{ entry?: Sr6Entry } | null>(() => { const e = own && comp.entries.find(x => x.id === edit); return e ? { entry: e } : null })
   const [msg, setMsg] = useToast()
   /** the compendium saved with these entries; throws why it couldn't */
@@ -85,6 +91,11 @@ function CompendiumPage({ c, g, comp, own, campaigns, changed, edit }: PageProps
     if (!confirm(`Delete ${r.name} from ${comp.name}? Runners and NPCs that use it keep their copy.`)) return
     try { await store(comp.entries.filter(x => x !== r.entry)); await changed(); setMsg(`Deleted ${r.name}.`) } catch (e) { setMsg(because('Couldn’t delete it', (e as Error).message)) }
   }
+  const moveOut = async (r: Sr6Row) => {
+    const m = await moveNpcOut(comp, r.key, sr6NpcRepo())
+    if (!m.ok) return setMsg(because('Couldn’t move it', m.error))
+    await changed(); setMsg(`Moved ${r.name} to your NPCs.`)
+  }
   const sharing = sharingOf(comp, campaigns).replace(/^./, ch => ch.toLowerCase())
 
   return (
@@ -93,9 +104,12 @@ function CompendiumPage({ c, g, comp, own, campaigns, changed, edit }: PageProps
       <p className="muted">Source {comp.source} · {own ? 'yours' : `${comp.ownerName}’s, read only`} · {sharing} · {entries(g.count(comp))}{comp.npcs.length ? `, ${comp.npcs.length} NPC${comp.npcs.length === 1 ? '' : 's'}` : ''}</p>
       {own && <div className="row"><button className="btn" onClick={() => setForm({})}>Add entry</button></div>}
       <div className="row listtools"><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search entries" /></div>
-      <Entries rows={sr6Rows(comp.entries, comp.npcs)} q={q} cite={g.cite} actions={own ? r => r.entry && <div className="row">
+      <Entries rows={sr6Rows(comp.entries, comp.npcs)} q={q} cite={g.cite} actions={own ? r => r.entry ? <div className="row">
         <button className="btn small quiet" aria-label={`Edit ${r.name}`} onClick={() => setForm({ entry: r.entry })}>Edit</button>
-        <button className="btn small quiet" aria-label={`Delete ${r.name}`} onClick={() => void remove(r)}>Delete</button></div> : undefined} />
+        <button className="btn small quiet" aria-label={`Delete ${r.name}`} onClick={() => void remove(r)}>Delete</button></div>
+        : <button className="btn small quiet" aria-label={`Move ${r.name} to my NPCs`} onClick={() => void moveOut(r)}>Move to my NPCs</button>
+        : targets.length ? r => r.entry && <CopyButton r={r} copy={setCopying} /> : undefined} />
+      {copying && <CopyDialog g={g} row={copying} targets={targets} into={into(c)} onClose={() => setCopying(null)} done={async m => { setCopying(null); await changed(); setMsg(m) }} />}
       <Modal open={!!form} onClose={() => setForm(null)} actions={<></>} title={form?.entry ? `Edit ${form.entry.name}` : 'Add entry'}>
         {form && <EntryForm key={form.entry ? `${form.entry.kind}/${form.entry.id}` : 'new'} c={c} comp={comp} entry={form.entry} save={put}
           onDone={async text => { await changed(); setForm(null); setMsg(text) }} onCancel={() => setForm(null)} />}
@@ -135,8 +149,10 @@ function EntryForm({ c, comp, entry, save, onDone, onCancel }: { c: Sr6Catalog; 
   )
 }
 
-function BookPage({ c, g, id }: BookProps<Sr6Compendium> & { c: Sr6Catalog; g: CompGame<Sr6Compendium> }) {
+function BookPage({ c, g, id, targets, changed }: BookProps<Sr6Compendium> & { c: Sr6Catalog; g: CompGame<Sr6Compendium> }) {
   const [q, setQ] = useState('')
+  const [copying, setCopying] = useState<Sr6Row | null>(null)
+  const [msg, setMsg] = useToast()
   const s = c.sources.get(id)!
   const list = KINDS.flatMap(k => [...c.entries[k].values()].filter(e => e.source === id))
   return (
@@ -144,7 +160,9 @@ function BookPage({ c, g, id }: BookProps<Sr6Compendium> & { c: Sr6Catalog; g: C
       <PageHeader title={s.name} />
       <p className="muted">Book {id}{s.publisher ? ` · ${s.publisher}` : ''} · {s.canon ? 'canon' : 'non-canon'} · read only</p>
       <div className="row listtools"><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search entries" /></div>
-      <Entries rows={sr6Rows(list, [])} q={q} cite={g.cite} />
+      <Entries rows={sr6Rows(list, [])} q={q} cite={g.cite} actions={targets.length ? r => <CopyButton r={r} copy={setCopying} /> : undefined} />
+      {copying && <CopyDialog g={g} row={copying} targets={targets} into={into(c)} onClose={() => setCopying(null)} done={async m => { setCopying(null); await changed(); setMsg(m) }} />}
+      {msg && <p className="toast" role="status">{msg}</p>}
     </main>
   )
 }

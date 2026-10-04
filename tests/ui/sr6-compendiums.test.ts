@@ -1,10 +1,13 @@
 // The SR6 Compendiums page's pure helpers (src/sr6/ui/Compendiums.tsx): rows grouped by kind in COMP_KINDS order, then the
-// compendium's NPCs, each by name; a new entry's id is free in the catalog and the compendium. Made-up entries only.
+// compendium's NPCs, each by name; a new entry's id is free in the catalog and the compendium; NPCs moved in and out
+// (src/sr6/ui/compendiumStore.ts) with the repos mocked. Made-up entries only.
 import { readFileSync } from 'node:fs'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { blankSr6Entry, COMP_KINDS, newEntryId } from '../../src/sr6/engine/compendium'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { NPC_GROUP, sr6Rows } from '../../src/sr6/ui/Compendiums'
+import { moveNpcOut, moveNpcsIn } from '../../src/sr6/ui/compendiumStore'
+import type { Sr6Character } from '../../src/sr6/model/character'
 import { SR6_KINDS, type Sr6Compendium, type Sr6Kind } from '../../src/sr6/model/types'
 import { fixtureCatalog } from '../sr6/fixture'
 
@@ -37,4 +40,45 @@ test('a new entry’s id is free in that kind’s catalog map and in the compend
   expect(c.entries.weapons.has(id)).toBe(false)
   const next = newEntryId(c, 'weapons', { ...comp, entries: [{ ...made('weapons', zap.name), id }] }, zap.name)
   expect([next === id, c.entries.weapons.has(next)]).toEqual([false, false])
+})
+
+const stored = (npcs = [grunt]) => ({ ...kit, npcs, rev: 3, owner: 'gil', ownerName: 'Gil' })
+
+test('move in: saved into the compendium unshared, then deleted from the NPC area; a failed compendium save deletes nothing', async () => {
+  const shared = { ...grunt, id: 'npc-shared-1', campaign: 'abcdef012345' }
+  const remove = vi.fn(async () => {})
+  const fail = vi.fn(async () => ({ ok: false as const, error: 'the disk is full (test)' }))
+  expect(await moveNpcsIn(stored([]), [shared], remove, fail)).toEqual({ ok: false, error: 'the disk is full (test)' })
+  expect(remove).not.toHaveBeenCalled()
+
+  const save = vi.fn(async (_c: Sr6Compendium, _rev?: number) => ({ ok: true as const, rev: 4 }))
+  expect(await moveNpcsIn(stored([]), [shared], remove, save)).toEqual({ ok: true, left: [] })
+  const [comp, rev] = save.mock.calls[0]
+  expect(rev).toBe(3)
+  expect(comp.npcs.map(n => n.id)).toEqual(['npc-shared-1'])
+  expect('campaign' in comp.npcs[0]).toBe(false)
+  expect(remove).toHaveBeenCalledWith('npc-shared-1')
+  // saved but not taken out of the NPC area: named, the compendium keeps it
+  expect(await moveNpcsIn(stored([]), [shared], async () => { throw new Error('gone') }, save)).toMatchObject({ ok: true, left: [{ id: 'npc-shared-1' }] })
+})
+
+test('move out: a copy under a new id in the NPC area, then the compendium saved without it; a failed compendium save removes the copy', async () => {
+  const npcs = { save: vi.fn(async (_ch: Sr6Character) => ({ ok: true as const })), remove: vi.fn(async (_id: string) => {}) }
+  const fail = vi.fn(async () => ({ ok: false as const, conflict: { rev: 9, file: 'x.xml' } }))
+  const r = await moveNpcOut(stored(), grunt.id, npcs, fail)
+  expect(r).toEqual({ ok: false, error: 'Street Kit changed elsewhere; reload the page' })
+  const copy = npcs.save.mock.calls[0][0]
+  expect(copy.id).not.toBe(grunt.id)
+  expect(npcs.remove).toHaveBeenCalledWith(copy.id)
+
+  npcs.save.mockClear(); npcs.remove.mockClear()
+  const save = vi.fn(async (_c: Sr6Compendium, _rev?: number) => ({ ok: true as const, rev: 4 }))
+  const ok = await moveNpcOut(stored(), grunt.id, npcs, save)
+  expect(ok.ok && ok.ch.id).toBe(npcs.save.mock.calls[0][0].id)
+  expect(save.mock.calls[0][0].npcs).toEqual([])
+  expect(npcs.remove).not.toHaveBeenCalled()
+  // the NPC area refusing it: the compendium isn't touched
+  save.mockClear()
+  expect(await moveNpcOut(stored(), grunt.id, { ...npcs, save: async () => ({ ok: false as const, error: 'refused (test)' }) }, save)).toEqual({ ok: false, error: 'refused (test)' })
+  expect(save).not.toHaveBeenCalled()
 })
