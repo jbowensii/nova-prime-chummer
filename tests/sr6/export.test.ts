@@ -1,11 +1,14 @@
 // SR6 export v1 (docs/sr6-export-format.md): runners and NPCs as the SR6 engine sees them, on the made-up fixture.
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, test } from 'vitest'
-import { balances, currentBuild, deriveSr6, entryValues, exportSr6Runners, priced } from '../../src/sr6/engine'
+import { balances, currentBuild, deriveSr6, entryValues, exportSr6Books, exportSr6Compendium, exportSr6Runners, priced } from '../../src/sr6/engine'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import type { Sr6Purchase } from '../../src/sr6/model/character'
+import type { Sr6Compendium } from '../../src/sr6/model/types'
 import { made, fixtureCatalog } from './fixture'
+import { ganger, mara, SAMPLE_OPTS, sampleWorld, streetKit } from './samples'
 
 const OPTS = { descriptions: true, now: '2026-10-04T09:00:00.000Z', appVersion: '0.9.0' }
 const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/sr6-export.schema.json', 'utf8')))
@@ -53,6 +56,7 @@ describe('SR6 export: runners', () => {
     expect(vest).toMatchObject({ uid: 'g1', id: 'crb.padded-vest', kind: 'armor', name: 'Padded Vest', source: 'CRB', page: 264, canon: true,
       worn: true, qty: 1, bonuses: [], accessories: [], values: { cost: 400, avail: 2, defense: 2, capacity: 6 } })
     expect(vest.attrs.defense).toBe('+2')
+    expect(vest.values).not.toHaveProperty('rating')  // an unrated item has no rating
     expect(r.magic).toMatchObject({ kind: 'full', tradition: 'Kitchen hoodoo', drainAttr: 'log', initiation: 0 })
     expect(r.metatype).toEqual({ id: 'crb.glimmerkin', name: expect.any(String) })
     expect(r.lifestyle).toMatchObject({ id: 'crb.cozy', name: 'Cozy', months: 1, cost: 2500 })
@@ -120,5 +124,82 @@ describe('entryValues', () => {
     expect(entryValues(e({ fade: '3' }, 'complexforms'))).toEqual({ fade: 3 })
     expect(entryValues(e({ karma: '4', kind: 'positive' }, 'qualities'))).toEqual({ karma: 4 })
     expect(entryValues(e({ threshold: 'Force' }, 'rituals'))).toEqual({})
+    expect(entryValues(e({ capacity: '[2]', cost: '100' }, 'gear'))).toEqual({ capacity: 2, cost: 100 })
+  })
+})
+
+describe('SR6 export: books', () => {
+  test('ticked books, every kind, valid; descriptions follow the toggle', () => {
+    const c = fixtureCatalog(), { data } = made(), id = [...c.sources.keys()][0]
+    const on = exportSr6Books(c, data, [id, 'NOPE'], OPTS), off = exportSr6Books(c, data, [id], { ...OPTS, descriptions: false })
+    expect(schema(on), JSON.stringify(schema.errors)).toBe(true)
+    expect(on).toMatchObject({ kind: 'books', descriptions: true })
+    expect(on.books!.map(b => b.source)).toEqual([{ id, name: c.sources.get(id)!.name, publisher: c.sources.get(id)!.publisher, canon: true }])
+    expect(on.books![0].entries.every(e => e.source === id)).toBe(true)
+    expect(new Set(on.books![0].entries.map(e => e.kind)).size).toBeGreaterThan(20)
+    expect(on.books![0].entries.find(e => e.id === 'crb.zap-gun')).toMatchObject({ kind: 'weapons', canon: true, values: { cost: 290, dv: 3, stun: false } })  // the edits layer's price
+    expect(on.books![0].entries.some(e => 'description' in e)).toBe(true)
+    expect(off.books![0].entries.some(e => 'description' in e)).toBe(false)
+    expect(off.descriptions).toBe(false)
+  })
+  test('a being entry carries its npc block', () => {
+    const c = fixtureCatalog(), { data } = made(), b = exportSr6Books(c, data, [...c.sources.keys()], OPTS).books!
+    const spirit = b.flatMap(x => x.entries).find(e => e.kind === 'spirits')!
+    expect(spirit.npc).toMatchObject({ kind: 'spirit', rating: 1 })
+    const goon = b.flatMap(x => x.entries).find(e => e.id === 'crb.corner-goon')!
+    expect(goon.npc).toMatchObject({ kind: 'grunt', rating: 2, group: 'Street Crew', from: { id: 'crb.corner-goon', source: 'CRB' } })
+    expect(b.flatMap(x => x.entries).find(e => e.kind === 'weapons')).not.toHaveProperty('npc')
+  })
+})
+describe('SR6 export: compendium', () => {
+  test('one book marked compendium, own text, its NPCs', () => {
+    // a made-up compendium: source STREET, one weapon with text, one embedded grunt (S4 Task 2's shape)
+    const { data, cr } = made(), c = fixtureCatalog()
+    const comp = { id: 'a1b2c3d4e5f6', name: 'Street Kit', source: 'STREET', sharing: 'private', updatedAt: OPTS.now, ownerName: 'Gil Made-up',
+      entries: [{ id: 'street.zapper', kind: 'weapons', name: 'Zapper', source: 'STREET', page: 1, attrs: { category: 'Zappers', dv: '2S' }, parts: [], text: 'Made-up.' }],
+      npcs: [grunt()] } as Sr6Compendium
+    const f = exportSr6Compendium(c, data, cr, comp, { ...OPTS, descriptions: false })
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+    expect(f).toMatchObject({ kind: 'books', descriptions: true })
+    expect(f.books![0].source).toEqual({ id: 'STREET', name: 'Street Kit', publisher: 'Gil Made-up', canon: false, compendium: true })
+    expect(f.books![0].entries[0]).toMatchObject({ canon: false, description: 'Made-up.', values: { dv: 2, stun: true } })
+    expect(f.books![0].npcs![0].npc?.kind).toBe('grunt')
+  })
+})
+
+describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
+  const w = sampleWorld()
+  const files = () => ({
+    'test-runners.json': exportSr6Runners(w.c, w.data, w.cr, [mara(w), ganger()], SAMPLE_OPTS),
+    'test-books.json': exportSr6Books(w.c, w.data, ['MUS', 'MUX'], SAMPLE_OPTS),
+    'test-compendium.json': exportSr6Compendium(w.c, w.data, w.cr, streetKit(), SAMPLE_OPTS),
+  })
+  test('each is valid, with no NaN or null where a number belongs', () => {
+    for (const [name, f] of Object.entries(files())) {
+      expect(schema(f), `${name}: ${JSON.stringify(schema.errors)}`).toBe(true)
+      expect(JSON.stringify(f)).not.toMatch(/NaN/)
+    }
+  })
+  test('Mara as the engine sees her', () => {
+    const r = files()['test-runners.json'].runners![0]
+    expect(r.attributes.rea).toEqual({ natural: 4, augmented: 5 })
+    expect(r.attributes.mag.natural).toBe(5)
+    expect(r).toMatchObject({ edge: 3, karma: 7, nuyen: 1234, metatype: { id: 'mus.elf', name: 'Elf' } })
+    expect(r.derived).toMatchObject({ initiative: { base: 9, dice: 3 }, monitors: { physical: 10, stun: 10, overflow: 3 }, defenseRating: 6 })
+    const booster = r.purchases.find(x => x.uid === 'c1')!
+    expect(booster.values).toMatchObject({ rating: 1, cost: 1200, essence: 0.12, avail: 4, legality: 'I' })
+    expect(booster.accessories[0].values).toMatchObject({ capacity: 1, cost: 100 })
+    expect(r.lifestyle).toEqual({ id: 'mus.made-up-squat', name: 'Made-up Hideout', months: 2, cost: 450 })
+  })
+  test('MUS has every kind; MUX only priorities and metatypes; the compendium’s grunt has its token', () => {
+    const [m, x] = files()['test-books.json'].books!
+    expect(new Set(m.entries.map(e => e.kind)).size).toBe(25)  // every kind but attributes
+    expect(x.entries.map(e => e.kind)).toEqual(['priorities', 'metatypes'])
+    const comp = files()['test-compendium.json'].books![0]
+    expect(comp.source).toEqual({ id: 'STREET', name: 'Street Kit', publisher: 'Gil Made-up', canon: false, compendium: true })
+    expect(comp.npcs![0]).toMatchObject({ id: 'street-npc-1', streetName: 'Street Tough', portrait: null, token: expect.stringMatching(/^data:image\/jpeg;base64,/) })
+  })
+  test.runIf(process.env.WRITE_SR6_SAMPLES)('writes the module samples', () => {
+    for (const [name, f] of Object.entries(files())) writeFileSync(join(process.env.WRITE_SR6_SAMPLES!, name), JSON.stringify(f, null, 1) + '\n')
   })
 })

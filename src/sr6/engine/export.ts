@@ -1,15 +1,16 @@
 // Chummer SR6 export v1 (docs/sr6-export-format.md; schema public/data/schema/sr6-export.schema.json): Shadowrun 6
-// runners and NPCs as JSON for the Foundry importer module (jbowensii/chummer-sr6-foundry). Every number is the
+// runners, NPCs, books and GM compendiums as JSON for the Foundry importer module (jbowensii/chummer-sr6-foundry). Every number is the
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
-import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
-import { entryOf, priced, ratingOf, skillRank } from './budgets'
+import { SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
+import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
 import type { Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
-import { npcPools, npcValues } from './npc'
+import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { attackRatings, legality, rated, ratingRange } from './values'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export', SR6_EXPORT_VERSION = 1
@@ -54,7 +55,12 @@ export interface Sr6ExportRunner {
 }
 export interface Sr6ExportFile { format: typeof SR6_EXPORT_FORMAT; version: typeof SR6_EXPORT_VERSION; kind: 'runners' | 'books'
   exportedAt: string; app: { name: string; version: string }; descriptions: boolean
-  runners?: Sr6ExportRunner[] }
+  runners?: Sr6ExportRunner[]; books?: Sr6ExportBook[] }
+/** A book's entry: as printed, Chummer's values, and a being's stat block (npcs, critters, spirits, sprites). */
+export interface Sr6ExportEntry extends Sr6ExportItem { id: string; source: string; page: number; npc?: Sr6ExportNpc }
+/** compendium: a GM's compendium (publisher: its owner's name), not a book */
+export interface Sr6ExportBook { source: { id: string; name: string; publisher: string; canon: boolean; compendium?: true }
+  entries: Sr6ExportEntry[]; npcs?: Sr6ExportRunner[] }
 
 /** a number as the book prints it at `rating`, or nothing */
 const num = (s: string | undefined, rating?: number) => rated(s, rating ?? 1).n ?? undefined
@@ -70,7 +76,7 @@ const defined = <T extends object>(o: T): T => Object.fromEntries(Object.entries
 export function entryValues(e: Sr6Entry, rating?: number): Sr6Values {
   const a = e.attrs, r = rating ?? ratingRange(a.rating)[0]
   const v: Sr6Values = defined({ rating: r, cost: e.kind === 'adeptpowers' ? undefined : num(a.cost, r), avail: num(a.avail, r),
-    legality: legality(a.avail), essence: num(a.essence, r), capacity: num(a.capacity, r), defense: num(a.defense, r),
+    legality: legality(a.avail), essence: num(a.essence, r), capacity: num(a.capacity?.replace(/^\s*\[(.*)\]\s*$/, '$1'), r), defense: num(a.defense, r),
     karma: num(a.karma, r), powerCost: e.kind === 'adeptpowers' ? num(a.cost, r) : undefined, drain: e.kind === 'spells' ? num(a.dv, r) : undefined,
     fade: num(a.fade, r), threshold: num(a.threshold, r) })
   if (e.kind !== 'spells' && a.dv) {
@@ -106,7 +112,8 @@ const bonuses = (bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportB
 /** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating. */
 function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true): Sr6ExportPurchase {
   const e = entryOf(x, data)
-  const base = e ? item(c, e, true, ratingOf(x, e)) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
+  // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)
+  const base = e ? item(c, e, true, x.rating) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
   const one = priced({ ...x, qty: 1, accessories: [] }, data, cr), values = { ...base.values }
   for (const k of ['cost', 'avail', 'essence'] as const)
     if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
@@ -162,3 +169,30 @@ const envelope = (kind: Sr6ExportFile['kind'], o: Sr6ExportOpts) => ({ format: S
 /** A runners file: each runner (or NPC) as it stands. */
 export const exportSr6Runners = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules, chs: Sr6Character[], o: Sr6ExportOpts): Sr6ExportFile =>
   ({ ...envelope('runners', o), runners: chs.map(ch => exportSr6Runner(c, data, cr, ch, o)) })
+
+const BEINGS = new Set<Sr6Kind>(Object.values(NPC_KINDS).map(k => k.kind))
+function bookEntry(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean): Sr6ExportEntry {
+  // a spirit or sprite at its default rating, a grunt at its Professional Rating
+  return { ...item(c, e, text), id: e.id, source: e.source, page: e.page, ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}) }
+}
+const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] =>
+  ({ id: s.id, name: s.name, publisher: s.publisher, canon: s.canon, ...(compendium ? { compendium: true as const } : {}) })
+
+/** A books file: each ticked source still in the catalog (unknown ids skipped), with its entries of every kind in
+ *  SR6_KINDS order, then catalog order, as the app sees them (edits applied); their text only when `descriptions`. */
+export function exportSr6Books(c: Sr6Catalog, data: Sr6Data, sources: string[], o: Sr6ExportOpts): Sr6ExportFile {
+  const kinds = Object.keys(SR6_KINDS) as Sr6Kind[]
+  return { ...envelope('books', o), books: sources.flatMap(id => {
+    const s = c.sources.get(id)
+    if (!s) return []
+    const entries = kinds.flatMap(k => [...c.entries[k].values()].filter(e => e.source === id).map(e => bookEntry(c, data, e, o.descriptions)))
+    return [{ source: bookSource(s), entries }]
+  }) }
+}
+
+/** A GM's compendium as a books file of one book, marked compendium: its entries with their own text always, its NPCs. */
+export function exportSr6Compendium(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, comp: Sr6Compendium, o: Sr6ExportOpts): Sr6ExportFile {
+  const opts = { ...o, descriptions: true }
+  return { ...envelope('books', opts), books: [{ source: bookSource(c.sources.get(comp.source) ?? sr6CompendiumSource(comp), true),
+    entries: comp.entries.map(e => bookEntry(c, data, e, true)), npcs: comp.npcs.map(ch => exportSr6Runner(c, data, cr, ch, opts)) }] }
+}
