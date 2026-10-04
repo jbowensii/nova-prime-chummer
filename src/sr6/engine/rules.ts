@@ -271,7 +271,7 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
     if (missing.length) {
       for (const k of missing) if (!unset.has(k)) {
         unset.add(k)
-        out.push({ code: 'setting.unset', severity: 'warning', path: r.tab, message: `${labels.get(k) ?? k} isn’t set: Rules → Creation rules.` })
+        out.push({ code: 'setting.unset', severity: 'warning', path: r.tab, message: `${labels.get(k) ?? k} isn’t set: Table setup → Creation rules.` })
       }
       continue
     }

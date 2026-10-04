@@ -1,6 +1,5 @@
 // SR6 creation rules (src/sr6/engine/creation.ts): the form (one row per setting, grouped as CREATION_GROUPS), the server's
-// default at the top of the Rules page (the admin edits it; editors and players read it, players on their Table rules
-// page) and a campaign's own on its page (its GMs and the admin choose the server's or their own copy; its players read
+// default on Table setup (#/sr6/table; the admin edits it, editors and players read it) and a campaign's own on its page (its GMs and the admin choose the server's or their own copy; its players read
 // it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
 // other runner with the server's.
 import { useEffect, useMemo, useState } from 'react'
@@ -96,7 +95,7 @@ export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: L
   </>
 }
 
-/** The top of the Rules page: the server's settings (the admin edits them), and where a campaign's own are set. */
+/** Table setup's creation rules: the server's settings (the admin edits them), and where a campaign's own are set. */
 export function ServerCreation({ c, cr, reload }: { c: Sr6Catalog; cr: Loaded; reload: () => Promise<void> }) {
   const me = useMe(), admin = isAdmin(me), staff = canEdit(me)
   const [own, setOwn] = useState<Campaign[]>([]) // the caller's campaigns with their own settings
@@ -134,9 +133,9 @@ export function CampaignCreation({ c, cr, camp, onSaved }: { c: Sr6Catalog; cr: 
         <label className="check"><input type="radio" name="camp-creation" checked={!mine} onChange={() => { setMine(false); setMsg(''); setErr('') }} />Use the server’s settings</label>
         <label className="check"><input type="radio" name="camp-creation" checked={mine} onChange={() => { setMine(true); setMsg(''); setErr('') }} />Use this campaign’s own settings</label>
       </fieldset> : <p>{camp.creation ? 'This campaign has its own settings, set by its GM. Your runners in it are built and checked with them.'
-        : <>This campaign uses the server’s settings (the <a href="#/sr6/rules">Rules page</a>).</>}</p>}
+        : <>This campaign uses the server’s settings (the <a href="#/sr6/table">Table setup page</a>).</>}</p>}
       {manages && !mine && <>
-        <p>Runners in this campaign are built and checked with the server’s settings (the <a href="#/sr6/rules">Rules page</a>).</p>
+        <p>Runners in this campaign are built and checked with the server’s settings (the <a href="#/sr6/table">Table setup page</a>).</p>
         {camp.creation && <p><button type="button" className="btn" onClick={() => { setErr(''); put(null).then(() => setMsg('This campaign uses the server’s settings again.'),
           e => setErr((e as Error).message)) }}>Save: use the server’s settings</button> <span className="muted">Its own settings are dropped.</span></p>}
       </>}

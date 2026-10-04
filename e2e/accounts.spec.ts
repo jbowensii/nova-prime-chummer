@@ -129,9 +129,9 @@ test('a player sees only their own runners and no Books, Users or Edit', async (
   await expect(page.getByRole('dialog')).not.toContainText('AI settings')
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
 
-  // the Rules page is the GMs': a player gets the read-only table rules there
+  // the Rules page is the GMs': a player gets Table setup's read-only table rules there
   await page.goto('/#/rules')
-  await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Table setup' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rules reference' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Add a rule' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /^Edit / })).toHaveCount(0)

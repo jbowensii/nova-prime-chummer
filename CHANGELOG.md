@@ -2,13 +2,15 @@
 
 ## Unreleased (next build)
 
-- **Load settings file** on the SR6 creation rules form (the server's on Rules, and a campaign's own on its page): pick a
+- **Load settings file** on the SR6 creation rules form (the server's on Table setup, and a campaign's own on its page): pick a
   `creation.xml` from your computer (the format of `custom/sr6/creation.xml`). It is checked and its values fill the form,
   in place of what it showed, for you to review; anything it couldn't use is listed. Nothing is saved until you click
   **Save creation rules**. A file of another kind is refused.
-- **SR6 creation rules are on the Rules page now**, not Game data (Game data points there), as Anarchy keeps its table
-  rules: the admin edits the server's settings at the top of **Rules**; editors read them there; players' menu shows
-  **Table rules**, with the settings in effect (read only) above the book's rules.
+- **Table setup**: a new page in both games (sliders icon in the header; `#/table` and `#/sr6/table`) for how the table
+  plays, so Rules and Game data show only book content. Anarchy: the table switches (non-canon content, real SINs, the
+  books' optional rules and house rules) move there from Rules. Shadowrun 6: the creation rules move there from Game data;
+  the admin edits the server's settings, with **Load settings file** and links to campaigns that have their own. Admin and
+  editors use it; players see what's in effect, read only (Anarchy's former Table rules page; old links still work).
 - **A campaign can have its own SR6 creation rules.** The admin's settings are the server's default. On an SR6
   campaign's page its GMs (and the admin) choose **Use the server's settings** or **Use this campaign's own settings**,
   which starts as a copy of the server's to change and save. Runners in that campaign are built, checked and priced with

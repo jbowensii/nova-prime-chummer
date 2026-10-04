@@ -15,7 +15,7 @@ import { Library } from './Library'
 import { NpcsScreen } from './Npcs'
 import { BookReview } from './Review'
 import { RulesScreen } from './Rules'
-import { TableRulesScreen } from './TableRules'
+import { TableSetupScreen } from './TableRules'
 import { Setup } from './Setup'
 import { Recover, SignIn } from './SignIn'
 import { RESTORED } from './Backup'
@@ -76,7 +76,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const admin = isAdmin(me)
   // pages a role can't use open the runner list instead (the server refuses their requests anyway)
   // the trash and campaigns are the server's: the browser's own storage deletes for good, and has no accounts
-  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (['trash', 'campaigns'].includes(route[0]) && repo.mode !== 'server') ? '' : route[0] === 'rules' && !canEdit(me) ? 'table-rules' : route[0]
+  const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || (['trash', 'campaigns'].includes(route[0]) && repo.mode !== 'server') ? '' : (route[0] === 'rules' && !canEdit(me)) || route[0] === 'table-rules' ? 'table' : route[0]
   const [, id, tab] = route
   // NPCs: the GMs' area (admin and editors; the server answers players 403 anyway)
   const gmOnly = (page === 'npcs' || page === 'n') && !canEdit(me) ? 'NPCs' : page === 'compendiums' && !canEdit(me) ? 'compendiums' : ''
@@ -105,7 +105,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />
         : page === 'books' ? <BooksScreen c={catalog} reload={() => void refresh()} />
         : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} />
-        : page === 'table-rules' ? <TableRulesScreen c={catalog} /> : <Library c={catalog} />}
+        : page === 'table' ? <TableSetupScreen c={catalog} /> : <Library c={catalog} />}
     </CatalogEdits></RepoContext.Provider>
   )
 }

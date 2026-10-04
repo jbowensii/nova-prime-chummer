@@ -249,7 +249,7 @@ export function MissingList({ missing }: { missing: Record<Sr6Method, string[]> 
   const blocked = SR6_METHODS.filter(m => missing[m].length)
   if (!blocked.length) return null
   return <div className="missing">
-    <p className="muted">These need creation settings first (Rules → Creation rules):</p>
+    <p className="muted">These need creation settings first (Table setup → Creation rules):</p>
     <ul>{blocked.map(m => <li key={m}><b>{SR6_METHOD_LABELS[m]}</b>: {missing[m].join(', ')}</li>)}</ul>
   </div>
 }

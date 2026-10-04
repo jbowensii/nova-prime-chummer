@@ -1,5 +1,5 @@
 // SR6 Game data (everyone): the sources, entries per kind, a browser of every catalog entry, the catalog edits (editors:
-// each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on the Rules page) and the files that didn't load. Kept apart from Anarchy's page, which is
+// each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on Table setup) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
 import { useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
@@ -94,8 +94,8 @@ ${t}`
       </>}
 
       <h2 style={{ marginTop: '1.5rem' }}>Creation rules</h2>
-      <p>The creation settings (starting karma, caps, prices…) are kept at the top of the {canEdit(me) ? 'Rules' : 'Table rules'} page:{' '}
-        <a href="#/sr6/rules">open the creation settings</a>. A campaign with its own shows them on its page.</p>
+      <p>The creation settings (starting karma, caps, prices…) are on the Table setup page:{' '}
+        <a href="#/sr6/table">open the creation settings</a>. A campaign with its own shows them on its page.</p>
 
       <h2 style={{ marginTop: '1.5rem' }}>Problems</h2>
       {c.errors.length === 0 ? <p className="ok">Every file loaded cleanly.</p> : (

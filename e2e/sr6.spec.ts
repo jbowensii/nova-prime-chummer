@@ -67,7 +67,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await signIn(page, '/#/sr6/data', 'ada')
   await expect(page.getByRole('heading', { name: 'Game data' })).toBeVisible()
   await expect(page.getByText('No SR6 data yet.')).toBeVisible()
-  expect(await labels(page)).toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data'])
+  expect(await labels(page)).toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Table setup', 'Rules', 'Game data'])
   await expect(page.getByRole('link', { name: 'Game data' })).toHaveAttribute('aria-current', 'page')
 
   await page.getByRole('link', { name: 'Books', exact: true }).click()
@@ -109,8 +109,9 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(browse(page)).toHaveCount(2)
   await shoot(page, 'data')
 
-  await page.getByRole('link', { name: 'Rules' }).click()
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible()
+  await expect(page.locator('.sr6-creation')).toHaveCount(0) // book content only
   await expect(page.getByLabel('Chapter')).toContainText('GAME CONCEPTS')
   await expect(page.locator('.rule-list > div', { hasText: 'Trouble Dice' })).toBeVisible()
   await page.getByLabel('Search the rules').fill('invented rule')
@@ -120,11 +121,13 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await page.getByLabel('Search the rules').fill('')
   await shoot(page, 'rules')
 
-  // the creation rules, at the top of Rules (Game data points there): a refused page, then a value with its source and
-  // page, kept over a reload
+  // the creation rules, on Table setup (Game data points there): a refused page, then a value with its source and page,
+  // kept over a reload
   await page.getByRole('link', { name: 'Game data', exact: true }).click()
   await page.getByRole('link', { name: 'open the creation settings' }).click()
-  await expect(page.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/#\/sr6\/table$/)
+  await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Table setup' })).toHaveAttribute('aria-current', 'page')
   const cap = page.getByLabel('Highest skill rank', { exact: true })
   await cap.fill('5')
   await page.getByLabel('Highest skill rank: page', { exact: true }).fill('0')
@@ -159,11 +162,12 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await page.reload() // not saved: the server's settings are as they were
   await expect(cap).toHaveValue('5')
   await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/creation-rules.png` })
+  await shoot(page, 'table-setup')
 })
 
 test('editor: edit a weapon’s cost, see it Edited, restore the book version', async ({ page }) => {
   await signIn(page, '/#/sr6/data', 'eve')
-  expect(await labels(page)).toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Rules', 'Game data'])
+  expect(await labels(page)).toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Table setup', 'Rules', 'Game data'])
   const gun = await findWeapon(page, 'Zap Gun')
   await gun.getByRole('button', { name: 'Edit Zap Gun' }).click()
   const form = page.getByRole('dialog')
@@ -193,28 +197,29 @@ test('editor: edit a weapon’s cost, see it Edited, restore the book version', 
   await expect(gun.locator('.edited')).toHaveCount(0)
   await expect(page.locator('.sr6-edits')).toHaveCount(0)
 
-  // the creation rules are the admin's: on the Rules page, read only for an editor, who sets a campaign's own on its page
-  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  // the creation rules are the admin's: on Table setup, read only for an editor, who sets a campaign's own on its page
+  await page.getByRole('link', { name: 'Table setup' }).click()
   await expect(page.getByLabel('Highest skill rank', { exact: true })).toHaveValue('5')
   await expect(page.getByLabel('Highest skill rank', { exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Save creation rules' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'its campaign page' })).toHaveAttribute('href', '#/sr6/campaigns')
 })
 
-test('player: Table rules and Game data, no Books and no Edit buttons', async ({ page }) => {
+test('player: Table setup (read only), Rules and Game data, no Books and no Edit buttons', async ({ page }) => {
   await signIn(page, '/#/sr6/data', 'pat')
-  expect(await labels(page)).toEqual(['Your runners', 'Campaigns', 'Table rules', 'Game data'])
+  expect(await labels(page)).toEqual(['Your runners', 'Campaigns', 'Table setup', 'Rules', 'Game data'])
   await expect(await findWeapon(page, 'Zap Gun')).toBeVisible()
   await expect(page.getByRole('button', { name: /^Edit / })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Your catalog edits' })).toHaveCount(0)
-  await page.getByRole('link', { name: 'Table rules' }).click()
-  await expect(page).toHaveURL(/#\/sr6\/table-rules$/)
-  await expect(page.getByRole('heading', { name: 'Table rules', level: 1 })).toBeVisible()
+  await page.getByRole('link', { name: 'Table setup' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/table$/)
+  await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
   await expect(page.getByLabel('Highest skill rank', { exact: true })).toHaveValue('5') // the settings in effect, read only
   await expect(page.getByLabel('Highest skill rank', { exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Save creation rules' })).toHaveCount(0)
+  await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/table-setup-player.png` })
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
   await expect(page.locator('.rule-list > div', { hasText: 'Making Trouble' })).toContainText('Invented rule text about trouble.')
-  await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/table-rules-player.png` })
   await page.goto('/#/sr6/books')
   await expect(page.getByText('No runners yet.')).toBeVisible()
   await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)

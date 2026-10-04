@@ -31,7 +31,7 @@ export function DataScreen({ c }: { c: Catalog }) {
         <code> &lt;remove id="…"/&gt;</code> deletes one, a new id adds one. Reload the page after changing them.</p>
       <h2>Sources</h2>
       <p>Canon is the game’s official rules. Other published material is marked <NonCanon /> wherever it appears; the GM can flag it
-        at their table (Rules page). Descriptions are private: one file per source in <code>custom/texts/</code>, never part of the app itself.</p>
+        at their table (Table setup page). Descriptions are private: one file per source in <code>custom/texts/</code>, never part of the app itself.</p>
       <div className="scroll-x"><table className="data"><thead><tr><th>Source</th><th>Publisher</th><th>Status</th><th className="num">Entries</th><th>Descriptions</th><th>File</th><th>Checksum (SHA-256)</th></tr></thead>
         <tbody>{[...c.sources.values()].map(s => (
           <tr key={s.id}><td><b>{s.id}</b> {s.name}</td><td>{s.publisher}</td><td>{s.canon ? 'Canon' : <NonCanon />}</td>

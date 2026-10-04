@@ -96,7 +96,7 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   // nuyen to karma is an optional rule, off without its setting
   await work.getByRole('combobox', { name: /^What/ }).selectOption('n2k')
   await work.getByLabel('Karma', { exact: true }).last().fill('1')
-  await expect(price).toHaveText('That optional rule is off: Rules → Creation rules.')
+  await expect(price).toHaveText('That optional rule is off: Table setup → Creation rules.')
   await expect(work.getByRole('button', { name: 'Record', exact: true })).toBeDisabled()
 
   // only the newest spend can be voided
@@ -145,7 +145,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await what('spec')
   await work.getByRole('combobox', { name: /^Skill/ }).selectOption('crb.tinkering')
   await work.getByRole('combobox', { name: 'Specialization', exact: true }).fill('Gizmos')
-  await expect(price).toHaveText('Specialization isn’t set: Rules → Creation rules.')
+  await expect(price).toHaveText('Specialization isn’t set: Table setup → Creation rules.')
   expect((await put(settings)).status()).toBe(204)
   await gil.close()
   await page.reload()

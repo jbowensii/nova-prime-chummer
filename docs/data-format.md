@@ -243,10 +243,10 @@ critters and devices p.68, planning pool or personal Edge p.80: names and pages 
 
 ## Table rules (`custom/table-rules.xml`)
 
-The optional rules a GM (admin or editor) plays with, switched on and off on the Rules page, plus house rules the GM
+The optional rules a GM (admin or editor) plays with, switched on and off on the Table setup page (`#/table`), plus house rules the GM
 writes. Written by the server (`PUT /api/table-rules`, admin and editors; atomic), schema `tablerules.xsd`, namespace
 `urn:chummer-anarchy2:config:1`; every signed-in user reads it at `/custom/table-rules.xml`, and players see the rules
-switched on under Table rules. It lives in `custom/`, so backups carry it.
+switched on there, read only. It lives in `custom/`, so backups carry it.
 
 ```xml
 <ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">

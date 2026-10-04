@@ -6,8 +6,8 @@ import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 import { anarchyState } from './session'
 
-// The Rules page is the GMs' (admin and editors): they switch table rules on and off and write house rules; players get
-// a read-only Table rules page. On a server of its own with the made-up books (tests/fixtures/mini/custom): one optional
+// Table setup (#/table) is where the GMs (admin and editors) switch table rules on and off and write house rules; players
+// get it read only. The Rules page shows only the quick reference. On a server of its own with the made-up books (tests/fixtures/mini/custom): one optional
 // rule, "Long haggles" (TEST p.42), off, and one house rule, on. Runs in order. Screenshots go to .extract/ (not committed).
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/0.4.1'
@@ -60,9 +60,11 @@ test('the admin finds AI settings in Settings', async ({ page }) => {
   await expect(page.getByRole('dialog')).toBeHidden()
 })
 
-test('an editor switches table rules on and writes house rules on the Rules page', async ({ page }) => {
+test('an editor switches table rules on and writes house rules on Table setup', async ({ page }) => {
   await signIn(page, 'eve')
-  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  await page.getByRole('link', { name: 'Table setup' }).click()
+  await expect(page).toHaveURL(/#\/table$/)
+  await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
   const gm = page.getByRole('region', { name: 'Table rules' })
   const haggles = gm.getByRole('switch', { name: 'Long haggles' })
   await expect(haggles).not.toBeChecked()
@@ -93,14 +95,19 @@ test('an editor switches table rules on and writes house rules on the Rules page
   await expect(gm.getByRole('switch', { name: 'Real SINs allowed' })).toBeChecked()
   await expect(gm.getByRole('switch', { name: 'Long haggles' })).toBeChecked()
   expect(readFileSync(join(dir, 'custom', 'table-rules.xml'), 'utf8')).toContain('<name>Quieter streets</name>')
-  await expect(page.getByRole('heading', { name: 'Rules reference' })).toBeVisible() // the quick reference stays below
+  await expect(page.getByRole('heading', { name: 'Rules reference' })).toHaveCount(0) // the quick reference is on Rules
+  await shots(page, 'table-setup-gm')
+  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Rules reference' })).toBeVisible()
+  await expect(gm).toHaveCount(0)
   await shots(page, 'rules-gm')
 })
 
 test('a player sees the rules switched on, read only; the Rules page isn’t theirs', async ({ page }) => {
   await signIn(page, 'pat')
   await expect(page.getByRole('link', { name: 'Rules', exact: true })).toHaveCount(0)
-  await page.getByRole('link', { name: 'Table rules' }).click()
+  await page.getByRole('link', { name: 'Table setup' }).click()
+  await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
   await expect(page.getByRole('listitem')).toHaveCount(4)
   await expect(page.getByRole('listitem').filter({ hasText: 'Long haggles' })).toContainText('TEST p.42')
@@ -110,7 +117,9 @@ test('a player sees the rules switched on, read only; the Rules page isn’t the
   await expect(page.getByText('Made-up house rule')).toHaveCount(0)
   await shots(page, 'table-rules-player')
   await page.goto('/#/rules')
-  await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
+  await page.goto('/#/table-rules') // the old link
+  await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rules reference' })).toHaveCount(0)
   const r = await page.request.put(`${base}api/table-rules`, { data: { rules: [] }, headers: { Origin: base.replace(/\/$/, '') } })
   expect(r.status()).toBe(403)
@@ -125,7 +134,7 @@ test('a player has no book-data export', async ({ page }) => {
 
 test('two quick switches both count: the second save waits for the first and builds on it', async ({ page }) => {
   await signIn(page, 'ada')
-  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  await page.getByRole('link', { name: 'Table setup' }).click()
   const gm = page.getByRole('region', { name: 'Table rules' })
   const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
   await expect(haggles).toBeChecked()
@@ -149,7 +158,7 @@ test('two quick switches both count: the second save waits for the first and bui
 
 test('the same switch twice during a slow save ends as the last click; a failed save’s error stays until dismissed', async ({ page }) => {
   await signIn(page, 'ada')
-  await page.getByRole('link', { name: 'Rules', exact: true }).click()
+  await page.getByRole('link', { name: 'Table setup' }).click()
   const gm = page.getByRole('region', { name: 'Table rules' })
   const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
   await expect(haggles).not.toBeChecked()

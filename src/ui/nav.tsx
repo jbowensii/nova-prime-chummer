@@ -14,25 +14,28 @@ import { SettingsButton } from './settings'
 export function MainMenu() {
   const me = useMe(), server = useRepo().mode === 'server'
   const [here, sub] = location.hash.replace(/^#\/?/, '').split('/')
-  if (here === 'sr6') return <Bar section={sub === 'rules' || sub === 'table-rules' ? canEdit(me) ? 'sr6/rules' : 'sr6/table-rules'
-    : (sub === 'books' && isAdmin(me)) || sub === 'data' || sub === 'campaigns' ? `sr6/${sub}`
+  if (here === 'sr6') return <Bar section={sub === 'table' || sub === 'table-rules' ? 'sr6/table'
+    : (sub === 'books' && isAdmin(me)) || sub === 'rules' || sub === 'data' || sub === 'campaigns' ? `sr6/${sub}`
     : (sub === 'npcs' || sub === 'n') && canEdit(me) ? 'sr6/npcs' : sub === 'compendiums' && canEdit(me) && server ? 'sr6/compendiums' : 'sr6'} sr6 items={[
     ['sr6', 'runners', 'Your runners', true],
     ['sr6/npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
     ['sr6/compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
     ['sr6/campaigns', 'campaigns', 'Campaigns', server],
     ['sr6/books', 'books', 'Books', isAdmin(me)],
-    canEdit(me) ? ['sr6/rules', 'rules', 'Rules', true] : ['sr6/table-rules', 'rules', 'Table rules', true],
+    ['sr6/table', 'table', 'Table setup', true],
+    ['sr6/rules', 'rules', 'Rules', true],
     ['sr6/data', 'data', 'Game data', true],
   ]} />
-  const section = here === 'c' ? '' : here === 'n' ? 'npcs' : here // a runner's or NPC's editor: its list
+  // a runner's or NPC's editor: its list; the old Table rules link and a player's #/rules: Table setup
+  const section = here === 'c' ? '' : here === 'n' ? 'npcs' : here === 'table-rules' || (here === 'rules' && !canEdit(me)) ? 'table' : here
   return <Bar section={section} items={[
     ['', 'runners', 'Your runners', true],
     ['npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
     ['compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
     ['campaigns', 'campaigns', 'Campaigns', server],
     ['books', 'books', 'Books', isAdmin(me)],
-    canEdit(me) ? ['rules', 'rules', 'Rules', true] : ['table-rules', 'rules', 'Table rules', true],
+    ['table', 'table', 'Table setup', true],
+    ['rules', 'rules', 'Rules', canEdit(me)],
     ['data', 'data', 'Game data', true],
   ]} />
 }

@@ -562,8 +562,8 @@ test('a point-buy runner: character points left, Review cites the rule; two tabs
   await b.close()
 })
 
-test('Ada, the admin, lowers the server’s skill cap on Rules: Pat’s runner shows it on Review', async ({ page }) => {
-  await signIn(page, '/#/sr6/rules', 'ada')
+test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s runner shows it on Review', async ({ page }) => {
+  await signIn(page, '/#/sr6/table', 'ada')
   await page.getByLabel('Highest skill rank', { exact: true }).fill('2')
   await page.getByRole('button', { name: 'Save creation rules' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
@@ -626,7 +626,7 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
   await pat.goto(kid)
   await pat.reload()
   await expect(karma).toContainText('left of 77')
-  await pat.goto('/#/sr6/table-rules')
+  await pat.goto('/#/sr6/table')
   await expect(pat.getByLabel('Starting karma', { exact: true })).toHaveValue('40')
   await expect(pat.getByRole('link', { name: 'Made-up Table' })).toBeVisible()
   await pat.goto(`/#/sr6/campaigns/${camp.id}`)

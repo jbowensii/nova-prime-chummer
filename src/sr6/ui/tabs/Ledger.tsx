@@ -91,7 +91,7 @@ export function LedgerTab() {
   return (
     <div className="stack sr6-ledger">
       <h2>Ledger</h2>
-      <p className="muted">Earnings add karma and nuyen; spends take them off at the table’s prices (Rules → Creation rules). The ledger only
+      <p className="muted">Earnings add karma and nuyen; spends take them off at the table’s prices (Table setup → Creation rules). The ledger only
         grows: a mistake is undone by voiding it, newest spend first.</p>
       <p className="sr6-balances"><span>Karma <b className={bal.karma < 0 ? 'err' : ''}>{n(bal.karma)}</b></span>
         <span>Nuyen <b className={bal.nuyen < 0 ? 'err' : ''}>{n(bal.nuyen)}¥</b></span></p>
