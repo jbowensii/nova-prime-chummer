@@ -1,5 +1,6 @@
-// Finalize and Back to draft (src/sr6/engine/finalize.ts) on the made-up fixture: finalize sets exactly finalizedAt and
-// the karma and nuyen left, refuses while an error isn't approved; back to draft clears exactly those two.
+// Finalize and Back to draft (src/sr6/engine/finalize.ts) on the made-up fixture: finalize sets exactly finalizedAt, the
+// karma and nuyen left and a finalize ledger entry, refuses while an error isn't approved; back to draft clears exactly
+// those two and notes it in the ledger (the career rules for it are in career.test.ts).
 import { expect, test } from 'vitest'
 import { allBudgets } from '../../src/sr6/engine/budgets'
 import { draftAgain, finalizeSr6 } from '../../src/sr6/engine/finalize'
@@ -18,12 +19,13 @@ function setup() {
   return { ch, data, cr, budgets, v: () => validateSr6(data, cr, ch) }
 }
 
-test('finalize sets finalizedAt and the karma and nuyen left, nothing else', () => {
+test('finalize sets finalizedAt, the karma and nuyen left and a finalize entry, nothing else', () => {
   const { ch, budgets } = setup()
   const b = budgets()
   const out = finalizeSr6(ch, b, [], NOW)
   expect(out).not.toBeNull()
-  expect(out).toEqual({ ...ch, finalizedAt: NOW, final: { karma: b.karma.left, nuyen: b.nuyen.left } })
+  const final = { karma: b.karma.left, nuyen: b.nuyen.left }
+  expect(out).toEqual({ ...ch, finalizedAt: NOW, final, ledger: [{ id: out!.ledger[0].id, at: NOW, type: 'finalize', ...final }] })
   expect(ch.finalizedAt).toBeUndefined()
 })
 
@@ -37,8 +39,10 @@ test('finalize refuses while an error isn’t approved; an approved one lets it 
   expect(finalizeSr6(ch, budgets(), v(), NOW)?.finalizedAt).toBe(NOW)
 })
 
-test('back to draft clears exactly finalizedAt and final', () => {
+test('back to draft clears exactly finalizedAt and final, and notes it', () => {
   const { ch, budgets } = setup()
   const done = finalizeSr6(ch, budgets(), [], NOW)!
-  expect(draftAgain(done)).toEqual(ch)
+  const back = draftAgain(done, NOW)!
+  expect({ ...back, ledger: [] }).toEqual(ch)
+  expect(back.ledger.map(e => e.type)).toEqual(['finalize', 'note'])
 })

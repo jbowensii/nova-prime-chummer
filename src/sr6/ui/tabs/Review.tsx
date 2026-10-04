@@ -28,7 +28,7 @@ export function ReviewTab() {
   }
   const revoke = (x: Violation) => update(c => { c.overrides = c.overrides.filter(o => !(o.code === x.code && o.path === x.path)) })
   const finalize = () => { const next = finalizeSr6(ch, budgets, v); if (next) replace(next); setAsking(null) }
-  const draft = () => { replace(draftAgain(ch)); setAsking(null) }
+  const draft = () => { const next = draftAgain(ch); if (next) replace(next); setAsking(null) }
 
   const dl = (rows: [string, string | number | null | undefined][]) => <dl className="sr6-derived">
     {rows.filter(([, x]) => x !== undefined).map(([k, x]) => <div key={k}><dt>{k}</dt><dd>{x === null ? '—' : typeof x === 'number' ? n(x) : x}</dd></div>)}</dl>
