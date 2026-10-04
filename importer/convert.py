@@ -94,28 +94,57 @@ def _in_table(w, table_boxes):
 def _cluster_lines(words):
     """Group words into visual rows by y-proximity only.
 
-    Anchored to the first word's top (SR6 layout: baseline) in the row (tolerant of small baseline
+    Anchored to the first word's top in the row (tolerant of small baseline
     jitter between regular and bold runs on one visual line). Rows are NOT
     split at wide word gaps here — justified text has those everywhere.
     Two columns sharing a row are split later, only at an accepted gutter.
+    The SR6 layout's words carry their baseline (`base`): see _baseline_rows.
     """
-    key = lambda w: w.get("base", w["top"])
-    words = sorted(words, key=key)
-    rows, cur, anchor, size = [], [], None, 0
+    if words and all("base" in w for w in words):
+        return _baseline_rows(words)
+    words = sorted(words, key=lambda w: w["top"])
+    rows, cur, anchor = [], [], None
     for w in words:
-        # by baseline (the SR6 layout's `base`), anchored to the row's biggest word: a label set smaller stays on its
-        # line, and so does a glyph under half the size of the text beside it (a small raised bullet)
-        tiny = "base" in w and anchor is not None and min(w["size"], size) < 0.5 * max(w["size"], size)
-        tol = max(_LINE_TOLERANCE, 0.5 * max(w["size"], size)) if tiny else _LINE_TOLERANCE
-        if anchor is not None and abs(key(w) - anchor) > tol:
+        if anchor is not None and abs(w["top"] - anchor) > _LINE_TOLERANCE:
             rows.append(cur)
             cur = []
             anchor = None
         cur.append(w)
-        if anchor is None or "base" in w and w["size"] > size:
-            anchor, size = key(w), w["size"]
+        if anchor is None:
+            anchor = w["top"]
     if cur:
         rows.append(cur)
+    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
+
+
+_TINY = 0.5  # x the page's median word size: a glyph smaller than this (a small raised bullet) joins a row beside it
+_TINY_REACH = 30  # pt; how far beside it
+
+
+def _baseline_rows(words):
+    """Rows by baseline, a word joining the row when its baseline is within _LINE_TOLERANCE of the previous one (a label
+    set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
+    glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
+    else it is a row of its own."""
+    med = statistics.median(w["size"] for w in words)
+    tiny = [w for w in words if w["size"] < _TINY * med]
+    rows, cur, last = [], [], None
+    for w in sorted((w for w in words if w["size"] >= _TINY * med), key=lambda w: w["base"]):
+        if last is not None and w["base"] - last > _LINE_TOLERANCE:
+            rows.append(cur)
+            cur = []
+        cur.append(w)
+        last = w["base"]
+    if cur:
+        rows.append(cur)
+    for t in tiny:
+        near = [(abs(w["base"] - t["base"]), i) for i, r in enumerate(rows) for w in r
+                if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2]
+        if near:
+            rows[min(near)[1]].append(t)
+        else:
+            rows.append([t])
+    rows.sort(key=lambda r: min(w["base"] for w in r))
     return [sorted(r, key=lambda w: w["x0"]) for r in rows]
 
 
