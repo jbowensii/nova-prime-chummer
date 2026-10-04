@@ -8,7 +8,7 @@ import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 
 /** A text box with suggestions that commits on Enter or leaving it ('' clears). */
-function Suggest({ value, label, options, onCommit }: { value: string; label: string; options: string[]; onCommit: (v: string | null) => void }) {
+export function Suggest({ value, label, options, onCommit }: { value: string; label: string; options: string[]; onCommit: (v: string | null) => void }) {
   const [v, setV] = useState(value), [was, setWas] = useState(value), list = `dl-${label.replace(/\W+/g, '-')}`
   if (value !== was) { setWas(value); setV(value) }
   const commit = () => { const t = v.trim(); if (t !== value) onCommit(t || null) }

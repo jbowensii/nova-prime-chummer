@@ -13,20 +13,30 @@ import type { Sr6Data } from '../engine/data'
 import { deriveSr6 } from '../engine/derive'
 import { makeProvider } from '../engine/providers'
 import { validateSr6 } from '../engine/rules'
-import type { Sr6Character } from '../model/character'
+import { MAGIC_KINDS } from '../engine/data'
+import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
 import { runAct, Sr6Editor, sr6EditHref, type Sr6Ctx } from './editor'
 import { exportSr6, sr6Repo } from './repo'
 import { AttributesTab } from './tabs/Attributes'
+import { AugmentationsTab } from './tabs/Augmentations'
 import { ConceptTab } from './tabs/Concept'
+import { ContactsTab } from './tabs/Contacts'
+import { GearTab } from './tabs/Gear'
+import { MagicTab } from './tabs/Magic'
 import { MethodTab } from './tabs/Method'
 import { QualitiesTab } from './tabs/Qualities'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
+import { VehiclesTab } from './tabs/Vehicles'
 
+/** Every tab; Magic only shows for an awakened or emerged runner, titled Resonance for a technomancer (sr6Tabs). */
 export const SR6_TABS: [string, string][] = [['concept', 'Concept'], ['method', 'Creation method'], ['attributes', 'Attributes'],
-  ['skills', 'Skills'], ['qualities', 'Qualities'], ['review', 'Review']]
+  ['skills', 'Skills'], ['qualities', 'Qualities'], ['magic', 'Magic'], ['augmentations', 'Augmentations'], ['gear', 'Gear'],
+  ['vehicles', 'Vehicles'], ['contacts', 'Contacts & lifestyle'], ['review', 'Review']]
+export const sr6Tabs = (magic: MagicKind): [string, string][] => SR6_TABS.filter(([k]) => k !== 'magic' || magic !== 'mundane')
+  .map(([k, l]) => [k, k === 'magic' && MAGIC_KINDS[magic].resonance ? 'Resonance' : l])
 
 export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string }) {
   const repo = useMemo(() => sr6Repo(), [])
@@ -48,7 +58,8 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
   if (!ch || !calc) return <main className="lib"><h1>Runner not found</h1><p>It may have been deleted on the server. {back}</p></main>
 
   const theirs = owner !== null, career = !!ch.finalizedAt
-  const shown = SR6_TABS.some(([k]) => k === tab) ? tab : 'concept'
+  const tabs = sr6Tabs(ch.build.magic)
+  const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
   const ro = theirs || (career && shown !== 'concept')
   const commit = (next: Sr6Character) => { setRefusal(null); save.commit(next, true) }
   const ctx: Sr6Ctx = {
@@ -88,7 +99,7 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
         </div>
       </header>
       <nav className="tabs" aria-label="Character sections">
-        {SR6_TABS.map(([k, label]) => (
+        {tabs.map(([k, label]) => (
           <a key={k} href={sr6EditHref(ch.id, k)} aria-current={shown === k ? 'page' : undefined}>
             {label}{k === 'review' && errors > 0 && <span className="badge err">{errors}</span>}
           </a>
@@ -98,13 +109,18 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
       {!theirs && career && shown !== 'concept' && <p className="banner readonly" role="status">Finalized: the build is read only. Career changes come with the ledger in a later update.</p>}
       {refusal && <p className="banner err" role="alert">{refusal}</p>}
       <div className="layout">
-        <div className="chapter-tab" aria-hidden>{SR6_TABS.find(([k]) => k === shown)?.[1]}</div>
+        <div className="chapter-tab" aria-hidden>{tabs.find(([k]) => k === shown)?.[1]}</div>
         <main className="work"><fieldset className="bare" disabled={ro}>
           {shown === 'concept' && <ConceptTab />}
           {shown === 'method' && <MethodTab />}
           {shown === 'attributes' && <AttributesTab />}
           {shown === 'skills' && <SkillsTab />}
           {shown === 'qualities' && <QualitiesTab />}
+          {shown === 'magic' && <MagicTab />}
+          {shown === 'augmentations' && <AugmentationsTab />}
+          {shown === 'gear' && <GearTab />}
+          {shown === 'vehicles' && <VehiclesTab />}
+          {shown === 'contacts' && <ContactsTab />}
           {shown === 'review' && <ReviewTab />}
         </fieldset></main>
         <Budgets />
