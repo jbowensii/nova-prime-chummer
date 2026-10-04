@@ -721,3 +721,22 @@ table.data tr.group td { background: none !important; font-family: var(--display
 .sr6-npc-lines dt { flex: 0 0 9.5rem; font-weight: 600; }
 .sr6-npc-lines dd { margin: 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sr6-npc-edit input { width: 100%; min-width: 7rem; }
+
+/* SR6 contacts (sr6/ui/tabs/Contacts.tsx): a table while it fits, one card per contact when its box is narrow; never a
+   sideways scroll */
+.contacts-wrap { container-type: inline-size; }
+table.contacts input { width: 100%; min-width: 6rem; }
+table.contacts .types { display: flex; gap: 0.35rem; }
+table.contacts td.end { text-align: right; }
+@container (max-width: 760px) {
+  table.contacts thead { display: none; }
+  table.contacts, table.contacts tbody { display: block; }
+  table.contacts tr { display: flex; flex-wrap: wrap; align-items: end; gap: 0.4rem 0.8rem; padding: 0.5rem 0.45rem; border-bottom: 1px solid var(--rule); }
+  table.contacts tbody tr:nth-child(even) { background: var(--zebra); }
+  table.contacts td { display: block; padding: 0; border: 0; background: none !important; }
+  table.contacts td:nth-child(-n+2) { flex: 1 1 12rem; }
+  table.contacts td[data-label]::before { content: attr(data-label); display: block; font-size: 0.75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-2); margin-bottom: 0.15rem; }
+  table.contacts .types { flex-wrap: wrap; }
+  table.contacts td.end { margin-left: auto; }
+}

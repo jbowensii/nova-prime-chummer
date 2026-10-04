@@ -97,6 +97,23 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await expect(budgets.locator('details', { hasText: 'Karma' }).locator('summary')).toContainText('31left of 40')  // Glimmerkin 7, the rating 2
   await page.screenshot({ path: `${SHOTS}/contacts.png`, fullPage: true })
 
+  // the contacts table fits: both type selects side by side, Remove inside the box, no sideways scroll (desktop to phone)
+  for (const width of [1400, 1024, 375]) {
+    await page.setViewportSize({ width, height: 900 })
+    const wrap = work.locator('.contacts-wrap')
+    const fits = await wrap.evaluate(el => el.scrollWidth <= el.clientWidth && document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+    expect(fits, `no sideways scroll at ${width}px`).toBe(true)
+    const box = (await wrap.boundingBox())!
+    for (const name of ['Remove Contact 1', 'Remove Contact 2']) {
+      const b = (await page.getByRole('button', { name }).boundingBox())!
+      expect(b.x + b.width, `${name} inside at ${width}px`).toBeLessThanOrEqual(box.x + box.width + 0.5)
+    }
+    const [t1, t2] = [(await page.getByLabel('Contact 1 type 1').boundingBox())!, (await page.getByLabel('Contact 1 type 2').boundingBox())!]
+    if (width > 400) expect(Math.abs(t1.y - t2.y), `type selects side by side at ${width}px`).toBeLessThan(2)
+    await page.screenshot({ path: `${SHOTS}/contacts-${width}.png`, fullPage: true })
+  }
+  await page.setViewportSize({ width: 1400, height: 900 })
+
   // Review: none of the lifepath rules is broken; the file keeps it all
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()

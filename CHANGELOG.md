@@ -20,6 +20,10 @@
 - **Better reading of some PDFs.** Books whose text columns sit very close together, or whose bullets are set small and
   raised, no longer come out with the two columns mixed. Re-importing the core rulebook gives the same entries.
 
+- **The Contacts table fits the page.** With lifepath's contact types, the two type boxes no longer pile up in their
+  cell, push **Remove** out of sight or make the table scroll sideways: they sit side by side, and where the page is
+  narrow (a phone, or a small window next to the build panel) each contact shows as a small card with its fields labelled.
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow
