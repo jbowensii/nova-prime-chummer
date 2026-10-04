@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.8.4 — 2026-10-04: Server fixes
+
+- A malformed save could stall the server: a runner or NPC file whose first tag never ends (a broken or hostile
+  upload) took the server seconds to minutes to refuse, and nothing else was answered meanwhile. Any signed-in
+  account could send one. Such a file is now refused at once.
+- Stopping the server now stops book imports properly: an import step that ended just as the server stopped, or the
+  next book in the queue, no longer starts anyway.
+- A test that sometimes failed on a busy machine (the data pack start-up check waited a fixed 300 ms) now waits for
+  what it expects.
+
 ## 0.8.3 — 2026-10-02: Duplicates by name, left-aligned icons, print fixes
 
 **Find duplicates**

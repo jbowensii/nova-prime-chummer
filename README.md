@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.8.3 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.8.4 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.

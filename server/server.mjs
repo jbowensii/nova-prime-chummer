@@ -41,7 +41,7 @@ import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
-import { booksApi, unesc, writeAtomic } from './books.mjs'
+import { booksApi, rootTag, unesc, writeAtomic } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
 import { compendiumsApi } from './compendiums.mjs'
 import { oidcApi } from './oidc.mjs'
@@ -51,9 +51,15 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const MAX_BODY = 5 * 1024 * 1024
 const ID = /^[A-Za-z0-9._-]{1,80}$/
 const TRASH_FILE = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,150}\.xml$/ // a file in .trash/: no separators, no leading dot
-const NS = /<ca2:character\b[^>]*xmlns:ca2="urn:chummer-anarchy2:character:1"/
+// the root tag by rootTag (linear on a body whose root never closes: a pattern tried at every later <ca2:character in the
+// body scanned to its end each time, quadratic; ~1 MB held the server for tens of seconds)
+const charRoot = xml => rootTag(xml, 'ca2:character')
+const isChar = xml => charRoot(xml)?.includes('xmlns:ca2="urn:chummer-anarchy2:character:1"') ?? false
+/** An <npc> block first in the root (a closed root: the well-formed check passed). */
+const isNpc = xml => { const r = charRoot(xml); return /^\s*<npc[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length)) }
 
-const rootAttr = (xml, name) => xml.match(new RegExp(`<ca2:character\\b[^>]*\\s${name}="([^"]*)"`))?.[1]
+// the root's attribute, still escaped
+const rootAttr = (xml, name) => charRoot(xml)?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]
 const slug = s => (s || '').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'runner'
 const fail = (code, message) => Object.assign(new Error(message), { code })
 // on every response. The built app loads only its own scripts, styles and fonts; inline style attributes (React) and
@@ -246,15 +252,15 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
     if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
     const xml = req.method === 'PUT' ? await readBody(req) : null
-    if (xml != null && (!NS.test(xml) || rootAttr(xml, 'id') !== id))
+    if (xml != null && (!isChar(xml) || rootAttr(xml, 'id') !== id))
       return send(res, 400, { error: 'body is not a character file for this id' })
     // the root's attributes as the app writes them (double-quoted, < and > escaped): the server edits that tag (rev, campaign)
-    if (xml != null && !/^<ca2:character(?:\s+[\w:.-]+="[^"<>]*")*\s*>$/.test(xml.match(/<ca2:character\b[^>]*>/)[0]))
+    if (xml != null && !/^<ca2:character(?:\s+[\w:.-]+="[^"<>]*")*\s*>$/.test(charRoot(xml)))
       return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
-    if (xml != null && kind.npc && !/<ca2:character\b[^>]*>\s*<npc[\s/>]/.test(xml))
+    if (xml != null && kind.npc && !isNpc(xml))
       return send(res, 400, { error: 'an NPC file has an <npc> block' })
     // and the other way: an NPC never lands in a runner folder, which players' paths list
-    if (xml != null && !kind.npc && /<ca2:character\b[^>]*>\s*<npc[\s/>]/.test(xml))
+    if (xml != null && !kind.npc && isNpc(xml))
       return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
     return lock(async () => {
       // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
@@ -341,7 +347,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (!inside(path, dir) || !(await lstat(path).catch(() => null))?.isFile()) return send(res, 404, { error: `no such ${kind.noun} in the trash` })
       if (req.method === 'DELETE') { await unlink(path); res.writeHead(204).end(); return }
       const xml = await readFile(path, 'utf8')
-      if (!NS.test(xml)) return send(res, 400, { error: `this file isn’t a${kind.npc ? 'n' : ''} ${kind.noun}, so it can’t be restored` })
+      if (!isChar(xml)) return send(res, 400, { error: `this file isn’t a${kind.npc ? 'n' : ''} ${kind.noun}, so it can’t be restored` })
       let id = rootAttr(xml, 'id') ?? ''
       let taken = !ID.test(id)
       for (const u of auth.usernames()) if (!taken && (await index(kind.folder(u))).some(c => c.id === id)) taken = true
