@@ -78,7 +78,8 @@ export function npcPools(npc: Sr6Npc, data: Pick<Sr6Data, 'skills'>): { name: st
   const bare = NPC_KINDS[npc.kind].rating?.letter ? npc.rating ?? null : null
   return (npc.lines.find(l => l.part === 'skills')?.text ?? '').split(',').map(p => p.trim()).filter(Boolean).map(printed => {
     // the regex backtracks quadratically on a long run of spaces: a skill longer than 100 characters is printed as it is
-    const m = printed.length <= 100 ? printed.match(/^(.*?)\s+(\d+)$/) : null
+    // `Name N`, the book's `Name N(A)` (augmented) and `Name N (Specialization +2)`: the rank is N
+    const m = printed.length <= 100 ? printed.match(/^(.*?)\s+(\d+)(?:\s*\(\d+\))?(?:\s*\([^()]*\))*$/) : null
     const name = m ? m[1] : printed, rating = m ? Number(m[2]) : bare
     const skill = byName.get(normName(name))
     if (!skill) return { name, rating, printed }

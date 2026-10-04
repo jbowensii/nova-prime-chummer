@@ -79,6 +79,11 @@ test('pools: "Name N" or a bare name (a spirit’s at its Force), resolved by na
   expect(npcPools({ ...beast.npc!, lines: [{ part: 'skills', text: 'Tinkering' }] }, data)).toEqual([{ name: 'Tinkering', rating: null, attr: 'log', printed: 'Tinkering' }])
 })
 
+test('pools: a skill printed with its augmented rank or a specialization bonus keeps its rank', () => {
+  const npc = { kind: 'grunt' as const, stats: { cha: '4', log: '3' }, lines: [{ part: 'skills' as const, text: 'Gab 5 (Haggling +2), Tinkering 2(3)' }] }
+  expect(npcPools(npc, data).map(p => [p.name, p.rating, p.pool])).toEqual([['Gab', 5, 9], ['Tinkering', 2, 5]])
+})
+
 test('a stat the evaluator can’t read is shown as printed and not ok; its pool is left out', () => {
   const s = npcFromEntry(entry('spirits', 'crb.spirit-of-drafts'), 4, NOW)
   s.npc!.stats.mag = 'F+?'
