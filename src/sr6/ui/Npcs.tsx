@@ -3,11 +3,12 @@
 // a catalog grunt, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the catalog's
 // npcs entries not loaded yet; Import file takes SR6 NPC files only; a GM shares one with an SR6 campaign they run; Move to
 // compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn).
-// Left out (R): Foundry export (F1), the duplicates finder.
+// Export for Foundry: the header's dialog and each row's button (Foundry.tsx). Left out (R): the duplicates finder.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, savesSettled, send, useMe } from '../../ui/auth'
 import { Modal } from '../../ui/bits'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
+import { ExportRunnersDialog } from '../../ui/Foundry'
 import { IconButton, IconLink } from '../../ui/icons'
 import { arrange, ownerGroups, type SortBy } from '../../ui/Library'
 import { PageHeader } from '../../ui/nav'
@@ -15,11 +16,14 @@ import { Face } from '../../ui/Portrait'
 import type { Stored as StoredComp } from '../../ui/compendiumStore'
 import type { Stored, Unreadable } from '../../ui/repo'
 import { loadTrash } from '../../ui/Trash'
+import type { CreationRules } from '../engine/creation'
+import type { Sr6Data } from '../engine/data'
 import { blankSr6Npc, bookNpcKey, NPC_KINDS, npcFromEntry } from '../engine/npc'
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry } from '../model/types'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows } from './compendiumStore'
 import { sr6NpcHref } from './editor'
+import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
 import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
 
 const SORT_KEY = 'ca2.sr6.npcs.sort'
@@ -45,7 +49,7 @@ export function npcChip(npc: Sr6Npc): string {
   return npc.rating != null && short ? `${k.label} ${short} ${npc.rating}` : k.label
 }
 
-export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
+export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules }) {
   const repo = useMemo(() => sr6NpcRepo(), [])
   const me = useMe()
   const [list, setList] = useState<Stored<Sr6Character>[] | null>(null)
@@ -66,6 +70,7 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
   const [comps, setComps] = useState<StoredComp<Sr6Compendium>[]>([]) // yours, where an NPC can move
   const [moving, setMoving] = useState<Sr6Character | null>(null)
   const [into, setInto] = useState('')
+  const [foundry, setFoundry] = useState(false)
   const file = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
@@ -165,6 +170,7 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
         {!mineToo && <a className="btn small" href={sr6NpcHref(ch.id, 'print')} aria-label={`Print ${nameOf(ch)}`}>Print</a>}
         <button className="btn small" aria-label={`Export ${nameOf(ch)}`}
           onClick={async () => { const out = exportSr6(c, ch); if (mineToo) { await store(out, rev); void refresh() } }}>Export</button>
+        <button className="btn small quiet" aria-label={`Export ${nameOf(ch)} for Foundry`} onClick={() => downloadSr6Runners(c, data, cr, [ch])}>Export for Foundry</button>
         {mineToo && (ch.campaign
           ? <button className="btn small quiet" aria-label={`Unshare ${nameOf(ch)}`} onClick={() => void share(ch, null)}>Unshare</button>
           : gmOf.length > 0 && <button className="btn small quiet" aria-label={`Share ${nameOf(ch)}…`} onClick={() => { setTarget(gmOf[0].id); setSharing(ch) }}>Share with campaign…</button>)}
@@ -188,6 +194,7 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
         <IconButton className="primary" icon="npc-add" label="New NPC" onClick={openNew} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
         <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} />
+        <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         <input ref={file} type="file" accept=".xml,application/xml" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/sr6/npcs/trash" badge={trashed || undefined} />}
       </PageHeader>
@@ -254,6 +261,9 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
             setToDelete(null); void refresh() }}>Delete NPC</button></>}>
         <p>It moves to your Shadowrun 6 NPC trash, where you can restore it or delete it for good.</p>
       </Modal>
+
+      <ExportRunnersDialog runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC"
+        download={chs => downloadSr6Runners(c, data, cr, chs)} about={SR6_FOUNDRY_ABOUT} />
     </main>
   )
 }

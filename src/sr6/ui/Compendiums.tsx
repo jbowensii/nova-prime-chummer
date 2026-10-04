@@ -9,12 +9,16 @@ import { because } from '../../ui/auth'
 import { Modal } from '../../ui/bits'
 import { CompendiumShell, CopyButton, CopyDialog, Entries, entries, sharingOf, type BookProps, type CompGame, type PageProps, type ShellRow } from '../../ui/CompendiumShell'
 import { deleteCompendium } from '../../ui/compendiumStore'
+import { IconButton } from '../../ui/icons'
 import { PageHeader } from '../../ui/nav'
 import { blankSr6Entry, COMP_KINDS, copySr6Entry, entryProblem, newEntryId } from '../engine/compendium'
+import type { CreationRules } from '../engine/creation'
+import type { Sr6Data } from '../engine/data'
 import type { Sr6Character } from '../model/character'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../model/types'
 import { listSr6Compendiums, moveNpcOut, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
 import { Sr6EntryFields } from './EditEntry'
+import { downloadSr6Compendium } from './Foundry'
 import { npcChip } from './Npcs'
 import { sr6NpcRepo } from './repo'
 
@@ -44,7 +48,7 @@ export function sr6Rows(list: Sr6Entry[], npcs: Sr6Character[]): Map<string, Sr6
 const Cite = ({ c, source, page }: { c: Sr6Catalog; source: string; page: number }) =>
   <span className="srcline"><span className="src">{source} p.{page}</span>{c.sources.get(source)?.origin === 'user' && <span className="noncanon">House</span>}</span>
 
-export function Sr6Compendiums({ c, id, edit, reload }: { c: Sr6Catalog; id?: string; edit?: string; reload: () => Promise<void> }) {
+export function Sr6Compendiums({ c, data, cr, id, edit, reload }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id?: string; edit?: string; reload: () => Promise<void> }) {
   const g = useMemo((): CompGame<Sr6Compendium> => ({
     game: 'sr6', href: '#/sr6/compendiums',
     intro: 'Your own Shadowrun 6 entries and NPCs, in collections you can share with an SR6 campaign’s GMs or the whole table. Their entries are house content and show in your SR6 pickers and Game data. Books are listed as read-only compendiums.',
@@ -59,7 +63,7 @@ export function Sr6Compendiums({ c, id, edit, reload }: { c: Sr6Catalog; id?: st
     cite: (source, page) => <Cite c={c} source={source} page={page} />,
   }), [c])
   return <CompendiumShell g={g} id={id} reload={reload}
-    page={p => <CompendiumPage key={p.comp.id} c={c} g={g} {...p} edit={edit} />}
+    page={p => <CompendiumPage key={p.comp.id} c={c} data={data} cr={cr} g={g} {...p} edit={edit} />}
     book={p => <BookPage c={c} g={g} {...p} />} />
 }
 
@@ -73,7 +77,8 @@ function useToast() {
   return [msg, setMsg] as const
 }
 
-function CompendiumPage({ c, g, comp, own, campaigns, changed, edit, targets }: PageProps<Sr6Compendium> & { c: Sr6Catalog; g: CompGame<Sr6Compendium>; edit?: string }) {
+function CompendiumPage({ c, data, cr, g, comp, own, campaigns, changed, edit, targets }: PageProps<Sr6Compendium> & { c: Sr6Catalog; data: Sr6Data; cr: CreationRules
+  g: CompGame<Sr6Compendium>; edit?: string }) {
   const [q, setQ] = useState('')
   const [copying, setCopying] = useState<Sr6Row | null>(null)
   const [form, setForm] = useState<{ entry?: Sr6Entry } | null>(() => { const e = own && comp.entries.find(x => x.id === edit); return e ? { entry: e } : null })
@@ -100,7 +105,7 @@ function CompendiumPage({ c, g, comp, own, campaigns, changed, edit, targets }: 
 
   return (
     <main className="lib">
-      <PageHeader title={comp.name} />
+      <PageHeader title={comp.name}><IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadSr6Compendium(c, data, cr, comp)} /></PageHeader>
       <p className="muted">Source {comp.source} · {own ? 'yours' : `${comp.ownerName}’s, read only`} · {sharing} · {entries(g.count(comp))}{comp.npcs.length ? `, ${comp.npcs.length} NPC${comp.npcs.length === 1 ? '' : 's'}` : ''}</p>
       {own && <div className="row"><button className="btn" onClick={() => setForm({})}>Add entry</button></div>}
       <div className="row listtools"><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search entries" /></div>

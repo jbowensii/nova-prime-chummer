@@ -45,13 +45,13 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     : page === 'users' ? <UsersScreen game="sr6" />
     : page === 'trash' ? <TrashScreen game="sr6" user={route[1]} />
     : page === 'npcs' && route[1] === 'trash' ? <TrashScreen game="sr6" npcs user={route[2]} />
-    : page === 'rules' || page === 'data' ? (c ? page === 'rules' ? <Sr6Rules c={c} /> : <Sr6Data c={c} reload={refresh} cr={cr} reloadCreation={refreshCreation} />
+    : page === 'rules' || page === 'data' ? (c && data ? page === 'rules' ? <Sr6Rules c={c} /> : <Sr6Data c={c} data={data!} reload={refresh} cr={cr} reloadCreation={refreshCreation} />
       : <main className="lib"><PageHeader title={page === 'rules' ? 'Rules' : 'Game data'} />{!failed && <p className="muted">Loading game data…</p>}</main>)
-    : page === 'compendiums' ? c ? <Sr6Compendiums c={c} id={route[1]} edit={route[2]} reload={refresh} />
+    : page === 'compendiums' ? c && data ? <Sr6Compendiums c={c} data={data} cr={cr.rules} id={route[1]} edit={route[2]} reload={refresh} />
       : <main className="lib"><PageHeader title="Compendiums" />{!failed && <p className="muted">Loading game data…</p>}</main>
     : page === 'campaigns' && repo.mode === 'server' ? route[1] ? <CampaignScreen key={route[1]} game="sr6" id={route[1]} label={() => ''} /> : <CampaignsScreen game="sr6" />
     : repo.mode !== 'server' ? <main className="lib"><PageHeader title="Your runners" /><div className="empty"><p>Shadowrun 6 runners need the Chummer server.</p></div></main>
-    : c && data ? page === 'npcs' ? <Sr6Npcs c={c} />
+    : c && data ? page === 'npcs' ? <Sr6Npcs c={c} data={data} cr={cr.rules} />
       : page === 'n' && route[1] ? <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       : page === 'c' && route[1] ? <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} />
       : <Sr6Runners c={c} data={data} cr={cr.rules} />

@@ -250,7 +250,7 @@ export function NpcsScreen({ c }: { c: Catalog }) {
         <p className="muted" style={{ marginTop: '0.8rem' }}>They leave your NPCs (to the NPC trash) and any campaign they’re shared with. Move one back out on the compendium’s page to edit it.</p>
       </Modal>
 
-      <ExportRunnersDialog c={c} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC" />
+      <ExportRunnersDialog download={chs => downloadRunners(c, chs)} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC" />
     </main>
   )
 }

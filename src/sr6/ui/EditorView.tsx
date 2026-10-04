@@ -23,6 +23,7 @@ import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
 import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
+import { downloadSr6Runners } from './Foundry'
 import { exportSr6, sr6NpcRepo, sr6Repo } from './repo'
 import { AttributesTab } from './tabs/Attributes'
 import { AugmentationsTab } from './tabs/Augmentations'
@@ -123,6 +124,7 @@ export function Sr6EditorView({ c, data, cr, id, tab, npc = false }: { c: Sr6Cat
               <IconButton icon="redo" label="Redo" disabled={!ctx.canRedo} onClick={ctx.redo} />
             </>}
             <IconButton icon="download" label="Export file" onClick={() => theirs ? exportSr6(c, ch) : setDoc(exportSr6(c, ch))} />
+            <IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadSr6Runners(c, data, cr, [ch])} />
           </div>
           <MainMenu />
         </div>

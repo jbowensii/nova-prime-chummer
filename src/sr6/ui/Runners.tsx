@@ -15,10 +15,12 @@ import type { Stored, Unreadable } from '../../ui/repo'
 import { loadTrash } from '../../ui/Trash'
 import { expandKeys, missingFor, type CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
+import { ExportRunnersDialog } from '../../ui/Foundry'
 import { validateSr6 } from '../engine/rules'
 import { blankSr6, SR6_METHOD_LABELS, SR6_METHODS, type Sr6Character, type Sr6Method } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { SR6_FINAL_TIP } from './editor'
+import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
 import { exportSr6, readSr6Import, repairSr6, sr6Repo } from './repo'
 
 const SORT_KEY = 'ca2.sr6.library.sort'
@@ -51,6 +53,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [joining, setJoining] = useState<Sr6Character | null>(null)
   const [target, setTarget] = useState('')
+  const [foundry, setFoundry] = useState(false)
   const [repairing, setRepairing] = useState<{ u: Unreadable; ch: Sr6Character; changes: string[] } | null>(null)
   const file = useRef<HTMLInputElement>(null)
 
@@ -164,6 +167,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
       <PageHeader title="Your runners">
         <IconButton className="primary" icon="runner-add" label="New runner" onClick={openNew} disabled={banner === LEGACY} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} disabled={banner === LEGACY} />
+        <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         <input ref={file} type="file" accept=".xml,application/xml" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/sr6/trash" badge={trashed || undefined} />}
       </PageHeader>
@@ -230,6 +234,9 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
             setToDelete(null); void refresh() }}>Delete runner</button></>}>
         <p>It moves to your Shadowrun 6 trash, where you can restore it or delete it for good.</p>
       </Modal>
+
+      <ExportRunnersDialog runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)}
+        download={chs => downloadSr6Runners(c, data, cr, chs)} about={SR6_FOUNDRY_ABOUT} />
     </main>
   )
 }

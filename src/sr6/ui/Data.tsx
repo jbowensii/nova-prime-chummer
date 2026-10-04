@@ -8,9 +8,11 @@ import { EditedMark, STATE_TEXT } from '../../ui/EditEntry'
 import { PageHeader } from '../../ui/nav'
 import { useRepo } from '../../ui/repo'
 import { CREATION_GROUPS, expandKeys, type CreationRules } from '../engine/creation'
+import type { Sr6Data as Sr6DataView } from '../engine/data'
 import { entryKey } from '../engine/load'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import { Sr6EditEntry } from './EditEntry'
+import { Sr6ExportBooksPanel } from './Foundry'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
 const LIMIT = 200 // rows the browser shows before "Show all" (a real book's gear or rules run to hundreds)
@@ -19,7 +21,7 @@ const details = (e: Sr6Entry) => Object.entries(e.attrs).map(([k, v]) => `${k} $
 
 type Loaded = { rules: CreationRules; errors: string[] }
 
-export function Sr6Data({ c, reload, cr, reloadCreation }: { c: Sr6Catalog; reload: () => Promise<void>; cr: Loaded; reloadCreation: () => Promise<void> }) {
+export function Sr6Data({ c, data, reload, cr, reloadCreation }: { c: Sr6Catalog; data: Sr6DataView; reload: () => Promise<void>; cr: Loaded; reloadCreation: () => Promise<void> }) {
   const me = useMe(), server = useRepo().mode === 'server'
   const editor = canEdit(me) && server
   const all = KINDS.flatMap(k => [...c.entries[k].values()])
@@ -56,6 +58,7 @@ ${t}`
             <td>{s.compendium ? 'its own' : !s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/sr6/${s.texts}`) ? 'installed' : <span className="muted">not installed</span>}</td>
             <td>{s.file}</td><td className="hash" title={s.sha256}>{s.sha256 && `${s.sha256.slice(0, 12)}…`}</td></tr>
         ))}</tbody></table></div>
+      {canEdit(me) && <Sr6ExportBooksPanel c={c} data={data} />}
 
       <h2 style={{ marginTop: '1.5rem' }}>Entries per kind</h2>
       <div className="scroll-x"><table className="data sr6-kinds"><thead><tr><th>Kind</th><th className="num">Entries</th></tr></thead>

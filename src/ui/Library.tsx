@@ -12,7 +12,7 @@ import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
 import { bookSamples, chooseExamples, extraCopies, keyOf, sameRunners, readCharacterFile, readSample, type Example, type Sources } from './samples'
 import { Face } from './Portrait'
-import { ExportRunnersDialog } from './Foundry'
+import { downloadRunners, ExportRunnersDialog } from './Foundry'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
@@ -435,7 +435,7 @@ export function Library({ c }: { c: Catalog }) {
           : 'This removes the runner from this browser. Exported files are not affected.'}</p>
       </Modal>
 
-      <ExportRunnersDialog c={c} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} />
+      <ExportRunnersDialog download={chs => downloadRunners(c, chs)} runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} />
     </main>
   )
 }
