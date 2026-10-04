@@ -11,7 +11,7 @@ from pathlib import Path
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
 from importer.sr6 import NS, regroup
-from importer.sr6.recipes import identify
+from importer.sr6.recipes import RECIPES, identify
 
 
 def sr6_root():
@@ -26,7 +26,10 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
     try:
         xmlio.write_status(book_dir, "converting")
         if convert_pdf:
-            meta = convert(pdf, md_path, sr6=True)
+            # a printing a recipe knows by its fingerprint may come with its heading sizes (the guess can miss them)
+            sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest()
+            levels = next((r.HEADING_LEVELS for r in RECIPES if sha in r.SHA256 and hasattr(r, "HEADING_LEVELS")), None)
+            meta = convert(pdf, md_path, sr6=True, levels=levels)
         else:
             sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest() if os.path.exists(pdf) else ""
             meta = {"converter": SR6_CONVERTER_VERSION, "sha256": sha, "title": ""}

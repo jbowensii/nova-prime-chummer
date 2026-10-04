@@ -565,6 +565,16 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertIs(identify({"sha256": "x"}, BOOK_MD[:4000])[0], crb)
         self.assertIsNone(identify({"sha256": "x"}, "# Some Other Game")[0])
 
+    def test_city_editions_known_by_fingerprint_with_their_heading_sizes(self):
+        for sha in crb.SHA256[1:]:  # their first pages name no core rulebook
+            self.assertIs(identify({"sha256": sha}, "CITY EDITION")[0], crb)
+        self.assertEqual(sorted(crb.HEADING_LEVELS.values()), [1, 2, 3, 4, 5])
+
+    def test_footnote_mark_left_out_of_a_name(self):
+        cat = crb._Catalog()
+        self.assertEqual(cat.add("weapons", "Zap Whip*", 1)["name"], "Zap Whip")
+        self.assertEqual(cat.add("rules", "Glow Up * cannot be bought", 1)["name"], "Glow Up")
+
     def test_committed_aliases(self):
         self.assertGreaterEqual(len(crb.ALIASES), 39)
         self.assertTrue(all(k == regroup.norm(k) and v == regroup.norm(v) for k, v in crb.ALIASES.items()))

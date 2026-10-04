@@ -99,6 +99,18 @@ class Sr6LayoutTest(unittest.TestCase):
     def test_small_label_and_tiny_raised_glyph_stay_on_their_line(self):
         self.assertIn("• **Points:** 2", self.lines)
 
+    def test_heading_levels_given_by_a_recipe(self):
+        d = tempfile.mkdtemp()
+        pdf, md = os.path.join(d, "sr6.pdf"), os.path.join(d, "sr6.md")
+        with open(pdf, "wb") as f:
+            f.write(sr6_layout_pdf())
+        convert(pdf, md, sr6=True, levels={21.0: 1, 15.0: 2})
+        with open(md, encoding="utf8") as f:
+            lines = f.read().splitlines()
+        self.assertIn("# Gadget Shop", lines)
+        self.assertIn("## Shop Rules", lines)
+        self.assertNotIn("# GADGETS", lines)
+
     def test_anarchy_mode_unchanged(self):
         _, lines = _convert(sr6=False)
         self.assertNotIn("| GADGET | DV | COST |", lines)  # no header-band tables

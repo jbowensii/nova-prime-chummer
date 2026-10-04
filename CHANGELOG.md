@@ -30,6 +30,10 @@
   ("Arrow", "Kill") stay. Words broken after an "fi", "fl" or "ff" ("fi rst", "offi ce") are joined again where the
   result is a word; "off the" stays two words. The core rulebook imports exactly as before.
 
+- **The core rulebook's City Editions import** (Hong Kong, the latest printing, and Seattle and Berlin): the importer
+  recognises them and reads them as it reads the 2019 printing, with their updated values. Their extra city chapter
+  isn't imported. Names no longer keep a footnote mark ("Flash-pak*").
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow

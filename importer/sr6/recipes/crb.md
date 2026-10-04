@@ -1,13 +1,19 @@
 # SR6 core rulebook (CRB): layout survey
 
-Structure only, no book text. The owner's PDF (current printing, SHA-256 in `crb.py`): 322 pages, 612 × 765 pt.
-Printed page = PDF page − 1 (`PAGE_OFFSET`).
+Structure only, no book text. The owner's PDFs (SHA-256s in `crb.py`): the 2019 printing, 322 pages, 612 × 765 pt, and
+the City Editions (Hong Kong, the latest printing, 2025; Seattle; Berlin), 342–349 pages: the same pages 1–321 (some
+values and names updated), then a chapter on the city and fiction after the index, which `END_PAGE` leaves out. Their
+first pages name no core rulebook and carry no title, so they are known by fingerprint only. Printed page = PDF page − 1
+(`PAGE_OFFSET`) in all of them. The real-book check runs on the Hong Kong edition (the owner's rule: the latest
+printing).
 
 ## Fonts (converter sr6 layout, Task 2)
 
 - Body: a serif family at 10.5 pt; bold run-in labels (`Cost:`, `Game Effect:`) in its bold face.
 - Headings: one display family at 60 (chapter, level 1), 21 (section, 2), 15 (subsection, 3), 13 (item, 4) and 9
-  (box titles, spell and matrix-action tag lines, 5).
+  (box titles, spell and matrix-action tag lines, 5). The Hong Kong and Berlin chapters set a 27 pt title on enough
+  pages for the converter to take it for a level (dropping 9 pt), so the recipe gives the sizes (`HEADING_LEVELS`) for
+  the printings it knows.
 - Tables: a 7 pt sans family; header row in its black weight, rows regular, stat-box labels bold ending in `:`.
 - Table titles, some box titles and art captions: the display family in lower case.
 - Margin tab letters at the outer edge, running heads and page numbers at the edge or in the bottom 35 pt: dropped.
@@ -48,7 +54,7 @@ Printed page = PDF page − 1 (`PAGE_OFFSET`).
 
 ## Real-book check (local, nothing committed)
 
-    python -m importer sr6 check "<the core rulebook PDF>" --out "%TEMP%\sr6-check"
+    python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"
 
 It recreates `<out>/library/sr6/book1/` (a copy of the PDF) and `<out>/custom/sr6/`, runs the full import (convert,
 identify, regroup, extract, write) and prints: the wall time; the status; recipe, source, pages, converter and match
