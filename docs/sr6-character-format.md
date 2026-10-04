@@ -54,8 +54,12 @@ see NPCs below.
   free text; `drainAttr` is `log`, `int` or `cha`.
 - Spends are counts: attribute `points` (from the attribute pool), `adjust` (adjustment points) and `karma` (ranks bought
   with karma); a skill's `points` and `karma` likewise. A missing number reads as 0.
-- `<lifemodule>`: an adult life module taken (lifepath); each `<choice>` is the option picked for the module's mixed choice
-  at that index: an attribute abbreviation, `skill:<id>` or `nuyen:<n>`.
+- `<lifemodule>`: an adult life module taken (lifepath; the same one twice when the table allows it, each copy with its
+  own choices); each `<choice>` is the option picked for the module's mixed choice at that index: an attribute
+  abbreviation, `skill:<id>` or `nuyen:<n>`. `bestAttr` and `bestExtra` (on `<build>`, lifepath): the best attribute and
+  the one that takes what its metatype maximum leaves over, core attributes only.
+- `<contact types>`: one or two of the Sixth World Companion's contact types (`academic`, `corporate`, `criminal`,
+  `engineering`, `government`, `magic`, `matrix`, `media`, `medical`, `street`); lifepath's contact points go by type.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.

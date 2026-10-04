@@ -66,11 +66,15 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |
 | contacts | contact | connection, loyalty, archetype | — |
-| lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
+| lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills; contactTypes (academic, corporate, criminal, engineering, government, magic, matrix, media, medical, street; absent: any) | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
 
-Life modules (lifepath creation) are structured grants with no prose. No recipe writes them yet (the core rulebook
-prints none); they come with a book that prints them.
+Life modules (lifepath creation) are structured grants with no prose. The Sixth World Companion's recipe
+(`importer/sr6/recipes/swc.py`, notes in `swc.md`) writes them: its three opening modules (every runner has them) and
+its adult ones, each "+1 to A, B or C" a mixed choice, "+1 to any skill" a skill point, contact points with the module's
+contact types. A choice counts its points in the pool its pick lands in. The same recipe writes the Companion's
+metavariants and metasapients as metatypes (ranges and traits; their karma is a creation setting, below), its
+qualities, critter powers, contacts (their stat blocks as NPCs, group Contact) and rule sections.
 
 The same kind → tag map is `KINDS` in `importer/sr6/__init__.py`, `SR6_KINDS` in `server/games.mjs` and `SR6_KINDS`
 in `src/sr6/model/types.ts`.
@@ -119,7 +123,8 @@ printed page; numbers only, no book text. A new server can build runners with ev
 Left unset, because no book prints them: `maxKarmaLeft`, `karmaToNuyenMax`, `skillPointsExpertise`,
 `initiativeDiceMax`, `advance.powerPoint`, `advance.karmaToNuyenRate`, `advance.nuyenToKarmaRate`, and the karma build
 (`karmaBuild.*`, `magicKarma:*`: no SR6 book describes one, so Karma build can't be picked until the table enters its
-own). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes; a metatype from another book needs its own.
+own). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes and to the Companion's karma for the 25
+metavariants and metasapients its import writes (`swc.<id>`); a metatype from another book needs its own.
 
 `custom/sr6/creation.xml` holds only what the admin changed (`PUT /api/sr6/creation`, on the Table setup page, `#/sr6/table`):
 the server's settings are the standard ones with those keys replaced (`loadCreation` in `src/sr6/engine/creation.ts`).
@@ -213,6 +218,9 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Karma build | `karmaBuild.startRating` | number | karma | Starting Magic or Resonance (karma build) |
 | Lifepath | `lifepath.moduleCount` | number | lifepath | Adult life modules to take |
 | Lifepath | `lifepath.contactRatingCap` | number | lifepath | Highest contact rating |
+| Lifepath | `lifepath.bestAttributeBonus` | number | optional | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
+| Lifepath | `lifepath.repeatModules` | number | optional | Adult modules that may be taken twice (unset: none) |
+| Lifepath | `lifepath.contactKarma` | number | optional | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points) |
 | Augmentation grades | `grade:standard:essence` | number | optional | Standard: Essence times |
 | Augmentation grades | `grade:standard:cost` | number | optional | Standard: cost times |
 | Augmentation grades | `grade:standard:avail` | number | optional | Standard: Availability plus |
@@ -236,7 +244,7 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Derived values | `specDice` | number | optional | Dice for a specialization |
 | Derived values | `expertiseDice` | number | optional | Dice for an expertise |
 | Derived values | `untrainedPenalty` | number | optional | Dice off the attribute for an untrained skill |
-| Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma | the metatype's karma (one per catalog metatype) |
+| Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath | the metatype's karma (one per catalog metatype) |
 | Point buy | `pointBuy.startRating:<kind>` | number | point buy | starting Magic or Resonance per awakened or emerged kind |
 | Karma build | `magicKarma:<kind>` | number | karma | karma to be that kind |
 | Lifepath | `lifepath.startRating:<kind>` | number | lifepath | starting Magic or Resonance per kind |

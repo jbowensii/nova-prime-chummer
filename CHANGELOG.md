@@ -1,5 +1,25 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **The Sixth World Companion can be imported** on Shadowrun 6 **Books** (it is now in the supported list). From your
+  copy of the book the app reads its life modules (the three opening ones and the 86 adult choices and events, with
+  what each gives: attribute and skill choices, nuyen, contact points and the contact types they're for, knowledge
+  skills), its 25 metavariants and metasapients with their attribute ranges and racial traits, its qualities (the new
+  positive and negative ones, the metagenic and infected ones), its new critter powers, its contacts with their stat
+  blocks, and its rule sections. What it couldn't read is listed in the import's report. Lifepath can be picked once the
+  life modules are in.
+- **Lifepath follows the Companion's rules.** Pick your best attribute on Creation method: it goes up by 5, up to your
+  metatype's maximum, and if the maximum stops it you pick where the rest goes. One adult module may be taken twice
+  (**Add again**), each copy with its own choices. On Contacts, give each contact one or two types: each module's
+  contact points only go to contacts of its types, and connection or loyalty past your points costs 1 karma a rating.
+  Your metatype's karma (a metavariant's) comes out of your starting karma, as in point buy.
+- **Metavariants work in point buy and lifepath** straight away: their karma costs ship with the standard creation
+  settings (with the Companion’s page), next to the new lifepath numbers; once the book is imported, Table setup shows
+  them and lets you change them.
+- **Better reading of some PDFs.** Books whose text columns sit very close together, or whose bullets are set small and
+  raised, no longer come out with the two columns mixed. Re-importing the core rulebook gives the same entries.
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow
