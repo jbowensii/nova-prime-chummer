@@ -209,3 +209,14 @@ test('a save whose root attributes aren’t well formed is refused; campaigns.xm
   for (const p of ['/custom/campaigns.xml::$DATA', '/custom/CAMPAI~1.XML', '/custom/CAMPAIGNS.XML', '/custom/campaigns.xml.'])
     expect((await call('pat', 'GET', p)).status, p).toBe(404)
 })
+
+test('a root that never closes, or a closed one followed by thousands of unclosed ones, is refused at once', async () => {
+  // patterns tried at every <ca2:character in the body backtracked quadratically: ~1 MB held the server for tens of seconds
+  const many = '<ca2:character '.repeat(70000), open = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1"'
+  for (const [who, path, body] of [['pat', '/api/characters/x', `${open} ${many}`], ['pat', '/api/characters/x', `${open} id="x" ${many}`],
+    ['eve', '/api/npcs/x', runner('x', 'X').replace('<build/>', many)]] as [Who, string, string][]) {
+    const t = Date.now()
+    expect([path, (await call(who, 'PUT', path, body)).status]).toEqual([path, 400])
+    expect(Date.now() - t, path).toBeLessThan(3000)
+  }
+})

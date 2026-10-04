@@ -91,7 +91,13 @@ export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(
 // eslint-disable-next-line no-control-regex
 const clean = s => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/g, '')
 export const attr = (tag, name) => { const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]; return v == null ? undefined : unesc(v) }
-export const rootTag = (xml, name) => xml?.match(new RegExp(`<${name}\\b[^>]*>`))?.[0]
+/** The first <name …> tag, up to its first `>`. Found by a plain search: `<name\b[^>]*>` scanned to the end of the text
+ *  from every later <name when the tag never closed (quadratic: a 5 MB request body held the server for minutes). */
+export const rootTag = (xml, name) => {
+  const m = typeof xml === 'string' ? new RegExp(`<${name}\\b`).exec(xml) : null
+  const end = m ? xml.indexOf('>', m.index) : -1
+  return end < 0 ? undefined : xml.slice(m.index, end + 1)
+}
 const readOr = (path, fallback = null) => readFile(path, 'utf8').catch(() => fallback)
 /** The core files named by import.xml rows of `kind`: core-unread (a recipe couldn't read them; the AI can propose any
  *  table's rows) or core-ai (read by AI from that book: to check against it). */
@@ -129,6 +135,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   const config = join(libraryDir, '.config')
   const backups = join(libraryDir, '.backups')
   const queue = []
+  let stopped = false // stop(): no job step starts afterwards (a step that ended as it was killed queued the next one)
   let running = null, child = null, listChild = null, testChild = null
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let testing = null; const tests = [] // connection tests: one at a time, 10 a minute (each may cost a few tokens)
@@ -192,10 +199,11 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
 
   async function pump() {
-    if (running || packing || !queue.length) return
+    if (running || packing || stopped || !queue.length) return
     running = queue.shift()
     try {
       for (const args of running.steps) {
+        if (stopped) break
         const r = await importer(args)
         if (r.code === 0) continue
         const st = attr(rootTag(await readOr(join(libraryDir, running.id, 'status.xml')), 'status'), 'state')
@@ -949,6 +957,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   // shutdown: stop the running importer (the next start marks its book interrupted) and any model list
   // and backups being made; pending restore uploads and unfetched backups are deleted
   const stop = () => {
+    stopped = true
     child?.kill(); listChild?.kill(); testChild?.kill()
     for (const p of spawned) p.kill()
     for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })

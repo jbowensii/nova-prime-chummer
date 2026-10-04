@@ -52,8 +52,10 @@ test('a 10 MB upload streams to the library and queues an import', async () => {
   first = (await r.json()).id
   expect(first).toMatch(/^[a-z0-9-]+$/)
   expect(readFileSync(join(library, first, 'original.pdf')).length).toBe(10 * 1024 * 1024 + 10)
-  const b = await waitFor(first, 'done')
-  expect(b).toMatchObject({ source: 'STUB', counts: { 'amps.xml': 1 } })
+  await waitFor(first, 'done')
+  // polled: once (two suites at once) the list read import.xml as missing right after the job (a Windows read of a file
+  // just written by another process can fail for a moment; the list then shows no source until the next poll)
+  await vi.waitFor(async () => expect((await list()).find(x => x.id === first)).toMatchObject({ source: 'STUB', counts: { 'amps.xml': 1 } }), { timeout: 5000 })
   expect(existsSync(join(custom, 'imported', 'stub', 'amps.xml'))).toBe(true)
 })
 
@@ -190,4 +192,22 @@ test('re-import clears and rebuilds; delete removes outputs, and with files=1 th
   expect((await fetch(`${base}/api/books/${first}?files=1`, { method: 'DELETE' })).status).toBe(202)
   await waitFor(first, 'gone')
   expect(existsSync(join(library, first))).toBe(false)
+})
+
+test('a stop starts nothing more: the running import is killed and the queued one never starts', async () => {
+  const d = mkdtempSync(join(tmpdir(), 'ca2-books-stop-')), log = join(d, 'calls.log')
+  writeFileSync(log, '')
+  vi.stubEnv('STUB_LOG', log)
+  const s = createServer({ staticDir: 'public', charDir: join(d, 'chars'), customDir: join(d, 'custom'), libraryDir: join(d, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  try {
+    await new Promise<void>(ok => s.listen(0, ok))
+    const at = `http://127.0.0.1:${s.address().port}`
+    const put = (marker: string) => fetch(`${at}/api/books`, { method: 'POST', body: pdf(marker), headers: { 'Content-Type': 'application/pdf', 'X-Filename': `${marker}.pdf` } })
+    const slow = await (await put('slow')).json(), next = await (await put('next')).json()
+    await vi.waitFor(() => expect(readFileSync(log, 'utf8')).toContain(`run ${slow.id}`), { timeout: 15000, interval: 25 })
+    s.stopJobs()
+    await new Promise(r => setTimeout(r, 2500)) // past the slow run's 1.5 s: before the fix the queued book started here
+    expect(readFileSync(log, 'utf8')).not.toContain(next.id)
+  } finally { vi.unstubAllEnvs(); s.close() }
 })
