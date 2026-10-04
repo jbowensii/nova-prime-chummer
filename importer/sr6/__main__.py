@@ -113,7 +113,8 @@ def _cmd_regroup(argv):
     if len(argv) != 2:
         print(USAGE, file=sys.stderr)
         return 2
-    text, report = regroup.regroup(Path(argv[0]).read_text(encoding="utf8"), crb.ALIASES, name_headers=crb.NAME_HEADERS)
+    text, report = regroup.regroup(Path(argv[0]).read_text(encoding="utf8"), crb.ALIASES, name_headers=crb.NAME_HEADERS,
+                                   end_page=crb.END_PAGE)
     xmlio.write_file(argv[1], text)
     print(" ".join(f"{k}={n}" for k, n in sorted(Counter(r["kind"] for r in report).items())))
     return 0

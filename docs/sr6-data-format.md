@@ -27,6 +27,14 @@ Every file has the same root, and one file holds one kind:
   costs, and nothing else changes. Formulas such as `Rating × 500` or `F+1` stay formulas (the builder parses them).
   Only the attributes marked *int* below are integers. Book errors stay as printed: the import report lists a value
   that doesn't fit its column, and fixes go through the edits layer.
+- **Prices** (`cost`, `avail`, a focus's `karma`, an implant's `essence`) are a number or a formula the app evaluates at
+  the rating the item is bought at: numbers, `Rating` (also `Capacity`, `Force` or `Level`, any case: the same
+  rating), `+`, `×`/`x`/`*`, `/` (rounded up), `^` and parentheses, an optional leading `+` (an add-on's price) and a
+  legality suffix on `avail` (`(L)`, `I`, …). An item priced by its capacity takes its capacity range as its `rating`.
+  `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
+  `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
+  table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
+  (`900 + Gizmo`) stays as printed and is reported.
 - **Cross-references are names** for now: metatype traits, critter powers, NPC gear and weapons are lists as printed.
 - **No prose in the catalog files.** Descriptions, game effects and rule text go only to the source's texts file.
 
@@ -41,11 +49,11 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int, perLevel true, maxLevel int | — |
-| weapons | weapon | category*, dv, modes, ar, ammo, avail, cost | — |
+| weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
-| electronics | device | category*, rating, array, programs, avail, cost | — |
-| gear | gear | category*, rating, capacity, avail, cost | — |
+| electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
 | rituals | ritual | keywords, threshold | — |

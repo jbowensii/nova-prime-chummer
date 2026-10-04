@@ -64,7 +64,7 @@ class Sr6RunTest(unittest.TestCase):
         rows = {(r.get("kind"), r.get("name")): r.attrib for r in imp.iter("row")}
         self.assertEqual(rows[("unpaired-row", "Lost Blaster")]["page"], "250")  # regroup's report, printed pages
         self.assertIn("unknown-column", {k for k, _ in rows})  # and the recipe's
-        self.assertEqual({f.get("name"): f.get("entries") for f in imp.iter("file")}["weapons.xml"], "3")
+        self.assertEqual({f.get("name"): f.get("entries") for f in imp.iter("file")}["weapons.xml"], "5")
 
     def test_anarchy_texts_keep_their_root(self):
         self.assertIn('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts"',
@@ -97,8 +97,8 @@ class Sr6RunTest(unittest.TestCase):
         code, out = self.cli("summary", self.book)
         self.assertEqual(code, 0)
         self.assertIn("state: done", out)
-        self.assertRegex(out, r"weapons\.xml\s+3")
-        self.assertIn("unpaired-row: 2", out)  # Lost Blaster, and Zapp Rifle (the made-up alias isn't the book's)
+        self.assertRegex(out, r"weapons\.xml\s+5")
+        self.assertIn("unpaired-row: 13", out)  # rows with no description of their own (the made-up alias isn't the book's)
         self.assertIn("name=Lost Blaster", out)
 
     def test_check_command_on_a_made_up_pdf(self):
@@ -116,7 +116,7 @@ class Sr6RunTest(unittest.TestCase):
         out_md = os.path.join(self.book, "re.md")
         code, out = self.cli("regroup", os.path.join(self.book, "book.md"), out_md)
         self.assertEqual(code, 0)
-        self.assertIn("unpaired-row=2", out)
+        self.assertIn("unpaired-row=13", out)
         self.assertTrue(_read(out_md).startswith("<!-- regrouped v1 -->"))
 
 

@@ -17,11 +17,11 @@ const ITEM = ['avail', 'cost']
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
   qualities: { fields: ['kind', 'karma', 'perLevel', 'maxLevel'] },
-  weapons: { fields: ['category', 'dv', 'modes', 'ar', 'ammo', ...ITEM] },
+  weapons: { fields: ['category', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM] },
   armor: { fields: ['category', 'defense', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
-  electronics: { fields: ['category', 'rating', 'array', 'programs', ...ITEM] },
-  gear: { fields: ['category', 'rating', 'capacity', ...ITEM] },
+  electronics: { fields: ['category', 'rating', 'array', 'programs', 'capacity', ...ITEM] },
+  gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per'] },
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage'] },
   rituals: { fields: ['keywords', 'threshold'] },
