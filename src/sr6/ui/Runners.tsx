@@ -16,6 +16,7 @@ import type { Sr6Data } from '../engine/data'
 import { validateSr6 } from '../engine/rules'
 import { blankSr6, SR6_METHOD_LABELS, SR6_METHODS, type Sr6Character, type Sr6Method } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
+import { SR6_FINAL_TIP } from './editor'
 import { exportSr6, readSr6Import, repairSr6, sr6Repo } from './repo'
 
 const SORT_KEY = 'ca2.sr6.library.sort'
@@ -124,7 +125,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
           <a className="title" href={`#/sr6/c/${ch.id}/concept`}>{shownName(ch)}</a>
           <div className="meta">
             {[data.metatypes[ch.build.metatype]?.name ?? (ch.build.metatype || 'No metatype yet'), SR6_METHOD_LABELS[ch.build.method]].join(', ')}
-            {' '}<StateBadge finalized={!!ch.finalizedAt} />
+            {' '}<StateBadge finalized={!!ch.finalizedAt} finalTip={SR6_FINAL_TIP} />
             {errors > 0 && <> <a className="noncanon overspent" href={`#/sr6/c/${ch.id}/review`}>{errors} {errors === 1 ? 'error' : 'errors'}</a></>}
           </div>
         </div>

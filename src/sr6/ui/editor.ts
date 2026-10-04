@@ -33,6 +33,8 @@ export const useSr6Editor = () => {
   if (!e) throw new Error('useSr6Editor outside <Sr6Editor>')
   return e
 }
+/** The Finalized badge's tooltip on the SR6 side (no ledger until S3). */
+export const SR6_FINAL_TIP = 'Finalized: the build is read only'
 export const sr6EditHref = (id: string, tab: string) => `#/sr6/c/${id}/${tab}`
 
 export const ATTR_NAMES: Record<Sr6Attr, string> = { bod: 'Body', agi: 'Agility', rea: 'Reaction', str: 'Strength', wil: 'Willpower',

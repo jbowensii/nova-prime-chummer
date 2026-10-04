@@ -34,8 +34,8 @@ Creation intro.
 Pick made-up priorities.
 | PRIORITY | METATYPE | ATTRIBUTES | SKILLS | MAGIC OR RESONANCE | RESOURCES |
 |---|---|---|---|---|---|
-| A | Glimmerkin (13), Stonefolk (11) | 24 | 32 | Full: 4 Magic, Mystic Adept: 4 Magic, Adept: 4 Magic, Technomancer: 4 Resonance | 450,000¥ |
-| E | Glimmerkin (1) | 2 | 2 | — | 8,000¥ |
+| A | Glimmerkin (13), Stonefolk (11) | 22 | 30 | Full: 3 Magic, Mystic Adept: 3 Magic, Adept: 5 Magic, Technomancer: 3 Resonance | 420,000¥ |
+| E | Glimmerkin (1) | 3 | 2 | — | 8,200¥ |
 ## Metatypes
 | METATYPE | BOD | AGI | REA | STR | WIL | LOG | INT | CHA | EDG |
 |---|---|---|---|---|---|---|---|---|---|
@@ -304,8 +304,8 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(a.get("letter"), "A")
         self.assertEqual([(m.get("name"), m.get("points")) for m in a.iter("metatype")], [("Glimmerkin", "13"), ("Stonefolk", "11")])
         self.assertEqual([(m.get("kind"), m.get("rating")) for m in a.iter("magic")],
-                         [("full", "4"), ("mystic-adept", "4"), ("adept", "4"), ("technomancer", "4")])
-        self.assertEqual((a.find("attributes").get("points"), a.find("resources").get("nuyen")), ("24", "450000"))
+                         [("full", "3"), ("mystic-adept", "3"), ("adept", "5"), ("technomancer", "3")])
+        self.assertEqual((a.find("attributes").get("points"), a.find("resources").get("nuyen")), ("22", "420000"))
         e = entries(self.res, "priorities")["Priority E"]
         self.assertEqual([m.get("kind") for m in e.iter("magic")], ["mundane"])
         g = entries(self.res, "metatypes")["Glimmerkin"]

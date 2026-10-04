@@ -76,7 +76,8 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
 }
 
 /** Pick the magic kind: picks it can't have go, as do bought power points (unless it buys them), an initiation or
- *  submersion it can't have, and the aspected skill unless it's aspected. */
+ *  submersion it can't have, the aspected skill unless it's aspected, and the spends on Magic or Resonance when the
+ *  kind has no such attribute (the Attributes tab no longer shows it, so they couldn't be taken back). */
 export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
   const b = ch.build, k = MAGIC_KINDS[kind], allowed = picksFor(kind)
   b.magic = kind
@@ -86,6 +87,8 @@ export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr:
   if (!k.paysPowers) b.powerPointsBought = 0
   if (!k.spells && !k.powers) b.initiation = 0
   if (!k.resonance) b.submersion = 0
+  if (!k.spells && !k.powers) b.attributes.mag = { points: 0, adjust: 0, karma: 0 }
+  if (!k.resonance) b.attributes.res = { points: 0, adjust: 0, karma: 0 }
 }
 
 /** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). */
@@ -195,7 +198,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const line = newLine(op, data, cr)
       if ('reason' in line) return line
-      const same = !OWN_LINE.has(op.kind) && b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind
+      const same = !OWN_LINE.has(op.kind) && !line.grade && b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind
         && x.rating === line.rating && !x.grade && !x.accessories.length)
       if (same) same.qty += line.qty
       else b.purchases.push(line)

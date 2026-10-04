@@ -7,7 +7,7 @@ import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
 import { buildOf, GLIM, made, STONE } from './fixture'
 
 type Over = Parameters<typeof made>[0]
-/** A legal priority runner: Stonefolk at A, attributes C (13), magic D, skills B (23), resources E (8,000¥). */
+/** A legal priority runner: Stonefolk at A, attributes C (13), magic D, skills B (23), resources E (8,200¥). */
 function runner(o: { letters?: string; magic?: MagicKind; metatype?: string; method?: Sr6Build['method'] } = {}): Sr6Character {
   const ch = blankSr6(o.method ?? 'priority', 'r1', '2026-10-03T00:00:00Z')
   ch.build = buildOf(o.method ?? 'priority', { letters: o.method && o.method !== 'priority' ? undefined : o.letters ?? 'ACDBE',

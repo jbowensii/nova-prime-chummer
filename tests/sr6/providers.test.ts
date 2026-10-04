@@ -11,9 +11,9 @@ const setup = (method: Sr6Method, over?: Parameters<typeof made>[0]) => { const 
 test('priority: the table values per letter, and the starting karma', () => {
   const p = setup('priority'), b = build('priority', { letters: 'CABDE', metatype: GLIM })
   expect(p.id).toBe('priority')
-  expect(p.attributePoints(b)).toBe(24)
+  expect(p.attributePoints(b)).toBe(22)
   expect(p.skillPoints(b)).toBe(11)
-  expect(p.nuyen(b)).toBe(8000)
+  expect(p.nuyen(b)).toBe(8200)
   expect(p.startingKarma()).toBe(40)
 })
 
@@ -67,10 +67,10 @@ test('sum to ten: letters may repeat while their values add up to the target', (
 
 test('sum to ten: duplicate letters read the table like priority', () => {
   const p = setup('sumtoten'), b = build('sumtoten', { letters: 'AACEE', metatype: STONE, magic: 'full' })
-  expect(p.attributePoints(b)).toBe(24)
+  expect(p.attributePoints(b)).toBe(22)
   expect(p.adjustmentPoints(b)).toBe(11)
   expect(p.magicRating(b)).toBe(1)
-  expect(p.nuyen(b)).toBe(8000)
+  expect(p.nuyen(b)).toBe(8200)
 })
 
 test('sum to ten: with a letter value or the target unset the letters are invalid', () => {

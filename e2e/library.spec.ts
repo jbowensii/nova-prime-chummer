@@ -22,6 +22,7 @@ test('A–Z by default, then Recently edited puts a new runner on top; search; D
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await page.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: every change is logged in the ledger')
   await newRunner(page, 'Aardvark')
   await page.getByRole('link', { name: /Chummer Anarchy/ }).click()
   await expect(page.getByRole('link', { name: 'Aardvark' })).toBeVisible()

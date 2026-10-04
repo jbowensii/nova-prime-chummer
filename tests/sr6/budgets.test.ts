@@ -7,7 +7,7 @@ import { makeProvider } from '../../src/sr6/engine/providers'
 import { buildOf, GLIM, made, STONE } from './fixture'
 
 type Over = Parameters<typeof made>[0]
-/** A priority runner: Glimmerkin at C, attributes A (24), magic B, skills D (11), resources A (450,000¥). */
+/** A priority runner: Glimmerkin at C, attributes A (22), magic B, skills D (11), resources A (420,000¥). */
 function runner(o: { letters?: string; magic?: MagicKind; metatype?: string } = {}) {
   return buildOf('priority', { letters: o.letters ?? 'CABDA', metatype: o.metatype ?? GLIM, magic: o.magic ?? 'mundane' })
 }
@@ -110,14 +110,14 @@ test('karma turns into nuyen at the rate, at the in-debt rate with the quality, 
   b.karmaToNuyen = 5
   let r = budgets(b)
   expect(r.karma.spent).toBe(5)
-  expect(r.nuyen.max).toBe(450000 + 5 * 1500)
+  expect(r.nuyen.max).toBe(420000 + 5 * 1500)
   expect(r.nuyen.breakdown).toContainEqual({ key: 'fromKarma', label: '5 karma turned into nuyen', amount: 7500, sign: 'gain', tab: 'contacts' })
   quality(b, 'crb.deep-pockets-debt')
-  expect(budgets(b).nuyen.max).toBe(450000 + 5 * 3500)
+  expect(budgets(b).nuyen.max).toBe(420000 + 5 * 3500)
   b.karmaToNuyen = 9
   r = budgets(b)
   expect(r.karma.spent).toBe(7)
-  expect(r.nuyen.max).toBe(450000 + 7 * 3500)
+  expect(r.nuyen.max).toBe(420000 + 7 * 3500)
 })
 
 // magic
@@ -231,7 +231,7 @@ test('Essence: the setting less what augmentations take, and the Magic it costs'
 // nuyen
 test('nuyen: an empty breakdown with nothing bought', () => {
   const { nuyen } = budgets(runner({ letters: 'CABDE' }))
-  expect(nuyen).toEqual({ max: 8000, spent: 0, left: 8000, breakdown: [] })
+  expect(nuyen).toEqual({ max: 8200, spent: 0, left: 8200, breakdown: [] })
 })
 
 test('nuyen: gear per line, lifestyle times months, a fake SIN and licences by rating, a real SIN free', () => {
@@ -248,7 +248,7 @@ test('nuyen: gear per line, lifestyle times months, a fake SIN and licences by r
     { key: 'sin:s2', label: 'Me (real SIN) · 1 licence', amount: 600, sign: 'spend', tab: 'contacts' },
   ])
   expect(nuyen.spent).toBe(290 + 5000 + 3300 + 600)
-  expect(nuyen.left).toBe(8000 - nuyen.spent)
+  expect(nuyen.left).toBe(8200 - nuyen.spent)
 })
 
 test('nuyen: augmentations and vehicles link to their own tabs', () => {

@@ -83,6 +83,19 @@ test('setMagic drops what the kind can’t have and the bought power points; asp
   expect(b.aspectedSkill).toBeUndefined()
 })
 
+test('setMagic: spends on Magic or Resonance go with the attribute, so no hidden row keeps holding points', () => {
+  const { ch, b, data, cr, act } = runner({ magic: 'full' })
+  expect(act({ op: 'attribute', target: 'mag', pool: 'points', delta: 2 })).toEqual(ok)
+  expect(act({ op: 'attribute', target: 'mag', pool: 'karma', delta: 1 })).toEqual(ok)
+  setMagic(ch, 'adept', data, cr) // still has Magic
+  expect(b.attributes.mag).toEqual({ points: 2, adjust: 0, karma: 1 })
+  setMagic(ch, 'technomancer', data, cr)
+  expect(b.attributes.mag).toEqual({ points: 0, adjust: 0, karma: 0 })
+  expect(act({ op: 'attribute', target: 'res', pool: 'adjust', delta: 1 })).toEqual(ok)
+  setMagic(ch, 'mundane', data, cr)
+  expect(b.attributes.res).toEqual({ points: 0, adjust: 0, karma: 0 })
+})
+
 test('reconcile leaves a legal build alone', () => {
   const { ch, b, data, cr } = runner({ magic: 'full' })
   const before = structuredClone(b)

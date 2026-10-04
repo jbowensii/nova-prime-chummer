@@ -46,3 +46,12 @@ test('attackRatings gives five bands, a dash as none; a bad band is none and not
   expect(attackRatings('5')).toEqual({ bands: [5, null, null, null, null], ok: true })
   expect(attackRatings(undefined)).toEqual({ bands: [null, null, null, null, null], ok: true })
 })
+
+test('a value too long to be a printed one is unreadable at once (no quadratic backtracking on a crafted snapshot)', () => {
+  const huge = ' '.repeat(200000) + 'x'
+  const t = Date.now()
+  expect(rated(huge)).toEqual({ n: null, ok: false })
+  expect(legality(huge)).toBeUndefined()
+  expect(attackRatings(huge)).toEqual({ bands: [null, null, null, null, null], ok: false })
+  expect(Date.now() - t).toBeLessThan(200)
+})

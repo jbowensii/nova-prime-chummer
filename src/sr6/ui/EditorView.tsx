@@ -18,7 +18,7 @@ import { MAGIC_KINDS } from '../engine/data'
 import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
-import { runAct, Sr6Editor, sr6EditHref, type Sr6Ctx } from './editor'
+import { runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, type Sr6Ctx } from './editor'
 import { exportSr6, sr6Repo } from './repo'
 import { AttributesTab } from './tabs/Attributes'
 import { AugmentationsTab } from './tabs/Augmentations'
@@ -86,7 +86,7 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
     <Sr6Editor.Provider value={ctx}>
       <header className="topbar">
         <Brand />
-        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} /></div>
+        <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span><StateBadge finalized={career} finalTip={SR6_FINAL_TIP} /></div>
         {!theirs && <div className="savebar"><SaveLine status={status} onRetry={() => void saveNow()} /></div>}
         <span className="spacer" />
         <div className="bars">

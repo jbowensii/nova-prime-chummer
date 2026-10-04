@@ -415,7 +415,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(eyes).toContainText('CRB p.63')
   await expect(work.locator('.viol .sev.err')).toHaveCount(3)
   await expect(page.getByRole('button', { name: 'Finalize runner' })).toBeDisabled()
-  await work.getByRole('link', { name: /^Nuyen overspent by 3,637¥/ }).click()
+  await work.getByRole('link', { name: /^Nuyen overspent by 3,437¥/ }).click()
   await expect(page).toHaveURL(/\/gear$/)
   await tabs.filter({ hasText: 'Review' }).click()
   await eyes.getByRole('link', { name: /Glow Eyes’s Availability 6 is above 5/ }).click()
@@ -449,10 +449,12 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
 
   // Finalize: the badge, the build read only (Concept still open), then back to draft and finalized again
   await page.getByRole('button', { name: 'Finalize runner' }).click()
-  await expect(dlg).toContainText('17 karma and 363¥ left')
+  await expect(dlg).toContainText('17 karma and 563¥ left')
   await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
-  await expect(work).toContainText('with 17 karma and 363¥ left')
+  // no ledger on the SR6 side yet: the badge doesn't promise one
+  await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: the build is read only')
+  await expect(work).toContainText('with 17 karma and 563¥ left')
   await tabs.filter({ hasText: 'Attributes' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Finalized: the build is read only.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Raise Body points' })).toBeDisabled()
@@ -473,6 +475,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
   await page.getByRole('button', { name: 'Save and close' }).click()
   await expect(row(page, 'Zip Spark').first()).toContainText('Finalized')
+  await expect(row(page, 'Zip Spark').first().locator('.runstate')).toHaveAttribute('title', 'Finalized: the build is read only')
 })
 
 test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no page holding next to nothing', async ({ page }) => {
