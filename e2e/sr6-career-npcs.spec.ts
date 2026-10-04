@@ -279,7 +279,7 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; loa
   await page.getByLabel('Search NPCs').fill('sprite')
   await expect(page.locator('.dossier')).toHaveCount(1)
   await page.getByLabel('Search NPCs').fill('')
-  const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export Fuzzbeast' }).click()])
+  const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export Fuzzbeast', exact: true }).click()])
   expect(readFileSync(await down.path(), 'utf8')).toContain('<npc kind="critter"')
 
   // share with an SR6 campaign Gil runs, then unshare

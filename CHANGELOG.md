@@ -1,5 +1,16 @@
 # Release notes
 
+## Unreleased
+
+**Shadowrun 6: Export for Foundry (SR6 F1)**
+- SR6 runners, NPCs, books and compendiums download as Chummer SR6 export v1 (`docs/sr6-export-format.md`, schema
+  `public/data/schema/sr6-export.schema.json`) for the new Chummer SR6 importer module in Foundry VTT (shadowrun6-eden).
+- **Export for Foundry** in the SR6 editor and on each NPC row; **Export for Foundry…** on the SR6 runner list and NPCs &
+  Critters (tick runners, All/None or a campaign); **Export book data for Foundry** on SR6 Game data (admin and editors,
+  descriptions on by default); **Export for Foundry** on an SR6 compendium's page.
+- Every number is the app's own (attributes, Essence, prices at grade and rating, an NPC's stats at its rating); each entry
+  also keeps its printed values. Anarchy's export is unchanged.
+
 ## 0.8.3 — 2026-10-02: Duplicates by name, left-aligned icons, print fixes
 
 **Find duplicates**

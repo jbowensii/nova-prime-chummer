@@ -107,6 +107,13 @@ own API key), and you review its entries before they’re added.
   **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
   NPCs export the same way (**Export for Foundry…** on the NPCs page), each carrying its NPC block, and the books' NPCs ride along in the book data file.
   A compendium exports as its own compendium (**Export for Foundry** on the Compendiums page), with your descriptions; it needs importer module 0.6.0.
+- **Foundry VTT, Shadowrun 6.** The SR6 side has its own file, Chummer SR6 export v1 (`docs/sr6-export-format.md`), for
+  the Chummer SR6 importer module (shadowrun6-eden system, [jbowensii/chummer-sr6-foundry](https://github.com/jbowensii/chummer-sr6-foundry)).
+  **Export for Foundry** in an SR6 runner's or NPC's editor and on each row of NPCs & Critters, **Export for Foundry…** on
+  the SR6 runner list and NPCs & Critters (tick runners or a campaign) download `runners-YYYY-MM-DD.sr6foundry.json`; on
+  SR6 **Game data** the admin and editors tick books and download `books-YYYY-MM-DD.sr6foundry.json` (descriptions on by
+  default); an SR6 compendium's page downloads `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json`. Each module refuses the
+  other game's file.
   The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
 
 ## Run it
