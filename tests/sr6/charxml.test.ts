@@ -5,7 +5,7 @@ import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { xmlToCharacter } from '../../src/engine/charxml'
 import { SR6_CHAR_NS, sr6Codec, sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
+import { blankSr6, SR6_ADVANCE_OPS, type Sr6Advance, type Sr6Character, type Sr6LedgerEntry } from '../../src/sr6/model/character'
 
 const XSD = readFileSync('public/data/sr6/schema/character.xsd', 'utf8')
 const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
@@ -112,4 +112,71 @@ test('each game refuses the other’s runner, saying where it belongs', () => {
   expect(xmlToSr6('<x')).toEqual({ ok: false, reason: expect.stringMatching(/^Not valid XML/) })
   expect(xmlToSr6('<foo/>')).toEqual({ ok: false, reason: 'Not a Shadowrun 6 runner file.' })
   expect(xmlToSr6(sr6ToXml(full()).replace('formatVersion="1"', 'formatVersion="9"'))).toEqual({ ok: false, reason: expect.stringContaining('newer version') })
+})
+
+// ---- S3: the career ledger and the NPC block (golden files written by sr6ToXml, all made up) ----
+const CAREER = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')
+const GRUNT = readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')
+const read = (xml: string) => { const r = xmlToSr6(xml); if (!r.ok) throw new Error(r.reason); return r.character }
+
+test('the career runner and the NPC golden files round-trip equal, validate, and are what sr6ToXml writes', async () => {
+  for (const xml of [CAREER, GRUNT]) {
+    expect(await valid(xml)).toEqual([])
+    const ch = read(xml)
+    expect(sr6ToXml(ch)).toBe(xml.replace(/\r\n/g, '\n'))
+    expect(read(sr6ToXml(ch))).toEqual(ch)
+  }
+  const career = read(CAREER)
+  expect(career.ledger.map(e => e.type)).toEqual(['finalize', 'earn', 'advance', 'advance', 'advance', 'advance', 'advance', 'void', 'note'])
+  const gun = career.ledger.find(e => e.type === 'advance' && e.advance.op === 'purchase')
+  expect(gun?.type === 'advance' && gun.advance.op === 'purchase' && gun.advance.line.snapshot?.name).toBe('Zap Gun')
+  expect(career.npc).toBeUndefined()
+  const goon = read(GRUNT)
+  expect(goon.npc).toMatchObject({ kind: 'grunt', rating: 2, group: 'Street Crew', from: { kind: 'npcs', id: 'crb.corner-goon', source: 'CRB', page: 205 } })
+  expect(goon.sampleKey).toBe('CRB|crb.corner-goon')
+  expect(goon.ledger).toEqual([])
+  expect(GRUNT).toMatch(/<sr6:character [^>]*>\s*<npc /) // first child: the server's NPC check
+})
+
+test('every advance op and entry type round-trips and validates', async () => {
+  const ch = full(), at = '2026-10-04T00:00:00.000Z'
+  const q = { uid: 'lq', id: 'crb.lucky-streak', level: 1, name: 'Lucky Streak' }
+  const gear = { uid: 'lg', kind: 'gear' as const, id: 'crb.zap-pellets', qty: 2, accessories: [] }
+  const ops: Sr6Advance[] = [
+    { op: 'attribute', target: 'agi' }, { op: 'skill', target: 'crb.tinkering' }, { op: 'spec', target: 'crb.gab', name: 'Fast talk' },
+    { op: 'expertise', target: 'crb.gab', name: 'Fibs & <lies>' }, { op: 'knowledge', line: { uid: 'lk', name: 'Arcade lore', kind: 'knowledge', points: 0, karma: 1 } },
+    { op: 'quality', line: q }, { op: 'buyoff', target: 'q9' }, { op: 'buyoff', target: 'q8', line: { uid: 'q8', id: 'crb.butterfingers', level: 1 } },
+    { op: 'pick', line: { uid: 'lp', kind: 'spells', id: 'crb.glow-ward', name: 'Glow Ward' } }, { op: 'powerpoint' }, { op: 'initiate' },
+    { op: 'initiate', line: { uid: 'lm', kind: 'metamagics', id: 'crb.soft-echo' } }, { op: 'purchase', line: gear }, { op: 'drop', target: 'g4' },
+    { op: 'drop', target: 'lg', line: gear }, { op: 'contact', line: { uid: 'lc', name: 'Mo', archetype: 'Fence', connection: 2, loyalty: 1 } },
+    { op: 'lifestyle', id: 'crb.cozy', months: 3 }, { op: 'convert', karma: 2 }, { op: 'convert', karma: -1 }, { op: 'other' }]
+  expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
+  ch.ledger = [{ id: 'f', at, type: 'finalize', karma: 3, nuyen: 1250 }, { id: 'e', at, type: 'earn', karma: 9, nuyen: 3100, run: 'Made-up & run', date: '2026-10-04' },
+    ...ops.map((advance, i): Sr6LedgerEntry => ({ id: `a${i}`, at, type: 'advance', advance, label: `Spend ${i}`,
+      karma: advance.op === 'convert' ? advance.karma : i, nuyen: advance.op === 'convert' ? -advance.karma * 1100 : 0 })),
+    { id: 'n', at, type: 'note', text: 'A <note>' }, { id: 'v', at, type: 'void', eventId: 'a19', reason: 'Oops' }]
+  const xml = sr6ToXml(ch)
+  expect(await valid(xml)).toEqual([])
+  expect(read(xml)).toEqual(ch)
+})
+
+test('an unknown entry type or op is refused naming it; repair drops it; no <ledger> reads as an empty ledger', async () => {
+  const xml = CAREER.replace('type="note"', 'type="x"')
+  expect(xmlToSr6(xml)).toEqual({ ok: false, reason: expect.stringContaining('ledger entry 9') })
+  expect(xmlToSr6(xml)).toEqual({ ok: false, reason: expect.stringContaining('“x”') })
+  const fix: string[] = []
+  const r = xmlToSr6(xml, { repair: fix })
+  expect(r.ok && r.character.ledger).toHaveLength(8)
+  expect(fix).toEqual([expect.stringMatching(/^Dropped ledger entry 9: /)])
+  expect(xmlToSr6(CAREER.replace('op="attribute"', 'op="teleport"'))).toEqual({ ok: false, reason: expect.stringContaining('“teleport”') })
+  const bare = CAREER.replace(/\n {2}<ledger>[\s\S]*<\/ledger>/, '')
+  expect(bare).not.toContain('<ledger')
+  expect(await valid(bare)).toEqual([])
+  expect(read(bare).ledger).toEqual([])
+})
+
+test('the XSD wants <npc> first: an NPC block anywhere else fails', async () => {
+  expect(await valid(GRUNT.replace('<npc ', '<notes>Moved</notes>\n  <npc '))).not.toEqual([])
+  expect(await valid(GRUNT.replace('kind="grunt"', 'kind="dragon"'))).not.toEqual([])
+  expect(await valid(GRUNT.replace(/<stat key="bod"/, '<stat key="BOD"'))).not.toEqual([])
 })

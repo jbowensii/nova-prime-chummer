@@ -1,9 +1,10 @@
 // The SR6 runners page's pure helpers (src/sr6/ui/repo.ts): import refuses an Anarchy runner with where it belongs and
 // gives a taken id a new one; repair lists its changes; export snapshots every catalog line. All names made up.
+import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { sr6ToXml } from '../../src/sr6/engine/charxml'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { readSr6Import, repairSr6, snapshotSr6 } from '../../src/sr6/ui/repo'
+import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
+import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../src/sr6/ui/repo'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
@@ -56,4 +57,37 @@ test('export snapshots each catalog line and its accessories; a custom item has 
   expect(out.build.purchases[0].accessories[0].snapshot?.name).toBe('Zap Scope')
   expect(out.build.purchases[1].snapshot).toBeUndefined()
   expect(ch.build.purchases[0].snapshot).toBeUndefined() // the runner itself is left alone
+})
+
+// ---- S3: NPC files and the career ledger ----
+const CAREER = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')
+const GRUNT = readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')
+
+test('each import page refuses the other’s file, saying where it belongs', () => {
+  expect(readSr6Import(GRUNT, new Set())).toEqual({ ok: false, reason: 'This is an NPC. Import it on NPCs & Critters.' })
+  expect(readSr6NpcImport(CAREER, new Set())).toEqual({ ok: false, reason: 'This is a runner, not an NPC. Import it on Your runners.' })
+  expect(readSr6NpcImport(CA2, new Set())).toEqual({ ok: false, reason: 'This is a Shadowrun Anarchy runner. Import it on the Anarchy side.' })
+  expect(readSr6Import(CAREER, new Set()).ok).toBe(true)
+})
+
+test('an NPC imports; a taken id gets a new one; a ledger, finalize stamp and campaign are left behind', () => {
+  const free = readSr6NpcImport(GRUNT, new Set())
+  if (!free.ok) throw new Error(free.reason)
+  expect(free.ch.npc?.kind).toBe('grunt')
+  const id = free.ch.id
+  const odd = GRUNT.replace(/(<sr6:character [^>]*)>/, '$1 finalizedAt="2026-10-03T00:00:00.000Z" finalKarma="3" finalNuyen="7" campaign="0123456789ab">')
+    .replace('</build>', '</build>\n  <ledger>\n    <entry id="x" at="y" type="note">Odd</entry>\n  </ledger>')
+  const taken = readSr6NpcImport(odd, new Set([id]))
+  if (!taken.ok) throw new Error(taken.reason)
+  expect(taken.ch.id).not.toBe(id)
+  expect(taken.ch).toMatchObject({ ledger: [], npc: free.ch.npc })
+  for (const k of ['finalizedAt', 'final', 'campaign'] as const) expect(taken.ch[k], k).toBeUndefined()
+})
+
+test('export snapshots the purchase lines in the ledger too', () => {
+  const r = readSr6Import(CAREER.replace(/<snapshot>[\s\S]*?<\/snapshot>/g, ''), new Set())
+  if (!r.ok) throw new Error(r.reason)
+  const lines = (ch: Sr6Character) => ch.ledger.flatMap(e => e.type === 'advance' && e.advance.op === 'purchase' ? [e.advance.line] : [])
+  expect(lines(r.ch)[0].snapshot).toBeUndefined()
+  expect(lines(snapshotSr6(fixtureCatalog(), r.ch))[0].snapshot?.name).toBe('Zap Gun')
 })

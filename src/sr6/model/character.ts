@@ -2,7 +2,7 @@
 // <sr6:character> file, read and written by src/sr6/engine/charxml.ts. The build holds what the player spent; budgets,
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
 import { newId, type Character, type Override } from '../../model/types'
-import type { Sr6Entry } from './types'
+import type { Sr6Entry, Sr6Kind } from './types'
 
 /** The five creation methods. */
 export type Sr6Method = 'priority' | 'sumtoten' | 'pointbuy' | 'karma' | 'lifepath'
@@ -73,10 +73,56 @@ export interface Sr6Build {
   karmaToNuyen: number
 }
 
-/** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize. */
+/** A career spend (S3), replayed on the finalized build (src/sr6/engine/career.ts). target: an attribute, a skill id or
+ *  (buyoff, drop) the line's uid; line: what joins the build (buyoff, drop: the removed one, kept for the history).
+ *  convert: karma > 0 turns karma into nuyen, < 0 nuyen into karma. */
+export type Sr6Advance =
+  | { op: 'attribute'; target: Sr6Attr }
+  | { op: 'skill'; target: string }
+  | { op: 'spec'; target: string; name: string }
+  | { op: 'expertise'; target: string; name: string }
+  | { op: 'knowledge'; line: Sr6Knowledge }
+  | { op: 'quality'; line: Sr6Quality }
+  | { op: 'buyoff'; target: string; line?: Sr6Quality }
+  | { op: 'pick'; line: Sr6Pick }
+  | { op: 'powerpoint' }
+  | { op: 'initiate'; line?: Sr6Pick }
+  | { op: 'purchase'; line: Sr6Purchase }
+  | { op: 'drop'; target: string; line?: Sr6Purchase }
+  | { op: 'contact'; line: Sr6Contact }
+  | { op: 'lifestyle'; id: string; months: number }
+  | { op: 'convert'; karma: number }
+  | { op: 'other' }
+export type Sr6AdvanceOp = Sr6Advance['op']
+export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = ['attribute', 'skill', 'spec', 'expertise', 'knowledge', 'quality', 'buyoff', 'pick',
+  'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'lifestyle', 'convert', 'other']
+/** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
+export type Sr6LedgerEntry = { id: string; at: string } & (
+  | { type: 'finalize'; karma: number; nuyen: number }
+  | { type: 'earn'; karma: number; nuyen: number; run: string; date: string }
+  | { type: 'advance'; advance: Sr6Advance; label: string; karma: number; nuyen: number }
+  | { type: 'note'; text: string }
+  | { type: 'void'; eventId: string; reason: string })
+export type Sr6LedgerType = Sr6LedgerEntry['type']
+export const SR6_LEDGER_TYPES: Sr6LedgerType[] = ['finalize', 'earn', 'advance', 'note', 'void']
+
+/** An SR6 NPC's stat block: the catalog entry's printed values (or the GM's) and its rating, evaluated at the rating. */
+export type Sr6NpcKind = 'grunt' | 'critter' | 'spirit' | 'sprite'
+export const SR6_NPC_KINDS: Sr6NpcKind[] = ['grunt', 'critter', 'spirit', 'sprite']
+export const SR6_NPC_PARTS = ['skills', 'powers', 'optionalPowers', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons'] as const
+export interface Sr6Npc {
+  kind: Sr6NpcKind; rating?: number; group?: string
+  from?: { kind: Sr6Kind; id: string; name: string; source: string; page: number }
+  stats: Record<string, string>
+  lines: { part: string; text: string }[]
+}
+
+/** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
+ *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from (`<source>|<id>`). */
 export interface Sr6Character {
   formatVersion: 1; id: string; identity: Character['identity']; build: Sr6Build
   finalizedAt?: string; final?: { karma: number; nuyen: number }; campaign?: string
+  ledger: Sr6LedgerEntry[]; npc?: Sr6Npc; sampleKey?: string
   overrides: Override[]; updatedAt: string; lastExportedAt?: string
 }
 
@@ -92,5 +138,5 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
 /** A new runner: no metatype, mundane, nothing spent. */
 export function blankSr6(method: Sr6Method = 'priority', id = newId(), now = new Date().toISOString()): Sr6Character {
   return { formatVersion: 1, id, identity: { name: '', streetName: '', metatype: '', background: '', notes: '' },
-    build: blankBuild(method), overrides: [], updatedAt: now }
+    build: blankBuild(method), ledger: [], overrides: [], updatedAt: now }
 }

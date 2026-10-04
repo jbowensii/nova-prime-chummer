@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- A saved Shadowrun 6 runner (.xml), read and written by src/sr6/engine/charxml.ts. See docs/sr6-character-format.md.
      Children are unqualified; summary attributes sit on the root so a server can list files without parsing them;
-     <snapshot> holds a copy of the catalog entry in the SR6 data files' own format. -->
+     <snapshot> holds a copy of the catalog entry in the SR6 data files' own format. An NPC has <npc> as its first child
+     (the server's NPC check); a finalized runner's career spends are the <ledger>'s entries. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:c="urn:chummer-sr6:character:1"
            targetNamespace="urn:chummer-sr6:character:1"
@@ -10,11 +11,13 @@
   <xs:element name="character">
     <xs:complexType>
       <xs:sequence>
+        <xs:element name="npc" type="c:Npc" minOccurs="0"/>
         <xs:element name="portrait" type="xs:string" minOccurs="0"/>
         <xs:element name="token" type="xs:string" minOccurs="0"/>
         <xs:element name="background" type="xs:string" minOccurs="0"/>
         <xs:element name="notes" type="xs:string" minOccurs="0"/>
         <xs:element name="build" type="c:Build"/>
+        <xs:element name="ledger" type="c:Ledger" minOccurs="0"/>
         <xs:element name="override" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
             <xs:attribute name="code" type="xs:string" use="required"/>
@@ -43,6 +46,8 @@
       <!-- karma and nuyen left when finalized -->
       <xs:attribute name="finalKarma" type="xs:integer"/>
       <xs:attribute name="finalNuyen" type="xs:decimal"/>
+      <!-- a book NPC: the catalog entry it was loaded from, <source>|<id> -->
+      <xs:attribute name="sampleKey" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
@@ -117,57 +122,11 @@
           <xs:attribute name="expertise" type="xs:string"/>
         </xs:complexType>
       </xs:element>
-      <!-- a knowledge skill or language, its name as the text; native: the free native language -->
-      <xs:element name="knowledge" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
-          <xs:attribute name="uid" type="xs:string" use="required"/>
-          <xs:attribute name="kind" use="required">
-            <xs:simpleType><xs:restriction base="xs:string">
-              <xs:enumeration value="knowledge"/><xs:enumeration value="language"/>
-            </xs:restriction></xs:simpleType>
-          </xs:attribute>
-          <xs:attribute name="native" type="xs:boolean"/>
-          <xs:attribute name="points" type="c:Count" use="required"/>
-          <xs:attribute name="karma" type="c:Count" use="required"/>
-        </xs:extension></xs:simpleContent></xs:complexType>
-      </xs:element>
-      <!-- free: a metatype trait; name: the catalog name when added -->
-      <xs:element name="quality" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:attribute name="uid" type="xs:string" use="required"/>
-          <xs:attribute name="id" type="xs:string" use="required"/>
-          <xs:attribute name="level" type="xs:positiveInteger" use="required"/>
-          <xs:attribute name="free" type="xs:boolean"/>
-          <xs:attribute name="note" type="xs:string"/>
-          <xs:attribute name="name" type="xs:string"/>
-        </xs:complexType>
-      </xs:element>
-      <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
-      <xs:element name="pick" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:sequence><xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
-          <xs:attribute name="uid" type="xs:string" use="required"/>
-          <xs:attribute name="kind" use="required">
-            <xs:simpleType><xs:restriction base="xs:string">
-              <xs:enumeration value="spells"/><xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/>
-              <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/>
-            </xs:restriction></xs:simpleType>
-          </xs:attribute>
-          <xs:attribute name="id" type="xs:string" use="required"/>
-          <xs:attribute name="level" type="xs:positiveInteger"/>
-          <xs:attribute name="name" type="xs:string"/>
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="knowledge" type="c:Knowledge" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="quality" type="c:Quality" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="pick" type="c:Pick" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
-      <xs:element name="contact" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:attribute name="uid" type="xs:string" use="required"/>
-          <xs:attribute name="name" type="xs:string" use="required"/>
-          <xs:attribute name="archetype" type="xs:string" use="required"/>
-          <xs:attribute name="connection" type="c:Count" use="required"/>
-          <xs:attribute name="loyalty" type="c:Count" use="required"/>
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="lifestyle" minOccurs="0">
         <xs:complexType>
           <xs:attribute name="id" type="xs:string" use="required"/>
@@ -215,6 +174,138 @@
     <xs:attribute name="karmaToNuyen" type="c:Count"/>
   </xs:complexType>
 
+  <!-- a knowledge skill or language, its name as the text; native: the free native language -->
+  <xs:complexType name="Knowledge"><xs:simpleContent><xs:extension base="xs:string">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="knowledge"/><xs:enumeration value="language"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="native" type="xs:boolean"/>
+    <xs:attribute name="points" type="c:Count" use="required"/>
+    <xs:attribute name="karma" type="c:Count" use="required"/>
+  </xs:extension></xs:simpleContent></xs:complexType>
+
+  <!-- free: a metatype trait; name: the catalog name when added -->
+  <xs:complexType name="Quality">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="level" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="free" type="xs:boolean"/>
+    <xs:attribute name="note" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
+  <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
+  <xs:complexType name="Pick">
+    <xs:sequence><xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="spells"/><xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/>
+        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="level" type="xs:positiveInteger"/>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="Contact">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="archetype" type="xs:string" use="required"/>
+    <xs:attribute name="connection" type="c:Count" use="required"/>
+    <xs:attribute name="loyalty" type="c:Count" use="required"/>
+  </xs:complexType>
+
+  <!-- the career ledger, append-only (src/sr6/engine/career.ts): finalize sets both balances, earn adds, an advance spends
+       (negative: gained), a void undoes the entry named by event. The text is the run, note or void reason; an advance's
+       one child is the line it adds (or, buyoff and drop, the line it removed), the same element as the build's. -->
+  <xs:complexType name="Ledger">
+    <xs:sequence><xs:element name="entry" type="c:Entry" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Entry" mixed="true">
+    <xs:choice minOccurs="0">
+      <xs:element name="knowledge" type="c:Knowledge"/>
+      <xs:element name="quality" type="c:Quality"/>
+      <xs:element name="pick" type="c:Pick"/>
+      <xs:element name="purchase" type="c:Purchase"/>
+      <xs:element name="contact" type="c:Contact"/>
+    </xs:choice>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="at" type="xs:string" use="required"/>
+    <xs:attribute name="type" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="finalize"/><xs:enumeration value="earn"/><xs:enumeration value="advance"/>
+        <xs:enumeration value="note"/><xs:enumeration value="void"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="karma" type="xs:integer"/>
+    <xs:attribute name="nuyen" type="xs:decimal"/>
+    <!-- earn: the date of the run; void: the id of the entry voided -->
+    <xs:attribute name="date" type="xs:string"/>
+    <xs:attribute name="event" type="xs:string"/>
+    <!-- advance: the op, its target (an attribute, a skill id, or the uid of the line bought off or dropped), name (a
+         specialization or expertise), lifestyle and months; convert's karma is the entry's karma -->
+    <xs:attribute name="op">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
+        <xs:enumeration value="expertise"/><xs:enumeration value="knowledge"/><xs:enumeration value="quality"/>
+        <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
+        <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/>
+        <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
+        <xs:enumeration value="other"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="target" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="months" type="c:Count"/>
+    <xs:attribute name="lifestyle" type="xs:string"/>
+    <xs:attribute name="label" type="xs:string"/>
+  </xs:complexType>
+
+  <!-- an SR6 NPC's stat block: the printed values (stat) and the parts' text (line), copied from the catalog entry it was
+       made from (from*) or entered by the GM; rating: the Professional Rating, Force or Level -->
+  <xs:complexType name="Npc">
+    <xs:sequence>
+      <xs:element name="stat" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="key" use="required">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[a-z]{1,20}"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="value" use="required">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:maxLength value="80"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="line" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+          <xs:attribute name="part" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="skills"/><xs:enumeration value="powers"/><xs:enumeration value="optionalPowers"/>
+              <xs:enumeration value="weaknesses"/><xs:enumeration value="attacks"/><xs:enumeration value="augmentations"/>
+              <xs:enumeration value="gear"/><xs:enumeration value="weapons"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+        </xs:extension></xs:simpleContent></xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="grunt"/><xs:enumeration value="critter"/><xs:enumeration value="spirit"/><xs:enumeration value="sprite"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="rating" type="c:Count"/>
+    <xs:attribute name="group" type="xs:string"/>
+    <xs:attribute name="fromKind" type="xs:string"/>
+    <xs:attribute name="fromId" type="xs:string"/>
+    <xs:attribute name="fromName" type="xs:string"/>
+    <xs:attribute name="fromSource" type="xs:string"/>
+    <xs:attribute name="fromPage" type="xs:positiveInteger"/>
+  </xs:complexType>
+
   <!-- what a ware, power or item adds (entered by the player); perRating: times the line's rating -->
   <xs:complexType name="Bonus">
     <xs:attribute name="target" use="required">
@@ -231,7 +322,11 @@
   <xs:complexType name="Purchase">
     <xs:sequence>
       <xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="knowledge" type="c:Knowledge" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="quality" type="c:Quality" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="pick" type="c:Pick" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="snapshot" minOccurs="0">
         <xs:complexType><xs:sequence><xs:any processContents="skip" namespace="##any"/></xs:sequence></xs:complexType>
       </xs:element>

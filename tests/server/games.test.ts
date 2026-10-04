@@ -157,6 +157,18 @@ test('campaigns: each game its own campaigns.xml; only its own runners and NPCs 
   expect(await listed(await call('eve', 'GET', '/api/sr6/npcs'))).toEqual(['eve/n6/sr6'])
 })
 
+test('the real SR6 files (S3 golden fixtures): the NPC goes in the NPC store and to a campaign, never the runners’; the career runner never the NPCs’', async () => {
+  const grunt = readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8'), career = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')
+  const gid = grunt.match(/ id="([^"]+)"/)![1], cid = career.match(/ id="([^"]+)"/)![1]
+  expect((await call('eve', 'PUT', `/api/sr6/npcs/${gid}`, grunt)).status).toBe(201)
+  expect((await call('eve', 'PUT', `/api/sr6/characters/${gid}`, grunt)).status).toBe(400)
+  expect((await call('eve', 'POST', `/api/sr6/campaigns/${s6c}/npcs`, { id: gid })).status).toBe(200)
+  const c = await (await call('eve', 'GET', `/api/sr6/campaigns/${s6c}`)).json()
+  expect(c.npcs.map((n: { id: string }) => n.id)).toContain(gid)
+  expect((await call('eve', 'PUT', `/api/sr6/npcs/${cid}`, career)).status).toBe(400)
+  expect(await listed(await call('eve', 'GET', '/api/sr6/npcs'))).toEqual([`eve/${gid}/sr6`, 'eve/n6/sr6'].sort())
+})
+
 test('scope: only the game stores, books and edits answer under /api/sr6/', async () => {
   for (const p of ['/api/sr6/books', '/api/sr6/edits']) expect([p, (await call('ada', 'GET', p)).status]).toEqual([p, 200])
   for (const p of ['/api/sr6/compendiums', '/api/sr6/auth/me', '/api/sr6/users', '/api/sr6/health', '/api/sr6',

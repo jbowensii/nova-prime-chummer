@@ -4,9 +4,12 @@
 import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../engine/charxml'
 import { BACKDROPS, type Backdrop } from '../../model/types'
 import {
-  BONUS_TARGETS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ATTRS, SR6_METHODS, blankBuild,
-  type Bonus, type MagicKind, type Sr6Build, type Sr6Character, type Sr6Purchase,
+  BONUS_TARGETS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
+  SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
+  type Bonus, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
+  type Sr6Npc, type Sr6Pick, type Sr6Purchase, type Sr6Quality,
 } from '../model/character'
+import { SR6_KINDS, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
 import { sr6EntryXml, toEntry } from './load'
 
@@ -23,6 +26,12 @@ function purchaseXml(p: Sr6Purchase): string {
   bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''))
 }
 
+// one writer per line kind: the build's lines and a ledger entry's line are the same element
+const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
+const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, free: q.free, note: q.note, name: q.name })
+const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
+const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty })
+
 function buildXml(b: Sr6Build): string {
   const rows = [
     ...PRIORITY_COLUMNS.map(column => el('priority', { column, letter: b.priorities[column] })),
@@ -30,11 +39,8 @@ function buildXml(b: Sr6Build): string {
     ...b.lifepath.map(m => el('lifemodule', { id: m.id }, Object.entries(m.choices).map(([index, pick]) => el('choice', { index, pick })).join(''))),
     ...SR6_ATTRS.map(id => el('attribute', { id, ...b.attributes[id] })),
     ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
-    ...b.knowledge.map(k => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`),
-    ...b.qualities.map(q => el('quality', { uid: q.uid, id: q.id, level: q.level, free: q.free, note: q.note, name: q.name })),
-    ...b.picks.map(p => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))),
-    ...b.purchases.map(purchaseXml),
-    ...b.contacts.map(c => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty })),
+    ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.purchases.map(purchaseXml),
+    ...b.contacts.map(contactXml),
     ...(b.lifestyle ? [el('lifestyle', { id: b.lifestyle.id, months: b.lifestyle.months })] : []),
     ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating }, s.licences.map(l => el('licence', l)).join(''))),
   ]
@@ -43,14 +49,53 @@ function buildXml(b: Sr6Build): string {
   `\n    ${rows.join('\n    ')}\n  `)
 }
 
+/** An advance's attributes and its one line (convert's karma is the entry's). */
+function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
+  switch (a.op) {
+    case 'attribute': case 'skill': return [{ target: a.target }, '']
+    case 'spec': case 'expertise': return [{ target: a.target, name: a.name }, '']
+    case 'knowledge': return [{}, knowledgeXml(a.line)]
+    case 'quality': return [{}, qualityXml(a.line)]
+    case 'buyoff': return [{ target: a.target }, a.line ? qualityXml(a.line) : '']
+    case 'pick': return [{}, pickXml(a.line)]
+    case 'initiate': return [{}, a.line ? pickXml(a.line) : '']
+    case 'purchase': return [{}, purchaseXml(a.line)]
+    case 'drop': return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
+    case 'contact': return [{}, contactXml(a.line)]
+    case 'lifestyle': return [{ lifestyle: a.id, months: a.months }, '']
+    case 'powerpoint': case 'convert': case 'other': return [{}, '']
+  }
+}
+function entryXml(e: Sr6LedgerEntry): string {
+  const head = { id: e.id, at: e.at, type: e.type }
+  switch (e.type) {
+    case 'finalize': return el('entry', { ...head, karma: e.karma, nuyen: e.nuyen })
+    case 'earn': return el('entry', { ...head, karma: e.karma, nuyen: e.nuyen, date: e.date }, esc(e.run))
+    case 'note': return el('entry', head, esc(e.text))
+    case 'void': return el('entry', { ...head, event: e.eventId }, esc(e.reason))
+    case 'advance': {
+      const [a, line] = advanceXml(e.advance)
+      return el('entry', { ...head, karma: e.karma, nuyen: e.nuyen, op: e.advance.op, ...a, label: e.label }, line)
+    }
+  }
+}
+const ledgerXml = (l: Sr6LedgerEntry[]) => (l.length ? `<ledger>\n    ${l.map(entryXml).join('\n    ')}\n  </ledger>` : '')
+
+function npcXml(n?: Sr6Npc): string {
+  if (!n) return ''
+  const f = n.from
+  return el('npc', { kind: n.kind, rating: n.rating, group: n.group, fromKind: f?.kind, fromId: f?.id, fromName: f?.name, fromSource: f?.source, fromPage: f?.page },
+    Object.entries(n.stats).map(([key, value]) => el('stat', { key, value })).join('') + n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join(''))
+}
+
 /** Serialize a runner. `rev` is the server's revision counter (omitted for exports). */
 export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
-  const body = [text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
-    buildXml(ch.build), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
+  const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
+    buildXml(ch.build), ledgerXml(ch.ledger), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
-    lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen })
+    lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen, sampleKey: ch.sampleKey })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="${SR6_CHAR_NS}"${root}>\n  ${body}\n</sr6:character>\n`
 }
 
@@ -91,6 +136,16 @@ function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
     snapshot: snap ? toEntry(snap, kind) : undefined })
 }
 
+const readKnowledge = (e: Element): Sr6Knowledge => def({ uid: e.getAttribute('uid') ?? '', name: e.textContent ?? '',
+  kind: oneOf(e.getAttribute('kind'), ['knowledge', 'language'] as const, 'knowledge kind')!, native: yes(e, 'native'),
+  points: num(e, 'points', 0), karma: num(e, 'karma', 0) })
+const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1),
+  free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
+const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
+  id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
+const readContact = (e: Element): Sr6Contact => ({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
+  archetype: e.getAttribute('archetype') ?? '', connection: num(e, 'connection', 0), loyalty: num(e, 'loyalty', 0) })
+
 function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
   out.magic = oneOf(b.getAttribute('magic'), MAGIC_KINDS, 'magic kind', 'mundane', fix)!
@@ -110,22 +165,81 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   }, label, fix)
   out.skills = each(kids(b, 'skill'), e => def({ id: e.getAttribute('id') ?? '', points: num(e, 'points', 0), karma: num(e, 'karma', 0),
     spec: str(e, 'spec'), expertise: str(e, 'expertise') }), label, fix)
-  out.knowledge = each(kids(b, 'knowledge'), e => def({ uid: e.getAttribute('uid') ?? '', name: e.textContent ?? '',
-    kind: oneOf(e.getAttribute('kind'), ['knowledge', 'language'] as const, 'knowledge kind')!, native: yes(e, 'native'),
-    points: num(e, 'points', 0), karma: num(e, 'karma', 0) }), label, fix)
-  out.qualities = each(kids(b, 'quality'), e => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1),
-    free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') }), label, fix)
-  out.picks = each(kids(b, 'pick'), e => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
-    id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') }), label, fix)
+  out.knowledge = each(kids(b, 'knowledge'), readKnowledge, label, fix)
+  out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
+  out.picks = each(kids(b, 'pick'), readPick, label, fix)
   out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix), label, fix)
-  out.contacts = each(kids(b, 'contact'), e => ({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
-    archetype: e.getAttribute('archetype') ?? '', connection: num(e, 'connection', 0), loyalty: num(e, 'loyalty', 0) }), label, fix)
+  out.contacts = each(kids(b, 'contact'), readContact, label, fix)
   const ls = kid(b, 'lifestyle')
   if (ls) out.lifestyle = { id: ls.getAttribute('id') ?? '', months: num(ls, 'months', 0) }
   out.sins = each(kids(b, 'sin'), e => def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
     kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'),
     licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })) }), label, fix)
   return out
+}
+
+// ---- the ledger and the NPC block ----
+/** An attribute that must be there. */
+const req = (e: Element, a: string) => { const v = e.getAttribute(a); if (v == null) throw new Error(`no ${a}`); return v }
+/** The entry's line element, read; `need`: missing throws. */
+function line<T>(e: Element, name: string, read: (x: Element) => T, need: true): T
+function line<T>(e: Element, name: string, read: (x: Element) => T): T | undefined
+function line<T>(e: Element, name: string, read: (x: Element) => T, need?: true) {
+  const x = kid(e, name)
+  if (!x && need) throw new Error(`no <${name}> inside the entry`)
+  return x ? read(x) : undefined
+}
+
+function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
+  const op = oneOf(e.getAttribute('op'), SR6_ADVANCE_OPS, 'advance op')!
+  const purchase = (x: Element) => readPurchase(x, fix)
+  switch (op) {
+    case 'attribute': return { op, target: oneOf(e.getAttribute('target'), SR6_ATTRS, 'attribute')! }
+    case 'skill': return { op, target: req(e, 'target') }
+    case 'spec': case 'expertise': return { op, target: req(e, 'target'), name: req(e, 'name') }
+    case 'knowledge': return { op, line: line(e, 'knowledge', readKnowledge, true) }
+    case 'quality': return { op, line: line(e, 'quality', readQuality, true) }
+    case 'buyoff': return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality) })
+    case 'pick': return { op, line: line(e, 'pick', readPick, true) }
+    case 'initiate': return def({ op, line: line(e, 'pick', readPick) })
+    case 'purchase': return { op, line: line(e, 'purchase', purchase, true) }
+    case 'drop': return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
+    case 'contact': return { op, line: line(e, 'contact', readContact, true) }
+    case 'lifestyle': return { op, id: req(e, 'lifestyle'), months: num(e, 'months', 0) }
+    case 'convert': return { op, karma }
+    case 'powerpoint': case 'other': return { op }
+  }
+}
+
+function readEntry(e: Element, fix?: string[]): Sr6LedgerEntry {
+  const head = { id: req(e, 'id'), at: e.getAttribute('at') ?? '' }
+  const type = oneOf(e.getAttribute('type'), SR6_LEDGER_TYPES, 'entry type')!
+  const karma = num(e, 'karma', 0), nuyen = num(e, 'nuyen', 0), body = e.textContent ?? ''
+  switch (type) {
+    case 'finalize': return { ...head, type, karma, nuyen }
+    case 'earn': return { ...head, type, karma, nuyen, run: body, date: e.getAttribute('date') ?? '' }
+    case 'note': return { ...head, type, text: body }
+    case 'void': return { ...head, type, eventId: req(e, 'event'), reason: body }
+    case 'advance': return { ...head, type, advance: readAdvance(e, karma, fix), label: e.getAttribute('label') ?? '', karma, nuyen }
+  }
+}
+
+const CATALOG_KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
+function readNpc(n: Element, fix?: string[]): Sr6Npc {
+  const fk = n.getAttribute('fromKind')
+  const stats = each(kids(n, 'stat'), e => {
+    const key = e.getAttribute('key') ?? '', value = e.getAttribute('value') ?? ''
+    if (!/^[a-z]{1,20}$/.test(key)) throw new Error(`the key “${key.slice(0, 40)}” isn’t 1 to 20 letters a to z`)
+    if (value.length > 80) throw new Error(`the ${key} value is longer than 80 characters`)
+    return [key, value] as const
+  }, label, fix)
+  return def({
+    kind: oneOf(n.getAttribute('kind'), SR6_NPC_KINDS, 'NPC kind', 'grunt', fix)!, rating: num(n, 'rating'), group: str(n, 'group'),
+    from: fk == null ? undefined : { kind: oneOf(fk, CATALOG_KINDS, 'NPC catalog kind')!, id: n.getAttribute('fromId') ?? '',
+      name: n.getAttribute('fromName') ?? '', source: n.getAttribute('fromSource') ?? '', page: num(n, 'fromPage', 0) },
+    stats: Object.fromEntries(stats),
+    lines: each(kids(n, 'line'), e => ({ part: oneOf(e.getAttribute('part'), SR6_NPC_PARTS, 'line part')!, text: e.textContent ?? '' }), label, fix),
+  })
 }
 
 export type Sr6Parsed = { ok: true; character: Sr6Character; rev?: number } | { ok: false; reason: string }
@@ -151,7 +265,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     build.metatype = str(r, 'metatype') ?? ''
     const t = (name: string) => kid(r, name)?.textContent ?? undefined
     const backdrop = str(r, 'backdrop') as Backdrop | undefined
-    const fk = num(r, 'finalKarma'), fn = num(r, 'finalNuyen')
+    const fk = num(r, 'finalKarma'), fn = num(r, 'finalNuyen'), npc = kid(r, 'npc'), ledger = kid(r, 'ledger')
     const ch: Sr6Character = def({
       formatVersion: 1 as const, id: r.getAttribute('id')!,
       identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', metatype: build.metatype,
@@ -159,6 +273,8 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
         background: t('background') ?? '', notes: t('notes') ?? '' }),
       build, finalizedAt: str(r, 'finalizedAt'), campaign: str(r, 'campaign'),
       final: fk === undefined && fn === undefined ? undefined : { karma: fk ?? 0, nuyen: fn ?? 0 },
+      ledger: ledger ? each(kids(ledger, 'entry'), e => readEntry(e, fix), (_, i) => `ledger entry ${i + 1}`, fix) : [],
+      npc: npc ? readNpc(npc, fix) : undefined, sampleKey: str(r, 'sampleKey'),
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: o.textContent ?? '' })),
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),
     })

@@ -44,7 +44,8 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
 
 `metatype` and `method` repeat the build's, so a server can list runners without reading the build. `metatype=""` is a
 draft with none picked yet. `finalizedAt`, `finalKarma` and `finalNuyen` are set by Finalize (the karma and nuyen left);
-`campaign` is set through the server. `rev` is the server's revision counter and is left out of exports.
+`campaign` is set through the server. `rev` is the server's revision counter and is left out of exports. `sampleKey`:
+see NPCs below.
 
 ## Build
 
@@ -66,6 +67,52 @@ draft with none picked yet. `finalizedAt`, `finalKarma` and `finalNuyen` are set
 - `<bonus target value perRating?>`: what a ware, power or item adds, entered by the player (the catalog has no bonus
   data). `target` is an attribute abbreviation or `initDice`; `perRating`: times the line's rating.
 - `<sin kind="real|fake" rating?>` with its `<licence>`s.
+
+## Career ledger
+
+A finalized runner's career spends are the `<ledger>` after `<build>` (left out while empty; a file without one reads
+as an empty ledger). The build stays as finalized: the runner as it stands is the build with every live advance since
+the last finalize entry replayed on it (`src/sr6/engine/career.ts`). The ledger is append-only; a `void` entry undoes
+the entry its `event` names.
+
+```xml
+  <ledger>
+    <entry id="l-1" at="…" type="finalize" karma="31" nuyen="4350"/>
+    <entry id="l-2" at="…" type="earn" karma="9" nuyen="3100" date="2026-10-04">Made-up run</entry>
+    <entry id="l-3" at="…" type="advance" karma="12" nuyen="0" op="attribute" target="agi" label="AGI 3 → 4"/>
+    <entry id="l-5" at="…" type="advance" karma="0" nuyen="290" op="purchase" label="Zap Gun"><purchase …/></entry>
+    <entry id="l-8" at="…" type="void" event="l-7">Picked the wrong metamagic</entry>
+    <entry id="l-9" at="…" type="note">Owes Fixer Fred a favour</entry>
+  </ledger>
+```
+
+- `type`: `finalize` (sets both balances), `earn` (adds; the text is the run), `advance` (a spend: `karma` and `nuyen`
+  spent, negative when gained; `label` says what was bought), `note` (the text) or `void` (`event`: the entry undone;
+  the text is the reason). An unknown `type` or `op` is refused; repair drops the entry ("Dropped ledger entry 3: …").
+- `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
+  (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
+  element), `buyoff` and `drop` (`target`: the uid of the line removed; the removed line may follow for the history),
+  `initiate` (an optional metamagic or echo `<pick>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`), `convert`
+  (the entry's `karma`: positive turns karma into nuyen, negative nuyen into karma) and `other`.
+
+## NPCs
+
+An SR6 NPC is the same file with `<npc>` as the root's **first child** (the server keeps NPCs and runners apart by it)
+and a blank build. Its stat block is copied from the catalog entry it was made from, or entered by the GM:
+
+```xml
+<sr6:character … streetName="Corner Goon" sampleKey="CRB|crb.corner-goon">
+  <npc kind="grunt" rating="2" group="Street Crew" fromKind="npcs" fromId="crb.corner-goon" fromName="Corner Goon"
+      fromSource="CRB" fromPage="205"><stat key="bod" value="3"/>…<line part="skills">Close Combat 4, Firearms 3</line></npc>
+  <build …/>
+</sr6:character>
+```
+
+- `kind`: `grunt`, `critter`, `spirit` or `sprite`; `rating` the Professional Rating, Force or Level; `group` a grunt's.
+- `<stat key value>`: a printed value (key `a`–`z`, at most 20 letters; value at most 80 characters, e.g. `F+1`).
+- `<line part>`: `skills`, `powers`, `optionalPowers`, `weaknesses`, `attacks`, `augmentations`, `gear` or `weapons`.
+- `sampleKey` (root): the catalog entry a book NPC was loaded from, `<source>|<id>`.
+- The runners page refuses an NPC file ("Import it on NPCs & Critters") and the NPC page a runner.
 
 ## Reading bad files
 

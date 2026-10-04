@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="npc-goon-1" streetName="Corner Goon" name="" metatype="" method="priority" updatedAt="2026-10-05T09:30:00.000Z" sampleKey="CRB|crb.corner-goon">
+  <npc kind="grunt" rating="2" group="Street Crew" fromKind="npcs" fromId="crb.corner-goon" fromName="Corner Goon" fromSource="CRB" fromPage="205"><stat key="bod" value="3"/><stat key="agi" value="3"/><stat key="rea" value="3"/><stat key="str" value="3"/><stat key="wil" value="2"/><stat key="log" value="2"/><stat key="int" value="3"/><stat key="cha" value="2"/><stat key="ess" value="6"/><stat key="edg" value="1"/><stat key="dr" value="5"/><stat key="init" value="6 + 1D6"/><stat key="actions" value="1/2"/><stat key="cm" value="10"/><stat key="move" value="10/15/+1"/><line part="skills">Close Combat 4, Firearms 3</line><line part="gear">Padded Vest</line><line part="weapons">Zap Gun</line></npc>
+  <build method="priority" magic="mundane" powerPointsBought="0" initiation="0" submersion="0" karmaToNuyen="0">
+    <priority column="metatype"/>
+    <priority column="attributes"/>
+    <priority column="magic"/>
+    <priority column="skills"/>
+    <priority column="resources"/>
+    <cp pool="attribute" points="0"/>
+    <cp pool="skill" points="0"/>
+    <cp pool="adjustment" points="0"/>
+    <cp pool="resources" points="0"/>
+    <cp pool="powerPoints" points="0"/>
+    <cp pool="spells" points="0"/>
+    <cp pool="complexForms" points="0"/>
+    <attribute id="bod" points="0" adjust="0" karma="0"/>
+    <attribute id="agi" points="0" adjust="0" karma="0"/>
+    <attribute id="rea" points="0" adjust="0" karma="0"/>
+    <attribute id="str" points="0" adjust="0" karma="0"/>
+    <attribute id="wil" points="0" adjust="0" karma="0"/>
+    <attribute id="log" points="0" adjust="0" karma="0"/>
+    <attribute id="int" points="0" adjust="0" karma="0"/>
+    <attribute id="cha" points="0" adjust="0" karma="0"/>
+    <attribute id="edg" points="0" adjust="0" karma="0"/>
+    <attribute id="mag" points="0" adjust="0" karma="0"/>
+    <attribute id="res" points="0" adjust="0" karma="0"/>
+  </build>
+</sr6:character>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="career-wisp-1" streetName="Wisp Lantern" name="Wren Doe" metatype="crb.glimmerkin" method="priority" finalizedAt="2026-10-03T12:00:00.000Z" updatedAt="2026-10-05T09:30:00.000Z" finalKarma="31" finalNuyen="4350">
+  <background>Learned hexes from a vending-machine spirit.</background>
+  <build method="priority" magic="full" tradition="Kitchen hoodoo" drainAttr="log" powerPointsBought="0" initiation="0" submersion="0" karmaToNuyen="0">
+    <priority column="metatype" letter="D"/>
+    <priority column="attributes" letter="B"/>
+    <priority column="magic" letter="A"/>
+    <priority column="skills" letter="C"/>
+    <priority column="resources" letter="E"/>
+    <cp pool="attribute" points="0"/>
+    <cp pool="skill" points="0"/>
+    <cp pool="adjustment" points="0"/>
+    <cp pool="resources" points="0"/>
+    <cp pool="powerPoints" points="0"/>
+    <cp pool="spells" points="0"/>
+    <cp pool="complexForms" points="0"/>
+    <attribute id="bod" points="2" adjust="0" karma="0"/>
+    <attribute id="agi" points="2" adjust="0" karma="0"/>
+    <attribute id="rea" points="0" adjust="0" karma="0"/>
+    <attribute id="str" points="0" adjust="0" karma="0"/>
+    <attribute id="wil" points="3" adjust="0" karma="0"/>
+    <attribute id="log" points="4" adjust="0" karma="0"/>
+    <attribute id="int" points="3" adjust="0" karma="0"/>
+    <attribute id="cha" points="3" adjust="0" karma="0"/>
+    <attribute id="edg" points="0" adjust="2" karma="0"/>
+    <attribute id="mag" points="0" adjust="3" karma="0"/>
+    <attribute id="res" points="0" adjust="0" karma="0"/>
+    <skill id="crb.tinkering" points="3" karma="0"/>
+    <skill id="crb.hexing" points="4" karma="0"/>
+    <skill id="crb.gab" points="2" karma="0"/>
+    <knowledge uid="k1" kind="language" native="true" points="0" karma="0">Sperethiel</knowledge>
+    <knowledge uid="k2" kind="knowledge" points="2" karma="0">Arcade lore</knowledge>
+    <purchase uid="g1" kind="armor" id="crb.padded-vest" qty="1" worn="true"/>
+    <contact uid="c1" name="Fixer Fred" archetype="Fixer" connection="3" loyalty="2"/>
+    <lifestyle id="crb.cozy" months="1"/>
+  </build>
+  <ledger>
+    <entry id="l-1" at="2026-10-03T12:00:00.000Z" type="finalize" karma="31" nuyen="4350"/>
+    <entry id="l-2" at="2026-10-04T20:00:00.000Z" type="earn" karma="9" nuyen="3100" date="2026-10-04">Made-up run</entry>
+    <entry id="l-3" at="2026-10-04T21:00:00.000Z" type="advance" karma="12" nuyen="0" op="attribute" target="agi" label="AGI 3 → 4"/>
+    <entry id="l-4" at="2026-10-04T22:00:00.000Z" type="advance" karma="7" nuyen="0" op="spec" target="crb.tinkering" name="Gizmos" label="Tinkering: Gizmos"/>
+    <entry id="l-5" at="2026-10-05T08:00:00.000Z" type="advance" karma="0" nuyen="290" op="purchase" label="Zap Gun"><purchase uid="g9" kind="weapons" id="crb.zap-gun" name="Zap Gun" qty="1"><snapshot><weapon id="crb.zap-gun" source="CRB" page="250" category="zappers" dv="3P" modes="SS" ar="9/7/—/—/—" ammo="8(c)" avail="2" cost="290"><name>Zap Gun</name><text/></weapon></snapshot></purchase></entry>
+    <entry id="l-6" at="2026-10-05T09:00:00.000Z" type="advance" karma="7" nuyen="0" op="pick" label="Spell: Glow Ward"><pick uid="p9" kind="spells" id="crb.glow-ward" name="Glow Ward"/></entry>
+    <entry id="l-7" at="2026-10-05T10:00:00.000Z" type="advance" karma="12" nuyen="0" op="initiate" label="Initiation grade 1 (Soft Echo)"><pick uid="m9" kind="metamagics" id="crb.soft-echo" name="Soft Echo"/></entry>
+    <entry id="l-8" at="2026-10-05T11:00:00.000Z" type="void" event="l-7">Picked the wrong metamagic</entry>
+    <entry id="l-9" at="2026-10-05T12:00:00.000Z" type="note">Owes Fixer Fred a favour</entry>
+  </ledger>
+</sr6:character>
