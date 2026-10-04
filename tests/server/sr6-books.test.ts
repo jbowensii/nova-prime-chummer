@@ -113,6 +113,16 @@ test('roles: a player gets 403 on SR6 book routes; editors edit; anyone signed i
   expect(await del.json()).toEqual({ removed: true })
 })
 
+test('the SR6 edits list names entries, not their parts that share a kind’s tag', async () => {
+  const path = join(custom, 'sr6', 'edits', 'edits.xml'), before = readFileSync(path, 'utf8')
+  writeFileSync(path, '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="edits" version="1">' +
+    '<critter id="crb.fuzzbeast" source="CRB" page="400" by="eve"><name>Fuzzbeast</name><gear>Made-up collar</gear><text/></critter>' +
+    '<priority id="crb.priority-a" source="CRB" page="40" letter="A" by="eve"><name>Priority A</name><metatype name="Elf" points="13"/><text/></priority></sr6:data>')
+  try {
+    expect(await (await as('pat', '/api/sr6/edits')).json()).toEqual([{ kind: 'critters', id: 'crb.fuzzbeast' }, { kind: 'priorities', id: 'crb.priority-a' }])
+  } finally { writeFileSync(path, before) }
+})
+
 test('what SR6 doesn’t have answers 404: AI, review, data pack, house sources, settings', async () => {
   for (const [m, p] of [['POST', `/api/sr6/books/${book}/ai`], ['GET', '/api/sr6/review/x'], ['PUT', '/api/sr6/review/x'], ['POST', '/api/sr6/datapack'],
     ['POST', '/api/sr6/edits/sources'], ['GET', '/api/sr6/ai-settings'], ['GET', '/api/sr6/samples'], ['PUT', '/api/sr6/table-rules'],

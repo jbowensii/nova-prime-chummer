@@ -459,7 +459,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (p === '/api/edits' && method === 'GET') {
       const xml = (await readOr(join(area.custom, 'edits', 'edits.xml'), '')).replace(/<!--[\s\S]*?-->/g, '')
       const kind = Object.fromEntries(Object.entries(area.kinds).map(([k, t]) => [t, k]))
-      return send(res, 200, [...xml.matchAll(/<([a-z]+)\b[^>]*>/g)].filter(m => Object.hasOwn(kind, m[1])).map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })))
+      // entries only: an SR6 entry's parts can share a kind's tag (a priority's <metatype>, a critter's <gear>) but have no id
+      return send(res, 200, [...xml.matchAll(/<([a-z]+)\b[^>]*>/g)].filter(m => Object.hasOwn(kind, m[1]) && attr(m[0], 'id'))
+        .map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })))
     }
     if (p === '/api/edits/sources' && game === 'sr6') return send(res, 404, { error: 'not found' }) // S1: no SR6 house sources
     if (p === '/api/edits/sources') {

@@ -12,6 +12,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../mode
 import { Sr6EditEntry } from './EditEntry'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
+const LIMIT = 200 // rows the browser shows before "Show all" (a real book's gear or rules run to hundreds)
 /** "category zappers · dv 3P · cost 320": an entry's printed values */
 const details = (e: Sr6Entry) => Object.entries(e.attrs).map(([k, v]) => `${k} ${v}`).join(' · ')
 
@@ -23,8 +24,11 @@ export function Sr6Data({ c, reload }: { c: Sr6Catalog; reload: () => Promise<vo
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<{ kind: Sr6Kind; id: string } | null>(null)
   const [msg, setMsg] = useState('')
-  const t = q.trim().toLowerCase()
+  const [full, setFull] = useState('') // the kind and search "Show all" was pressed for
+  const t = q.trim().toLowerCase(), view = `${kind}
+${t}`
   const shown = [...c.entries[kind].values()].filter(e => !t || `${e.name} ${e.text}`.toLowerCase().includes(t))
+  const rows = full === view ? shown : shown.slice(0, LIMIT)
   const perSource = (id: string) => all.filter(e => e.source === id).length
   const edits = all.filter(e => e.edited)
   const editButton = (e: Sr6Entry) => editor &&
@@ -61,10 +65,12 @@ export function Sr6Data({ c, reload }: { c: Sr6Catalog; reload: () => Promise<vo
       <div role="status" aria-live="polite">{msg && <p className="banner">{msg}</p>}</div>
       {shown.length === 0 ? <p className="muted">{t ? `Nothing matches “${q}”.` : `No ${SR6_KINDS[kind].label.toLowerCase()} yet.`}</p> : (
         <div className="scroll-x"><table className="data sr6-browse"><thead><tr><th>Entry</th><th>Values</th><th /></tr></thead>
-          <tbody>{shown.map(e => (
+          <tbody>{rows.map(e => (
             <tr key={e.id}><td><b>{e.name}</b> <span className="srcline"><span className="src">{e.source} p.{e.page}</span>{e.edited && <EditedMark />}</span></td>
               <td className="muted">{details(e)}</td><td className="num">{editButton(e)}</td></tr>
-          ))}</tbody></table></div>
+          ))}</tbody></table>
+          {rows.length < shown.length && <p className="muted">Showing {rows.length} of {shown.length}. Search to narrow it, or{' '}
+            <button type="button" className="btn small quiet" onClick={() => setFull(view)}>Show all {shown.length}</button></p>}</div>
       )}
 
       {editor && <>
