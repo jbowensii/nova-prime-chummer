@@ -25,7 +25,7 @@ class Sr6LayoutTest(unittest.TestCase):
         cls.text = "\n".join(cls.lines)
 
     def test_converter_version(self):
-        self.assertEqual(self.meta["converter"], "sr6-1")
+        self.assertEqual(self.meta["converter"], "sr6-2")
         self.assertEqual(_convert(sr6=False)[0]["converter"], "6")
 
     def test_headings_by_font(self):
@@ -86,6 +86,15 @@ class Sr6LayoutTest(unittest.TestCase):
         i = self.lines.index("| # OF ZAPS | EFFECT |")
         self.assertEqual(self.lines[i + 2], "| 1 | Tingle |")
         self.assertNotIn("#", self.lines)
+
+    def test_columns_with_no_whitespace_gutter_split_by_stream_order(self):
+        left = [ln for ln in self.lines if ln.startswith("oooo")]
+        self.assertEqual(left, ["o" * 40 + str(i) for i in range(4)])
+        self.assertLess(self.lines.index(left[-1]), self.lines.index("right0 words"))
+        self.assertIn("right3 words", self.lines)
+
+    def test_small_label_and_tiny_raised_glyph_stay_on_their_line(self):
+        self.assertIn("• **Points:** 2", self.lines)
 
     def test_anarchy_mode_unchanged(self):
         _, lines = _convert(sr6=False)

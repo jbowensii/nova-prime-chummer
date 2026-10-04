@@ -443,7 +443,17 @@ BT /F2 6 Tf 220 600 Td (COST) Tj ET
                      + _sr6_cell(220, 558.5, "5"))
 
 
+# Two text columns 1.5 pt apart (less than a word space: no whitespace gutter), the left one written first in the
+# content stream: 41 Times-Roman glyphs of width 500 at 10.5 pt end at 72 + 215.25. Under the left column, a line
+# opening with a tiny glyph raised 4 pt, then a bold label set at 9 pt and its value at 10.5, 0.5 pt lower.
+SR6_TIGHT_OPS = ("".join(f"BT /F3 10.5 Tf 72 {700 - 14 * i} Td ({'o' * 40}{i}) Tj ET\n" for i in range(4))
+                 + "BT /F1 3.8 Tf 72 648 Td (\267) Tj ET\nBT /F2 9 Tf 80 644 Td (Points:) Tj ET\n"
+                 "BT /F3 10.5 Tf 118 643.5 Td (2) Tj ET\n"
+                 + "".join(f"BT /F3 10.5 Tf 288.75 {700 - 14 * i} Td (right{i} words) Tj ET\n" for i in range(4)))
+
+
 def sr6_layout_pdf() -> bytes:
-    """Five-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
-    with a stat-box label, a shaded table over body text and an offset sidebar, and table lookalikes."""
-    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS])
+    """Six-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
+    with a stat-box label, a shaded table over body text and an offset sidebar, table lookalikes, and two columns
+    with no whitespace gutter."""
+    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS, SR6_TIGHT_OPS])

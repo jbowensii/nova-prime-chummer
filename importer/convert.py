@@ -9,7 +9,8 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-1"  # convert(..., sr6=True), importer/sr6/layout.py
+SR6_CONVERTER_VERSION = "sr6-2"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+# split where the content stream jumps (a gutter narrower than a word space)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -93,21 +94,26 @@ def _in_table(w, table_boxes):
 def _cluster_lines(words):
     """Group words into visual rows by y-proximity only.
 
-    Anchored to the first word's top in the row (tolerant of small baseline
+    Anchored to the first word's top (SR6 layout: baseline) in the row (tolerant of small baseline
     jitter between regular and bold runs on one visual line). Rows are NOT
     split at wide word gaps here — justified text has those everywhere.
     Two columns sharing a row are split later, only at an accepted gutter.
     """
-    words = sorted(words, key=lambda w: w["top"])
-    rows, cur, anchor = [], [], None
+    key = lambda w: w.get("base", w["top"])
+    words = sorted(words, key=key)
+    rows, cur, anchor, size = [], [], None, 0
     for w in words:
-        if anchor is not None and abs(w["top"] - anchor) > _LINE_TOLERANCE:
+        # by baseline (the SR6 layout's `base`), anchored to the row's biggest word: a label set smaller stays on its
+        # line, and so does a glyph under half the size of the text beside it (a small raised bullet)
+        tiny = "base" in w and anchor is not None and min(w["size"], size) < 0.5 * max(w["size"], size)
+        tol = max(_LINE_TOLERANCE, 0.5 * max(w["size"], size)) if tiny else _LINE_TOLERANCE
+        if anchor is not None and abs(key(w) - anchor) > tol:
             rows.append(cur)
             cur = []
             anchor = None
         cur.append(w)
-        if anchor is None:
-            anchor = w["top"]
+        if anchor is None or "base" in w and w["size"] > size:
+            anchor, size = key(w), w["size"]
     if cur:
         rows.append(cur)
     return [sorted(r, key=lambda w: w["x0"]) for r in rows]
@@ -117,18 +123,28 @@ def _line_extent(line):
     return min(w["x0"] for w in line), max(w["x1"] for w in line)
 
 
+def _jump(a, b):
+    """Word b doesn't follow word a in the page's content stream: two text columns meet on this row (the SR6 layout
+    numbers each char, `i`; a book whose columns sit closer than a word space has no whitespace gutter to find)."""
+    ia, ib = a["chars"][-1].get("i"), b["chars"][0].get("i")
+    return ia is not None and ib is not None and not 0 < ib - ia <= 3
+
+
 def _split_at(row, x, tol=0):
     """Split a row at gutter x, unless a word runs through the gutter strip. tol (the SR6 layout): the row splits in
     its widest gap that holds a strip up to tol from x (a boxed sidebar's gutter sits a few points off the body
-    text's) and is wider than a word space at its words' size (a chapter title's word spaces are a strip wide)."""
+    text's) and is wider than a word space at its words' size (a chapter title's word spaces are a strip wide), or
+    where the content stream jumps (`_jump`)."""
     if tol:
-        gaps = [(b["x0"] - a["x1"], min(max(x, a["x1"] + _GUTTER_HALF), b["x0"] - _GUTTER_HALF))
-                for a, b in zip(row, row[1:])
-                if b["x0"] - a["x1"] >= max(2 * _GUTTER_HALF, (a["size"] + b["size"]) / 4)]
+        gaps = [(b["x0"] - a["x1"], min(max(x, a["x1"] + _GUTTER_HALF), b["x0"] - _GUTTER_HALF), k)
+                for k, (a, b) in enumerate(zip(row, row[1:]), 1)
+                if b["x0"] - a["x1"] >= max(2 * _GUTTER_HALF, (a["size"] + b["size"]) / 4)
+                or b["x0"] > a["x1"] and _jump(a, b)]
         gaps = [g for g in gaps if abs(g[1] - x) <= tol]
         if not gaps:
             return [row]
-        x = max(gaps)[1]
+        k = max(gaps)[2]  # by position: a jump's strip can fall inside a word set closer than the strip
+        return [row[:k], row[k:]]
     elif any(w["x0"] < x + _GUTTER_HALF and w["x1"] > x - _GUTTER_HALF for w in row):
         return [row]
     return [part for part in ([w for w in row if w["x1"] <= x], [w for w in row if w["x0"] >= x]) if part]
@@ -182,7 +198,7 @@ def _find_gutter(rows, right, left=0, tol=0):
         round((a["x1"] + b["x0"]) / 2)
         for row in rows
         for a, b in zip(row, row[1:])
-        if b["x0"] - a["x1"] >= 2 * _GUTTER_HALF and lo < (a["x1"] + b["x0"]) / 2 < hi
+        if (b["x0"] - a["x1"] >= 2 * _GUTTER_HALF or b["x0"] > a["x1"] and _jump(a, b)) and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
     scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
@@ -302,11 +318,14 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             # of two with the same box, the first is kept
             tables = [t for i, t in enumerate(found)
                       if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
-            all_words = pdfplumber.utils.extract_words(_even_sizes(page.chars), extra_attrs=["size"],
+            chars = [{**c, "i": i} for i, c in enumerate(page.chars)] if sr6 else page.chars  # stream order (_jump)
+            all_words = pdfplumber.utils.extract_words(_even_sizes(chars), extra_attrs=["size"],
                                                        keep_blank_chars=False, return_chars=True)
             bands = []
             if sr6:
                 all_words = layout.furniture(page, all_words)
+                for w in all_words:
+                    w["base"] = -w["chars"][0]["matrix"][5]
                 bands = layout.band_tables(all_words, fonts, page.rects)
             boxes = [t.bbox for t in tables]
             # a band table's own words leave the text (not its box: a long last cell can reach past the text column)
