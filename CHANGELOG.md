@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow
   column, with the PDF's line breaks, words split across lines ("gamemas- ter") and `**bold**` markers showing. The
