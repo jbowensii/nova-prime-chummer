@@ -2,6 +2,15 @@
 
 ## Unreleased (next build)
 
+- **SR6 creation rules come filled in with the standard values.** A new server no longer starts with an empty creation
+  rules form: the app ships the core rulebook's numbers (starting karma, caps, karma prices, nuyen rates, augmentation
+  grades and the rest) and the Sixth World Companion's for **sum to ten**, **point buy** and **lifepath**, each with its
+  book and page. Priority, sum to ten and point buy can be picked straight away; lifepath once its life modules are in
+  the catalog. **Karma build** stays locked until you enter its numbers, because no SR6 book prints them. On **Rules**
+  a new **Standard** column shows each standard value and its page, marks the ones your table changed, and has **Reset**
+  for one value and **Reset all to standard**. Saving keeps only what you changed; everything else follows the standard.
+  If you saved a full set of settings before, it keeps working as it is. A campaign's own settings still start as a copy
+  of the server's.
 - **Load book NPCs on SR6 NPCs & Critters now loads the whole book**: the critters, spirits and sprites as well as the
   grunts and sample contacts, each once (pressing it again adds only what's missing). Spirits come in at Force 3 and
   sprites at Level 3, a starting point you change on the NPC's Stat block tab. The sample contacts are their own kind

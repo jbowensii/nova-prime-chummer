@@ -141,12 +141,16 @@ test('career, continued: more spends, an unset price, print, export and import, 
   const settings = await (await gil.request.get('/api/sr6/creation')).json() as { key: string }[]
   const put = (list: unknown[]) => gil.request.put('/api/sr6/creation', { data: { settings: list }, headers: { Origin: base.replace(/\/$/, '') } })
   expect((await put(settings.filter(x => x.key !== 'karmaSpec'))).status()).toBe(204)
+  // and out of the shipped standard settings, which the server's would otherwise fall back to
+  const noSpec = async (r: Route) => { const res = await r.fetch(); await r.fulfill({ response: res, body: (await res.text()).replace(/<setting key="karmaSpec"[^>]*\/>/, '') }) }
+  await page.route('**/data/sr6/creation-defaults.xml', noSpec)
   await page.reload()
   await what('spec')
   await work.getByRole('combobox', { name: /^Skill/ }).selectOption('crb.tinkering')
   await work.getByRole('combobox', { name: 'Specialization', exact: true }).fill('Gizmos')
   await expect(price).toHaveText('Specialization isn’t set: Rules → Creation rules.')
   expect((await put(settings)).status()).toBe(204)
+  await page.unroute('**/data/sr6/creation-defaults.xml', noSpec)
   await gil.close()
   await page.reload()
 

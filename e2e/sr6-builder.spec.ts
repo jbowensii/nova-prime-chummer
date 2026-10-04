@@ -59,8 +59,9 @@ const row = (page: Page, name: string) => page.locator('.dossier', { hasText: na
 const file = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
 
 test('the runners page: empty, a method that needs settings, a new runner, import, export, repair, trash', async ({ page }) => {
-  // without pointBuy.total, Point buy can't be picked and says what's missing
-  await page.route('**/custom/sr6/creation.xml', async r => {
+  // without pointBuy.total (in the server's file and the shipped standard), Point buy can't be picked and says what's missing
+  const CREATION = /\/(custom\/sr6\/creation|data\/sr6\/creation-defaults)\.xml$/
+  await page.route(CREATION, async r => {
     const res = await r.fetch()
     await r.fulfill({ response: res, body: (await res.text()).replace(/<setting key="pointBuy\.total"[^>]*\/>/, '') })
   })
@@ -80,7 +81,7 @@ test('the runners page: empty, a method that needs settings, a new runner, impor
   await dlg.getByLabel('Street name').fill('Zip Spark')
   await dlg.getByRole('button', { name: 'Create runner' }).click()
   await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
-  await page.unroute('**/custom/sr6/creation.xml')
+  await page.unroute(CREATION)
 
   // back on the list: the row, then a file the app can't read, listed with Download and Try to repair
   const id = page.url().split('/c/')[1].split('/')[0]
@@ -645,7 +646,10 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
   expect((await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation).toContainEqual(expect.objectContaining({ key: 'startingKarma', value: '77' }))
   await sec.getByRole('button', { name: 'Save creation rules' }).click()
   await expect(sec.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
-  expect((await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation).toEqual([{ key: 'startingKarma', value: '88' }])
+  // the file's value; the standard values filled the rest of the form
+  const saved = (await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation as { key: string; value: string }[]
+  expect(saved.find(x => x.key === 'startingKarma')).toEqual({ key: 'startingKarma', value: '88' })
+  expect(saved.length).toBeGreaterThan(1)
 
   // back to the server's
   await sec.getByRole('radio', { name: 'Use the server’s settings' }).check()

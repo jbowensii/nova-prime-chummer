@@ -11,13 +11,13 @@ import { PageHeader } from '../../ui/nav'
 import { RepoContext, type Repo } from '../../ui/repo'
 import { TrashScreen } from '../../ui/Trash'
 import { UsersScreen } from '../../ui/Users'
-import { loadCreation, type CreationRules } from '../engine/creation'
+import { loadCreation } from '../engine/creation'
 import { sr6Data } from '../engine/data'
 import { loadSr6Catalog } from '../engine/load'
 import type { Sr6Catalog } from '../model/types'
 import { listSr6Compendiums } from './compendiumStore'
 import { Sr6Compendiums } from './Compendiums'
-import { CampaignCreation, ServerCreation } from './Creation'
+import { CampaignCreation, ServerCreation, type Loaded } from './Creation'
 import { Sr6Data } from './Data'
 import { Sr6EditorView } from './EditorView'
 import { Sr6Npcs } from './Npcs'
@@ -28,7 +28,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const me = useMe(), admin = isAdmin(me)
   const [c, setC] = useState<Sr6Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
-  const [cr, setCr] = useState<{ rules: CreationRules; errors: string[] }>({ rules: new Map(), errors: [] })
+  const [cr, setCr] = useState<Loaded>({ rules: new Map(), errors: [] })
   // staff on the server: the SR6 compendiums they can read join their catalog (a failed list loads it without them);
   // players' catalogs never hold one
   const staff = repo.mode === 'server' && canEdit(me)

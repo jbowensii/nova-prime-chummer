@@ -9,11 +9,16 @@ import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
 import { CREATION_GROUPS, expandKeys, readSettingsFile, rulesFrom, type CreationRow, type CreationRules } from '../engine/creation'
 import type { Sr6Catalog } from '../model/types'
 
-export type Loaded = { rules: CreationRules; errors: string[] }
+/** std: the shipped standard settings (loadCreation), which rules are overlaid on. */
+export type Loaded = { rules: CreationRules; errors: string[]; std?: CreationRules }
 type Row = { value: string; source: string; page: string }
 const NO_ROW: Row = { value: '', source: '', page: '' }
 const rowsOf = (cr: CreationRules): Record<string, Row> =>
   Object.fromEntries([...cr.values()].map(s => [s.key, { value: String(s.value), source: s.source ?? '', page: s.page ? String(s.page) : '' }]))
+const norm = (v: string) => { const t = v.trim(); return t && Number.isFinite(Number(t)) ? String(Number(t)) : t }
+/** A row as the standard has it (value, source and page); no standard: the row is empty. */
+const isStd = (r: Row, d?: Row) => d ? norm(r.value) === norm(d.value) && r.source.trim() === d.source && r.page.trim() === d.page : !r.value.trim()
+const rowOf = (s: CreationRow): Row => ({ value: s.value, source: s.source ?? '', page: s.page ? String(s.page) : '' })
 
 /** The rules a runner in campaign `id` is built with, fetched each time the editor opens it: undefined while they load,
  *  null for the server's (no campaign, a campaign without its own settings, or one this account can't read). */
@@ -30,8 +35,9 @@ export const campaignRules = (c: Campaign | undefined) => c?.creation ? rulesFro
 
 /** The form. `onSave` gets the whole list; without it the form is read only. Load settings file puts a local creation.xml's
  *  values in the form for review (readSettingsFile); only Save sends them. */
-export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: Loaded; onSave?: (settings: CreationRow[]) => Promise<void>; children?: React.ReactNode }) {
+export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; cr: Loaded; std?: CreationRules; onSave?: (settings: CreationRow[]) => Promise<void>; children?: React.ReactNode }) {
   const [draft, setDraft] = useState(() => rowsOf(cr.rules))
+  const stdRows = useMemo(() => rowsOf(std ?? new Map()), [std])
   useEffect(() => setDraft(rowsOf(cr.rules)), [cr])
   const [msg, setMsg] = useState(''), [err, setErr] = useState(''), [saving, setSaving] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([]) // what the loaded file had that the form left out
@@ -43,9 +49,9 @@ export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: L
     if (f.size > 1024 * 1024) return setErr(`${f.name} is larger than 1 MB: it isn’t a creation rules file.`)
     const r = readSettingsFile(await f.text(), f.name)
     if (r.fatal) return setErr(r.fatal)
-    setDraft(rowsOf(r.rules))
+    setDraft(rowsOf(new Map([...std ?? [], ...r.rules])))
     setSkipped(r.errors)
-    setMsg(`Loaded ${r.rules.size === 1 ? '1 setting' : `${r.rules.size} settings`} from ${f.name} into the form, in place of what it showed. Check them, then Save creation rules; nothing is saved until then.`)
+    setMsg(`Loaded ${r.rules.size === 1 ? '1 setting' : `${r.rules.size} settings`} from ${f.name} into the form, in place of what it showed${std?.size ? ' (the standard values fill the rest)' : ''}. Check them, then Save creation rules; nothing is saved until then.`)
   }
   async function save() {
     setMsg(''); setErr(''); setSkipped([]); setSaving(true)
@@ -62,7 +68,9 @@ export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: L
     {onSave && <p><label className="btn file">Load settings file…
       <input type="file" accept=".xml,application/xml,text/xml" aria-label="Load settings file" disabled={saving}
         onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void load(f) }} /></label>
-      {' '}<span className="muted">A creation.xml from your own notes or another server; you review it here before saving.</span></p>}
+      {' '}<span className="muted">A creation.xml from your own notes or another server; you review it here before saving.</span>
+      {std && <>{' '}<button type="button" className="btn" disabled={saving || Object.keys({ ...draft, ...stdRows }).every(k => isStd(draft[k] ?? NO_ROW, stdRows[k]))}
+        onClick={() => { setMsg('All settings are back to the standard values in the form; Save creation rules to keep them.'); setDraft({ ...stdRows }) }}>Reset all to standard</button></>}</p>}
     {skipped.length > 0 && <div className="warn"><p>Left out of the file:</p><ul>{skipped.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}
     <fieldset className="bare" disabled={!onSave || saving}>
       {CREATION_GROUPS.map(g => {
@@ -70,13 +78,14 @@ export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: L
         return rows.length > 0 && <div key={g}>
           <h3>{g}</h3>
           {g === 'Karma prices' && <p>Also the career prices.</p>}
-          <div className="scroll-x"><table className="data"><thead><tr><th>Setting</th><th>Value</th><th>Source</th><th>Page</th></tr></thead>
+          <div className="scroll-x"><table className="data"><thead><tr><th>Setting</th><th>Value</th><th>Source</th><th>Page</th>{std && <th>Standard</th>}</tr></thead>
             <tbody>{rows.map(k => {
-              const r = draft[k.key] ?? NO_ROW, v = (value: string) => set(k.key, { value })
+              const r = draft[k.key] ?? NO_ROW, v = (value: string) => set(k.key, { value }), d = stdRows[k.key]
+              const shown = (x: string) => k.type === 'bool' ? x === 'true' ? 'Yes' : 'No' : k.type === 'quality' ? c.entries.qualities.get(x)?.name ?? x : x
               return <tr key={k.key}>
                 <td>{k.label}</td>
                 <td>{k.type === 'number'
-                  ? <input type="number" step="any" aria-label={k.label} value={r.value} onChange={e => v(e.target.value)} />
+                  ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} onChange={e => v(e.target.value)} />
                   : <select aria-label={k.label} value={r.value} onChange={e => v(e.target.value)}>
                     <option value="">Not set</option>
                     {k.type === 'bool' ? <><option value="true">Yes</option><option value="false">No</option></>
@@ -85,6 +94,10 @@ export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: L
                   </select>}</td>
                 <td><input className="src-id" aria-label={`${k.label}: source`} value={r.source} onChange={e => set(k.key, { source: e.target.value.toUpperCase() })} /></td>
                 <td><input type="number" min={1} step={1} aria-label={`${k.label}: page`} value={r.page} onChange={e => set(k.key, { page: e.target.value })} /></td>
+                {std && <td>{isStd(r, d) ? <span className="muted">{d ? 'Standard' : 'No standard'}</span>
+                  : <>{d ? `${shown(d.value)}${d.source ? ` (${d.source}${d.page ? ` p. ${d.page}` : ''})` : ''}` : 'No standard'}{' '}
+                    <button type="button" className="btn" aria-label={`Reset ${k.label} to standard`}
+                      onClick={() => { setMsg(''); setDraft(x => { const { [k.key]: _, ...rest } = x; return d ? { ...rest, [k.key]: d } : rest }) }}>Reset</button></>}</td>}
               </tr>
             })}</tbody></table></div>
         </div>
@@ -104,12 +117,17 @@ export function ServerCreation({ c, cr, reload }: { c: Sr6Catalog; cr: Loaded; r
   return (
     <section className="sr6-creation">
       <h2>Creation rules</h2>
-      <p>The numbers the core rulebook gives in its text: the server’s settings, which every runner is built and checked
-        against unless its campaign has its own. {admin ? 'Fill them in from your book.' : 'The admin fills them in.'}{' '}
+      <p>The numbers the books give in their text: the server’s settings, which every runner is built and checked
+        against unless its campaign has its own. They start as the standard values from the core rulebook and the Sixth World
+        Companion (the Standard column); {admin ? 'change what your table plays differently, or reset a value to the standard.' : 'the admin changes what the table plays differently.'}{' '}
         {staff ? <>A GM can give a campaign they run its own settings on <a href="#/sr6/campaigns">its campaign page</a>.</>
           : 'A campaign’s GM can give it its own settings; they show on the campaign’s page.'}</p>
       {own.length > 0 && <p>Campaigns with their own settings: {own.map((x, i) => <span key={x.id}>{i > 0 && ', '}<a href={`#/sr6/campaigns/${x.id}`}>{x.name}</a></span>)}.</p>}
-      <CreationForm c={c} cr={cr} onSave={admin ? async settings => { await send('sr6/creation', { settings }, 'PUT'); await reload() } : undefined} />
+      <CreationForm c={c} cr={cr} std={cr.std} onSave={admin ? async settings => {
+        // only what differs from the standard is saved: the rest follows the shipped values
+        const std = rowsOf(cr.std ?? new Map())
+        await send('sr6/creation', { settings: settings.filter(s => !isStd(rowOf(s), std[s.key])) }, 'PUT'); await reload()
+      } : undefined} />
     </section>
   )
 }
@@ -140,7 +158,7 @@ export function CampaignCreation({ c, cr, camp, onSaved }: { c: Sr6Catalog; cr: 
         {camp.creation && <p><button type="button" className="btn" onClick={() => { setErr(''); put(null).then(() => setMsg('This campaign uses the server’s settings again.'),
           e => setErr((e as Error).message)) }}>Save: use the server’s settings</button> <span className="muted">Its own settings are dropped.</span></p>}
       </>}
-      {(mine || (!manages && camp.creation)) && <CreationForm c={c} cr={mine && !camp.creation ? cr : shown}
+      {(mine || (!manages && camp.creation)) && <CreationForm c={c} cr={mine && !camp.creation ? cr : shown} std={cr.std}
         onSave={manages ? settings => put(settings) : undefined}>
         {manages && !camp.creation && <p>A copy of the server’s settings to start from: change what this campaign plays differently, then save.</p>}
       </CreationForm>}

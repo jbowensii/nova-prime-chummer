@@ -92,7 +92,7 @@ custom/sr6/
   imported/crb/<kind>.xml          one file per kind, ids scoped crb.<slug>
   texts/crb.xml                    private descriptions (never committed)
   edits/edits.xml, edits/texts.xml the catalog edits and their descriptions
-  creation.xml                     the server's creation rules (Rules page; creation.xsd)
+  creation.xml                     the admin's changes to the standard creation rules (Rules page; creation.xsd)
 ```
 
 The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
@@ -108,13 +108,29 @@ re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means
 
 ## Creation rules
 
-`custom/sr6/creation.xml` (`<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds the
-numbers the core rulebook prints only in its text: starting karma, caps, exchange rates, point-buy prices, lifepath
-counts, augmentation grades. Each is `<setting key value source? page?/>` (500 at most, each key once). The admin fills
-them in at the top of the Rules page from their own book (`PUT /api/sr6/creation`): the server's default. A GM may give a
+The creation rules are the numbers the books print only in their text: starting karma, caps, exchange rates,
+point-buy prices, lifepath counts, augmentation grades. A creation rules file (`<sr6:creation
+xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds them as `<setting key value source? page?/>`
+(500 at most, each key once).
+
+**The standard settings ship with the app**: `public/data/sr6/creation-defaults.xml` holds the core rulebook's numbers
+(source `CRB`) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its
+printed page; numbers only, no book text. A new server can build runners with every method a book prints right away.
+Left unset, because no book prints them: `maxKarmaLeft`, `karmaToNuyenMax`, `skillPointsExpertise`,
+`initiativeDiceMax`, `advance.powerPoint`, `advance.karmaToNuyenRate`, `advance.nuyenToKarmaRate`, and the karma build
+(`karmaBuild.*`, `magicKarma:*`: no SR6 book describes one, so Karma build can't be picked until the table enters its
+own). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes; a metatype from another book needs its own.
+
+`custom/sr6/creation.xml` holds only what the admin changed (`PUT /api/sr6/creation`, from the top of the Rules page):
+the server's settings are the standard ones with those keys replaced (`loadCreation` in `src/sr6/engine/creation.ts`).
+The Rules page's Standard column shows each standard value and its page, marks the ones changed, and has **Reset** per
+value and **Reset all to standard**; saving sends only the values that differ from the standard. An empty field means
+the standard value. An older full `creation.xml` works the same (rows equal to the standard simply match it). **Load
+settings file** fills the form from a creation rules file, the standard values filling the rest. A GM may give a
 campaign they run its own copy on its page; it is kept in `custom/sr6/campaigns.xml` as the campaign's `<creation>` with the
 same `<setting/>` rows (`campaigns.xsd`, `PUT /api/sr6/campaigns/<id> { creation }`, its GMs and the admin; its players
-read it), and that campaign's runners are built, checked and priced with it. The app ships none. Keys, types and
+read it), and that campaign's runners are built, checked and priced with it. A campaign's own settings are a full copy,
+started from the server's settings. Keys, types and
 the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.

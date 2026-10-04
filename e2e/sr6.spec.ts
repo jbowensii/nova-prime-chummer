@@ -152,11 +152,22 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(page.getByLabel('Starting karma', { exact: true })).toHaveValue('33')
   await expect(page.getByLabel('Starting karma: source', { exact: true })).toHaveValue('HOUSE')
   await expect(cap).toHaveValue('6')
-  await expect(page.getByLabel('Aptitude quality', { exact: true })).toHaveValue('') // not in the file
+  await expect(page.getByLabel('Aptitude quality', { exact: true })).toHaveValue('crb.aptitude-skill') // not in the file: the standard
   await expect(page.locator('.sr6-creation .warn')).toContainText('“noSuchSetting” isn’t a creation setting.')
   await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/creation-loaded.png` })
   expect(await (await page.request.get('/custom/sr6/creation.xml')).text()).toContain('<setting key="skillCap" value="5" source="CRB" page="61"/>')
   await page.reload() // not saved: the server's settings are as they were
+  await expect(cap).toHaveValue('5')
+  // the Standard column: a changed value shows the standard and resets to it in the form (saved only on Save)
+  const capRow = page.locator('.sr6-creation tr', { has: cap })
+  await expect(capRow.locator('td').last()).toContainText('6 (CRB p. 65)')
+  await capRow.getByRole('button', { name: 'Reset Highest skill rank to standard' }).click()
+  await expect(cap).toHaveValue('6')
+  await expect(capRow.locator('td').last()).toHaveText('Standard')
+  await page.getByRole('button', { name: 'Reset all to standard' }).click()
+  await expect(page.getByLabel('Aptitude quality', { exact: true })).toHaveValue('crb.aptitude-skill')
+  await expect(page.getByRole('button', { name: 'Reset all to standard' })).toBeDisabled()
+  await page.reload()
   await expect(cap).toHaveValue('5')
   await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/creation-rules.png` })
 })
