@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
-import { balances, earn, ledgerRows, note, voidEntry, type Typed } from '../../engine/career'
+import { balances, earn, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, picksFor } from '../../engine/data'
 import { CORE_ATTRS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
 import type { Sr6Kind } from '../../model/types'
@@ -88,7 +88,7 @@ export function LedgerTab() {
     : e.type === 'advance' ? e.label : e.type === 'note' ? e.text : `Voided: ${e.reason}`
   const amount = (e: Sr6LedgerEntry, k: 'karma' | 'nuyen', unit = '') =>
     e.type === 'earn' ? (e[k] ? `+${n(e[k])}${unit}` : '') : e.type === 'advance' && e[k] ? (e[k] > 0 ? `−${n(e[k])}${unit}` : `+${n(-e[k])}${unit}`) : ''
-  const rows = ledgerRows(ch)
+  const rows = ledgerRows(ch), voidable = voidableIds(ch)
 
   return (
     <div className="stack sr6-ledger">
@@ -179,7 +179,7 @@ export function LedgerTab() {
             <td className="num">{amount(e, 'nuyen', '¥')}</td>
             <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : n(karma)}</td>
             <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : `${n(nuyen)}¥`}</td>
-            <td className="num">{voidEntry(ch, e.id, '').ok && <button className="btn small quiet" aria-label={`Void ${describe(e)}`} onClick={() => setVoiding(e)}>Void</button>}</td>
+            <td className="num">{voidable.has(e.id) && <button className="btn small quiet" aria-label={`Void ${describe(e)}`} onClick={() => setVoiding(e)}>Void</button>}</td>
           </tr>
         ))}</tbody>
         <tfoot><tr><td /><td><b>Balance</b></td><td /><td /><td className={`num${bal.karma < 0 ? ' err' : ''}`}><b>{n(bal.karma)}</b></td>

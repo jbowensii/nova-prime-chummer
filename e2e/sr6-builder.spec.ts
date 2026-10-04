@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 import { pageGlyphs } from './pdf'
+import { savedOnServer } from './session'
 
 // SR6 S2 end to end: the SR6 runners page and the builder on a server of its own with the made-up SR6 fixture
 // (tests/fixtures/sr6/custom copied to custom/sr6/). All names made up: Ada the admin, Gil an editor, Pat a player. Runs in
@@ -584,7 +585,8 @@ test('Gil, an editor, lowers the skill cap: Pat’s runner shows it on Review', 
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
-  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  // the later tests open it from the server: approved, then finalized again (the ledger's last entry)
+  await savedOnServer(page, /type="finalize"[^>]*\/>\s*<\/ledger>[\s\S]*Old cap/)
 })
 
 test('the legacy server: the SR6 runners page says who is in the way', async ({ page }) => {

@@ -78,11 +78,12 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
   const entriesOf = (k: Sr6NpcKind) => [...c.entries[NPC_KINDS[k].kind].values()].sort((a, b) => a.name.localeCompare(b.name))
   const rated = !!NPC_KINDS[kind].rating?.letter
 
-  const store = async (ch: Sr6Character, rev?: number) => {
+  /** saved: null; else why not */
+  const saveError = async (ch: Sr6Character, rev?: number) => {
     const r = await repo.save(ch, rev)
-    if (!r.ok) setMsg(r.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.`)
-    return r.ok
+    return r.ok ? null : r.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.`
   }
+  const store = async (ch: Sr6Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
   const pickKind = (k: Sr6NpcKind) => { setKind(k); setFrom(entriesOf(k)[0]?.id ?? '') }
   const openNew = () => { pickKind('grunt'); setRating('1'); setCreating(true) }
   const level = Math.max(1, Math.floor(Number(rating)) || 1)
@@ -99,7 +100,8 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
     for (const f of picked) {
       const r = readSr6NpcImport(await f.text(), have)
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
-      if (await store(r.ch)) { done.push(nameOf(r.ch)); have.add(r.ch.id) }
+      const err = await saveError(r.ch) // the summary below replaces the message: a failed save goes in it
+      if (err) bad.push(`${f.name}: ${err}`); else { done.push(nameOf(r.ch)); have.add(r.ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
@@ -111,8 +113,12 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
     const all = [...c.entries.npcs.values()]
     if (!all.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
     let n = 0
-    for (const e of bookNpcsToLoad(all, mine.map(s => s.ch))) if (await store({ ...npcFromEntry(e), sampleKey: bookNpcKey(e) })) n++
-    setMsg(n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : 'The book NPCs are already in your NPCs.')
+    const bad: string[] = []
+    for (const e of bookNpcsToLoad(all, mine.map(s => s.ch))) {
+      const err = await saveError({ ...npcFromEntry(e), sampleKey: bookNpcKey(e) })
+      if (err) bad.push(`${e.name}: ${err}`); else n++
+    }
+    setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The book NPCs are already in your NPCs.', ...bad].filter(Boolean).join(' '))
     void refresh()
   }
 

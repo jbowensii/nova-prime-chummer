@@ -1,9 +1,10 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type Route } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { savedOnServer } from './session'
 
 // SR6 S3 end to end: career play on the Ledger tab (and, from Task 9, NPCs and campaigns) on a server of its own with the
 // made-up SR6 fixture (tests/fixtures/sr6/custom copied to custom/sr6/). All names made up: Ada the admin, Gil an editor,
@@ -39,13 +40,6 @@ async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.getByLabel('Password', { exact: true }).fill(PW[username])
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByLabel('Username')).toHaveCount(0)
-}
-/** Save now (the editor's Save button) and wait until the server's copy of runner `id` holds `text`: the save bar's
- *  "All changes saved" is also what it says before the first autosave. */
-async function saved(page: Page, id: string, text: string, store = 'characters') {
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect.poll(async () => ((await (await page.request.get(`/api/sr6/${store}`)).json()) as { xml: string }[])
-    .find(r => r.xml.includes(` id="${id}"`))?.xml ?? '').toContain(text)
 }
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
@@ -122,7 +116,7 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   await expect(page.getByRole('button', { name: 'Back to draft' })).toBeDisabled()
   await expect(work).toContainText('Void the ledger’s earnings and spends first (newest first).')
   await expect(work).toContainText('The ledger now holds 28 karma and 7,450¥.')
-  await saved(page, RUNNER, 'Picked the wrong one')
+  await savedOnServer(page, 'Picked the wrong one')
 })
 
 test('career, continued: more spends, an unset price, print, export and import, then void it all and finalize again', async ({ page, browser }) => {
@@ -188,7 +182,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await expect(balances).toHaveText(/Karma 14\s*Nuyen 7,160¥/)
   await expect(work.getByRole('button', { name: 'Void Spell: Glow Ward' })).toBeVisible()
   await expect(work.getByRole('button', { name: 'Void AGI 3 → 4' })).toHaveCount(0)
-  await saved(page, RUNNER, 'Made-up undo')
+  await savedOnServer(page, 'Made-up undo')
 
   // print: the runner as it stands, and the ledger's balances
   await page.goto(`/#/sr6/c/${RUNNER}/print`)
@@ -224,7 +218,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await dlg.getByRole('button', { name: 'Finalize' }).click()
   await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Ledger' }).click()
   await expect(work.locator('tbody tr').filter({ hasText: 'Creation finished' })).toHaveCount(2)
-  await saved(page, RUNNER, 'Back to draft')
+  await savedOnServer(page, /Back to draft<\/entry>\s*<entry [^>]*type="finalize"[^>]*\/>\s*<\/ledger>/) // finalized again
 })
 
 const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
@@ -356,14 +350,14 @@ test('NPC editor: the Stat block tab reads stats at the rating, and an NPC print
   await page.getByRole('textbox', { name: /^Powers/ }).fill('Glimmer, Made-up Drizzle')
   await expect(block).toContainText('Glimmer, Made-up Drizzle')
   const spirit = page.url().split('/').at(-2)!
-  await saved(page, spirit, 'Made-up Drizzle', 'npcs')
+  await savedOnServer(page, 'Made-up Drizzle')
   expect((await (await page.request.get('/api/sr6/npcs')).json() as { xml: string }[]).find(r => r.xml.includes(` id="${spirit}"`))!.xml).toContain('rating="6"')
   await shoot(page, 'stats')
 
   // its print: header, block, background
   await tabs.filter({ hasText: 'Concept' }).click()
   await work.getByLabel('Background').fill('Lives in the made-up gutter.')
-  await saved(page, spirit, 'made-up gutter', 'npcs')
+  await savedOnServer(page, 'made-up gutter')
   await tabs.filter({ hasText: 'Print' }).click()
   await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/print$/)
   const sheet = page.locator('article.sheet')
@@ -486,4 +480,21 @@ test('campaigns and NPCs stay in their game: Anarchy’s pages and APIs hold non
   await expect(page.getByRole('heading', { name: 'NPCs & Critters' })).toBeVisible()
   await expect(page.getByText('Corner Goon')).toHaveCount(0)
   expect(await (await page.request.get('/api/npcs')).text()).not.toContain('Corner Goon')
+})
+
+test('a failed save on import says why, on Your runners and on NPCs & Critters', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'gil')
+  const full = (r: Route) => r.request().method() === 'PUT'
+    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) }) : r.fallback()
+  await page.route('**/api/sr6/characters/*', full)
+  await page.route('**/api/sr6/npcs/*', full)
+  const file = (name: string, path: string, id: string) =>
+    ({ name, mimeType: 'application/xml', buffer: Buffer.from(readFileSync(path, 'utf8').replace(/ id="[^"]+"/, ` id="${id}"`)) })
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles(file('runner.xml', 'tests/fixtures/sr6/runner-career.xml', 'fail-runner-1'))
+  await expect(page.getByRole('status').filter({ hasText: 'runner.xml: the disk is full (test)' })).toBeVisible()
+  await page.goto('/#/sr6/npcs')
+  await expect(page.getByRole('heading', { name: 'NPCs & Critters' })).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles(file('goon.xml', 'tests/fixtures/sr6/npc-grunt.xml', 'fail-npc-1'))
+  await expect(page.getByRole('status').filter({ hasText: 'goon.xml: the disk is full (test)' })).toBeVisible()
 })

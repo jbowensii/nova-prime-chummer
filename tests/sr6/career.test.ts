@@ -5,7 +5,7 @@
 // to draft. No book numbers.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { balances, canDraft, currentBuild, earn, ledgerRows, note, preview, record, validateCareer, voidEntry } from '../../src/sr6/engine/career'
+import { balances, canDraft, currentBuild, earn, ledgerRows, note, preview, record, validateCareer, voidableIds, voidEntry } from '../../src/sr6/engine/career'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { draftAgain, finalizeSr6 } from '../../src/sr6/engine/finalize'
 import { allBudgets } from '../../src/sr6/engine/budgets'
@@ -315,4 +315,8 @@ test('the career fixture replays: AGI 4, the spec, the Zap Gun and the spell; th
   expect(b.initiation).toBe(0)
   expect(balances(r.character)).toEqual({ karma: 14, nuyen: 7160 })
   expect(canDraft(r.character)).toBe(false)
+  // the Ledger tab's Void buttons (worked out once) are exactly what voidEntry allows
+  const ch = r.character, allowed = ch.ledger.filter(e => voidEntry(ch, e.id, '').ok).map(e => e.id)
+  expect([...voidableIds(ch)]).toEqual(allowed)
+  expect(allowed.length).toBeGreaterThan(1)
 })

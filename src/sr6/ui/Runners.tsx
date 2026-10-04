@@ -79,11 +79,12 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     setJoining(null)
     void refresh()
   }
-  const store = async (ch: Sr6Character, rev?: number) => {
+  /** saved: null; else why not */
+  const saveError = async (ch: Sr6Character, rev?: number) => {
     const r = await repo.save(ch, rev)
-    if (!r.ok) setMsg(r.error ?? `${shownName(ch)} changed elsewhere; open it to sort it out.`)
-    return r.ok
+    return r.ok ? null : r.error ?? `${shownName(ch)} changed elsewhere; open it to sort it out.`
   }
+  const store = async (ch: Sr6Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
   const openNew = () => { setStreet(''); setMethod(SR6_METHODS.find(m => !missing[m].length) ?? ''); setCreating(true) }
   const create = async () => {
     if (!method) return
@@ -98,7 +99,8 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     for (const f of picked) {
       const r = readSr6Import(await f.text(), have)
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
-      if (await store(r.ch)) { done.push(shownName(r.ch)); have.add(r.ch.id) }
+      const err = await saveError(r.ch) // the summary below replaces the message: a failed save goes in it
+      if (err) bad.push(`${f.name}: ${err}`); else { done.push(shownName(r.ch)); have.add(r.ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()

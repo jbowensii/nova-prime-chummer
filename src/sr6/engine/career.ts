@@ -290,6 +290,13 @@ export function voidEntry(ch: Sr6Character, id: string, reason: string, now = ne
   return { ok: true, ch: { ...ch, ledger: [...ch.ledger, { id: newId(), at: now, type: 'void', eventId: id, reason }] } }
 }
 
+/** The ids voidEntry would allow, worked out once for the whole history (the Ledger tab's Void buttons: calling voidEntry
+ *  per row is quadratic in the ledger's length). */
+export function voidableIds(ch: Sr6Character): Set<string> {
+  const voided = voidedIds(ch), newest = liveAdvances(ch).at(-1)?.id
+  return new Set(sinceFinalize(ch).filter(e => !voided.has(e.id) && (e.type === 'earn' || e.type === 'note' || e.id === newest)).map(e => e.id))
+}
+
 /** Back to draft is allowed only with no live earning or spend since the last Finalize. */
 export function canDraft(ch: Sr6Character): boolean {
   const voided = voidedIds(ch)

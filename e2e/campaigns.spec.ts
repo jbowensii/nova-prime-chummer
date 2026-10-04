@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
-import { anarchyState } from './session'
+import { anarchyState, savedOnServer } from './session'
 
 // Campaigns and Ask the rules end to end, on a server of its own (all names made up): Eve, an editor, runs a campaign;
 // Pat and Kim play in it; Ada is the admin. An AI provider is set up with a made-up key, and the stub worker
@@ -156,7 +156,7 @@ test('the GM opens every runner read-only and prints it; sees them in the runner
   await page.getByRole('button', { name: 'New NPC' }).click()
   await page.getByRole('dialog', { name: 'New NPC' }).getByRole('button', { name: 'Create NPC' }).click()
   await page.getByLabel('Street name').fill('Table Goon')
-  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await savedOnServer(page, 'Table Goon')
   await page.goto('/#/npcs')
   await dossier(page, 'Table Goon').getByRole('button', { name: 'Share Table Goon…' }).click()
   const share = page.getByRole('dialog', { name: 'Share Table Goon with a campaign' })

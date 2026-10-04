@@ -171,11 +171,12 @@ export function Library({ c }: { c: Catalog }) {
   const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
   const sources: Sources = id => { const k = id.toLowerCase(); return [...c.sources.values()].find(s => s.id.toLowerCase() === k) }
 
-  const store = async (ch: Character, rev?: number) => {
+  /** saved: null; else why not */
+  const saveError = async (ch: Character, rev?: number) => {
     const r = await repo.save(ch, rev)
-    if (!r.ok) setMsg(r.error ?? `${ch.identity.streetName || 'That runner'} changed elsewhere; open it to sort it out.`)
-    return r.ok
+    return r.ok ? null : r.error ?? `${ch.identity.streetName || 'That runner'} changed elsewhere; open it to sort it out.`
   }
+  const store = async (ch: Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
 
   const create = async () => {
     const ch = blankCharacter(level, meta)
@@ -192,7 +193,8 @@ export function Library({ c }: { c: Catalog }) {
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
       if (r.character.npc) { bad.push(`${f.name}: this is an NPC, not a runner. ${canEdit(me) ? 'Import it on NPCs & Critters.' : 'Only GMs keep NPCs.'}`); continue }
       const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() }
-      if (await store(ch)) done.push(ch.identity.streetName || ch.identity.name)
+      const err = await saveError(ch) // the summary below replaces the message: a failed save goes in it
+      if (err) bad.push(`${f.name}: ${err}`); else done.push(ch.identity.streetName || ch.identity.name)
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
@@ -211,7 +213,8 @@ export function Library({ c }: { c: Catalog }) {
       for (const { url, key } of examples.filter(s => !have.has(s.key))) {
         const r = await readSample(url)
         if (!r.ok) { bad.push(`${url.split('/').pop()}: ${r.reason}`); continue }
-        if (await store({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })) { n++; have.add(key) }
+        const err = await saveError({ ...r.character, id: newId(), sampleKey: key, lastExportedAt: r.character.updatedAt })
+        if (err) bad.push(`${url.split('/').pop()}: ${err}`); else { n++; have.add(key) }
       }
       setMsg([n ? `Added ${n} example character${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The example characters are already in your library.', ...bad].filter(Boolean).join(' '))
       void refresh()

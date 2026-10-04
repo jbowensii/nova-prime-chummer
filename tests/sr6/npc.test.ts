@@ -81,6 +81,15 @@ test('a stat the evaluator can’t read is shown as printed and not ok; its pool
   expect(npcPools(s.npc!, data)[1]).toEqual({ name: 'Hexing', rating: 4, attr: 'mag', printed: 'Hexing' })
 })
 
+test('a crafted skills line (a long run of spaces) is printed as it is, quickly: no quadratic backtracking', () => {
+  const s = npcFromEntry(entry('npcs', 'crb.lot-boss'), undefined, NOW)
+  const long = `a${' '.repeat(200_000)}b`
+  s.npc!.lines = [{ part: 'skills', text: long }]
+  const t = performance.now()
+  expect(npcPools(s.npc!, data)).toEqual([{ name: long, rating: null, printed: long }])
+  expect(performance.now() - t).toBeLessThan(200)
+})
+
 test('blank NPCs and the book key', () => {
   expect(blankSr6Npc('spirit', 3).npc).toEqual({ kind: 'spirit', rating: 3, stats: {}, lines: [] })
   expect(blankSr6Npc('sprite').npc!.rating).toBe(1)
