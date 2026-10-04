@@ -9,13 +9,19 @@ const c = fixtureCatalog()
 const grunts = [...c.entries.npcs.values()]
 
 test('Load book NPCs skips the ones already loaded, by their book key, even renamed', () => {
-  expect(bookNpcsToLoad(grunts, []).map(e => e.id).sort()).toEqual(['crb.corner-goon', 'crb.lot-boss', 'crb.quiet-fixer'])
+  expect(bookNpcsToLoad(grunts, [], c.sources).map(e => e.id).sort()).toEqual(['crb.corner-goon', 'crb.lot-boss', 'crb.quiet-fixer'])
   const goon = npcFromEntry(c.entries.npcs.get('crb.corner-goon')!)
   goon.sampleKey = 'CRB|crb.corner-goon'
   goon.identity.streetName = 'Renamed Goon'
   const blank = blankSr6Npc('grunt')
   blank.identity.streetName = 'Lot Boss' // the same name but not loaded from the book: doesn't count
-  expect(bookNpcsToLoad(grunts, [goon, blank]).map(e => e.id).sort()).toEqual(['crb.lot-boss', 'crb.quiet-fixer'])
+  expect(bookNpcsToLoad(grunts, [goon, blank], c.sources).map(e => e.id).sort()).toEqual(['crb.lot-boss', 'crb.quiet-fixer'])
+})
+
+test('Load book NPCs never copies a compendium’s npcs entry (a house source of origin user)', () => {
+  const sources = new Map(c.sources).set('STREET', { id: 'STREET', name: 'Street Kit', publisher: 'Gil', canon: false, origin: 'user', compendium: { id: '0123456789ab', owner: 'gil' } })
+  const house = { ...grunts[0], id: 'street.alley-goon', name: 'Alley Goon', source: 'STREET' }
+  expect(bookNpcsToLoad([...grunts, house], [], sources).map(e => e.id).sort()).toEqual(['crb.corner-goon', 'crb.lot-boss', 'crb.quiet-fixer'])
 })
 
 test('grunts grouped by Professional Rating, lowest first; one with none goes last', () => {

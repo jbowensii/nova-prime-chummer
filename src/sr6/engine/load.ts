@@ -1,11 +1,13 @@
 // Build the Shadowrun 6 catalog from its XML files (docs/sr6-data-format.md), apart from Anarchy's: every file must be an
 // <sr6:data kind="…"> in SR6's namespace, so an Anarchy file is refused. Load order (collectSr6Files): the shipped
 // sources, the imported sources, the imported books' files (custom/sr6/imported/index.xml), the private texts each source
-// names, then the edits layer (custom/sr6/edits/edits.xml, texts.xml). Same id replaces, <remove id> deletes; sources
-// merge by id; an edit replaces the entry (the book's version kept in `original`), and an empty description keeps the
-// book's text.
+// names, the edits layer (custom/sr6/edits/edits.xml, texts.xml), then the GMs' compendiums this account can read (`extra`,
+// kind="compendium"). Same id replaces, <remove id> deletes; sources merge by id; an edit replaces the entry (the book's
+// version kept in `original`), and an empty description keeps the book's text. A compendium never replaces anything: one
+// whose source id is already a book's is skipped, and so is an entry whose id another source's entry holds.
 import type { SourceFile } from '../../engine/load'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { readSr6Compendium, sr6CompendiumSource } from './compendium'
 
 export const SR6_NS = 'urn:chummer-sr6:data:1'
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
@@ -58,6 +60,22 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
     const root = doc.documentElement, kind = root.getAttribute('kind') ?? ''
     if (root.localName !== 'data' || root.namespaceURI !== SR6_NS) { c.errors.push({ file: f.file, message: 'not an SR6 data file' }); continue }
     const els = [...root.children]
+    if (kind === 'compendium') {
+      const r = readSr6Compendium(f.xml)
+      if (!r.ok) { c.errors.push({ file: f.file, message: r.error }); continue }
+      const comp = r.compendium
+      // a book's source id (imported after the compendium was made): the book keeps it, the compendium waits
+      if (c.sources.has(comp.source)) { c.errors.push({ file: f.file, message: `its source id ${comp.source} is already a book’s; its entries didn’t load` }); continue }
+      c.sources.set(comp.source, sr6CompendiumSource({ ...comp, owner: f.owner, ownerName: f.publisher }))
+      let n = 0
+      for (const e of comp.entries) {
+        const had = c.entries[e.kind].get(e.id)
+        if (had && had.source !== comp.source) { c.errors.push({ file: f.file, message: `<${SR6_KINDS[e.kind].tag}> ${e.id}: ${had.source} already has that id; it didn’t load` }); continue }
+        c.entries[e.kind].set(e.id, e); n++
+      }
+      c.files.push({ file: f.file, kind, entries: n }) // its NPCs aren't catalog entries
+      continue
+    }
     try {
       if (kind === 'sources') {
         const origin = f.file.startsWith(SHIPPED) ? 'shipped' : 'imported'
@@ -99,7 +117,7 @@ const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').match
 
 /** Every SR6 file, in load order (see the top of this file). `get` returns a file's text, or null when it isn't there;
  * `missing` lists the files an index or source names that weren't. */
-export async function collectSr6Files(get: (path: string) => Promise<string | null>): Promise<{ files: SourceFile[]; missing: string[] }> {
+export async function collectSr6Files(get: (path: string) => Promise<string | null>, extra: SourceFile[] = []): Promise<{ files: SourceFile[]; missing: string[] }> {
   const files: SourceFile[] = [], missing: string[] = []
   const add = async (path: string, listed = false) => {
     const xml = await get(path)
@@ -112,14 +130,16 @@ export async function collectSr6Files(get: (path: string) => Promise<string | nu
   for (const href of index ? hrefs(index) : []) await add(`${CUSTOM}imported/${href}`, true)
   for (const t of new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => m[1]))) await add(CUSTOM + t)
   for (const e of ['edits', 'texts']) await add(`${CUSTOM}edits/${e}.xml`)
+  files.push(...extra)
   return { files, missing }
 }
 
-/** Fetch and build the SR6 catalog. An unreachable server fails the load; missing custom files are listed as errors. */
-export async function loadSr6Catalog(base = './'): Promise<Sr6Catalog> {
+/** Fetch and build the SR6 catalog, plus `extra` overlay files (the readable compendiums, src/sr6/ui/compendiums.ts). An
+ * unreachable server fails the load; missing custom files are listed as errors. */
+export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Promise<Sr6Catalog> {
   const get = (path: string) => fetch(base + path, { cache: 'no-cache' })
     .then(r => r.ok ? r.text() : null, e => { if (path.startsWith(SHIPPED)) throw e; return null })
-  const { files, missing } = await collectSr6Files(get)
+  const { files, missing } = await collectSr6Files(get, extra)
   const c = buildSr6Catalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
   return c

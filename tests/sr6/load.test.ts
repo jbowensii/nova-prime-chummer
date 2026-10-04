@@ -3,8 +3,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
+import { compendiumXml, type SourceFile } from '../../src/engine'
+import { xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
+import { sr6Data } from '../../src/sr6/engine/data'
 import { buildSr6Catalog, collectSr6Files, entryKey, sr6EntryXml } from '../../src/sr6/engine/load'
-import { SR6_KINDS, type Sr6Kind } from '../../src/sr6/model/types'
+import { SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
 
 const get = async (path: string) => {
   const file = path.startsWith('data/') ? join('public', path) : path.startsWith('custom/sr6/') ? join('tests/fixtures/sr6/custom', path.slice(11)) : null
@@ -110,4 +114,60 @@ test('sr6EntryXml round-trips through buildSr6Catalog (attributes escaped, parts
     expect(back.errors).toEqual([])
     expect(back.entries[e.kind].get(e.id)).toEqual({ ...e, text: '', edited: undefined, by: undefined })
   }
+})
+
+// S4: a GM's compendiums join as `extra` overlay files after the edits layer (made-up entries, source STREET)
+const kit = (over: Partial<Sr6Compendium> = {}, entries?: Sr6Entry[]): SourceFile => {
+  const comp: Sr6Compendium = { id: '0123456789ab', name: 'Street Kit', source: 'STREET', sharing: 'table', updatedAt: 'x', npcs: [grunt], ...over,
+    entries: entries ?? [
+      { id: 'street.zap-stick', kind: 'weapons', name: 'Zap Stick', source: over.source ?? 'STREET', page: 2, attrs: { category: 'Clubs', dv: '3S' }, parts: [], text: 'Ours.' },
+      { id: 'street.gutter-spirit', kind: 'spirits', name: 'Gutter Spirit', source: over.source ?? 'STREET', page: 3, attrs: { category: 'Alley', bod: 'F' },
+        parts: [{ tag: 'skills', attrs: {}, text: 'Astral 4' }], text: '' },
+      { id: 'street.lucky-socks', kind: 'qualities', name: 'Lucky Socks', source: over.source ?? 'STREET', page: 4, attrs: { kind: 'positive', karma: '7' }, parts: [], text: '' },
+    ] }
+  return { file: 'compendiums/gil/0123456789ab.xml', xml: sr6CompendiumXml(comp), overlay: true, publisher: 'Gil', owner: 'gil' }
+}
+const grunt = (() => { const r = xmlToSr6(readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')); if (!r.ok) throw new Error(r.reason); return r.character })()
+const withExtra = async (extra: SourceFile[]) => buildSr6Catalog((await collectSr6Files(get, extra)).files)
+
+test('a compendium passed as extra loads last, its entries under its own house source; its NPCs are in no map', async () => {
+  const { files } = await collectSr6Files(get, [kit()])
+  expect(files.at(-1)!.file).toBe('compendiums/gil/0123456789ab.xml')
+  const c = await withExtra([kit()])
+  expect(c.errors).toEqual([])
+  expect(c.sources.get('STREET')).toEqual({ id: 'STREET', name: 'Street Kit', publisher: 'Gil', canon: false, origin: 'user', compendium: { id: '0123456789ab', owner: 'gil' } })
+  expect(c.entries.weapons.get('street.zap-stick')).toMatchObject({ source: 'STREET', page: 2, text: 'Ours.', attrs: { category: 'Clubs', dv: '3S' } })
+  expect(c.entries.spirits.get('street.gutter-spirit')!.parts).toEqual([{ tag: 'skills', attrs: {}, text: 'Astral 4' }])
+  expect(sr6Data(c).qualities['street.lucky-socks']).toMatchObject({ name: 'Lucky Socks' })
+  const size = (x: typeof c) => Object.values(x.entries).reduce((n, m) => n + m.size, 0)
+  expect(size(c)).toBe(size(await load()) + 3) // the NPC isn't an entry
+  expect(c.files.at(-1)).toEqual({ file: 'compendiums/gil/0123456789ab.xml', kind: 'compendium', entries: 3 })
+})
+
+test('a compendium whose source id is a book’s is reported and skipped; the book keeps its source and entries', async () => {
+  const before = await load()
+  const c = await withExtra([kit({ source: 'CRB' }, [{ id: 'crb.zap-gun', kind: 'weapons', name: 'Mine', source: 'CRB', page: 1, attrs: {}, parts: [], text: '' }])])
+  expect(c.errors).toEqual([{ file: 'compendiums/gil/0123456789ab.xml', message: 'its source id CRB is already a book’s; its entries didn’t load' }])
+  expect(c.sources.get('CRB')).toEqual(before.sources.get('CRB'))
+  expect(c.entries.weapons.get('crb.zap-gun')).toEqual(before.entries.weapons.get('crb.zap-gun'))
+})
+
+test('an entry whose id another source’s entry holds is reported and skipped; the book’s stays, the rest load', async () => {
+  const before = await load()
+  const mine = (id: string, kind: Sr6Kind = 'weapons'): Sr6Entry => ({ id, kind, name: 'Mine', source: 'STREET', page: 1, attrs: {}, parts: [], text: '' })
+  const c = await withExtra([kit({}, [mine('crb.zap-gun'), mine('street.ok'), mine('crb.zap-gun', 'gear')])])
+  expect(c.errors).toEqual([{ file: 'compendiums/gil/0123456789ab.xml', message: '<weapon> crb.zap-gun: CRB already has that id; it didn’t load' }])
+  expect(c.entries.weapons.get('crb.zap-gun')).toEqual(before.entries.weapons.get('crb.zap-gun'))
+  expect(c.entries.weapons.get('street.ok')!.source).toBe('STREET')
+  expect(c.entries.gear.get('crb.zap-gun')!.source).toBe('STREET') // ids are per kind
+  expect(c.files.at(-1)!.entries).toBe(2)
+})
+
+test('an Anarchy compendium or an unreadable one as extra is an error; without extra the catalog is unchanged', async () => {
+  const ca2 = compendiumXml({ id: '0123456789ab', name: 'Anarchy kit', source: 'STREET', sharing: 'private', updatedAt: 'x', amps: [], items: [], vehicles: [], npcs: [] })
+  const c = await withExtra([{ file: 'compendiums/gil/a.xml', xml: ca2, overlay: true }, { ...kit(), file: 'compendiums/gil/b.xml', xml: kit().xml.replace('page="2"', 'page="0"') }])
+  expect(c.errors.map(e => e.file)).toEqual(['compendiums/gil/a.xml', 'compendiums/gil/b.xml'])
+  expect(c.errors[0].message).toBe('not an SR6 data file')
+  expect(c.sources.has('STREET')).toBe(false)
+  expect(await withExtra([])).toEqual(await load())
 })

@@ -22,10 +22,11 @@ import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
 const SORT_KEY = 'ca2.sr6.npcs.sort'
 const nameOf = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
 
-/** The book NPCs Load book NPCs adds: those whose book key isn't the sampleKey of one of `mine` (a renamed copy counts). */
-export function bookNpcsToLoad(entries: Sr6Entry[], mine: Sr6Character[]): Sr6Entry[] {
+/** The book NPCs Load book NPCs adds: those whose book key isn't the sampleKey of one of `mine` (a renamed copy counts).
+ *  A compendium's (a source of origin user) never: those are moved, not copied. */
+export function bookNpcsToLoad(entries: Sr6Entry[], mine: Sr6Character[], sources: Sr6Catalog['sources']): Sr6Entry[] {
   const have = new Set(mine.map(ch => ch.sampleKey))
-  return entries.filter(e => !have.has(bookNpcKey(e)))
+  return entries.filter(e => sources.get(e.source)?.origin !== 'user' && !have.has(bookNpcKey(e)))
 }
 
 /** Grunts by Professional Rating, lowest first; null (none printed) last. */
@@ -114,7 +115,7 @@ export function Sr6Npcs({ c }: { c: Sr6Catalog }) {
     if (!all.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
     let n = 0
     const bad: string[] = []
-    for (const e of bookNpcsToLoad(all, mine.map(s => s.ch))) {
+    for (const e of bookNpcsToLoad(all, mine.map(s => s.ch), c.sources)) {
       const err = await saveError({ ...npcFromEntry(e), sampleKey: bookNpcKey(e) })
       if (err) bad.push(`${e.name}: ${err}`); else n++
     }

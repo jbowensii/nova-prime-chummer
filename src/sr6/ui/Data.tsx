@@ -48,9 +48,9 @@ ${t}`
       <div className="scroll-x"><table className="data sr6-sources"><thead><tr><th>Source</th><th>Publisher</th><th>Status</th><th className="num">Entries</th>
         <th>Descriptions</th><th>File</th><th>Checksum (SHA-256)</th></tr></thead>
         <tbody>{[...c.sources.values()].map(s => (
-          <tr key={s.id}><td><b>{s.id}</b> {s.name}</td><td>{s.publisher}</td><td>{s.canon ? 'Canon' : <NonCanon />}</td>
+          <tr key={s.id}><td><b>{s.id}</b> {s.name}</td><td>{s.publisher}</td><td>{s.compendium ? `House · ${s.publisher}` : s.canon ? 'Canon' : <NonCanon />}</td>
             <td className="num">{perSource(s.id)}</td>
-            <td>{!s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/sr6/${s.texts}`) ? 'installed' : <span className="muted">not installed</span>}</td>
+            <td>{s.compendium ? 'its own' : !s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/sr6/${s.texts}`) ? 'installed' : <span className="muted">not installed</span>}</td>
             <td>{s.file}</td><td className="hash" title={s.sha256}>{s.sha256 && `${s.sha256.slice(0, 12)}…`}</td></tr>
         ))}</tbody></table></div>
 

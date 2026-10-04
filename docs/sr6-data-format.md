@@ -134,3 +134,8 @@ A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by 
   block.
 - Never the other game's: the server refuses a body that names an Anarchy namespace anywhere, and the app refuses an
   Anarchy compendium, an embedded Anarchy runner and any entry in another namespace.
+- In the catalog: a GM's SR6 catalog loads every compendium they can read after the edits layer (players' load none).
+  Its source joins as a house source (`origin: user`, non-canon, publisher: the owner's name); its entries join their
+  kinds, its NPCs none. It never replaces anything: a compendium whose source id is already a book's is skipped (Game
+  data lists why), and so is one entry whose id another source's entry of that kind already holds. Load book NPCs
+  never copies a compendium's NPCs.
