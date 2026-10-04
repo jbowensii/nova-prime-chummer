@@ -1,5 +1,9 @@
 # Release notes
 
+## Unreleased (next build)
+
+- The first screen shows **Shadowrun 6th World** first, on the left; Anarchy 2.0 is second.
+
 ## 0.9.0 — 2026-10-04: Shadowrun 6th World
 
 The app now builds runners for two games. Everything below is the Shadowrun 6 side; Anarchy works as before.

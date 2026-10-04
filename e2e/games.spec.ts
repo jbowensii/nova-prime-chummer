@@ -48,6 +48,8 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.locator('.gamepick .brand-row .ver')).toHaveText(/^v\d/)
   await expect(page.getByRole('link', { name: /Chummer/ })).toHaveCount(0)
   const ca2 = page.getByRole('button', { name: 'Shadowrun Anarchy 2.0' }), sr6 = page.getByRole('button', { name: 'Shadowrun 6th World' })
+  // Shadowrun 6th World comes first (on the left)
+  await expect(page.locator('.gamepick .game').first()).toHaveAccessibleName('Shadowrun 6th World')
   await expect(ca2).toHaveAccessibleDescription(/story-first/)
   await expect(sr6).toHaveAccessibleDescription(/full rules/)
   await page.screenshot({ path: `${SHOTS}/picker-light.png`, fullPage: true })
