@@ -167,6 +167,12 @@ test('the real SR6 files (S3 golden fixtures): the NPC goes in the NPC store and
   expect(c.npcs.map((n: { id: string }) => n.id)).toContain(gid)
   expect((await call('eve', 'PUT', `/api/sr6/npcs/${cid}`, career)).status).toBe(400)
   expect(await listed(await call('eve', 'GET', '/api/sr6/npcs'))).toEqual([`eve/${gid}/sr6`, 'eve/n6/sr6'].sort())
+  // a player in that campaign never gets an SR6 NPC: not in its view, its list, the runners, nor by asking for it
+  expect((await (await call('pat', 'GET', `/api/sr6/campaigns/${s6c}`)).json()).npcs).toBeUndefined()
+  expect(JSON.stringify(await (await call('pat', 'GET', '/api/sr6/campaigns')).json())).not.toContain(gid)
+  expect(await listed(await call('pat', 'GET', '/api/sr6/characters'))).not.toContain(`eve/${gid}/sr6`)
+  expect((await call('pat', 'GET', `/api/sr6/npcs/${gid}`)).status).toBe(403)
+  expect((await call('pat', 'DELETE', `/api/sr6/campaigns/${s6c}/npcs/${gid}`)).status).toBe(404)
 })
 
 test('scope: only the game stores, books and edits answer under /api/sr6/', async () => {

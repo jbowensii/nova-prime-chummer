@@ -117,3 +117,109 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   await expect(work).toContainText('The ledger now holds 28 karma and 7,450¥.')
   await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
 })
+
+const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+const xmlFile = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
+const npcRow = (page: Page, name: string) => page.locator('.dossier').filter({ has: page.getByRole('link', { name, exact: true }) })
+
+test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; loads the book NPCs; imports, shares, trashes', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'gil')
+  await page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'NPCs & Critters' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/npcs$/)
+  await expect(page.getByRole('heading', { name: 'NPCs & Critters' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByText('No NPCs yet.')).toBeVisible()
+  const dlg = page.getByRole('dialog'), from = dlg.getByLabel('From the catalog'), status = page.locator('p.banner[role=status]')
+  const make = async (kind: string, entry: string, rating?: string) => {
+    await page.getByRole('button', { name: 'New NPC' }).click()
+    await dlg.getByLabel('Kind').selectOption({ label: kind })
+    await from.selectOption({ label: entry })
+    if (rating) await dlg.getByLabel(kind === 'Spirit' ? 'Force' : 'Level').fill(rating)
+    await dlg.getByRole('button', { name: 'Create NPC' }).click()
+    await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/stats$/)
+    await page.goto('/#/sr6/npcs')
+  }
+  // grunts grouped by Professional Rating; no Force for them; a kind with none in the books offers Blank only
+  await page.getByRole('button', { name: 'New NPC' }).click()
+  await expect(from.locator('optgroup[label="Professional Rating 2"] option')).toHaveText(['Corner Goon'])
+  await expect(from.locator('optgroup[label="Professional Rating 4"] option')).toHaveText(['Lot Boss'])
+  await expect(dlg.getByLabel('Force')).toHaveCount(0)
+  await dlg.getByLabel('Kind').selectOption({ label: 'Spirit' })
+  await expect(dlg.getByLabel('Force')).toHaveValue('1')
+  await dlg.getByRole('button', { name: 'Cancel' }).click()
+  await make('Grunt', 'Corner Goon')
+  await make('Spirit', 'Spirit of Puddles', '4')
+  await make('Sprite', 'Glitch Sprite', '3')
+  await make('Critter', 'Fuzzbeast')
+  await make('Grunt', 'Blank')
+  await expect(npcRow(page, 'Corner Goon')).toContainText('Grunt PR 2')
+  await expect(npcRow(page, 'Spirit of Puddles')).toContainText('Spirit F 4')
+  await expect(npcRow(page, 'Glitch Sprite')).toContainText('Sprite L 3')
+  await expect(npcRow(page, 'Fuzzbeast')).toContainText('Critter')
+  await expect(npcRow(page, 'Unnamed NPC')).toContainText('Grunt')
+
+  // the book NPCs: the ones made from the catalog above don't count, and a second load adds nothing
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(status).toHaveText('Added 3 book NPCs.')
+  await expect(npcRow(page, 'Corner Goon')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(status).toHaveText('The book NPCs are already in your NPCs.')
+
+  // import: an NPC file joins; a runner and an Anarchy file are refused, each saying where it belongs
+  await page.locator('input[type=file]').setInputFiles([xmlFile('goon.xml', readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')),
+    xmlFile('wisp.xml', readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')), xmlFile('anarchy.xml', CA2)])
+  await expect(status).toHaveText('Imported Corner Goon. wisp.xml: This is a runner, not an NPC. Import it on Your runners. '
+    + 'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.')
+  await expect(npcRow(page, 'Corner Goon')).toHaveCount(3)
+
+  // search, export
+  await page.getByLabel('Search NPCs').fill('sprite')
+  await expect(page.locator('.dossier')).toHaveCount(1)
+  await page.getByLabel('Search NPCs').fill('')
+  const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export Fuzzbeast' }).click()])
+  expect(readFileSync(await down.path(), 'utf8')).toContain('<npc kind="critter"')
+
+  // share with an SR6 campaign Gil runs, then unshare
+  const made = await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Share Test' }, headers: { Origin: base.replace(/\/$/, '') } })
+  expect(made.status()).toBe(201)
+  await page.reload()
+  await page.getByRole('button', { name: 'Share Fuzzbeast…' }).click()
+  await dlg.getByRole('button', { name: 'Share' }).click()
+  await expect(status).toHaveText('Fuzzbeast is shared with Made-up Share Test.')
+  await expect(npcRow(page, 'Fuzzbeast').locator('.ctag')).toHaveText('Made-up Share Test')
+  await page.getByRole('button', { name: 'Unshare Fuzzbeast' }).click()
+  await expect(status).toHaveText('Fuzzbeast is no longer shared with Made-up Share Test.')
+  await shoot(page, 'npcs')
+
+  // delete: to the SR6 NPC trash, then restore it
+  await page.getByRole('button', { name: 'Delete Glitch Sprite' }).click()
+  await dlg.getByRole('button', { name: 'Delete NPC' }).click()
+  await expect(npcRow(page, 'Glitch Sprite')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Trash (1)' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/npcs\/trash$/)
+  await expect(page.getByRole('heading', { name: 'NPC trash' })).toBeVisible()
+  await page.getByRole('button', { name: 'Restore Glitch Sprite' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Restored Glitch Sprite' })).toBeVisible()
+  await page.goto('/#/sr6/npcs')
+  await expect(npcRow(page, 'Glitch Sprite')).toHaveCount(1)
+
+  // the other game's NPC store holds none of them
+  expect(await (await page.request.get('/api/npcs')).text()).not.toContain('urn:chummer-sr6')
+})
+
+test('NPCs: the admin sees Gil’s under his name, with Print', async ({ page }) => {
+  await signIn(page, '/#/sr6/npcs', 'ada')
+  await expect(page.getByRole('region', { name: 'Gil Editor’s NPCs' }).getByRole('link', { name: 'Print Fuzzbeast' }))
+    .toHaveAttribute('href', /#\/sr6\/n\/[^/]+\/print$/)
+})
+
+test('NPCs: a player gets no menu, no page and no data', async ({ page }) => {
+  await signIn(page, '/#/sr6/npcs', 'pat')
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toHaveCount(0)
+  expect((await page.request.get('/api/sr6/npcs')).status()).toBe(403)
+  expect((await page.request.get('/api/sr6/npcs/trash')).status()).toBe(403)
+  await page.goto('/#/sr6/npcs/trash')
+  await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'NPC trash' })).toHaveCount(0)
+})

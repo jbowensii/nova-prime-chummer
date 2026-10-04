@@ -67,7 +67,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await signIn(page, '/#/sr6/data', 'ada')
   await expect(page.getByRole('heading', { name: 'Game data' })).toBeVisible()
   await expect(page.getByText('No SR6 data yet.')).toBeVisible()
-  expect(await labels(page)).toEqual(['Your runners', 'Books', 'Rules', 'Game data'])
+  expect(await labels(page)).toEqual(['Your runners', 'NPCs & Critters', 'Books', 'Rules', 'Game data'])
   await expect(page.getByRole('link', { name: 'Game data' })).toHaveAttribute('aria-current', 'page')
 
   await page.getByRole('link', { name: 'Books', exact: true }).click()
@@ -123,7 +123,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
 
 test('editor: edit a weapon’s cost, see it Edited, restore the book version', async ({ page }) => {
   await signIn(page, '/#/sr6/data', 'eve')
-  expect(await labels(page)).toEqual(['Your runners', 'Rules', 'Game data'])
+  expect(await labels(page)).toEqual(['Your runners', 'NPCs & Critters', 'Rules', 'Game data'])
   const gun = await findWeapon(page, 'Zap Gun')
   await gun.getByRole('button', { name: 'Edit Zap Gun' }).click()
   const form = page.getByRole('dialog')

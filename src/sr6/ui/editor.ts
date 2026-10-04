@@ -44,6 +44,7 @@ export const useSr6Editor = () => {
 /** The Finalized badge's tooltip on the SR6 side. */
 export const SR6_FINAL_TIP = 'Finalized: spend karma and nuyen on the Ledger tab'
 export const sr6EditHref = (id: string, tab: string) => `#/sr6/c/${id}/${tab}`
+export const sr6NpcHref = (id: string, tab = 'stats') => `#/sr6/n/${id}/${tab}`
 
 export const ATTR_NAMES: Record<Sr6Attr, string> = { bod: 'Body', agi: 'Agility', rea: 'Reaction', str: 'Strength', wil: 'Willpower',
   log: 'Logic', int: 'Intuition', cha: 'Charisma', edg: 'Edge', mag: 'Magic', res: 'Resonance' }

@@ -9,6 +9,7 @@ import type { Catalog } from '../model/types'
 import { because, canEdit, send, useMe, type User } from './auth'
 import { AskRules } from './AskRules'
 import { Modal } from './bits'
+import type { Game } from './game'
 
 export interface Person { username?: string; name: string }
 export interface CampaignRunner { key: string; mine: boolean; ownerName: string; streetName: string; level: string; package: string; id?: string; owner?: string }
@@ -16,7 +17,8 @@ export interface Campaign { id: string; name: string; note: string; archived: bo
   gms: Person[]; members: Person[]; runners: CampaignRunner[]
   npcs?: { id: string; name: string; owner: string; ownerName: string }[] } // the NPCs shared with it: the GM's and the admin's view only
 
-export const loadCampaigns = async (): Promise<Campaign[]> => (await send('campaigns', undefined, 'GET')).json()
+/** The caller's campaigns of `game` (Shadowrun 6's at /api/sr6/campaigns). */
+export const loadCampaigns = async (game: Game = 'ca2'): Promise<Campaign[]> => (await send(`${game === 'sr6' ? 'sr6/' : ''}campaigns`, undefined, 'GET')).json()
 /** Whether `me` plays in or runs `c` (only then can they put a runner in it); the admin sees every campaign without being in it. */
 export const joined = (c: Campaign, me: User | null) => c.you !== 'admin' || [...c.gms, ...c.members].some(p => p.username === me?.username)
 const names = (ps: Person[]) => ps.map(p => p.name).join(', ')
