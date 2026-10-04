@@ -34,6 +34,12 @@
   recognises them and reads them as it reads the 2019 printing, with their updated values. Their extra city chapter
   isn't imported. Names no longer keep a footnote mark ("Flash-pak*").
 
+- **Firing Squad can be imported** on Shadowrun 6 **Books** (it is now in the supported list). From your copy of the
+  book the app reads its weapons (with their weapon modifications and accessories), ammunition, armor (each variant
+  of a suit on its own) and armor modifications, tac-apps, the trauma qualities, the security and gang NPCs and the
+  rule sections, martial arts included. What it couldn't read is listed in the import's report. The book's errata
+  sheet isn't applied: it changes rules as well as numbers, so the book's printed values are kept.
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow

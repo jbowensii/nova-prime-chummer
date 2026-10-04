@@ -11,6 +11,7 @@ importer/sr6/archetypes.py)."""
 import json
 import os
 import re
+import sys
 from dataclasses import replace
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
@@ -105,6 +106,8 @@ LABEL_SECTIONS = {("matrix", "echoes"): "echoes"}
 RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
                  "running the game", "gear")
 ATTRIBUTE_CHAPTERS = ("game concepts", "character creation")
+CATALOG_CHAPTERS = ("gear",)  # a table row there with a name header is a catalog item: reported when it maps nowhere
+BOOK = "the Shadowrun 6 core rulebook"
 ATTRIBUTES = {"body": ("BOD", "physical"), "agility": ("AGI", "physical"), "reaction": ("REA", "physical"),
               "strength": ("STR", "physical"), "willpower": ("WIL", "mental"), "logic": ("LOG", "mental"),
               "intuition": ("INT", "mental"), "charisma": ("CHA", "mental"), "edge": ("EDG", "special"),
@@ -120,8 +123,9 @@ _BEING = {"B": "bod", "BOD": "bod", "A": "agi", "AGI": "agi", "R": "rea", "REA":
 HEADERS = {
     "weapons": {"DV": "dv", "MODES": "modes", "MODE": "modes", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "AR": "ar",
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
-                "DV NEAR": "dv+", "NOTES": "", **_PRICE},
-    "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "CAPACITY": "capacity", **_PRICE},
+                "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
+    "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "",
+              "TYPE": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
@@ -253,7 +257,7 @@ def _cells(line):
 
 
 class _Catalog:
-    def __init__(self, source=ID, recipe="crb", book="the Shadowrun 6 core rulebook"):
+    def __init__(self, source=ID, recipe="crb", book=BOOK):
         self.source, self.note = source, f"recipe sr6 {recipe}) from {book}"
         self.entries = {k: [] for k in KINDS}
         self.ids = {k: set() for k in KINDS}
@@ -631,21 +635,30 @@ def _md(b):
                      for h, r in rows)
 
 
-def _kind(chapter, ctx, section):
-    for ch, key, kind, cat in SECTIONS:
-        if ch in chapter and (not section or kind in SECTION_KINDS) and (
+def _kind(chapter, ctx, section, book=None):
+    book = book or sys.modules[__name__]
+    for ch, key, kind, cat in book.SECTIONS:
+        if ch in chapter and (not section or kind in book.SECTION_KINDS) and (
                 not key or any(key in c for c in ctx if (key[0] == "|") == (c[:1] == "|"))):
             return kind, cat
     return None, None
 
 
-def extract(regrouped, ctx=None):
-    cat = _Catalog()
+def extract(regrouped, ctx=None, book=None):
+    """regrouped: regroup's text, or its blocks. book: the recipe module whose tables drive the reading (ID, NAME, PUBLISHER, CANON, BOOK, PAGE_OFFSET, SECTIONS,
+    SECTION_KINDS, LABEL_SECTIONS, RULE_CHAPTERS, ATTRIBUTE_CHAPTERS, CATALOG_CHAPTERS; optional fix(block, parent2)
+    -> the block as this reading needs it, and kind(chapter, block, parent2) -> (kind, category) in place of
+    SECTIONS); this one by default."""
+    bk = book or sys.modules[__name__]
+    cat = _Catalog(bk.ID, bk.ID.lower(), bk.BOOK)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
-    for b in blocks(regrouped):
+    for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
-        ch, page = norm(b.chapter), max(1, b.page - PAGE_OFFSET)
+        if b.type == "section" and b.level == 2:
+            parent2 = b.name
+        b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
+        ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)
         if cat.last_meta is not None and not any(t == "trait" for t, _, _ in cat.last_meta["children"]) \
@@ -658,10 +671,8 @@ def extract(regrouped, ctx=None):
             samples.append((b.section or b.name, b, page))  # built once the catalog is read: they cite its entries
             continue
         section = b.type == "section"
-        if section and b.level == 2:
-            parent2 = b.name
         a = ATTRIBUTES.get(norm(b.name))
-        if a and any(c in ch for c in ATTRIBUTE_CHAPTERS) and a[0] not in seen_attrs:
+        if a and any(c in ch for c in bk.ATTRIBUTE_CHAPTERS) and a[0] not in seen_attrs:
             seen_attrs.add(a[0])
             cat.add("attributes", b.name, page, {"abbr": a[0], "group": a[1]}, (), _text(b))
             if not section:
@@ -670,22 +681,24 @@ def extract(regrouped, ctx=None):
             sub = ""
         if norm(b.name).endswith(" spells"):  # `Direct Glow Spells`: an item heading over its spells
             sub = norm(b.name)
-        lk = next((k for (c, n), k in LABEL_SECTIONS.items() if c in ch and n == norm(b.name)), None) if section else None
+        lk = next((k for (c, n), k in bk.LABEL_SECTIONS.items() if c in ch and n == norm(b.name)), None) if section else None
         if lk:
             for k, v in b.labels.items():
                 cat.add(lk, k, page, {}, (), v)
         if section:
             ctx_keys = [norm(parent2)] if b.level == 3 and parent2 else []
-            kind, kcat = _kind(ch, ctx_keys, True) if b.level == 3 else (None, None)
+            kind, kcat = _kind(ch, ctx_keys, True, bk) if b.level == 3 else (None, None)
         else:
             ctx_keys = ([norm(x) for x in (b.header[0], b.label) if x] + ["|" + norm(" ".join(b.header))]
                         if b.row is not None else
                         [norm(x) for x in (b.label, b.section, parent2, sub) if x])
-            kind, kcat = _kind(ch, ctx_keys, False)
+            kind, kcat = _kind(ch, ctx_keys, False, bk)
+        if hasattr(bk, "kind"):
+            kind, kcat = bk.kind(ch, b, parent2)
         if kind == "skip" or kind and cat.entry(kind, kcat, b, page, ctx_keys):
             continue
-        rule_chapter = ch and any(c in ch for c in RULE_CHAPTERS)
-        catalog = "gear" in ch and b.row is not None and b.header and b.header[0].upper() in NAME_HEADERS
+        rule_chapter = ch and any(c in ch for c in bk.RULE_CHAPTERS)
+        catalog = any(c in ch for c in bk.CATALOG_CHAPTERS) and b.row is not None and b.header and b.header[0].upper() in NAME_HEADERS
         if not section and (b.row is not None or b.stats) and (catalog or not rule_chapter):
             cat.report.append({"kind": "unmapped", "name": b.name, "chapter": b.chapter, "section": b.section,
                                "label": b.label, "page": page})
@@ -704,8 +717,8 @@ def extract(regrouped, ctx=None):
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     runners = []
     for name, b, page in samples:
-        sid, xml, rows = archetypes.build(ID, name, b, page, cat.entries, updated)
+        sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated)
         runners.append({"file": f"{sid}.xml", "xml": xml, "name": name, "role": "Archetype", "page": page})
         cat.report += rows
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+                  source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
