@@ -99,11 +99,12 @@ test('the header switch changes game and is remembered across reloads', async ({
   await page.screenshot({ path: `${SHOTS}/header-switch-sr6.png`, clip: { x: 0, y: 0, width: 1400, height: 240 } })
   await toCa2.click()
   await expect(page).toHaveURL(/#\/$/)
-  await expect(page.getByRole('link', { name: 'Compendiums' })).toBeVisible() // the Anarchy page (SR6's menu has the same labels now: the brand link below tells them apart)
+  // wait for the Anarchy page itself: SR6's page has the same menu labels and New runner button, and the Anarchy page
+  // shows no header while its game data loads, so a one-shot read of the menu must come after the brand link
+  await expect(page.getByRole('link', { name: 'Chummer Anarchy 2.0' })).toHaveAttribute('href', '#/')
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label'))))
     .toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data'])
-  await expect(page.getByRole('link', { name: 'Chummer Anarchy 2.0' })).toHaveAttribute('href', '#/')
   const toSr6 = page.getByRole('link', { name: 'Switch to Shadowrun 6' })
   await toSr6.hover()
   await page.screenshot({ path: `${SHOTS}/header-switch-anarchy.png`, clip: { x: 0, y: 0, width: 1400, height: 240 } })
@@ -113,6 +114,7 @@ test('the header switch changes game and is remembered across reloads', async ({
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Choose your game' })).toHaveCount(0)
   await toSr6.click()
+  await expect(page.getByRole('link', { name: 'Chummer Shadowrun 6' })).toBeVisible()
   await expect(page.getByText('No runners yet.')).toBeVisible()
   await page.goto('/') // a bare address opens the remembered game
   await expect(page).toHaveURL(/#\/sr6$/)
