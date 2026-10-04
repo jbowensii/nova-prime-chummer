@@ -8,7 +8,7 @@ test('priorities A–E with metatype ids, attribute/skill points, nuyen and magi
   const d = sr6Data(fixtureCatalog())
   expect(Object.keys(d.priorities).sort()).toEqual(['A', 'B', 'C', 'D', 'E'])
   expect(d.priorities.A).toEqual({ metatypes: { 'crb.glimmerkin': 13, 'crb.stonefolk': 11 }, attributes: 24, skills: 32,
-    magic: { full: 4, technomancer: 4 }, nuyen: 450000, page: 40 })
+    magic: { full: 4, 'mystic-adept': 5, adept: 7, technomancer: 4 }, nuyen: 450000, page: 40 })
   expect(d.priorities.B!.magic).toEqual({ full: 3, 'mystic-adept': 3, adept: 5, aspected: 5, technomancer: 3 })
   expect(d.priorities.E).toMatchObject({ metatypes: { 'crb.glimmerkin': 1, 'crb.stonefolk': 1 }, magic: { mundane: 0 }, nuyen: 8000 })
 })

@@ -52,7 +52,7 @@ test('priority: a full magician is not legal at MAGIC E, mundane always is', () 
   const p = setup('priority')
   expect(p.legalMagic(build('priority', { letters: 'ABEDC' }))).toEqual([{ kind: 'mundane', rating: 0 }])
   expect(p.legalMagic(build('priority', { letters: 'BCADE' }))).toEqual([
-    { kind: 'full', rating: 4 }, { kind: 'technomancer', rating: 4 }, { kind: 'mundane', rating: 0 }])
+    { kind: 'full', rating: 4 }, { kind: 'mystic-adept', rating: 5 }, { kind: 'adept', rating: 7 }, { kind: 'technomancer', rating: 4 }, { kind: 'mundane', rating: 0 }])
 })
 
 // sum to ten
