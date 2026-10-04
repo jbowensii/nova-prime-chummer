@@ -212,6 +212,7 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Derived values | `monitorBase` | number | optional | Condition monitor: boxes before the attribute |
 | Derived values | `monitorDivisor` | number | optional | Condition monitor: the attribute divided by (rounded up) |
 | Derived values | `initiativeDice` | number | optional | Initiative dice |
+| Derived values | `initiativeDiceMax` | number | optional | Most initiative dice, after bonuses, astral too (unset: no cap) |
 | Derived values | `astralInitiativeDice` | number | optional | Astral initiative dice |
 | Derived values | `specDice` | number | optional | Dice for a specialization |
 | Derived values | `expertiseDice` | number | optional | Dice for an expertise |

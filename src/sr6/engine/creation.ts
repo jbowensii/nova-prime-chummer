@@ -80,6 +80,7 @@ export const CREATION_KEYS: CreationKey[] = [
   // the constants in derive.ts's formulas (optional: unset, the value shows empty)
   ...n('Derived values', [], [['monitorBase', 'Condition monitor: boxes before the attribute'],
     ['monitorDivisor', 'Condition monitor: the attribute divided by (rounded up)'], ['initiativeDice', 'Initiative dice'],
+    ['initiativeDiceMax', 'Most initiative dice (unset: no cap)'],
     ['astralInitiativeDice', 'Astral initiative dice'], ['specDice', 'Dice for a specialization'], ['expertiseDice', 'Dice for an expertise'],
     ['untrainedPenalty', 'Dice off the attribute for an untrained skill']]),
 ]

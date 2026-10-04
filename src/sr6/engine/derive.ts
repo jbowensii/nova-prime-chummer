@@ -53,6 +53,8 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   })) as Sr6Derived['attrs']
   const A = (k: string) => attrs[k as Sr6Attr]?.augmented ?? 0
   const plus = (a: number, key: string) => { const v = need(key); return v === undefined ? null : a + v }
+  // the initiative dice cap (GM-entered; unset: no cap)
+  const capDice = (d: number | null) => { const most = num(cr, 'initiativeDiceMax'); return d === null || most === undefined ? d : Math.min(d, most) }
 
   // CRB p. 38: monitor = base + ceil(attribute / divisor); overflow = BOD
   const base = need('monitorBase'), div = need('monitorDivisor')
@@ -80,9 +82,9 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   return {
     attrs, essence: budgets.essence.left, magicLoss: loss, magicMax,
     // CRB pp. 39, 67: initiative = REA + INT, plus dice
-    initiative: { base: A('rea') + A('int'), dice: plus(augmentBonus(b, 'initDice'), 'initiativeDice') },
+    initiative: { base: A('rea') + A('int'), dice: capDice(plus(augmentBonus(b, 'initDice'), 'initiativeDice')) },
     // CRB p. 161 (astral combat): astral initiative = LOG + INT, plus dice
-    ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: need('astralInitiativeDice') ?? null } } : {}),
+    ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: capDice(need('astralInitiativeDice') ?? null) } } : {}),
     monitors: { physical: monitor(A('bod')), stun: monitor(A('wil')), overflow: A('bod') },
     defenseRating: defense,
     // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line

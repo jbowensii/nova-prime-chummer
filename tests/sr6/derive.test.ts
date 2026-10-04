@@ -59,6 +59,16 @@ test('no bonus leaves the attributes alone; a power bonus is augmented, not natu
   expect(d.judgeIntentions).toBe(3 + 7)
 })
 
+test('the initiative dice cap, when set, holds the dice (an invented cap of 2); unset, no cap and nothing listed as unset', () => {
+  const ch = runner('adept')
+  ch.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, bonuses: [{ target: 'initDice', value: 1 }] })
+  expect(derive(ch, { rules: { initiativeDiceMax: 2 } }).d.initiative.dice).toBe(2)
+  expect(derive(ch, { rules: { initiativeDiceMax: 4 } }).d.initiative.dice).toBe(2 + 1)
+  const free = derive(ch).d
+  expect(free.initiative.dice).toBe(2 + 1)
+  expect(free.unset).not.toContain('initiativeDiceMax')
+})
+
 test('worn armor adds its defense; armor not worn doesn’t', () => {
   const ch = runner(), vest = buy(ch, 'armor', 'crb.padded-vest')
   expect(derive(ch).d.defenseRating).toBe(4)
