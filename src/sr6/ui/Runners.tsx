@@ -1,9 +1,11 @@
 // The Shadowrun 6 runners page (#/sr6): your runners (and, for the admin and editors, other accounts' as Anarchy's list
 // shows them), New runner (a creation method whose settings aren't all set can't be picked and says what's missing), Import
 // file (an Anarchy runner is refused with where it belongs), Export, Delete (to the SR6 trash), sort and search, and the
-// files that can't be read with Download and Try to repair. No campaigns or duplicates finder in S2 (R: with S3).
+// files that can't be read with Download and Try to repair; each runner's SR6 campaign tag, Add to campaign… and Remove from
+// campaign (Anarchy's dialog; no campaign filter or duplicates finder, R).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { because, isAdmin, savesSettled, useMe } from '../../ui/auth'
+import { because, isAdmin, savesSettled, send, useMe } from '../../ui/auth'
+import { joined, loadCampaigns, type Campaign } from '../../ui/Campaigns'
 import { Modal, StateBadge } from '../../ui/bits'
 import { IconButton, IconLink } from '../../ui/icons'
 import { arrange, ownerGroups, type SortBy } from '../../ui/Library'
@@ -46,10 +48,14 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const missing = useMemo(() => Object.fromEntries(SR6_METHODS.map(m => [m, missingLabels(m, cr, data)])) as Record<Sr6Method, string[]>, [cr, data])
   const [method, setMethod] = useState<Sr6Method | ''>('')
   const [toDelete, setToDelete] = useState<Sr6Character | null>(null)
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [joining, setJoining] = useState<Sr6Character | null>(null)
+  const [target, setTarget] = useState('')
   const [repairing, setRepairing] = useState<{ u: Unreadable; ch: Sr6Character; changes: string[] } | null>(null)
   const file = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
+    loadCampaigns('sr6').then(setCampaigns, () => setCampaigns([]))
     loadTrash(undefined, false, 'sr6').then(t => setTrashed(t.items.length), () => setTrashed(null))
     return savesSettled().then(() => repo.listAll()).then(r => { setList(r.stored); setUnreadable(r.unreadable); setBanner(null) },
       e => { const m = (e as Error).message ?? String(e)
@@ -62,6 +68,17 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const others = ownerGroups((list ?? []).filter(s => !mine.includes(s)), unreadable.filter(u => u.owner && u.owner !== me?.username), sort, q)
   const errorsOf = (ch: Sr6Character) => validateSr6(data, cr, ch).filter(v => v.severity === 'error' && !v.approved).length
 
+  const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
+  const open = campaigns.filter(x => !x.archived && joined(x, me)) // the ones a runner of yours can join
+  const assign = async (ch: Sr6Character, cid: string | null) => {
+    try {
+      const x = cid ? campaigns.find(k => k.id === cid) : campaignOf(ch)
+      await send(cid ? `sr6/campaigns/${cid}/runners` : `sr6/campaigns/${ch.campaign}/runners/${encodeURIComponent(ch.id)}`, cid ? { id: ch.id } : undefined, cid ? 'POST' : 'DELETE')
+      setMsg(cid ? `${shownName(ch)} is in ${x?.name} now.` : `${shownName(ch)} left ${x?.name ?? 'its campaign'}.`)
+    } catch (e) { setMsg((e as Error).message) }
+    setJoining(null)
+    void refresh()
+  }
   const store = async (ch: Sr6Character, rev?: number) => {
     const r = await repo.save(ch, rev)
     if (!r.ok) setMsg(r.error ?? `${shownName(ch)} changed elsewhere; open it to sort it out.`)
@@ -127,10 +144,13 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
             {[data.metatypes[ch.build.metatype]?.name ?? (ch.build.metatype || 'No metatype yet'), SR6_METHOD_LABELS[ch.build.method]].join(', ')}
             {' '}<StateBadge finalized={!!ch.finalizedAt} finalTip={SR6_FINAL_TIP} />
             {errors > 0 && <> <a className="noncanon overspent" href={`#/sr6/c/${ch.id}/review`}>{errors} {errors === 1 ? 'error' : 'errors'}</a></>}
+            {campaignOf(ch) && <> <a className="ctag" href={`#/sr6/campaigns/${ch.campaign}`} title="Campaign">{campaignOf(ch)!.name}</a></>}
           </div>
         </div>
         {own ? <div className="row">
           <button className="btn small" onClick={async () => { await store(exportSr6(c, ch), rev); void refresh() }}>Export</button>
+          {campaignOf(ch) ? <button className="btn small quiet" onClick={() => void assign(ch, null)}>Remove from campaign</button>
+            : open.length > 0 && <button className="btn small quiet" onClick={() => { setTarget(open[0].id); setJoining(ch) }}>Add to campaign…</button>}
           <button className="btn small quiet" onClick={() => setToDelete(ch)}>Delete</button>
         </div> : <div className="row"><button className="btn small" onClick={() => exportSr6(c, ch)}>Export</button></div>}
       </div>
@@ -191,6 +211,14 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         <p>It reads with these changes:</p>
         <ul>{repairing?.changes.map((x, i) => <li key={i}>{x}</li>)}</ul>
         <p className="muted">Saving replaces the file with the repaired runner. Download the file first to keep the original.</p>
+      </Modal>
+
+      <Modal open={!!joining} onClose={() => setJoining(null)} title={`Add ${joining ? shownName(joining) : 'this runner'} to a campaign`}
+        actions={<><button className="btn" onClick={() => setJoining(null)}>Cancel</button>
+          <button className="btn primary" disabled={!target} onClick={() => void assign(joining!, target)}>Add to campaign</button></>}>
+        <label>Campaign<select value={target} onChange={e => setTarget(e.target.value)}>
+          {open.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <p className="muted" style={{ marginTop: '0.8rem' }}>A runner plays in one campaign at a time; its GM can read and print it. To play it in another one too, export it and import the copy.</p>
       </Modal>
 
       <Modal open={!!toDelete} onClose={() => setToDelete(null)} title={`Delete ${toDelete ? shownName(toDelete) : 'this runner'}?`}

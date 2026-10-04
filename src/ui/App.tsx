@@ -98,7 +98,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />
         : page === 'npcs' ? <NpcsScreen c={catalog} />
         : page === 'users' ? <UsersScreen />
-        : page === 'campaigns' && id ? <CampaignScreen key={id} c={catalog} id={id} />
+        : page === 'campaigns' && id ? <CampaignScreen key={id} id={id} label={r => [catalog.packages.get(r.package)?.name, catalog.levels.get(r.level)?.name ?? r.level].filter(Boolean).join(', ')} />
         : page === 'campaigns' ? <CampaignsScreen />
         : page === 'trash' ? <TrashScreen user={id} />
         : page === 'books' && id === 'ai' ? <AiSettings />

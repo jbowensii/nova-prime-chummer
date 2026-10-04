@@ -1,11 +1,11 @@
 // Campaigns (server/campaigns.mjs; spec docs/superpowers/specs/2026-09-29-campaigns-ask-rules-design.md §2): the list of
 // the caller's campaigns, and one campaign's page — its runners grouped by player (the GM and the admin open them read-only
 // and print them; a member sees roster rows), who plays, and the GM's tools. The server enforces every rule; hiding a
-// control here is only convenience.
+// control here is only convenience. `game`: Shadowrun 6's campaigns are the same pages over /api/sr6/campaigns, linking
+// under #/sr6 (its runners open at #/sr6/c/<id>, its NPCs at #/sr6/n/<id>); a campaign holds only its own game's.
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useEffect, useId, useState } from 'react'
-import type { Catalog } from '../model/types'
 import { because, canEdit, send, useMe, type User } from './auth'
 import { AskRules } from './AskRules'
 import { Modal } from './bits'
@@ -17,8 +17,14 @@ export interface Campaign { id: string; name: string; note: string; archived: bo
   gms: Person[]; members: Person[]; runners: CampaignRunner[]
   npcs?: { id: string; name: string; owner: string; ownerName: string }[] } // the NPCs shared with it: the GM's and the admin's view only
 
+/** `game`'s campaign API paths (for send) and page links. */
+export function campaignLinks(game: Game = 'ca2') {
+  const sr6 = game === 'sr6', home = sr6 ? '#/sr6/' : '#/'
+  return { api: (rest = '') => `${sr6 ? 'sr6/' : ''}campaigns${rest}`, list: `${home}campaigns`, campaign: (id: string) => `${home}campaigns/${id}`,
+    runner: (id: string, tab: string) => `${home}c/${id}/${tab}`, npc: (id: string) => sr6 ? `#/sr6/n/${id}/stats` : `#/n/${id}/concept` }
+}
 /** The caller's campaigns of `game` (Shadowrun 6's at /api/sr6/campaigns). */
-export const loadCampaigns = async (game: Game = 'ca2'): Promise<Campaign[]> => (await send(`${game === 'sr6' ? 'sr6/' : ''}campaigns`, undefined, 'GET')).json()
+export const loadCampaigns = async (game: Game = 'ca2'): Promise<Campaign[]> => (await send(campaignLinks(game).api(), undefined, 'GET')).json()
 /** Whether `me` plays in or runs `c` (only then can they put a runner in it); the admin sees every campaign without being in it. */
 export const joined = (c: Campaign, me: User | null) => c.you !== 'admin' || [...c.gms, ...c.members].some(p => p.username === me?.username)
 const names = (ps: Person[]) => ps.map(p => p.name).join(', ')
@@ -30,14 +36,14 @@ function Header({ title, children }: { title: string; children?: React.ReactNode
 }
 
 /** Name and note: a new campaign, or the GM's edit of one. */
-function CampaignForm({ c, onDone, onCancel }: { c?: Campaign; onDone: (c: Campaign) => void; onCancel: () => void }) {
+function CampaignForm({ c, game, onDone, onCancel }: { c?: Campaign; game?: Game; onDone: (c: Campaign) => void; onCancel: () => void }) {
   const [name, setName] = useState(c?.name ?? ''), [note, setNote] = useState(c?.note ?? '')
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false)
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (busy) return
     setBusy(true); setErr('')
-    try { onDone(await (await send(c ? `campaigns/${c.id}` : 'campaigns', { name, note }, c ? 'PUT' : 'POST')).json()) }
+    try { onDone(await (await send(campaignLinks(game).api(c ? `/${c.id}` : ''), { name, note }, c ? 'PUT' : 'POST')).json()) }
     catch (x) { setErr((x as Error).message); setBusy(false) }
   }
   return (
@@ -53,13 +59,13 @@ function CampaignForm({ c, onDone, onCancel }: { c?: Campaign; onDone: (c: Campa
   )
 }
 
-export function CampaignsScreen() {
-  const me = useMe()
+export function CampaignsScreen({ game = 'ca2' }: { game?: Game }) {
+  const me = useMe(), L = campaignLinks(game)
   const [list, setList] = useState<Campaign[] | null>(null)
   const [msg, setMsg] = useState('')
   const [archived, setArchived] = useState(false)
   const [creating, setCreating] = useState(false)
-  useEffect(() => { loadCampaigns().then(setList, e => { setMsg(because('Couldn’t load the campaigns', (e as Error).message)); setList([]) }) }, [])
+  useEffect(() => { loadCampaigns(game).then(setList, e => { setMsg(because('Couldn’t load the campaigns', (e as Error).message)); setList([]) }) }, [game])
   const shown = (list ?? []).filter(x => archived || !x.archived)
   const staff = canEdit(me)
   return (
@@ -76,7 +82,7 @@ export function CampaignsScreen() {
               <thead><tr><th>Campaign</th><th>GM</th><th className="num">Players</th><th className="num">Runners</th></tr></thead>
               <tbody>{shown.map(x => (
                 <tr key={x.id} className={x.archived ? 'off' : undefined}>
-                  <td><a href={`#/campaigns/${x.id}`}><b>{x.name}</b></a>{x.archived && <> <span className="state removed">Archived</span></>}</td>
+                  <td><a href={L.campaign(x.id)}><b>{x.name}</b></a>{x.archived && <> <span className="state removed">Archived</span></>}</td>
                   <td>{names(x.gms)}</td><td className="num">{x.members.length}</td><td className="num">{x.runners.length}</td>
                 </tr>))}
               </tbody>
@@ -84,7 +90,7 @@ export function CampaignsScreen() {
           </div>)}
       </>}
       <Modal open={creating} onClose={() => setCreating(false)} title="New campaign" actions={<></>}>
-        {creating && <CampaignForm onCancel={() => setCreating(false)} onDone={x => { location.hash = `#/campaigns/${x.id}` }} />}
+        {creating && <CampaignForm game={game} onCancel={() => setCreating(false)} onDone={x => { location.hash = L.campaign(x.id) }} />}
       </Modal>
     </main>
   )
@@ -92,8 +98,9 @@ export function CampaignsScreen() {
 
 type Confirm = { title: string; body: string; label: string; run: () => Promise<unknown> }
 
-export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
-  const me = useMe()
+/** `label`: a runner row's line under its name (Anarchy: its package and level). */
+export function CampaignScreen({ id, label, game = 'ca2' }: { id: string; label: (r: CampaignRunner) => string; game?: Game }) {
+  const me = useMe(), L = campaignLinks(game)
   const [camp, setCamp] = useState<Campaign | null>(null)
   const [missing, setMissing] = useState('')
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
@@ -103,11 +110,11 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
   const [accounts, setAccounts] = useState<User[]>([]) // the admin's: names to pick from
   const listId = useId()
   useEffect(() => {
-    send(`campaigns/${id}`, undefined, 'GET').then(r => r.json()).then(setCamp, e => setMissing((e as Error).message))
+    send(L.api(`/${id}`), undefined, 'GET').then(r => r.json()).then(setCamp, e => setMissing((e as Error).message))
     if (me?.role === 'admin') send('users', undefined, 'GET').then(r => r.json()).then(setAccounts, () => {})
-  }, [id, me])
+  }, [id, me, game]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (missing) return <main className="lib"><Header title="Campaign" /><p className="banner bad" role="alert">{missing}</p><p><a href="#/campaigns">Back to campaigns</a></p></main>
+  if (missing) return <main className="lib"><Header title="Campaign" /><p className="banner bad" role="alert">{missing}</p><p><a href={L.list}>Back to campaigns</a></p></main>
   if (!camp) return <main className="lib"><p className="muted">Loading campaign…</p></main>
 
   const manages = camp.you !== 'member', admin = me?.role === 'admin'
@@ -115,8 +122,8 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
   const act = async (path: string, method: string, body?: unknown, done?: string) => {
     setMsg(null)
     try {
-      const r = await send(`campaigns/${id}${path}`, body, method)
-      if (r.status === 204) { location.hash = '#/campaigns'; return true }
+      const r = await send(L.api(`/${id}${path}`), body, method)
+      if (r.status === 204) { location.hash = L.list; return true }
       setCamp(await r.json())
       if (done) setMsg({ text: done })
       return true
@@ -125,8 +132,6 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
   const groups = new Map<string, CampaignRunner[]>()
   // by owner: the username (GM, admin), else the name (a member's roster has no usernames; their own runners are `mine`)
   for (const r of camp.runners) { const k = r.owner ? `u:${r.owner}` : r.mine ? 'me' : `n:${r.ownerName}`; groups.set(k, [...groups.get(k) ?? [], r]) }
-  // the archetype package when there is one (a free build has none), and the level of play
-  const label = (r: CampaignRunner) => [c.packages.get(r.package)?.name, c.levels.get(r.level)?.name ?? r.level].filter(Boolean).join(', ')
   const staffAccounts = accounts.filter(u => u.role !== 'player' && !camp.gms.some(g => g.username === u.username))
 
   return (
@@ -139,7 +144,7 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
 
       <section aria-labelledby={`${listId}-r`}>
         <h2 id={`${listId}-r`}>Runners</h2>
-        <AskRules />
+        {game === 'ca2' && <AskRules />}
         {camp.runners.length === 0 ? <p className="empty-note">No runners in this campaign yet. Players add theirs from their runner list with <b>Add to campaign…</b></p>
           : [...groups].map(([owner, rows]) => <div key={owner} className="cgroup">
             <h3>{rows[0].ownerName}</h3>
@@ -148,11 +153,11 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
               return <div className="dossier" key={r.key}>
                 <span className="face" aria-hidden>{r.streetName[0]}</span>
                 <div>
-                  {open ? <a className="title" href={`#/c/${r.id}/concept`}>{r.streetName}</a> : <span className="title">{r.streetName}</span>}
+                  {open ? <a className="title" href={L.runner(r.id!, 'concept')}>{r.streetName}</a> : <span className="title">{r.streetName}</span>}
                   <div className="meta">{label(r)}</div>
                 </div>
                 <div className="row">
-                  {open && !r.mine && <a className="btn small" href={`#/c/${r.id}/print`} aria-label={`Print ${r.streetName}`}>Print</a>}
+                  {open && !r.mine && <a className="btn small" href={L.runner(r.id!, 'print')} aria-label={`Print ${r.streetName}`}>Print</a>}
                   {r.id && (r.mine || manages) && <button className="btn small quiet" aria-label={`Remove ${r.streetName} from the campaign`}
                     onClick={() => void act(`/runners/${encodeURIComponent(r.id!)}`, 'DELETE', undefined, `${r.streetName} left the campaign.`)}>Remove from campaign</button>}
                 </div>
@@ -163,7 +168,7 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
 
       {manages && !!camp.npcs?.length && <section aria-labelledby={`${listId}-n`}>
         <h2 id={`${listId}-n`}>NPCs</h2>
-        <ul className="roster">{camp.npcs.map(n => <li key={n.id}><a href={`#/n/${n.id}/concept`}>{n.name}</a><span className="muted"> · {n.ownerName}</span></li>)}</ul>
+        <ul className="roster">{camp.npcs.map(n => <li key={n.id}><a href={L.npc(n.id)}>{n.name}</a><span className="muted"> · {n.ownerName}</span></li>)}</ul>
       </section>}
 
       <section aria-labelledby={`${listId}-t`}>
@@ -207,7 +212,7 @@ export function CampaignScreen({ c, id }: { c: Catalog; id: string }) {
       </section>}
 
       <Modal open={editing} onClose={() => setEditing(false)} title={`Edit ${camp.name}`} actions={<></>}>
-        {editing && <CampaignForm c={camp} onCancel={() => setEditing(false)} onDone={x => { setCamp(x); setEditing(false); setMsg({ text: 'Saved.' }) }} />}
+        {editing && <CampaignForm c={camp} game={game} onCancel={() => setEditing(false)} onDone={x => { setCamp(x); setEditing(false); setMsg({ text: 'Saved.' }) }} />}
       </Modal>
       <Modal open={!!confirm} onClose={() => setConfirm(null)} title={confirm?.title ?? ''}
         actions={<><button className="btn" onClick={() => setConfirm(null)}>Cancel</button>
