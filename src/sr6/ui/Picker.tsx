@@ -140,6 +140,24 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
 /** R: no mount data, so a weapon or a cyberlimb takes gear from any accessory category. */
 export const isAccessory = (e: Sr6Entry) => /accessor/i.test(e.attrs.category ?? '')
 
+/** A line's rating and grade, changed in place where the entry comes in ratings or grades are offered. */
+function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades?: boolean }) {
+  const { data, cr, act } = useSr6Editor()
+  const range = ratingRange(entryOf(x, data)?.attrs.rating), offered = grades ? gradesSet(cr) : []
+  if (range.length < 2 && !offered.length) return (x.rating || x.grade)
+    ? <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && cap(x.grade)].filter(Boolean).join(' · ')}</div> : null
+  return <div className="row muted">
+    {range.length > 1 ? <label className="inline">Rating <select aria-label={`${name} rating`} value={x.rating ?? range[0]}
+      onChange={ev => act({ op: 'rate', uid: x.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>
+      : x.rating && `Rating ${x.rating}`}
+    {offered.length > 0 ? <label className="inline">Grade <select aria-label={`${name} grade`} value={x.grade ?? ''}
+      onChange={ev => act({ op: 'rate', uid: x.uid, grade: ev.target.value || null })}>
+      {!x.grade && <option value="">None</option>}
+      {[...offered, ...(x.grade && !offered.includes(x.grade) ? [x.grade] : [])].map(g => <option key={g} value={g}>{cap(g)}</option>)}</select></label>
+      : x.grade && cap(x.grade)}
+  </div>
+}
+
 const STACKS = new Set<PurchaseKind>(['electronics', 'gear'])
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
@@ -163,7 +181,7 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
         const e = entryOf(x, data), name = e?.name ?? x.name ?? 'Custom item', p = priced(x, data, cr)
         return <tr key={x.uid}>
           <td><LineName x={x} />
-            {(x.rating || x.grade) && <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && cap(x.grade)].filter(Boolean).join(' · ')}</div>}
+            <RatingGrade x={x} name={name} grades={grades} />
             {detail && <div className="muted">{detail(x)}</div>}
             {accessories && <div><Accessories host={x} name={name} {...accessories} /></div>}
             {bonuses && <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={!!x.rating} /></div>}</td>

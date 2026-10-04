@@ -4,12 +4,12 @@
 // pick can carry the player's bonuses.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
-import { NameField } from '../../../ui/tabs/Skills'
 import { num } from '../../engine/creation'
 import { MAGIC_KINDS, picksFor } from '../../engine/data'
 import type { PickKind, Sr6Build } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Bonuses } from '../Picker'
+import { Suggest } from './Skills'
 
 const PICKS: [PickKind, string, string][] = [['spells', 'Spells', 'a spell'], ['rituals', 'Rituals', 'a ritual'], ['adeptpowers', 'Adept powers', 'an adept power'],
   ['metamagics', 'Metamagics', 'a metamagic'], ['complexforms', 'Complex forms', 'a complex form'], ['echoes', 'Echoes', 'an echo']]
@@ -55,8 +55,8 @@ export function MagicTab() {
         Free {word}: <b className={slots.left < 0 ? 'err' : ''}>{n(slots.left)} left</b> of {n(slots.max)}.
         {karma !== undefined && ` Past the free ones, each costs ${karma} karma.`}</p>}
       {k.spells && <div className="row">
-        <label className="inline">Tradition <NameField label="Tradition" value={b.tradition ?? ''}
-          onCommit={t => edit((x: Sr6Build) => { x.tradition = t })} /></label>
+        <label className="inline">Tradition <Suggest label="Tradition" value={b.tradition ?? ''} options={[]}
+          onCommit={t => edit((x: Sr6Build) => { if (t) x.tradition = t; else delete x.tradition })} /></label>
         <label className="inline">Drain attribute <select value={b.drainAttr ?? ''}
           onChange={e => edit(x => { if (e.target.value) x.drainAttr = e.target.value as Sr6Build['drainAttr']; else delete x.drainAttr })}>
           <option value="">Pick one</option>
