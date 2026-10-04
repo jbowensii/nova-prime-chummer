@@ -24,6 +24,12 @@
   cell, push **Remove** out of sight or make the table scroll sideways: they sit side by side, and where the page is
   narrow (a phone, or a small window next to the build panel) each contact shows as a small card with its fields labelled.
 
+- **Shadowrun 6 books with doubled letters read properly.** Some PDFs (Falling Point, Final Bets, Scotophobia, Shoot
+  Straight, Tarnished Star, The Needle's Eye, Wild Life) carry every page's text twice, which came out as
+  "IInnttrroodduuccttiioonn". The importer now keeps only the first copy, headings included, while real double letters
+  ("Arrow", "Kill") stay. Words broken after an "fi", "fl" or "ff" ("fi rst", "offi ce") are joined again where the
+  result is a word; "off the" stays two words. The core rulebook imports exactly as before.
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow

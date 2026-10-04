@@ -457,3 +457,23 @@ def sr6_layout_pdf() -> bytes:
     with a stat-box label, a shaded table over body text and an offset sidebar, table lookalikes, and two columns
     with no whitespace gutter."""
     return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS, SR6_TIGHT_OPS])
+
+
+# A page whose whole text layer is drawn twice, as some PDFs do: the copy later in the content stream, 0.01 pt off,
+# its heading and bold lead-in 2 pt off (more than a char dedupe's 1 pt), and a page number drawn once after it.
+# Genuine double letters (Arrow, Kill) and a line whose words split after a ligature. Then a page drawn once with a
+# faux-bold heading (drawn twice in a row, 0.3 pt apart). All made up.
+def _doubled_layer(dx, dy, hd):
+    return (f"BT /F4 13 Tf {72 + hd} {700 + hd} Td (Arrow Kill Drill) Tj ET\n"
+            f"BT /F2 10.5 Tf {72 + hd} {682 - hd} Td (Bold Lead:) Tj /F3 10.5 Tf ( the fi rst offi ce was diffi cult) Tj ET\n"
+            + _sr6_lines(72 + dx, 664 + dy, "Plain words for the doubled page, line", 5))
+
+
+SR6_DOUBLED_OPS = _doubled_layer(0, 0, 0) + _doubled_layer(0.01, -0.01, 2) + "BT /F3 10.5 Tf 300 20 Td (9) Tj ET\n"
+SR6_FAUX_BOLD_OPS = ("BT /F4 13 Tf 72 700 Td (Faux Bold Heading) Tj ET\nBT /F4 13 Tf 72.3 700 Td (Faux Bold Heading) Tj ET\n"
+                     + _sr6_lines(72, 680, "Plain words for the single page, line", 5))
+
+
+def sr6_doubled_pdf() -> bytes:
+    """Two-page PDF in the SR6 layout: a page with its text layer drawn twice, then a page drawn once."""
+    return _build_pdf([SR6_DOUBLED_OPS, SR6_FAUX_BOLD_OPS])

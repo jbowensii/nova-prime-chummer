@@ -9,8 +9,9 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-2"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
-# split where the content stream jumps (a gutter narrower than a word space)
+SR6_CONVERTER_VERSION = "sr6-3"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+# split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
+# dropped, words split after a ligature joined
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -347,7 +348,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             # of two with the same box, the first is kept
             tables = [t for i, t in enumerate(found)
                       if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
-            chars = [{**c, "i": i} for i, c in enumerate(page.chars)] if sr6 else page.chars  # stream order (_jump)
+            # stream order (_jump); a second copy of the page's text layer dropped (layout.one_layer)
+            chars = [{**c, "i": i} for i, c in enumerate(layout.one_layer(page.chars))] if sr6 else page.chars
             all_words = pdfplumber.utils.extract_words(_even_sizes(chars), extra_attrs=["size"],
                                                        keep_blank_chars=False, return_chars=True)
             bands = []
@@ -386,7 +388,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             out += _reading_order(blocks, mid)
         title = (pdf.metadata or {}).get("Title", "") or ""
         pages = len(pdf.pages)
+    text = "\n".join(out) + "\n"
     with open(md_path, "w", encoding="utf8", newline="\n") as f:
-        f.write("\n".join(out) + "\n")
+        f.write(layout.rejoin_ligatures(text) if sr6 else text)
     return {"pages": pages, "converter": SR6_CONVERTER_VERSION if sr6 else CONVERTER_VERSION, "sha256": sha,
             "title": title}

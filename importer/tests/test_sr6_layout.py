@@ -4,14 +4,17 @@ import tempfile
 import unittest
 
 from importer.convert import convert
-from importer.tests.minipdf import sr6_layout_pdf
+import pdfplumber
+
+from importer.sr6.layout import one_layer, rejoin_ligatures
+from importer.tests.minipdf import sr6_doubled_pdf, sr6_layout_pdf
 
 
-def _convert(sr6=True):
+def _convert(sr6=True, make=sr6_layout_pdf):
     d = tempfile.mkdtemp()
     pdf, md = os.path.join(d, "sr6.pdf"), os.path.join(d, "sr6.md")
     with open(pdf, "wb") as f:
-        f.write(sr6_layout_pdf())
+        f.write(make())
     meta = convert(pdf, md, sr6=sr6)
     with open(md, encoding="utf8") as f:
         lines = [ln for ln in f.read().splitlines() if ln.strip()]
@@ -25,7 +28,7 @@ class Sr6LayoutTest(unittest.TestCase):
         cls.text = "\n".join(cls.lines)
 
     def test_converter_version(self):
-        self.assertEqual(self.meta["converter"], "sr6-2")
+        self.assertEqual(self.meta["converter"], "sr6-3")
         self.assertEqual(_convert(sr6=False)[0]["converter"], "6")
 
     def test_headings_by_font(self):
@@ -100,6 +103,56 @@ class Sr6LayoutTest(unittest.TestCase):
         _, lines = _convert(sr6=False)
         self.assertNotIn("| GADGET | DV | COST |", lines)  # no header-band tables
         self.assertFalse(any(ln.startswith("#### ") for ln in lines))  # Anarchy's 3 size bands
+
+
+
+class DoubledLayerTest(unittest.TestCase):
+    """A page whose text layer is drawn twice (the made-up sr6_doubled_pdf())."""
+
+    def test_second_layer_dropped_double_letters_kept(self):
+        _, lines = _convert(make=sr6_doubled_pdf)
+        page1 = lines[1:lines.index("<!-- page 2 -->")]
+        self.assertEqual(page1, ["# Arrow Kill Drill", "**Bold Lead:** the first office was difficult"]
+                         + [f"Plain words for the doubled page, line {i}" for i in range(5)])
+
+    def test_faux_bold_drawn_twice_deduped_page_drawn_once_kept(self):
+        _, lines = _convert(make=sr6_doubled_pdf)
+        self.assertIn("# Faux Bold Heading", lines)
+        self.assertIn("Plain words for the single page, line 4", lines)
+
+    def test_one_layer_keeps_first_layer_and_a_char_drawn_once_after_the_copy(self):
+        d = tempfile.mkdtemp()
+        pdf = os.path.join(d, "x.pdf")
+        with open(pdf, "wb") as f:
+            f.write(sr6_doubled_pdf())
+        with pdfplumber.open(pdf) as doc:
+            chars = doc.pages[0].chars
+            kept = one_layer(chars)
+            single = doc.pages[1].chars
+            self.assertEqual(one_layer(single[17:]), single[17:])  # no copy, nothing on top of another: untouched
+        self.assertEqual(len(kept), (len(chars) - 1) // 2 + 1)
+        self.assertEqual(kept[:-1], chars[:len(kept) - 1])
+        self.assertEqual(kept[-1]["text"], "9")
+
+    def test_anarchy_mode_keeps_the_doubled_text(self):
+        _, lines = _convert(sr6=False, make=sr6_doubled_pdf)
+        self.assertTrue(any("fi rst" in ln for ln in lines))  # Anarchy's converter is unchanged
+
+
+class LigatureTest(unittest.TestCase):
+    VOCAB = " Stuff, off. A payoff. Until is the light and dawn, a movie."
+
+    def test_joined(self):
+        for split, whole in [("the fi rst step", "the first step"), ("an offi ce", "an office"),
+                             ("diffi cult", "difficult"), ("infl uence", "influence"), ("fl oor", "floor"),
+                             ("its eff ects", "its effects"), ("a good fi t", "a good fit"), ("so fi -\nnally", "so fi-\nnally"), ("**fi nd** it", "**find** it"),
+                             ("twenty-fi ve", "twenty-five"), ("a fi refi ght", "a firefight"), ("Fi nd it", "Find it")]:
+            self.assertEqual(rejoin_ligatures(split + self.VOCAB), whole + self.VOCAB, split)
+
+    def test_left_alone(self):
+        for text in ["turn off the light", "the stuff is here", "a payoff until dawn", "a sci-fi movie",
+                     "Arrow Kill", "fi"]:
+            self.assertEqual(rejoin_ligatures(text + self.VOCAB), text + self.VOCAB, text)
 
 
 if __name__ == "__main__":
