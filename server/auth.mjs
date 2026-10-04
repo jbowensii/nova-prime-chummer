@@ -18,7 +18,8 @@
 //                                   account's Ask the rules questions a day (null: no limit; books.mjs counts them)
 //   DELETE /api/users/:id           admin: -> 204; 409 while the user has runners
 //   POST   /api/users/:id/reset-password  admin: { password } -> 204; every session of that user ends
-//   POST   /api/users/:id/move-runner     admin: { file, to: <user id> } -> { file } (its name in the new folder)
+//   POST   /api/users/:id/move-runner     admin: { file, to: <user id>, game? } -> { file } (its name in the new folder); game:
+//                                   'ca2' (Anarchy, the default) or 'sr6', the store it moves between (else 400)
 //   POST   /api/users/:id/unlink          admin: -> { user }; the account's link to an Authelia subject goes (server/oidc.mjs)
 // There is always an enabled admin: the last one can't be demoted, disabled or deleted (409).
 import { createHash, createHmac, randomBytes, randomInt, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
@@ -688,10 +689,12 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (action === 'move-runner' && method === 'POST') {
       const b = await json(req)
       if (typeof b.file !== 'string' || !/^[^/\\]{1,120}\.xml$/.test(b.file) || b.file.startsWith('.')) throw fail(400, 'file is a runner’s file name')
+      const game = b.game === undefined ? 'ca2' : b.game
+      if (game !== 'ca2' && game !== 'sr6') throw fail(400, 'game is ca2 or sr6')
       const file = await lock(async () => {
         const from = byId(id), to = byId(String(b.to))
         if (from === to) throw fail(400, 'that runner already belongs to this account')
-        return runners.move(from.username, b.file, to.username)
+        return runners.move(from.username, b.file, to.username, game)
       })
       return send(res, 200, { file })
     }

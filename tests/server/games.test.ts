@@ -14,7 +14,7 @@ import { usersFile } from '../../server/auth.mjs'
 import { findPython } from '../../tools/python.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
-const PW: Record<string, string> = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1', sid: 'sid-password-1', sr6: 'old-password-1' }
+const PW: Record<string, string> = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1', sid: 'sid-password-1', tom: 'tom-password-1', sr6: 'old-password-1' }
 const python: string[] | null = findPython()
 type Srv = { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 const servers: Srv[] = []
@@ -194,6 +194,34 @@ test('accounts: a rename moves both games’ folders and memberships; runners of
   expect((await call('ada', 'POST', '/api/users', { username: 'zed', name: 'Zed', role: 'player', password: 'zed-password-1' })).status).toBe(409)
 })
 
+test('moving runners: game picks the store; an account whose only runners are SR6 ones is moved out and deleted', async () => {
+  const users = async () => (await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string; runners: number }[]
+  const id = async (n: string) => (await users()).find(u => u.username === n)!.id
+  expect((await call('ada', 'POST', '/api/users', { username: 'tom', name: 'Tom', role: 'player', password: PW.tom })).status).toBe(201)
+  await signIn(s.base, 'tom')
+  expect((await call('tom', 'PUT', '/api/sr6/characters/t6', sr6('t6', 'Tom six'))).status).toBe(201)
+  expect((await call('tom', 'PUT', '/api/characters/t2', ca2('t2', 'Tom two'))).status).toBe(201)
+  const tom = await id('tom'), ada = await id('ada')
+  const move = (body: unknown) => call('ada', 'POST', `/api/users/${tom}/move-runner`, body)
+  // the wrong game, or a file of the other game's store: refused, nothing moves
+  for (const game of ['x', 'SR6', 1, null]) expect([game, (await move({ file: 'Tom-six.xml', to: ada, game })).status]).toEqual([game, 400])
+  expect((await move({ file: 'Tom-six.xml', to: ada })).status).toBe(404) // no game: Anarchy's folder, as before
+  expect((await move({ file: 'Tom-two.xml', to: ada, game: 'sr6' })).status).toBe(404)
+  // Anarchy without game, as before; then SR6 with it
+  const a = await move({ file: 'Tom-two.xml', to: ada })
+  expect([a.status, await a.json()]).toEqual([200, { file: 'Tom-two.xml' }])
+  expect(readdirSync(join(s.chars, 'ada'))).toContain('Tom-two.xml')
+  const r = await move({ file: 'Tom-six.xml', to: ada, game: 'sr6' })
+  expect([r.status, await r.json()]).toEqual([200, { file: 'Tom-six.xml' }])
+  expect(readdirSync(join(s.chars, 'sr6', 'ada'))).toEqual(['Tom-six.xml'])
+  expect(readdirSync(join(s.chars, 'sr6', 'tom')).filter(f => f.endsWith('.xml'))).toEqual([])
+  expect(await listed(await call('ada', 'GET', '/api/sr6/characters'))).toContain('ada/t6/sr6')
+  expect(await listed(await call('ada', 'GET', '/api/characters'))).not.toContain('ada/t6/sr6')
+  expect((await users()).find(u => u.username === 'tom')!.runners).toBe(0)
+  expect((await call('ada', 'DELETE', `/api/users/${tom}`)).status).toBe(204)
+  expect(existsSync(join(s.chars, 'sr6', 'tom'))).toBe(false)
+})
+
 describe.skipIf(!python)('backup', () => {
   test('one zip holds both games; a restore into a fresh server brings both back', async () => {
     const { token } = await (await call('ada', 'POST', '/api/backup')).json()
@@ -228,6 +256,10 @@ test('an account called sr6 from before: it keeps its runners and signs in; the 
     const r = await go('ada', m, p, b)
     expect([m, p, r.status, (await r.json()).error]).toEqual([m, p, 409, 'rename the account sr6 first'])
   }
+  const ids = ((await (await go('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[])
+  const [adaId, oldId] = ['ada', 'sr6'].map(n => ids.find(u => u.username === n)!.id)
+  const mv = await go('ada', 'POST', `/api/users/${oldId}/move-runner`, { file: 'old.xml', to: adaId, game: 'sr6' })
+  expect([mv.status, (await mv.json()).error]).toEqual([409, 'rename the account sr6 first'])
   expect(readdirSync(join(t.chars, 'sr6'))).toEqual(['old.xml'])
   expect(existsSync(join(t.custom, 'sr6'))).toBe(false)
 

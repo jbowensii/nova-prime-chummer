@@ -125,7 +125,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   // characters/sr6/, so nothing of the SR6 area is read or written (its routes answer 409)
   const legacy = () => auth.usernames().includes(GAMES.sr6.sub)
   const live = () => legacy() ? [games.ca2] : [games.ca2, games.sr6]
-  /** Runner folders for auth.mjs, which calls these under `lock`. Both games' (adopt and move: Anarchy's). */
+  /** Runner folders for auth.mjs, which calls these under `lock`. Both games' (adopt: Anarchy's; move: the given game's). */
   const runners = {
     async count(u) {
       let n = 0
@@ -161,8 +161,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await moveAll(join(charDir, '.trash'), join(folder(u), '.trash'))
       await rmdir(join(charDir, '.trash')).catch(() => {})
     },
-    async move(from, file, to) {
-      const folder = games.ca2.folder
+    /** game: 'ca2' or 'sr6' (auth.mjs checks it); SR6's is refused while an account called sr6 holds its folder. */
+    async move(from, file, to, game = 'ca2') {
+      if (game === 'sr6' && legacy()) throw fail(409, 'rename the account sr6 first')
+      const folder = games[game === 'sr6' ? 'sr6' : 'ca2'].folder
       if (!await exists(join(folder(from), file))) throw fail(404, 'no such runner')
       await mkdir(folder(to), { recursive: true })
       const name = await freeName(folder(to), base(file))

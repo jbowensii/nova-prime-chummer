@@ -1,8 +1,10 @@
 // The Trash page (server only; the browser's own storage deletes for good): the runners an account deleted, from
 // characters/<username>/.trash/ (server.mjs /api/trash). Restore puts one back in its owner's library, as a copy with a
 // new id when that id is taken; Delete forever and Empty trash can't be undone. The admin opens anyone's (#/trash/<username>).
-// The NPC area's trash (`npcs`: /api/npcs/trash, #/npcs/trash[/<username>]) is the same page for NPCs.
+// The NPC area's trash (`npcs`: /api/npcs/trash, #/npcs/trash[/<username>]) is the same page for NPCs. Shadowrun 6's
+// (`game` 'sr6': /api/sr6/trash, #/sr6/trash[/<username>]) is the same page for SR6 runners.
 import { PageHeader } from './nav'
+import type { Game } from './game'
 import { useEffect, useState } from 'react'
 import { because, isAdmin, send, useMe } from './auth'
 import { Modal } from './bits'
@@ -11,8 +13,10 @@ export interface TrashItem { file: string; id: string; name: string; deletedAt: 
 interface Trash { user: string; name: string; items: TrashItem[] }
 
 const q = (user?: string) => (user ? `?user=${encodeURIComponent(user)}` : '')
-/** An account's trash (default: your own); `npcs`: its NPC trash. */
-export const loadTrash = async (user?: string, npcs = false): Promise<Trash> => (await send(`${npcs ? 'npcs/' : ''}trash${q(user)}`, undefined, 'GET')).json()
+const pre = (game: Game) => (game === 'sr6' ? 'sr6/' : '')
+/** An account's trash (default: your own); `npcs`: its NPC trash; `game`: whose store (Anarchy's by default). */
+export const loadTrash = async (user?: string, npcs = false, game: Game = 'ca2'): Promise<Trash> =>
+  (await send(`${pre(game)}${npcs ? 'npcs/' : ''}trash${q(user)}`, undefined, 'GET')).json()
 export const runners = (n: number, noun = 'runner') => `${n} ${noun}${n === 1 ? '' : 's'}`
 /** What a restore says: `r` is the server's answer (copy: the id was taken, so it came back as a copy). */
 export const restored = (was: string, r: { name: string; copy: boolean }, whose: string, noun = 'runner') => r.copy
@@ -20,8 +24,9 @@ export const restored = (was: string, r: { name: string; copy: boolean }, whose:
   : `Restored ${was} to ${whose}.`
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
-export function TrashScreen({ user: asked, npcs = false }: { user?: string; npcs?: boolean }) {
-  const noun = npcs ? 'NPC' : 'runner', api = npcs ? 'npcs/trash' : 'trash', home = npcs ? '#/npcs/trash' : '#/trash'
+export function TrashScreen({ user: asked, npcs = false, game = 'ca2' }: { user?: string; npcs?: boolean; game?: Game }) {
+  const noun = npcs ? 'NPC' : 'runner', api = `${pre(game)}${npcs ? 'npcs/trash' : 'trash'}`
+  const home = `#/${pre(game)}${npcs ? 'npcs/trash' : 'trash'}`, kind = game === 'sr6' ? 'Shadowrun 6 ' : ''
   const me = useMe(), admin = isAdmin(me)
   const user = admin && asked && asked !== me?.username ? asked : undefined // someone else's: the admin only
   const [trash, setTrash] = useState<Trash | null>(null)
@@ -29,8 +34,8 @@ export function TrashScreen({ user: asked, npcs = false }: { user?: string; npcs
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   const [confirm, setConfirm] = useState<TrashItem | 'all' | null>(null)
   const [busy, setBusy] = useState(false)
-  const refresh = () => loadTrash(user, npcs).then(setTrash, e => { setMsg({ text: because('Couldn’t open the trash', (e as Error).message), err: true }); setTrash({ user: user ?? '', name: '', items: [] }) })
-  useEffect(() => { setMsg(null); setTrash(null); void refresh() }, [user, npcs]) // eslint-disable-line react-hooks/exhaustive-deps
+  const refresh = () => loadTrash(user, npcs, game).then(setTrash, e => { setMsg({ text: because('Couldn’t open the trash', (e as Error).message), err: true }); setTrash({ user: user ?? '', name: '', items: [] }) })
+  useEffect(() => { setMsg(null); setTrash(null); void refresh() }, [user, npcs, game]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (admin) send('users', undefined, 'GET').then(r => r.json()).then(setAccounts, () => {})
   }, [admin])
@@ -60,7 +65,7 @@ export function TrashScreen({ user: asked, npcs = false }: { user?: string; npcs
               {accounts.map(a => <option key={a.username} value={a.username}>{a.name} ({a.username})</option>)}
             </select></label>}
       </PageHeader>
-      <p className="muted">Deleted {noun}s wait here until {own ? 'you restore them or empty the trash' : 'they’re restored or the trash is emptied'}.
+      <p className="muted">Deleted {kind}{noun}s wait here until {own ? 'you restore them or empty the trash' : 'they’re restored or the trash is emptied'}.
         Restore puts one back in {whose}.</p>
       {msg && <p className={`banner${msg.err ? ' bad' : ''}`} role={msg.err ? 'alert' : 'status'}>{msg.text}</p>}
       {trash === null ? <p className="muted">Loading the trash…</p> : items.length === 0 ? <div className="empty"><p>The trash is empty.</p></div> : <>

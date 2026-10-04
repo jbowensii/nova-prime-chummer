@@ -3,6 +3,7 @@
 import { Icon } from './icons'
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import { Modal } from './bits'
+import { gameOf } from './game'
 
 export type Role = 'admin' | 'editor' | 'player'
 export interface User { id: string; username: string; name: string; email: string | null; role: Role; method: 'password' | 'authelia';
@@ -242,6 +243,8 @@ export function AccountMenu() {
     return () => removeEventListener('keydown', key)
   }, [open])
   if (!me) return null
+  // Users and Trash stay on the side the menu is opened from (#/sr6/users, #/sr6/trash on the Shadowrun 6 side)
+  const side = gameOf(location.hash.replace(/^#\/?/, '').split('/')) === 'sr6' ? '#/sr6' : '#'
   return (
     <div className="account" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false) }}>
       <button ref={btn} className={`btn quiet ibtn${open ? ' open' : ''}`} aria-label={me.name} data-tip={`${me.name} (${ROLE_NAMES[me.role]})`}
@@ -250,8 +253,8 @@ export function AccountMenu() {
       </button>
       <div id={panel} className="account-panel" hidden={!open}>
         <p><b>{me.name}</b><br /><span className="muted">{ROLE_NAMES[me.role]} · {me.username}</span></p>
-        {me.role === 'admin' && <a className="btn quiet" href="#/users" onClick={() => setOpen(false)}>Users</a>}
-        <a className="btn quiet" href="#/trash" onClick={() => setOpen(false)}>Trash</a>
+        {me.role === 'admin' && <a className="btn quiet" href={`${side}/users`} onClick={() => setOpen(false)}>Users</a>}
+        <a className="btn quiet" href={`${side}/trash`} onClick={() => setOpen(false)}>Trash</a>
         {me.method === 'password' && <button className="btn quiet" onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
         {me.method === 'password' && oidcOn && <button className="btn quiet" onClick={() => { setOpen(false); setLink(true) }}>Link my Authelia account</button>}
         <button className="btn quiet" disabled={leaving === 'waiting'} onClick={() => void leave()}>{leaving === 'waiting' ? 'Signing out…' : 'Sign out'}</button>
