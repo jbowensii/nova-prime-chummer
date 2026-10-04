@@ -25,7 +25,7 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
 
 export function Sr6Sheet() {
   const { ch, data, cr, d, career } = useSr6Editor()
-  const b = ch.build, art = useSheetArt(ch.id), k = MAGIC_KINDS[b.magic]
+  const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic]
   const name = ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner')
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
   const nameOf = (x: (typeof b.purchases)[number]) => entryOf(x, data)?.name ?? x.name ?? 'Custom item'

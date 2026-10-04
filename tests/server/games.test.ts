@@ -186,10 +186,10 @@ test('the real SR6 files (S3 golden fixtures): the NPC goes in the NPC store and
   expect((await call('pat', 'DELETE', `/api/sr6/campaigns/${s6c}/npcs/${gid}`)).status).toBe(404)
 })
 
-test('scope: only the game stores, compendiums, books and edits answer under /api/sr6/', async () => {
-  for (const p of ['/api/sr6/books', '/api/sr6/edits', '/api/sr6/compendiums']) expect([p, (await call('ada', 'GET', p)).status]).toEqual([p, 200])
+test('scope: only the game stores, compendiums, background art, books and edits answer under /api/sr6/', async () => {
+  for (const p of ['/api/sr6/books', '/api/sr6/edits', '/api/sr6/compendiums', '/api/sr6/backgrounds']) expect([p, (await call('ada', 'GET', p)).status]).toEqual([p, 200])
   for (const p of ['/api/sr6/auth/me', '/api/sr6/users', '/api/sr6/health', '/api/sr6',
-    '/api/sr6/', '/api/sr6/table-rules', '/api/sr6/samples', '/api/sr6/backgrounds'])
+    '/api/sr6/', '/api/sr6/table-rules', '/api/sr6/samples'])
     expect([p, (await call('ada', 'GET', p)).status]).toEqual([p, 404])
   expect((await call('ada', 'GET', '/api/auth/me')).status).toBe(200)
   expect((await call('ada', 'GET', '/api/sr6x/characters')).status).toBe(404)

@@ -287,6 +287,10 @@ or WebP; anything else, SVG included, is refused), 10 MB at most, 50 images at m
 signed-in browsers get the enabled images through `GET /api/backgrounds/<id>`. Backups carry the folder with the rest of
 `library/`; data packs don't.
 
+Shadowrun 6 has its own set, the same files and rules in `library/sr6/backgrounds/` at `/api/sr6/backgrounds` (Settings →
+Background art (Shadowrun 6), opened from an SR6 page). SR6 pages and the SR6 print sheet show only that set; Anarchy's
+pages and sheets only Anarchy's.
+
 ```xml
 <ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
   <background id="0a1b2c3d4e5f" type="png" name="alley.png" enabled="true" uploaded="2026-09-29T12:00:00Z" size="482133"/>

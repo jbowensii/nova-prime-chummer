@@ -7,6 +7,7 @@ import type { AmpEntry, Build, Catalog } from '../model/types'
 import { artSrc, useArtId, useArtIds } from '../ui/Background'
 import { loadSettings, PRINT_STYLES, saveSettings, type Settings } from '../ui/settings'
 import { Modal } from '../ui/bits'
+import type { Game } from '../ui/game'
 import { IconButton } from '../ui/icons'
 
 export const RISK = [['1 die', '2 dice', '4 dice', '6+ dice'], ['3 dice', '5 dice', '7 dice', '10+ dice'], ['5 dice', '8 dice', '11 dice', '13+ dice'], ['8 dice', '12 dice', '15 dice', 'N/A']]
@@ -40,15 +41,15 @@ export function lists(d: Derived, b: Build) {
 export const SHEET_ART_DEFAULT = 60
 
 /** The sheet's background art: this browser's own switches (screen on, print off by default), its strength, and which image
- *  (this runner's pick in this browser, ignored once that image is off, else the app's). tools: the toolbar's Background
+ *  (this runner's pick in this browser, ignored once that image is off, else the app's), from `game`'s own set. tools: the toolbar's Background
  *  button and its dialog; vars: the strength on screen and in print, for the art's veil and the wash behind the text. */
-export function useSheetArt(runner: string): { tools: ReactNode; layer: ReactNode; vars: CSSProperties } {
-  const artId = useArtId()
+export function useSheetArt(runner: string, game: Game = 'ca2'): { tools: ReactNode; layer: ReactNode; vars: CSSProperties } {
+  const artId = useArtId(game)
   const [s, setS] = useState(loadSettings)
   const [open, setOpen] = useState(false)
   const set = (patch: Partial<Settings>) => { const next = { ...loadSettings(), ...patch }; setS(next); saveSettings(next) }
   const strength = s.sheetArtStrength ?? SHEET_ART_DEFAULT
-  const ids = useArtIds(), key = `ca2.sheetArt.${runner}`
+  const ids = useArtIds(game), key = `ca2.sheetArt.${runner}`
   const read = () => { try { return localStorage.getItem(key) } catch { return null } }
   const [pick, setPick] = useState(read)
   useEffect(() => setPick(read()), [key]) // eslint-disable-line react-hooks/exhaustive-deps -- another runner: its own pick
@@ -77,12 +78,12 @@ export function useSheetArt(runner: string): { tools: ReactNode; layer: ReactNod
           <legend>Background image</legend>
           <label className="check"><input type="radio" name="sheet-art-pick" checked={!mine} onChange={() => choose(null)} />Same as the app</label>
           {ids.map((id, i) => <label key={id} className="check"><input type="radio" name="sheet-art-pick" aria-label={`Background image ${i + 1}`}
-            checked={mine === id} onChange={() => choose(id)} /><img src={artSrc(id)} alt="" /></label>)}
+            checked={mine === id} onChange={() => choose(id)} /><img src={artSrc(game, id)} alt="" /></label>)}
         </fieldset>}
       </Modal>
     </>,
     layer: shownId && <div className={`sheet-art${s.sheetArt === 'on' ? '' : ' no-screen'}${s.sheetArtPrint === 'on' ? '' : ' no-print'}`} aria-hidden="true">
-      <div style={{ backgroundImage: `url("${artSrc(shownId)}")` }} /></div>,
+      <div style={{ backgroundImage: `url("${artSrc(game, shownId)}")` }} /></div>,
     vars: { '--art-screen': s.sheetArt === 'on' ? k : 0, '--art-print': s.sheetArtPrint === 'on' ? k : 0 } as CSSProperties,
   }
 }

@@ -182,7 +182,7 @@ export default function App() {
   }
   return (
     <Me.Provider value={user ?? null}>
-      {user && <BackgroundArt />}
+      {user && <BackgroundArt game={gameOf(route)} />}
       <div inert={ended} aria-hidden={ended || undefined}>
         {route[0] === 'sr6' ? <Sr6Main repo={repo} route={route.slice(1)} /> : <Main repo={repo} route={route} />}</div>
       {ended && <Over><SignIn oidc={me.oidc} onSignedIn={back} note={<>You were signed out: the session ended, or was ended elsewhere. Sign in again to

@@ -2,6 +2,10 @@
 
 ## Unreleased (next build)
 
+- **Shadowrun 6 has its own background art.** The SR6 side's app background, printed sheet and the sheet's Background
+  picker use only SR6 images; Anarchy keeps its own. The admin uploads SR6 art the same way as Anarchy's: open **Settings**
+  while on an SR6 page and use **Background art (Shadowrun 6)** (PNG, JPEG or WebP, 10 MB each, 50 at most). The app ships
+  no art.
 - The first screen shows **Shadowrun 6th World** first, on the left; Anarchy 2.0 is second.
 
 ## 0.9.0 — 2026-10-04: Shadowrun 6th World

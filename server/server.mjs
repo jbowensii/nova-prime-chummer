@@ -5,7 +5,7 @@
 // Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
 // .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
 // characters/sr6/ (<username>/, .npcs/, .compendiums/, .trash/) and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters,
-// npcs, trash, npcs/trash, campaigns, compendiums, books, edits and creation (books.mjs in its SR6 area: library/sr6/,
+// npcs, trash, npcs/trash, campaigns, compendiums, backgrounds, books, edits and creation (books.mjs in its SR6 area: library/sr6/,
 // custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
 // in its namespace); a campaign holds only its game's runners and NPCs. Accounts span both: a rename moves both games'
 // folders and memberships, a delete retires both. While an account called sr6 from before exists (its runners are in
@@ -36,7 +36,8 @@
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
 //   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs);
 //                                        /api/sr6/compendiums* the SR6 ones in characters/sr6/.compendiums/<username>/
-//   /api/backgrounds*                    background art from library/backgrounds (server/backgrounds.mjs)
+//   /api/backgrounds*                    background art from library/backgrounds (server/backgrounds.mjs);
+//                                        /api/sr6/backgrounds* SR6's own set from library/sr6/backgrounds
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
 //                                        edits, backup and restore, data packs (server/books.mjs); LIBRARY_DIR is never served
@@ -384,7 +385,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   }
   const stores = () => [...games.ca2.stores, [compendiums.ca2.folder, 'characters/.compendiums/'],
     ...legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, 'characters/sr6/.compendiums/']]]
-  const backgrounds = backgroundsApi({ libraryDir, auth })
+  // each game's own art set: Anarchy's in library/backgrounds/, SR6's in library/sr6/backgrounds/
+  const backgrounds = { ca2: backgroundsApi({ libraryDir, auth }), sr6: backgroundsApi({ libraryDir: join(libraryDir, GAMES.sr6.sub), auth }) }
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
@@ -440,6 +442,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
       if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
       if (await compendiums.sr6.handle(req, res, u, send, who) !== false) return
+      if (await backgrounds.sr6.handle(req, res, u, send, who) !== false) return
       if (/^\/api\/(books|edits|creation)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
       return send(res, 404, { error: 'not found' })
     }
@@ -448,7 +451,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (await books.handle(req, res, url, send, who) !== false) return
     if (await games.ca2.campaigns.handle(req, res, url, send, who) !== false) return
     if (await compendiums.ca2.handle(req, res, url, send, who) !== false) return
-    if (await backgrounds.handle(req, res, url, send, who) !== false) return
+    if (await backgrounds.ca2.handle(req, res, url, send, who) !== false) return
     return games.ca2.handle(req, res, url, who)
   }
 

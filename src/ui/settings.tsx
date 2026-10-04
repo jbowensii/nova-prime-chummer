@@ -82,7 +82,8 @@ export function SettingsButton() {
           {me?.role === 'admin' && <fieldset><legend>AI settings</legend>
             <p className="muted">The AI provider and keys the importer uses for books its recipes can’t read.</p>
             <a className="btn" href="#/books/ai" onClick={() => setOpen(false)}>Open AI settings</a></fieldset>}
-          {me?.role === 'admin' && <BackgroundSettings />}
+          {/* the gallery of the game this page is in (#/sr6…: Shadowrun 6's own set) */}
+          {me?.role === 'admin' && <BackgroundSettings game={/^#\/sr6(\/|$)/.test(location.hash) ? 'sr6' : 'ca2'} />}
           {admin && <SignInSettings />}
           {admin && <BackupSettings />}
         </div>
