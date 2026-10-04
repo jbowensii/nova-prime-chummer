@@ -1,14 +1,16 @@
 # SR6 Sixth World Companion (SWC): layout survey
 
-Structure only, no book text. The owner's PDF (SHA-256 in `swc.py`): 210 pages, 750 × 939 pt, its fonts re-embedded as
-Liberation Serif/Sans (no bold face name: labels come out unbolded). Printed page = PDF page − 1 (`PAGE_OFFSET`).
+Structure only, no book text. Two copies are known (SHA-256s in `swc.py`), both 210 pages, 750 × 939 pt, printed page =
+PDF page − 1 (`PAGE_OFFSET`): the owner's, in the book's own fonts (bold labels, header-band tables), and an earlier one
+with its fonts re-embedded as Liberation Serif/Sans (labels unbolded, no tables: the tables come out as text lines). The
+recipe reads both.
 
 ## What the converter needed (sr6-2)
 
 - The two text columns sit about 2 pt apart (less than a word space): rows split where the content stream jumps.
 - Bullets are a tiny raised glyph and the labels (`Contact Points:`) a point smaller than their values: rows cluster by
   baseline, a tiny glyph joining the row beside it.
-- No header-band tables: the book's tables print as bold text lines, read by the recipe.
+- In the Liberation copy, no header-band tables: the book's tables print as bold text lines, read by the recipe.
 
 ## Item shapes
 
@@ -18,8 +20,9 @@ Liberation Serif/Sans (no bold face name: labels come out unbolded). Printed pag
   `Contact Types:`, `Knowledge skill (choose N)`). A module heading with a bracket in another font isn't a heading: it is
   a `Name [ X only ]` line in the module before it. The first event's heading reads as a label of the group heading.
   The worked example's sidebar runs into the last event (reported as unread-line).
-- Metavariants (TYPES AND SHADOWS, "Creating a Metavariant…"): the attribute-range tables as text, each table's columns
-  in pieces: a header of abbreviations, `Name` rows, then number-only rows for the same names under a header of the rest;
+- Metavariants (TYPES AND SHADOWS, "Creating a Metavariant…"): the attribute-range tables, each table's columns in
+  pieces: a header of abbreviations (a table header, its one row the first metavariant's, named on the line under it; or
+  a text line), `Name` rows, then number-only rows for the same names (under a header of the rest, or in order);
   `Racial Traits:` lines (wrapped) under each row. The same tables print earlier in the chapter and in the table index
   (`END_PAGE`); only the summary is read. Karma costs (the development table) are creation settings, not catalog values:
   `metatypeKarma:swc.<id>` in `public/data/sr6/creation-defaults.xml`.
