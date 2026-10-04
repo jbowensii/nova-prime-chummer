@@ -46,7 +46,7 @@
       <!-- karma and nuyen left when finalized -->
       <xs:attribute name="finalKarma" type="xs:integer"/>
       <xs:attribute name="finalNuyen" type="xs:decimal"/>
-      <!-- a book NPC: the catalog entry it was loaded from, <source>|<id> -->
+      <!-- a book NPC: the catalog entry it was loaded from; an example runner: the book sample it was copied from (<source>|<id>) -->
       <xs:attribute name="sampleKey" type="xs:string"/>
     </xs:complexType>
   </xs:element>
@@ -294,7 +294,7 @@
     </xs:sequence>
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
-        <xs:enumeration value="grunt"/><xs:enumeration value="critter"/><xs:enumeration value="spirit"/><xs:enumeration value="sprite"/>
+        <xs:enumeration value="grunt"/><xs:enumeration value="contact"/><xs:enumeration value="critter"/><xs:enumeration value="spirit"/><xs:enumeration value="sprite"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="rating" type="c:Count"/>

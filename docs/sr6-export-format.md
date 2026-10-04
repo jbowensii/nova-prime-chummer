@@ -113,8 +113,9 @@ for a dash).
 
 ## NPC block
 
-`{ kind, rating?, group?, from?, stats, lines, pools }`. `kind` `grunt`, `critter`, `spirit` or `sprite`; `rating` the
-Professional Rating, Force or Level; `group` a grunt's; `from` `{ kind, id, name, source, page }`, the catalog entry it was
+`{ kind, rating?, group?, from?, stats, lines, pools }`. `kind` `grunt`, `critter`, `spirit` or `sprite` (a contact, one of
+the book's sample contacts, goes out as `grunt` with `group` `Contact` and no rating); `rating` the Professional Rating,
+Force or Level; `group` a grunt's; `from` `{ kind, id, name, source, page }`, the catalog entry it was
 copied from. `stats` `[{ key, label, printed, value, ok }]` in stat-block order: the printed value and its value at the
 rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `value` is the printed text). `lines`
 `[{ part, text }]` (skills, powers, optional powers, weaknesses, attacks, augmentations, gear, weapons). `pools`
@@ -128,7 +129,7 @@ attribute's value; a skill the catalog doesn't have keeps its printed text only.
 | Field | Meaning |
 |---|---|
 | `source` | `{ id, name, publisher, canon, compendium? }`; `compendium: true` for a GM's compendium (`publisher` its owner's name) |
-| `entries` | the book's entries of every kind, in `SR6_KINDS` order, then catalog order: items with `id`, `source` and `page` set, and, for `npcs`, `critters`, `spirits` and `sprites`, an `npc` block (a grunt at its Professional Rating, a spirit or sprite at rating 1) |
+| `entries` | the book's entries of every kind, in `SR6_KINDS` order, then catalog order: items with `id`, `source` and `page` set, and, for `npcs`, `critters`, `spirits` and `sprites`, an `npc` block (a grunt at its Professional Rating, a sample contact as a grunt of group `Contact`, a spirit or sprite at rating 1) |
 | `npcs` | a compendium's own NPCs, each as a runner with its `npc` block |
 
 The file holds every kind; the importer decides what the system uses (priorities, metatypes or life modules make no
@@ -151,7 +152,7 @@ a file with book descriptions only with people who own the books.
 The module reads the file, refuses another format (Anarchy's export names the Anarchy module), version or a file with
 nothing to import before anything changes, and writes raw inputs only: attribute bases, Edge, skill points, magic, money and
 the things as items (an augmentation's bonuses as effects), letting `shadowrun6-eden` derive pools, monitors, initiative and
-Essence. Runners become Player actors, NPCs NPC, Critter, Spirit or sprite actors with their block in the GM notes, and books
+Essence. Runners become Player actors, NPCs NPC (grunts and contacts), Critter, Spirit or sprite actors with their block in the GM notes, and books
 and compendiums world compendiums per book and topic. Re-importing replaces, adds a new version or skips, and keeps art the
 user chose.
 

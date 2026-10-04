@@ -1,10 +1,12 @@
 // The SR6 creation rules (src/sr6/engine/creation.ts): the numbers the book prints only in its text, entered by the GM in
 // custom/sr6/creation.xml. Parsed from the made-up fixture (tests/fixtures/sr6/custom/creation.xml, invented values);
-// a method lists the settings it still needs.
+// a method lists the settings it still needs. The shipped standard settings (public/data/sr6/creation-defaults.xml) are
+// only checked for shape here: valid, and enough to pick each method.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, test } from 'vitest'
-import { CREATION_GROUPS, CREATION_KEYS, cite, expandKeys, flag, missingFor, num, parseCreation, readSettingsFile, rulesFrom, str, type CreationCatalog } from '../../src/sr6/engine/creation'
+import { expect, test, vi } from 'vitest'
+import { validateXML } from 'xmllint-wasm'
+import { CREATION_GROUPS, CREATION_KEYS, cite, expandKeys, flag, loadCreation, missingFor, num, parseCreation, readSettingsFile, rulesFrom, str, type CreationCatalog } from '../../src/sr6/engine/creation'
 import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/engine/load'
 
 const FIXTURE = 'tests/fixtures/sr6/custom'
@@ -125,4 +127,38 @@ test('a settings file to load: its rows typed and checked as the server would; a
   for (const bad of ['<tablerules/>', 'not xml at all', '<creation version="1"/>'])
     expect(readSettingsFile(bad, 'x.xml')).toMatchObject({ fatal: expect.stringContaining('x.xml isn’t a creation rules file'), rules: new Map() })
   expect(readSettingsFile(file('<setting key="k" value="1"/>'.repeat(501)), 'big.xml').fatal).toBe('big.xml has 501 settings; 500 at most.')
+})
+
+test('the shipped standard settings are valid against creation.xsd, parse cleanly, and unlock every method a book prints', async () => {
+  const xml = readFileSync('public/data/sr6/creation-defaults.xml', 'utf8')
+  const xsd = readFileSync('public/data/sr6/schema/creation.xsd', 'utf8')
+  expect((await validateXML({ xml: { fileName: 'creation-defaults.xml', contents: xml }, schema: { fileName: 'creation.xsd', contents: xsd } })).errors).toEqual([])
+  const { rules, errors } = parseCreation(xml)
+  expect(errors).toEqual([])
+  // a catalog with the core rulebook's metatype ids, every priority row and an opening life module (no book data)
+  const ids = ['human', 'elf', 'dwarf', 'ork', 'troll'].map(m => `crb.${m}`)
+  const cat: CreationCatalog = { priorities: { A: {}, B: {}, C: {}, D: {}, E: {} },
+    metatypes: Object.fromEntries(ids.map(id => [id, { id, name: id }])), lifemodules: { 'x.start': { stage: 'opening' } } }
+  for (const m of ['priority', 'sumtoten', 'pointbuy', 'lifepath'] as const) expect(missingFor(m, rules, cat), m).toEqual([])
+  // no SR6 book describes a karma build: only its own keys are left for the table to set
+  const karma = missingFor('karma', rules, cat)
+  expect(karma.length).toBeGreaterThan(0)
+  expect(karma.filter(k => !/^(karmaBuild\.|magicKarma:)/.test(k))).toEqual([])
+})
+
+test('the server’s settings: the standard ones overlaid by the admin’s changes, key by key; none saved: the standard', async () => {
+  const doc = (rows: string) => `<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">${rows}</sr6:creation>`
+  const files: Record<string, string> = { './data/sr6/creation-defaults.xml': doc('<setting key="skillCap" value="4" source="CRB" page="9"/><setting key="essence" value="3"/>'),
+    './custom/sr6/creation.xml': doc('<setting key="skillCap" value="8"/><setting key="maxKarmaLeft" value="2"/>') }
+  const answer = (url: string) => files[url] ? new Response(files[url], { headers: { 'Content-Type': 'application/xml' } }) : new Response('', { status: 404 })
+  vi.stubGlobal('fetch', async (url: string) => answer(url))
+  try {
+    const { rules, std, errors } = await loadCreation()
+    expect(errors).toEqual([])
+    expect([num(rules, 'skillCap'), num(rules, 'essence'), num(rules, 'maxKarmaLeft')]).toEqual([8, 3, 2])
+    expect(cite(rules, 'skillCap')).toEqual({}) // the admin's row, not the standard's citation
+    expect(num(std, 'skillCap')).toBe(4)
+    delete files['./custom/sr6/creation.xml']
+    expect(num((await loadCreation()).rules, 'skillCap')).toBe(4)
+  } finally { vi.unstubAllGlobals() }
 })

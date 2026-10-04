@@ -33,7 +33,8 @@ Printed page = PDF page − 1 (`PAGE_OFFSET`).
   "Professional Rating N" sections), sample contacts, critters and critter powers (level-3 sections, a TYPE/ACTION/
   RANGE/DURATION band in the text) are all in wild life; spirits are level-4 items in magic (a heading printed twice
   over its box); sprites and echoes (a section's bulleted labelled lines) in matrix. Combat spells sit under level-5
-  item headings ending in "Spells". The ten archetypes have no kind (skipped).
+  item headings ending in "Spells". The ten archetypes (a level-2 section with a level-5 `metatype: <name>` box: the
+  stat band and labelled lines) are no catalog kind: they become sample runners (importer/sr6/archetypes.py).
 - Gear rows map by their table's first header and title only (a section name can mislead): the augmentation tables
   name the body part (HEADWARE, EYEWARE, EARWARE, BODYWARE, LIMB, CYBERJACK), vehicle tables the vehicle class (CARS,
   BOATS, … DRONES). The matrix chapter reprints the commlink and cyberdeck tables; a look-alike vehicle list

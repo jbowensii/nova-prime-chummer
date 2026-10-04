@@ -32,8 +32,8 @@
 //                                     no AI, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
 //   PUT    /api/sr6/creation          admin: { settings: [{ key, value, source?, page? }] } -> 204; replaces
-//                                     custom/sr6/creation.xml (creation.xsd: the numbers the book prints only in its text), the
-//                                     server's default (a campaign's own: PUT /api/sr6/campaigns/:id { creation }, campaigns.mjs);
+//                                     custom/sr6/creation.xml (creation.xsd: what the admin changed from the shipped standard,
+//                                     public/data/sr6/creation-defaults.xml; the client overlays it), the server's default (a campaign's own: PUT /api/sr6/campaigns/:id { creation }, campaigns.mjs);
 //                                     anyone signed in reads the file at /custom/sr6/creation.xml. Anarchy has none (404)
 //   GET    /api/samples               anyone signed in: the example sets in custom/samples/<set>/ -> { sets: [{ id, name, canon,
 //                                     samples: [{ name, href }] }] } (href relative to /custom/). Read only: the admin manages

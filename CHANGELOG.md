@@ -28,6 +28,29 @@
   lists; Save, Undo, Redo and the exports in a runner's editor; Print, Sheet type and Background on the print page (which
   now has the main menu too, never printed); a compendium's export. Every icon names itself in a tooltip above it. On a
   phone the rows wrap; the page never scrolls sideways.
+- **SR6 creation rules come filled in with the standard values.** A new server no longer starts with an empty creation
+  rules form: the app ships the core rulebook's numbers (starting karma, caps, karma prices, nuyen rates, augmentation
+  grades and the rest) and the Sixth World Companion's for **sum to ten**, **point buy** and **lifepath**, each with its
+  book and page. Priority, sum to ten and point buy can be picked straight away; lifepath once its life modules are in
+  the catalog. **Karma build** stays locked until you enter its numbers, because no SR6 book prints them. On **Table setup**
+  a new **Standard** column shows each standard value and its page, marks the ones your table changed, and has **Reset**
+  for one value and **Reset all to standard**. Saving keeps only what you changed; everything else follows the standard.
+  If you saved a full set of settings before, it keeps working as it is. A campaign's own settings still start as a copy
+  of the server's.
+- **Load book NPCs on SR6 NPCs & Critters now loads the whole book**: the critters, spirits and sprites as well as the
+  grunts and sample contacts, each once (pressing it again adds only what's missing). Spirits come in at Force 3 and
+  sprites at Level 3, a starting point you change on the NPC's Stat block tab. The sample contacts are their own kind
+  now, **Contact**, instead of showing as "Grunt · Contact"; contacts you loaded with 0.9.0 are switched over the next
+  time you press Load book NPCs. New NPC lists contacts under Contact. In a Foundry export a contact goes out as an NPC
+  (a grunt with group Contact). Players still never see NPCs.
+- **SR6 example characters**: importing the core rulebook now also reads its archetypes (the sample characters) as SR6
+  runners, and **Your runners** has **Load example characters** to copy them into your list, each once. Each one is built
+  from its printed stat block: metatype, attributes, skills with specializations, knowledge skills and languages,
+  qualities, spells, adept powers, complex forms, contacts, lifestyle, gear, augmentations, vehicles, weapons and fake
+  SINs, matched to the book's entries by name. What the app can't hold (augmented values, the printed initiative,
+  condition monitors and starting nuyen, and anything not found in the book's tables) is listed in the runner's Notes.
+  Priorities aren't set, so the budgets show overspent until you choose them. On the owner's copy of the core rulebook
+  all ten archetypes import. Re-import the core rulebook to get them.
 - **Load settings file** on the SR6 creation rules form (the server's on Table setup, and a campaign's own on its page): pick a
   `creation.xml` from your computer (the format of `custom/sr6/creation.xml`). It is checked and its values fill the form,
   in place of what it showed, for you to review; anything it couldn't use is listed. Nothing is saved until you click

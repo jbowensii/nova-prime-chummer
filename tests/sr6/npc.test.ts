@@ -1,7 +1,7 @@
 // SR6 NPC stat blocks (src/sr6/engine/npc.ts): copied from the made-up fixture's catalog entries and read at a rating.
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { blankSr6Npc, bookNpcKey, NPC_KINDS, npcFromEntry, npcHeadline, npcParts, npcPools, npcValues, poolText } from '../../src/sr6/engine/npc'
+import { blankSr6Npc, bookNpc, bookNpcKey, NPC_KINDS, npcFromEntry, npcHeadline, npcKindOf, npcParts, npcPools, npcValues, poolText } from '../../src/sr6/engine/npc'
 import type { Sr6Character } from '../../src/sr6/model/character'
 import type { Sr6Kind } from '../../src/sr6/model/types'
 import { fixtureCatalog, made } from './fixture'
@@ -106,6 +106,31 @@ test('blank NPCs and the book key', () => {
   expect(blankSr6Npc('grunt').npc).toEqual({ kind: 'grunt', stats: {}, lines: [] })
   expect(blankSr6Npc('grunt').ledger).toEqual([])
   expect(bookNpcKey(entry('npcs', 'crb.corner-goon'))).toBe('CRB|crb.corner-goon')
+})
+
+// one of the book's sample contacts, as the recipe writes it: an npcs entry of group Contact with no Professional Rating
+const contact = () => ({ ...entry('npcs', 'crb.quiet-fixer'), id: 'crb.fixer-fred', name: 'Fixer Fred', attrs: { group: 'Contact', cha: '5', log: '4' } })
+
+test('a sample contact is a contact, not a grunt: no rating, no group', () => {
+  expect(NPC_KINDS.contact).toEqual({ label: 'Contact', kind: 'npcs' })
+  expect(npcKindOf(contact())).toBe('contact')
+  expect(npcKindOf(entry('npcs', 'crb.corner-goon'))).toBe('grunt')
+  expect(npcKindOf({ ...contact(), attrs: { group: 'Contact', rating: '2' } })).toBe('grunt') // a grunt group that happens to be called Contact
+  const ch = npcFromEntry(contact(), undefined, NOW)
+  expect(ch.npc).toMatchObject({ kind: 'contact', stats: { cha: '5', log: '4' } })
+  expect(ch.npc).not.toHaveProperty('rating')
+  expect(ch.npc).not.toHaveProperty('group')
+  expect(npcHeadline(ch.npc!)).toBe('Contact')
+  const back = xmlToSr6(sr6ToXml(ch))
+  expect(back.ok && back.character.npc?.kind).toBe('contact')
+})
+
+test('Load book NPCs’ copies: under the book key; a spirit or sprite at the rating printed, else 3 (R); a critter none', () => {
+  expect(bookNpc(entry('spirits', 'crb.spirit-of-puddles'), NOW)).toMatchObject({ sampleKey: 'CRB|crb.spirit-of-puddles', npc: { kind: 'spirit', rating: 3 } })
+  expect(bookNpc({ ...entry('sprites', 'crb.glitch-sprite'), attrs: { ...entry('sprites', 'crb.glitch-sprite').attrs, rating: '5' } }, NOW).npc!.rating).toBe(5)
+  expect(bookNpc(entry('critters', 'crb.fuzzbeast'), NOW).npc).not.toHaveProperty('rating')
+  expect(bookNpc(entry('npcs', 'crb.corner-goon'), NOW).npc).toMatchObject({ kind: 'grunt', rating: 2 })
+  expect(bookNpc(contact(), NOW).npc!.kind).toBe('contact')
 })
 
 test('the NPC block’s headline: the four forms', () => {

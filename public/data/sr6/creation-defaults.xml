@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The standard SR6 creation settings the app ships with (creation.xsd; docs/sr6-data-format.md, Creation rules): the
+     numbers only, with the printed page of the book that gives each, no book text. CRB: Shadowrun, Sixth World Core
+     Rulebook (CAT28000, current printing). SWC: Sixth World Companion (CAT28005): sum-to-ten, point buy, lifepath.
+     The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
+     as a copy of the server's. Left unset (no book prints them): maxKarmaLeft, karmaToNuyenMax, skillPointsExpertise
+     (no expertise at creation, CRB p. 65), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
+     advance.nuyenToKarmaRate, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
+<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">
+  <setting key="startingKarma" value="50" source="CRB" page="66"/>
+  <setting key="qualityNetBonusCap" value="20" source="CRB" page="66"/>
+  <setting key="qualityMaxCount" value="6" source="CRB" page="66"/>
+  <setting key="oneAttributeAtMax" value="true" source="CRB" page="64"/>
+  <setting key="attributeBaseMax" value="6" source="CRB" page="64"/>
+  <setting key="skillCap" value="6" source="CRB" page="65"/>
+  <setting key="skillCapAptitude" value="7" source="CRB" page="65"/>
+  <setting key="aptitudeQuality" value="crb.aptitude-skill" source="CRB" page="70"/>
+  <setting key="oneSkillAtMax" value="true" source="CRB" page="65"/>
+  <setting key="skillPointsSpec" value="1" source="CRB" page="65"/>
+  <setting key="magicMax" value="6" source="CRB" page="167"/>
+  <setting key="essence" value="6" source="CRB" page="38"/>
+  <setting key="contactPointsPerCha" value="6" source="CRB" page="67"/>
+  <setting key="knowledgePerLog" value="1" source="CRB" page="67"/>
+  <setting key="maxAvailability" value="6" source="CRB" page="66"/>
+  <setting key="maxNuyenLeft" value="5000" source="CRB" page="68"/>
+  <setting key="freeSpellsPerMagic" value="2" source="CRB" page="65"/>
+  <setting key="freeFormsPerResonance" value="2" source="CRB" page="66"/>
+  <setting key="karmaAttrPerRank" value="5" source="CRB" page="68"/>
+  <setting key="karmaSkillPerRank" value="5" source="CRB" page="68"/>
+  <setting key="karmaSpec" value="5" source="CRB" page="68"/>
+  <setting key="karmaKnowledge" value="3" source="CRB" page="68"/>
+  <setting key="karmaSpell" value="5" source="CRB" page="68"/>
+  <setting key="karmaForm" value="5" source="CRB" page="68"/>
+  <setting key="karmaInitiationBase" value="10" source="CRB" page="68"/>
+  <setting key="karmaInitiationPerGrade" value="1" source="CRB" page="68"/>
+  <setting key="positiveQualityFactor" value="1" source="CRB" page="66"/>
+  <setting key="advance.expertise" value="5" source="CRB" page="68"/>
+  <setting key="advance.qualityFactor" value="2" source="CRB" page="69"/>
+  <setting key="advance.buyOffFactor" value="2" source="CRB" page="69"/>
+  <setting key="advance.skillMax" value="9" source="CRB" page="65"/>
+  <setting key="karmaToNuyenRate" value="2000" source="CRB" page="66"/>
+  <setting key="karmaToNuyenRateInDebt" value="5000" source="CRB" page="66"/>
+  <setting key="inDebtQuality" value="crb.in-debt" source="CRB" page="77"/>
+  <setting key="fakeSinPerRating" value="2500" source="CRB" page="273"/>
+  <setting key="licencePerRating" value="200" source="CRB" page="273"/>
+  <setting key="grade:standard:essence" value="1" source="CRB" page="282"/>
+  <setting key="grade:standard:cost" value="1" source="CRB" page="282"/>
+  <setting key="grade:standard:avail" value="0" source="CRB" page="282"/>
+  <setting key="grade:used:essence" value="1.1" source="CRB" page="282"/>
+  <setting key="grade:used:cost" value="0.5" source="CRB" page="282"/>
+  <setting key="grade:used:avail" value="-1" source="CRB" page="282"/>
+  <setting key="grade:alpha:essence" value="0.8" source="CRB" page="282"/>
+  <setting key="grade:alpha:cost" value="1.2" source="CRB" page="282"/>
+  <setting key="grade:alpha:avail" value="1" source="CRB" page="282"/>
+  <setting key="grade:beta:essence" value="0.7" source="CRB" page="282"/>
+  <setting key="grade:beta:cost" value="1.5" source="CRB" page="282"/>
+  <setting key="grade:beta:avail" value="2" source="CRB" page="282"/>
+  <setting key="grade:delta:essence" value="0.5" source="CRB" page="282"/>
+  <setting key="grade:delta:cost" value="2.5" source="CRB" page="282"/>
+  <setting key="grade:delta:avail" value="3" source="CRB" page="282"/>
+  <setting key="monitorBase" value="8" source="CRB" page="38"/>
+  <setting key="monitorDivisor" value="2" source="CRB" page="38"/>
+  <setting key="initiativeDice" value="1" source="CRB" page="39"/>
+  <setting key="astralInitiativeDice" value="2" source="CRB" page="161"/>
+  <setting key="specDice" value="2" source="CRB" page="92"/>
+  <setting key="expertiseDice" value="3" source="CRB" page="92"/>
+  <setting key="untrainedPenalty" value="1" source="CRB" page="93"/>
+  <!-- Sum to ten (SWC) -->
+  <setting key="sumToTenTarget" value="10" source="SWC" page="27"/>
+  <setting key="letterValue:A" value="4" source="SWC" page="27"/>
+  <setting key="letterValue:B" value="3" source="SWC" page="27"/>
+  <setting key="letterValue:C" value="2" source="SWC" page="27"/>
+  <setting key="letterValue:D" value="1" source="SWC" page="27"/>
+  <setting key="letterValue:E" value="0" source="SWC" page="27"/>
+  <!-- Point buy (SWC) -->
+  <setting key="pointBuy.total" value="100" source="SWC" page="28"/>
+  <setting key="pointBuy.awakened" value="10" source="SWC" page="29"/>
+  <setting key="pointBuy.free.attribute" value="4" source="SWC" page="29"/>
+  <setting key="pointBuy.max.attribute" value="20" source="SWC" page="29"/>
+  <setting key="pointBuy.free.skill" value="12" source="SWC" page="29"/>
+  <setting key="pointBuy.max.skill" value="20" source="SWC" page="29"/>
+  <setting key="pointBuy.free.adjustment" value="1" source="SWC" page="29"/>
+  <setting key="pointBuy.max.adjustment" value="12" source="SWC" page="29"/>
+  <setting key="pointBuy.free.nuyen" value="10000" source="SWC" page="29"/>
+  <setting key="pointBuy.max.nuyen" value="440000" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.attribute" value="2" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.skill" value="2" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.adjustment" value="4" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.powerPoint" value="4" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.mysticPowerPoint" value="8" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.spell" value="2" source="SWC" page="29"/>
+  <setting key="pointBuy.cost.complexForm" value="2" source="SWC" page="29"/>
+  <setting key="pointBuy.nuyenPerCp" value="20000" source="SWC" page="29"/>
+  <setting key="pointBuy.oneSpecialization" value="true" source="SWC" page="29"/>
+  <setting key="pointBuy.startRating:full" value="1" source="SWC" page="29"/>
+  <setting key="pointBuy.startRating:aspected" value="2" source="SWC" page="29"/>
+  <setting key="pointBuy.startRating:mystic-adept" value="1" source="SWC" page="29"/>
+  <setting key="pointBuy.startRating:adept" value="1" source="SWC" page="29"/>
+  <setting key="pointBuy.startRating:technomancer" value="1" source="SWC" page="29"/>
+  <!-- Metatypes: the core rulebook's five cost no karma (point buy; metavariant costs come with their book) -->
+  <setting key="metatypeKarma:crb.human" value="0" source="SWC" page="28"/>
+  <setting key="metatypeKarma:crb.elf" value="0" source="SWC" page="28"/>
+  <setting key="metatypeKarma:crb.dwarf" value="0" source="SWC" page="28"/>
+  <setting key="metatypeKarma:crb.ork" value="0" source="SWC" page="28"/>
+  <setting key="metatypeKarma:crb.troll" value="0" source="SWC" page="28"/>
+  <!-- Lifepath (SWC; the life modules themselves are catalog entries) -->
+  <setting key="lifepath.moduleCount" value="8" source="SWC" page="32"/>
+  <setting key="lifepath.contactRatingCap" value="8" source="SWC" page="31"/>
+  <setting key="lifepath.startRating:full" value="1" source="SWC" page="32"/>
+  <setting key="lifepath.startRating:aspected" value="2" source="SWC" page="32"/>
+  <setting key="lifepath.startRating:mystic-adept" value="1" source="SWC" page="32"/>
+  <setting key="lifepath.startRating:adept" value="1" source="SWC" page="32"/>
+  <setting key="lifepath.startRating:technomancer" value="1" source="SWC" page="32"/>
+</sr6:creation>

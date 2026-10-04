@@ -30,7 +30,7 @@ export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name:
   attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string }
 export interface Sr6ExportPurchase extends Sr6ExportItem { uid: string; qty: number; grade?: string; worn: boolean; note?: string
   bonuses: Sr6ExportBonus[]; accessories: Sr6ExportPurchase[] }
-export interface Sr6ExportNpc { kind: Sr6NpcKind; rating?: number; group?: string; from?: Sr6Npc['from']
+export interface Sr6ExportNpc { kind: Exclude<Sr6NpcKind, 'contact'>; rating?: number; group?: string; from?: Sr6Npc['from']
   stats: ReturnType<typeof npcValues>; lines: Sr6Npc['lines']; pools: ReturnType<typeof npcPools> }
 export interface Sr6ExportRunner {
   id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; finalized: boolean
@@ -123,8 +123,10 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     bonuses: bonuses(x.bonuses, x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, a, false)) })
 }
 
-/** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. */
-export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc => defined({ kind: npc.kind, rating: npc.rating, group: npc.group,
+/** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt
+ *  of group Contact (v1's kinds: the module makes it an NPC actor). */
+export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc => defined({ kind: npc.kind === 'contact' ? 'grunt' : npc.kind,
+  rating: npc.rating, group: npc.kind === 'contact' ? 'Contact' : npc.group,
   from: npc.from, stats: npcValues(npc), lines: npc.lines.map(l => ({ ...l })), pools: npcPools(npc, data) })
 
 export function exportSr6Runner(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {

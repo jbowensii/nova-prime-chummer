@@ -1,7 +1,8 @@
 // Shadowrun 6 NPCs & Critters (#/sr6/npcs): the GMs' own area (admin and editors), as Anarchy's NpcsScreen. An SR6 NPC
 // is an SR6 runner file with an <npc> block (server: /api/sr6/npcs, which refuses players and runner files). New NPC copies
-// a catalog grunt, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the catalog's
-// npcs entries not loaded yet; Import file takes SR6 NPC files only; a GM shares one with an SR6 campaign they run; Move to
+// a catalog grunt, contact, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the
+// catalog's npcs, critters, spirits and sprites not loaded yet; Import file takes SR6 NPC files only; a GM shares one with
+// an SR6 campaign they run; Move to
 // compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn).
 // Export for Foundry: the header's dialog and each row's button (Foundry.tsx). Left out (R): the duplicates finder.
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -18,7 +19,7 @@ import type { Stored, Unreadable } from '../../ui/repo'
 import { loadTrash } from '../../ui/Trash'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
-import { blankSr6Npc, bookNpcKey, NPC_KINDS, npcFromEntry } from '../engine/npc'
+import { blankSr6Npc, bookNpc, bookNpcKey, NPC_KINDS, npcFromEntry, npcKindOf } from '../engine/npc'
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry } from '../model/types'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows } from './compendiumStore'
@@ -36,6 +37,9 @@ export function bookNpcsToLoad(entries: Sr6Entry[], mine: Sr6Character[], source
   return entries.filter(e => sources.get(e.source)?.origin !== 'user' && !have.has(bookNpcKey(e)))
 }
 
+/** A copy of a book sample contact that 0.9.0 loaded as a grunt of group Contact. */
+export const oldContact = (ch: Sr6Character) => !!ch.sampleKey && ch.npc?.kind === 'grunt' && ch.npc.group === 'Contact' && ch.npc.rating == null
+
 /** Grunts by Professional Rating, lowest first; null (none printed) last. */
 export function byRating(entries: Sr6Entry[]): [number | null, Sr6Entry[]][] {
   const groups = new Map<number | null, Sr6Entry[]>()
@@ -43,7 +47,7 @@ export function byRating(entries: Sr6Entry[]): [number | null, Sr6Entry[]][] {
   return [...groups].sort(([a], [b]) => (a ?? Infinity) - (b ?? Infinity))
 }
 
-/** The row chip: "Grunt PR 2", "Spirit F 4", "Sprite L 3", "Critter". */
+/** The row chip: "Grunt PR 2", "Spirit F 4", "Sprite L 3", "Critter", "Contact". */
 export function npcChip(npc: Sr6Npc): string {
   const k = NPC_KINDS[npc.kind], short = k.rating?.letter ?? (k.rating ? 'PR' : '')
   return npc.rating != null && short ? `${k.label} ${short} ${npc.rating}` : k.label
@@ -88,7 +92,7 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
   const rows = arrange(mine, sort, q)
   const gmOf = campaigns.filter(x => x.you === 'gm' && !x.archived)
   const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
-  const entriesOf = (k: Sr6NpcKind) => [...c.entries[NPC_KINDS[k].kind].values()].sort((a, b) => a.name.localeCompare(b.name))
+  const entriesOf = (k: Sr6NpcKind) => [...c.entries[NPC_KINDS[k].kind].values()].filter(e => npcKindOf(e) === k).sort((a, b) => a.name.localeCompare(b.name))
   const rated = !!NPC_KINDS[kind].rating?.letter
 
   /** saved: null; else why not */
@@ -120,18 +124,25 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
     void refresh()
   }
 
-  // the catalog's npcs entries (R: grunts and named NPCs; critters, spirits and sprites are made one at a time), each
-  // under its book key so a renamed copy still counts as loaded
+  // the catalog's grunts, sample contacts, critters, spirits and sprites (bookNpc: a spirit or sprite at a default rating),
+  // each under its book key so a renamed copy still counts as loaded; 0.9.0's copies of the sample contacts (grunts of
+  // group Contact) become contacts
   const loadBook = async () => {
-    const all = [...c.entries.npcs.values()]
+    const all = (['npcs', 'critters', 'spirits', 'sprites'] as const).flatMap(k => [...c.entries[k].values()])
     if (!all.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
-    let n = 0
+    let n = 0, fixed = 0
     const bad: string[] = []
+    for (const s of mine.filter(s => oldContact(s.ch))) {
+      const { group: _g, ...npc } = s.ch.npc!
+      const err = await saveError({ ...s.ch, npc: { ...npc, kind: 'contact' } }, s.rev)
+      if (err) bad.push(`${nameOf(s.ch)}: ${err}`); else fixed++
+    }
     for (const e of bookNpcsToLoad(all, mine.map(s => s.ch), c.sources)) {
-      const err = await saveError({ ...npcFromEntry(e), sampleKey: bookNpcKey(e) })
+      const err = await saveError(bookNpc(e))
       if (err) bad.push(`${e.name}: ${err}`); else n++
     }
-    setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The book NPCs are already in your NPCs.', ...bad].filter(Boolean).join(' '))
+    setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length || fixed ? '' : 'The book NPCs are already in your NPCs.',
+      fixed ? `${fixed} sample contact${fixed === 1 ? ' is a contact' : 's are contacts'} now.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
   }
 

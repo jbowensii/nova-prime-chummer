@@ -1,8 +1,9 @@
 // The table's SR6 creation rules (custom/sr6/creation.xml, public/data/sr6/schema/creation.xsd): every number the core
 // rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered on the Rules
 // page by the admin from their own book: the server's default. A campaign's GM may give it its own (server/campaigns.mjs),
-// which its runners use instead. The app ships no values: a method whose settings are unset can't be picked (missingFor),
-// and a rule whose setting is unset is skipped. Formulas stay in code.
+// which its runners use instead. The app ships the standard values (DEFAULTS_PATH; the admin's file holds only what they
+// changed); a method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
+// skipped. Formulas stay in code.
 import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method } from '../model/character'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
@@ -186,10 +187,21 @@ export function readSettingsFile(xml: string, name: string): { rules: CreationRu
   return { rules: r.rules, errors: [...errors, ...r.errors] }
 }
 
-/** Fetch and parse custom/sr6/creation.xml. None saved (404, or a host answering with a page that isn't XML), or the
- *  server unreachable: no rules. */
-export async function loadCreation(base = './'): Promise<{ rules: CreationRules; errors: string[] }> {
-  const r = await fetch(`${base}custom/sr6/creation.xml`, { cache: 'no-cache' }).catch(() => null)
+/** The standard settings the app ships (public/data/sr6/creation-defaults.xml: the core rulebook's and the Sixth World
+ *  Companion's numbers, with their pages). */
+export const DEFAULTS_PATH = 'data/sr6/creation-defaults.xml'
+
+/** Fetch and parse one creation.xml. None there (404, or a host answering with a page that isn't XML), or the server
+ *  unreachable: no rules. */
+async function fetchCreation(url: string): Promise<{ rules: CreationRules; errors: string[] }> {
+  const r = await fetch(url, { cache: 'no-cache' }).catch(() => null)
   if (!r?.ok || !/xml/i.test(r.headers.get('content-type') ?? '')) return { rules: new Map(), errors: [] }
   return parseCreation(await r.text())
+}
+
+/** The server's settings: the shipped standard ones (std) overlaid by the admin's changes (custom/sr6/creation.xml, which
+ *  holds only the keys the admin changed; an older full copy works the same). */
+export async function loadCreation(base = './'): Promise<{ rules: CreationRules; errors: string[]; std: CreationRules }> {
+  const [std, own] = await Promise.all([fetchCreation(base + DEFAULTS_PATH), fetchCreation(`${base}custom/sr6/creation.xml`)])
+  return { rules: new Map([...std.rules, ...own.rules]), errors: [...std.errors, ...own.errors], std: std.rules }
 }
