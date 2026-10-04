@@ -89,7 +89,8 @@ custom/sr6/
 
 The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
 `custom/sr6/imported/index.xml` (the same id replaces, `<remove>` deletes), then the texts file each source names, then
-`custom/sr6/edits/edits.xml` and `edits/texts.xml`.
+`custom/sr6/edits/edits.xml` and `edits/texts.xml`, then (a GM's catalog only) the compendiums they can read
+(see Compendiums below).
 
 **Scoping.** Every imported id is scoped by its source (`crb.zap-gun`), as the Anarchy books are, so two books never
 clash. Attribute `abbr` and skill `attr` values are never scoped.
@@ -106,6 +107,113 @@ editor fills them in on Game data from their own book (`PUT /api/sr6/creation`);
 the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
+
+Every key, in the order Game data shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
+every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
+a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
+chosen while its Essence factor is unset). A number may be a decimal; `true/false` is the word; a quality id names a catalog quality (`crb.<slug>`).
+
+| group | key | type | needed by | what it is |
+|---|---|---|---|---|
+| General | `startingKarma` | number | all | Starting karma |
+| General | `qualityNetBonusCap` | number | all | Most net karma from qualities |
+| General | `qualityMaxCount` | number | all | Most paid qualities |
+| General | `oneAttributeAtMax` | true/false | all | Only one attribute at its maximum |
+| General | `attributeBaseMax` | number | optional | Adjustment points go on attributes whose metatype maximum is above |
+| General | `skillCap` | number | all | Highest skill rank |
+| General | `skillCapAptitude` | number | all | Highest skill rank with the aptitude quality |
+| General | `aptitudeQuality` | quality id | all | Aptitude quality |
+| General | `skillPointsSpec` | number | all | Skill points for a specialization |
+| General | `skillPointsExpertise` | number | all | Skill points for an expertise |
+| General | `magicMax` | number | all | Highest Magic or Resonance |
+| General | `essence` | number | all | Starting Essence |
+| General | `contactPointsPerCha` | number | all | Contact points per Charisma |
+| General | `knowledgePerLog` | number | all | Free knowledge skills per Logic |
+| General | `maxAvailability` | number | all | Highest Availability |
+| General | `maxKarmaLeft` | number | all | Most karma kept after creation |
+| General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
+| General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
+| General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
+| Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
+| Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |
+| Karma prices | `karmaSpec` | number | all | Specialization |
+| Karma prices | `karmaKnowledge` | number | all | Knowledge or language rank |
+| Karma prices | `karmaSpell` | number | all | Extra spell or ritual |
+| Karma prices | `karmaForm` | number | all | Extra complex form |
+| Karma prices | `karmaInitiationBase` | number | all | Initiation or submersion: base |
+| Karma prices | `karmaInitiationPerGrade` | number | all | Initiation or submersion: per grade |
+| Karma prices | `positiveQualityFactor` | number | optional | Positive qualities cost their karma times (unset: 1) |
+| Advancement | `advance.expertise` | number | optional | Expertise after creation |
+| Advancement | `advance.qualityFactor` | number | optional | A positive quality after creation costs its karma times |
+| Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |
+| Advancement | `advance.skillMax` | number | optional | Highest skill rank after creation (unset: no cap) |
+| Advancement | `advance.powerPoint` | number | optional | Karma per power point (mystic adepts) |
+| Advancement | `advance.karmaToNuyenRate` | number | optional | Nuyen per karma after creation (unset: not offered) |
+| Advancement | `advance.nuyenToKarmaRate` | number | optional | Nuyen per karma, nuyen to karma (optional rule; unset: off) |
+| Nuyen | `karmaToNuyenRate` | number | all | Nuyen per karma |
+| Nuyen | `karmaToNuyenRateInDebt` | number | all | Nuyen per karma with the in-debt quality |
+| Nuyen | `inDebtQuality` | quality id | all | In-debt quality |
+| Nuyen | `karmaToNuyenMax` | number | all | Most karma turned into nuyen |
+| Nuyen | `fakeSinPerRating` | number | all | Fake SIN: nuyen per rating |
+| Nuyen | `licencePerRating` | number | all | Fake licence: nuyen per rating |
+| Sum to ten | `sumToTenTarget` | number | sum to ten | The letters’ values add up to at most |
+| Sum to ten | `letterValue:A` | number | sum to ten | Value of priority A |
+| Sum to ten | `letterValue:B` | number | sum to ten | Value of priority B |
+| Sum to ten | `letterValue:C` | number | sum to ten | Value of priority C |
+| Sum to ten | `letterValue:D` | number | sum to ten | Value of priority D |
+| Sum to ten | `letterValue:E` | number | sum to ten | Value of priority E |
+| Point buy | `pointBuy.total` | number | point buy | Character points |
+| Point buy | `pointBuy.awakened` | number | point buy | Character points to be awakened or emerged |
+| Point buy | `pointBuy.free.attribute` | number | point buy | Free attribute points |
+| Point buy | `pointBuy.max.attribute` | number | point buy | Most attribute points |
+| Point buy | `pointBuy.free.skill` | number | point buy | Free skill points |
+| Point buy | `pointBuy.max.skill` | number | point buy | Most skill points |
+| Point buy | `pointBuy.free.adjustment` | number | point buy | Free adjustment points |
+| Point buy | `pointBuy.max.adjustment` | number | point buy | Most adjustment points |
+| Point buy | `pointBuy.free.nuyen` | number | point buy | Free nuyen |
+| Point buy | `pointBuy.max.nuyen` | number | point buy | Most nuyen |
+| Point buy | `pointBuy.cost.attribute` | number | point buy | Character points per attribute point |
+| Point buy | `pointBuy.cost.skill` | number | point buy | Character points per skill point |
+| Point buy | `pointBuy.cost.adjustment` | number | point buy | Character points per adjustment point |
+| Point buy | `pointBuy.cost.powerPoint` | number | point buy | Character points per power point |
+| Point buy | `pointBuy.cost.mysticPowerPoint` | number | point buy | Character points per power point (mystic adept) |
+| Point buy | `pointBuy.cost.spell` | number | point buy | Character points per spell |
+| Point buy | `pointBuy.cost.complexForm` | number | point buy | Character points per complex form |
+| Point buy | `pointBuy.nuyenPerCp` | number | point buy | Nuyen per character point |
+| Point buy | `pointBuy.oneSpecialization` | true/false | point buy | Only one specialization |
+| Karma build | `karmaBuild.start` | number | karma | Starting karma (karma build) |
+| Karma build | `karmaBuild.startRating` | number | karma | Starting Magic or Resonance (karma build) |
+| Lifepath | `lifepath.moduleCount` | number | lifepath | Adult life modules to take |
+| Lifepath | `lifepath.contactRatingCap` | number | lifepath | Highest contact rating |
+| Augmentation grades | `grade:standard:essence` | number | optional | Standard: Essence times |
+| Augmentation grades | `grade:standard:cost` | number | optional | Standard: cost times |
+| Augmentation grades | `grade:standard:avail` | number | optional | Standard: Availability plus |
+| Augmentation grades | `grade:alpha:essence` | number | optional | Alpha: Essence times |
+| Augmentation grades | `grade:alpha:cost` | number | optional | Alpha: cost times |
+| Augmentation grades | `grade:alpha:avail` | number | optional | Alpha: Availability plus |
+| Augmentation grades | `grade:beta:essence` | number | optional | Beta: Essence times |
+| Augmentation grades | `grade:beta:cost` | number | optional | Beta: cost times |
+| Augmentation grades | `grade:beta:avail` | number | optional | Beta: Availability plus |
+| Augmentation grades | `grade:delta:essence` | number | optional | Delta: Essence times |
+| Augmentation grades | `grade:delta:cost` | number | optional | Delta: cost times |
+| Augmentation grades | `grade:delta:avail` | number | optional | Delta: Availability plus |
+| Augmentation grades | `grade:used:essence` | number | optional | Used: Essence times |
+| Augmentation grades | `grade:used:cost` | number | optional | Used: cost times |
+| Augmentation grades | `grade:used:avail` | number | optional | Used: Availability plus |
+| Derived values | `monitorBase` | number | optional | Condition monitor: boxes before the attribute |
+| Derived values | `monitorDivisor` | number | optional | Condition monitor: the attribute divided by (rounded up) |
+| Derived values | `initiativeDice` | number | optional | Initiative dice |
+| Derived values | `astralInitiativeDice` | number | optional | Astral initiative dice |
+| Derived values | `specDice` | number | optional | Dice for a specialization |
+| Derived values | `expertiseDice` | number | optional | Dice for an expertise |
+| Derived values | `untrainedPenalty` | number | optional | Dice off the attribute for an untrained skill |
+| Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma | the metatype's karma (one per catalog metatype) |
+| Point buy | `pointBuy.startRating:<kind>` | number | point buy | starting Magic or Resonance per awakened or emerged kind |
+| Karma build | `magicKarma:<kind>` | number | karma | karma to be that kind |
+| Lifepath | `lifepath.startRating:<kind>` | number | lifepath | starting Magic or Resonance per kind |
+
+The kinds are `full`, `aspected`, `mystic-adept`, `adept` and `technomancer`. An unknown key, or a value that isn't of
+its key's type, is listed as an error on Game data and skipped.
 
 ## Compendiums (`characters/sr6/.compendiums/<owner>/`)
 

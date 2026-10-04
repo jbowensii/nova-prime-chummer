@@ -1,15 +1,78 @@
 # Release notes
 
-## Unreleased
+## 0.9.0 — 2026-10-04: Shadowrun 6th World
 
-**Shadowrun 6: Export for Foundry (SR6 F1)**
+The app now builds runners for two games. Everything below is the Shadowrun 6 side; Anarchy works as before.
+
+**Game picker**
+- A first screen chooses **Shadowrun Anarchy 2.0** or **Shadowrun 6th World**; this browser remembers it, and the game
+  icon in the header switches at any time.
+- The two games are kept fully apart: runners, NPCs, campaigns, compendiums, books, imported data, catalog edits, trash
+  and settings are each game's own. The server refuses an object from the other game (an SR6 runner in an Anarchy
+  campaign, an Anarchy file in the SR6 store, the other game's file in a trash or compendium). Accounts and roles span
+  both; a rename moves both games' folders, a delete retires both. SR6 data lives in `characters/sr6/`, `custom/sr6/`
+  and `library/sr6/`; existing Anarchy data stays where it was. One backup holds both games. The username `sr6` is now
+  reserved; an older account with that name keeps working, and the SR6 area waits until it is renamed.
+
+**SR6 books, rules and game data**
+- **Books** (admin): upload the Shadowrun 6 core rulebook PDF. It is converted to markdown, each item's stat-table row
+  is regrouped with its description, and a recipe writes the SR6 catalog (priorities, metatypes, skills, qualities, all
+  gear kinds, vehicles and drones, spells, rituals, adept powers, complex forms, critters, spirits, sprites, NPCs,
+  lifestyles, contacts, rule sections). Anything unpaired or unread goes to the import report, never guessed.
+- **Rules**: the book's rule sections, searchable. **Game data**: browse the catalog; the admin and GMs correct entries
+  (kept across re-imports) and fill in the **Creation rules**, the numbers the book prints only in its text, each with
+  its page. The app ships none: a method whose settings aren't set can't be picked and says what's missing.
+
+**SR6 builder**
+- All five creation methods: priority, sum to ten, point buy, karma and lifepath (lifepath once a book with life
+  modules is imported). Itemized budgets, editor tabs from Concept to Ledger, derived values from the engine, a Review
+  tab listing every broken rule with its page, and a printable SR6 sheet.
+- Runners import and export as `sr6:character` XML (`docs/sr6-character-format.md`); an Anarchy file is refused with
+  where it belongs, and a damaged file can be repaired.
+
+**SR6 career, NPCs and campaigns**
+- **Finalize** starts career play through the karma and nuyen ledger: earnings, advances and purchases at the prices
+  in Creation rules. Append-only: a mistake is voided, never edited; **Back to draft** until something is earned or spent.
+- **NPCs & Critters** (GMs): grunts by Professional Rating, critters, spirits and sprites with their stats at their
+  rating, **Load book NPCs**, sharing with a campaign's GMs, their own trash. Players never get NPC data.
+- **Campaigns**: SR6 campaigns of their own; only SR6 runners and NPCs join them.
+
+**SR6 compendiums**
+- GMs make their own collections of SR6 entries and NPCs, each under its own source id: private, shared with an SR6
+  campaign's GMs, or the whole table. Copy entries in from a book (stats only, never the description), move NPCs in
+  and out. A GM's pickers, Game data and New NPC dialog offer the entries of every compendium they can read; a
+  compendium never replaces a book's source or entries. Players get no compendium routes, menu entry or entries.
+
+**SR6 export for Foundry**
 - SR6 runners, NPCs, books and compendiums download as Chummer SR6 export v1 (`docs/sr6-export-format.md`, schema
-  `public/data/schema/sr6-export.schema.json`) for the new Chummer SR6 importer module in Foundry VTT (shadowrun6-eden).
+  `public/data/schema/sr6-export.schema.json`) for the new Chummer SR6 importer module in Foundry VTT
+  (shadowrun6-eden, [jbowensii/chummer-sr6-foundry](https://github.com/jbowensii/chummer-sr6-foundry)).
 - **Export for Foundry** in the SR6 editor and on each NPC row; **Export for Foundry…** on the SR6 runner list and NPCs &
-  Critters (tick runners, All/None or a campaign); **Export book data for Foundry** on SR6 Game data (admin and editors,
+  Critters (tick runners, All/None or a campaign); **Export book data for Foundry** on SR6 Game data (admin and GMs,
   descriptions on by default); **Export for Foundry** on an SR6 compendium's page.
-- Every number is the app's own (attributes, Essence, prices at grade and rating, an NPC's stats at its rating); each entry
-  also keeps its printed values. Anarchy's export is unchanged.
+- Every number is the app's own (attributes, Essence, prices at grade and rating, an NPC's stats at its rating); each
+  entry also keeps its printed values. Anarchy's export is unchanged.
+
+**Fixes**
+- A request body whose character root never closed made the server spend minutes (quadratic pattern matching) before
+  refusing it, on both games' runner and NPC saves; it is now refused at once, and such a body gets a 400, not a 500.
+- A server stopping (a restart, an update) no longer starts the next queued import step or book after killing the
+  running one.
+
+**Still to do with the owner's real book (local only, nothing committed)**
+- Import the real core rulebook (`python -m importer sr6 check "<PDF>" --out %TEMP%\sr6-check`): check the chapter
+  names the recipe looks for, the label names (Linked Attribute, Untrained, Keywords, Cost), the priority cell formats
+  and a grunt box printed right under its Professional Rating heading; review the unpaired rows and descriptions and
+  add aliases (names only).
+- Fill Game data → Creation rules from the book with pages, then build one runner per supported method to zero errors
+  and check the derived-value formulas and their pages.
+- Career: one runner through five spends against a hand calculation; the Magic/Resonance cap after initiation, adept
+  power points after creation and how division rounds in spirit and sprite stats (code marked "verify (Task 10)");
+  every book grunt loads and prints; one spirit and one sprite of each kind read without a warning at two ratings.
+
+**Still to do in Foundry (chummer-sr6-foundry)**
+- Reinstall Foundry 13 and 14 with shadowrun6-eden and Quench, and run the module's Quench batches (read, runner,
+  replace, NPCs, books, compendiums, icons) before its first release; publish the public repo once the owner agrees.
 
 ## 0.8.3 — 2026-10-02: Duplicates by name, left-aligned icons, print fixes
 

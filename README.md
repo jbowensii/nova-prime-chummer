@@ -1,10 +1,11 @@
 # Chummer Anarchy 2.0
 
-Version 0.8.3 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.9.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
-(Not Anarchy 1st edition, which uses different rules.)
+(Not Anarchy 1st edition, which uses different rules.) Since 0.9.0 it is also a
+builder for **Shadowrun 6th World**: see [Shadowrun 6th World](#shadowrun-6th-world).
 
 **Bring your own books.** The app ships the rules engine only. Amps, spells,
 complex forms, gear, rules text and sample runners come from the PDFs you
@@ -107,14 +108,90 @@ own API key), and you review its entries before they’re added.
   **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
   NPCs export the same way (**Export for Foundry…** on the NPCs page), each carrying its NPC block, and the books' NPCs ride along in the book data file.
   A compendium exports as its own compendium (**Export for Foundry** on the Compendiums page), with your descriptions; it needs importer module 0.6.0.
-- **Foundry VTT, Shadowrun 6.** The SR6 side has its own file, Chummer SR6 export v1 (`docs/sr6-export-format.md`), for
-  the Chummer SR6 importer module (shadowrun6-eden system, [jbowensii/chummer-sr6-foundry](https://github.com/jbowensii/chummer-sr6-foundry)).
-  **Export for Foundry** in an SR6 runner's or NPC's editor and on each row of NPCs & Critters, **Export for Foundry…** on
-  the SR6 runner list and NPCs & Critters (tick runners or a campaign) download `runners-YYYY-MM-DD.sr6foundry.json`; on
-  SR6 **Game data** the admin and editors tick books and download `books-YYYY-MM-DD.sr6foundry.json` (descriptions on by
-  default); an SR6 compendium's page downloads `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json`. Each module refuses the
-  other game's file.
   The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
+
+## Shadowrun 6th World
+
+**Choosing a game.** The first screen asks which game you play: **Shadowrun
+Anarchy 2.0** or **Shadowrun 6th World**. This browser remembers the choice,
+and the game icon in the header switches at any time. The two games are kept
+fully apart: runners, NPCs, campaigns, compendiums, books, imported data,
+catalog edits, trash and settings are each game’s own, and the server refuses
+an object from the other game (an SR6 runner in an Anarchy campaign, an Anarchy
+file in the SR6 store). Only your account and its role (admin, GM, player) are
+shared. SR6 data lives beside Anarchy’s, one level down: `characters/sr6/`,
+`custom/sr6/`, `library/sr6/`, at `/api/sr6/…`. One backup holds both games.
+
+As on the Anarchy side, the app ships the rules engine only: no book text and
+no book numbers.
+
+- **Books** (admin, SR6 menu). Upload the Shadowrun 6 core rulebook PDF. The
+  importer turns it into markdown, regroups each item’s stat-table row with its
+  description, and its recipe writes the SR6 catalog: priorities, metatypes,
+  skills, qualities, weapons, armor, augmentations, electronics, gear, vehicles
+  and drones, spells, rituals, adept powers, complex forms, critters, spirits,
+  sprites, NPCs, lifestyles, contacts and the rule sections. Anything it
+  couldn’t pair or read is listed in the book’s import report, never guessed.
+  Book errors stay as printed; fixes go through **Game data**, survive
+  re-imports and can be undone. Later books come one per release.
+- **Game data** (everyone; changes: admin and GMs). Browse the catalog, edit an
+  entry, export book data for Foundry, and fill in the **Creation rules**: the
+  numbers the rulebook prints only in its text (starting karma, caps, exchange
+  rates, karma prices, point-buy prices, augmentation grades, the constants
+  of derived values, advancement prices), each with the page you read it on.
+  The app ships none of them; a creation method whose settings aren’t set
+  can’t be picked, and its row says which are missing.
+- **Rules.** The rulebook’s rule sections, searchable.
+- **Builder** with all five creation methods: **priority**, **sum to ten**,
+  **point buy**, **karma** and **lifepath** (lifepath needs life modules,
+  which come with a book that prints them). Itemized budgets (attribute,
+  skill, adjustment, karma, nuyen, essence, power, contact and knowledge
+  points), tabs for Concept, Creation method, Attributes, Skills, Qualities,
+  Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & lifestyle,
+  Review and Ledger. Derived values (dice pools, condition monitors,
+  initiative, Defense Rating, Composure, Judge Intentions, Memory, lift and
+  carry, Essence and its Magic loss) come from the engine; **Review** lists
+  every broken rule with its page. A printable SR6 sheet uses the shared print
+  page (background, portrait).
+- **Career ledger.** **Finalize** starts career play: from then on every change
+  goes through the karma and nuyen ledger: record earnings, spend karma on
+  attributes, skills, specializations, expertise, knowledge, qualities, spells,
+  initiation and more, or nuyen on gear and lifestyle. The ledger is
+  append-only: a mistake is voided (the newest advance, or any earning or
+  note), never edited. **Back to draft** works until something is earned or
+  spent.
+- **NPCs & Critters** (GMs). Grunts by Professional Rating, critters, spirits
+  and sprites with their stat block at their rating; **Load book NPCs** copies
+  the book’s; share an NPC with a campaign’s GMs; their own trash. Players never
+  see NPCs.
+- **Campaigns.** SR6 campaigns of their own, as on the Anarchy side: GMs add
+  players, players add their SR6 runners; the GMs see the runners, players see
+  the roster.
+- **Compendiums** (GMs). Your own collections of SR6 entries (qualities, gear of
+  every kind, spells, rituals, adept powers, complex forms, metamagics, echoes,
+  critter powers, critters, spirits, NPC stat blocks, sprites, lifestyles,
+  contacts) and SR6 NPCs, each under a source id of its own, private, shared
+  with an SR6 campaign’s GMs, or with the whole table. Copy an entry in from a
+  book (its stats, never its description), move NPCs in and out. A GM’s
+  pickers, Game data and New NPC dialog offer the entries of every compendium
+  they can read; a compendium never replaces a book’s source or entries.
+  Players never see compendiums.
+- **Foundry VTT.** The SR6 side has its own file, Chummer SR6 export v1
+  ([docs/sr6-export-format.md](docs/sr6-export-format.md), JSON Schema
+  `public/data/schema/sr6-export.schema.json`), for the Chummer SR6 importer
+  module (shadowrun6-eden system, [jbowensii/chummer-sr6-foundry](https://github.com/jbowensii/chummer-sr6-foundry)).
+  **Export for Foundry** in an SR6 runner’s or NPC’s editor and on each row of
+  NPCs & Critters, **Export for Foundry…** on the SR6 runner list and NPCs &
+  Critters (tick runners or a campaign) download
+  `runners-YYYY-MM-DD.sr6foundry.json`; on SR6 **Game data** the admin and
+  GMs tick books and download `books-YYYY-MM-DD.sr6foundry.json` (descriptions
+  on by default: for your own Foundry only); an SR6 compendium’s page downloads
+  `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json`. Each Foundry module refuses
+  the other game’s file.
+
+Formats: [docs/sr6-data-format.md](docs/sr6-data-format.md) (catalog, creation
+rules, compendiums), [docs/sr6-character-format.md](docs/sr6-character-format.md)
+(runners and NPCs), [docs/sr6-export-format.md](docs/sr6-export-format.md).
 
 ## Run it
 
