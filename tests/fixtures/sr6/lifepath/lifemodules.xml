@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up test entries, no book text: a lifepath set in the Sixth World Companion's shape (three opening modules, adult
+     modules whose contact points go by contact type, one awakened-only), invented grants. e2e/sr6-lifepath.spec.ts copies it
+     over the fixture's crb/lifemodules.xml. -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="lifemodules" version="1">
+  <lifemodule id="crb.cradle-days" source="CRB" page="31" stage="opening"><name>Cradle Days</name><text/></lifemodule>
+  <lifemodule id="crb.alley-years" source="CRB" page="31" stage="opening" skillPoints="6" knowledgeSkills="1"><name>Alley Years</name><text/></lifemodule>
+  <lifemodule id="crb.first-hustle" source="CRB" page="31" stage="opening" skillPoints="3" nuyen="12000" contactPoints="2"><name>First Hustle</name><text/></lifemodule>
+  <lifemodule id="crb.dock-hand" source="CRB" page="32" stage="adult" nuyen="7000" contactPoints="2" contactTypes="street"><name>Dock Hand</name><choice kind="mixed" points="1" options="bod str"/><text/></lifemodule>
+  <lifemodule id="crb.clinic-aide" source="CRB" page="32" stage="adult" skillPoints="2" knowledgeSkills="1" contactPoints="2" contactTypes="medical"><name>Clinic Aide</name><text/></lifemodule>
+  <lifemodule id="crb.wire-monkey" source="CRB" page="32" stage="adult" skillPoints="3" contactPoints="2" contactTypes="matrix engineering"><name>Wire Monkey</name><text/></lifemodule>
+  <lifemodule id="crb.night-market" source="CRB" page="33" stage="adult" nuyen="9000" contactPoints="2" contactTypes="criminal street"><name>Night Market</name><text/></lifemodule>
+  <lifemodule id="crb.glow-study" source="CRB" page="33" stage="adult" requires="awakened" skillPoints="3"><name>Glow Study</name><text/></lifemodule>
+  <lifemodule id="crb.rooftop-chase" source="CRB" page="33" stage="adult" attributePoints="2"><name>Rooftop Chase</name><text/></lifemodule>
+  <lifemodule id="crb.odd-jobs" source="CRB" page="34" stage="adult" skillPoints="2" nuyen="3000"><name>Odd Jobs</name><text/></lifemodule>
+  <lifemodule id="crb.lucky-break" source="CRB" page="34" stage="adult" nuyen="15000" contactPoints="4"><name>Event: A Lucky Break</name><text/></lifemodule>
+</sr6:data>
