@@ -41,8 +41,10 @@ export const CREATION_KEYS: CreationKey[] = [
   ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: no expertise at creation)']]),
   ...n('General', 'all', [['magicMax', 'Highest Magic or Resonance'], ['essence', 'Starting Essence'], ['contactPointsPerCha', 'Contact points per Charisma'],
     ['knowledgePerLog', 'Free knowledge skills per Logic'], ['maxAvailability', 'Highest Availability'],
-    ['maxKarmaLeft', 'Most karma kept after creation'], ['maxNuyenLeft', 'Most nuyen kept after creation'],
+    ['maxNuyenLeft', 'Most nuyen kept after creation'],
     ['freeSpellsPerMagic', 'Free spells per Magic'], ['freeFormsPerResonance', 'Free complex forms per Resonance']]),
+  // optional (the core rulebook prints no number): unset, no limit
+  ...n('General', [], [['maxKarmaLeft', 'Most karma kept after creation (unset: no limit)']]),
   ...n('Karma prices', 'all', [['karmaAttrPerRank', 'Attribute: karma per rank, times the new rating'],
     ['karmaSkillPerRank', 'Skill: karma per rank, times the new rank'], ['karmaSpec', 'Specialization'],
     ['karmaKnowledge', 'Knowledge or language rank'], ['karmaSpell', 'Extra spell or ritual'], ['karmaForm', 'Extra complex form'],
@@ -59,8 +61,8 @@ export const CREATION_KEYS: CreationKey[] = [
     ['advance.nuyenToKarmaRate', 'Nuyen per karma, nuyen to karma (optional rule; unset: off)']]),
   ...n('Nuyen', 'all', [['karmaToNuyenRate', 'Nuyen per karma'], ['karmaToNuyenRateInDebt', 'Nuyen per karma with the in-debt quality']]),
   { key: 'inDebtQuality', label: 'In-debt quality', type: 'quality', group: 'Nuyen', methods: 'all' },
-  ...n('Nuyen', 'all', [['karmaToNuyenMax', 'Most karma turned into nuyen'], ['fakeSinPerRating', 'Fake SIN: nuyen per rating'],
-    ['licencePerRating', 'Fake licence: nuyen per rating']]),
+  ...n('Nuyen', [], [['karmaToNuyenMax', 'Most karma turned into nuyen (unset: no limit)']]), // optional, as maxKarmaLeft
+  ...n('Nuyen', 'all', [['fakeSinPerRating', 'Fake SIN: nuyen per rating'], ['licencePerRating', 'Fake licence: nuyen per rating']]),
   ...n('Sum to ten', ['sumtoten'], [['sumToTenTarget', 'The letters’ values add up to at most'],
     ...LETTERS.map(l => [`letterValue:${l}`, `Value of priority ${l}`] as [string, string])]),
   ...n('Point buy', ['pointbuy'], [['pointBuy.total', 'Character points'], ['pointBuy.awakened', 'Character points to be awakened or emerged'],

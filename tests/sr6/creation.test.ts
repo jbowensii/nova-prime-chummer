@@ -63,6 +63,10 @@ test('missingFor lists the method’s unset settings and the catalog it lacks', 
   expect(missingFor('pointbuy', parseCreation(without('pointBuy.total')).rules, data)).toEqual(['pointBuy.total'])
   expect(missingFor('priority', parseCreation(without('pointBuy.total')).rules, data)).toEqual([])
   expect(missingFor('karma', parseCreation(without('startingKarma')).rules, data)).toEqual(['startingKarma'])
+  // not printed in the core rulebook: optional (unset, no limit)
+  const unprinted = parseCreation(XML).rules
+  unprinted.delete('karmaToNuyenMax'); unprinted.delete('maxKarmaLeft')
+  for (const m of ['priority', 'sumtoten', 'pointbuy', 'karma', 'lifepath'] as const) expect(missingFor(m, unprinted, data), m).toEqual([])
   expect(missingFor('lifepath', parseCreation(XML).rules, { ...data, lifemodules: {} })).toEqual(['life modules'])
   const { D: _, ...noD } = data.priorities
   expect(missingFor('sumtoten', parseCreation(XML).rules, { ...data, priorities: noD })).toEqual(['priorities A–E'])

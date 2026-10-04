@@ -119,7 +119,8 @@ the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/
 Every key, in the order Game data shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
 a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
-chosen while its Essence factor is unset). A number may be a decimal; `true/false` is the word; a quality id names a catalog quality (`crb.<slug>`).
+chosen while its Essence factor is unset). `maxKarmaLeft` and `karmaToNuyenMax` aren't printed in the core rulebook:
+unset, there is no limit (a table that uses one enters it from the book or house rule that gives it). A number may be a decimal; `true/false` is the word; a quality id names a catalog quality (`crb.<slug>`).
 
 | group | key | type | needed by | what it is |
 |---|---|---|---|---|
@@ -138,10 +139,10 @@ chosen while its Essence factor is unset). A number may be a decimal; `true/fals
 | General | `contactPointsPerCha` | number | all | Contact points per Charisma |
 | General | `knowledgePerLog` | number | all | Free knowledge skills per Logic |
 | General | `maxAvailability` | number | all | Highest Availability |
-| General | `maxKarmaLeft` | number | all | Most karma kept after creation |
 | General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
 | General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
+| General | `maxKarmaLeft` | number | optional | Most karma kept after creation (unset: no limit, and Review gives no warning) |
 | Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
 | Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |
 | Karma prices | `karmaSpec` | number | all | Specialization |
@@ -161,7 +162,7 @@ chosen while its Essence factor is unset). A number may be a decimal; `true/fals
 | Nuyen | `karmaToNuyenRate` | number | all | Nuyen per karma |
 | Nuyen | `karmaToNuyenRateInDebt` | number | all | Nuyen per karma with the in-debt quality |
 | Nuyen | `inDebtQuality` | quality id | all | In-debt quality |
-| Nuyen | `karmaToNuyenMax` | number | all | Most karma turned into nuyen |
+| Nuyen | `karmaToNuyenMax` | number | optional | Most karma turned into nuyen (unset: no limit) |
 | Nuyen | `fakeSinPerRating` | number | all | Fake SIN: nuyen per rating |
 | Nuyen | `licencePerRating` | number | all | Fake licence: nuyen per rating |
 | Sum to ten | `sumToTenTarget` | number | sum to ten | The letters’ values add up to at most |

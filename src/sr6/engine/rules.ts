@@ -224,8 +224,12 @@ const RULES: Rule[] = [
       ? [{ path: `method.${pk.id}`, message: `${m.name}: pick where its choice goes.`, ...entryCite(c.data.entry('lifemodules', pk.id)) }] : []
   })) },
 
-  { code: 'leftover.karma', severity: 'warning', tab: 'review', setting: ['maxKarmaLeft'], check: c =>
-    (c.budgets.karma.left <= n0(c.cr, 'maxKarmaLeft') ? null : { message: `${c.budgets.karma.left} karma left; at most ${n0(c.cr, 'maxKarmaLeft')} carries over.` }) },
+  // optional: unset, no limit (and no unset warning)
+  { code: 'leftover.karma', severity: 'warning', tab: 'review', check: c => {
+    const most = num(c.cr, 'maxKarmaLeft')
+    return most === undefined || c.budgets.karma.left <= most ? null
+      : { message: `${c.budgets.karma.left} karma left; at most ${most} carries over.`, ...cite(c.cr, 'maxKarmaLeft') }
+  } },
   { code: 'leftover.nuyen', severity: 'warning', tab: 'review', setting: ['maxNuyenLeft'], check: c =>
     (c.budgets.nuyen.left <= n0(c.cr, 'maxNuyenLeft') ? null
       : { message: `${fmt(c.budgets.nuyen.left)}¥ left; at most ${fmt(n0(c.cr, 'maxNuyenLeft'))}¥ carries over.` }) },

@@ -192,6 +192,11 @@ test('karma and nuyen overspent are errors; leftovers above the settings are war
   expect(only(rich, 'leftover.nuyen')).toMatchObject([{ severity: 'warning' }])
 })
 
+test('most karma kept after creation is optional: unset, any karma left carries over with no warning', () => {
+  const v = check(runner({ letters: 'ACDBA' }), { unset: ['maxKarmaLeft'] })
+  expect(v.filter(x => x.code === 'leftover.karma' || x.message.includes('Most karma kept'))).toEqual([])
+})
+
 test('gear: Availability by rating against the cap; an accessory counts too', () => {
   const ch = runner({ letters: 'ACDBA' })
   const box = buy(ch.build, 'electronics', 'crb.buzz-box', { rating: 5 })
