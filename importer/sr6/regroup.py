@@ -194,8 +194,9 @@ def _units(els, start, end, chapter, item_keys, aliases):
                 j = i
                 while j < end and els[j][0] == "t" and len(els[j][2].rows) == 1:
                     j += 1
+                # (a title over a list of several rows is a table title even when an item heading has its name)
                 boxed = (j < end and els[j][0] == "x" and _LABEL.match(els[j][2])) or \
-                    any(k in item_keys for k in keys(text, aliases))
+                    (j > i or els[i][0] != "t") and any(k in item_keys for k in keys(text, aliases))
                 if not boxed:  # a table title: its tables join the flow, the text goes on in the same unit
                     while i < end and els[i][0] == "t":
                         t = els[i][2]
@@ -228,9 +229,11 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     cur.box_labels = True
                     continue
             elif label and not v.startswith("•") and (listy or not _SENTENCE_END.search(last) and (
-                    (mode == "box" and cur.stats) or not v[:1].isupper() or last.endswith((",", "-")))):
+                    (mode == "box" and cur.stats) or not v[:1].isupper() or last.endswith((",", "-"))
+                    or (i >= end or els[i][0] != "x") and not _SENTENCE_END.search(v))):
                 # a wrapped value, or the next entry of a label printed alone on its line (`**Weapons:**` over one
-                # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text;
+                # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text (but a
+                # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.
                 u, key = label
                 prev = u.labels[key]
@@ -253,8 +256,8 @@ def _merge_boxes(units, aliases, report):
     descs = [u for u in units if u.kind == "item" and not u.stats and u.has_text()]
     took = {}
     for u in units:
-        if u.kind == "section" or not u.has_box() or any(u is d for d in descs):
-            continue
+        if u.kind == "section" or not u.has_box() or any(u is d for d in descs) or u.kind == "item" and u.has_text():
+            continue  # (an item with its band and its own text is whole: a spell named like an adept power)
         ks = keys(u.name, aliases)
         cands = [d for d in descs if any(k in ks for nm in _names(d.name) for k in keys(nm, aliases))]
         if cands:
@@ -324,12 +327,12 @@ def _chapter(units, aliases, name_headers, report):
             tables += [t] if t.catalog else []
         if u.kind == "item":  # a catalog table right under an item heading isn't that item's box
             for t in [t for t in u.stats if is_catalog(t)]:
-                t.catalog = True
+                t.catalog, t.title = True, t.title or u.name
                 u.stats.remove(t)
                 u.body.append(t)
                 tables.append(t)
     for t in tables:
-        t.rows = _rating_groups(t.rows)
+        t.rows = _rating_groups(t.rows, t.header[0].capitalize())
 
     # each row takes the nearest description with its key that no row with the same name took yet; the widest
     # tables (the stat tables, not a list of names) choose first
@@ -367,7 +370,7 @@ def _chapter(units, aliases, name_headers, report):
         if len(d.rows) > 1:
             report.append({"kind": "shared-description", "name": d.name, "rows": "; ".join(r[0] for _, r in d.rows),
                            "page": d.page, "chapter": d.chapter})
-        if tables and not d.rows and not d.has_box():
+        if not d.rows and not d.has_box() and d.section in {t.section for t in tables}:  # its section has a catalog
             report.append({"kind": "unpaired-description", "name": d.name, "page": d.page, "chapter": d.chapter})
     for u in units:
         if u.kind == "box" and not u.merged and not u.shared:
@@ -377,10 +380,11 @@ def _chapter(units, aliases, name_headers, report):
 _RATING_ROW = re.compile(r"Rating \d+$")
 
 
-def _rating_groups(rows):
+def _rating_groups(rows, first=None):
     """A row with only its name (`Cyberears basic system`) over `Rating N` rows: those rows are `<name> (Rating N)`,
-    and the name-only row goes. A row named in lower case (`w/helmet`) is a variant of the row above."""
-    out, group = [], None
+    and the name-only row goes; `Rating N` rows with no such row are `<first> (Rating N)` (first: the table's first
+    header, `Fuse`). A row named in lower case (`w/helmet`) is a variant of the row above."""
+    out, group = [], first
     for r in rows:
         if r and r[0][:1].islower() and out and out[-1][0]:
             out.append([f"{out[-1][0]} {r[0]}"] + list(r[1:]))
@@ -435,10 +439,11 @@ def _emit(units):
     return out
 
 
-def regroup(md, aliases=None, name_headers=frozenset()):
-    """md: book.md. Returns (regrouped text, report rows)."""
+def regroup(md, aliases=None, name_headers=frozenset(), end_page=None):
+    """md: book.md. Returns (regrouped text, report rows). end_page: the PDF page where the back matter (index,
+    reprinted tables) starts; it and the pages after it are left out."""
     name_headers = {h.upper() for h in name_headers}
-    els = _elements(md)
+    els = [e for e in _elements(md) if not end_page or e[1] < end_page]
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []

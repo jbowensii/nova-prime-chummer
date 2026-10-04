@@ -321,3 +321,85 @@ class SideBySideTest(unittest.TestCase):
         self.assertEqual([b["Glow Dart"].text, b["Glow Storm"].text], ["Dart hits one, storm hits all."] * 2)
         self.assertEqual(b["Dim Ward"].text, "")  # Dim Veil has no band: not side by side
         self.assertEqual([(r["kind"], r["rows"]) for r in report], [("shared-description", "Glow Dart; Glow Storm")])
+
+
+MD4 = """<!-- page 40 -->
+# TOYS
+## Toy Shop
+### Kites
+#### Kites
+Kites in general fly.
+#### kites
+| TOY | COST |
+|---|---|
+| Box Kite | 10 |
+| Delta Kite | 20 |
+#### Sky Decks
+| TOY | COST |
+|---|---|
+| Cloud Deck | 300 |
+| Storm Deck | 500 |
+#### fuses
+| FUSE | COST |
+|---|---|
+| Rating 1 | 5 |
+| Rating 2 | 9 |
+#### Box Kite
+A kite like a box.
+#### Glow Sense
+**Cost:** 1 Toy Point
+The toy senses glow.
+#### Glow Sense
+##### (Passive)
+| RANGE | DV |
+|---|---|
+| T | 2 |
+The spell senses glow.
+#### Gadget Sprite
+Sprites fix toys.
+**Powers:** Zap, Fizz
+Storm
+## Toy Rules
+#### Winding Up
+Toys wind up.
+<!-- page 41 -->
+# INDEX
+Box Kite, 40
+"""
+
+
+class RealBookShapesTest(unittest.TestCase):
+    """Shapes the real core rulebook prints (all made up here)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text, cls.report = regroup.regroup(MD4, name_headers=frozenset({"TOY", "FUSE"}), end_page=41)
+        cls.blocks = blocks(cls.text)
+
+    def items(self, name):
+        return [b for b in self.blocks if b.name == name and b.type == "item"]
+
+    def test_title_over_a_list_named_like_a_heading(self):
+        self.assertEqual(self.items("Delta Kite")[0].label, "kites")  # not a box although `#### Kites` exists
+
+    def test_catalog_under_an_item_heading_takes_its_title(self):
+        self.assertEqual(self.items("Storm Deck")[0].label, "Sky Decks")
+
+    def test_rating_rows_with_no_group_row_take_the_first_header(self):
+        self.assertEqual([b.name for b in self.blocks if b.label == "fuses"], ["Fuse (Rating 1)", "Fuse (Rating 2)"])
+
+    def test_an_item_with_its_own_band_and_text_is_whole(self):
+        g = self.items("Glow Sense")
+        self.assertEqual([(b.stats, b.text) for b in g], [([], "The toy senses glow."),
+                                                         ([{"RANGE": "T", "DV": "2"}], "The spell senses glow.")])
+
+    def test_a_last_line_before_a_heading_ends_a_label(self):
+        self.assertEqual(self.items("Gadget Sprite")[0].labels["Powers"], "Zap, Fizz Storm")
+
+    def test_unpaired_description_only_in_a_section_with_a_catalog(self):
+        self.assertEqual([r["name"] for r in self.report if r["kind"] == "unpaired-description"], ["Sky Decks", "Gadget Sprite"])
+        self.assertNotIn("Winding Up", [r["name"] for r in self.report])
+
+    def test_end_page_leaves_out_the_back_matter(self):
+        self.assertNotIn("INDEX", self.text)
+        self.assertEqual(self.blocks[-1].name, "Winding Up")
