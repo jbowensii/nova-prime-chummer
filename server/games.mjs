@@ -11,7 +11,8 @@ export const SR6_KINDS = {
   weapons: 'weapon', armor: 'armor', augmentations: 'augmentation', electronics: 'device', gear: 'gear',
   vehicles: 'vehicle', spells: 'spell', rituals: 'ritual', adeptpowers: 'adeptpower', complexforms: 'complexform',
   metamagics: 'metamagic', echoes: 'echo', critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit',
-  npcs: 'npc', sprites: 'sprite', lifestyles: 'lifestyle', contacts: 'contact', rules: 'rule',
+  npcs: 'npc', sprites: 'sprite', lifestyles: 'lifestyle', contacts: 'contact',
+  lifemodules: 'lifemodule', rules: 'rule',
 }
 /** Names an Anarchy listing must never reach: not an account (its folder would be characters/sr6/) nor a book id. */
 export const RESERVED = ['sr6']

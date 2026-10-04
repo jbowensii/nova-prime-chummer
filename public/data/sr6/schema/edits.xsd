@@ -57,6 +57,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="contact"><xs:complexType><xs:complexContent><xs:extension base="sr6:Contact">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="lifemodule"><xs:complexType><xs:complexContent><xs:extension base="sr6:LifeModule">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="rule"><xs:complexType><xs:complexContent><xs:extension base="sr6:Rule">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
       </xs:choice>

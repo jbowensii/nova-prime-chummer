@@ -19,7 +19,7 @@ test('the files load in order: shipped and imported sources, the index’s files
   expect(missing).toEqual([])
   expect(names.slice(0, 3)).toEqual(['data/sr6/sources.xml', 'custom/sr6/imported/sources.xml', 'custom/sr6/imported/crb/priorities.xml'])
   expect(names.slice(-3)).toEqual(['custom/sr6/texts/crb.xml', 'custom/sr6/edits/edits.xml', 'custom/sr6/edits/texts.xml'])
-  expect(names).toHaveLength(2 + 25 + 3)
+  expect(names).toHaveLength(2 + 26 + 3)
 })
 
 test('every kind has its entries; attributes, parts, name and page are read', async () => {
@@ -34,6 +34,16 @@ test('every kind has its entries; attributes, parts, name and page are read', as
   expect(c.entries.priorities.get('crb.priority-a')!.parts.filter(p => p.tag === 'metatype').map(p => p.attrs)).toEqual(
     [{ name: 'Glimmerkin', points: '13' }, { name: 'Stonefolk', points: '11' }])
   expect(c.files.find(f => f.file.endsWith('crb/weapons.xml'))).toEqual({ file: 'custom/sr6/imported/crb/weapons.xml', kind: 'weapons', entries: 2 })
+})
+
+test('life modules load with their stage, grants, requirement and mixed choices as parts', async () => {
+  const c = await load()
+  const mods = [...c.entries.lifemodules.values()]
+  expect(mods.filter(m => m.attrs.stage === 'opening')).toHaveLength(2)
+  expect(mods.filter(m => m.attrs.stage === 'adult')).toHaveLength(9)
+  expect(mods.filter(m => m.attrs.requires === 'awakened')).toHaveLength(1)
+  const mixed = mods.find(m => m.parts.some(p => p.tag === 'choice'))!
+  expect(mixed.parts).toEqual([{ tag: 'choice', attrs: { kind: 'mixed', points: '1', options: 'edg skill:crb.hexing nuyen:3000' }, text: '' }])
 })
 
 test('the CRB source is the shipped one plus the imported file and checksum', async () => {

@@ -58,7 +58,11 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |
 | contacts | contact | connection, loyalty, archetype | — |
+| lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
+
+Life modules (lifepath creation) are structured grants with no prose. No recipe writes them yet (the core rulebook
+prints none); they come with a book that prints them.
 
 The same kind → tag map is `KINDS` in `importer/sr6/__init__.py`, `SR6_KINDS` in `server/games.mjs` and `SR6_KINDS`
 in `src/sr6/model/types.ts`.

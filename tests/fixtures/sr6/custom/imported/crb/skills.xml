@@ -3,4 +3,7 @@
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="skills" version="1">
   <skill id="crb.tinkering" source="CRB" page="95" attr="log" untrained="true"><name>Tinkering</name><spec>Gizmos</spec><spec>Clockwork</spec><text/></skill>
   <skill id="crb.glowcraft" source="CRB" page="96" attr="mag" untrained="false"><name>Glowcraft</name><text/></skill>
+  <skill id="crb.hexing" source="CRB" page="97" attr="mag" untrained="false"><name>Hexing</name><spec>Jinxes</spec><text/></skill>
+  <skill id="crb.wirespeak" source="CRB" page="98" attr="res" untrained="false"><name>Wirespeak</name><text/></skill>
+  <skill id="crb.gab" source="CRB" page="99" attr="cha" untrained="true"><name>Gab</name><spec>Haggling</spec><spec>Fibbing</spec><text/></skill>
 </sr6:data>

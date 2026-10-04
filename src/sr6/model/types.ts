@@ -3,7 +3,7 @@
 export type Sr6Kind =
   | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations'
   | 'electronics' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
-  | 'echoes' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'rules'
+  | 'echoes' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
 
 export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   priorities: { tag: 'priority', label: 'Priorities' },
@@ -30,6 +30,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   sprites: { tag: 'sprite', label: 'Sprites' },
   lifestyles: { tag: 'lifestyle', label: 'Lifestyles' },
   contacts: { tag: 'contact', label: 'Contacts' },
+  lifemodules: { tag: 'lifemodule', label: 'Life modules' },
   rules: { tag: 'rule', label: 'Rules' },
 }
 

@@ -25,5 +25,6 @@
   <file href="crb/sprites.xml"/>
   <file href="crb/lifestyles.xml"/>
   <file href="crb/contacts.xml"/>
+  <file href="crb/lifemodules.xml"/>
   <file href="crb/rules.xml"/>
 </overlays>

@@ -42,7 +42,7 @@
       <xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="critterpowers"/>
       <xs:enumeration value="critters"/><xs:enumeration value="spirits"/><xs:enumeration value="npcs"/>
       <xs:enumeration value="sprites"/><xs:enumeration value="lifestyles"/><xs:enumeration value="contacts"/>
-      <xs:enumeration value="rules"/>
+      <xs:enumeration value="lifemodules"/><xs:enumeration value="rules"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -354,6 +354,47 @@
       <xs:attribute name="loyalty" type="xs:string"/>
       <xs:attribute name="archetype" type="xs:string"/>
     </xs:extension></xs:complexContent>
+  </xs:complexType>
+
+  <!-- a life module (lifepath creation): what it grants, as numbers; a mixed choice lists its options as tokens: an
+       attribute (bod … res), skill:<skill id> or nuyen:<amount>. No prose. -->
+  <xs:simpleType name="ChoiceOption">
+    <xs:restriction base="xs:token">
+      <xs:pattern value="bod|agi|rea|str|wil|log|int|cha|edg|mag|res|skill:[a-z0-9][a-z0-9.\-]*|nuyen:[0-9]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ChoiceOptions">
+    <xs:restriction><xs:simpleType><xs:list itemType="sr6:ChoiceOption"/></xs:simpleType><xs:minLength value="1"/></xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="LifeModule">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="choice" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="kind" use="required">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="mixed"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="points" type="xs:positiveInteger"/>
+          <xs:attribute name="options" type="sr6:ChoiceOptions" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:group ref="sr6:tail"/>
+    </xs:sequence>
+    <xs:attributeGroup ref="sr6:ref"/>
+    <xs:attribute name="stage" use="required">
+      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="opening"/><xs:enumeration value="adult"/></xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="requires">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="awakened"/><xs:enumeration value="emerged"/><xs:enumeration value="adept"/><xs:enumeration value="magician"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="attributePoints" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="skillPoints" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="adjustmentPoints" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="nuyen" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="contactPoints" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="knowledgeSkills" type="xs:nonNegativeInteger"/>
   </xs:complexType>
 
   <!-- a rule section: <name> is its title; level 1 = chapter section … 4; parent = the enclosing section's id -->

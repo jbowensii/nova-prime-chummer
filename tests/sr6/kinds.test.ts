@@ -47,3 +47,14 @@ test('a broken SR6 copy fails: missing category, a non-integer karma, an entry o
   expect(lines.some(l => l.includes('qualities.xml') && l.includes('karma'))).toBe(true)
   expect(lines.some(l => l.includes('weapons.xml') && l.includes('spell'))).toBe(true)
 })
+
+test('a life module choice option that is not an attribute, skill:<id> or nuyen:<number> fails', () => {
+  const dir = join(mkdtempSync(join(tmpdir(), 'sr6-validate-')), 'custom')
+  cpSync(FIXTURE, dir, { recursive: true })
+  const p = join(dir, 'imported', 'crb', 'lifemodules.xml'), xml = readFileSync(p, 'utf8')
+  expect(xml).toContain('nuyen:3000')
+  writeFileSync(p, xml.replace('nuyen:3000', 'nuyen:x'))
+  const r = validate(dir)
+  expect(r.status).toBe(1)
+  expect(r.stderr).toMatch(/lifemodules\.xml.*nuyen:x/)
+})

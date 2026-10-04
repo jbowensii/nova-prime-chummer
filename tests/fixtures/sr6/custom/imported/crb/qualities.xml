@@ -3,4 +3,7 @@
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="qualities" version="1">
   <quality id="crb.lucky-streak" source="CRB" page="70" kind="positive" karma="4" perLevel="true" maxLevel="3"><name>Lucky Streak</name><text/></quality>
   <quality id="crb.butterfingers" source="CRB" page="74" kind="negative" karma="8"><name>Butterfingers</name><text/></quality>
+  <quality id="crb.knack" source="CRB" page="71" kind="positive" karma="13"><name>Knack</name><text/></quality>
+  <quality id="crb.stoneskin" source="CRB" page="72" kind="positive" karma="0"><name>Stoneskin</name><text/></quality>
+  <quality id="crb.deep-pockets-debt" source="CRB" page="75" kind="negative" karma="9"><name>Deep Pockets Debt</name><text/></quality>
 </sr6:data>

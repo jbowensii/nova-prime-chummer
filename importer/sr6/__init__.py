@@ -33,5 +33,6 @@ KINDS = {
     "sprites": "sprite",
     "lifestyles": "lifestyle",
     "contacts": "contact",
+    "lifemodules": "lifemodule",
     "rules": "rule",
 }

@@ -241,7 +241,7 @@ class CrbRecipeTest(unittest.TestCase):
                   "critterpowers": "Glimmer", "critters": "Fuzzbeast", "spirits": "Spirit of Fizz",
                   "npcs": "Corner Goon", "sprites": "Gadget Sprite", "lifestyles": "Shoebox", "contacts": "Fixer Fred",
                   "rules": "Making Trouble"}
-        self.assertEqual(set(expect), set(sr6.KINDS))
+        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules"})  # no recipe writes life modules (S2)
         for kind, name in expect.items():
             self.assertIn(name, entries(self.res, kind), kind)
 
