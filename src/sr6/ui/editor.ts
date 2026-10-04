@@ -15,13 +15,15 @@ import type { Sr6Catalog } from '../model/types'
 export interface Sr6Ctx {
   c: Sr6Catalog; data: Sr6Data; cr: CreationRules; ch: Sr6Character
   p: Provider; budgets: Sr6Budgets; v: Violation[]; d: Sr6Derived
-  /** someone else's runner, or a finalized one (every tab but Concept) */
+  /** someone else's runner, or a finalized one (every tab but Concept and Review) */
   ro: boolean
   career: boolean
   edit(fn: (b: Sr6Build) => void): void
   /** an engine step; null when done, else why not (a sentence) */
   act(op: Op): string | null
   update(fn: (ch: Sr6Character) => void): void
+  /** the whole runner swapped (Finalize, Back to draft) */
+  replace(next: Sr6Character): void
   undo(): void; redo(): void; canUndo: boolean; canRedo: boolean
 }
 

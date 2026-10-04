@@ -1,25 +1,94 @@
-// Review: every broken creation rule and note, with its page and a link to the tab where it's fixed. (Task 14 adds GM
-// approval, the derived summary and Finalize.)
-import { SR6_TABS } from '../EditorView'
-import { sr6EditHref, useSr6Editor } from '../editor'
+// Review: every broken creation rule and note with its page, each linked to the tab where it's fixed (a violation's path
+// starts with the tab id), GM approval as Anarchy's, the derived values, and Finalize (R, until S3's ledger: the build is
+// then read only, and Back to draft undoes it).
+import { useState } from 'react'
+import type { Violation } from '../../../model/types'
+import { Modal } from '../../../ui/bits'
+import { draftAgain, finalizeSr6 } from '../../engine/finalize'
+import { canFinalizeSr6 } from '../../engine/rules'
+import { sr6Tabs } from '../EditorView'
+import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 
 export function ReviewTab() {
-  const { ch, v } = useSr6Editor()
+  const { ch, v, d, budgets, update, replace, career } = useSr6Editor()
+  const [approving, setApproving] = useState<Violation | null>(null)
+  const [note, setNote] = useState('')
+  const [asking, setAsking] = useState<'finalize' | 'draft' | null>(null)
   const sorted = [...v].sort((a, b) => Number(!!a.approved) - Number(!!b.approved) || (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1))
-  const tabOf = (path: string) => SR6_TABS.find(([k]) => k === path.split('.')[0])?.[0]
+  const tabs = sr6Tabs(ch.build.magic)
+  // a pick left on a runner that's no longer awakened is fixed on Creation method (its Magic tab is gone)
+  const tabOf = (path: string) => { const head = path.split('.')[0]; return tabs.some(([k]) => k === head) ? head : head === 'magic' ? 'method' : undefined }
+  const ready = canFinalizeSr6(v)
+  const name = ch.identity.streetName || ch.identity.name || 'this runner'
+
+  const approve = () => {
+    const x = approving!
+    update(c => { c.overrides.push({ code: x.code, path: x.path, note: note.trim() }) })
+    setApproving(null); setNote('')
+  }
+  const revoke = (x: Violation) => update(c => { c.overrides = c.overrides.filter(o => !(o.code === x.code && o.path === x.path)) })
+  const finalize = () => { const next = finalizeSr6(ch, budgets, v); if (next) replace(next); setAsking(null) }
+  const draft = () => { replace(draftAgain(ch)); setAsking(null) }
+
+  const dl = (rows: [string, string | number | null | undefined][]) => <dl className="sr6-derived">
+    {rows.filter(([, x]) => x !== undefined).map(([k, x]) => <div key={k}><dt>{k}</dt><dd>{x === null ? '—' : typeof x === 'number' ? n(x) : x}</dd></div>)}</dl>
+  const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+
   return (
     <div className="stack">
       <h2>Review</h2>
-      <p className="muted">Rule problems block finalizing until they’re fixed. Notes never block.</p>
+      <p className="muted">Rule problems block finalizing until they’re fixed or a GM approves them. Notes never block.</p>
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>{sorted.map((x, i) => {
-        const tab = tabOf(x.path)
+        const tab = tabOf(x.path), o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
         return <div key={i} className={`viol${x.approved ? ' approved' : ''}`}>
           <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>{x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}</span>
-          <span className="msg">{x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
-          <span className="row">{tab && !x.approved && <a className="btn small quiet" href={sr6EditHref(ch.id, tab)}>Fix</a>}</span>
+          <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
+          {!career && <span className="row">
+            {x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+            {x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
+          </span>}
+          {o && <span className="note">GM: {o.note || 'approved'}</span>}
         </div>
       })}</div>
+
+      <hr className="sep" />
+      <h2>Derived values</h2>
+      {dl([...(['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'mag', 'res'] as const)
+        .filter(a => (a !== 'mag' && a !== 'res') || d.attrs[a].natural > 0)
+        .map(a => [ATTR_NAMES[a], d.attrs[a].augmented !== d.attrs[a].natural ? `${d.attrs[a].natural} (${d.attrs[a].augmented})` : d.attrs[a].natural] as [string, string | number]),
+        ['Essence', d.essence], ['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)],
+        ['Physical monitor', d.monitors.physical], ['Stun monitor', d.monitors.stun], ['Overflow', d.monitors.overflow],
+        ['Defense Rating', d.defenseRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
+        ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
+        ['Karma left', d.karmaLeft], ['Nuyen left', `${n(d.nuyenLeft)}¥`]])}
+      {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Game data → Creation rules).</p>}
+
+      <hr className="sep" />
+      <h2>Finalize</h2>
+      {!career ? <>
+        <p>Finalizing is the last check of creation. It records the karma and nuyen left; the build is then read only.</p>
+        <div><button className="btn primary" disabled={!ready} onClick={() => setAsking('finalize')}>Finalize runner</button>
+          {!ready && <span className="muted"> Fix or approve the problems above first.</span>}</div>
+      </> : <>
+        <p>Finalized{ch.finalizedAt ? ` on ${ch.finalizedAt.slice(0, 10)}` : ''} with {n(ch.final?.karma ?? 0)} karma and {n(ch.final?.nuyen ?? 0)}¥ left.
+          {' '}<a href={sr6EditHref(ch.id, 'print')}>Print it</a> or export a copy.</p>
+        <div><button className="btn" onClick={() => setAsking('draft')}>Back to draft</button></div>
+      </>}
+
+      <Modal open={!!approving} onClose={() => setApproving(null)} title="GM approval"
+        actions={<><button className="btn" onClick={() => setApproving(null)}>Cancel</button><button className="btn primary" disabled={!note.trim()} onClick={approve}>Approve</button></>}>
+        <p>{approving?.message}</p>
+        <label>Why the GM allows it<input autoFocus value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Street-legend campaign, agreed at session zero" /></label>
+      </Modal>
+      <Modal open={asking === 'finalize'} onClose={() => setAsking(null)} title={`Finalize ${name}?`}
+        actions={<><button className="btn" onClick={() => setAsking(null)}>Not yet</button><button className="btn primary" onClick={finalize}>Finalize</button></>}>
+        <p>The build becomes read only, with {n(budgets.karma.left)} karma and {n(budgets.nuyen.left)}¥ left. Back to draft undoes it.</p>
+      </Modal>
+      <Modal open={asking === 'draft'} onClose={() => setAsking(null)} title={`Put ${name} back to draft?`}
+        actions={<><button className="btn" onClick={() => setAsking(null)}>Cancel</button><button className="btn primary" onClick={draft}>Back to draft</button></>}>
+        <p>The build can be changed again and the creation checks apply. Career changes come with the ledger in a later update.</p>
+      </Modal>
     </div>
   )
 }

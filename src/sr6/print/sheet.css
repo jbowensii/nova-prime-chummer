@@ -1,0 +1,7 @@
+/* The SR6 sheet: src/print/sheet.css's paper, blocks and page-break rules, plus what only SR6 has. */
+.sr6-sheet .s-attrs i { font-style: normal; font-size: 9pt; color: var(--s-ink-2); }
+.sr6-sheet .sr6-boxes { flex-wrap: wrap; }
+.sr6-sheet .sr6-boxes + p { margin-top: 0.2rem; }
+.sr6-sheet tr.untrained td { color: var(--s-ink-2); }
+.sr6-sheet .sr6-derived-t { margin-top: 0.5rem; }
+.sr6-sheet .sr6-weapons td:last-child { white-space: nowrap; }

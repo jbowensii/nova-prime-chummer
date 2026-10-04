@@ -90,11 +90,12 @@ export function useSheetArt(runner: string): { tools: ReactNode; layer: ReactNod
 /** The sheet to print (Settings → Printed sheet, on the print page's toolbar too since 0.8.3): kept in this browser as
  *  before; the print page (EditorView PrintSheet, usePrintStyle) follows it at once. */
 const PRINT_STYLE = 'ca2-print-style'
-export function SheetType() {
+export function SheetType({ styles = PRINT_STYLES }: { styles?: typeof PRINT_STYLES }) {
   const [p, setP] = useState(() => loadSettings().print)
   const pick = (v: Settings['print']) => { saveSettings({ ...loadSettings(), print: v }); setP(v); dispatchEvent(new Event(PRINT_STYLE)) }
-  return <select className="sheet-type" aria-label="Sheet type" data-tip="Sheet type" value={p} onChange={e => pick(e.target.value as Settings['print'])}>
-    {PRINT_STYLES.map(([v, label, hint]) => <option key={v} value={v} title={hint}>{label}</option>)}
+  return <select className="sheet-type" aria-label="Sheet type" data-tip="Sheet type" value={styles.some(([v]) => v === p) ? p : styles[0][0]}
+    onChange={e => pick(e.target.value as Settings['print'])}>
+    {styles.map(([v, label, hint]) => <option key={v} value={v} title={hint}>{label}</option>)}
   </select>
 }
 export function usePrintStyle() {

@@ -657,3 +657,6 @@ table.data tr.group td { background: none !important; font-family: var(--display
 .sr6-budgets .bud-lines a { color: var(--panel-muted); text-decoration: none; }
 .sr6-budgets .bud-lines a:hover, .sr6-budgets .bud-lines a:focus-visible { color: var(--yellow); }
 .missing ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
+.sr6-derived { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.2rem 1.2rem; margin: 0; }
+.sr6-derived div { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid var(--rule); padding: 0.15rem 0; }
+.sr6-derived dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }

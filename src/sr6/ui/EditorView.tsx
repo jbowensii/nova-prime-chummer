@@ -1,6 +1,7 @@
 // The SR6 runner's editor (#/sr6/c/<id>/<tab>): the Anarchy editor's look (topbar, tabs, the budgets panel where the
 // receipt is) over useAutosave (save, conflict, undo). Read only for someone else's runner; once finalized, every tab but
-// Concept (R: career changes come with S3's ledger). A refused step shows its reason under the tabs.
+// Concept and Review (R: career changes come with S3's ledger). A refused step shows its reason under the tabs. The Print
+// tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx).
 import { useEffect, useMemo, useState } from 'react'
 import { Brand, StateBadge } from '../../ui/bits'
 import { IconButton } from '../../ui/icons'
@@ -30,11 +31,12 @@ import { QualitiesTab } from './tabs/Qualities'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { VehiclesTab } from './tabs/Vehicles'
+import { Sr6Sheet } from '../print/Sheet'
 
 /** Every tab; Magic only shows for an awakened or emerged runner, titled Resonance for a technomancer (sr6Tabs). */
 export const SR6_TABS: [string, string][] = [['concept', 'Concept'], ['method', 'Creation method'], ['attributes', 'Attributes'],
   ['skills', 'Skills'], ['qualities', 'Qualities'], ['magic', 'Magic'], ['augmentations', 'Augmentations'], ['gear', 'Gear'],
-  ['vehicles', 'Vehicles'], ['contacts', 'Contacts & lifestyle'], ['review', 'Review']]
+  ['vehicles', 'Vehicles'], ['contacts', 'Contacts & lifestyle'], ['review', 'Review'], ['print', 'Print']]
 export const sr6Tabs = (magic: MagicKind): [string, string][] => SR6_TABS.filter(([k]) => k !== 'magic' || magic !== 'mundane')
   .map(([k, l]) => [k, k === 'magic' && MAGIC_KINDS[magic].resonance ? 'Resonance' : l])
 
@@ -60,12 +62,13 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
   const theirs = owner !== null, career = !!ch.finalizedAt
   const tabs = sr6Tabs(ch.build.magic)
   const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
-  const ro = theirs || (career && shown !== 'concept')
+  const locked = career && shown !== 'concept' && shown !== 'review', ro = theirs || locked
   const commit = (next: Sr6Character) => { setRefusal(null); save.commit(next, true) }
   const ctx: Sr6Ctx = {
     c, data, cr, ch, ...calc, ro, career,
     edit: fn => { if (!ro) { const n = structuredClone(ch); fn(n.build); commit(n) } },
     update: fn => { if (!ro) { const n = structuredClone(ch); fn(n); commit(n) } },
+    replace: next => { if (!ro) commit(next) },
     act: op => {
       if (ro) return 'This runner is read only here.'
       const r = runAct(ch, op, data, cr)
@@ -75,6 +78,7 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
     },
     undo: save.undo, redo: save.redo, canUndo: save.canUndo, canRedo: save.canRedo,
   }
+  if (tab === 'print') return <Sr6Editor.Provider value={ctx}><Sr6Sheet /></Sr6Editor.Provider>
   const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length
   const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
@@ -106,7 +110,7 @@ export function Sr6EditorView({ c, data, cr, id, tab }: { c: Sr6Catalog; data: S
         ))}
       </nav>
       {theirs && <p className="banner readonly" role="status">Read only — {owner}’s runner. Only they can change it; you can still export a copy.</p>}
-      {!theirs && career && shown !== 'concept' && <p className="banner readonly" role="status">Finalized: the build is read only. Career changes come with the ledger in a later update.</p>}
+      {!theirs && locked && <p className="banner readonly" role="status">Finalized: the build is read only. Career changes come with the ledger in a later update.</p>}
       {refusal && <p className="banner err" role="alert">{refusal}</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{tabs.find(([k]) => k === shown)?.[1]}</div>
