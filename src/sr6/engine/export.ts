@@ -192,7 +192,8 @@ export function exportSr6Books(c: Sr6Catalog, data: Sr6Data, sources: string[], 
 
 /** A GM's compendium as a books file of one book, marked compendium: its entries with their own text always, its NPCs. */
 export function exportSr6Compendium(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, comp: Sr6Compendium, o: Sr6ExportOpts): Sr6ExportFile {
-  const opts = { ...o, descriptions: true }
-  return { ...envelope('books', opts), books: [{ source: bookSource(c.sources.get(comp.source) ?? sr6CompendiumSource(comp), true),
+  // the catalog's source only when it is this compendium's (one that didn't load may share its id with a book now)
+  const opts = { ...o, descriptions: true }, s = c.sources.get(comp.source)
+  return { ...envelope('books', opts), books: [{ source: bookSource(s?.compendium?.id === comp.id ? s : sr6CompendiumSource(comp), true),
     entries: comp.entries.map(e => bookEntry(c, data, e, true)), npcs: comp.npcs.map(ch => exportSr6Runner(c, data, cr, ch, opts)) }] }
 }

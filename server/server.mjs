@@ -51,7 +51,7 @@ import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { authApi } from './auth.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
-import { booksApi, unesc, writeAtomic } from './books.mjs'
+import { booksApi, rootTag, unesc, writeAtomic } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
 import { compendiumsApi } from './compendiums.mjs'
 import { GAMES, scoped } from './games.mjs'
@@ -64,7 +64,8 @@ const ID = /^[A-Za-z0-9._-]{1,80}$/
 const TRASH_FILE = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,150}\.xml$/ // a file in .trash/: no separators, no leading dot
 const CA2 = GAMES.ca2.tag
 
-const rootAttr = (xml, name, tag = CA2) => xml.match(new RegExp(`<${tag}\\b[^>]*\\s${name}="([^"]*)"`))?.[1]
+// the root's attribute, still escaped (rootTag: linear on a body whose root never closes)
+const rootAttr = (xml, name, tag = CA2) => rootTag(xml, tag)?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]
 const slug = s => (s || '').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'runner'
 const fail = (code, message) => Object.assign(new Error(message), { code })
 // on every response. The built app loads only its own scripts, styles and fonts; inline style attributes (React) and
@@ -194,8 +195,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     // a comment never runs past its own -->: with a lazy [\s\S]*? one comment could swallow the next ones, and a body of
     // ~40 empty comments then took the whole server minutes to refuse (exponential backtracking)
     const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--(?:(?!-->)[\\s\\S])*-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
-    const ROOT = new RegExp(`<${tag}\\b[^>]*>`), WELL = new RegExp(`^<${tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>$`)
-    const NPC = new RegExp(`<${tag}\\b[^>]*>\\s*<npc[\\s/>]`)
+    const WELL = new RegExp(`^<${tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>$`)
+    /** An <npc> block first in the root (a closed root: WELL passed). Root only, by rootTag: a pattern tried at every later
+     *  <tag in the body backtracked quadratically. */
+    const isNpc = xml => { const r = rootTag(xml, tag); return /^\s*<npc[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length)) }
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
@@ -240,12 +243,13 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (xml != null && (!NS.test(xml) || attrOf(xml, 'id') !== id))
         return send(res, 400, { error: 'body is not a character file for this id' })
       // the root's attributes as the app writes them (double-quoted, < and > escaped): the server edits that tag (rev, campaign)
-      if (xml != null && !WELL.test(xml.match(ROOT)[0]))
+      // (a root that never closes: refused here, not a 500)
+      if (xml != null && !WELL.test(rootTag(xml, tag) ?? ''))
         return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
-      if (xml != null && kind.npc && !NPC.test(xml))
+      if (xml != null && kind.npc && !isNpc(xml))
         return send(res, 400, { error: 'an NPC file has an <npc> block' })
       // and the other way: an NPC never lands in a runner folder, which players' paths list
-      if (xml != null && !kind.npc && NPC.test(xml))
+      if (xml != null && !kind.npc && isNpc(xml))
         return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
       return lock(async () => {
         // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it

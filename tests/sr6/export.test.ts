@@ -165,6 +165,14 @@ describe('SR6 export: compendium', () => {
     expect(f.books![0].entries[0]).toMatchObject({ canon: false, description: 'Made-up.', values: { dv: 2, stun: true } })
     expect(f.books![0].npcs![0].npc?.kind).toBe('grunt')
   })
+  test('a compendium whose source id is now a book’s never goes out as that book', () => {
+    const { data, cr } = made(), c = fixtureCatalog()
+    const comp = { id: 'a1b2c3d4e5f6', name: 'Street Kit', source: 'CRB', sharing: 'private', updatedAt: OPTS.now, ownerName: 'Gil Made-up',
+      entries: [], npcs: [] } as unknown as Sr6Compendium
+    expect(c.sources.get('CRB')?.canon).toBe(true)
+    expect(exportSr6Compendium(c, data, cr, comp, OPTS).books![0].source)
+      .toEqual({ id: 'CRB', name: 'Street Kit', publisher: 'Gil Made-up', canon: false, compendium: true })
+  })
 })
 
 describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {

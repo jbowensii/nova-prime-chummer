@@ -107,6 +107,17 @@ test('refusals: the other game’s body, a runner in the NPC store, the other ga
     expect((await call('pat', 'PUT', path, '<!---->'.repeat(5000) + '<x/>')).status).toBe(400)
     expect(Date.now() - t).toBeLessThan(5000)
   }
+  // a root that never closes, or a closed one followed by thousands of unclosed ones: refused at once (patterns tried at
+  // every <…:character in the body backtracked quadratically: ~1 MB held the server for tens of seconds)
+  const many = (tag: string) => `<${tag} `.repeat(70000)
+  for (const [who, path, body] of [
+    ['pat', '/api/characters/x', `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" ${many('ca2:character')}`],
+    ['pat', '/api/sr6/characters/x', `<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" id="x" ${many('sr6:character')}`],
+    ['eve', '/api/sr6/npcs/x', sr6('x', 'X', many('sr6:character'))], ['eve', '/api/npcs/x', ca2('x', 'X', many('ca2:character'))]]) {
+    const t = Date.now()
+    expect([path, (await call(who, 'PUT', path, body)).status]).toEqual([path, 400])
+    expect(Date.now() - t, path).toBeLessThan(3000)
+  }
   // comments before the root are still fine
   expect((await call('pat', 'PUT', '/api/sr6/characters/cm', sr6('cm', 'Commented').replace('?>', '?><!-- a -- b --><!---->'))).status).toBe(201)
   rmSync(join(s.chars, 'sr6', 'pat', 'Commented.xml')) // the later tests count pat's runners

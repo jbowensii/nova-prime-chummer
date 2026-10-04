@@ -39,18 +39,27 @@ const uploadAndLoad = async (body: Buffer | string) => {
   return load((await r.json()).token)
 }
 const MAGIC = 'PK\x03\x04\n'
-/** A server start on this data: the importer calls its start-up re-import queued ("remove crb-1", …). */
-const restart = async () => {
-  const log = join(dir, 'calls.log')
+/** A server start on this data: the importer calls its start-up re-import queued ("remove crb-1", …). `want`: the call to
+ *  wait for (the stub worker's start alone can take over a second on a busy machine: a fixed 300 ms wait was this suite's
+ *  flake); without it, none may come within 500 ms. */
+let restarts = 0
+const restart = async (want?: string) => {
+  // a log of its own: a worker of the last restart that was still starting when it was stopped can write after it
+  const log = join(dir, `calls-${++restarts}.log`)
   writeFileSync(log, '')
   vi.stubEnv('STUB_LOG', log)
   const again = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   await again.started
-  await new Promise(r => setTimeout(r, 300))
-  again.stopJobs()
-  vi.unstubAllEnvs()
-  return readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))
+  const calls = () => readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))
+  try {
+    if (want) await vi.waitFor(() => expect(calls()).toContain(want), { timeout: 20000, interval: 50 })
+    else await new Promise(r => setTimeout(r, 500))
+  } finally {
+    again.stopJobs()
+    vi.unstubAllEnvs()
+  }
+  return calls()
 }
 const idle = () => vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
 
@@ -93,7 +102,7 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   // once the pack's files are gone, the mark no longer holds: the core rulebook is re-imported
   const saved = readFileSync(join(core, 'skills.xml'))
   rmSync(join(core, 'skills.xml'))
-  expect(await restart()).toContain('remove crb-1')
+  expect(await restart('remove crb-1')).toContain('remove crb-1')
   writeFileSync(join(core, 'skills.xml'), saved)
   // the admin's Re-import of the core rulebook drops its pack mark: the book was chosen over the pack
   const mark = join(library, 'crb-1', 'core-rebuild.xml')
@@ -123,7 +132,7 @@ test('the same core rulebook uploaded again to a new folder: the marks follow th
   expect(existsSync(mark)).toBe(false)
   expect(existsSync(other)).toBe(true)
   await idle()
-  expect(await restart()).toContain('remove crb-old') // the core is partial and this file wasn't tried with this version
+  expect(await restart('remove crb-old')).toContain('remove crb-old') // the core is partial and this file wasn't tried with this version
   // tried once per file and version, whichever folder holds the mark
   const tried = readFileSync(mark, 'utf8')
   expect(tried).toMatch(new RegExp(`<rebuild sha256="${sha}" version="[^"]+" tried=`))
@@ -134,7 +143,7 @@ test('the same core rulebook uploaded again to a new folder: the marks follow th
   // a mark for another file doesn't count
   writeFileSync(join(library, id, 'core-rebuild.xml'), tried.replace(sha, 'another-file'))
   isCrb()
-  expect(await restart()).toContain('remove crb-old')
+  expect(await restart('remove crb-old')).toContain('remove crb-old')
   await idle()
   for (const d of [old, join(library, id), join(library, 'other-crb')]) rmSync(d, { recursive: true, force: true })
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
