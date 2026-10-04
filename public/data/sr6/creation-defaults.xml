@@ -97,15 +97,45 @@
   <setting key="pointBuy.startRating:mystic-adept" value="1" source="SWC" page="29"/>
   <setting key="pointBuy.startRating:adept" value="1" source="SWC" page="29"/>
   <setting key="pointBuy.startRating:technomancer" value="1" source="SWC" page="29"/>
-  <!-- Metatypes: the core rulebook's five cost no karma (point buy; metavariant costs come with their book) -->
+  <!-- Metatypes: the core rulebook's five cost no karma (point buy, lifepath) -->
   <setting key="metatypeKarma:crb.human" value="0" source="SWC" page="28"/>
   <setting key="metatypeKarma:crb.elf" value="0" source="SWC" page="28"/>
   <setting key="metatypeKarma:crb.dwarf" value="0" source="SWC" page="28"/>
   <setting key="metatypeKarma:crb.ork" value="0" source="SWC" page="28"/>
   <setting key="metatypeKarma:crb.troll" value="0" source="SWC" page="28"/>
+  <!-- the Sixth World Companion's metavariants and metasapients (ids as its import writes them; Nartaki prints 5/10 by its
+       Shiva Arms: 5 is set) -->
+  <setting key="metatypeKarma:swc.duende" value="10" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.gnome" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.hanuman" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.koborokuru" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.menehune" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.dalakitnon" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.dryad" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.nocturna" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.wakyambi" value="10" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.xapiri-thepe" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.nartaki" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.valkyrie" value="15" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.hobgoblin" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.ogre" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.oni" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.satyr" value="10" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.cyclops" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.fomorian" value="10" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.giant" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.minotaur" value="5" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.centaur" value="15" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.merrow" value="15" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.naga" value="15" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.pixie" value="10" source="SWC" page="91"/>
+  <setting key="metatypeKarma:swc.sasquatch" value="10" source="SWC" page="91"/>
   <!-- Lifepath (SWC; the life modules themselves are catalog entries) -->
   <setting key="lifepath.moduleCount" value="8" source="SWC" page="32"/>
   <setting key="lifepath.contactRatingCap" value="8" source="SWC" page="31"/>
+  <setting key="lifepath.bestAttributeBonus" value="5" source="SWC" page="32"/>
+  <setting key="lifepath.repeatModules" value="1" source="SWC" page="32"/>
+  <setting key="lifepath.contactKarma" value="1" source="SWC" page="31"/>
   <setting key="lifepath.startRating:full" value="1" source="SWC" page="32"/>
   <setting key="lifepath.startRating:aspected" value="2" source="SWC" page="32"/>
   <setting key="lifepath.startRating:mystic-adept" value="1" source="SWC" page="32"/>
