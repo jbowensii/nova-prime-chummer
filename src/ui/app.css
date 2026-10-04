@@ -596,8 +596,9 @@ dialog.drawer h2 { margin-top: 0; }
 .pe-zoom input { flex: 1; }
 .portrait-editor .backdrops { flex: 1; min-width: 14rem; }
 
-/* ---- headers (nav.tsx PageHeader, icons.tsx): the page's actions, then the main menu, then Ask, Settings and the account,
-   all as one row of icons on its own line under the title, from the left (0.8.3). Every icon says what it is in a tooltip
+/* ---- headers (nav.tsx PageHeader/HeaderBars, icons.tsx): under the title, from the left, row 1 is the main menu, then the
+   game switch, Ask, Settings and the account, the same on every page of a game; row 2, only when the page has any, its own
+   actions under a hairline (0.9.1). Every icon says what it is in a tooltip
    (.tip: an indigo tab with the yellow edge, like the book's callouts) above it on hover and on keyboard focus; the
    current page has the yellow underline the editor's tabs use; a page's main action ("New runner") is the yellow one. ---- */
 .icon { flex: none; display: block; }
@@ -618,8 +619,8 @@ dialog.drawer h2 { margin-top: 0; }
   display: grid; place-items: center; background: var(--yellow); color: var(--ink); font: 700 0.7rem/1 var(--sans); }
 .menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem; }
 .menubar .tools { padding-left: 0.35rem; margin-left: 0.2rem; border-left: 1px solid var(--rule); }
-.bars { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.4rem 0.5rem; min-width: 0; }
-.bars > .actions { gap: 0.2rem; padding-right: 0.55rem; border-right: 1px solid var(--rule); }
+.bars { display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem; min-width: 0; }
+.bars > .actions { gap: 0.2rem; padding-top: 0.3rem; border-top: 1px solid var(--rule); }
 .lib header.pagehead { gap: 0.8rem 1.5rem; }
 .pagehead .titles { flex: 1 0 auto; max-width: 100%; min-width: 0; }
 .pagehead .bars, .topbar > .bars { flex: 1 1 100%; }
@@ -630,7 +631,6 @@ dialog.dupes .dupe-group { display: grid; gap: 0.35rem; margin: 0 0 0.8rem; padd
 dialog.dupes .dupe-group legend { font-weight: 700; padding: 0 0.3rem; }
 dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size: 0.95rem; align-items: baseline; }
 @media (max-width: 600px) {
-  .bars > .actions { border-right: 0; padding-right: 0; }
   .menubar .tools { border-left: 0; padding-left: 0; margin-left: 0; }
 }
 

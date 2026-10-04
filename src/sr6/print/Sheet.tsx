@@ -3,6 +3,7 @@
 // Browser "Save as PDF" makes the PDF. An NPC prints its header, its NPC block (NpcBlock.tsx), background and notes.
 import { PRINT_STYLES } from '../../ui/settings'
 import { bdClass, printBackdrop } from '../../ui/Portrait'
+import { HeaderBars } from '../../ui/nav'
 import { IconButton, IconLink } from '../../ui/icons'
 import { SheetType, useSheetArt } from '../../print/shared'
 import '../../print/sheet.css'
@@ -41,12 +42,12 @@ export function Sr6Sheet() {
 
   return (
     <div className="sheet-wrap">
-      <div className="sheet-tools">
+      <div className="sheet-tools"><HeaderBars>
         <IconLink icon="back" label="Back to editing" href={sr6Href(ch, ch.npc ? 'stats' : 'review')} />
         <IconButton className="primary" icon="print" label="Print or save as PDF" onClick={() => print()} />
         <SheetType styles={STYLES} />
         {art.tools}
-      </div>
+      </HeaderBars></div>
       {ch.npc ? <article className="sheet sr6-sheet" style={art.vars}>
         {art.layer}
         <div className="s-top">

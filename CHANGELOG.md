@@ -2,6 +2,14 @@
 
 ## Unreleased (next build)
 
+- **The header has two rows of icons**, the same way in both games. Row 1 is the main menu, identical on every page of a
+  game and always in the same order: Your runners, NPCs & Critters, Compendiums, Campaigns, Books, Rules, Game data and
+  Table setup (only the pages your role can use), then the game switch, Ask the rules (Anarchy), Settings and your
+  account. The page you're on is underlined. Row 2 appears only on a page that has its own actions and holds just those:
+  New runner, Import file, Export for Foundry, Load example characters or Load book NPCs, Find duplicates and Trash on the
+  lists; Save, Undo, Redo and the exports in a runner's editor; Print, Sheet type and Background on the print page (which
+  now has the main menu too, never printed); a compendium's export. Every icon names itself in a tooltip above it. On a
+  phone the rows wrap; the page never scrolls sideways.
 - **Load settings file** on the SR6 creation rules form (the server's on Table setup, and a campaign's own on its page): pick a
   `creation.xml` from your computer (the format of `custom/sr6/creation.xml`). It is checked and its values fill the form,
   in place of what it showed, for you to review; anything it couldn't use is listed. Nothing is saved until you click

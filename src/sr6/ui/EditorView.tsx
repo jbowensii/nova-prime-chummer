@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Brand, StateBadge } from '../../ui/bits'
 import { IconButton } from '../../ui/icons'
-import { MainMenu } from '../../ui/nav'
+import { HeaderBars } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
 import { ConflictDialog, SaveLine, useAutosave } from '../../ui/useAutosave'
 import { allBudgets } from '../engine/budgets'
@@ -118,19 +118,16 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
           {ch.npc ? <span className="noncanon npckind">{npcChip(ch.npc)}</span> : <StateBadge finalized={career} finalTip={SR6_FINAL_TIP} />}</div>
         {!theirs && <div className="savebar"><SaveLine status={status} onRetry={() => void saveNow()} /></div>}
         <span className="spacer" />
-        <div className="bars">
-          <div className="iconbar actions">
-            {!theirs && <>
-              <IconButton icon="save" label="Save" onClick={() => void saveNow()} disabled={status.state === 'saving'} />
-              <IconButton icon="close" label="Save and close" onClick={() => void saveAndClose()} />
-              <IconButton icon="undo" label="Undo" disabled={!ctx.canUndo} onClick={ctx.undo} />
-              <IconButton icon="redo" label="Redo" disabled={!ctx.canRedo} onClick={ctx.redo} />
-            </>}
-            <IconButton icon="download" label="Export file" onClick={() => theirs ? exportSr6(c, ch) : setDoc(exportSr6(c, ch))} />
-            <IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadSr6Runners(c, data, cr, [ch])} />
-          </div>
-          <MainMenu />
-        </div>
+        <HeaderBars>
+          {!theirs && <>
+            <IconButton icon="save" label="Save" onClick={() => void saveNow()} disabled={status.state === 'saving'} />
+            <IconButton icon="close" label="Save and close" onClick={() => void saveAndClose()} />
+            <IconButton icon="undo" label="Undo" disabled={!ctx.canUndo} onClick={ctx.undo} />
+            <IconButton icon="redo" label="Redo" disabled={!ctx.canRedo} onClick={ctx.redo} />
+          </>}
+          <IconButton icon="download" label="Export file" onClick={() => theirs ? exportSr6(c, ch) : setDoc(exportSr6(c, ch))} />
+          <IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadSr6Runners(c, data, cr, [ch])} />
+        </HeaderBars>
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
