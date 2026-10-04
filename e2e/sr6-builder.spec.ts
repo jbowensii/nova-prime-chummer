@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
+import { pageGlyphs } from './pdf'
 
 // SR6 S2 end to end: the SR6 runners page and the builder on a server of its own with the made-up SR6 fixture
 // (tests/fixtures/sr6/custom copied to custom/sr6/). All names made up: Ada the admin, Gil an editor, Pat a player. Runs in
@@ -134,7 +135,7 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
   // a mundane runner has no Magic tab
   await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Augmentations', 'Gear', 'Vehicles',
-    'Contacts & lifestyle', /^Review\d*$/])
+    'Contacts & lifestyle', /^Review\d*$/, 'Print'])
   await expect(page.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
   const budgets = page.getByRole('complementary', { name: 'Budgets' })
   await expect(budgets).toContainText('Priority build')
@@ -213,7 +214,7 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await expect(karma.getByRole('link', { name: /Positive qualities/ })).toHaveAttribute('href', /\/qualities$/)
   await shoot(page, 'budgets')
 
-  // Review lists what's still wrong, each with a Fix link; undo and redo
+  // Review lists what's still wrong, each linked to its tab; undo and redo
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.locator('.viol').first()).toBeVisible()
@@ -231,7 +232,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   const work = page.locator('main.work'), budgets = page.getByRole('complementary', { name: 'Budgets' })
   const dlg = page.getByRole('dialog')
   await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Magic', 'Augmentations', 'Gear', 'Vehicles',
-    'Contacts & lifestyle', /^Review\d*$/])
+    'Contacts & lifestyle', /^Review\d*$/, 'Print'])
 
   // a technomancer's tab is Resonance: complex forms, echoes, submersion
   await tabs.filter({ hasText: 'Creation method' }).click()
@@ -247,11 +248,38 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(work.locator('tr', { hasText: 'Quiet Loop' })).toBeVisible()
   await shoot(page, 'editor-resonance')
 
-  // back to a full magician: the forms and echoes go; tradition, drain, spells, a ritual, initiation and a metamagic
+  // an adept (the fixture's made-up adept at magic A): a leveled power against the power points
+  await tabs.filter({ hasText: 'Creation method' }).click()
+  await page.getByLabel('Magic kind').selectOption('adept')
+  await tabs.filter({ hasText: 'Magic' }).click()
+  await expect(work.getByText('Static Veil')).toHaveCount(0)
+  await expect(work.getByText('Power points:')).toContainText('7 left of 7')
+  await work.getByRole('button', { name: 'Add an adept power…' }).click()
+  await dlg.getByText('Quick Step').click()
+  await work.getByRole('button', { name: 'Raise Quick Step level' }).click()
+  await expect(work.locator('tr', { hasText: 'Quick Step' })).toContainText('0.5 PP')
+  await expect(work.getByText('Power points:')).toContainText('6.5 left of 7')
+  await shoot(page, 'editor-adept')
+  // a mystic adept buys its power points: the power stays, the points come from the ones bought
+  await tabs.filter({ hasText: 'Creation method' }).click()
+  await page.getByLabel('Magic kind').selectOption('mystic-adept')
+  await tabs.filter({ hasText: 'Magic' }).click()
+  await expect(work.locator('tr', { hasText: 'Quick Step' })).toBeVisible()
+  await work.getByRole('button', { name: 'Raise Power points bought' }).click()
+  await expect(work.getByRole('group', { name: 'Power points bought' })).toContainText('1')
+  await expect(work.getByText('Power points:')).toContainText('0.5 left of 1')
+
+  // back to a full magician: the powers go; tradition (cleared and set again), drain, spells, a ritual, initiation, a metamagic
   await tabs.filter({ hasText: 'Creation method' }).click()
   await page.getByLabel('Magic kind').selectOption('full')
   await tabs.filter({ hasText: 'Magic' }).click()
-  await expect(work.getByText('Static Veil')).toHaveCount(0)
+  await expect(work.getByText('Quick Step')).toHaveCount(0)
+  await work.getByLabel('Tradition').fill('Chaos')
+  await work.getByLabel('Tradition').press('Enter')
+  await work.getByLabel('Tradition').fill('')
+  await work.getByLabel('Tradition').press('Enter')
+  await page.reload()
+  await expect(work.getByLabel('Tradition')).toHaveValue('')
   await work.getByLabel('Tradition').fill('Hermetic')
   await work.getByLabel('Tradition').press('Enter')
   await work.getByLabel('Drain attribute').selectOption('log')
@@ -278,8 +306,16 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await dlg.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(dlg).toHaveCount(0)
   const eyes = work.locator('tr', { hasText: 'Glow Eyes' })
-  await expect(eyes).toContainText('Alpha')
+  await expect(eyes.getByLabel('Glow Eyes grade')).toHaveValue('alpha')
   await expect(eyes).toContainText('0.14')
+  // rating and grade change in place
+  await eyes.getByLabel('Glow Eyes rating').selectOption('3')
+  await eyes.getByLabel('Glow Eyes grade').selectOption('standard')
+  await expect(eyes).toContainText('0.3')
+  await eyes.getByLabel('Glow Eyes rating').selectOption('2')
+  await eyes.getByLabel('Glow Eyes grade').selectOption('alpha')
+  await expect(eyes).toContainText('0.14')
+  await expect(work.locator('tr', { hasText: 'Glow Eyes' })).toHaveCount(1)
   await eyes.getByRole('button', { name: 'Add a bonus to Glow Eyes' }).click()
   await dlg.getByLabel('Bonus to').selectOption('initDice')
   await dlg.getByLabel('Value').fill('1')
@@ -311,7 +347,11 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await dlg.getByLabel('Rating').selectOption('3')
   await expect(dlg).toContainText('150¥')
   await dlg.getByRole('button', { name: 'Add', exact: true }).click()
-  await expect(work.locator('tr', { hasText: 'Tangle Rope' })).toContainText('Rating 3')
+  const rope = work.locator('tr', { hasText: 'Tangle Rope' })
+  await expect(rope.getByLabel('Tangle Rope rating')).toHaveValue('3')
+  await expect(rope.locator('td.num').nth(1)).toHaveText('150¥')
+  await rope.getByLabel('Tangle Rope rating').selectOption('1')
+  await expect(rope.locator('td.num').nth(1)).toHaveText('50¥')
   await work.getByRole('button', { name: 'Custom item…' }).click()
   await dlg.getByLabel('Name').fill('Lucky Coin')
   await dlg.getByLabel('Cost').fill('5')
@@ -357,6 +397,178 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(nuyen).toContainText('Zelda Smith (fake SIN, rating 2) · 1 licence')
   await shoot(page, 'editor-contacts')
   await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await page.getByRole('button', { name: 'Save and close' }).click()
+  await expect(page).toHaveURL(/#\/sr6$/)
+})
+
+test('Review: each problem links to its tab; GM approval; Finalize makes the build read only; Back to draft', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'pat')
+  await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
+  const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
+  const work = page.locator('main.work'), dlg = page.getByRole('dialog')
+  await tabs.filter({ hasText: 'Review' }).click()
+  await expect(work.getByRole('heading', { name: 'Review' })).toBeVisible()
+  // three problems, each message a link to its tab: nuyen overspent (Gear), a contact above the cap and alpha Glow Eyes
+  // above the Availability cap (Augmentations)
+  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' })
+  await expect(eyes).toContainText('Problem')
+  await expect(eyes).toContainText('CRB p.63')
+  await expect(work.locator('.viol .sev.err')).toHaveCount(3)
+  await expect(page.getByRole('button', { name: 'Finalize runner' })).toBeDisabled()
+  await work.getByRole('link', { name: /^Nuyen overspent by 3,637¥/ }).click()
+  await expect(page).toHaveURL(/\/gear$/)
+  await tabs.filter({ hasText: 'Review' }).click()
+  await eyes.getByRole('link', { name: /Glow Eyes’s Availability 6 is above 5/ }).click()
+  await expect(page).toHaveURL(/\/augmentations$/)
+  await tabs.filter({ hasText: 'Review' }).click()
+  // fixed on Contacts & lifestyle: Cozy for one month, one more karma into nuyen, the contact's connection back to 1
+  await work.getByRole('link', { name: 'Fixer Fred’s connection or loyalty is above 1.' }).click()
+  await expect(page).toHaveURL(/\/contacts$/)
+  await work.getByRole('button', { name: 'Lower Lifestyle months' }).click()
+  await work.getByRole('button', { name: 'Raise Karma turned into nuyen' }).click()
+  await work.getByRole('button', { name: 'Lower Contact 1 connection' }).click()
+  await tabs.filter({ hasText: 'Review' }).click()
+  await expect(work.locator('.viol .sev.err')).toHaveCount(1)
+
+  // the GM approves it with a note, revokes, approves again
+  await eyes.getByRole('button', { name: 'GM approve' }).click()
+  await dlg.getByLabel('Why the GM allows it').fill('Street doc friend, agreed at session zero')
+  await dlg.getByRole('button', { name: 'Approve' }).click()
+  await expect(eyes).toContainText('Approved')
+  await expect(eyes).toContainText('GM: Street doc friend, agreed at session zero')
+  await eyes.getByRole('button', { name: 'Revoke' }).click()
+  await expect(eyes).toContainText('Problem')
+  await eyes.getByRole('button', { name: 'GM approve' }).click()
+  await dlg.getByLabel('Why the GM allows it').fill('Street doc friend')
+  await dlg.getByRole('button', { name: 'Approve' }).click()
+  await expect(tabs.filter({ hasText: 'Review' })).toHaveText('Review')
+  // the derived values
+  await expect(work.locator('.sr6-derived div', { hasText: 'Defense Rating' })).toContainText('5')
+  await expect(work.locator('.sr6-derived div', { hasText: 'Physical monitor' })).toContainText('10')
+  await shoot(page, 'review')
+
+  // Finalize: the badge, the build read only (Concept still open), then back to draft and finalized again
+  await page.getByRole('button', { name: 'Finalize runner' }).click()
+  await expect(dlg).toContainText('17 karma and 363¥ left')
+  await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
+  await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  await expect(work).toContainText('with 17 karma and 363¥ left')
+  await tabs.filter({ hasText: 'Attributes' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Finalized: the build is read only.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Raise Body points' })).toBeDisabled()
+  await tabs.filter({ hasText: 'Concept' }).click()
+  await expect(page.getByLabel('Real name')).toBeEnabled()
+  await tabs.filter({ hasText: 'Review' }).click()
+  await expect(work.getByRole('button', { name: 'GM approve' })).toHaveCount(0)
+  await shoot(page, 'review-finalized')
+  await page.getByRole('button', { name: 'Back to draft' }).click()
+  await expect(dlg).toContainText('Career changes come with the ledger in a later update.')
+  await dlg.getByRole('button', { name: 'Back to draft' }).click()
+  await expect(page.locator('.topbar .runstate')).toHaveText('Draft')
+  await tabs.filter({ hasText: 'Attributes' }).click()
+  await expect(page.getByRole('button', { name: 'Raise Body points' })).toBeEnabled()
+  await tabs.filter({ hasText: 'Review' }).click()
+  await page.getByRole('button', { name: 'Finalize runner' }).click()
+  await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
+  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+  await page.getByRole('button', { name: 'Save and close' }).click()
+  await expect(row(page, 'Zip Spark').first()).toContainText('Finalized')
+})
+
+test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no page holding next to nothing', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'pat')
+  await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
+  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Print' }).click()
+  await expect(page).toHaveURL(/\/print$/)
+  const sheet = page.locator('article.sheet.sr6-sheet')
+  await expect(sheet.locator('h1')).toHaveText('Zip Spark')
+  await expect(sheet.locator('.s-role')).toHaveText('Glimmerkin, Full magician')
+  await expect(sheet.locator('tr', { hasText: 'Defense Rating' })).toContainText('5')
+  await expect(sheet.locator('.sr6-boxes').first().locator('span')).toHaveCount(10)
+  await expect(sheet.locator('tr', { hasText: 'Zap Gun' })).toContainText('9/7/—/—/—')
+  await expect(sheet.locator('tr', { hasText: 'Zap Gun' })).toContainText('with Zap Scope')
+  await expect(sheet.locator('tr', { hasText: 'Glow Eyes' })).toContainText('alpha')
+  await expect(sheet).toContainText('Cozy × 1 month')
+  await expect(sheet).toContainText('Zap Gun licence (2)')
+  await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText(['Printer-friendly', 'Full color'])
+  await page.screenshot({ path: `${SHOTS}/print-sheet-light.png`, fullPage: true })
+  await page.getByRole('combobox', { name: 'Sheet type' }).selectOption('color')
+  await page.screenshot({ path: `${SHOTS}/print-sheet-color.png`, fullPage: true })
+  await page.getByRole('combobox', { name: 'Sheet type' }).selectOption('plain')
+  await page.setViewportSize(PHONE)
+  await fits(page)
+  await page.screenshot({ path: `${SHOTS}/print-sheet-phone.png`, fullPage: true })
+  await page.setViewportSize(DESK)
+
+  /** pages ≤ max, none blank, every one but the last well filled */
+  const pdfOk = async (name: string, max: number) => {
+    for (const format of ['Letter', 'A4']) {
+      const glyphs = pageGlyphs(await page.pdf({ format, printBackground: true, path: `${SHOTS}/${name}-${format.toLowerCase()}.pdf` }))
+      expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBeLessThanOrEqual(max)
+      expect(glyphs.every(k => k > 0), `${name} ${format}: a blank page (${glyphs})`).toBe(true)
+      expect(glyphs.slice(0, -1).every(k => k > 400), `${name} ${format}: a near-empty page (${glyphs})`).toBe(true)
+    }
+  }
+  await pdfOk('print-sheet', 2)
+
+  // a long copy (made-up lore padding page 1's skills column): the blocks break between rows, page 1 isn't left empty
+  const id = page.url().split('/c/')[1].split('/')[0], origin = new URL(base).origin
+  const all: { xml: string }[] = await page.evaluate(() => fetch('./api/sr6/characters').then(r => r.json()))
+  const xml = all.map(r => r.xml).find(x => x.includes(`id="${id}"`))!
+  const lore = Array.from({ length: 70 }, (_, i) => `<knowledge uid="pad${i}" kind="knowledge" points="0" karma="0">Made-up lore ${i + 1}</knowledge>`).join('')
+  const long = xml.replace(`id="${id}"`, 'id="zip-long"').replace('streetName="Zip Spark"', 'streetName="Zip Long"').replace('</build>', `${lore}</build>`)
+  expect(long).toContain('Made-up lore 70')
+  const put = await page.request.put('/api/sr6/characters/zip-long', { data: long, headers: { 'Content-Type': 'application/xml', Origin: origin } })
+  expect(put.status()).toBeLessThan(300)
+  await page.goto('/#/sr6/c/zip-long/print')
+  await expect(sheet.locator('h1')).toHaveText('Zip Long')
+  await pdfOk('print-long', 4)
+  // with the old rule (each column kept whole) page 1 held only the header
+  await page.addStyleTag({ content: '.sheet .s-cols > section, .sheet > section { break-inside: avoid !important; }' })
+  expect(pageGlyphs(await page.pdf({ format: 'Letter', printBackground: true }))[0]).toBeLessThan(400)
+  await page.request.delete('/api/sr6/characters/zip-long', { headers: { Origin: origin } })
+})
+
+test('a point-buy runner: character points left, Review cites the rule; two tabs on one runner get the Saved elsewhere dialog', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'pat')
+  await page.getByRole('button', { name: 'New runner' }).click()
+  const dlg = page.getByRole('dialog', { name: 'New runner' })
+  await dlg.getByLabel('Street name').fill('Pip Point')
+  await dlg.getByLabel('Creation method').selectOption('pointbuy')
+  await dlg.getByRole('button', { name: 'Create runner' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
+  const budgets = page.getByRole('complementary', { name: 'Budgets' })
+  await expect(budgets.locator('.budget', { hasText: 'Character points' }).first()).toContainText(/\d+left of \d+/)
+  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: /^Review/ }).click()
+  const unspent = page.locator('.viol', { hasText: 'character points left: spend them all.' })
+  await expect(unspent).toContainText('CRB p.68')
+  await expect(unspent.getByRole('link', { name: /character points left/ })).toHaveAttribute('href', /\/method$/)
+  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
+
+  // the same runner open twice: B saves first, A's next change meets the dialog
+  const url = page.url().replace(/\/review$/, '/concept')
+  await page.goto(url)
+  const b = await page.context().newPage()
+  await b.goto(url)
+  await Promise.all([b.waitForResponse(r => r.request().method() === 'PUT' && r.ok()), b.getByLabel('Real name').fill('Pip from B')])
+  await page.getByLabel('Real name').fill('Pip from A')
+  await expect(page.getByRole('heading', { name: 'Saved elsewhere' })).toBeVisible()
+  await page.getByRole('button', { name: 'Discard mine, load theirs' }).click()
+  await expect(page.getByLabel('Real name')).toHaveValue('Pip from B')
+  await b.close()
+})
+
+test('Gil, an editor, lowers the skill cap: Pat’s runner shows it on Review', async ({ page }) => {
+  await signIn(page, '/#/sr6/data', 'gil')
+  await page.getByLabel('Highest skill rank', { exact: true }).fill('2')
+  await page.getByRole('button', { name: 'Save creation rules' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
+  await page.context().clearCookies()
+  await signIn(page, '/#/sr6', 'pat')
+  await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
+  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: /^Review/ }).click()
+  await expect(page.locator('.viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' })).toContainText('CRB p.61')
 })
 
 test('the legacy server: the SR6 runners page says who is in the way', async ({ page }) => {
@@ -374,4 +586,32 @@ test('isolation: the Anarchy list never shows an SR6 runner', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
   await expect(page.getByText('Zip Spark')).toHaveCount(0)
   expect(await page.evaluate(() => fetch('./api/characters').then(r => r.text()))).not.toContain('sr6:character')
+})
+
+test('Ada moves Pat’s SR6 runners to herself and deletes Pat; Users stays on the SR6 side', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'ada')
+  await expect(page.getByText('No runners yet.')).toBeVisible()
+  await page.locator('.account > button').click()
+  await page.getByRole('link', { name: 'Users' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/users$/)
+  const move = page.getByRole('button', { name: 'Move Pat Player’s runners' })
+  const dlg = page.getByRole('dialog', { name: 'Move Pat Player’s runners' })
+  await move.click()
+  await expect(dlg.getByLabel('Runner').locator('option', { hasText: 'Zip Spark' }).first()).toHaveText('Zip Spark (Shadowrun 6)')
+  await dlg.getByRole('button', { name: 'Close' }).click()
+  while (await move.count()) {
+    await move.click()
+    await dlg.getByLabel('Move to').selectOption({ label: 'Ada Admin (ada)' })
+    await dlg.getByRole('button', { name: 'Move runner' }).click()
+    await expect(page.getByRole('status').filter({ hasText: /^Moved .* to Ada Admin\.$/ })).toBeVisible()
+    await expect(dlg).toBeHidden()
+  }
+  await page.getByRole('button', { name: 'Delete Pat Player' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete account' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Deleted Pat Player’s account.' })).toBeVisible()
+  await expect(page).toHaveURL(/#\/sr6\/users$/)
+  await page.goto('/#/sr6')
+  await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
+  await expect(page.locator('.topbar .name')).toHaveText('Zip Spark')
+  await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
 })
