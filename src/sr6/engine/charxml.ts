@@ -7,6 +7,7 @@ import {
   BONUS_TARGETS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ATTRS, SR6_METHODS, blankBuild,
   type Bonus, type MagicKind, type Sr6Build, type Sr6Character, type Sr6Purchase,
 } from '../model/character'
+import type { Codec } from '../../ui/repo'
 import { sr6EntryXml, toEntry } from './load'
 
 export const SR6_CHAR_NS = 'urn:chummer-sr6:character:1'
@@ -167,5 +168,5 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
   }
 }
 
-/** The repo codec (src/ui/repo.ts Codec<Sr6Character>, S2 Task 9). */
-export const sr6Codec = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }
+/** The repo codec (src/ui/repo.ts serverRepo). */
+export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }

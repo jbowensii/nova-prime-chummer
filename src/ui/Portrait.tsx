@@ -15,11 +15,11 @@ export const printBackdrop = (b?: Backdrop) => (b && DARK.includes(b) ? 'white' 
 export const bdClass = (b?: Backdrop) => (b ? ` bd-${b}` : '')
 
 /** The first letter of a name (a whole emoji, not half of one); "?" for none. */
-export const initial = (ch: Character) => [...(ch.identity.streetName || ch.identity.name).trim()][0]?.toUpperCase() ?? '?'
+export const initial = (ch: Pick<Character, 'identity'>) => [...(ch.identity.streetName || ch.identity.name).trim()][0]?.toUpperCase() ?? '?'
 
 /** The portrait (class `face` + backdrop), or the runner's initial when there's none or it doesn't load.
  *  token: the round token instead (class `tokenface`, so `img.face` stays the portrait): its own picture, or the portrait when it has none. */
-export function Face({ ch, backdrop = ch.identity.backdrop, token }: { ch: Character; backdrop?: Backdrop; token?: boolean }) {
+export function Face({ ch, backdrop = ch.identity.backdrop, token }: { ch: Pick<Character, 'identity'>; backdrop?: Backdrop; token?: boolean }) {
   const [broken, setBroken] = useState<string>()
   const src = (token && ch.identity.token) || ch.identity.portrait, cls = token ? 'tokenface' : 'face'
   return src && broken !== src ? <img className={`${cls}${bdClass(backdrop)}`} src={src} alt="" onError={() => setBroken(src)} />
@@ -45,7 +45,7 @@ const loadImage = (src: File | string) => new Promise<HTMLImageElement>((resolve
  *  token: the same dialog for the round token: "Same as portrait" (no token of its own, the default) or its own picture,
  *  starting from the portrait's; no backdrop choice (the runner's shows behind it). */
 export function PortraitEditor({ ch, open, onClose, onSave, token }: {
-  ch: Character; open: boolean; onClose: () => void; onSave: (picture: string | undefined, backdrop: Backdrop | undefined) => void; token?: boolean
+  ch: Pick<Character, 'identity'>; open: boolean; onClose: () => void; onSave: (picture: string | undefined, backdrop: Backdrop | undefined) => void; token?: boolean
 }) {
   const what = token ? 'token' : 'portrait', cur = token ? ch.identity.token : ch.identity.portrait
   const [same, setSame] = useState(false) // token: no picture of its own, the portrait serves
