@@ -375,6 +375,17 @@
   <xs:simpleType name="ChoiceOptions">
     <xs:restriction><xs:simpleType><xs:list itemType="sr6:ChoiceOption"/></xs:simpleType><xs:minLength value="1"/></xs:restriction>
   </xs:simpleType>
+  <!-- the Sixth World Companion's contact types (a life module's, a runner's contact's) -->
+  <xs:simpleType name="ContactType">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="academic"/><xs:enumeration value="corporate"/><xs:enumeration value="criminal"/>
+      <xs:enumeration value="engineering"/><xs:enumeration value="government"/><xs:enumeration value="magic"/>
+      <xs:enumeration value="matrix"/><xs:enumeration value="media"/><xs:enumeration value="medical"/><xs:enumeration value="street"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ContactTypes">
+    <xs:restriction><xs:simpleType><xs:list itemType="sr6:ContactType"/></xs:simpleType><xs:minLength value="1"/></xs:restriction>
+  </xs:simpleType>
   <xs:complexType name="LifeModule">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
@@ -403,6 +414,8 @@
     <xs:attribute name="adjustmentPoints" type="xs:nonNegativeInteger"/>
     <xs:attribute name="nuyen" type="xs:nonNegativeInteger"/>
     <xs:attribute name="contactPoints" type="xs:nonNegativeInteger"/>
+    <!-- the contact types its contact points buy or raise (absent: any type) -->
+    <xs:attribute name="contactTypes" type="sr6:ContactTypes"/>
     <xs:attribute name="knowledgeSkills" type="xs:nonNegativeInteger"/>
   </xs:complexType>
 
