@@ -1,6 +1,6 @@
 // The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog) and the creation rules (loadCreation) load once here, then the page: Books (admin; the
 // Anarchy Books page with game="sr6"), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
-// list (Runners.tsx). SR6 is server only (R): with browser storage the runners page says so.
+// list (Runners.tsx) and a runner's editor (#/sr6/c/<id>/<tab>, Editor.tsx). SR6 is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { isAdmin, useMe } from '../../ui/auth'
 import { BooksScreen } from '../../ui/Books'
@@ -13,6 +13,7 @@ import { sr6Data } from '../engine/data'
 import { loadSr6Catalog } from '../engine/load'
 import type { Sr6Catalog } from '../model/types'
 import { Sr6Data } from './Data'
+import { Sr6EditorView } from './EditorView'
 import { Sr6Rules } from './Rules'
 import { Sr6Runners } from './Runners'
 
@@ -33,7 +34,8 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     : page === 'rules' || page === 'data' ? (c ? page === 'rules' ? <Sr6Rules c={c} /> : <Sr6Data c={c} reload={refresh} cr={cr} reloadCreation={refreshCreation} />
       : <main className="lib"><PageHeader title={page === 'rules' ? 'Rules' : 'Game data'} />{!failed && <p className="muted">Loading game data…</p>}</main>)
     : repo.mode !== 'server' ? <main className="lib"><PageHeader title="Your runners" /><div className="empty"><p>Shadowrun 6 runners need the Chummer server.</p></div></main>
-    : c && data ? <Sr6Runners c={c} data={data} cr={cr.rules} />
+    : c && data ? page === 'c' && route[1] ? <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} />
+      : <Sr6Runners c={c} data={data} cr={cr.rules} />
     : <main className="lib"><PageHeader title="Your runners" />{!failed && <p className="muted">Loading game data…</p>}</main>
   return (
     <RepoContext.Provider value={repo}>

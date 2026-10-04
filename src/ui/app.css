@@ -645,3 +645,15 @@ table.data.sr6-kinds { width: auto; min-width: min(20rem, 100%); }
 .sr6-creation input.src-id { width: 5rem; }
 .sr6-parts { margin: 0.2rem 0 0; padding-left: 1.2rem; font-size: 0.93rem; color: var(--text-2); }
 a.noncanon { text-decoration: none; }
+
+/* SR6 editor: the skills table's attribute rows; the budgets panel's rows that open to their lines */
+table.data tr.group td { background: none !important; font-family: var(--display); color: var(--heading); padding-top: 0.9rem; border-bottom-color: var(--yellow); }
+.sr6-budgets .budget { display: block; }
+.sr6-budgets summary { list-style: none; cursor: pointer; }
+.sr6-budgets summary::-webkit-details-marker { display: none; }
+.sr6-budgets summary .lbl::after { content: ' ▸'; color: var(--yellow); }
+.sr6-budgets details[open] summary .lbl::after { content: ' ▾'; }
+.sr6-budgets .bud-lines { list-style: none; margin: 0 0 0.5rem; padding: 0 0 0 0.8rem; font-size: 0.85rem; }
+.sr6-budgets .bud-lines a { color: var(--panel-muted); text-decoration: none; }
+.sr6-budgets .bud-lines a:hover, .sr6-budgets .bud-lines a:focus-visible { color: var(--yellow); }
+.missing ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
