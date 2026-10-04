@@ -6,16 +6,18 @@ its values by HEADERS (printed column or label -> attribute). Values stay as pri
 "¥" and thousands commas, a value off its column's pattern is kept and reported (book-value). A block that maps nowhere
 is a rule section if it has no row or stat box (rule chapters only), else it is reported (unmapped). The priority and
 metatype tables are rule tables in regroup's output: they are read from any block's text (or a catalog row) by their
-first header."""
+first header. The archetypes chapter's sample characters become SR6 runner files (Result.samples,
+importer/sr6/archetypes.py)."""
 import json
 import os
 import re
 from dataclasses import replace
+from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS
+from importer.sr6 import KINDS, NS, archetypes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
@@ -87,7 +89,7 @@ SECTIONS = [
     ("character creation", "positive", "qualities", "positive"),
     ("character creation", "negative", "qualities", "negative"),
     ("skills", "", "skills", None),
-    ("archetypes", "", "skip", None),  # ten sample runners: no catalog kind
+    ("archetypes", "", "skip", None),  # the sample runners are read apart (archetypes.py); the rest is no kind
 ]
 SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 section blocks in this book
 # a section whose labelled lines are each an entry (name: the label; text: its value)
@@ -630,7 +632,7 @@ def _kind(chapter, ctx, section):
 
 def extract(regrouped, ctx=None):
     cat = _Catalog()
-    chapter, parent2, sub, stack, seen_attrs = None, "", "", [], set()
+    chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     for b in blocks(regrouped):
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
@@ -642,6 +644,9 @@ def extract(regrouped, ctx=None):
             cat.metatype([], [f"Racial Qualities: {q}"], page)  # printed as a labelled line under the table
         if b.row is not None and b.header and b.header[0].upper() in ("PRIORITY", "METATYPE"):
             cat.table(b.header, [[b.row.get(h, "") for h in b.header]], page)
+            continue
+        if "archetypes" in ch and archetypes.is_archetype(b):
+            samples.append((b.section or b.name, b, page))  # built once the catalog is read: they cite its entries
             continue
         section = b.type == "section"
         if section and b.level == 2:
@@ -687,5 +692,11 @@ def extract(regrouped, ctx=None):
                     text, parent=parent)
         stack.append((level, e["id"]))
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
-    return Result(files=files, texts=cat.texts_xml() if cat.texts else None, report=cat.report,
+    updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    runners = []
+    for name, b, page in samples:
+        sid, xml, rows = archetypes.build(ID, name, b, page, cat.entries, updated)
+        runners.append({"file": f"{sid}.xml", "xml": xml, "name": name, "role": "Archetype", "page": page})
+        cat.report += rows
+    return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
                   source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})

@@ -43,9 +43,11 @@ def summary(book_dir, out=None):
 
 
 def validate(custom_dir):
-    """(file, error) for every SR6 data file under custom_dir that its kind's XSD refuses (lxml)."""
+    """(file, error) for every SR6 file under custom_dir that its XSD refuses (lxml): a data file its kind's, a sample
+    runner (sr6:character) character.xsd, the samples list Anarchy's samples.xsd."""
     from lxml import etree
 
+    from importer import DATA_DIR
     from importer.sr6 import SCHEMA_DIR
     bad, schemas = [], {}
     for base, _, names in os.walk(custom_dir):
@@ -54,9 +56,11 @@ def validate(custom_dir):
             if not n.endswith(".xml") or n == "index.xml":
                 continue
             doc = etree.parse(path)
-            kind = doc.getroot().get("kind")
+            tag = etree.QName(doc.getroot()).localname
+            kind = doc.getroot().get("kind") or tag
             if kind not in schemas:
-                schemas[kind] = etree.XMLSchema(etree.parse(os.path.join(SCHEMA_DIR, f"{kind}.xsd")))
+                xsd = os.path.join(DATA_DIR, "schema", "samples.xsd") if kind == "samples" else os.path.join(SCHEMA_DIR, f"{kind}.xsd")
+                schemas[kind] = etree.XMLSchema(etree.parse(xsd))
             if not schemas[kind].validate(doc):
                 bad.append((os.path.relpath(path, custom_dir), str(schemas[kind].error_log.last_error)))
     return bad

@@ -57,7 +57,13 @@ class Sr6RunTest(unittest.TestCase):
         self.assertIn('<file href="crb/weapons.xml"/>', _read(self.custom, "imported", "index.xml"))
         src = ET.parse(os.path.join(self.custom, "imported", "sources.xml")).getroot()
         self.assertEqual((src.tag, src[0].get("id"), src[0].get("texts")), (f"{{{NS}}}data", "CRB", "texts/crb.xml"))
-        self.assertEqual(validate(self.custom), [])
+        self.assertEqual(validate(self.custom), [])  # the sample runners and their list too
+        lst = ET.parse(os.path.join(self.custom, "imported", "samples.xml")).getroot()
+        self.assertEqual([(x.get("source"), x.get("href"), x.get("name"), x.get("role")) for x in lst],
+                         [("CRB", "crb/samples/crb.glow-runner.xml", "Glow Runner", "Archetype"),
+                          ("CRB", "crb/samples/crb.bit-whisperer.xml", "Bit Whisperer", "Archetype")])
+        self.assertIn('metatype="crb.glimmerkin"', _read(crb, "samples", "crb.glow-runner.xml"))
+        self.assertNotIn("samples", _read(self.custom, "imported", "index.xml"))  # never a catalog file
         self.assertTrue(os.path.isfile(os.path.join(self.book, "regrouped.md")))
         imp = xmlio.read_import(self.book)
         self.assertEqual((imp.get("recipe"), imp.get("source"), imp.get("converter")), ("crb", "CRB", "sr6-1"))
@@ -89,6 +95,7 @@ class Sr6RunTest(unittest.TestCase):
         self.assertFalse(os.path.exists(crb))
         self.assertFalse(os.path.exists(os.path.join(self.custom, "texts", "crb.xml")))
         self.assertNotIn("crb/", _read(self.custom, "imported", "index.xml"))
+        self.assertEqual(len(ET.parse(os.path.join(self.custom, "imported", "samples.xml")).getroot()), 0)
         src = ET.parse(os.path.join(self.custom, "imported", "sources.xml")).getroot()
         self.assertEqual((src.tag, len(src)), (f"{{{NS}}}data", 0))
 

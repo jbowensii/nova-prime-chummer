@@ -8,6 +8,15 @@
   now, **Contact**, instead of showing as "Grunt · Contact"; contacts you loaded with 0.9.0 are switched over the next
   time you press Load book NPCs. New NPC lists contacts under Contact. In a Foundry export a contact goes out as an NPC
   (a grunt with group Contact). Players still never see NPCs.
+- **SR6 example characters**: importing the core rulebook now also reads its archetypes (the sample characters) as SR6
+  runners, and **Your runners** has **Load example characters** to copy them into your list, each once. Each one is built
+  from its printed stat block: metatype, attributes, skills with specializations, knowledge skills and languages,
+  qualities, spells, adept powers, complex forms, contacts, lifestyle, gear, augmentations, vehicles, weapons and fake
+  SINs, matched to the book's entries by name. What the app can't hold (augmented values, the printed initiative,
+  condition monitors and starting nuyen, and anything not found in the book's tables) is listed in the runner's Notes.
+  Priorities aren't set, so the budgets show overspent until you choose them. On the owner's copy of the core rulebook
+  all ten archetypes import. Re-import the core rulebook to get them.
+
 - **Load settings file** on the SR6 creation rules form (the server's on Rules, and a campaign's own on its page): pick a
   `creation.xml` from your computer (the format of `custom/sr6/creation.xml`). It is checked and its values fill the form,
   in place of what it showed, for you to review; anything it couldn't use is listed. Nothing is saved until you click

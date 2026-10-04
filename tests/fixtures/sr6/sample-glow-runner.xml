@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="crb.glow-runner" streetName="Glow Runner" metatype="crb.glimmerkin" method="priority" updatedAt="2026-10-04T00:00:00.000Z">
+  <background>Glow Runner archetype. CRB p.81.</background>
+  <notes>As printed: Initiative/Actions: 8 + 2D6/1 Major, 3 Minor; Defense Rating: 5; Starting Nuyen: 1,234¥; Essence: 6.
+Augmented as printed: AGI 5(6).
+Skills not in the catalog: Basket Weaving 2.
+Qualities not in the catalog: Night Eyes (glimmerkin trait); Odd Quirk.
+Gear not in the catalog: Mystery Box.
+Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—].
+Built from the printed stat block: the priorities aren’t set, so the budgets read overspent until they are.</notes>
+  <build method="priority" magic="adept">
+    <attribute id="bod" points="2" adjust="0" karma="0"/>
+    <attribute id="agi" points="4" adjust="0" karma="0"/>
+    <attribute id="rea" points="3" adjust="0" karma="0"/>
+    <attribute id="str" points="1" adjust="0" karma="0"/>
+    <attribute id="wil" points="2" adjust="0" karma="0"/>
+    <attribute id="log" points="1" adjust="0" karma="0"/>
+    <attribute id="int" points="3" adjust="0" karma="0"/>
+    <attribute id="cha" points="2" adjust="0" karma="0"/>
+    <attribute id="edg" points="3" adjust="0" karma="0"/>
+    <attribute id="mag" points="4" adjust="0" karma="0"/>
+    <attribute id="res" points="0" adjust="0" karma="0"/>
+    <skill id="crb.tinkering" points="3" karma="0" spec="Gizmos"/>
+    <knowledge uid="k1" kind="knowledge" points="1" karma="0">Glow Lore</knowledge>
+    <knowledge uid="k2" kind="knowledge" points="1" karma="0">Puddle Streets</knowledge>
+    <knowledge uid="k3" kind="language" native="true" points="0" karma="0">Plainspeak</knowledge>
+    <knowledge uid="k4" kind="language" points="1" karma="0">Glimmertongue</knowledge>
+    <quality uid="q5" id="crb.lucky-streak" level="2" name="Lucky Streak"/>
+    <quality uid="q6" id="crb.butterfingers" level="1" name="Butterfingers"/>
+    <quality uid="q7" id="crb.steady-hands" level="1" free="true" name="Steady Hands"/>
+    <pick uid="p8" kind="adeptpowers" id="crb.quick-feet" level="2" name="Quick Feet"/>
+    <pick uid="p9" kind="adeptpowers" id="crb.glow-sense" name="Glow Sense"/>
+    <purchase uid="g10" kind="armor" id="crb.padded-vest" name="Padded Vest" qty="1" worn="true"/>
+    <purchase uid="g11" kind="gear" id="crb.gizmo-kit" name="Gizmo Kit" rating="4" qty="1" note="Gizmo Kit (rating 4)"/>
+    <purchase uid="g13" kind="augmentations" id="crb.glow-gland" name="Glow Gland" rating="2" qty="1" note="Glow Gland 2"/>
+    <purchase uid="g14" kind="vehicles" id="crb.zoom-bike" name="Zoom Bike" qty="1"/>
+    <purchase uid="g15" kind="weapons" id="crb.zap-gun" name="Zap Gun" qty="1" note="Zap Gun [Pistol, DV 3P, SA, 8/10/—/—, 10(c), w/ 50 rounds]"/>
+    <contact uid="c17" name="Fixer Fred" archetype="Fixer Fred" connection="3" loyalty="2"/>
+    <contact uid="c18" name="Glow Dealer" archetype="Glow Dealer" connection="1" loyalty="4"/>
+    <lifestyle id="crb.shoebox" months="2"/>
+    <sin uid="s1" name="Fake SIN 1" kind="fake" rating="3"><licence name="zap license" rating="3"/></sin>
+    <sin uid="s2" name="Fake SIN 2" kind="fake" rating="3"><licence name="zap license" rating="3"/></sin>
+  </build>
+</sr6:character>

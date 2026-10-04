@@ -2,7 +2,8 @@
 // shows them), New runner (a creation method whose settings aren't all set can't be picked and says what's missing), Import
 // file (an Anarchy runner is refused with where it belongs), Export, Delete (to the SR6 trash), sort and search, and the
 // files that can't be read with Download and Try to repair; each runner's SR6 campaign tag, Add to campaign… and Remove from
-// campaign (Anarchy's dialog; no campaign filter or duplicates finder, R).
+// campaign (Anarchy's dialog; no campaign filter or duplicates finder, R); Load example characters copies the imported
+// books' sample runners (custom/sr6/imported/samples.xml) not loaded yet.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, isAdmin, savesSettled, send, useMe } from '../../ui/auth'
 import { joined, loadCampaigns, type Campaign } from '../../ui/Campaigns'
@@ -17,6 +18,8 @@ import { expandKeys, missingFor, type CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { ExportRunnersDialog } from '../../ui/Foundry'
 import { validateSr6 } from '../engine/rules'
+import { newId } from '../../model/types'
+import { xmlToSr6 } from '../engine/charxml'
 import { blankSr6, SR6_METHOD_LABELS, SR6_METHODS, type Sr6Character, type Sr6Method } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { campaignRules } from './Creation'
@@ -28,6 +31,23 @@ const SORT_KEY = 'ca2.sr6.library.sort'
 /** The legacy server's answer (an account called sr6 from before holds the SR6 folder). */
 export const LEGACY = 'An account called sr6 is in the way: the admin renames it on the Users page.'
 const shownName = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
+
+/** The imported books' sample runners (custom/sr6/imported/samples.xml, the importer's list): each file's url, name and
+ *  key (`<source>|<sample id>`, recorded on a copy as sampleKey); none before an import or when it can't be read. */
+export async function sr6Samples(): Promise<{ url: string; name: string; key: string }[]> {
+  const res = await fetch('./custom/sr6/imported/samples.xml', { cache: 'no-cache' }).catch(() => null)
+  const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
+  if (xml?.documentElement.localName !== 'samples') return []
+  return [...xml.documentElement.getElementsByTagName('sample')].map(s => {
+    const href = s.getAttribute('href') ?? ''
+    return { url: `./custom/sr6/imported/${href}`, name: s.getAttribute('name') ?? '', key: `${s.getAttribute('source') ?? ''}|${href.split('/').pop()!.replace(/\.xml$/, '')}` }
+  })
+}
+/** The samples Load example characters adds: those whose key isn't the sampleKey of one of `mine` (a renamed copy counts). */
+export function samplesToLoad<T extends { key: string }>(rows: T[], mine: Sr6Character[]): T[] {
+  const have = new Set(mine.map(ch => ch.sampleKey))
+  return rows.filter(r => !have.has(r.key))
+}
 
 /** What `method` still needs, in the Game data form's words. */
 export function missingLabels(method: Sr6Method, cr: CreationRules, data: Sr6Data): string[] {
@@ -111,6 +131,24 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
   }
+  // a copy of each sample not loaded yet (a new id, its key as sampleKey), saved as any runner of yours
+  const loadExamples = async () => {
+    try {
+      const rows = await sr6Samples()
+      if (!rows.length) return setMsg('No example characters yet: they come with an imported core rulebook.')
+      let n = 0
+      const bad: string[] = []
+      for (const s of samplesToLoad(rows, mine.map(r => r.ch))) {
+        const res = await fetch(s.url).catch(() => null)
+        const r = res?.ok ? xmlToSr6(await res.text()) : { ok: false as const, reason: 'couldn’t be fetched.' }
+        if (!r.ok || r.character.npc) { bad.push(`${s.name}: ${r.ok ? 'this is an NPC.' : r.reason}`); continue }
+        const err = await saveError({ ...r.character, id: newId(), sampleKey: s.key, lastExportedAt: r.character.updatedAt })
+        if (err) bad.push(`${s.name}: ${err}`); else n++
+      }
+      setMsg([n ? `Added ${n} example character${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The example characters are already in your runners.', ...bad].filter(Boolean).join(' '))
+    } catch (e) { setMsg(because('Couldn’t load the example characters', (e as Error).message ?? String(e))) }
+    void refresh()
+  }
   const download = (u: Unreadable) => {
     const url = URL.createObjectURL(new Blob([u.xml], { type: 'application/xml' }))
     Object.assign(document.createElement('a'), { href: url, download: u.file }).click()
@@ -170,6 +208,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
       <PageHeader title="Your runners">
         <IconButton className="primary" icon="runner-add" label="New runner" onClick={openNew} disabled={banner === LEGACY} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} disabled={banner === LEGACY} />
+        <IconButton icon="examples" label="Load example characters" onClick={() => void loadExamples()} disabled={banner === LEGACY} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         <input ref={file} type="file" accept=".xml,application/xml" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/sr6/trash" badge={trashed || undefined} />}
@@ -187,7 +226,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
       {list === null ? <p className="muted">Loading runners…</p> : <>
         {others.length > 0 && <h2>My runners</h2>}
         {unreadable.filter(u => !u.owner || u.owner === me?.username).map(brokenRow)}
-        {mine.length === 0 ? !banner && <div className="empty"><p>No runners yet. Start a new one or import a runner file.</p></div> : <>
+        {mine.length === 0 ? !banner && <div className="empty"><p>No runners yet. Start a new one, import a runner file or load the example characters.</p></div> : <>
           {rows.map(s => dossier(s, true))}
           {q && rows.length === 0 && <p className="muted">No runner’s name contains “{q.trim()}”.</p>}
         </>}

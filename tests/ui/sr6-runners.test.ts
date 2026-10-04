@@ -5,6 +5,7 @@ import { expect, test } from 'vitest'
 import { sr6ToXml } from '../../src/sr6/engine/charxml'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
 import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../src/sr6/ui/repo'
+import { samplesToLoad } from '../../src/sr6/ui/Runners'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
@@ -90,4 +91,25 @@ test('export snapshots the purchase lines in the ledger too', () => {
   const lines = (ch: Sr6Character) => ch.ledger.flatMap(e => e.type === 'advance' && e.advance.op === 'purchase' ? [e.advance.line] : [])
   expect(lines(r.ch)[0].snapshot).toBeUndefined()
   expect(lines(snapshotSr6(fixtureCatalog(), r.ch))[0].snapshot?.name).toBe('Zap Gun')
+})
+
+test('a book sample runner (the importer’s, tests/fixtures/sr6/sample-glow-runner.xml) reads as a runner', () => {
+  const r = readSr6Import(readFileSync('tests/fixtures/sr6/sample-glow-runner.xml', 'utf8'), new Set())
+  expect(r.ok).toBe(true)
+  if (!r.ok) return
+  const b = r.ch.build
+  expect([r.ch.identity.streetName, b.metatype, b.magic, b.method]).toEqual(['Glow Runner', 'crb.glimmerkin', 'adept', 'priority'])
+  expect(b.attributes.agi.points).toBe(4)
+  expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 3, karma: 0, spec: 'Gizmos' }])
+  expect(b.purchases.map(x => x.id)).toEqual(['crb.padded-vest', 'crb.gizmo-kit', 'crb.glow-gland', 'crb.zoom-bike', 'crb.zap-gun'])
+  expect(b.sins).toHaveLength(2)
+  expect(r.ch.identity.notes).toContain('Skills not in the catalog: Basket Weaving 2.')
+})
+
+test('Load example characters adds each sample once, by its key, even renamed', () => {
+  const rows = [{ key: 'CRB|crb.glow-runner' }, { key: 'CRB|crb.bit-whisperer' }]
+  const copy = { ...runner(), sampleKey: 'CRB|crb.glow-runner' }
+  copy.identity = { ...copy.identity, streetName: 'Renamed' }
+  expect(samplesToLoad(rows, [copy, runner()]).map(r => r.key)).toEqual(['CRB|crb.bit-whisperer'])
+  expect(samplesToLoad(rows, [])).toHaveLength(2)
 })
