@@ -304,6 +304,21 @@ test('lifepath: exactly the setting’s count of adult modules; every mixed choi
   expect(codes(ch)).not.toContain('lifepath.mixedChoices')
 })
 
+test('lifepath: a module twice only as the setting allows; the best attribute picked, and where its rest goes', () => {
+  const ch = runner({ method: 'lifepath', metatype: GLIM })
+  ch.build.lifepath.push({ id: 'crb.wage-drone', choices: {} }, { id: 'crb.wage-drone', choices: {} })
+  expect(codes(ch)).not.toContain('lifepath.repeat')
+  ch.build.lifepath.push({ id: 'crb.dock-rat', choices: {} }, { id: 'crb.dock-rat', choices: {} })
+  expect(only(ch, 'lifepath.repeat')[0]).toMatchObject({ message: 'Wage Drone (2 times), Dock Rat (2 times): one module may be taken twice, none more.', page: 72 })
+  expect(only(ch, 'lifepath.repeat', { unset: ['lifepath.repeatModules'] })[0].message).toMatch(/no module may be taken twice/)
+  expect(only(ch, 'lifepath.bestAttr')[0]).toMatchObject({ message: 'Pick the best attribute (it goes up by 4).', page: 72 })
+  ch.build.bestAttr = 'str'  // Glimmerkin STR 1–4: 1 left over
+  expect(only(ch, 'lifepath.bestAttr')[0].message).toBe('STR reaches its maximum: pick the attribute that takes the other 1.')
+  ch.build.bestExtra = 'agi'
+  expect(codes(ch)).not.toContain('lifepath.bestAttr')
+  expect(codes(ch, { unset: ['lifepath.bestAttributeBonus'] })).not.toContain('lifepath.bestAttr')
+})
+
 // Review data
 test('every violation whose setting has a page carries it', () => {
   const ch = runner()

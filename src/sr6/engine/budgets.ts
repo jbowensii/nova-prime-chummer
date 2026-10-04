@@ -21,7 +21,7 @@ export interface Sr6Budgets {
   powerPoints: Budget & { cap: number }
   /** free spells and rituals (complex forms for a technomancer) */
   spellSlots: Budget
-  contactPoints: Budget & { ratingCap: number }
+  contactPoints: Budget & { ratingCap: number; karma?: number }
   knowledgePoints: Budget
   /** point buy only */
   characterPoints?: Budget
@@ -39,7 +39,7 @@ const n0 = (cr: CreationRules, key: string) => num(cr, key) ?? 0
 export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
   const a = b.attributes[k], resonance = MAGIC_KINDS[b.magic].resonance
   const base = k === 'mag' ? (resonance ? 0 : p.magicRating(b)) : k === 'res' ? (resonance ? p.magicRating(b) : 0) : 1
-  return base + a.points + a.adjust + a.karma
+  return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0)
 }
 
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number) =>
@@ -149,6 +149,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('metatype', data.metatypes[b.metatype]?.name ?? b.metatype, p.metatypeKarma?.(b) ?? 0, 'method')
   add('magic', MAGIC_KIND_LABELS[b.magic], p.magicKarma?.(b) ?? 0, 'method')
   add('toNuyen', 'Turned into nuyen', toNuyen(b, cr), 'contacts')
+  add('contacts', 'Contact ratings past the contact points', p.contactPoints?.(b).karma ?? 0, 'contacts')
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }
 }

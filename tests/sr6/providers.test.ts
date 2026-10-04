@@ -2,7 +2,8 @@
 // invented creation rules (tests/fixtures/sr6/custom). Each SR6 Forge provider test re-expressed with invented numbers.
 import { expect, test } from 'vitest'
 import type { MagicKind, Sr6Build, Sr6Method } from '../../src/sr6/model/character'
-import { makeProvider } from '../../src/sr6/engine/providers'
+import { attrRating, karmaBudget } from '../../src/sr6/engine/budgets'
+import { makeProvider, uncovered } from '../../src/sr6/engine/providers'
 import { buildOf as build, GLIM, made, STONE } from './fixture'
 
 const setup = (method: Sr6Method, over?: Parameters<typeof made>[0]) => { const { data, cr } = made(over); return makeProvider(method, data, cr) }
@@ -161,7 +162,7 @@ test('lifepath: starts from the opening modules', () => {
   expect(p.skillPoints(b)).toBe(OPEN.skillPoints)
   expect(p.adjustmentPoints(b)).toBe(OPEN.adjustmentPoints)
   expect(p.nuyen(b)).toBe(OPEN.nuyen)
-  expect(p.contactPoints!(b)).toEqual({ max: 0, spent: 0, left: 0, ratingCap: 7 })
+  expect(p.contactPoints!(b)).toEqual({ max: 0, spent: 0, left: 0, ratingCap: 7, karma: 0 })
   expect(p.knowledgePoints!(b)).toEqual({ max: 1, spent: 0, left: 1 })
 })
 
@@ -176,7 +177,7 @@ test('lifepath: contact points come from the modules, capped by the setting, not
   const p = setup('lifepath'), b = take(build('lifepath'), 'crb.street-sweeper')
   b.attributes.cha.points = 4
   b.contacts.push({ uid: 'c1', name: 'Fixer', archetype: 'fixer', connection: 1, loyalty: 1 })
-  expect(p.contactPoints!(b)).toEqual({ max: 3, spent: 2, left: 1, ratingCap: 7 })
+  expect(p.contactPoints!(b)).toEqual({ max: 3, spent: 2, left: 1, ratingCap: 7, karma: 0 })
 })
 
 test('lifepath: knowledge skills come from the modules, not Logic', () => {
@@ -231,4 +232,59 @@ test('lifepath: unknown picks and an unset contact cap count nothing', () => {
   const p = setup('lifepath', { unset: ['lifepath.contactRatingCap'] }), b = take(build('lifepath'), 'crb.gone')
   expect(p.skillPoints(b)).toBe(OPEN.skillPoints)
   expect(p.contactPoints!(b).ratingCap).toBe(0)
+})
+
+// the Sixth World Companion's lifepath rules (invented numbers: the fixture's raise 4, one module twice, 2 karma a rating)
+test('lifepath: one module may be taken twice and counts twice; again only while the setting allows', () => {
+  const p = setup('lifepath'), b = take(build('lifepath'), 'crb.wage-drone')
+  expect(p.available!(b).find(m => m.id === 'crb.wage-drone')).toMatchObject({ taken: true, again: true })
+  take(b, 'crb.wage-drone', 'crb.dock-rat')
+  expect(p.skillPoints(b)).toBe(OPEN.skillPoints + 5 + 5 + 3)
+  expect(p.available!(b).filter(m => m.again)).toEqual([])  // one module is doubled already
+  expect(setup('lifepath', { unset: ['lifepath.repeatModules'] }).available!(take(build('lifepath'), 'crb.dock-rat'))
+    .some(m => m.again)).toBe(false)
+})
+
+test('lifepath: the best attribute rises by the setting up to the metatype maximum, the rest goes on bestExtra', () => {
+  const p = setup('lifepath'), b = build('lifepath', { metatype: GLIM })
+  b.bestAttr = 'agi'  // Glimmerkin AGI 1–7: all 4
+  expect([p.attributeBonus!(b, 'agi'), attrRating(b, 'agi', p)]).toEqual([4, 5])
+  b.bestAttr = 'str'; b.bestExtra = 'log'  // STR 1–4: 3 of the 4, the other 1 on LOG
+  expect([attrRating(b, 'str', p), attrRating(b, 'log', p), attrRating(b, 'agi', p)]).toEqual([4, 2, 1])
+  expect(setup('lifepath', { unset: ['lifepath.bestAttributeBonus'] }).attributeBonus!(b, 'str')).toBe(0)
+  expect(setup('priority').attributeBonus).toBeUndefined()
+})
+
+test('lifepath: contact points go to contacts of the module’s types; ratings past them cost karma each', () => {
+  const { data, cr } = made({ data: d => {
+    d.lifemodules['crb.street-sweeper'].contactTypes = ['street']  // 3 points
+    d.lifemodules['crb.back-alley-medic'].contactTypes = ['medical']  // 1 point
+  } })
+  const p = makeProvider('lifepath', data, cr), b = take(build('lifepath'), 'crb.street-sweeper', 'crb.back-alley-medic')
+  b.contacts.push({ uid: 'c1', name: 'Rat', archetype: 'Fence', connection: 2, loyalty: 2, types: ['street'] })
+  expect(p.contactPoints!(b)).toEqual({ max: 4, spent: 3, left: 1, ratingCap: 7, karma: 2 })  // the medical point can't go there
+  b.contacts.push({ uid: 'c2', name: 'Doc', archetype: 'Medic', connection: 1, loyalty: 1, types: ['medical'] })
+  expect(p.contactPoints!(b)).toMatchObject({ spent: 4, left: 0, karma: 4 })
+  b.contacts[0].types = ['street', 'medical']; b.contacts[1].types = ['street']
+  expect(p.contactPoints!(b)).toMatchObject({ spent: 4, karma: 4 })
+  expect(karmaBudget(b, data, cr, p).breakdown).toContainEqual(
+    { key: 'contacts', label: 'Contact ratings past the contact points', amount: 4, sign: 'spend', tab: 'contacts' })
+  // unset karma price: those ratings overspend the points instead
+  cr.delete('lifepath.contactKarma')
+  expect(makeProvider('lifepath', data, cr).contactPoints!(b)).toEqual({ max: 4, spent: 6, left: -2, ratingCap: 7 })
+})
+
+test('uncovered: the shortfall of a max flow from typed pools to typed contacts', () => {
+  const pool = (points: number, ...types: string[]) => ({ points, ...(types.length ? { types } : {}) })
+  const contact = (need: number, ...types: string[]) => ({ need, types })
+  expect(uncovered([pool(4)], [contact(2, 'street'), contact(2)])).toBe(0)  // an any-type pool covers anyone
+  expect(uncovered([pool(2, 'street'), pool(2, 'magic')], [contact(3, 'street')])).toBe(1)
+  expect(uncovered([pool(2, 'street'), pool(2, 'magic')], [contact(3, 'street', 'magic'), contact(1, 'magic')])).toBe(0)
+  expect(uncovered([pool(2, 'street', 'magic')], [contact(2, 'street'), contact(2, 'magic')])).toBe(2)
+  expect(uncovered([], [contact(2)])).toBe(2)
+})
+
+test('lifepath: the metatype costs its karma', () => {
+  const p = setup('lifepath')
+  expect([p.metatypeKarma!(build('lifepath', { metatype: STONE })), p.metatypeKarma!(build('lifepath'))]).toEqual([11, 0])
 })

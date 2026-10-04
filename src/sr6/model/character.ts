@@ -45,7 +45,10 @@ export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | '
 /** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes). */
 export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string }
 export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string }
-export interface Sr6Contact { uid: string; name: string; archetype: string; connection: number; loyalty: number }
+/** types: the Sixth World Companion's contact types (lifepath's contact points go by type). */
+export interface Sr6Contact { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }
+export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' | 'government' | 'magic' | 'matrix' | 'media' | 'medical' | 'street'
+export const CONTACT_TYPES: ContactType[] = ['academic', 'corporate', 'criminal', 'engineering', 'government', 'magic', 'matrix', 'media', 'medical', 'street']
 export interface Sr6Sin { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; licences: { name: string; rating: number }[] }
 /** choices: a life module's mixed choice, by its index, to the option picked (an attribute abbr, skill:<id> or nuyen:<n>). */
 export interface Sr6LifeModule { id: string; choices: Record<number, string> }
@@ -60,6 +63,9 @@ export interface Sr6Build {
   metatype: string
   magic: MagicKind
   aspectedSkill?: string; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'
+  /** lifepath: the best attribute (raised by lifepath.bestAttributeBonus up to its metatype maximum) and the one that
+   *  takes what the maximum leaves over */
+  bestAttr?: Sr6Attr; bestExtra?: Sr6Attr
   powerPointsBought: number; initiation: number; submersion: number
   attributes: Record<Sr6Attr, Sr6AttrSpend>
   skills: Sr6Skill[]

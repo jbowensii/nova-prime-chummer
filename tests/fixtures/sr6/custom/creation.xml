@@ -83,6 +83,9 @@
   <setting key="magicKarma:technomancer" value="29" source="CRB" page="71"/>
   <setting key="lifepath.moduleCount" value="7" source="CRB" page="72"/>
   <setting key="lifepath.contactRatingCap" value="7" source="CRB" page="72"/>
+  <setting key="lifepath.bestAttributeBonus" value="4" source="CRB" page="72"/>
+  <setting key="lifepath.repeatModules" value="1" source="CRB" page="72"/>
+  <setting key="lifepath.contactKarma" value="2" source="CRB" page="72"/>
   <setting key="lifepath.startRating:full" value="1" source="CRB" page="72"/>
   <setting key="lifepath.startRating:aspected" value="3" source="CRB" page="72"/>
   <setting key="lifepath.startRating:mystic-adept" value="1" source="CRB" page="72"/>

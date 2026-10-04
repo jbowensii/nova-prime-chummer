@@ -2,9 +2,9 @@
 // adjustment and nuyen budgets, legal metatypes and magic kinds come from. Table values come from the catalog
 // (Sr6Data: priority rows, life modules), prose numbers from the creation rules (num(cr, …)); an unset setting counts 0
 // for its pool (rules.ts warns about it), nothing is guessed here.
-import { SR6_ATTRS, type MagicKind, type Sr6Build, type Sr6Method } from '../model/character'
+import { SR6_ATTRS, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Method } from '../model/character'
 import { num, type CreationRules } from './creation'
-import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView } from './data'
+import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from './data'
 
 export interface Pool { max: number; spent: number; left: number }
 export interface Provider {
@@ -27,12 +27,15 @@ export interface Provider {
   magicKarma?(b: Sr6Build): number
   /** point buy's character points */
   characterPoints?(b: Sr6Build): Pool
-  /** lifepath's contact points (from the modules, not Charisma) */
-  contactPoints?(b: Sr6Build): Pool & { ratingCap: number }
+  /** lifepath's contact points (from the modules, not Charisma, each module's for its contact types); karma: what the
+   *  contact ratings the points don't cover cost (spent then counts only the covered ones) */
+  contactPoints?(b: Sr6Build): Pool & { ratingCap: number; karma?: number }
+  /** lifepath: what the method adds to an attribute's natural rating (the best attribute and its overflow) */
+  attributeBonus?(b: Sr6Build, k: Sr6Attr): number
   /** lifepath's knowledge points (from the modules, not Logic) */
   knowledgePoints?(b: Sr6Build): Pool
-  /** lifepath's adult modules this runner may take, taken ones marked */
-  available?(b: Sr6Build): (Sr6LifeModuleView & { taken: boolean })[]
+  /** lifepath's adult modules this runner may take, taken ones marked; again: taken once and may be taken a second time */
+  available?(b: Sr6Build): (Sr6LifeModuleView & { taken: boolean; again: boolean })[]
 }
 
 const KINDS = Object.keys(MAGIC_KINDS) as MagicKind[]
@@ -42,6 +45,22 @@ export const pool = (max: number, spent: number): Pool => ({ max, spent, left: m
 export const contactSpend = (b: Sr6Build) => b.contacts.reduce((n, c) => n + c.connection + c.loyalty, 0)
 export const knowledgeSpend = (b: Sr6Build) => b.knowledge.filter(k => !k.native).reduce((n, k) => n + k.points, 0)
 const awakened = (k: MagicKind) => k !== 'mundane'
+
+/** The contact points no pool can cover: contacts take from the pools of a type they have (a pool with no types: any),
+ *  so the most the pools cover is a max flow; by Hall's condition its shortfall is the largest, over every set U of the
+ *  contacts' types, of what the contacts typed within U need minus what the pools touching U (or any type) hold.
+ *  ponytail: 2^(types on contacts) sets, at most 1024 with the ten types. */
+export function uncovered(pools: { types?: string[]; points: number }[], contacts: { types: string[]; need: number }[]): number {
+  const all = [...new Set(contacts.flatMap(c => c.types))]
+  let short = 0
+  for (let mask = 0; mask < 1 << all.length; mask++) {
+    const u = new Set(all.filter((_, i) => mask & (1 << i)))
+    const need = contacts.filter(c => c.types.every(t => u.has(t))).reduce((s, c) => s + c.need, 0)
+    const have = pools.filter(p => !p.types?.length || p.types.some(t => u.has(t))).reduce((s, p) => s + p.points, 0)
+    short = Math.max(short, need - have)
+  }
+  return short
+}
 
 export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules): Provider {
   const n = (key: string) => num(cr, key) ?? 0
@@ -118,8 +137,10 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     }
   }
 
-  // lifepath: the opening modules are fixed (R: the catalog's stage="opening" ones), the adult ones are picked
+  // lifepath: the opening modules are fixed (R: the catalog's stage="opening" ones), the adult ones are picked (as many
+  // of them twice as lifepath.repeatModules allows)
   const opening = Object.values(data.lifemodules).filter(m => m.stage === 'opening')
+  const modules = (b: Sr6Build) => [...opening, ...b.lifepath.map(pk => data.lifemodules[pk.id]).filter(Boolean)]
   const sum = (b: Sr6Build, field: Grant | 'knowledgeSkills') => {
     let v = opening.reduce((s, m) => s + (m.grants[field] ?? 0), 0)
     for (const pick of b.lifepath) {
@@ -143,9 +164,19 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     return !req || (req === 'awakened' ? f.spells || f.powers : req === 'emerged' ? f.resonance
       : req === 'adept' ? f.powers : req === 'magician' ? f.spells : true)
   }
+  /** the best attribute rises by lifepath.bestAttributeBonus up to its metatype maximum; what that leaves over goes on
+   *  bestExtra */
+  const best = (b: Sr6Build) => {
+    const bonus = n('lifepath.bestAttributeBonus'), m = data.metatypes[b.metatype]
+    const max = b.bestAttr && m && b.bestAttr in m.ranges ? m.ranges[b.bestAttr as keyof Sr6MetatypeView['ranges']][1] : Infinity
+    const up = b.bestAttr ? Math.max(0, Math.min(bonus, max - 1)) : 0
+    return { up, over: b.bestAttr ? bonus - up : 0 }
+  }
   return {
     ...base,
     lettersValid: () => true,
+    attributeBonus: (b, k) => (k === b.bestAttr ? best(b).up : 0) + (k === b.bestExtra && b.bestExtra !== b.bestAttr ? best(b).over : 0),
+    metatypeKarma: b => (b.metatype ? n(`metatypeKarma:${b.metatype}`) : 0),
     attributePoints: b => sum(b, 'attributePoints'),
     skillPoints: b => sum(b, 'skillPoints'),
     adjustmentPoints: b => sum(b, 'adjustmentPoints'),
@@ -153,12 +184,20 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     legalMetatypes: () => everyMetatype(0),
     legalMagic: () => everyKind(start),
     magicRating: b => start(b.magic),
-    contactPoints: b => ({ ...pool(sum(b, 'contactPoints'), contactSpend(b)), ratingCap: n('lifepath.contactRatingCap') }),
+    contactPoints: b => {
+      const pools = modules(b).filter(m => m.grants.contactPoints).map(m => ({ types: m.contactTypes, points: m.grants.contactPoints! }))
+      const max = pools.reduce((s, x) => s + x.points, 0), need = contactSpend(b)
+      const short = uncovered(pools, b.contacts.map(c => ({ types: c.types ?? [], need: c.connection + c.loyalty })))
+      const price = num(cr, 'lifepath.contactKarma'), ratingCap = n('lifepath.contactRatingCap')
+      // unset price: the ratings the points don't cover aren't bought, they overspend the points
+      return price === undefined ? { ...pool(max, need), ratingCap } : { ...pool(max, need - short), ratingCap, karma: short * price }
+    },
     knowledgePoints: b => pool(sum(b, 'knowledgeSkills'), knowledgeSpend(b)),
     available: b => {
-      const taken = new Set(b.lifepath.map(m => m.id))
+      const times = (id: string) => b.lifepath.filter(m => m.id === id).length
+      const twice = new Set(b.lifepath.map(m => m.id).filter(id => times(id) > 1)).size
       return Object.values(data.lifemodules).filter(m => m.stage === 'adult' && allows(b.magic, m.requires))
-        .map(m => ({ ...m, taken: taken.has(m.id) })).sort(byName)
+        .map(m => ({ ...m, taken: times(m.id) > 0, again: times(m.id) === 1 && twice < n('lifepath.repeatModules') })).sort(byName)
     },
   }
 }

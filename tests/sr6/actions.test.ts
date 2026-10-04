@@ -290,8 +290,8 @@ test('contacts and knowledge are added, changed and removed by uid', () => {
 })
 
 // life modules
-test('life modules: the same module twice is refused; a mixed choice is stored by its index', () => {
-  const { b, act } = runner({ method: 'lifepath', magic: 'full' })
+test('life modules: a mixed choice is stored by its index; a module twice only as the setting allows', () => {
+  const { b, act } = runner({ method: 'lifepath', magic: 'full', over: { unset: ['lifepath.repeatModules'] } })
   expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(ok)
   expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('already-taken'))
   expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'nuyen:3000' })).toEqual(ok)
@@ -304,6 +304,40 @@ test('life modules: the same module twice is refused; a mixed choice is stored b
   // a mundane can't take a module that requires an awakened runner; outside lifepath nothing is taken
   expect(runner({ method: 'lifepath' }).act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('not-available'))
   expect(runner().act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(no('not-lifepath'))
+})
+
+test('life modules: one taken twice keeps a choice per copy; remove takes the one asked for', () => {
+  const { b, act } = runner({ method: 'lifepath', magic: 'full' })
+  for (const id of ['crb.glow-apprentice', 'crb.wage-drone', 'crb.glow-apprentice']) expect(act({ op: 'lifemodule', id })).toEqual(ok)
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('already-taken'))  // a third time
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(no('already-taken'))  // a second doubled module
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'edg', at: 2 })).toEqual(ok)
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'agi', at: 1 })).toEqual(no('not-taken'))
+  expect(b.lifepath.map(m => m.choices)).toEqual([{}, {}, { 0: 'edg' }])
+  expect(act({ op: 'lifemodule', remove: 'crb.glow-apprentice', at: 0 })).toEqual(ok)
+  expect(b.lifepath).toEqual([{ id: 'crb.wage-drone', choices: {} }, { id: 'crb.glow-apprentice', choices: { 0: 'edg' } }])
+})
+
+test('the best attribute: a core attribute, lifepath only; none clears the extra', () => {
+  const { b, act } = runner({ method: 'lifepath' })
+  expect(act({ op: 'bestAttr', attr: 'str', extra: 'log' })).toEqual(ok)
+  expect([b.bestAttr, b.bestExtra]).toEqual(['str', 'log'])
+  expect(act({ op: 'bestAttr', attr: 'edg' })).toEqual(no('not-core'))
+  expect(act({ op: 'bestAttr', attr: 'str', extra: 'mag' })).toEqual(no('not-core'))
+  expect(act({ op: 'bestAttr', attr: null })).toEqual(ok)
+  expect([b.bestAttr, b.bestExtra]).toEqual([undefined, undefined])
+  expect(runner().act({ op: 'bestAttr', attr: 'str' })).toEqual(no('not-lifepath'))
+})
+
+test('a contact’s types: one or two known ones, an empty list clears them', () => {
+  const { b, act } = runner({ method: 'lifepath' })
+  expect(act({ op: 'contact', types: ['street'] })).toEqual(ok)
+  const uid = b.contacts[0].uid
+  expect(act({ op: 'contact', uid, types: ['street', 'magic', 'media'] })).toEqual(no('bad-types'))
+  expect(act({ op: 'contact', uid, types: ['street', 'magic'] })).toEqual(ok)
+  expect(b.contacts[0].types).toEqual(['street', 'magic'])
+  expect(act({ op: 'contact', uid, types: [] })).toEqual(ok)
+  expect(b.contacts[0].types).toBeUndefined()
 })
 
 test('no more adult modules than the setting asks for', () => {

@@ -4,7 +4,8 @@
 // { ok: false, reason } without changing anything when the step isn't allowed. Rule numbers come from the catalog and
 // the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest).
 import { newId } from '../../model/types'
-import type { Bonus, CpPool, Letter, MagicKind, PickKind, PriorityColumn, PurchaseKind, Sr6Attr, Sr6Build, Sr6Character, Sr6Knowledge, Sr6Method, Sr6Purchase } from '../model/character'
+import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
+  type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
 import { num, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { makeProvider } from './providers'
@@ -32,11 +33,17 @@ export type Op =
   /** the bonuses on a purchase, accessory or pick */
   | { op: 'bonus'; uid: string; bonuses: Bonus[] }
   /** add a contact, or change one (uid) */
-  | { op: 'contact'; uid?: string; name?: string; archetype?: string; connection?: number; loyalty?: number } | { op: 'contact'; remove: string }
+  | { op: 'contact'; uid?: string; name?: string; archetype?: string; connection?: number; loyalty?: number; types?: ContactType[] }
+  | { op: 'contact'; remove: string }
   | { op: 'knowledge'; uid?: string; name?: string; kind?: Sr6Knowledge['kind']; native?: boolean } | { op: 'knowledge'; remove: string }
   | { op: 'knowledgeRank'; uid: string; pool: 'points' | 'karma'; delta: number }
   | { op: 'cp'; pool: CpPool; delta: number }
-  | { op: 'lifemodule'; id: string; choice?: undefined } | { op: 'lifemodule'; remove: string } | { op: 'lifemodule'; id: string; choice: number; pick: string }
+  /** take an adult module (a second time when the provider says again), drop one (at: its place in b.lifepath; default the
+   *  last with that id), or pick where a taken one's choice goes (at: which of the two when it is taken twice) */
+  | { op: 'lifemodule'; id: string; choice?: undefined } | { op: 'lifemodule'; remove: string; at?: number }
+  | { op: 'lifemodule'; id: string; choice: number; pick: string; at?: number }
+  /** lifepath's best attribute (null: none) and the one that takes what its maximum leaves over */
+  | { op: 'bestAttr'; attr: Sr6Attr | null; extra?: Sr6Attr | null }
   | { op: 'lifestyle'; id: string | null; months?: number }
   /** add a SIN, or change one (uid) */
   | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number } | { op: 'sin'; remove: string }
@@ -254,6 +261,13 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if ('remove' in op) return removeBy(b.contacts, op.remove, l => { b.contacts = l })
       const { op: _, uid, ...patch } = op
       if ((patch.connection ?? 1) < 1 || (patch.loyalty ?? 1) < 1) return no('below-one')
+      if (patch.types) {
+        // one or two types, each once (a contact gains its second from a module of another type)
+        const types = [...new Set(patch.types)]
+        if (types.length > 2 || types.some(t => !CONTACT_TYPES.includes(t))) return no('bad-types')
+        if (types.length) patch.types = types; else delete patch.types
+        if (!types.length && uid) delete b.contacts.find(x => x.uid === uid)?.types
+      }
       if (!uid) { b.contacts.push({ uid: newId(), name: '', archetype: '', connection: 1, loyalty: 1, ...patch }); return OK }
       const c = b.contacts.find(x => x.uid === uid)
       if (!c) return no('unknown-line')
@@ -286,24 +300,34 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'lifemodule': {
       if (b.method !== 'lifepath') return no('not-lifepath')
       if ('remove' in op) {
-        if (!b.lifepath.some(m => m.id === op.remove)) return no('not-taken')
-        b.lifepath = b.lifepath.filter(m => m.id !== op.remove)
+        const i = op.at ?? b.lifepath.map(m => m.id).lastIndexOf(op.remove)
+        if (b.lifepath[i]?.id !== op.remove) return no('not-taken')
+        b.lifepath.splice(i, 1)
         return OK
       }
       if (op.choice !== undefined) {
-        const pk = b.lifepath.find(m => m.id === op.id), c = data.lifemodules[op.id]?.choices[op.choice]
+        const pk = op.at !== undefined ? (b.lifepath[op.at]?.id === op.id ? b.lifepath[op.at] : undefined) : b.lifepath.find(m => m.id === op.id)
+        const c = data.lifemodules[op.id]?.choices[op.choice]
         if (!pk) return no('not-taken')
         if (!c) return no('unknown-choice')
         if (!c.options.includes(op.pick)) return no('unknown-option')
         pk.choices[op.choice] = op.pick
         return OK
       }
-      if (b.lifepath.some(m => m.id === op.id)) return no('already-taken')
-      const avail = makeProvider(b.method, data, cr).available?.(b) ?? []
-      if (!avail.some(m => m.id === op.id)) return no('not-available')
+      const avail = (makeProvider(b.method, data, cr).available?.(b) ?? []).find(m => m.id === op.id)
+      if (!avail) return no('not-available')
+      if (avail.taken && !avail.again) return no('already-taken')
       const cap = num(cr, 'lifepath.moduleCount')
       if (cap !== undefined && b.lifepath.length >= cap) return no('module-count')
       b.lifepath.push({ id: op.id, choices: {} })
+      return OK
+    }
+    case 'bestAttr': {
+      if (b.method !== 'lifepath') return no('not-lifepath')
+      const special = (a?: Sr6Attr | null) => !!a && !CORE_ATTRS.includes(a)
+      if (special(op.attr) || special(op.extra)) return no('not-core')  // never Edge, Magic or Resonance
+      if (op.attr) b.bestAttr = op.attr; else { delete b.bestAttr; delete b.bestExtra }
+      if (op.extra !== undefined) { if (op.extra && op.attr) b.bestExtra = op.extra; else delete b.bestExtra }
       return OK
     }
     case 'lifestyle': {

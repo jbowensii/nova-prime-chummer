@@ -172,6 +172,9 @@
     <xs:attribute name="initiation" type="c:Count"/>
     <xs:attribute name="submersion" type="c:Count"/>
     <xs:attribute name="karmaToNuyen" type="c:Count"/>
+    <!-- lifepath: the best attribute, and the one that takes what its maximum leaves over -->
+    <xs:attribute name="bestAttr" type="c:Attr"/>
+    <xs:attribute name="bestExtra" type="c:Attr"/>
   </xs:complexType>
 
   <!-- a knowledge skill or language, its name as the text; native: the free native language -->
@@ -218,6 +221,16 @@
     <xs:attribute name="archetype" type="xs:string" use="required"/>
     <xs:attribute name="connection" type="c:Count" use="required"/>
     <xs:attribute name="loyalty" type="c:Count" use="required"/>
+    <!-- the Sixth World Companion's contact types, one or two -->
+    <xs:attribute name="types">
+      <xs:simpleType><xs:restriction><xs:simpleType><xs:list>
+        <xs:simpleType><xs:restriction base="xs:token">
+          <xs:enumeration value="academic"/><xs:enumeration value="corporate"/><xs:enumeration value="criminal"/>
+          <xs:enumeration value="engineering"/><xs:enumeration value="government"/><xs:enumeration value="magic"/>
+          <xs:enumeration value="matrix"/><xs:enumeration value="media"/><xs:enumeration value="medical"/><xs:enumeration value="street"/>
+        </xs:restriction></xs:simpleType>
+      </xs:list></xs:simpleType><xs:minLength value="1"/></xs:restriction></xs:simpleType>
+    </xs:attribute>
   </xs:complexType>
 
   <!-- the career ledger, append-only (src/sr6/engine/career.ts): finalize sets both balances, earn adds, an advance spends

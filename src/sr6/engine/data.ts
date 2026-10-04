@@ -44,6 +44,8 @@ export interface Sr6QualityView { id: string; name: string; positive: boolean; k
 export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
 export interface Sr6LifeModuleView {
   id: string; name: string; stage: 'opening' | 'adult'; requires?: string; grants: Partial<Record<Grant, number>>
+  /** the contact types its contact points buy or raise (absent: any) */
+  contactTypes?: string[]
   choices: { kind: 'mixed'; points: number; options: string[] }[]; page: number
 }
 export interface Sr6Data extends CreationCatalog {
@@ -134,6 +136,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   const lifemodules = Object.fromEntries(all('lifemodules').map(e => [e.id, {
     id: e.id, name: e.name, stage: e.attrs.stage === 'opening' ? 'opening' as const : 'adult' as const,
     ...(e.attrs.requires ? { requires: e.attrs.requires } : {}),
+    ...(e.attrs.contactTypes ? { contactTypes: e.attrs.contactTypes.split(' ').filter(Boolean) } : {}),
     grants: Object.fromEntries(GRANTS.filter(g => e.attrs[g] != null).map(g => [g, count(e, e.attrs[g], g)])),
     choices: parts(e, 'choice').map(p => ({ kind: 'mixed' as const, points: count(e, p.attrs.points, 'choice points', 1),
       options: (p.attrs.options ?? '').split(/\s+/).filter(Boolean) })),

@@ -21,10 +21,11 @@ function full(): Sr6Character {
   Object.assign(ch, { finalizedAt: '2026-10-03T11:00:00.000Z', final: { karma: 3, nuyen: 1250 }, campaign: '0123456789ab',
     lastExportedAt: '2026-10-03T12:00:00.000Z', overrides: [{ code: 'skill.cap', path: 'skills.crb.gab', note: 'GM ok' }] })
   Object.assign(b, { metatype: 'crb.glimmerkin', magic: 'aspected', aspectedSkill: 'crb.hexing', tradition: 'Street hoodoo', drainAttr: 'cha',
-    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 } })
+    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 }, bestAttr: 'str', bestExtra: 'agi' })
   b.priorities = { metatype: 'D', attributes: 'A', magic: 'B', skills: 'C', resources: null }
   b.cp.attribute = 5; b.cp.spells = 1
-  b.lifepath = [{ id: 'crb.glow-apprentice', choices: { 0: 'skill:crb.hexing' } }, { id: 'crb.wage-drone', choices: {} }]
+  b.lifepath = [{ id: 'crb.glow-apprentice', choices: { 0: 'skill:crb.hexing' } }, { id: 'crb.wage-drone', choices: {} },
+    { id: 'crb.glow-apprentice', choices: { 0: 'edg' } }]
   b.attributes.agi = { points: 3, adjust: 1, karma: 0 }; b.attributes.edg = { points: 0, adjust: 2, karma: 1 }
   b.skills = [{ id: 'crb.gab', points: 5, karma: 1, spec: 'Haggling', expertise: 'Fibbing' }, { id: 'crb.hexing', points: 2, karma: 0 }]
   b.knowledge = [{ uid: 'k1', name: 'Sperethiel', kind: 'language', native: true, points: 0, karma: 0 }, { uid: 'k2', name: 'Soy <brands>', kind: 'knowledge', points: 3, karma: 1 }]
@@ -39,7 +40,8 @@ function full(): Sr6Character {
     { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
-  b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2 }]
+  b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2, types: ['street', 'criminal'] },
+    { uid: 'c2', name: 'Moe', archetype: 'Fence', connection: 1, loyalty: 1 }]
   b.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Zap Gun', rating: 2 }] }, { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] }]
   return ch
 }
