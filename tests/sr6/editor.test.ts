@@ -2,6 +2,7 @@
 // alone; a refused one gives the engine's reason as a plain sentence. Made-up fixture data.
 import { expect, test } from 'vitest'
 import { REASONS, reasonText, runAct } from '../../src/sr6/ui/editor'
+import { priceAt } from '../../src/sr6/ui/Picker'
 import { blankSr6 } from '../../src/sr6/model/character'
 import { made } from './fixture'
 
@@ -19,4 +20,14 @@ test('an allowed step changes a copy', () => {
   const r = runAct(ch, { op: 'attribute', target: 'bod', pool: 'points', delta: 2 }, data, cr)
   expect('ch' in r && r.ch.build.attributes.bod.points).toBe(2)
   expect(ch.build.attributes.bod.points).toBe(0)
+})
+
+test('the picker prices an item at the rating and grade picked', () => {
+  const { data, cr } = made(), box = data.entry('electronics', 'crb.buzz-box')!
+  expect(priceAt(box, 3)).toEqual({ cost: '450¥', avail: '3', essence: '' })
+  expect(priceAt({ ...box, attrs: { ...box.attrs, cost: '12x' } }, 3).cost).toBe('?') // a cost the app can't read
+  const eyes = data.entry('augmentations', 'crb.glow-eyes')!
+  expect(priceAt(eyes, 2)).toEqual({ cost: '1,000¥', avail: '3', essence: '0.2' })
+  expect(priceAt(eyes, 2, cr, 'alpha')).toEqual({ cost: '1,500¥', avail: '6', essence: '0.14' })
+  expect(priceAt(data.entry('weapons', 'crb.fizz-rifle-70')!, 1).avail).toBe('4(L)')
 })
