@@ -118,6 +118,7 @@ export function preview(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Crea
   if (!ch.finalizedAt) return { ok: false, reason: 'not-finalized' }
   try {
     const { label, karma = 0, nuyen = 0 } = price(currentBuild(ch), a, data, cr, typed)
+    if (!Number.isFinite(karma) || !Number.isFinite(nuyen)) return { ok: false, reason: 'not-a-number' }
     const bal = balances(ch)
     if (karma > 0 && bal.karma - karma < 0) return { ok: false, reason: 'not-enough-karma' }
     if (nuyen > 0 && bal.nuyen - nuyen < 0) return { ok: false, reason: 'not-enough-nuyen' }
@@ -168,7 +169,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (v.karma === null) no('book-value')
       const had = b.qualities.find(q => q.id === a.line.id && !q.free)
       if (had && !v.perLevel) no('already-known')
-      if (a.line.level < 1) no('below-one')
+      if (!(a.line.level >= 1)) no('below-one')
       if ((had?.level ?? 0) + a.line.level > (v.perLevel ? v.maxLevel : 1)) no('at-maximum')
       const label = `Quality: ${v.name}${v.perLevel ? ` ${(had?.level ?? 0) + a.line.level}` : ''}`
       return { label, karma: Math.abs(v.karma!) * a.line.level * need('advance.qualityFactor') }
@@ -216,7 +217,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'purchase': {
       const x = a.line
-      if (x.qty < 1) no('below-one')
+      if (!(x.qty >= 1)) no('below-one')
       const e = x.id ? data.entry(x.kind, x.id) ?? no('unknown-entry') : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
@@ -232,11 +233,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return { label: `Dropped: ${(x.id && data.entry(x.kind, x.id)?.name) ?? x.name ?? 'Custom item'}` }
     }
     case 'contact':
-      if (a.line.connection < 1 || a.line.loyalty < 1) no('below-one')
+      if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
     case 'lifestyle': {
       const e = data.entry('lifestyles', a.id) ?? no('unknown-entry')
-      if (a.months < 1) no('below-one')
+      if (!(a.months >= 1)) no('below-one')
       const v = rated(e.attrs.cost)
       if (!v.ok || v.n === null) no('book-value')
       return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}`, nuyen: v.n! * a.months }

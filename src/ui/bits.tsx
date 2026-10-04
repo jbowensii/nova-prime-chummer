@@ -28,7 +28,7 @@ export const OverspentChip = ({ by }: { by: number }) =>
 
 /** A runner's state, in the Non-canon badge's family: a draft still in creation (reopens where it was left), or
  *  finalized (career). */
-/** finalTip: what a finalized runner's badge says (SR6 has no ledger yet: its build is read only). */
+/** finalTip: what a finalized runner's badge says (SR6 passes its own: spends are recorded on its Ledger tab). */
 export const StateBadge = ({ finalized, finalTip = 'Finalized: every change is logged in the ledger' }: { finalized: boolean; finalTip?: string }) =>
   <span className={`noncanon runstate ${finalized ? 'final' : 'draft'}`} title={finalized ? finalTip : 'Draft: still in creation'}>{finalized ? 'Finalized' : 'Draft'}</span>
 

@@ -8,6 +8,7 @@ import { SheetType, useSheetArt } from '../../print/shared'
 import '../../print/sheet.css'
 import './sheet.css'
 import { entryOf, priced } from '../engine/budgets'
+import { balances } from '../engine/career'
 import { MAGIC_KINDS } from '../engine/data'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, type PickKind, type PurchaseKind, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../ui/editor'
@@ -21,7 +22,7 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
   : <div className="s-boxes sr6-boxes">{Array.from({ length: k }, (_, i) => <span key={i} className={cls} />)}</div>
 
 export function Sr6Sheet() {
-  const { ch, data, cr, d } = useSr6Editor()
+  const { ch, data, cr, d, career } = useSr6Editor()
   const b = ch.build, art = useSheetArt(ch.id), k = MAGIC_KINDS[b.magic]
   const name = ch.identity.streetName || ch.identity.name || 'Unnamed runner'
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
@@ -33,7 +34,8 @@ export function Sr6Sheet() {
   const know = b.knowledge.filter(x => x.kind === 'knowledge'), langs = b.knowledge.filter(x => x.kind === 'language')
   const gear = [...lines('electronics'), ...lines('gear')]
   const lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)
-  const karma = ch.final?.karma ?? d.karmaLeft, nuyen = ch.final?.nuyen ?? d.nuyenLeft
+  // career: the ledger's balances (the sheet already shows the runner as it stands)
+  const { karma, nuyen } = career ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
 
   return (
     <div className="sheet-wrap">
@@ -90,7 +92,7 @@ export function Sr6Sheet() {
                 .filter(([, v]) => v !== undefined).map(([l, v]) => <tr key={l}><td>{l}</td><td><b>{v}</b></td></tr>)}
             </tbody></table>
             <h2>Karma & nuyen</h2>
-            <p>{n(karma)} karma · {n(nuyen)}¥{ch.finalizedAt ? ' (at Finalize)' : ''}</p>
+            <p>{n(karma)} karma · {n(nuyen)}¥</p>
           </section>
         </div>
 

@@ -1,9 +1,11 @@
 // Review: every broken creation rule and note with its page, each linked to the tab where it's fixed (a violation's path
-// starts with the tab id), GM approval as Anarchy's, the derived values, and Finalize (R, until S3's ledger: the build is
-// then read only, and Back to draft undoes it).
+// starts with the tab id), GM approval as Anarchy's, the derived values, and Finalize. In career: the career checks
+// (validateCareer, already in the context), the derived values of the runner as it stands, the ledger's balances, and Back
+// to draft only while the ledger holds nothing live to undo.
 import { useState } from 'react'
 import type { Violation } from '../../../model/types'
 import { Modal } from '../../../ui/bits'
+import { balances, canDraft } from '../../engine/career'
 import { draftAgain, finalizeSr6 } from '../../engine/finalize'
 import { canFinalizeSr6 } from '../../engine/rules'
 import { sr6Tabs } from '../EditorView'
@@ -15,7 +17,8 @@ export function ReviewTab() {
   const [note, setNote] = useState('')
   const [asking, setAsking] = useState<'finalize' | 'draft' | null>(null)
   const sorted = [...v].sort((a, b) => Number(!!a.approved) - Number(!!b.approved) || (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1))
-  const tabs = sr6Tabs(ch.build.magic)
+  const tabs = sr6Tabs(ch.build.magic, career)
+  const bal = balances(ch), drafting = canDraft(ch)
   // a pick left on a runner that's no longer awakened is fixed on Creation method (its Magic tab is gone)
   const tabOf = (path: string) => { const head = path.split('.')[0]; return tabs.some(([k]) => k === head) ? head : head === 'magic' ? 'method' : undefined }
   const ready = canFinalizeSr6(v)
@@ -61,7 +64,7 @@ export function ReviewTab() {
         ['Physical monitor', d.monitors.physical], ['Stun monitor', d.monitors.stun], ['Overflow', d.monitors.overflow],
         ['Defense Rating', d.defenseRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
         ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
-        ['Karma left', d.karmaLeft], ['Nuyen left', `${n(d.nuyenLeft)}¥`]])}
+        ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`]])}
       {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Game data → Creation rules).</p>}
 
       <hr className="sep" />
@@ -72,8 +75,10 @@ export function ReviewTab() {
           {!ready && <span className="muted"> Fix or approve the problems above first.</span>}</div>
       </> : <>
         <p>Finalized{ch.finalizedAt ? ` on ${ch.finalizedAt.slice(0, 10)}` : ''} with {n(ch.final?.karma ?? 0)} karma and {n(ch.final?.nuyen ?? 0)}¥ left.
+          {' '}<a href={sr6EditHref(ch.id, 'ledger')}>The ledger</a> now holds {n(bal.karma)} karma and {n(bal.nuyen)}¥.
           {' '}<a href={sr6EditHref(ch.id, 'print')}>Print it</a> or export a copy.</p>
-        <div><button className="btn" onClick={() => setAsking('draft')}>Back to draft</button></div>
+        <div><button className="btn" disabled={!drafting} onClick={() => setAsking('draft')}>Back to draft</button>
+          {!drafting && <span className="muted"> Void the ledger’s earnings and spends first (newest first).</span>}</div>
       </>}
 
       <Modal open={!!approving} onClose={() => setApproving(null)} title="GM approval"
@@ -87,7 +92,7 @@ export function ReviewTab() {
       </Modal>
       <Modal open={asking === 'draft'} onClose={() => setAsking(null)} title={`Put ${name} back to draft?`}
         actions={<><button className="btn" onClick={() => setAsking(null)}>Cancel</button><button className="btn primary" onClick={draft}>Back to draft</button></>}>
-        <p>The build can be changed again and the creation checks apply. Career changes come with the ledger in a later update.</p>
+        <p>The build can be changed again and the creation checks apply. The ledger keeps its history; finalizing again starts its balances anew.</p>
       </Modal>
     </div>
   )

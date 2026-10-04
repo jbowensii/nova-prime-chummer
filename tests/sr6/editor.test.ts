@@ -31,3 +31,13 @@ test('the picker prices an item at the rating and grade picked', () => {
   expect(priceAt(eyes, 2, cr, 'alpha')).toEqual({ cost: '1,500¥', avail: '6', essence: '0.14' })
   expect(priceAt(data.entry('weapons', 'crb.fizz-rifle-70')!, 1).avail).toBe('4(L)')
 })
+
+test('every career refusal has a sentence; an unset setting names itself and where to set it', async () => {
+  const src = (await import('node:fs')).readFileSync('src/sr6/engine/career.ts', 'utf8')
+  const codes = new Set([...src.matchAll(/no\('([a-z-]+)'\)|reason: '([a-z-]+)'/g)].map(m => m[1] ?? m[2]))
+  expect(codes.size).toBeGreaterThan(15)
+  for (const code of codes) expect(REASONS[code], code).toBeDefined()
+  expect(reasonText('not-latest')).toBe('Only the newest spend can be voided: void the later ones first.')
+  expect(reasonText('unset:advance.expertise')).toMatch(/^Expertise after creation isn’t set: Game data → Creation rules\.$/)
+  expect(reasonText('unset:karmaSpec')).toBe('Specialization isn’t set: Game data → Creation rules.')
+})

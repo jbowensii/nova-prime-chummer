@@ -452,11 +452,10 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(dlg).toContainText('17 karma and 563¥ left')
   await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
-  // no ledger on the SR6 side yet: the badge doesn't promise one
-  await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: the build is read only')
+  await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: spend karma and nuyen on the Ledger tab')
   await expect(work).toContainText('with 17 karma and 563¥ left')
   await tabs.filter({ hasText: 'Attributes' }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Finalized: the build is read only.' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Finalized: spend karma and nuyen on the Ledger tab.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Raise Body points' })).toBeDisabled()
   await tabs.filter({ hasText: 'Concept' }).click()
   await expect(page.getByLabel('Real name')).toBeEnabled()
@@ -464,7 +463,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(work.getByRole('button', { name: 'GM approve' })).toHaveCount(0)
   await shoot(page, 'review-finalized')
   await page.getByRole('button', { name: 'Back to draft' }).click()
-  await expect(dlg).toContainText('Career changes come with the ledger in a later update.')
+  await expect(dlg).toContainText('The ledger keeps its history')
   await dlg.getByRole('button', { name: 'Back to draft' }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Draft')
   await tabs.filter({ hasText: 'Attributes' }).click()
@@ -475,7 +474,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
   await page.getByRole('button', { name: 'Save and close' }).click()
   await expect(row(page, 'Zip Spark').first()).toContainText('Finalized')
-  await expect(row(page, 'Zip Spark').first().locator('.runstate')).toHaveAttribute('title', 'Finalized: the build is read only')
+  await expect(row(page, 'Zip Spark').first().locator('.runstate')).toHaveAttribute('title', 'Finalized: spend karma and nuyen on the Ledger tab')
 })
 
 test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no page holding next to nothing', async ({ page }) => {
@@ -571,7 +570,21 @@ test('Gil, an editor, lowers the skill cap: Pat’s runner shows it on Review', 
   await signIn(page, '/#/sr6', 'pat')
   await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
   await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: /^Review/ }).click()
-  await expect(page.locator('.viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' })).toContainText('CRB p.61')
+  // finalized, Review shows the career checks (S3); back to draft, the creation rules again
+  const cap = page.locator('.viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' }), dlg = page.getByRole('dialog')
+  await expect(page.getByRole('button', { name: 'Back to draft' })).toBeEnabled()
+  await expect(cap).toHaveCount(0)
+  await page.getByRole('button', { name: 'Back to draft' }).click()
+  await dlg.getByRole('button', { name: 'Back to draft' }).click()
+  await expect(cap).toContainText('CRB p.61')
+  // approved and finalized again, for the tests after this one
+  await cap.getByRole('button', { name: 'GM approve' }).click()
+  await dlg.getByLabel('Why the GM allows it').fill('Old cap')
+  await dlg.getByRole('button', { name: 'Approve' }).click()
+  await page.getByRole('button', { name: 'Finalize runner' }).click()
+  await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
+  await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
+  await expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
 })
 
 test('the legacy server: the SR6 runners page says who is in the way', async ({ page }) => {
