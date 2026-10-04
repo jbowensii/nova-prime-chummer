@@ -1,0 +1,102 @@
+// Game data's catalog browser (both games, 0.9.1): a Book dropdown (all books, or one imported source or compendium),
+// then the kinds with their counts (a list beside the entries; tabs across the top on a phone), the chosen kind's
+// sub-categories when it has more than one, and that kind's entries. A search box looks across every kind; its results
+// are grouped by kind. Each game maps its catalog to BrowseKind rows (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
+import { useState, type ReactNode } from 'react'
+import { Prose } from './Prose'
+
+export interface BrowseRow {
+  key: string; name: string; source: string; page: number
+  /** the sub-category inside its kind ("Handguns", "Cyberware: eyeware") */
+  group?: string
+  /** the printed values, one line */
+  details?: string
+  /** its description: searched, and shown under Description */
+  text?: string
+  /** after the source: Edited, House… */
+  marks?: ReactNode
+  /** its Edit button or link */
+  action?: ReactNode
+}
+export interface BrowseKind { id: string; label: string; rows: BrowseRow[] }
+export interface Book { id: string; name: string }
+
+const LIMIT = 200 // rows a table shows before "Show all" (a real book's gear or rules run to hundreds)
+const OTHER = 'Other'
+const cap = (s: string) => s ? s[0].toUpperCase() + s.slice(1) : s
+
+/** "Book": All books, then each source that has entries. */
+export function BookSelect({ books, value, onChange }: { books: Book[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <label className="inline book-pick">Book
+      <select value={value} onChange={e => onChange(e.target.value)} aria-label="Book">
+        <option value="">All books</option>{books.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
+  const [all, setAll] = useState(false)
+  const shown = all ? rows : rows.slice(0, LIMIT)
+  return (
+    <div className="scroll-x">
+      <table className={`data browse ${className ?? ''}`.trim()}><thead><tr><th>Entry</th><th>Values</th><th /></tr></thead>
+        <tbody>{shown.map(r => (
+          <tr key={r.key}><td><b>{r.name}</b> <span className="srcline"><span className="src">{r.source} p.{r.page}</span>{r.marks}</span></td>
+            <td><span className="muted">{r.details}</span>
+              {r.text && <details className="desc"><summary>Description</summary><Prose text={r.text} /></details>}</td><td className="num">{r.action}</td></tr>
+        ))}</tbody></table>
+      {shown.length < rows.length && <p className="muted">Showing {shown.length} of {rows.length}. Search to narrow it, or{' '}
+        <button type="button" className="btn small quiet" onClick={() => setAll(true)}>Show all {rows.length}</button></p>}
+    </div>
+  )
+}
+
+export function CatalogBrowser({ kinds, books, tableClass }: { kinds: BrowseKind[]; books: Book[]; tableClass?: string }) {
+  const [book, setBook] = useState('')
+  const [q, setQ] = useState('')
+  const inBook = kinds.map(k => ({ ...k, rows: book ? k.rows.filter(r => r.source === book) : k.rows }))
+  const [kindId, setKind] = useState(() => kinds.find(k => k.rows.length)?.id ?? kinds[0]?.id)
+  const [group, setGroup] = useState('')
+  const t = q.trim().toLowerCase()
+  const kind = inBook.find(k => k.id === kindId) ?? inBook[0]
+  const groups = kind ? [...new Set(kind.rows.map(r => r.group || OTHER))].sort((a, b) => a === OTHER ? 1 : b === OTHER ? -1 : a.localeCompare(b)) : []
+  const rows = kind?.rows.filter(r => !group || (r.group || OTHER) === group) ?? []
+  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => `${r.name} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase().includes(t)) }))
+    .filter(k => k.rows.length) : []
+  const pick = (id: string) => { setKind(id); setGroup('') }
+
+  return (
+    <section className="browser" aria-label="Catalog">
+      <div className="row browse-top">
+        <BookSelect books={books} value={book} onChange={b => { setBook(b); setGroup('') }} />
+        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search everything" aria-label="Search the catalog" />
+      </div>
+      {t ? (
+        <div className="browse-hits">
+          {hits.length === 0 && <p className="muted">Nothing matches “{q}”.</p>}
+          {hits.map(k => <section key={k.id} aria-label={k.label}><h3>{k.label} <span className="muted">({k.rows.length})</span></h3>
+            <Rows key={`${k.id} ${book} ${t}`} rows={k.rows} className={tableClass} /></section>)}
+        </div>
+      ) : kind && (
+        <div className="browse-body">
+          <div className="kinds" role="group" aria-label="Kind">
+            {inBook.map(k => <button key={k.id} type="button" aria-pressed={k.id === kind.id} className={k.rows.length ? undefined : 'none'}
+              onClick={() => pick(k.id)}>{k.label} <span className="n">{k.rows.length}</span></button>)}
+          </div>
+          <div className="browse-main">
+            <h3>{kind.label}</h3>
+            {groups.length > 1 && <div className="groups" role="group" aria-label="Category">
+              <button type="button" aria-pressed={!group} onClick={() => setGroup('')}>All <span className="n">{kind.rows.length}</span></button>
+              {groups.map(g => <button key={g} type="button" aria-pressed={g === group} onClick={() => setGroup(g)}>
+                {cap(g)} <span className="n">{kind.rows.filter(r => (r.group || OTHER) === g).length}</span></button>)}
+            </div>}
+            {rows.length === 0 ? <p className="muted">No {kind.label.toLowerCase()}{book ? ' in this book' : ' yet'}.</p>
+              : <Rows key={`${kind.id} ${book} ${group}`} rows={rows} className={tableClass} />}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}

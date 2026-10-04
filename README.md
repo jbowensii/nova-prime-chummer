@@ -1,6 +1,6 @@
 # Chummer Anarchy 2.0
 
-Version 0.9.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.9.1 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
@@ -40,7 +40,7 @@ own API key), and you review its entries before they’re added.
   Real SIN entry on the Gear tab, removing it takes the entry away. House rule:
   a SINner is always free and never counts as the first Quality. The GM allows
   or refuses real SINs, and non-canon content, for the whole table on the
-  Rules page; Review flags a runner that uses what the table doesn’t allow.
+  Table setup page; Review flags a runner that uses what the table doesn’t allow.
 - **Saving.** Every change saves on its own; the bar says when (“All changes
   saved · 14:02”), and **Save** / **Save and close** save right away. A save
   that fails turns red with the server’s reason and a **Retry**, and leaving
@@ -97,9 +97,10 @@ own API key), and you review its entries before they’re added.
   a runner can be set to canon only, which flags any on the Review tab.
 - **Rules reference** from the Base, Magic, Matrix and Vehicles quick
   reference sheets: a searchable page plus hover help on matching effects.
-  The **Rules** tab is for the GM (admin and editors). Its **Table rules**
-  switches turn the book’s optional rules on or off, and the GM can add house
-  rules. Players get a read-only **Table rules** page listing what’s on.
+  The **Rules** tab is for the GM (admin and editors) and shows only the
+  books. **Table setup** (`#/table`) holds the table’s switches: the GM turns
+  the book’s optional rules on or off and adds house rules; players see a
+  read-only list of what’s on.
 - **Foundry VTT.** Runners and book data export as one JSON file for the Foundry importer module
   (sra2 system; install it in Foundry from [jbowensii/chummer-anarchy2-foundry](https://github.com/jbowensii/chummer-anarchy2-foundry) by its manifest URL, https://github.com/jbowensii/chummer-anarchy2-foundry/releases/latest/download/module.json).
   **Export for Foundry** in the runner editor, or **Export for Foundry…** on the runner list (tick runners, All/None,
@@ -135,12 +136,15 @@ no book numbers.
   Book errors stay as printed; fixes go through **Game data**, survive
   re-imports and can be undone. Later books come one per release.
 - **Game data** (everyone; changes: admin and GMs). Browse the catalog, edit an
-  entry, export book data for Foundry, and fill in the **Creation rules**: the
+  entry and export book data for Foundry.
+- **Table setup** (`#/sr6/table`; players read only). The **Creation rules**: the
   numbers the rulebook prints only in its text (starting karma, caps, exchange
   rates, karma prices, point-buy prices, augmentation grades, the constants
   of derived values, advancement prices), each with the page you read it on.
-  The app ships none of them; a creation method whose settings aren’t set
-  can’t be picked, and its row says which are missing.
+  The admin sets the server’s; a GM can give a campaign its own on its page,
+  and that campaign’s runners use them. The app ships none of them; a creation
+  method whose settings aren’t set can’t be picked, and its row says which are
+  missing.
 - **Rules.** The rulebook’s rule sections, searchable.
 - **Builder** with all five creation methods: **priority**, **sum to ten**,
   **point buy**, **karma** and **lifepath** (lifepath needs life modules,
@@ -262,8 +266,8 @@ folder.
 | Play in campaigns (put own runners in; see the roster) | ✓ | ✓ | ✓ |
 | Ask the rules (up to the admin's daily limit) | ✓ | ✓ | ✓ |
 | Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
-| Catalog, descriptions, Data (read); Table rules (read) | ✓ | ✓ | ✓ |
-| Rules tab, Table rules switches and house rules | ✓ | ✓ | – |
+| Catalog, descriptions, Data (read); Table setup (read) | ✓ | ✓ | ✓ |
+| Rules tab, Table setup switches and house rules | ✓ | ✓ | – |
 | Books page, imports, AI settings and keys | ✓ | – | – |
 | Backup and restore | ✓ | – | – |
 | Background art: upload, switch on or off, delete | ✓ | – | – |

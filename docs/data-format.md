@@ -243,10 +243,10 @@ critters and devices p.68, planning pool or personal Edge p.80: names and pages 
 
 ## Table rules (`custom/table-rules.xml`)
 
-The optional rules a GM (admin or editor) plays with, switched on and off on the Rules page, plus house rules the GM
+The optional rules a GM (admin or editor) plays with, switched on and off on the Table setup page (`#/table`), plus house rules the GM
 writes. Written by the server (`PUT /api/table-rules`, admin and editors; atomic), schema `tablerules.xsd`, namespace
 `urn:chummer-anarchy2:config:1`; every signed-in user reads it at `/custom/table-rules.xml`, and players see the rules
-switched on under Table rules. It lives in `custom/`, so backups carry it.
+switched on there, read only. It lives in `custom/`, so backups carry it.
 
 ```xml
 <ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
@@ -286,6 +286,10 @@ schema `backgrounds.xsd`, namespace `urn:chummer-anarchy2:config:1`. An image's 
 or WebP; anything else, SVG included, is refused), 10 MB at most, 50 images at most. The Library is never served as files:
 signed-in browsers get the enabled images through `GET /api/backgrounds/<id>`. Backups carry the folder with the rest of
 `library/`; data packs don't.
+
+Shadowrun 6 has its own set, the same files and rules in `library/sr6/backgrounds/` at `/api/sr6/backgrounds` (Settings →
+Background art (Shadowrun 6), opened from an SR6 page). SR6 pages and the SR6 print sheet show only that set; Anarchy's
+pages and sheets only Anarchy's.
 
 ```xml
 <ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">

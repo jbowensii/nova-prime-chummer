@@ -1,4 +1,4 @@
-// SR6 NPCs (S3): a grunt, critter, spirit or sprite is an SR6 runner file with an <npc> block and a blank build. Its stat
+// SR6 NPCs (S3): a grunt, contact, critter, spirit or sprite is an SR6 runner file with an <npc> block and a blank build. Its stat
 // block is a copy of the catalog entry's printed values and its rating (Professional Rating, Force or Level), read at
 // that rating with formula(); its skills line gives dice pools against the catalog's skills. No book numbers here.
 import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
@@ -9,6 +9,7 @@ import { formula } from './values'
 export const NPC_KINDS: Record<Sr6NpcKind, { label: string; kind: 'npcs' | 'critters' | 'spirits' | 'sprites';
   rating?: { label: 'Professional Rating' | 'Force' | 'Level'; letter?: 'F' | 'L' } }> = {
   grunt: { label: 'Grunt', kind: 'npcs', rating: { label: 'Professional Rating' } },
+  contact: { label: 'Contact', kind: 'npcs' },
   critter: { label: 'Critter', kind: 'critters' },
   spirit: { label: 'Spirit', kind: 'spirits', rating: { label: 'Force', letter: 'F' } },
   sprite: { label: 'Sprite', kind: 'sprites', rating: { label: 'Level', letter: 'L' } },
@@ -23,7 +24,10 @@ const NOT_STATS = new Set(['category', 'rating', 'group'])
 const SPIRIT_ATTRS = new Set(['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'ess', 'mag'])
 const PARTS = new Set<string>(SR6_NPC_PARTS)
 
-const kindOf = (e: Sr6Entry): Sr6NpcKind => {
+/** The NPC kind of a catalog entry: an npcs entry is a grunt, or a contact when it is one of the book's sample contacts
+ *  (group Contact, no Professional Rating: importer/sr6/recipes/crb.py contact()). */
+export const npcKindOf = (e: Sr6Entry): Sr6NpcKind => {
+  if (e.kind === 'npcs') return e.attrs.group === 'Contact' && !e.attrs.rating ? 'contact' : 'grunt'
   const k = (Object.keys(NPC_KINDS) as Sr6NpcKind[]).find(k => NPC_KINDS[k].kind === e.kind)
   if (!k) throw new Error(`${e.kind} entries aren’t NPCs`)
   return k
@@ -40,7 +44,7 @@ export function blankSr6Npc(kind: Sr6NpcKind, rating?: number, now?: string): Sr
 /** An NPC copied from a catalog npcs, critters, spirits or sprites entry; a grunt at its Professional Rating, a spirit or
  *  sprite at `rating`. Keys and values the runner file can't hold (its XSD) are left out. */
 export function npcFromEntry(e: Sr6Entry, rating?: number, now?: string): Sr6Character {
-  const kind = kindOf(e)
+  const kind = npcKindOf(e)
   const ch = blankSr6Npc(kind, kind === 'grunt' ? (Number(e.attrs.rating) || undefined) : rating, now)
   const stats = Object.entries(e.attrs).filter(([k, v]) => !NOT_STATS.has(k) && /^[a-z]{1,20}$/.test(k) && v.length <= 80)
   ch.npc = { ...ch.npc!, ...(kind === 'grunt' && e.attrs.group ? { group: e.attrs.group } : {}),
@@ -52,6 +56,16 @@ export function npcFromEntry(e: Sr6Entry, rating?: number, now?: string): Sr6Cha
 
 /** The key a book NPC is loaded under (Sr6Character.sampleKey). */
 export const bookNpcKey = (e: Sr6Entry) => `${e.source}|${e.id}`
+
+/** The Force or Level Load book NPCs gives a spirit or sprite whose entry prints none (R: a default; the GM changes it on
+ *  the Stat block tab). */
+export const BOOK_NPC_RATING = 3
+/** Load book NPCs' copy of an entry, under its book key: a spirit or sprite at the rating its entry prints, else
+ *  BOOK_NPC_RATING. */
+export function bookNpc(e: Sr6Entry, now?: string): Sr6Character {
+  const letter = NPC_KINDS[npcKindOf(e)].rating?.letter
+  return { ...npcFromEntry(e, letter ? Number(e.attrs.rating) || BOOK_NPC_RATING : undefined, now), sampleKey: bookNpcKey(e) }
+}
 
 /** Each stat as printed and at the NPC's rating (a stat with the kind's letter; otherwise as printed). ok false: the
  *  value can't be read, shown as printed. */
@@ -89,7 +103,8 @@ export function npcPools(npc: Sr6Npc, data: Pick<Sr6Data, 'skills'>): { name: st
   })
 }
 
-/** The NPC block's headline: "Grunt, Professional Rating 2 · Street Crew", "Spirit, Force 4", "Sprite, Level 3", "Critter". */
+/** The NPC block's headline: "Grunt, Professional Rating 2 · Street Crew", "Spirit, Force 4", "Sprite, Level 3", "Critter",
+ *  "Contact". */
 export function npcHeadline(npc: Sr6Npc): string {
   const k = NPC_KINDS[npc.kind]
   return [k.label, k.rating && npc.rating != null && `${k.rating.label} ${npc.rating}`].filter(Boolean).join(', ')

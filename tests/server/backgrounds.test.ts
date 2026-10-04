@@ -121,3 +121,34 @@ test('enable, disable and delete: the admin only; a disabled image is the adminâ
   expect((await call('ada', 'DELETE', `/api/backgrounds/${id}`)).status).toBe(404)
   expect(readdirSync(bgDir)).toEqual(['backgrounds.xml'])
 })
+
+test('Shadowrun 6 has its own art set: /api/sr6/backgrounds in library/sr6/backgrounds, apart from Anarchyâ€™s', async () => {
+  const sr6 = (who: Who, method: string, rest = '', body?: unknown, type = 'application/json', name?: string) =>
+    call(who, method, `/api/sr6/backgrounds${rest}`, body, type, name)
+  for (const who of ['eve', 'pat'] as const) expect((await sr6(who, 'POST', '', PNG, 'image/png', 'x.png')).status).toBe(403)
+  expect((await sr6('nobody', 'GET')).status).toBe(401)
+  expect((await sr6('ada', 'POST', '', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'), 'image/png', 'x.png')).status).toBe(415)
+  const big = await sr6('ada', 'POST', '', Buffer.concat([PNG, Buffer.alloc(10 * 1024 * 1024)]), 'image/png', 'big.png').catch(() => null)
+  if (big) expect(big.status).toBe(413)
+  const r = await sr6('ada', 'POST', '', PNG, 'image/png', 'sr6.png')
+  expect(r.status).toBe(201)
+  const { id } = await r.json()
+  expect(readdirSync(join(lib, 'sr6', 'backgrounds')).sort()).toEqual([`${id}.png`, 'backgrounds.xml'].sort())
+  expect(readdirSync(bgDir)).toEqual(['backgrounds.xml']) // Anarchy's folder untouched
+  expect(await (await sr6('pat', 'GET')).json()).toEqual({ enabled: [id] })
+  expect(await (await call('pat', 'GET', '/api/backgrounds')).json()).toEqual({ enabled: [] })
+  expect((await call('pat', 'GET', `/api/backgrounds/${id}`)).status).toBe(404)
+  expect((await sr6('pat', 'GET', `/${id}`)).status).toBe(200)
+  const a = await (await upload(PNG)).json() // an Anarchy image is never SR6's
+  expect((await sr6('ada', 'GET', `/${a.id}`)).status).toBe(404)
+  expect((await sr6('ada', 'PUT', `/${a.id}`, { enabled: false })).status).toBe(404)
+  // never an SR6 book
+  expect(await (await call('ada', 'GET', '/api/sr6/books')).json()).toEqual([])
+  expect((await sr6('eve', 'PUT', `/${id}`, { enabled: false })).status).toBe(403)
+  expect((await sr6('eve', 'DELETE', `/${id}`)).status).toBe(403)
+  expect(await (await sr6('ada', 'PUT', `/${id}`, { enabled: false })).json()).toMatchObject({ id, enabled: false })
+  expect(await (await sr6('pat', 'GET')).json()).toEqual({ enabled: [] })
+  expect((await sr6('ada', 'DELETE', `/${id}`)).status).toBe(204)
+  expect(readdirSync(join(lib, 'sr6', 'backgrounds'))).toEqual(['backgrounds.xml'])
+  expect((await call('ada', 'DELETE', `/api/backgrounds/${a.id}`)).status).toBe(204)
+})

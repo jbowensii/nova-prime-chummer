@@ -108,10 +108,12 @@ and a blank build. Its stat block is copied from the catalog entry it was made f
 </sr6:character>
 ```
 
-- `kind`: `grunt`, `critter`, `spirit` or `sprite`; `rating` the Professional Rating, Force or Level; `group` a grunt's.
+- `kind`: `grunt`, `contact` (one of the book's sample contacts), `critter`, `spirit` or `sprite`; `rating` the
+  Professional Rating, Force or Level; `group` a grunt's.
 - `<stat key value>`: a printed value (key `a`–`z`, at most 20 letters; value at most 80 characters, e.g. `F+1`).
 - `<line part>`: `skills`, `powers`, `optionalPowers`, `weaknesses`, `attacks`, `augmentations`, `gear` or `weapons`.
-- `sampleKey` (root): the catalog entry a book NPC was loaded from, `<source>|<id>`.
+- `sampleKey` (root): the catalog entry a book NPC was loaded from, `<source>|<id>`. An example runner (Load example
+  characters on Your runners) has the book sample it was copied from, `<source>|<sample id>`.
 - The runners page refuses an NPC file ("Import it on NPCs & Critters") and the NPC page a runner.
 
 ## Reading bad files

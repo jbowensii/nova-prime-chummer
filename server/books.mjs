@@ -1,7 +1,7 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
-// edits, the table rules and SR6's creation rules (admin and editors; GET /api/edits and /api/sr6/creation: anyone
-// signed in) and the example sets (GET, anyone signed in); `who` is the signed-in user.
+// edits and the table rules (admin and editors; GET /api/edits and /api/sr6/creation: anyone signed in), SR6's
+// creation rules (the server default: the admin) and the example sets (GET, anyone signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -31,8 +31,9 @@
 //                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS, existing entries only);
 //                                     no AI, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
-//   PUT    /api/sr6/creation          admin and editors: { settings: [{ key, value, source?, page? }] } -> 204; replaces
-//                                     custom/sr6/creation.xml (creation.xsd: the numbers the book prints only in its text);
+//   PUT    /api/sr6/creation          admin: { settings: [{ key, value, source?, page? }] } -> 204; replaces
+//                                     custom/sr6/creation.xml (creation.xsd: what the admin changed from the shipped standard,
+//                                     public/data/sr6/creation-defaults.xml; the client overlays it), the server's default (a campaign's own: PUT /api/sr6/campaigns/:id { creation }, campaigns.mjs);
 //                                     anyone signed in reads the file at /custom/sr6/creation.xml. Anarchy has none (404)
 //   GET    /api/samples               anyone signed in: the example sets in custom/samples/<set>/ -> { sets: [{ id, name, canon,
 //                                     samples: [{ name, href }] }] } (href relative to /custom/). Read only: the admin manages
@@ -117,6 +118,31 @@ const coreUnread = imp => coreRows(imp, 'core-unread')
 const CORE_FILES = ['ampeffects', 'amptypes', 'armor', 'attributes', 'levels', 'lifestyles', 'metatypes', 'packages', 'pricing', 'skills',
   'vehicles', 'weapons']
 const fail = (code, message) => Object.assign(new Error(message), { code })
+
+/** SR6 creation settings as creation.xsd allows them: [{ key, value, source?, page? }] tidied (page a number), or a 400 for
+ *  the first bad one. The server's default (PUT /api/sr6/creation) and a campaign's own (server/campaigns.mjs). */
+export function creationSettings(list) {
+  if (!Array.isArray(list) || list.length > MAX_SETTINGS) throw fail(400, `send settings as [{ key, value, source?, page? }], ${MAX_SETTINGS} at most`)
+  const seen = new Set()
+  return list.map(s => {
+    const key = String(s?.key ?? ''), value = clean(String(s?.value ?? '')).trim()
+    const source = s?.source == null ? '' : String(s.source), page = s?.page == null ? '' : String(s.page)
+    if (!SETTING_KEY.test(key)) throw fail(400, 'a setting’s key is 1 to 80 letters, digits and . : _ -')
+    if (seen.has(key)) throw fail(400, `the setting ${key} is set twice`)
+    seen.add(key)
+    if (!value || value.length > 200) throw fail(400, `the value of ${key} is 1 to 200 characters`)
+    if (source && !SOURCE_ID.test(source)) throw fail(400, `the source of ${key} is a book id such as CRB`)
+    if (page && !/^[1-9]\d{0,5}$/.test(page)) throw fail(400, `the page of ${key} is a whole number from 1`)
+    return { key, value, ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
+  })
+}
+/** One checked setting as creation.xsd's <setting/>. */
+export const settingXml = s => `<setting key="${s.key}" value="${esc(s.value)}"${s.source ? ` source="${s.source}"` : ''}${s.page ? ` page="${s.page}"` : ''}/>`
+/** The <setting/> tags in `xml` as [{ key, value, source?, page? }]. */
+export const readSettings = xml => [...xml.matchAll(/<setting\b[^>]*>/g)].map(([t]) => {
+  const source = attr(t, 'source'), page = attr(t, 'page')
+  return { key: attr(t, 'key'), value: attr(t, 'value'), ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
+})
 
 /** The uploaded file name without any path, safe to show and pass as an argument. */
 export function safeName(header) {
@@ -545,27 +571,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   /** The SR6 creation rules (custom/sr6/creation.xml), all at once: Game data sends the whole list on every save. */
   async function creation(req, res, send) {
     const path = join(AREAS.sr6.custom, 'creation.xml')
-    if (req.method === 'GET') return send(res, 200, [...(await readOr(path, '')).matchAll(/<setting\b[^>]*>/g)].map(([t]) => {
-      const source = attr(t, 'source'), page = attr(t, 'page')
-      return { key: attr(t, 'key'), value: attr(t, 'value'), ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
-    }))
+    if (req.method === 'GET') return send(res, 200, readSettings(await readOr(path, '')))
     if (req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
     if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the creation rules as application/json' })
     let b
     try { b = JSON.parse(await body(req, 1024 * 1024)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { settings: [{ key, value, source?, page? }] } as JSON') }
-    if (!Array.isArray(b?.settings) || b.settings.length > MAX_SETTINGS) throw fail(400, `send { settings: [{ key, value, source?, page? }] }, ${MAX_SETTINGS} settings at most`)
-    const seen = new Set()
-    const rows = b.settings.map(s => {
-      const key = String(s?.key ?? ''), value = clean(String(s?.value ?? '')).trim()
-      const source = s?.source == null ? '' : String(s.source), page = s?.page == null ? '' : String(s.page)
-      if (!SETTING_KEY.test(key)) throw fail(400, 'a setting’s key is 1 to 80 letters, digits and . : _ -')
-      if (seen.has(key)) throw fail(400, `the setting ${key} is set twice`)
-      seen.add(key)
-      if (!value || value.length > 200) throw fail(400, `the value of ${key} is 1 to 200 characters`)
-      if (source && !SOURCE_ID.test(source)) throw fail(400, `the source of ${key} is a book id such as CRB`)
-      if (page && !/^[1-9]\d{0,5}$/.test(page)) throw fail(400, `the page of ${key} is a whole number from 1`)
-      return `  <setting key="${key}" value="${esc(value)}"${source ? ` source="${source}"` : ''}${page ? ` page="${page}"` : ''}/>\n`
-    })
+    if (!Array.isArray(b?.settings)) throw fail(400, `send { settings: [{ key, value, source?, page? }] }, ${MAX_SETTINGS} settings at most`)
+    const rows = creationSettings(b.settings).map(s => `  ${settingXml(s)}\n`)
     await mkdir(AREAS.sr6.custom, { recursive: true })
     await serial('creation', () => writeAtomic(path, '<?xml version="1.0" encoding="UTF-8"?>\n'
       + `<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">\n${rows.join('')}</sr6:creation>\n`))

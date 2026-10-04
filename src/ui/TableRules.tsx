@@ -1,13 +1,13 @@
 // Table rules: the optional rules in play at this table. The seeds are the books' optional rules (rules entries with
 // sheet="optional", e.g. the core rulebook's); the GM adds house rules of their own. The GM switches them on and off on the
-// Rules page (admin and editors; server/books.mjs PUT /api/table-rules, the server enforces the role); everyone reads
-// custom/table-rules.xml (tablerules.xsd) and players see the ones switched on here.
+// Table setup page (#/table; admin and editors; server/books.mjs PUT /api/table-rules, the server enforces the role);
+// everyone reads custom/table-rules.xml (tablerules.xsd) and players see the ones switched on there, read only.
 import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
 import type { Catalog, Rule } from '../model/types'
 import type { TableFlags } from '../engine'
 import { newId } from '../model/types'
-import { send } from './auth'
+import { canEdit, send, useMe } from './auth'
 import { Modal } from './bits'
 import { useRepo } from './repo'
 import { SourceLabel } from './SourceLabel'
@@ -71,13 +71,28 @@ const Text = ({ row }: { row: Row }) =>
   row.text ? <p>{row.text}</p> : row.rule ? <p className="muted">The description is in the book ({row.rule.source} p.{row.rule.page}).</p> : null
 
 /** The players' page: the rules switched on, read only. */
-export function TableRulesScreen({ c }: { c: Catalog }) {
+/** Table setup (#/table): what this table plays with, apart from the books' Rules and Game data. The GMs switch the table
+ *  rules here (TableRulesManager); players read the ones switched on. */
+export function TableSetupScreen({ c }: { c: Catalog }) {
+  if (!canEdit(useMe())) return <TableRulesScreen c={c} />
+  return (
+    <main className="lib">
+      <PageHeader title="Table setup" />
+      <p className="muted">How this table plays: the app’s switches, the books’ optional rules and your house rules. Players see the ones
+        that are on, read only.</p>
+      <TableRulesManager c={c} />
+    </main>
+  )
+}
+
+function TableRulesScreen({ c }: { c: Catalog }) {
   const [saved, setSaved] = useState<TableRule[] | null>(null)
   useEffect(() => { void loadTableRules().then(setSaved) }, [])
   const on = saved && rows(c, saved).filter(r => r.on)
   return (
     <main className="lib">
-      <PageHeader title="Table rules" />
+      <PageHeader title="Table setup" />
+      <h2>Table rules</h2>
       <p className="muted">The optional rules and house rules your GM plays with.</p>
       {!on ? <p className="muted">Loading table rules…</p> : on.length === 0 ? <p>No table rules are switched on yet. Your GM switches them on.</p>
         : <ul className="table-rules">{on.map(r => <li key={r.id}><div className="head"><b>{r.name}</b> <Cite c={c} row={r} /></div><Text row={r} /></li>)}</ul>}
@@ -85,7 +100,7 @@ export function TableRulesScreen({ c }: { c: Catalog }) {
   )
 }
 
-/** The GM's part of the Rules page: switch rules on and off, add, edit and remove house rules. Every change saves at once. */
+/** The GM's part of Table setup: switch rules on and off, add, edit and remove house rules. Every change saves at once. */
 export function TableRulesManager({ c }: { c: Catalog }) {
   const repo = useRepo()
   const [saved, setSaved] = useState<TableRule[] | null>(null)
@@ -131,7 +146,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
   return (
     <section className="table-rules-gm" aria-labelledby="table-rules-title">
       <h2 id="table-rules-title">Table rules</h2>
-      <p className="muted">Optional rules from your books and your own house rules. Players see the ones switched on under Table rules.</p>
+      <p className="muted">Optional rules from your books and your own house rules. Players see the ones switched on here, read only.</p>
       {msg && !editing && <p className={msg.err ? 'banner bad' : 'banner'} role={msg.err ? 'alert' : 'status'}>{msg.text}
         {msg.save && <> <button className="btn small quiet" onClick={() => setMsg(null)}>Dismiss</button></>}</p>}
       {all.length === 0 && <p className="muted">No optional rules yet: they come with the core rulebook’s import. Add a house rule of your own.</p>}

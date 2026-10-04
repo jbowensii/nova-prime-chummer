@@ -5,6 +5,7 @@
 .sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.4rem; justify-content: flex-start; max-width: 56rem; margin: 0 auto 1rem; }
 .sheet-wrap:has(> .sheet) > .sheet-tools { max-width: 52rem; } /* the toolbar starts where the sheet does */
 .sheet-tools select.sheet-type { width: auto; }
+.sheet-tools > .bars { flex: 1 1 100%; } /* the main menu, then the sheet's own actions (nav.tsx HeaderBars) */
 .sheet {
   --s-ink: #12120c; --s-ink-2: #4a4a44; --s-line: #b9b6ab; --s-rust: #7b361e; --s-yellow: #f1bb00;
   --s-indigo: #36305b; --s-cream: #fcf1d1;

@@ -376,9 +376,9 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .backup p { margin: 0.5rem 0; }
 .backup label.check { margin: 0; color: var(--text); }
 .backup .small { font-size: 0.9rem; }
-.backup .file, .datapack .file { position: relative; display: inline-block; margin-top: 0.8rem; }
-.backup .file input, .datapack .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.backup .file:focus-within, .datapack .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.backup .file, .datapack .file, .sr6-creation .file { position: relative; display: inline-block; margin-top: 0.8rem; }
+.backup .file input, .datapack .file input, .sr6-creation .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.backup .file:focus-within, .datapack .file:focus-within, .sr6-creation .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .backup progress { vertical-align: middle; accent-color: var(--yellow); }
 .datapack { margin-bottom: 1.5rem; }
 .datapack .row label.file { margin-top: 0; font-size: 1rem; } /* a button beside a button */
@@ -395,7 +395,7 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .rule-list > div { padding: 0.55rem 0; border-bottom: 1px solid var(--rule); }
 .rule-list dt { font-weight: 700; }
 .rule-list dt .muted { font-weight: 400; font-size: 0.85rem; margin-left: 0.4rem; }
-.rule-list dd { margin: 0.2rem 0 0; max-width: 70ch; }
+.rule-list dd { margin: 0.2rem 0 0; }
 /* table rules (TableRules.tsx): the GM's switches on the Rules page, the players' read-only list */
 .table-rules-gm { margin-bottom: 2rem; }
 .table-rules { list-style: none; margin: 0 0 1rem; padding: 0; }
@@ -596,8 +596,9 @@ dialog.drawer h2 { margin-top: 0; }
 .pe-zoom input { flex: 1; }
 .portrait-editor .backdrops { flex: 1; min-width: 14rem; }
 
-/* ---- headers (nav.tsx PageHeader, icons.tsx): the page's actions, then the main menu, then Ask, Settings and the account,
-   all as one row of icons on its own line under the title, from the left (0.8.3). Every icon says what it is in a tooltip
+/* ---- headers (nav.tsx PageHeader/HeaderBars, icons.tsx): under the title, from the left, row 1 is the main menu, then the
+   game switch, Ask, Settings and the account, the same on every page of a game; row 2, only when the page has any, its own
+   actions under a hairline (0.9.1). Every icon says what it is in a tooltip
    (.tip: an indigo tab with the yellow edge, like the book's callouts) above it on hover and on keyboard focus; the
    current page has the yellow underline the editor's tabs use; a page's main action ("New runner") is the yellow one. ---- */
 .icon { flex: none; display: block; }
@@ -618,8 +619,8 @@ dialog.drawer h2 { margin-top: 0; }
   display: grid; place-items: center; background: var(--yellow); color: var(--ink); font: 700 0.7rem/1 var(--sans); }
 .menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem; }
 .menubar .tools { padding-left: 0.35rem; margin-left: 0.2rem; border-left: 1px solid var(--rule); }
-.bars { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.4rem 0.5rem; min-width: 0; }
-.bars > .actions { gap: 0.2rem; padding-right: 0.55rem; border-right: 1px solid var(--rule); }
+.bars { display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem; min-width: 0; }
+.bars > .actions { gap: 0.2rem; padding-top: 0.3rem; border-top: 1px solid var(--rule); }
 .lib header.pagehead { gap: 0.8rem 1.5rem; }
 .pagehead .titles { flex: 1 0 auto; max-width: 100%; min-width: 0; }
 .pagehead .bars, .topbar > .bars { flex: 1 1 100%; }
@@ -630,16 +631,56 @@ dialog.dupes .dupe-group { display: grid; gap: 0.35rem; margin: 0 0 0.8rem; padd
 dialog.dupes .dupe-group legend { font-weight: 700; padding: 0 0.3rem; }
 dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size: 0.95rem; align-items: baseline; }
 @media (max-width: 600px) {
-  .bars > .actions { border-right: 0; padding-right: 0; }
   .menubar .tools { border-left: 0; padding-left: 0; margin-left: 0; }
 }
 
-/* SR6 Rules: subsections indented under their section, paragraphs kept; Game data: the short kinds table; the edit dialog’s read-only parts */
-.sr6-rules .rule-list dd { white-space: pre-line; }
+/* Game data's catalog browser and the Rules pages' filters (CatalogBrowser.tsx, 0.9.1): the book, then the kinds (a list
+   beside the entries, the editor's tab style; tabs across the top on a phone), a kind's sub-categories as chips, the search */
+.browse-top { margin: 0.8rem 0 1.1rem; }
+.browse-top input[type='search'] { flex: 1 1 14rem; width: auto; min-width: 0; }
+.browse-top select { width: auto; max-width: 100%; }
+label.book-pick { display: flex; align-items: center; gap: 0.5rem; max-width: 100%; }
+.browser { margin-bottom: 2.2rem; }
+.browse-body { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.kinds { display: flex; flex-direction: column; border-left: 1px solid var(--rule); }
+.kinds button { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; margin-left: -1px; padding: 0.42rem 0.7rem;
+  border: 0; border-left: 4px solid transparent; background: none; cursor: pointer; text-align: left; color: var(--text-2);
+  font-family: var(--display); text-transform: uppercase; font-size: 0.86rem; letter-spacing: 0.03em; }
+.kinds button:hover { color: var(--rust); }
+.kinds button[aria-pressed='true'] { color: var(--heading); border-left-color: var(--yellow); background: var(--zebra); }
+.kinds button.none { color: var(--text-3); }
+.kinds .n, .groups .n { font-family: var(--sans); font-size: 0.8rem; font-variant-numeric: tabular-nums; color: var(--text-3); text-transform: none; letter-spacing: 0; }
+.browse-main { min-width: 0; }
+.browse-main h3, .browse-hits h3 { margin-top: 0; }
+.browse-hits section + section { margin-top: 1.4rem; }
+.groups { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.9rem; }
+.groups button { padding: 0.15rem 0.7rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--text);
+  cursor: pointer; font-size: 0.88rem; }
+.groups button:hover { border-color: var(--rust); }
+.groups button[aria-pressed='true'], .groups button[aria-pressed='true'] .n { background: var(--yellow); border-color: var(--yellow); color: var(--accent-ink); }
+@media (max-width: 700px) {
+  .browse-body { grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
+  .kinds { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--rule); }
+  .kinds button { flex: none; margin: 0 0 -1px; border-left: 0; border-bottom: 4px solid transparent; }
+  .kinds button[aria-pressed='true'] { border-bottom-color: var(--yellow); background: none; }
+}
+
+/* book text (Prose.tsx): paragraphs at a readable line length, lists, bold and italic, the book's small tables */
+.prose { max-width: 72ch; }
+.prose > p, .prose > ul, .prose > ol { margin: 0 0 0.55rem; }
+.prose > :last-child { margin-bottom: 0; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose strong { font-weight: 700; color: var(--text); }
+.prose .scroll-x { margin: 0.3rem 0 0.6rem; }
+.prose table.data { width: auto; }
+details.desc { margin-top: 0.25rem; }
+details.desc summary { cursor: pointer; color: var(--rust); font-size: 0.85rem; width: max-content; }
+details.desc .prose { margin-top: 0.35rem; font-family: var(--serif); font-size: 1rem; color: var(--text); }
+
+/* SR6 Rules: subsections indented under their section; the edit dialog’s read-only parts */
 .sr6-rules .rule-list .lvl2 { padding-left: 1rem; }
 .sr6-rules .rule-list .lvl3 { padding-left: 2rem; }
 .sr6-rules .rule-list .lvl4 { padding-left: 3rem; }
-table.data.sr6-kinds { width: auto; min-width: min(20rem, 100%); }
 .sr6-creation td:first-child { width: 45%; min-width: 12rem; }
 .sr6-creation input[type=number] { width: 7rem; }
 .sr6-creation input.src-id { width: 5rem; }

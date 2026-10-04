@@ -1,8 +1,11 @@
-import type { Catalog } from '../../model/types'
+// Game data (everyone): the catalog browser by book and kind (CatalogBrowser), the sources, the Foundry export, the catalog
+// edits, the files that didn't load and those that did.
+import type { Catalog, Item, ItemKind, Ref } from '../../model/types'
 import { PageHeader } from '../nav'
 import { canEdit, useMe } from '../auth'
 import { NonCanon } from '../bits'
-import { EditButton, editState, STATE_TEXT, useOpenEdit, type EditKind } from '../EditEntry'
+import { CatalogBrowser, type BrowseKind, type BrowseRow } from '../CatalogBrowser'
+import { EditButton, EditedMark, editState, STATE_TEXT, useOpenEdit, type EditKind } from '../EditEntry'
 import { SourceLabel } from '../SourceLabel'
 import { ExportBooksPanel } from '../Foundry'
 
@@ -17,8 +20,38 @@ function counts(c: Catalog) {
   return n
 }
 
+const ITEM_KINDS: [ItemKind, string][] = [['weapon', 'Weapons'], ['armor', 'Armor'], ['gear', 'Gear'], ['spell', 'Spells'], ['complex-form', 'Complex forms']]
+const vals = (xs: [string, unknown][]) => xs.filter(([, v]) => v != null && v !== '' && v !== false).map(([k, v]) => v === true ? k : `${k} ${v}`).join(' · ')
+
+/** Every browsable kind of the catalog, each entry with its sub-category (amps by type, weapons by category…) and values. */
+function browseKinds(c: Catalog): BrowseKind[] {
+  const row = (e: Ref & { name: string }, more: Partial<BrowseRow>): BrowseRow => ({ key: e.id, name: e.name, source: e.source, page: e.page, ...more })
+  const edited = (e: { edited?: boolean }) => e.edited ? <EditedMark /> : undefined
+  const item = (i: Item): BrowseRow => row(i, { group: i.category, text: i.text, marks: edited(i), action: <EditButton kind="items" id={i.id} name={i.name} />,
+    details: vals([['specialist', i.specialist], ['armor', i.armor], ['dv', i.dv], ['ranges', i.ranges]]) })
+  const items = [...c.items.values()]
+  return [
+    { id: 'amps', label: 'Amps', rows: [...c.amps.values()].map(a => row(a, { group: c.ampTypes.get(a.type)?.name ?? a.type, text: a.narrative,
+      marks: edited(a), action: <EditButton kind="amps" id={a.id} name={a.name} />,
+      details: vals([['rating', a.printedRating], ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')]]) })) },
+    { id: 'ampeffects', label: 'Amp effects', rows: [...c.ampEffects.values()].map(e => row(e, { group: e.category,
+      details: vals([['rating', e.rating], ['for', e.types.join(', ')], ['max', e.max]]) })) },
+    ...ITEM_KINDS.map(([k, label]) => ({ id: k, label, rows: items.filter(i => i.kind === k).map(item) })),
+    { id: 'skills', label: 'Skills', rows: [...c.skills.values()].map(sk => row(sk, { group: c.attributes.get(sk.attr)?.name,
+      details: vals([['specializations', sk.specs.map(x => x.name).join(', ')]]) })) },
+    { id: 'metatypes', label: 'Metatypes', rows: [...c.metatypes.values()].map(m => row(m, { details: vals([['edge', m.edge]]) })) },
+    { id: 'vehicles', label: 'Vehicles', rows: [...c.vehicles.values()].map(v => row(v, {
+      details: vals([['handling', v.handling], ['speed', v.speed], ['body', v.body], ['armor', v.armor], ['pilot', v.pilot]]) })) },
+    { id: 'packages', label: 'Packages', rows: [...c.packages.values()].map(k => row(k, { group: c.levels.get(k.level)?.name ?? k.level, details: k.archetype })) },
+    { id: 'lifestyles', label: 'Lifestyles', rows: [...c.lifestyles.values()].map(l => row(l, { text: l.text, details: vals([['per run', l.perRun]]) })) },
+    { id: 'rules', label: 'Rules', rows: [...c.rules.values()].map(r => row({ ...r, name: r.title }, { group: r.sheet, text: r.text, details: r.section,
+      marks: edited(r), action: <EditButton kind="rules" id={r.id} name={r.title} /> })) },
+  ]
+}
+
 export function DataScreen({ c }: { c: Catalog }) {
   const count = counts(c)
+  const kinds = browseKinds(c), used = new Set(kinds.flatMap(k => k.rows.map(r => r.source)))
   const openEdit = useOpenEdit()
   const me = useMe()
   const edits = KINDS.flatMap(([kind, label]) => [...(c[kind] as Map<string, { id: string; source: string; page: number; edited?: boolean; name?: string; title?: string }>).values()]
@@ -26,12 +59,14 @@ export function DataScreen({ c }: { c: Catalog }) {
   return (
     <main className="lib">
       <PageHeader title="Game data" />
+      <CatalogBrowser kinds={kinds} books={[...c.sources.values()].filter(s => used.has(s.id)).map(s => ({ id: s.id, name: s.name }))} />
+      <h2>Files and sources</h2>
       <p>All rules and catalog data load from XML files next to this page. House rules and extra content go in the <code>custom/</code> folder
         (on Unraid: <code>/mnt/user/appdata/chummer-anarchy2/custom</code>), listed in <code>custom/index.xml</code>. Same id replaces a book entry,
         <code> &lt;remove id="…"/&gt;</code> deletes one, a new id adds one. Reload the page after changing them.</p>
       <h2>Sources</h2>
       <p>Canon is the game’s official rules. Other published material is marked <NonCanon /> wherever it appears; the GM can flag it
-        at their table (Rules page). Descriptions are private: one file per source in <code>custom/texts/</code>, never part of the app itself.</p>
+        at their table (Table setup page). Descriptions are private: one file per source in <code>custom/texts/</code>, never part of the app itself.</p>
       <div className="scroll-x"><table className="data"><thead><tr><th>Source</th><th>Publisher</th><th>Status</th><th className="num">Entries</th><th>Descriptions</th><th>File</th><th>Checksum (SHA-256)</th></tr></thead>
         <tbody>{[...c.sources.values()].map(s => (
           <tr key={s.id}><td><b>{s.id}</b> {s.name}</td><td>{s.publisher}</td><td>{s.canon ? 'Canon' : <NonCanon />}</td>

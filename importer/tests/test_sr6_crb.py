@@ -1,8 +1,10 @@
 """SR6 core rulebook recipe (importer/sr6/recipes/crb.py) on a made-up book.md in the converter's sr6 shape, regrouped
 with the recipe's aliases and name headers. Every name, number and line is invented."""
 import os
+import re
 import unittest
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from lxml import etree
 
@@ -65,6 +67,39 @@ Hands that never shake. Cost: 5 Karma
 #### Butterfingers
 **Bonus:** 6 Karma
 Drops made-up things.
+<!-- page 81 -->
+# Archetypes
+<!-- page 82 -->
+## Glow Runner
+A made-up runner who glows.
+##### metatype: glimmerkin
+| B | A | R | S | W | L | I | C | EDG | M | ESS |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | 5(6) | 4 | 2 | 3 | 2 | 4 | 3 | 4 | 4 | 6 |
+**Initiative/Actions:** 8 + 2D6/1 Major, 3 Minor
+**Defense Rating:** 5
+**Active Skills:** Tinkering 3 (Gizmos +2), Basket Weaving 2
+**Knowledge Skills:** Glow Lore, Puddle Streets
+**Languages:** Plainspeak (Native), Glimmertongue
+**Qualities:** Lucky Streak 2, Butterfingers, Steady Hands (glimmerkin trait), Night Eyes (glimmerkin trait), Odd Quirk
+**Adept Powers:** Quick Feet 2, Glow Sense
+**Contacts:** Fixer Fred (C3/L2), Glow Dealer C1/L4)
+**Lifestyle:** Shoebox (2 months prepaid)
+**Augmentations:** Glow Gland 2
+**Gear:** Padded Vest, 2 x fake SIN (rating 3; w/ zap license), Gizmo Kit (rating 4), Mystery Box
+**Vehicles:** Zoom Bike
+**Starting Nuyen:** 1,234¥
+**Weapons:** Zap Gun [Pistol, DV 3P, SA, 8/10/—/—, 10(c), w/ 50 rounds] Odd Sword [Blade, DV 3P, 9/—/—/—/—]
+<!-- page 83 -->
+## Bit Whisperer
+A made-up technomancer.
+##### metatype: plainfolk
+| B | A | R | S | W | L | I | C | EDG | ESS |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 | 2 | 3 | 2 | 5 | 5 | 4 | 3 | 3 | 6 |
+**Active Skills:** Tinkering 4 (Clockwork +3)
+**Complex Forms:** Static Fizz
+**Lifestyle:** Gutter
 <!-- page 91 -->
 # SKILLS
 Skill intro.
@@ -470,6 +505,52 @@ class CrbRecipeTest(unittest.TestCase):
             self.assertTrue(crb.readable(v), v)
         for v in ("12x", "900 + Gizmo", "300/350", "10–900", "Rating^"):
             self.assertFalse(crb.readable(v), v)
+
+    def test_archetypes(self):
+        """The archetypes chapter's sample characters: SR6 runner files built from the stat block against the catalog,
+        valid against character.xsd, what doesn't map in the notes and the report, no description."""
+        self.assertEqual([(s["file"], s["name"], s["role"], s["page"]) for s in self.res.samples],
+                         [("crb.glow-runner.xml", "Glow Runner", "Archetype", 81), ("crb.bit-whisperer.xml", "Bit Whisperer", "Archetype", 82)])
+        schema = etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, "character.xsd")))
+        for s in self.res.samples:
+            doc = etree.fromstring(s["xml"].encode("utf8"))
+            self.assertTrue(schema.validate(doc), f"{s['file']}: {schema.error_log.last_error}")
+            self.assertNotIn("A made-up", s["xml"])  # the description stays in the book
+        g = ET.fromstring(self.res.samples[0]["xml"])
+        b = g.find("build")
+        self.assertEqual((g.get("id"), g.get("streetName"), g.get("metatype"), b.get("magic")), ("crb.glow-runner", "Glow Runner", "crb.glimmerkin", "adept"))
+        self.assertEqual({a.get("id"): a.get("points") for a in b.iter("attribute")},
+                         {"bod": "2", "agi": "4", "rea": "3", "str": "1", "wil": "2", "log": "1", "int": "3", "cha": "2", "edg": "3", "mag": "4", "res": "0"})
+        self.assertEqual([(x.get("id"), x.get("points"), x.get("spec")) for x in b.iter("skill")], [("crb.tinkering", "3", "Gizmos")])
+        self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],
+                         [("Glow Lore", "knowledge", None), ("Puddle Streets", "knowledge", None), ("Plainspeak", "language", "true"), ("Glimmertongue", "language", None)])
+        self.assertEqual([(x.get("id"), x.get("level"), x.get("free")) for x in b.iter("quality")],
+                         [("crb.lucky-streak", "2", None), ("crb.butterfingers", "1", None), ("crb.steady-hands", "1", "true")])
+        self.assertEqual([(x.get("kind"), x.get("id"), x.get("level")) for x in b.iter("pick")],
+                         [("adeptpowers", "crb.quick-feet", "2"), ("adeptpowers", "crb.glow-sense", None)])
+        self.assertEqual([(x.get("name"), x.get("connection"), x.get("loyalty")) for x in b.iter("contact")], [("Fixer Fred", "3", "2"), ("Glow Dealer", "1", "4")])
+        self.assertEqual((b.find("lifestyle").get("id"), b.find("lifestyle").get("months")), ("crb.shoebox", "2"))
+        self.assertEqual([(x.get("kind"), x.get("id"), x.get("rating"), x.get("worn")) for x in b.iter("purchase")],
+                         [("armor", "crb.padded-vest", None, "true"), ("gear", "crb.gizmo-kit", "4", None),
+                          ("augmentations", "crb.glow-gland", "2", None), ("vehicles", "crb.zoom-bike", None, None), ("weapons", "crb.zap-gun", None, None)])
+        self.assertEqual([(x.get("kind"), x.get("rating"), [l.get("name") for l in x]) for x in b.iter("sin")],
+                         [("fake", "3", ["zap license"]), ("fake", "3", ["zap license"])])
+        notes = g.findtext("notes")
+        for bit in ("Initiative/Actions: 8 + 2D6/1 Major, 3 Minor", "Starting Nuyen: 1,234¥", "Augmented as printed: AGI 5(6).",
+                    "Skills not in the catalog: Basket Weaving 2.", "Qualities not in the catalog: Night Eyes (glimmerkin trait); Odd Quirk.",
+                    "Gear not in the catalog: Mystery Box.", "Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—]."):
+            self.assertIn(bit, notes)
+        self.assertEqual([(r["name"], r["field"], r["value"]) for r in self.rep("unmatched-item")][:2],
+                         [("Glow Runner", "Skills", "Basket Weaving 2"), ("Glow Runner", "Qualities", "Night Eyes (glimmerkin trait)")])
+        t = ET.fromstring(self.res.samples[1]["xml"])
+        tb = t.find("build")
+        self.assertEqual((tb.get("magic"), tb.find("skill").get("expertise"), tb.find("pick").get("id"), tb.find("lifestyle").get("months")),
+                         ("technomancer", "Clockwork", "crb.static-fizz", "1"))
+        self.assertIn("Resonance isn’t printed", t.findtext("notes"))
+        # the golden file the app's tests read (tests/fixtures/sr6/sample-glow-runner.xml): the same but its date
+        golden = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sr6" / "sample-glow-runner.xml"
+        self.assertEqual(re.sub(r'updatedAt="[^"]+"', "", self.res.samples[0]["xml"]),
+                         re.sub(r'updatedAt="[^"]+"', "", golden.read_text(encoding="utf8")))
 
     def test_nothing_unmapped(self):
         self.assertEqual(self.rep("unmapped"), [])

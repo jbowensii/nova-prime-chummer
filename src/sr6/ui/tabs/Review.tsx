@@ -65,7 +65,7 @@ export function ReviewTab() {
         ['Defense Rating', d.defenseRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
         ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
         ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`]])}
-      {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Game data → Creation rules).</p>}
+      {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Table setup → Creation rules).</p>}
 
       <hr className="sep" />
       <h2>Finalize</h2>

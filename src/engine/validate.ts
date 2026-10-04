@@ -8,7 +8,7 @@ import { derive } from './derive'
 import { price, slotLapse } from './price'
 import { hasNoMetatype } from './npc'
 
-/** The GM's table-wide switches (Rules page, TableRules.tsx); both on unless the GM switches them off. */
+/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. */
 export interface TableFlags { nonCanon: boolean; realSin: boolean }
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {

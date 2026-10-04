@@ -5,6 +5,7 @@ import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, test } from 'vitest'
 import { balances, currentBuild, deriveSr6, entryValues, exportSr6Books, exportSr6Compendium, exportSr6Runners, priced } from '../../src/sr6/engine'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { blankSr6Npc } from '../../src/sr6/engine/npc'
 import type { Sr6Purchase } from '../../src/sr6/model/character'
 import type { Sr6Compendium } from '../../src/sr6/model/types'
 import { made, fixtureCatalog } from './fixture'
@@ -149,6 +150,14 @@ describe('SR6 export: books', () => {
     const goon = b.flatMap(x => x.entries).find(e => e.id === 'crb.corner-goon')!
     expect(goon.npc).toMatchObject({ kind: 'grunt', rating: 2, group: 'Street Crew', from: { id: 'crb.corner-goon', source: 'CRB' } })
     expect(b.flatMap(x => x.entries).find(e => e.kind === 'weapons')).not.toHaveProperty('npc')
+  })
+  test('a contact NPC goes out as a grunt of group Contact (v1’s kinds), and the file validates', () => {
+    const { data, cr } = made(), ch = blankSr6Npc('contact')
+    ch.identity.streetName = 'Made-up Fence'
+    const f = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS)
+    expect(f.runners![0].npc).toMatchObject({ kind: 'grunt', group: 'Contact' })
+    expect(f.runners![0].npc).not.toHaveProperty('rating')
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
 })
 describe('SR6 export: compendium', () => {

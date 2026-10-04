@@ -1,5 +1,77 @@
 # Release notes
 
+## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
+
+- **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow
+  column, with the PDF's line breaks, words split across lines ("gamemas- ter") and `**bold**` markers showing. The
+  importer now joins each paragraph's lines, rejoins a word split at a line end (real hyphens such as "non-player"
+  stay) and starts a new paragraph where the book did, keeping list items, tables and label lines on lines of their own.
+  Re-import the core rulebook on **Books** to get the cleaned-up text; until then the old text is still shown as joined
+  paragraphs. The Rules and Game data pages show **bold** and *italic* as such, paragraphs and lists across the page's
+  width up to a comfortable line length; each Game data entry with a description has a **Description** to open.
+  Anarchy's texts already came in whole paragraphs and are unchanged.
+- **Game data is browsed by book and category**, in both games. At the top, a **Book** list: All books, or one
+  imported book or compendium. Then the kinds of entry, each with its count (a list beside the entries; tabs across the
+  top on a phone): pick one and only its entries show. Big kinds split into sub-categories you can pick: Shadowrun 6
+  weapons by type, augmentations by cyberware or bioware and body area, spells by category, gear by its section of the
+  book, qualities positive or negative, rules by chapter; Anarchy amps by type, weapons, gear and spells by category,
+  skills by attribute, rules by sheet. Anarchy's Game data gets the browser for the first time (amps, amp effects,
+  weapons, armor, gear, spells, complex forms, skills, metatypes, vehicles, packages, lifestyles, rules), with the Edit
+  buttons for amps, items and rules. **Search everything** looks across every kind at once and groups what it finds by
+  kind. The sources, Foundry export, your catalog edits and the file lists follow below.
+- **Rules** (both games): a **Book** list at the top, next to the chapter list (Anarchy: the sheet list) and the search.
+- **The header has two rows of icons**, the same way in both games. Row 1 is the main menu, identical on every page of a
+  game and always in the same order: Your runners, NPCs & Critters, Compendiums, Campaigns, Books, Rules, Game data and
+  Table setup (only the pages your role can use), then the game switch, Ask the rules (Anarchy), Settings and your
+  account. The page you're on is underlined. Row 2 appears only on a page that has its own actions and holds just those:
+  New runner, Import file, Export for Foundry, Load example characters or Load book NPCs, Find duplicates and Trash on the
+  lists; Save, Undo, Redo and the exports in a runner's editor; Print, Sheet type and Background on the print page (which
+  now has the main menu too, never printed); a compendium's export. Every icon names itself in a tooltip above it. On a
+  phone the rows wrap; the page never scrolls sideways.
+- **SR6 creation rules come filled in with the standard values.** A new server no longer starts with an empty creation
+  rules form: the app ships the core rulebook's numbers (starting karma, caps, karma prices, nuyen rates, augmentation
+  grades and the rest) and the Sixth World Companion's for **sum to ten**, **point buy** and **lifepath**, each with its
+  book and page. Priority, sum to ten and point buy can be picked straight away; lifepath once its life modules are in
+  the catalog. **Karma build** stays locked until you enter its numbers, because no SR6 book prints them. On **Table setup**
+  a new **Standard** column shows each standard value and its page, marks the ones your table changed, and has **Reset**
+  for one value and **Reset all to standard**. Saving keeps only what you changed; everything else follows the standard.
+  If you saved a full set of settings before, it keeps working as it is. A campaign's own settings still start as a copy
+  of the server's.
+- **Load book NPCs on SR6 NPCs & Critters now loads the whole book**: the critters, spirits and sprites as well as the
+  grunts and sample contacts, each once (pressing it again adds only what's missing). Spirits come in at Force 3 and
+  sprites at Level 3, a starting point you change on the NPC's Stat block tab. The sample contacts are their own kind
+  now, **Contact**, instead of showing as "Grunt · Contact"; contacts you loaded with 0.9.0 are switched over the next
+  time you press Load book NPCs. New NPC lists contacts under Contact. In a Foundry export a contact goes out as an NPC
+  (a grunt with group Contact). Players still never see NPCs.
+- **SR6 example characters**: importing the core rulebook now also reads its archetypes (the sample characters) as SR6
+  runners, and **Your runners** has **Load example characters** to copy them into your list, each once. Each one is built
+  from its printed stat block: metatype, attributes, skills with specializations, knowledge skills and languages,
+  qualities, spells, adept powers, complex forms, contacts, lifestyle, gear, augmentations, vehicles, weapons and fake
+  SINs, matched to the book's entries by name. What the app can't hold (augmented values, the printed initiative,
+  condition monitors and starting nuyen, and anything not found in the book's tables) is listed in the runner's Notes.
+  Priorities aren't set, so the budgets show overspent until you choose them. On the owner's copy of the core rulebook
+  all ten archetypes import. Re-import the core rulebook to get them.
+- **Load settings file** on the SR6 creation rules form (the server's on Table setup, and a campaign's own on its page): pick a
+  `creation.xml` from your computer (the format of `custom/sr6/creation.xml`). It is checked and its values fill the form,
+  in place of what it showed, for you to review; anything it couldn't use is listed. Nothing is saved until you click
+  **Save creation rules**. A file of another kind is refused.
+- **Table setup**: a new page in both games (sliders icon in the header; `#/table` and `#/sr6/table`) for how the table
+  plays, so Rules and Game data show only book content. Anarchy: the table switches (non-canon content, real SINs, the
+  books' optional rules and house rules) move there from Rules. Shadowrun 6: the creation rules move there from Game data;
+  the admin edits the server's settings, with **Load settings file** and links to campaigns that have their own. Admin and
+  editors use it; players see what's in effect, read only (Anarchy's former Table rules page; old links still work).
+- **A campaign can have its own SR6 creation rules.** The admin's settings are the server's default. On an SR6
+  campaign's page its GMs (and the admin) choose **Use the server's settings** or **Use this campaign's own settings**,
+  which starts as a copy of the server's to change and save. Runners in that campaign are built, checked and priced with
+  its settings (budgets, Review, the career ledger, Foundry export); every other runner uses the server's. The campaign's
+  players see its settings read only; nobody else sees them. Only the admin can change the server's settings now (editors
+  could before); editors set their own per campaign.
+- **Shadowrun 6 has its own background art.** The SR6 side's app background, printed sheet and the sheet's Background
+  picker use only SR6 images; Anarchy keeps its own. The admin uploads SR6 art the same way as Anarchy's: open **Settings**
+  while on an SR6 page and use **Background art (Shadowrun 6)** (PNG, JPEG or WebP, 10 MB each, 50 at most). The app ships
+  no art.
+- The first screen shows **Shadowrun 6th World** first, on the left; Anarchy 2.0 is second.
+
 ## 0.9.0 — 2026-10-04: Shadowrun 6th World
 
 The app now builds runners for two games. Everything below is the Shadowrun 6 side; Anarchy works as before.

@@ -21,7 +21,7 @@ import { BookSheet } from '../print/BookSheet'
 import { usePrintStyle } from '../print/shared'
 import { AskRules } from './AskRules'
 import { IconButton } from './icons'
-import { MainMenu } from './nav'
+import { HeaderBars } from './nav'
 import { Face } from './Portrait'
 
 /** The print page: the sheet the toolbar's Sheet type (or Settings) picks. */
@@ -95,19 +95,16 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
         <div className="who">{ch.identity.portrait && <Face ch={ch} />}<span className="name">{name}</span>{ch.npc ? <NpcChips npc={ch.npc} /> : <StateBadge finalized={career} />}</div>
         {!ro && <div className="savebar"><SaveLine status={status} onRetry={() => void saveNow()} /></div>}
         <span className="spacer" />
-        <div className="bars">
-          <div className="iconbar actions">
-            {!ro && <>
-              <IconButton icon="save" label="Save" onClick={() => void saveNow()} disabled={status.state === 'saving'} />
-              <IconButton icon="close" label="Save and close" onClick={() => void saveAndClose()} />
-              <IconButton icon="undo" label="Undo" disabled={!ctx.canUndo} onClick={ctx.undo} />
-              <IconButton icon="redo" label="Redo" disabled={!ctx.canRedo} onClick={ctx.redo} />
-            </>}
-            <IconButton icon="download" label="Export file" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))} />
-            <IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadRunners(c, [ch])} />
-          </div>
-          <MainMenu />
-        </div>
+        <HeaderBars>
+          {!ro && <>
+            <IconButton icon="save" label="Save" onClick={() => void saveNow()} disabled={status.state === 'saving'} />
+            <IconButton icon="close" label="Save and close" onClick={() => void saveAndClose()} />
+            <IconButton icon="undo" label="Undo" disabled={!ctx.canUndo} onClick={ctx.undo} />
+            <IconButton icon="redo" label="Redo" disabled={!ctx.canRedo} onClick={ctx.redo} />
+          </>}
+          <IconButton icon="download" label="Export file" onClick={() => ro ? exportCharacter(c, ch) : setCh(exportCharacter(c, ch))} />
+          <IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadRunners(c, [ch])} />
+        </HeaderBars>
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (

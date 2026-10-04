@@ -7,7 +7,9 @@
 //   GET    /api/campaigns                       -> [campaign] the caller's (the admin: all)
 //   POST   /api/campaigns                       admin, editors: { name, note? } -> 201 campaign; the caller is its GM
 //   GET    /api/campaigns/:id                   -> campaign (its GMs, members, and the admin)
-//   PUT    /api/campaigns/:id                   GM/admin: any of { name, note, archived } -> campaign
+//   PUT    /api/campaigns/:id                   GM/admin: any of { name, note, archived } -> campaign; SR6 also { creation }:
+//                                               the campaign's own creation settings ([{ key, value, source?, page? }],
+//                                               creation.xsd's rules) or null (the server's default again)
 //   DELETE /api/campaigns/:id                   GM/admin: -> 204; 409 while runners are in it
 //   POST   /api/campaigns/:id/members           GM/admin: { user } -> campaign
 //   DELETE /api/campaigns/:id/members/:user     GM/admin: -> campaign; that player's runners leave it (they stay theirs)
@@ -24,11 +26,12 @@
 //   runners: [{ key, mine, ownerName, streetName, level, package, id, owner, file }] } (key: opaque, for lists; file: the sheet
 //   in GET /api/characters). A member gets the roster only: names without usernames, and no id, owner or file (id: their own)
 //   GMs and the admin also get npcs: [{ id, name, owner, ownerName }], the NPCs its GMs shared with it (an NPC's campaign
-//   counts while its owner is a GM of it); a member's view never has npcs.
+//   counts while its owner is a GM of it); a member's view never has npcs. An SR6 campaign also has creation: its own
+//   creation settings, or null (it uses the server's, /api/sr6/creation), for everyone who sees it (players read them).
 import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { attr, esc, rootTag, unesc, writeAtomic } from './books.mjs'
+import { attr, creationSettings, esc, readSettings, rootTag, settingXml, unesc, writeAtomic } from './books.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
 export const CAMPAIGN_ID = /^[0-9a-f]{12}$/
@@ -54,18 +57,21 @@ export function parseCampaigns(xml) {
   return [...xml.matchAll(/<campaign\b[^>]*?(?:\/>|>[\s\S]*?<\/campaign>)/g)].map(([m]) => {
     const tag = rootTag(m, 'campaign'), users = el => [...m.matchAll(new RegExp(`<${el}\\b[^>]*>`, 'g'))].map(([t]) => attr(t, 'user'))
     return { id: attr(tag, 'id'), name: attr(tag, 'name') ?? '', created: attr(tag, 'created') ?? iso(), archived: attr(tag, 'archived') === 'true',
-      note: unesc(m.match(/<note>([\s\S]*?)<\/note>/)?.[1] ?? ''), gms: users('gm'), members: users('member') }
+      note: unesc(m.match(/<note>([\s\S]*?)<\/note>/)?.[1] ?? ''), gms: users('gm'), members: users('member'),
+      creation: (x => x ? readSettings(x[0]) : null)(m.match(/<creation\b[^>]*?(?:\/>|>[\s\S]*?<\/creation>)/)) }
   }).filter(c => CAMPAIGN_ID.test(c.id ?? ''))
 }
 const campaignsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campaigns (campaigns.xsd). Written by the server. -->\n'
   + `<ca2:campaigns xmlns:ca2="${NS}" version="1">\n${list.map(c => `  <campaign id="${esc(c.id)}" name="${esc(c.name)}" created="${esc(c.created)}"${
     c.archived ? ' archived="true"' : ''}>\n${c.note ? `    <note>${esc(c.note)}</note>\n` : ''}${
-    c.gms.map(u => `    <gm user="${esc(u)}"/>\n`).join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}  </campaign>\n`).join('')}</ca2:campaigns>\n`
+    c.gms.map(u => `    <gm user="${esc(u)}"/>\n`).join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}${
+    c.creation ? `    <creation>\n${c.creation.map(s => `      ${settingXml(s)}\n`).join('')}    </creation>\n` : ''}  </campaign>\n`).join('')}</ca2:campaigns>\n`
 
 /** `lock`: the runners' write lock (server.mjs), which account changes hold too; `auth`: server/auth.mjs's api;
  *  `runnersOf(username)` -> [{ file, id, rev, xml }]; `writeRunner(username, file, xml)` writes one atomically;
- *  `npcsOf` and `writeNpc`: the same for the account's NPCs; `tag`: their game's character root (customDir: that game's). */
-export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, npcsOf = async () => [], writeNpc, tag = 'ca2:character' }) {
+ *  `npcsOf` and `writeNpc`: the same for the account's NPCs; `tag`: their game's character root (customDir: that game's);
+ *  `creation`: campaigns have their own creation settings (SR6). */
+export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, npcsOf = async () => [], writeNpc, tag = 'ca2:character', creation = false }) {
   const path = join(customDir, 'campaigns.xml')
   const load = async () => parseCampaigns(await readFile(path, 'utf8').catch(e => { if (e.code === 'ENOENT') return ''; throw e }))
   const save = async list => { await mkdir(customDir, { recursive: true }); await writeAtomic(path, campaignsXml(list)) }
@@ -101,6 +107,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
         return { key, mine, ownerName: auth.nameOf(r.owner), streetName: a('streetName') || 'Unnamed runner', level: a('level'), package: a('package'),
           ...roster && !mine ? {} : { id: a('id') }, ...roster ? {} : { owner: r.owner, file: r.file } }
       }),
+      ...creation ? { creation: c.creation ?? null } : {},
       ...roster ? {} : { npcs: (await npcs(c)).map(r => {
         const t = charTag(r.xml, tag), a = n => attr(t, n) ?? ''
         return { id: a('id'), name: a('streetName') || a('name') || 'Unnamed NPC', owner: r.owner, ownerName: auth.nameOf(r.owner) }
@@ -124,6 +131,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       out.note = text(b.note)
       if (out.note.length > MAX_NOTE) throw fail(400, `a note is ${MAX_NOTE} characters at most`)
     }
+    if (creation && c.id && 'creation' in b) out.creation = b.creation === null ? null : creationSettings(b.creation)
     if (c.id && 'archived' in b) {
       if (typeof b.archived !== 'boolean') throw fail(400, 'archived is true or false')
       out.archived = b.archived
@@ -150,7 +158,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       for (const c of list) out.push(await view(c, who))
       return send(res, 200, id ? out[0] : out)
     }
-    const b = req.method === 'POST' || req.method === 'PUT' ? await auth.json(req) : {}
+    // a campaign's creation settings run to 500 rows: the creation route's 1 MB (books.mjs) for an SR6 campaign's PUT
+    const b = req.method === 'POST' || req.method === 'PUT' ? await auth.json(req, creation && id && !part && req.method === 'PUT' ? 1024 * 1024 : undefined) : {}
     return lock(async () => {
       const me = auth.current(who.id) // as it is now: renamed, demoted, disabled or deleted while this waited
       if (!me) return send(res, 401, { error: 'sign in first' })

@@ -107,8 +107,8 @@ export type Sr6LedgerType = Sr6LedgerEntry['type']
 export const SR6_LEDGER_TYPES: Sr6LedgerType[] = ['finalize', 'earn', 'advance', 'note', 'void']
 
 /** An SR6 NPC's stat block: the catalog entry's printed values (or the GM's) and its rating, evaluated at the rating. */
-export type Sr6NpcKind = 'grunt' | 'critter' | 'spirit' | 'sprite'
-export const SR6_NPC_KINDS: Sr6NpcKind[] = ['grunt', 'critter', 'spirit', 'sprite']
+export type Sr6NpcKind = 'grunt' | 'contact' | 'critter' | 'spirit' | 'sprite'
+export const SR6_NPC_KINDS: Sr6NpcKind[] = ['grunt', 'contact', 'critter', 'spirit', 'sprite']
 export const SR6_NPC_PARTS = ['skills', 'powers', 'optionalPowers', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons'] as const
 export interface Sr6Npc {
   kind: Sr6NpcKind; rating?: number; group?: string
@@ -118,7 +118,8 @@ export interface Sr6Npc {
 }
 
 /** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
- *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from (`<source>|<id>`). */
+ *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
+ *  example runner was copied from (`<source>|<id>`). */
 export interface Sr6Character {
   formatVersion: 1; id: string; identity: Character['identity']; build: Sr6Build
   finalizedAt?: string; final?: { karma: number; nuyen: number }; campaign?: string

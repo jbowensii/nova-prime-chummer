@@ -38,6 +38,6 @@ test('every career refusal has a sentence; an unset setting names itself and whe
   expect(codes.size).toBeGreaterThan(15)
   for (const code of codes) expect(REASONS[code], code).toBeDefined()
   expect(reasonText('not-latest')).toBe('Only the newest spend can be voided: void the later ones first.')
-  expect(reasonText('unset:advance.expertise')).toMatch(/^Expertise after creation isn’t set: Game data → Creation rules\.$/)
-  expect(reasonText('unset:karmaSpec')).toBe('Specialization isn’t set: Game data → Creation rules.')
+  expect(reasonText('unset:advance.expertise')).toMatch(/^Expertise after creation isn’t set: Table setup → Creation rules\.$/)
+  expect(reasonText('unset:karmaSpec')).toBe('Specialization isn’t set: Table setup → Creation rules.')
 })

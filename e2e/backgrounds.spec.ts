@@ -21,6 +21,7 @@ test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-backgrounds-')), config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
+  cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true }) // the made-up SR6 catalog
   mkdirSync(config, { recursive: true })
   writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
     { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
@@ -170,5 +171,50 @@ test('the sheet lets the player choose the background image, remembered per runn
     await expect(picker.getByRole('radio', { name: 'Same as the app' })).toBeChecked()
   } finally {
     for (const id of ids) await page.evaluate(id => fetch(`./api/backgrounds/${id}`, { method: 'DELETE' }), id)
+  }
+})
+
+test('Shadowrun 6 has its own art: uploaded on an SR6 page, the only art its pages and sheets show', async ({ page }) => {
+  await signIn(page, 'ada')
+  const anarchy: string = await page.evaluate(async png => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png),
+    headers: { 'Content-Type': 'image/png', 'X-Filename': 'anarchy.png' } })).json()).id, [...makePng(8, 8, () => [200, 40, 40])])
+  let sr6 = ''
+  try {
+    await page.goto('/#/sr6')
+    await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible() // the SR6 catalog loaded (the page header stays put)
+    await expect(art(page)).toHaveCount(0) // Anarchy's image isn't SR6's
+    const d = await settings(page), section = d.getByRole('group', { name: 'Background art (Shadowrun 6)' })
+    await expect(section.getByText(/none are on now/)).toBeVisible()
+    await expect(section.getByText('anarchy.png')).toHaveCount(0)
+    await section.getByLabel('Upload background images').setInputFiles({ name: 'sr6-stripes.png', mimeType: 'image/png', buffer: stripes() })
+    await expect(section.getByRole('status')).toContainText('Added the image.')
+    await expect(art(page).locator('div')).toHaveAttribute('style', /api\/sr6\/backgrounds\/[0-9a-f]{12}/)
+    sr6 = (await page.evaluate(async () => (await (await fetch('./api/sr6/backgrounds')).json()).enabled))[0]
+    await page.screenshot({ path: `${SHOTS}/settings-sr6-light.png` })
+    await d.getByRole('button', { name: 'Close' }).click()
+
+    // the SR6 sheet: its picker offers SR6's images only
+    await page.getByRole('button', { name: 'New runner' }).click()
+    await page.getByRole('dialog', { name: 'New runner' }).getByLabel('Street name').fill('Art Check')
+    await page.getByRole('button', { name: 'Create runner' }).click()
+    await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
+    await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Print' }).click()
+    await expect(page.locator('.sheet-art > div')).toHaveAttribute('style', new RegExp(`sr6/backgrounds/${sr6}`))
+    await page.getByRole('button', { name: 'Background', exact: true }).click()
+    const picker = page.getByRole('group', { name: 'Background image' })
+    await expect(picker.getByRole('radio')).toHaveCount(2)
+    await expect(picker.locator('img')).toHaveAttribute('src', new RegExp(`sr6/backgrounds/${sr6}$`))
+    await page.keyboard.press('Escape')
+
+    // back on Anarchy: its own image, and its gallery
+    await page.goto('/#/')
+    await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
+    await expect(art(page).locator('div')).toHaveAttribute('style', new RegExp(`api/backgrounds/${anarchy}`))
+    const a = await settings(page)
+    await expect(a.getByRole('group', { name: 'Background art (Shadowrun 6)' })).toHaveCount(0)
+    await expect(a.getByText('sr6-stripes.png')).toHaveCount(0)
+    await expect(a.getByText('anarchy.png')).toBeVisible()
+  } finally {
+    await page.evaluate(([a, s]) => Promise.all([fetch(`./api/backgrounds/${a}`, { method: 'DELETE' }), s && fetch(`./api/sr6/backgrounds/${s}`, { method: 'DELETE' })]), [anarchy, sr6])
   }
 })

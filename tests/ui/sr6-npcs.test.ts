@@ -2,7 +2,7 @@
 // renamed, is skipped), the New NPC dialog's grunts grouped by Professional Rating, and the row chip. Made-up fixture.
 import { expect, test } from 'vitest'
 import { blankSr6Npc, npcFromEntry } from '../../src/sr6/engine/npc'
-import { bookNpcsToLoad, byRating, npcChip } from '../../src/sr6/ui/Npcs'
+import { bookNpcsToLoad, byRating, npcChip, oldContact } from '../../src/sr6/ui/Npcs'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const c = fixtureCatalog()
@@ -36,4 +36,21 @@ test('the row chip names the kind and its rating', () => {
   expect(npcChip(npcFromEntry(c.entries.sprites.get('crb.glitch-sprite')!, 3).npc!)).toBe('Sprite L 3')
   expect(npcChip(blankSr6Npc('critter').npc!)).toBe('Critter')
   expect(npcChip(blankSr6Npc('grunt').npc!)).toBe('Grunt')
+})
+
+test('Load book NPCs takes the critters, spirits and sprites too, each once', () => {
+  const all = (['npcs', 'critters', 'spirits', 'sprites'] as const).flatMap(k => [...c.entries[k].values()])
+  expect(bookNpcsToLoad(all, [], c.sources)).toHaveLength(9)
+  const puddles = { ...npcFromEntry(c.entries.spirits.get('crb.spirit-of-puddles')!, 3), sampleKey: 'CRB|crb.spirit-of-puddles' }
+  expect(bookNpcsToLoad(all, [puddles], c.sources).map(e => e.id)).not.toContain('crb.spirit-of-puddles')
+})
+
+test('a 0.9.0 copy of a sample contact (a grunt of group Contact, loaded from the book) is fixed; a GM’s own grunt isn’t', () => {
+  const old = blankSr6Npc('grunt')
+  old.npc!.group = 'Contact'
+  expect(oldContact(old)).toBe(false) // not loaded from the book
+  old.sampleKey = 'CRB|crb.fixer-fred'
+  expect(oldContact(old)).toBe(true)
+  expect(oldContact({ ...old, npc: { ...old.npc!, rating: 2 } })).toBe(false)
+  expect(npcChip(blankSr6Npc('contact').npc!)).toBe('Contact')
 })

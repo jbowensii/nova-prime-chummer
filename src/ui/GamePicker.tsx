@@ -3,8 +3,8 @@
 import { homeOf, storeGame, type Game } from './game'
 
 const GAMES: [Game, string, string, string][] = [
-  ['ca2', 'Anarchy 2.0', 'Shadowrun Anarchy 2.0', 'The story-first rules: runners built from shadow amps, cues and plot points.'],
   ['sr6', '6th World', 'Shadowrun 6th World', 'The full rules: priority builds, dice pools, Edge and every piece of gear.'],
+  ['ca2', 'Anarchy 2.0', 'Shadowrun Anarchy 2.0', 'The story-first rules: runners built from shadow amps, cues and plot points.'],
 ]
 
 export function GamePicker({ onPick }: { onPick: (g: Game) => void }) {

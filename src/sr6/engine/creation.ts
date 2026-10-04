@@ -1,7 +1,9 @@
 // The table's SR6 creation rules (custom/sr6/creation.xml, public/data/sr6/schema/creation.xsd): every number the core
-// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered once on
-// Game data by the admin or an editor from their own book. The app ships no values: a method whose settings are unset
-// can't be picked (missingFor), and a rule whose setting is unset is skipped. Formulas stay in code.
+// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered on the Rules
+// page by the admin from their own book: the server's default. A campaign's GM may give it its own (server/campaigns.mjs),
+// which its runners use instead. The app ships the standard values (DEFAULTS_PATH; the admin's file holds only what they
+// changed); a method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
+// skipped. Formulas stay in code.
 import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method } from '../model/character'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
@@ -18,7 +20,7 @@ export interface CreationCatalog {
   lifemodules: Record<string, { stage: string }>
 }
 
-/** The groups, in the order Game data shows them. */
+/** The groups, in the order the creation rules form shows them. */
 export const CREATION_GROUPS = ['General', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values']
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 const AWAKENED = (Object.keys(MAGIC_KIND_LABELS) as MagicKind[]).filter(k => k !== 'mundane')
@@ -117,21 +119,31 @@ function typed(type: CreationType, raw: string): CreationValue | undefined {
   return s && Number.isFinite(Number(s)) ? Number(s) : undefined
 }
 
-/** The rules in a creation.xml. A value that isn't of its key's type, or an unknown key, is an error and is skipped. */
-export function parseCreation(xml: string): { rules: CreationRules; errors: string[] } {
+/** A setting as the server stores and sends it: every value a string. */
+export interface CreationRow { key: string; value: string; source?: string; page?: number | string }
+
+/** The rules from stored rows (a creation.xml's settings, or a campaign's own). A value that isn't of its key's type, or an
+ *  unknown key, is an error and is skipped. */
+export function rulesFrom(rows: CreationRow[]): { rules: CreationRules; errors: string[] } {
   const rules: CreationRules = new Map(), errors: string[] = []
-  const doc = new DOMParser().parseFromString(xml, 'text/xml'), root = doc.documentElement
-  if (doc.getElementsByTagName('parsererror').length || root.localName !== 'creation' || root.namespaceURI !== CREATION_NS)
-    return { rules, errors: ['The saved creation rules file isn’t a creation rules document.'] }
-  for (const el of [...root.children].filter(e => e.localName === 'setting')) {
-    const key = el.getAttribute('key') ?? '', raw = el.getAttribute('value') ?? '', type = keyType(key)
+  for (const { key, value: raw, source, page: p } of rows) {
+    const type = keyType(key)
     if (!type) { errors.push(`“${key}” isn’t a creation setting.`); continue }
     const value = typed(type, raw)
     if (value === undefined) { errors.push(`${key}: “${raw}” isn’t ${type === 'bool' ? 'true or false' : type === 'number' ? 'a number' : 'a quality id'}.`); continue }
-    const source = el.getAttribute('source') || undefined, page = Number(el.getAttribute('page')) || undefined
+    const page = Number(p) || undefined
     rules.set(key, { key, value, ...(source ? { source } : {}), ...(page ? { page } : {}) })
   }
   return { rules, errors }
+}
+
+/** The rules in a creation.xml (see rulesFrom). */
+export function parseCreation(xml: string): { rules: CreationRules; errors: string[] } {
+  const doc = new DOMParser().parseFromString(xml, 'text/xml'), root = doc.documentElement
+  if (doc.getElementsByTagName('parsererror').length || root.localName !== 'creation' || root.namespaceURI !== CREATION_NS)
+    return { rules: new Map(), errors: ['The saved creation rules file isn’t a creation rules document.'] }
+  return rulesFrom([...root.children].filter(e => e.localName === 'setting').map(el => ({ key: el.getAttribute('key') ?? '',
+    value: el.getAttribute('value') ?? '', source: el.getAttribute('source') || undefined, page: el.getAttribute('page') ?? undefined })))
 }
 
 export const num = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'number' ? v : undefined }
@@ -151,10 +163,45 @@ export function missingFor(method: Sr6Method, cr: CreationRules, data: CreationC
   return out
 }
 
-/** Fetch and parse custom/sr6/creation.xml. None saved (404, or a host answering with a page that isn't XML), or the
- *  server unreachable: no rules. */
-export async function loadCreation(base = './'): Promise<{ rules: CreationRules; errors: string[] }> {
-  const r = await fetch(`${base}custom/sr6/creation.xml`, { cache: 'no-cache' }).catch(() => null)
+/** A settings file someone picked to load into the creation rules form (the creation.xml format): every row the server
+ *  would take, typed as rulesFrom does. fatal: it isn't a creation rules file at all (nothing loads); errors: the rows (or
+ *  a row's source or page) left out, each said in words. Nothing is saved: the form shows it for review. */
+export function readSettingsFile(xml: string, name: string): { rules: CreationRules; errors: string[]; fatal?: string } {
+  const doc = new DOMParser().parseFromString(xml, 'text/xml'), root = doc.documentElement
+  if (doc.getElementsByTagName('parsererror').length || root.localName !== 'creation' || root.namespaceURI !== CREATION_NS)
+    return { rules: new Map(), errors: [], fatal: `${name} isn’t a creation rules file (an sr6:creation document, like custom/sr6/creation.xml).` }
+  const els = [...root.children].filter(e => e.localName === 'setting')
+  if (els.length > 500) return { rules: new Map(), errors: [], fatal: `${name} has ${els.length} settings; 500 at most.` }
+  const errors: string[] = [], seen = new Set<string>(), rows: CreationRow[] = []
+  for (const el of els) {
+    const key = el.getAttribute('key') ?? '', value = (el.getAttribute('value') ?? '').trim()
+    let source = el.getAttribute('source') ?? undefined, page = el.getAttribute('page') ?? undefined
+    if (seen.has(key)) { errors.push(`${key} is set twice: the first one is kept.`); continue }
+    seen.add(key)
+    if (value.length > 200) { errors.push(`${key}: the value is longer than 200 characters.`); continue }
+    if (source !== undefined && !/^[A-Z][A-Z0-9-]{0,19}$/.test(source)) { errors.push(`${key}: the source “${source}” isn’t a book id such as CRB; left out.`); source = undefined }
+    if (page !== undefined && !/^[1-9]\d{0,5}$/.test(page)) { errors.push(`${key}: the page “${page}” isn’t a whole number from 1; left out.`); page = undefined }
+    rows.push({ key, value, source, page })
+  }
+  const r = rulesFrom(rows)
+  return { rules: r.rules, errors: [...errors, ...r.errors] }
+}
+
+/** The standard settings the app ships (public/data/sr6/creation-defaults.xml: the core rulebook's and the Sixth World
+ *  Companion's numbers, with their pages). */
+export const DEFAULTS_PATH = 'data/sr6/creation-defaults.xml'
+
+/** Fetch and parse one creation.xml. None there (404, or a host answering with a page that isn't XML), or the server
+ *  unreachable: no rules. */
+async function fetchCreation(url: string): Promise<{ rules: CreationRules; errors: string[] }> {
+  const r = await fetch(url, { cache: 'no-cache' }).catch(() => null)
   if (!r?.ok || !/xml/i.test(r.headers.get('content-type') ?? '')) return { rules: new Map(), errors: [] }
   return parseCreation(await r.text())
+}
+
+/** The server's settings: the shipped standard ones (std) overlaid by the admin's changes (custom/sr6/creation.xml, which
+ *  holds only the keys the admin changed; an older full copy works the same). */
+export async function loadCreation(base = './'): Promise<{ rules: CreationRules; errors: string[]; std: CreationRules }> {
+  const [std, own] = await Promise.all([fetchCreation(base + DEFAULTS_PATH), fetchCreation(`${base}custom/sr6/creation.xml`)])
+  return { rules: new Map([...std.rules, ...own.rules]), errors: [...std.errors, ...own.errors], std: std.rules }
 }
