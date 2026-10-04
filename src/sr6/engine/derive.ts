@@ -54,7 +54,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const A = (k: string) => attrs[k as Sr6Attr]?.augmented ?? 0
   const plus = (a: number, key: string) => { const v = need(key); return v === undefined ? null : a + v }
 
-  // CRB p. 39: monitor = base + ceil(attribute / divisor); overflow = BOD
+  // CRB p. 38: monitor = base + ceil(attribute / divisor); overflow = BOD
   const base = need('monitorBase'), div = need('monitorDivisor')
   const monitor = (a: number) => (base === undefined || !div ? null : base + Math.ceil(a / div))
 
@@ -92,7 +92,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     }) },
     // CRB pp. 67–68: Composure WIL + CHA, Judge Intentions WIL + INT, Memory LOG + INT, Lift/Carry BOD + WIL
     composure: A('wil') + A('cha'), judgeIntentions: A('wil') + A('int'), memory: A('log') + A('int'), liftCarry: A('bod') + A('wil'),
-    // CRB pp. 128, 189: drain WIL + the tradition's attribute; fading (complex forms) WIL + LOG
+    // CRB pp. 127, 189: drain WIL + the tradition's attribute; fading (complex forms) WIL + LOG
     ...(kind.spells && b.drainAttr ? { drain: A('wil') + A(b.drainAttr) } : {}),
     ...(kind.resonance ? { fading: A('wil') + A('log') } : {}),
     pools, karmaLeft: budgets.karma.left, nuyenLeft: budgets.nuyen.left, edge: A('edg'),

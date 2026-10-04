@@ -99,8 +99,8 @@ export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { p
 }
 
 /** Free spells and rituals (complex forms for a technomancer): the method's Magic or Resonance rating (not as adjusted)
- *  times the setting; a mystic adept first takes off the power points it bought. Point buy buys them with character
- *  points instead (R, verify in Task 16). */
+ *  times the setting; a mystic adept first takes off the power points it bought (CRB pp. 65–66). Point buy buys them with
+ *  character points instead (R: the Sixth World Companion's method). */
 export function freeSpellSlots(b: Sr6Build, cr: CreationRules, p: Provider): number {
   const k = MAGIC_KINDS[b.magic]
   if (b.method === 'pointbuy') return k.resonance ? b.cp.complexForms : k.spells ? b.cp.spells : 0

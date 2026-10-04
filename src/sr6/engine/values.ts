@@ -42,7 +42,7 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
 }
 
 /** A spirit's or sprite's stat at its Force or Level: numbers, the letter (or `Rating`), `+ - × x * /` and parentheses,
- *  × and / before + and -; division rounds up (as the book's condition monitors do, CRB p. 39); a trailing `+ ND6`
+ *  × and / before + and -; division rounds up (as the book's condition monitors do, CRB p. 38); a trailing `+ ND6`
  *  comes back as `dice`; an en dash is a minus and square brackets are parentheses. A dash or nothing is no value;
  *  anything else is not ok (never NaN). */
 export function formula(s: string | undefined, rating: number, letter: 'F' | 'L'): { n: number | null; dice?: string; ok: boolean } {
