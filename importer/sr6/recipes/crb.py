@@ -125,7 +125,7 @@ HEADERS = {
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
                 "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
     "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "",
-              "TYPE": "", **_PRICE},
+              "TYPE": "", "EXTRAS": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
@@ -481,9 +481,12 @@ class _Catalog:
                 return False  # a rule about spells
             attrs = {"category": cat, "tags": b.tags or None}
         elif kind == "qualities":
-            karma = f.pop("karma", "")
-            m = re.search(r"(-?\d+)\s*karma", karma, re.I) or re.search(r"(-?\d+)", karma)
-            attrs = {"kind": cat, "karma": m and int(m.group(1)), "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
+            karma = _karma_line(f.pop("karma", ""), b.text)
+            # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
+            ks = [int(n) for m in re.finditer(r"(-?\d+)(?:\s*(?:to|or|[–-])\s*(\d+))?\s*karma", karma, re.I)
+                  for n in m.groups() if n] or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
+            attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
+                     "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
@@ -579,6 +582,14 @@ def _text(b, skip=()):
     """The block's prose: its box labels (those not already in its text, nor taken as lists), then its text."""
     lines = [f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and f"**{k}:**" not in b.text]
     return "\n".join(lines + ([b.text] if b.text else []))
+
+
+def _karma_line(karma, text):
+    """A quality's printed price, with its wrapped rest from the text when the label stopped short (regroup ends a
+    label's value at a line opening with a capital: `**Bonus:** Common: 12 Karma; Uncommon: 9` + `Karma; Rare: …`)."""
+    m = re.search(r"\*\*(?:Cost|Bonus):\*\*\s*(.*(?:\n(?!\*\*|\n).*)?)", text) if karma else None
+    full = " ".join(m.group(1).split()) if m else ""
+    return full if re.search(r"\d\s*$", karma) and full.startswith(karma) else karma
 
 
 _INLINE_LABEL = re.compile(r";\s*\*\*([^*]+?):\*\*\s*")

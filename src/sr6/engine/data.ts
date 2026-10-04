@@ -40,7 +40,7 @@ export interface Sr6MetatypeView {
   traitLevels?: Record<string, number>
 }
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
-export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; perLevel: boolean; maxLevel: number; page: number }
+export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number }
 export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
 export interface Sr6LifeModuleView {
   id: string; name: string; stage: 'opening' | 'adult'; requires?: string; grants: Partial<Record<Grant, number>>
@@ -130,7 +130,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   const skills = Object.fromEntries(all('skills').map(e => [e.id, { id: e.id, name: e.name, attr: e.attrs.attr ?? '',
     untrained: e.attrs.untrained === 'true', specs: parts(e, 'spec').map(p => p.text), page: e.page }]))
   const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.name, positive: e.attrs.kind !== 'negative',
-    karma: bookNum(e, e.attrs.karma, 'karma'), ...levels(e), page: e.page }]))
+    karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page }]))
   const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),
     ...levels(e), page: e.page }]))
   const lifemodules = Object.fromEntries(all('lifemodules').map(e => [e.id, {

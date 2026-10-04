@@ -48,7 +48,7 @@ export function QualitiesTab() {
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive')).map(q => ({
           id: q.id, name: q.name, disabled: b.qualities.some(x => x.id === q.id),
-          meta: `${q.karma == null ? '?' : q.karma} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}`,
+          meta: `${q.karma == null ? '?' : q.karma}${q.karmaMax != null ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}`,
           price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(),
         }))} />
       </Modal>

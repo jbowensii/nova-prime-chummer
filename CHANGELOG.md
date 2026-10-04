@@ -39,6 +39,7 @@
   of a suit on its own) and armor modifications, tac-apps, the trauma qualities, the security and gang NPCs and the
   rule sections, martial arts included. What it couldn't read is listed in the import's report. The book's errata
   sheet isn't applied: it changes rules as well as numbers, so the book's printed values are kept.
+- **Firing Squad: the eight Vashon Island suits are read,** and a quality priced by variant (Phobia: by rarity) keeps its lowest and highest karma instead of only the first number.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 

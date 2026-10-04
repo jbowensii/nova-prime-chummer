@@ -16,13 +16,15 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
 - Armor (SUIT UP): level-3 headings, each with its box (`DR SOCIAL CAPACITY AVAIL COST`; DR is the defense, SOCIAL
   goes to the text). A box with distinct TYPE rows (Light, Medium, Heavy) is one entry a row. A box below its text can
   stay in the text: taken back when it has no name column and a few rows. Style armor's level-2 section is its
-  category. Vashon Island's table lands in the next section's text and is not read.
+  category. Vashon Island's table lands in the next section's text (`Cumulative`): it goes back to the section whose text
+  names its first row, one entry a suit, its `Extras:` rows (and the label after its last row) an EXTRAS cell.
 - Armor modifications: described under their own level-3 headings, priced in one box of one-row tables (`GEAR
   CAPACITY AVAILABILITY COST`): one entry per row, with the text of the heading of the same name.
 - Weapon modifications, melee weapon modifications and weapon accessories: weapons, their level-2 section the category
   (as the core rulebook files its accessories).
 - Tac-apps (HONING YOUR EDGE): an `APP AVAIL COST` table, gear.
-- Qualities (VIOLENT ENDS): level-3 headings with `Bonus: N Karma`; a `(Behavior, 1 to 6)` tag line reads as a heading
+- Qualities (VIOLENT ENDS): level-3 headings with `Bonus: N Karma` (Phobia prints one a rarity, wrapped: karma the
+  lowest, karmaMax the highest); a `(Behavior, 1 to 6)` tag line reads as a heading
   of its own and is joined back. The quality paths' steps have no karma: rules.
 - NPCs (FIGHTING FORCES): a `(Professional Rating N)` tag and a stat band; the level-3 section is the group.
 - Martial arts, edge actions and boosts, maneuvers, statuses: no catalog kind, rule sections.

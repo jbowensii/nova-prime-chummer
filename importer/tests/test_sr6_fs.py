@@ -55,7 +55,17 @@ A made-up suit in layers.
 |---|---|---|---|---|---|
 | Light | +4 | –2 | 8 | 4(L) | 4,000¥ |
 | Heavy | +6 | –4 | 10 | 6(L) | 9,000¥ |
+### Card House
+The Card House sells the Jack of Dice and the Queen of Cups.
 ## Accessories and Modifications
+### Stacking
+Made-up stacking.
+| TYPE | DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|---|
+| Jack of Dice | +3 | +2 | 6 | 4 | 1,000¥ |
+| Extras: None |  |  |  |  |  |
+| Queen of Cups | +4 | +3 | 8 | 5 | 1,500¥ |
+**Extras:** Pocket Patch
 ### Pocket Patch
 A made-up patch with a pocket.
 ### Glow Lining
@@ -85,6 +95,11 @@ Kick in a made-up way.
 You twitch in a made-up way.
 **Bonus:** 3 Karma
 **Game Effect:** Made-up twitches.
+### Jitters
+You jitter in a made-up way.
+**Bonus:** Often: 8 Karma; Seldom: 4
+Karma; Never: 2 Karma
+**Game Effect:** Made-up jitters.
 ### Fussy
 #### (Habit, 1 to 4)
 **Bonus:** 2 Karma per level
@@ -143,11 +158,18 @@ class FsRecipeTest(unittest.TestCase):
                          {"category": "armor", "defense": "+3", "capacity": "6", "cost": "900"})
         self.assertEqual((a["Layer Suit (Light)"]["defense"], a["Layer Suit (Heavy)"]["cost"]), ("+4", "9000"))
         self.assertEqual((a["Pocket Patch"]["category"], a["Glow Lining"]["capacity"]), ("armor-modifications", "[2]"))
-        self.assertEqual(len(a), 5)  # the reprinted stats at the back are left out
+        # a suit table printed in the next section's text: back to the section naming its rows, its Extras rows folded
+        self.assertEqual((a["Card House (Jack of Dice)"]["cost"], a["Card House (Queen of Cups)"]["defense"]), ("1000", "+4"))
+        texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
+        self.assertIn("**Extras:** Pocket Patch", texts[("armor", "card-house-queen-of-cups")])
+        self.assertNotIn("Jack of Dice", texts[("rules", "stacking")])
+        self.assertEqual(len(a), 7)  # the reprinted stats at the back are left out
 
     def test_qualities_npcs_and_rules(self):
         q = entries(self.res, "qualities")
         self.assertEqual((q["Twitchy"]["kind"], q["Twitchy"]["karma"]), ("negative", "3"))
+        self.assertEqual((q["Jitters"]["karma"], q["Jitters"]["karmaMax"]), ("2", "8"))  # its prices wrap a line
+        self.assertNotIn("karmaMax", q["Twitchy"])
         self.assertEqual((q["Fussy"]["karma"], q["Fussy"]["perLevel"], q["Fussy"]["maxLevel"]), ("2", "true", "4"))
         n = entries(self.res, "npcs")["Door Basher"]
         self.assertEqual((n["rating"], n["group"], n["bod"], n["dr"]), ("4", "Made Star", "5", "9"))

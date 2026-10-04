@@ -48,7 +48,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int, perLevel true, maxLevel int | — |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
 | weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
