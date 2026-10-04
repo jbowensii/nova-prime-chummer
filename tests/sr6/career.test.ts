@@ -8,7 +8,7 @@ import { expect, test } from 'vitest'
 import { balances, canDraft, currentBuild, earn, ledgerRows, note, preview, record, validateCareer, voidableIds, voidEntry } from '../../src/sr6/engine/career'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { draftAgain, finalizeSr6 } from '../../src/sr6/engine/finalize'
-import { allBudgets } from '../../src/sr6/engine/budgets'
+import { allBudgets, attrRating } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { blankSr6, type MagicKind, type Sr6Advance, type Sr6Attr, type Sr6Character } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
@@ -96,17 +96,32 @@ test('a quality costs karma × advance.qualityFactor, a buy off karma × advance
   expect(e.type === 'advance' && e.advance.op === 'buyoff' && e.advance.line?.id).toBe('crb.butterfingers') // kept for the history
 })
 
+test('with the aptitude quality one skill may go past advance.skillMax by what the quality adds at creation', () => {
+  const { data, cr } = made(), ch = runner()
+  tinker(ch)
+  ch.build.skills[0].points = 11
+  ch.build.qualities.push({ uid: 'qa', id: 'crb.knack', level: 1 })
+  expect(preview(ch, { op: 'skill', target: 'crb.tinkering' }, data, cr)).toMatchObject({ ok: true, label: 'Tinkering 11 → 12' })
+  ch.build.skills[0].points = 12
+  expect(preview(ch, { op: 'skill', target: 'crb.tinkering' }, data, cr)).toEqual({ ok: false, reason: 'at-maximum' })
+})
+
 test('initiation costs base + new grade × per grade; a mundane is refused', () => {
   const { data, cr } = made(), ch = runner({ magic: 'full' })
   expect(preview(ch, { op: 'initiate' }, data, cr)).toEqual({ ok: true, label: 'Initiation grade 1', karma: 12, nuyen: 0 })
   ch.build.initiation = 2
+  const mag = attrRating(ch.build, 'mag', makeProvider(ch.build.method, data, cr))
+  ch.build.attributes.mag.points += 3 - mag  // grade 3 needs Magic 3
   expect(preview(ch, { op: 'initiate' }, data, cr)).toMatchObject({ ok: true, karma: 18 })
+  ch.build.attributes.mag.points -= 1  // the grade never exceeds Magic
+  expect(preview(ch, { op: 'initiate' }, data, cr)).toEqual({ ok: false, reason: 'at-maximum' })
   expect(preview(runner(), { op: 'initiate' }, data, cr)).toEqual({ ok: false, reason: 'mundane-cannot-initiate' })
 })
 
 test('a technomancer submerges', () => {
   const { data, cr } = made(), ch = runner({ magic: 'technomancer' })
   ch.build.submersion = 1
+  ch.build.attributes.res.points += 2 - attrRating(ch.build, 'res', makeProvider(ch.build.method, data, cr))
   const r = ok(record(ch, { op: 'initiate', line: { uid: '', kind: 'echoes', id: 'crb.quiet-loop' } }, data, cr))
   expect(currentBuild(r)).toMatchObject({ submersion: 2, initiation: 0 })
   expect(currentBuild(r).picks.map(x => x.name)).toEqual(['Quiet Loop'])

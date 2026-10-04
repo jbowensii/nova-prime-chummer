@@ -7,7 +7,7 @@
 import { newId, type Violation } from '../../model/types'
 import type { PickKind, Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6LedgerEntry } from '../model/character'
 import { attrRating, priced, skillRank } from './budgets'
-import { num, type CreationRules } from './creation'
+import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
@@ -141,7 +141,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const t = a.target
       if ((t === 'mag' && !k.spells && !k.powers) || (t === 'res' && !k.resonance)) no('unknown-attribute')
       const cur = attrRating(b, t, p)
-      // R (verify, Task 10): Magic or Resonance tops out at magicMax plus the initiation (submersion) grade
+      // CRB pp. 167, 196: Magic or Resonance tops out at magicMax plus the initiation (submersion) grade
       const cap = t === 'mag' ? need('magicMax') + b.initiation : t === 'res' ? need('magicMax') + b.submersion
         : data.metatypes[b.metatype]?.ranges[t as Exclude<Sr6Attr, 'mag' | 'res'>][1]
       if (cap !== undefined && cur >= cap) no('at-maximum')
@@ -151,7 +151,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
       const cur = s ? skillRank(s) : 0, cap = num(cr, 'advance.skillMax')
-      if (cap !== undefined && cur >= cap) no('at-maximum')
+      // CRB p. 66: the aptitude quality lets one skill go as far above the cap as it does at creation
+      const apt = str(cr, 'aptitudeQuality'), up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0)
+      const aptitude = !!apt && up > 0 && b.qualities.some(q => q.id === apt)
+        && !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!)
+      if (cap !== undefined && cur >= cap + (aptitude ? up : 0)) no('at-maximum')
       return { label: `${skillName(a.target)} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaSkillPerRank') }
     }
     case 'spec': case 'expertise': {
@@ -215,6 +219,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         what = ` (${e.name})`
       }
       const next = b[field] + 1
+      // CRB pp. 167, 196: the grade never exceeds Magic (Resonance)
+      if (next > attrRating(b, field === 'submersion' ? 'res' : 'mag', p)) no('at-maximum')
       return { label: `${field === 'submersion' ? 'Submersion' : 'Initiation'} grade ${next}${what}`,
         karma: need('karmaInitiationBase') + next * need('karmaInitiationPerGrade') }
     }
