@@ -27,6 +27,8 @@ export type Op =
   | { op: 'quantity'; uid: string; qty: number }
   | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number } | { op: 'accessory'; host: string; remove: string }
   | { op: 'wear'; uid: string; worn: boolean }
+  /** a line's (or accessory's) rating or grade changed in place; grade null: none */
+  | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
   /** the bonuses on a purchase, accessory or pick */
   | { op: 'bonus'; uid: string; bonuses: Bonus[] }
   /** add a contact, or change one (uid) */
@@ -225,6 +227,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const x = b.purchases.find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
       if (op.worn) x.worn = true; else delete x.worn
+      return OK
+    }
+    case 'rate': {
+      const x = allLines(b).find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (op.rating !== undefined) {
+        const e = x.id ? data.entry(x.kind, x.id) : undefined
+        if (!e || !ratingRange(e.attrs.rating).includes(op.rating)) return no('rating-range')
+      }
+      if (op.grade && num(cr, `grade:${op.grade}:essence`) === undefined) return no('unknown-grade')
+      if (op.rating !== undefined) x.rating = op.rating
+      if (op.grade) x.grade = op.grade; else if (op.grade === null) delete x.grade
       return OK
     }
     case 'bonus': {

@@ -215,6 +215,23 @@ test('rated gear stacks by id and rating; a rating outside the range or an ungra
   expect(act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets', qty: 0 })).toEqual(no('below-one'))
 })
 
+test('a line’s rating and grade change in place; out of range, an unset grade or a line without ratings is refused', () => {
+  const { b, act } = runner()
+  act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha' })
+  act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })
+  const [eyes, gun] = b.purchases
+  expect(act({ op: 'rate', uid: eyes.uid, rating: 3 })).toEqual(ok)
+  expect(act({ op: 'rate', uid: eyes.uid, grade: 'standard' })).toEqual(ok)
+  expect(b.purchases[0]).toMatchObject({ uid: eyes.uid, rating: 3, grade: 'standard' })
+  expect(act({ op: 'rate', uid: eyes.uid, grade: null })).toEqual(ok)
+  expect(b.purchases[0].grade).toBeUndefined()
+  expect(act({ op: 'rate', uid: eyes.uid, rating: 9 })).toEqual(no('rating-range'))
+  expect(act({ op: 'rate', uid: eyes.uid, grade: 'delta' })).toEqual(no('unknown-grade'))
+  expect(act({ op: 'rate', uid: gun.uid, rating: 2 })).toEqual(no('rating-range'))
+  expect(act({ op: 'rate', uid: 'nope', rating: 2 })).toEqual(no('unknown-line'))
+  expect(b.purchases[0]).toMatchObject({ rating: 3 })
+})
+
 test('a custom item is bought at the player’s cost', () => {
   const { b, data, cr, act } = runner()
   expect(act({ op: 'purchase', kind: 'gear', custom: { name: 'Lucky Coin', cost: 777, avail: 2, essence: 0 } })).toEqual(ok)
