@@ -4,8 +4,9 @@
 // request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
 // Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
 // .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
-// characters/sr6/ and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters, npcs, trash, npcs/trash, campaigns, books,
-// edits and creation (books.mjs in its SR6 area: library/sr6/, custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
+// characters/sr6/ (<username>/, .npcs/, .compendiums/, .trash/) and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters,
+// npcs, trash, npcs/trash, campaigns, compendiums, books, edits and creation (books.mjs in its SR6 area: library/sr6/,
+// custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
 // in its namespace); a campaign holds only its game's runners and NPCs. Accounts span both: a rename moves both games'
 // folders and memberships, a delete retires both. While an account called sr6 from before exists (its runners are in
 // characters/sr6/), every /api/sr6/ route answers 409 and nothing of the SR6 area is read or written.
@@ -33,7 +34,8 @@
 //                                        campaigns they GM (read only). /api/campaigns/:id/npcs shares one
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
-//   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs)
+//   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs);
+//                                        /api/sr6/compendiums* the SR6 ones in characters/sr6/.compendiums/<username>/
 //   /api/backgrounds*                    background art from library/backgrounds (server/backgrounds.mjs)
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)
 //   /api/books, /api/review, /api/ai-*, /api/edits, /api/table-rules, /api/samples, /api/backup, /api/restore, /api/datapack   the PDF importer, catalog
@@ -101,7 +103,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   let auth = null
   const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl, askTimeout,
     onRestore: () => auth.reload(oidc.issuer()), // the restored auth.xml's issuer
-    compendiumSources: () => compendiums.sources() }) // a house source never takes a compendium's id
+    compendiumSources: () => compendiums.ca2.sources() }) // a house source never takes an Anarchy compendium's id (SR6 has none)
   // runner writes, and the account changes that move runner folders: one at a time
   // ponytail: one lock for every account's runners; per-folder locks if saves ever queue up
   let chain = Promise.resolve()
@@ -171,15 +173,16 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       await rename(join(folder(from), file), join(folder(to), name))
       return name
     },
-    /** A deleted account (no runners left): each game's part (gameStore retire), then its compendiums and their trash go to
-     *  characters/.compendiums/.trash/, named after it. */
+    /** A deleted account (no runners left): each game's part (gameStore retire), then each game's compendiums and their
+     *  trash go to that game's .compendiums/.trash/, named after it. */
     async retire(u) {
       for (const g of live()) await g.campaigns.drop(u, true) // refused before anything moves
       for (const g of live()) await g.retire(u)
-      for (const d of [join(compendiums.folder(u), '.trash'), compendiums.folder(u)]) {
-        await moveAll(d, join(compendiums.root, '.trash'), `${u}-`)
-        await rmdir(d).catch(() => {})
-      }
+      for (const c of legacy() ? [compendiums.ca2] : [compendiums.ca2, compendiums.sr6])
+        for (const d of [join(c.folder(u), '.trash'), c.folder(u)]) {
+          await moveAll(d, join(c.root, '.trash'), `${u}-`)
+          await rmdir(d).catch(() => {})
+        }
     },
   }
 
@@ -368,8 +371,15 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   let oidc = null
   auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
   const games = { ca2: gameStore(GAMES.ca2), sr6: gameStore(GAMES.sr6) }
-  const compendiums = compendiumsApi({ charDir, customDir, staticDir, lock, auth, campaigns: games.ca2.campaigns }) // Anarchy's only (S4: SR6's)
-  const stores = () => [...games.ca2.stores, [compendiums.folder, 'characters/.compendiums/'], ...legacy() ? [] : games.sr6.stores]
+  // each game's book source lists: the shipped one, the imported books', house sources, the catalog edits'
+  const sourceFiles = (data, custom) => [join(data, 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(custom, f))]
+  const compendiums = {
+    ca2: compendiumsApi({ home: charDir, sourceFiles: sourceFiles(join(staticDir, 'data'), customDir), lock, auth, campaigns: games.ca2.campaigns }),
+    sr6: compendiumsApi({ game: GAMES.sr6, home: join(charDir, GAMES.sr6.sub), sourceFiles: sourceFiles(join(staticDir, 'data', 'sr6'), join(customDir, 'sr6')),
+      lock, auth, campaigns: games.sr6.campaigns }),
+  }
+  const stores = () => [...games.ca2.stores, [compendiums.ca2.folder, 'characters/.compendiums/'],
+    ...legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, 'characters/sr6/.compendiums/']]]
   const backgrounds = backgroundsApi({ libraryDir, auth })
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
@@ -425,6 +435,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       u.pathname = s.path
       if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
       if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
+      if (await compendiums.sr6.handle(req, res, u, send, who) !== false) return
       if (/^\/api\/(books|edits|creation)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
       return send(res, 404, { error: 'not found' })
     }
@@ -432,7 +443,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     if (await auth.handle(req, res, url, send, who) !== false) return
     if (await books.handle(req, res, url, send, who) !== false) return
     if (await games.ca2.campaigns.handle(req, res, url, send, who) !== false) return
-    if (await compendiums.handle(req, res, url, send, who) !== false) return
+    if (await compendiums.ca2.handle(req, res, url, send, who) !== false) return
     if (await backgrounds.handle(req, res, url, send, who) !== false) return
     return games.ca2.handle(req, res, url, who)
   }
