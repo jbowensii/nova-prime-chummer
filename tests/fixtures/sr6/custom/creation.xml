@@ -29,6 +29,12 @@
   <setting key="karmaInitiationBase" value="9" source="CRB" page="65"/>
   <setting key="karmaInitiationPerGrade" value="3" source="CRB" page="65"/>
   <setting key="positiveQualityFactor" value="1" source="CRB" page="65"/>
+  <setting key="advance.expertise" value="9" source="CRB" page="73"/>
+  <setting key="advance.qualityFactor" value="3" source="CRB" page="73"/>
+  <setting key="advance.buyOffFactor" value="3" source="CRB" page="73"/>
+  <setting key="advance.skillMax" value="11" source="CRB" page="73"/>
+  <setting key="advance.powerPoint" value="7" source="CRB" page="74"/>
+  <setting key="advance.karmaToNuyenRate" value="1100" source="CRB" page="74"/>
   <setting key="karmaToNuyenRate" value="1500" source="CRB" page="64"/>
   <setting key="karmaToNuyenRateInDebt" value="3500" source="CRB" page="64"/>
   <setting key="inDebtQuality" value="crb.deep-pockets-debt" source="CRB" page="64"/>

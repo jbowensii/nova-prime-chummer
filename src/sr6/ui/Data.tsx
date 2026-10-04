@@ -140,6 +140,7 @@ function Creation({ c, cr, editor, reload }: { c: Sr6Catalog; cr: Loaded; editor
           const rows = keys.filter(k => k.group === g)
           return rows.length > 0 && <div key={g}>
             <h3>{g}</h3>
+            {g === 'Karma prices' && <p>Also the career prices.</p>}
             <div className="scroll-x"><table className="data"><thead><tr><th>Setting</th><th>Value</th><th>Source</th><th>Page</th></tr></thead>
               <tbody>{rows.map(k => {
                 const r = draft[k.key] ?? NO_ROW, v = (value: string) => set(k.key, { value })

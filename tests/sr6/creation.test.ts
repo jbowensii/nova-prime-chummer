@@ -31,7 +31,7 @@ test('the fixture sets every key (grades: standard and alpha only), typed, with 
   expect(keys).toContain('metatypeKarma:crb.stonefolk')
   expect(keys).toContain('magicKarma:mystic-adept')
   expect(keys).not.toContain('magicKarma:mundane')
-  for (const k of keys) expect(rules.has(k), k).toBe(!/^grade:(beta|delta|used):/.test(k))
+  for (const k of keys) expect(rules.has(k), k).toBe(!/^grade:(beta|delta|used):/.test(k) && k !== 'advance.nuyenToKarmaRate')
   expect(num(rules, 'startingKarma')).toBe(40)
   expect(num(rules, 'grade:alpha:essence')).toBe(0.7)
   expect(flag(rules, 'oneAttributeAtMax')).toBe(true)
@@ -79,4 +79,20 @@ test('every key has a label of its own (Game data’s input names), a known type
     expect(['number', 'bool', 'quality']).toContain(k.type)
     expect(k.key).toMatch(/^[A-Za-z0-9.:_-]{1,80}$/)
   }
+})
+
+test('the Advancement group (career prices and caps) follows Karma prices; every key is optional', async () => {
+  const adv = CREATION_KEYS.filter(k => k.group === 'Advancement')
+  expect(adv.map(k => k.key)).toEqual(['advance.expertise', 'advance.qualityFactor', 'advance.buyOffFactor', 'advance.skillMax',
+    'advance.powerPoint', 'advance.karmaToNuyenRate', 'advance.nuyenToKarmaRate'])
+  expect(CREATION_GROUPS.indexOf('Advancement')).toBe(CREATION_GROUPS.indexOf('Karma prices') + 1)
+  for (const k of adv) expect(k.methods, k.key).toEqual([])
+  const { rules } = parseCreation(XML)
+  expect(num(rules, 'advance.skillMax')).toBe(11)
+  expect(num(rules, 'advance.karmaToNuyenRate')).toBe(1100)
+  expect(rules.has('advance.nuyenToKarmaRate')).toBe(false)
+  const data = await shape()
+  for (const m of ['priority', 'sumtoten', 'pointbuy', 'karma', 'lifepath'] as const)
+    for (const k of adv) expect(missingFor(m, new Map(), data), m).not.toContain(k.key)
+  expect(missingFor('priority', parseCreation(XML.replace(/\s*<setting key="advance\.[^"]*"[^>]*\/>/g, '')).rules, data)).toEqual([])
 })

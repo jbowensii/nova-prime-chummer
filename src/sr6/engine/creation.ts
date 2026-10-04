@@ -19,7 +19,7 @@ export interface CreationCatalog {
 }
 
 /** The groups, in the order Game data shows them. */
-export const CREATION_GROUPS = ['General', 'Karma prices', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values']
+export const CREATION_GROUPS = ['General', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values']
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 const AWAKENED = (Object.keys(MAGIC_KIND_LABELS) as MagicKind[]).filter(k => k !== 'mundane')
 
@@ -45,6 +45,15 @@ export const CREATION_KEYS: CreationKey[] = [
     ['karmaKnowledge', 'Knowledge or language rank'], ['karmaSpell', 'Extra spell or ritual'], ['karmaForm', 'Extra complex form'],
     ['karmaInitiationBase', 'Initiation or submersion: base'], ['karmaInitiationPerGrade', 'Initiation or submersion: per grade']]),
   ...n('Karma prices', [], [['positiveQualityFactor', 'Positive qualities cost their karma times (unset: 1)']]),
+  // career play (S3; the Karma prices above are the career prices too): optional, unset refuses the spend that needs it
+  // (a cap: not applied; nuyen to karma: the optional rule is off)
+  ...n('Advancement', [], [['advance.expertise', 'Expertise after creation'],
+    ['advance.qualityFactor', 'A positive quality after creation costs its karma times'],
+    ['advance.buyOffFactor', 'Buying off a negative quality costs its karma times'],
+    ['advance.skillMax', 'Highest skill rank after creation (unset: no cap)'],
+    ['advance.powerPoint', 'Karma per power point (mystic adepts)'],
+    ['advance.karmaToNuyenRate', 'Nuyen per karma after creation (unset: not offered)'],
+    ['advance.nuyenToKarmaRate', 'Nuyen per karma, nuyen to karma (optional rule; unset: off)']]),
   ...n('Nuyen', 'all', [['karmaToNuyenRate', 'Nuyen per karma'], ['karmaToNuyenRateInDebt', 'Nuyen per karma with the in-debt quality']]),
   { key: 'inDebtQuality', label: 'In-debt quality', type: 'quality', group: 'Nuyen', methods: 'all' },
   ...n('Nuyen', 'all', [['karmaToNuyenMax', 'Most karma turned into nuyen'], ['fakeSinPerRating', 'Fake SIN: nuyen per rating'],
