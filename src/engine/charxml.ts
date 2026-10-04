@@ -7,22 +7,24 @@ import { toAmp, toItem } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
+/** The Shadowrun 6 runner's (src/sr6/engine/charxml.ts SR6_CHAR_NS): refused here, saying where it belongs. */
+const SR6_NS = 'urn:chummer-sr6:character:1'
 
 /** What XML 1.0 can't hold (control characters pasted from a PDF, U+FFFE/FFFF, half a surrogate pair): dropped on
  *  write; a file that has them is refused on read, saying where, and "Try to repair" drops them. */
 // eslint-disable-next-line no-control-regex
 export const BAD_XML_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
 // a carriage return would read back as a line feed: kept as a character reference
-const esc = (s: string) => s.replace(BAD_XML_CHAR, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export const esc = (s: string) => s.replace(BAD_XML_CHAR, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/\r/g, '&#13;')
 // in an attribute, tabs and line breaks would read back as spaces
-const escAttr = (s: string) => esc(s).replace(/\t/g, '&#9;').replace(/\n/g, '&#10;')
-const attrs = (o: Record<string, unknown>) => Object.entries(o)
+export const escAttr = (s: string) => esc(s).replace(/\t/g, '&#9;').replace(/\n/g, '&#10;')
+export const attrs = (o: Record<string, unknown>) => Object.entries(o)
   .filter(([, v]) => v !== undefined && v !== null) // an empty value is kept: a draft's blank level or type reads back blank
   .map(([k, v]) => ` ${k}="${escAttr(String(v))}"`).join('')
-const el = (name: string, a: Record<string, unknown>, children = '') => (children ? `<${name}${attrs(a)}>${children}</${name}>` : `<${name}${attrs(a)}/>`)
+export const el = (name: string, a: Record<string, unknown>, children = '') => (children ? `<${name}${attrs(a)}>${children}</${name}>` : `<${name}${attrs(a)}/>`)
 // an empty element is left out: it reads back empty anyway
-const text = (name: string, s: string | undefined) => (s ? `<${name}>${esc(s)}</${name}>` : '')
+export const text = (name: string, s: string | undefined) => (s ? `<${name}>${esc(s)}</${name}>` : '')
 
 // ---- catalog snapshots, written in the data files' own format ----
 const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note })
@@ -85,8 +87,8 @@ export function characterToXml(ch: Character, rev?: number): string {
 }
 
 // ---- reading ----
-const kids = (e: Element, name: string) => [...e.children].filter(c => c.localName === name)
-const kid = (e: Element, name: string) => kids(e, name)[0]
+export const kids = (e: Element, name: string) => [...e.children].filter(c => c.localName === name)
+export const kid = (e: Element, name: string) => kids(e, name)[0]
 const s = (e: Element, n: string) => e.getAttribute(n) ?? undefined
 const n = (e: Element, n: string) => { const v = e.getAttribute(n); return v == null ? undefined : Number(v) }
 const t = (e: Element | undefined) => e?.textContent ?? ''
@@ -164,7 +166,7 @@ export function badCharAt(xml: string): string | null {
 }
 
 /** Reads one child element; a failure names what couldn't be read. In repair mode that element is dropped instead. */
-function each<T>(els: Element[], read: (e: Element) => T, label: (e: Element, i: number) => string, fix?: string[]): T[] {
+export function each<T>(els: Element[], read: (e: Element) => T, label: (e: Element, i: number) => string, fix?: string[]): T[] {
   return els.flatMap((e, i) => {
     try { return [read(e)] } catch (err) {
       const what = `${label(e, i)}: ${(err as Error).message}`
@@ -174,14 +176,14 @@ function each<T>(els: Element[], read: (e: Element) => T, label: (e: Element, i:
     }
   })
 }
-const need = (e: Element | undefined, name: string, parent: string) => {
+export const need = (e: Element | undefined, name: string, parent: string) => {
   if (!e) throw new Error(`no <${name}> inside <${parent}>`)
   return e
 }
 
-/** Never throws; a bad file comes back with a reason saying what and where. */
-export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
-  const fix = opts.repair
+/** Parse a runner file: control characters refused saying where (repair: removed, and stray “&” escaped, each noted in
+ *  `fix`). Shared by both games' readers. */
+export function readDoc(xml: string, fix?: string[]): { ok: true; root: Element } | { ok: false; reason: string } {
   if (fix) {
     const bad = xml.match(BAD_XML_CHAR)
     if (bad) {
@@ -201,7 +203,16 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     const detail = (perr.textContent ?? '').replace(/^This page contains the following errors:/, '').split(/\n|Below is a rendering/)[0].trim()
     return { ok: false, reason: `Not valid XML${detail ? `: ${detail}` : '.'}` }
   }
-  const r = doc.documentElement
+  return { ok: true, root: doc.documentElement }
+}
+
+/** Never throws; a bad file comes back with a reason saying what and where. */
+export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
+  const fix = opts.repair
+  const parsed = readDoc(xml, fix)
+  if (!parsed.ok) return parsed
+  const r = parsed.root
+  if (r.localName === 'character' && r.namespaceURI === SR6_NS) return { ok: false, reason: 'This is a Shadowrun 6 runner. Import it on the Shadowrun 6 side.' }
   if (r.localName !== 'character' || r.namespaceURI !== CHAR_NS) return { ok: false, reason: 'Not a Chummer Anarchy 2.0 character file.' }
   const v = n(r, 'formatVersion')
   if (!v) return { ok: false, reason: 'The <character> element has no formatVersion.' }

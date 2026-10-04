@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A saved Shadowrun 6 runner (.xml), read and written by src/sr6/engine/charxml.ts. See docs/sr6-character-format.md.
+     Children are unqualified; summary attributes sit on the root so a server can list files without parsing them;
+     <snapshot> holds a copy of the catalog entry in the SR6 data files' own format. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:c="urn:chummer-sr6:character:1"
+           targetNamespace="urn:chummer-sr6:character:1"
+           elementFormDefault="unqualified">
+
+  <xs:element name="character">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="portrait" type="xs:string" minOccurs="0"/>
+        <xs:element name="token" type="xs:string" minOccurs="0"/>
+        <xs:element name="background" type="xs:string" minOccurs="0"/>
+        <xs:element name="notes" type="xs:string" minOccurs="0"/>
+        <xs:element name="build" type="c:Build"/>
+        <xs:element name="override" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+            <xs:attribute name="code" type="xs:string" use="required"/>
+            <xs:attribute name="path" type="xs:string" use="required"/>
+          </xs:extension></xs:simpleContent></xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="formatVersion" type="xs:positiveInteger" use="required"/>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="rev" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="streetName" type="xs:string"/>
+      <xs:attribute name="name" type="xs:string"/>
+      <!-- the build's metatype id ("" while none is picked) and method, repeated here as the summary -->
+      <xs:attribute name="metatype" type="xs:string"/>
+      <xs:attribute name="method" type="c:Method"/>
+      <xs:attribute name="backdrop">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="white"/><xs:enumeration value="grey"/><xs:enumeration value="dark"/><xs:enumeration value="grid"/>
+          <xs:enumeration value="halftone"/><xs:enumeration value="neon"/><xs:enumeration value="rain"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="finalizedAt" type="xs:string"/>
+      <xs:attribute name="campaign" type="xs:string"/>
+      <xs:attribute name="updatedAt" type="xs:string" use="required"/>
+      <xs:attribute name="lastExportedAt" type="xs:string"/>
+      <!-- karma and nuyen left when finalized -->
+      <xs:attribute name="finalKarma" type="xs:integer"/>
+      <xs:attribute name="finalNuyen" type="xs:decimal"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:simpleType name="Method"><xs:restriction base="xs:string">
+    <xs:enumeration value="priority"/><xs:enumeration value="sumtoten"/><xs:enumeration value="pointbuy"/>
+    <xs:enumeration value="karma"/><xs:enumeration value="lifepath"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="Attr"><xs:restriction base="xs:string">
+    <xs:enumeration value="bod"/><xs:enumeration value="agi"/><xs:enumeration value="rea"/><xs:enumeration value="str"/>
+    <xs:enumeration value="wil"/><xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
+    <xs:enumeration value="edg"/><xs:enumeration value="mag"/><xs:enumeration value="res"/>
+  </xs:restriction></xs:simpleType>
+  <xs:simpleType name="Count"><xs:restriction base="xs:nonNegativeInteger"/></xs:simpleType>
+
+  <xs:complexType name="Build">
+    <xs:sequence>
+      <!-- the five priority columns; no letter: not assigned yet -->
+      <xs:element name="priority" minOccurs="0" maxOccurs="5">
+        <xs:complexType>
+          <xs:attribute name="column" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="metatype"/><xs:enumeration value="attributes"/><xs:enumeration value="magic"/>
+              <xs:enumeration value="skills"/><xs:enumeration value="resources"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="letter">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-E]"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+      <!-- point buy: character points put in each pool -->
+      <xs:element name="cp" minOccurs="0" maxOccurs="7">
+        <xs:complexType>
+          <xs:attribute name="pool" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="adjustment"/>
+              <xs:enumeration value="resources"/><xs:enumeration value="powerPoints"/><xs:enumeration value="spells"/>
+              <xs:enumeration value="complexForms"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="points" type="c:Count" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <!-- lifepath: an adult life module taken, with the option picked for each mixed choice (by its index) -->
+      <xs:element name="lifemodule" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="choice" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:attribute name="index" type="c:Count" use="required"/>
+                <xs:attribute name="pick" type="xs:string" use="required"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="attribute" minOccurs="0" maxOccurs="11">
+        <xs:complexType>
+          <xs:attribute name="id" type="c:Attr" use="required"/>
+          <xs:attribute name="points" type="c:Count"/>
+          <xs:attribute name="adjust" type="c:Count"/>
+          <xs:attribute name="karma" type="c:Count"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="skill" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="points" type="c:Count" use="required"/>
+          <xs:attribute name="karma" type="c:Count" use="required"/>
+          <xs:attribute name="spec" type="xs:string"/>
+          <xs:attribute name="expertise" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <!-- a knowledge skill or language, its name as the text; native: the free native language -->
+      <xs:element name="knowledge" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+          <xs:attribute name="uid" type="xs:string" use="required"/>
+          <xs:attribute name="kind" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="knowledge"/><xs:enumeration value="language"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="native" type="xs:boolean"/>
+          <xs:attribute name="points" type="c:Count" use="required"/>
+          <xs:attribute name="karma" type="c:Count" use="required"/>
+        </xs:extension></xs:simpleContent></xs:complexType>
+      </xs:element>
+      <!-- free: a metatype trait; name: the catalog name when added -->
+      <xs:element name="quality" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="uid" type="xs:string" use="required"/>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="level" type="xs:positiveInteger" use="required"/>
+          <xs:attribute name="free" type="xs:boolean"/>
+          <xs:attribute name="note" type="xs:string"/>
+          <xs:attribute name="name" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
+      <xs:element name="pick" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence><xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+          <xs:attribute name="uid" type="xs:string" use="required"/>
+          <xs:attribute name="kind" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="spells"/><xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/>
+              <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="level" type="xs:positiveInteger"/>
+          <xs:attribute name="name" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="contact" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="uid" type="xs:string" use="required"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="archetype" type="xs:string" use="required"/>
+          <xs:attribute name="connection" type="c:Count" use="required"/>
+          <xs:attribute name="loyalty" type="c:Count" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="lifestyle" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="months" type="c:Count" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="sin" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="licence" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:attribute name="name" type="xs:string" use="required"/>
+                <xs:attribute name="rating" type="c:Count" use="required"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+          <xs:attribute name="uid" type="xs:string" use="required"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="kind" use="required">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="real"/><xs:enumeration value="fake"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="rating" type="c:Count"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="method" type="c:Method" use="required"/>
+    <xs:attribute name="magic" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="full"/><xs:enumeration value="aspected"/><xs:enumeration value="mystic-adept"/>
+        <xs:enumeration value="adept"/><xs:enumeration value="technomancer"/><xs:enumeration value="mundane"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="aspectedSkill" type="xs:string"/>
+    <xs:attribute name="tradition" type="xs:string"/>
+    <xs:attribute name="drainAttr">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="powerPointsBought" type="c:Count"/>
+    <xs:attribute name="initiation" type="c:Count"/>
+    <xs:attribute name="submersion" type="c:Count"/>
+    <xs:attribute name="karmaToNuyen" type="c:Count"/>
+  </xs:complexType>
+
+  <!-- what a ware, power or item adds (entered by the player); perRating: times the line's rating -->
+  <xs:complexType name="Bonus">
+    <xs:attribute name="target" use="required">
+      <xs:simpleType><xs:union memberTypes="c:Attr"><xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="initDice"/>
+      </xs:restriction></xs:simpleType></xs:union></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="value" type="xs:integer" use="required"/>
+    <xs:attribute name="perRating" type="xs:boolean"/>
+  </xs:complexType>
+
+  <!-- a bought thing; no id: a custom item at the player's cost, avail and essence. Children: its bonuses, the
+       accessories fitted to it, then the catalog entry as it was (written on export). -->
+  <xs:complexType name="Purchase">
+    <xs:sequence>
+      <xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="snapshot" minOccurs="0">
+        <xs:complexType><xs:sequence><xs:any processContents="skip" namespace="##any"/></xs:sequence></xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="weapons"/><xs:enumeration value="armor"/><xs:enumeration value="augmentations"/>
+        <xs:enumeration value="electronics"/><xs:enumeration value="gear"/><xs:enumeration value="vehicles"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="cost" type="xs:decimal"/>
+    <xs:attribute name="avail" type="xs:integer"/>
+    <xs:attribute name="essence" type="xs:decimal"/>
+    <xs:attribute name="rating" type="c:Count"/>
+    <xs:attribute name="qty" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="grade" type="xs:string"/>
+    <xs:attribute name="worn" type="xs:boolean"/>
+    <xs:attribute name="note" type="xs:string"/>
+  </xs:complexType>
+</xs:schema>

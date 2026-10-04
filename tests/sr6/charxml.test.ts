@@ -1,0 +1,115 @@
+// The SR6 runner file (src/sr6/engine/charxml.ts, public/data/sr6/schema/character.xsd): a made-up runner round-trips
+// and validates; bad files are refused or repaired; each game refuses the other's runner.
+import { readFileSync } from 'node:fs'
+import { expect, test } from 'vitest'
+import { validateXML } from 'xmllint-wasm'
+import { xmlToCharacter } from '../../src/engine/charxml'
+import { SR6_CHAR_NS, sr6Codec, sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
+
+const XSD = readFileSync('public/data/sr6/schema/character.xsd', 'utf8')
+const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+const valid = async (xml: string) =>
+  (await validateXML({ xml: { fileName: 'r.xml', contents: xml }, schema: { fileName: 'character.xsd', contents: XSD } })).errors.map(e => e.message)
+
+/** Every collection filled, with invented numbers. */
+function full(): Sr6Character {
+  const ch = blankSr6('priority', 'r-1', '2026-10-03T10:00:00.000Z')
+  const b = ch.build
+  ch.identity = { name: 'Pat Doe', streetName: 'Sparky', metatype: 'crb.glimmerkin', portrait: 'data:image/png;base64,iVBORw0KGgo=',
+    token: 'data:image/png;base64,AAAA', backdrop: 'neon', background: 'Grew up\nin a vending machine.', notes: 'Owes Gil & co.' }
+  Object.assign(ch, { finalizedAt: '2026-10-03T11:00:00.000Z', final: { karma: 3, nuyen: 1250 }, campaign: '0123456789ab',
+    lastExportedAt: '2026-10-03T12:00:00.000Z', overrides: [{ code: 'skill.cap', path: 'skills.crb.gab', note: 'GM ok' }] })
+  Object.assign(b, { metatype: 'crb.glimmerkin', magic: 'aspected', aspectedSkill: 'crb.hexing', tradition: 'Street hoodoo', drainAttr: 'cha',
+    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 } })
+  b.priorities = { metatype: 'D', attributes: 'A', magic: 'B', skills: 'C', resources: null }
+  b.cp.attribute = 5; b.cp.spells = 1
+  b.lifepath = [{ id: 'crb.glow-apprentice', choices: { 0: 'skill:crb.hexing' } }, { id: 'crb.wage-drone', choices: {} }]
+  b.attributes.agi = { points: 3, adjust: 1, karma: 0 }; b.attributes.edg = { points: 0, adjust: 2, karma: 1 }
+  b.skills = [{ id: 'crb.gab', points: 5, karma: 1, spec: 'Haggling', expertise: 'Fibbing' }, { id: 'crb.hexing', points: 2, karma: 0 }]
+  b.knowledge = [{ uid: 'k1', name: 'Sperethiel', kind: 'language', native: true, points: 0, karma: 0 }, { uid: 'k2', name: 'Soy <brands>', kind: 'knowledge', points: 3, karma: 1 }]
+  b.qualities = [{ uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' }, { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' }]
+  b.picks = [{ uid: 'p1', kind: 'spells', id: 'crb.glow-ward' }, { uid: 'p2', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, name: 'Quick Step',
+    bonuses: [{ target: 'rea', value: 1, perRating: true }, { target: 'initDice', value: 1 }] }]
+  b.purchases = [
+    { uid: 'g1', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
+      snapshot: { id: 'crb.zap-gun', kind: 'weapons', name: 'Zap Gun', source: 'CRB', page: 251, attrs: { cost: '350', ar: '9/7/—/—/—' },
+        parts: [{ tag: 'mode', attrs: { v: 'SS' }, text: '' }], text: '' } },
+    { uid: 'g3', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, bonuses: [{ target: 'int', value: 1 }], accessories: [] },
+    { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
+    { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
+  ]
+  b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2 }]
+  b.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Zap Gun', rating: 2 }] }, { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] }]
+  return ch
+}
+
+test('a full made-up runner round-trips equal and validates; the codec is the same functions', async () => {
+  const ch = full()
+  const xml = sr6ToXml(ch, 4)
+  expect(xml).toContain(`<sr6:character xmlns:sr6="${SR6_CHAR_NS}" formatVersion="1" id="r-1" rev="4" streetName="Sparky"`)
+  expect(xml).toContain(' metatype="crb.glimmerkin" method="priority"')
+  expect(await valid(xml)).toEqual([])
+  const r = xmlToSr6(xml)
+  if (!r.ok) throw new Error(r.reason)
+  expect(r.character).toEqual(ch)
+  expect(await valid(sr6ToXml(r.character))).toEqual([])
+  expect(sr6Codec).toEqual({ tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 })
+})
+
+test('a blank runner validates and reads back blank', async () => {
+  const ch = blankSr6('lifepath', 'b-1', '2026-10-03T10:00:00.000Z')
+  const xml = sr6ToXml(ch)
+  expect(await valid(xml)).toEqual([])
+  expect(xmlToSr6(xml)).toEqual({ ok: true, character: ch })
+})
+
+test('control characters are dropped on write; a file with one is refused with line and column, and repair removes it', async () => {
+  const ch = blankSr6('priority', 'c-1', 'x')
+  ch.identity.notes = 'beep\u0007boop'
+  const xml = sr6ToXml(ch)
+  expect(xml).not.toContain('\u0007')
+  expect(await valid(xml)).toEqual([])
+  const bad = xml.replace('beepboop', 'beep\u0007boop')
+  expect(xmlToSr6(bad)).toEqual({ ok: false, reason: expect.stringMatching(/^Not valid XML\. Line \d+, column \d+, in <notes>: character U\+0007/) })
+  const fix: string[] = []
+  const r = xmlToSr6(bad, { repair: fix })
+  expect(r.ok && r.character.identity.notes).toBe('beepboop')
+  expect(fix).toEqual([expect.stringContaining('U+0007')])
+})
+
+test('a broken purchase is refused naming it; repair drops it and says so', () => {
+  const ch = full()
+  const xml = sr6ToXml(ch).replace('<purchase uid="g4" kind="armor" id="crb.padded-vest" qty="1"', '<purchase uid="g4" kind="armor" id="crb.padded-vest" qty="x"')
+  expect(xml).toContain('qty="x"')
+  expect(xmlToSr6(xml)).toEqual({ ok: false, reason: expect.stringContaining('purchase 3') })
+  expect(xmlToSr6(xml)).toEqual({ ok: false, reason: expect.stringContaining('qty') })
+  const fix: string[] = []
+  const r = xmlToSr6(xml, { repair: fix })
+  if (!r.ok) throw new Error(r.reason)
+  expect(r.character.build.purchases.map(p => p.uid)).toEqual(['g1', 'g3', 'g5'])
+  expect(fix).toEqual([expect.stringMatching(/^Dropped purchase 3: /)])
+})
+
+test('missing numbers read as 0; an unknown method or magic is refused, or repaired to priority / mundane with a note', () => {
+  const root = (build: string) => `<sr6:character xmlns:sr6="${SR6_CHAR_NS}" formatVersion="1" id="m" updatedAt="x"><build ${build}><attribute id="bod"/></build></sr6:character>`
+  const r = xmlToSr6(root('method="karma" magic="adept"'))
+  if (!r.ok) throw new Error(r.reason)
+  expect(r.character.build).toMatchObject({ method: 'karma', magic: 'adept', powerPointsBought: 0, karmaToNuyen: 0 })
+  expect(r.character.build.attributes.bod).toEqual({ points: 0, adjust: 0, karma: 0 })
+  expect(r.character.build.priorities.magic).toBeNull()
+  expect(xmlToSr6(root('method="freeform" magic="adept"'))).toEqual({ ok: false, reason: expect.stringContaining('“freeform”') })
+  expect(xmlToSr6(root('method="karma" magic="dragon"'))).toEqual({ ok: false, reason: expect.stringContaining('“dragon”') })
+  const fix: string[] = []
+  const f = xmlToSr6(root('method="freeform" magic="dragon"'), { repair: fix })
+  expect(f.ok && f.character.build).toMatchObject({ method: 'priority', magic: 'mundane' })
+  expect(fix).toEqual([expect.stringContaining('“freeform”'), expect.stringContaining('“dragon”')])
+})
+
+test('each game refuses the other’s runner, saying where it belongs', () => {
+  expect(xmlToSr6(CA2)).toEqual({ ok: false, reason: 'This is a Shadowrun Anarchy runner. Import it on the Anarchy side.' })
+  expect(xmlToCharacter(sr6ToXml(full()))).toEqual({ ok: false, reason: 'This is a Shadowrun 6 runner. Import it on the Shadowrun 6 side.' })
+  expect(xmlToSr6('<x')).toEqual({ ok: false, reason: expect.stringMatching(/^Not valid XML/) })
+  expect(xmlToSr6('<foo/>')).toEqual({ ok: false, reason: 'Not a Shadowrun 6 runner file.' })
+  expect(xmlToSr6(sr6ToXml(full()).replace('formatVersion="1"', 'formatVersion="9"'))).toEqual({ ok: false, reason: expect.stringContaining('newer version') })
+})

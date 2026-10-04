@@ -20,7 +20,8 @@ export const entryKey = (kind: Sr6Kind, id: string) => `${kind}/${id}`
 const attrsOf = (el: Element, skip = new Set<string>()) =>
   Object.fromEntries([...el.attributes].filter(a => !skip.has(a.name)).map(a => [a.name, a.value]))
 
-function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
+/** One entry element as an Sr6Entry (also a runner file's <snapshot>, src/sr6/engine/charxml.ts). */
+export function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
   const kids = [...el.children]
   const e: Sr6Entry = {
     id: el.getAttribute('id') ?? '', kind, name: kids.find(k => k.localName === 'name')?.textContent ?? '',
