@@ -106,3 +106,31 @@ editor fills them in on Game data from their own book (`PUT /api/sr6/creation`);
 the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
+
+## Compendiums (`characters/sr6/.compendiums/<owner>/`)
+
+A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by the server behind `/api/sr6/compendiums`
+(GMs only, never under `/custom/`). Schema: `compendium.xsd` (with `common.xsd` and `character.xsd`).
+
+```xml
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="compendium" version="1"
+  id="0123456789ab" name="Street Kit" source="STREET" sharing="campaign" campaign="abcdef012345"
+  rev="3" updatedAt="2026-10-04T00:00:00.000Z">
+  <weapon id="street.zap-stick" source="STREET" page="1" category="Clubs" dv="3S" modes="SS" cost="120"><name>Zap Stick</name><text>The GM's own words.</text></weapon>
+  <spirit id="street.gutter-spirit" source="STREET" page="1" bod="F+1" agi="F"><name>Gutter Spirit</name><skills>Astral, Fumbling</skills><text/></spirit>
+  <sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="…" …><npc kind="grunt" …>…</npc>…</sr6:character>
+</sr6:data>
+```
+
+- The root names the compendium: `id` (12 hex), `name`, its own `source` id (`[A-Z][A-Z0-9-]{0,19}`, chosen when it's
+  made, fixed afterwards, unique among the SR6 books' sources and every SR6 compendium; an Anarchy compendium may use
+  the same id), `sharing` (`private`, `campaign`: the GMs of that SR6 `campaign`, or `table`), and the server's `rev`
+  and `updatedAt`. The owner is the folder, never the file.
+- Children, in any order: entries of the compendium kinds (every kind but priorities, metatypes, attributes, skills,
+  life modules and rules; `COMP_KINDS` in `src/sr6/engine/compendium.ts`) under their usual tags, with only that kind's
+  attributes and string children, every one citing the compendium's `source` with a `page` of 1 or more and the GM's
+  own text in `<text>` (never a book's: a copy from a book keeps the stats and drops the description); and NPCs as
+  `<sr6:character>` elements exactly as an SR6 runner file's root (`docs/sr6-character-format.md`), each with its `<npc>`
+  block.
+- Never the other game's: the server refuses a body that names an Anarchy namespace anywhere, and the app refuses an
+  Anarchy compendium, an embedded Anarchy runner and any entry in another namespace.

@@ -23,7 +23,7 @@ def _validate(path):
 class Sr6KindsTest(unittest.TestCase):
     def test_kinds_match_the_schema_folder(self):
         xsds = {p.stem for p in Path(sr6.SCHEMA_DIR).glob("*.xsd")}
-        self.assertEqual(xsds - {"common", "sources", "texts", "edits", "creation", "character"}, set(sr6.KINDS))
+        self.assertEqual(xsds - {"common", "sources", "texts", "edits", "creation", "character", "compendium"}, set(sr6.KINDS))
         self.assertEqual(sr6.KINDS["electronics"], "device")
         self.assertEqual(list(sr6.KINDS)[0], "priorities")
         self.assertEqual(list(sr6.KINDS)[-1], "rules")

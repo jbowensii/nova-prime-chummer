@@ -1,5 +1,7 @@
 // The Shadowrun 6 catalog's kinds: one data file per kind (custom/sr6/imported/<source>/<kind>.xml), each entry under
 // its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format.md.
+import type { Sr6Character } from './character'
+
 export type Sr6Kind =
   | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations'
   | 'electronics' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
@@ -42,9 +44,18 @@ export interface Sr6Entry {
   id: string; kind: Sr6Kind; name: string; source: string; page: number; attrs: Record<string, string>; parts: Sr6Part[]; text: string
   edited?: boolean; by?: string
 }
+/** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). */
 export interface Sr6Source {
   id: string; name: string; publisher: string; canon: boolean; texts?: string; file?: string; sha256?: string; imported?: string
-  origin: 'shipped' | 'imported'
+  origin: 'shipped' | 'imported' | 'user'
+  compendium?: { id: string; owner: string }
+}
+/** A GM's SR6 compendium (src/sr6/engine/compendium.ts): entries of the compendium kinds citing its own source, and NPCs.
+ *  owner/ownerName come from the server (the folder it's stored in), never from the file. */
+export interface Sr6Compendium {
+  id: string; name: string; source: string; sharing: 'private' | 'campaign' | 'table'; campaign?: string; rev?: number; updatedAt: string
+  owner?: string; ownerName?: string
+  entries: Sr6Entry[]; npcs: Sr6Character[]
 }
 /** original: the book's version of each edited entry, keyed by entryKey(kind, id) (src/sr6/engine/load.ts). */
 export interface Sr6Catalog {

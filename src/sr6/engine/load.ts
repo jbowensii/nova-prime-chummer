@@ -125,13 +125,17 @@ export async function loadSr6Catalog(base = './'): Promise<Sr6Catalog> {
   return c
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+// control characters XML 1.0 can't hold are dropped (a pasted description would make the whole file unreadable)
+// eslint-disable-next-line no-control-regex
+const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const attrList = (a: Record<string, string>) => Object.entries(a).map(([k, v]) => ` ${k}="${esc(v)}"`).join('')
 
-/** The entry element for an edit body (PUT sr6/edits/<kind>/<id>): id, source, page, its attributes, <name>, its parts
- * as they are, and an empty <text/> (descriptions go in the edit's <description>). */
-export function sr6EntryXml(e: Sr6Entry): string {
+/** The entry element: id, source, page, its attributes, <name>, its parts as they are, then <text>. For an edit body
+ * (PUT sr6/edits/<kind>/<id>) an empty <text/> (descriptions go in the edit's <description>); `withText`: the entry's own
+ * text (a compendium's, src/sr6/engine/compendium.ts). */
+export function sr6EntryXml(e: Sr6Entry, withText = false): string {
   const tag = SR6_KINDS[e.kind].tag
   const parts = e.parts.map(p => p.text ? `<${p.tag}${attrList(p.attrs)}>${esc(p.text)}</${p.tag}>` : `<${p.tag}${attrList(p.attrs)}/>`).join('')
-  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}<text/></${tag}>`
+  const text = withText && e.text ? `<text>${esc(e.text)}</text>` : '<text/>'
+  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${text}</${tag}>`
 }
