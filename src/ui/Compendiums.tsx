@@ -1,27 +1,25 @@
 // Compendiums (#/compendiums): the GMs' own collections of amps, gear, spells, vehicles and NPCs (spec 2026-10-02 §1,
 // plan phase 2). Yours (edit, share, delete), the ones shared with you (read only), and the books as read-only
-// compendiums. A compendium's entries are saved into its file (compendiumStore.ts) with the catalog's own entry form.
+// compendiums. The list, details, routing, entry table and Copy to… are the shell both games share (CompendiumShell.tsx);
+// here: Anarchy's adapter, rows and pages. A compendium's entries are saved into its file (compendiumStore.ts) with the
+// catalog's own entry form.
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
-import { useEffect, useState } from 'react'
-import { compendiumSource, SOURCE_ID } from '../engine'
+import { useEffect, useMemo, useState } from 'react'
+import { compendiumSource } from '../engine'
 import type { AmpTemplate, Catalog, Character, Compendium, Item, VehicleBase } from '../model/types'
 import { newId } from '../model/types'
-import { because, useMe } from './auth'
+import { because } from './auth'
 import { Modal, NpcChips } from './bits'
-import { loadCampaigns, type Campaign } from './Campaigns'
+import { CompendiumShell, CopyButton, CopyDialog, Entries, entries, sharingOf, type BookProps, type CompGame, type PageProps, type ShellRow } from './CompendiumShell'
 import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
 import { npcRepoFor, useRepo } from './repo'
 import { downloadCompendium } from './Foundry'
 import { SourceLabel } from './SourceLabel'
 
-const SHARING: Record<Compendium['sharing'], string> = { private: 'Private', campaign: 'Shared with a campaign’s GMs', table: 'Shared with the table' }
-const hex12 = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, '0')).join('')
-const entries = (n: number) => n === 1 ? '1 entry' : `${n} entries`
-
 /** One listed entry; `kind` and `entry` only for what the form edits (not NPCs). */
-interface Row { key: string; name: string; detail: string; text: string; kind?: FormKind; entry?: Entry; npc?: Character; source?: string; page?: number }
+interface Row extends ShellRow { kind?: FormKind; entry?: Entry; npc?: Character }
 const GROUPS = ['Amps', 'Weapons', 'Armor', 'Gear', 'Spells', 'Complex forms', 'Vehicles', 'NPCs'] as const
 const ITEM_GROUP: Record<Item['kind'], typeof GROUPS[number]> = { weapon: 'Weapons', armor: 'Armor', gear: 'Gear', spell: 'Spells', 'complex-form': 'Complex forms' }
 
@@ -34,7 +32,7 @@ function groupRows(c: Catalog, amps: AmpTemplate[], items: Item[], vehicles: Veh
     detail: [i.dv && `DV ${i.dv}${i.ranges ? ` [${i.ranges}]` : ''}`, i.specialist && 'specialist', i.armor && `Armor ${i.armor}`, i.category].filter(Boolean).join(', ') })
   for (const v of vehicles) out.get('Vehicles')!.push({ ...ref(v), kind: 'vehicles', name: v.name, text: '',
     detail: `Body ${v.body}, Handling ${v.handling}, Speed ${v.speed}${v.flyingSpeed != null ? `, Flying ${v.flyingSpeed}` : ''}, Pilot ${v.pilot}, Armor ${v.armor}, mount ${v.mount}` })
-  for (const n of npcs) out.get('NPCs')!.push({ key: n.id, npc: n, name: n.identity.streetName || n.identity.name || 'Unnamed NPC', text: '', detail: '' })
+  for (const n of npcs) out.get('NPCs')!.push({ key: n.id, npc: n, chips: n.npc && <NpcChips npc={n.npc} />, name: n.identity.streetName || n.identity.name || 'Unnamed NPC', text: '', detail: '' })
   for (const rows of out.values()) rows.sort((a, b) => a.name.localeCompare(b.name))
   return out
 }
@@ -54,194 +52,34 @@ export function copyEntry(c: Catalog, kind: FormKind, e: Entry, to: Compendium):
   return kind === 'amps' ? { ...out, narrative: '' } as AmpTemplate : kind === 'items' ? { ...out, text: '' } as Item : out as VehicleBase
 }
 
-/** "Copy to…" on a book's or a shared compendium's rows: into one of yours. */
-function CopyDialog({ c, row, targets, onClose, done }: { c: Catalog; row: Row; targets: StoredCompendium[]; onClose: () => void; done: (msg: string) => Promise<void> }) {
-  const [to, setTo] = useState(targets[0]?.id ?? '')
-  const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
-  const copy = async () => {
-    const comp = targets.find(x => x.id === to)!, l = listOf(row.kind!)
-    setBusy(true); setErr('')
-    const r = await saveCompendium({ ...comp, [l]: [...comp[l], copyEntry(c, row.kind!, row.entry!, comp)] }, comp.rev)
-    if (r.ok) return done(`Copied ${row.name} to ${comp.name}.`)
-    setErr(r.conflict ? 'It changed elsewhere since this page loaded. Reload the page and try again.' : because('Couldn’t copy it', r.error ?? ''))
-    setBusy(false)
-  }
-  return (
-    <Modal open onClose={onClose} title={`Copy ${row.name}`}
-      actions={<><button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy || !to} onClick={() => void copy()}>Copy</button></>}>
-      <label>Compendium<select value={to} onChange={e => setTo(e.target.value)}>
-        {targets.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-      <p className="muted">The copy cites your compendium (page 1) and has no description: write your own on its Edit form.</p>
-      <div role="alert">{err && <p className="err">{err}</p>}</div>
-    </Modal>
-  )
-}
-
-const CopyButton = ({ r, copy }: { r: Row; copy: (r: Row) => void }) =>
-  <button className="btn small quiet" aria-label={`Copy ${r.name} to…`} onClick={() => copy(r)}>Copy to…</button>
-
-function Header({ title, children }: { title: string; children?: React.ReactNode }) {
-  return <PageHeader title={title}>{children}</PageHeader>
-}
-
-/** #/compendiums and #/compendiums/<id or book source id>[/<entry id>: its form open (a picker's Edit)]. reload: the catalog again (after a save). */
+/** #/compendiums and #/compendiums/<id or book source id>[/<entry id>: its form open (a picker's Edit)]: the shared shell
+ *  (CompendiumShell.tsx) with Anarchy's store, catalog and pages. reload: the catalog again (after a save). */
 export function CompendiumsScreen({ c, id, edit, reload }: { c: Catalog; id?: string; edit?: string; reload: () => Promise<void> }) {
-  const me = useMe()
-  const [comps, setComps] = useState<StoredCompendium[] | null>(null)
-  const [bad, setBad] = useState<string[]>([])
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [msg, setMsg] = useState<string | null>(null)
-  const refresh = () => listCompendiums().then(rows => { const p = parseRows(rows); setComps(p.comps); setBad(p.bad.map(b => `${b.row.ownerName}’s ${b.row.file}: ${b.error}`)) },
-    e => { setMsg(because('Couldn’t load the compendiums', (e as Error).message)); setComps([]) })
-  useEffect(() => { void refresh(); loadCampaigns().then(setCampaigns, () => setCampaigns([])) }, [])
-  /** after a save: the list and the catalog (the pickers) both */
-  const changed = async () => { await refresh(); await reload() }
-
-  if (!comps) return <main className="lib"><Header title="Compendiums" /><p className="muted">Loading compendiums…</p></main>
-  const mine = (x: StoredCompendium) => x.owner === me?.username
-  if (id) {
-    const comp = comps.find(x => x.id === id)
-    const targets = comps.filter(mine)
-    // not in this catalog (its source id clashes, or the catalog loaded without it): read only, so a new entry's id can't
-    // overwrite one of its own and Export can't pick up another source's entries
-    const loaded = !!comp && c.sources.get(comp.source)?.compendium?.id === comp.id
-    if (comp && !loaded) return <main className="lib"><Header title={comp.name} /><p className="banner">{comp.name}’s entries didn’t load into the catalog
-      (Game data lists why). Reload the page; if its source id {comp.source} is now a book’s, ask the admin. <a href="#/compendiums">All compendiums</a></p></main>
-    if (comp) return <CompendiumPage key={comp.id} c={c} comp={comp} own={mine(comp)} campaigns={campaigns} changed={changed} edit={edit} targets={targets} />
-    const book = c.sources.get(id)
-    if (book && !comps.some(x => x.source === id)) return <BookPage c={c} id={id} targets={targets} changed={changed} />
-    return <main className="lib"><Header title="Compendiums" /><p className="banner">No such compendium. <a href="#/compendiums">All compendiums</a></p></main>
-  }
-  return <ListPage c={c} comps={comps} bad={bad} mine={mine} campaigns={campaigns} msg={msg} setMsg={setMsg} changed={changed} />
+  const g = useMemo((): CompGame<Compendium> => ({
+    game: 'ca2', href: '#/compendiums',
+    intro: 'Your own amps, gear, spells, vehicles and NPCs, in collections you can share with a campaign’s GMs or the whole table. Their entries are house content (Non-canon) and show in your pickers. Books are listed as read-only compendiums.',
+    list: () => listCompendiums().then(rows => { const p = parseRows(rows); return { comps: p.comps, bad: p.bad.map(b => `${b.row.ownerName}’s ${b.row.file}: ${b.error}`) } }),
+    blank: meta => ({ ...meta, updatedAt: '', amps: [], items: [], vehicles: [], npcs: [] }),
+    save: saveCompendium,
+    remove: id => deleteCompendium(id),
+    books: [...c.sources.values()].filter(s => !s.compendium),
+    taken: source => c.sources.has(source),
+    loaded: comp => c.sources.get(comp.source)?.compendium?.id === comp.id,
+    count: x => x.amps.length + x.items.length + x.vehicles.length,
+    cite: (source, page) => <SourceLabel c={c} source={source} page={page} />,
+  }), [c])
+  return <CompendiumShell g={g} id={id} reload={reload}
+    page={p => <CompendiumPage key={p.comp.id} c={c} g={g} {...p} edit={edit} />}
+    book={p => <BookPage c={c} g={g} {...p} />} />
 }
 
-function ListPage({ c, comps, bad, mine, campaigns, msg, setMsg, changed }: { c: Catalog; comps: StoredCompendium[]; bad: string[]; mine: (x: StoredCompendium) => boolean
-  campaigns: Campaign[]; msg: string | null; setMsg: (m: string | null) => void; changed: () => Promise<void> }) {
-  const [details, setDetails] = useState<StoredCompendium | 'new' | null>(null)
-  const [toDelete, setToDelete] = useState<StoredCompendium | null>(null)
-  const own = comps.filter(mine), shared = comps.filter(x => !mine(x))
-  const compSources = new Set(comps.map(x => x.source))
-  const books = [...c.sources.values()].filter(s => !compSources.has(s.id)).sort((a, b) => a.name.localeCompare(b.name))
-  const count = (x: Compendium) => entries(x.amps.length + x.items.length + x.vehicles.length + x.npcs.length)
-  const sharing = (x: Compendium) => x.sharing === 'campaign' ? `Shared with ${campaigns.find(k => k.id === x.campaign)?.name ?? 'a campaign'}’s GMs` : SHARING[x.sharing]
-
-  return (
-    <main className="lib">
-      <Header title="Compendiums"><IconButton className="primary" icon="compendium-add" label="New compendium" onClick={() => setDetails('new')} /></Header>
-      <p className="muted">Your own amps, gear, spells, vehicles and NPCs, in collections you can share with a campaign’s GMs or the whole table. Their entries are house content (Non-canon) and show in your pickers. Books are listed as read-only compendiums.</p>
-      {msg && <p className="banner" role="status">{msg}</p>}
-      {bad.map(b => <p className="err" key={b}>Couldn’t open {b}</p>)}
-      <section aria-label="Your compendiums">
-        <h2>Your compendiums</h2>
-        {own.length === 0 ? <p className="muted">None yet. Make one with New compendium.</p> : <div className="scroll-x"><table className="data"><tbody>
-          {own.map(x => <tr key={x.id}>
-            <td><a href={`#/compendiums/${x.id}`}>{x.name}</a> <span className="muted">{x.source}</span></td>
-            <td>{sharing(x)}</td><td className="muted">{count(x)}</td>
-            <td><div className="row">
-              <button className="btn small quiet" aria-label={`Details of ${x.name}`} onClick={() => setDetails(x)}>Details…</button>
-              <button className="btn small quiet" aria-label={`Delete ${x.name}`} onClick={() => setToDelete(x)}>Delete</button>
-            </div></td>
-          </tr>)}
-        </tbody></table></div>}
-      </section>
-      {shared.length > 0 && <section aria-label="Shared with you">
-        <h2>Shared with you</h2>
-        <div className="scroll-x"><table className="data"><tbody>
-          {shared.map(x => <tr key={x.id}>
-            <td><a href={`#/compendiums/${x.id}`}>{x.name}</a> <span className="muted">{x.source}</span></td>
-            <td>{x.ownerName}</td><td>{sharing(x)}</td><td className="muted">{count(x)}</td>
-          </tr>)}
-        </tbody></table></div>
-      </section>}
-      <section aria-label="Books">
-        <h2>Books</h2>
-        <div className="scroll-x"><table className="data"><tbody>
-          {books.map(s => <tr key={s.id}>
-            <td><a href={`#/compendiums/${s.id}`}>{s.name}</a> <span className="muted">{s.id}</span></td>
-            <td>{s.publisher}</td><td>{s.canon ? 'Canon' : 'Non-canon'}</td>
-          </tr>)}
-        </tbody></table></div>
-      </section>
-
-      {details && <DetailsDialog c={c} comp={details === 'new' ? null : details} campaigns={campaigns} onClose={() => setDetails(null)}
-        onSaved={async (x, made) => { setDetails(null); await changed(); if (made) location.hash = `#/compendiums/${x.id}`; else setMsg(`Saved ${x.name}.`) }} />}
-      <Modal open={!!toDelete} onClose={() => setToDelete(null)} title={`Delete ${toDelete?.name ?? 'this compendium'}?`}
-        actions={<><button className="btn" onClick={() => setToDelete(null)}>Keep</button>
-          <button className="btn danger" onClick={async () => {
-            try { await deleteCompendium(toDelete!.id); setMsg(`Deleted ${toDelete!.name}.`) } catch (e) { setMsg(because('Couldn’t delete it', (e as Error).message)) }
-            setToDelete(null); await changed() }}>Delete compendium</button></>}>
-        <p>It moves to the server’s compendium trash, where only the admin can bring it back. Its entries leave the pickers; runners and NPCs that use one keep their copy.</p>
-      </Modal>
-    </main>
-  )
+/** the compendium with a copy of the row's entry added */
+const into = (c: Catalog) => (comp: StoredCompendium, row: Row): Compendium => {
+  const l = listOf(row.kind!)
+  return { ...comp, [l]: [...comp[l], copyEntry(c, row.kind!, row.entry!, comp)] }
 }
 
-/** New compendium (comp null), or an existing one's name and sharing (its source id is fixed). */
-function DetailsDialog({ c, comp, campaigns, onClose, onSaved }: { c: Catalog; comp: StoredCompendium | null; campaigns: Campaign[]
-  onClose: () => void; onSaved: (x: Compendium, made: boolean) => Promise<void> }) {
-  const gmOf = campaigns.filter(x => x.you === 'gm' && !x.archived)
-  const [name, setName] = useState(comp?.name ?? '')
-  const [source, setSource] = useState(comp?.source ?? '')
-  const [sharing, setSharing] = useState<Compendium['sharing']>(comp?.sharing ?? 'private')
-  const [campaign, setCampaign] = useState(comp?.campaign ?? gmOf[0]?.id ?? '')
-  const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
-  const idOk = !!comp || (SOURCE_ID.test(source) && !c.sources.has(source))
-  const ok = !busy && !!name.trim() && idOk && (sharing !== 'campaign' || !!campaign)
-  const save = async () => {
-    setBusy(true); setErr('')
-    const next: Compendium = comp ? { ...comp, name: name.trim(), sharing, campaign: sharing === 'campaign' ? campaign : undefined }
-      : { id: hex12(), name: name.trim(), source, sharing, campaign: sharing === 'campaign' ? campaign : undefined, updatedAt: '', amps: [], items: [], vehicles: [], npcs: [] }
-    const r = await saveCompendium(next, comp?.rev)
-    if (r.ok) return onSaved(next, !comp)
-    setErr(r.conflict ? 'It changed elsewhere since this page loaded. Reload the page and try again.' : because('Couldn’t save', r.error ?? ''))
-    setBusy(false)
-  }
-  return (
-    <Modal open onClose={onClose} title={comp ? comp.name : 'New compendium'}
-      actions={<><button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn primary" disabled={!ok} onClick={() => void save()}>{comp ? 'Save' : 'Create compendium'}</button></>}>
-      <div className="grid2">
-        <label>Name<input autoFocus value={name} maxLength={120} onChange={e => setName(e.target.value)} /></label>
-        <label>Source id<input value={source} maxLength={20} placeholder="STREET" disabled={!!comp} aria-invalid={!idOk}
-          aria-describedby={!idOk && source ? 'comp-src-err' : undefined} onChange={e => setSource(e.target.value.toUpperCase())} /></label>
-        <label>Sharing<select value={sharing} onChange={e => setSharing(e.target.value as Compendium['sharing'])}>
-          <option value="private">Private</option>
-          {(gmOf.length > 0 || sharing === 'campaign') && <option value="campaign">A campaign’s GMs</option>}
-          <option value="table">The whole table</option></select></label>
-        {sharing === 'campaign' && <label>Campaign<select value={campaign} onChange={e => setCampaign(e.target.value)}>
-          {gmOf.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
-      </div>
-      {!idOk && source && <p className="err" id="comp-src-err">{c.sources.has(source) ? `${source} is already a source; choose another id.`
-        : 'A source id starts with a letter and uses only A–Z, 0–9 and hyphens.'}</p>}
-      <p className="muted">{comp ? `Its entries cite ${comp.source}; that can’t change.` : 'Its entries cite this id (like a book’s), and it can’t be changed later.'}
-        {' '}A campaign’s GMs or the whole table can read a shared compendium; only you can change it.</p>
-      <div role="alert">{err && <p className="err">{err}</p>}</div>
-    </Modal>
-  )
-}
-
-function Entries({ c, rows, q, actions }: { c: Catalog; rows: Map<string, Row[]>; q: string; actions?: (r: Row) => React.ReactNode }) {
-  const t = q.trim().toLowerCase()
-  const shown = [...rows].map(([g, list]) => [g, list.filter(r => !t || r.name.toLowerCase().includes(t))] as const).filter(([, list]) => list.length)
-  if (!shown.length) return <p className="muted">{t ? `No entry’s name contains “${q.trim()}”.` : 'No entries yet.'}</p>
-  return <>{shown.map(([g, list]) => <section key={g} aria-label={g}>
-    <h2>{g}</h2>
-    {/* fixed columns: every group's table lines up with the others */}
-    <div className="scroll-x"><table className="data fixed" style={{ minWidth: actions ? '44rem' : '35rem' }}><colgroup><col style={{ width: '32%' }} /><col /><col style={{ width: '11rem' }} />{actions && <col style={{ width: '9rem' }} />}</colgroup><tbody>
-      {list.map(r => <tr key={r.key}>
-        <td><b>{r.name}</b>{r.npc?.npc && <> <NpcChips npc={r.npc.npc} /></>}{r.detail && <div className="muted">{r.detail}</div>}</td>
-        <td className="muted">{r.text}</td>
-        <td>{r.source && <SourceLabel c={c} source={r.source} page={r.page ?? 1} />}</td>
-        {actions && <td>{actions(r)}</td>}
-      </tr>)}
-    </tbody></table></div>
-  </section>)}</>
-}
-
-function CompendiumPage({ c, comp, own, campaigns, changed, edit, targets }: { c: Catalog; comp: StoredCompendium; own: boolean; campaigns: Campaign[]
-  changed: () => Promise<void>; edit?: string; targets: StoredCompendium[] }) {
+function CompendiumPage({ c, g, comp, own, campaigns, changed, edit, targets }: PageProps<Compendium> & { c: Catalog; g: CompGame<Compendium>; edit?: string }) {
   const npcs = npcRepoFor(useRepo())
   const [copying, setCopying] = useState<Row | null>(null)
   const [q, setQ] = useState('')
@@ -277,12 +115,12 @@ function CompendiumPage({ c, comp, own, campaigns, changed, edit, targets }: { c
       await changed(); setMsg(`Moved ${r.name} to your NPCs.`)
     } catch (e) { setMsg(because('Couldn’t move it', (e as Error).message)) }
   }
-  const sharing = comp.sharing === 'campaign' ? `shared with ${campaigns.find(k => k.id === comp.campaign)?.name ?? 'a campaign'}’s GMs` : SHARING[comp.sharing].toLowerCase()
-  const count = comp.amps.length + comp.items.length + comp.vehicles.length
+  const sharing = sharingOf(comp, campaigns).replace(/^./, ch => ch.toLowerCase())
+  const count = g.count(comp)
 
   return (
     <main className="lib">
-      <Header title={comp.name}><IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadCompendium(c, comp)} /></Header>
+      <PageHeader title={comp.name}><IconButton icon="foundry" label="Export for Foundry" onClick={() => downloadCompendium(c, comp)} /></PageHeader>
       <p className="muted">Source {comp.source} · {own ? 'yours' : `${comp.ownerName}’s, read only`} · {sharing} · {entries(count)}{comp.npcs.length ? `, ${comp.npcs.length} NPC${comp.npcs.length === 1 ? '' : 's'}` : ''}</p>
       {own && <div className="row">
         <button className="btn" onClick={() => setForm({ kind: 'amps' })}>Add an amp</button>
@@ -290,12 +128,12 @@ function CompendiumPage({ c, comp, own, campaigns, changed, edit, targets }: { c
         <button className="btn" onClick={() => setForm({ kind: 'vehicles' })}>Add a vehicle</button>
       </div>}
       <div className="row listtools"><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search entries" /></div>
-      <Entries c={c} rows={rows} q={q} actions={own ? r => r.kind ? <div className="row">
+      <Entries rows={rows} q={q} cite={g.cite} actions={own ? r => r.kind ? <div className="row">
         <button className="btn small quiet" aria-label={`Edit ${r.name}`} onClick={() => setForm({ kind: r.kind!, entry: r.entry })}>Edit</button>
         <button className="btn small quiet" aria-label={`Delete ${r.name}`} onClick={() => void remove(r)}>Delete</button></div>
         : <button className="btn small quiet" aria-label={`Move ${r.name} to my NPCs`} onClick={() => void moveOut(r)}>Move to my NPCs</button>
         : targets.length ? r => r.kind && <CopyButton r={r} copy={setCopying} /> : undefined} />
-      {copying && <CopyDialog c={c} row={copying} targets={targets} onClose={() => setCopying(null)} done={async m => { setCopying(null); await changed(); setMsg(m) }} />}
+      {copying && <CopyDialog g={g} row={copying} targets={targets} into={into(c)} onClose={() => setCopying(null)} done={async m => { setCopying(null); await changed(); setMsg(m) }} />}
       <Modal open={!!form} onClose={() => setForm(null)} actions={<></>}
         title={form?.entry ? `Edit ${nameOf(form.entry)}` : form ? `Add ${form.kind === 'items' ? 'an' : 'a'} ${NOUN[form.kind]}` : ''}>
         {form && <EntryForm key={`${form.kind} ${form.entry?.id}`} c={c} kind={form.kind} entry={form.entry} sources={[compendiumSource(comp)]} save={put(form.kind)}
@@ -306,7 +144,7 @@ function CompendiumPage({ c, comp, own, campaigns, changed, edit, targets }: { c
   )
 }
 
-function BookPage({ c, id, targets, changed }: { c: Catalog; id: string; targets: StoredCompendium[]; changed: () => Promise<void> }) {
+function BookPage({ c, g, id, targets, changed }: BookProps<Compendium> & { c: Catalog; g: CompGame<Compendium> }) {
   const [q, setQ] = useState('')
   const [copying, setCopying] = useState<Row | null>(null)
   const [msg, setMsg] = useState('')
@@ -316,11 +154,11 @@ function BookPage({ c, id, targets, changed }: { c: Catalog; id: string; targets
   const rows = groupRows(c, of(c.amps), of(c.items), of(c.vehicles), [])
   return (
     <main className="lib">
-      <Header title={s.name} />
+      <PageHeader title={s.name} />
       <p className="muted">Book {id}{s.publisher ? ` · ${s.publisher}` : ''} · {s.canon ? 'canon' : 'non-canon'} · read only</p>
       <div className="row listtools"><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search entries" /></div>
-      <Entries c={c} rows={rows} q={q} actions={targets.length ? r => <CopyButton r={r} copy={setCopying} /> : undefined} />
-      {copying && <CopyDialog c={c} row={copying} targets={targets} onClose={() => setCopying(null)} done={async m => { setCopying(null); await changed(); setMsg(m) }} />}
+      <Entries rows={rows} q={q} cite={g.cite} actions={targets.length ? r => <CopyButton r={r} copy={setCopying} /> : undefined} />
+      {copying && <CopyDialog g={g} row={copying} targets={targets} into={into(c)} onClose={() => setCopying(null)} done={async m => { setCopying(null); await changed(); setMsg(m) }} />}
       {msg && <p className="toast" role="status">{msg}</p>}
     </main>
   )
