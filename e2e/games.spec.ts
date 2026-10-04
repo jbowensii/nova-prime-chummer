@@ -68,7 +68,7 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Chummer Shadowrun 6' })).toHaveAttribute('href', '#/sr6')
   await signIn(page, 'ada')
-  await expect(page.getByText('SR6 builder coming')).toBeVisible()
+  await expect(page.getByText('No runners yet.')).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Books', 'Rules', 'Game data'])
   await expect(page.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('button', { name: 'Ask the rules' })).toHaveCount(0)
@@ -99,6 +99,7 @@ test('the header switch changes game and is remembered across reloads', async ({
   await page.screenshot({ path: `${SHOTS}/header-switch-sr6.png`, clip: { x: 0, y: 0, width: 1400, height: 240 } })
   await toCa2.click()
   await expect(page).toHaveURL(/#\/$/)
+  await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toBeVisible() // the Anarchy page (SR6's has a New runner too)
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label'))))
     .toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data'])
@@ -112,10 +113,10 @@ test('the header switch changes game and is remembered across reloads', async ({
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Choose your game' })).toHaveCount(0)
   await toSr6.click()
-  await expect(page.getByText('SR6 builder coming')).toBeVisible()
+  await expect(page.getByText('No runners yet.')).toBeVisible()
   await page.goto('/') // a bare address opens the remembered game
   await expect(page).toHaveURL(/#\/sr6$/)
-  await expect(page.getByText('SR6 builder coming')).toBeVisible()
+  await expect(page.getByText('No runners yet.')).toBeVisible()
 })
 
 test('the games keep their runners apart; a deep link opens its own game', async ({ page }) => {
@@ -133,7 +134,7 @@ test('the games keep their runners apart; a deep link opens its own game', async
   await expect(page.getByRole('link', { name: 'Jinx' })).toBeVisible()
 
   await page.getByRole('link', { name: 'Switch to Shadowrun 6' }).click()
-  await expect(page.getByText('SR6 builder coming')).toBeVisible()
+  await expect(page.getByText('No runners yet.')).toBeVisible()
   await expect(page.getByText('Jinx')).toHaveCount(0)
   expect(await (await page.request.get('/api/sr6/characters')).json()).toEqual([])
   expect(JSON.stringify(await (await page.request.get('/api/characters')).json())).toContain(runner)
@@ -147,7 +148,7 @@ test('the games keep their runners apart; a deep link opens its own game', async
 test('a player sees no SR6 Books', async ({ page }) => {
   await page.goto('/#/sr6/books')
   await signIn(page, 'pat')
-  await expect(page.getByText('SR6 builder coming')).toBeVisible()
+  await expect(page.getByText('No runners yet.')).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Rules', 'Game data'])
   await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)
 })

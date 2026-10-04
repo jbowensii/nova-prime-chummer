@@ -644,3 +644,4 @@ table.data.sr6-kinds { width: auto; min-width: min(20rem, 100%); }
 .sr6-creation input[type=number] { width: 7rem; }
 .sr6-creation input.src-id { width: 5rem; }
 .sr6-parts { margin: 0.2rem 0 0; padding-left: 1.2rem; font-size: 0.93rem; color: var(--text-2); }
+a.noncanon { text-decoration: none; }

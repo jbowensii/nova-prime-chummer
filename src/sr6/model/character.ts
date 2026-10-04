@@ -7,6 +7,7 @@ import type { Sr6Entry } from './types'
 /** The five creation methods. */
 export type Sr6Method = 'priority' | 'sumtoten' | 'pointbuy' | 'karma' | 'lifepath'
 export const SR6_METHODS: Sr6Method[] = ['priority', 'sumtoten', 'pointbuy', 'karma', 'lifepath']
+export const SR6_METHOD_LABELS: Record<Sr6Method, string> = { priority: 'Priority', sumtoten: 'Sum to ten', pointbuy: 'Point buy', karma: 'Karma build', lifepath: 'Lifepath' }
 export type Letter = 'A' | 'B' | 'C' | 'D' | 'E'
 export const LETTERS: Letter[] = ['A', 'B', 'C', 'D', 'E']
 export type PriorityColumn = 'metatype' | 'attributes' | 'magic' | 'skills' | 'resources'

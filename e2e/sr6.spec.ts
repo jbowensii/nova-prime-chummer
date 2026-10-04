@@ -184,7 +184,7 @@ test('player: Rules and Game data, no Books and no Edit buttons', async ({ page 
   await page.getByRole('link', { name: 'Rules' }).click()
   await expect(page.locator('.rule-list > div', { hasText: 'Making Trouble' })).toContainText('Invented rule text about trouble.')
   await page.goto('/#/sr6/books')
-  await expect(page.getByText('SR6 builder coming')).toBeVisible()
+  await expect(page.getByText('No runners yet.')).toBeVisible()
   await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)
 })
 
