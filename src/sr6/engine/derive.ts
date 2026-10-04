@@ -1,7 +1,7 @@
 // Derived values (dice pools, condition monitors, initiative, Defense Rating, Attack Ratings, Composure, Judge
 // Intentions, Memory, lift/carry, drain/fading, essence and its magic loss): formulas in code, every constant they use a
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
-// nothing is guessed and nothing is NaN. Each formula's page is filled in from the owner's book in Task 16.
+// nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
 import { SR6_ATTRS, type Sr6Attr, type Sr6Character } from '../model/character'
 import { allBudgets, attrRating, augmentBonus, entryOf, ratingOf, skillRank } from './budgets'
 import { num, type CreationRules } from './creation'
@@ -43,7 +43,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const unset = new Set<string>()
   const need = (key: string) => { const v = num(cr, key); if (v === undefined) unset.add(key); return v }
 
-  // R (verify, Task 16): Essence spent lowers both the highest Magic (or Resonance) and the rating itself
+  // CRB p. 38: each whole point of Essence spent costs a point of Magic (or Resonance); R: the highest Magic too
   const loss = budgets.essence.magicLoss, special: Sr6Attr = kind.resonance ? 'res' : 'mag'
   const capSetting = need('magicMax'), magicMax = capSetting === undefined ? null : Math.max(0, capSetting - loss)
   const attrs = Object.fromEntries(SR6_ATTRS.map(k => {
@@ -54,15 +54,15 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const A = (k: string) => attrs[k as Sr6Attr]?.augmented ?? 0
   const plus = (a: number, key: string) => { const v = need(key); return v === undefined ? null : a + v }
 
-  // CRB p. (verify, Task 16): monitor = base + ceil(attribute / divisor); overflow = BOD
+  // CRB p. 39: monitor = base + ceil(attribute / divisor); overflow = BOD
   const base = need('monitorBase'), div = need('monitorDivisor')
   const monitor = (a: number) => (base === undefined || !div ? null : base + Math.ceil(a / div))
 
-  // CRB p.: Defense Rating = BOD + the defense of worn armor
+  // CRB p. 67: Defense Rating = BOD + the defense of worn armor
   let defense = A('bod')
   for (const x of b.purchases) if (x.kind === 'armor' && x.worn) { const e = entryOf(x, data); defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0 }
 
-  // CRB p.: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
+  // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
   const pools: Sr6Pool[] = []
   for (const s of b.skills) {
     const v = data.skills[s.id], rank = skillRank(s), attr = v?.attr ?? '', dp = rank + A(attr)
@@ -79,20 +79,20 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
 
   return {
     attrs, essence: budgets.essence.left, magicLoss: loss, magicMax,
-    // CRB p.: initiative = REA + INT, plus dice
+    // CRB pp. 39, 67: initiative = REA + INT, plus dice
     initiative: { base: A('rea') + A('int'), dice: plus(augmentBonus(b, 'initDice'), 'initiativeDice') },
-    // CRB p. (verify, Task 16): astral initiative = INT × 2, plus dice
-    ...(kind.spells ? { astralInit: { base: A('int') * 2, dice: need('astralInitiativeDice') ?? null } } : {}),
+    // CRB p. 161 (astral combat): astral initiative = LOG + INT, plus dice
+    ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: need('astralInitiativeDice') ?? null } } : {}),
     monitors: { physical: monitor(A('bod')), stun: monitor(A('wil')), overflow: A('bod') },
     defenseRating: defense,
-    // CRB p.: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
+    // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
     attackRatings: { unarmed: A('rea') + A('str'), weapons: b.purchases.filter(x => x.kind === 'weapons').map(x => {
       const e = entryOf(x, data)
       return { uid: x.uid, name: e?.name ?? x.name ?? 'Weapon', bands: attackRatings(e?.attrs.ar).bands }
     }) },
-    // CRB p.: Composure WIL + CHA, Judge Intentions WIL + INT, Memory LOG + INT, Lift/Carry BOD + WIL
+    // CRB pp. 67–68: Composure WIL + CHA, Judge Intentions WIL + INT, Memory LOG + INT, Lift/Carry BOD + WIL
     composure: A('wil') + A('cha'), judgeIntentions: A('wil') + A('int'), memory: A('log') + A('int'), liftCarry: A('bod') + A('wil'),
-    // CRB p.: drain WIL + the tradition's attribute; fading WIL + LOG
+    // CRB pp. 128, 189: drain WIL + the tradition's attribute; fading (complex forms) WIL + LOG
     ...(kind.spells && b.drainAttr ? { drain: A('wil') + A(b.drainAttr) } : {}),
     ...(kind.resonance ? { fading: A('wil') + A('log') } : {}),
     pools, karmaLeft: budgets.karma.left, nuyenLeft: budgets.nuyen.left, edge: A('edg'),

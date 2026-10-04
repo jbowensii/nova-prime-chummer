@@ -35,8 +35,11 @@ export const CREATION_KEYS: CreationKey[] = [
   ...n('General', [], [['attributeBaseMax', 'Adjustment points go on attributes whose metatype maximum is above']]),
   ...n('General', 'all', [['skillCap', 'Highest skill rank'], ['skillCapAptitude', 'Highest skill rank with the aptitude quality']]),
   { key: 'aptitudeQuality', label: 'Aptitude quality', type: 'quality', group: 'General', methods: 'all' },
-  ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization'], ['skillPointsExpertise', 'Skill points for an expertise'],
-    ['magicMax', 'Highest Magic or Resonance'], ['essence', 'Starting Essence'], ['contactPointsPerCha', 'Contact points per Charisma'],
+  { key: 'oneSkillAtMax', label: 'Only one skill at the highest rank', type: 'bool', group: 'General', methods: [] },
+  ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization']]),
+  // optional: unset, no expertise at creation (the core rulebook allows none)
+  ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: no expertise at creation)']]),
+  ...n('General', 'all', [['magicMax', 'Highest Magic or Resonance'], ['essence', 'Starting Essence'], ['contactPointsPerCha', 'Contact points per Charisma'],
     ['knowledgePerLog', 'Free knowledge skills per Logic'], ['maxAvailability', 'Highest Availability'],
     ['maxKarmaLeft', 'Most karma kept after creation'], ['maxNuyenLeft', 'Most nuyen kept after creation'],
     ['freeSpellsPerMagic', 'Free spells per Magic'], ['freeFormsPerResonance', 'Free complex forms per Resonance']]),

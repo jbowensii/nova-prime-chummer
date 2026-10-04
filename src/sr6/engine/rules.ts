@@ -100,6 +100,17 @@ const RULES: Rule[] = [
     if (aptitude && c.b.skills.filter(s => skillRank(s) > capBase).length > 1) hits.push({ message: `Only one skill may be above ${capBase}.` })
     return hits
   } },
+  { code: 'skill.oneAtMax', severity: 'error', tab: 'skills', check: c => {
+    // CRB p. 66: only one skill at the highest rank (with the aptitude quality, that one may go one higher)
+    const cap = num(c.cr, 'skillCap')
+    if (!flag(c.cr, 'oneSkillAtMax') || cap === undefined) return null
+    const at = c.b.skills.filter(s => skillRank(s) >= cap).map(s => c.data.skills[s.id]?.name ?? s.id)
+    return at.length <= 1 ? null : { message: `Only one skill may be at the highest rank, ${cap} (${at.join(', ')} are).`, ...cite(c.cr, 'oneSkillAtMax') }
+  } },
+  { code: 'skill.expertise', severity: 'error', tab: 'skills', check: c =>
+    // CRB p. 66: no expertise at creation, unless the table gives an expertise its skill points
+    (num(c.cr, 'skillPointsExpertise') !== undefined ? null : c.b.skills.filter(s => s.expertise)
+      .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise: none can be taken at creation.` }))) },
   { code: 'skill.restricted', severity: 'error', tab: 'skills', check: c => {
     // R: a skill on Magic needs an awakened kind (an aspected magician picks one); one on Resonance an emerged one
     const k = MAGIC_KINDS[c.b.magic]

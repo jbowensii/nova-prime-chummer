@@ -78,7 +78,8 @@ export function entryValues(e: Sr6Entry, rating?: number): Sr6Values {
   const v: Sr6Values = defined({ rating: r, cost: e.kind === 'adeptpowers' ? undefined : num(a.cost, r), avail: num(a.avail, r),
     legality: legality(a.avail), essence: num(a.essence, r), capacity: num(a.capacity?.replace(/^\s*\[(.*)\]\s*$/, '$1'), r), defense: num(a.defense, r),
     karma: num(a.karma, r), powerCost: e.kind === 'adeptpowers' ? num(a.cost, r) : undefined, drain: e.kind === 'spells' ? num(a.dv, r) : undefined,
-    fade: num(a.fade, r), threshold: num(a.threshold, r) })
+    // a ritual's threshold of `Force` is the ritual's own Force, not the rating the item is bought at
+    fade: num(a.fade, r), threshold: /[a-z]/i.test(a.threshold ?? '') ? undefined : num(a.threshold, r) })
   if (e.kind !== 'spells' && a.dv) {
     const m = a.dv.length <= 40 ? a.dv.match(/^\s*(\d+)\s*([PS])/) : null
     if (m) { v.dv = Number(m[1]); v.stun = m[2] === 'S' }

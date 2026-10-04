@@ -99,7 +99,7 @@ test('drain, fading and astral initiative by magic kind', () => {
   mage.build.drainAttr = 'log'
   const m = derive(mage).d
   expect(m.drain).toBe(3 + 4)
-  expect(m.astralInit).toEqual({ base: 5 + 5, dice: 3 })
+  expect(m.astralInit).toEqual({ base: 4 + 5, dice: 3 }) // LOG + INT
   expect(derive(runner('adept')).d.astralInit).toBeUndefined()
   expect(derive(runner('technomancer')).d.fading).toBe(3 + 4)
 })

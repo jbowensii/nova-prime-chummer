@@ -15,7 +15,7 @@ export interface Budget extends Pool { breakdown?: BudgetLine[] }
 export interface Sr6Budgets {
   attributePoints: Budget; adjustmentPoints: Budget; skillPoints: Budget
   karma: Budget; nuyen: Budget
-  /** magicLoss: the Magic or Resonance lost, 1 per started point of Essence spent (R, verify in Task 16) */
+  /** magicLoss: the Magic or Resonance lost, 1 per started point of Essence spent (CRB p. 38) */
   essence: Budget & { magicLoss: number }
   /** cap: the most power points a mystic adept may buy (its priority Magic) */
   powerPoints: Budget & { cap: number }
