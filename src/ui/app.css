@@ -634,12 +634,42 @@ dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size:
   .menubar .tools { border-left: 0; padding-left: 0; margin-left: 0; }
 }
 
-/* SR6 Rules: subsections indented under their section, paragraphs kept; Game data: the short kinds table; the edit dialog’s read-only parts */
+/* Game data's catalog browser and the Rules pages' filters (CatalogBrowser.tsx, 0.9.1): the book, then the kinds (a list
+   beside the entries, the editor's tab style; tabs across the top on a phone), a kind's sub-categories as chips, the search */
+.browse-top { margin: 0.8rem 0 1.1rem; }
+.browse-top input[type='search'] { flex: 1 1 14rem; width: auto; min-width: 0; }
+.browse-top select { width: auto; max-width: 100%; }
+label.book-pick { display: flex; align-items: center; gap: 0.5rem; max-width: 100%; }
+.browser { margin-bottom: 2.2rem; }
+.browse-body { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.kinds { display: flex; flex-direction: column; border-left: 1px solid var(--rule); }
+.kinds button { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; margin-left: -1px; padding: 0.42rem 0.7rem;
+  border: 0; border-left: 4px solid transparent; background: none; cursor: pointer; text-align: left; color: var(--text-2);
+  font-family: var(--display); text-transform: uppercase; font-size: 0.86rem; letter-spacing: 0.03em; }
+.kinds button:hover { color: var(--rust); }
+.kinds button[aria-pressed='true'] { color: var(--heading); border-left-color: var(--yellow); background: var(--zebra); }
+.kinds button.none { color: var(--text-3); }
+.kinds .n, .groups .n { font-family: var(--sans); font-size: 0.8rem; font-variant-numeric: tabular-nums; color: var(--text-3); text-transform: none; letter-spacing: 0; }
+.browse-main { min-width: 0; }
+.browse-main h3, .browse-hits h3 { margin-top: 0; }
+.browse-hits section + section { margin-top: 1.4rem; }
+.groups { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.9rem; }
+.groups button { padding: 0.15rem 0.7rem; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--text);
+  cursor: pointer; font-size: 0.88rem; }
+.groups button:hover { border-color: var(--rust); }
+.groups button[aria-pressed='true'], .groups button[aria-pressed='true'] .n { background: var(--yellow); border-color: var(--yellow); color: var(--accent-ink); }
+@media (max-width: 700px) {
+  .browse-body { grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
+  .kinds { flex-direction: row; overflow-x: auto; border-left: 0; border-bottom: 1px solid var(--rule); }
+  .kinds button { flex: none; margin: 0 0 -1px; border-left: 0; border-bottom: 4px solid transparent; }
+  .kinds button[aria-pressed='true'] { border-bottom-color: var(--yellow); background: none; }
+}
+
+/* SR6 Rules: subsections indented under their section; the edit dialog’s read-only parts */
 .sr6-rules .rule-list dd { white-space: pre-line; }
 .sr6-rules .rule-list .lvl2 { padding-left: 1rem; }
 .sr6-rules .rule-list .lvl3 { padding-left: 2rem; }
 .sr6-rules .rule-list .lvl4 { padding-left: 3rem; }
-table.data.sr6-kinds { width: auto; min-width: min(20rem, 100%); }
 .sr6-creation td:first-child { width: 45%; min-width: 12rem; }
 .sr6-creation input[type=number] { width: 7rem; }
 .sr6-creation input.src-id { width: 5rem; }

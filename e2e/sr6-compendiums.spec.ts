@@ -163,7 +163,7 @@ test('Gil makes Street Kit and fills it; its entries reach his pickers and Game 
 
   // Game data: the weapon marked House; its Edit opens it in Street Kit (the edits layer never edits it); a book's Edit is the edits dialog
   await page.goto('/#/sr6/data')
-  await page.getByLabel('Kind').selectOption('weapons')
+  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
   const row = page.locator('table.sr6-browse tr', { hasText: 'Pop Stick' })
   await expect(row.locator('.noncanon')).toHaveText('House')
   await expect(row.getByRole('link', { name: 'Edit Pop Stick' })).toHaveAttribute('href', `#/sr6/compendiums/${kit}/street.pop-stick`)
@@ -203,7 +203,7 @@ test('copy from the book: a new STREET id, page 1, no description; the book’s 
   expect(xml).toMatch(/<weapon id="street\.zap-gun" source="STREET" page="1" [^>]*><name>Zap Gun<\/name><text\/><\/weapon>/)
   expect(xml).not.toContain('zaps')
   await page.goto('/#/sr6/data')
-  await page.getByLabel('Kind').selectOption('weapons')
+  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
   await page.getByLabel('Search the catalog').fill('Zap Gun')
   const rows = page.locator('table.sr6-browse tbody tr')
   await expect(rows).toHaveCount(2)
@@ -271,7 +271,7 @@ test('Eve: Gil’s private id is refused inline; shared with the table she reads
   await toast(page, 'Copied Pop Stick to Eve Bits.')
   // Game data: Gil's entry is in her catalog, with no Edit (it's his)
   await page.goto('/#/sr6/data')
-  await page.getByLabel('Kind').selectOption('weapons')
+  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
   await page.getByLabel('Search the catalog').fill('Pop Stick')
   await expect(page.locator('table.sr6-browse tr', { hasText: 'STREET p.1' }).getByRole('link', { name: 'Edit Pop Stick' })).toHaveCount(0)
   await expect(page.locator('table.sr6-browse tr', { hasText: 'EVEBITS p.1' }).getByRole('link', { name: 'Edit Pop Stick' })).toBeVisible()
@@ -312,7 +312,7 @@ test('Pat: no menu entry, no page, no data, and no compendium entry in his picke
   await expect(picker.getByText('Lucky Streak')).toBeVisible()
   await expect(picker.getByText('Lucky Socks')).toHaveCount(0)
   await page.goto('/#/sr6/data')
-  await page.getByLabel('Kind').selectOption('weapons')
+  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
   await expect(page.locator('table.sr6-browse')).not.toContainText('Pop Stick')
 })
 
@@ -346,11 +346,9 @@ test('isolation: Anarchy’s compendiums never meet SR6’s; a STREET compendium
   await expect(page.getByRole('link', { name: 'Street Kit' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Anarchy Street' })).toHaveCount(0)
   await page.goto('/#/sr6/data')
-  for (const k of ['weapons', 'gear']) {
-    await page.getByLabel('Kind').selectOption(k)
-    await page.getByLabel('Search the catalog').fill('Anarchy Pipe')
-    await expect(page.locator('table.sr6-browse')).toHaveCount(0)
-  }
+  await page.getByLabel('Search the catalog').fill('Anarchy Pipe') // (across every kind)
+  await expect(page.getByText('Nothing matches “Anarchy Pipe”.')).toBeVisible()
+  await expect(page.locator('table.sr6-browse')).toHaveCount(0)
   await expect(page.locator('table.sr6-sources')).not.toContainText('Anarchy Street')
   // on disk: each game's own folder
   expect(readdirSync(join(dir, 'characters', 'sr6', '.compendiums', 'gil')).filter(f => f.endsWith('.xml'))).toEqual([`${kit}.xml`])

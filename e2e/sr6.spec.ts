@@ -42,6 +42,7 @@ const labels = (page: Page) => menu(page).evaluateAll(as => as.map(a => a.getAtt
 const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 made up\n%%EOF\n') })
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 const browse = (page: Page) => page.locator('.sr6-browse tbody tr')
+const kind = (page: Page, name: string) => page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: new RegExp(`^${name} [0-9]+$`) })
 
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
 async function shoot(page: Page, name: string) {
@@ -58,8 +59,9 @@ async function shoot(page: Page, name: string) {
 }
 
 async function findWeapon(page: Page, name: string) {
-  await page.getByLabel('Kind', { exact: true }).selectOption('weapons')
-  await page.getByLabel('Search the catalog').fill(name.split(' ')[0])
+  await page.getByLabel('Search the catalog').fill('')
+  await kind(page, 'Weapons').click()
+  await page.getByLabel('Search the catalog').fill(name)
   return browse(page).filter({ hasText: name })
 }
 
@@ -99,8 +101,8 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(crb).toContainText('Catalyst Game Labs')
   await expect(crb).toContainText('installed')
   await expect(crb).toContainText('test-sr6-core.pdf')
-  await expect(page.locator('.sr6-kinds tr', { hasText: 'Weapons' })).toContainText('2')
-  await expect(page.locator('.sr6-kinds tr', { hasText: 'Rules' })).toContainText('2')
+  await expect(kind(page, 'Weapons')).toHaveAccessibleName('Weapons 2')
+  await expect(kind(page, 'Rules')).toHaveAccessibleName('Rules 2')
   const gun = await findWeapon(page, 'Zap Gun')
   await expect(gun).toContainText('cost 320')
   await expect(gun).toContainText('CRB p.250')

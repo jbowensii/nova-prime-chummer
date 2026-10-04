@@ -128,3 +128,81 @@ test('the header: row 1 the main menu on every page of a game, row 2 the page’
   await expect(mainMenu(page)).toBeHidden() // never on paper
   await page.emulateMedia({ media: 'screen' })
 })
+
+const counted = (name: string) => new RegExp(`^${name} [0-9]+$`)
+const kindButton = (page: Page, name: string) => page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: counted(name) })
+const category = (page: Page, name: string) => page.getByRole('group', { name: 'Category' }).getByRole('button', { name: counted(name) })
+const browseRows = (page: Page) => page.locator('table.browse tbody tr')
+
+test('Game data: a book, then a kind with its counts, its sub-categories, one kind at a time; a search across everything, by kind', async ({ page }) => {
+  await signIn(page, '/#/sr6/data')
+  await expect(page.getByRole('heading', { name: 'Game data', level: 1 })).toBeVisible()
+  // the book first: all books, then each source that has entries
+  const book = page.getByLabel('Book', { exact: true })
+  await expect(book.locator('option')).toHaveText(['All books', 'Shadowrun, Sixth World Core Rulebook'])
+  // the kinds with their counts; the first one with entries is open
+  await expect(kindButton(page, 'Weapons')).toHaveAccessibleName('Weapons 2')
+  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 3')
+  await kindButton(page, 'Weapons').click()
+  await expect(kindButton(page, 'Weapons')).toHaveAttribute('aria-pressed', 'true')
+  await expect(browseRows(page)).toHaveCount(2)
+  await expect(page.locator('table.browse')).not.toContainText('Glow Eyes') // one kind at a time
+  // augmentations: cyberware or bioware, then the body area
+  await kindButton(page, 'Augmentations').click()
+  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([/^All 2$/, /^Bioware: basic bioware 1$/, /^Cyberware: eyeware 1$/])
+  await category(page, 'Cyberware: eyeware').click()
+  await expect(browseRows(page)).toHaveCount(1)
+  await expect(browseRows(page)).toContainText('Glow Eyes')
+  await page.screenshot({ path: `${SHOTS}/data-sr6-categories-desktop.png`, fullPage: true })
+  await page.setViewportSize(PHONE)
+  await fits(page, 'SR6 Game data')
+  // on a phone the kinds are tabs across the top
+  const [w, a] = [await kindButton(page, 'Weapons').boundingBox(), await kindButton(page, 'Armor').boundingBox()]
+  expect(Math.abs(w!.y - a!.y)).toBeLessThanOrEqual(1)
+  await page.screenshot({ path: `${SHOTS}/data-sr6-categories-phone.png`, fullPage: true })
+  await page.setViewportSize(DESK)
+
+  // the search looks across every kind; the results grouped by kind
+  await page.getByLabel('Search the catalog').fill('zap')
+  await expect(page.getByRole('group', { name: 'Kind' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Weapons' }).locator('tbody tr')).toHaveText([/Zap Gun/])
+  await expect(page.getByRole('region', { name: 'Gear' }).locator('tbody tr')).toHaveCount(2)
+  await expect(page.getByRole('region', { name: 'Augmentations' })).toHaveCount(0)
+  await page.screenshot({ path: `${SHOTS}/data-sr6-search-desktop.png`, fullPage: true })
+  await page.getByLabel('Search the catalog').fill('no such entry')
+  await expect(page.getByText('Nothing matches “no such entry”.')).toBeVisible()
+
+  // Anarchy: the same, its kinds; one book shows only its entries
+  await page.goto('/#/data')
+  await expect(page.getByRole('heading', { name: 'Game data', level: 1 })).toBeVisible()
+  await expect(page.getByLabel('Book', { exact: true }).locator('option')).toContainText(['All books', 'Test Book One', 'Test Book Two'])
+  await kindButton(page, 'Amps').click()
+  await expect(page.locator('table.browse')).toContainText('Hawk Instinct')
+  await expect(page.getByRole('group', { name: 'Category' })).toBeVisible() // amps by type
+  await kindButton(page, 'Weapons').click()
+  await expect(page.getByRole('group', { name: 'Category' })).toContainText('Handguns')
+  await page.getByLabel('Book', { exact: true }).selectOption({ label: 'Test Book Two' })
+  await kindButton(page, 'Amps').click()
+  await expect(page.locator('table.browse')).toContainText('Keen eye')
+  await expect(page.locator('table.browse')).not.toContainText('Hawk Instinct')
+  await page.screenshot({ path: `${SHOTS}/data-ca2-categories-desktop.png`, fullPage: true })
+  await page.setViewportSize(PHONE)
+  await fits(page, 'Anarchy Game data')
+  await page.screenshot({ path: `${SHOTS}/data-ca2-categories-phone.png`, fullPage: true })
+  await page.setViewportSize(DESK)
+})
+
+test('Rules: a book, a chapter (or sheet) and a search, both games', async ({ page }) => {
+  await signIn(page, '/#/sr6/rules')
+  await expect(page.getByRole('heading', { name: 'Rules', level: 1 })).toBeVisible()
+  await expect(page.getByLabel('Book', { exact: true }).locator('option')).toHaveText(['All books', 'Shadowrun, Sixth World Core Rulebook'])
+  await expect(page.getByLabel('Chapter')).toContainText('GAME CONCEPTS')
+  await expect(page.getByLabel('Search the rules')).toBeVisible()
+  await page.goto('/#/rules')
+  await expect(page.getByLabel('Book', { exact: true }).locator('option').first()).toHaveText('All books')
+  const rules = page.locator('.rule-list > div')
+  const all = await rules.count()
+  await page.getByLabel('Book', { exact: true }).selectOption({ index: 1 })
+  expect(await rules.count()).toBeLessThanOrEqual(all)
+  await expect(page.getByLabel('Sheet')).toBeVisible()
+})

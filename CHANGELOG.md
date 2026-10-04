@@ -2,6 +2,16 @@
 
 ## Unreleased (next build)
 
+- **Game data is browsed by book and category**, in both games. At the top, a **Book** list: All books, or one
+  imported book or compendium. Then the kinds of entry, each with its count (a list beside the entries; tabs across the
+  top on a phone): pick one and only its entries show. Big kinds split into sub-categories you can pick: Shadowrun 6
+  weapons by type, augmentations by cyberware or bioware and body area, spells by category, gear by its section of the
+  book, qualities positive or negative, rules by chapter; Anarchy amps by type, weapons, gear and spells by category,
+  skills by attribute, rules by sheet. Anarchy's Game data gets the browser for the first time (amps, amp effects,
+  weapons, armor, gear, spells, complex forms, skills, metatypes, vehicles, packages, lifestyles, rules), with the Edit
+  buttons for amps, items and rules. **Search everything** looks across every kind at once and groups what it finds by
+  kind. The sources, Foundry export, your catalog edits and the file lists follow below.
+- **Rules** (both games): a **Book** list at the top, next to the chapter list (Anarchy: the sheet list) and the search.
 - **The header has two rows of icons**, the same way in both games. Row 1 is the main menu, identical on every page of a
   game and always in the same order: Your runners, NPCs & Critters, Compendiums, Campaigns, Books, Rules, Game data and
   Table setup (only the pages your role can use), then the game switch, Ask the rules (Anarchy), Settings and your
