@@ -3,6 +3,7 @@
 // sub-categories when it has more than one, and that kind's entries. A search box looks across every kind; its results
 // are grouped by kind. Each game maps its catalog to BrowseKind rows (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useState, type ReactNode } from 'react'
+import { Prose } from './Prose'
 
 export interface BrowseRow {
   key: string; name: string; source: string; page: number
@@ -10,7 +11,7 @@ export interface BrowseRow {
   group?: string
   /** the printed values, one line */
   details?: string
-  /** searched with the name and details */
+  /** its description: searched, and shown under Description */
   text?: string
   /** after the source: Edited, House… */
   marks?: ReactNode
@@ -43,7 +44,8 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
       <table className={`data browse ${className ?? ''}`.trim()}><thead><tr><th>Entry</th><th>Values</th><th /></tr></thead>
         <tbody>{shown.map(r => (
           <tr key={r.key}><td><b>{r.name}</b> <span className="srcline"><span className="src">{r.source} p.{r.page}</span>{r.marks}</span></td>
-            <td className="muted">{r.details}</td><td className="num">{r.action}</td></tr>
+            <td><span className="muted">{r.details}</span>
+              {r.text && <details className="desc"><summary>Description</summary><Prose text={r.text} /></details>}</td><td className="num">{r.action}</td></tr>
         ))}</tbody></table>
       {shown.length < rows.length && <p className="muted">Showing {shown.length} of {rows.length}. Search to narrow it, or{' '}
         <button type="button" className="btn small quiet" onClick={() => setAll(true)}>Show all {rows.length}</button></p>}

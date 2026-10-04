@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from importer import __main__ as anarchy, xmlio
+from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
 from importer.sr6 import NS, regroup
 from importer.sr6.recipes import identify
@@ -54,7 +54,11 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         with sr6_root():
             texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
             # the texts first: a corrupt texts file fails the import before any overlay is replaced
-            texts = xmlio.merged_texts(texts_path, xmlio.texts_entries(xmlio.scope(res.texts, src, ids))) if res.texts else None
+            texts = None
+            if res.texts:  # each description in paragraphs, words split across the PDF's lines rejoined (importer/reflow.py)
+                entries = xmlio.texts_entries(xmlio.scope(res.texts, src, ids))
+                words = reflow.vocabulary(t for _, _, t in entries)
+                texts = xmlio.merged_texts(texts_path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries])
             for name, xml in res.files.items():
                 xmlio.write_overlay(out_dir, name, xml, ids)
             if texts:

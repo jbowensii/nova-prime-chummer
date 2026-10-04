@@ -7,6 +7,7 @@ import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
 import { NonCanon } from './bits'
 import { BookSelect } from './CatalogBrowser'
+import { Prose } from './Prose'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
 import { isAdmin, useMe } from './auth'
 
@@ -56,7 +57,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
             {shown.filter(r => r.sheet === id).map(r => (
               <div key={r.id} id={r.id}>
                 <dt>{r.title} <span className="muted">{r.section}</span> {r.edited && <EditedMark />} <EditButton kind="rules" id={r.id} name={r.title} /></dt>
-                {r.text && <dd>{r.text}</dd>}
+                {r.text && <dd><Prose text={r.text} /></dd>}
               </div>
             ))}
           </dl>

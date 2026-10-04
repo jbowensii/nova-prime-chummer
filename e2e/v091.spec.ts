@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
@@ -23,6 +23,12 @@ test.beforeAll(async () => {
   const config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
+  // made-up rules text: one as the importer writes it now (paragraphs, bold, italic), one from an older import (the PDF's lines)
+  const texts = join(dir, 'custom', 'sr6', 'texts', 'crb.xml')
+  writeFileSync(texts, readFileSync(texts, 'utf8')
+    .replace('Invented rule text about trouble.', 'Invented **trouble** rules, *made up* for this test, long enough to run past one narrow column of a book page.&#10;&#10;'
+      + 'A second invented paragraph.&#10;- an invented list item&#10;- another')
+    .replace('</sr6:data>', '  <text of="rules" id="crb.making-trouble-dice">An invented line&#10;that wraps in&#10;the old way.</text></sr6:data>'))
   mkdirSync(config, { recursive: true })
   writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' }]))
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
@@ -205,4 +211,33 @@ test('Rules: a book, a chapter (or sheet) and a search, both games', async ({ pa
   await page.getByLabel('Book', { exact: true }).selectOption({ index: 1 })
   expect(await rules.count()).toBeLessThanOrEqual(all)
   await expect(page.getByLabel('Sheet')).toBeVisible()
+})
+
+test('Rules text: paragraphs at a readable width, bold and italic shown as such, no markers', async ({ page }) => {
+  await signIn(page, '/#/sr6/rules')
+  const rule = page.locator('.rule-list > div', { hasText: 'Making Trouble' }).first()
+  const text = rule.locator('dd .prose')
+  await expect(text.locator('strong')).toHaveText('trouble')
+  await expect(text.locator('em')).toHaveText('made up')
+  await expect(text.locator('p')).toHaveCount(2)
+  await expect(text.locator('li')).toHaveText(['an invented list item', 'another'])
+  await expect(text).not.toContainText('**')
+  await expect(text).not.toContainText('*made')
+  const box = (await text.boundingBox())!
+  expect(box.width).toBeGreaterThan(500) // not a narrow column
+  expect(await text.evaluate(e => parseFloat(getComputedStyle(e).maxWidth) / parseFloat(getComputedStyle(e).fontSize))).toBeLessThanOrEqual(75)
+  // an older import: its lines join into one paragraph
+  await expect(page.locator('.rule-list > div', { hasText: 'Trouble Dice' }).locator('dd p')).toHaveText(['An invented line that wraps in the old way.'])
+  await page.screenshot({ path: `${SHOTS}/rules-sr6-text-desktop.png`, fullPage: true })
+  await page.setViewportSize(PHONE)
+  await fits(page, 'SR6 Rules')
+  await page.screenshot({ path: `${SHOTS}/rules-sr6-text-phone.png`, fullPage: true })
+  await page.setViewportSize(DESK)
+  // Game data: the same text under the entry's Description
+  await page.goto('/#/sr6/data')
+  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: counted('Rules') }).click()
+  const row = page.locator('table.browse tr', { hasText: 'Making Trouble' })
+  await row.getByText('Description').click()
+  await expect(row.locator('.prose strong')).toHaveText('trouble')
+  await page.screenshot({ path: `${SHOTS}/data-sr6-description-desktop.png`, fullPage: true })
 })

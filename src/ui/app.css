@@ -395,7 +395,7 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .rule-list > div { padding: 0.55rem 0; border-bottom: 1px solid var(--rule); }
 .rule-list dt { font-weight: 700; }
 .rule-list dt .muted { font-weight: 400; font-size: 0.85rem; margin-left: 0.4rem; }
-.rule-list dd { margin: 0.2rem 0 0; max-width: 70ch; }
+.rule-list dd { margin: 0.2rem 0 0; }
 /* table rules (TableRules.tsx): the GM's switches on the Rules page, the players' read-only list */
 .table-rules-gm { margin-bottom: 2rem; }
 .table-rules { list-style: none; margin: 0 0 1rem; padding: 0; }
@@ -665,8 +665,19 @@ label.book-pick { display: flex; align-items: center; gap: 0.5rem; max-width: 10
   .kinds button[aria-pressed='true'] { border-bottom-color: var(--yellow); background: none; }
 }
 
+/* book text (Prose.tsx): paragraphs at a readable line length, lists, bold and italic, the book's small tables */
+.prose { max-width: 72ch; }
+.prose > p, .prose > ul, .prose > ol { margin: 0 0 0.55rem; }
+.prose > :last-child { margin-bottom: 0; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose strong { font-weight: 700; color: var(--text); }
+.prose .scroll-x { margin: 0.3rem 0 0.6rem; }
+.prose table.data { width: auto; }
+details.desc { margin-top: 0.25rem; }
+details.desc summary { cursor: pointer; color: var(--rust); font-size: 0.85rem; width: max-content; }
+details.desc .prose { margin-top: 0.35rem; font-family: var(--serif); font-size: 1rem; color: var(--text); }
+
 /* SR6 Rules: subsections indented under their section; the edit dialog’s read-only parts */
-.sr6-rules .rule-list dd { white-space: pre-line; }
 .sr6-rules .rule-list .lvl2 { padding-left: 1rem; }
 .sr6-rules .rule-list .lvl3 { padding-left: 2rem; }
 .sr6-rules .rule-list .lvl4 { padding-left: 3rem; }

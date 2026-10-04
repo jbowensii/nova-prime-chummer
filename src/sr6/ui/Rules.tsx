@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { isAdmin, useMe } from '../../ui/auth'
 import { BookSelect } from '../../ui/CatalogBrowser'
 import { PageHeader } from '../../ui/nav'
+import { Prose } from '../../ui/Prose'
 import type { Sr6Catalog, Sr6Entry } from '../model/types'
 
 /** The rules in reading order: chapters as the book has them, each section followed by its subsections. */
@@ -51,7 +52,7 @@ export function Sr6Rules({ c }: { c: Sr6Catalog }) {
               {shown.filter(r => r.attrs.chapter === ch).map(r => (
                 <div key={r.id} id={r.id} className={`lvl${r.attrs.level ?? 1}`}>
                   <dt>{r.name} <span className="muted">{r.source} p.{r.page}</span></dt>
-                  {r.text && <dd>{r.text}</dd>}
+                  {r.text && <dd><Prose text={r.text} /></dd>}
                 </div>
               ))}
             </dl>

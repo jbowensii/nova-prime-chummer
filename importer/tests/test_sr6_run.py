@@ -66,6 +66,15 @@ class Sr6RunTest(unittest.TestCase):
         self.assertIn("unknown-column", {k for k, _ in rows})  # and the recipe's
         self.assertEqual({f.get("name"): f.get("entries") for f in imp.iter("file")}["weapons.xml"], "5")
 
+    def test_texts_are_reflowed_into_paragraphs(self):
+        md = BOOK_MD.replace("Trouble rules text.\n", "Trouble rules text for the gamemas-\nter and every non-\nplayer, in a\n"
+                                                      "narrow column.\n\n**Bold** stays.\n")
+        self.assertNotEqual(md, BOOK_MD)
+        self.cli("run", self.new_book("book2", md), "--custom", self.custom, "--md")
+        texts = {t.get("id"): t.text for t in ET.parse(os.path.join(self.custom, "texts", "crb.xml")).getroot()}
+        self.assertTrue(texts["crb.making-trouble"].startswith(
+            "Trouble rules text for the gamemaster and every non-player, in a narrow column.\n\n**Bold** stays."), texts["crb.making-trouble"])
+
     def test_anarchy_texts_keep_their_root(self):
         self.assertIn('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts"',
                       xmlio.merged_texts(os.path.join(self.custom, "none.xml"), [("spells", "x", "t")]))

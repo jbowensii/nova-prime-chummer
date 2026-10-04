@@ -2,6 +2,14 @@
 
 ## Unreleased (next build)
 
+- **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow
+  column, with the PDF's line breaks, words split across lines ("gamemas- ter") and `**bold**` markers showing. The
+  importer now joins each paragraph's lines, rejoins a word split at a line end (real hyphens such as "non-player"
+  stay) and starts a new paragraph where the book did, keeping list items, tables and label lines on lines of their own.
+  Re-import the core rulebook on **Books** to get the cleaned-up text; until then the old text is still shown as joined
+  paragraphs. The Rules and Game data pages show **bold** and *italic* as such, paragraphs and lists across the page's
+  width up to a comfortable line length; each Game data entry with a description has a **Description** to open.
+  Anarchy's texts already came in whole paragraphs and are unchanged.
 - **Game data is browsed by book and category**, in both games. At the top, a **Book** list: All books, or one
   imported book or compendium. Then the kinds of entry, each with its count (a list beside the entries; tabs across the
   top on a phone): pick one and only its entries show. Big kinds split into sub-categories you can pick: Shadowrun 6
