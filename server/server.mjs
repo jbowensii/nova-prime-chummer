@@ -4,8 +4,8 @@
 // request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
 // Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
 // .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
-// characters/sr6/ and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters, npcs, trash, npcs/trash, campaigns, books and
-// edits (books.mjs in its SR6 area: library/sr6/, custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
+// characters/sr6/ and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters, npcs, trash, npcs/trash, campaigns, books,
+// edits and creation (books.mjs in its SR6 area: library/sr6/, custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
 // in its namespace); a campaign holds only its game's runners and NPCs. Accounts span both: a rename moves both games'
 // folders and memberships, a delete retires both. While an account called sr6 from before exists (its runners are in
 // characters/sr6/), every /api/sr6/ route answers 409 and nothing of the SR6 area is read or written.
@@ -423,7 +423,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       u.pathname = s.path
       if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
       if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
-      if (/^\/api\/(books|edits)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
+      if (/^\/api\/(books|edits|creation)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
       return send(res, 404, { error: 'not found' })
     }
     if (await oidc.handle(req, res, url, send, who) !== false) return

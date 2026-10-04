@@ -1,6 +1,7 @@
 // Validates every data file against its XSD, then checks that every
 // cross-reference (ref/requires/excludes/types/level/vehicle/param) resolves.
 // Usage: node tools/validate-data.mjs [extra custom dirs...] [--sr6=<SR6 custom dir>...]
+//   (an SR6 dir: its catalog files and creation.xml)
 //   (e.g. tests/fixtures/mini/custom --sr6=tests/fixtures/sr6/custom)
 // A file whose root is <sr6:data> (Shadowrun 6, docs/sr6-data-format.md) is checked against public/data/sr6/schema/
 // and skips the Anarchy cross-reference checks.
@@ -77,6 +78,15 @@ for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--')))
       schema: { fileName: xsd, contents: readFileSync(join(SCHEMA, xsd), 'utf8') } });
     for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
   }
+
+// SR6's creation rules (custom/sr6/creation.xml, written by the server): creation.xsd
+for (const dir of process.argv.filter(a => a.startsWith('--sr6=')).map(a => a.slice(6))) {
+  const file = join(dir, 'creation.xml');
+  if (!existsSync(file)) continue;
+  const res = await validateXML({ xml: { fileName: file, contents: readFileSync(file, 'utf8') },
+    schema: { fileName: 'creation.xsd', contents: readFileSync(join(SR6_SCHEMA, 'creation.xsd'), 'utf8') } });
+  for (const e of res.errors) errors.push(`${file}:${e.loc?.lineNumber ?? '?'} ${e.message}`);
+}
 
 // the example sets (custom/samples/<set>/, managed on disk by the admin): set.xml and each character file
 for (const dir of process.argv.slice(2).filter(a => !a.startsWith('--'))) {

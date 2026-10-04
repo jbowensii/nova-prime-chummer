@@ -1,7 +1,7 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
-// edits and the table rules (admin and editors; GET /api/edits: anyone signed in) and the example sets (GET, anyone
-// signed in); `who` is the signed-in user.
+// edits, the table rules and SR6's creation rules (admin and editors; GET /api/edits and /api/sr6/creation: anyone
+// signed in) and the example sets (GET, anyone signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -30,6 +30,10 @@
 //   /api/sr6/books, /api/sr6/books/:id[/report|/reimport], /api/sr6/edits[/:kind/:id]   the same for the Shadowrun 6 area
 //                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS, existing entries only);
 //                                     no AI, review, data pack or house sources there (404). One job queue for both games
+//   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
+//   PUT    /api/sr6/creation          admin and editors: { settings: [{ key, value, source?, page? }] } -> 204; replaces
+//                                     custom/sr6/creation.xml (creation.xsd: the numbers the book prints only in its text);
+//                                     anyone signed in reads the file at /custom/sr6/creation.xml. Anarchy has none (404)
 //   GET    /api/samples               anyone signed in: the example sets in custom/samples/<set>/ -> { sets: [{ id, name, canon,
 //                                     samples: [{ name, href }] }] } (href relative to /custom/). Read only: the admin manages
 //                                     the folder on disk; set.xml (sampleset.xsd) names a set and says whether it is canon
@@ -80,6 +84,7 @@ const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
 const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }
 const ENTRY_ID = /^[a-z0-9][a-z0-9.-]{0,99}$/ // importer/edits.py's ID, bounded
 const MAX_TABLE_RULES = 200 // tablerules.xsd
+const MAX_SETTINGS = 500, SETTING_KEY = /^[A-Za-z0-9.:_-]{1,80}$/ // creation.xsd (SR6)
 const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its description, plus the <edit> wrapper
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
 const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
@@ -138,7 +143,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   let listChain = Promise.resolve() // model lists: one at a time, so repeated clicks can't pile up processes
   let testing = null; const tests = [] // connection tests: one at a time, 10 a minute (each may cost a few tokens)
   // key writes (read-modify-write in the importer) and edits (one fixed .tmp name): each one at a time
-  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve(), ask: Promise.resolve() }
+  const chains = { key: Promise.resolve(), edit: Promise.resolve(), table: Promise.resolve(), ask: Promise.resolve(), creation: Promise.resolve() }
   let writes = 0, zipping = 0, restoring = false
   let packing = false // a data pack being made or imported: one at a time, and no job starts meanwhile
   const spawned = new Set() // backup processes, stopped with the server
@@ -529,6 +534,36 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 204, '', 'text/plain')
   }
 
+  /** The SR6 creation rules (custom/sr6/creation.xml), all at once: Game data sends the whole list on every save. */
+  async function creation(req, res, send) {
+    const path = join(AREAS.sr6.custom, 'creation.xml')
+    if (req.method === 'GET') return send(res, 200, [...(await readOr(path, '')).matchAll(/<setting\b[^>]*>/g)].map(([t]) => {
+      const source = attr(t, 'source'), page = attr(t, 'page')
+      return { key: attr(t, 'key'), value: attr(t, 'value'), ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
+    }))
+    if (req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
+    if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the creation rules as application/json' })
+    let b
+    try { b = JSON.parse(await body(req, 1024 * 1024)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { settings: [{ key, value, source?, page? }] } as JSON') }
+    if (!Array.isArray(b?.settings) || b.settings.length > MAX_SETTINGS) throw fail(400, `send { settings: [{ key, value, source?, page? }] }, ${MAX_SETTINGS} settings at most`)
+    const seen = new Set()
+    const rows = b.settings.map(s => {
+      const key = String(s?.key ?? ''), value = clean(String(s?.value ?? '')).trim()
+      const source = s?.source == null ? '' : String(s.source), page = s?.page == null ? '' : String(s.page)
+      if (!SETTING_KEY.test(key)) throw fail(400, 'a setting’s key is 1 to 80 letters, digits and . : _ -')
+      if (seen.has(key)) throw fail(400, `the setting ${key} is set twice`)
+      seen.add(key)
+      if (!value || value.length > 200) throw fail(400, `the value of ${key} is 1 to 200 characters`)
+      if (source && !SOURCE_ID.test(source)) throw fail(400, `the source of ${key} is a book id such as CRB`)
+      if (page && !/^[1-9]\d{0,5}$/.test(page)) throw fail(400, `the page of ${key} is a whole number from 1`)
+      return `  <setting key="${key}" value="${esc(value)}"${source ? ` source="${source}"` : ''}${page ? ` page="${page}"` : ''}/>\n`
+    })
+    await mkdir(AREAS.sr6.custom, { recursive: true })
+    await serial('creation', () => writeAtomic(path, '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + `<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">\n${rows.join('')}</sr6:creation>\n`))
+    return send(res, 204, '', 'text/plain')
+  }
+
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
   async function sweep() {
     const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
@@ -898,12 +933,13 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 200, await Promise.all(ids.map(id => book(id, game))))
   }
 
-  /** The SR6 area: the books routes without AI, review or data pack, and the edits without house sources (S1). Any other
-   *  path: false (server.mjs answers 404). */
+  /** The SR6 area: the books routes without AI, review or data pack, the edits without house sources (S1), and the
+   *  creation rules (S2). Any other path: false (server.mjs answers 404). */
   async function sr6(req, res, url, send, who) {
     const p = url.pathname
     if (p === '/api/books' && (req.method === 'POST' || req.method === 'GET')) return books(req, res, send, 'sr6')
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who, 'sr6')
+    if (p === '/api/creation') return creation(req, res, send)
     const m = p.match(/^\/api\/(books)\/([^/]+)(?:\/(report|reimport))?$/)
     return m ? bookRoute(req, res, url, send, m, 'sr6') : false
   }

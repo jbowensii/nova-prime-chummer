@@ -14,6 +14,8 @@ FIXTURE = ROOT / "tests" / "fixtures" / "sr6" / "custom"
 
 def _validate(path):
     doc = etree.parse(str(path))
+    if doc.getroot().tag == "{urn:chummer-sr6:config:1}creation":  # the creation rules (creation.xsd)
+        return etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, "creation.xsd"))), doc
     assert doc.getroot().tag == f"{{{sr6.NS}}}data", f"{path}: not an SR6 data file"
     return etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, doc.getroot().get("kind") + ".xsd"))), doc
 
@@ -21,7 +23,7 @@ def _validate(path):
 class Sr6KindsTest(unittest.TestCase):
     def test_kinds_match_the_schema_folder(self):
         xsds = {p.stem for p in Path(sr6.SCHEMA_DIR).glob("*.xsd")}
-        self.assertEqual(xsds - {"common", "sources", "texts", "edits"}, set(sr6.KINDS))
+        self.assertEqual(xsds - {"common", "sources", "texts", "edits", "creation"}, set(sr6.KINDS))
         self.assertEqual(sr6.KINDS["electronics"], "device")
         self.assertEqual(list(sr6.KINDS)[0], "priorities")
         self.assertEqual(list(sr6.KINDS)[-1], "rules")

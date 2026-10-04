@@ -84,6 +84,7 @@ custom/sr6/
   imported/crb/<kind>.xml          one file per kind, ids scoped crb.<slug>
   texts/crb.xml                    private descriptions (never committed)
   edits/edits.xml, edits/texts.xml the catalog edits and their descriptions
+  creation.xml                     the table's creation rules (Game data; creation.xsd)
 ```
 
 The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
@@ -95,3 +96,13 @@ clash. Attribute `abbr` and skill `attr` values are never scoped.
 
 **Edits.** An edit is a full entry of its kind with `by`. It replaces the loaded entry with the same id and survives
 re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means the book's text.
+
+## Creation rules
+
+`custom/sr6/creation.xml` (`<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds the
+numbers the core rulebook prints only in its text: starting karma, caps, exchange rates, point-buy prices, lifepath
+counts, augmentation grades. Each is `<setting key value source? page?/>` (500 at most, each key once). The admin or an
+editor fills them in on Game data from their own book (`PUT /api/sr6/creation`); the app ships none. Keys, types and
+the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
+`metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
+`lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.

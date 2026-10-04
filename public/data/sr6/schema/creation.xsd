@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schema for the Shadowrun 6 creation rules (custom/sr6/creation.xml, written by the server from Game data): the numbers
+     the core rulebook prints only in its text, entered by the admin or an editor from their own book, each with an
+     optional source and page. Keys and their types: CREATION_KEYS in src/sr6/engine/creation.ts. The app ships none.
+     See docs/sr6-data-format.md. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:sr6="urn:chummer-sr6:config:1"
+           targetNamespace="urn:chummer-sr6:config:1"
+           elementFormDefault="unqualified">
+  <xs:element name="creation">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="setting" minOccurs="0" maxOccurs="500">
+          <xs:complexType>
+            <xs:attribute name="key" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-Za-z0-9.:_\-]{1,80}"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="value" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="200"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="source">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-Z][A-Z0-9\-]{0,19}"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="page" type="xs:positiveInteger"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+    </xs:complexType>
+    <xs:unique name="settingKey">
+      <xs:selector xpath="setting"/>
+      <xs:field xpath="@key"/>
+    </xs:unique>
+  </xs:element>
+</xs:schema>

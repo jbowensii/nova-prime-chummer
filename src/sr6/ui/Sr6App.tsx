@@ -1,10 +1,11 @@
-// The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog) loads once here, then the page: Books (admin; the
+// The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog) and the creation rules (loadCreation) load once here, then the page: Books (admin; the
 // Anarchy Books page with game="sr6"), Rules, Game data, or the runner list (a shell until the builder, S2).
 import { useEffect, useState } from 'react'
 import { isAdmin, useMe } from '../../ui/auth'
 import { BooksScreen } from '../../ui/Books'
 import { PageHeader } from '../../ui/nav'
 import { RepoContext, type Repo } from '../../ui/repo'
+import { loadCreation, type CreationRules } from '../engine/creation'
 import { loadSr6Catalog } from '../engine/load'
 import type { Sr6Catalog } from '../model/types'
 import { Sr6Data } from './Data'
@@ -14,12 +15,14 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const admin = isAdmin(useMe())
   const [c, setC] = useState<Sr6Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
+  const [cr, setCr] = useState<{ rules: CreationRules; errors: string[] }>({ rules: new Map(), errors: [] })
   const refresh = () => loadSr6Catalog().then(x => { setC(x); setFailed(null) }, e => setFailed(String(e)))
-  useEffect(() => { void refresh() }, [])
+  const refreshCreation = () => loadCreation().then(setCr)
+  useEffect(() => { void refresh(); void refreshCreation() }, [])
   const page = route[0] === 'books' && !admin ? '' : route[0]
 
   const body = page === 'books' ? <BooksScreen game="sr6" reload={() => void refresh()} />
-    : page === 'rules' || page === 'data' ? (c ? page === 'rules' ? <Sr6Rules c={c} /> : <Sr6Data c={c} reload={refresh} />
+    : page === 'rules' || page === 'data' ? (c ? page === 'rules' ? <Sr6Rules c={c} /> : <Sr6Data c={c} reload={refresh} cr={cr} reloadCreation={refreshCreation} />
       : <main className="lib"><PageHeader title={page === 'rules' ? 'Rules' : 'Game data'} />{!failed && <p className="muted">Loading game data…</p>}</main>)
     : <main className="lib">
       <PageHeader title="Your runners" />
