@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
-import { CREATION_GROUPS, expandKeys, rulesFrom, type CreationRow, type CreationRules } from '../engine/creation'
+import { CREATION_GROUPS, expandKeys, readSettingsFile, rulesFrom, type CreationRow, type CreationRules } from '../engine/creation'
 import type { Sr6Catalog } from '../model/types'
 
 export type Loaded = { rules: CreationRules; errors: string[] }
@@ -28,16 +28,27 @@ export function useCampaignRules(id: string | undefined): CreationRules | null |
 /** A campaign's settings as its list entry has them (Runners.tsx: one rules map per runner). */
 export const campaignRules = (c: Campaign | undefined) => c?.creation ? rulesFrom(c.creation).rules : null
 
-/** The form. `onSave` gets the whole list; without it the form is read only. */
+/** The form. `onSave` gets the whole list; without it the form is read only. Load settings file puts a local creation.xml's
+ *  values in the form for review (readSettingsFile); only Save sends them. */
 export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: Loaded; onSave?: (settings: CreationRow[]) => Promise<void>; children?: React.ReactNode }) {
   const [draft, setDraft] = useState(() => rowsOf(cr.rules))
   useEffect(() => setDraft(rowsOf(cr.rules)), [cr])
   const [msg, setMsg] = useState(''), [err, setErr] = useState(''), [saving, setSaving] = useState(false)
+  const [skipped, setSkipped] = useState<string[]>([]) // what the loaded file had that the form left out
   const keys = expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) })
   const qualities = [...c.entries.qualities.values()].sort((a, b) => a.name.localeCompare(b.name))
   const set = (key: string, f: Partial<Row>) => { setMsg(''); setDraft(d => ({ ...d, [key]: { ...NO_ROW, ...d[key], ...f } })) }
+  async function load(f: File) {
+    setMsg(''); setErr(''); setSkipped([])
+    if (f.size > 1024 * 1024) return setErr(`${f.name} is larger than 1 MB: it isn’t a creation rules file.`)
+    const r = readSettingsFile(await f.text(), f.name)
+    if (r.fatal) return setErr(r.fatal)
+    setDraft(rowsOf(r.rules))
+    setSkipped(r.errors)
+    setMsg(`Loaded ${r.rules.size === 1 ? '1 setting' : `${r.rules.size} settings`} from ${f.name} into the form, in place of what it showed. Check them, then Save creation rules; nothing is saved until then.`)
+  }
   async function save() {
-    setMsg(''); setErr(''); setSaving(true)
+    setMsg(''); setErr(''); setSkipped([]); setSaving(true)
     const settings = Object.entries(draft).filter(([, r]) => r.value.trim()).map(([key, r]) => ({ key, value: r.value.trim(),
       ...r.source.trim() ? { source: r.source.trim() } : {}, ...r.page.trim() ? { page: r.page.trim() } : {} }))
     try {
@@ -48,6 +59,11 @@ export function CreationForm({ c, cr, onSave, children }: { c: Sr6Catalog; cr: L
   return <>
     {cr.errors.length > 0 && <ul className="err">{cr.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
     {children}
+    {onSave && <p><label className="btn file">Load settings file…
+      <input type="file" accept=".xml,application/xml,text/xml" aria-label="Load settings file" disabled={saving}
+        onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void load(f) }} /></label>
+      {' '}<span className="muted">A creation.xml from your own notes or another server; you review it here before saving.</span></p>}
+    {skipped.length > 0 && <div className="warn"><p>Left out of the file:</p><ul>{skipped.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}
     <fieldset className="bare" disabled={!onSave || saving}>
       {CREATION_GROUPS.map(g => {
         const rows = keys.filter(k => k.group === g)

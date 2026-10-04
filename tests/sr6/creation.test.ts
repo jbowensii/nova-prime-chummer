@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
-import { CREATION_GROUPS, CREATION_KEYS, cite, expandKeys, flag, missingFor, num, parseCreation, rulesFrom, str, type CreationCatalog } from '../../src/sr6/engine/creation'
+import { CREATION_GROUPS, CREATION_KEYS, cite, expandKeys, flag, missingFor, num, parseCreation, readSettingsFile, rulesFrom, str, type CreationCatalog } from '../../src/sr6/engine/creation'
 import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/engine/load'
 
 const FIXTURE = 'tests/fixtures/sr6/custom'
@@ -110,4 +110,19 @@ test('a campaign’s stored rows read like a file’s: typed, with source and pa
   expect(cite(rules, 'metatypeKarma:x.made-up')).toEqual({ page: 12 })
   expect(rules.has('skillCap')).toBe(false)
   expect(errors).toEqual(['skillCap: “lots” isn’t a number.', '“noSuchSetting” isn’t a creation setting.'])
+})
+
+test('a settings file to load: its rows typed and checked as the server would; a file of another kind loads nothing', () => {
+  const file = (rows: string) => `<?xml version="1.0"?><sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">${rows}</sr6:creation>`
+  const r = readSettingsFile(file(`<setting key="startingKarma" value="66" source="HOUSE" page="9"/><setting key="startingKarma" value="1"/>
+    <setting key="skillCap" value="4" source="house" page="0"/><setting key="aptitudeQuality" value="x.made-up"/>
+    <setting key="nope" value="1"/><setting key="essence" value="${'9'.repeat(201)}"/>`), 'mine.xml')
+  expect(r.fatal).toBeUndefined()
+  expect([...r.rules.values()]).toEqual([{ key: 'startingKarma', value: 66, source: 'HOUSE', page: 9 }, { key: 'skillCap', value: 4 },
+    { key: 'aptitudeQuality', value: 'x.made-up' }])
+  expect(r.errors).toEqual(['startingKarma is set twice: the first one is kept.', 'skillCap: the source “house” isn’t a book id such as CRB; left out.',
+    'skillCap: the page “0” isn’t a whole number from 1; left out.', 'essence: the value is longer than 200 characters.', '“nope” isn’t a creation setting.'])
+  for (const bad of ['<tablerules/>', 'not xml at all', '<creation version="1"/>'])
+    expect(readSettingsFile(bad, 'x.xml')).toMatchObject({ fatal: expect.stringContaining('x.xml isn’t a creation rules file'), rules: new Map() })
+  expect(readSettingsFile(file('<setting key="k" value="1"/>'.repeat(501)), 'big.xml').fatal).toBe('big.xml has 501 settings; 500 at most.')
 })

@@ -140,6 +140,24 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(page.getByLabel('Highest skill rank: source', { exact: true })).toHaveValue('CRB')
   await expect(page.getByLabel('Aptitude quality', { exact: true })).toHaveValue('crb.knack')
   expect(await (await page.request.get('/custom/sr6/creation.xml')).text()).toContain('<setting key="skillCap" value="5" source="CRB" page="61"/>')
+
+  // Load settings file: a file of another kind is refused; a creation.xml fills the form for review, saved only on Save
+  const load = page.getByLabel('Load settings file')
+  await load.setInputFiles({ name: 'notes.xml', mimeType: 'application/xml', buffer: Buffer.from('<tablerules/>') })
+  await expect(page.locator('.sr6-creation [role=alert]')).toContainText('notes.xml isn’t a creation rules file')
+  await load.setInputFiles({ name: 'made-up-creation.xml', mimeType: 'application/xml', buffer: Buffer.from('<?xml version="1.0"?>'
+    + '<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1"><setting key="startingKarma" value="33" source="HOUSE" page="7"/>'
+    + '<setting key="skillCap" value="6"/><setting key="noSuchSetting" value="1"/></sr6:creation>') })
+  await expect(page.locator('.sr6-creation [role=status]')).toContainText('Loaded 2 settings from made-up-creation.xml')
+  await expect(page.getByLabel('Starting karma', { exact: true })).toHaveValue('33')
+  await expect(page.getByLabel('Starting karma: source', { exact: true })).toHaveValue('HOUSE')
+  await expect(cap).toHaveValue('6')
+  await expect(page.getByLabel('Aptitude quality', { exact: true })).toHaveValue('') // not in the file
+  await expect(page.locator('.sr6-creation .warn')).toContainText('“noSuchSetting” isn’t a creation setting.')
+  await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/creation-loaded.png` })
+  expect(await (await page.request.get('/custom/sr6/creation.xml')).text()).toContain('<setting key="skillCap" value="5" source="CRB" page="61"/>')
+  await page.reload() // not saved: the server's settings are as they were
+  await expect(cap).toHaveValue('5')
   await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/creation-rules.png` })
 })
 

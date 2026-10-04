@@ -162,6 +162,30 @@ export function missingFor(method: Sr6Method, cr: CreationRules, data: CreationC
   return out
 }
 
+/** A settings file someone picked to load into the creation rules form (the creation.xml format): every row the server
+ *  would take, typed as rulesFrom does. fatal: it isn't a creation rules file at all (nothing loads); errors: the rows (or
+ *  a row's source or page) left out, each said in words. Nothing is saved: the form shows it for review. */
+export function readSettingsFile(xml: string, name: string): { rules: CreationRules; errors: string[]; fatal?: string } {
+  const doc = new DOMParser().parseFromString(xml, 'text/xml'), root = doc.documentElement
+  if (doc.getElementsByTagName('parsererror').length || root.localName !== 'creation' || root.namespaceURI !== CREATION_NS)
+    return { rules: new Map(), errors: [], fatal: `${name} isn’t a creation rules file (an sr6:creation document, like custom/sr6/creation.xml).` }
+  const els = [...root.children].filter(e => e.localName === 'setting')
+  if (els.length > 500) return { rules: new Map(), errors: [], fatal: `${name} has ${els.length} settings; 500 at most.` }
+  const errors: string[] = [], seen = new Set<string>(), rows: CreationRow[] = []
+  for (const el of els) {
+    const key = el.getAttribute('key') ?? '', value = (el.getAttribute('value') ?? '').trim()
+    let source = el.getAttribute('source') ?? undefined, page = el.getAttribute('page') ?? undefined
+    if (seen.has(key)) { errors.push(`${key} is set twice: the first one is kept.`); continue }
+    seen.add(key)
+    if (value.length > 200) { errors.push(`${key}: the value is longer than 200 characters.`); continue }
+    if (source !== undefined && !/^[A-Z][A-Z0-9-]{0,19}$/.test(source)) { errors.push(`${key}: the source “${source}” isn’t a book id such as CRB; left out.`); source = undefined }
+    if (page !== undefined && !/^[1-9]\d{0,5}$/.test(page)) { errors.push(`${key}: the page “${page}” isn’t a whole number from 1; left out.`); page = undefined }
+    rows.push({ key, value, source, page })
+  }
+  const r = rulesFrom(rows)
+  return { rules: r.rules, errors: [...errors, ...r.errors] }
+}
+
 /** Fetch and parse custom/sr6/creation.xml. None saved (404, or a host answering with a page that isn't XML), or the
  *  server unreachable: no rules. */
 export async function loadCreation(base = './'): Promise<{ rules: CreationRules; errors: string[] }> {

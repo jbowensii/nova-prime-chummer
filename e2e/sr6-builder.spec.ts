@@ -638,6 +638,15 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
   await expect(psec.getByRole('button', { name: 'Save creation rules' })).toHaveCount(0)
   expect((await pat.request.put(`/api/sr6/campaigns/${camp.id}`, { data: { creation: [] }, headers: { Origin: origin } })).status()).toBe(403)
 
+  // Load settings file in the campaign's form: reviewed, then saved as the campaign's
+  await sec.getByLabel('Load settings file').setInputFiles({ name: 'table.xml', mimeType: 'application/xml', buffer: Buffer.from(
+    '<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1"><setting key="startingKarma" value="88"/></sr6:creation>') })
+  await expect(sec.getByLabel('Starting karma', { exact: true })).toHaveValue('88')
+  expect((await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation).toContainEqual(expect.objectContaining({ key: 'startingKarma', value: '77' }))
+  await sec.getByRole('button', { name: 'Save creation rules' }).click()
+  await expect(sec.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
+  expect((await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation).toEqual([{ key: 'startingKarma', value: '88' }])
+
   // back to the server's
   await sec.getByRole('radio', { name: 'Use the server’s settings' }).check()
   await sec.getByRole('button', { name: 'Save: use the server’s settings' }).click()
