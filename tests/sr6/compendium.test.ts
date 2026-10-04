@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { compendiumXml } from '../../src/engine'
-import { blankSr6Entry, COMP_KINDS, copySr6Entry, newEntryId, readSr6Compendium, sr6CompendiumSource, sr6CompendiumXml } from '../../src/sr6/engine/compendium'
+import { blankSr6Entry, COMP_KINDS, copySr6Entry, entryProblem, fieldRule, newEntryId, readSr6Compendium, sr6CompendiumSource, sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6EntryXml } from '../../src/sr6/engine/load'
 import { SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
@@ -105,6 +105,45 @@ test('COMP_KINDS: every kind but the creation-structure ones, each with common.x
     const lines = own(t, 'element').filter(e => e.getAttribute('type') === 'xs:string' && e.getAttribute('name') !== 'name').map(e => e.getAttribute('name'))
     expect([kind, want.lines ?? []]).toEqual([kind, lines])
   }
+})
+
+test('fieldRule: the required attributes, fixed choices and whole numbers common.xsd sets for each compendium kind', () => {
+  const XS = 'http://www.w3.org/2001/XMLSchema'
+  const common = new DOMParser().parseFromString(readFileSync(SCHEMA + 'common.xsd', 'utf8'), 'text/xml')
+  const types = new Map([...common.documentElement.children].filter(t => t.localName === 'complexType').map(t => [t.getAttribute('name'), t]))
+  const WHOLE: Record<string, string> = { 'xs:integer': 'any', 'xs:positiveInteger': 'positive', 'xs:nonNegativeInteger': 'nonNegative' }
+  for (const kind of Object.keys(COMP_KINDS) as Sr6Kind[]) {
+    const tag = SR6_KINDS[kind].tag
+    const file = new DOMParser().parseFromString(readFileSync(`${SCHEMA}${kind}.xsd`, 'utf8'), 'text/xml')
+    const t = types.get([...file.getElementsByTagNameNS(XS, 'element')].find(e => e.getAttribute('name') === tag)!.getAttribute('type')!.replace('sr6:', ''))!
+    for (const a of [...t.getElementsByTagNameNS(XS, 'attribute')]) {
+      const name = a.getAttribute('name')!, type = a.getAttribute('type') ?? ''
+      const choices = type === 'sr6:True' ? ['true'] : [...a.getElementsByTagNameNS(XS, 'enumeration')].map(x => x.getAttribute('value')!)
+      const want = { ...a.getAttribute('use') === 'required' ? { required: true } : {}, ...choices.length ? { choices } : {}, ...WHOLE[type] ? { whole: WHOLE[type] } : {} }
+      expect([kind, name, fieldRule(kind, name)]).toEqual([kind, name, want])
+    }
+  }
+})
+
+test('entryProblem: what keeps a form entry from validating; with the required values set, every kind’s blank entry validates', async () => {
+  const c = fixtureCatalog(), to = { ...kit, entries: [], npcs: [] }
+  const gun = blankSr6Entry(c, 'weapons', to, 'Pop Gun')
+  expect(entryProblem(gun)).toBe('Fill in category.')
+  expect(entryProblem({ ...gun, name: ' ' })).toBe('Enter a name.')
+  expect(entryProblem({ ...gun, attrs: { ...gun.attrs, category: 'Poppers' } })).toBe('')
+  const charm = blankSr6Entry(c, 'qualities', to, 'Charm')
+  expect(entryProblem({ ...charm, attrs: { kind: 'lucky' } })).toBe('kind is one of: positive, negative.')
+  expect(entryProblem({ ...charm, attrs: { kind: 'positive', karma: 'lots' } })).toBe('karma is a whole number.')
+  expect(entryProblem({ ...charm, attrs: { kind: 'negative', karma: '-3', maxLevel: '0' } })).toBe('maxLevel is a whole number, 1 or more.')
+  expect(entryProblem({ ...blankSr6Entry(c, 'npcs', to, 'Goon'), attrs: { rating: 'two' } })).toBe('rating is a whole number, 0 or more.')
+  const all = (Object.keys(COMP_KINDS) as Sr6Kind[]).map(kind => {
+    const e = blankSr6Entry(c, kind, to, `Made-up ${kind}`)
+    for (const f of Object.keys(e.attrs)) { const r = fieldRule(kind, f); if (r.required) e.attrs[f] = r.choices?.[0] ?? 'Made-up' }
+    e.parts = e.parts.map((p, i) => i % 2 ? p : { ...p, text: 'Made-up line' })
+    expect([kind, entryProblem(e)]).toEqual([kind, ''])
+    return e
+  })
+  expect(await valid(sr6CompendiumXml({ ...to, entries: all }))).toEqual([])
 })
 
 test('copySr6Entry: a new id under the compendium’s source, page 1, no description, stats kept; a second copy gets -2', () => {

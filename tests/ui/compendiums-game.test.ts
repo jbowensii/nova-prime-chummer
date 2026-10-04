@@ -1,11 +1,11 @@
-// The compendium store per game (src/ui/compendiumStore.ts, src/sr6/ui/compendiums.ts): Anarchy's calls stay on
+// The compendium store per game (src/ui/compendiumStore.ts, src/sr6/ui/compendiumStore.ts): Anarchy's calls stay on
 // /api/compendiums, SR6's go to /api/sr6/compendiums with the SR6 file; each game's rows read only its own files.
 // Made-up compendiums; fetch is mocked.
 import { afterEach, expect, test, vi } from 'vitest'
 import { compendiumXml } from '../../src/engine'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import type { Sr6Compendium } from '../../src/sr6/model/types'
-import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../src/sr6/ui/compendiums'
+import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../src/sr6/ui/compendiumStore'
 import { deleteCompendium, listCompendiums, parseRows } from '../../src/ui/compendiumStore'
 
 const kit: Sr6Compendium = { id: 'aaaaaaaaaaaa', name: 'Street Kit', source: 'STREET', sharing: 'private', updatedAt: '', npcs: [],

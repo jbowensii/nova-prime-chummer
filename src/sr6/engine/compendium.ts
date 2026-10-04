@@ -37,6 +37,36 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   lifestyles: { fields: ['cost'] },
   contacts: { fields: ['connection', 'loyalty', 'archetype'] },
 }
+/** What common.xsd asks of an attribute beyond being text: set (required), one of fixed choices, a whole number. */
+export interface FieldRule { required?: true; choices?: string[]; whole?: 'any' | 'positive' | 'nonNegative' }
+const REQ: FieldRule = { required: true }
+const LEVELS: Record<string, FieldRule> = { perLevel: { choices: ['true'] }, maxLevel: { whole: 'positive' } }
+const RATED: Record<string, FieldRule> = { rating: { whole: 'nonNegative' } }
+/** Per kind, the attributes with a rule (tests/sr6/compendium.test.ts keeps it equal to common.xsd). */
+const RULES: Partial<Record<Sr6Kind, Record<string, FieldRule>>> = {
+  qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, ...LEVELS },
+  weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
+  augmentations: { type: { required: true, choices: ['cyberware', 'bioware'] }, category: REQ },
+  spells: { category: { required: true, choices: ['combat', 'detection', 'health', 'illusion', 'manipulation'] } },
+  adeptpowers: LEVELS,
+  critters: RATED, spirits: RATED, npcs: RATED,
+}
+export const fieldRule = (kind: Sr6Kind, field: string): FieldRule => RULES[kind]?.[field] ?? {}
+const WHOLE = { any: [/^-?\d+$/, 'a whole number'], positive: [/^[1-9]\d*$/, 'a whole number, 1 or more'], nonNegative: [/^\d+$/, 'a whole number, 0 or more'] } as const
+
+/** Why an entry wouldn't validate against common.xsd ('' when it would): no name, a required value unset, a value that
+ *  isn't one of its choices or a whole number. The compendium's entry form saves only an entry with none. */
+export function entryProblem(e: Sr6Entry): string {
+  if (!e.name.trim()) return 'Enter a name.'
+  for (const f of COMP_KINDS[e.kind]?.fields ?? []) {
+    const v = (e.attrs[f] ?? '').trim(), r = fieldRule(e.kind, f)
+    if (!v) { if (r.required) return `Fill in ${f}.`; continue }
+    if (r.choices && !r.choices.includes(v)) return `${f} is one of: ${r.choices.join(', ')}.`
+    if (r.whole && !WHOLE[r.whole][0].test(v)) return `${f} is ${WHOLE[r.whole][1]}.`
+  }
+  return ''
+}
+
 const KIND_OF_TAG = new Map(Object.keys(COMP_KINDS).map(k => [SR6_KINDS[k as Sr6Kind].tag, k as Sr6Kind]))
 const ID = /^[0-9a-f]{12}$/
 const SHARING = ['private', 'campaign', 'table'] as const

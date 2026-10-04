@@ -134,7 +134,7 @@ export async function collectSr6Files(get: (path: string) => Promise<string | nu
   return { files, missing }
 }
 
-/** Fetch and build the SR6 catalog, plus `extra` overlay files (the readable compendiums, src/sr6/ui/compendiums.ts). An
+/** Fetch and build the SR6 catalog, plus `extra` overlay files (the readable compendiums, src/sr6/ui/compendiumStore.ts). An
  * unreachable server fails the load; missing custom files are listed as errors. */
 export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Promise<Sr6Catalog> {
   const get = (path: string) => fetch(base + path, { cache: 'no-cache' })

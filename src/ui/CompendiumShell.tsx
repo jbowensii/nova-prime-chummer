@@ -153,7 +153,10 @@ export function DetailsDialog<C extends CompBase>({ g, comp, campaigns, onClose,
   const [campaign, setCampaign] = useState(comp?.campaign ?? gmOf[0]?.id ?? '')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const idOk = !!comp || (SOURCE_ID.test(source) && !g.taken(source))
+  // ids the server refused as taken: another GM's private compendium isn't in this catalog, so taken() can't know them
+  const [refused, setRefused] = useState<string[]>([])
+  const clash = g.taken(source) || refused.includes(source)
+  const idOk = !!comp || (SOURCE_ID.test(source) && !clash)
   const ok = !busy && !!name.trim() && idOk && (sharing !== 'campaign' || !!campaign)
   const save = async () => {
     setBusy(true); setErr('')
@@ -161,6 +164,7 @@ export function DetailsDialog<C extends CompBase>({ g, comp, campaigns, onClose,
     const next: C = comp ? { ...comp, ...meta } : g.blank({ id: hex12(), source, ...meta })
     const r = await g.save(next, comp?.rev)
     if (r.ok) return onSaved(next, !comp)
+    if (!comp && /source id .* is taken/.test(r.error ?? '')) { setRefused([...refused, source]); setBusy(false); return }
     setErr(r.conflict ? 'It changed elsewhere since this page loaded. Reload the page and try again.' : because('Couldn’t save', r.error ?? ''))
     setBusy(false)
   }
@@ -180,6 +184,7 @@ export function DetailsDialog<C extends CompBase>({ g, comp, campaigns, onClose,
           {gmOf.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
       </div>
       {!idOk && source && <p className="err" id="comp-src-err">{g.taken(source) ? `${source} is already a source; choose another id.`
+        : clash ? `${source} is taken (another GM’s compendium may use it); choose another id.`
         : 'A source id starts with a letter and uses only A–Z, 0–9 and hyphens.'}</p>}
       <p className="muted">{comp ? `Its entries cite ${comp.source}; that can’t change.` : 'Its entries cite this id (like a book’s), and it can’t be changed later.'}
         {' '}A campaign’s GMs or the whole table can read a shared compendium; only you can change it.</p>

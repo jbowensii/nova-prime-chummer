@@ -1,5 +1,5 @@
 // SR6 Game data (everyone): the sources, entries per kind, a browser of every catalog entry, the catalog edits (editors:
-// each entry's Edit button opens Sr6EditEntry), the creation rules (editors fill them in) and the files that didn't load. Kept apart from Anarchy's page, which is
+// each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), the creation rules (editors fill them in) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
 import { useEffect, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
@@ -34,8 +34,11 @@ ${t}`
   const rows = full === view ? shown : shown.slice(0, LIMIT)
   const perSource = (id: string) => all.filter(e => e.source === id).length
   const edits = all.filter(e => e.edited)
-  const editButton = (e: Sr6Entry) => editor &&
-    <button type="button" className="btn small quiet" aria-label={`Edit ${e.name}`} onClick={() => { setMsg(''); setEditing({ kind: e.kind, id: e.id }) }}>Edit</button>
+  const compOf = (e: Sr6Entry) => c.sources.get(e.source)?.compendium
+  // a compendium's entry is edited in its compendium (the edits layer loads before it, so an edit would never show)
+  const editButton = (e: Sr6Entry) => editor && (compOf(e) ? compOf(e)!.owner === me?.username
+    && <a className="btn small quiet" aria-label={`Edit ${e.name}`} href={`#/sr6/compendiums/${compOf(e)!.id}/${encodeURIComponent(e.id)}`}>Edit</a>
+    : <button type="button" className="btn small quiet" aria-label={`Edit ${e.name}`} onClick={() => { setMsg(''); setEditing({ kind: e.kind, id: e.id }) }}>Edit</button>)
 
   return (
     <main className="lib">
@@ -69,7 +72,7 @@ ${t}`
       {shown.length === 0 ? <p className="muted">{t ? `Nothing matches “${q}”.` : `No ${SR6_KINDS[kind].label.toLowerCase()} yet.`}</p> : (
         <div className="scroll-x"><table className="data sr6-browse"><thead><tr><th>Entry</th><th>Values</th><th /></tr></thead>
           <tbody>{rows.map(e => (
-            <tr key={e.id}><td><b>{e.name}</b> <span className="srcline"><span className="src">{e.source} p.{e.page}</span>{e.edited && <EditedMark />}</span></td>
+            <tr key={e.id}><td><b>{e.name}</b> <span className="srcline"><span className="src">{e.source} p.{e.page}</span>{e.edited && <EditedMark />}{compOf(e) && <span className="noncanon">House</span>}</span></td>
               <td className="muted">{details(e)}</td><td className="num">{editButton(e)}</td></tr>
           ))}</tbody></table>
           {rows.length < shown.length && <p className="muted">Showing {rows.length} of {shown.length}. Search to narrow it, or{' '}

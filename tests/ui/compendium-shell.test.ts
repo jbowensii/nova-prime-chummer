@@ -41,3 +41,27 @@ test('Books: none a listed compendium cites, by name', () => {
   const comp = { id: '0123456789ab', name: 'Kit', source: 'STREET', sharing: 'private' as const, npcs: [] }
   expect(shelf([book('ZED', 'Zed Book'), book('STREET', 'Clash'), book('ABC', 'Alpha Book')], [comp]).map(b => b.id)).toEqual(['ABC', 'ZED'])
 })
+
+test('New compendium: a source id the server refuses as taken (another GM’s private compendium) is shown inline and blocks Create', async () => {
+  if (!HTMLDialogElement.prototype.showModal) HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) { this.open = true }
+  const save = vi.fn(async () => ({ ok: false as const, error: 'the source id HIDDEN is taken; choose another' }))
+  const el = document.body.appendChild(document.createElement('div'))
+  const root = createRoot(el)
+  await act(async () => root.render(createElement(DetailsDialog<CompBase>, { g: { ...adapter(() => false), save }, comp: null, campaigns: [], onClose: () => {}, onSaved: async () => {} })))
+  const set = async (input: HTMLInputElement, value: string) => act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const [name, source] = [...el.querySelectorAll('input')]
+  await set(name, 'Hidden Kit')
+  await set(source, 'HIDDEN')
+  const create = [...el.querySelectorAll('button')].find(b => b.textContent === 'Create compendium')!
+  await act(async () => create.click())
+  expect(save).toHaveBeenCalledOnce()
+  expect(el.querySelector('#comp-src-err')?.textContent).toBe('HIDDEN is taken (another GM’s compendium may use it); choose another id.')
+  expect(create.disabled).toBe(true)
+  await set(source, 'OPEN')
+  expect(el.querySelector('#comp-src-err')).toBeNull()
+  expect(create.disabled).toBe(false)
+  root.unmount()
+})
