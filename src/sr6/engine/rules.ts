@@ -4,10 +4,10 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
-import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, type PickKind, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
+import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, attrRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, type Sr6Data } from './data'
+import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { makeProvider, type Provider } from './providers'
 import { ratingRange } from './values'
 
@@ -151,9 +151,8 @@ const RULES: Rule[] = [
     (c.budgets.essence.left > 0 ? null : { message: `Essence must stay above 0 (it is ${c.budgets.essence.left}).` }) },
 
   { code: 'magic.spellsAllowed', severity: 'error', tab: 'magic', check: c => {
-    const k = MAGIC_KINDS[c.b.magic]
-    const allowed: Record<PickKind, boolean> = { spells: k.spells, rituals: k.spells, complexforms: k.resonance, echoes: k.resonance,
-      metamagics: k.spells || k.powers, adeptpowers: true }
+    // adept powers are adept.ppBudget's
+    const allowed = { ...picksFor(c.b.magic), adeptpowers: true }
     return c.b.picks.filter(x => !allowed[x.kind])
       .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.` }))
   } },

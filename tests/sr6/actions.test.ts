@@ -1,0 +1,303 @@
+// Build actions (src/sr6/engine/actions.ts) on the made-up fixture and its invented creation rules: method and letter
+// switches mid-build, metatype traits, stacking purchases, life modules, SINs and licences, and the refusals.
+import { expect, test } from 'vitest'
+import { apply, reconcile, setMagic, setMetatype, setMethod, setPriority, type Op } from '../../src/sr6/engine/actions'
+import { nuyenBudget, priced } from '../../src/sr6/engine/budgets'
+import { makeProvider } from '../../src/sr6/engine/providers'
+import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/model/character'
+import { buildOf, GLIM, made, STONE } from './fixture'
+
+type Over = Parameters<typeof made>[0]
+function runner(o: { method?: Sr6Method; letters?: string; metatype?: string; magic?: MagicKind; over?: Over } = {}) {
+  const ch: Sr6Character = blankSr6(o.method ?? 'priority', 'r1', '2026-10-03T00:00:00Z')
+  ch.build = buildOf(o.method ?? 'priority', { letters: o.letters ?? (o.method && o.method !== 'priority' ? undefined : 'CABDA'),
+    metatype: o.metatype ?? GLIM, magic: o.magic ?? 'mundane' })
+  ch.identity.metatype = ch.build.metatype
+  const { data, cr } = made(o.over)
+  const act = (op: Op) => apply(ch.build, op, data, cr)
+  return { ch, b: ch.build, data, cr, act }
+}
+const ok = { ok: true }
+const no = (reason: string) => ({ ok: false, reason })
+
+// method and letter switches
+test('priority → point buy keeps the attribute points and clears the letters', () => {
+  const { ch, b, data, cr, act } = runner()
+  expect(act({ op: 'attribute', target: 'bod', pool: 'points', delta: 3 })).toEqual(ok)
+  setMethod(ch, 'pointbuy', data, cr)
+  expect(b.method).toBe('pointbuy')
+  expect(Object.values(b.priorities).every(l => l === null)).toBe(true)
+  expect(b.attributes.bod.points).toBe(3)
+  expect(b.metatype).toBe(GLIM)
+})
+
+test('point buy → priority clears the character points; with no letters the metatype and magic go', () => {
+  const { ch, b, data, cr, act } = runner({ method: 'pointbuy', magic: 'adept' })
+  expect(act({ op: 'cp', pool: 'attribute', delta: 4 })).toEqual(ok)
+  setMethod(ch, 'priority', data, cr)
+  expect(b.cp.attribute).toBe(0)
+  expect([b.metatype, ch.identity.metatype, b.magic]).toEqual(['', '', 'mundane'])
+})
+
+test('priority ↔ sum-to-ten keeps the letters; leaving lifepath drops the modules', () => {
+  const { ch, b, data, cr } = runner()
+  setMethod(ch, 'sumtoten', data, cr)
+  expect(b.priorities.attributes).toBe('A')
+  const l = runner({ method: 'lifepath', magic: 'full' })
+  expect(l.act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(ok)
+  setMethod(l.ch, 'karma', l.data, l.cr)
+  expect(l.b.lifepath).toEqual([])
+})
+
+test('a metatype letter that no longer offers the metatype clears it and its traits', () => {
+  const { ch, b, data, cr } = runner({ metatype: STONE, over: { data: d => { delete d.priorities.D!.metatypes[STONE] } } })
+  setMetatype(ch, STONE, data)
+  expect(b.qualities.map(q => q.id)).toEqual(['crb.stoneskin'])
+  setPriority(ch, 'metatype', 'D', data, cr)
+  expect([b.metatype, ch.identity.metatype, b.qualities]).toEqual(['', '', []])
+})
+
+test('a magic letter that no longer offers full magic makes the runner mundane and the spells go', () => {
+  const { ch, b, data, cr, act } = runner({ letters: 'CBADE', magic: 'full' })
+  expect(act({ op: 'pick', kind: 'spells', id: 'crb.glow-ward' })).toEqual(ok)
+  b.initiation = 2
+  setPriority(ch, 'magic', 'D', data, cr)
+  expect([b.magic, b.picks, b.initiation]).toEqual(['mundane', [], 0])
+  // a letter that still offers it changes nothing
+  const r = runner({ letters: 'CBADE', magic: 'full' })
+  setPriority(r.ch, 'magic', 'B', r.data, r.cr)
+  expect(r.b.magic).toBe('full')
+})
+
+test('setMagic drops what the kind can’t have and the bought power points; aspected keeps its skill', () => {
+  const { ch, b, data, cr, act } = runner({ letters: 'CBBDE', magic: 'mystic-adept' })
+  act({ op: 'pick', kind: 'spells', id: 'crb.glow-ward' })
+  act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })
+  act({ op: 'powerPoints', delta: 2 })
+  setMagic(ch, 'adept', data, cr)
+  expect(b.picks.map(x => x.kind)).toEqual(['adeptpowers'])
+  expect(b.powerPointsBought).toBe(0)
+  setMagic(ch, 'aspected', data, cr, 'crb.hexing')
+  expect([b.picks, b.aspectedSkill]).toEqual([[], 'crb.hexing'])
+  setMagic(ch, 'full', data, cr)
+  expect(b.aspectedSkill).toBeUndefined()
+})
+
+test('reconcile leaves a legal build alone', () => {
+  const { ch, b, data, cr } = runner({ magic: 'full' })
+  const before = structuredClone(b)
+  reconcile(ch, data, cr)
+  expect(b).toEqual(before)
+})
+
+// metatypes and qualities
+test('a metatype swap moves the free traits and keeps the paid qualities; a free trait can’t be removed', () => {
+  const { ch, b, data, act } = runner()
+  setMetatype(ch, STONE, data)
+  expect(act({ op: 'quality', id: 'crb.butterfingers' })).toEqual(ok)
+  const trait = b.qualities.find(q => q.free)!
+  expect([trait.id, trait.name, ch.identity.metatype]).toEqual(['crb.stoneskin', 'Stoneskin', STONE])
+  expect(act({ op: 'quality', remove: trait.uid })).toEqual(no('free-trait'))
+  setMetatype(ch, GLIM, data)
+  expect(b.qualities.map(q => q.id)).toEqual(['crb.butterfingers'])
+  expect(ch.identity.metatype).toBe(GLIM)
+})
+
+test('qualities: taken once, a level within the highest, removed by uid', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 2 })).toEqual(ok)
+  expect(act({ op: 'quality', id: 'crb.knack' })).toEqual(ok)
+  expect(act({ op: 'quality', id: 'crb.knack' })).toEqual(no('already-taken'))
+  expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 3 })).toEqual(ok)
+  expect(b.qualities.find(q => q.id === 'crb.lucky-streak')!.level).toBe(3)
+  expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 4 })).toEqual(no('max-level'))
+  expect(act({ op: 'quality', id: 'crb.knack', level: 2 })).toEqual(no('no-levels'))
+  expect(act({ op: 'quality', id: 'crb.nope' })).toEqual(no('unknown-entry'))
+  expect(act({ op: 'quality', remove: b.qualities[1].uid })).toEqual(ok)
+  expect(b.qualities.map(q => q.id)).toEqual(['crb.lucky-streak'])
+  expect(act({ op: 'quality', remove: 'gone' })).toEqual(no('not-taken'))
+})
+
+// spends
+test('a spend below zero is refused and changes nothing', () => {
+  const { b, act } = runner({ method: 'pointbuy' })
+  expect(act({ op: 'attribute', target: 'agi', pool: 'karma', delta: -1 })).toEqual(no('below-zero'))
+  expect(act({ op: 'skill', target: 'crb.gab', pool: 'points', delta: -1 })).toEqual(no('below-zero'))
+  expect(act({ op: 'cp', pool: 'skill', delta: -1 })).toEqual(no('below-zero'))
+  expect(act({ op: 'powerPoints', delta: -1 })).toEqual(no('below-zero'))
+  expect(act({ op: 'initiation', delta: -1 })).toEqual(no('below-zero'))
+  expect(act({ op: 'karmaToNuyen', delta: -1 })).toEqual(no('below-zero'))
+  expect(b.attributes.agi.karma + b.skills.length + b.cp.skill).toBe(0)
+})
+
+test('skills: points and karma ranks, a spec and expertise need a rank and go with it', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'spec', target: 'crb.gab', spec: 'Haggling' })).toEqual(no('skill-untrained'))
+  expect(act({ op: 'skill', target: 'crb.gab', pool: 'karma', delta: 1 })).toEqual(ok)
+  expect(act({ op: 'spec', target: 'crb.gab', spec: 'Haggling' })).toEqual(ok)
+  expect(act({ op: 'expertise', target: 'crb.gab', expertise: 'Fibbing' })).toEqual(ok)
+  expect(b.skills).toEqual([{ id: 'crb.gab', points: 0, karma: 1, spec: 'Haggling', expertise: 'Fibbing' }])
+  expect(act({ op: 'skill', target: 'crb.gab', pool: 'karma', delta: -1 })).toEqual(ok)
+  expect(b.skills).toEqual([])
+  expect(act({ op: 'skill', target: 'crb.nope', pool: 'points', delta: 1 })).toEqual(no('unknown-entry'))
+})
+
+test('character points only in point buy; karma to nuyen up to its most', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'cp', pool: 'attribute', delta: 1 })).toEqual(no('not-point-buy'))
+  expect(act({ op: 'karmaToNuyen', delta: 7 })).toEqual(ok)
+  expect(act({ op: 'karmaToNuyen', delta: 1 })).toEqual(no('conversion-cap'))
+  expect(b.karmaToNuyen).toBe(7)
+  const free = runner({ over: { unset: ['karmaToNuyenMax'] } })
+  expect(free.act({ op: 'karmaToNuyen', delta: 40 })).toEqual(ok)
+})
+
+test('initiation needs an awakened runner, submersion an emerged one', () => {
+  expect(runner().act({ op: 'initiation', delta: 1 })).toEqual(no('not-awakened'))
+  expect(runner({ magic: 'adept', letters: 'CABDE' }).act({ op: 'initiation', delta: 1 })).toEqual(ok)
+  expect(runner({ magic: 'full' }).act({ op: 'submersion', delta: 1 })).toEqual(no('not-emerged'))
+  expect(runner({ magic: 'technomancer' }).act({ op: 'submersion', delta: 1 })).toEqual(ok)
+})
+
+// magic picks
+test('adept powers: a power without levels twice is a duplicate; a leveled one rises to its highest level', () => {
+  const { b, act } = runner({ letters: 'CBBDE', magic: 'adept', over: { data: d => { d.powers['crb.quick-step'].maxLevel = 2 } } })
+  expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(ok)
+  expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(ok)
+  expect(b.picks).toHaveLength(1)
+  expect(b.picks[0].level).toBe(2)
+  expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(no('max-level'))
+  expect(act({ op: 'powerLevel', uid: b.picks[0].uid, level: 1 })).toEqual(ok)
+  expect(act({ op: 'powerLevel', uid: b.picks[0].uid, level: 0 })).toEqual(no('below-one'))
+  expect(act({ op: 'pick', kind: 'spells', id: 'crb.glow-ward' })).toEqual(ok)
+  expect(act({ op: 'pick', kind: 'spells', id: 'crb.glow-ward' })).toEqual(no('duplicate'))
+  expect(act({ op: 'powerLevel', uid: b.picks[1].uid, level: 2 })).toEqual(no('no-levels'))
+  expect(act({ op: 'pick', remove: b.picks[1].uid })).toEqual(ok)
+  expect(b.picks.map(x => x.name)).toEqual(['Quick Step'])
+  const flat = runner({ magic: 'adept', letters: 'CBBDE', over: { data: d => { d.powers['crb.quick-step'].perLevel = false } } })
+  flat.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })
+  expect(flat.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(no('duplicate'))
+})
+
+// purchases (Forge's stacking tests)
+test('two Zap Guns are two lines and an accessory fits one; ammo stacks; the price is the same either way', () => {
+  const { b, data, cr, act } = runner()
+  expect(act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })).toEqual(ok)
+  expect(act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })).toEqual(ok)
+  expect(b.purchases.map(x => x.qty)).toEqual([1, 1])
+  const [gun1, gun2] = b.purchases
+  expect(act({ op: 'accessory', host: gun1.uid, kind: 'gear', id: 'crb.zap-scope' })).toEqual(ok)
+  expect([gun1.accessories.map(a => a.id), gun2.accessories]).toEqual([['crb.zap-scope'], []])
+  act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets' })
+  act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets' })
+  expect(b.purchases).toHaveLength(3)
+  expect(b.purchases[2].qty).toBe(2)
+  const p = makeProvider(b.method, data, cr)
+  expect(nuyenBudget(b, data, cr, p).spent).toBe(2 * 290 + 350 + 2 * 21)
+  expect(act({ op: 'accessory', host: gun1.uid, remove: gun1.accessories[0].uid })).toEqual(ok)
+  expect(act({ op: 'accessory', host: 'nope', kind: 'gear', id: 'crb.zap-scope' })).toEqual(no('unknown-host'))
+  expect(act({ op: 'quantity', uid: b.purchases[2].uid, qty: 5 })).toEqual(ok)
+  expect(act({ op: 'quantity', uid: gun1.uid, qty: 2 })).toEqual(no('own-line'))
+  expect(act({ op: 'purchase', remove: gun2.uid })).toEqual(ok)
+  expect(b.purchases.map(x => x.id)).toEqual(['crb.zap-gun', 'crb.zap-pellets'])
+})
+
+test('rated gear stacks by id and rating; a rating outside the range or an ungraded grade is refused', () => {
+  const { b, act } = runner()
+  act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2 })
+  act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 3 })
+  act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, qty: 2 })
+  expect(b.purchases.map(x => [x.rating, x.qty])).toEqual([[2, 3], [3, 1]])
+  expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 5 })).toEqual(no('rating-range'))
+  expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'delta' })).toEqual(no('unknown-grade'))
+  expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha' })).toEqual(ok)
+  expect(act({ op: 'purchase', kind: 'weapons', id: 'crb.nope' })).toEqual(no('unknown-entry'))
+  expect(act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets', qty: 0 })).toEqual(no('below-one'))
+})
+
+test('a custom item is bought at the player’s cost', () => {
+  const { b, data, cr, act } = runner()
+  expect(act({ op: 'purchase', kind: 'gear', custom: { name: 'Lucky Coin', cost: 777, avail: 2, essence: 0 } })).toEqual(ok)
+  expect(b.purchases[0]).toMatchObject({ kind: 'gear', name: 'Lucky Coin', cost: 777, avail: 2, qty: 1 })
+  expect(b.purchases[0].id).toBeUndefined()
+  expect(priced(b.purchases[0], data, cr).cost).toBe(777)
+})
+
+test('worn armor and entered bonuses', () => {
+  const { b, act } = runner({ letters: 'CBBDE', magic: 'adept' })
+  act({ op: 'purchase', kind: 'armor', id: 'crb.padded-vest' })
+  expect(act({ op: 'wear', uid: b.purchases[0].uid, worn: true })).toEqual(ok)
+  expect(b.purchases[0].worn).toBe(true)
+  act({ op: 'wear', uid: b.purchases[0].uid, worn: false })
+  expect('worn' in b.purchases[0]).toBe(false)
+  act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })
+  expect(act({ op: 'bonus', uid: b.picks[0].uid, bonuses: [{ target: 'rea', value: 1 }] })).toEqual(ok)
+  expect(b.picks[0].bonuses).toEqual([{ target: 'rea', value: 1 }])
+  expect(act({ op: 'bonus', uid: 'nope', bonuses: [] })).toEqual(no('unknown-line'))
+})
+
+// contacts, knowledge, lifestyle
+test('contacts and knowledge are added, changed and removed by uid', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'contact', name: 'Fixer Flo', archetype: 'fixer', connection: 3, loyalty: 2 })).toEqual(ok)
+  expect(act({ op: 'contact', uid: b.contacts[0].uid, loyalty: 4 })).toEqual(ok)
+  expect(b.contacts[0]).toMatchObject({ name: 'Fixer Flo', connection: 3, loyalty: 4 })
+  expect(act({ op: 'contact', uid: b.contacts[0].uid, loyalty: 0 })).toEqual(no('below-one'))
+  expect(act({ op: 'contact', remove: b.contacts[0].uid })).toEqual(ok)
+  expect(b.contacts).toEqual([])
+  expect(act({ op: 'knowledge', name: 'Sewer Maps', kind: 'knowledge' })).toEqual(ok)
+  expect(act({ op: 'knowledge', name: 'Gutterspeak', kind: 'language', native: true })).toEqual(ok)
+  expect(b.knowledge.map(k => [k.name, k.points])).toEqual([['Sewer Maps', 1], ['Gutterspeak', 0]])
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[0].uid, pool: 'karma', delta: 2 })).toEqual(ok)
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 1 })).toEqual(no('native'))
+  expect(act({ op: 'knowledge', remove: b.knowledge[1].uid })).toEqual(ok)
+  expect(b.knowledge.map(k => [k.name, k.karma])).toEqual([['Sewer Maps', 2]])
+  expect(act({ op: 'lifestyle', id: 'crb.cozy', months: 2 })).toEqual(ok)
+  expect(b.lifestyle).toEqual({ id: 'crb.cozy', months: 2 })
+  expect(act({ op: 'lifestyle', id: 'crb.cozy', months: 0 })).toEqual(no('below-one'))
+  expect(act({ op: 'lifestyle', id: null })).toEqual(ok)
+  expect(b.lifestyle).toBeUndefined()
+})
+
+// life modules
+test('life modules: the same module twice is refused; a mixed choice is stored by its index', () => {
+  const { b, act } = runner({ method: 'lifepath', magic: 'full' })
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(ok)
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('already-taken'))
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'nuyen:3000' })).toEqual(ok)
+  expect(b.lifepath).toEqual([{ id: 'crb.glow-apprentice', choices: { 0: 'nuyen:3000' } }])
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'agi' })).toEqual(no('unknown-option'))
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 1, pick: 'edg' })).toEqual(no('unknown-choice'))
+  expect(act({ op: 'lifemodule', id: 'crb.hatchling-days' })).toEqual(no('not-available'))
+  expect(act({ op: 'lifemodule', remove: 'crb.glow-apprentice' })).toEqual(ok)
+  expect(b.lifepath).toEqual([])
+  // a mundane can't take a module that requires an awakened runner; outside lifepath nothing is taken
+  expect(runner({ method: 'lifepath' }).act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('not-available'))
+  expect(runner().act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(no('not-lifepath'))
+})
+
+test('no more adult modules than the setting asks for', () => {
+  const { act } = runner({ method: 'lifepath', over: { rules: { 'lifepath.moduleCount': 1 } } })
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(ok)
+  expect(act({ op: 'lifemodule', id: 'crb.dock-rat' })).toEqual(no('module-count'))
+})
+
+// SINs and licences
+test('a licence can’t out-rate its fake SIN; ratings up to 6 are accepted; the alias typed is kept', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'sin', name: 'Jo Blue', kind: 'fake', rating: 6 })).toEqual(ok)
+  const sin = b.sins[0]
+  expect(sin).toMatchObject({ name: 'Jo Blue', kind: 'fake', rating: 6, licences: [] })
+  expect(act({ op: 'licence', sin: sin.uid, name: 'Zap Gun licence', rating: 6 })).toEqual(ok)
+  expect(act({ op: 'sin', uid: sin.uid, rating: 3 })).toEqual(no('licence-above-sin'))
+  expect(act({ op: 'licence', sin: sin.uid, remove: 0 })).toEqual(ok)
+  expect(act({ op: 'sin', uid: sin.uid, rating: 3 })).toEqual(ok)
+  expect(act({ op: 'licence', sin: sin.uid, name: 'Driver', rating: 4 })).toEqual(no('licence-above-sin'))
+  expect(act({ op: 'licence', sin: sin.uid, name: 'Driver', rating: 3 })).toEqual(ok)
+  expect(act({ op: 'sin', name: 'Real Me', kind: 'real' })).toEqual(ok)
+  expect(b.sins[1].rating).toBeUndefined()
+  expect(act({ op: 'licence', sin: b.sins[1].uid, name: 'Hunting', rating: 5 })).toEqual(ok)
+  expect(act({ op: 'sin', name: 'Bad', kind: 'fake', rating: 0 })).toEqual(no('below-one'))
+  expect(act({ op: 'sin', remove: sin.uid })).toEqual(ok)
+  expect(b.sins.map(s => s.name)).toEqual(['Real Me'])
+})

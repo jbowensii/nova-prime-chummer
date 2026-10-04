@@ -2,7 +2,7 @@
 // read once into the shapes the providers, budgets and rules use. Names the book prints (a priority row's metatypes, a
 // metatype's traits) are resolved to ids here; what can't be resolved or read is a warning in `problems`, never a guess.
 import type { Violation } from '../../model/types'
-import type { MagicKind, Sr6Attr, Letter } from '../model/character'
+import type { MagicKind, PickKind, Sr6Attr, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { CreationCatalog } from './creation'
 import { rated } from './values'
@@ -15,6 +15,12 @@ export const MAGIC_KINDS: Record<MagicKind, { spells: boolean; powers: boolean; 
   adept: { spells: false, powers: true, paysPowers: false, resonance: false },
   technomancer: { spells: false, powers: false, paysPowers: false, resonance: true },
   mundane: { spells: false, powers: false, paysPowers: false, resonance: false },
+}
+
+/** Which picks a magic kind can have. */
+export function picksFor(kind: MagicKind): Record<PickKind, boolean> {
+  const k = MAGIC_KINDS[kind]
+  return { spells: k.spells, rituals: k.spells, complexforms: k.resonance, echoes: k.resonance, metamagics: k.spells || k.powers, adeptpowers: k.powers }
 }
 
 export type RangeAttr = Exclude<Sr6Attr, 'mag' | 'res'>
