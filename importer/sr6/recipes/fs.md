@@ -25,7 +25,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
 - Qualities (VIOLENT ENDS): level-3 headings with `Bonus: N Karma`; a `(Behavior, 1 to 6)` tag line reads as a heading
   of its own and is joined back. The quality paths' steps have no karma: rules.
 - NPCs (FIGHTING FORCES): a `(Professional Rating N)` tag and a stat band; the level-3 section is the group.
-- Martial arts, edge actions and boosts, maneuvers, statuses: no catalog kind, rule sections.
+- Martial arts (HONING YOUR EDGE): styles are level-4 headings with `Similar Styles:`, `Category:` and `Signature
+  Technique:` lines, techniques level-4 headings with a `**Category:**` after their last sentence (at times broken
+  over two lines): martialarts and martialtechniques (importer/sr6/recipes/shapes.py `martial`).
+- Edge actions and boosts, maneuvers, statuses: no catalog kind, rule sections.
 
 ## Errata
 

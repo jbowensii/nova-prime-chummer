@@ -5,4 +5,5 @@
   <source id="CRB" publisher="Catalyst Game Labs" canon="true" texts="texts/crb.xml"><name>Shadowrun, Sixth World Core Rulebook</name></source>
   <source id="SWC" publisher="Catalyst Game Labs" canon="true" texts="texts/swc.xml"><name>Shadowrun: Sixth World Companion</name></source>
   <source id="FS" publisher="Catalyst Game Labs" canon="true" texts="texts/fs.xml"><name>Shadowrun: Firing Squad</name></source>
+  <source id="DA" publisher="Catalyst Game Labs" canon="true" texts="texts/da.xml"><name>Shadowrun: Deadly Arts</name></source>
 </sr6:data>

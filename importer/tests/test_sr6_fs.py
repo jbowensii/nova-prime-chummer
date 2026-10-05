@@ -78,6 +78,19 @@ A made-up tape for a grip.
 # HONING YOUR EDGE
 ## Made-Up Martial Art
 Kick in a made-up way.
+### Traditional Martial Arts
+#### Glow Fist
+A made-up style of punching.
+Similar Styles: Made Boxing
+Category: Mobility, Striking
+Signature Technique: Glow Jab
+## Martial Art Techniques
+#### Glow Jab
+Jab in a made-up way. **Category:** Striking; may only be
+used with glowing **Catego-**
+#### Glow Kick
+Kick glowingly. **Catego-**
+**ry:** Striking
 <!-- page 120 -->
 # VIOLENT ENDS
 ## Game Information
@@ -157,6 +170,14 @@ class FsRecipeTest(unittest.TestCase):
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("patch with a pocket", texts[("armor", "pocket-patch")])
         self.assertIn("rifle that glows", texts[("weapons", "glow-rifle-mk-ii")])
+
+    def test_martial_arts(self):
+        s = entries(self.res, "martialarts")["Glow Fist"]
+        self.assertEqual((s["categories"], s["signature"]), ("Mobility, Striking", "Glow Jab"))
+        t = entries(self.res, "martialtechniques")
+        self.assertEqual((t["Glow Jab"]["category"], t["Glow Kick"]["category"]), ("Striking", "Striking"))
+        texts = {(x.get("of"), x.get("id")): x.text for x in ET.fromstring(self.res.texts)}
+        self.assertIn("Similar Styles:** Made Boxing", texts[("martialarts", "glow-fist")])
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

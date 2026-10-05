@@ -29,6 +29,8 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   complexforms: { fields: ['duration', 'fade'] },
   metamagics: { fields: [] },
   echoes: { fields: [] },
+  martialarts: { fields: ['categories', 'signature'] },
+  martialtechniques: { fields: ['category'] },
   critterpowers: { fields: ['type', 'action', 'range', 'duration'] },
   critters: { fields: BEING, lines: BEING_LINES },
   spirits: { fields: BEING, lines: BEING_LINES },

@@ -40,6 +40,7 @@
       <xs:enumeration value="gear"/><xs:enumeration value="vehicles"/><xs:enumeration value="spells"/>
       <xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/><xs:enumeration value="complexforms"/>
       <xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="critterpowers"/>
+      <xs:enumeration value="martialarts"/><xs:enumeration value="martialtechniques"/>
       <xs:enumeration value="critters"/><xs:enumeration value="spirits"/><xs:enumeration value="npcs"/>
       <xs:enumeration value="sprites"/><xs:enumeration value="lifestyles"/><xs:enumeration value="contacts"/>
       <xs:enumeration value="lifemodules"/><xs:enumeration value="rules"/>
@@ -284,6 +285,19 @@
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="duration" type="xs:string"/>
       <xs:attribute name="fade" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
+  <!-- a martial art style: categories (Weapon, Grappling, …) and its signature technique, as printed -->
+  <xs:complexType name="MartialArt">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="categories" type="xs:string"/>
+      <xs:attribute name="signature" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="MartialTechnique">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="category" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

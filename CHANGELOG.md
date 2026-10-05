@@ -40,6 +40,11 @@
   rule sections, martial arts included. What it couldn't read is listed in the import's report. The book's errata
   sheet isn't applied: it changes rules as well as numbers, so the book's printed values are kept.
 
+- **Deadly Arts can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons (one entry
+  each from the shared weapon boxes), weapon mods, vehicles and drones, armor and armor mods, implants, comm gear,
+  ammunition and other gear, spells, adept powers, metamagics, rituals, qualities, its martial art styles and
+  techniques (a new kind on Game data, which Firing Squad's import now fills too) and the rule sections.
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow

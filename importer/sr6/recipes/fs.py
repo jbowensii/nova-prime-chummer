@@ -1,8 +1,9 @@
 """Shadowrun: Firing Squad (FS), the core combat rulebook -> the SR6 catalog: weapons (and weapon modifications and
 accessories, as the core rulebook files them), ammunition (gear), armor (and armor modifications), tac-apps, the trauma
-qualities, the security and gang NPCs and the rule sections (martial arts, edge actions, maneuvers: no catalog kind of
-their own), ids unscoped (run scopes them as fs.<slug>), descriptions in the private texts. Reads only regrouped.md
-(importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout notes in fs.md.
+qualities, the security and gang NPCs, the martial art styles and techniques and the rule sections (edge actions,
+maneuvers: no catalog kind of their own), ids unscoped (run scopes them as fs.<slug>), descriptions in the private
+texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout notes in
+fs.md.
 
 The book prints an item as a heading, its description and a stat box titled with its name (TYPE, DV, ... AVAIL, COST):
 the box becomes the item's row here. A few headers set too close together print as one (`AMMOAVAIL`): they are split,
@@ -12,7 +13,7 @@ import sys
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
-from importer.sr6.recipes import crb
+from importer.sr6.recipes import crb, shapes
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "FS", "Shadowrun: Firing Squad", "Catalyst Game Labs", True
@@ -82,6 +83,8 @@ def fix(b, parent2):
 def kind(chapter, b, parent2):
     """(kind, category) of a block, else (None, None)."""
     p2, labels = norm(parent2), {k.lower() for k in b.labels}
+    if mk := shapes.martial_kind(b):
+        return mk
     if b.type == "section":
         if "violent ends" in chapter and b.level == 3 and ({"bonus", "cost"} & labels):
             return "qualities", "negative" if "bonus" in labels else "positive"
@@ -175,4 +178,4 @@ def _lists(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(_lists(_boxes(list(blocks(regrouped)))), ctx, book=sys.modules[__name__])
+    return crb.extract([shapes.martial(b) for b in _lists(_boxes(list(blocks(regrouped))))], ctx, book=sys.modules[__name__])

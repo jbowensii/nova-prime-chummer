@@ -148,6 +148,8 @@ HEADERS = {
     "contacts": {"CONNECTION": "connection", "LOYALTY": "loyalty", "ARCHETYPE": "archetype"},
     "qualities": {"COST": "karma", "BONUS": "karma"},
     "metamagics": {}, "echoes": {}, "skills": {},
+    "martialarts": {"CATEGORY": "categories", "SIGNATURE TECHNIQUE": "signature"},
+    "martialtechniques": {"CATEGORY": "category"},
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",

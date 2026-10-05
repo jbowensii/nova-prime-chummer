@@ -26,6 +26,8 @@ KINDS = {
     "complexforms": "complexform",
     "metamagics": "metamagic",
     "echoes": "echo",
+    "martialarts": "martialart",
+    "martialtechniques": "martialtechnique",
     "critterpowers": "critterpower",
     "critters": "critter",
     "spirits": "spirit",

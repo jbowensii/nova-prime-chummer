@@ -18,6 +18,8 @@
   <file href="crb/complexforms.xml"/>
   <file href="crb/metamagics.xml"/>
   <file href="crb/echoes.xml"/>
+  <file href="crb/martialarts.xml"/>
+  <file href="crb/martialtechniques.xml"/>
   <file href="crb/critterpowers.xml"/>
   <file href="crb/critters.xml"/>
   <file href="crb/spirits.xml"/>

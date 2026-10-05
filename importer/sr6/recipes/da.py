@@ -1,0 +1,103 @@
+"""Shadowrun: Deadly Arts (DA), the core advanced combat rulebook -> the SR6 catalog: weapons (with the weapon mods),
+vehicles and drones (and the vehicle mounted weapons), armor and armor modifications, augmentations, electronics, gear
+(ammunition, tac-apps, foci), the martial art styles and techniques, qualities, spells, adept powers, metamagics,
+rituals and the rule sections, ids unscoped (run scopes them as da.<slug>), descriptions in the private texts. Reads
+only regrouped.md with the core rulebook's reading (crb.extract); the book's own box shapes (several items a box, a box
+under its heading) through importer/sr6/recipes/shapes.py. Layout notes in da.md."""
+import re
+import sys
+from dataclasses import replace
+
+from importer.recipes.dhsa import slug
+from importer.sr6.recipes import crb, shapes
+from importer.sr6.regroup import blocks, norm
+
+ID, NAME, PUBLISHER, CANON = "DA", "Shadowrun: Deadly Arts", "Catalyst Game Labs", True
+BOOK = "Deadly Arts"
+SHA256 = ("61d06a3398d5c77c9ba4e035a1035971edbb57751fb64094fc861d25764c1948",)  # the owner's copy
+# chapter titles set at 48 to 60 pt, the fiction's at 27 (the guess takes only 56 for a level)
+HEADING_LEVELS = {60.0: 1, 56.0: 1, 52.0: 1, 48.0: 1, 40.0: 1, 27.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
+PAGE_OFFSET = 1  # printed page = PDF page - 1
+END_PAGE = 185  # PDF page: the back cover
+ALIASES = {}
+NAME_HEADERS = frozenset()
+
+SECTIONS = []  # kind() maps the blocks
+SECTION_KINDS = {"spells"}
+LABEL_SECTIONS = {}
+RULE_CHAPTERS = ("registered as a lethal weapon", "bleeders and bone breakers", "sending it downrange", "frag orders",
+                 "mil spec mayhem", "mystical force multipliers", "best of the rest")
+ATTRIBUTE_CHAPTERS = ()
+CATALOG_CHAPTERS = ()
+SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
+_PAREN = re.compile(r"\s*\(([^()]+)\)\s*$")
+_NEW = re.compile(r"^New (.+?):?$")
+_PREFIX = re.compile(r"^New ([^:]+):\s*(.+)$")
+
+
+def match(meta, md_head):
+    if meta.get("sha256") in SHA256:
+        return 1.0
+    hay = f"{meta.get('title') or ''}\n{md_head}"
+    return 0.9 if re.search(r"deadly\s+arts", hay, re.I) else 0.0
+
+
+def kind(chapter, b, parent2):
+    """(kind, category) of a block, else (None, None)."""
+    p2, sec, labels = norm(parent2), norm(b.section), {k.lower() for k in b.labels}
+    if b.row is not None:
+        head = {h.upper() for h in b.header}
+        if b.name.startswith(("*", "†")):
+            return "skip", None
+        k, lab = shapes.kind_of(head), norm(b.label)
+        if "MOD" in head and "MOUNT" in head or "weapon mod" in lab:
+            return "weapons", "weapon-mods"
+        if "armor accessories" in p2 or "armor mod" in lab:
+            return "armor", "armor-modifications"
+        return k, shapes.category(b, parent2) or k
+    if mk := shapes.martial_kind(b):
+        return mk
+    if b.type == "item" and b.level == 4 and {"cost", "bonus"} & labels and "qualities" in sec:
+        return "qualities", "negative" if "bonus" in labels else "positive"
+    if "adept powers" in p2 and b.type == "item" and "cost" in labels:
+        return "adeptpowers", None
+    if sec == "new metamagics" and b.type == "item":
+        return "metamagics", None
+    if "rituals" in sec and b.type == "item" and "threshold" in labels:
+        return "rituals", None
+    if b.stats and {"RANGE", "DURATION"} <= {h.upper() for s in b.stats for h in s}:
+        return "spells", None
+    return None, None
+
+
+def prepare(bs):
+    """The book's shapes as crb.extract reads them: stat boxes as rows (shapes.boxes), a spell section (`Aerial Flare
+    (Manipulation)` over its band) as a spell item of that category, a quality's `(Positive)` suffix dropped, a ritual's
+    `(Anchored, Spell)` its keywords, the martial arts' lines as labels, a `New Cyberware:` line naming the next box's
+    category."""
+    out, group = [], ""
+    for b in shapes.boxes(bs):
+        if b.type == "item" and not b.text.strip() and not b.stats and b.row is None and (m := _NEW.match(b.name)):
+            group = m.group(1)
+            continue
+        if b.row is not None and group:
+            b, group = replace(b, label=group), ""
+        if b.row is not None and (m := _PREFIX.match(b.name)):  # `New Vehicle Mod: Mobile Magic Lodge (CF)`
+            b = replace(b, name=m.group(2), label=m.group(1), row={**b.row, next(iter(b.row)): m.group(2)})
+        m = _PAREN.search(b.name)
+        cat = m and m.group(1).lower()
+        if b.type == "section" and b.level == 3 and cat in SPELL_CATEGORIES and "RANGE" in b.text:
+            b = crb._text_stats(replace(b, type="item", level=4, name=b.name[:m.start()], tags=m.group(1).title(),
+                                        section=m.group(1).title()), crb.HEADERS["spells"])
+        elif b.type == "item" and b.stats and cat in SPELL_CATEGORIES:
+            b = replace(b, name=b.name[:m.start()], tags=b.tags or m.group(1).title(), section=m.group(1).title())
+        elif m and cat in ("positive", "negative") and {"cost", "bonus"} & {k.lower() for k in b.labels}:
+            b = replace(b, name=b.name[:m.start()])
+        elif m and "Threshold" in b.labels:
+            b = replace(b, name=b.name[:m.start()], tags=m.group(1))
+        out.append(shapes.martial(b))
+    return out
+
+
+def extract(regrouped, ctx=None):
+    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])

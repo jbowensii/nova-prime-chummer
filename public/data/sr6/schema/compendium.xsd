@@ -27,6 +27,8 @@
         <xs:element name="complexform" type="sr6:ComplexForm"/>
         <xs:element name="metamagic" type="sr6:Entry"/>
         <xs:element name="echo" type="sr6:Entry"/>
+        <xs:element name="martialart" type="sr6:MartialArt"/>
+        <xs:element name="martialtechnique" type="sr6:MartialTechnique"/>
         <xs:element name="critterpower" type="sr6:CritterPower"/>
         <xs:element name="critter" type="sr6:Being"/>
         <xs:element name="spirit" type="sr6:Being"/>
