@@ -62,8 +62,10 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const tough = b.qualities.filter(q => q.id === str(cr, 'builtToughQuality')).reduce((t, q) => t + q.level, 0)
   const physical = monitor(A('bod'))
 
-  // CRB p. 67: Defense Rating = BOD + the defense of worn armor, and what a ware adds (dermal plating, CRB p. 286)
-  let defense = A('bod') + augmentBonus(b, 'defense')
+  // CRB p. 67: Defense Rating = BOD + the defense of worn armor, and what a ware adds (dermal plating, CRB p. 286);
+  // Dermal Deposits' level of natural armor (CRB p. 71)
+  const deposits = b.qualities.some(q => q.id === str(cr, 'dermalDepositsQuality')) ? 1 : 0
+  let defense = A('bod') + augmentBonus(b, 'defense') + deposits
   for (const x of b.purchases) if (x.kind === 'armor' && x.worn) { const e = entryOf(x, data); defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0 }
 
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty

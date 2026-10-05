@@ -76,6 +76,12 @@ test('the Built Tough quality (set to a made-up one) adds a Physical box per lev
   expect(derive(ch, { rules: { builtToughQuality: 'crb.lucky-streak' } }).d.monitors).toMatchObject({ physical: plain + 2, stun: 9 + 1 })
 })
 
+test('the Dermal Deposits quality (set to a made-up one) adds 1 to the Defense Rating; unset, nothing', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.knack', level: 1 })
+  expect(derive(ch, { rules: { dermalDepositsQuality: 'crb.knack' } }).d.defenseRating).toBe(derive(ch).d.defenseRating + 1)
+})
+
 test('a Defense Rating bonus (a made-up plating at rating 2) adds to the Defense Rating', () => {
   const ch = runner()
   buy(ch, 'augmentations', 'crb.glow-eyes', { rating: 2, bonuses: [{ target: 'defense', value: 1, perRating: true }] })

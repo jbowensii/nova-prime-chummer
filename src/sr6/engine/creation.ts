@@ -92,6 +92,7 @@ export const CREATION_KEYS: CreationKey[] = [
     ['astralInitiativeDice', 'Astral initiative dice'], ['specDice', 'Dice for a specialization'], ['expertiseDice', 'Dice for an expertise'],
     ['untrainedPenalty', 'Dice off the attribute for an untrained skill']]),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
+  { key: 'dermalDepositsQuality', label: 'Dermal Deposits quality: +1 Defense Rating (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
 ]
 function cap(s: string) { return s[0].toUpperCase() + s.slice(1) }
 
