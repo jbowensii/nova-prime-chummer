@@ -1,12 +1,15 @@
 """The core rulebook's archetypes (sample characters) -> SR6 runner files (sr6:character, docs/sr6-character-format.md),
-built from each printed stat block against the book's own catalog (the recipe's entries, ids scoped as run() scopes them).
+built from each printed stat block against the book's own catalog (the recipe's entries, ids scoped as run() scopes them)
+and, for another book's samples (Smooth Operations' faces), the core rulebook's catalog as already imported.
 
 What maps: the metatype, the attributes (natural values; priorities aren't assigned, so each rank sits in the attribute
 or skill points and the budgets read overspent until the GM or player sets them, R), the magic kind (spells, adept powers,
-complex forms), skills with their specialization (+2) or expertise (+3), knowledge skills and languages, qualities (a
-"(… trait)" one is a free metatype trait), spells, adept powers and complex forms, contacts (C/L), the lifestyle, gear,
-augmentations, vehicles and weapons found in the catalog by name, and fake SINs with their licences. Everything else
-(augmented values, the printed derived lines, Essence, starting nuyen, what the catalog doesn't have) goes in the notes
+complex forms), skills with their specialization (+2) or expertise (+3), knowledge skills and languages (Logic's points
+first, the rest bought with karma), qualities (a "(… trait)" one is a free metatype trait), spells, adept powers and
+complex forms, contacts (C/L), the lifestyle, gear, augmentations (with a printed grade), vehicles and weapons found in
+the catalog by name, and fake SINs with their licences. A standard boost carries the bonuses it gives (BOOSTS). The
+printed attributes, Essence, initiative, condition monitors and Defense Rating go in <printed> for Review to compare,
+never corrected. Everything else (the printed lines, starting nuyen, what the catalog doesn't have) goes in the notes
 and, when a listed thing isn't found, in the report (unmatched-item). No description text is copied."""
 import re
 from xml.sax.saxutils import escape, quoteattr
