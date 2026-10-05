@@ -15,6 +15,9 @@
             <xs:attribute name="id" type="sr6:SourceId" use="required"/>
             <xs:attribute name="publisher" type="xs:string" use="required"/>
             <xs:attribute name="canon" type="xs:boolean" use="required"/>
+            <!-- the month the book came out, and its Catalyst product number (CAT28000): the publication order -->
+            <xs:attribute name="published" type="xs:gYearMonth"/>
+            <xs:attribute name="cat" type="xs:string"/>
             <!-- the private description file, relative to custom/sr6/ -->
             <xs:attribute name="texts" type="xs:string"/>
             <!-- imported sources: uploaded file name(s) ("; "-separated), SHA-256(s) (space-separated), latest import -->

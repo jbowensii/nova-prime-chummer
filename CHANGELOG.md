@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
+
+- **A book NPC printed in several Shadowrun 6 books loads once, or numbered.** Load book NPCs on **NPCs & Critters**
+  now compares the same NPC, critter, spirit, sprite or contact across books (the same kind and name, whatever the
+  case or punctuation). If the stat blocks are the same, only the copy from the book that came out first loads. If
+  they differ, each version loads, named "Fuzzbeast #1", "#2" and so on in the order the books came out (a book that
+  repeats an earlier version shares its number). Pressing it again still adds nothing.
+- **Tidy book copies** sorts out the copies you already loaded. When your NPCs hold such copies, a note above the list
+  offers **Tidy book copies**: it lists what moves to the NPC trash (a copy the same as one that stays) and what gets
+  renamed with its number, and does it only when you confirm. Only copies unchanged since they were loaded count: NPCs
+  you made or changed are never touched, and anything moved can be restored from the NPC trash.
+- **Every Shadowrun 6 book now has a publication month** (and its Catalyst product number), which sets that order.
+  The core rulebook counts from its first printing (August 2019); each City Edition from its own release. Where a book
+  gives only its copyright year, the month is a best guess.
+
 ## 0.9.4 — 2026-10-05: one entry per book file, clearer import status, City Edition chapters
 
 - **Uploading a book again replaces its row instead of adding one** (Anarchy and Shadowrun 6 **Books**). If the file is

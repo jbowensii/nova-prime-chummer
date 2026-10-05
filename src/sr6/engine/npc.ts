@@ -2,7 +2,7 @@
 // block is a copy of the catalog entry's printed values and its rating (Professional Rating, Force or Level), read at
 // that rating with formula(); its skills line gives dice pools against the catalog's skills. No book numbers here.
 import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
-import type { Sr6Entry } from '../model/types'
+import type { Sr6Catalog, Sr6Entry } from '../model/types'
 import { normName, type Sr6Data } from './data'
 import { formula } from './values'
 
@@ -56,6 +56,41 @@ export function npcFromEntry(e: Sr6Entry, rating?: number, now?: string): Sr6Cha
 
 /** The key a book NPC is loaded under (Sr6Character.sampleKey). */
 export const bookNpcKey = (e: Sr6Entry) => `${e.source}|${e.id}`
+
+/** Sources in publication order (sources.xml published, then cat, then id), as a comparator of source ids; a source with
+ *  no date (a GM's compendium, an imported book the app doesn't ship) last. */
+export function byPublication(sources: Sr6Catalog['sources']): (a: string, b: string) => number {
+  const key = (id: string) => [sources.get(id)?.published ?? '9999-99', sources.get(id)?.cat ?? '~', id] // ~ after any CAT number
+  return (a, b) => {
+    const x = key(a), y = key(b), i = x.findIndex((v, n) => v !== y[n])
+    return i < 0 ? 0 : x[i] < y[i] ? -1 : 1
+  }
+}
+
+/** A book NPC's stat block: everything but its id, source, page, name and description. */
+const statBlock = (e: Sr6Entry) => {
+  const sorted = (o: Record<string, string>) => Object.entries(o).sort(([a], [b]) => a < b ? -1 : 1)
+  return JSON.stringify([sorted(e.attrs), e.parts.map(p => [p.tag, sorted(p.attrs), p.text.replace(/\s+/g, ' ').trim()])])
+}
+
+/** One version of a book NPC: the entries that print the same stat block, earliest first, and the name it loads under. */
+export interface BookNpcVersion { name: string; entries: Sr6Entry[] }
+/** The book NPCs as versions: per NPC kind and name (normName: case and punctuation don't count), each distinct stat block
+ *  once, with every entry that prints it, earliest published first. A name printed with one stat block keeps its name;
+ *  with several, each is "<Name> #1", "#2"… in the order its earliest printing came out. */
+export function bookNpcVersions(entries: Sr6Entry[], sources: Sr6Catalog['sources']): BookNpcVersion[] {
+  const order = byPublication(sources)
+  const first = (a: Sr6Entry, b: Sr6Entry) => order(a.source, b.source) || a.page - b.page || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  const groups = new Map<string, Map<string, Sr6Entry[]>>()
+  for (const e of [...entries].sort(first)) {
+    const g = `${npcKindOf(e)}|${normName(e.name)}`, v = statBlock(e), vs = groups.get(g) ?? new Map<string, Sr6Entry[]>()
+    groups.set(g, vs.set(v, [...vs.get(v) ?? [], e]))
+  }
+  return [...groups.values()].flatMap(vs => {
+    const all = [...vs.values()]
+    return all.map((es, i) => ({ name: all.length > 1 ? `${all[0][0].name} #${i + 1}` : es[0].name, entries: es }))
+  })
+}
 
 /** The Force or Level Load book NPCs gives a spirit or sprite whose entry prints none (R: a default; the GM changes it on
  *  the Stat block tab). */

@@ -1,7 +1,9 @@
 // Shadowrun 6 NPCs & Critters (#/sr6/npcs): the GMs' own area (admin and editors), as Anarchy's NpcsScreen. An SR6 NPC
 // is an SR6 runner file with an <npc> block (server: /api/sr6/npcs, which refuses players and runner files). New NPC copies
 // a catalog grunt, contact, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the
-// catalog's npcs, critters, spirits and sprites not loaded yet; Import file takes SR6 NPC files only; a GM shares one with
+// catalog's npcs, critters, spirits and sprites not loaded yet (one printed in several books: once if the stat blocks
+// match, else each version as "<Name> #1", "#2"… in publication order); Tidy book copies (R: a banner with a confirm, as
+// Anarchy's Tidy up) does the same to the copies already loaded; Import file takes SR6 NPC files only; a GM shares one with
 // an SR6 campaign they run; Move to
 // compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn).
 // Export for Foundry: the header's dialog and each row's button (Foundry.tsx). Left out (R): the duplicates finder.
@@ -16,10 +18,11 @@ import { PageHeader } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
 import type { Stored as StoredComp } from '../../ui/compendiumStore'
 import type { Stored, Unreadable } from '../../ui/repo'
+import { unedited } from '../../ui/samples'
 import { loadTrash } from '../../ui/Trash'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
-import { blankSr6Npc, bookNpc, bookNpcKey, NPC_KINDS, npcFromEntry, npcKindOf } from '../engine/npc'
+import { blankSr6Npc, bookNpc, bookNpcKey, bookNpcVersions, NPC_KINDS, npcFromEntry, npcKindOf, type BookNpcVersion } from '../engine/npc'
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry } from '../model/types'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows } from './compendiumStore'
@@ -30,12 +33,38 @@ import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
 const SORT_KEY = 'ca2.sr6.npcs.sort'
 const nameOf = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
 
-/** The book NPCs Load book NPCs adds: those whose book key isn't the sampleKey of one of `mine` (a renamed copy counts).
- *  A compendium's (a source of origin user) never: those are moved, not copied. */
-export function bookNpcsToLoad(entries: Sr6Entry[], mine: Sr6Character[], sources: Sr6Catalog['sources']): Sr6Entry[] {
+/** The book NPCs' versions (bookNpcVersions); a compendium's (a source of origin user) never: those are moved, not copied. */
+const versionsOf = (entries: Sr6Entry[], sources: Sr6Catalog['sources']) =>
+  bookNpcVersions(entries.filter(e => sources.get(e.source)?.origin !== 'user'), sources)
+
+/** The book NPCs Load book NPCs adds, each with the name it loads under: per version, its earliest printing, unless the
+ *  book key of one of its printings is the sampleKey of one of `mine` (a renamed copy counts). */
+export function bookNpcsToLoad(entries: Sr6Entry[], mine: Sr6Character[], sources: Sr6Catalog['sources']): { e: Sr6Entry; name: string }[] {
   const have = new Set(mine.map(ch => ch.sampleKey))
-  return entries.filter(e => sources.get(e.source)?.origin !== 'user' && !have.has(bookNpcKey(e)))
+  return versionsOf(entries, sources).filter(v => !v.entries.some(e => have.has(bookNpcKey(e)))).map(v => ({ e: v.entries[0], name: v.name }))
 }
+
+/** Tidy book copies: among `mine`'s untouched book copies (a book key the catalog has, unedited since loaded: saved once),
+ *  one per version stays, the copy of its earliest printing (then the oldest); the others go to the NPC trash. The one
+ *  that stays is renamed when its name isn't its version's ("Fuzzbeast #2"). NPCs the GM made or changed never count. */
+export function tidyBookCopies(mine: Stored<Sr6Character>[], entries: Sr6Entry[], sources: Sr6Catalog['sources']) {
+  const at = new Map(versionsOf(entries, sources).flatMap(v => v.entries.map((e, i) => [bookNpcKey(e), { v, i }] as const)))
+  const copies = new Map<BookNpcVersion, { s: Stored<Sr6Character>; i: number }[]>()
+  for (const s of mine) {
+    const a = s.ch.sampleKey ? at.get(s.ch.sampleKey) : undefined
+    if (a && unedited(s.ch, s.rev)) copies.set(a.v, [...copies.get(a.v) ?? [], { s, i: a.i }])
+  }
+  const trash: Stored<Sr6Character>[] = [], rename: { s: Stored<Sr6Character>; name: string }[] = []
+  for (const [v, cs] of copies) {
+    const [keep, ...extra] = cs.sort((a, b) => a.i - b.i || a.s.ch.updatedAt.localeCompare(b.s.ch.updatedAt))
+    trash.push(...extra.map(x => x.s))
+    if (nameOf(keep.s.ch) !== v.name) rename.push({ s: keep.s, name: v.name })
+  }
+  return { trash, rename }
+}
+
+/** Where a book copy came from: "WL p.112". */
+const fromOf = (ch: Sr6Character) => ch.npc?.from ? `${ch.npc.from.source} p.${ch.npc.from.page}` : ch.sampleKey?.split('|')[0] ?? ''
 
 /** A copy of a book sample contact that 0.9.0 loaded as a grunt of group Contact. */
 export const oldContact = (ch: Sr6Character) => !!ch.sampleKey && ch.npc?.kind === 'grunt' && ch.npc.group === 'Contact' && ch.npc.rating == null
@@ -75,6 +104,7 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
   const [moving, setMoving] = useState<Sr6Character | null>(null)
   const [into, setInto] = useState('')
   const [foundry, setFoundry] = useState(false)
+  const [tidying, setTidying] = useState(false)
   const file = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
@@ -94,6 +124,8 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
   const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
   const entriesOf = (k: Sr6NpcKind) => [...c.entries[NPC_KINDS[k].kind].values()].filter(e => npcKindOf(e) === k).sort((a, b) => a.name.localeCompare(b.name))
   const rated = !!NPC_KINDS[kind].rating?.letter
+  const all = useMemo(() => (['npcs', 'critters', 'spirits', 'sprites'] as const).flatMap(k => [...c.entries[k].values()]), [c])
+  const plan = useMemo(() => tidyBookCopies(mine, all, c.sources), [list, all]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** saved: null; else why not */
   const saveError = async (ch: Sr6Character, rev?: number) => {
@@ -125,10 +157,9 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
   }
 
   // the catalog's grunts, sample contacts, critters, spirits and sprites (bookNpc: a spirit or sprite at a default rating),
-  // each under its book key so a renamed copy still counts as loaded; 0.9.0's copies of the sample contacts (grunts of
-  // group Contact) become contacts
+  // each under its book key so a renamed copy still counts as loaded, once per version (bookNpcsToLoad); 0.9.0's copies
+  // of the sample contacts (grunts of group Contact) become contacts
   const loadBook = async () => {
-    const all = (['npcs', 'critters', 'spirits', 'sprites'] as const).flatMap(k => [...c.entries[k].values()])
     if (!all.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
     let n = 0, fixed = 0
     const bad: string[] = []
@@ -137,12 +168,29 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
       const err = await saveError({ ...s.ch, npc: { ...npc, kind: 'contact' } }, s.rev)
       if (err) bad.push(`${nameOf(s.ch)}: ${err}`); else fixed++
     }
-    for (const e of bookNpcsToLoad(all, mine.map(s => s.ch), c.sources)) {
-      const err = await saveError(bookNpc(e))
-      if (err) bad.push(`${e.name}: ${err}`); else n++
+    for (const { e, name } of bookNpcsToLoad(all, mine.map(s => s.ch), c.sources)) {
+      const ch = bookNpc(e)
+      ch.identity.streetName = name
+      const err = await saveError(ch)
+      if (err) bad.push(`${name}: ${err}`); else n++
     }
     setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length || fixed ? '' : 'The book NPCs are already in your NPCs.',
       fixed ? `${fixed} sample contact${fixed === 1 ? ' is a contact' : 's are contacts'} now.` : '', ...bad].filter(Boolean).join(' '))
+    void refresh()
+  }
+
+  // what the confirm listed: the extra copies to the NPC trash, then the renames; a failure is reported, the rest go on
+  const tidy = async () => {
+    setTidying(false)
+    const moved: string[] = [], renamed: string[] = [], bad: string[] = []
+    for (const { ch } of plan.trash) {
+      try { await repo.remove(ch.id); moved.push(nameOf(ch)) } catch (e) { bad.push(because(`Couldn’t move ${nameOf(ch)}`, (e as Error).message ?? String(e))) }
+    }
+    for (const { s, name } of plan.rename) {
+      const err = await saveError({ ...s.ch, identity: { ...s.ch.identity, streetName: name } }, s.rev)
+      if (err) bad.push(`${nameOf(s.ch)}: ${err}`); else renamed.push(name)
+    }
+    setMsg([moved.length ? `Moved to the NPC trash: ${moved.join(', ')}.` : '', renamed.length ? `Renamed: ${renamed.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
   }
 
@@ -211,6 +259,10 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
       </PageHeader>
       <p className="muted">Your NPCs, critters, spirits and sprites, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.</p>
       {msg && <p className="banner" role="status">{msg}</p>}
+      {plan.trash.length + plan.rename.length > 0 && <p className="banner">
+        Some book NPCs are printed in more than one book: {[plan.trash.length > 0 && `${plan.trash.length} ${plan.trash.length === 1 ? 'copy is' : 'copies are'} the same as another`,
+          plan.rename.length > 0 && `${plan.rename.length} to number`].filter(Boolean).join(', ')}.{' '}
+        <button className="btn small" onClick={() => setTidying(true)}>Tidy book copies</button></p>}
       {list !== null && list.length > 0 && <div className="row listtools">
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search NPCs" />
         <label className="inline">Sort
@@ -271,6 +323,17 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
             try { await repo.remove(toDelete!.id) } catch (e) { setMsg(because('Couldn’t delete the NPC', (e as Error).message ?? String(e))) }
             setToDelete(null); void refresh() }}>Delete NPC</button></>}>
         <p>It moves to your Shadowrun 6 NPC trash, where you can restore it or delete it for good.</p>
+      </Modal>
+
+      <Modal open={tidying} onClose={() => setTidying(false)} title="Tidy book copies"
+        actions={<><button className="btn" onClick={() => setTidying(false)}>Keep them</button>
+          <button className="btn primary" onClick={() => void tidy()}>Tidy up</button></>}>
+        <p>A book NPC printed the same in several books stays once, from the earliest book; printed differently, each version is numbered in the order the books came out.</p>
+        {plan.trash.length > 0 && <><p>To the NPC trash (the same as a copy that stays):</p>
+          <ul aria-label="To the NPC trash">{plan.trash.map(({ ch }) => <li key={ch.id}>{nameOf(ch)} ({fromOf(ch)})</li>)}</ul></>}
+        {plan.rename.length > 0 && <><p>Renamed:</p>
+          <ul aria-label="Renamed">{plan.rename.map(({ s, name }) => <li key={s.ch.id}>{nameOf(s.ch)} ({fromOf(s.ch)}) → {name}</li>)}</ul></>}
+        <p className="muted">Only copies unchanged since they were loaded: NPCs you made or changed stay as they are. The NPC trash can restore them.</p>
       </Modal>
 
       <ExportRunnersDialog runners={(list ?? []).map(s => s.ch)} campaigns={campaigns} open={foundry} onClose={() => setFoundry(false)} noun="NPC"

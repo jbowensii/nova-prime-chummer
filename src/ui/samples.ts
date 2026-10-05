@@ -80,7 +80,7 @@ export function chooseExamples(rows: Example[], sources: Sources): (Example & { 
  *  loaded at the earliest date among copies of the same character from the same source: `loaded`). On the server: saved
  *  once (rev 1; any save after the load is an edit) and not dated after that load (a file changed outside the app). In
  *  browser storage (no rev): still dated exactly as loaded. */
-export const unedited = (ch: Character, rev?: number, loaded = ch.updatedAt) =>
+export const unedited = (ch: Pick<Character, 'updatedAt' | 'lastExportedAt'>, rev?: number, loaded = ch.updatedAt) =>
   rev != null ? rev <= 1 && ch.updatedAt <= (ch.lastExportedAt ?? loaded) : ch.updatedAt === (ch.lastExportedAt ?? loaded)
 
 /** Where a copy came from: its book (origin, or a 0.4.1 sampleKey's source), else none (an example set). */

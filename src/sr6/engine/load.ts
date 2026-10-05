@@ -38,7 +38,7 @@ export function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
 function toSource(el: Element, origin: Sr6Source['origin']): Sr6Source {
   const a = (n: string) => el.getAttribute(n) ?? undefined
   return { id: a('id') ?? '', name: el.getElementsByTagName('name')[0]?.textContent ?? '', publisher: a('publisher') ?? '',
-    canon: a('canon') === 'true', texts: a('texts'), file: a('file'), sha256: a('sha256'), imported: a('imported'), origin }
+    canon: a('canon') === 'true', published: a('published'), cat: a('cat'), texts: a('texts'), file: a('file'), sha256: a('sha256'), imported: a('imported'), origin }
 }
 
 /** As src/engine/load.ts mergeSource: an imported book the app also ships stays the shipped description, plus the
