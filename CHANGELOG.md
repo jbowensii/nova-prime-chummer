@@ -1,10 +1,14 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.3 — 2026-10-05: Shadowrun 6 import fixes
 
+- **Six Shadowrun 6 books failed to import in 0.9.2** (Street Wyrd, Deadly Arts, Hack & Slash, Lofwyr's Legions,
+  Ingentis Athletes and Johnson 'Dex) with an AttributeError; they import again. Press **Re-import** on each.
+  Every SR6 PDF was run through the importer before this release: 56 books import, the rest are skipped.
 - **Files with nothing to import no longer show as failed** on Shadowrun 6 **Books**. The Gun Rack and Rides card
   decks (reprints of the books' entries), the Seattle Metroplex map, Adversary (fiction), the Gamemaster's Screen
-  (images only), the errata PDFs (applied with their book) and the fillable character sheet are recognised and marked
+  (images only), the errata PDFs (applied with their book) the fillable character sheet and the Beginner Box handouts (quick-start rules,
+  dossiers, cards, map; its Battle Royale adventure still imports) are recognised and marked
   **Skipped** with the reason, in grey, and can still be removed. A PDF the app doesn't know still fails as before.
 - **Only the latest printing of the core rulebook is used.** If you import more than one printing (Current Printing
   2019, Berlin, Seattle 2021, Hong Kong 2025), the newest is the one loaded; the others stay in the list marked
