@@ -5,11 +5,13 @@ from importer.recipes import Result  # noqa: F401  (the SR6 recipes return Anarc
 from importer.sr6.recipes import crb, fs, swc
 from importer.sr6.recipes import bs
 from importer.sr6.recipes import dc
+from importer.sr6.recipes import kk
 
 THRESHOLD = 0.6
 RECIPES = [crb, swc, fs]
 RECIPES += [bs]
 RECIPES += [dc]
+RECIPES += [kk]
 
 
 def identify(meta, md_head):
