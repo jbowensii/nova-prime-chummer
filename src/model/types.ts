@@ -47,8 +47,8 @@ export interface Lifestyle extends Ref { name: string; perRun: number; text: str
  * Imported sources also carry the uploaded file name(s) ("; "-separated), SHA-256(s) (space-separated) and import date. */
 export interface Source { id: string; name: string; publisher: string; canon: boolean; texts?: string;
   file?: string; sha256?: string; imported?: string; origin: 'shipped' | 'imported' | 'user'
-  /** a GM's compendium (catalog only): its id and owner, where its entries are edited */
-  compendium?: { id: string; owner: string } }
+  /** a GM's compendium (catalog only): its id and owner, where its entries are edited; campaign: the one it is shared with */
+  compendium?: { id: string; owner: string; campaign?: string } }
 /** rules reference entry (quick-reference sheets); effects = amp effects it explains */
 export interface Rule extends Ref { sheet: string; section: string; title: string; effects: string[]; text: string; edited?: boolean }
 export interface LoadError { file: string; line?: number; message: string }
@@ -71,10 +71,12 @@ export interface Catalog {
 export interface EffectPick { ref: string; param?: string; value?: number; note?: string }
 /** specs: spec ids ("stealth.physical-sneaking") or "custom:Name" */
 export interface SkillEntry { id: string; rating: number; specs: string[] }
-/** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free, like every SINner: house rule) */
+/** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free, like every SINner: house rule).
+ *  chassis: a copy of the vehicle chassis when it is a compendium's (engine/compendium.ts keepHouse), so the vehicle keeps
+ *  its stats when the compendium is unshared or deleted */
 export interface AmpEntry { uid: string; catalogId?: string; type: string; name: string;
   narrative: string; effects: EffectPick[]; linkedItem?: string; vehicle?: string;
-  snapshot?: AmpTemplate; realSin?: true }
+  snapshot?: AmpTemplate; chassis?: VehicleBase; realSin?: true }
 /** Free gear no one buys: every runner's commlink and fake SIN (CRB p.85), and the real SIN of a runner that has one. */
 export type StartingGear = 'commlink' | 'fake-sin' | 'real-sin'
 /** dv/ranges: set when the item came with a book amp (already includes that amp's upgrades).

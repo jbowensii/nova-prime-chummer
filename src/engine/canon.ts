@@ -4,6 +4,9 @@ import type { Build, Catalog, Ref } from '../model/types'
 
 export const isCanonSource = (c: Catalog, source: string | undefined): boolean => !!source && !!c.sources.get(source)?.canon
 
+/** Whether `source` is a compendium's, or one the catalog no longer has (a compendium unshared or deleted). */
+export const houseSource = (c: Catalog, source: string | undefined) => !!source && (!c.sources.has(source) || !!c.sources.get(source)!.compendium)
+
 export const isCanon = (c: Catalog, ref: Pick<Ref, 'source'>): boolean => isCanonSource(c, ref.source)
 
 /** source of a spec id: its own citation, else its skill's; custom specs have none */
@@ -19,7 +22,7 @@ export interface NonCanonUse { path: string; name: string; source: string }
 export function nonCanonUses(c: Catalog, b: Build): NonCanonUse[] {
   const out: NonCanonUse[] = []
   b.amps.forEach((a, i) => {
-    const t = a.catalogId ? c.amps.get(a.catalogId) : undefined
+    const t = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
     if (t && !isCanon(c, t)) out.push({ path: `build.amps.${i}`, name: a.name, source: t.source })
     for (const e of a.effects) {
       const src = e.ref === 'rr-spec' && e.param && !e.param.startsWith('custom:') ? specSource(c, e.param) : undefined
@@ -27,7 +30,7 @@ export function nonCanonUses(c: Catalog, b: Build): NonCanonUse[] {
     }
   })
   b.items.forEach((it, i) => {
-    const t = it.catalogId ? c.items.get(it.catalogId) : undefined
+    const t = it.catalogId ? c.items.get(it.catalogId) ?? it.snapshot : undefined
     if (t && !isCanon(c, t)) out.push({ path: `build.items.${i}`, name: it.name, source: t.source })
   })
   b.skills.forEach((s, i) => {

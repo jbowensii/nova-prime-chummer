@@ -99,6 +99,14 @@ A made-up kit in levels.
 | AVAILABILITY | COST |
 |---|---|
 | 2 | 500¥ |
+## Autosofts and E-Softs
+#### Skills Available in Autosoft Format
+These made-up skills come as autosofts, at any rating from one to six.
+• **Language** (Beginner: rating one, Expert: rating
+five)
+• **Fizzing**
+• **Glowing** (Made-up
+Glow)
 #### Drone racks table
 | DRONE RACK SIZE | HARDPOINT | # DRONES | AVAIL | COST |
 |---|---|---|---|---|
@@ -173,6 +181,13 @@ class DcRecipeTest(unittest.TestCase):
                           "cost": "Rating x 900"})
         self.assertEqual(g["Fizz Kit (Level 1)"]["cost"], "500")
         self.assertEqual((g["Drone Rack (Tiny)"]["category"], g["Drone Rack (Tiny)"]["cost"]), ("drone-racks", "700"))
+
+    def test_autosofts(self):
+        """Each skill sold as an autosoft is a program of type autosoft at the ratings the prose gives (unpriced); one
+        whose own line sets its rating stays in the rules."""
+        p = entries(self.res, "programs")
+        self.assertEqual({n: (e.get("type"), e.get("rating"), e.get("cost")) for n, e in p.items()},
+                         {"Fizzing": ("autosoft", "1–6", None), "Glowing (Made-up Glow)": ("autosoft", "1–6", None)})
 
     def test_qualities(self):
         q = entries(self.res, "qualities")

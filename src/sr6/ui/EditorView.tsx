@@ -5,7 +5,9 @@
 // the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
 // opens from the NPC store with tabs Concept, Stat block and Print, and its kind chip where a runner's state badge is.
 import { useEffect, useMemo, useState } from 'react'
+import { canEdit, useMe } from '../../ui/auth'
 import { Brand, StateBadge } from '../../ui/bits'
+import { approveRunner } from '../../ui/Campaigns'
 import { IconButton } from '../../ui/icons'
 import { HeaderBars } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
@@ -13,8 +15,9 @@ import { ConflictDialog, SaveLine, useAutosave } from '../../ui/useAutosave'
 import { allBudgets } from '../engine/budgets'
 import { currentBuild, preview, record, validateCareer } from '../engine/career'
 import type { CreationRules } from '../engine/creation'
-import type { Sr6Data } from '../engine/data'
+import { sr6Data, type Sr6Data } from '../engine/data'
 import { deriveSr6 } from '../engine/derive'
+import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../engine/house'
 import { makeProvider } from '../engine/providers'
 import { validateSr6 } from '../engine/rules'
 import { MAGIC_KINDS } from '../engine/data'
@@ -22,7 +25,7 @@ import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
 import { useCampaignRules } from './Creation'
-import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, type Sr6Ctx } from './editor'
+import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
 import { downloadSr6Runners } from './Foundry'
 import { exportSr6, sr6NpcRepo, sr6Repo } from './repo'
@@ -53,14 +56,21 @@ const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
 export const NPC_TABS: [string, string][] = [['concept', 'Concept'], ['stats', 'Stat block'], ['print', 'Print']]
 
 /** `cr`: the server's creation rules; a runner in a campaign with its own settings uses those instead. */
-export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
+export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
   const repo = useMemo(() => npc ? sr6NpcRepo() : sr6Repo(), [npc])
   const href = npc ? sr6NpcHref : sr6EditHref, noun = npc ? 'NPC' : 'runner'
-  const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: () => npc ? '#/sr6/npcs' : '#/sr6',
+  const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: doc => npc ? sr6NpcsHref(doc?.npc) : '#/sr6',
     inEditor: h => h.startsWith(href(id, '')) })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)
+  const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   const campRules = useCampaignRules(npc ? undefined : ch?.campaign), cr = campRules ?? serverRules
+  const me = useMe()
+  // a player's catalog holds the compendiums shared with every SR6 campaign they play in: this runner sees its own
+  // campaign's (c, the pickers' catalog); its copies of compendium entries no longer there stand in for them (data)
+  const c = useMemo(() => canEdit(me) ? all : forSr6Campaign(all, ch?.campaign), [all, me, ch?.campaign])
+  const kept = useMemo(() => withSr6House(c, ch?.house), [c, ch?.house])
+  const data = useMemo(() => kept.c === all ? allData : sr6Data(kept.c), [kept.c, all, allData])
   useEffect(() => { if (!refusal) return; const t = setTimeout(() => setRefusal(null), 6000); return () => clearTimeout(t) }, [refusal])
   const calc = useMemo(() => {
     if (!ch) return undefined
@@ -68,10 +78,10 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
     const view = ch.finalizedAt ? { ...ch, build: currentBuild(ch) } : ch
     const p = makeProvider(view.build.method, data, cr)
     return { view, p, budgets: allBudgets(view.build, data, cr, p), d: deriveSr6(data, cr, view),
-      v: ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, ch) }
-  }, [ch, data, cr])
+      v: [...ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, ch), ...houseNotes(c, kept.gone)] }
+  }, [ch, data, cr, c, kept.gone])
 
-  const back = npc ? <a href="#/sr6/npcs">Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
+  const back = npc ? <a href={sr6NpcsHref(ch?.npc)}>Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
   if (!loaded || campRules === undefined) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
     <p>{back}{npc ? '.' : ', where you can download its file or try to repair it.'}</p></main>
@@ -82,7 +92,8 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
   const tabs = npc ? NPC_TABS : sr6Tabs(view.build.magic, career && !ch.npc)
   const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
   const locked = career && !OPEN_IN_CAREER.has(shown), ro = theirs || locked
-  const commit = (next: Sr6Character, undoable = true) => { setRefusal(null); save.commit(next, undoable) }
+  // a compendium entry it uses is copied onto it (src/sr6/engine/house.ts): it keeps it if the compendium goes
+  const commit = (next: Sr6Character, undoable = true) => { setRefusal(null); save.commit(keepSr6House(c, next), undoable) }
   // ledger entries aren't on the undo stack (R): Void is their undo
   const toLedger = (r: { ok: true; ch: Sr6Character } | { ok: false; reason: string }) => {
     if (!r.ok) { const why = reasonText(r.reason); setRefusal(why); return why }
@@ -94,6 +105,10 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
     edit: fn => { if (!ro) { const n = structuredClone(ch); fn(n.build); commit(n) } },
     update: fn => { if (!ro) { const n = structuredClone(ch); fn(n); commit(n) } },
     replace: next => { if (!ro) commit(next) },
+    // their own runner directly; a player's in a campaign they run (or the admin) on the server
+    approve: !gm ? null : !theirs ? overrides => { commit({ ...structuredClone(ch), overrides }); return Promise.resolve(null) }
+      : ch.campaign && !npc ? overrides => approveRunner('sr6', ch.campaign!, ch.id, overrides)
+        .then(() => { setDoc({ ...ch, overrides }); return null }, e => (e as Error).message) : null,
     act: op => {
       if (ro) return 'This runner is read only here.'
       const r = runAct(ch, op, data, cr)
@@ -141,7 +156,7 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
       {refusal && <p className="banner err" role="alert">{refusal}</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{tabs.find(([k]) => k === shown)?.[1]}</div>
-        <main className="work"><fieldset className="bare" disabled={ro}>
+        <main className="work"><fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}>
           {shown === 'concept' && <ConceptTab />}
           {shown === 'method' && <MethodTab />}
           {shown === 'attributes' && <AttributesTab />}

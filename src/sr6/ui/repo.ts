@@ -3,6 +3,7 @@
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
 import { newId } from '../../model/types'
 import { serverRepo } from '../../ui/repo'
+import { keepSr6House } from '../engine/house'
 import { entryKey } from '../engine/load'
 import { sr6Codec, sr6ToXml, xmlToSr6 } from '../engine/charxml'
 import type { Sr6Character, Sr6LedgerEntry, Sr6Purchase } from '../model/character'
@@ -13,8 +14,9 @@ export const sr6Repo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/char
 export const sr6NpcRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/npcs', sr6Codec)
 
 /** A copy of the runner whose catalog lines (and their accessories, and the ledger's purchase lines) carry the entry as it
- *  is now (or the snapshot they had). */
-export function snapshotSr6(c: Sr6Catalog, ch: Sr6Character): Sr6Character {
+ *  is now (or the snapshot they had), with its compendium entries' copies up to date. */
+export function snapshotSr6(c: Sr6Catalog, runner: Sr6Character): Sr6Character {
+  const ch = keepSr6House(c, runner)
   const snap = (x: Sr6Purchase): Sr6Purchase => {
     const live = x.id ? c.entries[x.kind]?.get(x.id) ?? c.original.get(entryKey(x.kind, x.id)) : undefined
     return { ...x, accessories: x.accessories.map(snap), ...(live ? { snapshot: live } : {}) }

@@ -18,6 +18,9 @@
 //   POST   /api/campaigns/:id/runners           the owner, a GM or member of it: { id } -> campaign; 409 while the runner is in
 //                                               another one (one campaign per runner: copy it) or this one is archived
 //   DELETE /api/campaigns/:id/runners/:runner   its owner, or a GM/admin of the campaign -> campaign
+//   PUT    /api/campaigns/:id/runners/:runner/overrides   a GM/admin of the campaign: { overrides: [{ code, path, note }] }
+//                                               -> { rev }: the runner's GM approvals replaced (its rev goes up, so an open
+//                                               editor of its owner sees the change)
 //   POST   /api/campaigns/:id/npcs              a GM of it: { id } (one of their own NPCs) -> campaign; 409 while it is shared
 //                                               with another campaign (unshare it there first) or this one is archived
 //   DELETE /api/campaigns/:id/npcs/:npc         a GM/admin of the campaign -> campaign
@@ -47,6 +50,26 @@ const charTag = (xml, tag = 'ca2:character') => rootTag(xml, tag)
 
 /** A runner's campaign id (null: none, or not one this server could have written). */
 export const campaignOf = (xml, tag = 'ca2:character') => { const v = attr(charTag(xml, tag), 'campaign'); return v && CAMPAIGN_ID.test(v) ? v : null }
+const MAX_OVERRIDES = 200, MAX_OVERRIDE_TEXT = 2000
+/** A runner's GM approvals as sent: [{ code, path, note }], each a short line and a note. */
+function overridesOf(b) {
+  const list = b?.overrides
+  if (!Array.isArray(list) || list.length > MAX_OVERRIDES) throw fail(400, `overrides is a list of ${MAX_OVERRIDES} at most`)
+  return list.map(o => {
+    const code = oneLine(o?.code), path = oneLine(o?.path), note = text(o?.note)
+    if (!code || code.length > 200 || path.length > 200 || note.length > MAX_OVERRIDE_TEXT) throw fail(400, 'an override is { code, path, note }')
+    return { code, path, note }
+  })
+}
+/** The runner's XML with its <override> elements replaced (they come last in the file, both games) and rev="<rev>". */
+export function setOverrides(xml, list, rev, tag = 'ca2:character') {
+  const close = `</${tag}>`, i = xml.lastIndexOf(close)
+  const bare = xml.slice(0, i).replace(/\s*<override\b[^>]*?(?:\/>|>[\s\S]*?<\/override>)/g, '').replace(/\s*$/, '')
+  const kids = list.map(o => `\n  <override code="${esc(o.code)}" path="${esc(o.path)}">${esc(o.note)}</override>`).join('')
+  return `${bare}${kids}\n${xml.slice(i)}`.replace(new RegExp(`<${tag}\\b[^>]*>`), t =>
+    /\srev="[^"]*"/.test(t) ? t.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : t.replace(/\sid="/, ` rev="${rev}" id="`))
+}
+
 /** The runner's XML with campaign="<id>" on its root, or none (id null). */
 export const setCampaign = (xml, id, tag = 'ca2:character') => xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
   const bare = t.replace(/\scampaign="[^"]*"/g, '')
@@ -143,12 +166,12 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
   async function handle(req, res, url, send, who) {
     const p = url.pathname
     if (p !== '/api/campaigns' && !p.startsWith('/api/campaigns/')) return false
-    const m = p.match(/^\/api\/campaigns(?:\/([0-9a-f]{12})(?:\/(members|gms|runners|npcs)(?:\/([^/]+))?)?)?$/)
-    if (!m) return send(res, 404, { error: 'not found' })
-    const [, id, part, raw] = m
+    const m = p.match(/^\/api\/campaigns(?:\/([0-9a-f]{12})(?:\/(members|gms|runners|npcs)(?:\/([^/]+)(\/overrides)?)?)?)?$/)
+    if (!m || m[4] && m[2] !== 'runners') return send(res, 404, { error: 'not found' })
+    const [, id, part, raw, approvals] = m
     let key = null
     if (raw != null) try { key = decodeURIComponent(raw) } catch { return send(res, 400, { error: 'bad name' }) }
-    const want = !id ? ['GET', 'POST'] : !part ? ['GET', 'PUT', 'DELETE'] : key == null ? ['POST'] : ['DELETE']
+    const want = !id ? ['GET', 'POST'] : !part ? ['GET', 'PUT', 'DELETE'] : key == null ? ['POST'] : approvals ? ['PUT'] : ['DELETE']
     if (!want.includes(req.method)) return send(res, 405, { error: 'method not allowed' })
 
     if (req.method === 'GET') {
@@ -176,6 +199,14 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       const c = list.find(x => x.id === id)
       if (!c || !(me.role === 'admin' || inIt(c, me.username))) throw fail(404, 'no such campaign')
       const done = async (changed = true) => { if (changed) await save(list); return send(res, 200, await view(c, me)) }
+      if (part === 'runners' && approvals) { // GM approval: only its GMs and the admin, never the runner's player
+        if (!manages(c, me)) throw fail(403, 'only a GM of this campaign or the admin approves a runner’s rule problems')
+        const list = overridesOf(b), r = (await runners(c)).find(x => x.id === key)
+        if (!r) throw fail(404, 'that runner isn’t in this campaign')
+        const rev = (r.rev ?? 0) + 1
+        await writeRunner(r.owner, r.file, setOverrides(r.xml, list, rev, tag))
+        return send(res, 200, { rev })
+      }
       if (part === 'runners') {
         if (req.method === 'POST') {
           const r = (await runnersOf(me.username)).find(x => x.id === String(b.id ?? ''))

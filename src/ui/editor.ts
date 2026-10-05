@@ -1,7 +1,7 @@
 // Editor context: the open character plus everything the engine says about it.
 // Edits mutate a draft (with undo); once finalized, each build change is also logged in the ledger (engine/career.ts logChange).
 import { createContext, useContext } from 'react'
-import type { CareerEvent, Catalog, Character, Violation } from '../model/types'
+import type { CareerEvent, Catalog, Character, Override, Violation } from '../model/types'
 import type { Derived, PriceBreakdown } from '../engine'
 
 export interface ConfirmSpec { title: string; lines: [string, string][]; cost: number; balanceAfter: number }
@@ -14,6 +14,8 @@ export interface EditorCtx {
   p: PriceBreakdown
   balance: number
   career: boolean
+  /** someone else's runner: read only (a GM may still approve its rule problems) */
+  ro?: boolean
   /** a build edit (undoable; logged in the ledger once finalized) */
   edit: (fn: (draft: Character) => void) => void
   /** any other edit: identity, narrative, overrides, layout (undoable) */
@@ -21,6 +23,9 @@ export interface EditorCtx {
   /** finalized: confirm, then append an event (earnings); not undoable */
   record: (ev: CareerEvent, summary: string) => Promise<boolean>
   replace: (ch: Character) => void
+  /** GM approval: the runner's approvals replaced (null when done, else why not); null for a viewer who isn't a GM or the
+   *  admin, or someone else's runner outside a campaign */
+  approve: ((overrides: Override[]) => Promise<string | null>) | null
   undo: () => void
   redo: () => void
   canUndo: boolean
@@ -36,5 +41,5 @@ export const useEditor = () => {
 
 /** A tab of the character's editor: #/c/<id>/<tab> for a runner, #/n/<id>/<tab> for an NPC (its own store). */
 export const editHref = (ch: Pick<Character, 'id' | 'npc'>, tab: string) => `#/${ch.npc ? 'n' : 'c'}/${ch.id}/${tab}`
-/** Where the editor's "back" goes: the runner list or the NPC area. */
-export const homeHref = (ch: Pick<Character, 'npc'> | undefined) => ch?.npc ? '#/npcs' : '#/'
+/** Where the editor's "back" goes: the runner list, or the NPC area's section: NPCs, or Critters (critters and spirits). */
+export const homeHref = (ch: Pick<Character, 'npc'> | undefined) => !ch?.npc ? '#/' : ch.npc.kind === 'npc' ? '#/npcs' : '#/npcs/critters'

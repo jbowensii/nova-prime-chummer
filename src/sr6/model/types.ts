@@ -3,7 +3,7 @@
 import type { Sr6Character } from './character'
 
 export type Sr6Kind =
-  | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations'
+  | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations' | 'grades'
   | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
   | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
 
@@ -16,6 +16,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   weapons: { tag: 'weapon', label: 'Weapons' },
   armor: { tag: 'armor', label: 'Armor' },
   augmentations: { tag: 'augmentation', label: 'Augmentations' },
+  grades: { tag: 'grade', label: 'Augmentation grades' },
   electronics: { tag: 'device', label: 'Electronics' },
   programs: { tag: 'program', label: 'Programs' },
   gear: { tag: 'gear', label: 'Gear' },
@@ -40,6 +41,16 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   rules: { tag: 'rule', label: 'Rules' },
 }
 
+/** An augmentation's type (common.xsd). Grades (alpha, beta…) apply to cyberware and bioware only (CRB p. 283, Body Shop
+ *  p. 29); the others are bought as printed. */
+export const AUG_TYPES = ['cyberware', 'bioware', 'geneware', 'nanoware', 'symbionts', 'transgenics'] as const
+export type AugType = (typeof AUG_TYPES)[number]
+export const GRADED_TYPES: readonly string[] = ['cyberware', 'bioware']
+/** The two families a reader that knows only cyberware and bioware (the Foundry export) maps the others to: nanoware is
+ *  cyberware, geneware, symbionts and transgenic infusions bioware. */
+export const augFamily = (type: string | undefined): 'cyberware' | 'bioware' =>
+  type === 'bioware' || type === 'geneware' || type === 'symbionts' || type === 'transgenics' ? 'bioware' : 'cyberware'
+
 /** An entry's child element other than <name> and <text> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
 export interface Sr6Part { tag: string; attrs: Record<string, string>; text: string }
 /** One catalog entry, generic in S1 (S2 adds typed views). attrs: every attribute but id, source and page, as printed;
@@ -53,7 +64,7 @@ export interface Sr6Entry {
 export interface Sr6Source {
   id: string; name: string; publisher: string; canon: boolean; published?: string; cat?: string; texts?: string; file?: string; sha256?: string; imported?: string
   origin: 'shipped' | 'imported' | 'user'
-  compendium?: { id: string; owner: string }
+  compendium?: { id: string; owner: string; campaign?: string }
 }
 /** A GM's SR6 compendium (src/sr6/engine/compendium.ts): entries of the compendium kinds citing its own source, and NPCs.
  *  owner/ownerName come from the server (the folder it's stored in), never from the file. */

@@ -1,6 +1,8 @@
 // NPCs & Critters (#/npcs): the GMs' own area (admin and editors; spec 2026-10-02 §1, §3). NPCs are characters with an
 // npc block, kept apart from runners (server: /api/npcs; browser: their own localStorage key). A GM shares one with a
 // campaign they run, so its other GMs can read and print it; players never see any. The server enforces all of it.
+// Two sections, each its own tab and search: NPCs (#/npcs) and Critters (critters and spirits, #/npcs/critters); New NPC /
+// New critter offer that section's kinds. Load book NPCs fetches and saves a few at a time (inBatches), counting as it goes.
 import { PageHeader } from './nav'
 import { IconButton, IconLink } from './icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -8,28 +10,39 @@ import { blankNpc } from '../engine'
 import type { Catalog, Character, Npc } from '../model/types'
 import { newId } from '../model/types'
 import { because, savesSettled, send, useMe } from './auth'
-import { Modal, NPC_KINDS, NPC_TIERS, NpcChips } from './bits'
+import { inBatches, Modal, NPC_KINDS, NPC_TIERS, NpcChips, Working, type Busy } from './bits'
 import { loadCampaigns, type Campaign } from './Campaigns'
 import { listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { editHref } from './editor'
 import { downloadRunners, ExportRunnersDialog } from './Foundry'
 import { arrange, exportCharacter, FindDuplicates, ownerGroups, type SortBy } from './Library'
 import { Face } from './Portrait'
-import { npcRepoFor, useRepo, type Stored, type Unreadable } from './repo'
+import { npcRepoFor, saveAsNew, useRepo, type Stored, type Unreadable } from './repo'
 import { bookNpcs, readCharacterFile, readSample } from './samples'
 import { loadTrash } from './Trash'
 
 const nameOf = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
+type Section = 'npcs' | 'critters'
+/** NPCs & Critters' two sections: an NPC lists under NPCs, a critter or spirit under Critters (one without a block: NPCs). */
+const npcSectionOf = (ch: Pick<Character, 'npc'>): Section => ch.npc && ch.npc.kind !== 'npc' ? 'critters' : 'npcs'
+const SECTIONS: Record<Section, { label: string; href: string; kinds: Npc['kind'][]; noun: string }> = {
+  npcs: { label: 'NPCs', href: '#/npcs', kinds: ['npc'], noun: 'NPC' },
+  critters: { label: 'Critters', href: '#/npcs/critters', kinds: ['critter', 'spirit'], noun: 'critter' },
+}
 
-export function NpcsScreen({ c }: { c: Catalog }) {
+export function NpcsScreen({ c, section = 'npcs' }: { c: Catalog; section?: Section }) {
   const runners = useRepo()
   const repo = useMemo(() => npcRepoFor(runners), [runners])
   const me = useMe()
   const [list, setList] = useState<Stored[] | null>(null)
   const [unreadable, setUnreadable] = useState<Unreadable[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [msg, setMsg] = useState<string | null>(null)
-  const [q, setQ] = useState('')
+  const [note, setNote] = useState<{ text: string; failed: string[] } | null>(null)
+  const setMsg = (text: string | null, failed: string[] = []) => setNote(text === null ? null : { text, failed })
+  const [busy, setBusy] = useState<Busy | null>(null) // Load book NPCs, while it runs
+  const [qs, setQs] = useState<Record<Section, string>>({ npcs: '', critters: '' }) // each section its own search
+  const q = qs[section], setQ = (v: string) => setQs(x => ({ ...x, [section]: v }))
+  const sec = SECTIONS[section]
   const [sort, setSort] = useState<SortBy>('az')
   const [creating, setCreating] = useState(false)
   const [kind, setKind] = useState<Npc['kind']>('npc')
@@ -59,8 +72,11 @@ export function NpcsScreen({ c }: { c: Catalog }) {
 
   const own = (s: { owner?: string }) => !me || !s.owner || s.owner === me.username
   const mine = (list ?? []).filter(own)
-  const others = ownerGroups((list ?? []).filter(s => !own(s)), unreadable.filter(u => !own(u)), sort, q)
-  const rows = arrange(mine, sort, q)
+  const here = (s: Stored) => npcSectionOf(s.ch) === section
+  const count = (k: Section) => (list ?? []).filter(s => npcSectionOf(s.ch) === k).length
+  // a file that won't open has no kind: it shows under NPCs
+  const others = ownerGroups((list ?? []).filter(s => !own(s) && here(s)), section === 'npcs' ? unreadable.filter(u => !own(u)) : [], sort, q)
+  const rows = arrange(mine.filter(here), sort, q)
   const gmOf = campaigns.filter(x => x.you === 'gm' && !x.archived) // where an NPC of yours can be shared
   const campaignOf = (ch: Character) => campaigns.find(x => x.id === ch.campaign)
 
@@ -99,9 +115,10 @@ export function NpcsScreen({ c }: { c: Catalog }) {
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
       if (!r.character.npc) { bad.push(`${f.name}: this is a runner, not an NPC (it has no NPC block). Import it on Your runners.`); continue }
       // an NPC has no career: a finalized runner's ledger never comes along
-      const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, campaign: undefined, finalizedAt: undefined,
-        finalRemaining: undefined, carry: undefined, career: [], lastExportedAt: new Date().toISOString() }
-      const err = await saveError(ch) // the summary below replaces the message: a failed save goes in it
+      // its id taken after all (the list hadn't loaded yet): saved under a new one
+      const { ch, r: saved } = await saveAsNew(x => repo.save(x), { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id,
+        campaign: undefined, finalizedAt: undefined, finalRemaining: undefined, carry: undefined, career: [], lastExportedAt: new Date().toISOString() }, newId)
+      const err = saved.ok ? null : saved.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.` // the summary below replaces the message
       if (err) bad.push(`${f.name}: ${err}`); else { done.push(nameOf(ch)); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
@@ -109,25 +126,31 @@ export function NpcsScreen({ c }: { c: Catalog }) {
   }
 
   // the imported books' NPCs, copied (new ids) as example characters are; one already loaded (its book and name, kept on
-  // the copy as sampleKey, so a renamed copy still counts) isn't loaded again
+  // the copy as sampleKey, so a renamed copy still counts) isn't loaded again. A few at a time, counted as they go.
   const loadBook = async () => {
     try {
       const rows = await bookNpcs()
       if (!rows.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
       const key = (source: string, name: string) => `${source}|${name}`
       const have = new Set(mine.map(s => s.ch.sampleKey ?? key(s.ch.origin ?? '', nameOf(s.ch))))
+      const todo = [...new Map(rows.filter(r => !have.has(key(r.source, r.name))).map(r => [key(r.source, r.name), r])).values()]
       let n = 0
       const bad: string[] = []
-      for (const r of rows.filter(r => !have.has(key(r.source, r.name)))) {
-        const got = await readSample(r.url)
-        if (!got.ok) { bad.push(`${r.name || r.url.split('/').pop()}: ${got.reason}`); continue }
-        const k = key(r.source, r.name)
-        const err = await saveError({ ...got.character, id: newId(), sampleKey: k, lastExportedAt: got.character.updatedAt })
-        if (err) bad.push(`${r.name || r.url.split('/').pop()}: ${err}`); else { n++; have.add(k) }
-      }
-      setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length ? '' : 'The book NPCs are already in your NPCs.', ...bad].filter(Boolean).join(' '))
+      setMsg(null)
+      setBusy({ what: 'Loading book NPCs', done: 0, total: todo.length })
+      await inBatches(todo, async r => {
+        const label = r.name || r.url.split('/').pop()
+        const got = await readSample(r.url).catch((e: Error) => ({ ok: false as const, reason: e.message ?? String(e) }))
+        if (!got.ok) { bad.push(`${label}: ${got.reason}`); return }
+        const err = await saveError({ ...got.character, id: newId(), sampleKey: key(r.source, r.name), lastExportedAt: got.character.updatedAt })
+          .catch((e: Error) => e.message ?? String(e))
+        if (err) bad.push(`${label}: ${err}`); else n++
+      }, () => setBusy(b => b && { ...b, done: b.done + 1 }))
+      setBusy(null)
+      setMsg(`Loaded ${n} · already there ${rows.length - todo.length} · failed ${bad.length}.`, bad)
       void refresh()
     } catch (e) {
+      setBusy(null)
       setMsg(because('Couldn’t load the book NPCs', (e as Error).message ?? String(e)))
     }
   }
@@ -176,9 +199,9 @@ export function NpcsScreen({ c }: { c: Catalog }) {
   return (
     <main className="lib">
       <PageHeader title="NPCs & Critters">
-        <IconButton className="primary" icon="npc-add" label="New NPC" onClick={() => setCreating(true)} />
+        <IconButton className="primary" icon="npc-add" label={`New ${sec.noun}`} onClick={() => { pickKind(sec.kinds[0]); setCreating(true) }} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
-        <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} />
+        <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} disabled={!!busy || list === null} aria-busy={!!busy} />
         <input ref={file} type="file" accept=".xml,.json,application/xml,application/json" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         {comps.length > 0 && <IconButton icon="move" label="Move to compendium…" onClick={() => pickMove([])} disabled={!mine.length} />}
@@ -188,33 +211,40 @@ export function NpcsScreen({ c }: { c: Catalog }) {
       </PageHeader>
       <p className="muted">Your NPCs, critters and spirits, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.
         {repo.mode === 'browser' && ' Saved on this browser. Export files to keep them safe.'}</p>
-      {msg && <p className="banner" role="status">{msg}</p>}
+      <nav className="tabs sections" aria-label="NPCs or critters">
+        {(Object.keys(SECTIONS) as Section[]).map(k => <a key={k} href={SECTIONS[k].href} aria-current={k === section ? 'page' : undefined}>
+          {SECTIONS[k].label}{list !== null && <span className="badge">{count(k)}</span>}</a>)}
+      </nav>
+      {(busy || note) && <p className="banner" role="status">{busy ? <Working busy={busy} /> : note!.text}</p>}
+      {!busy && !!note?.failed.length && <ul className="banner bad" aria-label="Failed">{note.failed.map(f => <li key={f}>{f}</li>)}</ul>}
       {list !== null && list.length > 0 && <div className="row listtools">
-        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search NPCs" />
+        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label={`Search ${sec.label.toLowerCase()}`} />
         <label className="inline">Sort
           <select value={sort} onChange={e => setSort(e.target.value as SortBy)}>
             <option value="az">A–Z</option><option value="za">Z–A</option><option value="recent">Recently edited</option>
           </select></label>
       </div>}
       {list === null ? <p className="muted">Loading NPCs…</p> : <>
-        {others.length > 0 && <h2>My NPCs</h2>}
-        {unreadable.filter(own).map(broken)}
-        {mine.length === 0 ? <div className="empty"><p>No NPCs yet. Make one, import an NPC file, or load the book’s NPCs.</p></div> : <>
+        {others.length > 0 && <h2>My {sec.label}</h2>}
+        {section === 'npcs' && unreadable.filter(own).map(broken)}
+        {!mine.some(here) ? <div className="empty"><p>{section === 'npcs'
+          ? 'No NPCs yet. Make one, import an NPC file, or load the book’s NPCs.'
+          : 'No critters yet. Make one (a critter or spirit), import a file, or load the book’s NPCs.'}</p></div> : <>
           {rows.map(s => row(s, true))}
-          {q && rows.length === 0 && <p className="muted">No NPC’s name contains “{q.trim()}”.</p>}
+          {q && rows.length === 0 && <p className="muted">No {sec.noun}’s name contains “{q.trim()}”.</p>}
         </>}
-        {others.map(({ owner, name, rows, broken: bad }) => <section key={owner} aria-label={`${name}’s NPCs`}>
-          <h2>{name}’s NPCs</h2>
+        {others.map(({ owner, name, rows, broken: bad }) => <section key={owner} aria-label={`${name}’s ${sec.label}`}>
+          <h2>{name}’s {sec.label}</h2>
           {bad.map(broken)}
           {rows.map(s => row(s, false))}
         </section>)}
       </>}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="New NPC"
-        actions={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn primary" onClick={() => void create()}>Create NPC</button></>}>
+      <Modal open={creating} onClose={() => setCreating(false)} title={`New ${sec.noun}`}
+        actions={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn primary" onClick={() => void create()}>Create {sec.noun}</button></>}>
         <div className="grid2">
           <label>Kind<select value={kind} onChange={e => pickKind(e.target.value as Npc['kind'])}>
-            {Object.entries(NPC_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+            {sec.kinds.map(k => <option key={k} value={k}>{NPC_KINDS[k]}</option>)}</select></label>
           <label>Tier<select value={tier} onChange={e => setTier(e.target.value as Npc['tier'])}>
             {Object.entries(NPC_TIERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label>Metatype<select value={meta} onChange={e => setMeta(e.target.value)}>

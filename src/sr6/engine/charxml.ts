@@ -9,7 +9,7 @@ import {
   type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
   type Sr6Npc, type Sr6Pick, type Sr6Purchase, type Sr6Quality,
 } from '../model/character'
-import { SR6_KINDS, type Sr6Kind } from '../model/types'
+import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
 import { sr6EntryXml, toEntry } from './load'
 
@@ -82,6 +82,8 @@ function entryXml(e: Sr6LedgerEntry): string {
   }
 }
 const ledgerXml = (l: Sr6LedgerEntry[]) => (l.length ? `<ledger>\n    ${l.map(entryXml).join('\n    ')}\n  </ledger>` : '')
+// the compendium entries the runner uses, with their text (src/sr6/engine/house.ts)
+const houseXml = (h?: Sr6Entry[]) => (h?.length ? `<house>${h.map(e => sr6EntryXml(e, true)).join('')}</house>` : '')
 
 function npcXml(n?: Sr6Npc): string {
   if (!n) return ''
@@ -94,7 +96,7 @@ function npcXml(n?: Sr6Npc): string {
 export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
   const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
-    buildXml(ch.build), ledgerXml(ch.ledger), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
+    buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
     lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen, sampleKey: ch.sampleKey })
@@ -232,6 +234,13 @@ function readEntry(e: Element, fix?: string[]): Sr6LedgerEntry {
 }
 
 const CATALOG_KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
+const KIND_OF_TAG = new Map(CATALOG_KINDS.map(k => [SR6_KINDS[k].tag, k]))
+/** <house>'s entries; one of an unknown kind throws (repair drops it). */
+const readHouse = (h: Element, fix?: string[]): Sr6Entry[] => each([...h.children], e => {
+  const kind = KIND_OF_TAG.get(e.localName)
+  if (!kind) throw new Error(`a <${e.localName}> isn’t a catalog entry`)
+  return toEntry(e, kind)
+}, label, fix)
 function readNpc(n: Element, fix?: string[]): Sr6Npc {
   const fk = n.getAttribute('fromKind')
   const stats = each(kids(n, 'stat'), e => {
@@ -272,7 +281,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     build.metatype = str(r, 'metatype') ?? ''
     const t = (name: string) => kid(r, name)?.textContent ?? undefined
     const backdrop = str(r, 'backdrop') as Backdrop | undefined
-    const fk = num(r, 'finalKarma'), fn = num(r, 'finalNuyen'), npc = kid(r, 'npc'), ledger = kid(r, 'ledger')
+    const fk = num(r, 'finalKarma'), fn = num(r, 'finalNuyen'), npc = kid(r, 'npc'), ledger = kid(r, 'ledger'), house = kid(r, 'house')
     const ch: Sr6Character = def({
       formatVersion: 1 as const, id: r.getAttribute('id')!,
       identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', metatype: build.metatype,
@@ -281,7 +290,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       build, finalizedAt: str(r, 'finalizedAt'), campaign: str(r, 'campaign'),
       final: fk === undefined && fn === undefined ? undefined : { karma: fk ?? 0, nuyen: fn ?? 0 },
       ledger: ledger ? each(kids(ledger, 'entry'), e => readEntry(e, fix), (_, i) => `ledger entry ${i + 1}`, fix) : [],
-      npc: npc ? readNpc(npc, fix) : undefined, sampleKey: str(r, 'sampleKey'),
+      npc: npc ? readNpc(npc, fix) : undefined, sampleKey: str(r, 'sampleKey'), house: house?.children.length ? readHouse(house, fix) : undefined,
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: o.textContent ?? '' })),
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),
     })

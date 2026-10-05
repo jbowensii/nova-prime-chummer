@@ -23,7 +23,14 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   `Professional Rating N` (tag, name or first line) gives the NPC's rating, its group the section; a block with a
   `Connection Rating:` label is a contact (contacts and an NPC, group Contact); one with `Powers:` and no gear,
   augmentations, adept powers, complex forms or spells is a critter; the others are NPCs (group the book's name). A
-  band's second `R` is Resonance. Two beings printed side by side in one band: only one is read (a known loss).
+  band's second `R` is Resonance. Two beings printed side by side in one band (`| B … ESS | B … ESS | M |`) under their
+  names stacked right over it (a heading each, or name, tag line and box title): prepare_md() gives each its own band
+  (a column after the last group is the second's), the defense band and labels after it shared; where the names don't
+  stack over the band (a contact's description between them) only the first is read. A box printing several beings
+  one after another, each under a lower-case title right over its band (after a labelled line or a weapon's
+  bracketed stats): one being each. One stat block for several names (`Saint Joseph Houngan/Mambo`,
+  `Government Agent/Corp Troubleshooter`): one being per name with the same stats, unless a name it gives is
+  another block's too (`Grey Cell Watcher/Investigator` and `…Watcher/Decker` stay as printed).
 - Tables with a price: by their header, vehicles (`HAND`/`ACCEL`, the short `ACC PIL HAN SEN` too), weapons (`DV`,
   `MODE`, `ATTACK RATINGS`), armor (`DR`), augmentations (`ESSENCE`), electronics (`ATTRIBUTES (D/F)`, `DEVICE
   RATING`), else gear (a number in `COST` or an `AVAIL` column: a list of restaurants priced `¥¥` stays a table); an

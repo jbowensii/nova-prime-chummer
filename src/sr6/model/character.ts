@@ -31,8 +31,8 @@ export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']
-export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'gear' | 'vehicles'
-export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'gear', 'vehicles']
+export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles'
+export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles']
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */
@@ -125,11 +125,12 @@ export interface Sr6Npc {
 
 /** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
  *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
- *  example runner was copied from (`<source>|<id>`). */
+ *  example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
+ *  (src/sr6/engine/house.ts), so it keeps them when the compendium is unshared or deleted. */
 export interface Sr6Character {
   formatVersion: 1; id: string; identity: Character['identity']; build: Sr6Build
   finalizedAt?: string; final?: { karma: number; nuyen: number }; campaign?: string
-  ledger: Sr6LedgerEntry[]; npc?: Sr6Npc; sampleKey?: string
+  ledger: Sr6LedgerEntry[]; npc?: Sr6Npc; sampleKey?: string; house?: Sr6Entry[]
   overrides: Override[]; updatedAt: string; lastExportedAt?: string
 }
 

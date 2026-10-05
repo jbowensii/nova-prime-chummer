@@ -1,7 +1,7 @@
 // A GM's compendium: one data-format file, <ca2:data kind="compendium">, holding <amp>, <item>, <vehicle> entries that
 // all cite the compendium's own source, plus NPCs as embedded <ca2:character> (docs/data-format.md "Compendiums",
 // public/data/schema/compendium.xsd). The loader adds its entries to the catalog like a house-rule overlay.
-import type { AmpTemplate, Character, Compendium, Item, Rule, Source, VehicleBase } from '../model/types'
+import type { AmpTemplate, Catalog, Character, Compendium, Item, Rule, Source, VehicleBase } from '../model/types'
 import { characterToXml, xmlToCharacter } from './charxml'
 import { toAmp, toItem, toVehicle } from './parse'
 
@@ -85,4 +85,14 @@ export function readCompendium(xml: string): { ok: true; compendium: Compendium 
     } catch (e) { return { ok: false, error: `${what}: ${(e as Error).message}` } }
   }
   return { ok: true, compendium: comp }
+}
+
+// ---- players' runners (phase 3) ----
+/** The catalog a runner in `campaign` sees: the entries of compendiums shared with another campaign left out (a player's
+ *  catalog holds the compendiums of every campaign they play in, src/ui/App.tsx). The same catalog when there are none. */
+export function forCampaign(c: Catalog, campaign: string | undefined): Catalog {
+  const other = new Set([...c.sources.values()].filter(s => s.compendium?.campaign && s.compendium.campaign !== campaign).map(s => s.id))
+  if (!other.size) return c
+  const mine = <T extends { source: string }>(m: Map<string, T>) => new Map([...m].filter(([, e]) => !other.has(e.source)))
+  return { ...c, amps: mine(c.amps), items: mine(c.items), vehicles: mine(c.vehicles) }
 }

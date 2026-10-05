@@ -104,7 +104,8 @@ export function buildCatalog(files: SourceFile[]): Catalog {
       const comp = r.compendium
       // a book or house source with its id (imported or added after it was made): the book keeps it, the compendium waits
       if (c.sources.has(comp.source)) { c.errors.push({ file: f.file, message: `its source id ${comp.source} is already a book’s or a house source’s; its entries didn’t load` }); continue }
-      c.sources.set(comp.source, { ...compendiumSource({ ...comp, ownerName: f.publisher }), compendium: { id: comp.id, owner: f.owner ?? '' } })
+      c.sources.set(comp.source, { ...compendiumSource({ ...comp, ownerName: f.publisher }), compendium: { id: comp.id, owner: f.owner ?? '',
+        ...comp.sharing === 'campaign' && comp.campaign ? { campaign: comp.campaign } : {} } })
       for (const a of comp.amps) c.amps.set(a.id, a)
       for (const i of comp.items) c.items.set(i.id, i)
       for (const v of comp.vehicles) c.vehicles.set(v.id, v)

@@ -67,7 +67,8 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
         {amp.type === 'vehicle' && (
           <label>Chassis
             <select value={amp.vehicle ?? ''} onChange={e => set({ vehicle: e.target.value })}>
-              {[...c.vehicles.values()].map(v => <option key={v.id} value={v.id}>{v.name}: Body {v.body}, Handling {v.handling}, Speed {v.speed}</option>)}
+              {[...c.vehicles.values()].map(v => <option key={v.id} value={v.id}>{v.name}: Body {v.body}, Handling {v.handling}, Speed {v.speed}{(s => s?.compendium ? ` (House · ${s.name})` : '')(c.sources.get(v.source))}</option>)}
+              {amp.vehicle && !c.vehicles.has(amp.vehicle) && amp.chassis && <option value={amp.vehicle}>{amp.chassis.name} (no longer available)</option>}
             </select>
           </label>
         )}

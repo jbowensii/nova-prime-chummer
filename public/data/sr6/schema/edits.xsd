@@ -25,6 +25,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="augmentation"><xs:complexType><xs:complexContent><xs:extension base="sr6:Augmentation">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="grade"><xs:complexType><xs:complexContent><xs:extension base="sr6:Grade">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="device"><xs:complexType><xs:complexContent><xs:extension base="sr6:Device">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="program"><xs:complexType><xs:complexContent><xs:extension base="sr6:Program">

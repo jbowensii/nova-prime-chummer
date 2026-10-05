@@ -7,6 +7,7 @@ name, and how its title or first page names it); they share the core rulebook's 
 regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
 import re
+from collections import Counter
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
@@ -114,10 +115,11 @@ def _prev(lines, i):
     return j if j >= 0 else None
 
 
-def _name_line(lines, k):
+def _name_line(lines, k, loose=False):
     """A stat block's title set in body type: a short line, not a heading, table, label, quote or sentence end, its
     long words capitalized (`Saeder-Krupp Guard`); one in lower case only right after a sentence's end (a box
-    title: `micro bull shark`)."""
+    title: `micro bull shark`), or (loose: right over its band) after a labelled line or a weapon's bracketed stats:
+    the next being of a box printing several (`gorilla chimera` after `**Weapons:** …`)."""
     s = lines[k].strip()
     if not s or s[0] in "#|>*<•" or len(s.split()) > 6 or len(s) > 60 or _PROSE_END.search(re.sub(r"\s*\([^()]*\)$", "", s)):
         return False
@@ -125,8 +127,91 @@ def _name_line(lines, k):
     if words and s[0].isupper() and sum(not w[0].isupper() for w in words) <= (len(words) > 1 and len(s.split()) <= 4):
         return True  # (a word the PDF split, `Neo-PD Interve ntion`, may leave one piece in lower case)
     p = _prev(lines, k)
-    return s == s.lower() and len(s.split()) <= 4 and (p is None or bool(re.search(r"[.!?”]$|^#|^\|", lines[p].strip()))) \
+    after = r"[.!?”]$|^#|^\||^\*\*|\]$" if loose else r"[.!?”]$|^#|^\|"
+    return s == s.lower() and len(s.split()) <= 4 and (p is None or bool(re.search(after, lines[p].strip()))) \
         or bool(_SEX.search(s)) and len(s.split()) <= 6
+
+
+def _box_title(s):
+    """A box title in lower case (`saeder-krupp guard`) between a name and its band."""
+    s = s.strip()
+    return bool(s) and s == s.lower() and s[0] not in "#|>*<•(" and len(s.split()) <= 6 and not _PROSE_END.search(s)
+
+
+def _name_group(lines, i):
+    """The lines (indexes, top first) naming the being whose band is at line i: a heading (`##### Blue (Elf)`) or a
+    name in body type (`Saeder-Krupp Guard`), then an optional tag line and box title; None when there is none."""
+    j, idx = _prev(lines, i), []
+    if j is not None and _box_title(lines[j]):
+        idx, j = [j], _prev(lines, j)
+    if j is not None and _TAG_LINE.fullmatch(re.sub(r"^#{3,5} ", "", lines[j].strip())):
+        idx, j = [j] + idx, _prev(lines, j)
+    if j is None:
+        return None
+    s = lines[j].strip()
+    if s.startswith("#") and not re.fullmatch(r"#{3,5} [^(#|*].{0,60}", s) or not s.startswith("#") and not _name_line(lines, j):
+        return None
+    return [j] + idx
+
+
+def _split_shared(lines):
+    """Two beings printed in one band (`| B … ESS | B … ESS | M |`) under their names stacked right above it, the
+    defense band and labels after it printed once: one band each (a column after the last group is that being's),
+    the lines after the band (to the next being or heading) shared. A band whose names don't stack over it is left."""
+    out, i = [], 0
+    while i < len(lines):
+        ln = lines[i]
+        cells = crb._cells(ln) if _BAND_LINE.match(ln) else []
+        starts = [n for n, c in enumerate(cells) if c == cells[0]]
+        if len(starts) < 2 or i + 2 >= len(lines) or len(crb._cells(lines[i + 2])) != len(cells):
+            out.append(ln)
+            i += 1
+            continue
+        groups, at = [], len(out)
+        for _ in starts:  # each being's name group, from the band up, stacked one right over the next
+            g = _name_group(out + [ln], at)
+            if not g:
+                break
+            groups.insert(0, g)
+            at = g[0]
+        if len(groups) < len(starts):
+            out.append(ln)
+            i += 1
+            continue
+        vals, end = crb._cells(lines[i + 2]), i + 3
+        while end < len(lines) and not lines[end].startswith("#") and not _BAND_LINE.match(lines[end]):
+            end += 1
+        if end < len(lines) and _BAND_LINE.match(lines[end]) and (g := _name_group(lines, end)):
+            end = g[0]
+        shared = lines[i + 3:end]
+        names = [[out[x] for x in g] for g in groups]
+        del out[groups[0][0]:]
+        for n, s in enumerate(starts):
+            e = starts[n + 1] if n + 1 < len(starts) else len(cells)
+            out += names[n] + ["| " + " | ".join(cells[s:e]) + " |", "|" + "---|" * (e - s), "| " + " | ".join(vals[s:e]) + " |"]
+            out += shared if n == 0 else [x for x in shared if not x.startswith("<!-- page")]
+        i = end
+    return out
+
+
+def _slash_names(name):
+    """The names one stat block printed for several stands for (`Saint Joseph Houngan/Mambo`: Saint Joseph Houngan
+    and Saint Joseph Mambo; `Government Agent/Corp Troubleshooter`: both), else [name]."""
+    if name.count("/") != 1 or "(" in name:
+        return [name]
+    left, right = (x.strip() for x in name.split("/"))
+    if not left or not re.search(r"[^\W\d_]", right):
+        return [name]
+    head, tail = left.split(), right.split()
+    if len(tail) > 1:  # `UCAS/Sioux Border`: UCAS Border and Sioux Border
+        return [left, right] if len(head) > 1 else [" ".join(head + tail[1:]), right]
+    k = len(head) - 1
+    if not head[k][:1].isupper() and right[:1].isupper():
+        while k > 0 and not head[k][:1].isupper():
+            k -= 1  # a word the PDF split (`Ho ungan/Mambo`): the alternative replaces all of it
+    elif head[k][:1].isupper():
+        right = right[:1].upper() + right[1:]
+    return [left, " ".join(head[:k] + [right])]
 
 
 _MODULES = re.compile(r"(?:adult\s+)?life\s+modules?", re.I)
@@ -222,7 +307,7 @@ class Book:
         `(Male Human)`, which then reads as the heading's tags), a tag at the name's end too; a heading in lower case
         there gets a capital (a box title over a tag line reads as an art caption); a tag line with more after it
         (`(Professional Rating 4), Human`) as one tag."""
-        lines = md.splitlines()
+        lines = _split_shared(md.splitlines())
         bare = lambda s: re.sub(r"^#{4,5} ", "", s.strip())
         for i, ln in enumerate(lines):
             if not _BAND_LINE.match(ln):
@@ -244,7 +329,7 @@ class Book:
                 lines[tag] = f"##### {bare(lines[tag])}"
                 if m := re.fullmatch(r"(#{4,5} )([a-z])(.*)", lines[k]):
                     lines[k] = m.group(1) + m.group(2).upper() + m.group(3)
-            if not _name_line(lines, k):
+            if not _name_line(lines, k, loose=tag is None):
                 continue
             name, own = lines[k].strip(), None
             if m := re.fullmatch(r"(.+?)\s*(\([^()]+\))", name):
@@ -318,8 +403,18 @@ class Book:
             return "gear", cat  # (a list of places with `¥¥` for a price is none)
         return None, None
 
+    def split_being(self, b):
+        """A stat block printed for several names (`Saint Joseph Houngan/Mambo`): one being per name, the stats shared;
+        not when a name it gives is another block's too (`Grey Cell Watcher/Investigator`, `…Watcher/Decker`)."""
+        names = _slash_names(b.name)
+        if len(names) < 2 or any(norm(n) in self._clash for n in names):
+            return [b]
+        return [replace(b, name=n) for n in names]
+
     def extract(self, regrouped, ctx=None):
         bs = list(blocks(regrouped)) if isinstance(regrouped, str) else list(regrouped)
+        names = {norm(b.name): b.name for b in bs if b.name}.values()  # each printed name once
+        self._clash = {n for n, c in Counter(norm(x) for name in names for x in _slash_names(name)).items() if c > 1}
         res = crb.extract(bs, ctx, book=self)
         cat = crb._Catalog(self.ID, self.ID.lower(), self.BOOK)
         for name, text, page in _modules(bs):

@@ -8,6 +8,7 @@ import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, t
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
 import { num, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
 
@@ -246,7 +247,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         const e = x.id ? data.entry(x.kind, x.id) : undefined
         if (!e || !ratingRange(e.attrs.rating).includes(op.rating)) return no('rating-range')
       }
-      if (op.grade && num(cr, `grade:${op.grade}:essence`) === undefined) return no('unknown-grade')
+      const gp = op.grade ? gradeProblem(cr, data, op.grade, x.id ? data.entry(x.kind, x.id) : undefined) : null
+      if (gp) return no(gp)
       if (op.rating !== undefined) x.rating = op.rating
       if (op.grade) x.grade = op.grade; else if (op.grade === null) delete x.grade
       return OK
@@ -398,7 +400,7 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   data: Sr6Data, cr: CreationRules): Sr6Purchase | { ok: false; reason: string } {
   const qty = op.qty ?? 1
   if (qty < 1) return { ok: false, reason: 'below-one' }
-  if (op.grade && num(cr, `grade:${op.grade}:essence`) === undefined) return { ok: false, reason: 'unknown-grade' }
+  if (op.grade && !gradeKnown(cr, data, op.grade)) return { ok: false, reason: 'unknown-grade' }
   const base = { uid: newId(), kind: op.kind, qty, accessories: [], ...(op.grade ? { grade: op.grade } : {}) }
   if (!op.id) {
     const c = op.custom ?? { name: '', cost: 0, avail: 0, essence: 0 }
@@ -408,5 +410,6 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   if (!e) return { ok: false, reason: 'unknown-entry' }
   const range = ratingRange(e.attrs.rating)
   if (op.rating !== undefined && range.length && !range.includes(op.rating)) return { ok: false, reason: 'rating-range' }
+  if (op.grade && gradeProblem(cr, data, op.grade, e)) return { ok: false, reason: 'no-grade' }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
 }

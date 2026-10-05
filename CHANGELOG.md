@@ -1,5 +1,70 @@
 # Release notes
 
+## 0.9.6 — 2026-10-05: NPC and Critter sections, Shadowrun 6 look, shared compendiums
+
+- **NPCs & Critters has two sections: NPCs and Critters** (both games). Each is its own tab with how many it holds, its
+  own search and its own address (#/sr6/npcs and #/sr6/npcs/critters on Shadowrun 6, #/npcs and #/npcs/critters on
+  Anarchy), so a link or a reload opens the same one. On Shadowrun 6, NPCs holds grunts and contacts, Critters holds
+  critters, spirits and sprites; on Anarchy, NPCs holds NPCs, Critters holds critters and spirits. The section's button
+  is **New NPC** or **New critter** and offers only that section's kinds, and closing an NPC's editor goes back to its
+  section.
+- **The Shadowrun 6 lists are grouped**: grunts by Professional Rating, then contacts, critters, spirits by Force and
+  sprites by Level, each group with its count.
+- **Load book NPCs shows it's working.** The button is greyed out while it runs and the status line counts
+  ("Loading book NPCs: 120 of 450…") with a progress bar. When it's done it sums up: how many loaded, how many were
+  already there, how many versions got a number (Shadowrun 6) and how many failed, with each failure listed underneath.
+  It saves four at a time, so a long list loads faster without swamping the server. **Tidy book copies** counts the
+  same way.
+- **Augmentations keep their real type.** Body Shop's geneware, nanoware, symbionts and transgenic infusions import as
+  those types (they were filed as bioware or cyberware). Game data and the augmentation picker group them by type and
+  category. Only cyberware and bioware take a grade. Re-import Body Shop to get the new types. The Foundry export still
+  sends them as bioware (nanoware as cyberware), with the printed type beside it.
+- **Implant grades are catalog entries.** The core rulebook's grade table and Body Shop's omega grade, exoware
+  (cyberware only) and gammaware import as **Augmentation grades** on Game data, and the augmentation grade picker
+  offers them with their Essence and cost factors (gammaware prints no price, so it isn't offered). The standard
+  grades' numbers on Table setup still apply and can change any grade's factor. Re-import the core rulebook and Body
+  Shop.
+- **Autosofts can be bought.** The core rulebook's autosofts (Clearsight, Evasion, Targeting…) import as programs priced
+  by the book's rating formula, and programs and autosofts can now be bought on **Gear** (at a rating) and fitted to a
+  vehicle or drone. Double Clutch's skill autosofts (Biotech, Con (Performance)…) import as programs too, with their
+  ratings (the book prints no price for them).
+- **NPCs that share a stat block are all imported.** Where a Shadowrun 6 book prints one stat block for two names
+  (Final Bets' Houngan/Mambo, Slip Streams' Government Agent/Corp Troubleshooter), two beings in one band (Missions'
+  Saeder-Krupp Guard and Combat Mage, The Third Parallel, Collapsing Now) or several beings in one box (Lethal
+  Harvest's chimeras), each now loads as its own NPC with its stats, instead of only one (or one with mixed stats).
+  Re-import those books, then **Load book NPCs**.
+- **Lifepath follows Born This Way.** Attributes whose metatype maximum is above 6 start at 2, and a runner who is
+  neither awakened nor emerged gains 1 Edge (both on Table setup). Karma can no longer raise a contact's connection or
+  loyalty above your Charisma: what is above it must come from the modules' contact points.
+- **Metavariants can be picked in priority creation.** Once the Sixth World Companion is re-imported, each
+  metavariant is offered at the metatype priorities its development table allows, with its own adjustment points, and
+  its karma comes out of your starting karma.
+- **Only a GM approves a rule problem** (both games). Players no longer see **GM approve** on Review. A GM (an editor)
+  or the admin approves, or revokes, a problem on a player's runner from its read-only view, when the runner is in a
+  campaign they run; the player sees it on their next load. Their own runners they approve as before.
+- **More months of the same lifestyle add up.** A Lifestyle spend on the Shadowrun 6 Ledger for the lifestyle the
+  runner has adds its months (3 months, then 2 more: 5); another lifestyle replaces it.
+- **An accessory's rating can be changed in place** on a Shadowrun 6 runner (and its grade, where it takes one).
+- **Importing a runner or an NPC right after opening the list** no longer fails with "changed elsewhere" when its id is
+  taken: the copy gets a new id (both games, Your runners and NPCs & Critters).
+- **Players' runners can use the GMs' compendiums** (both games, each game's own). A compendium shared with the table
+  is offered to every player's runners; one shared with a campaign, to the runners in that campaign. Private ones stay
+  with their GM. In the pickers a compendium's entries carry a **House** chip with the compendium's name.
+- **Players read, never edit.** Players get the shared entries through a read-only route (`/api/compendiums/shared`,
+  `/api/sr6/compendiums/shared`); a compendium's NPCs are never sent to them.
+- **A runner keeps what it took.** A runner keeps its own copy of every compendium entry it uses (an Anarchy vehicle its
+  chassis; an SR6 runner its qualities, powers, gear and lifestyle), so it still prices, prints and exports the same
+  when the compendium is unshared or deleted. Review then notes that the entry's source is no longer available.
+- Exports (runner file, Foundry export) carry those copies, so the importer and the Foundry module still get the
+  entries' data.
+- **Shadowrun 6 has a look of its own**, light and dark: every Shadowrun 6 page takes the core rulebook's style (white
+  page, magenta section titles in wide capitals, rounded magenta-outlined panels, grey sidebars, a faint circuit-board
+  background and a "SHADOWRUN 6 // RULES" line at the foot of the page); dark mode is deep purple with neon magenta and
+  teal. The printed Shadowrun 6 sheet echoes the official sheet (rounded magenta boxes, Edge points as hexagons). The
+  **Choose your game** page shows each game in its own style. Anarchy's pages look exactly as before.
+- **Each game's sheet art is its own.** A Shadowrun 6 sheet's Background switches, strength and image pick are kept
+  apart from Anarchy's: turning the art off on one game's sheets leaves the other's as it was.
+
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 
 - **A book NPC printed in several Shadowrun 6 books loads once, or numbered.** Load book NPCs on **NPCs & Critters**

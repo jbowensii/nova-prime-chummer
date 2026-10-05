@@ -40,6 +40,71 @@ fizz trooper
 |---|---|---|---|---|
 | 4 | 7/1 | A1, I2 | 10 | 10/15/+1 |
 **Skills:** Tasking 5
+Fizz Guard
+(Professional Rating 5)
+fizz guard
+Fizz Mage
+(Professional Rating 6)
+fizz mage
+| B | A | R | S | W | L | I | C | ESS | B | A | R | S | W | L | I | C | ESS | M |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 4 | 3 | 4 | 3 | 4 | 2 | 4 | 3 | 5.5 | 3 | 3 | 3 | 2 | 5 | 4 | 4 | 4 | 6 | 5 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 9 | 8/1 | A1, I2 | 10 | 10/15/+1 |
+**Skills:** Firearms 5, Perception 3
+**Gear:** Made-up armor
+#### Glow Priest/priestess
+##### (Professional Rating 6)
+| B | A | R | S | W | L | I | C | M | ESS |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 | 2 | 3 | 2 | 6 | 3 | 5 | 5 | 6 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 5 | 8/1 | A1, I2 | 9 | 10/15/+1 |
+**Skills:** Sorcery 5
+#### Grey Watcher/Seeker
+##### (Professional Rating 3)
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 5 | 6/1 | A1, I2 | 10 | 10/15/+1 |
+**Skills:** Perception 4
+#### Grey Watcher/Decker
+##### (Professional Rating 4)
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 3 | 3 | 2 | 4 | 6 | 4 | 5 | 5 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 4 | 8/1 | A1, I2 | 9 | 10/15/+1 |
+**Skills:** Cracking 5
+## Made-Up Chimeras
+#### Fizz Chimera
+A made-up chimera.
+#### Puff Chimera
+Another made-up chimera.
+fizz chimera
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 5 | 4 | 5 | 5 | 3 | 2 | 4 | 2 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 7 | 9/2 | A1, I3 | 11 | 12/17/+3 |
+**Skills:** Athletics 4
+**Weapons:** As applicable
+puff chimera
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 4 | 6 | 4 | 4 | 3 | 3 | 4 | 2 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 4 | 10/3 | A1, I4 | 10 | 8/13/+3 |
+**Skills:** Close Combat 5
+**Weapons:**
+Claws [Blades, DV 3P, 8/—/—/—/—]
 ## Contacts
 #### Mira Madeup
 Female elf, a made-up fixer.
@@ -127,6 +192,35 @@ class GeneralRecipeTest(unittest.TestCase):
                          ("3", "Grunts", "7"))
         g = n["Glow Hacker"]  # a second R is Resonance
         self.assertEqual((g["rating"], g["rea"], g["res"]), ("4", "3", "6"))
+
+    def test_two_beings_in_one_band(self):
+        """Two names stacked over one band printing both beings: one NPC each, its own attributes (a column after the
+        last group is the second's), the defense band and labels after it shared."""
+        n = entries(self.res, "npcs")
+        g, m = n["Fizz Guard"], n["Fizz Mage"]
+        self.assertEqual((g["rating"], g["bod"], g["ess"], g.get("mag"), g["dr"]), ("5", "4", "5.5", None, "9"))
+        self.assertEqual((m["rating"], m["bod"], m["ess"], m["mag"], m["dr"]), ("6", "3", "6", "5", "9"))
+        lines = {e.findtext("name"): [p.text for p in e if p.tag == "skills"] for e in ET.fromstring(self.res.files["npcs.xml"])}
+        self.assertEqual(lines["Fizz Guard"], lines["Fizz Mage"])
+
+    def test_one_stat_block_for_several_names(self):
+        n = entries(self.res, "npcs")
+        p, q = n["Glow Priest"], n["Glow Priestess"]  # `Priest/priestess`: one NPC a name, the same stats
+        self.assertEqual({k: v for k, v in p.items() if k not in ("id",)}, {k: v for k, v in q.items() if k not in ("id",)})
+        # names one of them shares with another block's (`Grey Watcher`) aren't split
+        self.assertLessEqual({"Grey Watcher/Seeker", "Grey Watcher/Decker"}, set(n))
+        self.assertNotIn("Grey Watcher", n)
+
+    def test_slash_names(self):
+        self.assertEqual([general._slash_names(n) for n in ("Fake Ho uncho/Mamo", "Glow Agent/Corp Fixer", "UCAS/Fake Border",
+                                                            "Fake Gun, marksman/sniper", "Rating 1/2")],
+                         [["Fake Ho uncho", "Fake Mamo"], ["Glow Agent", "Corp Fixer"], ["UCAS Border", "Fake Border"],
+                          ["Fake Gun, marksman", "Fake Gun, sniper"], ["Rating 1/2"]])
+
+    def test_a_box_printing_several_beings(self):
+        """A lower-case box title right over a band after a labelled line or a weapon's stats names the next being."""
+        n = entries(self.res, "npcs")
+        self.assertEqual((n["Fizz Chimera"]["bod"], n["Puff Chimera"]["bod"], n["Puff Chimera"]["agi"]), ("5", "4", "6"))
 
     def test_contact_with_its_band_under_its_description(self):
         self.assertIn("Mira Madeup", entries(self.res, "contacts"))

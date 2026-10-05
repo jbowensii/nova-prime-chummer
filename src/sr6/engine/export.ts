@@ -3,13 +3,14 @@
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
-import { SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
-import type { Sr6Data } from './data'
+import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
+import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { attackRatings, legality, rated, ratingRange } from './values'
 
@@ -97,10 +98,18 @@ export function entryValues(e: Sr6Entry, rating?: number): Sr6Values {
   return v
 }
 
+/** An entry's attributes as printed, but an augmentation's type as cyberware or bioware (the Foundry module knows only
+ *  those two): geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type kept in `ware`. */
+export function exportAttrs(e: Sr6Entry): Record<string, string> {
+  const a = { ...e.attrs }
+  if (e.kind === 'augmentations' && a.type && augFamily(a.type) !== a.type) { a.ware = a.type; a.type = augFamily(a.type) }
+  return a
+}
+
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return { id: e.id, kind: e.kind, name: e.name, source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
-    attrs: { ...e.attrs }, parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating),
+    attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating),
     ...(text && e.text ? { description: e.text } : {}) }
 }
 /** A line whose catalog entry is gone (or a custom one): what the runner file still has. */
@@ -129,7 +138,9 @@ export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc => defined({
   rating: npc.rating, group: npc.kind === 'contact' ? 'Contact' : npc.group,
   from: npc.from, stats: npcValues(npc), lines: npc.lines.map(l => ({ ...l })), pools: npcPools(npc, data) })
 
-export function exportSr6Runner(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
+/** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/engine/house.ts). */
+export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
+  const c = withSr6House(all, ch.house).c, data = c === all ? allData : sr6Data(c)
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
   const voided = voidedIds(ch), lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)
@@ -185,7 +196,8 @@ const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] =
 /** A books file: each ticked source still in the catalog (unknown ids skipped), with its entries of every kind in
  *  SR6_KINDS order, then catalog order, as the app sees them (edits applied); their text only when `descriptions`. */
 export function exportSr6Books(c: Sr6Catalog, data: Sr6Data, sources: string[], o: Sr6ExportOpts): Sr6ExportFile {
-  const kinds = Object.keys(SR6_KINDS) as Sr6Kind[]
+  // not the implant grades: Foundry has no item for them (a purchase carries its grade's key)
+  const kinds = (Object.keys(SR6_KINDS) as Sr6Kind[]).filter(k => k !== 'grades')
   return { ...envelope('books', o), books: sources.flatMap(id => {
     const s = c.sources.get(id)
     if (!s) return []

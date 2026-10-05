@@ -1,7 +1,7 @@
 // Rule checks. Every violation cites the book; errors block Finalize unless a GM approves them.
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
-import { nonCanonUses } from './canon'
+import { houseSource, nonCanonUses } from './canon'
 import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, rawAmpRating } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
@@ -15,6 +15,11 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   const out: Violation[] = []
   const add = (code: string, severity: Violation['severity'], path: string, message: string, page?: number, source = 'CRB') =>
     out.push({ code, severity, path, message, source: page ? source : undefined, page })
+  /** A compendium entry the runner has a copy of but the catalog no longer holds (unshared or deleted): noted; undefined
+   *  for anything else. */
+  const gone = (path: string, name: string, copy?: { source: string }) => copy && houseSource(c, copy.source)
+    ? add('ref.gone', 'warning', path, `${name}: its source ${c.sources.get(copy.source)?.name ?? copy.source} is no longer available; the runner keeps its own copy.`)
+    : undefined
   const creation = !ch.finalizedAt
   // an NPC isn't built on a budget at a level of play: no budget, creation caps, basics or narrative picks
   const npc = !!ch.npc
@@ -69,7 +74,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   for (const a of b.amps) {
     const path = `amps.${a.uid}`
     if (!c.ampTypes.has(a.type)) add('ref.unknown', 'warning', path, `${a.name}: unknown amp type "${a.type}".`)
-    if (a.catalogId && !c.amps.has(a.catalogId)) add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
+    if (a.catalogId && !c.amps.has(a.catalogId)) gone(path, a.name, a.snapshot) ?? add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
+    if (a.vehicle && !c.vehicles.has(a.vehicle)) gone(path, a.name, a.chassis)
     const template = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
     a.effects.forEach((e, i) => {
       const ep = `${path}.effects.${i}`
@@ -104,7 +110,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       add('amp.noItem', 'error', path, `${a.name}: an Equipment amp needs its item bought first.`, 60)
     if (a.type === 'adept' && !allRefs.has('awk-adept')) add('adept.requiresAwakened', 'error', path, `${a.name}: adept powers need the Awakened amp with the Adept option.`, 58)
     if (a.type === 'vehicle' && a.vehicle) {
-      const body = c.vehicles.get(a.vehicle)?.body ?? 0
+      const body = (c.vehicles.get(a.vehicle) ?? a.chassis)?.body ?? 0
       const armor = a.effects.filter(e => e.ref === 'vehicle-armor').length
       if (armor > body) add('vehicle.armor', 'error', path, `${a.name}: vehicle Armor +${armor} is above its Body ${body}.`, 62)
     }
@@ -188,7 +194,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   for (const i of b.items) {
     const path = `items.${i.uid}`
-    if (i.catalogId && !c.items.has(i.catalogId)) add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
+    if (i.catalogId && !c.items.has(i.catalogId)) gone(path, i.name, i.snapshot) ?? add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && i.price < 0) add('item.negativePrice', 'error', path, `${i.name}: a price below 0 would pay the runner; it counts as 0.`, 83)
     else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
     // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own

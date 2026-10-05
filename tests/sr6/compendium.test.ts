@@ -50,7 +50,9 @@ test('a compendium round-trips and validates against compendium.xsd', async () =
 
 test('the catalog source a compendium cites: a house source of its owner, marked as the compendium', () => {
   expect(sr6CompendiumSource({ ...kit, owner: 'gil', ownerName: 'Gil' })).toEqual({ id: 'STREET', name: 'Street Kit', publisher: 'Gil',
-    canon: false, origin: 'user', compendium: { id: kit.id, owner: 'gil' } })
+    canon: false, origin: 'user', compendium: { id: kit.id, owner: 'gil', campaign: 'abcdef012345' } })
+  // the campaign only while it is shared with one
+  expect(sr6CompendiumSource({ ...kit, sharing: 'table', owner: 'gil' }).compendium).toEqual({ id: kit.id, owner: 'gil' })
 })
 
 test('refused: wrong root, kind or namespace; the other game’s file or runner; another source; creation kinds; foreign or unknown parts', () => {
@@ -87,7 +89,7 @@ test('refused: wrong root, kind or namespace; the other game’s file or runner;
 
 test('COMP_KINDS: every kind but the creation-structure ones, each with common.xsd’s attribute names and string children', () => {
   const XS = 'http://www.w3.org/2001/XMLSchema'
-  const left = ['priorities', 'metatypes', 'attributes', 'skills', 'lifemodules', 'rules']
+  const left = ['priorities', 'metatypes', 'attributes', 'skills', 'grades', 'lifemodules', 'rules']
   expect(Object.keys(COMP_KINDS)).toEqual(Object.keys(SR6_KINDS).filter(k => !left.includes(k)))
   const common = new DOMParser().parseFromString(readFileSync(SCHEMA + 'common.xsd', 'utf8'), 'text/xml')
   const types = new Map([...common.documentElement.children].filter(t => t.localName === 'complexType').map(t => [t.getAttribute('name'), t]))

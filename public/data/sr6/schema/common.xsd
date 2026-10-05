@@ -36,8 +36,8 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="priorities"/><xs:enumeration value="metatypes"/><xs:enumeration value="attributes"/>
       <xs:enumeration value="skills"/><xs:enumeration value="qualities"/><xs:enumeration value="weapons"/>
-      <xs:enumeration value="armor"/><xs:enumeration value="augmentations"/><xs:enumeration value="electronics"/>
-      <xs:enumeration value="programs"/>
+      <xs:enumeration value="armor"/><xs:enumeration value="augmentations"/><xs:enumeration value="grades"/>
+      <xs:enumeration value="electronics"/><xs:enumeration value="programs"/>
       <xs:enumeration value="gear"/><xs:enumeration value="vehicles"/><xs:enumeration value="spells"/>
       <xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/><xs:enumeration value="complexforms"/>
       <xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="critterpowers"/>
@@ -123,6 +123,16 @@
       </xs:element>
       <!-- racial qualities, by name as printed (S2 resolves them) -->
       <xs:element name="trait" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- a metavariant's adjustment points at each metatype priority it can be taken at (the Sixth World Companion's
+           development table): priority creation offers it at those letters, the priority table not listing it -->
+      <xs:element name="priority" minOccurs="0" maxOccurs="5">
+        <xs:complexType>
+          <xs:attribute name="letter" use="required">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-E]"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="points" type="xs:nonNegativeInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
       <xs:group ref="sr6:tail"/>
     </xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>
@@ -198,7 +208,7 @@
   <xs:complexType name="Augmentation">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="type" use="required">
-        <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/></xs:restriction></xs:simpleType>
+        <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/><xs:enumeration value="geneware"/><xs:enumeration value="nanoware"/><xs:enumeration value="symbionts"/><xs:enumeration value="transgenics"/></xs:restriction></xs:simpleType>
       </xs:attribute>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
@@ -208,6 +218,26 @@
       <xs:attribute name="cost" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
+
+  <!-- an implant grade: its Essence and cost multipliers and Availability modifier (numbers), the augmentation types it
+       is for (absent: cyberware and bioware) -->
+  <xs:complexType name="Grade">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="essence" type="sr6:Decimal"/>
+      <xs:attribute name="cost" type="sr6:Decimal"/>
+      <xs:attribute name="avail" type="sr6:Decimal"/>
+      <xs:attribute name="types">
+        <xs:simpleType><xs:list><xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/><xs:enumeration value="geneware"/>
+          <xs:enumeration value="nanoware"/><xs:enumeration value="symbionts"/><xs:enumeration value="transgenics"/>
+        </xs:restriction></xs:simpleType></xs:list></xs:simpleType>
+      </xs:attribute>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
+  <xs:simpleType name="Decimal">
+    <xs:restriction base="xs:string"><xs:pattern value="-?[0-9]+(\.[0-9]+)?"/></xs:restriction>
+  </xs:simpleType>
 
   <xs:complexType name="Device">
     <xs:complexContent><xs:extension base="sr6:Entry">
@@ -221,10 +251,12 @@
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
-  <!-- a Matrix program: its type as printed (basic, hacking, …); avail and cost only where the book prints them -->
+  <!-- a Matrix program: its type as printed (basic, hacking, autosoft …); the ratings it comes in, avail and cost only
+       where the book prints them -->
   <xs:complexType name="Program">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="type" type="xs:string" use="required"/>
+      <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
     </xs:extension></xs:complexContent>

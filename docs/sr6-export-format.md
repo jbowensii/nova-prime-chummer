@@ -10,7 +10,8 @@ the same file. The producer is `src/sr6/engine/export.ts`.
 Two kinds, told apart by `kind`:
 
 - `runners`: one or more runners or NPCs as they stand (a finalized runner with its career spends replayed).
-- `books`: the ticked books' entries of every kind, as the app sees them (catalog edits applied), or one GM compendium.
+- `books`: the ticked books' entries of every kind but the implant grades (Foundry has no item for them; a purchase
+  carries its grade's key), as the app sees them (catalog edits applied), or one GM compendium.
 
 Files are named `runners-YYYY-MM-DD.sr6foundry.json`, `books-YYYY-MM-DD.sr6foundry.json` and
 `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json` (the local date of the export). The importer goes by `format` and `kind`,
@@ -58,7 +59,7 @@ is closed (no other keys).
 | `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |
 | `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
-| `purchases` | purchases (below): weapons, armor, augmentations, electronics, gear, vehicles |
+| `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles |
 | `contacts` | `[{ uid, name, archetype, connection, loyalty }]` |
 | `lifestyle` | `{ id, name, months, cost? }` or `null`; `cost` is the lifestyle's price per month |
 | `sins` | `[{ uid, name, kind, rating?, licences: [{ name, rating }] }]`; `kind` `real` or `fake` |
@@ -82,7 +83,7 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `kind` | the catalog kind (`weapons`, `spells`, `qualities`, … the 26 of `SR6_KINDS`) |
 | `name` | as printed (a custom line: the player's) |
 | `canon` | the source is canon; a custom line or a GM compendium's entry: `false` |
-| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`) |
+| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`); an augmentation's `type` is `cyberware` or `bioware` (geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type in `ware`) |
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |

@@ -279,8 +279,40 @@ def kind(chapter, b, parent2):
     return None, None
 
 
+_WORD_NUM = {w: i for i, w in enumerate(("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"))}
+_SOFT = re.compile(r"^•\s*\*\*([^*]+)\*\*\s*(?:\(([^()]*)\))?\s*$")
+
+
+def _autosofts(bs, cat):
+    """The skills sold as autosofts (Skills Available in Autosoft Format: bulleted `**Skill** (specialization)` lines,
+    their ratings in the prose, `rating from one to nine`): programs of type autosoft, unpriced (the core rulebook prices
+    autosofts by rating). A skill whose own line sets its rating (Language, Knowledge) stays in the rules."""
+    for b in bs:
+        if norm(b.name) != "skills available in autosoft format":
+            continue
+        text = " ".join(b.text.split())
+        m = re.search(r"rating from (\w+) to (\w+)", text, re.I)
+        lo, hi = (_WORD_NUM.get(m.group(i).lower()) for i in (1, 2)) if m else (None, None)
+        lines, i = b.text.splitlines(), 0
+        while i < len(lines):  # a bullet's parenthesis may wrap onto the next line
+            ln = lines[i].strip()
+            while ln.startswith("•") and ln.count("(") > ln.count(")") and i + 1 < len(lines):
+                i += 1
+                ln += " " + lines[i].strip()
+            i += 1
+            s = _SOFT.match(ln)
+            if not s or s.group(2) and re.search(r"\brating\b", s.group(2), re.I):
+                continue
+            name = f"{s.group(1).strip()} ({s.group(2).strip()})" if s.group(2) else s.group(1).strip()
+            cat.add("programs", name, max(1, b.page - PAGE_OFFSET), {"type": "autosoft", "rating": f"{lo}–{hi}" if lo and hi else None})
+
+
 def extract(regrouped, ctx=None):
-    report = []
-    res = crb.extract(_prep(list(blocks(regrouped)), report), ctx, book=sys.modules[__name__])
+    report, bs = [], list(blocks(regrouped))
+    res = crb.extract(_prep(bs, report), ctx, book=sys.modules[__name__])
     res.report += report  # a vehicle box whose values don't read
+    cat = crb._Catalog(ID, ID.lower(), BOOK)
+    _autosofts(bs, cat)
+    if cat.entries["programs"]:
+        res.files["programs.xml"] = cat.xml("programs")
     return res

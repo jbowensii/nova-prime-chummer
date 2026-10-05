@@ -43,14 +43,18 @@ const api = (page: Page, method: string, path: string, data?: unknown) =>
   page.request.fetch(`${base}api/${path}`, { method, data, headers: { Origin: origin } })
 const saved = (page: Page) => expect(page.getByRole('status', { name: 'Save status' })).toContainText('All changes saved')
 const row = (page: Page, name: string) => page.locator('.dossier').filter({ has: page.getByRole('link', { name, exact: true }) })
+const sections = (page: Page) => page.getByRole('navigation', { name: 'NPCs or critters' })
+/** New NPC on the NPCs section; a critter or spirit: New critter on the Critters section */
 async function newNpc(page: Page, kind: string, tier: string, meta?: string) {
-  await page.goto('/#/npcs')
-  await page.getByRole('button', { name: 'New NPC' }).click()
-  const d = page.getByRole('dialog', { name: 'New NPC' })
+  const noun = kind === 'NPC' ? 'NPC' : 'critter'
+  await page.goto(kind === 'NPC' ? '/#/npcs' : '/#/npcs/critters')
+  await page.getByRole('button', { name: `New ${noun}` }).click()
+  const d = page.getByRole('dialog', { name: `New ${noun}` })
+  await expect(d.getByLabel('Kind').locator('option')).toHaveText(kind === 'NPC' ? ['NPC'] : ['Critter', 'Spirit'])
   await d.getByLabel('Kind').selectOption({ label: kind })
   await d.getByLabel('Tier').selectOption({ label: tier })
   if (meta) await d.getByLabel('Metatype').selectOption({ label: meta })
-  await d.getByRole('button', { name: 'Create NPC' }).click()
+  await d.getByRole('button', { name: `Create ${noun}` }).click()
   await expect(page).toHaveURL(/#\/n\/[^/]+\/concept$/)
 }
 async function shots(page: Page, name: string) {
@@ -118,8 +122,12 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
   await page.getByRole('link', { name: 'Attributes' }).click()
   for (let i = 0; i < 8; i++) await page.getByRole('button', { name: 'Raise Brawn' }).click()
   await saved(page)
-  await page.goto('/#/npcs')
+  // a critter lists under Critters, not NPCs: Save and close goes there
+  await page.getByRole('button', { name: 'Save and close' }).click()
+  await expect(page).toHaveURL(/#\/npcs\/critters$/)
+  await expect(sections(page).getByRole('link', { name: /^Critters/ })).toHaveAttribute('aria-current', 'page')
   await expect(row(page, 'Made-up Hound').locator('.meta')).toContainText('Critter')
+  await expect(sections(page).getByRole('link')).toHaveText(['NPCs1', 'Critters1'])
 
   await page.locator('input[type=file]').setInputFiles([
     { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE) },
@@ -128,6 +136,10 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
   await expect(msg).toContainText('Imported Made-up Wisp.')
   await expect(msg).toContainText('runner.xml: this is a runner, not an NPC')
   await expect(row(page, 'Made-up Wisp').locator('.npckind')).toHaveText('Spirit')
+  await sections(page).getByRole('link', { name: /^NPCs/ }).click()
+  await expect(row(page, 'Made-up Wisp')).toHaveCount(0)
+  await expect(row(page, 'Ganger Boss')).toHaveCount(1)
+  await sections(page).getByRole('link', { name: /^Critters/ }).click()
   // an NPC has no career: the imported file's Finalize doesn't come along
   const wisp = (await (await api(page, 'GET', 'npcs')).json()).find((r: { xml: string }) => r.xml.includes('Made-up Wisp'))
   expect(wisp.xml).not.toContain('finalizedAt')
@@ -165,6 +177,24 @@ test('a failed save on import says why, on NPCs & Critters and on Your runners',
   await expect(page.getByRole('status')).toHaveText('runner.xml: the disk is full (test)')
 })
 
+test('an NPC imported before the list loads, its id already taken, saves under a new id', async ({ page }) => {
+  await signIn(page, 'eve')
+  const file = { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-twice-1').replace('Made-up Wisp', 'Made-up Twice')) }
+  expect((await page.request.fetch(`${base}api/npcs/npc-twice-1`, { method: 'PUT', data: file.buffer.toString(), headers: { 'Content-Type': 'application/xml', Origin: origin } })).ok()).toBe(true)
+  let release!: () => void
+  const held = new Promise<void>(r => { release = r })
+  const hold = async (r: Route) => { if (r.request().method() === 'GET') await held; await r.fallback() }
+  await page.route(u => u.pathname.endsWith('/api/npcs'), hold)
+  await page.goto('/#/npcs')
+  await expect(page.getByText('Loading NPCs…')).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles(file)
+  await expect(page.getByRole('status')).toHaveText('Imported Made-up Twice.')
+  release()
+  const twice = (await (await api(page, 'GET', 'npcs')).json()).filter((r: { xml: string }) => r.xml.includes('Made-up Twice'))
+  expect(twice).toHaveLength(2)
+  await page.unroute(u => u.pathname.endsWith('/api/npcs'))
+})
+
 test('share with a campaign: its co-GM reads and prints it; unshare', async ({ page }) => {
   await signIn(page, 'eve')
   const camp = await (await api(page, 'POST', 'campaigns', { name: 'Made-up Run', note: '' })).json()
@@ -200,7 +230,7 @@ test('share with a campaign: its co-GM reads and prints it; unshare', async ({ p
 
 test('delete an NPC: it waits in the NPC trash and is restored from there', async ({ page }) => {
   await signIn(page, 'eve')
-  await page.goto('/#/npcs')
+  await page.goto('/#/npcs/critters')
   await page.getByRole('button', { name: 'Delete Made-up Wisp' }).click()
   await page.getByRole('dialog', { name: 'Delete Made-up Wisp?' }).getByRole('button', { name: 'Delete NPC' }).click()
   await expect(row(page, 'Made-up Wisp')).toHaveCount(0)
@@ -210,6 +240,7 @@ test('delete an NPC: it waits in the NPC trash and is restored from there', asyn
   await page.getByRole('button', { name: 'Restore Made-up Wisp' }).click()
   await expect(page.getByRole('status')).toHaveText('Restored Made-up Wisp to your NPCs.')
   await page.getByRole('link', { name: 'NPCs & Critters' }).click()
+  await sections(page).getByRole('link', { name: /^Critters/ }).click()
   await expect(row(page, 'Made-up Wisp').locator('.npckind')).toHaveText('Spirit')
   await expect(page.getByRole('link', { name: 'Trash (0)' })).toBeVisible()
 })
@@ -276,7 +307,7 @@ test('Load book NPCs copies the imported books’ NPCs once, even after a rename
   await signIn(page, 'gus')
   await page.goto('/#/npcs')
   await page.getByRole('button', { name: 'Load book NPCs' }).click()
-  await expect(page.getByRole('status')).toHaveText('Added 1 book NPC.')
+  await expect(page.getByRole('status')).toHaveText('Loaded 1 · already there 0 · failed 0.')
   const r = row(page, 'Made-Up Goon')
   await expect(r.locator('.npckind')).toHaveText('NPC')
   await expect(r.locator('.npctier')).toHaveText('Regular')
@@ -285,12 +316,12 @@ test('Load book NPCs copies the imported books’ NPCs once, even after a rename
   expect(goon.xml).not.toContain('id="testc.npc-made-up-goon"') // a copy with an id of its own
 
   await page.getByRole('button', { name: 'Load book NPCs' }).click()
-  await expect(page.getByRole('status')).toHaveText('The book NPCs are already in your NPCs.')
+  await expect(page.getByRole('status')).toHaveText('Loaded 0 · already there 1 · failed 0.')
   await r.getByRole('link', { name: 'Made-Up Goon' }).click()
   await page.getByLabel('Street name').fill('Renamed Goon')
   await savedOnServer(page, 'Renamed Goon')
   await page.goto('/#/npcs')
   await page.getByRole('button', { name: 'Load book NPCs' }).click()
-  await expect(page.getByRole('status')).toHaveText('The book NPCs are already in your NPCs.')
+  await expect(page.getByRole('status')).toHaveText('Loaded 0 · already there 1 · failed 0.')
   await expect(row(page, 'Made-Up Goon')).toHaveCount(0)
 })

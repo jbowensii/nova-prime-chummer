@@ -1,5 +1,5 @@
 // Gear: weapons (attack ratings, accessories from the accessory categories), armor (worn, the Defense Rating it gives),
-// electronics and other gear (a quantity where lines stack), and a custom item at the player's own price.
+// electronics, programs and autosofts (at a rating, priced by the book's formula) and other gear (a quantity where lines stack), and a custom item at the player's own price.
 import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import type { PurchaseKind } from '../../model/character'
@@ -24,6 +24,7 @@ export function GearTab() {
         hint={`Unarmed: AR ${d.attackRatings.unarmed}.`} />
       <PurchaseSection kind="armor" title="Armor" one="armor" bonuses hint={`Defense Rating ${d.defenseRating} with the armor worn.`} />
       <PurchaseSection kind="electronics" title="Electronics" one="electronics" bonuses />
+      <PurchaseSection kind="programs" title="Programs and autosofts" one="a program" />
       <PurchaseSection kind="gear" title="Other gear" one="other gear" bonuses />
       <Modal open={custom} onClose={close} title="Custom item"
         actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!name.trim()} onClick={add}>Add item</button></>}>

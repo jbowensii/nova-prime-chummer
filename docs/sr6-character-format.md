@@ -36,6 +36,7 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
     <lifestyle id="crb.cozy" months="2"/>
     <sin uid="s1" name="Pat Roe" kind="fake" rating="3"><licence name="Zap Gun" rating="2"/></sin>
   </build>
+  <house><quality id="street.lucky-socks" source="STREET" page="1" kind="positive" karma="7"><name>Lucky Socks</name><text>…</text></quality></house>
   <override code="skill.cap" path="skills.crb.gab">GM ok</override>
 </sr6:character>
 ```
@@ -46,6 +47,12 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
 draft with none picked yet. `finalizedAt`, `finalKarma` and `finalNuyen` are set by Finalize (the karma and nuyen left);
 `campaign` is set through the server. `rev` is the server's revision counter and is left out of exports. `sampleKey`:
 see NPCs below.
+
+`<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, purchases and
+accessories, lifestyle; career spends included), in the SR6 data files' own format with their text, refreshed on every
+change while the compendium is readable. When it no longer is (unshared or deleted), each copy stands in for its entry
+(prices, rules, sheet and exports) and Review notes "its source … is no longer available; the runner keeps its own
+copy". Book entries are never copied here.
 
 ## Build
 
@@ -63,7 +70,7 @@ see NPCs below.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
-- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `gear` or `vehicles`; `rating` for rated
+- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear` or `vehicles`; `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when

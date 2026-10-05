@@ -45,15 +45,16 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | file / kind | tag | attributes | children |
 |---|---|---|---|
 | priorities | priority | letter* (A–E) | metatype (name*, points* int)×n, attributes (points* int), skills (points* int), magic (kind* full\|aspected\|mystic-adept\|adept\|technomancer\|mundane, rating int)×n, resources (nuyen* int) |
-| metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n |
+| metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
 | weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, defense, capacity, avail, cost | — |
-| augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
+| augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
+| grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
-| programs | program | type* (basic, hacking, … as printed), avail, cost (where the book prints them: the core rulebook's per type) | — |
+| programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per, slots | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
@@ -72,6 +73,19 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | contacts | contact | connection, loyalty, archetype | — |
 | lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills; contactTypes (academic, corporate, criminal, engineering, government, magic, matrix, media, medical, street; absent: any) | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
+
+Metavariants under priority creation: the Companion's development table gives each metavariant its adjustment
+points at the metatype priorities it can be taken at (its `<priority>` children); the priority provider offers it at
+those letters beside the metatypes the priority table lists, and its `metatypeKarma:<id>` comes out of the starting
+karma (a metatype the table lists costs none there).
+
+Implant grades (`grades`): the core rulebook's grade table (used, alphaware, betaware, deltaware) and Body Shop's omega
+grade, exoware (cyberware only) and gammaware (an Essence factor only: it isn't offered). A grade's key is its name
+without "ware" or "grade" (`alpha`, `omega`, `exo`); the creation settings `grade:<key>:essence|cost|avail` replace
+the factors of the standard five (which ship as settings) on Table setup; another grade's are its catalog entry's
+(an edit changes them). The augmentation picker
+offers every grade whose Essence factor is set (a catalog grade also needs its cost) to the types it is for. The
+Foundry book export leaves grades out (a purchase carries its grade's key).
 
 Life modules (lifepath creation) are structured grants with no prose. The Sixth World Companion's recipe
 (`importer/sr6/recipes/swc.py`, notes in `swc.md`) writes them: its three opening modules (every runner has them) and
@@ -111,8 +125,7 @@ custom/sr6/
 
 The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
 `custom/sr6/imported/index.xml` (the same id replaces, `<remove>` deletes), then the texts file each source names, then
-`custom/sr6/edits/edits.xml` and `edits/texts.xml`, then (a GM's catalog only) the compendiums they can read
-(see Compendiums below).
+`custom/sr6/edits/edits.xml` and `edits/texts.xml`, then the compendiums the account can read (see Compendiums below).
 
 **Scoping.** Every imported id is scoped by its source (`crb.zap-gun`), as the Anarchy books are, so two books never
 clash. Attribute `abbr` and skill `attr` values are never scoped.
@@ -230,7 +243,9 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Lifepath | `lifepath.contactRatingCap` | number | lifepath | Highest contact rating |
 | Lifepath | `lifepath.bestAttributeBonus` | number | optional | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
 | Lifepath | `lifepath.repeatModules` | number | optional | Adult modules that may be taken twice (unset: none) |
-| Lifepath | `lifepath.contactKarma` | number | optional | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points) |
+| Lifepath | `lifepath.contactKarma` | number | optional | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points). Karma never raises a contact's connection or loyalty above Charisma: the points must pay for what is above it (SWC p. 31) |
+| Lifepath | `lifepath.raisedAttributeStart` | number | optional | Attributes whose metatype maximum is above `attributeBaseMax` start at (Born This Way; unset: 1) |
+| Lifepath | `lifepath.mundaneEdge` | number | optional | Edge a runner neither awakened nor emerged gains (Born This Way; unset: none) |
 | Augmentation grades | `grade:standard:essence` | number | optional | Standard: Essence times |
 | Augmentation grades | `grade:standard:cost` | number | optional | Standard: cost times |
 | Augmentation grades | `grade:standard:avail` | number | optional | Standard: Availability plus |
@@ -289,7 +304,10 @@ A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by 
   block.
 - Never the other game's: the server refuses a body that names an Anarchy namespace anywhere, and the app refuses an
   Anarchy compendium, an embedded Anarchy runner and any entry in another namespace.
-- In the catalog: a GM's SR6 catalog loads every compendium they can read after the edits layer (players' load none).
+- In the catalog: a GM's SR6 catalog loads every compendium they can read after the edits layer; a player's the `table`
+  ones and those shared with an SR6 campaign they play in (`GET /api/sr6/compendiums/shared`: no private ones, no NPCs),
+  and a runner sees the table's and its own campaign's. A runner keeps copies of those it uses (`<house>`,
+  docs/sr6-character-format.md).
   Its source joins as a house source (`origin: user`, non-canon, publisher: the owner's name); its entries join their
   kinds, its NPCs none. It never replaces anything: a compendium whose source id is already a book's is skipped (Game
   data lists why), and so is one entry whose id another source's entry of that kind already holds. Load book NPCs

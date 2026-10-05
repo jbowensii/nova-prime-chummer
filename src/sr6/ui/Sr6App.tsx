@@ -1,12 +1,12 @@
 // The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog, with a GM's readable SR6 compendiums) and the server's creation rules (loadCreation) load once here, then the page: Books (admin; the
 // Anarchy Books page with game="sr6"), Table setup (#/sr6/table: the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
-// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/trash]) and an NPC's
+// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/critters|/trash]) and an NPC's
 // editor (#/sr6/n/<id>/<tab>) and Compendiums (Compendiums.tsx, #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6 is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { BooksScreen } from '../../ui/Books'
 import { CampaignScreen, CampaignsScreen } from '../../ui/Campaigns'
-import { readable } from '../../ui/compendiumStore'
+import { listShared, readable } from '../../ui/compendiumStore'
 import { PageHeader } from '../../ui/nav'
 import { RepoContext, type Repo } from '../../ui/repo'
 import { TrashScreen } from '../../ui/Trash'
@@ -19,23 +19,32 @@ import { listSr6Compendiums } from './compendiumStore'
 import { Sr6Compendiums } from './Compendiums'
 import { CampaignCreation, ServerCreation, type Loaded } from './Creation'
 import { Sr6Data } from './Data'
-import { Sr6EditorView } from './EditorView'
+import { NPC_TABS, SR6_TABS, Sr6EditorView } from './EditorView'
 import { Sr6Npcs } from './Npcs'
 import { Sr6Rules } from './Rules'
 import { Sr6Runners } from './Runners'
+
+const FOLIO: Record<string, string> = { '': 'Your runners', npcs: 'NPCs & Critters', compendiums: 'Compendiums', campaigns: 'Campaigns',
+  books: 'Books', users: 'Users', trash: 'Trash', rules: 'Rules', data: 'Game data', table: 'Table setup' }
+/** The book's page footer, "SECTION // SUB" (theme.css .sr6-folio): drawn from data-folio, so it's never read twice or found as page text. */
+function folio(page: string, route: string[]) {
+  if (page !== 'c' && page !== 'n') return `Shadowrun 6 // ${FOLIO[page] ?? FOLIO['']}`
+  const tab = route[2] ?? (page === 'n' ? 'stats' : 'concept')
+  return `${page === 'n' ? 'NPCs & Critters' : 'Your runners'} // ${[...SR6_TABS, ...NPC_TABS].find(([k]) => k === tab)?.[1] ?? ''}`
+}
 
 export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const me = useMe(), admin = isAdmin(me)
   const [c, setC] = useState<Sr6Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [cr, setCr] = useState<Loaded>({ rules: new Map(), errors: [] })
-  // staff on the server: the SR6 compendiums they can read join their catalog (a failed list loads it without them);
-  // players' catalogs never hold one
-  const staff = repo.mode === 'server' && canEdit(me)
-  const refresh = async () => loadSr6Catalog('./', staff ? readable(await listSr6Compendiums().catch(() => [])) : [])
+  // on the server the SR6 compendiums join the catalog (a failed list loads it without them): staff get those they can
+  // read, players the ones shared with the table and their SR6 campaigns (no NPCs; a runner sees its own campaign's)
+  const staff = repo.mode === 'server' && canEdit(me), player = repo.mode === 'server' && !!me && !staff
+  const refresh = async () => loadSr6Catalog('./', staff || player ? readable(await (staff ? listSr6Compendiums() : listShared('./', 'sr6')).catch(() => [])) : [])
     .then(x => { setC(x); setFailed(null) }, e => setFailed(String(e)))
   const refreshCreation = () => loadCreation().then(setCr)
-  useEffect(() => { void refresh() }, [staff]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void refresh() }, [staff, player]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void refreshCreation() }, [])
   const data = useMemo(() => c && sr6Data(c), [c])
   // pages a role can't use show the runners (players never get the NPC area: the server refuses them too)
@@ -56,7 +65,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     : page === 'campaigns' && repo.mode === 'server' ? route[1] ? <CampaignScreen key={route[1]} game="sr6" id={route[1]} label={() => ''}
       extra={(camp, set) => c && <CampaignCreation c={c} cr={cr} camp={camp} onSaved={set} />} /> : <CampaignsScreen game="sr6" />
     : repo.mode !== 'server' ? <main className="lib"><PageHeader title="Your runners" /><div className="empty"><p>Shadowrun 6 runners need the Chummer server.</p></div></main>
-    : c && data ? page === 'npcs' ? <Sr6Npcs c={c} data={data} cr={cr.rules} />
+    : c && data ? page === 'npcs' ? <Sr6Npcs c={c} data={data} cr={cr.rules} section={route[1] === 'critters' ? 'critters' : 'npcs'} />
       : page === 'n' && route[1] ? <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       : page === 'c' && route[1] ? <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} />
       : <Sr6Runners c={c} data={data} cr={cr.rules} />
@@ -65,6 +74,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     <RepoContext.Provider value={repo}>
       {failed && <p className="banner err" role="alert" style={{ margin: 0 }}>The SR6 game data didn’t load: {failed}</p>}
       {body}
+      {route[2] !== 'print' && <footer className="sr6-folio" data-folio={folio(page, route)} aria-hidden="true" />}
     </RepoContext.Provider>
   )
 }

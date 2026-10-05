@@ -11,6 +11,7 @@ import './sheet.css'
 import { entryOf, priced } from '../engine/budgets'
 import { balances } from '../engine/career'
 import { MAGIC_KINDS } from '../engine/data'
+import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, type PickKind, type PurchaseKind, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
 import { npcHeadline } from '../engine/npc'
@@ -35,7 +36,7 @@ export function Sr6Sheet() {
   const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
   const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
   const know = b.knowledge.filter(x => x.kind === 'knowledge'), langs = b.knowledge.filter(x => x.kind === 'language')
-  const gear = [...lines('electronics'), ...lines('gear')]
+  const gear = [...lines('electronics'), ...lines('programs'), ...lines('gear')]
   const lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)
   // career: the ledger's balances (the sheet already shows the runner as it stands)
   const { karma, nuyen } = career ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
@@ -101,6 +102,8 @@ export function Sr6Sheet() {
             <p className="s-small">Physical {d.monitors.physical ?? '—'}</p>{boxes(d.monitors.physical)}
             <p className="s-small">Stun {d.monitors.stun ?? '—'}</p>{boxes(d.monitors.stun, 's')}
             <p className="s-small">Overflow {d.monitors.overflow}</p>{boxes(d.monitors.overflow, 'i')}
+            <p className="s-small">Edge points {d.attrs.edg.augmented}</p>
+            <div className="s-boxes sr6-edge" aria-hidden="true">{Array.from({ length: d.attrs.edg.augmented }, (_, i) => <span key={i} />)}</div>
             <table className="sr6-derived-t"><tbody>
               {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating],
                 ['Composure', d.composure], ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry],
@@ -134,7 +137,7 @@ export function Sr6Sheet() {
           <h2>Augmentations</h2>
           <table><thead><tr><th>Augmentation</th><th>Grade</th><th>Essence</th></tr></thead>
             <tbody>{lines('augmentations').map(x => <tr key={x.uid}><td><b>{nameOf(x)}</b>{x.rating && <span className="s-small"> rating {x.rating}</span>}{acc(x)}</td>
-              <td>{x.grade ?? ''}</td><td>{n(priced(x, data, cr).essence)}</td></tr>)}</tbody></table>
+              <td>{x.grade ? gradeName(data, x.grade) : ''}</td><td>{n(priced(x, data, cr).essence)}</td></tr>)}</tbody></table>
         </section>}
         {b.magic !== 'mundane' && <section>
           <h2>{k.resonance ? 'Resonance' : 'Magic'}</h2>

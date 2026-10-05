@@ -12,7 +12,7 @@ export function VehiclesTab() {
   return (
     <div className="stack">
       <h2>Vehicles</h2>
-      <PurchaseSection kind="vehicles" title="Vehicles and drones" one="a vehicle or drone" accessories={{ kinds: ['gear', 'electronics'] }}
+      <PurchaseSection kind="vehicles" title="Vehicles and drones" one="a vehicle or drone" accessories={{ kinds: ['gear', 'electronics', 'programs'] }}
         detail={x => { const a = entryOf(x, data)?.attrs ?? {}; return STATS.filter(([k]) => a[k]).map(([k, l]) => `${l} ${a[k]}`).join(' · ') }} />
     </div>
   )

@@ -61,7 +61,7 @@ test('a compendium overlay adds its entries under its own house source; its NPCs
   expect(files.at(-1)).toBe(extra) // the mini fixture has no custom/index.xml: extras load last
   const c = buildCatalog(files)
   expect(c.errors).toEqual([])
-  expect(c.sources.get('STREET')).toEqual({ id: 'STREET', name: 'Street Gear', publisher: 'Game Master', canon: false, origin: 'user', compendium: { id: street.id, owner: 'gm1' } })
+  expect(c.sources.get('STREET')).toEqual({ id: 'STREET', name: 'Street Gear', publisher: 'Game Master', canon: false, origin: 'user', compendium: { id: street.id, owner: 'gm1', campaign: 'abcdef012345' } })
   expect(c.amps.get('street.zap-glove')!.narrative).toBe('Our own words & <tags>.')
   expect(c.items.get('street.pipe')).toMatchObject({ kind: 'weapon', dv: 'STR+1', source: 'STREET' })
   expect(c.vehicles.get('street.scooter')!.body).toBe(4)

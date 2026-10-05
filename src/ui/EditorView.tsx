@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { appendEvent, balance, derive, logChange, price, rescope, settle as settleLedger, syncRealSin, validate, type TableFlags } from '../engine'
+import { appendEvent, balance, derive, forCampaign, keepHouse, logChange, price, rescope, settle as settleLedger, syncRealSin, validate, type TableFlags } from '../engine'
+import { canEdit, useMe } from './auth'
 import { loadTableRules, tableFlags } from './TableRules'
 import type { CareerEvent, Catalog, Character } from '../model/types'
 import { Brand, fmt, Modal, NpcChips, StateBadge } from './bits'
 import { Editor, editHref, homeHref, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { downloadRunners } from './Foundry'
+import { approveRunner } from './Campaigns'
 import { useRepo } from './repo'
 import { ConflictDialog, SaveLine, useAutosave } from './useAutosave'
 import { Receipt } from './Receipt'
@@ -32,23 +34,27 @@ const TABS: [string, string][] = [['concept', 'Concept'], ['attributes', 'Attrib
 
 interface Pending { ev: CareerEvent; summary: string; cost: number; after: number; resolve: (ok: boolean) => void }
 
-export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string }) {
+export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: string }) {
   const repo = useRepo()
   const npcRoute = location.hash.startsWith('#/n/')
   const noun = npcRoute ? 'NPC' : 'runner'
   // old runners can reference unscoped catalog ids; remap them, saved normally when they change. A runner finalized
   // before 0.5.5 gets its ledger settled (engine/career.ts settle), saved with the next change.
-  const save = useAutosave(repo, id, { noun, tab, editHref, home: homeHref, prepare: ch => settleLedger(c, rescope(c, ch)),
+  const save = useAutosave(repo, id, { noun, tab, editHref, home: homeHref, prepare: ch => settleLedger(all, rescope(all, ch)),
     inEditor: href => /^#\/[cn]\//.test(href) && href.slice(4).startsWith(`${id}/`) })
   const { doc: ch, setDoc: setCh, loaded, loadError, owner, status, saveNow, saveAndClose } = save
+  const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   const [pending, setPending] = useState<Pending | null>(null)
-  useEffect(() => setCh(x => x && rescope(c, x)), [c]) // same object when nothing needs remapping
+  useEffect(() => setCh(x => x && rescope(all, x)), [all]) // same object when nothing needs remapping
+  const me = useMe()
+  // a player's catalog holds the compendiums shared with every campaign they play in: this runner sees its own campaign's
+  const c = useMemo(() => canEdit(me) ? all : forCampaign(all, ch?.campaign), [all, me, ch?.campaign])
 
   const [table, setTable] = useState<TableFlags>()
   useEffect(() => { void loadTableRules().then(r => setTable(tableFlags(r))) }, [])
   const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
 
-  const back = npcRoute ? <a href="#/npcs">Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
+  const back = npcRoute ? <a href={ch?.npc ? homeHref(ch) : '#/npcs'}>Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
   if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
     <p>{back}, where you can download its file or try to repair it.</p></main>
@@ -57,12 +63,13 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const career = !!ch.finalizedAt
   // a finalized runner's build changes go in the ledger by themselves (engine/career.ts logChange); undo takes them back
   // out, except past recorded earnings (not undoable: history before them is dropped)
-  const commit = (next: Character, undoable: boolean) => save.commit(logChange(c, ch, next), undoable)
+  // a compendium entry it uses is copied onto it (engine/file.ts keepHouse): it keeps it if the compendium goes
+  const commit = (next: Character, undoable: boolean) => save.commit(keepHouse(c, logChange(c, ch, next)), undoable)
   const mutate = (fn: (d: Character) => void) => { const d = structuredClone(ch); fn(d); syncRealSin(c, d.build); return d }
 
   const ro = owner !== null
   const ctx: EditorCtx = {
-    c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career,
+    c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career, ro,
     edit: fn => { if (!ro) commit(mutate(fn), true) },
     update: fn => { if (!ro) commit(mutate(fn), true) },
     record: (ev, summary) => ro ? Promise.resolve(false) : new Promise<boolean>(resolve => {
@@ -70,6 +77,10 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       setPending({ ev, summary, cost, after: calc.bal - cost, resolve })
     }),
     replace: next => { if (!ro) commit(next, true) },
+    // their own runner directly; a player's in a campaign they run (or the admin) on the server
+    approve: !gm ? null : !ro ? overrides => { commit({ ...structuredClone(ch), overrides }, true); return Promise.resolve(null) }
+      : ch.campaign && !npcRoute ? overrides => approveRunner('ca2', ch.campaign!, ch.id, overrides)
+        .then(() => { setCh({ ...ch, overrides }); return null }, e => (e as Error).message) : null,
     undo: save.undo, redo: save.redo, canUndo: save.canUndo, canRedo: save.canRedo,
   }
   const settle = (ok: boolean) => {
@@ -117,7 +128,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
         {' '}<a href={editHref(ch, 'print')}>print it</a> or export a copy.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
-        <main className="work"><AskRules /><fieldset className="bare" disabled={ro}>
+        <main className="work"><AskRules /><fieldset className="bare" disabled={ro && !(tab === 'review' && ctx.approve)}>
           {tab === 'concept' && <ConceptTab />}
           {tab === 'attributes' && <AttributesTab />}
           {tab === 'skills' && <SkillsTab />}

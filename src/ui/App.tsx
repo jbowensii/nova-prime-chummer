@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { PageHeader } from './nav'
 import { loadCatalog } from '../engine'
 import { detectRepo, migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
@@ -8,7 +8,7 @@ import { AiSettings } from './AiSettings'
 import { canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CampaignScreen, CampaignsScreen } from './Campaigns'
-import { listCompendiums, readable } from './compendiumStore'
+import { listCompendiums, listShared, readable } from './compendiumStore'
 import { CompendiumsScreen } from './Compendiums'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
@@ -23,6 +23,7 @@ import { DataScreen } from './tabs/Data'
 import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
+import '../sr6/ui/theme.css'
 import { BackgroundArt } from './Background'
 import { GamePicker } from './GamePicker'
 import { Sr6Main } from '../sr6/ui/Sr6App'
@@ -62,13 +63,14 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(0)
   const npcs = useMemo(() => npcRepoFor(repo), [repo])
-  // staff on the server: the compendiums they can read join their catalog (a failed list loads it without them)
-  const staff = repo.mode === 'server' && canEdit(me)
-  const load = async () => loadCatalog('./', staff ? readable(await listCompendiums().catch(() => [])) : [])
+  // on the server the compendiums join the catalog (a failed list loads it without them): staff get those they can read,
+  // players the ones shared with the table and their campaigns (no NPCs; a runner sees its own campaign's, EditorView.tsx)
+  const staff = repo.mode === 'server' && canEdit(me), player = repo.mode === 'server' && !!me && !staff
+  const load = async () => loadCatalog('./', staff || player ? readable(await (staff ? listCompendiums() : listShared()).catch(() => [])) : [])
   useEffect(() => {
     load().then(setCatalog, e => setFailed(String(e)))
     if (repo.mode === 'server') migrateBrowserToServer(repo).then(setMoved, () => {})
-  }, [repo, staff]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [repo, staff, player]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (failed) return <main className="lib"><h1>Game data didn’t load</h1><p>{failed}</p><p>Check that the <code>data/</code> folder is served next to this page, then reload.</p></main>
   if (!catalog) return <main className="lib"><p className="muted">Loading game data…</p></main>
@@ -96,7 +98,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'n' && id ? <RepoContext.Provider value={npcs}><EditorView key={`n/${id}`} c={catalog} id={id} tab={tab ?? 'concept'} /></RepoContext.Provider>
         : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />
-        : page === 'npcs' ? <NpcsScreen c={catalog} />
+        : page === 'npcs' ? <NpcsScreen c={catalog} section={id === 'critters' ? 'critters' : 'npcs'} />
         : page === 'users' ? <UsersScreen />
         : page === 'campaigns' && id ? <CampaignScreen key={id} id={id} label={r => [catalog.packages.get(r.package)?.name, catalog.levels.get(r.level)?.name ?? r.level].filter(Boolean).join(', ')} />
         : page === 'campaigns' ? <CampaignsScreen />
@@ -158,6 +160,9 @@ export default function App() {
     return () => removeEventListener('hashchange', on)
   }, [])
   const user = me?.user
+  // the game the page's look follows (sr6/ui/theme.css keys off it): the picker mixes both, #/sr6… is Shadowrun 6's
+  const look = !route.length && !game ? 'pick' : gameOf(route)
+  useLayoutEffect(() => { document.documentElement.dataset.game = look }, [look])
   useFocusTitle(`${route[0] ?? ''}/${route[0] === 'c' || route[0] === 'n' ? route[1] : ''}/${me?.setup}/${!!user}`)
   // a session that ends while the app is open: the sign-in form goes over the page, which keeps its state (unsaved
   // runner edits are sent again once signed back in); someone else signing in there starts afresh

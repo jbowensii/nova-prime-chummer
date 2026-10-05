@@ -2,7 +2,7 @@
 // (provider, budgets, violations, derived values). Tabs change the runner through edit (the build), act (an engine step:
 // its refusal comes back as a sentence) or update (identity, notes, the character-level setters).
 import { createContext, useContext } from 'react'
-import type { Violation } from '../../model/types'
+import type { Override, Violation } from '../../model/types'
 import { apply, type Op } from '../engine/actions'
 import type { Sr6Budgets } from '../engine/budgets'
 import type { Preview, Typed } from '../engine/career'
@@ -10,7 +10,7 @@ import { CREATION_KEYS, type CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived } from '../engine/derive'
 import type { Provider } from '../engine/providers'
-import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character } from '../model/character'
+import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6Npc } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 
 export interface Sr6Ctx {
@@ -28,6 +28,9 @@ export interface Sr6Ctx {
   update(fn: (ch: Sr6Character) => void): void
   /** the whole runner swapped (Finalize, Back to draft) */
   replace(next: Sr6Character): void
+  /** GM approval: the runner's approvals replaced (null when done, else why not); null for a viewer who isn't a GM or the
+   *  admin, or someone else's runner outside a campaign */
+  approve: ((overrides: Override[]) => Promise<string | null>) | null
   /** career: what a spend would cost, priced on the runner as it stands */
   preview(a: Sr6Advance, typed?: Typed): Preview
   /** career: record a spend; null when recorded, else why not (a sentence). Not on the undo stack: Void undoes it. */
@@ -47,6 +50,10 @@ export const useSr6Editor = () => {
 export const SR6_FINAL_TIP = 'Finalized: spend karma and nuyen on the Ledger tab'
 export const sr6EditHref = (id: string, tab: string) => `#/sr6/c/${id}/${tab}`
 export const sr6NpcHref = (id: string, tab = 'stats') => `#/sr6/n/${id}/${tab}`
+/** NPCs & Critters' two sections: grunts and contacts are NPCs; critters, spirits and sprites are critters. */
+export const npcSection = (npc?: Sr6Npc): 'npcs' | 'critters' => npc && npc.kind !== 'grunt' && npc.kind !== 'contact' ? 'critters' : 'npcs'
+/** The NPC list section an NPC lists in (its editor's way back): #/sr6/npcs or #/sr6/npcs/critters. */
+export const sr6NpcsHref = (npc?: Sr6Npc) => npcSection(npc) === 'critters' ? '#/sr6/npcs/critters' : '#/sr6/npcs'
 /** The editor link for a runner or an NPC. */
 export const sr6Href = (ch: { id: string; npc?: unknown }, tab: string) => ch.npc ? sr6NpcHref(ch.id, tab) : sr6EditHref(ch.id, tab)
 
@@ -64,6 +71,7 @@ export const REASONS: Record<string, string> = {
   'unknown-line': 'That isn’t on the runner any more.',
   'unknown-host': 'The item to fit it on isn’t on the runner any more.',
   'unknown-grade': 'That grade isn’t set up: Table setup → Creation rules.',
+  'no-grade': 'Only cyberware and bioware come in grades.',
   'unknown-choice': 'That life module has no such choice.',
   'unknown-option': 'That isn’t one of the choice’s options.',
   'skill-untrained': 'Give the skill a rank first.',

@@ -174,7 +174,7 @@ test('the sheet lets the player choose the background image, remembered per runn
   }
 })
 
-test('Shadowrun 6 has its own art: uploaded on an SR6 page, the only art its pages and sheets show', async ({ page }) => {
+test('Shadowrun 6 has its own art: uploaded on an SR6 page, the only art its pages and sheets show; Anarchy’s sheets never show it', async ({ page }) => {
   await signIn(page, 'ada')
   const anarchy: string = await page.evaluate(async png => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png),
     headers: { 'Content-Type': 'image/png', 'X-Filename': 'anarchy.png' } })).json()).id, [...makePng(8, 8, () => [200, 40, 40])])
@@ -200,6 +200,7 @@ test('Shadowrun 6 has its own art: uploaded on an SR6 page, the only art its pag
     await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
     await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Print' }).click()
     await expect(page.locator('.sheet-art > div')).toHaveAttribute('style', new RegExp(`sr6/backgrounds/${sr6}`))
+    const sr6Sheet = page.url()
     await page.getByRole('button', { name: 'Background', exact: true }).click()
     const picker = page.getByRole('group', { name: 'Background image' })
     await expect(picker.getByRole('radio')).toHaveCount(2)
@@ -214,6 +215,41 @@ test('Shadowrun 6 has its own art: uploaded on an SR6 page, the only art its pag
     await expect(a.getByRole('group', { name: 'Background art (Shadowrun 6)' })).toHaveCount(0)
     await expect(a.getByText('sr6-stripes.png')).toHaveCount(0)
     await expect(a.getByText('anarchy.png')).toBeVisible()
+    await a.getByRole('button', { name: 'Close' }).click()
+
+    // the sheets' art is each game's own too: the SR6 sheet's switch off leaves Anarchy's sheet showing Anarchy's image,
+    // its picker offering only Anarchy's; back on SR6, the switch is still off and only SR6's image is offered
+    const layer = page.locator('.sheet-art'), dlg = page.getByRole('dialog', { name: 'Background' })
+    const imgs = () => picker.locator('img').evaluateAll(es => es.map(e => e.getAttribute('src')))
+    await page.goto('/')
+    await page.getByRole('button', { name: 'New runner' }).click()
+    await page.getByRole('button', { name: 'Create runner' }).click()
+    await page.getByLabel('Street name').fill('Art Check Anarchy')
+    await page.waitForTimeout(600)
+    const anarchySheet = page.url().replace(/\/[^/]+$/, '/print')
+    await page.getByRole('link', { name: 'Print' }).click()
+    await expect(layer.locator('div')).toHaveAttribute('style', new RegExp(`api/backgrounds/${anarchy}`))
+    await page.goto(sr6Sheet)
+    await expect(layer.locator('div')).toHaveAttribute('style', new RegExp(`sr6/backgrounds/${sr6}`))
+    await page.getByRole('button', { name: 'Background', exact: true }).click()
+    await dlg.getByLabel('Background art', { exact: true }).uncheck()
+    await expect(layer).toHaveClass(/no-screen/)
+    await page.keyboard.press('Escape')
+    await page.goto(anarchySheet)
+    await expect(layer).not.toHaveClass(/no-screen/)
+    await expect(layer.locator('div')).toHaveAttribute('style', new RegExp(`api/backgrounds/${anarchy}`))
+    await page.getByRole('button', { name: 'Background', exact: true }).click()
+    await expect(dlg.getByLabel('Background art', { exact: true })).toBeChecked()
+    expect((await imgs()).length).toBeGreaterThan(0)
+    expect((await imgs()).every(s => /\/api\/backgrounds\//.test(s ?? ''))).toBe(true)
+    await page.keyboard.press('Escape')
+    await page.goto(sr6Sheet)
+    await expect(layer).toHaveClass(/no-screen/)
+    await expect(layer.locator('div')).not.toHaveAttribute('style', /api\/backgrounds\//)
+    await page.getByRole('button', { name: 'Background', exact: true }).click()
+    await dlg.getByLabel('Background art', { exact: true }).check()
+    expect(await imgs()).toEqual([expect.stringMatching(new RegExp(`/api/sr6/backgrounds/${sr6}$`))])
+    await page.keyboard.press('Escape')
   } finally {
     await page.evaluate(([a, s]) => Promise.all([fetch(`./api/backgrounds/${a}`, { method: 'DELETE' }), s && fetch(`./api/sr6/backgrounds/${s}`, { method: 'DELETE' })]), [anarchy, sr6])
   }
