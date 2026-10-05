@@ -8,6 +8,9 @@
 - **Shadowrun 6's neon is a shade softer, and pink is only a highlight.** Links, hovers, tags and other small text are
   cyan now (pink small text was hard to read); pink stays for the rule under titles, the current tab and focus. In the
   dark look the cyan and pink are toned down and the glows are fainter.
+- **Quieter Shadowrun 6 pages.** Only the page title keeps the full pink hatched rule; a box's title gets a short pink
+  tick. Table headings and the Game data list read in plain sentence case instead of cyan capitals, and Review's
+  problems read as ordinary text (a link on hover) instead of a column of underlined cyan.
 
 ## 0.9.9 — 2026-10-05: two new Shadowrun 6 character sheets
 

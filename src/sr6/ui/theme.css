@@ -128,8 +128,7 @@
 }
 
 /* ---- tables: the book's head band with cyan caps ---- */
-:root[data-game='sr6'] table.data th { color: var(--heading); font-family: var(--display); font-weight: 600; letter-spacing: 0.03em; }
-:root[data-game='sr6'][data-theme='dark'] table.data th { color: var(--heading); }
+:root[data-game='sr6'] table.data th { color: var(--text-2); font-family: var(--display); font-weight: 600; text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
 :root[data-game='sr6'] table.data tr.group td { border-bottom-color: var(--sr6-line); }
 
 /* ---- the budgets sidebar: a grey book sidebar (deep blue in the dark), rounded, cyan title ---- */
@@ -220,3 +219,12 @@
   background-image: repeating-linear-gradient(-55deg, var(--sr6-neon-pink) 0 1.6px, transparent 1.6px 3.6px); }
 :root[data-theme='dark'] .game.sr6 .what { color: #c3dbe6; }
 :root[data-theme='dark'] .game.sr6:hover .what, :root[data-theme='dark'] .game.sr6:focus-visible .what { color: #e6f7ff; }
+
+/* ---- quieter: pink is a highlight, not a stripe under every box. The page title keeps its full hatched rule; a box's
+   title gets a short pink tick; the data list reads in sentence case; Review's problems read as text, links on hover ---- */
+:root[data-game='sr6'] :is(.work h2, .lib h2):not(dialog h2) { background-size: 2.6rem 0.22em; }
+:root[data-game='sr6'] .receipt h2, :root[data-game='sr6'][data-texture='full'] .receipt h2 { background-size: 2.6rem 0.2em; }
+:root[data-game='sr6'] dialog h2 { background-size: 2.6rem 0.2em; }
+:root[data-game='sr6'] .kinds button { text-transform: none; letter-spacing: 0; font-size: 0.95rem; }
+:root[data-game='sr6'] .viol .msg a { color: var(--text); text-decoration: none; }
+:root[data-game='sr6'] .viol .msg a:hover, :root[data-game='sr6'] .viol .msg a:focus-visible { color: var(--rust); text-decoration: underline; }
