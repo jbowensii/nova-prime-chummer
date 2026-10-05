@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.10 — 2026-10-05: softer neon, pink as a highlight, Review notes only for what a runner uses
 
 - **A runner's Review lists only the catalog problems it is touched by.** A book's unreadable number or a metatype trait
   that isn't in the catalog used to show on every Shadowrun 6 runner (dozens of notes about books the runner never
