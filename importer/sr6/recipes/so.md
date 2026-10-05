@@ -23,8 +23,9 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
   the levels, a second price (`13 Karma (6 Karma if …)`) karmaMax. The quality paths' priced steps are qualities too;
   their unpriced steps and the life-path modules are rules.
 - Faces (FACES IN THE CROWD): six sample characters, a level-2 section with `Metatype:` and its stat bands in the text:
-  sample runners (importer/sr6/archetypes.py, as the core rulebook's archetypes); what they list from other books is
-  reported unmatched. The book prints no contact or grunt stat blocks.
+  sample runners (importer/sr6/archetypes.py, as the core rulebook's archetypes). What they list from the core rulebook
+  is found in its catalog as already imported (import it first, or import Smooth Operations again after it); anything
+  else is reported unmatched. The band `DR | I/ID | AC | CM` gives the printed initiative, monitors and Defense Rating. The book prints no contact or grunt stat blocks.
 - The Shadowland BBS subscriptions (`SUBSCRIPTION AVAIL COST MINIMUM REP`): a rule table.
 
 ## Real-book check (local, nothing committed)

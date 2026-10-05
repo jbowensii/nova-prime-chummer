@@ -2,6 +2,43 @@
 
 ## Unreleased (next build)
 
+Shadowrun 6's example characters (the core rulebook's ten archetypes, Smooth Operations' six faces) were checked
+against their stat blocks, the way Anarchy's were in 0.5.4 and 0.5.6: an example character is what its book prints.
+Our own mistakes are fixed; what the book prints against the rules now shows on the runner's Review tab.
+
+**Review**
+- A book sample keeps the numbers its stat block prints: attributes (natural and augmented), Essence, initiative,
+  condition monitors and Defense Rating. Where the rules give another, Review notes it with the book's page, such as
+  "REA: the book prints 4(6); the rules give 4(7)". Nothing in the file corrects the book. Over budget, a skill above
+  the cap, an expertise at creation, a seventh quality and the like show as on any runner.
+
+**Rules**
+- Built Tough adds a box per level to the Physical condition monitor (CRB p.70); a troll or ork read a box or two short.
+- Dermal Deposits adds 1 to the Defense Rating (CRB p.71).
+- A ware's bonus can go to the Defense Rating (dermal plating, bone lacing), as well as to an attribute or initiative
+  dice.
+- Both qualities are named by creation settings under Derived values (the standard settings name the core rulebook's).
+- A value printed without its leading 0 (dermal plating's Essence, "Rating x .3") reads; it counted 0 with a warning.
+- A quality whose levels are printed in its name's note, Addiction (Substance, 1 to 6), takes those levels; level 3 read
+  "above its highest level".
+
+**Imported examples** (import the core rulebook, then Smooth Operations, again to get them)
+- Smooth Operations' faces find what they list in the core rulebook's catalog (metatype, skills, qualities, gear); nearly
+  all of it read "not in the catalog".
+- Each item as printed: bone lacing (titanium) is titanium, not plastic; a cyberarm or cyberhand printed with its kind
+  is that limb (its Essence counts); Spirit Bane and Spirit Affinity, a combat knife and stealth tags find their catalog
+  entries; a grade printed with an implant (alpha) is its grade; gear listed under Gear is never an implant.
+- No more wrong look-alikes: a combat knife was bought as a combat axe, the Face's custom Colt Manhunter as a Colt
+  America, a Beretta 201 as a Beretta 101T at rating 201. What the catalog doesn't have stays in the notes.
+- Wired reflexes, reaction enhancers, muscle toner and augmentation, Improved Reflexes, dermal plating and bone lacing
+  carry the bonuses they give, so augmented attributes, initiative and Defense Rating compute as the rules give them.
+- Knowledge skills and languages past Logic's points are bought with karma instead of overspending the points.
+- Each example now has its priorities: of the 120 ways to give A–E to the five columns, the one that overspends least
+  for what the book prints. Magic and Edge go on adjustment points, then the metatype's raised attributes; what the
+  attribute, adjustment and skill points can't hold is bought with karma, the cheapest ranks first, and nuyen past the
+  resources with karma turned into nuyen. Ties go to the one whose nuyen left is nearest the printed starting nuyen.
+  The budgets were all overspent with no priorities; Review now shows only what the book's build really overspends.
+
 - **Rules opens on a table of contents** (both games). The page lists every rule title, by sheet on Anarchy and by
   chapter on Shadowrun 6; the book, sheet or chapter and search boxes narrow the list. Click a title and the rule slides
   out from the side with its own address (#/rules/… on Anarchy, #/sr6/rules/… on Shadowrun 6), so a reload or a shared

@@ -28,7 +28,7 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
     const t = tokens[i++]
     if (t === 'R') return rating
     if (t === '(') { const v = expr(); if (tokens[i++] !== ')') return NaN; return v }
-    return t !== undefined && /^\d+(\.\d+)?$/.test(t) ? Number(t) : NaN
+    return t !== undefined && /^(\d+(\.\d+)?|\.\d+)$/.test(t) ? Number(t) : NaN
   }
   const power = (): number => { let v = factor(); while (tokens[i] === '^') { i++; v = v ** factor() } return v }
   const term = (): number => {
@@ -59,7 +59,7 @@ export function formula(s: string | undefined, rating: number, letter: 'F' | 'L'
     const t = tokens[i++]
     if (t === 'R') return rating
     if (t === '(') { const v = expr(); if (tokens[i++] !== ')') return NaN; return v }
-    return t !== undefined && /^\d+(\.\d+)?$/.test(t) ? Number(t) : NaN
+    return t !== undefined && /^(\d+(\.\d+)?|\.\d+)$/.test(t) ? Number(t) : NaN
   }
   const term = (): number => {
     let v = factor()
