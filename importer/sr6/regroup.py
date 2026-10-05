@@ -292,7 +292,7 @@ def _share_runs(units, report):
         run = run + [u] if boxed and not u.has_text() else []
 
 
-def _chapter(units, aliases, name_headers, report):
+def _chapter(units, aliases, name_headers, report, variants=False):
     _merge_boxes(units, aliases, report)
     _share_runs(units, report)
     descs = [u for u in units if u.kind == "item" and not u.merged]
@@ -333,6 +333,8 @@ def _chapter(units, aliases, name_headers, report):
                 tables.append(t)
     for t in tables:
         t.rows = _rating_groups(t.rows, t.header[0].capitalize())
+        if variants:
+            t.rows = _variants(t.rows, found)
 
     # each row takes the nearest description with its key that no row with the same name took yet; the widest
     # tables (the stat tables, not a list of names) choose first
@@ -401,6 +403,22 @@ def _rating_groups(rows, first=None):
     return out
 
 
+def _variants(rows, found):
+    """A name-only row (`Cybertails`) over rows no description has (`Balance`, `Prehensile`): those rows are
+    `<name> (<row>)` (a row with no name: `<name> (Rating <its second cell>)`) until a row a description has."""
+    out, group = [], None
+    for r in rows:
+        if r and r[0] and not any(r[1:]):
+            group = r[0]
+        elif group and r and (not r[0] or not found(r[0]) and not re.search(r"\(rating", r[0], re.I)
+                                and not r[0].startswith(group)):
+            r = [f"{group} ({r[0] or 'Rating ' + (r[1] if len(r) > 1 else '')})"] + list(r[1:])
+        else:
+            group = None
+        out.append(r)
+    return out
+
+
 def _text(body):
     out = []
     for b in body:
@@ -439,9 +457,10 @@ def _emit(units):
     return out
 
 
-def regroup(md, aliases=None, name_headers=frozenset(), end_page=None):
+def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=False):
     """md: book.md. Returns (regrouped text, report rows). end_page: the PDF page where the back matter (index,
-    reprinted tables) starts; it and the pages after it are left out."""
+    reprinted tables) starts; it and the pages after it are left out. variants: a catalog's name-only rows name the
+    rows under them (_variants)."""
     name_headers = {h.upper() for h in name_headers}
     els = [e for e in _elements(md) if not end_page or e[1] < end_page]
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
@@ -456,7 +475,7 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None):
         units = _units(els, start, end, chapter, item_keys, aliases)
         if not chapter and not units[0].body and len(units) == 1:
             continue
-        _chapter(units, aliases, name_headers, report)
+        _chapter(units, aliases, name_headers, report, variants)
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
 

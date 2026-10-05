@@ -465,7 +465,7 @@ class _Catalog:
             attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
             if kind == "augmentations":
                 attrs = {"type": "bioware" if any("bioware" in c for c in ctx) else "cyberware", **attrs}
-            if (m := NAME_RATING.search(name)) and "rating" not in f:
+            if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
