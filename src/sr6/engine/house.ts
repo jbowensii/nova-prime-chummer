@@ -47,9 +47,9 @@ export function keepSr6House(c: Sr6Catalog, ch: Sr6Character): Sr6Character {
   return house.length ? { ...rest, house } : rest
 }
 
-/** The catalog with the runner's copies standing in for the compendium entries it no longer has, and those copies. */
-export function withSr6House(c: Sr6Catalog, ch: Sr6Character): { c: Sr6Catalog; gone: Sr6Entry[] } {
-  const gone = (ch.house ?? []).filter(e => !c.entries[e.kind]?.has(e.id))
+/** The catalog with a runner's copies (its house) standing in for the compendium entries it no longer has, and those copies. */
+export function withSr6House(c: Sr6Catalog, house: Sr6Entry[] | undefined): { c: Sr6Catalog; gone: Sr6Entry[] } {
+  const gone = (house ?? []).filter(e => !c.entries[e.kind]?.has(e.id))
   if (!gone.length) return { c, gone }
   const entries = { ...c.entries }
   for (const e of gone) {

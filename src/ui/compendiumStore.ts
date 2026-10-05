@@ -1,6 +1,7 @@
 // The GMs' compendiums on the server (server/compendiums.mjs), per game: Anarchy's at /api/compendiums, SR6's at
 // /api/sr6/compendiums (src/sr6/ui/compendiumStore.ts), never mixed. The ones this account can read, saved and deleted with
-// the NPC store's rev/If-Match rules. Their files join that game's GM catalog as overlays (App.tsx Main, Sr6App.tsx).
+// the NPC store's rev/If-Match rules. Their files join that game's GM catalog as overlays (App.tsx Main, Sr6App.tsx); a
+// player's catalog gets the shared ones (listShared), read only.
 import { compendiumXml, readCompendium, type SourceFile } from '../engine'
 import type { Compendium } from '../model/types'
 import { track, UNREACHABLE } from './auth'
@@ -16,13 +17,17 @@ export type CompReader<C> = (xml: string) => { ok: true; compendium: C } | { ok:
 
 const api = (game: Game) => game === 'sr6' ? 'api/sr6/compendiums' : 'api/compendiums'
 
-/** The compendiums this account can read in `game`. A player (403) has none: that's not an error. */
-export async function listCompendiums(base = './', game: Game = 'ca2'): Promise<CompendiumRow[]> {
-  const r = await fetch(`${base}${api(game)}`, { cache: 'no-store' }).catch(() => { throw new Error(UNREACHABLE) })
+/** The compendiums this account can read in `game`. A player (403) has none: that's not an error. shared: only the table's
+ *  and the account's campaigns' ones, without their NPCs (GET .../shared: what players' runners use). */
+export async function listCompendiums(base = './', game: Game = 'ca2', shared = false): Promise<CompendiumRow[]> {
+  const r = await fetch(`${base}${api(game)}${shared ? '/shared' : ''}`, { cache: 'no-store' }).catch(() => { throw new Error(UNREACHABLE) })
   if (r.status === 403) return []
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
   return r.json()
 }
+
+/** The compendiums a player's runners may use in `game` (see listCompendiums). */
+export const listShared = (base = './', game: Game = 'ca2') => listCompendiums(base, game, true)
 
 /** The rows as catalog overlay files (loadCatalog's `extra`), in owner then id order. */
 export const readable = (rows: CompendiumRow[]): SourceFile[] =>

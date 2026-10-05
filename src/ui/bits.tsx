@@ -19,6 +19,10 @@ export function Stepper({ value, min, max, onChange, label }: { value: number; m
 export const NonCanon = ({ source }: { source?: string }) =>
   <span className="noncanon" title={`Published, not canon${source ? ` (${source})` : ''}`}>Non-canon</span>
 
+/** An entry from a GM's compendium (a house source): House and the compendium's name. */
+export const HouseChip = ({ name }: { name: string }) =>
+  <span className="noncanon house" title={`From the GM’s compendium ${name} (not canon)`}>House · {name}</span>
+
 /** A runner the player made (not an example or an import of a book's). */
 export const UserDefined = () => <span className="noncanon userdef" title="Made by a player, not a book example">User defined</span>
 

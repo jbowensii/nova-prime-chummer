@@ -5,9 +5,10 @@ import { Modal, Picker, Stepper } from '../../../ui/bits'
 import { qualityKarma } from '../../engine/budgets'
 import { num } from '../../engine/creation'
 import { n, useSr6Editor } from '../editor'
+import { House } from '../Picker'
 
 export function QualitiesTab() {
-  const { ch, data, cr, act } = useSr6Editor()
+  const { ch, c, data, cr, act } = useSr6Editor()
   const b = ch.build
   const [picking, setPicking] = useState<'positive' | 'negative' | null>(null)
   const { pos, neg } = qualityKarma(b, data, cr)
@@ -49,7 +50,7 @@ export function QualitiesTab() {
         <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive')).map(q => ({
           id: q.id, name: q.name, disabled: b.qualities.some(x => x.id === q.id),
           meta: `${q.karma == null ? '?' : q.karma}${q.karmaMax != null ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}`,
-          price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(),
+          price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(), label: <House c={c} source={data.entry('qualities', q.id)?.source ?? ''} />,
         }))} />
       </Modal>
     </div>

@@ -8,7 +8,7 @@ import { AiSettings } from './AiSettings'
 import { canEdit, fetchMe, isAdmin, Me, onSessionEnd, session, useMe, type User } from './auth'
 import { BooksScreen } from './Books'
 import { CampaignScreen, CampaignsScreen } from './Campaigns'
-import { listCompendiums, readable } from './compendiumStore'
+import { listCompendiums, listShared, readable } from './compendiumStore'
 import { CompendiumsScreen } from './Compendiums'
 import { CatalogEdits } from './EditEntry'
 import { Library } from './Library'
@@ -62,13 +62,14 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(0)
   const npcs = useMemo(() => npcRepoFor(repo), [repo])
-  // staff on the server: the compendiums they can read join their catalog (a failed list loads it without them)
-  const staff = repo.mode === 'server' && canEdit(me)
-  const load = async () => loadCatalog('./', staff ? readable(await listCompendiums().catch(() => [])) : [])
+  // on the server the compendiums join the catalog (a failed list loads it without them): staff get those they can read,
+  // players the ones shared with the table and their campaigns (no NPCs; a runner sees its own campaign's, EditorView.tsx)
+  const staff = repo.mode === 'server' && canEdit(me), player = repo.mode === 'server' && !!me && !staff
+  const load = async () => loadCatalog('./', staff || player ? readable(await (staff ? listCompendiums() : listShared()).catch(() => [])) : [])
   useEffect(() => {
     load().then(setCatalog, e => setFailed(String(e)))
     if (repo.mode === 'server') migrateBrowserToServer(repo).then(setMoved, () => {})
-  }, [repo, staff]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [repo, staff, player]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (failed) return <main className="lib"><h1>Game data didn’t load</h1><p>{failed}</p><p>Check that the <code>data/</code> folder is served next to this page, then reload.</p></main>
   if (!catalog) return <main className="lib"><p className="muted">Loading game data…</p></main>

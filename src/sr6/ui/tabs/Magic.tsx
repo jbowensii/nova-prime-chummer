@@ -8,7 +8,7 @@ import { num } from '../../engine/creation'
 import { MAGIC_KINDS, picksFor } from '../../engine/data'
 import type { PickKind, Sr6Build } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
-import { Bonuses } from '../Picker'
+import { Bonuses, House } from '../Picker'
 import { Suggest } from './Skills'
 
 const PICKS: [PickKind, string, string][] = [['spells', 'Spells', 'a spell'], ['rituals', 'Rituals', 'a ritual'], ['adeptpowers', 'Adept powers', 'an adept power'],
@@ -76,7 +76,7 @@ export function MagicTab() {
             const power = adding === 'adeptpowers' ? data.powers[e.id] : undefined
             return { id: e.id, name: e.name, group: e.attrs.category, disabled: taken(adding, e.id),
               meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`].filter(Boolean).join(', '),
-              price: `${e.source} p.${e.page}`, search: `${e.source} p.${e.page}` }
+              price: `${e.source} p.${e.page}`, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`, label: <House c={c} source={e.source} /> }
           })} />}
       </Modal>
     </div>

@@ -6,7 +6,7 @@ import { compendiumXml } from '../../src/engine'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import type { Sr6Compendium } from '../../src/sr6/model/types'
 import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../src/sr6/ui/compendiumStore'
-import { deleteCompendium, listCompendiums, parseRows } from '../../src/ui/compendiumStore'
+import { deleteCompendium, listCompendiums, listShared, parseRows } from '../../src/ui/compendiumStore'
 
 const kit: Sr6Compendium = { id: 'aaaaaaaaaaaa', name: 'Street Kit', source: 'STREET', sharing: 'private', updatedAt: '', npcs: [],
   entries: [{ id: 'street.zap-stick', kind: 'weapons', name: 'Zap Stick', source: 'STREET', page: 1, attrs: { dv: '3S' }, parts: [], text: '' }] }
@@ -26,6 +26,14 @@ test('list: SR6 asks /api/sr6/compendiums, the default (Anarchy) /api/compendium
   expect(urls(f)).toEqual(['./api/sr6/compendiums', './api/sr6/compendiums', './api/compendiums'])
   vi.stubGlobal('fetch', answer(403, { error: 'forbidden' }))
   expect(await listSr6Compendiums()).toEqual([])
+})
+
+test('players list the shared ones: /api/compendiums/shared and /api/sr6/compendiums/shared', async () => {
+  const f = answer(200, [])
+  vi.stubGlobal('fetch', f)
+  await listShared()
+  await listShared('./', 'sr6')
+  expect(urls(f)).toEqual(['./api/compendiums/shared', './api/sr6/compendiums/shared'])
 })
 
 test('save: SR6 PUTs its own file to /api/sr6/compendiums/<id> with If-Match; a 409 conflict has the stored rev', async () => {

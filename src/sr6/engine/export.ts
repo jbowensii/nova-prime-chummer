@@ -132,7 +132,7 @@ export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc => defined({
 
 /** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/engine/house.ts). */
 export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
-  const c = withSr6House(all, ch).c, data = c === all ? allData : sr6Data(c)
+  const c = withSr6House(all, ch.house).c, data = c === all ? allData : sr6Data(c)
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
   const voided = voidedIds(ch), lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)

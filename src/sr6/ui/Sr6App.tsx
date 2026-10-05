@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { BooksScreen } from '../../ui/Books'
 import { CampaignScreen, CampaignsScreen } from '../../ui/Campaigns'
-import { readable } from '../../ui/compendiumStore'
+import { listShared, readable } from '../../ui/compendiumStore'
 import { PageHeader } from '../../ui/nav'
 import { RepoContext, type Repo } from '../../ui/repo'
 import { TrashScreen } from '../../ui/Trash'
@@ -29,13 +29,13 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [c, setC] = useState<Sr6Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [cr, setCr] = useState<Loaded>({ rules: new Map(), errors: [] })
-  // staff on the server: the SR6 compendiums they can read join their catalog (a failed list loads it without them);
-  // players' catalogs never hold one
-  const staff = repo.mode === 'server' && canEdit(me)
-  const refresh = async () => loadSr6Catalog('./', staff ? readable(await listSr6Compendiums().catch(() => [])) : [])
+  // on the server the SR6 compendiums join the catalog (a failed list loads it without them): staff get those they can
+  // read, players the ones shared with the table and their SR6 campaigns (no NPCs; a runner sees its own campaign's)
+  const staff = repo.mode === 'server' && canEdit(me), player = repo.mode === 'server' && !!me && !staff
+  const refresh = async () => loadSr6Catalog('./', staff || player ? readable(await (staff ? listSr6Compendiums() : listShared('./', 'sr6')).catch(() => [])) : [])
     .then(x => { setC(x); setFailed(null) }, e => setFailed(String(e)))
   const refreshCreation = () => loadCreation().then(setCr)
-  useEffect(() => { void refresh() }, [staff]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void refresh() }, [staff, player]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void refreshCreation() }, [])
   const data = useMemo(() => c && sr6Data(c), [c])
   // pages a role can't use show the runners (players never get the NPC area: the server refuses them too)

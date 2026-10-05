@@ -65,7 +65,7 @@ test('keepSr6House copies the compendium entries a runner uses, never a book’s
 
 test('once gone, the copies price, validate and export as before, noted on Review', () => {
   const ch = runner('abcdef012345')
-  const live = sr6Data(withComps), { c, gone } = withSr6House(without, ch), kept = sr6Data(c)
+  const live = sr6Data(withComps), { c, gone } = withSr6House(without, ch.house), kept = sr6Data(c)
   expect(gone.map(e => e.id)).toEqual(['street.lucky-socks', 'street.zap-stick', 'tabkit.torch'])
   expect(kept.qualities['street.lucky-socks']).toEqual(live.qualities['street.lucky-socks'])
   expect(priced(ch.build.purchases[0], kept, cr)).toEqual(priced(ch.build.purchases[0], live, cr))
@@ -78,7 +78,7 @@ test('once gone, the copies price, validate and export as before, noted on Revie
     ['catalog.gone', 'warning', 'Zap Stick: its source STREET is no longer available; the runner keeps its own copy.'],
     ['catalog.gone', 'warning', 'Torch: its source TABKIT is no longer available; the runner keeps its own copy.'],
   ])
-  expect(withSr6House(withComps, ch)).toEqual({ c: withComps, gone: [] })
+  expect(withSr6House(withComps, ch.house)).toEqual({ c: withComps, gone: [] })
   // the Foundry export works from the copies by itself
   const opts = { descriptions: true, now: '2026-10-05T00:00:00.000Z', appVersion: 'x' }
   const out = exportSr6Runner(without, sr6Data(without), cr, ch, opts)
