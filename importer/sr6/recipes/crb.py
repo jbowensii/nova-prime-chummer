@@ -494,8 +494,9 @@ class _Catalog:
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
                 m = re.search(r"professional rating\s*(\d+)\s*[:–—-]?\s*(.*)", b.section, re.I)
-                attrs = {"rating": m and int(m.group(1)), "group": (m and m.group(2).strip()) or None}
-                if not m:
+                g = re.fullmatch(r"group:\s*(.+)", b.section, re.I)  # a recipe's NPCs with no rating (`Group: X`)
+                attrs = {"rating": m and int(m.group(1)), "group": (m and m.group(2).strip()) or (g and g.group(1)) or None}
+                if not m and not g:
                     return False
             else:
                 attrs = {"category": cat}

@@ -45,6 +45,7 @@
 - **Krime Katalog can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons, grenades and weapon accessories, ammunition and vehicles, each with its Sixth World stats (the Fifth Edition ones printed beside them are left out); what it couldn't read is listed in the import's report.
 - **Double Clutch: no vehicle goes missing.** The DSEC, the Krime Karrier and the GTI Revolution now import; an aircraft the book's summary table lists but the importer couldn't read is listed in the import's report.
 - **No Future can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its gear (instruments, the yo-yos, rolling blades and other weapons, hats and coats, the two media vehicles, cameras, presses, the cybersenses), its qualities and its rules for performing; the availabilities from its errata sheet are applied, its other errata (rules and re-rated cyberware) aren't. What it couldn't read is listed in the import's report.
+- **Tarnished Star can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons (the Foamtek line among them), ammunition, shields, armor and helmets, police gear (badgecams, inhibitor bands, scanners, drugs), its vehicles and drones, the Roll Call archetypes, contacts and security NPCs, and its rules for working a case, interviews and blackmail. What it couldn't read is listed in the import's report (two bikes whose stats run together in the book).
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
