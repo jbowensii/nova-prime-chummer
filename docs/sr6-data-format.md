@@ -53,6 +53,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | armor | armor | category*, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
+| programs | program | type* (basic, hacking, … as printed), avail, cost (where the book prints them: the core rulebook's per type) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |

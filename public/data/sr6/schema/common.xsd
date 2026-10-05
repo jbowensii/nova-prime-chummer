@@ -37,6 +37,7 @@
       <xs:enumeration value="priorities"/><xs:enumeration value="metatypes"/><xs:enumeration value="attributes"/>
       <xs:enumeration value="skills"/><xs:enumeration value="qualities"/><xs:enumeration value="weapons"/>
       <xs:enumeration value="armor"/><xs:enumeration value="augmentations"/><xs:enumeration value="electronics"/>
+      <xs:enumeration value="programs"/>
       <xs:enumeration value="gear"/><xs:enumeration value="vehicles"/><xs:enumeration value="spells"/>
       <xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/><xs:enumeration value="complexforms"/>
       <xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="critterpowers"/>
@@ -213,6 +214,15 @@
       <xs:attribute name="array" type="xs:string"/>
       <xs:attribute name="programs" type="xs:string"/>
       <xs:attribute name="capacity" type="xs:string"/>
+      <xs:attribute name="avail" type="xs:string"/>
+      <xs:attribute name="cost" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
+  <!-- a Matrix program: its type as printed (basic, hacking, …); avail and cost only where the book prints them -->
+  <xs:complexType name="Program">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="type" type="xs:string" use="required"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
     </xs:extension></xs:complexContent>

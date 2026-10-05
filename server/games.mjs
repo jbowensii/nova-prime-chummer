@@ -12,7 +12,7 @@ export const GAMES = {
 /** SR6 catalog kind (its file) -> entry tag, as KINDS in importer/sr6/__init__.py and src/sr6/model/types.ts. */
 export const SR6_KINDS = {
   priorities: 'priority', metatypes: 'metatype', attributes: 'attribute', skills: 'skill', qualities: 'quality',
-  weapons: 'weapon', armor: 'armor', augmentations: 'augmentation', electronics: 'device', gear: 'gear',
+  weapons: 'weapon', armor: 'armor', augmentations: 'augmentation', electronics: 'device', programs: 'program', gear: 'gear',
   vehicles: 'vehicle', spells: 'spell', rituals: 'ritual', adeptpowers: 'adeptpower', complexforms: 'complexform',
   metamagics: 'metamagic', echoes: 'echo', martialarts: 'martialart', martialtechniques: 'martialtechnique',
   traditions: 'tradition', critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit',

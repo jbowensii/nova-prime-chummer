@@ -50,6 +50,8 @@ A made-up tap that fizzes.
 ## New Cyberprograms
 ### Basic Cyberprograms
 **Fizz Host:** A made-up program.
+### Hacking Cyberprograms
+**Zap Kit:** A made-up hacking program.
 <!-- page 63 -->
 # TECHNO TOOLS
 ## New Complex Forms
@@ -134,7 +136,10 @@ class HsRecipeTest(unittest.TestCase):
         n = entries(self.res, "npcs")["Glow Spider"]
         self.assertEqual((n["rating"], n["group"], n["log"], n["dr"]), ("3", "Matrix Security Operatives", "5", "5"))
         r = entries(self.res, "rules")
-        self.assertIn("Basic Cyberprograms", r)  # programs: rule sections, as in the core rulebook
+        self.assertIn("Basic Cyberprograms", r)  # the programs' sections stay rule sections too
+        p = entries(self.res, "programs")
+        self.assertEqual({k: v.get("type") for k, v in p.items()}, {"Fizz Host": "basic", "Zap Kit": "hacking"})
+        self.assertNotIn("avail", p["Zap Kit"])  # the book prints no price for a program
         self.assertNotIn("Not Read", r)
 
     def test_files_validate(self):

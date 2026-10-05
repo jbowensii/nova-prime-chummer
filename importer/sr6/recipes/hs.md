@@ -16,8 +16,9 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
   `ATTRIBUTES (D/F)`) are electronics, the rest gear; a cyberkit's `COST (RECHARGE)` is its cost and recharge.
 - Complex forms (TECHNO TOOLS): level-4 headings with a `Fade Value Duration` line over the two values; the virtual life
   chapter's `Complex Form: …` boxes with `Fade Value:`/`Duration:` labels (two to a line).
-- Echoes: the `New Echoes` section's labelled lines (`LABEL_SECTIONS`). Programs, data structures, IC (its price
-  table), hosts, foundations and resonance realms: rule sections, as in the core rulebook.
+- Echoes: the `New Echoes` section's labelled lines (`LABEL_SECTIONS`); cyberprograms the `Basic Cyberprograms` and
+  `Hacking Cyberprograms` sections' (programs, typed basic or hacking; the book prints no price for them). Data
+  structures, IC (its price table), hosts, foundations and resonance realms: rule sections, as in the core rulebook.
 - Sprites (POINTS OF SPRITE): a level-3 section with its `A S D F INIT RES` band and bulleted `Skills:`/`Powers:`.
 - Qualities (QUALITY HACKING and the virtual life qualities): `Cost:` or `Bonus:` lines; `(Positive Quality)` dropped.
 - NPCs (KNOW YOUR enemy): a box with the stat bands under a `(Professional Rating N)` tag line, or under a heading

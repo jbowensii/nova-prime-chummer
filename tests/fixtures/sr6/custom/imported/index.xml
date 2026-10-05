@@ -10,6 +10,7 @@
   <file href="crb/armor.xml"/>
   <file href="crb/augmentations.xml"/>
   <file href="crb/electronics.xml"/>
+  <file href="crb/programs.xml"/>
   <file href="crb/gear.xml"/>
   <file href="crb/vehicles.xml"/>
   <file href="crb/spells.xml"/>

@@ -19,6 +19,7 @@
         <xs:element name="armor" type="sr6:Armor"/>
         <xs:element name="augmentation" type="sr6:Augmentation"/>
         <xs:element name="device" type="sr6:Device"/>
+        <xs:element name="program" type="sr6:Program"/>
         <xs:element name="gear" type="sr6:Gear"/>
         <xs:element name="vehicle" type="sr6:Vehicle"/>
         <xs:element name="spell" type="sr6:Spell"/>

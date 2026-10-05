@@ -21,6 +21,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   armor: { fields: ['category', 'defense', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
   electronics: { fields: ['category', 'rating', 'array', 'programs', 'capacity', ...ITEM] },
+  programs: { fields: ['type', ...ITEM] },
   gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per'] },
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage'] },
@@ -48,7 +49,7 @@ const RATED: Record<string, FieldRule> = { rating: { whole: 'nonNegative' } }
 /** Per kind, the attributes with a rule (tests/sr6/compendium.test.ts keeps it equal to common.xsd). */
 const RULES: Partial<Record<Sr6Kind, Record<string, FieldRule>>> = {
   qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, ...LEVELS },
-  weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
+  weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, programs: { type: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
   augmentations: { type: { required: true, choices: ['cyberware', 'bioware'] }, category: REQ },
   spells: { category: { required: true, choices: ['combat', 'detection', 'health', 'illusion', 'manipulation'] } },
   adeptpowers: LEVELS,

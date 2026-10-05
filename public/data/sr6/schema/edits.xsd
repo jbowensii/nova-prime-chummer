@@ -27,6 +27,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="device"><xs:complexType><xs:complexContent><xs:extension base="sr6:Device">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="program"><xs:complexType><xs:complexContent><xs:extension base="sr6:Program">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="gear"><xs:complexType><xs:complexContent><xs:extension base="sr6:Gear">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="vehicle"><xs:complexType><xs:complexContent><xs:extension base="sr6:Vehicle">

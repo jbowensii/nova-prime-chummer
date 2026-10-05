@@ -100,8 +100,10 @@ SECTIONS = [
     ("archetypes", "", "skip", None),  # the sample runners are read apart (archetypes.py); the rest is no kind
 ]
 SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 section blocks in this book
-# a section whose labelled lines are each an entry (name: the label; text: its value)
-LABEL_SECTIONS = {("matrix", "echoes"): "echoes"}
+# a section (or item heading) whose labelled lines are each an entry (name: the label; text: its value, or its paragraph
+# in the block's text when that is longer): kind, or (kind, attributes)
+LABEL_SECTIONS = {("matrix", "echoes"): "echoes", ("matrix", "basic"): ("programs", {"type": "basic"}),
+                  ("matrix", "hacking"): ("programs", {"type": "hacking"})}
 # chapters whose unmapped sections (and level-4 headings with no row or box) are rule sections
 RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
                  "running the game", "gear")
@@ -587,6 +589,15 @@ def _text(b, skip=()):
 _INLINE_LABEL = re.compile(r";\s*\*\*([^*]+?):\*\*\s*")
 
 
+def _label_text(text, label, value):
+    """A labelled line's value, or its paragraph in the text (`**Label:**` to the next label line, blank line, table or
+    heading) when that is longer: a list printed as labelled lines over its full paragraphs."""
+    found = [m.group(1).strip() for m in re.finditer(
+        rf"^(?:•\s*)?\*\*{re.escape(label)}:\*\*\s*(.+?)(?=\n(?:•\s*)?\*\*[^*\n]+:\*\*|\n\s*\n|\n[|#]|\n<!--|\Z)", text, re.M | re.S)]
+    best = max(found, key=lambda t: len(" ".join(t.split())), default="")
+    return best if len(" ".join(best.split())) > len(value) else value
+
+
 def _text_stats(b, cols):
     """The block with its stat band found in its text (a band printed after the description) and labels printed two to
     a line (`**Skills:** …; **Powers:** …`) split."""
@@ -684,10 +695,11 @@ def extract(regrouped, ctx=None, book=None):
             sub = ""
         if norm(b.name).endswith(" spells"):  # `Direct Glow Spells`: an item heading over its spells
             sub = norm(b.name)
-        lk = next((k for (c, n), k in bk.LABEL_SECTIONS.items() if c in ch and n == norm(b.name)), None) if section else None
+        lk = next((k for (c, n), k in bk.LABEL_SECTIONS.items() if c in ch and n == norm(b.name)), None)
         if lk:
+            lk, la = (lk, {}) if isinstance(lk, str) else lk
             for k, v in b.labels.items():
-                cat.add(lk, k, page, {}, (), v)
+                cat.add(lk, k, page, dict(la), (), _label_text(b.text, k, v))
         if section:
             ctx_keys = [norm(parent2)] if b.level == 3 and parent2 else []
             kind, kcat = _kind(ch, ctx_keys, True, bk) if b.level == 3 else (None, None)
@@ -716,6 +728,10 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    for e in cat.entries["programs"]:  # a program's price: the book's `Cyberprogram, <type>` row (the core rulebook's)
+        row = next((g for g in cat.entries["gear"] if g["name"].lower() == f"cyberprogram, {e['attrs']['type']}"), None)
+        if row:
+            e["attrs"].update({a: row["attrs"][a] for a in ("avail", "cost") if a in row["attrs"]})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     runners = []

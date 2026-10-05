@@ -1,8 +1,8 @@
 """Shadowrun: Hack & Slash (HS), the core matrix rulebook -> the SR6 catalog: matrix gear (cyberhacks, dataterms,
 cyberdeck cases, components and modifications, data taps, tag bombs, commlink hacks, coding tools, commlink apps,
-agents, cyberkits, codemods: electronics and gear), complex forms, echoes, sprites, qualities, the matrix security
-NPCs, a vehicle and a weapon, and the rule sections (hosts, IC, foundations, resonance realms, virtual life, programs:
-no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private texts. Reads
+agents, cyberkits, codemods: electronics and gear), cyberprograms, complex forms, echoes, sprites, qualities, the
+matrix security NPCs, a vehicle and a weapon, and the rule sections (hosts, IC, foundations, resonance realms,
+virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private texts. Reads
 only regrouped.md with the core rulebook's reading (crb.extract); the book's own shapes through
 importer/sr6/recipes/shapes.py. Layout notes in hs.md."""
 import re
@@ -28,7 +28,9 @@ NAME_HEADERS = frozenset({"ITEM", "RATING", "APP", "CODING LIBRARY", "AGENT RATI
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"qualities", "sprites"}
-LABEL_SECTIONS = {("techno tools", "new echoes"): "echoes"}
+LABEL_SECTIONS = {("techno tools", "new echoes"): "echoes",
+                  ("digital toolbox", "basic cyberprograms"): ("programs", {"type": "basic"}),
+                  ("digital toolbox", "hacking cyberprograms"): ("programs", {"type": "hacking"})}
 RULE_CHAPTERS = ("wild and free", "field guide to hacking", "gadgets and gizmos", "elegant architecture",
                  "digital toolbox", "techno tools", "points of sprite", "quality hacking", "union forever",
                  "virtual life", "at the base", "infinite memory", "know your enemy", "matrix business")

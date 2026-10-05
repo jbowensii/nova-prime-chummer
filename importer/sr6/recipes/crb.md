@@ -38,7 +38,9 @@ printing).
   running the game, gear. Lifestyles are level-3 sections in game concepts (cost on a level-5 tag line). Grunts (level-3
   "Professional Rating N" sections), sample contacts, critters and critter powers (level-3 sections, a TYPE/ACTION/
   RANGE/DURATION band in the text) are all in wild life; spirits are level-4 items in magic (a heading printed twice
-  over its box); sprites and echoes (a section's bulleted labelled lines) in matrix. Combat spells sit under level-5
+  over its box); sprites, echoes (a section's bulleted labelled lines) and programs (the Programs section's `Basic` and
+  `Hacking` headings' labelled lines; each takes its type's price from the gear chapter's `Cyberprogram, <type>` row)
+  in matrix. Combat spells sit under level-5
   item headings ending in "Spells". The ten archetypes (a level-2 section with a level-5 `metatype: <name>` box: the
   stat band and labelled lines) are no catalog kind: they become sample runners (importer/sr6/archetypes.py).
 - Gear rows map by their table's first header and title only (a section name can mislead): the augmentation tables
