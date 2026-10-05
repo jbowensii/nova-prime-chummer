@@ -103,10 +103,12 @@ code change.
 ## The Shadowrun 6 look
 
 Every `#/sr6/...` page has `data-game="sr6"` on the root (App.tsx; the game picker has `"pick"`, Anarchy `"ca2"`), and
-`src/sr6/ui/theme.css` maps the tokens above to the SR6 core rulebook's colors under it, light and dark: magenta
-`#960370` (sampled from the books) for titles, outlines and the accent (`--yellow` is the accent token, so it's magenta
-there, with white text on it), page `#f9f9f8`, sidebar grey `#ecece7`; dark is `#120c15` with neon magenta `#ff6ccf` /
-`#f04dbd` and teal `#4fd3dc`. Headings are Montserrat (the book's wide geometric caps), body text stays Crimson Pro.
+`src/sr6/ui/theme.css` maps the tokens above to neon colors, mostly cyan (the owner's call, 0.9.7: the earlier magenta
+was too much pink): cyan for titles, outlines and the accent (`--yellow` is the accent token), neon pink second (the
+hatched heading rules, the current tab, hovers and focus), violet as a third, neon green for OK, orange for warnings and
+red for errors. Light is cool paper `#f6fafc` with deep cyan `#005c6b` and pink `#a8006a` (dark enough to read over the
+worst art); dark is blue-black `#060b13` with neon cyan `#00e5ff` and pink `#ff52d9`. The admin's background art, when
+shown, replaces the circuit-board tile instead of lying under it. Headings are Montserrat (the book's wide geometric caps), body text stays Crimson Pro.
 Decoration is our own drawing (a circuit-board tile, hatched heading rules, rounded outlined panels, the "SECTION // SUB"
 folio); no book art. Anarchy's rules are never touched: every SR6 rule is scoped to `[data-game]` or `.sr6-*`.
 tests/ui/background.test.ts checks the SR6 tokens' contrast over the worst background art too.

@@ -1,116 +1,125 @@
 /* The Shadowrun 6 look (every #/sr6/... page: App.tsx sets data-game="sr6" on the root; the game picker is "pick").
-   Light: the core rulebook's page (white paper, magenta section rules and outlines, grey sidebars); dark: its chapter
-   openers (near-black purple, neon magenta and teal). Our own drawing only: no book art. Anarchy's look (app.css) is
-   untouched: everything here is scoped to [data-game]. Colors sampled from the owner's books: magenta #960370, sidebar
-   grey #ecece7, page #f9f9f8, ink #41383f. Fonts: Montserrat (the headings' wide geometric caps), Crimson Pro (body). */
+   Neon, mostly cyan: cyan for titles, outlines and the accent, neon pink second (heading hatches, hovers, focus), neon
+   green for OK, orange for warnings, neon red for errors. Light: cool white paper with deep cyan; dark: blue-black with
+   neon cyan and pink. Our own drawing only: no book art. Anarchy's look (app.css) is untouched: everything here is
+   scoped to [data-game]. Fonts: Montserrat (the headings' wide geometric caps), Crimson Pro (body). */
 @import '@fontsource/montserrat/400.css';
 @import '@fontsource/montserrat/600.css';
 @import '@fontsource/montserrat/700.css';
 
 :root {
-  --sr6-magenta: #960370;
-  --sr6-neon: #f04dbd;
-  --sr6-teal: #3cd0db;
+  --sr6-cyan: #005c6b;
+  --sr6-neon: #00e5ff;
+  --sr6-pink: #a8006a;
+  --sr6-neon-pink: #ff52d9;
   --sr6-display: 'Montserrat', 'Rethink Sans', system-ui, sans-serif;
-  /* our circuit board, drawn here (a 160px tile): grey traces on paper; magenta traces and teal pads in the dark */
+  /* our circuit board, drawn here (a 160px tile): grey traces on paper; cyan traces and pink pads in the dark */
   --sr6-circuit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%236e6470' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M0 40h40l10 10h50l10-10h50'/%3E%3Cpath d='M30 160v-50l15-15v-25'/%3E%3Cpath d='M30 0v14'/%3E%3Cpath d='M120 160v-25l-12-12v-18'/%3E%3Cpath d='M120 0v20'/%3E%3Cpath d='M84 81h16'/%3E%3Cpath d='M62 81h-8'/%3E%3Cpath d='M160 92h-22l-8 8'/%3E%3Cpath d='M0 92h12'/%3E%3Crect x='62' y='74' width='22' height='14' rx='2'/%3E%3C/g%3E%3Cg fill='none' stroke='%236e6470' stroke-opacity='.16' stroke-width='1.2'%3E%3Ccircle cx='45' cy='67' r='2.6'/%3E%3Ccircle cx='30' cy='17' r='2.6'/%3E%3Ccircle cx='108' cy='102' r='2.6'/%3E%3Ccircle cx='120' cy='23' r='2.6'/%3E%3Ccircle cx='103' cy='81' r='2.6'/%3E%3Ccircle cx='51' cy='81' r='2.6'/%3E%3Ccircle cx='128' cy='102' r='2.6'/%3E%3Ccircle cx='15' cy='92' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
-  --sr6-circuit-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%23d23ca8' stroke-opacity='.20' stroke-width='1.2'%3E%3Cpath d='M0 40h40l10 10h50l10-10h50'/%3E%3Cpath d='M30 160v-50l15-15v-25'/%3E%3Cpath d='M30 0v14'/%3E%3Cpath d='M120 160v-25l-12-12v-18'/%3E%3Cpath d='M120 0v20'/%3E%3Cpath d='M84 81h16'/%3E%3Cpath d='M62 81h-8'/%3E%3Cpath d='M160 92h-22l-8 8'/%3E%3Cpath d='M0 92h12'/%3E%3Crect x='62' y='74' width='22' height='14' rx='2'/%3E%3C/g%3E%3Cg fill='none' stroke='%233cd0db' stroke-opacity='.20' stroke-width='1.2'%3E%3Ccircle cx='45' cy='67' r='2.6'/%3E%3Ccircle cx='30' cy='17' r='2.6'/%3E%3Ccircle cx='108' cy='102' r='2.6'/%3E%3Ccircle cx='120' cy='23' r='2.6'/%3E%3Ccircle cx='103' cy='81' r='2.6'/%3E%3Ccircle cx='51' cy='81' r='2.6'/%3E%3Ccircle cx='128' cy='102' r='2.6'/%3E%3Ccircle cx='15' cy='92' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
+  --sr6-circuit-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%2300b8d9' stroke-opacity='.22' stroke-width='1.2'%3E%3Cpath d='M0 40h40l10 10h50l10-10h50'/%3E%3Cpath d='M30 160v-50l15-15v-25'/%3E%3Cpath d='M30 0v14'/%3E%3Cpath d='M120 160v-25l-12-12v-18'/%3E%3Cpath d='M120 0v20'/%3E%3Cpath d='M84 81h16'/%3E%3Cpath d='M62 81h-8'/%3E%3Cpath d='M160 92h-22l-8 8'/%3E%3Cpath d='M0 92h12'/%3E%3Crect x='62' y='74' width='22' height='14' rx='2'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ff3fd2' stroke-opacity='.22' stroke-width='1.2'%3E%3Ccircle cx='45' cy='67' r='2.6'/%3E%3Ccircle cx='30' cy='17' r='2.6'/%3E%3Ccircle cx='108' cy='102' r='2.6'/%3E%3Ccircle cx='120' cy='23' r='2.6'/%3E%3Ccircle cx='103' cy='81' r='2.6'/%3E%3Ccircle cx='51' cy='81' r='2.6'/%3E%3Ccircle cx='128' cy='102' r='2.6'/%3E%3Ccircle cx='15' cy='92' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
   /* the book's hatched heading rule */
-  --sr6-hatch: repeating-linear-gradient(-55deg, var(--sr6-line) 0 1.6px, transparent 1.6px 3.6px);
+  --sr6-hatch: repeating-linear-gradient(-55deg, var(--sr6-hatch-c) 0 1.6px, transparent 1.6px 3.6px);
 }
 
-/* ---- tokens: light = the book page. --yellow is app.css's accent (bars, primary buttons, focus edges): magenta here ---- */
+/* ---- tokens: light = cool paper. --yellow is app.css's accent (bars, primary buttons, focus edges): cyan here ---- */
 :root[data-game='sr6'] {
-  --bg: #f9f9f8;
-  --text: #2a2228;
-  --text-2: #41383f;
-  --text-3: #5f555d;
-  --heading: #960370;
-  --rule: #d9d3d7;
+  --bg: #f6fafc;
+  --text: #102028;
+  --text-2: #2c3e48;
+  --text-3: #475a65;
+  --heading: #005c6b;
+  --rule: #cfdde4;
   --surface: #ffffff;
-  --zebra: #f4f2f1;
-  --cream: #f4f2f1;
+  --zebra: #eef5f8;
+  --cream: #eef5f8;
   --field: #ffffff;
-  --yellow: #960370;
+  --yellow: #005c6b;
   --accent-ink: #ffffff;
-  --rust: #960370;
-  --indigo: #4d2a7a;
-  --panel: #ecece7;
-  --panel-text: #2a2228;
-  --panel-muted: #5a5057;
-  --ok: #2d6a3e;
-  --warn: #8a5300;
-  --err: #b0182b;
-  --focus: #0e6f78;
-  --sr6-line: #960370;
+  --rust: #a8006a;
+  --indigo: #5a22c0;
+  --panel: #e8f1f5;
+  --panel-text: #102028;
+  --panel-muted: #4d606b;
+  --ok: #006b30;
+  --warn: #8f4000;
+  --err: #b00020;
+  --focus: #a8006a;
+  --sr6-line: #0099b0;
+  --sr6-hatch-c: #a8006a;
+  --sr6-tag: #005c6b;
+  --sr6-tag-ink: #ffffff;
   --sr6-glow: none;
   --display: var(--sr6-display);
   --r-sm: 4px;
   --r-md: 8px;
   --r-box: 16px;
 }
-/* dark = the chapter openers: deep purple-black, neon magenta, teal */
+/* dark: blue-black, neon cyan first, neon pink second */
 :root[data-game='sr6'][data-theme='dark'] {
-  --bg: #120c15;
-  --text: #f2eaf2;
-  --text-2: #d9ccdb;
-  --text-3: #b2a3b7;
-  --heading: #ff6ccf;
-  --rule: #3e2c47;
-  --surface: #1b1320;
-  --zebra: #21172a;
-  --cream: #21172a;
-  --field: #1e1524;
-  --yellow: #f04dbd;
-  --accent-ink: #160b16;
-  --rust: #4fd3dc;
-  --indigo: #9d7ad6;
-  --panel: #22142c;
-  --panel-text: #f2eaf2;
-  --panel-muted: #c0aec8;
-  --ok: #7cd69a;
-  --warn: #ffc857;
-  --err: #ff8a9a;
-  --focus: #4fd3dc;
-  --sr6-line: #c23a9e;
-  --sr6-glow: 0 0 18px rgb(240 77 189 / 0.16);
+  --bg: #060b13;
+  --text: #e6f7ff;
+  --text-2: #c3dbe6;
+  --text-3: #8fa9b6;
+  --heading: #00e5ff;
+  --rule: #1c3344;
+  --surface: #0b1420;
+  --zebra: #0f1b2a;
+  --cream: #0f1b2a;
+  --field: #0c1725;
+  --yellow: #00e5ff;
+  --accent-ink: #001319;
+  --rust: #ff52d9;
+  --indigo: #b388ff;
+  --panel: #0b1828;
+  --panel-text: #e6f7ff;
+  --panel-muted: #9fbccb;
+  --ok: #39ff88;
+  --warn: #ff9f1c;
+  --err: #ff5c75;
+  --focus: #ff52d9;
+  --sr6-line: #00b8d9;
+  --sr6-hatch-c: #ff52d9;
+  --sr6-tag: #00e5ff;
+  --sr6-tag-ink: #001319;
+  --sr6-glow: 0 0 18px rgb(0 229 255 / 0.16);
 }
 
-/* ---- the page: our circuit board (Accents and Full), over any admin art (.bg-art) and under the content; in the dark a
-   magenta glow from the top and a teal one from the bottom, like the openers' neon ---- */
+/* ---- the page: our circuit board (Accents and Full) under the content, unless admin art (.bg-art) is shown; in the dark a
+   cyan glow from the top and a pink one from the bottom ---- */
 :root[data-game='sr6']:not([data-texture='flat']) body { background-image: none; }
 :root[data-game='sr6']:not([data-texture='flat']) body::after {
   content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--sr6-circuit) 0 0 / 160px 160px;
 }
 :root[data-game='sr6'][data-theme='dark']:not([data-texture='flat']) body::after {
-  background: var(--sr6-circuit-dark) 0 0 / 160px 160px, radial-gradient(ellipse at 85% -10%, rgb(240 77 189 / 0.16), transparent 55%),
-    radial-gradient(ellipse at 0% 110%, rgb(60 208 219 / 0.10), transparent 50%);
+  background: var(--sr6-circuit-dark) 0 0 / 160px 160px, radial-gradient(ellipse at 85% -10%, rgb(0 229 255 / 0.14), transparent 55%),
+    radial-gradient(ellipse at 0% 110%, rgb(255 63 210 / 0.08), transparent 50%);
 }
+/* the admin's background art (Background.tsx .bg-art), when shown, replaces the circuit board: never drawn over it */
+:root[data-game='sr6']:not([data-art='off']) body:has(.bg-art)::after { content: none; }
 @media print { body::after { display: none; } }
 
-/* ---- type: wide geometric caps, magenta, the hatched rule under page and section titles ---- */
+/* ---- type: wide geometric caps, cyan, the pink hatched rule under page and section titles ---- */
 :root[data-game='sr6'] :is(h1, h2, h3) { font-weight: 700; letter-spacing: 0.01em; }
 :root[data-game='sr6'] h3 { color: var(--text); }
 :root[data-game='sr6'] :is(.work h2, .lib h1, .lib h2):not(dialog h2) {
   border-bottom: 0; padding-bottom: 0.32em; background: var(--sr6-hatch) left bottom / 100% 0.22em no-repeat;
 }
 :root[data-game='sr6'] .lib h2:not(dialog h2) { display: inline-block; }
-:root[data-game='sr6'][data-theme='dark'] :is(h1, h2) { text-shadow: 0 0 14px rgb(240 77 189 / 0.35); }
+:root[data-game='sr6'][data-theme='dark'] :is(h1, h2) { text-shadow: 0 0 14px rgb(0 229 255 / 0.35); }
 :root[data-game='sr6'] :is(.tabs a, .kinds button, .settings legend, .provider legend, .dossier .title, .who .name, .book .title, .left) { font-weight: 600; }
-:root[data-game='sr6'] .tabs a[aria-current='page'] { border-bottom-color: var(--sr6-line); }
+:root[data-game='sr6'] .tabs a[aria-current='page'] { border-bottom-color: var(--sr6-hatch-c); }
 :root[data-game='sr6'][data-texture='full'] .tabs a { font-family: var(--display); text-transform: uppercase; font-size: 0.92rem; letter-spacing: 0.03em; }
 :root[data-game='sr6'] .chapter-tab { color: var(--heading); }
 
-/* the logo: "Shadowrun" on a cut-corner magenta tag instead of Anarchy's paint stroke */
+/* the logo: "Shadowrun" on a cut-corner cyan tag instead of Anarchy's paint stroke */
 :root[data-game='sr6'] .brand { font-weight: 600; }
 :root[data-game='sr6'] .brand b, :root[data-game='sr6'][data-texture] .brand b, .sr6-sheet .s-head .brand b {
   font-family: var(--sr6-display); font-weight: 700; font-size: 1em; text-transform: uppercase; letter-spacing: 0.04em;
-  color: #fff; background: var(--sr6-magenta); text-shadow: none; padding: 0.12em 0.6em;
+  color: var(--sr6-tag-ink, #fff); background: var(--sr6-tag, var(--sr6-cyan)); text-shadow: none; padding: 0.12em 0.6em;
   clip-path: polygon(0.45em 0, 100% 0, 100% calc(100% - 0.45em), calc(100% - 0.45em) 100%, 0 100%, 0 0.45em);
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 
-/* ---- panels: the book's rounded boxes with thin magenta outlines ---- */
+/* ---- panels: the book's rounded boxes with thin cyan outlines ---- */
 :root[data-game='sr6'] :is(.work, .lib > section, .lib .browser, .dossier, .provider, .restore-preview) {
   border: 1.5px solid var(--sr6-line); border-radius: var(--r-box); background: color-mix(in srgb, var(--surface) 88%, transparent); box-shadow: var(--sr6-glow);
 }
@@ -118,7 +127,7 @@
 :root[data-game='sr6'] :is(.lib > section, .lib .browser) { padding: 1rem 1.2rem 1.2rem; margin-bottom: 1.2rem; }
 :root[data-game='sr6'] .dossier { padding: 0.75rem 1rem; margin-bottom: 0.6rem; }
 :root[data-game='sr6'] .dossier .face { border-radius: 10px; }
-:root[data-game='sr6'] :is(.dossier .face, .portrait-row .face) { font-family: var(--display); font-weight: 700; color: #fff; background: var(--bd, linear-gradient(135deg, var(--sr6-magenta), #4d2a7a)); }
+:root[data-game='sr6'] :is(.dossier .face, .portrait-row .face) { font-family: var(--display); font-weight: 700; color: #fff; background: var(--bd, linear-gradient(135deg, var(--sr6-cyan), var(--sr6-pink))); }
 :root[data-game='sr6'] .topbar { border-bottom: 2px solid var(--sr6-line); }
 :root[data-game='sr6'] :is(.banner, .editstate, .ask) { border-left-color: var(--sr6-line); border-radius: 0 var(--r-md) var(--r-md) 0; }
 :root[data-game='sr6'] .banner.err { border-left-color: var(--err); }
@@ -132,12 +141,12 @@
   :root[data-game='sr6'] :is(.lib > section, .lib .browser) { padding: 0.8rem; }
 }
 
-/* ---- tables: the book's grey head band with magenta caps ---- */
+/* ---- tables: the book's head band with cyan caps ---- */
 :root[data-game='sr6'] table.data th { color: var(--heading); font-family: var(--display); font-weight: 600; letter-spacing: 0.03em; }
 :root[data-game='sr6'][data-theme='dark'] table.data th { color: var(--heading); }
 :root[data-game='sr6'] table.data tr.group td { border-bottom-color: var(--sr6-line); }
 
-/* ---- the budgets sidebar: a grey book sidebar (deep purple in the dark), rounded, magenta title ---- */
+/* ---- the budgets sidebar: a grey book sidebar (deep blue in the dark), rounded, cyan title ---- */
 :root[data-game='sr6'] .receipt, :root[data-game='sr6'][data-texture] .receipt {
   background: var(--panel); border: 1.5px solid var(--sr6-line); border-radius: var(--r-box); margin: 1.2rem 1rem 1rem 0;
   max-height: calc(100vh - 2.4rem); top: 1.2rem; clip-path: none; padding-left: 1.2rem; box-shadow: var(--sr6-glow);
@@ -159,7 +168,7 @@
   :root[data-game='sr6'] .receipt h2 { margin-inline: -1rem; padding-inline: 1rem; }
 }
 
-/* ---- text on the accent: white on magenta (light), ink on neon (dark), where app.css says ink-on-yellow ---- */
+/* ---- text on the accent: white on cyan (light), ink on neon cyan (dark), where app.css says ink-on-yellow ---- */
 :root[data-game='sr6'] :is(.stepper button:hover:not(:disabled), .picker li:hover, .picker li:focus-visible, .picker li:hover .t,
   .picker li:hover .muted, .state.needs-ai, .state.review, .ibadge, .edited, a.ctag:hover) { color: var(--accent-ink); }
 :root[data-game='sr6'] .picker li:hover .edited, :root[data-game='sr6'] .picker li:focus-visible .edited { background: var(--accent-ink); color: var(--yellow); }
@@ -167,19 +176,19 @@
 :root[data-game='sr6'] .btn:hover { border-color: var(--rust); color: var(--rust); }
 :root[data-game='sr6'] .btn.primary:hover { color: var(--accent-ink); }
 
-/* ---- the folio: "SHADOWRUN 6 // RULES" in magenta caps at the foot of the page, as the book's pages end ---- */
+/* ---- the folio: "SHADOWRUN 6 // RULES" in cyan caps at the foot of the page, as the book's pages end ---- */
 .sr6-folio { max-width: 64rem; margin: 0 auto; padding: 0.4rem 1.25rem 2rem; }
 .sr6-folio::before { content: attr(data-folio); font: 700 0.82rem/1 var(--sr6-display); text-transform: uppercase; letter-spacing: 0.05em; color: var(--heading); word-spacing: 0.15em; }
 .layout ~ .sr6-folio { max-width: none; padding-left: 2.5rem; } /* the editor: under its panel, not centered */
 @media print { .sr6-folio { display: none; } }
 
-/* ---- the printed sheet: the official sheet's rounded magenta boxes with magenta caps titles; always paper ---- */
-.sr6-sheet { --s-indigo: #860263; --s-rust: #4d2a7a; --s-yellow: #960370; --s-cream: #f4f2f1; --s-line: #c9bfc6; --s-ink: #2a2228; --s-ink-2: #463e44; }
+/* ---- the printed sheet: the official sheet's rounded cyan boxes with cyan caps titles; always paper ---- */
+.sr6-sheet { --sr6-tag: #005c6b; --sr6-tag-ink: #fff; --s-indigo: #004653; --s-rust: #8a0057; --s-yellow: #005c6b; --s-cream: #eef5f8; --s-line: #bccdd5; --s-ink: #102028; --s-ink-2: #2c3e48; }
 .sr6-sheet h1 { color: var(--s-ink); font-weight: 700; }
 .sr6-sheet h2 { font-weight: 700; border-bottom: 0; margin: 0.5rem 0 0.25rem; color: var(--s-indigo); }
 .sr6-sheet h2:first-child { margin-top: 0; }
 .sr6-sheet .s-head { border-bottom: 0; padding-bottom: 0.55rem;
-  background: repeating-linear-gradient(-55deg, #960370 0 1.6px, transparent 1.6px 3.6px) left bottom / 100% 4px no-repeat;
+  background: repeating-linear-gradient(-55deg, #a8006a 0 1.6px, transparent 1.6px 3.6px) left bottom / 100% 4px no-repeat;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .sr6-sheet .s-role { color: var(--s-indigo); }
 .sr6-sheet > section, .sr6-sheet .s-cols > section {
@@ -196,33 +205,33 @@
   clip-path: polygon(evenodd, 25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%, 25% 0, 30% 12%, 70% 12%, 87% 50%, 70% 88%, 30% 88%, 13% 50%, 30% 12%); }
 :root[data-print='color'] .sr6-sheet { background: #fff var(--sr6-circuit) 0 0 / 160px 160px; }
 :root[data-print='color'] .sr6-sheet h2 { background: none; color: var(--s-indigo); padding: 0; }
-:root[data-print='color'] .sr6-sheet th { background: #ecece7; color: var(--s-indigo); }
+:root[data-print='color'] .sr6-sheet th { background: #e8f1f5; color: var(--s-indigo); }
 :root[data-print='color'] .sr6-sheet > section, :root[data-print='color'] .sr6-sheet .s-cols > section { background-color: rgb(255 255 255 / 0.85); }
 
 /* ---- the game picker ("pick"): Anarchy's paper page with both games' accents; each card in its own game's look ---- */
 :root[data-game='pick'] .gamepick h1 { border-bottom: 0; padding-bottom: 0.32em;
-  background: linear-gradient(90deg, var(--sr6-magenta) 0 50%, var(--yellow) 50%) left bottom / 100% 0.2em no-repeat; }
+  background: linear-gradient(90deg, var(--sr6-cyan) 0 50%, var(--yellow) 50%) left bottom / 100% 0.2em no-repeat; }
 :root[data-game='pick'][data-theme='dark'] .gamepick h1 { background-image: linear-gradient(90deg, var(--sr6-neon) 0 50%, var(--yellow) 50%); }
 .game.sr6, :root[data-texture] .game.sr6 {
-  border: 1.5px solid var(--sr6-magenta); border-radius: 16px; color: #2a2228;
-  background: var(--sr6-circuit) 0 0 / 160px 160px, #f9f9f8; transition: box-shadow 0.12s ease-out;
+  border: 1.5px solid var(--sr6-cyan); border-radius: 16px; color: #102028;
+  background: var(--sr6-circuit) 0 0 / 160px 160px, #f6fafc; transition: box-shadow 0.12s ease-out;
 }
-.game.sr6:hover, .game.sr6:focus-visible { border-left-width: 1.5px; box-shadow: inset 8px 0 0 var(--sr6-magenta); }
-.game.sr6 .name { font-family: var(--sr6-display); font-weight: 700; letter-spacing: 0.01em; color: #2a2228; }
+.game.sr6:hover, .game.sr6:focus-visible { border-left-width: 1.5px; box-shadow: inset 8px 0 0 var(--sr6-cyan); }
+.game.sr6 .name { font-family: var(--sr6-display); font-weight: 700; letter-spacing: 0.01em; color: #102028; }
 .game.sr6 .name b, :root[data-texture] .game.sr6 .name b {
   font-family: var(--sr6-display); font-weight: 700; font-size: 1em; text-transform: uppercase; letter-spacing: 0.02em; margin: 0.15em 0 0;
-  padding: 0 0 0.25em; color: var(--sr6-magenta); background: repeating-linear-gradient(-55deg, var(--sr6-magenta) 0 1.6px, transparent 1.6px 3.6px) left bottom / 100% 0.2em no-repeat;
+  padding: 0 0 0.25em; color: var(--sr6-cyan); background: repeating-linear-gradient(-55deg, var(--sr6-pink) 0 1.6px, transparent 1.6px 3.6px) left bottom / 100% 0.2em no-repeat;
 }
-.game.sr6 .what { color: #41383f; }
-.game.sr6:hover .what, .game.sr6:focus-visible .what { color: #2a2228; }
+.game.sr6 .what { color: #2c3e48; }
+.game.sr6:hover .what, .game.sr6:focus-visible .what { color: #102028; }
 :root[data-theme='dark'] .game.sr6 {
-  color: #f2eaf2; border-color: #c23a9e; box-shadow: 0 0 22px rgb(240 77 189 / 0.18);
-  background: var(--sr6-circuit-dark) 0 0 / 160px 160px, radial-gradient(ellipse at 90% 0%, rgb(240 77 189 / 0.35), transparent 60%),
-    radial-gradient(ellipse at 0% 100%, rgb(60 208 219 / 0.22), transparent 55%), #120c15;
+  color: #e6f7ff; border-color: #00b8d9; box-shadow: 0 0 22px rgb(0 229 255 / 0.18);
+  background: var(--sr6-circuit-dark) 0 0 / 160px 160px, radial-gradient(ellipse at 90% 0%, rgb(0 229 255 / 0.28), transparent 60%),
+    radial-gradient(ellipse at 0% 100%, rgb(255 63 210 / 0.16), transparent 55%), #060b13;
 }
-:root[data-theme='dark'] .game.sr6:hover, :root[data-theme='dark'] .game.sr6:focus-visible { box-shadow: inset 8px 0 0 var(--sr6-neon), 0 0 26px rgb(240 77 189 / 0.3); }
-:root[data-theme='dark'] .game.sr6 .name { color: #f2eaf2; }
-:root[data-theme='dark'] .game.sr6 .name b { color: #ff6ccf; text-shadow: 0 0 14px rgb(240 77 189 / 0.5);
-  background-image: repeating-linear-gradient(-55deg, var(--sr6-teal) 0 1.6px, transparent 1.6px 3.6px); }
-:root[data-theme='dark'] .game.sr6 .what { color: #d9ccdb; }
-:root[data-theme='dark'] .game.sr6:hover .what, :root[data-theme='dark'] .game.sr6:focus-visible .what { color: #f2eaf2; }
+:root[data-theme='dark'] .game.sr6:hover, :root[data-theme='dark'] .game.sr6:focus-visible { box-shadow: inset 8px 0 0 var(--sr6-neon), 0 0 26px rgb(0 229 255 / 0.3); }
+:root[data-theme='dark'] .game.sr6 .name { color: #e6f7ff; }
+:root[data-theme='dark'] .game.sr6 .name b { color: #00e5ff; text-shadow: 0 0 14px rgb(0 229 255 / 0.5);
+  background-image: repeating-linear-gradient(-55deg, var(--sr6-neon-pink) 0 1.6px, transparent 1.6px 3.6px); }
+:root[data-theme='dark'] .game.sr6 .what { color: #c3dbe6; }
+:root[data-theme='dark'] .game.sr6:hover .what, :root[data-theme='dark'] .game.sr6:focus-visible .what { color: #e6f7ff; }
