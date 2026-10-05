@@ -9,7 +9,7 @@ from pathlib import Path
 from lxml import etree
 
 from importer import sr6
-from importer.sr6 import regroup
+from importer.sr6 import archetypes, regroup
 from importer.sr6.recipes import crb, identify
 
 BOOK_MD = """<!-- page 1 -->
@@ -67,6 +67,9 @@ Hands that never shake. Cost: 5 Karma
 #### Butterfingers
 **Bonus:** 6 Karma
 Drops made-up things.
+#### Spark/Fizz Bane
+**Bonus:** 5 Karma
+An invented bane.
 #### Odd Habit (Vice, 1 to 4)
 **Bonus:** 3 Karma per level
 An invented habit.
@@ -84,12 +87,12 @@ A made-up runner who glows.
 **Active Skills:** Tinkering 3 (Gizmos +2), Basket Weaving 2
 **Knowledge Skills:** Glow Lore, Puddle Streets
 **Languages:** Plainspeak (Native), Glimmertongue
-**Qualities:** Lucky Streak 2, Butterfingers, Steady Hands (glimmerkin trait), Night Eyes (glimmerkin trait), Odd Quirk
+**Qualities:** Lucky Streak 2, Butterfingers, Steady Hands (glimmerkin trait), Night Eyes (glimmerkin trait), Odd Quirk, Fizz Bane (Water)
 **Adept Powers:** Quick Feet 2, Glow Sense
 **Contacts:** Fixer Fred (C3/L2), Glow Dealer C1/L4)
 **Lifestyle:** Shoebox (2 months prepaid)
-**Augmentations:** Glow Gland 2
-**Gear:** Padded Vest, 2 x fake SIN (rating 3; w/ zap license), Gizmo Kit (rating 4), Mystery Box
+**Augmentations:** Glow Gland 2 (alpha), cybertail (obvious, w/ glow tip)
+**Gear:** Padded Vest, 2 x fake SIN (rating 3; w/ zap license), Gizmo Kit (rating 4), Mystery Box, Glue gun
 **Vehicles:** Zoom Bike
 **Starting Nuyen:** 1,234¥
 **Weapons:** Zap Gun [Pistol, DV 3P, SA, 8/10/—/—, 10(c), w/ 50 rounds] Odd Sword [Blade, DV 3P, 9/—/—/—/—]
@@ -101,6 +104,8 @@ A made-up technomancer.
 |---|---|---|---|---|---|---|---|---|---|
 | 2 | 2 | 3 | 2 | 5 | 5 | 4 | 3 | 3 | 6 |
 **Active Skills:** Tinkering 4 (Clockwork +3)
+**Augmentations:** Tail (obvious)
+**Vehicles:** Zoombike
 **Complex Forms:** Static Fizz
 **Lifestyle:** Gutter
 <!-- page 91 -->
@@ -579,21 +584,25 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual([(x.get("id"), x.get("points"), x.get("spec")) for x in b.iter("skill")], [("crb.tinkering", "3", "Gizmos")])
         self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],
                          [("Glow Lore", "knowledge", None), ("Puddle Streets", "knowledge", None), ("Plainspeak", "language", "true"), ("Glimmertongue", "language", None)])
+        # Logic 2: two knowledge points; the language past them is bought with karma
+        self.assertEqual([(x.get("points"), x.get("karma")) for x in b.iter("knowledge")], [("1", "0"), ("1", "0"), ("0", "0"), ("0", "1")])
         self.assertEqual([(x.get("id"), x.get("level"), x.get("free")) for x in b.iter("quality")],
-                         [("crb.lucky-streak", "2", None), ("crb.butterfingers", "1", None), ("crb.steady-hands", "1", "true")])
+                         [("crb.lucky-streak", "2", None), ("crb.butterfingers", "1", None), ("crb.steady-hands", "1", "true"),
+                          ("crb.spark-fizz-bane", "1", None)])  # `Fizz Bane`: one of a slashed pair
         self.assertEqual([(x.get("kind"), x.get("id"), x.get("level")) for x in b.iter("pick")],
                          [("adeptpowers", "crb.quick-feet", "2"), ("adeptpowers", "crb.glow-sense", None)])
         self.assertEqual([(x.get("name"), x.get("connection"), x.get("loyalty")) for x in b.iter("contact")], [("Fixer Fred", "3", "2"), ("Glow Dealer", "1", "4")])
         self.assertEqual((b.find("lifestyle").get("id"), b.find("lifestyle").get("months")), ("crb.shoebox", "2"))
         self.assertEqual([(x.get("kind"), x.get("id"), x.get("rating"), x.get("worn")) for x in b.iter("purchase")],
                          [("armor", "crb.padded-vest", None, "true"), ("gear", "crb.gizmo-kit", "4", None),
-                          ("augmentations", "crb.glow-gland", "2", None), ("vehicles", "crb.zoom-bike", None, None), ("weapons", "crb.zap-gun", None, None)])
+                          ("augmentations", "crb.glow-gland", "2", None), ("augmentations", "crb.tail-obvious", None, None),
+                          ("vehicles", "crb.zoom-bike", None, None), ("weapons", "crb.zap-gun", None, None)])  # a cybertail is the catalog's Tail
         self.assertEqual([(x.get("kind"), x.get("rating"), [l.get("name") for l in x]) for x in b.iter("sin")],
                          [("fake", "3", ["zap license"]), ("fake", "3", ["zap license"])])
         notes = g.findtext("notes")
         for bit in ("Initiative/Actions: 8 + 2D6/1 Major, 3 Minor", "Starting Nuyen: 1,234¥", "Augmented as printed: AGI 5(6).",
                     "Skills not in the catalog: Basket Weaving 2.", "Qualities not in the catalog: Night Eyes (glimmerkin trait); Odd Quirk.",
-                    "Gear not in the catalog: Mystery Box.", "Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—]."):
+                    "Gear not in the catalog: Mystery Box; Glue gun.", "Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—]."):
             self.assertIn(bit, notes)
         self.assertEqual([(r["name"], r["field"], r["value"]) for r in self.rep("unmatched-item")][:2],
                          [("Glow Runner", "Skills", "Basket Weaving 2"), ("Glow Runner", "Qualities", "Night Eyes (glimmerkin trait)")])
@@ -602,10 +611,25 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual((tb.get("magic"), tb.find("skill").get("expertise"), tb.find("pick").get("id"), tb.find("lifestyle").get("months")),
                          ("technomancer", "Clockwork", "crb.static-fizz", "1"))
         self.assertIn("Resonance isn’t printed", t.findtext("notes"))
+        self.assertEqual(tb.find("purchase").get("id"), "crb.tail-obvious")  # the printed variant, not the first Tail
+        self.assertEqual([x.get("id") for x in tb.iter("purchase")][1:], ["crb.zoom-bike"])  # `Zoombike`: spaces aside
+        self.assertEqual(b.find("purchase[@id='crb.glow-gland']").get("grade"), "alpha")  # the grade printed with it
+        p = g.find("printed")  # the numbers Review compares, as printed
+        self.assertEqual((p.get("source"), p.get("page")), ("CRB", "81"))
+        self.assertEqual({v.get("key"): v.get("value") for v in p}, {"bod": "3", "agi": "5(6)", "rea": "4", "str": "2", "wil": "3",
+                         "log": "2", "int": "4", "cha": "3", "edg": "4", "mag": "4", "ess": "6", "init": "8 + 2D6", "dr": "5"})
         # the golden file the app's tests read (tests/fixtures/sr6/sample-glow-runner.xml): the same but its date
         golden = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sr6" / "sample-glow-runner.xml"
         self.assertEqual(re.sub(r'updatedAt="[^"]+"', "", self.res.samples[0]["xml"]),
                          re.sub(r'updatedAt="[^"]+"', "", golden.read_text(encoding="utf8")))
+
+    def test_standard_boosts_as_bonuses(self):
+        """A sample's standard boost carries what it adds (the engine counts only a line's bonuses): per rating or level
+        when the line has one, else at the level its name ends with; anything else carries none."""
+        self.assertEqual(archetypes._bonuses("Wired Reflexes 2", None), '<bonus target="rea" value="2"/><bonus target="initDice" value="2"/>')
+        self.assertEqual(archetypes._bonuses("Muscle toner", 3), '<bonus target="agi" value="1" perRating="true"/>')
+        self.assertEqual(archetypes._bonuses("Bone Lacing (Titanium)", None), '<bonus target="defense" value="2"/>')
+        self.assertEqual(archetypes._bonuses("Glow Gland", 2), "")
 
     def test_nothing_unmapped(self):
         self.assertEqual(self.rep("unmapped"), [])

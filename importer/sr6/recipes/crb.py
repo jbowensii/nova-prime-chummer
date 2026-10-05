@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from dataclasses import replace
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
@@ -806,13 +807,25 @@ def extract(regrouped, ctx=None, book=None):
                                for a in ("rating", "avail", "cost") if a in row["attrs"]})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    runners = []
+    runners, core = [], _core(ctx) if samples and bk.ID != ID else None
     for name, b, page in samples:
-        sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated)
+        sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated, core)
         runners.append({"file": f"{sid}.xml", "xml": xml, "name": name, "role": "Archetype", "page": page})
         cat.report += rows
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
                   source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
+
+
+def _core(ctx):
+    """The core rulebook's catalog as imported (custom/sr6/imported/crb/<kind>.xml; ctx["custom_dir"]: custom/sr6), which
+    another book's sample runners cite: kind -> [{id (scoped), name}]; {} before the core rulebook is imported."""
+    d = os.path.join((ctx or {}).get("custom_dir") or "", "imported", ID.lower())
+    out = {}
+    for f in sorted(os.listdir(d)) if (ctx or {}).get("custom_dir") and os.path.isdir(d) else []:
+        if f.endswith(".xml"):
+            root = ET.parse(os.path.join(d, f)).getroot()
+            out[root.get("kind")] = [{"id": e.get("id"), "name": e.findtext("name") or ""} for e in root]
+    return out
 
 
 def extra(md, sha):

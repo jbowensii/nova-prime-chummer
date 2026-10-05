@@ -57,7 +57,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                                        end_page=getattr(recipe, "END_PAGE", None),
                                        variants=getattr(recipe, "VARIANT_ROWS", False))
         xmlio.write_file(os.path.join(book_dir, "regrouped.md"), text)
-        res = recipe.extract(text)
+        res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
         if hasattr(recipe, "extra"):  # the further sources the book holds (a City Edition's city chapter)
             res.extra = recipe.extra(md, meta["sha256"])
         for r in report:  # regroup reports PDF pages; the import report prints the book's
