@@ -31,8 +31,8 @@
   result is a word; "off the" stays two words. The core rulebook imports exactly as before.
 
 - **The core rulebook's City Editions import** (Hong Kong, the latest printing, and Seattle and Berlin): the importer
-  recognises them and reads them as it reads the 2019 printing, with their updated values. Their extra city chapter
-  isn't imported. Names no longer keep a footnote mark ("Flash-pak*").
+  recognises them and reads them as it reads the 2019 printing, with their updated values. Names no longer keep a
+  footnote mark ("Flash-pak*").
 
 - **Firing Squad can be imported** on Shadowrun 6 **Books** (it is now in the supported list). From your copy of the
   book the app reads its weapons (with their weapon modifications and accessories), ammunition, armor (each variant
@@ -60,6 +60,14 @@
   becomes a contact (with its bio, plot hooks, gear level and favors) and an NPC with its stats, plus the deck's rules.
 - **Ingentis Athletes can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its ten troll
   athletes as NPCs (read from the book's stat lines), the one priced weapon among their gear, and the troll variant rules.
+- **Body Shop can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its cyberware, cyberlimbs and their enhancements, bioware, geneware, nanoware, symbionts, nanotech and drugs, the implant weapons, the augmentation qualities, the augmented critters and the rule sections (the new implant grades among them); what it couldn't read is listed in the import's report.
+- **Double Clutch can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its vehicles and drones of every class, the vehicle modifications (gear entries now carry their modification slots), weapon mounts, drone racks and trailers, the rigger headware, the gear-head qualities, its sample contact and the rule sections; what it couldn't read is listed in the import's report.
+- **Krime Katalog can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons, grenades and weapon accessories, ammunition and vehicles, each with its Sixth World stats (the Fifth Edition ones printed beside them are left out); what it couldn't read is listed in the import's report.
+- **Double Clutch: no vehicle goes missing.** The DSEC, the Krime Karrier and the GTI Revolution now import; an aircraft the book's summary table lists but the importer couldn't read is listed in the import's report.
+- **No Future can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its gear (instruments, the yo-yos, rolling blades and other weapons, hats and coats, the two media vehicles, cameras, presses, the cybersenses), its qualities and its rules for performing; the availabilities from its errata sheet are applied, its other errata (rules and re-rated cyberware) aren't. What it couldn't read is listed in the import's report.
+- **Tarnished Star can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons (the Foamtek line among them), ammunition, shields, armor and helmets, police gear (badgecams, inhibitor bands, scanners, drugs), its vehicles and drones, the Roll Call archetypes, contacts and security NPCs, and its rules for working a case, interviews and blackmail. What it couldn't read is listed in the import's report (two bikes whose stats run together in the book).
+- **Astral Ways can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its spirits (the elemental denizens, the dinosaur spirits, a toxic spirit), critters (chimeras, golems, toxic horrors), NPCs, the airships and their weapons, the astral devices and encounter suits, its new spell, rituals, critter power, metamagic and quality, and the rules from each metaplane's game information and the techniques of travel. What it couldn't read is listed in the import's report.
+- **The City Editions' city chapter imports too**, as a source of its own (Seattle, Berlin or Hong Kong, now in the supported list), beside the core rulebook and without changing it: the city's qualities, its contacts with their stat blocks, its gear, weapons and vehicles, and its plot hooks and rules. What it couldn't read (a few contacts whose stat blocks print into each other) is listed in the import's report; removing the book removes it too.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 

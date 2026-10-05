@@ -239,6 +239,8 @@
       <xs:attribute name="cost" type="xs:string"/>
       <!-- what the cost buys: "10 rounds", "100m", "month" (none: one item) -->
       <xs:attribute name="per" type="xs:string"/>
+      <!-- a vehicle modification's modification slots, a formula like the cost ("1/3 body (rounded up)") -->
+      <xs:attribute name="slots" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

@@ -133,7 +133,7 @@ HEADERS = {
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
-             **_PRICE},
+             "MOD SLOTS": "slots", **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
                  "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats", **_PRICE},
@@ -470,7 +470,7 @@ class _Catalog:
             attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
             if kind == "augmentations":
                 attrs = {"type": "bioware" if any("bioware" in c for c in ctx) else "cyberware", **attrs}
-            if (m := NAME_RATING.search(name)) and "rating" not in f:
+            if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
@@ -498,10 +498,12 @@ class _Catalog:
                      "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None, "maxLevel": levels}
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
-                # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing none
+                # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing none,
+                # or a recipe's NPCs with no rating (`Group: X`)
                 m = re.search(r"professional rating\s*(\d+)?\s*[:–—-]?\s*(.*)", b.section, re.I)
-                attrs = {"rating": m and m.group(1) and int(m.group(1)), "group": (m and m.group(2).strip()) or None}
-                if not m:
+                g = re.fullmatch(r"group:\s*(.+)", b.section, re.I)
+                attrs = {"rating": m and m.group(1) and int(m.group(1)), "group": (m and m.group(2).strip()) or (g and g.group(1)) or None}
+                if not m and not g:
                     return False
             else:
                 attrs = {"category": cat}
@@ -743,3 +745,9 @@ def extract(regrouped, ctx=None, book=None):
         cat.report += rows
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
                   source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
+
+
+def extra(md, sha):
+    """A City Edition's city chapter as a source of its own (crb_city.py; run.py writes Result.extra)."""
+    from importer.sr6.recipes import crb_city
+    return crb_city.extra(md, sha)

@@ -3,6 +3,9 @@
      description file for that source, in custom/sr6/ (never committed; loaded when present). See docs/sr6-data-format.md. -->
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="sources" version="1">
   <source id="CRB" publisher="Catalyst Game Labs" canon="true" texts="texts/crb.xml"><name>Shadowrun, Sixth World Core Rulebook</name></source>
+  <source id="CRB-SEA" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-sea.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Seattle</name></source>
+  <source id="CRB-BER" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-ber.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Berlin</name></source>
+  <source id="CRB-HK" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-hk.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Hong Kong</name></source>
   <source id="SWC" publisher="Catalyst Game Labs" canon="true" texts="texts/swc.xml"><name>Shadowrun: Sixth World Companion</name></source>
   <source id="FS" publisher="Catalyst Game Labs" canon="true" texts="texts/fs.xml"><name>Shadowrun: Firing Squad</name></source>
   <source id="DA" publisher="Catalyst Game Labs" canon="true" texts="texts/da.xml"><name>Shadowrun: Deadly Arts</name></source>
@@ -11,4 +14,10 @@
   <source id="LL" publisher="Catalyst Game Labs" canon="true" texts="texts/ll.xml"><name>Shadowrun: Lofwyr's Legions</name></source>
   <source id="JD" publisher="Catalyst Game Labs" canon="true" texts="texts/jd.xml"><name>Shadowrun: Johnson 'Dex</name></source>
   <source id="IA" publisher="Catalyst Game Labs" canon="true" texts="texts/ia.xml"><name>Shadowrun: Ingentis Athletes</name></source>
+  <source id="BS" publisher="Catalyst Game Labs" canon="true" texts="texts/bs.xml"><name>Shadowrun: Body Shop</name></source>
+  <source id="DC" publisher="Catalyst Game Labs" canon="true" texts="texts/dc.xml"><name>Shadowrun: Double Clutch</name></source>
+  <source id="KK" publisher="Catalyst Game Labs" canon="true" texts="texts/kk.xml"><name>Krime Katalog</name></source>
+  <source id="NF" publisher="Catalyst Game Labs" canon="true" texts="texts/nf.xml"><name>Shadowrun: No Future</name></source>
+  <source id="TS" publisher="Catalyst Game Labs" canon="true" texts="texts/ts.xml"><name>Shadowrun: Tarnished Star</name></source>
+  <source id="AW" publisher="Catalyst Game Labs" canon="true" texts="texts/aw.xml"><name>Shadowrun: Astral Ways</name></source>
 </sr6:data>
