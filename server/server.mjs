@@ -386,8 +386,9 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   }
   const stores = () => [...games.ca2.stores, [compendiums.ca2.folder, 'characters/.compendiums/'],
     ...legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, 'characters/sr6/.compendiums/']]]
-  // each game's own art set: Anarchy's in library/backgrounds/, SR6's in library/sr6/backgrounds/
-  const backgrounds = { ca2: backgroundsApi({ libraryDir, auth }), sr6: backgroundsApi({ libraryDir: join(libraryDir, GAMES.sr6.sub), auth }) }
+  // each game's own art set: Anarchy's in library/backgrounds/, SR6's in library/sr6/backgrounds/ (SR6's starts with our circuit board)
+  const backgrounds = { ca2: backgroundsApi({ libraryDir, auth }), sr6: backgroundsApi({ libraryDir: join(libraryDir, GAMES.sr6.sub), auth,
+    seed: { file: join(ROOT, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' }, track: books.track }) }
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
