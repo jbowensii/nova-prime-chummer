@@ -1,7 +1,7 @@
 """Shadowrun: Explosive Decompression (ED) -> the SR6 catalog: the space gear (spacesuits as armor, gear, the signal
 booster, the rEvolution Arms energy weapons), the thruster packs, spaceships, starships and drones (vehicles), the
 mission rosters' NPCs and the rule sections, ids unscoped (run scopes them as ed.<slug>), descriptions in the private
-texts. Reads only regrouped.md (importer/sr6/regroup.py), after prepare() gives book.md's stat tables their titles,
+texts. Reads only regrouped.md (importer/sr6/regroup.py), after prepare_md() gives book.md's stat tables their titles,
 with the core rulebook's reading (crb.extract); layout notes in ed.md. A line or value that doesn't read is reported,
 never guessed."""
 import re
@@ -44,7 +44,7 @@ def _words(s):
     return set(norm(re.sub(r"\([^()]*\)", " ", s)).split())
 
 
-def prepare(md):
+def prepare_md(md):
     """book.md with the gear and vehicle chapters' stat tables under their titles: the book sets a table's title
     (`evo star wing (thruster pack)`, `Evomars voidsearcher`) apart from it, a column or a page section away. An
     untitled stat table (HAND …, ITEM … with text right above) takes the nearest title above it (up to _TITLE_REACH

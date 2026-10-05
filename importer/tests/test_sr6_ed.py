@@ -74,7 +74,7 @@ A made-up guard in space.
 
 
 def run_recipe(md=BOOK_MD):
-    regrouped, _ = regroup.regroup(ed.prepare(md), ed.ALIASES, name_headers=ed.NAME_HEADERS)
+    regrouped, _ = regroup.regroup(ed.prepare_md(md), ed.ALIASES, name_headers=ed.NAME_HEADERS)
     return ed.extract(regrouped)
 
 
@@ -89,7 +89,7 @@ class EdRecipeTest(unittest.TestCase):
         cls.texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(cls.res.texts)}
 
     def test_prepare_moves_a_stray_title_to_its_table(self):
-        lines = ed.prepare(BOOK_MD).splitlines()
+        lines = ed.prepare_md(BOOK_MD).splitlines()
         i = lines.index("#### Zoom pack (thruster pack)")  # moved down, and a heading now (its box)
         self.assertTrue(lines[i + 1].startswith("| HANDL |"))
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
 from importer.sr6 import NS, regroup
-from importer.sr6.recipes import RECIPES, identify
+from importer.sr6.recipes import RECIPES, identify, skipped
 
 
 def sr6_root():
@@ -40,6 +40,10 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         rec = {"file": file_name, "sha256": meta["sha256"], "converter": meta["converter"], "pages": meta["pages"]}
 
         xmlio.write_status(book_dir, "identifying")
+        if why := skipped(meta, file_name):  # before identify: an errata's first page reads as its book's
+            xmlio.write_import(book_dir, **rec)
+            xmlio.write_status(book_dir, "skipped", f"Nothing to import: {why}")
+            return None
         recipe, score = identify(meta, md[:4000])
         if recipe is None:
             xmlio.write_import(book_dir, score=f"{score:.2f}", **rec)
@@ -47,8 +51,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             return None
 
         xmlio.write_status(book_dir, "extracting")
-        if hasattr(recipe, "prepare"):  # a book's own page furniture the converter can't tell (a running head on top)
-            md = recipe.prepare(md)
+        if hasattr(recipe, "prepare_md"):  # a book's own page furniture the converter can't tell (a running head on top)
+            md = recipe.prepare_md(md)
         text, report = regroup.regroup(md, recipe.ALIASES, name_headers=recipe.NAME_HEADERS,
                                        end_page=getattr(recipe, "END_PAGE", None),
                                        variants=getattr(recipe, "VARIANT_ROWS", False))
@@ -66,20 +70,28 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         src = res.source["id"]
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
+        # several printings of the book: the newest is the one loaded, the others listed as superseded
+        mine = _printing(meta["sha256"])
+        others = [(p, d, st) for p, d, st in _same_source(book_dir, src) if p and mine]
+        newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
+        older = [] if newer else [(p, d, st) for p, d, st in others if st in ("done", "superseded") and p < mine]
+        if any(st == "done" for _, _, st in older):
+            _drop(custom_dir, src)  # the older printing's catalog, texts and sample runners (this one's replace them)
         with sr6_root():
-            texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
-            # the texts first: a corrupt texts file fails the import before any overlay is replaced
-            texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
-            samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
-            samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
-            for name, xml in res.files.items():
-                xmlio.write_overlay(out_dir, name, xml, ids)
-            if texts:
-                xmlio.write_file(texts_path, texts)
-            for s in res.samples:  # sr6:character files, their ids already scoped
-                xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
-            if samples:
-                xmlio.write_file(samples_path, samples)
+            if not newer:
+                texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
+                # the texts first: a corrupt texts file fails the import before any overlay is replaced
+                texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
+                samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
+                samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
+                for name, xml in res.files.items():
+                    xmlio.write_overlay(out_dir, name, xml, ids)
+                if texts:
+                    xmlio.write_file(texts_path, texts)
+                for s in res.samples:  # sr6:character files, their ids already scoped
+                    xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
+                if samples:
+                    xmlio.write_file(samples_path, samples)
             for x in (old.get("extra") or "").split() if old is not None else ():
                 _drop(custom_dir, x)  # the last import's further sources
             for x in res.extra:
@@ -91,13 +103,39 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                                name=res.source["name"], publisher=res.source["publisher"],
                                canon=str(res.source["canon"]).lower(),
                                imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
+            for _, d, _ in older:
+                xmlio.write_status(d, "superseded", f"Superseded by {mine[1]}")
+            if newer:
+                xmlio.write_status(book_dir, "superseded", f"Superseded by {newer[0][1]}")
             xmlio.update_index(custom_dir)
             xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
-        xmlio.write_status(book_dir, "done")
+        if not newer:
+            xmlio.write_status(book_dir, "done")
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
+
+
+def _printing(sha):
+    """(rank, label) of a known printing (a recipe's PRINTINGS, oldest first: the higher rank the newer), or None."""
+    for r in RECIPES:
+        p = getattr(r, "PRINTINGS", {})
+        if sha in p:
+            return list(p).index(sha), p[sha]
+    return None
+
+
+def _same_source(book_dir, src):
+    """The library's other books imported as `src`: [(printing or None, dir, state)]."""
+    library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
+    out = []
+    for b in os.listdir(library):
+        d = os.path.join(library, b)
+        imp = xmlio.read_import(d) if b != me and os.path.isdir(d) else None
+        if imp is not None and (imp.get("source") or "").lower() == src.lower():
+            out.append((_printing(imp.get("sha256")), d, xmlio.read_state(d)))
+    return out
 
 
 def _texts(path, xml, src, ids):
@@ -130,9 +168,18 @@ def _drop(custom_dir, src):
 
 def remove(book_dir, custom_dir, forget=False):
     """Anarchy's remove (importer/__main__.py) under the sr6:data root: it rewrites the samples list too (SR6 has no npcs
-    list). The book's further sources (import.xml extra) go with it."""
+    list). The book's further sources (import.xml extra) go with it. The loaded printing of a book removed, the newest
+    superseded one is imported again (from its book.md) and loaded."""
     imp = xmlio.read_import(book_dir)
+    src, loaded = (imp.get("source") if imp is not None else None), xmlio.read_state(book_dir) == "done"
     for x in (imp.get("extra") or "").split() if imp is not None else ():
         _drop(custom_dir, x)
     with sr6_root():
         anarchy.remove(book_dir, custom_dir, forget=forget)
+    others = _same_source(book_dir, src) if src and loaded else []
+    nxt = max(((p, d) for p, d, st in others if p and st == "superseded"), default=None)
+    if nxt and not any(st == "done" for _, _, st in others):
+        try:
+            run(nxt[1], custom_dir, convert_pdf=False)
+        except Exception:  # noqa: BLE001  (its own status says why; this book is removed)
+            pass
