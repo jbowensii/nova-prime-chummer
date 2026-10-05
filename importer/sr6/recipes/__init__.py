@@ -4,10 +4,12 @@ picks the best match at or above THRESHOLD; a book none matches fails."""
 from importer.recipes import Result  # noqa: F401  (the SR6 recipes return Anarchy's Result)
 from importer.sr6.recipes import crb, fs, swc
 from importer.sr6.recipes import bs
+from importer.sr6.recipes import dc
 
 THRESHOLD = 0.6
 RECIPES = [crb, swc, fs]
 RECIPES += [bs]
+RECIPES += [dc]
 
 
 def identify(meta, md_head):

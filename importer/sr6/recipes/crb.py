@@ -131,7 +131,7 @@ HEADERS = {
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
-             **_PRICE},
+             "MOD SLOTS": "slots", **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
                  "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats", **_PRICE},

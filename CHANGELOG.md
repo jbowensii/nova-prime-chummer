@@ -41,6 +41,7 @@
   sheet isn't applied: it changes rules as well as numbers, so the book's printed values are kept.
 
 - **Body Shop can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its cyberware, cyberlimbs and their enhancements, bioware, geneware, nanoware, symbionts, nanotech and drugs, the implant weapons, the augmentation qualities, the augmented critters and the rule sections (the new implant grades among them); what it couldn't read is listed in the import's report.
+- **Double Clutch can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its vehicles and drones of every class, the vehicle modifications (gear entries now carry their modification slots), weapon mounts, drone racks and trailers, the rigger headware, the gear-head qualities, its sample contact and the rule sections; what it couldn't read is listed in the import's report.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
