@@ -337,7 +337,9 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
       out.push({ code: r.code, severity: r.severity, path: h.path ?? r.tab, message: h.message, ...at })
     }
   }
-  out.push(...data.problems)
+  // the catalog's own problems (data.ts), only for entries this runner uses (and the priority table): not every book's
+  const used = JSON.stringify(ch.build)
+  out.push(...data.problems.filter(v => v.path.startsWith('priorities.') || used.includes(`"${v.path.slice(v.path.indexOf('.') + 1)}"`)))
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
   return out.map(v => (approved.has(`${v.code}|${v.path}`) ? { ...v, approved: true } : v))
 }
