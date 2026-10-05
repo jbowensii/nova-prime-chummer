@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.9.7 — 2026-10-05: neon Shadowrun 6 colours, background art shows again
+
+- **Shadowrun 6 is neon, mostly cyan.** Titles, outlines, buttons and the logo tag are neon cyan; neon pink comes second
+  (the hatched rule under titles, the current tab, hovers and focus), with violet as a third. OK is neon green, warnings
+  orange, errors neon red. The dark look is blue-black with bright neon; the light look uses deeper cyan and pink so the
+  text stays readable. The printed sheet follows: cyan boxes and titles, a pink rule under the name.
+- **Your background art shows again on Shadowrun 6 pages.** The circuit-board pattern was drawn over it; now, when an
+  admin's background art is shown, it replaces the pattern. With the art turned off, the pattern is back.
+- **The NPCs and Critters tabs are bigger**, so the Critters section is easy to find (both games).
+
 ## 0.9.6 — 2026-10-05: NPC and Critter sections, Shadowrun 6 look, shared compendiums
 
 - **NPCs & Critters has two sections: NPCs and Critters** (both games). Each is its own tab with how many it holds, its
