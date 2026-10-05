@@ -48,9 +48,10 @@ export interface Sr6Entry {
   id: string; kind: Sr6Kind; name: string; source: string; page: number; attrs: Record<string, string>; parts: Sr6Part[]; text: string
   edited?: boolean; by?: string
 }
-/** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). */
+/** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). published ("2019-08") and cat
+ *  ("CAT28000"): the publication order (src/sr6/engine/npc.ts byPublication). */
 export interface Sr6Source {
-  id: string; name: string; publisher: string; canon: boolean; texts?: string; file?: string; sha256?: string; imported?: string
+  id: string; name: string; publisher: string; canon: boolean; published?: string; cat?: string; texts?: string; file?: string; sha256?: string; imported?: string
   origin: 'shipped' | 'imported' | 'user'
   compendium?: { id: string; owner: string }
 }

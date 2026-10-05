@@ -50,9 +50,9 @@ test('life modules load with their stage, grants, requirement and mixed choices 
   expect(mixed.parts).toEqual([{ tag: 'choice', attrs: { kind: 'mixed', points: '1', options: 'edg skill:crb.hexing nuyen:3000' }, text: '' }])
 })
 
-test('the CRB source is the shipped one plus the imported file and checksum', async () => {
+test('the CRB source is the shipped one (with its publication date) plus the imported file and checksum', async () => {
   const s = (await load()).sources.get('CRB')
-  expect(s).toEqual({ id: 'CRB', name: 'Shadowrun, Sixth World Core Rulebook', publisher: 'Catalyst Game Labs', canon: true, texts: 'texts/crb.xml',
+  expect(s).toEqual({ id: 'CRB', name: 'Shadowrun, Sixth World Core Rulebook', publisher: 'Catalyst Game Labs', canon: true, published: '2019-08', cat: 'CAT28000', texts: 'texts/crb.xml',
     file: 'test-sr6-core.pdf', sha256: '5'.repeat(64), imported: '2026-10-02', origin: 'imported' })
 })
 
