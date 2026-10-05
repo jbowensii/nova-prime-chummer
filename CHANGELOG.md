@@ -54,6 +54,8 @@
 - **Matrix programs are a kind of their own** on Game data (grouped basic and hacking): the core rulebook's import
   lists each program with its type's availability and price, Hack & Slash's its new cyberprograms (the book prints no
   price for them).
+- **Lofwyr's Legions can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its Saeder-Krupp
+  NPCs, the drake qualities and drake powers, its martial art and the rule sections.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
