@@ -2,10 +2,10 @@
 and extract(regrouped, ctx=None) -> importer.recipes.Result (files: <kind>.xml -> XML, ids unscoped; texts). identify()
 picks the best match at or above THRESHOLD; a book none matches fails."""
 from importer.recipes import Result  # noqa: F401  (the SR6 recipes return Anarchy's Result)
-from importer.sr6.recipes import bn, crb, fs, swc, wl
+from importer.sr6.recipes import bn, crb, fs, so, swc, wl
 
 THRESHOLD = 0.6
-RECIPES = [crb, swc, fs, wl, bn]
+RECIPES = [crb, swc, fs, wl, bn, so]
 
 
 def identify(meta, md_head):

@@ -491,10 +491,14 @@ class _Catalog:
             attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
                      "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)
+            if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
+                attrs["maxLevel"] = int(m.group(1))  # `5 Karma per level (1 to 4)`: the levels in the price
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
             m = re.search(r"([\d.]+)\s*PP", cost, re.I)
             name, levels = self._levels(name)
+            if not levels and (n := re.search(r"max(?:imum)?\.?\s+(\d+)\s+levels?", cost, re.I)):
+                levels = int(n.group(1))  # `0.25 PP per level (max 4 levels)`
             attrs = {"cost": m.group(1) if m else cost or None,
                      "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None, "maxLevel": levels}
         elif kind in ("critters", "spirits", "npcs"):
@@ -681,7 +685,7 @@ def extract(regrouped, ctx=None, book=None):
         if b.row is not None and b.header and b.header[0].upper() in ("PRIORITY", "METATYPE"):
             cat.table(b.header, [[b.row.get(h, "") for h in b.header]], page)
             continue
-        if "archetypes" in ch and archetypes.is_archetype(b):
+        if getattr(bk, "ARCHETYPES", "archetypes") in ch and archetypes.is_archetype(b):  # sample characters
             samples.append((b.section or b.name, b, page))  # built once the catalog is read: they cite its entries
             continue
         section = b.type == "section"

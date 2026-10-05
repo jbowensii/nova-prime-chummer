@@ -7,4 +7,5 @@
   <source id="FS" publisher="Catalyst Game Labs" canon="true" texts="texts/fs.xml"><name>Shadowrun: Firing Squad</name></source>
   <source id="WL" publisher="Catalyst Game Labs" canon="true" texts="texts/wl.xml"><name>Shadowrun: Wild Life</name></source>
   <source id="BN" publisher="Catalyst Game Labs" canon="true" texts="texts/bn.xml"><name>Shadowrun: Bestial Nature</name></source>
+  <source id="SO" publisher="Catalyst Game Labs" canon="true" texts="texts/so.xml"><name>Shadowrun: Smooth Operations</name></source>
 </sr6:data>
