@@ -22,7 +22,7 @@ import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
 import { useCampaignRules } from './Creation'
-import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, type Sr6Ctx } from './editor'
+import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
 import { downloadSr6Runners } from './Foundry'
 import { exportSr6, sr6NpcRepo, sr6Repo } from './repo'
@@ -56,7 +56,7 @@ export const NPC_TABS: [string, string][] = [['concept', 'Concept'], ['stats', '
 export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
   const repo = useMemo(() => npc ? sr6NpcRepo() : sr6Repo(), [npc])
   const href = npc ? sr6NpcHref : sr6EditHref, noun = npc ? 'NPC' : 'runner'
-  const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: () => npc ? '#/sr6/npcs' : '#/sr6',
+  const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: doc => npc ? sr6NpcsHref(doc?.npc) : '#/sr6',
     inEditor: h => h.startsWith(href(id, '')) })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)
@@ -71,7 +71,7 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
       v: ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, ch) }
   }, [ch, data, cr])
 
-  const back = npc ? <a href="#/sr6/npcs">Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
+  const back = npc ? <a href={sr6NpcsHref(ch?.npc)}>Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
   if (!loaded || campRules === undefined) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
     <p>{back}{npc ? '.' : ', where you can download its file or try to repair it.'}</p></main>

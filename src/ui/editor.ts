@@ -36,5 +36,5 @@ export const useEditor = () => {
 
 /** A tab of the character's editor: #/c/<id>/<tab> for a runner, #/n/<id>/<tab> for an NPC (its own store). */
 export const editHref = (ch: Pick<Character, 'id' | 'npc'>, tab: string) => `#/${ch.npc ? 'n' : 'c'}/${ch.id}/${tab}`
-/** Where the editor's "back" goes: the runner list or the NPC area. */
-export const homeHref = (ch: Pick<Character, 'npc'> | undefined) => ch?.npc ? '#/npcs' : '#/'
+/** Where the editor's "back" goes: the runner list, or the NPC area's section: NPCs, or Critters (critters and spirits). */
+export const homeHref = (ch: Pick<Character, 'npc'> | undefined) => !ch?.npc ? '#/' : ch.npc.kind === 'npc' ? '#/npcs' : '#/npcs/critters'

@@ -150,16 +150,16 @@ test('Gil makes Street Kit and fills it; its entries reach his pickers and Game 
   expect(file.map(f => f.id)).toEqual([kit])
   expect(file[0].xml).toContain('<skills>Lurking 3, Fumbling 2</skills>')
 
-  // the pickers: the quality on a runner's Qualities, the spirit in New NPC
+  // the pickers: the quality on a runner's Qualities, the spirit in New critter
   const picker = await qualityPicker(page, 'Gil Test Runner')
   await expect(picker.getByText('Lucky Socks')).toBeVisible()
   await picker.getByText('Lucky Socks').click()
   await expect(page.locator('tr', { hasText: 'Lucky Socks' })).toBeVisible()
-  await page.goto('/#/sr6/npcs')
-  await page.getByRole('button', { name: 'New NPC' }).click()
-  await page.getByRole('dialog', { name: 'New NPC' }).getByLabel('Kind').selectOption({ label: 'Spirit' })
-  await expect(page.getByRole('dialog', { name: 'New NPC' }).getByLabel('From the catalog').locator('option', { hasText: 'Gutter Spirit' })).toHaveCount(1)
-  await page.getByRole('dialog', { name: 'New NPC' }).getByRole('button', { name: 'Cancel' }).click()
+  await page.goto('/#/sr6/npcs/critters')
+  await page.getByRole('button', { name: 'New critter' }).click()
+  await page.getByRole('dialog', { name: 'New critter' }).getByLabel('Kind').selectOption({ label: 'Spirit' })
+  await expect(page.getByRole('dialog', { name: 'New critter' }).getByLabel('From the catalog').locator('option', { hasText: 'Gutter Spirit' })).toHaveCount(1)
+  await page.getByRole('dialog', { name: 'New critter' }).getByRole('button', { name: 'Cancel' }).click()
 
   // Game data: the weapon marked House; its Edit opens it in Street Kit (the edits layer never edits it); a book's Edit is the edits dialog
   await page.goto('/#/sr6/data')

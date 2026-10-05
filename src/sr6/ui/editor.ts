@@ -10,7 +10,7 @@ import { CREATION_KEYS, type CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived } from '../engine/derive'
 import type { Provider } from '../engine/providers'
-import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character } from '../model/character'
+import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6Npc } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 
 export interface Sr6Ctx {
@@ -47,6 +47,10 @@ export const useSr6Editor = () => {
 export const SR6_FINAL_TIP = 'Finalized: spend karma and nuyen on the Ledger tab'
 export const sr6EditHref = (id: string, tab: string) => `#/sr6/c/${id}/${tab}`
 export const sr6NpcHref = (id: string, tab = 'stats') => `#/sr6/n/${id}/${tab}`
+/** NPCs & Critters' two sections: grunts and contacts are NPCs; critters, spirits and sprites are critters. */
+export const npcSection = (npc?: Sr6Npc): 'npcs' | 'critters' => npc && npc.kind !== 'grunt' && npc.kind !== 'contact' ? 'critters' : 'npcs'
+/** The NPC list section an NPC lists in (its editor's way back): #/sr6/npcs or #/sr6/npcs/critters. */
+export const sr6NpcsHref = (npc?: Sr6Npc) => npcSection(npc) === 'critters' ? '#/sr6/npcs/critters' : '#/sr6/npcs'
 /** The editor link for a runner or an NPC. */
 export const sr6Href = (ch: { id: string; npc?: unknown }, tab: string) => ch.npc ? sr6NpcHref(ch.id, tab) : sr6EditHref(ch.id, tab)
 

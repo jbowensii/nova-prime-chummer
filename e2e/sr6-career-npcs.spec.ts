@@ -229,6 +229,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
 const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
 const xmlFile = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
 const npcRow = (page: Page, name: string) => page.locator('.dossier').filter({ has: page.getByRole('link', { name, exact: true }) })
+const CRITTERS = new Set(['Critter', 'Spirit', 'Sprite'])
 
 test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imports, shares, trashes', async ({ page }) => {
   await signIn(page, '/#/sr6', 'gil')
@@ -238,20 +239,33 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
   await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByText('No NPCs yet.')).toBeVisible()
   const dlg = page.getByRole('dialog'), from = dlg.getByLabel('From the catalog'), status = page.locator('p.banner[role=status]')
+  const sections = page.getByRole('navigation', { name: 'NPCs or critters' })
+  // New NPC makes grunts and contacts, New critter critters, spirits and sprites; Save and close goes back to its section
   const make = async (kind: string, entry: string, rating?: string) => {
-    await page.getByRole('button', { name: 'New NPC' }).click()
+    const critter = CRITTERS.has(kind)
+    await page.goto(critter ? '/#/sr6/npcs/critters' : '/#/sr6/npcs')
+    await page.getByRole('button', { name: critter ? 'New critter' : 'New NPC' }).click()
     await dlg.getByLabel('Kind').selectOption({ label: kind })
     await from.selectOption({ label: entry })
     if (rating) await dlg.getByLabel(kind === 'Spirit' ? 'Force' : 'Level').fill(rating)
-    await dlg.getByRole('button', { name: 'Create NPC' }).click()
+    await dlg.getByRole('button', { name: critter ? 'Create critter' : 'Create NPC' }).click()
     await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/stats$/)
-    await page.goto('/#/sr6/npcs')
+    await page.getByRole('button', { name: 'Save and close' }).click()
+    await expect(page).toHaveURL(critter ? /#\/sr6\/npcs\/critters$/ : /#\/sr6\/npcs$/)
   }
+  await expect(sections.getByRole('link', { name: /^NPCs/ })).toHaveAttribute('aria-current', 'page')
   // grunts grouped by Professional Rating; no Force for them; a kind with none in the books offers Blank only
   await page.getByRole('button', { name: 'New NPC' }).click()
+  await expect(dlg.getByLabel('Kind').locator('option')).toHaveText(['Grunt', 'Contact'])
   await expect(from.locator('optgroup[label="Professional Rating 2"] option')).toHaveText(['Corner Goon'])
   await expect(from.locator('optgroup[label="Professional Rating 4"] option')).toHaveText(['Lot Boss'])
   await expect(dlg.getByLabel('Force')).toHaveCount(0)
+  await dlg.getByRole('button', { name: 'Cancel' }).click()
+  await sections.getByRole('link', { name: /^Critters/ }).click()
+  await expect(page).toHaveURL(/#\/sr6\/npcs\/critters$/)
+  await expect(page.getByText('No critters yet.')).toBeVisible()
+  await page.getByRole('button', { name: 'New critter' }).click()
+  await expect(dlg.getByLabel('Kind').locator('option')).toHaveText(['Critter', 'Spirit', 'Sprite'])
   await dlg.getByLabel('Kind').selectOption({ label: 'Spirit' })
   await expect(dlg.getByLabel('Force')).toHaveValue('1')
   await dlg.getByRole('button', { name: 'Cancel' }).click()
@@ -259,13 +273,16 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
   await make('Spirit', 'Spirit of Puddles', '4')
   await make('Sprite', 'Glitch Sprite', '3')
   await make('Critter', 'Fuzzbeast')
-  await make('Grunt', 'Blank')
-  await make('Grunt', 'Lot Boss') // the editor test below opens it
-  await expect(npcRow(page, 'Corner Goon')).toContainText('Grunt PR 2')
   await expect(npcRow(page, 'Spirit of Puddles')).toContainText('Spirit F 4')
   await expect(npcRow(page, 'Glitch Sprite')).toContainText('Sprite L 3')
   await expect(npcRow(page, 'Fuzzbeast')).toContainText('Critter')
+  await expect(npcRow(page, 'Corner Goon')).toHaveCount(0)
+  await make('Grunt', 'Blank')
+  await make('Grunt', 'Lot Boss') // the editor test below opens it
+  await expect(npcRow(page, 'Corner Goon')).toContainText('Grunt PR 2')
   await expect(npcRow(page, 'Unnamed NPC')).toContainText('Grunt')
+  await expect(npcRow(page, 'Fuzzbeast')).toHaveCount(0)
+  await expect(sections.getByRole('link')).toHaveText(['NPCs3', 'Critters3'])
 
   // Load book NPCs: e2e/sr6-examples.spec.ts (its own server, so the copies don't crowd these rows)
 
@@ -276,10 +293,13 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
     + 'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.')
   await expect(npcRow(page, 'Corner Goon')).toHaveCount(2)
 
-  // search, export
-  await page.getByLabel('Search NPCs').fill('sprite')
+  // search, export: each section searches its own
+  await page.getByLabel('Search NPCs').fill('goon')
+  await expect(page.locator('.dossier')).toHaveCount(2)
+  await sections.getByRole('link', { name: /^Critters/ }).click()
+  await page.getByLabel('Search critters').fill('sprite')
   await expect(page.locator('.dossier')).toHaveCount(1)
-  await page.getByLabel('Search NPCs').fill('')
+  await page.getByLabel('Search critters').fill('')
   const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export Fuzzbeast', exact: true }).click()])
   expect(readFileSync(await down.path(), 'utf8')).toContain('<npc kind="critter"')
 
@@ -304,7 +324,7 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
   await expect(page.getByRole('heading', { name: 'NPC trash' })).toBeVisible()
   await page.getByRole('button', { name: 'Restore Glitch Sprite' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Restored Glitch Sprite' })).toBeVisible()
-  await page.goto('/#/sr6/npcs')
+  await page.goto('/#/sr6/npcs/critters')
   await expect(npcRow(page, 'Glitch Sprite')).toHaveCount(1)
 
   // the other game's NPC store holds none of them
@@ -333,7 +353,7 @@ test('NPC editor: the Stat block tab reads stats at the rating, and an NPC print
   await expect(work).not.toContainText('Metatype')
 
   // a spirit at Force 4, then 6; a value it can't read
-  await page.goto('/#/sr6/npcs')
+  await page.goto('/#/sr6/npcs/critters')
   await npcRow(page, 'Spirit of Puddles').getByRole('link', { name: 'Spirit of Puddles' }).click()
   await expect(row('AGI').locator('td').last()).toHaveText('5')
   await expect(row('Defense Rating').locator('td').last()).toHaveText('8')
@@ -369,18 +389,18 @@ test('NPC editor: the Stat block tab reads stats at the rating, and an NPC print
   await expect(page.getByRole('link', { name: 'Back to editing' })).toHaveAttribute('href', /#\/sr6\/n\/[^/]+\/stats$/)
 
   // a sprite at Level 3
-  await page.goto('/#/sr6/npcs')
+  await page.goto('/#/sr6/npcs/critters')
   await npcRow(page, 'Glitch Sprite').getByRole('link', { name: 'Glitch Sprite' }).click()
   await expect(row('Sleaze').locator('td').last()).toHaveText('4')
   await expect(page.getByRole('textbox', { name: /^Weapons/ })).toHaveCount(0) // sprites: skills and powers only
 })
 
 test('NPCs: the admin sees Gil’s under his name, with Print', async ({ page }) => {
-  await signIn(page, '/#/sr6/npcs', 'ada')
-  await expect(page.getByRole('region', { name: 'Gil Editor’s NPCs' }).getByRole('link', { name: 'Print Fuzzbeast' }))
+  await signIn(page, '/#/sr6/npcs/critters', 'ada')
+  await expect(page.getByRole('region', { name: 'Gil Editor’s Critters' }).getByRole('link', { name: 'Print Fuzzbeast' }))
     .toHaveAttribute('href', /#\/sr6\/n\/[^/]+\/print$/)
   // opened from there: read only
-  await page.getByRole('region', { name: 'Gil Editor’s NPCs' }).getByRole('link', { name: 'Fuzzbeast', exact: true }).click()
+  await page.getByRole('region', { name: 'Gil Editor’s Critters' }).getByRole('link', { name: 'Fuzzbeast', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: /^Read only — .*’s NPC\./ })).toBeVisible()
   await expect(page.getByLabel('BOD as printed')).toBeDisabled()
 })

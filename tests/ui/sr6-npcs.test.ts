@@ -4,7 +4,9 @@ import { expect, test } from 'vitest'
 import { blankSr6Npc, npcFromEntry } from '../../src/sr6/engine/npc'
 import { bookNpc, bookNpcVersions, byPublication } from '../../src/sr6/engine/npc'
 import type { Sr6Catalog } from '../../src/sr6/model/types'
-import { bookNpcsToLoad, byRating, npcChip, oldContact, tidyBookCopies } from '../../src/sr6/ui/Npcs'
+import { SR6_NPC_KINDS } from '../../src/sr6/model/character'
+import { npcSection, sr6NpcsHref } from '../../src/sr6/ui/editor'
+import { bookNpcsToLoad, byRating, npcChip, npcGroups, oldContact, tidyBookCopies } from '../../src/sr6/ui/Npcs'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const c = fixtureCatalog()
@@ -102,4 +104,24 @@ test('Tidy book copies: an identical extra copy goes to the trash, the differing
   const done = [{ ...alpha, ch: { ...alpha.ch, identity: { ...alpha.ch.identity, streetName: 'Fuzzbeast #1' } } },
     { ...beta, ch: { ...beta.ch, identity: { ...beta.ch.identity, streetName: 'Fuzzbeast #2' } } }, edited, own]
   expect(tidyBookCopies(done, es, books)).toEqual({ trash: [], rename: [] })
+})
+
+test('two sections: grunts and contacts are NPCs; critters, spirits and sprites are critters', () => {
+  expect(SR6_NPC_KINDS.map(k => [k, npcSection(blankSr6Npc(k).npc)])).toEqual([
+    ['grunt', 'npcs'], ['contact', 'npcs'], ['critter', 'critters'], ['spirit', 'critters'], ['sprite', 'critters']])
+  expect(sr6NpcsHref(blankSr6Npc('spirit').npc)).toBe('#/sr6/npcs/critters')
+  expect(sr6NpcsHref(blankSr6Npc('contact').npc)).toBe('#/sr6/npcs')
+  expect(sr6NpcsHref(undefined)).toBe('#/sr6/npcs')
+})
+
+test('the list groups grunts by Professional Rating, spirits by Force and sprites by Level, in the list’s own order', () => {
+  const named = (ch: ReturnType<typeof blankSr6Npc>, name: string) => { ch.identity.streetName = name; return { ch } }
+  const rows = [named(blankSr6Npc('spirit', 4), 'Wisp'), named(npcFromEntry(c.entries.npcs.get('crb.lot-boss')!), 'Boss'),
+    named(blankSr6Npc('grunt'), 'Odd'), named(blankSr6Npc('sprite', 3), 'Glitch'), named(blankSr6Npc('contact'), 'Fred'),
+    named(npcFromEntry(c.entries.npcs.get('crb.corner-goon')!), 'Goon'), named(blankSr6Npc('critter'), 'Fuzz'),
+    named(blankSr6Npc('spirit', 2), 'Puddle'), named(npcFromEntry(c.entries.npcs.get('crb.corner-goon')!), 'Goon B')]
+  expect(npcGroups(rows).map(([label, rs]) => [label, rs.map(r => r.ch.identity.streetName)])).toEqual([
+    ['Grunts, Professional Rating 2', ['Goon', 'Goon B']], ['Grunts, Professional Rating 4', ['Boss']],
+    ['Grunts, no Professional Rating', ['Odd']], ['Contacts', ['Fred']], ['Critters', ['Fuzz']],
+    ['Spirits, Force 2', ['Puddle']], ['Spirits, Force 4', ['Wisp']], ['Sprites, Level 3', ['Glitch']]])
 })

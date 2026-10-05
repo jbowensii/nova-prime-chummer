@@ -48,7 +48,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   useEffect(() => { void loadTableRules().then(r => setTable(tableFlags(r))) }, [])
   const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
 
-  const back = npcRoute ? <a href="#/npcs">Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
+  const back = npcRoute ? <a href={ch?.npc ? homeHref(ch) : '#/npcs'}>Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
   if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
     <p>{back}, where you can download its file or try to repair it.</p></main>

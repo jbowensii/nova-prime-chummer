@@ -1,6 +1,6 @@
 // The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog, with a GM's readable SR6 compendiums) and the server's creation rules (loadCreation) load once here, then the page: Books (admin; the
 // Anarchy Books page with game="sr6"), Table setup (#/sr6/table: the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
-// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/trash]) and an NPC's
+// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/critters|/trash]) and an NPC's
 // editor (#/sr6/n/<id>/<tab>) and Compendiums (Compendiums.tsx, #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6 is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
@@ -56,7 +56,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     : page === 'campaigns' && repo.mode === 'server' ? route[1] ? <CampaignScreen key={route[1]} game="sr6" id={route[1]} label={() => ''}
       extra={(camp, set) => c && <CampaignCreation c={c} cr={cr} camp={camp} onSaved={set} />} /> : <CampaignsScreen game="sr6" />
     : repo.mode !== 'server' ? <main className="lib"><PageHeader title="Your runners" /><div className="empty"><p>Shadowrun 6 runners need the Chummer server.</p></div></main>
-    : c && data ? page === 'npcs' ? <Sr6Npcs c={c} data={data} cr={cr.rules} />
+    : c && data ? page === 'npcs' ? <Sr6Npcs c={c} data={data} cr={cr.rules} section={route[1] === 'critters' ? 'critters' : 'npcs'} />
       : page === 'n' && route[1] ? <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       : page === 'c' && route[1] ? <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} />
       : <Sr6Runners c={c} data={data} cr={cr.rules} />

@@ -96,7 +96,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'c' && id ? <EditorView key={id} c={catalog} id={id} tab={tab ?? 'concept'} />
         : page === 'n' && id ? <RepoContext.Provider value={npcs}><EditorView key={`n/${id}`} c={catalog} id={id} tab={tab ?? 'concept'} /></RepoContext.Provider>
         : page === 'npcs' && id === 'trash' && repo.mode === 'server' ? <TrashScreen key={`npcs/${tab ?? ''}`} npcs user={tab} />
-        : page === 'npcs' ? <NpcsScreen c={catalog} />
+        : page === 'npcs' ? <NpcsScreen c={catalog} section={id === 'critters' ? 'critters' : 'npcs'} />
         : page === 'users' ? <UsersScreen />
         : page === 'campaigns' && id ? <CampaignScreen key={id} id={id} label={r => [catalog.packages.get(r.package)?.name, catalog.levels.get(r.level)?.name ?? r.level].filter(Boolean).join(', ')} />
         : page === 'campaigns' ? <CampaignsScreen />

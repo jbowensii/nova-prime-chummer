@@ -1,4 +1,6 @@
-// Shadowrun 6 NPCs & Critters (#/sr6/npcs): the GMs' own area (admin and editors), as Anarchy's NpcsScreen. An SR6 NPC
+// Shadowrun 6 NPCs & Critters (#/sr6/npcs): the GMs' own area (admin and editors), as Anarchy's NpcsScreen. Two sections,
+// each its own tab, search and list grouped by kind and rating (npcGroups): NPCs (grunts and contacts, #/sr6/npcs) and
+// Critters (critters, spirits and sprites, #/sr6/npcs/critters); New NPC / New critter offer that section's kinds. An SR6 NPC
 // is an SR6 runner file with an <npc> block (server: /api/sr6/npcs, which refuses players and runner files). New NPC copies
 // a catalog grunt, contact, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the
 // catalog's npcs, critters, spirits and sprites not loaded yet (one printed in several books: once if the stat blocks
@@ -7,9 +9,10 @@
 // an SR6 campaign they run; Move to
 // compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn).
 // Export for Foundry: the header's dialog and each row's button (Foundry.tsx). Left out (R): the duplicates finder.
+// Load book NPCs and Tidy book copies save a few at a time (inBatches), counting in the status line, then sum up.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, savesSettled, send, useMe } from '../../ui/auth'
-import { Modal } from '../../ui/bits'
+import { inBatches, Modal, Working, type Busy } from '../../ui/bits'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
 import { ExportRunnersDialog } from '../../ui/Foundry'
 import { IconButton, IconLink } from '../../ui/icons'
@@ -26,11 +29,16 @@ import { blankSr6Npc, bookNpc, bookNpcKey, bookNpcVersions, NPC_KINDS, npcFromEn
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry } from '../model/types'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows } from './compendiumStore'
-import { sr6NpcHref } from './editor'
+import { npcSection, sr6NpcHref } from './editor'
 import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
 import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
 
 const SORT_KEY = 'ca2.sr6.npcs.sort'
+type Section = ReturnType<typeof npcSection>
+const SECTIONS: Record<Section, { label: string; href: string; kinds: Sr6NpcKind[]; noun: string }> = {
+  npcs: { label: 'NPCs', href: '#/sr6/npcs', kinds: ['grunt', 'contact'], noun: 'NPC' },
+  critters: { label: 'Critters', href: '#/sr6/npcs/critters', kinds: ['critter', 'spirit', 'sprite'], noun: 'critter' },
+}
 const nameOf = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
 
 /** The book NPCs' versions (bookNpcVersions); a compendium's (a source of origin user) never: those are moved, not copied. */
@@ -82,14 +90,31 @@ export function npcChip(npc: Sr6Npc): string {
   return npc.rating != null && short ? `${k.label} ${short} ${npc.rating}` : k.label
 }
 
-export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules }) {
+/** The list's groups, in kind order then rating (none last), each keeping the list's order: "Grunts, Professional Rating 2",
+ *  "Contacts", "Critters", "Spirits, Force 4", "Sprites, Level 3". */
+export function npcGroups<T extends { ch: Sr6Character }>(rows: T[]): [string, T[]][] {
+  const groups = new Map<string, { at: number; r: number; rows: T[] }>()
+  for (const x of rows) {
+    const npc = x.ch.npc, kind = npc?.kind ?? 'grunt', k = NPC_KINDS[kind], r = npc?.rating
+    const label = `${k.label}s${k.rating ? r != null ? `, ${k.rating.label} ${r}` : `, no ${k.rating.label}` : ''}`
+    const g = groups.get(label) ?? { at: SR6_NPC_KINDS.indexOf(kind), r: r ?? Infinity, rows: [] }
+    groups.set(label, { ...g, rows: [...g.rows, x] })
+  }
+  return [...groups].sort(([, a], [, b]) => a.at - b.at || a.r - b.r).map(([label, g]) => [label, g.rows])
+}
+
+export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; section?: Section }) {
   const repo = useMemo(() => sr6NpcRepo(), [])
   const me = useMe()
   const [list, setList] = useState<Stored<Sr6Character>[] | null>(null)
   const [unreadable, setUnreadable] = useState<Unreadable[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [msg, setMsg] = useState<string | null>(null)
-  const [q, setQ] = useState('')
+  const [note, setNote] = useState<{ text: string; failed: string[] } | null>(null)
+  const setMsg = (text: string | null, failed: string[] = []) => setNote(text === null ? null : { text, failed })
+  const [busy, setBusy] = useState<Busy | null>(null) // Load book NPCs or Tidy book copies, while it runs
+  const [qs, setQs] = useState<Record<Section, string>>({ npcs: '', critters: '' }) // each section its own search
+  const q = qs[section], setQ = (v: string) => setQs(x => ({ ...x, [section]: v }))
+  const sec = SECTIONS[section]
   const [sort, setSortState] = useState<SortBy>(() => { try { const v = localStorage.getItem(SORT_KEY); return v === 'za' || v === 'recent' ? v : 'az' } catch { return 'az' } })
   const setSort = (v: SortBy) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v) } catch { /* not remembered */ } }
   const [creating, setCreating] = useState(false)
@@ -118,8 +143,11 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
 
   const own = (s: { owner?: string }) => !me || !s.owner || s.owner === me.username
   const mine = (list ?? []).filter(own)
-  const others = ownerGroups((list ?? []).filter(s => !own(s)), unreadable.filter(u => !own(u)), sort, q)
-  const rows = arrange(mine, sort, q)
+  const here = (s: Stored<Sr6Character>) => npcSection(s.ch.npc) === section
+  const count = (k: Section) => (list ?? []).filter(s => npcSection(s.ch.npc) === k).length
+  // a file that won't open has no kind: it shows under NPCs
+  const others = ownerGroups((list ?? []).filter(s => !own(s) && here(s)), section === 'npcs' ? unreadable.filter(u => !own(u)) : [], sort, q)
+  const rows = arrange(mine.filter(here), sort, q)
   const gmOf = campaigns.filter(x => x.you === 'gm' && !x.archived)
   const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
   const entriesOf = (k: Sr6NpcKind) => [...c.entries[NPC_KINDS[k].kind].values()].filter(e => npcKindOf(e) === k).sort((a, b) => a.name.localeCompare(b.name))
@@ -134,7 +162,7 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
   }
   const store = async (ch: Sr6Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
   const pickKind = (k: Sr6NpcKind) => { setKind(k); setFrom(entriesOf(k)[0]?.id ?? '') }
-  const openNew = () => { pickKind('grunt'); setRating('1'); setCreating(true) }
+  const openNew = () => { pickKind(sec.kinds[0]); setRating('1'); setCreating(true) }
   const level = Math.max(1, Math.floor(Number(rating)) || 1)
   const create = async () => {
     const e = from ? c.entries[NPC_KINDS[kind].kind].get(from) : undefined
@@ -158,39 +186,51 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
 
   // the catalog's grunts, sample contacts, critters, spirits and sprites (bookNpc: a spirit or sprite at a default rating),
   // each under its book key so a renamed copy still counts as loaded, once per version (bookNpcsToLoad); 0.9.0's copies
-  // of the sample contacts (grunts of group Contact) become contacts
+  // of the sample contacts (grunts of group Contact) become contacts. A few saves at a time, counted as they go.
   const loadBook = async () => {
     if (!all.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
-    let n = 0, fixed = 0
+    const old = mine.filter(s => oldContact(s.ch)), todo = bookNpcsToLoad(all, mine.map(s => s.ch), c.sources)
+    const there = versionsOf(all, c.sources).length - todo.length
+    let n = 0, numbered = 0, fixed = 0
     const bad: string[] = []
-    for (const s of mine.filter(s => oldContact(s.ch))) {
+    const step = () => setBusy(b => b && { ...b, done: b.done + 1 })
+    setMsg(null)
+    setBusy({ what: 'Loading book NPCs', done: 0, total: old.length + todo.length })
+    await inBatches(old, async s => {
       const { group: _g, ...npc } = s.ch.npc!
-      const err = await saveError({ ...s.ch, npc: { ...npc, kind: 'contact' } }, s.rev)
+      const err = await saveError({ ...s.ch, npc: { ...npc, kind: 'contact' } }, s.rev).catch((e: Error) => e.message ?? String(e))
       if (err) bad.push(`${nameOf(s.ch)}: ${err}`); else fixed++
-    }
-    for (const { e, name } of bookNpcsToLoad(all, mine.map(s => s.ch), c.sources)) {
+    }, step)
+    await inBatches(todo, async ({ e, name }) => {
       const ch = bookNpc(e)
       ch.identity.streetName = name
-      const err = await saveError(ch)
-      if (err) bad.push(`${name}: ${err}`); else n++
-    }
-    setMsg([n ? `Added ${n} book NPC${n === 1 ? '' : 's'}.` : bad.length || fixed ? '' : 'The book NPCs are already in your NPCs.',
-      fixed ? `${fixed} sample contact${fixed === 1 ? ' is a contact' : 's are contacts'} now.` : '', ...bad].filter(Boolean).join(' '))
+      const err = await saveError(ch).catch((x: Error) => x.message ?? String(x))
+      if (err) bad.push(`${name}: ${err}`); else { n++; if (name !== e.name) numbered++ }
+    }, step)
+    setBusy(null)
+    setMsg([`Loaded ${n} · already there ${there} · versions numbered ${numbered} · failed ${bad.length}.`,
+      fixed ? `${fixed} sample contact${fixed === 1 ? ' is a contact' : 's are contacts'} now.` : ''].filter(Boolean).join(' '), bad)
     void refresh()
   }
 
-  // what the confirm listed: the extra copies to the NPC trash, then the renames; a failure is reported, the rest go on
+  // what the confirm listed: the extra copies to the NPC trash, then the renames, a few at a time; a failure is reported,
+  // the rest go on
   const tidy = async () => {
     setTidying(false)
     const moved: string[] = [], renamed: string[] = [], bad: string[] = []
-    for (const { ch } of plan.trash) {
+    const step = () => setBusy(b => b && { ...b, done: b.done + 1 })
+    setMsg(null)
+    setBusy({ what: 'Tidying book copies', done: 0, total: plan.trash.length + plan.rename.length })
+    await inBatches(plan.trash, async ({ ch }) => {
       try { await repo.remove(ch.id); moved.push(nameOf(ch)) } catch (e) { bad.push(because(`Couldn’t move ${nameOf(ch)}`, (e as Error).message ?? String(e))) }
-    }
-    for (const { s, name } of plan.rename) {
-      const err = await saveError({ ...s.ch, identity: { ...s.ch.identity, streetName: name } }, s.rev)
+    }, step)
+    await inBatches(plan.rename, async ({ s, name }) => {
+      const err = await saveError({ ...s.ch, identity: { ...s.ch.identity, streetName: name } }, s.rev).catch((e: Error) => e.message ?? String(e))
       if (err) bad.push(`${nameOf(s.ch)}: ${err}`); else renamed.push(name)
-    }
-    setMsg([moved.length ? `Moved to the NPC trash: ${moved.join(', ')}.` : '', renamed.length ? `Renamed: ${renamed.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
+    }, step)
+    setBusy(null)
+    setMsg([moved.length ? `Moved to the NPC trash: ${moved.join(', ')}.` : '', renamed.length ? `Renamed: ${renamed.join(', ')}.` : '',
+      bad.length ? `Failed: ${bad.length}.` : ''].filter(Boolean).join(' '), bad)
     void refresh()
   }
 
@@ -246,49 +286,59 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
     </div>
   )
   const entries = entriesOf(kind), plural = `${NPC_KINDS[kind].label.toLowerCase()}s`
+  const mineHere = mine.filter(here)
 
   return (
     <main className="lib">
       <PageHeader title="NPCs & Critters">
-        <IconButton className="primary" icon="npc-add" label="New NPC" onClick={openNew} />
+        <IconButton className="primary" icon="npc-add" label={`New ${sec.noun}`} onClick={openNew} />
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} />
-        <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} />
+        <IconButton icon="book" label="Load book NPCs" onClick={() => void loadBook()} disabled={!!busy || list === null} aria-busy={busy?.what === 'Loading book NPCs'} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
         <input ref={file} type="file" accept=".xml,application/xml" multiple hidden onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/sr6/npcs/trash" badge={trashed || undefined} />}
       </PageHeader>
       <p className="muted">Your NPCs, critters, spirits and sprites, for GMs only: players never see them. Share one with a campaign you run and its other GMs can read and print it.</p>
-      {msg && <p className="banner" role="status">{msg}</p>}
+      <nav className="tabs sections" aria-label="NPCs or critters">
+        {(Object.keys(SECTIONS) as Section[]).map(k => <a key={k} href={SECTIONS[k].href} aria-current={k === section ? 'page' : undefined}>
+          {SECTIONS[k].label}{list !== null && <span className="badge">{count(k)}</span>}</a>)}
+      </nav>
+      {(busy || note) && <p className="banner" role="status">{busy ? <Working busy={busy} /> : note!.text}</p>}
+      {!busy && !!note?.failed.length && <ul className="banner bad" aria-label="Failed">{note.failed.map(f => <li key={f}>{f}</li>)}</ul>}
       {plan.trash.length + plan.rename.length > 0 && <p className="banner">
         Some book NPCs are printed in more than one book: {[plan.trash.length > 0 && `${plan.trash.length} ${plan.trash.length === 1 ? 'copy is' : 'copies are'} the same as another`,
           plan.rename.length > 0 && `${plan.rename.length} to number`].filter(Boolean).join(', ')}.{' '}
-        <button className="btn small" onClick={() => setTidying(true)}>Tidy book copies</button></p>}
+        <button className="btn small" disabled={!!busy} onClick={() => setTidying(true)}>Tidy book copies</button></p>}
       {list !== null && list.length > 0 && <div className="row listtools">
-        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label="Search NPCs" />
+        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label={`Search ${sec.label.toLowerCase()}`} />
         <label className="inline">Sort
           <select value={sort} onChange={e => setSort(e.target.value as SortBy)}>
             <option value="az">A–Z</option><option value="za">Z–A</option><option value="recent">Recently edited</option>
           </select></label>
       </div>}
       {list === null ? <p className="muted">Loading NPCs…</p> : <>
-        {others.length > 0 && <h2>My NPCs</h2>}
-        {unreadable.filter(own).map(broken)}
-        {mine.length === 0 ? <div className="empty"><p>No NPCs yet. Make one, import an NPC file, or load the book’s NPCs.</p></div> : <>
-          {rows.map(s => row(s, true))}
-          {q && rows.length === 0 && <p className="muted">No NPC’s name contains “{q.trim()}”.</p>}
+        {others.length > 0 && <h2>My {sec.label}</h2>}
+        {section === 'npcs' && unreadable.filter(own).map(broken)}
+        {mineHere.length === 0 ? <div className="empty"><p>{section === 'npcs'
+          ? 'No NPCs yet. Make one, import an NPC file, or load the book’s NPCs.'
+          : 'No critters yet. Make one (a critter, spirit or sprite), import a file, or load the book’s NPCs.'}</p></div> : <>
+          {npcGroups(rows).map(([label, rs]) => <section key={label} aria-label={label}>
+            <h3 className="npcgroup">{label} <span className="muted">({rs.length})</span></h3>
+            {rs.map(s => row(s, true))}</section>)}
+          {q && rows.length === 0 && <p className="muted">No {sec.noun}’s name contains “{q.trim()}”.</p>}
         </>}
-        {others.map(({ owner, name, rows, broken: bad }) => <section key={owner} aria-label={`${name}’s NPCs`}>
-          <h2>{name}’s NPCs</h2>
+        {others.map(({ owner, name, rows, broken: bad }) => <section key={owner} aria-label={`${name}’s ${sec.label}`}>
+          <h2>{name}’s {sec.label}</h2>
           {bad.map(broken)}
           {rows.map(s => row(s, false))}
         </section>)}
       </>}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="New NPC"
-        actions={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn primary" onClick={() => void create()}>Create NPC</button></>}>
+      <Modal open={creating} onClose={() => setCreating(false)} title={`New ${sec.noun}`}
+        actions={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn primary" onClick={() => void create()}>Create {sec.noun}</button></>}>
         <div className="grid2">
           <label>Kind<select value={kind} onChange={e => pickKind(e.target.value as Sr6NpcKind)}>
-            {SR6_NPC_KINDS.map(k => <option key={k} value={k}>{NPC_KINDS[k].label}</option>)}</select></label>
+            {sec.kinds.map(k => <option key={k} value={k}>{NPC_KINDS[k].label}</option>)}</select></label>
           <label>From the catalog<select value={from} onChange={e => setFrom(e.target.value)}>
             {kind === 'grunt'
               ? byRating(entries).map(([r, es]) => <optgroup key={r ?? ''} label={r == null ? 'No Professional Rating' : `Professional Rating ${r}`}>
@@ -298,7 +348,7 @@ export function Sr6Npcs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: Cre
           {rated && <label>{NPC_KINDS[kind].rating!.label}<input type="number" min={1} step={1} value={rating} onChange={e => setRating(e.target.value)} /></label>}
         </div>
         {!entries.length && <p className="muted" style={{ marginTop: '0.8rem' }}>No {plural} in the imported books yet.</p>}
-        <p className="muted" style={{ marginTop: '0.8rem' }}>The stat block is a copy: change it on the NPC’s Stat block tab.</p>
+        <p className="muted" style={{ marginTop: '0.8rem' }}>The stat block is a copy: change it on the {sec.noun}’s Stat block tab.</p>
       </Modal>
 
       <Modal open={!!sharing} onClose={() => setSharing(null)} title={`Share ${sharing ? nameOf(sharing) : 'this NPC'} with a campaign`}

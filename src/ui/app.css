@@ -336,6 +336,8 @@ tr.starting input.note { margin-top: 0.3rem; }
 .empty { padding: 2.5rem 0; }
 .trash { list-style: none; margin: 0; padding: 0; }
 .banner { padding: 0.6rem 0.8rem; border-left: 4px solid var(--yellow); background: var(--zebra); margin-bottom: 1rem; }
+.banner progress { vertical-align: middle; accent-color: var(--yellow); width: min(14rem, 100%); }
+ul.banner { padding-left: 2rem; margin-top: -0.6rem; }
 
 /* ---- dialog: a sidebar on paper ---- */
 dialog { border: 0; border-top: 4px solid var(--yellow); background: var(--bg); color: var(--text); padding: 0 1.25rem 1.25rem; max-width: min(46rem, calc(100vw - 2rem)); width: 100%; box-shadow: 0 12px 40px rgb(0 0 0 / 0.35); }
@@ -740,3 +742,6 @@ table.contacts td.end { text-align: right; }
   table.contacts .types { flex-wrap: wrap; }
   table.contacts td.end { margin-left: auto; }
 }
+/* NPCs & Critters: its two sections as tabs, and the list's groups (kind and rating) */
+.lib .tabs.sections { padding: 0; margin-bottom: 1rem; }
+.npcgroup { font-size: 1.1rem; margin: 1.2rem 0 0.4rem; }

@@ -1,5 +1,21 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **NPCs & Critters has two sections: NPCs and Critters** (both games). Each is its own tab with how many it holds, its
+  own search and its own address (#/sr6/npcs and #/sr6/npcs/critters on Shadowrun 6, #/npcs and #/npcs/critters on
+  Anarchy), so a link or a reload opens the same one. On Shadowrun 6, NPCs holds grunts and contacts, Critters holds
+  critters, spirits and sprites; on Anarchy, NPCs holds NPCs, Critters holds critters and spirits. The section's button
+  is **New NPC** or **New critter** and offers only that section's kinds, and closing an NPC's editor goes back to its
+  section.
+- **The Shadowrun 6 lists are grouped**: grunts by Professional Rating, then contacts, critters, spirits by Force and
+  sprites by Level, each group with its count.
+- **Load book NPCs shows it's working.** The button is greyed out while it runs and the status line counts
+  ("Loading book NPCs: 120 of 450…") with a progress bar. When it's done it sums up: how many loaded, how many were
+  already there, how many versions got a number (Shadowrun 6) and how many failed, with each failure listed underneath.
+  It saves four at a time, so a long list loads faster without swamping the server. **Tidy book copies** counts the
+  same way.
+
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 
 - **A book NPC printed in several Shadowrun 6 books loads once, or numbered.** Load book NPCs on **NPCs & Critters**

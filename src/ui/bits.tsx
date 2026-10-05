@@ -128,3 +128,17 @@ export function Line({ label, amount, guide, over }: { label: ReactNode; amount:
     </div>
   )
 }
+
+/** Runs `work` on every item, at most `at` at once (a few: many saves to the server, without flooding it), calling `step`
+ *  as each finishes. `work` reports its own failures: one that throws stops the rest. */
+export async function inBatches<T>(items: T[], work: (x: T) => Promise<void>, step: () => void, at = 4) {
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(at, items.length) }, async () => {
+    while (next < items.length) { await work(items[next++]); step() }
+  }))
+}
+
+/** A long job's progress, inside its page's status line: "Loading book NPCs: 120 of 450…" and a bar. */
+export interface Busy { what: string; done: number; total: number }
+export const Working = ({ busy }: { busy: Busy }) =>
+  <>{busy.what}: {busy.done} of {busy.total}… <progress value={busy.done} max={busy.total || 1} aria-hidden /></>
