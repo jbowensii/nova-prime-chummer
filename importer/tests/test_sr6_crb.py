@@ -67,6 +67,9 @@ Hands that never shake. Cost: 5 Karma
 #### Butterfingers
 **Bonus:** 6 Karma
 Drops made-up things.
+#### Odd Habit (Vice, 1 to 4)
+**Bonus:** 3 Karma per level
+An invented habit.
 <!-- page 81 -->
 # Archetypes
 <!-- page 82 -->
@@ -482,6 +485,8 @@ class CrbRecipeTest(unittest.TestCase):
         q = entries(self.res, "qualities")["Lucky Streak"].attrib
         self.assertEqual((q["kind"], q["karma"], q["perLevel"], q["maxLevel"]), ("positive", "4", "true", "3"))
         self.assertEqual(q["id"], "lucky-streak")
+        h = entries(self.res, "qualities")["Odd Habit (Vice, 1 to 4)"].attrib  # the levels in the name's note: kept
+        self.assertEqual((h["kind"], h["perLevel"], h["maxLevel"]), ("negative", "true", "4"))
 
     def test_unknown_column_and_book_value(self):
         self.assertEqual([(r["file"], r["column"]) for r in self.rep("unknown-column")], [("weapons.xml", "HEFT")])

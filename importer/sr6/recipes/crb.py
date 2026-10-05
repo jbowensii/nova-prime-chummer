@@ -527,6 +527,8 @@ class _Catalog:
             name, attrs["maxLevel"] = self._levels(name)
             if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
                 attrs["maxLevel"] = int(m.group(1))  # `5 Karma per level (1 to 4)`: the levels in the price
+            if not attrs["maxLevel"] and (m := re.search(r",\s*1\s+to\s+(\d+)\s*\)\s*$", name)):
+                attrs["maxLevel"] = int(m.group(1))  # `Addiction (Substance, 1 to 6)`: the levels in the name's note, kept
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
             m = re.search(r"([\d.]+)\s*PP", cost, re.I)
