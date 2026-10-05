@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.6 — 2026-10-05: NPC and Critter sections, Shadowrun 6 look, shared compendiums
 
 - **NPCs & Critters has two sections: NPCs and Critters** (both games). Each is its own tab with how many it holds, its
   own search and its own address (#/sr6/npcs and #/sr6/npcs/critters on Shadowrun 6, #/npcs and #/npcs/critters on
