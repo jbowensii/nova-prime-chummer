@@ -288,3 +288,30 @@ test('lifepath: the metatype costs its karma', () => {
   const p = setup('lifepath')
   expect([p.metatypeKarma!(build('lifepath', { metatype: STONE })), p.metatypeKarma!(build('lifepath'))]).toEqual([11, 0])
 })
+
+// Born This Way (SWC p. 32; invented numbers): a raised metatype maximum starts higher, a mundane gains Edge
+test('lifepath: an attribute with a raised metatype maximum starts at the setting; a mundane runner gains Edge', () => {
+  const over = { rules: { 'lifepath.raisedAttributeStart': 3, 'lifepath.mundaneEdge': 2 } }
+  const p = setup('lifepath', over), b = build('lifepath', { metatype: GLIM })  // Glimmerkin: AGI 7, CHA 8, the rest 6 or less
+  expect((['bod', 'agi', 'cha', 'log', 'edg'] as const).map(k => attrRating(b, k, p))).toEqual([1, 3, 3, 1, 3])
+  expect(attrRating(build('lifepath', { metatype: GLIM, magic: 'full' }), 'edg', p)).toBe(1)  // awakened: no Edge
+  // the best attribute's raise stops at the maximum from where it starts
+  b.bestAttr = 'agi'
+  expect([p.attributeBonus!(b, 'agi'), attrRating(b, 'agi', p)]).toEqual([4, 7])
+  // unset, nothing changes (and the other methods never)
+  expect(attrRating(b, 'cha', setup('lifepath'))).toBe(1)
+  expect(attrRating(build('priority', { letters: 'CABDE', metatype: GLIM }), 'agi', setup('priority', over))).toBe(1)
+})
+
+// metavariants under priority (the Sixth World Companion's development table; invented numbers)
+test('priority: a metavariant is offered at the letters it has points for, at those points, and costs its karma', () => {
+  const variant = { id: 'swc.dimling', name: 'Dimling', ranges: made().data.metatypes[GLIM].ranges, traits: [], page: 1, priority: { B: 10, C: 8 } }
+  const over = { data: (d: ReturnType<typeof made>['data']) => { d.metatypes[variant.id] = variant }, rules: { 'metatypeKarma:swc.dimling': 5 } }
+  const p = setup('priority', over)
+  expect(p.legalMetatypes(build('priority', { letters: 'BACDE' })).map(m => [m.id, m.adjustmentPoints]))
+    .toEqual([['swc.dimling', 10], [GLIM, 11], [STONE, 9]])
+  expect(p.legalMetatypes(build('priority', { letters: 'ABCDE' })).map(m => m.id)).not.toContain('swc.dimling')
+  const b = build('priority', { letters: 'CABDE', metatype: 'swc.dimling' })
+  expect([p.adjustmentPoints(b), p.metatypeKarma!(b)]).toEqual([8, 5])
+  expect(p.metatypeKarma!(build('priority', { letters: 'CABDE', metatype: GLIM }))).toBe(0)  // unset: none
+})

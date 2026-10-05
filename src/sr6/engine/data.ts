@@ -5,6 +5,7 @@ import type { Violation } from '../../model/types'
 import type { MagicKind, PickKind, Sr6Attr, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { CreationCatalog } from './creation'
+import { gradeKey } from './grades'
 import { rated } from './values'
 
 /** What each magic kind can have (game vocabulary, no numbers). paysPowers: buys its power points (mystic adept). */
@@ -38,6 +39,8 @@ export interface Sr6MetatypeView {
   id: string; name: string; ranges: Record<RangeAttr, [number, number]>; traits: string[]; page: number
   /** a trait printed with its level (`Hardy 2`: a leveled quality at level 2), by quality id; absent: level 1 */
   traitLevels?: Record<string, number>
+  /** a metavariant's adjustment points per metatype priority letter (absent: the priority table's row lists it or not) */
+  priority?: Partial<Record<Letter, number>>
 }
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
 export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number }
@@ -48,6 +51,8 @@ export interface Sr6LifeModuleView {
   contactTypes?: string[]
   choices: { kind: 'mixed'; points: number; options: string[] }[]; page: number
 }
+/** A catalog grade (kind grades) by its key (src/sr6/engine/grades.ts): factors null when the book prints none. */
+export interface Sr6GradeView { id: string; key: string; name: string; essence: number | null; cost: number | null; avail: number | null; types?: string[]; page: number }
 export interface Sr6Data extends CreationCatalog {
   priorities: Partial<Record<Letter, Sr6PriorityRow>>
   metatypes: Record<string, Sr6MetatypeView>
@@ -56,6 +61,8 @@ export interface Sr6Data extends CreationCatalog {
   /** adept powers */
   powers: Record<string, Sr6PowerView>
   lifemodules: Record<string, Sr6LifeModuleView>
+  /** the catalog's implant grades by key (alpha, omega…); a later one with the same key replaces an earlier */
+  grades: Record<string, Sr6GradeView>
   /** any catalog entry, for what has no typed view (gear, spells…) */
   entry(kind: Sr6Kind, id: string): Sr6Entry | undefined
   /** names that didn't resolve (data.unresolved) and numbers that didn't read (data.bookValue), as warnings */
@@ -123,7 +130,9 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
       if (!id) warn('data.unresolved', e, `${e.name}’s trait “${p.text}” isn’t a quality in the catalog.`)
       return id ? [id] : []
     })
-    return [e.id, { id: e.id, name: e.name, ranges, traits, page: e.page, ...(Object.keys(traitLevels).length ? { traitLevels } : {}) }]
+    const priority = Object.fromEntries(parts(e, 'priority').map(p => [p.attrs.letter, count(e, p.attrs.points, `adjustment points at ${p.attrs.letter}`)]))
+    return [e.id, { id: e.id, name: e.name, ranges, traits, page: e.page, ...(Object.keys(traitLevels).length ? { traitLevels } : {}),
+      ...(Object.keys(priority).length ? { priority } : {}) }]
   }))
 
   const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: count(e, e.attrs.maxLevel, 'highest level', 1) })
@@ -142,5 +151,19 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
       options: (p.attrs.options ?? '').split(/\s+/).filter(Boolean) })),
     page: e.page }]))
 
-  return { priorities, metatypes, skills, qualities, powers, lifemodules, problems, entry: (kind, id) => c.entries[kind].get(id) }
+  /** a decimal as grades.xsd allows it (`-1`, `0.8`); else null and a warning */
+  const decimal = (e: Sr6Entry, raw: string | undefined, what: string): number | null => {
+    if (raw == null) return null
+    if (/^\s*-?\d+(\.\d+)?\s*$/.test(raw)) return Number(raw)
+    warn('data.bookValue', e, `${e.name}: the ${what} “${raw}” isn’t a number the app can read.`)
+    return null
+  }
+  const grades = Object.fromEntries(all('grades').map(e => {
+    const key = gradeKey(e.name)
+    return [key, { id: e.id, key, name: e.name, essence: decimal(e, e.attrs.essence, 'Essence factor'), cost: decimal(e, e.attrs.cost, 'cost factor'),
+      avail: decimal(e, e.attrs.avail, 'Availability modifier'), page: e.page,
+      ...(e.attrs.types ? { types: e.attrs.types.split(/\s+/).filter(Boolean) } : {}) }]
+  }))
+
+  return { priorities, metatypes, skills, qualities, powers, lifemodules, grades, problems, entry: (kind, id) => c.entries[kind].get(id) }
 }

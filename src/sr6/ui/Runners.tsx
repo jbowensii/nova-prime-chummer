@@ -12,7 +12,7 @@ import { IconButton, IconLink } from '../../ui/icons'
 import { arrange, ownerGroups, type SortBy } from '../../ui/Library'
 import { PageHeader } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
-import type { Stored, Unreadable } from '../../ui/repo'
+import { saveAsNew, type Stored, type Unreadable } from '../../ui/repo'
 import { loadTrash } from '../../ui/Trash'
 import { expandKeys, missingFor, type CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
@@ -111,6 +111,11 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     return r.ok ? null : r.error ?? `${shownName(ch)} changed elsewhere; open it to sort it out.`
   }
   const store = async (ch: Sr6Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
+  /** an imported runner, under a new id if its own turns out taken: the runner saved, and why not (null: saved) */
+  const saveImport = async (x: Sr6Character) => {
+    const { ch, r } = await saveAsNew(c => repo.save(c), x, newId)
+    return { ch, err: r.ok ? null : r.error ?? `${shownName(ch)} changed elsewhere; open it to sort it out.` }
+  }
   const openNew = () => { setStreet(''); setMethod(SR6_METHODS.find(m => !missing[m].length) ?? ''); setCreating(true) }
   const create = async () => {
     if (!method) return
@@ -125,8 +130,8 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     for (const f of picked) {
       const r = readSr6Import(await f.text(), have)
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
-      const err = await saveError(r.ch) // the summary below replaces the message: a failed save goes in it
-      if (err) bad.push(`${f.name}: ${err}`); else { done.push(shownName(r.ch)); have.add(r.ch.id) }
+      const { ch, err } = await saveImport(r.ch) // the summary below replaces the message: a failed save goes in it
+      if (err) bad.push(`${f.name}: ${err}`); else { done.push(shownName(ch)); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()

@@ -136,6 +136,8 @@
   <setting key="lifepath.bestAttributeBonus" value="5" source="SWC" page="32"/>
   <setting key="lifepath.repeatModules" value="1" source="SWC" page="32"/>
   <setting key="lifepath.contactKarma" value="1" source="SWC" page="31"/>
+  <setting key="lifepath.raisedAttributeStart" value="2" source="SWC" page="32"/>
+  <setting key="lifepath.mundaneEdge" value="1" source="SWC" page="32"/>
   <setting key="lifepath.startRating:full" value="1" source="SWC" page="32"/>
   <setting key="lifepath.startRating:aspected" value="2" source="SWC" page="32"/>
   <setting key="lifepath.startRating:mystic-adept" value="1" source="SWC" page="32"/>

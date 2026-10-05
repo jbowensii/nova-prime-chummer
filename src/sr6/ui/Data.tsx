@@ -13,13 +13,14 @@ import { entryKey } from '../engine/load'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import { Sr6EditEntry } from './EditEntry'
 import { Sr6ExportBooksPanel } from './Foundry'
+import { groupOf as pickerGroup } from './Picker'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
 /** "category zappers · dv 3P · cost 320": an entry's printed values */
 const details = (e: Sr6Entry) => Object.entries(e.attrs).map(([k, v]) => `${k} ${v}`).join(' · ')
 /** an entry's sub-category inside its kind: its category (weapons by type, spells, gear by book section…), else these */
 const GROUP: Partial<Record<Sr6Kind, (e: Sr6Entry) => string | undefined>> = {
-  augmentations: e => [e.attrs.type, e.attrs.category].filter(Boolean).join(': '), // cyberware or bioware, then body area
+  augmentations: pickerGroup, // cyberware, bioware, geneware…, then body area or table
   qualities: e => e.attrs.kind, programs: e => e.attrs.type, martialarts: e => e.attrs.categories, critterpowers: e => e.attrs.weakness ? 'weakness' : e.attrs.type, lifemodules: e => e.attrs.stage, rules: e => e.attrs.chapter,
   priorities: () => undefined, attributes: e => e.attrs.group, skills: e => e.attrs.attr?.toUpperCase(),
 }

@@ -4,7 +4,7 @@
 // an Anarchy compendium or runner is refused. The server stores it at /api/sr6/compendiums (server/compendiums.mjs).
 import { SOURCE_ID } from '../../engine/compendium'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry, Sr6Kind, Sr6Source } from '../model/types'
-import { SR6_KINDS } from '../model/types'
+import { AUG_TYPES, SR6_KINDS } from '../model/types'
 import { sr6ToXml, xmlToSr6 } from './charxml'
 import { SR6_NS, sr6EntryXml, toEntry } from './load'
 
@@ -13,7 +13,7 @@ const BEING = ['category', 'rating', 'group', 'bod', 'agi', 'rea', 'str', 'wil',
 const BEING_LINES = ['skills', 'powers', 'optionalPowers', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons']
 const ITEM = ['avail', 'cost']
 /** The kinds a compendium holds: every SR6 kind but those that carry creation structure or rule numbers (priorities,
- *  metatypes, attributes, skills, life modules, rules). fields: the kind's attribute names, lines: its string children
+ *  metatypes, attributes, skills, implant grades, life modules, rules). fields: the kind's attribute names, lines: its string children
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
   qualities: { fields: ['kind', 'karma', 'karmaMax', 'perLevel', 'maxLevel'] },
@@ -21,7 +21,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   armor: { fields: ['category', 'defense', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
   electronics: { fields: ['category', 'rating', 'array', 'programs', 'capacity', ...ITEM] },
-  programs: { fields: ['type', ...ITEM] },
+  programs: { fields: ['type', 'rating', ...ITEM] },
   gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per', 'slots'] },
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage'] },
@@ -50,7 +50,7 @@ const RATED: Record<string, FieldRule> = { rating: { whole: 'nonNegative' } }
 const RULES: Partial<Record<Sr6Kind, Record<string, FieldRule>>> = {
   qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, karmaMax: { whole: 'any' }, ...LEVELS },
   weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, programs: { type: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
-  augmentations: { type: { required: true, choices: ['cyberware', 'bioware'] }, category: REQ },
+  augmentations: { type: { required: true, choices: [...AUG_TYPES] }, category: REQ },
   spells: { category: { required: true, choices: ['combat', 'detection', 'health', 'illusion', 'manipulation'] } },
   adeptpowers: LEVELS, critterpowers: { weakness: { choices: ['true'] } },
   critters: RATED, spirits: RATED, npcs: RATED,

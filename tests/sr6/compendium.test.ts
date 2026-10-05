@@ -87,7 +87,7 @@ test('refused: wrong root, kind or namespace; the other game’s file or runner;
 
 test('COMP_KINDS: every kind but the creation-structure ones, each with common.xsd’s attribute names and string children', () => {
   const XS = 'http://www.w3.org/2001/XMLSchema'
-  const left = ['priorities', 'metatypes', 'attributes', 'skills', 'lifemodules', 'rules']
+  const left = ['priorities', 'metatypes', 'attributes', 'skills', 'grades', 'lifemodules', 'rules']
   expect(Object.keys(COMP_KINDS)).toEqual(Object.keys(SR6_KINDS).filter(k => !left.includes(k)))
   const common = new DOMParser().parseFromString(readFileSync(SCHEMA + 'common.xsd', 'utf8'), 'text/xml')
   const types = new Map([...common.documentElement.children].filter(t => t.localName === 'complexType').map(t => [t.getAttribute('name'), t]))

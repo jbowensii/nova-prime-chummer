@@ -6,6 +6,8 @@ import { Brand, fmt, Modal, NpcChips, StateBadge } from './bits'
 import { Editor, editHref, homeHref, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { downloadRunners } from './Foundry'
+import { canEdit, useMe } from './auth'
+import { approveRunner } from './Campaigns'
 import { useRepo } from './repo'
 import { ConflictDialog, SaveLine, useAutosave } from './useAutosave'
 import { Receipt } from './Receipt'
@@ -41,6 +43,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
   const save = useAutosave(repo, id, { noun, tab, editHref, home: homeHref, prepare: ch => settleLedger(c, rescope(c, ch)),
     inEditor: href => /^#\/[cn]\//.test(href) && href.slice(4).startsWith(`${id}/`) })
   const { doc: ch, setDoc: setCh, loaded, loadError, owner, status, saveNow, saveAndClose } = save
+  const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   const [pending, setPending] = useState<Pending | null>(null)
   useEffect(() => setCh(x => x && rescope(c, x)), [c]) // same object when nothing needs remapping
 
@@ -62,7 +65,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
 
   const ro = owner !== null
   const ctx: EditorCtx = {
-    c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career,
+    c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career, ro,
     edit: fn => { if (!ro) commit(mutate(fn), true) },
     update: fn => { if (!ro) commit(mutate(fn), true) },
     record: (ev, summary) => ro ? Promise.resolve(false) : new Promise<boolean>(resolve => {
@@ -70,6 +73,10 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
       setPending({ ev, summary, cost, after: calc.bal - cost, resolve })
     }),
     replace: next => { if (!ro) commit(next, true) },
+    // their own runner directly; a player's in a campaign they run (or the admin) on the server
+    approve: !gm ? null : !ro ? overrides => { commit({ ...structuredClone(ch), overrides }, true); return Promise.resolve(null) }
+      : ch.campaign && !npcRoute ? overrides => approveRunner('ca2', ch.campaign!, ch.id, overrides)
+        .then(() => { setCh({ ...ch, overrides }); return null }, e => (e as Error).message) : null,
     undo: save.undo, redo: save.redo, canUndo: save.canUndo, canRedo: save.canRedo,
   }
   const settle = (ok: boolean) => {
@@ -117,7 +124,7 @@ export function EditorView({ c, id, tab }: { c: Catalog; id: string; tab: string
         {' '}<a href={editHref(ch, 'print')}>print it</a> or export a copy.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
-        <main className="work"><AskRules /><fieldset className="bare" disabled={ro}>
+        <main className="work"><AskRules /><fieldset className="bare" disabled={ro && !(tab === 'review' && ctx.approve)}>
           {tab === 'concept' && <ConceptTab />}
           {tab === 'attributes' && <AttributesTab />}
           {tab === 'skills' && <SkillsTab />}

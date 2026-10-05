@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, test } from 'vitest'
-import { balances, currentBuild, deriveSr6, entryValues, exportSr6Books, exportSr6Compendium, exportSr6Runners, priced } from '../../src/sr6/engine'
+import { balances, currentBuild, deriveSr6, entryValues, exportAttrs, exportSr6Books, exportSr6Compendium, exportSr6Runners, priced } from '../../src/sr6/engine'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { blankSr6Npc } from '../../src/sr6/engine/npc'
 import type { Sr6Purchase } from '../../src/sr6/model/character'
@@ -218,5 +218,16 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
   })
   test.runIf(process.env.WRITE_SR6_SAMPLES)('writes the module samples', () => {
     for (const [name, f] of Object.entries(files())) writeFileSync(join(process.env.WRITE_SR6_SAMPLES!, name), JSON.stringify(f, null, 1) + '\n')
+  })
+})
+
+describe('SR6 export: augmentation types', () => {
+  const ware = (type: string) => ({ id: 'mus.x', kind: 'augmentations' as const, name: 'Made-up Ware', source: 'MUS', page: 1,
+    attrs: { type, category: 'made-up' }, parts: [], text: '' })
+  test('geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type kept in ware', () => {
+    expect(['geneware', 'symbionts', 'transgenics', 'nanoware', 'bioware', 'cyberware'].map(t => exportAttrs(ware(t))))
+      .toEqual([{ type: 'bioware', ware: 'geneware', category: 'made-up' }, { type: 'bioware', ware: 'symbionts', category: 'made-up' },
+        { type: 'bioware', ware: 'transgenics', category: 'made-up' }, { type: 'cyberware', ware: 'nanoware', category: 'made-up' },
+        { type: 'bioware', category: 'made-up' }, { type: 'cyberware', category: 'made-up' }])
   })
 })

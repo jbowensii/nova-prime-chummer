@@ -5,7 +5,9 @@
 // the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
 // opens from the NPC store with tabs Concept, Stat block and Print, and its kind chip where a runner's state badge is.
 import { useEffect, useMemo, useState } from 'react'
+import { canEdit, useMe } from '../../ui/auth'
 import { Brand, StateBadge } from '../../ui/bits'
+import { approveRunner } from '../../ui/Campaigns'
 import { IconButton } from '../../ui/icons'
 import { HeaderBars } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
@@ -60,6 +62,7 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
     inEditor: h => h.startsWith(href(id, '')) })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)
+  const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   const campRules = useCampaignRules(npc ? undefined : ch?.campaign), cr = campRules ?? serverRules
   useEffect(() => { if (!refusal) return; const t = setTimeout(() => setRefusal(null), 6000); return () => clearTimeout(t) }, [refusal])
   const calc = useMemo(() => {
@@ -94,6 +97,10 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
     edit: fn => { if (!ro) { const n = structuredClone(ch); fn(n.build); commit(n) } },
     update: fn => { if (!ro) { const n = structuredClone(ch); fn(n); commit(n) } },
     replace: next => { if (!ro) commit(next) },
+    // their own runner directly; a player's in a campaign they run (or the admin) on the server
+    approve: !gm ? null : !theirs ? overrides => { commit({ ...structuredClone(ch), overrides }); return Promise.resolve(null) }
+      : ch.campaign && !npc ? overrides => approveRunner('sr6', ch.campaign!, ch.id, overrides)
+        .then(() => { setDoc({ ...ch, overrides }); return null }, e => (e as Error).message) : null,
     act: op => {
       if (ro) return 'This runner is read only here.'
       const r = runAct(ch, op, data, cr)
@@ -141,7 +148,7 @@ export function Sr6EditorView({ c, data, cr: serverRules, id, tab, npc = false }
       {refusal && <p className="banner err" role="alert">{refusal}</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{tabs.find(([k]) => k === shown)?.[1]}</div>
-        <main className="work"><fieldset className="bare" disabled={ro}>
+        <main className="work"><fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}>
           {shown === 'concept' && <ConceptTab />}
           {shown === 'method' && <MethodTab />}
           {shown === 'attributes' && <AttributesTab />}

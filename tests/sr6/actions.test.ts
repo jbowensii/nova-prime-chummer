@@ -245,6 +245,16 @@ test('a line’s rating and grade change in place; out of range, an unset grade 
   expect(b.purchases[0]).toMatchObject({ rating: 3 })
 })
 
+test('only cyberware and bioware come in grades: geneware, nanoware, symbionts and transgenics are refused one', () => {
+  const genes = { id: 'crb.glow-genes', kind: 'augmentations' as const, name: 'Glow Genes', source: 'CRB', page: 1,
+    attrs: { type: 'geneware', category: 'made-up', essence: '0.1', cost: '900' }, parts: [], text: '' }
+  const { b, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : old(k, id)) } } })
+  expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id, grade: 'alpha' })).toEqual(no('no-grade'))
+  expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id })).toEqual(ok)
+  expect(act({ op: 'rate', uid: b.purchases[0].uid, grade: 'alpha' })).toEqual(no('no-grade'))
+  expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.spring-tendons', rating: 1, grade: 'alpha' })).toEqual(ok)
+})
+
 test('a custom item is bought at the player’s cost', () => {
   const { b, data, cr, act } = runner()
   expect(act({ op: 'purchase', kind: 'gear', custom: { name: 'Lucky Coin', cost: 777, avail: 2, essence: 0 } })).toEqual(ok)

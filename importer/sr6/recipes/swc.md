@@ -25,7 +25,10 @@ recipe reads both.
   a text line), `Name` rows, then number-only rows for the same names (under a header of the rest, or in order);
   `Racial Traits:` lines (wrapped) under each row. The same tables print earlier in the chapter and in the table index
   (`END_PAGE`); only the summary is read. Karma costs (the development table) are creation settings, not catalog values:
-  `metatypeKarma:swc.<id>` in `public/data/sr6/creation-defaults.xml`.
+  `metatypeKarma:swc.<id>` in `public/data/sr6/creation-defaults.xml`. The development tables' `PRIORITY A`–`E`
+  columns (a row a metavariant, `N/A` where it can't be taken; `Dour` is the duende's row, a plural name the
+  metasapient's) give each metavariant its `<priority letter points>` children: priority creation offers it at those
+  letters. The core rulebook's metatypes' rows are skipped; a row naming no metavariant of the book is reported.
 - Qualities (PEOPLE OF EXCEPTIONAL QUALITY, EXPRESS YOURSELF, DARKER ALTERATIONS): a `Cost: N Karma` (positive) or
   `Bonus: N Karma` (negative) line; a block holding several (metagenic qualities) names each by the short title line
   above it. Lifestyle qualities (WHAT YOU GET) cost lifestyle points: rules.

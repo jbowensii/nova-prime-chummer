@@ -80,7 +80,9 @@ export const CREATION_KEYS: CreationKey[] = [
   // optional: unset, the rule is off (no raise, no module twice, contact ratings past the points aren't bought)
   ...n('Lifepath', [], [['lifepath.bestAttributeBonus', 'Best attribute raised by (unset: no raise)'],
     ['lifepath.repeatModules', 'Adult modules that may be taken twice (unset: none)'],
-    ['lifepath.contactKarma', 'Karma per contact rating past the contact points (unset: not offered)']]),
+    ['lifepath.contactKarma', 'Karma per contact rating past the contact points (unset: not offered)'],
+    ['lifepath.raisedAttributeStart', 'Attributes whose metatype maximum is above the base maximum start at (unset: 1)'],
+    ['lifepath.mundaneEdge', 'Edge a runner neither awakened nor emerged gains (unset: none)']]),
   ...GRADES.flatMap(g => n('Augmentation grades', [], [[`grade:${g}:essence`, `${cap(g)}: Essence times`], [`grade:${g}:cost`, `${cap(g)}: cost times`],
     [`grade:${g}:avail`, `${cap(g)}: Availability plus`]])),
   // the constants in derive.ts's formulas (optional: unset, the value shows empty)

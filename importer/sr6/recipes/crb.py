@@ -107,7 +107,8 @@ SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 
 # a section (or item heading) whose labelled lines are each an entry (name: the label; text: its value, or its paragraph
 # in the block's text when that is longer): kind, or (kind, attributes)
 LABEL_SECTIONS = {("matrix", "echoes"): "echoes", ("matrix", "basic"): ("programs", {"type": "basic"}),
-                  ("matrix", "hacking"): ("programs", {"type": "hacking"})}
+                  ("matrix", "hacking"): ("programs", {"type": "hacking"}),
+                  ("rigging", "autosofts"): ("programs", {"type": "autosoft"})}
 # chapters whose unmapped sections (and level-4 headings with no row or box) are rule sections
 RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
                  "running the game", "gear")
@@ -279,6 +280,7 @@ class _Catalog:
         self.pending = []  # unknown columns of the entry being read: reported when it is added
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
+        self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
@@ -390,6 +392,26 @@ class _Catalog:
         elif first == "METATYPE" and len(header) >= 9:  # the ranges table, not an adjustment chart
             for r in rows:
                 self.metatype(header, r, page)
+        elif first == "GRADE" and any("ESS" in h.upper() for h in header):  # the implant grades table
+            for r in rows:
+                self.grade(r[0], {h: c for h, c in zip(header[1:], r[1:])}, page)
+
+    def grade(self, name, cells, page, types=None):
+        """An implant grade (`Alphaware | x0.8 | x1.2 | +1`): its Essence and cost multipliers and Availability
+        modifier as numbers (`x`, `+` dropped, `–` as `-`); a cell that isn't one is reported, the grade kept."""
+        attrs = {}
+        for h, cell in cells.items():
+            h = h.upper()
+            a = "essence" if "ESS" in h else "avail" if "AVAIL" in h else "cost" if "COST" in h else None
+            v = re.sub(r"^[x×+]\s*", "", (cell or "").strip().replace("–", "-").replace("−", "-"), flags=re.I)
+            if not a or not v or v == "—":
+                continue
+            if re.fullmatch(r"-?\d+(?:\.\d+)?", v):
+                attrs[a] = v
+            else:
+                self.report.append({"kind": "book-value", "file": "grades.xml", "name": name, "field": a, "value": cell,
+                                    "page": page})
+        self.add("grades", name, page, {**attrs, "types": types})
 
     def priority(self, header, row, page):
         letter = (row[0] if row else "").strip()
@@ -455,6 +477,8 @@ class _Catalog:
             b = _text_stats(b, HEADERS["npcs" if kind == "contacts" else kind])
         if kind in STAT_KINDS and len(parts := _side_by_side(b)) > 1:
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])
+        if kind in STAT_KINDS and self.split and len(parts := self.split(b)) > 1:
+            return all([self._entry(kind, cat, p, page, ctx) for p in parts])  # one stat block, several names
         if kind in ROW_KINDS and b.row is not None and not any(list(b.row.values())[1:]):
             return True  # a group heading printed as a row (`Patches` over the patches): no entry
         if kind in ROW_KINDS and b.row is None or kind in STAT_KINDS and not b.stats \
@@ -477,7 +501,7 @@ class _Catalog:
             head = "" if head.upper() in NAME_HEADERS or head == "type" else head
             attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
             if kind == "augmentations":
-                attrs = {"type": "bioware" if any("bioware" in c for c in ctx) else "cyberware", **attrs}
+                attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
             for n, g in self.variants(name, f):
@@ -677,6 +701,18 @@ def _md(b):
                      for h, r in rows)
 
 
+# the words in an augmentation table's title, first header or category that name its type (the first found wins: a
+# geneware table's header reads `BIOWARE GENEWARE …`); else cyberware
+WARE_TYPES = (("symbiont", "symbionts"), ("transgenic", "transgenics"), ("geneware", "geneware"), ("genetic", "geneware"),
+              ("nano", "nanoware"), ("bioware", "bioware"))
+
+
+def ware_type(keys):
+    """An augmentation's type (common.xsd): cyberware, bioware, geneware, nanoware, symbionts or transgenics."""
+    hay = " ".join(keys).lower()
+    return next((t for w, t in WARE_TYPES if w in hay), "cyberware")
+
+
 def _kind(chapter, ctx, section, book=None):
     book = book or sys.modules[__name__]
     for ch, key, kind, cat in book.SECTIONS:
@@ -694,6 +730,7 @@ def extract(regrouped, ctx=None, book=None):
     bk = book or sys.modules[__name__]
     cat = _Catalog(bk.ID, bk.ID.lower(), bk.BOOK)
     cat.unrated = getattr(bk, "UNRATED_NPCS", None)
+    cat.split = getattr(bk, "split_being", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
         if b.chapter != chapter:
@@ -757,10 +794,14 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
-    for e in cat.entries["programs"]:  # a program's price: the book's `Cyberprogram, <type>` row (the core rulebook's)
-        row = next((g for g in cat.entries["gear"] if g["name"].lower() == f"cyberprogram, {e['attrs']['type']}"), None)
-        if row:
-            e["attrs"].update({a: row["attrs"][a] for a in ("avail", "cost") if a in row["attrs"]})
+    for e in cat.entries["programs"]:
+        # a program's price: the book's `Cyberprogram, <type>` row; an autosoft's the `Autosoft` row, with its ratings
+        # (the core rulebook's)
+        t = e["attrs"]["type"]
+        row = next((g for g in cat.entries["gear"] if g["name"].lower() == (t if t == "autosoft" else f"cyberprogram, {t}")), None)
+        if row:  # (`Rating (1-9)`: the rating formula, its range restated)
+            e["attrs"].update({a: re.sub(r"^(rating)\s*\(\s*\d+\s*[–-]\s*\d+\s*\)$", r"\1", row["attrs"][a], flags=re.I)
+                               for a in ("rating", "avail", "cost") if a in row["attrs"]})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     runners = []

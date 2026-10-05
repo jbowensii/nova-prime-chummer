@@ -148,7 +148,7 @@ test('Game data: a book, then a kind with its counts, its sub-categories, one ki
   await expect(book.locator('option')).toHaveText(['All books', 'Shadowrun, Sixth World Core Rulebook'])
   // the kinds with their counts; the first one with entries is open
   await expect(kindButton(page, 'Weapons')).toHaveAccessibleName('Weapons 2')
-  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 3')
+  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 4')
   await kindButton(page, 'Weapons').click()
   await expect(kindButton(page, 'Weapons')).toHaveAttribute('aria-pressed', 'true')
   await expect(browseRows(page)).toHaveCount(2)

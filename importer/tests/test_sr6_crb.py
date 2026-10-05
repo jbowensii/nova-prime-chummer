@@ -196,6 +196,17 @@ zing code.
 ### Poke Host
 ##### Major Action
 Poking text.
+# RIGGING
+## Drone Rigging
+### Autosofts
+**Glide:** This acts as a made-up gliding skill. Attribute: Pilot
+**[Weapon] Aiming:** This aims a made-up weapon. Attribute: Sensor
+
+Autosofts are made up.
+**Glide:** This acts as a made-up gliding
+skill. Attribute: Pilot
+**[Weapon] Aiming:** This aims a made-up
+weapon. Attribute: Sensor
 <!-- page 201 -->
 # WILD LIFE
 Wild intro.
@@ -298,6 +309,7 @@ A slow made-up deck.
 | SOFTWARE | AVAIL | COST |
 |---|---|---|
 | Cyberprogram, basic | 3 | 77¥ |
+| Autosoft (Rating 1–6) | Rating (1–6) | Rating x 50¥ |
 #### Cyberprogram, basic
 Made-up programs.
 ## Tools
@@ -318,6 +330,13 @@ A kit of made-up gizmos.
 | Glow Gland | 1–3 | 0.2 | 4 | 2,000¥ |
 #### Glow Gland
 A made-up gland.
+#### Grades
+Made-up grades.
+| GRADE | ESS COST | COST | AVAIL |
+|---|---|---|---|
+| Shinyware | x0.9 | x1.3 | +2 |
+| Rustyware | x1.2 | x0.4 | –1 |
+| Oddware | x0.7 | lots | +1 |
 #### headware
 | HEADWARE | ESSENCE | CAPACITY | AVAIL | COST |
 |---|---|---|---|---|
@@ -370,7 +389,7 @@ class CrbRecipeTest(unittest.TestCase):
     def test_every_kind_has_its_entry(self):
         expect = {"priorities": "Priority A", "metatypes": "Glimmerkin", "attributes": "Body", "skills": "Tinkering",
                   "qualities": "Lucky Streak", "weapons": "Zap Gun", "armor": "Padded Vest",
-                  "augmentations": "Glow Gland", "electronics": "Clunker Deck", "programs": "Glow Scan", "gear": "Gizmo Kit",
+                  "augmentations": "Glow Gland", "grades": "Shinyware", "electronics": "Clunker Deck", "programs": "Glow Scan", "gear": "Gizmo Kit",
                   "vehicles": "Zoom Bike", "spells": "Zap Bolt", "rituals": "Glow Circle", "adeptpowers": "Quick Feet",
                   "complexforms": "Static Fizz", "metamagics": "Bright Aura", "echoes": "Quick Think",
                   "critterpowers": "Glimmer", "critters": "Fuzzbeast", "spirits": "Spirits of Fizz",
@@ -468,7 +487,7 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual([(r["file"], r["column"]) for r in self.rep("unknown-column")], [("weapons.xml", "HEFT")])
         self.assertNotIn("heft", entries(self.res, "weapons")["Zap Gun"].attrib)
         self.assertEqual(entries(self.res, "weapons")["Zapp Rifle"].get("cost"), "12x")
-        self.assertEqual([(r["name"], r["field"], r["value"]) for r in self.rep("book-value")], [("Zapp Rifle", "cost", "12x")])
+        self.assertEqual([(r["name"], r["field"], r["value"]) for r in self.rep("book-value")], [("Zapp Rifle", "cost", "12x"), ("Autosoft", "avail", "Rating (1–6)"), ("Oddware", "cost", "lots")])
 
     def test_rules_tree_and_pages(self):
         r = entries(self.res, "rules")
@@ -499,10 +518,21 @@ class CrbRecipeTest(unittest.TestCase):
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertEqual(texts[("echoes", "wide-net")], "Your made-up net is wider.")
         p = entries(self.res, "programs")  # a type's price from its `Cyberprogram, <type>` row; its paragraph's text
-        self.assertEqual({k: (v.get("type"), v.get("avail"), v.get("cost")) for k, v in p.items()},
-                         {"Glow Scan": ("basic", "3", "77"), "Fizz Wall": ("basic", "3", "77")})
+        self.assertEqual({k: (v.get("type"), v.get("rating"), v.get("avail"), v.get("cost")) for k, v in p.items()},
+                         {"Glow Scan": ("basic", None, "3", "77"), "Fizz Wall": ("basic", None, "3", "77"),
+                          # the autosofts, priced by the `Autosoft` row's rating formula
+                          "Glide": ("autosoft", "1–6", "Rating", "Rating x 50"),
+                          "[Weapon] Aiming": ("autosoft", "1–6", "Rating", "Rating x 50")})
         self.assertEqual(texts[("programs", "fizz-wall")], "Wall of made-up fiz-\nzing code.")
         self.assertEqual(entries(self.res, "qualities")["Steady Hands"].get("karma"), "5")  # a cost in the text
+
+    def test_grades(self):
+        """The implant grades table: multipliers and the Availability modifier as numbers; a cell that isn't one is
+        reported, the grade kept."""
+        g = entries(self.res, "grades")
+        self.assertEqual({k: (v.get("essence"), v.get("cost"), v.get("avail")) for k, v in g.items()},
+                         {"Shinyware": ("0.9", "1.3", "2"), "Rustyware": ("1.2", "0.4", "-1"), "Oddware": ("0.7", None, "1")})
+        self.assertIn(("grades.xml", "Oddware", "cost", "lots"), [(r["file"], r["name"], r["field"], r["value"]) for r in self.rep("book-value")])
 
     def test_prices(self):
         """Formula prices are kept for the app to evaluate; rows printing two items split; units go to per."""

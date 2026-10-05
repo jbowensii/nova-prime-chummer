@@ -3,5 +3,6 @@
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1">
   <gear id="crb.tangle-rope" source="CRB" page="275" category="tools" rating="1–4" capacity="—" avail="1" cost="Rating × 50"><name>Tangle Rope</name><text/></gear>
   <gear id="crb.zap-scope" source="CRB" page="258" category="weapon accessories" avail="3" cost="350"><name>Zap Scope</name><text/></gear>
+  <gear id="crb.glow-sight" source="CRB" page="258" category="weapon accessories" rating="1–3" avail="2" cost="Rating × 100"><name>Glow Sight</name><text/></gear>
   <gear id="crb.zap-pellets" source="CRB" page="256" category="ammunition" avail="1" cost="21"><name>Zap Pellets</name><text/></gear>
 </sr6:data>

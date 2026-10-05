@@ -2,7 +2,7 @@
 // (provider, budgets, violations, derived values). Tabs change the runner through edit (the build), act (an engine step:
 // its refusal comes back as a sentence) or update (identity, notes, the character-level setters).
 import { createContext, useContext } from 'react'
-import type { Violation } from '../../model/types'
+import type { Override, Violation } from '../../model/types'
 import { apply, type Op } from '../engine/actions'
 import type { Sr6Budgets } from '../engine/budgets'
 import type { Preview, Typed } from '../engine/career'
@@ -28,6 +28,9 @@ export interface Sr6Ctx {
   update(fn: (ch: Sr6Character) => void): void
   /** the whole runner swapped (Finalize, Back to draft) */
   replace(next: Sr6Character): void
+  /** GM approval: the runner's approvals replaced (null when done, else why not); null for a viewer who isn't a GM or the
+   *  admin, or someone else's runner outside a campaign */
+  approve: ((overrides: Override[]) => Promise<string | null>) | null
   /** career: what a spend would cost, priced on the runner as it stands */
   preview(a: Sr6Advance, typed?: Typed): Preview
   /** career: record a spend; null when recorded, else why not (a sentence). Not on the undo stack: Void undoes it. */
@@ -68,6 +71,7 @@ export const REASONS: Record<string, string> = {
   'unknown-line': 'That isn’t on the runner any more.',
   'unknown-host': 'The item to fit it on isn’t on the runner any more.',
   'unknown-grade': 'That grade isn’t set up: Table setup → Creation rules.',
+  'no-grade': 'Only cyberware and bioware come in grades.',
   'unknown-choice': 'That life module has no such choice.',
   'unknown-option': 'That isn’t one of the choice’s options.',
   'skill-untrained': 'Give the skill a rank first.',

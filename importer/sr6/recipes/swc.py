@@ -11,7 +11,7 @@ import re
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
 from importer.sr6 import KINDS
-from importer.sr6.recipes.crb import _BEING, _Catalog, _md, _text
+from importer.sr6.recipes.crb import _BEING, _Catalog, _md, _tables, _text
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
@@ -284,6 +284,33 @@ def _metavariants(cat, chunks):
         cat.add("metatypes", r["name"], r["page"], {}, kids)
 
 
+# a development table row's name -> the metavariant it is (the row printed under another name)
+DEV_ALIASES = {"dour": "duende"}
+_BASE = {"human", "elf", "dwarf", "ork", "troll"}  # the core rulebook's: its priority table has them
+
+
+def _development(cat, rows):
+    """The development tables (`METAVARIANT | … | CUSTOMIZATION KARMA | PRIORITY A | … | PRIORITY E`): each metavariant's
+    adjustment points at the metatype priorities it can be taken at (`N/A`: not at that letter), as its <priority>
+    children. The core rulebook's metatypes' rows are skipped (its priority table has them); a row naming no
+    metavariant of the book is reported. The karma column is a creation setting (metatypeKarma)."""
+    by = {}
+    for e in cat.entries["metatypes"]:
+        by[norm(e["name"])] = e
+    for header, row, page in rows:
+        name = norm(row[0])
+        e = by.get(DEV_ALIASES.get(name, name)) or (by.get(name[:-1]) if name.endswith("s") else None)
+        if e is None:
+            if name not in _BASE and name.rstrip("s") not in _BASE and any(c.strip() for c in row[1:]):
+                cat.report.append({"kind": "unmatched", "file": "metatypes.xml", "name": row[0], "page": page})
+            continue
+        for h, v in zip(header, row):
+            m = re.search(r"PRIORITY\s+([A-E])$", h.upper())
+            if m and re.fullmatch(r"\d+", v.strip()) and not any(t == "priority" and a["letter"] == m.group(1)
+                                                                  for t, a, _ in e["children"]):
+                e["children"].append(("priority", {"letter": m.group(1), "points": int(v)}, None))
+
+
 def _traits(s):
     """`A, B (2), C (x, y)` -> names, split at commas outside parentheses."""
     out, depth, cur = [], 0, ""
@@ -382,7 +409,7 @@ def _contact(cat, name, text, page, band=""):
 
 def extract(regrouped, ctx=None):
     cat = _Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
-    chapter, group, stack, ranges = None, "", [], []
+    chapter, group, stack, ranges, dev = None, "", [], [], []
     for b in blocks(regrouped):
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)
         if b.chapter != chapter:
@@ -391,6 +418,10 @@ def extract(regrouped, ctx=None):
             group = norm(b.name)
         text = _text(b)
         done = False
+        if ch == METAVARIANTS[0]:  # the development tables: a row of its own, a block's band or a table in its text
+            tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else [])                 + [(list(x), [list(x.values())]) for x in b.stats] + _tables(b.text)
+            dev += [(h, r, page) for h, rs in tables if norm(h[0]) == "metavariant" and any("PRIORITY" in x.upper() for x in h)
+                    for r in rs]  # (they stay rules too)
         if ch == LIFE[0] and sec == LIFE[1] and b.type == "item":
             if any(norm(b.name).startswith(o) for o in OPENING):
                 _lifemodule(cat, "opening", b.name, text, page)
@@ -425,6 +456,7 @@ def extract(regrouped, ctx=None):
         stack.append((level, e["id"]))
     if ranges:
         _metavariants(cat, ranges)
+    _development(cat, dev)
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, report=cat.report,
                   source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})

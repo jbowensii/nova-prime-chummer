@@ -296,6 +296,18 @@ test('a contact and Other take the typed amounts; a lifestyle is its cost × mon
   expect(preview(ch, { op: 'lifestyle', id: 'crb.cozy', months: 2 }, data, cr)).toEqual({ ok: true, label: 'Lifestyle: Cozy × 2 months', karma: 0, nuyen: 5000 })
 })
 
+test('a lifestyle spend adds its months to the lifestyle the runner has; another lifestyle replaces it', () => {
+  const squat = { id: 'crb.squat', kind: 'lifestyles' as const, name: 'Squat', source: 'CRB', page: 1, attrs: { cost: '100' }, parts: [], text: '' }
+  const { data, cr } = made({ data: d => { const old = d.entry; d.entry = (k, id) => (id === squat.id ? squat : old(k, id)) } })
+  const ch = runner({ nuyen: 20000 })
+  ch.build.lifestyle = { id: 'crb.cozy', months: 3 }
+  const more = ok(record(ch, { op: 'lifestyle', id: 'crb.cozy', months: 2 }, data, cr))
+  expect(currentBuild(more).lifestyle).toEqual({ id: 'crb.cozy', months: 5 })
+  expect(ch.build.lifestyle).toEqual({ id: 'crb.cozy', months: 3 })  // the finalized build is untouched
+  const moved = ok(record(more, { op: 'lifestyle', id: squat.id, months: 1 }, data, cr))
+  expect(currentBuild(moved).lifestyle).toEqual({ id: 'crb.squat', months: 1 })
+})
+
 // --- finalize and Back to draft ---
 
 test('finalize adds a finalize entry; Back to draft only with nothing live to undo; finalize again starts the balances anew', () => {

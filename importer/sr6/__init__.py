@@ -17,6 +17,7 @@ KINDS = {
     "weapons": "weapon",
     "armor": "armor",
     "augmentations": "augmentation",
+    "grades": "grade",
     "electronics": "device",
     "programs": "program",
     "gear": "gear",

@@ -30,8 +30,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
   that is a size names the row `<item> (<size>)`), the rigger headware (augmentations), the repair facilities (gear).
 - Qualities (GEARHEAD ANATOMY): level-3 headings with `Cost:` / `Bonus:` lines in Karma.
 - Sample contact (THE GREASE MONKEY WAY): a lower-case box with an attribute band: a contact and its NPC.
-- Autosofts and e-softs: lists and labelled lines with no prices (the core rulebook prices autosofts): rule sections,
-  as are chases, building a vehicle and repairs.
+- Autosofts: the skills sold as autosofts (Skills Available in Autosoft Format, bulleted `**Skill** (specialization)`
+  lines, the ratings in the prose) are programs of type autosoft, unpriced (the core rulebook prices autosofts by
+  rating); Language and Knowledge, whose lines set their own ratings, stay in the rules. The e-softs (labelled lines
+  run together with other items' text), chases, building a vehicle and repairs: rule sections.
 
 ## Real-book check (local, nothing committed)
 

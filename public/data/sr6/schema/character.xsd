@@ -353,7 +353,8 @@
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="weapons"/><xs:enumeration value="armor"/><xs:enumeration value="augmentations"/>
-        <xs:enumeration value="electronics"/><xs:enumeration value="gear"/><xs:enumeration value="vehicles"/>
+        <xs:enumeration value="electronics"/><xs:enumeration value="programs"/><xs:enumeration value="gear"/>
+        <xs:enumeration value="vehicles"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string"/>

@@ -63,7 +63,7 @@ see NPCs below.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
-- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `gear` or `vehicles`; `rating` for rated
+- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear` or `vehicles`; `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when

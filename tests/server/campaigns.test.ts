@@ -125,6 +125,24 @@ test('saves keep the stored campaign; a new runner or a copy gets none', async (
   expect(restoredCopy(runner('p1', 'X', ` campaign="${c1}"`), 'new-id')).not.toContain('campaign=')
 })
 
+test('GM approval: only a GM of the runner’s campaign or the admin replaces its approvals; its rev goes up', async () => {
+  const ok = [{ code: 'skill.cap', path: 'skills.guns', note: 'Street legend <campaign>' }]
+  const put = (who: Who, body: unknown, rid = 'p1') => call(who, 'PUT', `/api/campaigns/${c1}/runners/${rid}/overrides`, body)
+  for (const who of ['pat', 'kim', 'ed'] as const) expect((await put(who, { overrides: ok })).status).toBe(who === 'ed' ? 404 : 403)
+  expect((await put('eve', { overrides: 'all' })).status).toBe(400)
+  expect((await put('eve', { overrides: ok }, 'p2')).status).toBe(404) // not in this campaign
+  const before = Number(file('pat', 'Ratchet-amp-Co.xml').match(/ rev="(\d+)"/)![1])
+  const r = await put('eve', { overrides: ok })
+  expect([r.status, (await r.json()).rev]).toEqual([200, before + 1])
+  const xml = file('pat', 'Ratchet-amp-Co.xml')
+  expect(xml).toContain('<override code="skill.cap" path="skills.guns">Street legend &lt;campaign&gt;</override>')
+  expect(xml).toContain(`campaign="${c1}"`)
+  expect((await call('pat', 'PUT', '/api/characters/p1', runner('p1', 'Ratchet'))).status).toBe(409) // the player's stale copy
+  expect((await put('ada', { overrides: [] })).status).toBe(200)
+  expect(file('pat', 'Ratchet-amp-Co.xml')).not.toContain('<override')
+  expect((await call('eve', 'DELETE', `/api/campaigns/${c1}/runners/p1/overrides`)).status).toBe(405)
+})
+
 test('leaving: the owner or a GM takes a runner out; a removed member’s runners leave; a campaign is deleted only empty', async () => {
   expect((await call('kim', 'DELETE', `/api/campaigns/${c1}/runners/p1`)).status).toBe(403)
   expect((await call('eve', 'DELETE', `/api/campaigns/${c1}`)).status).toBe(409)

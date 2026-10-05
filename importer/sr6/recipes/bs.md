@@ -14,8 +14,9 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   POWER and the critter tables' TRAINING/CRITTERJACK REQ. columns go to the text.
 - A name-only row over rows that no description has (`Cybertails` over `Balance`, `Prehensile`) names them
   `<group> (<row>)` (`VARIANT_ROWS`, regroup's `_variants`); they share the group's description.
-- The app's augmentation types are cyberware and bioware: geneware, symbionts, transgenic infusions and the critter
-  genetic augmentations are bioware, nanoware (nanohives) cyberware; the category tells them apart.
+- Each augmentation has its type (`crb.ware_type`, from the table's title, first header or category): cyberware,
+  bioware, geneware (the therapeutic and augmentic tables, the critter genetic augmentations), symbionts, transgenics
+  (transgenic infusions) and nanoware (nanohives, the nano-critter augmentations).
 - Nanotech gear (`ITEM | RATING | AVAIL | COST`) and drugs (`DRUG | POWER | AVAIL | COST (PER DOSE)`) are gear. The
   nanite colonies print a template and a pre-built price: two entries. A drug described with `Vector:`, `Availability:`
   and `Cost:` lines and in no table (EDGE OF ESSENCE) is read from those lines.
@@ -27,8 +28,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 - Cybernetic shells (EDGE OF ESSENCE): headings priced on a `(Cost: …, Availability: …)` tag line, named under the
   heading before them.
 - Qualities: level-4 headings with `Cost:` / `Bonus:` lines in Karma (EDGE OF ESSENCE, the first chapter's boxes).
-- Implant grades (omega, exoware, gammaware), cybermancy, surgery, drug rules: no catalog kind, rule sections. The
-  grade multipliers the app uses are creation settings, not catalog entries.
+- Implant grades (New and Revised Implant Grades: omega grade, exoware, gammaware, each a level-3 section): grades,
+  their factors read from the prose (`x1.1 Essence cost`, `adds ten percent to the base Essence cost`, `0.4 Essence
+  multiplier`, `can only be applied to cyberware`); the sections stay rules too. Cybermancy, surgery, drug rules: rule
+  sections.
 
 ## Real-book check (local, nothing committed)
 
