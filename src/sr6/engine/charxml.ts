@@ -7,7 +7,7 @@ import {
   BONUS_TARGETS, CONTACT_TYPES, CORE_ATTRS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
   SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
   type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
-  type Sr6Npc, type Sr6Pick, type Sr6Purchase, type Sr6Quality,
+  type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
@@ -92,11 +92,14 @@ function npcXml(n?: Sr6Npc): string {
     Object.entries(n.stats).map(([key, value]) => el('stat', { key, value })).join('') + n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join(''))
 }
 
+const printedXml = (p?: Sr6Printed) => (p ? el('printed', { source: p.source, page: p.page },
+  Object.entries(p.values).map(([key, value]) => el('value', { key, value })).join('')) : '')
+
 /** Serialize a runner. `rev` is the server's revision counter (omitted for exports). */
 export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
   const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
-    buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
+    printedXml(ch.printed), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
     lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen, sampleKey: ch.sampleKey })
@@ -282,6 +285,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     const t = (name: string) => kid(r, name)?.textContent ?? undefined
     const backdrop = str(r, 'backdrop') as Backdrop | undefined
     const fk = num(r, 'finalKarma'), fn = num(r, 'finalNuyen'), npc = kid(r, 'npc'), ledger = kid(r, 'ledger'), house = kid(r, 'house')
+    const printed = kid(r, 'printed')
     const ch: Sr6Character = def({
       formatVersion: 1 as const, id: r.getAttribute('id')!,
       identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', metatype: build.metatype,
@@ -291,6 +295,8 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       final: fk === undefined && fn === undefined ? undefined : { karma: fk ?? 0, nuyen: fn ?? 0 },
       ledger: ledger ? each(kids(ledger, 'entry'), e => readEntry(e, fix), (_, i) => `ledger entry ${i + 1}`, fix) : [],
       npc: npc ? readNpc(npc, fix) : undefined, sampleKey: str(r, 'sampleKey'), house: house?.children.length ? readHouse(house, fix) : undefined,
+      printed: printed ? { source: str(printed, 'source') ?? '', page: num(printed, 'page', 0),
+        values: Object.fromEntries(kids(printed, 'value').map(v => [v.getAttribute('key') ?? '', v.getAttribute('value') ?? ''])) } : undefined,
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: o.textContent ?? '' })),
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),
     })

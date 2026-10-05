@@ -19,7 +19,8 @@ function full(): Sr6Character {
   ch.identity = { name: 'Pat Doe', streetName: 'Sparky', metatype: 'crb.glimmerkin', portrait: 'data:image/png;base64,iVBORw0KGgo=',
     token: 'data:image/png;base64,AAAA', backdrop: 'neon', background: 'Grew up\nin a vending machine.', notes: 'Owes Gil & co.' }
   Object.assign(ch, { finalizedAt: '2026-10-03T11:00:00.000Z', final: { karma: 3, nuyen: 1250 }, campaign: '0123456789ab',
-    lastExportedAt: '2026-10-03T12:00:00.000Z', overrides: [{ code: 'skill.cap', path: 'skills.crb.gab', note: 'GM ok' }] })
+    lastExportedAt: '2026-10-03T12:00:00.000Z', overrides: [{ code: 'skill.cap', path: 'skills.crb.gab', note: 'GM ok' }],
+    printed: { source: 'CRB', page: 81, values: { rea: '4(6)', init: '9(11) + 3D6', cm: '10/10' } } })
   Object.assign(b, { metatype: 'crb.glimmerkin', magic: 'aspected', aspectedSkill: 'crb.hexing', tradition: 'Street hoodoo', drainAttr: 'cha',
     powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 }, bestAttr: 'str', bestExtra: 'agi' })
   b.priorities = { metatype: 'D', attributes: 'A', magic: 'B', skills: 'C', resources: null }
@@ -37,7 +38,7 @@ function full(): Sr6Character {
       snapshot: { id: 'crb.zap-gun', kind: 'weapons', name: 'Zap Gun', source: 'CRB', page: 251, attrs: { cost: '350', ar: '9/7/—/—/—' },
         parts: [{ tag: 'mode', attrs: { v: 'SS' }, text: '' }], text: '' } },
     { uid: 'g3', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, bonuses: [{ target: 'int', value: 1 }], accessories: [] },
-    { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
+    { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [], bonuses: [{ target: 'defense', value: 1 }] },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
   b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2, types: ['street', 'criminal'] },

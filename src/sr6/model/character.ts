@@ -124,6 +124,10 @@ export interface Sr6Npc {
   lines: { part: string; text: string }[]
 }
 
+/** A book sample's stat block numbers as printed (key: an attribute abbreviation, ess, init, cm or dr; value as printed,
+ *  `5(7)`, `8(10) + 3D6`, `11/10`), with the book's source and page: Review compares them with the rules'. */
+export interface Sr6Printed { source: string; page: number; values: Record<string, string> }
+
 /** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
  *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
  *  example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
@@ -131,7 +135,7 @@ export interface Sr6Npc {
 export interface Sr6Character {
   formatVersion: 1; id: string; identity: Character['identity']; build: Sr6Build
   finalizedAt?: string; final?: { karma: number; nuyen: number }; campaign?: string
-  ledger: Sr6LedgerEntry[]; npc?: Sr6Npc; sampleKey?: string; house?: Sr6Entry[]
+  ledger: Sr6LedgerEntry[]; npc?: Sr6Npc; sampleKey?: string; house?: Sr6Entry[]; printed?: Sr6Printed
   overrides: Override[]; updatedAt: string; lastExportedAt?: string
 }
 

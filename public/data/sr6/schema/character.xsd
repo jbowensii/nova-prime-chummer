@@ -16,6 +16,22 @@
         <xs:element name="token" type="xs:string" minOccurs="0"/>
         <xs:element name="background" type="xs:string" minOccurs="0"/>
         <xs:element name="notes" type="xs:string" minOccurs="0"/>
+        <!-- a book sample: its stat block's numbers as printed (key: an attribute, ess, init, cm or dr), which Review
+             compares with the rules'; source and page: the book's -->
+        <xs:element name="printed" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="value" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:attribute name="key" type="xs:string" use="required"/>
+                  <xs:attribute name="value" type="xs:string" use="required"/>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            <xs:attribute name="source" type="xs:string" use="required"/>
+            <xs:attribute name="page" type="xs:positiveInteger" use="required"/>
+          </xs:complexType>
+        </xs:element>
         <xs:element name="build" type="c:Build"/>
         <xs:element name="ledger" type="c:Ledger" minOccurs="0"/>
         <!-- copies of the GM compendium entries the runner uses (common.xsd entry elements, each with its <text>), so it keeps
