@@ -33,6 +33,11 @@ Our own mistakes are fixed; what the book prints against the rules now shows on 
 - Wired reflexes, reaction enhancers, muscle toner and augmentation, Improved Reflexes, dermal plating and bone lacing
   carry the bonuses they give, so augmented attributes, initiative and Defense Rating compute as the rules give them.
 - Knowledge skills and languages past Logic's points are bought with karma instead of overspending the points.
+- Each example now has its priorities: of the 120 ways to give A–E to the five columns, the one that overspends least
+  for what the book prints. Magic and Edge go on adjustment points, then the metatype's raised attributes; what the
+  attribute, adjustment and skill points can't hold is bought with karma, the cheapest ranks first, and nuyen past the
+  resources with karma turned into nuyen. Ties go to the one whose nuyen left is nearest the printed starting nuyen.
+  The budgets were all overspent with no priorities; Review now shows only what the book's build really overspends.
 
 ## 0.9.6 — 2026-10-05: NPC and Critter sections, Shadowrun 6 look, shared compendiums
 

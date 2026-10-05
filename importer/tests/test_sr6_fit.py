@@ -1,0 +1,60 @@
+"""Fitting a sample runner's priorities (importer/sr6/fit.py) on invented priority rows, settings and builds: the letter
+assignment that overspends least, adjustment points to Magic and Edge first, the cheapest ranks to karma, nuyen past the
+resources bought with karma. Every number is made up."""
+import unittest
+
+from importer.sr6 import fit
+
+CS = {"startingKarma": 30.0, "karmaAttrPerRank": 4.0, "karmaSkillPerRank": 3.0, "karmaSpec": 6.0, "skillPointsSpec": 1.0,
+      "freeSpellsPerMagic": 1.0, "freeFormsPerResonance": 1.0, "karmaSpell": 2.0, "karmaForm": 2.0,
+      "karmaToNuyenRate": 100.0, "karmaToNuyenRateInDebt": 300.0}
+ROWS = {"A": {"metas": {"gnoll": 7}, "attributes": 9, "skills": 9, "magic": {"full": 3}, "nuyen": 900},
+        "B": {"metas": {"gnoll": 5, "pixie": 5}, "attributes": 7, "skills": 7, "magic": {"full": 2}, "nuyen": 700},
+        "C": {"metas": {"gnoll": 3, "pixie": 3}, "attributes": 5, "skills": 5, "magic": {"full": 1}, "nuyen": 500},
+        "D": {"metas": {"pixie": 2}, "attributes": 3, "skills": 3, "magic": {}, "nuyen": 300},
+        "E": {"metas": {"pixie": 1}, "attributes": 1, "skills": 1, "magic": {}, "nuyen": 100}}
+
+
+def need(**kw):
+    base = {"meta": "Pixie", "raised": set(), "magic": "mundane", "attrs": {k: 1 for k in fit.CORE} | {"edg": 1},
+            "skills": [], "karma": 0, "neg": 0, "spells": 0, "forms": 0, "pp": 0, "nuyen": 0, "debt": False, "left": None}
+    return base | kw
+
+
+class FitTest(unittest.TestCase):
+    def test_value_reads_as_the_app(self):
+        self.assertEqual([fit.value(v, 3) for v in ("Rating x 50", ".5", "(Rating/2)", "7(L)", "—", "40/60", "lots")],
+                         [150, 0.5, 2, 7, None, None, None])
+
+    def test_the_letters_that_overspend_least(self):
+        """A mundane pixie with 6 attribute ranks, 4 skill ranks and 650 nuyen of things: the karma covers what the rows
+        don't (nothing left over), and of the assignments that overspend nothing the one leaving the printed 50 nuyen wins
+        (the first in letter order on a tie)."""
+        n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 4, "agi": 4, "edg": 1}, skills=[(4, 0)], nuyen=650, left=50)
+        got = fit.fit(n, ROWS, CS)
+        self.assertEqual(got["letters"], {"metatype": "B", "attributes": "A", "magic": "C", "skills": "D", "resources": "E"})
+        self.assertEqual((got["attrs"]["bod"], got["attrs"]["agi"], got["skills"]), ([3, 0, 0], [3, 0, 0], [(3, 1)]))
+        self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"]), (6, 50))  # 100 + 6 × 100 − 650
+        self.assertEqual(fit.fit({**n, "debt": True}, ROWS, CS)["karmaToNuyen"], 2)  # In Debt's rate: 100 + 2 × 300 − 650
+        self.assertIsNone(fit.fit({**n, "meta": "Wyrm"}, ROWS, CS))  # a metatype no row lists
+
+    def test_magic_and_edge_take_adjustment_points_then_the_raised_maximums(self):
+        """A full magician gnoll: Magic above its priority rating and Edge on the 3 adjustment points (C), Magic first;
+        what's left over is karma; the raised BOD gets none; a priority Magic above the printed one can't be."""
+        n = need(meta="Gnoll", magic="full", raised={"bod"}, attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "edg": 3, "mag": 4})
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "CDABE")}
+        score, got = fit.spend(n, rows, CS)
+        self.assertEqual((got["attrs"]["mag"], got["attrs"]["edg"], got["attrs"]["bod"]), ([0, 1, 0], [0, 2, 0], [2, 0, 0]))
+        rows["magic"] = {**ROWS["A"], "letter": "A"}  # Magic 3 from A: 1 rank to adjust, then Edge 2
+        self.assertIsNone(fit.spend({**n, "attrs": {**n["attrs"], "mag": 2}}, rows, CS))
+        self.assertEqual(fit.spend({**n, "attrs": {**n["attrs"], "mag": 2}, "loss": 1}, rows, CS)[1]["attrs"]["mag"], [0, 0, 0])
+
+    def test_past_the_pools_the_cheapest_ranks_are_karma(self):
+        """2 attribute points for 4 ranks: the karma goes on the lowest ratings (CHA 2, then LOG 2), each rank its rating
+        times the per-rank price; a skill past its points likewise, a specialization costing karma once it has none."""
+        n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "log": 2, "cha": 2}, skills=[(3, 1), (1, 1)])
+        rows = {c: {"metas": {"pixie": 1}, "attributes": 2, "skills": 3, "letter": "Z"} for c in fit.COLUMNS}
+        score, got = fit.spend(n, rows, CS)
+        self.assertEqual((got["attrs"]["bod"], got["attrs"]["log"], got["attrs"]["cha"]), ([2, 0, 0], [0, 0, 1], [0, 0, 1]))
+        self.assertEqual(got["skills"], [(2, 1), (0, 1)])  # 3 points: rank 1 then 3's top to karma, 2 + its spec on points
+        self.assertEqual(score[1], 4)  # LOG 2×4 + CHA 2×4 + the rank-3 top 3×3 + the rank-1 skill 1×3 and its spec 6: 34, 4 past 30

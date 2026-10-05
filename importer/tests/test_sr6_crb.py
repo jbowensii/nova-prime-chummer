@@ -81,7 +81,7 @@ A made-up runner who glows.
 ##### metatype: glimmerkin
 | B | A | R | S | W | L | I | C | EDG | M | ESS |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 5(6) | 4 | 2 | 3 | 2 | 4 | 3 | 4 | 4 | 6 |
+| 3 | 5(6) | 4 | 2 | 3 | 2 | 4 | 3 | 4 | 5 | 6 |
 **Initiative/Actions:** 8 + 2D6/1 Major, 3 Minor
 **Defense Rating:** 5
 **Active Skills:** Tinkering 3 (Gizmos +2), Basket Weaving 2
@@ -579,9 +579,18 @@ class CrbRecipeTest(unittest.TestCase):
         g = ET.fromstring(self.res.samples[0]["xml"])
         b = g.find("build")
         self.assertEqual((g.get("id"), g.get("streetName"), g.get("metatype"), b.get("magic")), ("crb.glow-runner", "Glow Runner", "crb.glimmerkin", "adept"))
-        self.assertEqual({a.get("id"): a.get("points") for a in b.iter("attribute")},
-                         {"bod": "2", "agi": "4", "rea": "3", "str": "1", "wil": "2", "log": "1", "int": "3", "cha": "2", "edg": "3", "mag": "4", "res": "0"})
-        self.assertEqual([(x.get("id"), x.get("points"), x.get("spec")) for x in b.iter("skill")], [("crb.tinkering", "3", "Gizmos")])
+        # the priorities fitted (importer/sr6/fit.py): this book's rows hold the adept only at A and Glimmerkin at A and E;
+        # B to D print nothing, so the attributes and the skill are bought with karma, the nuyen with karma too
+        self.assertEqual([(x.get("column"), x.get("letter")) for x in b.iter("priority")],
+                         [("metatype", "E"), ("attributes", "B"), ("magic", "A"), ("skills", "C"), ("resources", "D")])
+        self.assertEqual({a.get("id"): (a.get("points"), a.get("adjust"), a.get("karma")) for a in b.iter("attribute")}, {
+            "bod": ("0", "0", "2"), "agi": ("0", "0", "4"), "rea": ("0", "0", "3"), "str": ("0", "0", "1"), "wil": ("0", "0", "2"),
+            "log": ("0", "0", "1"), "int": ("0", "0", "3"), "cha": ("0", "0", "2"), "edg": ("0", "1", "2"), "mag": ("0", "0", "0"),
+            "res": ("0", "0", "0")})  # Magic 5: the priority's; Edge's 3 ranks past 1: the 1 adjustment point, then karma
+        self.assertEqual([(x.get("id"), x.get("points"), x.get("karma"), x.get("spec")) for x in b.iter("skill")],
+                         [("crb.tinkering", "0", "3", "Gizmos")])
+        self.assertEqual(b.get("karmaToNuyen"), "19")
+        self.assertIn("Priorities fitted to the printed stat block", g.findtext("notes"))
         self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],
                          [("Glow Lore", "knowledge", None), ("Puddle Streets", "knowledge", None), ("Plainspeak", "language", "true"), ("Glimmertongue", "language", None)])
         # Logic 2: two knowledge points; the language past them is bought with karma
@@ -617,7 +626,7 @@ class CrbRecipeTest(unittest.TestCase):
         p = g.find("printed")  # the numbers Review compares, as printed
         self.assertEqual((p.get("source"), p.get("page")), ("CRB", "81"))
         self.assertEqual({v.get("key"): v.get("value") for v in p}, {"bod": "3", "agi": "5(6)", "rea": "4", "str": "2", "wil": "3",
-                         "log": "2", "int": "4", "cha": "3", "edg": "4", "mag": "4", "ess": "6", "init": "8 + 2D6", "dr": "5"})
+                         "log": "2", "int": "4", "cha": "3", "edg": "4", "mag": "5", "ess": "6", "init": "8 + 2D6", "dr": "5"})
         # the golden file the app's tests read (tests/fixtures/sr6/sample-glow-runner.xml): the same but its date
         golden = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sr6" / "sample-glow-runner.xml"
         self.assertEqual(re.sub(r'updatedAt="[^"]+"', "", self.res.samples[0]["xml"]),

@@ -7,21 +7,26 @@ Skills not in the catalog: Basket Weaving 2.
 Qualities not in the catalog: Night Eyes (glimmerkin trait); Odd Quirk.
 Gear not in the catalog: Mystery Box; Glue gun.
 Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—].
-Built from the printed stat block: the priorities aren’t set, so the budgets read overspent until they are.</notes>
-  <printed source="CRB" page="81"><value key="bod" value="3"/><value key="agi" value="5(6)"/><value key="rea" value="4"/><value key="str" value="2"/><value key="wil" value="3"/><value key="log" value="2"/><value key="int" value="4"/><value key="cha" value="3"/><value key="edg" value="4"/><value key="mag" value="4"/><value key="ess" value="6"/><value key="init" value="8 + 2D6"/><value key="dr" value="5"/></printed>
-  <build method="priority" magic="adept">
-    <attribute id="bod" points="2" adjust="0" karma="0"/>
-    <attribute id="agi" points="4" adjust="0" karma="0"/>
-    <attribute id="rea" points="3" adjust="0" karma="0"/>
-    <attribute id="str" points="1" adjust="0" karma="0"/>
-    <attribute id="wil" points="2" adjust="0" karma="0"/>
-    <attribute id="log" points="1" adjust="0" karma="0"/>
-    <attribute id="int" points="3" adjust="0" karma="0"/>
-    <attribute id="cha" points="2" adjust="0" karma="0"/>
-    <attribute id="edg" points="3" adjust="0" karma="0"/>
-    <attribute id="mag" points="4" adjust="0" karma="0"/>
+Priorities fitted to the printed stat block: the letters that overspend least; what the attribute, adjustment and skill points can’t hold is bought with karma, and nuyen past the resources with karma.</notes>
+  <printed source="CRB" page="81"><value key="bod" value="3"/><value key="agi" value="5(6)"/><value key="rea" value="4"/><value key="str" value="2"/><value key="wil" value="3"/><value key="log" value="2"/><value key="int" value="4"/><value key="cha" value="3"/><value key="edg" value="4"/><value key="mag" value="5"/><value key="ess" value="6"/><value key="init" value="8 + 2D6"/><value key="dr" value="5"/></printed>
+  <build method="priority" magic="adept" karmaToNuyen="19">
+    <priority column="metatype" letter="E"/>
+    <priority column="attributes" letter="B"/>
+    <priority column="magic" letter="A"/>
+    <priority column="skills" letter="C"/>
+    <priority column="resources" letter="D"/>
+    <attribute id="bod" points="0" adjust="0" karma="2"/>
+    <attribute id="agi" points="0" adjust="0" karma="4"/>
+    <attribute id="rea" points="0" adjust="0" karma="3"/>
+    <attribute id="str" points="0" adjust="0" karma="1"/>
+    <attribute id="wil" points="0" adjust="0" karma="2"/>
+    <attribute id="log" points="0" adjust="0" karma="1"/>
+    <attribute id="int" points="0" adjust="0" karma="3"/>
+    <attribute id="cha" points="0" adjust="0" karma="2"/>
+    <attribute id="edg" points="0" adjust="1" karma="2"/>
+    <attribute id="mag" points="0" adjust="0" karma="0"/>
     <attribute id="res" points="0" adjust="0" karma="0"/>
-    <skill id="crb.tinkering" points="3" karma="0" spec="Gizmos"/>
+    <skill id="crb.tinkering" points="0" karma="3" spec="Gizmos"/>
     <knowledge uid="k1" kind="knowledge" points="1" karma="0">Glow Lore</knowledge>
     <knowledge uid="k2" kind="knowledge" points="1" karma="0">Puddle Streets</knowledge>
     <knowledge uid="k3" kind="language" native="true" points="0" karma="0">Plainspeak</knowledge>

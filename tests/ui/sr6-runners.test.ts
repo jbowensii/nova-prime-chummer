@@ -99,8 +99,9 @@ test('a book sample runner (the importer’s, tests/fixtures/sr6/sample-glow-run
   if (!r.ok) return
   const b = r.ch.build
   expect([r.ch.identity.streetName, b.metatype, b.magic, b.method]).toEqual(['Glow Runner', 'crb.glimmerkin', 'adept', 'priority'])
-  expect(b.attributes.agi.points).toBe(4)
-  expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 3, karma: 0, spec: 'Gizmos' }])
+  expect(b.attributes.agi).toEqual({ points: 0, adjust: 0, karma: 4 }) // the fitted priorities: none of B–D prints attribute points
+  expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 0, karma: 3, spec: 'Gizmos' }])
+  expect(b.priorities).toEqual({ metatype: 'E', attributes: 'B', magic: 'A', skills: 'C', resources: 'D' })
   expect(b.purchases.map(x => x.id)).toEqual(['crb.padded-vest', 'crb.gizmo-kit', 'crb.glow-gland', 'crb.tail-obvious', 'crb.zoom-bike', 'crb.zap-gun'])
   expect(r.ch.printed).toMatchObject({ source: 'CRB', page: 81, values: { agi: '5(6)', init: '8 + 2D6', dr: '5' } })
   expect(b.sins).toHaveLength(2)

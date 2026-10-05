@@ -57,8 +57,11 @@ prints N; the rules give M", with the page). Over budget, a skill above the
 cap, an expertise at creation, a seventh quality, a rating the item doesn't
 come in and the like show as on any runner. Nothing in the file corrects the
 book. Not modelled, so not compared: a skill raised by a ware (reflex
-recorder) and a cyberlimb's own attributes. The priorities aren't assigned,
-so the budgets read overspent until the GM or player sets them.
+recorder) and a cyberlimb's own attributes. The book prints no priorities:
+the importer picks the letters that overspend least for the printed build
+(Magic and Edge on adjustment points, what a pool can't hold bought with
+karma, nuyen past the resources with karma), and Review shows what is still
+overspent.
 
 ## Expanded-list entries the rulebook doesn't print
 

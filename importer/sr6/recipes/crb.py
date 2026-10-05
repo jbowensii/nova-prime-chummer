@@ -818,13 +818,15 @@ def extract(regrouped, ctx=None, book=None):
 
 def _core(ctx):
     """The core rulebook's catalog as imported (custom/sr6/imported/crb/<kind>.xml; ctx["custom_dir"]: custom/sr6), which
-    another book's sample runners cite: kind -> [{id (scoped), name}]; {} before the core rulebook is imported."""
+    another book's sample runners cite: kind -> [{id (scoped), name, attrs, children}]; {} before it's imported."""
     d = os.path.join((ctx or {}).get("custom_dir") or "", "imported", ID.lower())
     out = {}
     for f in sorted(os.listdir(d)) if (ctx or {}).get("custom_dir") and os.path.isdir(d) else []:
         if f.endswith(".xml"):
             root = ET.parse(os.path.join(d, f)).getroot()
-            out[root.get("kind")] = [{"id": e.get("id"), "name": e.findtext("name") or ""} for e in root]
+            out[root.get("kind")] = [{"id": e.get("id"), "name": e.findtext("name") or "", "attrs": dict(e.attrib),
+                                      "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")]}
+                                     for e in root]
     return out
 
 
