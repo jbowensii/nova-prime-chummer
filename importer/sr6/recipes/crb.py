@@ -523,15 +523,16 @@ class _Catalog:
         return True
 
     def contact(self, b, page):
-        """A sample contact: a contacts entry (its archetype: the name; the book prints no connection or loyalty) and
-        its stat block as an npcs entry (group "Contact", no Professional Rating)."""
+        """A sample contact: a contacts entry (its archetype: an `Archetype` label a recipe set, else the name; the book
+        prints no connection or loyalty) and its stat block as an npcs entry (group "Contact", no Professional
+        Rating)."""
         f = self.fields("npcs", b, page)
         f.pop("prose", None)
         if len(f) < 3:
             return False
         lists = {LISTS[k.lower()]: v for k, v in b.labels.items() if k.lower() in LISTS and v}
-        listed = {k for k in b.labels if k.lower() in LISTS}
-        self.add("contacts", b.name, page, {"archetype": b.name}, (), _text(b, listed))
+        listed = {k for k in b.labels if k.lower() in LISTS or k == "Archetype"}
+        self.add("contacts", b.name, page, {"archetype": b.labels.get("Archetype", b.name)}, (), _text(b, listed))
         self.add("npcs", b.name, page, {"group": "Contact", **f},
                  [(t, {}, lists[t]) for t in dict.fromkeys(LISTS.values()) if t in lists], _text(b, listed))
         return True

@@ -249,3 +249,23 @@ def martial_kind(b):
     if "Signature Technique" in b.labels:
         return "martialarts", None
     return ("martialtechniques", None) if "Category" in b.labels else None
+
+
+# a stat band printed as text: its bold headers on one line (`**B A R S W L I C EDG ESS**`, `**DR I/ID AC CM MOVE**`)
+_TEXT_BAND = re.compile(r"^\*\*((?:[A-Z][A-Z/]{0,4} ){3,}[A-Z][A-Z/]{0,4})\*\*\n(.+)$", re.M)
+
+
+def text_bands(text):
+    """A being's stat bands printed as text lines (the cards' and the athletes' books), the values on the line under
+    the bold headers -> (header -> value over all its bands, the text without them). A value's `(6)` printed apart
+    (`4 (6)`) or two run together (`2(+4)3(7)`) are read as printed; a band whose values don't line up stays text."""
+    row, cut = {}, []
+    for m in _TEXT_BAND.finditer(text):
+        heads = m.group(1).split()
+        vals = [v for t in re.sub(r"\s+\(", "(", m.group(2).strip()).split() for v in re.findall(r"[^()\s]+(?:\([^)]*\))?", t)]
+        if len(heads) == len(vals):
+            row.update(zip(heads, vals))
+            cut.append((m.start(), m.end() + 1))  # with its line break
+    for a, b in reversed(cut):
+        text = text[:a] + text[b:]
+    return row, text.strip()

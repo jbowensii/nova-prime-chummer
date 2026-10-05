@@ -2,11 +2,12 @@
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 from importer.convert import convert
 import pdfplumber
 
-from importer.sr6.layout import one_layer, rejoin_ligatures
+from importer.sr6.layout import _is_furniture, one_layer, rejoin_ligatures
 from importer.tests.minipdf import sr6_doubled_pdf, sr6_layout_pdf
 
 
@@ -46,6 +47,12 @@ class Sr6LayoutTest(unittest.TestCase):
         for ln in self.lines:
             self.assertNotIn(ln, ("G", "6", "7"))
             self.assertFalse(ln.endswith((" G", " 6", " 7")), ln)
+
+    def test_a_card_keeps_its_edges(self):
+        book, card = SimpleNamespace(width=612, height=792), SimpleNamespace(width=360, height=216)
+        self.assertTrue(_is_furniture(20, 100, book))
+        self.assertFalse(_is_furniture(20, 100, card))  # a card's text runs to the edge (Johnson 'Dex)
+        self.assertFalse(_is_furniture(340, 200, card))
 
     def test_two_columns_read_column_by_column(self):
         left = [ln for ln in self.lines if ln.startswith("Left column")]

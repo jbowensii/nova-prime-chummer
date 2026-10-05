@@ -25,6 +25,7 @@ _STACK_PAD = 80  # pt; and up to this far apart in x (a one-line label centred b
 _ROW_GAP = 3  # line pitches; a wider gap ends the rows
 _TABLE_SIZE = 0.8  # x body size; table text is no bigger (a 9 pt sidebar beside a 10.5 pt body is text)
 _EDGE, _OUTER, _FOOT = 30, 45, 35  # pt from the left edge, the right edge and the bottom: margin furniture
+_CARD = 432  # pt; a page narrower than 6 in is a card, with no margin furniture
 GUTTER_TOL = 8  # pt; a row's gutter may sit this far off the page's (a boxed sidebar's columns)
 _STRIPE_MAX = 60  # pt; a filled rect at most this tall is a header cell or a row stripe (a box background is taller)
 
@@ -47,12 +48,15 @@ def _word_family(w):
 
 
 def _is_furniture(x0, top, page):
+    if page.width < _CARD:
+        return False  # a card (Johnson 'Dex: 5 x 3 in): its text runs to the edges, no tab letters or running heads
     return x0 < _EDGE or x0 > page.width - _OUTER or top > page.height - _FOOT
 
 
 def furniture(page, words):
-    """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band)."""
-    return [w for w in words if not _is_furniture(w["x0"], w["top"], page)]
+    """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band); on a card, its
+    sideways line (the copyright up its edge)."""
+    return [w for w in words if not _is_furniture(w["x0"], w["top"], page) and (page.width >= _CARD or w["upright"])]
 
 
 def fonts(pdf, min_pages=None) -> Fonts:

@@ -56,6 +56,8 @@
   price for them).
 - **Lofwyr's Legions can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its Saeder-Krupp
   NPCs, the drake qualities and drake powers, its martial art and the rule sections.
+- **Johnson 'Dex can be imported** on Shadowrun 6 **Books** (it is now in the supported list): each Mr. Johnson card
+  becomes a contact (with its bio, plot hooks, gear level and favors) and an NPC with its stats, plus the deck's rules.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
