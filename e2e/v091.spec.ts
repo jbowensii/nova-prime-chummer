@@ -29,6 +29,8 @@ test.beforeAll(async () => {
     .replace('Invented rule text about trouble.', 'Invented **trouble** rules, *made up* for this test, long enough to run past one narrow column of a book page.&#10;&#10;'
       + 'A second invented paragraph.&#10;- an invented list item&#10;- another')
     .replace('</sr6:data>', '  <text of="rules" id="crb.making-trouble-dice">An invented line&#10;that wraps in&#10;the old way.</text></sr6:data>'))
+  const anarchyRules = join(dir, 'custom', 'imported', 'test', 'rules.xml')
+  writeFileSync(anarchyRules, readFileSync(anarchyRules, 'utf8').replace('<text></text>', '<text>Invented quick-reference text for this test.</text>'))
   mkdirSync(config, { recursive: true })
   writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' }]))
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
@@ -206,17 +208,47 @@ test('Rules: a book, a chapter (or sheet) and a search, both games', async ({ pa
   await expect(page.getByLabel('Search the rules')).toBeVisible()
   await page.goto('/#/rules')
   await expect(page.getByLabel('Book', { exact: true }).locator('option').first()).toHaveText('All books')
-  const rules = page.locator('.rule-list > div')
+  const rules = page.locator('.rule-toc li')
   const all = await rules.count()
   await page.getByLabel('Book', { exact: true }).selectOption({ index: 1 })
   expect(await rules.count()).toBeLessThanOrEqual(all)
   await expect(page.getByLabel('Sheet')).toBeVisible()
 })
 
+// the owner's request: Rules opens on a table of contents, each title a link to the rule in a drawer with its own address
+for (const [game, toc, hash, title, text] of [
+  ['Anarchy', '#/rules', '#/rules/test.gadget-basics', 'Risk Reduction (spec)', 'Invented quick-reference text for this test.'],
+  ['SR6', '#/sr6/rules', '#/sr6/rules/crb.making-trouble', 'Making Trouble', 'A second invented paragraph.'],
+]) test(`${game} Rules: a table of contents; a title opens its drawer at its own address, a reload keeps it, Esc goes back`, async ({ page }) => {
+  const at = (h: string) => new RegExp(`${h.replace(/[./]/g, '\$&')}$`)
+  await signIn(page, `/${toc}`)
+  await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
+  await expect(page.locator('.prose')).toHaveCount(0) // titles only: no rule text on the page itself
+  await page.screenshot({ path: `${SHOTS}/rules-toc-${game}-desktop.png`, fullPage: true })
+  await page.locator('.rule-toc').getByRole('link', { name: title, exact: true }).click()
+  await expect(page).toHaveURL(at(hash))
+  const drawer = page.getByRole('dialog', { name: title })
+  await expect(drawer).toContainText(text)
+  await page.reload()
+  await expect(drawer).toContainText(text)
+  await page.screenshot({ path: `${SHOTS}/rules-drawer-${game}-desktop.png` })
+  await page.setViewportSize(PHONE)
+  await fits(page, `${game} rule drawer`)
+  await page.screenshot({ path: `${SHOTS}/rules-drawer-${game}-phone.png` })
+  await page.keyboard.press('Escape')
+  await expect(drawer).toBeHidden()
+  await expect(page).toHaveURL(at(toc))
+  await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
+  await fits(page, `${game} rules contents`)
+  await page.screenshot({ path: `${SHOTS}/rules-toc-${game}-phone.png`, fullPage: true })
+  await page.setViewportSize(DESK)
+})
+
 test('Rules text: paragraphs at a readable width, bold and italic shown as such, no markers', async ({ page }) => {
   await signIn(page, '/#/sr6/rules')
-  const rule = page.locator('.rule-list > div', { hasText: 'Making Trouble' }).first()
-  const text = rule.locator('dd .prose')
+  await page.goto('/#/sr6/rules/crb.making-trouble')
+  const drawer = page.locator('dialog.drawer')
+  const text = drawer.locator('.prose')
   await expect(text.locator('strong')).toHaveText('trouble')
   await expect(text.locator('em')).toHaveText('made up')
   await expect(text.locator('p')).toHaveCount(2)
@@ -226,9 +258,11 @@ test('Rules text: paragraphs at a readable width, bold and italic shown as such,
   const box = (await text.boundingBox())!
   expect(box.width).toBeGreaterThan(500) // not a narrow column
   expect(await text.evaluate(e => parseFloat(getComputedStyle(e).maxWidth) / parseFloat(getComputedStyle(e).fontSize))).toBeLessThanOrEqual(75)
-  // an older import: its lines join into one paragraph
-  await expect(page.locator('.rule-list > div', { hasText: 'Trouble Dice' }).locator('dd p')).toHaveText(['An invented line that wraps in the old way.'])
   await page.screenshot({ path: `${SHOTS}/rules-sr6-text-desktop.png`, fullPage: true })
+  // an older import: its lines join into one paragraph (a section's drawer links to its subsections)
+  await drawer.getByRole('link', { name: 'Trouble Dice' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/rules\/crb\.making-trouble-dice$/)
+  await expect(drawer.locator('.prose p')).toHaveText(['An invented line that wraps in the old way.'])
   await page.setViewportSize(PHONE)
   await fits(page, 'SR6 Rules')
   await page.screenshot({ path: `${SHOTS}/rules-sr6-text-phone.png`, fullPage: true })

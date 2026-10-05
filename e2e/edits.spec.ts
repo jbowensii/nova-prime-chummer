@@ -7,25 +7,30 @@ const dialog = (page: Page) => page.getByRole('dialog').last()
 
 test('edit a rule’s description: saved, shown after a reload with Edited; restore the book version', async ({ page }) => {
   await page.goto('/#/rules')
-  const rule = page.locator('.rule-list > div', { hasText: 'Risk Reduction (spec)' })
+  const rule = page.locator('.rule-toc li', { hasText: 'Risk Reduction (spec)' })
   await expect(rule.locator('.edited')).toHaveCount(0)
   await rule.getByRole('button', { name: 'Edit Risk Reduction (spec)' }).click()
   await dialog(page).getByLabel('Description', { exact: true }).fill('Reroll one die per point, made-up text.')
   await dialog(page).getByRole('button', { name: 'Save changes' }).click()
   await expect(page.locator('.toast', { hasText: 'Saved Risk Reduction (spec).' })).toBeVisible()
-  await expect(rule.locator('dd')).toHaveText('Reroll one die per point, made-up text.')
-
-  await page.reload()
-  await expect(rule.locator('dd')).toHaveText('Reroll one die per point, made-up text.')
   await expect(rule.locator('.edited')).toHaveText('Edited')
 
-  await rule.getByRole('button', { name: 'Edit Risk Reduction (spec)' }).click()
+  // the text is in the rule's drawer, at its own address; its Edit button and Edited mark too
+  await page.goto('/#/rules/test.gadget-basics')
+  await page.reload()
+  const drawer = page.locator('dialog.drawer')
+  await expect(drawer.locator('.prose')).toHaveText('Reroll one die per point, made-up text.')
+  await expect(drawer.locator('.edited')).toHaveText('Edited')
+
+  await drawer.getByRole('button', { name: 'Edit Risk Reduction (spec)' }).click()
   await expect(dialog(page).getByText('Changed from the book')).toBeVisible()
   page.once('dialog', d => d.accept())
   await dialog(page).getByRole('button', { name: 'Restore book version' }).click()
   await expect(page.locator('.toast', { hasText: 'Restored the book’s version' })).toBeVisible()
+  await expect(drawer.locator('.edited')).toHaveCount(0)
+  await expect(drawer.locator('.prose')).toHaveCount(0)
+  await page.keyboard.press('Escape')
   await expect(rule.locator('.edited')).toHaveCount(0)
-  await expect(rule.locator('dd')).toHaveCount(0)
 })
 
 test('edit gear from the picker; a refused edit says why', async ({ page }) => {

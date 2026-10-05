@@ -13,13 +13,15 @@ test('SR6 pages carry the SR6 theme, light and dark; Anarchy pages don’t', asy
   await page.goto('/#/sr6')
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
   expect(await look(page)).toEqual({ game: 'sr6', font: expect.stringMatching(/^Montserrat/), heading: 'rgb(0, 92, 107)', bg: 'rgb(246, 250, 252)', folio: true })
+  // a plain page, light and dark: no circuit pattern (or any texture) from the theme; the circuit board is background art now
+  const plain = () => page.evaluate(() => {
+    const body = getComputedStyle(document.body), after = getComputedStyle(document.body, '::after')
+    return { image: body.backgroundImage, after: after.content, afterImage: after.backgroundImage }
+  })
+  expect(await plain()).toEqual({ image: 'none', after: 'none', afterImage: 'none' })
   await dark(page)
   expect(await look(page)).toMatchObject({ heading: 'rgb(0, 229, 255)', bg: 'rgb(6, 11, 19)' })
-  // the admin's background art, when shown, replaces the circuit board instead of lying under it
-  const circuit = () => page.evaluate(() => getComputedStyle(document.body, '::after').content)
-  expect(await circuit()).not.toBe('none')
-  await page.evaluate(() => document.body.append(Object.assign(document.createElement('div'), { className: 'bg-art' })))
-  expect(await circuit()).toBe('none')
+  expect(await plain()).toEqual({ image: 'none', after: 'none', afterImage: 'none' })
   await page.reload() // the theme is this browser's setting, not the page's: back to light
   await page.goto('/#/sr6/rules')
   await expect(page.getByRole('heading', { name: 'Rules' })).toBeVisible()
@@ -41,6 +43,8 @@ test.describe('a fresh browser', () => {
     const font = (name: string) => page.getByRole('button', { name }).locator('.name').evaluate(e => getComputedStyle(e).fontFamily)
     expect(await font('Shadowrun 6th World')).toMatch(/^Montserrat/)
     expect(await font('Shadowrun Anarchy 2.0')).toMatch(/Goldman/)
+    // the SR6 card: plain, its neon border and glow, no circuit pattern
+    expect(await page.getByRole('button', { name: 'Shadowrun 6th World' }).evaluate(e => getComputedStyle(e).backgroundImage)).toBe('none')
     await page.setViewportSize({ width: 390, height: 844 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
   })

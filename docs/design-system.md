@@ -107,8 +107,10 @@ Every `#/sr6/...` page has `data-game="sr6"` on the root (App.tsx; the game pick
 was too much pink): cyan for titles, outlines and the accent (`--yellow` is the accent token), neon pink second (the
 hatched heading rules, the current tab, hovers and focus), violet as a third, neon green for OK, orange for warnings and
 red for errors. Light is cool paper `#f6fafc` with deep cyan `#005c6b` and pink `#a8006a` (dark enough to read over the
-worst art); dark is blue-black `#060b13` with neon cyan `#00e5ff` and pink `#ff52d9`. The admin's background art, when
-shown, replaces the circuit-board tile instead of lying under it. Headings are Montserrat (the book's wide geometric caps), body text stays Crimson Pro.
-Decoration is our own drawing (a circuit-board tile, hatched heading rules, rounded outlined panels, the "SECTION // SUB"
-folio); no book art. Anarchy's rules are never touched: every SR6 rule is scoped to `[data-game]` or `.sr6-*`.
+worst art); dark is blue-black `#060b13` with neon cyan `#00e5ff` and pink `#ff52d9`. The page itself is plain `--bg`:
+the theme draws no pattern. Our circuit board (cyan traces, pink pads on blue-black) is SR6's default background art
+instead, `server/defaults/sr6-circuit.webp`, added once to the SR6 gallery, which the admin can hide or delete like any
+upload. Headings are Montserrat (the book's wide geometric caps), body text stays Crimson Pro.
+Decoration is our own drawing (hatched heading rules, rounded outlined panels, the "SECTION // SUB" folio, the circuit
+board art); no book art. Anarchy's rules are never touched: every SR6 rule is scoped to `[data-game]` or `.sr6-*`.
 tests/ui/background.test.ts checks the SR6 tokens' contrast over the worst background art too.

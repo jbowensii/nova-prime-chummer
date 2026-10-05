@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from dataclasses import replace
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
@@ -209,7 +210,7 @@ def readable(v):
     if v.strip() in ("", "—"):
         return True
     s = _VAR.sub(" R ", _LEGAL.sub("", v).strip().lstrip("+"))
-    toks = re.findall(r"\d+(?:\.\d+)?|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
+    toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
     if "/" in toks and "R" not in toks:
         return False  # `300/350`: two prices, not a division
     pos = [0]
@@ -224,7 +225,7 @@ def readable(v):
             ok = expr() and peek() == ")"
             pos[0] += 1
             return ok
-        return t == "R" or bool(t and re.fullmatch(r"\d+(?:\.\d+)?", t))
+        return t == "R" or bool(t and re.fullmatch(r"\d+(?:\.\d+)?|\.\d+", t))
 
     def power():
         ok = factor()
@@ -527,6 +528,8 @@ class _Catalog:
             name, attrs["maxLevel"] = self._levels(name)
             if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
                 attrs["maxLevel"] = int(m.group(1))  # `5 Karma per level (1 to 4)`: the levels in the price
+            if not attrs["maxLevel"] and (m := re.search(r",\s*1\s+to\s+(\d+)\s*\)\s*$", name)):
+                attrs["maxLevel"] = int(m.group(1))  # `Addiction (Substance, 1 to 6)`: the levels in the name's note, kept
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
             m = re.search(r"([\d.]+)\s*PP", cost, re.I)
@@ -804,13 +807,27 @@ def extract(regrouped, ctx=None, book=None):
                                for a in ("rating", "avail", "cost") if a in row["attrs"]})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    runners = []
+    runners, core = [], _core(ctx) if samples and bk.ID != ID else None
     for name, b, page in samples:
-        sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated)
+        sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated, core)
         runners.append({"file": f"{sid}.xml", "xml": xml, "name": name, "role": "Archetype", "page": page})
         cat.report += rows
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
                   source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
+
+
+def _core(ctx):
+    """The core rulebook's catalog as imported (custom/sr6/imported/crb/<kind>.xml; ctx["custom_dir"]: custom/sr6), which
+    another book's sample runners cite: kind -> [{id (scoped), name, attrs, children}]; {} before it's imported."""
+    d = os.path.join((ctx or {}).get("custom_dir") or "", "imported", ID.lower())
+    out = {}
+    for f in sorted(os.listdir(d)) if (ctx or {}).get("custom_dir") and os.path.isdir(d) else []:
+        if f.endswith(".xml"):
+            root = ET.parse(os.path.join(d, f)).getroot()
+            out[root.get("kind")] = [{"id": e.get("id"), "name": e.findtext("name") or "", "attrs": dict(e.attrib),
+                                      "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")]}
+                                     for e in root]
+    return out
 
 
 def extra(md, sha):

@@ -4,10 +4,11 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
-import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
+import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, attrRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
 
@@ -284,7 +285,32 @@ const RULES: Rule[] = [
     }
     return hits
   } },
+  // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
+  { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },
 ]
+
+/** "Initiative: the book prints 9(11) + 3D6; the rules give 9(12) + 3D6.": a book sample's printed attributes (natural
+ *  and augmented), Essence, initiative, condition monitors and Defense Rating where the rules give others, cited to its page. */
+function printedHits(c: Ctx): Hit[] {
+  const pr = c.ch.printed
+  if (!pr) return []
+  const d = deriveSr6(c.data, c.cr, c.ch), hits: Hit[] = []
+  // spaces aside, and `6(6)` (augmented as natural) read as `6`
+  const same = (book: string, rules: string) => book.replace(/\s/g, '').replace(/^(\d+)\(\1\)/, '$1') === rules.replace(/\s/g, '')
+  const say = (path: string, what: string, book: string | undefined, rules: string) => {
+    if (book && !same(book, rules))
+      hits.push({ path, message: `${what}: the book prints ${book}; the rules give ${rules}.`, source: pr.source, page: pr.page })
+  }
+  const pair = (natural: number, augmented: number) => (augmented === natural ? `${natural}` : `${natural}(${augmented})`)
+  for (const k of SR6_ATTRS) say(`attributes.${k}`, A(k), pr.values[k], pair(d.attrs[k].natural, d.attrs[k].augmented))
+  if (Number(pr.values.ess) !== d.essence) say('augmentations', 'Essence', pr.values.ess, String(d.essence))
+  // (a book printing one initiative number, `11 + 1D6`, prints the augmented one)
+  const init = pr.values.init?.includes('(') ? pair(d.attrs.rea.natural + d.attrs.int.natural, d.initiative.base) : `${d.initiative.base}`
+  if (d.initiative.dice !== null) say('review', 'Initiative', pr.values.init, `${init} + ${d.initiative.dice}D6`)
+  if (d.monitors.physical !== null && d.monitors.stun !== null) say('review', 'Condition monitors', pr.values.cm, `${d.monitors.physical}/${d.monitors.stun}`)
+  say('gear', 'Defense Rating', pr.values.dr, String(d.defenseRating))
+  return hits
+}
 
 const nameOf = (c: Ctx, x: Sr6Purchase) => entryOf(x, c.data)?.name ?? x.name ?? x.id ?? 'Custom item'
 

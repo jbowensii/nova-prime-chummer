@@ -1,11 +1,12 @@
 // Rules (admin and editors, the GMs): the rules reference, the imported quick-reference sheets (rules kind), text from the
-// private texts file. The table rules they switch on for their players are on Table setup (TableRules.tsx).
+// private texts file. The page is a table of contents; a title opens the rule in a drawer at its own address (#/rules/<id>).
+// The table rules they switch on for their players are on Table setup (TableRules.tsx).
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useMemo, useState } from 'react'
 import { isCanon } from '../engine'
 import type { Catalog } from '../model/types'
-import { NonCanon } from './bits'
+import { Modal, NonCanon } from './bits'
 import { BookSelect } from './CatalogBrowser'
 import { Prose } from './Prose'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
@@ -13,7 +14,7 @@ import { isAdmin, useMe } from './auth'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
 
-export function RulesScreen({ c }: { c: Catalog }) {
+export function RulesScreen({ c, open }: { c: Catalog; open?: string }) {
   const [q, setQ] = useState('')
   const [sheet, setSheet] = useState('')
   const [book, setBook] = useState('')
@@ -29,6 +30,7 @@ export function RulesScreen({ c }: { c: Catalog }) {
   const sheets: [string, string][] = [...SHEETS, ...[...new Set(rules.map(r => r.sheet))].filter(x => !SHEETS.some(([id]) => id === x))
     .map(x => [x, x[0].toUpperCase() + x.slice(1)] as [string, string])]
   const sources = [...new Set(rules.map(r => r.source))].map(s => c.sources.get(s)).filter(Boolean)
+  const rule = open ? c.rules.get(open) : undefined
 
   return (
     <main className="lib rules">
@@ -53,16 +55,21 @@ export function RulesScreen({ c }: { c: Catalog }) {
       {sheets.filter(([id]) => shown.some(r => r.sheet === id)).map(([id, name]) => (
         <section key={id}>
           <h2>{name}</h2>
-          <dl className="rule-list">
+          <ul className="rule-toc">
             {shown.filter(r => r.sheet === id).map(r => (
-              <div key={r.id} id={r.id}>
-                <dt>{r.title} <span className="muted">{r.section}</span> {r.edited && <EditedMark />} <EditButton kind="rules" id={r.id} name={r.title} /></dt>
-                {r.text && <dd><Prose text={r.text} /></dd>}
-              </div>
+              <li key={r.id}>
+                <a href={`#/rules/${encodeURIComponent(r.id)}`}>{r.title}</a> <span className="muted">{r.section}</span> {r.edited && <EditedMark />} <EditButton kind="rules" id={r.id} name={r.title} />
+              </li>
             ))}
-          </dl>
+          </ul>
         </section>
       ))}
+      <Modal open={!!rule} onClose={() => { location.hash = '#/rules' }} title={rule?.title ?? ''} className="drawer rule-drawer">
+        {rule && <>
+          <p className="rule-where"><span className="muted">{sheets.find(([id]) => id === rule.sheet)?.[1]}{rule.section && ` · ${rule.section}`}</span> {rule.edited && <EditedMark />} <EditButton kind="rules" id={rule.id} name={rule.title} /></p>
+          {rule.text ? <Prose text={rule.text} /> : <p className="muted">The rules text isn’t installed.</p>}
+        </>}
+      </Modal>
     </main>
   )
 }

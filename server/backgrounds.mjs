@@ -10,6 +10,9 @@
 //                                   checked by its first bytes (SVG, HTML or anything else: 415); 50 images at most (409) -> 201 item
 //   PUT    /api/backgrounds/:id     admin: { enabled } -> item
 //   DELETE /api/backgrounds/:id     admin -> 204
+//
+// A game with a default (`seed`: Shadowrun 6's circuit board, server/defaults/sr6-circuit.webp) gets it in its gallery once,
+// enabled, at its first request: the root's seeded="true" records that, so once the admin deletes or hides it, it stays so.
 import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -34,18 +37,40 @@ export function parseBackgrounds(xml) {
     enabled: attr(t, 'enabled') !== 'false', uploaded: attr(t, 'uploaded') ?? '', size: Number(attr(t, 'size') ?? 0) }))
     .filter(b => ID.test(b.id ?? '') && b.type in TYPES)
 }
-const backgroundsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Background art (backgrounds.xsd). Written by the server. -->\n'
-  + `<ca2:backgrounds xmlns:ca2="${NS}" version="1">\n${list.map(b => `  <background id="${b.id}" type="${b.type}" name="${esc(b.name)}" enabled="${
+const backgroundsXml = (list, seeded) => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Background art (backgrounds.xsd). Written by the server. -->\n'
+  + `<ca2:backgrounds xmlns:ca2="${NS}" version="1"${seeded ? ' seeded="true"' : ''}>\n${list.map(b => `  <background id="${b.id}" type="${b.type}" name="${esc(b.name)}" enabled="${
     b.enabled}" uploaded="${b.uploaded}" size="${b.size}"/>\n`).join('')}</ca2:backgrounds>\n`
 
-/** `auth`: server/auth.mjs's api (its JSON body reader). */
-export function backgroundsApi({ libraryDir, auth }) {
+const newId = () => randomBytes(6).toString('hex')
+const now = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
+
+/** `auth`: server/auth.mjs's api (its JSON body reader). `seed`: { file, name }, the game's default image (none: no default);
+ *  `track`: books.track, so seeding is a counted write like any other (a restore waits for it; during one it waits). */
+export function backgroundsApi({ libraryDir, auth, seed, track = fn => fn() }) {
   const dir = join(libraryDir, 'backgrounds'), path = join(dir, 'backgrounds.xml')
   const file = b => join(dir, `${b.id}.${b.type}`)
-  const load = async () => parseBackgrounds(await readFile(path, 'utf8').catch(e => { if (e.code === 'ENOENT') return ''; throw e }))
-  const save = async list => { await mkdir(dir, { recursive: true }); await writeAtomic(path, backgroundsXml(list)) }
+  const read = () => readFile(path, 'utf8').catch(e => { if (e.code === 'ENOENT') return ''; throw e })
+  const load = async () => parseBackgrounds(await read())
+  const save = async list => { await mkdir(dir, { recursive: true }); await writeAtomic(path, backgroundsXml(list, !!seed)) }
   let chain = Promise.resolve() // backgrounds.xml's read-modify-writes: one at a time
   const serial = fn => { const run = chain.then(fn); chain = run.catch(() => {}); return run }
+  // the default, once per gallery, after any images already there; a failure (a restore running) tries again next request
+  let seeded = !seed
+  const seeding = () => seeded || Promise.resolve().then(() => track(() => serial(async () => {
+    const xml = await read()
+    if (!/<ca2:backgrounds\b[^>]*\bseeded="true"/.test(xml)) {
+      const list = parseBackgrounds(xml)
+      if (list.length < MAX_IMAGES) {
+        const data = await readFile(seed.file)
+        const b = { id: newId(), type: sniff(data), name: seed.name, enabled: true, uploaded: now(), size: data.length }
+        await mkdir(dir, { recursive: true })
+        await writeAtomic(file(b), data)
+        list.push(b)
+      }
+      await save(list)
+    }
+    seeded = true
+  }))).catch(() => {})
   const item = ({ id, name, enabled, uploaded, size }) => ({ id, name, enabled, uploaded, size })
 
   async function body(req, res) {
@@ -71,6 +96,7 @@ export function backgroundsApi({ libraryDir, auth }) {
     const want = id == null ? ['GET', 'POST'] : ['GET', 'PUT', 'DELETE']
     if (!want.includes(req.method)) return send(res, 405, { error: 'method not allowed' })
     const admin = who.role === 'admin'
+    await seeding()
 
     if (req.method === 'GET' && id == null) {
       const list = await load()
@@ -91,7 +117,7 @@ export function backgroundsApi({ libraryDir, auth }) {
       return serial(async () => {
         const list = await load()
         if (list.length >= MAX_IMAGES) throw fail(409, `${MAX_IMAGES} images at most: delete one first`)
-        const b = { id: randomBytes(6).toString('hex'), type, name, enabled: true, uploaded: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), size: data.length }
+        const b = { id: newId(), type, name, enabled: true, uploaded: now(), size: data.length }
         await mkdir(dir, { recursive: true })
         await writeAtomic(file(b), data)
         list.push(b)

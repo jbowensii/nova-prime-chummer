@@ -1,8 +1,9 @@
 // SR6 Rules (everyone): the core rulebook's rule sections (the rules kind), by chapter in book order, each section under
-// its parent, with its text from the private texts file. Searchable by title and text. The creation rules are on Table
-// setup (Creation.tsx).
+// its parent, with its text from the private texts file. Searchable by title and text. The page is a table of contents; a
+// title opens the rule in a drawer at its own address (#/sr6/rules/<id>). The creation rules are on Table setup (Creation.tsx).
 import { useMemo, useState } from 'react'
 import { isAdmin, useMe } from '../../ui/auth'
+import { Modal } from '../../ui/bits'
 import { BookSelect } from '../../ui/CatalogBrowser'
 import { PageHeader } from '../../ui/nav'
 import { Prose } from '../../ui/Prose'
@@ -18,7 +19,7 @@ function ordered(rules: Sr6Entry[]) {
   return out
 }
 
-export function Sr6Rules({ c }: { c: Sr6Catalog }) {
+export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
   const [q, setQ] = useState('')
   const [chapter, setChapter] = useState('')
   const [book, setBook] = useState('')
@@ -28,6 +29,8 @@ export function Sr6Rules({ c }: { c: Sr6Catalog }) {
   const inBook = book ? rules.filter(r => r.source === book) : rules
   const chapters = [...new Set(inBook.map(r => r.attrs.chapter ?? ''))]
   const t = q.trim().toLowerCase()
+  const rule = open ? c.entries.rules.get(open) : undefined
+  const link = (r: Sr6Entry) => <a href={`#/sr6/rules/${encodeURIComponent(r.id)}`}>{r.name}</a>
   const shown = inBook.filter(r => (!chapter || r.attrs.chapter === chapter) && (!t || `${r.name} ${r.text}`.toLowerCase().includes(t)))
 
   return (
@@ -48,17 +51,21 @@ export function Sr6Rules({ c }: { c: Sr6Catalog }) {
         {chapters.filter(ch => shown.some(r => r.attrs.chapter === ch)).map(ch => (
           <section key={ch}>
             <h2>{ch}</h2>
-            <dl className="rule-list">
+            <ul className="rule-toc">
               {shown.filter(r => r.attrs.chapter === ch).map(r => (
-                <div key={r.id} id={r.id} className={`lvl${r.attrs.level ?? 1}`}>
-                  <dt>{r.name} <span className="muted">{r.source} p.{r.page}</span></dt>
-                  {r.text && <dd><Prose text={r.text} /></dd>}
-                </div>
+                <li key={r.id} className={`lvl${r.attrs.level ?? 1}`}>{link(r)} <span className="muted">{r.source} p.{r.page}</span></li>
               ))}
-            </dl>
+            </ul>
           </section>
         ))}
       </>}
+      <Modal open={!!rule} onClose={() => { location.hash = '#/sr6/rules' }} title={rule?.name ?? ''} className="drawer rule-drawer">
+        {rule && <>
+          <p className="muted">{[rule.attrs.chapter, `${rule.source} p.${rule.page}`].filter(Boolean).join(' · ')}</p>
+          {rule.text ? <Prose text={rule.text} /> : <p className="muted">The rules text isn’t installed.</p>}
+          {rules.some(k => k.attrs.parent === rule.id) && <ul className="rule-toc">{rules.filter(k => k.attrs.parent === rule.id).map(k => <li key={k.id}>{link(k)}</li>)}</ul>}
+        </>}
+      </Modal>
     </main>
   )
 }

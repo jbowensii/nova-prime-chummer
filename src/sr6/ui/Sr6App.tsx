@@ -55,7 +55,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     : page === 'users' ? <UsersScreen game="sr6" />
     : page === 'trash' ? <TrashScreen game="sr6" user={route[1]} />
     : page === 'npcs' && route[1] === 'trash' ? <TrashScreen game="sr6" npcs user={route[2]} />
-    : page === 'rules' || page === 'data' || page === 'table' ? (c && data ? page === 'rules' ? <Sr6Rules c={c} />
+    : page === 'rules' || page === 'data' || page === 'table' ? (c && data ? page === 'rules' ? <Sr6Rules c={c} open={route[1] && decodeURIComponent(route[1])} />
       : page === 'table' ? <main className="lib"><PageHeader title="Table setup" />
         {repo.mode === 'server' ? <ServerCreation c={c} cr={cr} reload={refreshCreation} /> : <p className="muted">The table’s settings are kept on the server.</p>}</main>
       : <Sr6Data c={c} data={data!} reload={refresh} />

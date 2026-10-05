@@ -5,38 +5,46 @@
 Augmented as printed: AGI 5(6).
 Skills not in the catalog: Basket Weaving 2.
 Qualities not in the catalog: Night Eyes (glimmerkin trait); Odd Quirk.
-Gear not in the catalog: Mystery Box.
+Gear not in the catalog: Mystery Box; Glue gun.
 Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—].
-Built from the printed stat block: the priorities aren’t set, so the budgets read overspent until they are.</notes>
-  <build method="priority" magic="adept">
-    <attribute id="bod" points="2" adjust="0" karma="0"/>
-    <attribute id="agi" points="4" adjust="0" karma="0"/>
-    <attribute id="rea" points="3" adjust="0" karma="0"/>
-    <attribute id="str" points="1" adjust="0" karma="0"/>
-    <attribute id="wil" points="2" adjust="0" karma="0"/>
-    <attribute id="log" points="1" adjust="0" karma="0"/>
-    <attribute id="int" points="3" adjust="0" karma="0"/>
-    <attribute id="cha" points="2" adjust="0" karma="0"/>
-    <attribute id="edg" points="3" adjust="0" karma="0"/>
-    <attribute id="mag" points="4" adjust="0" karma="0"/>
+Priorities fitted to the printed stat block: the letters that overspend least; what the attribute, adjustment and skill points can’t hold is bought with karma, and nuyen past the resources with karma.</notes>
+  <printed source="CRB" page="81"><value key="bod" value="3"/><value key="agi" value="5(6)"/><value key="rea" value="4"/><value key="str" value="2"/><value key="wil" value="3"/><value key="log" value="2"/><value key="int" value="4"/><value key="cha" value="3"/><value key="edg" value="4"/><value key="mag" value="5"/><value key="ess" value="6"/><value key="init" value="8 + 2D6"/><value key="dr" value="5"/></printed>
+  <build method="priority" magic="adept" karmaToNuyen="19">
+    <priority column="metatype" letter="E"/>
+    <priority column="attributes" letter="B"/>
+    <priority column="magic" letter="A"/>
+    <priority column="skills" letter="C"/>
+    <priority column="resources" letter="D"/>
+    <attribute id="bod" points="0" adjust="0" karma="2"/>
+    <attribute id="agi" points="0" adjust="0" karma="4"/>
+    <attribute id="rea" points="0" adjust="0" karma="3"/>
+    <attribute id="str" points="0" adjust="0" karma="1"/>
+    <attribute id="wil" points="0" adjust="0" karma="2"/>
+    <attribute id="log" points="0" adjust="0" karma="1"/>
+    <attribute id="int" points="0" adjust="0" karma="3"/>
+    <attribute id="cha" points="0" adjust="0" karma="2"/>
+    <attribute id="edg" points="0" adjust="1" karma="2"/>
+    <attribute id="mag" points="0" adjust="0" karma="0"/>
     <attribute id="res" points="0" adjust="0" karma="0"/>
-    <skill id="crb.tinkering" points="3" karma="0" spec="Gizmos"/>
+    <skill id="crb.tinkering" points="0" karma="3" spec="Gizmos"/>
     <knowledge uid="k1" kind="knowledge" points="1" karma="0">Glow Lore</knowledge>
     <knowledge uid="k2" kind="knowledge" points="1" karma="0">Puddle Streets</knowledge>
     <knowledge uid="k3" kind="language" native="true" points="0" karma="0">Plainspeak</knowledge>
-    <knowledge uid="k4" kind="language" points="1" karma="0">Glimmertongue</knowledge>
+    <knowledge uid="k4" kind="language" points="0" karma="1">Glimmertongue</knowledge>
     <quality uid="q5" id="crb.lucky-streak" level="2" name="Lucky Streak"/>
     <quality uid="q6" id="crb.butterfingers" level="1" name="Butterfingers"/>
     <quality uid="q7" id="crb.steady-hands" level="1" free="true" name="Steady Hands"/>
-    <pick uid="p8" kind="adeptpowers" id="crb.quick-feet" level="2" name="Quick Feet"/>
-    <pick uid="p9" kind="adeptpowers" id="crb.glow-sense" name="Glow Sense"/>
-    <purchase uid="g10" kind="armor" id="crb.padded-vest" name="Padded Vest" qty="1" worn="true"/>
-    <purchase uid="g11" kind="gear" id="crb.gizmo-kit" name="Gizmo Kit" rating="4" qty="1" note="Gizmo Kit (rating 4)"/>
-    <purchase uid="g13" kind="augmentations" id="crb.glow-gland" name="Glow Gland" rating="2" qty="1" note="Glow Gland 2"/>
-    <purchase uid="g14" kind="vehicles" id="crb.zoom-bike" name="Zoom Bike" qty="1"/>
-    <purchase uid="g15" kind="weapons" id="crb.zap-gun" name="Zap Gun" qty="1" note="Zap Gun [Pistol, DV 3P, SA, 8/10/—/—, 10(c), w/ 50 rounds]"/>
-    <contact uid="c17" name="Fixer Fred" archetype="Fixer Fred" connection="3" loyalty="2"/>
-    <contact uid="c18" name="Glow Dealer" archetype="Glow Dealer" connection="1" loyalty="4"/>
+    <quality uid="q8" id="crb.spark-fizz-bane" level="1" note="Water" name="Spark/Fizz Bane"/>
+    <pick uid="p9" kind="adeptpowers" id="crb.quick-feet" level="2" name="Quick Feet"/>
+    <pick uid="p10" kind="adeptpowers" id="crb.glow-sense" name="Glow Sense"/>
+    <purchase uid="g11" kind="armor" id="crb.padded-vest" name="Padded Vest" qty="1" worn="true"/>
+    <purchase uid="g12" kind="gear" id="crb.gizmo-kit" name="Gizmo Kit" rating="4" qty="1" note="Gizmo Kit (rating 4)"/>
+    <purchase uid="g15" kind="augmentations" id="crb.glow-gland" name="Glow Gland" rating="2" qty="1" grade="alpha" note="Glow Gland 2 (alpha)"/>
+    <purchase uid="g16" kind="augmentations" id="crb.tail-obvious" name="Tail (obvious)" qty="1" note="cybertail (obvious, w/ glow tip)"/>
+    <purchase uid="g17" kind="vehicles" id="crb.zoom-bike" name="Zoom Bike" qty="1"/>
+    <purchase uid="g18" kind="weapons" id="crb.zap-gun" name="Zap Gun" qty="1" note="Zap Gun [Pistol, DV 3P, SA, 8/10/—/—, 10(c), w/ 50 rounds]"/>
+    <contact uid="c20" name="Fixer Fred" archetype="Fixer Fred" connection="3" loyalty="2"/>
+    <contact uid="c21" name="Glow Dealer" archetype="Glow Dealer" connection="1" loyalty="4"/>
     <lifestyle id="crb.shoebox" months="2"/>
     <sin uid="s1" name="Fake SIN 1" kind="fake" rating="3"><licence name="zap license" rating="3"/></sin>
     <sin uid="s2" name="Fake SIN 2" kind="fake" rating="3"><licence name="zap license" rating="3"/></sin>

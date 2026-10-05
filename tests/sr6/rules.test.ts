@@ -333,6 +333,27 @@ test('lifepath: a module twice only as the setting allows; the best attribute pi
 })
 
 // Review data
+test('a book sample: each printed number the rules give otherwise is a warning citing its page; the file is never corrected', () => {
+  const ch = runner()
+  ch.build.attributes.rea.points = 3 // REA 4
+  ch.build.purchases.push({ uid: 'w1', kind: 'augmentations', id: 'crb.glow-eyes', rating: 1, qty: 1, accessories: [],
+    bonuses: [{ target: 'rea', value: 1, perRating: true }, { target: 'initDice', value: 1, perRating: true }] })
+  const { data, cr } = made({ rules: { initiativeDice: 1, monitorBase: 8, monitorDivisor: 2 } })
+  // invented printed numbers: REA (augmented), BOD (`1(1)` reads as 1) and initiative as the rules give them, the rest not
+  ch.printed = { source: 'CRB', page: 81, values: { rea: '4(5)', bod: '1(1)', agi: '3', ess: '9', init: '5(6) + 2D6', cm: '1/2', dr: '7' } }
+  const v = validateSr6(data, cr, ch).filter(x => x.code === 'sample.printed')
+  expect(v.map(x => [x.path, x.message])).toEqual([
+    ['attributes.agi', 'AGI: the book prints 3; the rules give 1.'],
+    ['augmentations', 'Essence: the book prints 9; the rules give 4.9.'],
+    ['review', 'Condition monitors: the book prints 1/2; the rules give 9/9.'],
+    ['gear', 'Defense Rating: the book prints 7; the rules give 1.'],
+  ])
+  expect(v.every(x => x.severity === 'warning' && x.source === 'CRB' && x.page === 81)).toBe(true)
+  expect(ch.printed.values.agi).toBe('3')
+  delete ch.printed
+  expect(validateSr6(data, cr, ch).filter(x => x.code === 'sample.printed')).toEqual([])
+})
+
 test('every violation whose setting has a page carries it', () => {
   const ch = runner()
   ch.build.attributes.bod.points = 8; ch.build.attributes.str.points = 8

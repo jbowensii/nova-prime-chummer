@@ -17,6 +17,7 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
   <token>data:image/png;base64,…</token>
   <background>…</background>
   <notes>…</notes>
+  <printed source="CRB" page="81"><value key="rea" value="5(7)"/><value key="init" value="8(10) + 3D6"/>…</printed>
   <build method="priority" magic="aspected" aspectedSkill="crb.hexing" tradition="Street hoodoo" drainAttr="cha"
       powerPointsBought="0" initiation="1" submersion="0" karmaToNuyen="3">
     <priority column="metatype" letter="D"/> …          (5; no letter: not assigned yet)
@@ -48,6 +49,11 @@ draft with none picked yet. `finalizedAt`, `finalKarma` and `finalNuyen` are set
 `campaign` is set through the server. `rev` is the server's revision counter and is left out of exports. `sampleKey`:
 see NPCs below.
 
+`<printed>` (a book sample, from the importer): its stat block's numbers as the book prints them, with the book's
+`source` and `page`. `key` is an attribute abbreviation (`5(7)`: natural and augmented), `ess`, `init` (`8(10) + 3D6`),
+`cm` (`11/10`, Physical/Stun) or `dr`. Review compares each with what the rules give and warns where they differ ("REA:
+the book prints 4(6); the rules give 4(7)", the page cited); the file never corrects them. A copy keeps them.
+
 `<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, purchases and
 accessories, lifestyle; career spends included), in the SR6 data files' own format with their text, refreshed on every
 change while the compendium is readable. When it no longer is (unshared or deleted), each copy stands in for its entry
@@ -76,7 +82,7 @@ copy". Book entries are never copied here.
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>`: what a ware, power or item adds, entered by the player (the catalog has no bonus
-  data). `target` is an attribute abbreviation or `initDice`; `perRating`: times the line's rating.
+  data). `target` is an attribute abbreviation, `initDice` or `defense` (Defense Rating); `perRating`: times the line's rating.
 - `<sin kind="real|fake" rating?>` with its `<licence>`s.
 
 ## Career ledger

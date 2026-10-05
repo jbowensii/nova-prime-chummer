@@ -2,6 +2,7 @@
 spell's category on a text line under its heading, gear tables with their descriptions under level-3 headings, a face's
 stat block in its section's text). Every name, number and line is invented."""
 import os
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -145,6 +146,26 @@ class SoRecipeTest(unittest.TestCase):
         self.assertEqual((q["Mumbler"]["kind"], q["Mumbler"]["karma"], q["Mumbler"]["karmaMax"]), ("negative", "4", "7"))
         self.assertEqual([s["name"] for s in self.res.samples], ["Smooth Talker"])
         self.assertFalse(any("preview" in n.lower() for n in entries(self.res, "rules")))
+
+    def test_faces_cite_the_core_rulebook_as_imported(self):
+        """A face's skills and metatype come from the core rulebook's catalog already imported (ids scoped crb.*); with
+        none imported they're reported unmatched."""
+        with tempfile.TemporaryDirectory() as custom:
+            os.makedirs(os.path.join(custom, "imported", "crb"))
+            for kind, tag, name in (("skills", "skill", "Con"), ("metatypes", "metatype", "Elf")):
+                with open(os.path.join(custom, "imported", "crb", f"{kind}.xml"), "w", encoding="utf8") as f:
+                    f.write(f'<sr6:data xmlns:sr6="{sr6.NS}" kind="{kind}" version="1"><{tag} id="crb.{name.lower()}" source="CRB" '
+                            f'page="9"><name>{name}</name></{tag}></sr6:data>')
+            regrouped, _ = regroup.regroup(BOOK_MD, so.ALIASES, name_headers=so.NAME_HEADERS, end_page=so.END_PAGE)
+            face = ET.fromstring(so.extract(regrouped, {"custom_dir": custom}).samples[0]["xml"])
+        self.assertEqual(face.get("metatype"), "crb.elf")
+        self.assertEqual([x.get("id") for x in face.iter("skill")], ["crb.con"])
+        self.assertIn("Skills not in the catalog: Influence 6.", face.findtext("notes"))
+        # the band `DR | I/ID | AC | CM` as the numbers Review compares (initiative 7/1: 7 + 1D6)
+        self.assertEqual({v.get("key"): v.get("value") for v in face.find("printed") if v.get("key") in ("init", "cm", "dr")},
+                         {"init": "7 + 1D6", "cm": "9/10", "dr": "3"})
+        alone = ET.fromstring(self.res.samples[0]["xml"])
+        self.assertEqual((alone.get("metatype"), list(alone.iter("skill"))), (None, []))
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

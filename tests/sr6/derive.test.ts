@@ -69,6 +69,25 @@ test('the initiative dice cap, when set, holds the dice (an invented cap of 2); 
   expect(free.unset).not.toContain('initiativeDiceMax')
 })
 
+test('the Built Tough quality (set to a made-up one) adds a Physical box per level; unset, none', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.lucky-streak', level: 2 })
+  const plain = derive(ch).d.monitors.physical!
+  expect(derive(ch, { rules: { builtToughQuality: 'crb.lucky-streak' } }).d.monitors).toMatchObject({ physical: plain + 2, stun: 9 + 1 })
+})
+
+test('the Dermal Deposits quality (set to a made-up one) adds 1 to the Defense Rating; unset, nothing', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.knack', level: 1 })
+  expect(derive(ch, { rules: { dermalDepositsQuality: 'crb.knack' } }).d.defenseRating).toBe(derive(ch).d.defenseRating + 1)
+})
+
+test('a Defense Rating bonus (a made-up plating at rating 2) adds to the Defense Rating', () => {
+  const ch = runner()
+  buy(ch, 'augmentations', 'crb.glow-eyes', { rating: 2, bonuses: [{ target: 'defense', value: 1, perRating: true }] })
+  expect(derive(ch).d.defenseRating).toBe(derive(runner()).d.defenseRating + 2)
+})
+
 test('worn armor adds its defense; armor not worn doesn’t', () => {
   const ch = runner(), vest = buy(ch, 'armor', 'crb.padded-vest')
   expect(derive(ch).d.defenseRating).toBe(4)

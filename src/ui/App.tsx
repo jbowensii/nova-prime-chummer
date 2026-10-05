@@ -106,7 +106,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
         : page === 'books' && id === 'ai' ? <AiSettings />
         : page === 'books' && id && tab === 'review' ? <BookReview key={id} c={catalog} id={id} />
         : page === 'books' ? <BooksScreen c={catalog} reload={() => void refresh()} />
-        : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} />
+        : page === 'data' ? <DataScreen c={catalog} /> : page === 'rules' ? <RulesScreen c={catalog} open={id && decodeURIComponent(id)} />
         : page === 'table' ? <TableSetupScreen c={catalog} /> : <Library c={catalog} />}
     </CatalogEdits></RepoContext.Provider>
   )
