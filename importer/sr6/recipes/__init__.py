@@ -34,6 +34,18 @@ SKIP = [
      r"\berrata\b"),
     ("a character sheet", {"3305040657acf500bda65988ea3701c2b27eec01e96d3d62c8c3d91ba6580b2f"},
      r"\bcharacter[\s_-]+sheet\b|\brecord\s+sheet\b"),
+    # the Beginner Box's handouts (its Battle Royale adventure is a book the general recipe reads)
+    ("Beginner Box material (quick-start rules, dossiers, cards, map)",
+     {"7fa4b5ffb4dd95dccedf71f4c46b22212102fc20068ea82834e62fe15d6392bc",  # Dossier Frostburn
+      "50fe3d016e173e11f175e8d2e2071c190977c0e79fdaeac5bf0cdca67710d2c1",  # Dossier Rude
+      "00ca28269211f20e967f0d55f2abf98fbbdafec812ceff2d9dd54ed8bb67344a",  # Dossier Yu
+      "08c61c617c34e09ff3b1b0bd4efa186f1d0c248a40c785836e048e70232b3e2c",  # Dossier Zipfile
+      "def5459b7d34f18151222ea94cc804fa4b2286e17793b31e62bbd94d736302fe",  # Instant Guide
+      "c9b5d153a6bd9a1f0bccaf792b948bee63971662b3d419431b6295c2fd65be4b",  # Poster Map
+      "b50c2a9d2be0c1a82d1c17dfbf37bb5824b9a7714e6d6b8fba22e179b57b4d0f",  # Quick Start Rules
+      "35556b554a4909b8cb48a7373db749f37b39478b095c252c5aade95920629b17"},  # Reference Cards
+     r"\bbeginner\s+box\b.*\b(?:dossier|instant\s+guide|poster\s+map|quick[\s-]*start|reference\s+cards)\b"
+     r"|\b(?:dossier|instant\s+guide|poster\s+map|quick[\s-]*start\s+rules|reference\s+cards)\b.*\bbeginner\s+box\b"),
 ]
 
 
