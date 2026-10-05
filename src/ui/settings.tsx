@@ -11,8 +11,11 @@ import { Modal } from './bits'
 /** artStrength: the background art's strength in %, 0–100 (100: app.css's own strengths, which keep text readable) */
 /** sheetArt / sheetArtPrint: the background art on the character sheet on screen / when printed; sheetArtStrength: its own
  *  strength (print/shared.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
+/** sr6SheetArt / sr6SheetArtPrint / sr6SheetArtStrength: the same three for Shadowrun 6's sheets, kept apart from Anarchy's
+ *  (each game has its own art; print/shared.tsx useSheetArt) */
 export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book'; art: 'on' | 'off'; artStrength: number
-  sheetArt: 'on' | 'off'; sheetArtPrint: 'on' | 'off'; sheetArtStrength?: number }
+  sheetArt: 'on' | 'off'; sheetArtPrint: 'on' | 'off'; sheetArtStrength?: number
+  sr6SheetArt?: 'on' | 'off'; sr6SheetArtPrint?: 'on' | 'off'; sr6SheetArtStrength?: number }
 const KEY = 'ca2.settings.v1'
 export const DEFAULTS: Settings = { theme: 'light', texture: 'accents', print: 'plain', art: 'on', artStrength: 100, sheetArt: 'on', sheetArtPrint: 'off' }
 
@@ -20,7 +23,8 @@ export const DEFAULTS: Settings = { theme: 'light', texture: 'accents', print: '
 export const strength = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : 100
 
 export function loadSettings(): Settings {
-  try { const s = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; return { ...s, artStrength: strength(s.artStrength), sheetArtStrength: s.sheetArtStrength === undefined ? undefined : strength(s.sheetArtStrength) } } catch { return DEFAULTS }
+  try { const s = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; return { ...s, artStrength: strength(s.artStrength), sheetArtStrength: s.sheetArtStrength === undefined ? undefined : strength(s.sheetArtStrength),
+    sr6SheetArtStrength: s.sr6SheetArtStrength === undefined ? undefined : strength(s.sr6SheetArtStrength) } } catch { return DEFAULTS }
 }
 
 /** Set the data-* attributes the CSS keys off. Call before first render to avoid a flash. */

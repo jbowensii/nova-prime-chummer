@@ -68,3 +68,28 @@ test('the sheet’s own background art keeps the sheet’s ink readable at every
   expect(sheet).toMatch(/\.sheet-art\.no-print \{ display: none !important; \}/)
   expect(sheet).toMatch(/prefers-reduced-transparency: reduce\) \{ \.sheet-art \{ display: none/)
 })
+
+test('the Shadowrun 6 look keeps its text readable too, over the worst art, light and dark, on screen and on the sheet', () => {
+  // src/sr6/ui/theme.css: its tokens over app.css's (the art's veil and filter are app.css's, shared)
+  const sr6 = readFileSync('src/sr6/ui/theme.css', 'utf8')
+  const sblock = (sel: string) => sr6.match(new RegExp(`${sel.replace(/[[\]()]/g, '\\$&')} \\{([^}]*)\\}`))![1]
+  const cover = Math.min(...[...art.matchAll(/var\(--bg\) (\d+)%/g)].map(m => Number(m[1]) / 100))
+  const k = Number(art.match(/filter: contrast\(([\d.]+)\)/)![1])
+  const light = sblock(":root[data-game='sr6']"), dark = sblock(":root[data-game='sr6'][data-theme='dark']")
+  for (const [theme, b, worst] of [['light', light, 0], ['dark', dark, 255]] as const) {
+    const t = (n: string) => rgb(token(b, n, theme === 'dark' ? token(light, n) : undefined))
+    const bg = t('bg').map(v => v * cover + ((worst / 255 - 0.5) * k + 0.5) * 255 * (1 - cover))
+    for (const [name, min] of [['text', 7], ['text-2', 7], ['text-3', 4.5], ['heading', 4.5], ['rust', 4.5], ['err', 4.5]] as const)
+      expect(ratio(t(name), bg), `sr6 ${theme} --${name}`).toBeGreaterThanOrEqual(min)
+    // the accent fill (primary buttons) and its text; the sidebar's text on its panel
+    expect(ratio(t('accent-ink'), t('yellow')), `sr6 ${theme} accent`).toBeGreaterThanOrEqual(4.5)
+    for (const name of ['panel-text', 'panel-muted', 'heading', 'err'])
+      expect(ratio(t(name), t('panel')), `sr6 ${theme} --${name} on the panel`).toBeGreaterThanOrEqual(4.5)
+  }
+  // the sheet's SR6 inks on paper under the sheet art's strongest showing (0.31 of a black image, flattened: see above)
+  const sheet = readFileSync('src/print/sheet.css', 'utf8'), sk = Number(sheet.slice(sheet.indexOf('/* ---- sheet art')).match(/filter: contrast\(([\d.]+)\)/)![1])
+  const paper = [255, 255, 255].map(v => v * 0.69 + 0.5 * (1 - sk) * 255 * 0.31)
+  const s = (n: string) => rgb(sr6.match(new RegExp(`\\.sr6-sheet \\{[^}]*--s-${n}: (#[0-9a-f]{6})`))![1])
+  for (const [name, min] of [['ink', 7], ['ink-2', 4.5], ['rust', 4.5], ['indigo', 4.5]] as const)
+    expect(ratio(s(name), paper), `sr6 sheet --s-${name}`).toBeGreaterThanOrEqual(min)
+})

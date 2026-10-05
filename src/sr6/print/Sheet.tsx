@@ -102,6 +102,8 @@ export function Sr6Sheet() {
             <p className="s-small">Physical {d.monitors.physical ?? '—'}</p>{boxes(d.monitors.physical)}
             <p className="s-small">Stun {d.monitors.stun ?? '—'}</p>{boxes(d.monitors.stun, 's')}
             <p className="s-small">Overflow {d.monitors.overflow}</p>{boxes(d.monitors.overflow, 'i')}
+            <p className="s-small">Edge points {d.attrs.edg.augmented}</p>
+            <div className="s-boxes sr6-edge" aria-hidden="true">{Array.from({ length: d.attrs.edg.augmented }, (_, i) => <span key={i} />)}</div>
             <table className="sr6-derived-t"><tbody>
               {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating],
                 ['Composure', d.composure], ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry],

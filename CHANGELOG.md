@@ -57,6 +57,13 @@
   when the compendium is unshared or deleted. Review then notes that the entry's source is no longer available.
 - Exports (runner file, Foundry export) carry those copies, so the importer and the Foundry module still get the
   entries' data.
+- **Shadowrun 6 has a look of its own**, light and dark: every Shadowrun 6 page takes the core rulebook's style (white
+  page, magenta section titles in wide capitals, rounded magenta-outlined panels, grey sidebars, a faint circuit-board
+  background and a "SHADOWRUN 6 // RULES" line at the foot of the page); dark mode is deep purple with neon magenta and
+  teal. The printed Shadowrun 6 sheet echoes the official sheet (rounded magenta boxes, Edge points as hexagons). The
+  **Choose your game** page shows each game in its own style. Anarchy's pages look exactly as before.
+- **Each game's sheet art is its own.** A Shadowrun 6 sheet's Background switches, strength and image pick are kept
+  apart from Anarchy's: turning the art off on one game's sheets leaves the other's as it was.
 
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 

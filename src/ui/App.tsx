@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { PageHeader } from './nav'
 import { loadCatalog } from '../engine'
 import { detectRepo, migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
@@ -23,6 +23,7 @@ import { DataScreen } from './tabs/Data'
 import { TrashScreen } from './Trash'
 import { UsersScreen } from './Users'
 import './app.css'
+import '../sr6/ui/theme.css'
 import { BackgroundArt } from './Background'
 import { GamePicker } from './GamePicker'
 import { Sr6Main } from '../sr6/ui/Sr6App'
@@ -159,6 +160,9 @@ export default function App() {
     return () => removeEventListener('hashchange', on)
   }, [])
   const user = me?.user
+  // the game the page's look follows (sr6/ui/theme.css keys off it): the picker mixes both, #/sr6… is Shadowrun 6's
+  const look = !route.length && !game ? 'pick' : gameOf(route)
+  useLayoutEffect(() => { document.documentElement.dataset.game = look }, [look])
   useFocusTitle(`${route[0] ?? ''}/${route[0] === 'c' || route[0] === 'n' ? route[1] : ''}/${me?.setup}/${!!user}`)
   // a session that ends while the app is open: the sign-in form goes over the page, which keeps its state (unsaved
   // runner edits are sent again once signed back in); someone else signing in there starts afresh
