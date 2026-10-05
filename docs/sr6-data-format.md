@@ -52,8 +52,9 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
+| grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
-| programs | program | type* (basic, hacking, … as printed), avail, cost (where the book prints them: the core rulebook's per type) | — |
+| programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per, slots | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
@@ -72,6 +73,13 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | contacts | contact | connection, loyalty, archetype | — |
 | lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills; contactTypes (academic, corporate, criminal, engineering, government, magic, matrix, media, medical, street; absent: any) | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
+
+Implant grades (`grades`): the core rulebook's grade table (used, alphaware, betaware, deltaware) and Body Shop's omega
+grade, exoware (cyberware only) and gammaware (an Essence factor only: it isn't offered). A grade's key is its name
+without "ware" or "grade" (`alpha`, `omega`, `exo`); the creation settings `grade:<key>:essence|cost|avail` replace
+its factors, so the standard five (which ship as settings) can be changed on Table setup. The augmentation picker
+offers every grade whose Essence factor is set (a catalog grade also needs its cost) to the types it is for. The
+Foundry book export leaves grades out (a purchase carries its grade's key).
 
 Life modules (lifepath creation) are structured grants with no prose. The Sixth World Companion's recipe
 (`importer/sr6/recipes/swc.py`, notes in `swc.md`) writes them: its three opening modules (every runner has them) and

@@ -22,6 +22,18 @@ Essence, made up.
 **Game Effect:** You glow, made up.
 <!-- page 30 -->
 # CHROME LIFE
+## New and Revised Implant Grades
+Made-up grades.
+### Rusty Grade
+A rusty grade keeps the same x1.3 Es-
+sence cost, x 0.4 nuyen cost, and the –2 Availability.
+### Clunkware
+Clunkware adds twenty percent to the base Essence cost; the nuyen cost is multiplied by 0.7.
+Clunkware grade can only be applied to cyberware.
+### Dreamware
+Dreamware should be considered to have a 0.3 Essence multiplier.
+### Vagueware
+Vagueware is better, somehow.
 ## Bodyware
 #### Zap Tail
 A made-up tail that zaps.
@@ -146,6 +158,14 @@ class BsRecipeTest(unittest.TestCase):
         g = entries(self.res, "gear")
         self.assertEqual((g["Fizz Swarm (colony template)"]["cost"], g["Fizz Swarm (pre-built)"]["avail"]), ("5000", "2(L)"))
         self.assertEqual((g["Fizz"]["category"], g["Fizz"]["cost"], g["Fizz"]["avail"]), ("drugs", "70", "3"))
+
+    def test_grades_read_from_their_prose(self):
+        g = entries(self.res, "grades")
+        self.assertEqual({k: (v.get("essence"), v.get("cost"), v.get("avail"), v.get("types")) for k, v in g.items()},
+                         {"Rusty Grade": ("1.3", "0.4", "-2", None), "Clunkware": ("1.2", "0.7", None, "cyberware"),
+                          "Dreamware": ("0.3", None, None, None)})
+        self.assertIn(("missing-value", "Vagueware"), [(r["kind"], r["name"]) for r in self.res.report])
+        self.assertIn("Clunkware", entries(self.res, "rules"))  # the sections stay rules too
 
     def test_qualities_critters_and_rules(self):
         q = entries(self.res, "qualities")

@@ -3,7 +3,7 @@
 import type { Sr6Character } from './character'
 
 export type Sr6Kind =
-  | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations'
+  | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations' | 'grades'
   | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
   | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
 
@@ -16,6 +16,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   weapons: { tag: 'weapon', label: 'Weapons' },
   armor: { tag: 'armor', label: 'Armor' },
   augmentations: { tag: 'augmentation', label: 'Augmentations' },
+  grades: { tag: 'grade', label: 'Augmentation grades' },
   electronics: { tag: 'device', label: 'Electronics' },
   programs: { tag: 'program', label: 'Programs' },
   gear: { tag: 'gear', label: 'Gear' },

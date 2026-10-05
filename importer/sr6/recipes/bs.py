@@ -168,5 +168,52 @@ def _prep(bs):
     return out
 
 
+_NUM = r"(\d+(?:\.\d+)?)"
+_WORDS = {"five": 5, "ten": 10, "fifteen": 15, "twenty": 20, "twenty-five": 25, "thirty": 30, "fifty": 50}
+_G_ESS = re.compile(rf"x\s*{_NUM}\s*essence|{_NUM}\s*essence\s+multiplier|adds\s+([\w-]+)\s+percent\s+to\s+the\s+base\s+essence", re.I)
+_G_COST = re.compile(rf"x\s*{_NUM}\s*nuyen|nuyen\s+cost\s+is\s+multiplied\s+by\s+{_NUM}", re.I)
+_G_AVAIL = re.compile(r"([–−+-])\s*(\d+)\s+availability", re.I)
+_G_ONLY = re.compile(r"can\s+only\s+be\s+applied\s+to\s+(cyberware|bioware)", re.I)
+
+
+def _grades(bs, cat):
+    """The implant grades (CHROME LIFE, New and Revised Implant Grades: a level-3 section each) as grades: their
+    Essence and cost multipliers and Availability modifier read from the prose (`x1.1 Essence cost, x 0.5 nuyen cost,
+    and the –1 Availability`, `adds ten percent to the base Essence cost`, `0.4 Essence multiplier`), the types one
+    can only be applied to. A grade whose Essence factor doesn't read is reported (missing-value); one with no cost
+    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too."""
+    on = False
+    for b in bs:
+        if b.type == "section" and b.level <= 2:
+            on = norm(b.name) == "new and revised implant grades"
+            continue
+        if not on or b.type != "section" or b.level != 3:
+            continue
+        t = " ".join(re.sub(r"-\n(?=[a-z])", "", b.text).split())
+        page = max(1, b.page - PAGE_OFFSET)
+        if not (m := _G_ESS.search(t)):
+            cat.report.append({"kind": "missing-value", "file": "grades.xml", "name": b.name, "field": "essence", "page": page})
+            continue
+        pct = m.group(3) and (_WORDS.get(m.group(3).lower()) or (int(m.group(3)) if m.group(3).isdigit() else None))
+        if m.group(3) and pct is None:
+            cat.report.append({"kind": "book-value", "file": "grades.xml", "name": b.name, "field": "essence",
+                               "value": m.group(0), "page": page})
+            continue
+        cells = {"ESS": m.group(1) or m.group(2) or f"{1 + pct / 100:g}"}
+        if c := _G_COST.search(t):
+            cells["COST"] = c.group(1) or c.group(2)
+        if a := _G_AVAIL.search(t):
+            cells["AVAIL"] = a.group(1) + a.group(2)
+        only = _G_ONLY.search(t)
+        cat.grade(b.name, cells, page, only and only.group(1).lower())
+
+
 def extract(regrouped, ctx=None):
-    return crb.extract(_prep(list(blocks(regrouped))), ctx, book=sys.modules[__name__])
+    bs = _prep(list(blocks(regrouped)))
+    res = crb.extract(bs, ctx, book=sys.modules[__name__])
+    cat = crb._Catalog(ID, ID.lower(), BOOK)
+    _grades(bs, cat)
+    if cat.entries["grades"]:
+        res.files["grades.xml"] = cat.xml("grades")
+    res.report += cat.report
+    return res

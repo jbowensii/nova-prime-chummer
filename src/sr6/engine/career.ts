@@ -6,10 +6,10 @@
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers.
 import { newId, type Violation } from '../../model/types'
 import type { PickKind, Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6LedgerEntry } from '../model/character'
-import { gradable } from './actions'
 import { attrRating, priced, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { rated, ratingRange } from './values'
@@ -231,8 +231,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const e = x.id ? data.entry(x.kind, x.id) ?? no('unknown-entry') : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
-      if (x.grade && num(cr, `grade:${x.grade}:essence`) === undefined) no('unknown-grade')
-      if (x.grade && !gradable(e)) no('no-grade')
+      const gp = x.grade ? gradeProblem(cr, data, x.grade, e) : null
+      if (gp) no(gp)
       // R: a cost the app can't read isn't guessed; the GM can buy it as a custom line
       const pr = priced(x, data, cr)
       if (!pr.ok) no('book-value')

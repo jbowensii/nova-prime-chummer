@@ -122,7 +122,7 @@ class Sr6RunTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("state: done", out)
         self.assertRegex(out, r"weapons\.xml\s+5")
-        self.assertIn("unpaired-row: 13", out)  # rows with no description of their own (the made-up alias isn't the book's)
+        self.assertIn("unpaired-row: 14", out)  # rows with no description of their own (the made-up alias isn't the book's)
         self.assertIn("name=Lost Blaster", out)
 
     def test_check_command_on_a_made_up_pdf(self):
@@ -140,7 +140,7 @@ class Sr6RunTest(unittest.TestCase):
         out_md = os.path.join(self.book, "re.md")
         code, out = self.cli("regroup", os.path.join(self.book, "book.md"), out_md)
         self.assertEqual(code, 0)
-        self.assertIn("unpaired-row=13", out)
+        self.assertIn("unpaired-row=14", out)
         self.assertTrue(_read(out_md).startswith("<!-- regrouped v1 -->"))
 
 

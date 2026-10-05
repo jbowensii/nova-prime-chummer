@@ -6,6 +6,7 @@ import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6At
 import type { Sr6Entry } from '../model/types'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
+import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { rated, ratingRange } from './values'
 
@@ -29,7 +30,7 @@ export interface Sr6Budgets {
 
 /** The editor tab each purchase kind is bought on. */
 export const PURCHASE_TAB: Record<PurchaseKind, string> = {
-  weapons: 'gear', armor: 'gear', electronics: 'gear', gear: 'gear', augmentations: 'augmentations', vehicles: 'vehicles',
+  weapons: 'gear', armor: 'gear', electronics: 'gear', programs: 'gear', gear: 'gear', augmentations: 'augmentations', vehicles: 'vehicles',
 }
 const round2 = (x: number) => Math.round(x * 100) / 100
 const n0 = (cr: CreationRules, key: string) => num(cr, key) ?? 0
@@ -74,7 +75,7 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost
     cost = read('cost'); avail = read('avail'); essence = read('essence')
   }
   if (x.grade) {
-    const g = (k: string) => num(cr, `grade:${x.grade}:${k}`)
+    const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)
     cost *= g('cost') ?? 1; essence *= g('essence') ?? 1; avail += g('avail') ?? 0
   }
   cost *= x.qty; essence *= x.qty

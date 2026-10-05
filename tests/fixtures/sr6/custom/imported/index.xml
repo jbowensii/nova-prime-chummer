@@ -9,6 +9,7 @@
   <file href="crb/weapons.xml"/>
   <file href="crb/armor.xml"/>
   <file href="crb/augmentations.xml"/>
+  <file href="crb/grades.xml"/>
   <file href="crb/electronics.xml"/>
   <file href="crb/programs.xml"/>
   <file href="crb/gear.xml"/>

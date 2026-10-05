@@ -193,7 +193,8 @@ const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] =
 /** A books file: each ticked source still in the catalog (unknown ids skipped), with its entries of every kind in
  *  SR6_KINDS order, then catalog order, as the app sees them (edits applied); their text only when `descriptions`. */
 export function exportSr6Books(c: Sr6Catalog, data: Sr6Data, sources: string[], o: Sr6ExportOpts): Sr6ExportFile {
-  const kinds = Object.keys(SR6_KINDS) as Sr6Kind[]
+  // not the implant grades: Foundry has no item for them (a purchase carries its grade's key)
+  const kinds = (Object.keys(SR6_KINDS) as Sr6Kind[]).filter(k => k !== 'grades')
   return { ...envelope('books', o), books: sources.flatMap(id => {
     const s = c.sources.get(id)
     if (!s) return []

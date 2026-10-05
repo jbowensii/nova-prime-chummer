@@ -31,8 +31,8 @@ export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']
-export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'gear' | 'vehicles'
-export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'gear', 'vehicles']
+export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles'
+export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles']
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */

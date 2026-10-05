@@ -13,7 +13,7 @@ const BEING = ['category', 'rating', 'group', 'bod', 'agi', 'rea', 'str', 'wil',
 const BEING_LINES = ['skills', 'powers', 'optionalPowers', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons']
 const ITEM = ['avail', 'cost']
 /** The kinds a compendium holds: every SR6 kind but those that carry creation structure or rule numbers (priorities,
- *  metatypes, attributes, skills, life modules, rules). fields: the kind's attribute names, lines: its string children
+ *  metatypes, attributes, skills, implant grades, life modules, rules). fields: the kind's attribute names, lines: its string children
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
   qualities: { fields: ['kind', 'karma', 'karmaMax', 'perLevel', 'maxLevel'] },
@@ -21,7 +21,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   armor: { fields: ['category', 'defense', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
   electronics: { fields: ['category', 'rating', 'array', 'programs', 'capacity', ...ITEM] },
-  programs: { fields: ['type', ...ITEM] },
+  programs: { fields: ['type', 'rating', ...ITEM] },
   gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per', 'slots'] },
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage'] },

@@ -48,6 +48,10 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
   MOVE`) and labelled lists (`Skills:`, `Powers:`, `Gear:`, `Weapons:` …). Grunt boxes sit under a level-3
   "Professional Rating N" section.
 - Skills, rituals, matrix actions and lifestyles: level-3 sections, their tag lines and labels on level-5 lines.
+- Implant grades: the `GRADE | ESS COST | COST | AVAIL` table in the gear chapter's Grades item (a rule table in its
+  text): one grade a row, `x`/`+` dropped. Autosofts: the rigging chapter's Autosofts section's labelled lines are
+  programs of type autosoft, priced and rated by the gear chapter's `Autosoft (Rating 1-9)` row (its avail
+  `Rating (1-9)` read as `Rating`).
 - Priority table (first header PRIORITY: five letter rows) and metatype attribute table (first header METATYPE, a
   "Racial Qualities:" sub-row per metatype): rule tables, kept in their section's text and read from there.
 - Contents (pp 3-6), index (305-310) and the character sheet (320-321) read across columns; nothing maps them.

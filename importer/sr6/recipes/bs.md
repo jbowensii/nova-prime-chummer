@@ -28,8 +28,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 - Cybernetic shells (EDGE OF ESSENCE): headings priced on a `(Cost: …, Availability: …)` tag line, named under the
   heading before them.
 - Qualities: level-4 headings with `Cost:` / `Bonus:` lines in Karma (EDGE OF ESSENCE, the first chapter's boxes).
-- Implant grades (omega, exoware, gammaware), cybermancy, surgery, drug rules: no catalog kind, rule sections. The
-  grade multipliers the app uses are creation settings, not catalog entries.
+- Implant grades (New and Revised Implant Grades: omega grade, exoware, gammaware, each a level-3 section): grades,
+  their factors read from the prose (`x1.1 Essence cost`, `adds ten percent to the base Essence cost`, `0.4 Essence
+  multiplier`, `can only be applied to cyberware`); the sections stay rules too. Cybermancy, surgery, drug rules: rule
+  sections.
 
 ## Real-book check (local, nothing committed)
 

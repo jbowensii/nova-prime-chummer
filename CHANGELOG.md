@@ -1,5 +1,20 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **Augmentations keep their real type.** Body Shop's geneware, nanoware, symbionts and transgenic infusions import as
+  those types (they were filed as bioware or cyberware). Game data and the augmentation picker group them by type and
+  category. Only cyberware and bioware take a grade. Re-import Body Shop to get the new types. The Foundry export still
+  sends them as bioware (nanoware as cyberware), with the printed type beside it.
+- **Implant grades are catalog entries.** The core rulebook's grade table and Body Shop's omega grade, exoware
+  (cyberware only) and gammaware import as **Augmentation grades** on Game data, and the augmentation grade picker
+  offers them with their Essence and cost factors (gammaware prints no price, so it isn't offered). The standard
+  grades' numbers on Table setup still apply and can change any grade's factor. Re-import the core rulebook and Body
+  Shop.
+- **Autosofts can be bought.** The core rulebook's autosofts (Clearsight, Evasion, Targeting…) import as programs priced
+  by the book's rating formula, and programs and autosofts can now be bought on **Gear** (at a rating) and fitted to a
+  vehicle or drone.
+
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 
 - **A book NPC printed in several Shadowrun 6 books loads once, or numbered.** Load book NPCs on **NPCs & Critters**
