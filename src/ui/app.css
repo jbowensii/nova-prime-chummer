@@ -422,7 +422,7 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .state.done { background: var(--ok); }
 .state.failed { background: var(--err); }
 .state.needs-ai, .state.review { background: var(--yellow); color: var(--ink); }
-.state.removed { background: transparent; color: var(--text-3); border: 1px solid var(--rule); }
+.state.removed, .state.skipped, .state.superseded { background: transparent; color: var(--text-3); border: 1px solid var(--rule); }
 .supported { list-style: none; margin: 0; padding: 0; }
 .supported li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid var(--rule); }
 .ai .use { max-width: 20rem; margin-bottom: 1rem; }

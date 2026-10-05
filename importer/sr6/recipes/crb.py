@@ -28,6 +28,10 @@ SHA256 = ("15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  #
           "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
           "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
           "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f")
+# the printings, oldest first: of several imported, the newest is the one loaded (run.py); each City Edition's city
+# chapter is a source of its own and loads from its own printing regardless
+PRINTINGS = {SHA256[0]: "Current Printing (CAT28000, 2019)", SHA256[3]: "City Edition Berlin (CAT28000B)",
+             SHA256[2]: "City Edition Seattle (CAT28000S, 2021)", SHA256[1]: "City Edition Hong Kong (CAT28000H, 2025)"}
 # heading sizes -> levels (layout.fonts' guess takes the Hong Kong and Berlin chapters' 27 pt titles for a level)
 HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1

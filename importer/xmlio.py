@@ -110,6 +110,12 @@ def write_status(book_dir, state, message=""):
            HEAD + f'<status state="{state}" updated="{_now()}">{escape(ILLEGAL.sub("", message))}</status>\n')
 
 
+def read_state(book_dir):
+    """status.xml's state, or None."""
+    p = os.path.join(book_dir, "status.xml")
+    return ET.parse(p).getroot().get("state") if os.path.exists(p) else None
+
+
 def read_import(book_dir):
     p = os.path.join(book_dir, "import.xml")
     return ET.parse(p).getroot() if os.path.exists(p) else None
@@ -141,6 +147,8 @@ def update_sources(custom_dir, library_dir):
             continue
         imp = read_import(os.path.join(library_dir, b)) if os.path.isdir(os.path.join(library_dir, b)) else None
         if imp is None or not imp.get("source"):  # needs-ai / failed books have no source yet
+            continue
+        if read_state(os.path.join(library_dir, b)) == "superseded":  # an SR6 book's older printing: not loaded
             continue
         by_id.setdefault(imp.get("source"), []).append(imp)
     out = []

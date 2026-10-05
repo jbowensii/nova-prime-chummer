@@ -20,7 +20,8 @@ export interface Book { id: string; file?: string; state: string; message: strin
 
 const STATE: Record<string, string> = { queued: 'Waiting', converting: 'Reading the PDF', identifying: 'Recognizing the book',
   extracting: 'Extracting entries', 'needs-ai': 'Needs AI', proposing: 'Asking the AI', review: 'Ready to review',
-  applying: 'Adding entries', done: 'Imported', failed: 'Failed', removed: 'Removed' }
+  applying: 'Adding entries', done: 'Imported', failed: 'Failed', removed: 'Removed',
+  skipped: 'Skipped', superseded: 'Superseded' } // SR6: a known file with nothing to import; an older printing not loaded
 const LIVE = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
 export const PROVIDER_NAMES: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI-compatible', gemini: 'Google Gemini', anythingllm: 'AnythingLLM' }
 const KINDS: [RegExp, string, string][] = [[/^amps/, 'amp', 'amps'], [/^spells/, 'spell', 'spells'], [/^complexforms/, 'complex form', 'complex forms'],
@@ -334,7 +335,7 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Read the tables with AI</button>)}
             {!sr6 && b.review && (!b.source || canCoreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
             {b.state === 'done' && <button className="btn small quiet" onClick={() => void openReport(b)}>Report</button>}
-            {['done', 'failed', 'removed', 'needs-ai'].includes(b.state) && b.recipe !== 'ai' &&
+            {['done', 'failed', 'removed', 'needs-ai', 'superseded'].includes(b.state) && b.recipe !== 'ai' &&
               <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`${bookApi}/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}
             {!LIVE.includes(b.state) && <button className="btn small quiet" disabled={b.busy} onClick={() => { setWithFiles(b.state === 'removed'); setRemoving(b) }}>Remove</button>}
           </div>
