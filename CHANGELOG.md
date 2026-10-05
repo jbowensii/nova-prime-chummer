@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 
 - **A book NPC printed in several Shadowrun 6 books loads once, or numbered.** Load book NPCs on **NPCs & Critters**
   now compares the same NPC, critter, spirit, sprite or contact across books (the same kind and name, whatever the
