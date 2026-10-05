@@ -9,7 +9,9 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-1"  # convert(..., sr6=True), importer/sr6/layout.py
+SR6_CONVERTER_VERSION = "sr6-3"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+# split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
+# dropped, words split after a ligature joined
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -97,7 +99,10 @@ def _cluster_lines(words):
     jitter between regular and bold runs on one visual line). Rows are NOT
     split at wide word gaps here — justified text has those everywhere.
     Two columns sharing a row are split later, only at an accepted gutter.
+    The SR6 layout's words carry their baseline (`base`): see _baseline_rows.
     """
+    if words and all("base" in w for w in words):
+        return _baseline_rows(words)
     words = sorted(words, key=lambda w: w["top"])
     rows, cur, anchor = [], [], None
     for w in words:
@@ -113,22 +118,63 @@ def _cluster_lines(words):
     return [sorted(r, key=lambda w: w["x0"]) for r in rows]
 
 
+_TINY = 0.5  # x the page's median word size: a glyph smaller than this (a small raised bullet) joins a row beside it
+_TINY_REACH = 30  # pt; how far beside it
+
+
+def _baseline_rows(words):
+    """Rows by baseline, a word joining the row when its baseline is within _LINE_TOLERANCE of the previous one (a label
+    set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
+    glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
+    else it is a row of its own."""
+    med = statistics.median(w["size"] for w in words)
+    tiny = [w for w in words if w["size"] < _TINY * med]
+    rows, cur, last = [], [], None
+    for w in sorted((w for w in words if w["size"] >= _TINY * med), key=lambda w: w["base"]):
+        if last is not None and w["base"] - last > _LINE_TOLERANCE:
+            rows.append(cur)
+            cur = []
+        cur.append(w)
+        last = w["base"]
+    if cur:
+        rows.append(cur)
+    for t in tiny:
+        near = [(abs(w["base"] - t["base"]), i) for i, r in enumerate(rows) for w in r
+                if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2]
+        if near:
+            rows[min(near)[1]].append(t)
+        else:
+            rows.append([t])
+    rows.sort(key=lambda r: min(w["base"] for w in r))
+    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
+
+
 def _line_extent(line):
     return min(w["x0"] for w in line), max(w["x1"] for w in line)
+
+
+def _jump(a, b):
+    """Word b doesn't follow word a in the page's content stream: two text columns meet on this row (the SR6 layout
+    numbers each char, `i`; a book whose columns sit closer than a word space has no whitespace gutter to find)."""
+    ia, ib = a["chars"][-1].get("i"), b["chars"][0].get("i")
+    return ia is not None and ib is not None and not 0 < ib - ia <= 3
 
 
 def _split_at(row, x, tol=0):
     """Split a row at gutter x, unless a word runs through the gutter strip. tol (the SR6 layout): the row splits in
     its widest gap that holds a strip up to tol from x (a boxed sidebar's gutter sits a few points off the body
-    text's) and is wider than a word space at its words' size (a chapter title's word spaces are a strip wide)."""
+    text's) and is wider than a word space at its words' size (a chapter title's word spaces are a strip wide), or
+    where the content stream jumps (`_jump`)."""
     if tol:
-        gaps = [(b["x0"] - a["x1"], min(max(x, a["x1"] + _GUTTER_HALF), b["x0"] - _GUTTER_HALF))
-                for a, b in zip(row, row[1:])
-                if b["x0"] - a["x1"] >= max(2 * _GUTTER_HALF, (a["size"] + b["size"]) / 4)]
+        gaps = [(b["x0"] - a["x1"], min(max(x, a["x1"] + _GUTTER_HALF), b["x0"] - _GUTTER_HALF), k)
+                for k, (a, b) in enumerate(zip(row, row[1:]), 1)
+                if b["x0"] - a["x1"] >= max(2 * _GUTTER_HALF, (a["size"] + b["size"]) / 4)
+                or b["x0"] > a["x1"] and _jump(a, b)]
         gaps = [g for g in gaps if abs(g[1] - x) <= tol]
         if not gaps:
             return [row]
-        x = max(gaps)[1]
+        k = max(gaps)[2]  # by position: a jump's strip can fall inside a word set closer than the strip
+        return [row[:k], row[k:]]
     elif any(w["x0"] < x + _GUTTER_HALF and w["x1"] > x - _GUTTER_HALF for w in row):
         return [row]
     return [part for part in ([w for w in row if w["x1"] <= x], [w for w in row if w["x0"] >= x]) if part]
@@ -182,7 +228,7 @@ def _find_gutter(rows, right, left=0, tol=0):
         round((a["x1"] + b["x0"]) / 2)
         for row in rows
         for a, b in zip(row, row[1:])
-        if b["x0"] - a["x1"] >= 2 * _GUTTER_HALF and lo < (a["x1"] + b["x0"]) / 2 < hi
+        if (b["x0"] - a["x1"] >= 2 * _GUTTER_HALF or b["x0"] > a["x1"] and _jump(a, b)) and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
     scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
@@ -282,9 +328,12 @@ def _reading_order(blocks, mid):
     return out
 
 
-def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, sr6: bool = False) -> dict:
+def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, sr6: bool = False,
+            levels: dict | None = None, heading: str | None = None) -> dict:
     """pages: optional 1-based inclusive (first, last) range to convert. sr6: the Shadowrun 6 layout
-    (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped)."""
+    (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped). levels: the SR6 heading
+    sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them); heading: the headings' font
+    family, likewise."""
     if sr6:
         from importer.sr6 import layout
     with open(pdf_path, "rb") as f:
@@ -292,6 +341,10 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
     out = []
     with pdfplumber.open(pdf_path) as pdf:
         fonts = layout.fonts(pdf) if sr6 else None
+        if fonts and levels:
+            fonts.levels = levels
+        if fonts and heading:
+            fonts.heading = heading
         big = None if sr6 else _bands(pdf)[1]
         first, last = pages or (1, len(pdf.pages))
         for n, page in enumerate(pdf.pages[first - 1 : last], first):
@@ -302,11 +355,15 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             # of two with the same box, the first is kept
             tables = [t for i, t in enumerate(found)
                       if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
-            all_words = pdfplumber.utils.extract_words(_even_sizes(page.chars), extra_attrs=["size"],
+            # stream order (_jump); a second copy of the page's text layer dropped (layout.one_layer)
+            chars = [{**c, "i": i} for i, c in enumerate(layout.one_layer(page.chars))] if sr6 else page.chars
+            all_words = pdfplumber.utils.extract_words(_even_sizes(chars), extra_attrs=["size"],
                                                        keep_blank_chars=False, return_chars=True)
             bands = []
             if sr6:
                 all_words = layout.furniture(page, all_words)
+                for w in all_words:
+                    w["base"] = -w["chars"][0]["matrix"][5]
                 bands = layout.band_tables(all_words, fonts, page.rects)
             boxes = [t.bbox for t in tables]
             # a band table's own words leave the text (not its box: a long last cell can reach past the text column)
@@ -338,7 +395,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             out += _reading_order(blocks, mid)
         title = (pdf.metadata or {}).get("Title", "") or ""
         pages = len(pdf.pages)
+    text = "\n".join(out) + "\n"
     with open(md_path, "w", encoding="utf8", newline="\n") as f:
-        f.write("\n".join(out) + "\n")
+        f.write(layout.rejoin_ligatures(text) if sr6 else text)
     return {"pages": pages, "converter": SR6_CONVERTER_VERSION if sr6 else CONVERTER_VERSION, "sha256": sha,
             "title": title}

@@ -5,7 +5,7 @@ import { Stepper } from '../../../ui/bits'
 import { NameField } from '../../../ui/tabs/Skills'
 import { num } from '../../engine/creation'
 import { rated } from '../../engine/values'
-import type { Sr6Sin } from '../../model/character'
+import { CONTACT_TYPES, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, useSr6Editor } from '../editor'
 import { Suggest } from './Skills'
 
@@ -15,21 +15,34 @@ export function ContactsTab() {
   const archetypes = [...c.entries.contacts.values()].map(e => e.name).sort()
   const lifestyles = [...c.entries.lifestyles.values()].sort((a, z) => a.name.localeCompare(z.name))
   const rate = num(cr, 'karmaToNuyenRate'), most = num(cr, 'karmaToNuyenMax')
+  // lifepath's contact points go by contact type (the Sixth World Companion)
+  const typed = b.method === 'lifepath'
+  const setType = (uid: string, types: (ContactType | '')[], i: number, v: string) => {
+    const next = [...types]; next[i] = v as ContactType
+    act({ op: 'contact', uid, types: next.filter((t): t is ContactType => !!t) })
+  }
   return (
     <div className="stack">
       <h2>Contacts</h2>
       <p className="muted">Contact points: <b className={cp.left < 0 ? 'err' : ''}>{n(cp.left)} left</b> of {n(cp.max)}.
-        {cp.ratingCap > 0 && ` Connection and loyalty go up to ${cp.ratingCap}.`}</p>
-      {b.contacts.length > 0 && <div className="scroll-x"><table className="data">
-        <thead><tr><th>Name</th><th>Archetype</th><th>Connection</th><th>Loyalty</th><th /></tr></thead>
+        {cp.ratingCap > 0 && ` Connection and loyalty go up to ${cp.ratingCap}.`}
+        {typed && ' Each life module’s points go to contacts of its types.'}
+        {!!cp.karma && <> Ratings past the points: <b>{n(cp.karma)} karma</b>.</>}</p>
+      {b.contacts.length > 0 && <div className="contacts-wrap"><table className="data contacts">
+        <thead><tr><th>Name</th><th>Archetype</th>{typed && <th>Types</th>}<th>Connection</th><th>Loyalty</th><th /></tr></thead>
         <tbody>{b.contacts.map((x, i) => {
           const who = `Contact ${i + 1}`
           return <tr key={x.uid}>
-            <td><NameField label={`${who} name`} value={x.name} onCommit={name => act({ op: 'contact', uid: x.uid, name })} /></td>
-            <td><Suggest label={`${who} archetype`} value={x.archetype} options={archetypes} onCommit={v => act({ op: 'contact', uid: x.uid, archetype: v ?? '' })} /></td>
-            {(['connection', 'loyalty'] as const).map(k => <td key={k}><Stepper label={`${who} ${k}`} value={x[k]} min={1} max={99}
+            <td data-label="Name"><NameField label={`${who} name`} value={x.name} onCommit={name => act({ op: 'contact', uid: x.uid, name })} /></td>
+            <td data-label="Archetype"><Suggest label={`${who} archetype`} value={x.archetype} options={archetypes} onCommit={v => act({ op: 'contact', uid: x.uid, archetype: v ?? '' })} /></td>
+            {typed && <td data-label="Types"><div className="types">{[0, 1].map(i => <select key={i} aria-label={`${who} type ${i + 1}`} value={x.types?.[i] ?? ''}
+              disabled={i === 1 && !x.types?.length} onChange={e => setType(x.uid, [x.types?.[0] ?? '', x.types?.[1] ?? ''], i, e.target.value)}>
+              <option value="">{i ? 'No second type' : 'Any type'}</option>
+              {CONTACT_TYPES.map(t => <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>)}
+            </select>)}</div></td>}
+            {(['connection', 'loyalty'] as const).map(k => <td key={k} data-label={k[0].toUpperCase() + k.slice(1)}><Stepper label={`${who} ${k}`} value={x[k]} min={1} max={99}
               onChange={v => act({ op: 'contact', uid: x.uid, [k]: v })} /></td>)}
-            <td><button className="btn small quiet" aria-label={`Remove ${x.name || who}`} onClick={() => act({ op: 'contact', remove: x.uid })}>Remove</button></td>
+            <td className="end"><button className="btn small quiet" aria-label={`Remove ${x.name || who}`} onClick={() => act({ op: 'contact', remove: x.uid })}>Remove</button></td>
           </tr>
         })}</tbody>
       </table></div>}

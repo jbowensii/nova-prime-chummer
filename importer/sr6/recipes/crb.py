@@ -11,6 +11,7 @@ importer/sr6/archetypes.py)."""
 import json
 import os
 import re
+import sys
 from dataclasses import replace
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
@@ -22,7 +23,13 @@ from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun, Sixth World Core Rulebook", "Catalyst Game Labs", True
-SHA256 = ("15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",)  # the owner's current printing
+SHA256 = ("15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  # the owner's 2019 printing
+          # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle, Berlin
+          "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
+          "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
+          "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f")
+# heading sizes -> levels (layout.fonts' guess takes the Hong Kong and Berlin chapters' 27 pt titles for a level)
+HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 305  # PDF page: the index and the reprinted tables start here (left out)
 # the book's spelling differences between a table row and its description heading (norm form -> norm form; names only)
@@ -80,6 +87,7 @@ SECTIONS = [
     ("magic", "spell", "spells", None),
     ("matrix", "commlink", "skip", None),  # the gear chapter's tables reprinted
     ("matrix", "cyberdeck", "skip", None),
+    ("matrix", "|cyberjack", "skip", None),  # (the City Editions: the table, not the section's rules)
     ("matrix", "complex form", "complexforms", None),
     ("matrix", "sprite", "sprites", None),
     ("wild life", "professional rating", "npcs", None),
@@ -92,12 +100,16 @@ SECTIONS = [
     ("archetypes", "", "skip", None),  # the sample runners are read apart (archetypes.py); the rest is no kind
 ]
 SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 section blocks in this book
-# a section whose labelled lines are each an entry (name: the label; text: its value)
-LABEL_SECTIONS = {("matrix", "echoes"): "echoes"}
+# a section (or item heading) whose labelled lines are each an entry (name: the label; text: its value, or its paragraph
+# in the block's text when that is longer): kind, or (kind, attributes)
+LABEL_SECTIONS = {("matrix", "echoes"): "echoes", ("matrix", "basic"): ("programs", {"type": "basic"}),
+                  ("matrix", "hacking"): ("programs", {"type": "hacking"})}
 # chapters whose unmapped sections (and level-4 headings with no row or box) are rule sections
 RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
                  "running the game", "gear")
 ATTRIBUTE_CHAPTERS = ("game concepts", "character creation")
+CATALOG_CHAPTERS = ("gear",)  # a table row there with a name header is a catalog item: reported when it maps nowhere
+BOOK = "the Shadowrun 6 core rulebook"
 ATTRIBUTES = {"body": ("BOD", "physical"), "agility": ("AGI", "physical"), "reaction": ("REA", "physical"),
               "strength": ("STR", "physical"), "willpower": ("WIL", "mental"), "logic": ("LOG", "mental"),
               "intuition": ("INT", "mental"), "charisma": ("CHA", "mental"), "edge": ("EDG", "special"),
@@ -113,22 +125,25 @@ _BEING = {"B": "bod", "BOD": "bod", "A": "agi", "AGI": "agi", "R": "rea", "REA":
 HEADERS = {
     "weapons": {"DV": "dv", "MODES": "modes", "MODE": "modes", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "AR": "ar",
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
-                "DV NEAR": "dv+", "NOTES": "", **_PRICE},
-    "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "CAPACITY": "capacity", **_PRICE},
+                "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
+    "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "",
+              "TYPE": "", "EXTRAS": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
+             "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
-                 "HAND (ON/OFF ROAD)": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
-                 "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats", **_PRICE},
+                 "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
+                 "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats",
+                 "SPD INT": "interval", "TOP SPD": "topSpeed", "BOD": "body", "ARM": "armor", "SENS": "sensor", **_PRICE},
     "spells": {"RANGE": "range", "TYPE": "type", "DURATION": "duration", "DV": "dv", "DRAIN": "dv", "DAMAGE": "damage"},
     "rituals": {"KEYWORDS": "keywords", "THRESHOLD": "threshold"},
     "adeptpowers": {"COST": "cost", "POWER POINTS": "cost", "ACTIVATION": "activation"},
     "complexforms": {"DURATION": "duration", "FADE": "fade", "FADE VALUE": "fade", "FV": "fade"},
-    "critterpowers": {"TYPE": "type", "ACTION": "action", "RANGE": "range", "DURATION": "duration"},
+    "critterpowers": {"TYPE": "type", "ACTION": "action", "RANGE": "range", "DURATION": "duration", "WEAKNESS": "weakness"},
     "critters": _BEING, "spirits": _BEING, "npcs": _BEING,
     "sprites": {"ATTACK": "attack", "A": "attack", "SLEAZE": "sleaze", "S": "sleaze", "DATA PROCESSING": "data", "DATA PROC": "data",
                 "DATA": "data", "D": "data", "FIREWALL": "firewall", "F": "firewall", "I/ID": "init", "INIT": "init",
@@ -137,9 +152,13 @@ HEADERS = {
     "contacts": {"CONNECTION": "connection", "LOYALTY": "loyalty", "ARCHETYPE": "archetype"},
     "qualities": {"COST": "karma", "BONUS": "karma"},
     "metamagics": {}, "echoes": {}, "skills": {},
+    "martialarts": {"CATEGORY": "categories", "SIGNATURE TECHNIQUE": "signature"},
+    "martialtechniques": {"CATEGORY": "category"},
+    "traditions": {},
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
+         "weakness": "weaknesses",
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
 PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "lifestyles"}  # cost/avail checked
@@ -246,7 +265,8 @@ def _cells(line):
 
 
 class _Catalog:
-    def __init__(self):
+    def __init__(self, source=ID, recipe="crb", book=BOOK):
+        self.source, self.note = source, f"recipe sr6 {recipe}) from {book}"
         self.entries = {k: [] for k in KINDS}
         self.ids = {k: set() for k in KINDS}
         self.texts = []
@@ -254,8 +274,10 @@ class _Catalog:
         self.cols = set()  # (kind, column) already reported unknown
         self.pending = []  # unknown columns of the entry being read: reported when it is added
         self.last_meta = None
+        self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
+        name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         base = slug(name) or KINDS[kind]
         i, n = base, 2
         if kind == "rules" and i in self.ids[kind] and parent:
@@ -452,7 +474,7 @@ class _Catalog:
             attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
             if kind == "augmentations":
                 attrs = {"type": "bioware" if any("bioware" in c for c in ctx) else "cyberware", **attrs}
-            if (m := NAME_RATING.search(name)) and "rating" not in f:
+            if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
@@ -468,21 +490,32 @@ class _Catalog:
                 return False  # a rule about spells
             attrs = {"category": cat, "tags": b.tags or None}
         elif kind == "qualities":
-            karma = f.pop("karma", "")
-            m = re.search(r"(-?\d+)\s*karma", karma, re.I) or re.search(r"(-?\d+)", karma)
-            attrs = {"kind": cat, "karma": m and int(m.group(1)), "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
+            karma = _karma_line(f.pop("karma", ""), b.text)
+            # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
+            ks = [int(n) for m in re.finditer(r"(-?\d+)(?:\s*(?:to|or|[–-])\s*(\d+))?\s*karma", karma, re.I)
+                  for n in m.groups() if n] or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
+            attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
+                     "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)
+            if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
+                attrs["maxLevel"] = int(m.group(1))  # `5 Karma per level (1 to 4)`: the levels in the price
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
             m = re.search(r"([\d.]+)\s*PP", cost, re.I)
             name, levels = self._levels(name)
+            if not levels and (n := re.search(r"max(?:imum)?\.?\s+(\d+)\s+levels?", cost, re.I)):
+                levels = int(n.group(1))  # `0.25 PP per level (max 4 levels)`
             attrs = {"cost": m.group(1) if m else cost or None,
                      "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None, "maxLevel": levels}
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
-                m = re.search(r"professional rating\s*(\d+)\s*[:–—-]?\s*(.*)", b.section, re.I)
-                attrs = {"rating": m and int(m.group(1)), "group": (m and m.group(2).strip()) or None}
-                if not m:
+                # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing none,
+                # or a recipe's NPCs with no rating (`Group: X`)
+                m = re.search(r"professional rating\s*(\d+)?\s*[:–—-]?\s*(.*)", b.section, re.I)
+                g = re.fullmatch(r"group:\s*(.+)", b.section, re.I)
+                attrs = {"rating": m and m.group(1) and int(m.group(1)),
+                         "group": (m.group(2).strip() if m else g.group(1) if g else self.unrated) or None}
+                if not m and not g and not self.unrated:
                     return False
             else:
                 attrs = {"category": cat}
@@ -505,15 +538,16 @@ class _Catalog:
         return True
 
     def contact(self, b, page):
-        """A sample contact: a contacts entry (its archetype: the name; the book prints no connection or loyalty) and
-        its stat block as an npcs entry (group "Contact", no Professional Rating)."""
+        """A sample contact: a contacts entry (its archetype: an `Archetype` label a recipe set, else the name; the book
+        prints no connection or loyalty) and its stat block as an npcs entry (group "Contact", no Professional
+        Rating)."""
         f = self.fields("npcs", b, page)
         f.pop("prose", None)
         if len(f) < 3:
             return False
         lists = {LISTS[k.lower()]: v for k, v in b.labels.items() if k.lower() in LISTS and v}
-        listed = {k for k in b.labels if k.lower() in LISTS}
-        self.add("contacts", b.name, page, {"archetype": b.name}, (), _text(b, listed))
+        listed = {k for k in b.labels if k.lower() in LISTS or k == "Archetype"}
+        self.add("contacts", b.name, page, {"archetype": b.labels.get("Archetype", b.name)}, (), _text(b, listed))
         self.add("npcs", b.name, page, {"group": "Contact", **f},
                  [(t, {}, lists[t]) for t in dict.fromkeys(LISTS.values()) if t in lists], _text(b, listed))
         return True
@@ -545,11 +579,11 @@ class _Catalog:
     def xml(self, kind):
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
-            a = {"id": e["id"], "source": ID, "page": e["page"], **e["attrs"]}
+            a = {"id": e["id"], "source": self.source, "page": e["page"], **e["attrs"]}
             kids = "".join(f"<{t}{_attrs(ca)}>{escape(_s(tx))}</{t}>" if tx is not None else f"<{t}{_attrs(ca)}/>"
                            for t, ca, tx in e["children"])
             lines.append(f"  <{tag}{_attrs(a)}><name>{escape(_s(e['name']))}</name>{kids}</{tag}>\n")
-        return (HEAD + "<!-- Generated by the importer (recipe sr6 crb) from the Shadowrun 6 core rulebook. -->\n"
+        return (HEAD + f"<!-- Generated by the importer ({self.note}. -->\n"
                 f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1">\n' + "".join(lines) + "</sr6:data>\n")
 
     def texts_xml(self):
@@ -568,7 +602,24 @@ def _text(b, skip=()):
     return "\n".join(lines + ([b.text] if b.text else []))
 
 
+def _karma_line(karma, text):
+    """A quality's printed price, with its wrapped rest from the text when the label stopped short (regroup ends a
+    label's value at a line opening with a capital: `**Bonus:** Common: 12 Karma; Uncommon: 9` + `Karma; Rare: …`)."""
+    m = re.search(r"\*\*(?:Cost|Bonus):\*\*\s*(.*(?:\n(?!\*\*|\n).*)?)", text) if karma else None
+    full = " ".join(m.group(1).split()) if m else ""
+    return full if re.search(r"\d\s*$", karma) and full.startswith(karma) else karma
+
+
 _INLINE_LABEL = re.compile(r";\s*\*\*([^*]+?):\*\*\s*")
+
+
+def _label_text(text, label, value):
+    """A labelled line's value, or its paragraph in the text (`**Label:**` to the next label line, blank line, table or
+    heading) when that is longer: a list printed as labelled lines over its full paragraphs."""
+    found = [m.group(1).strip() for m in re.finditer(
+        rf"^(?:•\s*)?\*\*{re.escape(label)}:\*\*\s*(.+?)(?=\n(?:•\s*)?\*\*[^*\n]+:\*\*|\n\s*\n|\n[|#]|\n<!--|\Z)", text, re.M | re.S)]
+    best = max(found, key=lambda t: len(" ".join(t.split())), default="")
+    return best if len(" ".join(best.split())) > len(value) else value
 
 
 def _text_stats(b, cols):
@@ -622,21 +673,31 @@ def _md(b):
                      for h, r in rows)
 
 
-def _kind(chapter, ctx, section):
-    for ch, key, kind, cat in SECTIONS:
-        if ch in chapter and (not section or kind in SECTION_KINDS) and (
+def _kind(chapter, ctx, section, book=None):
+    book = book or sys.modules[__name__]
+    for ch, key, kind, cat in book.SECTIONS:
+        if ch in chapter and (not section or kind in book.SECTION_KINDS) and (
                 not key or any(key in c for c in ctx if (key[0] == "|") == (c[:1] == "|"))):
             return kind, cat
     return None, None
 
 
-def extract(regrouped, ctx=None):
-    cat = _Catalog()
+def extract(regrouped, ctx=None, book=None):
+    """regrouped: regroup's text, or its blocks. book: the recipe module whose tables drive the reading (ID, NAME, PUBLISHER, CANON, BOOK, PAGE_OFFSET, SECTIONS,
+    SECTION_KINDS, LABEL_SECTIONS, RULE_CHAPTERS, ATTRIBUTE_CHAPTERS, CATALOG_CHAPTERS; optional fix(block, parent2)
+    -> the block as this reading needs it, and kind(chapter, block, parent2) -> (kind, category) in place of
+    SECTIONS); this one by default."""
+    bk = book or sys.modules[__name__]
+    cat = _Catalog(bk.ID, bk.ID.lower(), bk.BOOK)
+    cat.unrated = getattr(bk, "UNRATED_NPCS", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
-    for b in blocks(regrouped):
+    for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
-        ch, page = norm(b.chapter), max(1, b.page - PAGE_OFFSET)
+        if b.type == "section" and b.level == 2:
+            parent2 = b.name
+        b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
+        ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)
         if cat.last_meta is not None and not any(t == "trait" for t, _, _ in cat.last_meta["children"]) \
@@ -645,14 +706,12 @@ def extract(regrouped, ctx=None):
         if b.row is not None and b.header and b.header[0].upper() in ("PRIORITY", "METATYPE"):
             cat.table(b.header, [[b.row.get(h, "") for h in b.header]], page)
             continue
-        if "archetypes" in ch and archetypes.is_archetype(b):
+        if getattr(bk, "ARCHETYPES", "archetypes") in ch and archetypes.is_archetype(b):  # sample characters
             samples.append((b.section or b.name, b, page))  # built once the catalog is read: they cite its entries
             continue
         section = b.type == "section"
-        if section and b.level == 2:
-            parent2 = b.name
         a = ATTRIBUTES.get(norm(b.name))
-        if a and any(c in ch for c in ATTRIBUTE_CHAPTERS) and a[0] not in seen_attrs:
+        if a and any(c in ch for c in bk.ATTRIBUTE_CHAPTERS) and a[0] not in seen_attrs:
             seen_attrs.add(a[0])
             cat.add("attributes", b.name, page, {"abbr": a[0], "group": a[1]}, (), _text(b))
             if not section:
@@ -661,22 +720,25 @@ def extract(regrouped, ctx=None):
             sub = ""
         if norm(b.name).endswith(" spells"):  # `Direct Glow Spells`: an item heading over its spells
             sub = norm(b.name)
-        lk = next((k for (c, n), k in LABEL_SECTIONS.items() if c in ch and n == norm(b.name)), None) if section else None
+        lk = next((k for (c, n), k in bk.LABEL_SECTIONS.items() if c in ch and n == norm(b.name)), None)
         if lk:
+            lk, la = (lk, {}) if isinstance(lk, str) else lk
             for k, v in b.labels.items():
-                cat.add(lk, k, page, {}, (), v)
+                cat.add(lk, k, page, dict(la), (), _label_text(b.text, k, v))
         if section:
             ctx_keys = [norm(parent2)] if b.level == 3 and parent2 else []
-            kind, kcat = _kind(ch, ctx_keys, True) if b.level == 3 else (None, None)
+            kind, kcat = _kind(ch, ctx_keys, True, bk) if b.level == 3 else (None, None)
         else:
             ctx_keys = ([norm(x) for x in (b.header[0], b.label) if x] + ["|" + norm(" ".join(b.header))]
                         if b.row is not None else
                         [norm(x) for x in (b.label, b.section, parent2, sub) if x])
-            kind, kcat = _kind(ch, ctx_keys, False)
+            kind, kcat = _kind(ch, ctx_keys, False, bk)
+        if hasattr(bk, "kind"):
+            kind, kcat = bk.kind(ch, b, parent2)
         if kind == "skip" or kind and cat.entry(kind, kcat, b, page, ctx_keys):
             continue
-        rule_chapter = ch and any(c in ch for c in RULE_CHAPTERS)
-        catalog = "gear" in ch and b.row is not None and b.header and b.header[0].upper() in NAME_HEADERS
+        rule_chapter = ch and any(c in ch for c in bk.RULE_CHAPTERS)
+        catalog = any(c in ch for c in bk.CATALOG_CHAPTERS) and b.row is not None and b.header and b.header[0].upper() in NAME_HEADERS
         if not section and (b.row is not None or b.stats) and (catalog or not rule_chapter):
             cat.report.append({"kind": "unmapped", "name": b.name, "chapter": b.chapter, "section": b.section,
                                "label": b.label, "page": page})
@@ -691,12 +753,22 @@ def extract(regrouped, ctx=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    for e in cat.entries["programs"]:  # a program's price: the book's `Cyberprogram, <type>` row (the core rulebook's)
+        row = next((g for g in cat.entries["gear"] if g["name"].lower() == f"cyberprogram, {e['attrs']['type']}"), None)
+        if row:
+            e["attrs"].update({a: row["attrs"][a] for a in ("avail", "cost") if a in row["attrs"]})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     runners = []
     for name, b, page in samples:
-        sid, xml, rows = archetypes.build(ID, name, b, page, cat.entries, updated)
+        sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated)
         runners.append({"file": f"{sid}.xml", "xml": xml, "name": name, "role": "Archetype", "page": page})
         cat.report += rows
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+                  source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
+
+
+def extra(md, sha):
+    """A City Edition's city chapter as a source of its own (crb_city.py; run.py writes Result.extra)."""
+    from importer.sr6.recipes import crb_city
+    return crb_city.extra(md, sha)

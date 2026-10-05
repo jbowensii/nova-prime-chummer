@@ -27,6 +27,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="device"><xs:complexType><xs:complexContent><xs:extension base="sr6:Device">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="program"><xs:complexType><xs:complexContent><xs:extension base="sr6:Program">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="gear"><xs:complexType><xs:complexContent><xs:extension base="sr6:Gear">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="vehicle"><xs:complexType><xs:complexContent><xs:extension base="sr6:Vehicle">
@@ -42,6 +44,12 @@
         <xs:element name="metamagic"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="echo"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="martialart"><xs:complexType><xs:complexContent><xs:extension base="sr6:MartialArt">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="martialtechnique"><xs:complexType><xs:complexContent><xs:extension base="sr6:MartialTechnique">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="tradition"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="critterpower"><xs:complexType><xs:complexContent><xs:extension base="sr6:CritterPower">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>

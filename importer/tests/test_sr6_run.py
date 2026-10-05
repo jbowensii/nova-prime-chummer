@@ -66,7 +66,7 @@ class Sr6RunTest(unittest.TestCase):
         self.assertNotIn("samples", _read(self.custom, "imported", "index.xml"))  # never a catalog file
         self.assertTrue(os.path.isfile(os.path.join(self.book, "regrouped.md")))
         imp = xmlio.read_import(self.book)
-        self.assertEqual((imp.get("recipe"), imp.get("source"), imp.get("converter")), ("crb", "CRB", "sr6-1"))
+        self.assertEqual((imp.get("recipe"), imp.get("source"), imp.get("converter")), ("crb", "CRB", "sr6-3"))
         rows = {(r.get("kind"), r.get("name")): r.attrib for r in imp.iter("row")}
         self.assertEqual(rows[("unpaired-row", "Lost Blaster")]["page"], "250")  # regroup's report, printed pages
         self.assertIn("unknown-column", {k for k, _ in rows})  # and the recipe's
@@ -89,6 +89,14 @@ class Sr6RunTest(unittest.TestCase):
         other = self.new_book("other", "<!-- page 1 -->\n# Some Other Game\nText.\n")
         self.assertIsNone(run(other, self.custom, convert_pdf=False))
         self.assertEqual((self.state(other).get("state"), self.state(other).text), ("failed", "no SR6 recipe matched this book"))
+        self.assertFalse(os.path.exists(os.path.join(self.custom, "imported")))
+
+    def test_a_recipe_finding_nothing_fails(self):
+        # a booklet the core rulebook's loose match takes (its words), with nothing in the rulebook's shape
+        thin = self.new_book("thin", "<!-- page 1 -->\nMade-up Sixth World core rulebook words, no headings.\n")
+        self.assertIsNone(run(thin, self.custom, convert_pdf=False))
+        self.assertEqual(self.state(thin).get("state"), "failed")
+        self.assertIn("nothing in this book", self.state(thin).text)
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported")))
 
     def test_remove_keeps_another_book_of_the_source(self):

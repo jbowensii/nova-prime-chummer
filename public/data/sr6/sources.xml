@@ -3,4 +3,58 @@
      description file for that source, in custom/sr6/ (never committed; loaded when present). See docs/sr6-data-format.md. -->
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="sources" version="1">
   <source id="CRB" publisher="Catalyst Game Labs" canon="true" texts="texts/crb.xml"><name>Shadowrun, Sixth World Core Rulebook</name></source>
+  <source id="CRB-SEA" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-sea.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Seattle</name></source>
+  <source id="CRB-BER" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-ber.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Berlin</name></source>
+  <source id="CRB-HK" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-hk.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Hong Kong</name></source>
+  <source id="SWC" publisher="Catalyst Game Labs" canon="true" texts="texts/swc.xml"><name>Shadowrun: Sixth World Companion</name></source>
+  <source id="FS" publisher="Catalyst Game Labs" canon="true" texts="texts/fs.xml"><name>Shadowrun: Firing Squad</name></source>
+  <source id="DA" publisher="Catalyst Game Labs" canon="true" texts="texts/da.xml"><name>Shadowrun: Deadly Arts</name></source>
+  <source id="HS" publisher="Catalyst Game Labs" canon="true" texts="texts/hs.xml"><name>Shadowrun: Hack &amp; Slash</name></source>
+  <source id="SW" publisher="Catalyst Game Labs" canon="true" texts="texts/sw.xml"><name>Shadowrun: Street Wyrd</name></source>
+  <source id="LL" publisher="Catalyst Game Labs" canon="true" texts="texts/ll.xml"><name>Shadowrun: Lofwyr's Legions</name></source>
+  <source id="JD" publisher="Catalyst Game Labs" canon="true" texts="texts/jd.xml"><name>Shadowrun: Johnson 'Dex</name></source>
+  <source id="IA" publisher="Catalyst Game Labs" canon="true" texts="texts/ia.xml"><name>Shadowrun: Ingentis Athletes</name></source>
+  <source id="BS" publisher="Catalyst Game Labs" canon="true" texts="texts/bs.xml"><name>Shadowrun: Body Shop</name></source>
+  <source id="DC" publisher="Catalyst Game Labs" canon="true" texts="texts/dc.xml"><name>Shadowrun: Double Clutch</name></source>
+  <source id="KK" publisher="Catalyst Game Labs" canon="true" texts="texts/kk.xml"><name>Krime Katalog</name></source>
+  <source id="NF" publisher="Catalyst Game Labs" canon="true" texts="texts/nf.xml"><name>Shadowrun: No Future</name></source>
+  <source id="TS" publisher="Catalyst Game Labs" canon="true" texts="texts/ts.xml"><name>Shadowrun: Tarnished Star</name></source>
+  <source id="AW" publisher="Catalyst Game Labs" canon="true" texts="texts/aw.xml"><name>Shadowrun: Astral Ways</name></source>
+  <source id="WL" publisher="Catalyst Game Labs" canon="true" texts="texts/wl.xml"><name>Shadowrun: Wild Life</name></source>
+  <source id="BN" publisher="Catalyst Game Labs" canon="true" texts="texts/bn.xml"><name>Shadowrun: Bestial Nature</name></source>
+  <source id="SO" publisher="Catalyst Game Labs" canon="true" texts="texts/so.xml"><name>Shadowrun: Smooth Operations</name></source>
+  <source id="ED" publisher="Catalyst Game Labs" canon="true" texts="texts/ed.xml"><name>Shadowrun: Explosive Decompression</name></source>
+  <source id="THN" publisher="Catalyst Game Labs" canon="true" texts="texts/thn.xml"><name>Shadowrun: 30 Nights</name></source>
+  <source id="AOR" publisher="Catalyst Game Labs" canon="true" texts="texts/aor.xml"><name>Shadowrun: Tales from the UCAS: Age of Rust</name></source>
+  <source id="ASN" publisher="Catalyst Game Labs" canon="true" texts="texts/asn.xml"><name>Shadowrun: Assassin's Night</name></source>
+  <source id="BBR" publisher="Catalyst Game Labs" canon="true" texts="texts/bbr.xml"><name>Shadowrun: Beginner Box: Battle Royale</name></source>
+  <source id="CCG" publisher="Catalyst Game Labs" canon="true" texts="texts/ccg.xml"><name>Shadowrun, Sixth World: Character Conversion Guide</name></source>
+  <source id="CLN" publisher="Catalyst Game Labs" canon="true" texts="texts/cln.xml"><name>Shadowrun: Collapsing Now</name></source>
+  <source id="CBK" publisher="Catalyst Game Labs" canon="true" texts="texts/cbk.xml"><name>Shadowrun: Cutting Black</name></source>
+  <source id="DOD" publisher="Catalyst Game Labs" canon="true" texts="texts/dod.xml"><name>Shadowrun: Dealers of Death</name></source>
+  <source id="EOLSQ" publisher="Holostreets" canon="false" texts="texts/eolsq.xml"><name>Shadowrun: Echoes of a Lost Signal (QSR Edition)</name></source>
+  <source id="EOLS" publisher="Holostreets" canon="false" texts="texts/eols.xml"><name>Shadowrun: Echoes of a Lost Signal</name></source>
+  <source id="EMC" publisher="Catalyst Game Labs" canon="true" texts="texts/emc.xml"><name>Shadowrun: Emerald City</name></source>
+  <source id="FPT" publisher="Catalyst Game Labs" canon="true" texts="texts/fpt.xml"><name>Shadowrun: Falling Point</name></source>
+  <source id="FBT" publisher="Catalyst Game Labs" canon="true" texts="texts/fbt.xml"><name>Shadowrun: Final Bets</name></source>
+  <source id="FRS" publisher="Catalyst Game Labs" canon="true" texts="texts/frs.xml"><name>Shadowrun: Free Seattle</name></source>
+  <source id="LHV" publisher="Catalyst Game Labs" canon="true" texts="texts/lhv.xml"><name>Shadowrun: Lethal Harvest</name></source>
+  <source id="LASC" publisher="Catalyst Game Labs" canon="true" texts="texts/lasc.xml"><name>Shadowrun: Los Alamos: The Secret City</name></source>
+  <source id="MGC" publisher="Catalyst Game Labs" canon="true" texts="texts/mgc.xml"><name>Shadowrun: Margin Calls</name></source>
+  <source id="ML2083-03" publisher="Catalyst Game Labs" canon="true" texts="texts/ml2083-03.xml"><name>Shadowrun Missions Legends 2083-03: Nile Gambit: City Under the Sand</name></source>
+  <source id="ML2083-04" publisher="Catalyst Game Labs" canon="true" texts="texts/ml2083-04.xml"><name>Shadowrun Missions Legends 2083-04: Nile Gambit: Cave of Shadows</name></source>
+  <source id="NAS" publisher="Catalyst Game Labs" canon="true" texts="texts/nas.xml"><name>Shadowrun: Neo-Anarchist's Streetpedia</name></source>
+  <source id="NUV" publisher="Catalyst Game Labs" canon="true" texts="texts/nuv.xml"><name>Shadowrun: Null Value</name></source>
+  <source id="PWP" publisher="Catalyst Game Labs" canon="true" texts="texts/pwp.xml"><name>Shadowrun: Power Plays</name></source>
+  <source id="RAR" publisher="Catalyst Game Labs" canon="true" texts="texts/rar.xml"><name>Shadowrun: Risks &amp; Rewards</name></source>
+  <source id="SCO" publisher="Catalyst Game Labs" canon="true" texts="texts/sco.xml"><name>Shadowrun: Scotophobia</name></source>
+  <source id="SHC" publisher="Catalyst Game Labs" canon="true" texts="texts/shc.xml"><name>Shadowrun: Shadow Cast</name></source>
+  <source id="SIF-NO" publisher="Catalyst Game Labs" canon="true" texts="texts/sif-no.xml"><name>Shadowrun: Shadows in Focus: New Orleans: Easy Come, Easy Go</name></source>
+  <source id="SHS" publisher="Catalyst Game Labs" canon="true" texts="texts/shs.xml"><name>Shadowrun: Shoot Straight</name></source>
+  <source id="SLS" publisher="Catalyst Game Labs" canon="true" texts="texts/sls.xml"><name>Shadowrun: Slip Streams</name></source>
+  <source id="SOTA2084" publisher="Catalyst Game Labs" canon="true" texts="texts/sota2084.xml"><name>Shadowrun: State of the Art 2084</name></source>
+  <source id="TKC" publisher="Catalyst Game Labs" canon="true" texts="texts/tkc.xml"><name>Shadowrun: The Kechibi Code</name></source>
+  <source id="TNE" publisher="Catalyst Game Labs" canon="true" texts="texts/tne.xml"><name>Shadowrun: The Needle's Eye</name></source>
+  <source id="TTP" publisher="Catalyst Game Labs" canon="true" texts="texts/ttp.xml"><name>Shadowrun: The Third Parallel</name></source>
+  <source id="WHN" publisher="Catalyst Game Labs" canon="true" texts="texts/whn.xml"><name>Shadowrun: Whisper Nets</name></source>
 </sr6:data>

@@ -37,9 +37,12 @@
       <xs:enumeration value="priorities"/><xs:enumeration value="metatypes"/><xs:enumeration value="attributes"/>
       <xs:enumeration value="skills"/><xs:enumeration value="qualities"/><xs:enumeration value="weapons"/>
       <xs:enumeration value="armor"/><xs:enumeration value="augmentations"/><xs:enumeration value="electronics"/>
+      <xs:enumeration value="programs"/>
       <xs:enumeration value="gear"/><xs:enumeration value="vehicles"/><xs:enumeration value="spells"/>
       <xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/><xs:enumeration value="complexforms"/>
       <xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="critterpowers"/>
+      <xs:enumeration value="martialarts"/><xs:enumeration value="martialtechniques"/>
+      <xs:enumeration value="traditions"/>
       <xs:enumeration value="critters"/><xs:enumeration value="spirits"/><xs:enumeration value="npcs"/>
       <xs:enumeration value="sprites"/><xs:enumeration value="lifestyles"/><xs:enumeration value="contacts"/>
       <xs:enumeration value="lifemodules"/><xs:enumeration value="rules"/>
@@ -158,7 +161,9 @@
       <xs:attribute name="kind" use="required">
         <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="positive"/><xs:enumeration value="negative"/></xs:restriction></xs:simpleType>
       </xs:attribute>
+      <!-- karma: the lowest price printed, karmaMax: the highest when it prints a range or several (Phobia: by rarity) -->
       <xs:attribute name="karma" type="xs:integer"/>
+      <xs:attribute name="karmaMax" type="xs:integer"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
     </xs:extension></xs:complexContent>
@@ -216,6 +221,15 @@
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
+  <!-- a Matrix program: its type as printed (basic, hacking, …); avail and cost only where the book prints them -->
+  <xs:complexType name="Program">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="type" type="xs:string" use="required"/>
+      <xs:attribute name="avail" type="xs:string"/>
+      <xs:attribute name="cost" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
   <xs:complexType name="Gear">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string" use="required"/>
@@ -227,6 +241,8 @@
       <xs:attribute name="cost" type="xs:string"/>
       <!-- what the cost buys: "10 rounds", "100m", "month" (none: one item) -->
       <xs:attribute name="per" type="xs:string"/>
+      <!-- a vehicle modification's modification slots, a formula like the cost ("1/3 body (rounded up)") -->
+      <xs:attribute name="slots" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -287,12 +303,27 @@
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
+  <!-- a martial art style: categories (Weapon, Grappling, …) and its signature technique, as printed -->
+  <xs:complexType name="MartialArt">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="categories" type="xs:string"/>
+      <xs:attribute name="signature" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="MartialTechnique">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="category" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
   <xs:complexType name="CritterPower">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="type" type="xs:string"/>
       <xs:attribute name="action" type="xs:string"/>
       <xs:attribute name="range" type="xs:string"/>
       <xs:attribute name="duration" type="xs:string"/>
+      <!-- a weakness (Fragile, Carrier): the book's stat blocks list it under Weaknesses -->
+      <xs:attribute name="weakness" type="sr6:True"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -375,6 +406,17 @@
   <xs:simpleType name="ChoiceOptions">
     <xs:restriction><xs:simpleType><xs:list itemType="sr6:ChoiceOption"/></xs:simpleType><xs:minLength value="1"/></xs:restriction>
   </xs:simpleType>
+  <!-- the Sixth World Companion's contact types (a life module's, a runner's contact's) -->
+  <xs:simpleType name="ContactType">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="academic"/><xs:enumeration value="corporate"/><xs:enumeration value="criminal"/>
+      <xs:enumeration value="engineering"/><xs:enumeration value="government"/><xs:enumeration value="magic"/>
+      <xs:enumeration value="matrix"/><xs:enumeration value="media"/><xs:enumeration value="medical"/><xs:enumeration value="street"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ContactTypes">
+    <xs:restriction><xs:simpleType><xs:list itemType="sr6:ContactType"/></xs:simpleType><xs:minLength value="1"/></xs:restriction>
+  </xs:simpleType>
   <xs:complexType name="LifeModule">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
@@ -403,6 +445,8 @@
     <xs:attribute name="adjustmentPoints" type="xs:nonNegativeInteger"/>
     <xs:attribute name="nuyen" type="xs:nonNegativeInteger"/>
     <xs:attribute name="contactPoints" type="xs:nonNegativeInteger"/>
+    <!-- the contact types its contact points buy or raise (absent: any type) -->
+    <xs:attribute name="contactTypes" type="sr6:ContactTypes"/>
     <xs:attribute name="knowledgeSkills" type="xs:nonNegativeInteger"/>
   </xs:complexType>
 

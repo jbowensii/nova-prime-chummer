@@ -1,0 +1,218 @@
+"""SR6 Firing Squad recipe (importer/sr6/recipes/fs.py) on a made-up book.md in the converter's sr6 shape (the book's:
+an item's heading, its text and a stat box titled with its name). Every name, number and line is invented."""
+import os
+import unittest
+import xml.etree.ElementTree as ET
+
+from lxml import etree
+
+from importer import sr6
+from importer.sr6 import regroup
+from importer.sr6.recipes import crb, fs, identify
+
+BOOK_MD = """<!-- page 1 -->
+<!-- page 3 -->
+# CONTENTS
+Made-up contents ........ 9
+<!-- page 10 -->
+# WEAPONS RACK
+## Melee Weapons
+### Blades
+#### Zap Knife
+A made-up knife that zaps.
+##### zap knife
+| TYPE | DV | ATTACK RATINGS | AVAIL | COST |
+|---|---|---|---|---|
+| Blade | 2P | 7/—/—/—/— | 2(L) | 150¥ |
+## Ranged Weapons
+### Rifles
+#### Glow Rifle Mk II
+A made-up rifle that glows.
+##### glow rifle
+| TYPE | DV | MODE | ATTACK | RATINGSAMMOAVAIL | COST |
+|---|---|---|---|---|---|
+| Rifle | 5P | SA/BF | 3/9/11/7/2 | 24(c) 4(L) | 3,300¥ |
+**Note:** Includes a made-up glow.
+## Ammo
+#### Fizz Rounds
+Made-up rounds that fizz.
+##### fizz rounds
+| DV | ATTACK RATING | AVAIL | COST |
+|---|---|---|---|
+| +1 | –1 | 2(L) | x3 |
+<!-- page 40 -->
+# SUIT UP
+### Puff Jacket
+A made-up jacket, puffy.
+##### puff jacket
+| DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|
+| +3 | –1 | 6 | 3 | 900¥ |
+### Layer Suit
+A made-up suit in layers.
+##### Layer Suit
+| TYPE | DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|---|
+| Light | +4 | –2 | 8 | 4(L) | 4,000¥ |
+| Heavy | +6 | –4 | 10 | 6(L) | 9,000¥ |
+### Card House
+The Card House sells the Jack of Dice and the Queen of Cups.
+## Accessories and Modifications
+### Stacking
+Made-up stacking.
+| TYPE | DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|---|
+| Jack of Dice | +3 | +2 | 6 | 4 | 1,000¥ |
+| Extras: None |  |  |  |  |  |
+| Queen of Cups | +4 | +3 | 8 | 5 | 1,500¥ |
+**Extras:** Pocket Patch
+### Pocket Patch
+A made-up patch with a pocket.
+### Glow Lining
+A made-up lining that glows.
+##### ARMOR ACCESSORIES AND MODIFICATIONS
+| GEAR | CAPACITY | AVAILABILITY | COST |
+|---|---|---|---|
+| Pocket Patch | [1] | 2 | 60¥ |
+| GEAR | CAPACITY | AVAILABILITY | COST |
+|---|---|---|---|
+| Glow Lining | [2] | 3 | 120¥ |
+## Weapon Modifications
+### Grip Tape
+A made-up tape for a grip.
+##### grip tape
+| AVAIL | COST |
+|---|---|
+| 1 | 25¥ |
+<!-- page 80 -->
+# HONING YOUR EDGE
+## Made-Up Martial Art
+Kick in a made-up way.
+### Traditional Martial Arts
+#### Glow Fist
+A made-up style of punching.
+Similar Styles: Made Boxing
+Category: Mobility, Striking
+Signature Technique: Glow Jab
+## Martial Art Techniques
+#### Glow Jab
+Jab in a made-up way. **Category:** Striking; may only be
+used with glowing **Catego-**
+#### Glow Kick
+Kick glowingly. **Catego-**
+**ry:** Striking
+<!-- page 120 -->
+# VIOLENT ENDS
+## Game Information
+### Twitchy
+You twitch in a made-up way.
+**Bonus:** 3 Karma
+**Game Effect:** Made-up twitches.
+### Jitters
+You jitter in a made-up way.
+**Bonus:** Often: 8 Karma; Seldom: 4
+Karma; Never: 2 Karma
+**Game Effect:** Made-up jitters.
+### Fussy
+#### (Habit, 1 to 4)
+**Bonus:** 2 Karma per level
+**Game Effect:** Made-up fuss.
+You fuss in a made-up way.
+<!-- page 130 -->
+# FIGHTING FORCES
+## Corporate Security Forces
+### Made Star
+#### Door Basher
+##### (Professional Rating 4)
+A made-up guard who bashes doors.
+##### door basher
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 5 | 4 | 4 | 5 | 3 | 2 | 3 | 2 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 9 | 7/1 | A1, I2 | 11 | 10/15/+1 |
+**Skills:** Athletics 3, Close Combat 4
+<!-- page 150 -->
+## weapon & armor stats
+| ITEM | DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|---|
+| Puff Jacket | +3 | –1 | 6 | 3 | 900¥ |
+"""
+
+
+def run_recipe(md=BOOK_MD):
+    regrouped, _ = regroup.regroup(md, fs.ALIASES, name_headers=fs.NAME_HEADERS, end_page=150)
+    return fs.extract(regrouped)
+
+
+def entries(res, kind):
+    return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
+
+
+class FsRecipeTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.res = run_recipe()
+
+    def test_weapons_from_their_boxes_merged_headers_split(self):
+        w = entries(self.res, "weapons")
+        self.assertEqual(w["Zap Knife"], {"id": "zap-knife", "source": "FS", "page": "9", "category": "blades",
+                                          "type": "Blade", "dv": "2P", "ar": "7/—/—/—/—", "avail": "2(L)", "cost": "150"})
+        r = w["Glow Rifle Mk II"]  # its box titled shorter than its heading
+        self.assertEqual((r["category"], r["ar"], r["ammo"], r["avail"], r["cost"]), ("rifles", "3/9/11/7/2", "24(c)", "4(L)", "3300"))
+        self.assertEqual(w["Grip Tape"]["category"], "weapon-modifications")
+        self.assertFalse(any(n.startswith("*") for n in w))
+
+    def test_ammo_armor_and_modifications(self):
+        self.assertEqual(entries(self.res, "gear")["Fizz Rounds"]["category"], "ammo")
+        a = entries(self.res, "armor")
+        self.assertEqual({k: a["Puff Jacket"][k] for k in ("category", "defense", "capacity", "cost")},
+                         {"category": "armor", "defense": "+3", "capacity": "6", "cost": "900"})
+        self.assertEqual((a["Layer Suit (Light)"]["defense"], a["Layer Suit (Heavy)"]["cost"]), ("+4", "9000"))
+        self.assertEqual((a["Pocket Patch"]["category"], a["Glow Lining"]["capacity"]), ("armor-modifications", "[2]"))
+        # a suit table printed in the next section's text: back to the section naming its rows, its Extras rows folded
+        self.assertEqual((a["Card House (Jack of Dice)"]["cost"], a["Card House (Queen of Cups)"]["defense"]), ("1000", "+4"))
+        texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
+        self.assertIn("**Extras:** Pocket Patch", texts[("armor", "card-house-queen-of-cups")])
+        self.assertNotIn("Jack of Dice", texts[("rules", "stacking")])
+        self.assertEqual(len(a), 7)  # the reprinted stats at the back are left out
+
+    def test_qualities_npcs_and_rules(self):
+        q = entries(self.res, "qualities")
+        self.assertEqual((q["Twitchy"]["kind"], q["Twitchy"]["karma"]), ("negative", "3"))
+        self.assertEqual((q["Jitters"]["karma"], q["Jitters"]["karmaMax"]), ("2", "8"))  # its prices wrap a line
+        self.assertNotIn("karmaMax", q["Twitchy"])
+        self.assertEqual((q["Fussy"]["karma"], q["Fussy"]["perLevel"], q["Fussy"]["maxLevel"]), ("2", "true", "4"))
+        n = entries(self.res, "npcs")["Door Basher"]
+        self.assertEqual((n["rating"], n["group"], n["bod"], n["dr"]), ("4", "Made Star", "5", "9"))
+        r = entries(self.res, "rules")
+        self.assertIn("Made-Up Martial Art", r)
+        self.assertNotIn("Pocket Patch", r)  # its text went to the modification
+        texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
+        self.assertIn("patch with a pocket", texts[("armor", "pocket-patch")])
+        self.assertIn("rifle that glows", texts[("weapons", "glow-rifle-mk-ii")])
+
+    def test_martial_arts(self):
+        s = entries(self.res, "martialarts")["Glow Fist"]
+        self.assertEqual((s["categories"], s["signature"]), ("Mobility, Striking", "Glow Jab"))
+        t = entries(self.res, "martialtechniques")
+        self.assertEqual((t["Glow Jab"]["category"], t["Glow Kick"]["category"]), ("Striking", "Striking"))
+        texts = {(x.get("of"), x.get("id")): x.text for x in ET.fromstring(self.res.texts)}
+        self.assertIn("Similar Styles:** Made Boxing", texts[("martialarts", "glow-fist")])
+
+    def test_files_validate(self):
+        for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:
+            doc = etree.fromstring(xml.encode("utf8"))
+            schema = etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, doc.get("kind") + ".xsd")))
+            self.assertTrue(schema.validate(doc), f"{name}: {schema.error_log.last_error}")
+
+    def test_match(self):
+        self.assertEqual(fs.match({"sha256": fs.SHA256[0]}, ""), 1.0)
+        self.assertEqual(fs.match({"sha256": "x", "title": "Shadowrun: Firing Squad (Core Combat Rulebook)"}, ""), 0.9)
+        self.assertIs(identify({"sha256": "x", "title": "Shadowrun: Firing Squad"}, BOOK_MD[:4000])[0], fs)
+        self.assertEqual(crb.match({"sha256": "x"}, BOOK_MD[:4000]), 0.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

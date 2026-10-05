@@ -1,13 +1,39 @@
 # SR6 core rulebook (CRB): layout survey
 
-Structure only, no book text. The owner's PDF (current printing, SHA-256 in `crb.py`): 322 pages, 612 × 765 pt.
-Printed page = PDF page − 1 (`PAGE_OFFSET`).
+Structure only, no book text. The owner's PDFs (SHA-256s in `crb.py`): the 2019 printing, 322 pages, 612 × 765 pt, and
+the City Editions (Hong Kong, the latest printing, 2025; Seattle; Berlin), 342–349 pages: the same pages 1–321 (some
+values and names updated), then a chapter on the city and fiction after the index, which `END_PAGE` leaves out (the
+city chapter is read apart: below). Their
+first pages name no core rulebook and carry no title, so they are known by fingerprint only. Printed page = PDF page − 1
+(`PAGE_OFFSET`) in all of them. The real-book check runs on the Hong Kong edition (the owner's rule: the latest
+printing).
+
+## The City Editions' city chapter (crb_city.py)
+
+Each City Edition's city chapter is a source of its own (CRB-SEA, CRB-BER, CRB-HK; `crb.extra` -> `Result.extra`, which
+run.py writes to custom/sr6/imported/<source>/ beside the CRB, records in import.xml `extra`, and removes with the
+book), so the CRB catalog stays the 2019 printing's. Only its game pages are read (`CITIES`: PDF pages Seattle 328-341,
+Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back cover are left out. In them:
+
+- Qualities: level-3 headings with `Cost:` / `Bonus:` lines (bold or, in Berlin, plain bullets).
+- Contacts: a level-3 heading with a metatype line (`Female Elf`, read as a tag or a level-4 heading), the description,
+  then a level-5 box with the band (or the band in the description itself: Trubble): a contact and its NPC. A box
+  printing two beings' bands into each other (Seattle's Brynne Taggart and Ni Ni Xiaolu, Berlin's Cashmere and Saif
+  Alhazred) is not guessed: those contacts are reported.
+- Gear: small tables under lower-case titles (ITEM, TYPE or VEHICLE first: one entry a row) or a box's own table (named
+  by the box or the heading it describes; several tables under one heading: `Ballistic Tent (2)`); Berlin's street
+  weapons as bold names with bracketed stats; Berlin's prices print thousands with a dot (`32.000¥`). A vehicle table
+  printed in the text of a section whose name another box with its own table has (Berlin's airbike values in the
+  walker's section) is reported, as is a box title with no values (the Kuznechik Airbike).
+- The rest (plot hooks, the city's reputation and heat modifiers, gear descriptions no row took): rule sections.
 
 ## Fonts (converter sr6 layout, Task 2)
 
 - Body: a serif family at 10.5 pt; bold run-in labels (`Cost:`, `Game Effect:`) in its bold face.
 - Headings: one display family at 60 (chapter, level 1), 21 (section, 2), 15 (subsection, 3), 13 (item, 4) and 9
-  (box titles, spell and matrix-action tag lines, 5).
+  (box titles, spell and matrix-action tag lines, 5). The Hong Kong and Berlin chapters set a 27 pt title on enough
+  pages for the converter to take it for a level (dropping 9 pt), so the recipe gives the sizes (`HEADING_LEVELS`) for
+  the printings it knows.
 - Tables: a 7 pt sans family; header row in its black weight, rows regular, stat-box labels bold ending in `:`.
 - Table titles, some box titles and art captions: the display family in lower case.
 - Margin tab letters at the outer edge, running heads and page numbers at the edge or in the bottom 35 pt: dropped.
@@ -32,7 +58,9 @@ Printed page = PDF page − 1 (`PAGE_OFFSET`).
   running the game, gear. Lifestyles are level-3 sections in game concepts (cost on a level-5 tag line). Grunts (level-3
   "Professional Rating N" sections), sample contacts, critters and critter powers (level-3 sections, a TYPE/ACTION/
   RANGE/DURATION band in the text) are all in wild life; spirits are level-4 items in magic (a heading printed twice
-  over its box); sprites and echoes (a section's bulleted labelled lines) in matrix. Combat spells sit under level-5
+  over its box); sprites, echoes (a section's bulleted labelled lines) and programs (the Programs section's `Basic` and
+  `Hacking` headings' labelled lines; each takes its type's price from the gear chapter's `Cyberprogram, <type>` row)
+  in matrix. Combat spells sit under level-5
   item headings ending in "Spells". The ten archetypes (a level-2 section with a level-5 `metatype: <name>` box: the
   stat band and labelled lines) are no catalog kind: they become sample runners (importer/sr6/archetypes.py).
 - Gear rows map by their table's first header and title only (a section name can mislead): the augmentation tables
@@ -48,7 +76,7 @@ Printed page = PDF page − 1 (`PAGE_OFFSET`).
 
 ## Real-book check (local, nothing committed)
 
-    python -m importer sr6 check "<the core rulebook PDF>" --out "%TEMP%\sr6-check"
+    python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"
 
 It recreates `<out>/library/sr6/book1/` (a copy of the PDF) and `<out>/custom/sr6/`, runs the full import (convert,
 identify, regroup, extract, write) and prints: the wall time; the status; recipe, source, pages, converter and match

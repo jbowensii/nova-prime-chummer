@@ -86,7 +86,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(row).toContainText('Weapons 2')
   await expect(row).toContainText('Rules 2')
   await expect(row).toContainText('Shadowrun, Sixth World Core Rulebook')
-  await expect(page.locator('.supported li', { hasText: 'CRB' })).toContainText('Imported')
+  await expect(page.locator('.supported li', { hasText: /\bCRB\b(?!-)/ })).toContainText('Imported')
   await expect(row.getByRole('button', { name: /AI/ })).toHaveCount(0)
   await shoot(page, 'books')
   await row.getByRole('button', { name: 'Report' }).click()
@@ -97,7 +97,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
 
   await page.getByRole('link', { name: 'Game data' }).click()
   await expect(page.getByText('No SR6 data yet.')).toHaveCount(0)
-  const crb = page.locator('.sr6-sources tbody tr', { hasText: 'CRB' })
+  const crb = page.locator('.sr6-sources tbody tr', { hasText: /\bCRB\b(?!-)/ })
   await expect(crb).toContainText('Catalyst Game Labs')
   await expect(crb).toContainText('installed')
   await expect(crb).toContainText('test-sr6-core.pdf')

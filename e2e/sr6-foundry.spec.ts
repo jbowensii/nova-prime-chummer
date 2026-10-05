@@ -117,7 +117,7 @@ test('Game data: the GM downloads book data, with or without descriptions', asyn
   await expect(panel).toContainText('For your own Foundry only. Don’t share this file.')
   await panel.getByRole('button', { name: 'None' }).click()
   await expect(panel.getByRole('button', { name: 'Download book data' })).toBeDisabled()
-  await panel.getByRole('checkbox', { name: /^CRB\b/ }).check()
+  await panel.getByRole('checkbox', { name: /^CRB\b(?!-)/ }).check()
   let dl = page.waitForEvent('download')
   await panel.getByRole('button', { name: 'Download book data' }).click()
   let { name, f } = await file(dl)

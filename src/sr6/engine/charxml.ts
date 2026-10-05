@@ -4,9 +4,9 @@
 import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../engine/charxml'
 import { BACKDROPS, type Backdrop } from '../../model/types'
 import {
-  BONUS_TARGETS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
+  BONUS_TARGETS, CONTACT_TYPES, CORE_ATTRS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
   SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
-  type Bonus, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
+  type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
   type Sr6Npc, type Sr6Pick, type Sr6Purchase, type Sr6Quality,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Kind } from '../model/types'
@@ -30,7 +30,8 @@ function purchaseXml(p: Sr6Purchase): string {
 const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, free: q.free, note: q.note, name: q.name })
 const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
-const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty })
+const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
+  types: c.types?.length ? c.types.join(' ') : undefined })
 
 function buildXml(b: Sr6Build): string {
   const rows = [
@@ -45,7 +46,8 @@ function buildXml(b: Sr6Build): string {
     ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating }, s.licences.map(l => el('licence', l)).join(''))),
   ]
   return el('build', { method: b.method, magic: b.magic, aspectedSkill: b.aspectedSkill, tradition: b.tradition, drainAttr: b.drainAttr,
-    powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen },
+    powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen,
+    bestAttr: b.bestAttr, bestExtra: b.bestExtra },
   `\n    ${rows.join('\n    ')}\n  `)
 }
 
@@ -143,15 +145,20 @@ const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid')
   free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
 const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
   id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
-const readContact = (e: Element): Sr6Contact => ({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
-  archetype: e.getAttribute('archetype') ?? '', connection: num(e, 'connection', 0), loyalty: num(e, 'loyalty', 0) })
+const readContact = (e: Element): Sr6Contact => {
+  const types = (e.getAttribute('types') ?? '').split(/\s+/).filter(t => (CONTACT_TYPES as string[]).includes(t)) as ContactType[]
+  return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '', archetype: e.getAttribute('archetype') ?? '',
+    connection: num(e, 'connection', 0), loyalty: num(e, 'loyalty', 0), types: types.length ? types : undefined })
+}
 
 function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
   out.magic = oneOf(b.getAttribute('magic'), MAGIC_KINDS, 'magic kind', 'mundane', fix)!
   const drain = b.getAttribute('drainAttr')
   Object.assign(out, def({ aspectedSkill: str(b, 'aspectedSkill'), tradition: str(b, 'tradition'),
-    drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix) }))
+    drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix),
+    ...Object.fromEntries((['bestAttr', 'bestExtra'] as const).map(k => [k, b.getAttribute(k) == null ? undefined
+      : oneOf(b.getAttribute(k), CORE_ATTRS, 'best attribute', undefined, fix)])) }))
   for (const k of ['powerPointsBought', 'initiation', 'submersion', 'karmaToNuyen'] as const) out[k] = num(b, k, 0)
   each(kids(b, 'priority'), e => {
     const l = e.getAttribute('letter')

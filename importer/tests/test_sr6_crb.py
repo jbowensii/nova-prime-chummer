@@ -186,6 +186,12 @@ Fizz
 Echoes are made up.
 • **Quick Think:** You think made-up thoughts faster.
 • **Wide Net:** Your made-up net is wider.
+## Programs
+#### Basic
+• **Glow Scan:** Scan in a
+Glowing made-up way.
+• **Fizz Wall:** Wall of made-up fiz-
+zing code.
 ## Matrix Actions
 ### Poke Host
 ##### Major Action
@@ -287,6 +293,13 @@ A slow made-up deck.
 | DEVICE | CAPACITY | AVAIL | COST |
 |---|---|---|---|
 | Spy Lens | 1–4 | 1 | Capacity x 70¥ |
+## Software
+#### software
+| SOFTWARE | AVAIL | COST |
+|---|---|---|
+| Cyberprogram, basic | 3 | 77¥ |
+#### Cyberprogram, basic
+Made-up programs.
 ## Tools
 #### kits
 | ITEM | RATING | CAPACITY | AVAIL | COST |
@@ -357,13 +370,15 @@ class CrbRecipeTest(unittest.TestCase):
     def test_every_kind_has_its_entry(self):
         expect = {"priorities": "Priority A", "metatypes": "Glimmerkin", "attributes": "Body", "skills": "Tinkering",
                   "qualities": "Lucky Streak", "weapons": "Zap Gun", "armor": "Padded Vest",
-                  "augmentations": "Glow Gland", "electronics": "Clunker Deck", "gear": "Gizmo Kit",
+                  "augmentations": "Glow Gland", "electronics": "Clunker Deck", "programs": "Glow Scan", "gear": "Gizmo Kit",
                   "vehicles": "Zoom Bike", "spells": "Zap Bolt", "rituals": "Glow Circle", "adeptpowers": "Quick Feet",
                   "complexforms": "Static Fizz", "metamagics": "Bright Aura", "echoes": "Quick Think",
                   "critterpowers": "Glimmer", "critters": "Fuzzbeast", "spirits": "Spirits of Fizz",
                   "npcs": "Corner Goon", "sprites": "Gadget Sprite", "lifestyles": "Shoebox", "contacts": "Fixer Fred",
                   "rules": "Making Trouble"}
-        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules"})  # no recipe writes life modules (S2)
+        # the core rulebook has no life modules (the Companion's), martial arts (Firing Squad's, Deadly Arts') nor
+        # traditions of their own (Street Wyrd's)
+        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques", "traditions"})
         for kind, name in expect.items():
             self.assertIn(name, entries(self.res, kind), kind)
 
@@ -483,6 +498,10 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(list(entries(self.res, "echoes")), ["Quick Think", "Wide Net"])
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertEqual(texts[("echoes", "wide-net")], "Your made-up net is wider.")
+        p = entries(self.res, "programs")  # a type's price from its `Cyberprogram, <type>` row; its paragraph's text
+        self.assertEqual({k: (v.get("type"), v.get("avail"), v.get("cost")) for k, v in p.items()},
+                         {"Glow Scan": ("basic", "3", "77"), "Fizz Wall": ("basic", "3", "77")})
+        self.assertEqual(texts[("programs", "fizz-wall")], "Wall of made-up fiz-\nzing code.")
         self.assertEqual(entries(self.res, "qualities")["Steady Hands"].get("karma"), "5")  # a cost in the text
 
     def test_prices(self):
@@ -564,6 +583,16 @@ class CrbRecipeTest(unittest.TestCase):
                                    "# Shadowrun Anarchy\nAlternative Core Rulebook"), 0.0)
         self.assertIs(identify({"sha256": "x"}, BOOK_MD[:4000])[0], crb)
         self.assertIsNone(identify({"sha256": "x"}, "# Some Other Game")[0])
+
+    def test_city_editions_known_by_fingerprint_with_their_heading_sizes(self):
+        for sha in crb.SHA256[1:]:  # their first pages name no core rulebook
+            self.assertIs(identify({"sha256": sha}, "CITY EDITION")[0], crb)
+        self.assertEqual(sorted(crb.HEADING_LEVELS.values()), [1, 2, 3, 4, 5])
+
+    def test_footnote_mark_left_out_of_a_name(self):
+        cat = crb._Catalog()
+        self.assertEqual(cat.add("weapons", "Zap Whip*", 1)["name"], "Zap Whip")
+        self.assertEqual(cat.add("rules", "Glow Up * cannot be bought", 1)["name"], "Glow Up")
 
     def test_committed_aliases(self):
         self.assertGreaterEqual(len(crb.ALIASES), 39)

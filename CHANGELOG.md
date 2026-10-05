@@ -1,5 +1,80 @@
 # Release notes
 
+## 0.9.2 — 2026-10-04: every Shadowrun 6 book, Sixth World Companion and lifepath
+
+- **The Sixth World Companion can be imported** on Shadowrun 6 **Books** (it is now in the supported list). From your
+  copy of the book the app reads its life modules (the three opening ones and the 86 adult choices and events, with
+  what each gives: attribute and skill choices, nuyen, contact points and the contact types they're for, knowledge
+  skills), its 25 metavariants and metasapients with their attribute ranges and racial traits, its qualities (the new
+  positive and negative ones, the metagenic and infected ones), its new critter powers, its contacts with their stat
+  blocks, and its rule sections. What it couldn't read is listed in the import's report. Lifepath can be picked once the
+  life modules are in.
+- **Lifepath follows the Companion's rules.** Pick your best attribute on Creation method: it goes up by 5, up to your
+  metatype's maximum, and if the maximum stops it you pick where the rest goes. One adult module may be taken twice
+  (**Add again**), each copy with its own choices. On Contacts, give each contact one or two types: each module's
+  contact points only go to contacts of its types, and connection or loyalty past your points costs 1 karma a rating.
+  Your metatype's karma (a metavariant's) comes out of your starting karma, as in point buy.
+- **Metavariants work in point buy and lifepath** straight away: their karma costs ship with the standard creation
+  settings (with the Companion’s page), next to the new lifepath numbers; once the book is imported, Table setup shows
+  them and lets you change them.
+- **Better reading of some PDFs.** Books whose text columns sit very close together, or whose bullets are set small and
+  raised, no longer come out with the two columns mixed. Re-importing the core rulebook gives the same entries.
+
+- **The Contacts table fits the page.** With lifepath's contact types, the two type boxes no longer pile up in their
+  cell, push **Remove** out of sight or make the table scroll sideways: they sit side by side, and where the page is
+  narrow (a phone, or a small window next to the build panel) each contact shows as a small card with its fields labelled.
+
+- **Shadowrun 6 books with doubled letters read properly.** Some PDFs (Falling Point, Final Bets, Scotophobia, Shoot
+  Straight, Tarnished Star, The Needle's Eye, Wild Life) carry every page's text twice, which came out as
+  "IInnttrroodduuccttiioonn". The importer now keeps only the first copy, headings included, while real double letters
+  ("Arrow", "Kill") stay. Words broken after an "fi", "fl" or "ff" ("fi rst", "offi ce") are joined again where the
+  result is a word; "off the" stays two words. The core rulebook imports exactly as before.
+
+- **The core rulebook's City Editions import** (Hong Kong, the latest printing, and Seattle and Berlin): the importer
+  recognises them and reads them as it reads the 2019 printing, with their updated values. Names no longer keep a
+  footnote mark ("Flash-pak*").
+
+- **Firing Squad can be imported** on Shadowrun 6 **Books** (it is now in the supported list). From your copy of the
+  book the app reads its weapons (with their weapon modifications and accessories), ammunition, armor (each variant
+  of a suit on its own) and armor modifications, tac-apps, the trauma qualities, the security and gang NPCs and the
+  rule sections, martial arts included. What it couldn't read is listed in the import's report. The book's errata
+  sheet isn't applied: it changes rules as well as numbers, so the book's printed values are kept.
+- **Firing Squad: the eight Vashon Island suits are read,** and a quality priced by variant (Phobia: by rarity) keeps its lowest and highest karma instead of only the first number.
+- **Wild Life can be imported** on Shadowrun 6 **Books** (supported list): its critters with their stat blocks (172, each with its habitat), the new critter powers (Fragile and Carrier marked as weaknesses), critter gear and the rule sections; a stat band whose header shares a line with the next column's label (Firing Squad's Street Veteran) is read too.
+- **Bestial Nature can be imported** on Shadowrun 6 **Books** (supported list): the Shifter quality's four forms and its 34 positive and negative add-ons (as qualities), the 13 Animalism powers (as metamagics), its armor, gear, silver bullets and drones, and the rule sections.
+- **Smooth Operations can be imported** on Shadowrun 6 **Books** (supported list): its spells, ritual, adept powers, metamagics and alchemical preparations, its social gear (clothing, armor modification, accessories, apps, espionage gear), its qualities, its six faces as sample runners, and the rule sections.
+- **Explosive Decompression can be imported** on Shadowrun 6 **Books** (supported list): its spacesuits, space gear and energy weapons, its thruster packs, spaceships, starships and drones, the mission rosters' NPCs, and the rule sections.
+- **The other Shadowrun 6 books can be imported** on Shadowrun 6 **Books** (supported list), with one general reading: 30 Nights, Assassin's Night, Collapsing Now, Cutting Black, Dealers of Death, Echoes of a Lost Signal (and its QSR edition, fan scenarios), Emerald City, Falling Point, Final Bets, Free Seattle, Lethal Harvest, Los Alamos: The Secret City, Margin Calls, Missions Legends 2083-03 and 2083-04 (Nile Gambit), Neo-Anarchist's Streetpedia, Null Value, Power Plays, Risks & Rewards, Scotophobia, Shadow Cast, Shadows in Focus: New Orleans, Shoot Straight, Slip Streams, State of the Art 2084, Tales from the UCAS: Age of Rust, The Kechibi Code, The Needle's Eye, The Third Parallel, Whisper Nets, the Beginner Box's Battle Royale adventure and the character conversion guide: their NPC, grunt and contact stat blocks (with their Professional Rating), critters, priced gear, weapon, armor and vehicle tables, qualities, life modules and rule sections. Wild Life's trojan rat and Explosive Decompression's ArmTech grenade launcher are read too, and a stat block's second R is read as Resonance.
+
+- **Deadly Arts can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons (one entry
+  each from the shared weapon boxes), weapon mods, vehicles and drones, armor and armor mods, implants, comm gear,
+  ammunition and other gear, spells, adept powers, metamagics, rituals, qualities, its martial art styles and
+  techniques (a new kind on Game data, which Firing Squad's import now fills too) and the rule sections.
+- **Hack & Slash can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its matrix gear
+  (cyberhacks, dataterms, deck cases, components and mods, data taps, tag bombs, commlink hacks and apps, agents,
+  cyberkits, codemods), cyberprograms, complex forms, echoes, sprites, qualities, the matrix security NPCs and the rule
+  sections (hosts, IC, foundations and resonance realms among them).
+- **Street Wyrd can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its spells, adept
+  powers, metamagics, traditions (a new kind on Game data), preparations, spirits and spirit powers, qualities and
+  the rule sections.
+- **Matrix programs are a kind of their own** on Game data (grouped basic and hacking): the core rulebook's import
+  lists each program with its type's availability and price, Hack & Slash's its new cyberprograms (the book prints no
+  price for them).
+- **Lofwyr's Legions can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its Saeder-Krupp
+  NPCs, the drake qualities and drake powers, its martial art and the rule sections.
+- **Johnson 'Dex can be imported** on Shadowrun 6 **Books** (it is now in the supported list): each Mr. Johnson card
+  becomes a contact (with its bio, plot hooks, gear level and favors) and an NPC with its stats, plus the deck's rules.
+- **Ingentis Athletes can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its ten troll
+  athletes as NPCs (read from the book's stat lines), the one priced weapon among their gear, and the troll variant rules.
+- **Body Shop can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its cyberware, cyberlimbs and their enhancements, bioware, geneware, nanoware, symbionts, nanotech and drugs, the implant weapons, the augmentation qualities, the augmented critters and the rule sections (the new implant grades among them); what it couldn't read is listed in the import's report.
+- **Double Clutch can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its vehicles and drones of every class, the vehicle modifications (gear entries now carry their modification slots), weapon mounts, drone racks and trailers, the rigger headware, the gear-head qualities, its sample contact and the rule sections; what it couldn't read is listed in the import's report.
+- **Krime Katalog can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons, grenades and weapon accessories, ammunition and vehicles, each with its Sixth World stats (the Fifth Edition ones printed beside them are left out); what it couldn't read is listed in the import's report.
+- **Double Clutch: no vehicle goes missing.** The DSEC, the Krime Karrier and the GTI Revolution now import; an aircraft the book's summary table lists but the importer couldn't read is listed in the import's report.
+- **No Future can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its gear (instruments, the yo-yos, rolling blades and other weapons, hats and coats, the two media vehicles, cameras, presses, the cybersenses), its qualities and its rules for performing; the availabilities from its errata sheet are applied, its other errata (rules and re-rated cyberware) aren't. What it couldn't read is listed in the import's report.
+- **Tarnished Star can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its weapons (the Foamtek line among them), ammunition, shields, armor and helmets, police gear (badgecams, inhibitor bands, scanners, drugs), its vehicles and drones, the Roll Call archetypes, contacts and security NPCs, and its rules for working a case, interviews and blackmail. What it couldn't read is listed in the import's report (two bikes whose stats run together in the book).
+- **Astral Ways can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its spirits (the elemental denizens, the dinosaur spirits, a toxic spirit), critters (chimeras, golems, toxic horrors), NPCs, the airships and their weapons, the astral devices and encounter suits, its new spell, rituals, critter power, metamagic and quality, and the rules from each metaplane's game information and the techniques of travel. What it couldn't read is listed in the import's report.
+- **The City Editions' city chapter imports too**, as a source of its own (Seattle, Berlin or Hong Kong, now in the supported list), beside the core rulebook and without changing it: the city's qualities, its contacts with their stat blocks, its gear, weapons and vehicles, and its plot hooks and rules. What it couldn't read (a few contacts whose stat blocks print into each other) is listed in the import's report; removing the book removes it too.
+
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 
 - **Rules text reads like a book again.** Shadowrun 6 rule sections and descriptions were squeezed into a narrow

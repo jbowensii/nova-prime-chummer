@@ -20,7 +20,7 @@ const details = (e: Sr6Entry) => Object.entries(e.attrs).map(([k, v]) => `${k} $
 /** an entry's sub-category inside its kind: its category (weapons by type, spells, gear by book section…), else these */
 const GROUP: Partial<Record<Sr6Kind, (e: Sr6Entry) => string | undefined>> = {
   augmentations: e => [e.attrs.type, e.attrs.category].filter(Boolean).join(': '), // cyberware or bioware, then body area
-  qualities: e => e.attrs.kind, critterpowers: e => e.attrs.type, lifemodules: e => e.attrs.stage, rules: e => e.attrs.chapter,
+  qualities: e => e.attrs.kind, programs: e => e.attrs.type, martialarts: e => e.attrs.categories, critterpowers: e => e.attrs.weakness ? 'weakness' : e.attrs.type, lifemodules: e => e.attrs.stage, rules: e => e.attrs.chapter,
   priorities: () => undefined, attributes: e => e.attrs.group, skills: e => e.attrs.attr?.toUpperCase(),
 }
 const groupOf = (e: Sr6Entry) => (GROUP[e.kind] ? GROUP[e.kind]!(e) : e.attrs.category) || undefined

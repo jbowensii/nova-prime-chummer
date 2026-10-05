@@ -23,7 +23,7 @@ test('the files load in order: shipped and imported sources, the index’s files
   expect(missing).toEqual([])
   expect(names.slice(0, 3)).toEqual(['data/sr6/sources.xml', 'custom/sr6/imported/sources.xml', 'custom/sr6/imported/crb/priorities.xml'])
   expect(names.slice(-3)).toEqual(['custom/sr6/texts/crb.xml', 'custom/sr6/edits/edits.xml', 'custom/sr6/edits/texts.xml'])
-  expect(names).toHaveLength(2 + 26 + 3)
+  expect(names).toHaveLength(2 + Object.keys(SR6_KINDS).length + 3)
 })
 
 test('every kind has its entries; attributes, parts, name and page are read', async () => {

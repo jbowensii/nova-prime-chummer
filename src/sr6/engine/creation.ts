@@ -77,6 +77,10 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'pointBuy.oneSpecialization', label: 'Only one specialization', type: 'bool', group: 'Point buy', methods: ['pointbuy'] },
   ...n('Karma build', ['karma'], [['karmaBuild.start', 'Starting karma (karma build)'], ['karmaBuild.startRating', 'Starting Magic or Resonance (karma build)']]),
   ...n('Lifepath', ['lifepath'], [['lifepath.moduleCount', 'Adult life modules to take'], ['lifepath.contactRatingCap', 'Highest contact rating']]),
+  // optional: unset, the rule is off (no raise, no module twice, contact ratings past the points aren't bought)
+  ...n('Lifepath', [], [['lifepath.bestAttributeBonus', 'Best attribute raised by (unset: no raise)'],
+    ['lifepath.repeatModules', 'Adult modules that may be taken twice (unset: none)'],
+    ['lifepath.contactKarma', 'Karma per contact rating past the contact points (unset: not offered)']]),
   ...GRADES.flatMap(g => n('Augmentation grades', [], [[`grade:${g}:essence`, `${cap(g)}: Essence times`], [`grade:${g}:cost`, `${cap(g)}: cost times`],
     [`grade:${g}:avail`, `${cap(g)}: Availability plus`]])),
   // the constants in derive.ts's formulas (optional: unset, the value shows empty)
@@ -90,7 +94,7 @@ function cap(s: string) { return s[0].toUpperCase() + s.slice(1) }
 
 // the keys expandKeys adds, by prefix: [prefix, group, methods, label]
 const PER_METATYPE: [string, string, Sr6Method[], (name: string) => string][] = [
-  ['metatypeKarma:', 'Metatypes', ['pointbuy', 'karma'], name => `${name}: karma`]]
+  ['metatypeKarma:', 'Metatypes', ['pointbuy', 'karma', 'lifepath'], name => `${name}: karma`]]
 const PER_MAGIC: [string, string, Sr6Method[], (kind: MagicKind) => string][] = [
   ['pointBuy.startRating:', 'Point buy', ['pointbuy'], k => `Starting Magic or Resonance (point buy): ${MAGIC_KIND_LABELS[k]}`],
   ['magicKarma:', 'Karma build', ['karma'], k => `Karma to be: ${MAGIC_KIND_LABELS[k]}`],

@@ -4,8 +4,8 @@ import type { Sr6Character } from './character'
 
 export type Sr6Kind =
   | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations'
-  | 'electronics' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
-  | 'echoes' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
+  | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
+  | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
 
 export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   priorities: { tag: 'priority', label: 'Priorities' },
@@ -17,6 +17,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   armor: { tag: 'armor', label: 'Armor' },
   augmentations: { tag: 'augmentation', label: 'Augmentations' },
   electronics: { tag: 'device', label: 'Electronics' },
+  programs: { tag: 'program', label: 'Programs' },
   gear: { tag: 'gear', label: 'Gear' },
   vehicles: { tag: 'vehicle', label: 'Vehicles and drones' },
   spells: { tag: 'spell', label: 'Spells' },
@@ -25,6 +26,9 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   complexforms: { tag: 'complexform', label: 'Complex forms' },
   metamagics: { tag: 'metamagic', label: 'Metamagics' },
   echoes: { tag: 'echo', label: 'Echoes' },
+  martialarts: { tag: 'martialart', label: 'Martial arts' },
+  martialtechniques: { tag: 'martialtechnique', label: 'Martial art techniques' },
+  traditions: { tag: 'tradition', label: 'Traditions' },
   critterpowers: { tag: 'critterpower', label: 'Critter powers' },
   critters: { tag: 'critter', label: 'Critters' },
   spirits: { tag: 'spirit', label: 'Spirits' },

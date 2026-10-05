@@ -375,8 +375,8 @@ BT /F4 10 Tf 595 500 Td (G) Tj ET
 BT /F3 10.5 Tf 540 20 Td (7) Tj ET
 """ + _sr6_lines(72, 604, "Left column text runs on and on", 4) + _sr6_lines(320, 620, "Right text", 4)
 
-# Two side-by-side bands with the same two-column header, a bold stat-box label line under the left one, then two
-# text columns.
+# Two side-by-side bands with the same two-column header, a bold stat-box label line under the left one, a band whose
+# header shares its baseline with a label line in the right column, then two text columns.
 SR6_BANDS_OPS = """BT /F2 7 Tf 72 700 Td (RANGE) Tj ET
 BT /F2 7 Tf 130 700 Td (DV) Tj ET
 BT /F2 7 Tf 330 700 Td (RANGE) Tj ET
@@ -386,7 +386,12 @@ BT /F1 7 Tf 132 691 Td (2) Tj ET
 BT /F1 7 Tf 330 691 Td (LOS) Tj ET
 BT /F1 7 Tf 390 691 Td (4) Tj ET
 BT /F2 7 Tf 72 680 Td (Skills:) Tj /F1 7 Tf ( Sneaking 3) Tj ET
-""" + _sr6_lines(72, 650, "Lower left", 3) + _sr6_lines(320, 650, "Lower right", 3)
+BT /F2 7 Tf 72 664 Td (DR) Tj ET
+BT /F2 7 Tf 100 664 Td (CM) Tj ET
+BT /F2 7 Tf 330 664 Td (Powers:) Tj /F1 7 Tf ( Zip) Tj ET
+BT /F1 7 Tf 72 655 Td (4) Tj ET
+BT /F1 7 Tf 100 655 Td (9) Tj ET
+""" + _sr6_lines(72, 630, "Lower left", 3) + _sr6_lines(320, 630, "Lower right", 3)
 
 
 def _sr6_cell(x, y, text, font="F1"):
@@ -443,7 +448,37 @@ BT /F2 6 Tf 220 600 Td (COST) Tj ET
                      + _sr6_cell(220, 558.5, "5"))
 
 
+# Two text columns 1.5 pt apart (less than a word space: no whitespace gutter), the left one written first in the
+# content stream: 41 Times-Roman glyphs of width 500 at 10.5 pt end at 72 + 215.25. Under the left column, a line
+# opening with a tiny glyph raised 4 pt, then a bold label set at 9 pt and its value at 10.5, 0.5 pt lower.
+SR6_TIGHT_OPS = ("".join(f"BT /F3 10.5 Tf 72 {700 - 14 * i} Td ({'o' * 40}{i}) Tj ET\n" for i in range(4))
+                 + "BT /F1 3.8 Tf 72 648 Td (\267) Tj ET\nBT /F2 9 Tf 80 644 Td (Points:) Tj ET\n"
+                 "BT /F3 10.5 Tf 118 643.5 Td (2) Tj ET\n"
+                 + "".join(f"BT /F3 10.5 Tf 288.75 {700 - 14 * i} Td (right{i} words) Tj ET\n" for i in range(4)))
+
+
 def sr6_layout_pdf() -> bytes:
-    """Five-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
-    with a stat-box label, a shaded table over body text and an offset sidebar, and table lookalikes."""
-    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS])
+    """Six-page PDF in the SR6 layout: a chapter opener, a shop page with a header-band table, side-by-side bands
+    with a stat-box label, a shaded table over body text and an offset sidebar, table lookalikes, and two columns
+    with no whitespace gutter."""
+    return _build_pdf([SR6_CHAPTER_OPS, SR6_SHOP_OPS, SR6_BANDS_OPS, SR6_GRID_OPS, SR6_LOOKALIKE_OPS, SR6_TIGHT_OPS])
+
+
+# A page whose whole text layer is drawn twice, as some PDFs do: the copy later in the content stream, 0.01 pt off,
+# its heading and bold lead-in 2 pt off (more than a char dedupe's 1 pt), and a page number drawn once after it.
+# Genuine double letters (Arrow, Kill) and a line whose words split after a ligature. Then a page drawn once with a
+# faux-bold heading (drawn twice in a row, 0.3 pt apart). All made up.
+def _doubled_layer(dx, dy, hd):
+    return (f"BT /F4 13 Tf {72 + hd} {700 + hd} Td (Arrow Kill Drill) Tj ET\n"
+            f"BT /F2 10.5 Tf {72 + hd} {682 - hd} Td (Bold Lead:) Tj /F3 10.5 Tf ( the fi rst offi ce was diffi cult) Tj ET\n"
+            + _sr6_lines(72 + dx, 664 + dy, "Plain words for the doubled page, line", 5))
+
+
+SR6_DOUBLED_OPS = _doubled_layer(0, 0, 0) + _doubled_layer(0.01, -0.01, 2) + "BT /F3 10.5 Tf 300 20 Td (9) Tj ET\n"
+SR6_FAUX_BOLD_OPS = ("BT /F4 13 Tf 72 700 Td (Faux Bold Heading) Tj ET\nBT /F4 13 Tf 72.3 700 Td (Faux Bold Heading) Tj ET\n"
+                     + _sr6_lines(72, 680, "Plain words for the single page, line", 5))
+
+
+def sr6_doubled_pdf() -> bytes:
+    """Two-page PDF in the SR6 layout: a page with its text layer drawn twice, then a page drawn once."""
+    return _build_pdf([SR6_DOUBLED_OPS, SR6_FAUX_BOLD_OPS])

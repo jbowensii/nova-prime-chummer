@@ -21,10 +21,11 @@ function full(): Sr6Character {
   Object.assign(ch, { finalizedAt: '2026-10-03T11:00:00.000Z', final: { karma: 3, nuyen: 1250 }, campaign: '0123456789ab',
     lastExportedAt: '2026-10-03T12:00:00.000Z', overrides: [{ code: 'skill.cap', path: 'skills.crb.gab', note: 'GM ok' }] })
   Object.assign(b, { metatype: 'crb.glimmerkin', magic: 'aspected', aspectedSkill: 'crb.hexing', tradition: 'Street hoodoo', drainAttr: 'cha',
-    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 } })
+    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 }, bestAttr: 'str', bestExtra: 'agi' })
   b.priorities = { metatype: 'D', attributes: 'A', magic: 'B', skills: 'C', resources: null }
   b.cp.attribute = 5; b.cp.spells = 1
-  b.lifepath = [{ id: 'crb.glow-apprentice', choices: { 0: 'skill:crb.hexing' } }, { id: 'crb.wage-drone', choices: {} }]
+  b.lifepath = [{ id: 'crb.glow-apprentice', choices: { 0: 'skill:crb.hexing' } }, { id: 'crb.wage-drone', choices: {} },
+    { id: 'crb.glow-apprentice', choices: { 0: 'edg' } }]
   b.attributes.agi = { points: 3, adjust: 1, karma: 0 }; b.attributes.edg = { points: 0, adjust: 2, karma: 1 }
   b.skills = [{ id: 'crb.gab', points: 5, karma: 1, spec: 'Haggling', expertise: 'Fibbing' }, { id: 'crb.hexing', points: 2, karma: 0 }]
   b.knowledge = [{ uid: 'k1', name: 'Sperethiel', kind: 'language', native: true, points: 0, karma: 0 }, { uid: 'k2', name: 'Soy <brands>', kind: 'knowledge', points: 3, karma: 1 }]
@@ -39,7 +40,8 @@ function full(): Sr6Character {
     { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
-  b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2 }]
+  b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2, types: ['street', 'criminal'] },
+    { uid: 'c2', name: 'Moe', archetype: 'Fence', connection: 1, loyalty: 1 }]
   b.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Zap Gun', rating: 2 }] }, { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] }]
   return ch
 }
@@ -104,6 +106,18 @@ test('missing numbers read as 0; an unknown method or magic is refused, or repai
   const f = xmlToSr6(root('method="freeform" magic="dragon"'), { repair: fix })
   expect(f.ok && f.character.build).toMatchObject({ method: 'priority', magic: 'mundane' })
   expect(fix).toEqual([expect.stringContaining('“freeform”'), expect.stringContaining('“dragon”')])
+})
+
+test('the best attribute is a core one: Edge, Magic or Resonance is refused, or repaired away with a note', async () => {
+  const root = (build: string) => `<sr6:character xmlns:sr6="${SR6_CHAR_NS}" formatVersion="1" id="m" updatedAt="x"><build method="lifepath" magic="mundane" ${build}/></sr6:character>`
+  expect(xmlToSr6(root('bestAttr="mag"'))).toEqual({ ok: false, reason: expect.stringContaining('“mag”') })
+  const fix: string[] = []
+  const f = xmlToSr6(root('bestAttr="str" bestExtra="edg"'), { repair: fix })
+  expect(f.ok && [f.character.build.bestAttr, f.character.build.bestExtra]).toEqual(['str', undefined])
+  expect(fix).toEqual([expect.stringContaining('“edg”')])
+  const blank = sr6ToXml(blankSr6('lifepath', 'b-1', '2026-10-03T10:00:00.000Z'))
+  expect(await valid(blank.replace('<build ', '<build bestAttr="str" '))).toEqual([])
+  expect(await valid(blank.replace('<build ', '<build bestAttr="res" '))).not.toEqual([])
 })
 
 test('each game refuses the other’s runner, saying where it belongs', () => {

@@ -5,9 +5,12 @@ tables in a small sans family with a bold/black header row and no ruling lines. 
 such a table, so `band_tables` reads it by x position: the header row's cells are the columns, and the regular words
 below it fall into them. Layout facts only; nothing here comes from a book's text."""
 import bisect
+import re
 import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+
+import pdfplumber
 
 from importer.convert import _BOLD, _LINE_TOLERANCE, _cluster_lines, _is_bold
 
@@ -17,11 +20,13 @@ _CELL_GAP = 6  # pt; header words closer than this are one cell
 _CELL_WORDS = 4  # a header cell has at most this many words
 _FIRST_PAD, _LAST_PAD = 10, 60  # pt; the name column reaches left, the last column right (long values)
 _SIZE_TOL = 0.5  # pt; a row's words are set at its header's size
+_COLUMN_GAP = 40  # pt; a wider gap on a line is the gutter between two text columns (header cells sit closer)
 _HEADER_STACK = 1.6  # header lines up to this many line heights apart are one (multi-line) header
 _STACK_PAD = 80  # pt; and up to this far apart in x (a one-line label centred beside a two-line one)
 _ROW_GAP = 3  # line pitches; a wider gap ends the rows
 _TABLE_SIZE = 0.8  # x body size; table text is no bigger (a 9 pt sidebar beside a 10.5 pt body is text)
 _EDGE, _OUTER, _FOOT = 30, 45, 35  # pt from the left edge, the right edge and the bottom: margin furniture
+_CARD = 432  # pt; a page narrower than 6 in is a card, with no margin furniture
 GUTTER_TOL = 8  # pt; a row's gutter may sit this far off the page's (a boxed sidebar's columns)
 _STRIPE_MAX = 60  # pt; a filled rect at most this tall is a header cell or a row stripe (a box background is taller)
 
@@ -44,12 +49,15 @@ def _word_family(w):
 
 
 def _is_furniture(x0, top, page):
+    if page.width < _CARD:
+        return False  # a card (Johnson 'Dex: 5 x 3 in): its text runs to the edges, no tab letters or running heads
     return x0 < _EDGE or x0 > page.width - _OUTER or top > page.height - _FOOT
 
 
 def furniture(page, words):
-    """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band)."""
-    return [w for w in words if not _is_furniture(w["x0"], w["top"], page)]
+    """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band); on a card, its
+    sideways line (the copyright up its edge)."""
+    return [w for w in words if not _is_furniture(w["x0"], w["top"], page) and (page.width >= _CARD or w["upright"])]
 
 
 def fonts(pdf, min_pages=None) -> Fonts:
@@ -76,6 +84,68 @@ def fonts(pdf, min_pages=None) -> Fonts:
     sizes = sorted((s for (fam, s), p in pages.items() if fam == heading and s > size * 0.8 and len(p) >= min_pages),
                    reverse=True)[:5]
     return Fonts(body, size, heading, {s: i + 1 for i, s in enumerate(sizes)})
+
+
+_LAYER_TOL = 1  # pt; a duplicated text layer sits a hundredth of a point off the first
+_LAYER_RUN = 50  # chars in a row, each on top of an earlier one, start a second copy of the page's text
+_LAYER_LOOSE = 3  # pt; once a second layer has started, a char this close to a first-layer one is its copy (bold)
+
+
+def _near(grid, c, tol):
+    """Chars in `grid` (one_layer's) with c's glyph, font and size within `tol` pt of it."""
+    k, x, y = (c["text"], c["fontname"], round(c["size"], 1)), round(c["x0"]), round(c["top"])
+    r = int(tol) + 1
+    return [(j, d) for dx in range(-r, r + 1) for dy in range(-r, r + 1) for j, d in grid.get((k, x + dx, y + dy), ())
+            if abs(d["x0"] - c["x0"]) <= tol and abs(d["top"] - c["top"]) <= tol]
+
+
+def one_layer(chars):
+    """The page's chars without a second copy of its text layer. Some PDFs draw a page's text twice (same font,
+    size and colour, a hundredth of a point apart, the copy as a block later in the content stream), which reads
+    as every letter doubled. The copy starts where _LAYER_RUN chars in a row each sit on a char at least that far
+    back in the stream (so neither a glyph drawn twice in a row for a faux bold nor a genuine double letter, which
+    sits beside its twin, counts), moved back over chars that sit a little further off their twins (a heading's
+    copy can); from there on every char on top of a first-layer one (within _LAYER_LOOSE) is dropped and the rest
+    (a running head drawn once, after the copy) is kept. A page without such a run only loses chars drawn on top of
+    an earlier one (within _LAYER_TOL)."""
+    grid = {}
+    for i, c in enumerate(chars):
+        grid.setdefault(((c["text"], c["fontname"], round(c["size"], 1)), round(c["x0"]), round(c["top"])), []).append((i, c))
+    run, start = 0, None
+    for i, c in enumerate(chars):
+        run = run + 1 if any(i - j >= _LAYER_RUN for j, _ in _near(grid, c, _LAYER_TOL)) else 0
+        if run >= _LAYER_RUN:
+            start = i - run + 1
+            break
+    if start is None:  # a few chars drawn twice (a faux-bold heading): pdfplumber's dedupe, only where needed (slow)
+        twice = any(j < i for i, c in enumerate(chars) for j, _ in _near(grid, c, _LAYER_TOL))
+        return pdfplumber.utils.dedupe_chars(chars, tolerance=_LAYER_TOL) if twice else chars
+    while start and any(start - 1 - j >= _LAYER_RUN for j, _ in _near(grid, chars[start - 1], _LAYER_LOOSE)):
+        start -= 1
+    return chars[:start] + [c for c in chars[start:] if not any(j < start for j, _ in _near(grid, c, _LAYER_LOOSE))]
+
+
+# a word whose fi/fl/ff ligature glyph is followed by a gap in the PDF ("fi rst", "offi ce", "eff ects", "fi -" at a
+# line end); not after an apostrophe
+_LIGATURE = re.compile(r"(?<![\w'’])([A-Za-z]*(?:fi|fl|ff)|F[il]) (-$|[a-z]+\b)", re.M)
+
+
+def rejoin_ligatures(text):
+    """Words split after a ligature joined again, when the result is a plausible word. The words of the text with
+    every such split taken out are its vocabulary: the left part must not be a word of it ("off the", "stuff is"
+    stay), and after "ff" or a hyphen (more real words end so: "payoff until", "sci-fi movie") the right part must
+    not be one either, unless the joined word is ("eff ects" and "twenty-fi ve" join: "ects" and "ve" are no
+    words). A split before a line-end hyphen ("fi -") loses its space, so the hyphenated word joins as any other.
+    Two passes: a word with two ligatures ("fi refi ght")."""
+    words = {w.lower() for w in re.findall(r"[A-Za-z]+(?:[-'’][A-Za-z]+)*\b(?! \|)", _LIGATURE.sub(" ", text))}
+
+    def join(m):
+        left, right = m.groups()
+        risky = left.endswith("ff") or m.string[m.start() - 1:m.start()] == "-"
+        ok = left.lower() not in words and (not risky or right == "-" or right not in words
+                                            or (left + right).lower() in words)
+        return left + right if ok else m.group(0)
+    return _LIGATURE.sub(join, _LIGATURE.sub(join, text))
 
 
 def _level(size, fonts):
@@ -151,6 +221,11 @@ def _headers(lines, height):
     no header."""
     groups = []
     for line in lines:
+        # a header line sharing its baseline with the other text column's labelled line (`DR … MOVE` | `Powers: …`):
+        # only its part before that label
+        cut = next((i for i in range(1, len(line)) if line[i]["x0"] - line[i - 1]["x1"] > _COLUMN_GAP
+                    and _opens_with_label(line[i:])), None)
+        line = line[:cut]
         bold = [w for w in line if _is_head_bold(w)]
         if not (len(bold) >= 2 or len(line) == len(bold) == 1) or _opens_with_label(line):
             continue

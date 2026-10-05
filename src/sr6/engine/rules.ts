@@ -218,6 +218,27 @@ const RULES: Rule[] = [
       const need = n0(c.cr, 'lifepath.moduleCount'), have = c.b.lifepath.length
       return c.p.id !== 'lifepath' || have === need ? null : { message: `${have} adult life modules taken; take ${need}.` }
     } },
+  // optional settings (unset: the rule is off, no unset warning)
+  { code: 'lifepath.repeat', severity: 'error', tab: 'method', check: c => {
+    if (c.p.id !== 'lifepath') return null
+    const times = new Map<string, number>()
+    for (const pk of c.b.lifepath) times.set(pk.id, (times.get(pk.id) ?? 0) + 1)
+    const twice = [...times].filter(([, t]) => t > 1), most = num(c.cr, 'lifepath.repeatModules') ?? 0
+    const name = (id: string) => c.data.lifemodules[id]?.name ?? id
+    if (twice.some(([, t]) => t > 2) || twice.length > most)
+      return { message: `${twice.map(([id, t]) => `${name(id)} (${t} times)`).join(', ')}: ${most === 0 ? 'no module may be taken twice'
+        : `${most === 1 ? 'one module' : `${most} modules`} may be taken twice, none more`}.`, ...cite(c.cr, 'lifepath.repeatModules') }
+    return null
+  } },
+  { code: 'lifepath.bestAttr', severity: 'error', tab: 'method', check: c => {
+    const bonus = num(c.cr, 'lifepath.bestAttributeBonus')
+    if (c.p.id !== 'lifepath' || !bonus) return null
+    if (!c.b.bestAttr) return { message: `Pick the best attribute (it goes up by ${bonus}).`, ...cite(c.cr, 'lifepath.bestAttributeBonus') }
+    const used = c.p.attributeBonus?.(c.b, c.b.bestAttr) ?? 0
+    return used < bonus && (!c.b.bestExtra || c.b.bestExtra === c.b.bestAttr)
+      ? { message: `${A(c.b.bestAttr)} reaches its maximum: pick the attribute that takes the other ${bonus - used}.`, ...cite(c.cr, 'lifepath.bestAttributeBonus') }
+      : null
+  } },
   { code: 'lifepath.mixedChoices', severity: 'error', tab: 'method', check: c => (c.p.id !== 'lifepath' ? null : c.b.lifepath.flatMap(pk => {
     const m = c.data.lifemodules[pk.id]
     return m && m.choices.some((_, i) => !pk.choices[i])

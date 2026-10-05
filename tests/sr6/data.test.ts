@@ -40,7 +40,7 @@ test('skills, qualities, powers and life modules', () => {
   const d = sr6Data(fixtureCatalog())
   expect(d.skills['crb.gab']).toEqual({ id: 'crb.gab', name: 'Gab', attr: 'cha', untrained: true, specs: ['Haggling', 'Fibbing'], page: 99 })
   expect(d.skills['crb.hexing']).toMatchObject({ attr: 'mag', untrained: false })
-  expect(d.qualities['crb.lucky-streak']).toEqual({ id: 'crb.lucky-streak', name: 'Lucky Streak', positive: true, karma: 4, perLevel: true, maxLevel: 3, page: 70 })
+  expect(d.qualities['crb.lucky-streak']).toEqual({ id: 'crb.lucky-streak', name: 'Lucky Streak', positive: true, karma: 4, karmaMax: null, perLevel: true, maxLevel: 3, page: 70 })
   expect(d.qualities['crb.butterfingers']).toMatchObject({ positive: false, karma: 8, perLevel: false, maxLevel: 1 })
   expect(d.powers['crb.quick-step']).toEqual({ id: 'crb.quick-step', name: 'Quick Step', cost: 0.25, perLevel: true, maxLevel: 4, page: 157 })
   expect(d.lifemodules['crb.hatchling-days']).toEqual({ id: 'crb.hatchling-days', name: 'Hatchling Days', stage: 'opening',

@@ -95,7 +95,7 @@ test('Gil makes Street Kit and fills it; its entries reach his pickers and Game 
   await expect(page).toHaveURL(/#\/sr6\/compendiums$/)
   await expect(page.getByRole('heading', { name: 'Compendiums', level: 1 })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Compendiums' })).toHaveAttribute('aria-current', 'page')
-  await expect(group(page, 'Books').getByRole('link', { name: BOOK })).toHaveAttribute('href', '#/sr6/compendiums/CRB')
+  await expect(group(page, 'Books').getByRole('link', { name: BOOK, exact: true })).toHaveAttribute('href', '#/sr6/compendiums/CRB')
 
   await page.getByRole('button', { name: 'New compendium' }).click()
   const d = page.getByRole('dialog', { name: 'New compendium' })
@@ -184,7 +184,7 @@ test('Gil makes Street Kit and fills it; its entries reach his pickers and Game 
 
 test('copy from the book: a new STREET id, page 1, no description; the book’s entry unchanged', async ({ page }) => {
   await signIn(page, '/#/sr6/compendiums', 'gil')
-  await group(page, 'Books').getByRole('link', { name: BOOK }).click()
+  await group(page, 'Books').getByRole('link', { name: BOOK, exact: true }).click()
   await expect(page).toHaveURL(/#\/sr6\/compendiums\/CRB$/)
   await expect(page.getByRole('heading', { name: BOOK, level: 1 })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add entry' })).toHaveCount(0)

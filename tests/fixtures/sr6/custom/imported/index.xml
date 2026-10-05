@@ -10,6 +10,7 @@
   <file href="crb/armor.xml"/>
   <file href="crb/augmentations.xml"/>
   <file href="crb/electronics.xml"/>
+  <file href="crb/programs.xml"/>
   <file href="crb/gear.xml"/>
   <file href="crb/vehicles.xml"/>
   <file href="crb/spells.xml"/>
@@ -18,6 +19,9 @@
   <file href="crb/complexforms.xml"/>
   <file href="crb/metamagics.xml"/>
   <file href="crb/echoes.xml"/>
+  <file href="crb/martialarts.xml"/>
+  <file href="crb/martialtechniques.xml"/>
+  <file href="crb/traditions.xml"/>
   <file href="crb/critterpowers.xml"/>
   <file href="crb/critters.xml"/>
   <file href="crb/spirits.xml"/>
