@@ -61,6 +61,9 @@ class Sr6LayoutTest(unittest.TestCase):
 
     def test_stat_box_label_stays_text(self):
         self.assertIn("**Skills:** Sneaking 3", self.lines)
+        self.assertIn("| DR | CM |", self.lines)  # its header on the baseline of the right column's label line
+        self.assertIn("| 4 | 9 |", self.lines)
+        self.assertIn("**Powers:** Zip", self.lines)
         self.assertNotIn("Skills", self.lines[self.lines.index("| Touch | 2 |") - 1])
 
     def test_shaded_table_by_cell_rects(self):

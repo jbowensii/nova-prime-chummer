@@ -139,7 +139,7 @@ HEADERS = {
     "rituals": {"KEYWORDS": "keywords", "THRESHOLD": "threshold"},
     "adeptpowers": {"COST": "cost", "POWER POINTS": "cost", "ACTIVATION": "activation"},
     "complexforms": {"DURATION": "duration", "FADE": "fade", "FADE VALUE": "fade", "FV": "fade"},
-    "critterpowers": {"TYPE": "type", "ACTION": "action", "RANGE": "range", "DURATION": "duration"},
+    "critterpowers": {"TYPE": "type", "ACTION": "action", "RANGE": "range", "DURATION": "duration", "WEAKNESS": "weakness"},
     "critters": _BEING, "spirits": _BEING, "npcs": _BEING,
     "sprites": {"ATTACK": "attack", "A": "attack", "SLEAZE": "sleaze", "S": "sleaze", "DATA PROCESSING": "data", "DATA PROC": "data",
                 "DATA": "data", "D": "data", "FIREWALL": "firewall", "F": "firewall", "I/ID": "init", "INIT": "init",
@@ -151,6 +151,7 @@ HEADERS = {
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
+         "weakness": "weaknesses",
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
 PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "lifestyles"}  # cost/avail checked

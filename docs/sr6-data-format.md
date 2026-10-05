@@ -61,7 +61,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | complexforms | complexform | duration, fade | — |
 | metamagics | metamagic | — | — |
 | echoes | echo | — | — |
-| critterpowers | critterpower | type, action, range, duration | — |
+| critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |

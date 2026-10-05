@@ -375,8 +375,8 @@ BT /F4 10 Tf 595 500 Td (G) Tj ET
 BT /F3 10.5 Tf 540 20 Td (7) Tj ET
 """ + _sr6_lines(72, 604, "Left column text runs on and on", 4) + _sr6_lines(320, 620, "Right text", 4)
 
-# Two side-by-side bands with the same two-column header, a bold stat-box label line under the left one, then two
-# text columns.
+# Two side-by-side bands with the same two-column header, a bold stat-box label line under the left one, a band whose
+# header shares its baseline with a label line in the right column, then two text columns.
 SR6_BANDS_OPS = """BT /F2 7 Tf 72 700 Td (RANGE) Tj ET
 BT /F2 7 Tf 130 700 Td (DV) Tj ET
 BT /F2 7 Tf 330 700 Td (RANGE) Tj ET
@@ -386,7 +386,12 @@ BT /F1 7 Tf 132 691 Td (2) Tj ET
 BT /F1 7 Tf 330 691 Td (LOS) Tj ET
 BT /F1 7 Tf 390 691 Td (4) Tj ET
 BT /F2 7 Tf 72 680 Td (Skills:) Tj /F1 7 Tf ( Sneaking 3) Tj ET
-""" + _sr6_lines(72, 650, "Lower left", 3) + _sr6_lines(320, 650, "Lower right", 3)
+BT /F2 7 Tf 72 664 Td (DR) Tj ET
+BT /F2 7 Tf 100 664 Td (CM) Tj ET
+BT /F2 7 Tf 330 664 Td (Powers:) Tj /F1 7 Tf ( Zip) Tj ET
+BT /F1 7 Tf 72 655 Td (4) Tj ET
+BT /F1 7 Tf 100 655 Td (9) Tj ET
+""" + _sr6_lines(72, 630, "Lower left", 3) + _sr6_lines(320, 630, "Lower right", 3)
 
 
 def _sr6_cell(x, y, text, font="F1"):

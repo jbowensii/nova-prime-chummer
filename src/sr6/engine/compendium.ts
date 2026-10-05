@@ -29,7 +29,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   complexforms: { fields: ['duration', 'fade'] },
   metamagics: { fields: [] },
   echoes: { fields: [] },
-  critterpowers: { fields: ['type', 'action', 'range', 'duration'] },
+  critterpowers: { fields: ['type', 'action', 'range', 'duration', 'weakness'] },
   critters: { fields: BEING, lines: BEING_LINES },
   spirits: { fields: BEING, lines: BEING_LINES },
   npcs: { fields: BEING, lines: BEING_LINES },
@@ -48,7 +48,7 @@ const RULES: Partial<Record<Sr6Kind, Record<string, FieldRule>>> = {
   weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
   augmentations: { type: { required: true, choices: ['cyberware', 'bioware'] }, category: REQ },
   spells: { category: { required: true, choices: ['combat', 'detection', 'health', 'illusion', 'manipulation'] } },
-  adeptpowers: LEVELS,
+  adeptpowers: LEVELS, critterpowers: { weakness: { choices: ['true'] } },
   critters: RATED, spirits: RATED, npcs: RATED,
 }
 export const fieldRule = (kind: Sr6Kind, field: string): FieldRule => RULES[kind]?.[field] ?? {}
