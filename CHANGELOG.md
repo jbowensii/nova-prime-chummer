@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.8 — 2026-10-05: rules contents, example characters checked, circuit board as default art
 
 Shadowrun 6's example characters (the core rulebook's ten archetypes, Smooth Operations' six faces) were checked
 against their stat blocks, the way Anarchy's were in 0.5.4 and 0.5.6: an example character is what its book prints.
@@ -50,6 +50,12 @@ Our own mistakes are fixed; what the book prints against the rules now shows on 
   out from the side with its own address (#/rules/… on Anarchy, #/sr6/rules/… on Shadowrun 6), so a reload or a shared
   link opens the same rule. Esc or Close goes back to the list. A Shadowrun 6 section links to its subsections, and on
   Anarchy the Edit button and the Edited mark are on both the list and the rule.
+
+- **The Shadowrun 6 circuit pattern is now a default background image.** The pages no longer draw it themselves: they're
+  a plain page, and the circuit board comes as a background image in the Shadowrun 6 gallery, on from the start. The
+  admin can hide or delete it in Settings → Background art (Shadowrun 6) like any upload, and once deleted it doesn't
+  come back. Uploaded art shows cleanly, with no pattern over or under it, and each browser can still turn background
+  art off (Settings → Background: Plain page).
 
 ## 0.9.7 — 2026-10-05: neon Shadowrun 6 colours, background art shows again
 

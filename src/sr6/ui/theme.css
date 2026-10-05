@@ -13,9 +13,6 @@
   --sr6-pink: #a8006a;
   --sr6-neon-pink: #ff52d9;
   --sr6-display: 'Montserrat', 'Rethink Sans', system-ui, sans-serif;
-  /* our circuit board, drawn here (a 160px tile): grey traces on paper; cyan traces and pink pads in the dark */
-  --sr6-circuit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%236e6470' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M0 40h40l10 10h50l10-10h50'/%3E%3Cpath d='M30 160v-50l15-15v-25'/%3E%3Cpath d='M30 0v14'/%3E%3Cpath d='M120 160v-25l-12-12v-18'/%3E%3Cpath d='M120 0v20'/%3E%3Cpath d='M84 81h16'/%3E%3Cpath d='M62 81h-8'/%3E%3Cpath d='M160 92h-22l-8 8'/%3E%3Cpath d='M0 92h12'/%3E%3Crect x='62' y='74' width='22' height='14' rx='2'/%3E%3C/g%3E%3Cg fill='none' stroke='%236e6470' stroke-opacity='.16' stroke-width='1.2'%3E%3Ccircle cx='45' cy='67' r='2.6'/%3E%3Ccircle cx='30' cy='17' r='2.6'/%3E%3Ccircle cx='108' cy='102' r='2.6'/%3E%3Ccircle cx='120' cy='23' r='2.6'/%3E%3Ccircle cx='103' cy='81' r='2.6'/%3E%3Ccircle cx='51' cy='81' r='2.6'/%3E%3Ccircle cx='128' cy='102' r='2.6'/%3E%3Ccircle cx='15' cy='92' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
-  --sr6-circuit-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%2300b8d9' stroke-opacity='.22' stroke-width='1.2'%3E%3Cpath d='M0 40h40l10 10h50l10-10h50'/%3E%3Cpath d='M30 160v-50l15-15v-25'/%3E%3Cpath d='M30 0v14'/%3E%3Cpath d='M120 160v-25l-12-12v-18'/%3E%3Cpath d='M120 0v20'/%3E%3Cpath d='M84 81h16'/%3E%3Cpath d='M62 81h-8'/%3E%3Cpath d='M160 92h-22l-8 8'/%3E%3Cpath d='M0 92h12'/%3E%3Crect x='62' y='74' width='22' height='14' rx='2'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ff3fd2' stroke-opacity='.22' stroke-width='1.2'%3E%3Ccircle cx='45' cy='67' r='2.6'/%3E%3Ccircle cx='30' cy='17' r='2.6'/%3E%3Ccircle cx='108' cy='102' r='2.6'/%3E%3Ccircle cx='120' cy='23' r='2.6'/%3E%3Ccircle cx='103' cy='81' r='2.6'/%3E%3Ccircle cx='51' cy='81' r='2.6'/%3E%3Ccircle cx='128' cy='102' r='2.6'/%3E%3Ccircle cx='15' cy='92' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
   /* the book's hatched heading rule */
   --sr6-hatch: repeating-linear-gradient(-55deg, var(--sr6-hatch-c) 0 1.6px, transparent 1.6px 3.6px);
 }
@@ -83,19 +80,8 @@
   --sr6-glow: 0 0 18px rgb(0 229 255 / 0.16);
 }
 
-/* ---- the page: our circuit board (Accents and Full) under the content, unless admin art (.bg-art) is shown; in the dark a
-   cyan glow from the top and a pink one from the bottom ---- */
+/* ---- the page: plain --bg, no texture (background art, when the admin has some, is Background.tsx's .bg-art) ---- */
 :root[data-game='sr6']:not([data-texture='flat']) body { background-image: none; }
-:root[data-game='sr6']:not([data-texture='flat']) body::after {
-  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--sr6-circuit) 0 0 / 160px 160px;
-}
-:root[data-game='sr6'][data-theme='dark']:not([data-texture='flat']) body::after {
-  background: var(--sr6-circuit-dark) 0 0 / 160px 160px, radial-gradient(ellipse at 85% -10%, rgb(0 229 255 / 0.14), transparent 55%),
-    radial-gradient(ellipse at 0% 110%, rgb(255 63 210 / 0.08), transparent 50%);
-}
-/* the admin's background art (Background.tsx .bg-art), when shown, replaces the circuit board: never drawn over it */
-:root[data-game='sr6']:not([data-art='off']) body:has(.bg-art)::after { content: none; }
-@media print { body::after { display: none; } }
 
 /* ---- type: wide geometric caps, cyan, the pink hatched rule under page and section titles ---- */
 :root[data-game='sr6'] :is(h1, h2, h3) { font-weight: 700; letter-spacing: 0.01em; }
@@ -203,7 +189,7 @@
 /* Edge points as hexagons, like the official sheet */
 .sr6-sheet .sr6-edge span { width: 1.15rem; height: 1.05rem; border: 0; background: var(--s-indigo); -webkit-print-color-adjust: exact; print-color-adjust: exact;
   clip-path: polygon(evenodd, 25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%, 25% 0, 30% 12%, 70% 12%, 87% 50%, 70% 88%, 30% 88%, 13% 50%, 30% 12%); }
-:root[data-print='color'] .sr6-sheet { background: #fff var(--sr6-circuit) 0 0 / 160px 160px; }
+:root[data-print='color'] .sr6-sheet { background: #fff; }
 :root[data-print='color'] .sr6-sheet h2 { background: none; color: var(--s-indigo); padding: 0; }
 :root[data-print='color'] .sr6-sheet th { background: #e8f1f5; color: var(--s-indigo); }
 :root[data-print='color'] .sr6-sheet > section, :root[data-print='color'] .sr6-sheet .s-cols > section { background-color: rgb(255 255 255 / 0.85); }
@@ -214,7 +200,7 @@
 :root[data-game='pick'][data-theme='dark'] .gamepick h1 { background-image: linear-gradient(90deg, var(--sr6-neon) 0 50%, var(--yellow) 50%); }
 .game.sr6, :root[data-texture] .game.sr6 {
   border: 1.5px solid var(--sr6-cyan); border-radius: 16px; color: #102028;
-  background: var(--sr6-circuit) 0 0 / 160px 160px, #f6fafc; transition: box-shadow 0.12s ease-out;
+  background: #f6fafc; transition: box-shadow 0.12s ease-out;
 }
 .game.sr6:hover, .game.sr6:focus-visible { border-left-width: 1.5px; box-shadow: inset 8px 0 0 var(--sr6-cyan); }
 .game.sr6 .name { font-family: var(--sr6-display); font-weight: 700; letter-spacing: 0.01em; color: #102028; }
@@ -226,8 +212,7 @@
 .game.sr6:hover .what, .game.sr6:focus-visible .what { color: #102028; }
 :root[data-theme='dark'] .game.sr6 {
   color: #e6f7ff; border-color: #00b8d9; box-shadow: 0 0 22px rgb(0 229 255 / 0.18);
-  background: var(--sr6-circuit-dark) 0 0 / 160px 160px, radial-gradient(ellipse at 90% 0%, rgb(0 229 255 / 0.28), transparent 60%),
-    radial-gradient(ellipse at 0% 100%, rgb(255 63 210 / 0.16), transparent 55%), #060b13;
+  background: #060b13;
 }
 :root[data-theme='dark'] .game.sr6:hover, :root[data-theme='dark'] .game.sr6:focus-visible { box-shadow: inset 8px 0 0 var(--sr6-neon), 0 0 26px rgb(0 229 255 / 0.3); }
 :root[data-theme='dark'] .game.sr6 .name { color: #e6f7ff; }

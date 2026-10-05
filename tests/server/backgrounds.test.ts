@@ -2,6 +2,7 @@
 // Background art (server/backgrounds.mjs): only the admin uploads, toggles and deletes; anyone signed in lists the enabled
 // ones and reads them; nothing without a session; uploads checked by their bytes (SVG or HTML named .png: refused), 10 MB
 // and 50 images at most; ids can't reach outside the folder; backgrounds.xml schema-valid; never a book on the Books page.
+// Shadowrun 6's gallery starts with the circuit board, once: deleted or hidden, it never comes back; Anarchy's has no default.
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,7 +13,7 @@ import { createServer } from '../../server/server.mjs'
 // @ts-expect-error plain JS module
 import { usersFile } from '../../server/auth.mjs'
 // @ts-expect-error plain JS module
-import { sniff } from '../../server/backgrounds.mjs'
+import { backgroundsApi, sniff } from '../../server/backgrounds.mjs'
 import { makePng } from '../png'
 
 vi.setConfig({ testTimeout: 30000 })
@@ -122,9 +123,63 @@ test('enable, disable and delete: the admin only; a disabled image is the admin�
   expect(readdirSync(bgDir)).toEqual(['backgrounds.xml'])
 })
 
+const SEED = { file: 'server/defaults/sr6-circuit.webp', name: 'Circuit board (default)' }
+const validate = async (xml: string) => (await validateXML({ xml: { fileName: 'backgrounds.xml', contents: xml },
+  schema: { fileName: 'backgrounds.xsd', contents: readFileSync('public/data/schema/backgrounds.xsd', 'utf8') } })).errors
+
+test('the default circuit board: a WebP under 500 KB', () => {
+  const data = readFileSync(SEED.file)
+  expect(sniff(data)).toBe('webp')
+  expect(data.length).toBeLessThan(500 * 1024)
+})
+
+test('a gallery with a default gets it once, after what’s there; never again once deleted or hidden, even after a restart', async () => {
+  type Item = { id: string; name: string; enabled: boolean }
+  const items = async (libraryDir: string, seed?: typeof SEED) => {
+    let out: { items: Item[] } = { items: [] }
+    await backgroundsApi({ libraryDir, auth: {}, seed }).handle({ method: 'GET', headers: {} }, {}, new URL('http://x/api/backgrounds'),
+      (_r: unknown, _c: number, body: typeof out) => { out = body }, { role: 'admin' })
+    return out.items
+  }
+  // a new server: the default alone, on
+  const fresh = mkdtempSync(join(tmpdir(), 'ca2-seed-'))
+  const [d] = await items(fresh, SEED)
+  expect(d).toMatchObject({ name: 'Circuit board (default)', enabled: true })
+  expect(readFileSync(join(fresh, 'backgrounds', `${d.id}.webp`)).equals(readFileSync(SEED.file))).toBe(true)
+  const xml = readFileSync(join(fresh, 'backgrounds', 'backgrounds.xml'), 'utf8')
+  expect(xml).toMatch(/<ca2:backgrounds [^>]*seeded="true"/)
+  expect(await validate(xml)).toEqual([])
+  expect(await items(fresh, SEED)).toEqual([d]) // the same server, a restart: still one
+  // hidden: stays hidden; deleted: stays gone
+  const xmlHidden = xml.replace('enabled="true"', 'enabled="false"')
+  writeFileSync(join(fresh, 'backgrounds', 'backgrounds.xml'), xmlHidden)
+  expect(await items(fresh, SEED)).toEqual([{ ...d, enabled: false }])
+  writeFileSync(join(fresh, 'backgrounds', 'backgrounds.xml'), xml.replace(/ *<background [^>]*\/>\n/, ''))
+  expect(await items(fresh, SEED)).toEqual([])
+  // a server with art already (never seeded): the default joins at the end, on
+  const old = mkdtempSync(join(tmpdir(), 'ca2-seed-')), oldDir = join(old, 'backgrounds')
+  mkdirSync(oldDir)
+  writeFileSync(join(oldDir, 'a1b2c3d4e5f6.png'), PNG)
+  writeFileSync(join(oldDir, 'backgrounds.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n<ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">\n'
+    + `  <background id="a1b2c3d4e5f6" type="png" name="Neon alley.png" enabled="false" uploaded="2026-01-02T03:04:05Z" size="${PNG.length}"/>\n</ca2:backgrounds>\n`)
+  expect((await items(old, SEED)).map(b => [b.name, b.enabled])).toEqual([['Neon alley.png', false], ['Circuit board (default)', true]])
+  // no default (Anarchy): nothing added, nothing written
+  const none = mkdtempSync(join(tmpdir(), 'ca2-seed-'))
+  expect(await items(none)).toEqual([])
+  expect(readdirSync(none)).toEqual([])
+})
+
 test('Shadowrun 6 has its own art set: /api/sr6/backgrounds in library/sr6/backgrounds, apart from Anarchy’s', async () => {
   const sr6 = (who: Who, method: string, rest = '', body?: unknown, type = 'application/json', name?: string) =>
     call(who, method, `/api/sr6/backgrounds${rest}`, body, type, name)
+  // it starts with the circuit board, which everyone signed in sees; the admin deletes it, and it stays gone
+  const [d] = (await (await sr6('ada', 'GET')).json()).items
+  expect(d).toMatchObject({ name: 'Circuit board (default)', enabled: true })
+  expect(await (await sr6('pat', 'GET')).json()).toEqual({ enabled: [d.id] })
+  expect((await sr6('pat', 'GET', `/${d.id}`)).headers.get('content-type')).toBe('image/webp')
+  expect((await sr6('ada', 'DELETE', `/${d.id}`)).status).toBe(204)
+  expect(await (await sr6('ada', 'GET')).json()).toEqual({ enabled: [], items: [] })
+  expect(readFileSync(join(bgDir, 'backgrounds.xml'), 'utf8')).not.toContain('seeded') // Anarchy's: no default
   for (const who of ['eve', 'pat'] as const) expect((await sr6(who, 'POST', '', PNG, 'image/png', 'x.png')).status).toBe(403)
   expect((await sr6('nobody', 'GET')).status).toBe(401)
   expect((await sr6('ada', 'POST', '', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'), 'image/png', 'x.png')).status).toBe(415)
