@@ -179,7 +179,7 @@ test('a failed save on import says why, on NPCs & Critters and on Your runners',
 
 test('an NPC imported before the list loads, its id already taken, saves under a new id', async ({ page }) => {
   await signIn(page, 'eve')
-  const file = { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-twice-1')) }
+  const file = { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-twice-1').replace('Made-up Wisp', 'Made-up Twice')) }
   expect((await page.request.fetch(`${base}api/npcs/npc-twice-1`, { method: 'PUT', data: file.buffer.toString(), headers: { 'Content-Type': 'application/xml', Origin: origin } })).ok()).toBe(true)
   let release!: () => void
   const held = new Promise<void>(r => { release = r })
@@ -188,10 +188,10 @@ test('an NPC imported before the list loads, its id already taken, saves under a
   await page.goto('/#/npcs')
   await expect(page.getByText('Loading NPCs…')).toBeVisible()
   await page.locator('input[type=file]').setInputFiles(file)
-  await expect(page.getByRole('status')).toHaveText('Imported Made-up Wisp.')
+  await expect(page.getByRole('status')).toHaveText('Imported Made-up Twice.')
   release()
-  const wisps = (await (await api(page, 'GET', 'npcs')).json()).filter((r: { xml: string }) => r.xml.includes('Made-up Wisp'))
-  expect(wisps).toHaveLength(2)
+  const twice = (await (await api(page, 'GET', 'npcs')).json()).filter((r: { xml: string }) => r.xml.includes('Made-up Twice'))
+  expect(twice).toHaveLength(2)
   await page.unroute(u => u.pathname.endsWith('/api/npcs'))
 })
 
