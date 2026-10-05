@@ -116,8 +116,9 @@ function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6Ex
 const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
   ({ ...(id ? { id } : {}), kind, name, canon: false, attrs: {}, parts: [], values: {} })
 
+// a Defense Rating bonus is in derived.defenseRating, not here (the export's targets are attributes and initDice)
 const bonuses = (bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
-  (bs ?? []).map(b => ({ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }))
+  (bs ?? []).flatMap(b => (b.target === 'defense' ? [] : [{ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }]))
 
 /** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating. */
 function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true): Sr6ExportPurchase {

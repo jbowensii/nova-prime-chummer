@@ -76,7 +76,7 @@ copy". Book entries are never copied here.
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>`: what a ware, power or item adds, entered by the player (the catalog has no bonus
-  data). `target` is an attribute abbreviation or `initDice`; `perRating`: times the line's rating.
+  data). `target` is an attribute abbreviation, `initDice` or `defense` (Defense Rating); `perRating`: times the line's rating.
 - `<sin kind="real|fake" rating?>` with its `<licence>`s.
 
 ## Career ledger

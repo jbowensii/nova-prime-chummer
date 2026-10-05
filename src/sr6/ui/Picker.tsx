@@ -101,7 +101,7 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
   )
 }
 
-const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : ATTR_NAMES[t])
+const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : ATTR_NAMES[t])
 const bonusText = (x: Bonus) => `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${targetName(x.target)}${x.perRating ? ' × rating' : ''}`
 
 /** The player's bonuses on a line or pick (R: the catalog has no bonus data), each removable, and a dialog to add one. */

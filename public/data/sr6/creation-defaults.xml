@@ -60,6 +60,7 @@
   <setting key="grade:delta:avail" value="3" source="CRB" page="282"/>
   <setting key="monitorBase" value="8" source="CRB" page="38"/>
   <setting key="monitorDivisor" value="2" source="CRB" page="38"/>
+  <setting key="builtToughQuality" value="crb.built-tough" source="CRB" page="70"/>
   <setting key="initiativeDice" value="1" source="CRB" page="39"/>
   <setting key="astralInitiativeDice" value="2" source="CRB" page="161"/>
   <setting key="specDice" value="2" source="CRB" page="92"/>

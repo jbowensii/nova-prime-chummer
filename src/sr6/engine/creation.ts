@@ -91,6 +91,7 @@ export const CREATION_KEYS: CreationKey[] = [
     ['initiativeDiceMax', 'Most initiative dice (unset: no cap)'],
     ['astralInitiativeDice', 'Astral initiative dice'], ['specDice', 'Dice for a specialization'], ['expertiseDice', 'Dice for an expertise'],
     ['untrainedPenalty', 'Dice off the attribute for an untrained skill']]),
+  { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
 ]
 function cap(s: string) { return s[0].toUpperCase() + s.slice(1) }
 

@@ -4,7 +4,7 @@
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
 import { SR6_ATTRS, type Sr6Attr, type Sr6Character } from '../model/character'
 import { allBudgets, attrRating, augmentBonus, entryOf, ratingOf, skillRank } from './budgets'
-import { num, type CreationRules } from './creation'
+import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { makeProvider } from './providers'
 import { attackRatings, rated } from './values'
@@ -56,12 +56,14 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   // the initiative dice cap (GM-entered; unset: no cap)
   const capDice = (d: number | null) => { const most = num(cr, 'initiativeDiceMax'); return d === null || most === undefined ? d : Math.min(d, most) }
 
-  // CRB p. 38: monitor = base + ceil(attribute / divisor); overflow = BOD
+  // CRB p. 38: monitor = base + ceil(attribute / divisor); overflow = BOD; Built Tough adds a Physical box per level (CRB p. 70)
   const base = need('monitorBase'), div = need('monitorDivisor')
   const monitor = (a: number) => (base === undefined || !div ? null : base + Math.ceil(a / div))
+  const tough = b.qualities.filter(q => q.id === str(cr, 'builtToughQuality')).reduce((t, q) => t + q.level, 0)
+  const physical = monitor(A('bod'))
 
-  // CRB p. 67: Defense Rating = BOD + the defense of worn armor
-  let defense = A('bod')
+  // CRB p. 67: Defense Rating = BOD + the defense of worn armor, and what a ware adds (dermal plating, CRB p. 286)
+  let defense = A('bod') + augmentBonus(b, 'defense')
   for (const x of b.purchases) if (x.kind === 'armor' && x.worn) { const e = entryOf(x, data); defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0 }
 
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
@@ -85,7 +87,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     initiative: { base: A('rea') + A('int'), dice: capDice(plus(augmentBonus(b, 'initDice'), 'initiativeDice')) },
     // CRB p. 161 (astral combat): astral initiative = LOG + INT, plus dice
     ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: capDice(need('astralInitiativeDice') ?? null) } } : {}),
-    monitors: { physical: monitor(A('bod')), stun: monitor(A('wil')), overflow: A('bod') },
+    monitors: { physical: physical === null ? null : physical + tough, stun: monitor(A('wil')), overflow: A('bod') },
     defenseRating: defense,
     // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
     attackRatings: { unarmed: A('rea') + A('str'), weapons: b.purchases.filter(x => x.kind === 'weapons').map(x => {
