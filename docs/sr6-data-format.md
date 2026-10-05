@@ -48,7 +48,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int, perLevel true, maxLevel int | — |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
 | weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
@@ -65,7 +65,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
 | martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | — |
 | traditions | tradition | — | — |
-| critterpowers | critterpower | type, action, range, duration | — |
+| critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |

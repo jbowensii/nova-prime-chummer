@@ -91,6 +91,14 @@ class Sr6RunTest(unittest.TestCase):
         self.assertEqual((self.state(other).get("state"), self.state(other).text), ("failed", "no SR6 recipe matched this book"))
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported")))
 
+    def test_a_recipe_finding_nothing_fails(self):
+        # a booklet the core rulebook's loose match takes (its words), with nothing in the rulebook's shape
+        thin = self.new_book("thin", "<!-- page 1 -->\nMade-up Sixth World core rulebook words, no headings.\n")
+        self.assertIsNone(run(thin, self.custom, convert_pdf=False))
+        self.assertEqual(self.state(thin).get("state"), "failed")
+        self.assertIn("nothing in this book", self.state(thin).text)
+        self.assertFalse(os.path.exists(os.path.join(self.custom, "imported")))
+
     def test_remove_keeps_another_book_of_the_source(self):
         second = self.new_book("book2")
         run(self.book, self.custom, convert_pdf=False)

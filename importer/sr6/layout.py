@@ -20,6 +20,7 @@ _CELL_GAP = 6  # pt; header words closer than this are one cell
 _CELL_WORDS = 4  # a header cell has at most this many words
 _FIRST_PAD, _LAST_PAD = 10, 60  # pt; the name column reaches left, the last column right (long values)
 _SIZE_TOL = 0.5  # pt; a row's words are set at its header's size
+_COLUMN_GAP = 40  # pt; a wider gap on a line is the gutter between two text columns (header cells sit closer)
 _HEADER_STACK = 1.6  # header lines up to this many line heights apart are one (multi-line) header
 _STACK_PAD = 80  # pt; and up to this far apart in x (a one-line label centred beside a two-line one)
 _ROW_GAP = 3  # line pitches; a wider gap ends the rows
@@ -220,6 +221,11 @@ def _headers(lines, height):
     no header."""
     groups = []
     for line in lines:
+        # a header line sharing its baseline with the other text column's labelled line (`DR … MOVE` | `Powers: …`):
+        # only its part before that label
+        cut = next((i for i in range(1, len(line)) if line[i]["x0"] - line[i - 1]["x1"] > _COLUMN_GAP
+                    and _opens_with_label(line[i:])), None)
+        line = line[:cut]
         bold = [w for w in line if _is_head_bold(w)]
         if not (len(bold) >= 2 or len(line) == len(bold) == 1) or _opens_with_label(line):
             continue

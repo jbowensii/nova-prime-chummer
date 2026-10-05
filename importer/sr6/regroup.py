@@ -431,8 +431,9 @@ def _text(body):
 
 def _row(header, r):
     r = list(r) + [""] * (len(header) - len(r))
-    # ponytail: a header printed twice keeps its last cell; key cells by position if a book does that
-    return dict(zip(header, r))
+    # a band's second R is Resonance (`B A R S W L I C R ESS`); any other header printed twice keeps its last cell
+    # ponytail: key cells by position if a book prints another header twice
+    return dict(zip(["RES" if h == "R" and "R" in header[:i] else h for i, h in enumerate(header)], r))
 
 
 def _emit(units):

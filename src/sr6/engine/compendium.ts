@@ -16,7 +16,7 @@ const ITEM = ['avail', 'cost']
  *  metatypes, attributes, skills, life modules, rules). fields: the kind's attribute names, lines: its string children
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
-  qualities: { fields: ['kind', 'karma', 'perLevel', 'maxLevel'] },
+  qualities: { fields: ['kind', 'karma', 'karmaMax', 'perLevel', 'maxLevel'] },
   weapons: { fields: ['category', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM] },
   armor: { fields: ['category', 'defense', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
@@ -33,7 +33,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   martialarts: { fields: ['categories', 'signature'] },
   martialtechniques: { fields: ['category'] },
   traditions: { fields: [] },
-  critterpowers: { fields: ['type', 'action', 'range', 'duration'] },
+  critterpowers: { fields: ['type', 'action', 'range', 'duration', 'weakness'] },
   critters: { fields: BEING, lines: BEING_LINES },
   spirits: { fields: BEING, lines: BEING_LINES },
   npcs: { fields: BEING, lines: BEING_LINES },
@@ -48,11 +48,11 @@ const LEVELS: Record<string, FieldRule> = { perLevel: { choices: ['true'] }, max
 const RATED: Record<string, FieldRule> = { rating: { whole: 'nonNegative' } }
 /** Per kind, the attributes with a rule (tests/sr6/compendium.test.ts keeps it equal to common.xsd). */
 const RULES: Partial<Record<Sr6Kind, Record<string, FieldRule>>> = {
-  qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, ...LEVELS },
+  qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, karmaMax: { whole: 'any' }, ...LEVELS },
   weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, programs: { type: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
   augmentations: { type: { required: true, choices: ['cyberware', 'bioware'] }, category: REQ },
   spells: { category: { required: true, choices: ['combat', 'detection', 'health', 'illusion', 'manipulation'] } },
-  adeptpowers: LEVELS,
+  adeptpowers: LEVELS, critterpowers: { weakness: { choices: ['true'] } },
   critters: RATED, spirits: RATED, npcs: RATED,
 }
 export const fieldRule = (kind: Sr6Kind, field: string): FieldRule => RULES[kind]?.[field] ?? {}

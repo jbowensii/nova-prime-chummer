@@ -2,10 +2,11 @@
 and extract(regrouped, ctx=None) -> importer.recipes.Result (files: <kind>.xml -> XML, ids unscoped; texts). identify()
 picks the best match at or above THRESHOLD; a book none matches fails."""
 from importer.recipes import Result  # noqa: F401  (the SR6 recipes return Anarchy's Result)
-from importer.sr6.recipes import aw, bs, crb, da, dc, fs, hs, ia, jd, kk, ll, nf, sw, swc, ts
+from importer.sr6.recipes import aw, bn, bs, crb, da, dc, ed, fs, general, hs, ia, jd, kk, ll, nf, so, sw, swc, ts, wl
 
 THRESHOLD = 0.6
-RECIPES = [crb, swc, fs, da, hs, sw, ll, jd, ia, bs, dc, kk, nf, ts, aw]
+RECIPES = [crb, swc, fs, da, hs, sw, ll, jd, ia, bs, dc, kk, nf, ts, aw, wl, bn, so, ed]
+RECIPES += general.RECIPES  # the books with no recipe of their own: one each, last (a dedicated recipe wins a tie)
 
 
 def identify(meta, md_head):

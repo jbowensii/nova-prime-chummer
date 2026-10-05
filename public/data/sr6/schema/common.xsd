@@ -161,7 +161,9 @@
       <xs:attribute name="kind" use="required">
         <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="positive"/><xs:enumeration value="negative"/></xs:restriction></xs:simpleType>
       </xs:attribute>
+      <!-- karma: the lowest price printed, karmaMax: the highest when it prints a range or several (Phobia: by rarity) -->
       <xs:attribute name="karma" type="xs:integer"/>
+      <xs:attribute name="karmaMax" type="xs:integer"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
     </xs:extension></xs:complexContent>
@@ -320,6 +322,8 @@
       <xs:attribute name="action" type="xs:string"/>
       <xs:attribute name="range" type="xs:string"/>
       <xs:attribute name="duration" type="xs:string"/>
+      <!-- a weakness (Fragile, Carrier): the book's stat blocks list it under Weaknesses -->
+      <xs:attribute name="weakness" type="sr6:True"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

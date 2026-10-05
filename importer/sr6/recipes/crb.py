@@ -127,21 +127,23 @@ HEADERS = {
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
                 "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
     "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "",
-              "TYPE": "", **_PRICE},
+              "TYPE": "", "EXTRAS": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
-             "MOD SLOTS": "slots", **_PRICE},
+             "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
+             **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
-                 "HAND (ON/OFF ROAD)": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
-                 "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats", **_PRICE},
+                 "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
+                 "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats",
+                 "SPD INT": "interval", "TOP SPD": "topSpeed", "BOD": "body", "ARM": "armor", "SENS": "sensor", **_PRICE},
     "spells": {"RANGE": "range", "TYPE": "type", "DURATION": "duration", "DV": "dv", "DRAIN": "dv", "DAMAGE": "damage"},
     "rituals": {"KEYWORDS": "keywords", "THRESHOLD": "threshold"},
     "adeptpowers": {"COST": "cost", "POWER POINTS": "cost", "ACTIVATION": "activation"},
     "complexforms": {"DURATION": "duration", "FADE": "fade", "FADE VALUE": "fade", "FV": "fade"},
-    "critterpowers": {"TYPE": "type", "ACTION": "action", "RANGE": "range", "DURATION": "duration"},
+    "critterpowers": {"TYPE": "type", "ACTION": "action", "RANGE": "range", "DURATION": "duration", "WEAKNESS": "weakness"},
     "critters": _BEING, "spirits": _BEING, "npcs": _BEING,
     "sprites": {"ATTACK": "attack", "A": "attack", "SLEAZE": "sleaze", "S": "sleaze", "DATA PROCESSING": "data", "DATA PROC": "data",
                 "DATA": "data", "D": "data", "FIREWALL": "firewall", "F": "firewall", "I/ID": "init", "INIT": "init",
@@ -156,6 +158,7 @@ HEADERS = {
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
+         "weakness": "weaknesses",
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
 PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "lifestyles"}  # cost/avail checked
@@ -271,6 +274,7 @@ class _Catalog:
         self.cols = set()  # (kind, column) already reported unknown
         self.pending = []  # unknown columns of the entry being read: reported when it is added
         self.last_meta = None
+        self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
@@ -486,14 +490,21 @@ class _Catalog:
                 return False  # a rule about spells
             attrs = {"category": cat, "tags": b.tags or None}
         elif kind == "qualities":
-            karma = f.pop("karma", "")
-            m = re.search(r"(-?\d+)\s*karma", karma, re.I) or re.search(r"(-?\d+)", karma)
-            attrs = {"kind": cat, "karma": m and int(m.group(1)), "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
+            karma = _karma_line(f.pop("karma", ""), b.text)
+            # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
+            ks = [int(n) for m in re.finditer(r"(-?\d+)(?:\s*(?:to|or|[–-])\s*(\d+))?\s*karma", karma, re.I)
+                  for n in m.groups() if n] or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
+            attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
+                     "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)
+            if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
+                attrs["maxLevel"] = int(m.group(1))  # `5 Karma per level (1 to 4)`: the levels in the price
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
             m = re.search(r"([\d.]+)\s*PP", cost, re.I)
             name, levels = self._levels(name)
+            if not levels and (n := re.search(r"max(?:imum)?\.?\s+(\d+)\s+levels?", cost, re.I)):
+                levels = int(n.group(1))  # `0.25 PP per level (max 4 levels)`
             attrs = {"cost": m.group(1) if m else cost or None,
                      "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None, "maxLevel": levels}
         elif kind in ("critters", "spirits", "npcs"):
@@ -502,8 +513,9 @@ class _Catalog:
                 # or a recipe's NPCs with no rating (`Group: X`)
                 m = re.search(r"professional rating\s*(\d+)?\s*[:–—-]?\s*(.*)", b.section, re.I)
                 g = re.fullmatch(r"group:\s*(.+)", b.section, re.I)
-                attrs = {"rating": m and m.group(1) and int(m.group(1)), "group": (m and m.group(2).strip()) or (g and g.group(1)) or None}
-                if not m and not g:
+                attrs = {"rating": m and m.group(1) and int(m.group(1)),
+                         "group": (m.group(2).strip() if m else g.group(1) if g else self.unrated) or None}
+                if not m and not g and not self.unrated:
                     return False
             else:
                 attrs = {"category": cat}
@@ -590,6 +602,14 @@ def _text(b, skip=()):
     return "\n".join(lines + ([b.text] if b.text else []))
 
 
+def _karma_line(karma, text):
+    """A quality's printed price, with its wrapped rest from the text when the label stopped short (regroup ends a
+    label's value at a line opening with a capital: `**Bonus:** Common: 12 Karma; Uncommon: 9` + `Karma; Rare: …`)."""
+    m = re.search(r"\*\*(?:Cost|Bonus):\*\*\s*(.*(?:\n(?!\*\*|\n).*)?)", text) if karma else None
+    full = " ".join(m.group(1).split()) if m else ""
+    return full if re.search(r"\d\s*$", karma) and full.startswith(karma) else karma
+
+
 _INLINE_LABEL = re.compile(r";\s*\*\*([^*]+?):\*\*\s*")
 
 
@@ -669,6 +689,7 @@ def extract(regrouped, ctx=None, book=None):
     SECTIONS); this one by default."""
     bk = book or sys.modules[__name__]
     cat = _Catalog(bk.ID, bk.ID.lower(), bk.BOOK)
+    cat.unrated = getattr(bk, "UNRATED_NPCS", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
         if b.chapter != chapter:
@@ -685,7 +706,7 @@ def extract(regrouped, ctx=None, book=None):
         if b.row is not None and b.header and b.header[0].upper() in ("PRIORITY", "METATYPE"):
             cat.table(b.header, [[b.row.get(h, "") for h in b.header]], page)
             continue
-        if "archetypes" in ch and archetypes.is_archetype(b):
+        if getattr(bk, "ARCHETYPES", "archetypes") in ch and archetypes.is_archetype(b):  # sample characters
             samples.append((b.section or b.name, b, page))  # built once the catalog is read: they cite its entries
             continue
         section = b.type == "section"

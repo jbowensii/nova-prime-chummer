@@ -145,6 +145,43 @@ def _boxes(bs):
     return out
 
 
+def _md_table(h, rows):
+    return "\n".join(["| " + " | ".join(h) + " |", "|" + "---|" * len(h)] + ["| " + " | ".join(r) + " |" for r in rows])
+
+
+def _strays(bs):
+    """A SUIT UP armor table (TYPE, DR …) printed in a later section's text (Vashon Island's lands in `Cumulative`)
+    goes back to the section before it whose text names its first row (`Ace of Cups`), as that section's box. Its
+    `Extras:` rows (the suit's built-in modifications: a row of their own, or the label after the last row) become
+    the row above's EXTRAS cell."""
+    bs = list(bs)
+    for i, b in enumerate(bs):
+        if norm(b.chapter) != "suit up":
+            continue
+        for h, rows in crb._tables(b.text):
+            if h[0].upper() != "TYPE" or "DR" not in {x.upper() for x in h} or not rows:
+                continue
+            j = next((j for j in range(i - 1, -1, -1) if bs[j].chapter == b.chapter and bs[j].level == 3
+                      and not bs[j].stats and norm(rows[0][0]) in norm(bs[j].text)), None)
+            if j is None:
+                continue
+            stats, labels = [], dict(b.labels)
+            for r in rows:
+                cells = [c for c in r if c]
+                if cells and re.match(r"extras\s*:", cells[0], re.I) and stats:  # `Extras: None`, `Extras : | Holster`
+                    stats[-1]["EXTRAS"] = " ".join([re.sub(r"(?i)^extras\s*:\s*", "", cells[0])] + cells[1:]).strip()
+                elif r[0]:
+                    stats.append(dict(zip(h, r)))
+            md = _md_table(h, rows)
+            if stats and "EXTRAS" not in stats[-1] and (x := next((k for k in labels if k.lower() == "extras"), None)):
+                stats[-1]["EXTRAS"] = labels.pop(x)
+                tail = f"\n**{x}:** {stats[-1]['EXTRAS']}"
+                md += tail if md + tail in b.text else ""
+            bs[j] = replace(bs[j], type="item", stats=stats)
+            bs[i] = b = replace(b, labels=labels, text=b.text.replace(md, "").strip())
+    return bs
+
+
 def _lists(bs):
     """A box listing several items, one a row: by a name column (`GEAR`: the armor modifications, whose descriptions
     print earlier under headings of their own) or by distinct TYPEs (`Mil-spec Armor` Light, Medium, Heavy) -> one
@@ -178,4 +215,4 @@ def _lists(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract([shapes.martial(b) for b in _lists(_boxes(list(blocks(regrouped))))], ctx, book=sys.modules[__name__])
+    return crb.extract([shapes.martial(b) for b in _lists(_boxes(_strays(blocks(regrouped))))], ctx, book=sys.modules[__name__])

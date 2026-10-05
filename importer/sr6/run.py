@@ -47,6 +47,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             return None
 
         xmlio.write_status(book_dir, "extracting")
+        if hasattr(recipe, "prepare"):  # a book's own page furniture the converter can't tell (a running head on top)
+            md = recipe.prepare(md)
         text, report = regroup.regroup(md, recipe.ALIASES, name_headers=recipe.NAME_HEADERS,
                                        end_page=getattr(recipe, "END_PAGE", None),
                                        variants=getattr(recipe, "VARIANT_ROWS", False))
@@ -57,6 +59,10 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         for r in report:  # regroup reports PDF pages; the import report prints the book's
             if isinstance(r.get("page"), int):
                 r["page"] = max(1, r["page"] - recipe.PAGE_OFFSET)
+        if not res.files:  # (a booklet a looser match took: the Beginner Box quick-start rules read as the core rulebook)
+            xmlio.write_import(book_dir, score=f"{score:.2f}", recipe=recipe.__name__.rsplit(".", 1)[1], **rec)
+            xmlio.write_status(book_dir, "failed", f"{res.source['name']}: nothing in this book reads as its entries")
+            return None
         src = res.source["id"]
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
