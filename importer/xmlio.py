@@ -121,12 +121,14 @@ def read_import(book_dir):
     return ET.parse(p).getroot() if os.path.exists(p) else None
 
 
-def write_import(book_dir, report=(), files=None, **attrs):
-    """library/<id>/import.xml: recipe, source, file, sha256, dates, counts per file, report rows."""
+def write_import(book_dir, report=(), files=None, extras=(), **attrs):
+    """library/<id>/import.xml: recipe, source, file, sha256, dates, counts per file, report rows; `extras`: the further
+    sources the book holds (an SR6 City Edition's city chapter), each an <extra id name publisher canon/> for sources.xml."""
     rows = "".join(f"    <row{_attrs(r)}/>\n" for r in report)
     counts = "".join(f"    <file{_attrs({'name': n, 'entries': c})}/>\n" for n, c in (files or {}).items())
+    more = "".join(f"  <extra{_attrs(x)}/>\n" for x in extras)
     write_file(os.path.join(book_dir, "import.xml"), HEAD + f"<import{_attrs(attrs)}>\n"
-           f"  <files>\n{counts}  </files>\n  <report>\n{rows}  </report>\n</import>\n")
+           f"  <files>\n{counts}  </files>\n  <report>\n{rows}  </report>\n{more}</import>\n")
 
 
 def update_index(custom_dir):
@@ -140,7 +142,8 @@ def update_index(custom_dir):
 
 def update_sources(custom_dir, library_dir):
     """custom/imported/sources.xml: one <source> per imported source id, from the books' import.xml.
-    A source imported from several files (the four quick-reference sheets) lists them all."""
+    A source imported from several files (the four quick-reference sheets) lists them all. A book's further sources
+    (<extra>: an SR6 City Edition's city chapter) are listed too, a superseded printing's as well (it still loads them)."""
     by_id = {}
     for b in sorted(os.listdir(library_dir)):
         if b.lower() == "sr6":  # library/sr6/: the Shadowrun 6 area's books, never an Anarchy source
@@ -148,6 +151,8 @@ def update_sources(custom_dir, library_dir):
         imp = read_import(os.path.join(library_dir, b)) if os.path.isdir(os.path.join(library_dir, b)) else None
         if imp is None or not imp.get("source"):  # needs-ai / failed books have no source yet
             continue
+        for x in imp.iter("extra"):
+            by_id.setdefault(x.get("id"), []).append({**{k: imp.get(k) for k in ("file", "sha256", "imported")}, **x.attrib})
         if read_state(os.path.join(library_dir, b)) == "superseded":  # an SR6 book's older printing: not loaded
             continue
         by_id.setdefault(imp.get("source"), []).append(imp)

@@ -1,5 +1,24 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **Uploading a book again replaces its row instead of adding one** (Anarchy and Shadowrun 6 **Books**). If the file is
+  the same PDF as a book already in the list (the very same file, whatever its name), that book is imported again in
+  its own row, whether it had failed, imported, been skipped or superseded. A different file, such as another printing,
+  is still a book of its own. A book the AI read keeps its entries; uploading it again changes nothing. While the book is
+  still busy the upload is refused with a message: try again when it's done.
+- **Books uploaded more than once are tidied up when the server starts.** For each file uploaded several times, one row
+  stays: the newest that imported (or was skipped or superseded), else the newest. The other copies are removed, with
+  their PDFs; what the kept one imported stays in place. The server's log says which were merged. On a Shadowrun 6
+  server this tidies Street Wyrd and the Hong Kong core rulebook, which were listed twice.
+- **A book waiting or importing says so in its row.** It shows **Waiting** until its turn, then **Importing…** with
+  the step it's on (or **Removing**), instead of its last state and error. If the new import fails, its own error shows.
+- **City Edition chapters count as imported.** The Hong Kong, Seattle and Berlin chapters of the core rulebook now show
+  **Imported** in the Shadowrun 6 **Supported books** list once their printing is in (a superseded printing still gives
+  its chapter), and they get their own entry in the imported sources list, with their name. Press **Re-import** on each
+  City Edition imported before this build to add that entry; a superseded printing imported before city chapters were
+  read (0.9.1) picks up its chapter the same way and stays superseded.
+
 ## 0.9.3 — 2026-10-05: Shadowrun 6 import fixes
 
 - **Six Shadowrun 6 books failed to import in 0.9.2** (Street Wyrd, Deadly Arts, Hack & Slash, Lofwyr's Legions,

@@ -98,6 +98,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                 _write_extra(custom_dir, x)
             xmlio.write_import(book_dir, report=report + res.report + [r for x in res.extra for r in x.report],
                                extra=" ".join(x.source["id"] for x in res.extra) or None,
+                               extras=[{"id": x.source["id"], "name": x.source["name"], "publisher": x.source["publisher"],
+                                        "canon": str(x.source["canon"]).lower()} for x in res.extra],
                                files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
                                recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
                                name=res.source["name"], publisher=res.source["publisher"],
@@ -169,11 +171,16 @@ def _drop(custom_dir, src):
 def remove(book_dir, custom_dir, forget=False):
     """Anarchy's remove (importer/__main__.py) under the sr6:data root: it rewrites the samples list too (SR6 has no npcs
     list). The book's further sources (import.xml extra) go with it. The loaded printing of a book removed, the newest
-    superseded one is imported again (from its book.md) and loaded."""
+    superseded one is imported again (from its book.md) and loaded. A further source another book also holds (the same
+    PDF uploaded twice) stays."""
     imp = xmlio.read_import(book_dir)
     src, loaded = (imp.get("source") if imp is not None else None), xmlio.read_state(book_dir) == "done"
+    library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
+    held = {x for b in os.listdir(library) if b != me and os.path.isdir(os.path.join(library, b))
+            for i in [xmlio.read_import(os.path.join(library, b))] if i is not None for x in (i.get("extra") or "").split()}
     for x in (imp.get("extra") or "").split() if imp is not None else ():
-        _drop(custom_dir, x)
+        if x not in held:
+            _drop(custom_dir, x)
     with sr6_root():
         anarchy.remove(book_dir, custom_dir, forget=forget)
     others = _same_source(book_dir, src) if src and loaded else []

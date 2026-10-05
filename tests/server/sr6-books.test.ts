@@ -133,7 +133,7 @@ test('what SR6 doesn’t have answers 404: AI, review, data pack, house sources,
 test('an Anarchy and an SR6 upload queued together run one at a time', async () => {
   writeFileSync(log, '')
   const a = (await (await upload('/api/books', 'slow')).json()).id
-  const s = (await (await upload('/api/sr6/books')).json()).id
+  const s = (await (await upload('/api/sr6/books', 'another file')).json()).id // (the same file would re-import `book`)
   expect((await list()).find(b => b.id === s)?.state).toBe('queued') // waits for the Anarchy job
   await waitFor(a, 'done', '/api/books')
   await waitFor(s, 'done')
@@ -169,4 +169,13 @@ test('a restart marks an interrupted SR6 book failed', async () => {
   await s.started
   s.stopJobs()
   expect(readFileSync(join(d, 'library', 'sr6', 'stale-1', 'status.xml'), 'utf8')).toMatch(/state="failed"[^>]*>Interrupted by a restart/)
+})
+
+test('a book’s further sources (a City Edition’s city chapter) are listed with it, a superseded printing’s too', async () => {
+  const d = join(library, 'sr6', 'x-city')
+  mkdirSync(d, { recursive: true })
+  writeFileSync(join(d, 'status.xml'), '<status state="superseded" updated="2026-10-05T00:00:00Z">Superseded by Made-Up</status>\n')
+  writeFileSync(join(d, 'import.xml'), '<import file="made-up-city.pdf" sha256="05" recipe="crb" source="CRB" extra="CRB-HK"><files/><report/></import>\n')
+  expect((await list()).find(b => b.id === 'x-city')).toMatchObject({ state: 'superseded', extra: ['CRB-HK'] })
+  expect((await list()).find(b => b.id === book)).not.toHaveProperty('extra')
 })

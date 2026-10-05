@@ -114,38 +114,36 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   rmSync(join(library, 'crb-1'), { recursive: true })
 })
 
-test('the same core rulebook uploaded again to a new folder: the marks follow the file’s sha256, not the folder', async () => {
+test('the same core rulebook uploaded again: imported again into its entry, its pack marks dropped (the marks follow the file’s sha256)', async () => {
   const pdf = '%PDF-1.4 the same core rulebook', sha = createHash('sha256').update(pdf).digest('hex')
   const old = join(library, 'crb-old'), mark = join(old, 'core-rebuild.xml'), other = join(library, 'other-crb', 'core-rebuild.xml')
   mkdirSync(old, { recursive: true })
   mkdirSync(join(library, 'other-crb'), { recursive: true })
   const isCrb = () => writeFileSync(join(old, 'import.xml'), `<import recipe="crb" source="CRB" file="crb.pdf" sha256="${sha}"><files/><report/></import>\n`)
-  isCrb() // the stub's remove, which a start-up re-import queues, rewrites the record
+  isCrb() // the stub's remove and run, which a start-up re-import or an upload queue, rewrite the record
   writeFileSync(mark, `<rebuild sha256="${sha}" pack="2026-09-28T00:00:00Z" files="skills.xml"/>\n`)
   writeFileSync(other, '<rebuild sha256="another-file" pack="2026-09-28T00:00:00Z" files="skills.xml"/>\n')
   rmSync(join(core, 'lifestyles.xml'))
   expect(await restart()).toEqual([]) // the pack's mark holds
   // the admin uploads the same PDF again: chosen over the pack, so every pack mark for that file goes (another file's stays)
   const up = await fetch(`${base}/api/books`, { method: 'POST', body: pdf, headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'crb.pdf' } })
-  expect(up.status).toBe(202)
-  const { id } = await up.json()
+  expect([up.status, (await up.json()).id]).toEqual([202, 'crb-old']) // its entry, not a new one
   expect(existsSync(mark)).toBe(false)
   expect(existsSync(other)).toBe(true)
   await idle()
+  isCrb()
   expect(await restart('remove crb-old')).toContain('remove crb-old') // the core is partial and this file wasn't tried with this version
-  // tried once per file and version, whichever folder holds the mark
+  // tried once per file and version
   const tried = readFileSync(mark, 'utf8')
   expect(tried).toMatch(new RegExp(`<rebuild sha256="${sha}" version="[^"]+" tried=`))
-  rmSync(mark)
   isCrb()
-  writeFileSync(join(library, id, 'core-rebuild.xml'), tried)
   expect(await restart()).toEqual([])
   // a mark for another file doesn't count
-  writeFileSync(join(library, id, 'core-rebuild.xml'), tried.replace(sha, 'another-file'))
+  writeFileSync(mark, tried.replace(sha, 'another-file'))
   isCrb()
   expect(await restart('remove crb-old')).toContain('remove crb-old')
   await idle()
-  for (const d of [old, join(library, id), join(library, 'other-crb')]) rmSync(d, { recursive: true, force: true })
+  for (const d of [old, join(library, 'other-crb')]) rmSync(d, { recursive: true, force: true })
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
 })
 

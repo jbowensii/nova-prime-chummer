@@ -53,6 +53,32 @@ test('upload a book, use its amps, remove it', async ({ page }) => {
   await expect(await pickAmp(page, 'Stub Amp')).toHaveCount(0)
 })
 
+// the stub worker: "slow" takes 1.5 s, "crash" fails with "boom"
+test('a book uploaded again stays one row; while it waits or imports the row says so, not its old error', async ({ page }) => {
+  await page.goto('/#/books')
+  const broken = page.locator('.book', { hasText: 'Broken Book.pdf' }), slow = page.locator('.book', { hasText: 'Slow Book.pdf' })
+  await page.getByLabel('Choose PDF files').setInputFiles(pdf('Broken Book.pdf', 'crash'))
+  await expect(broken.locator('.state')).toHaveText('Failed', { timeout: 10000 })
+  await expect(broken.locator('.err')).toContainText('boom')
+
+  await page.getByLabel('Choose PDF files').setInputFiles([pdf('Slow Book.pdf', 'slow needs-ai'), pdf('Broken Book.pdf', 'crash')])
+  await expect(slow.locator('.state')).toHaveText('Importing…', { timeout: 10000 })
+  await expect(broken.locator('.state')).toHaveText('Waiting')
+  await expect(broken.locator('.err')).toHaveCount(0)
+  await expect(broken.getByRole('button', { name: 'Remove' })).toHaveCount(0)
+  await expect(broken.locator('.state')).toHaveText('Failed', { timeout: 10000 })
+  await expect(broken.locator('.err')).toContainText('boom')
+  await expect(broken).toHaveCount(1)
+  await expect(slow.locator('.state')).toHaveText('Needs AI')
+
+  for (const row of [broken, slow]) {
+    await row.getByRole('button', { name: 'Remove' }).click()
+    await page.getByLabel('Also delete the PDF and its text').check()
+    await page.getByRole('button', { name: 'Remove book' }).click()
+    await expect(row).toHaveCount(0, { timeout: 10000 })
+  }
+})
+
 test('AI settings, extract with AI, review and add', async ({ page }) => {
   await page.goto('/#/books')
   await page.getByRole('link', { name: 'AI settings' }).click()
