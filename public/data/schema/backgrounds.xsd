@@ -32,6 +32,8 @@
         </xs:element>
       </xs:sequence>
       <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
+      <!-- the game's default image (Shadowrun 6: the circuit board) was added once; never again, even once deleted -->
+      <xs:attribute name="seeded" type="xs:boolean"/>
     </xs:complexType>
     <xs:unique name="one-per-id"><xs:selector xpath="background"/><xs:field xpath="@id"/></xs:unique>
   </xs:element>

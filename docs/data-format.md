@@ -289,7 +289,9 @@ signed-in browsers get the enabled images through `GET /api/backgrounds/<id>`. B
 
 Shadowrun 6 has its own set, the same files and rules in `library/sr6/backgrounds/` at `/api/sr6/backgrounds` (Settings →
 Background art (Shadowrun 6), opened from an SR6 page). SR6 pages and the SR6 print sheet show only that set; Anarchy's
-pages and sheets only Anarchy's.
+pages and sheets only Anarchy's. SR6's set starts with one image of ours, "Circuit board (default)"
+(`server/defaults/sr6-circuit.webp`), added once, enabled, after any images already there; the root's `seeded="true"`
+records that, so once the admin hides or deletes it, it stays that way. Anarchy's has no default.
 
 ```xml
 <ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">

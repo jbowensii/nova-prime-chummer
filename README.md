@@ -347,8 +347,10 @@ printed. Anyone can turn them off or fade them in their own browser
 (**Settings → Background**: Plain page, or Strength 0–100%). The character
 sheet has its own switches above it (on screen: on; printed: off; strength:
 the page's until set), with the same readability limit. The images live in `library/backgrounds/`, are in backups (not
-in data packs), and are only sent to signed-in browsers. No artwork ships
-with the app.
+in data packs), and are only sent to signed-in browsers. The only artwork that
+ships with the app is our own circuit board, Shadowrun 6's default background:
+it starts on, and the admin can switch it off or delete it like any upload
+(once deleted it doesn't come back).
 
 **Sign-in settings** (account menu → Sign-in, admin) turns on Authelia —
 see [below](#sign-in-with-authelia-openid-connect). **AI settings** has a link

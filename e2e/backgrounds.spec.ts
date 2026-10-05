@@ -182,8 +182,15 @@ test('Shadowrun 6 has its own art: uploaded on an SR6 page, the only art its pag
   try {
     await page.goto('/#/sr6')
     await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible() // the SR6 catalog loaded (the page header stays put)
-    await expect(art(page)).toHaveCount(0) // Anarchy's image isn't SR6's
+    // SR6's gallery starts with our circuit board (Anarchy's image isn't SR6's); the admin deletes it like any upload
+    await expect(art(page).locator('div')).toHaveAttribute('style', /api\/sr6\/backgrounds\/[0-9a-f]{12}/)
     const d = await settings(page), section = d.getByRole('group', { name: 'Background art (Shadowrun 6)' })
+    await expect(section.getByText('Circuit board (default)')).toBeVisible()
+    await page.screenshot({ path: `${SHOTS}/sr6-default-art-light.png` })
+    await section.getByRole('button', { name: 'Delete Circuit board (default)' }).click()
+    await page.getByRole('dialog', { name: 'Delete Circuit board (default)?' }).getByRole('button', { name: 'Delete' }).click()
+    await expect(section.getByRole('status')).toContainText('Deleted Circuit board (default).')
+    await expect(art(page)).toHaveCount(0)
     await expect(section.getByText(/none are on now/)).toBeVisible()
     await expect(section.getByText('anarchy.png')).toHaveCount(0)
     await section.getByLabel('Upload background images').setInputFiles({ name: 'sr6-stripes.png', mimeType: 'image/png', buffer: stripes() })

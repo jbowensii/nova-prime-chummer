@@ -1,5 +1,13 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **The Shadowrun 6 circuit pattern is now a default background image.** The pages no longer draw it themselves: they're
+  a plain page, and the circuit board comes as a background image in the Shadowrun 6 gallery, on from the start. The
+  admin can hide or delete it in Settings → Background art (Shadowrun 6) like any upload, and once deleted it doesn't
+  come back. Uploaded art shows cleanly, with no pattern over or under it, and each browser can still turn background
+  art off (Settings → Background: Plain page).
+
 ## 0.9.7 — 2026-10-05: neon Shadowrun 6 colours, background art shows again
 
 - **Shadowrun 6 is neon, mostly cyan.** Titles, outlines, buttons and the logo tag are neon cyan; neon pink comes second
