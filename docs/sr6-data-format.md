@@ -85,8 +85,14 @@ in `src/sr6/model/types.ts`.
 
 Three more kinds complete the set:
 
-- `sources`: `<source id* publisher* canon* texts file sha256 imported><name>`. `texts` is the source's private
-  descriptions file, relative to `custom/sr6/`. `file`, `sha256` and `imported` (a date) are set by the importer.
+- `sources`: `<source id* publisher* canon* published cat texts file sha256 imported><name>`. `texts` is the source's
+  private descriptions file, relative to `custom/sr6/`. `file`, `sha256` and `imported` (a date) are set by the
+  importer. `published` (`2019-08`) is the month the book came out (every core rulebook printing is `CRB`, dated by its
+  first; each City Edition chapter by its own edition) and `cat` its Catalyst product number (`CAT28000`): the
+  publication order, earliest first, ties by `cat` then `id`, a source without a date last. Load book NPCs uses it: a
+  book NPC printed in several books (same kind, same name ignoring case and punctuation) with the same stat block
+  loads once, from the earliest book; with different stat blocks each version loads, named `<Name> #1`, `#2`… in that
+  order.
 - `texts`: `<text of="<kind>" id="<entry id>">…</text>`, merged into the entry's `<text>` by (kind, id).
 - `edits`: entries of any kind above, each with `by` (the account that saved it).
 

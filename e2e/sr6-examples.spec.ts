@@ -15,14 +15,22 @@ const CONTACT = '  <npc id="crb.fixer-fred" source="CRB" page="210" group="Conta
 // how 0.9.0 loaded a sample contact: a grunt of group Contact under its book key
 const OLD_CONTACT = '<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="old-fred" streetName="Fixer Fred" metatype="" method="priority" updatedAt="2026-10-03T00:00:00.000Z" sampleKey="CRB|crb.fixer-fred">'
   + '<npc kind="grunt" group="Contact" fromKind="npcs" fromId="crb.fixer-fred" fromName="Fixer Fred" fromSource="CRB" fromPage="210"><stat key="cha" value="5"/></npc><build method="priority" magic="mundane"/></sr6:character>\n'
-let server: ReturnType<typeof createServer>, base = ''
+// Wild Life printing the same Fuzzbeast and a tougher Rustmole (made up), and a 0.9.4 copy of its Fuzzbeast
+const WILD_LIFE = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="critters" version="1">\n'
+  + '  <critter id="wl.fuzzbeast" source="WL" page="40" category="critter" bod="4" agi="3" rea="4" str="5" wil="2" log="1" int="3" cha="1" ess="6" edg="1" dr="6" init="7 + 1D6" actions="1/1" cm="10" move="10/15/+1"><name>Fuzzbeast</name><skills>Sneaking 3, Running 2</skills><powers>Glimmer, Thick Fur</powers><weaknesses>Allergy (soap, mild)</weaknesses><attacks>Bite 4P</attacks><text>Made-up words of its own.</text></critter>\n'
+  + '  <critter id="wl.rustmole" source="WL" page="41" category="critter" bod="6" agi="2" rea="3" str="2" wil="2" log="1" int="4" cha="1" ess="5.3" edg="1" dr="5" init="7 + 1D6" actions="1/1" cm="9" move="5/9/+1"><name>Rustmole</name><skills>Sneaking 4</skills><powers>Glimmer</powers><attacks>Claws 3P</attacks><augmentations>Made-up Iron Teeth</augmentations><text/></critter>\n</sr6:data>\n'
+const WL_FUZZ = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="wl-fuzz" streetName="Fuzzbeast" metatype="" method="priority" updatedAt="2026-10-03T00:00:00.000Z" sampleKey="WL|wl.fuzzbeast">'
+  + '<npc kind="critter" fromKind="critters" fromId="wl.fuzzbeast" fromName="Fuzzbeast" fromSource="WL" fromPage="40"><stat key="bod" value="4"/></npc><build method="priority" magic="mundane"/></sr6:character>\n'
+let server: ReturnType<typeof createServer>, base = '', importedDir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: DESK })
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-examples-e2e-')), config = join(dir, 'library', '.config')
-  const imported = join(dir, 'custom', 'sr6', 'imported')
+  const imported = importedDir = join(dir, 'custom', 'sr6', 'imported')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   const npcs = join(imported, 'crb', 'npcs.xml')
@@ -95,4 +103,38 @@ test('NPCs & Critters: Load book NPCs copies the grunts, the sample contact, cri
   await expect(dlg.getByLabel('From the catalog').locator('option', { hasText: 'Fixer Fred' })).toHaveCount(0) // not a grunt
   await dlg.getByLabel('Kind').selectOption({ label: 'Contact' })
   await expect(dlg.getByLabel('From the catalog').locator('option')).toHaveText(['Fixer Fred', 'Blank'])
+})
+
+test('NPCs & Critters: a critter in two books loads once when the same, numbered when not; Tidy book copies sorts the old copies', async ({ page }) => {
+  // Wild Life comes in after the core rulebook's NPCs were loaded, with a 0.9.4 copy of its Fuzzbeast
+  mkdirSync(join(importedDir, 'wl'), { recursive: true })
+  writeFileSync(join(importedDir, 'wl', 'critters.xml'), WILD_LIFE)
+  const index = join(importedDir, 'index.xml')
+  writeFileSync(index, readFileSync(index, 'utf8').replace('</overlays>', '  <file href="wl/critters.xml"/>\n</overlays>'))
+  await signIn(page, '/#/sr6/npcs', 'gil')
+  await page.locator('input[type=file]').setInputFiles([{ name: 'fuzz.xml', mimeType: 'application/xml', buffer: Buffer.from(WL_FUZZ) }])
+  await expect(status(page)).toHaveText('Imported Fuzzbeast.')
+  await expect(row(page, 'Fuzzbeast')).toHaveCount(2)
+  // the confirm lists what moves and what's renamed; Keep them changes nothing
+  await page.getByRole('button', { name: 'Tidy book copies' }).click()
+  const dlg = page.getByRole('dialog', { name: 'Tidy book copies' })
+  await expect(dlg.getByRole('list', { name: 'To the NPC trash' }).getByRole('listitem')).toHaveText(['Fuzzbeast (WL p.40)'])
+  await expect(dlg.getByRole('list', { name: 'Renamed' }).getByRole('listitem')).toHaveText(['Rustmole (CRB p.223) → Rustmole #1'])
+  await dlg.getByRole('button', { name: 'Keep them' }).click()
+  await expect(row(page, 'Fuzzbeast')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Tidy book copies' }).click()
+  await dlg.getByRole('button', { name: 'Tidy up' }).click()
+  await expect(status(page)).toHaveText('Moved to the NPC trash: Fuzzbeast. Renamed: Rustmole #1.')
+  await expect(row(page, 'Fuzzbeast')).toHaveCount(1)
+  await expect(row(page, 'Rustmole #1')).toHaveCount(1)
+  await expect(page.getByRole('link', { name: 'Trash (1)' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Tidy book copies' })).toHaveCount(0)
+  // Load book NPCs adds Wild Life's tougher Rustmole as #2, not its Fuzzbeast; pressing again adds nothing
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(status(page)).toHaveText('Added 1 book NPC.')
+  await expect(row(page, 'Rustmole #2')).toHaveCount(1)
+  await expect(row(page, 'Fuzzbeast')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await expect(status(page)).toHaveText('The book NPCs are already in your NPCs.')
+  await expect(page.getByRole('button', { name: 'Tidy book copies' })).toHaveCount(0)
 })
