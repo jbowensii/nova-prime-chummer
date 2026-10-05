@@ -4,6 +4,7 @@
 // { ok: false, reason } without changing anything when the step isn't allowed. Rule numbers come from the catalog and
 // the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest).
 import { newId } from '../../model/types'
+import { GRADED_TYPES, type Sr6Entry } from '../model/types'
 import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
 import { num, type CreationRules } from './creation'
@@ -114,6 +115,9 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
   set(v)
   return OK
 }
+
+/** Grades are for cyberware and bioware (a custom line may take one). */
+export const gradable = (e?: Sr6Entry) => !e || GRADED_TYPES.includes(e.attrs.type ?? '')
 
 /** Every purchase, and every accessory on one. */
 const allLines = (b: Sr6Build) => b.purchases.flatMap(x => [x, ...x.accessories])
@@ -247,6 +251,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (!e || !ratingRange(e.attrs.rating).includes(op.rating)) return no('rating-range')
       }
       if (op.grade && num(cr, `grade:${op.grade}:essence`) === undefined) return no('unknown-grade')
+      if (op.grade && !gradable(x.id ? data.entry(x.kind, x.id) : undefined)) return no('no-grade')
       if (op.rating !== undefined) x.rating = op.rating
       if (op.grade) x.grade = op.grade; else if (op.grade === null) delete x.grade
       return OK
@@ -408,5 +413,6 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   if (!e) return { ok: false, reason: 'unknown-entry' }
   const range = ratingRange(e.attrs.rating)
   if (op.rating !== undefined && range.length && !range.includes(op.rating)) return { ok: false, reason: 'rating-range' }
+  if (op.grade && !gradable(e)) return { ok: false, reason: 'no-grade' }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
 }

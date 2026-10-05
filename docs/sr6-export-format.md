@@ -82,7 +82,7 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `kind` | the catalog kind (`weapons`, `spells`, `qualities`, … the 26 of `SR6_KINDS`) |
 | `name` | as printed (a custom line: the player's) |
 | `canon` | the source is canon; a custom line or a GM compendium's entry: `false` |
-| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`) |
+| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`); an augmentation's `type` is `cyberware` or `bioware` (geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type in `ware`) |
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |

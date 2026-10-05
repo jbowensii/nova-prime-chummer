@@ -64,6 +64,7 @@ export const REASONS: Record<string, string> = {
   'unknown-line': 'That isn’t on the runner any more.',
   'unknown-host': 'The item to fit it on isn’t on the runner any more.',
   'unknown-grade': 'That grade isn’t set up: Table setup → Creation rules.',
+  'no-grade': 'Only cyberware and bioware come in grades.',
   'unknown-choice': 'That life module has no such choice.',
   'unknown-option': 'That isn’t one of the choice’s options.',
   'skill-untrained': 'Give the skill a rank first.',

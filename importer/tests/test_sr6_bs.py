@@ -43,6 +43,27 @@ Made-up genes that glow.
 | GENEWARE Made-Up Applications | TREATMENT TIME | ESS | AVAIL | COST |
 |---|---|---|---|---|
 | Glow Genes | 2 weeks | 0.1 | 4 | 9,000¥ |
+## Made-Up Symbionts
+#### Purr Leech
+A made-up leech that purrs.
+#### symbionts
+| SYMBIONT | ESSENCE | AVAIL | COST |
+|---|---|---|---|
+| Purr Leech | 0.2 | 3 | 4,000¥ |
+## Made-Up Transgenics
+#### Fur Pack
+Made-up fur.
+#### transgenic infusions
+| TYPE | ESS | AVAL | COST |
+|---|---|---|---|
+| Fur Pack | 0.3 | 5(L) | 7,000¥ |
+## Made-Up Nanohives
+#### Tiny Hive
+A made-up hive.
+#### nanohives & supports
+| CYBERWARE | ESSENCE | AVAIL | COST |
+|---|---|---|---|
+| Tiny Hive | 0.5 | 6 | 8,000¥ |
 #### colonies & nanites
 | ITEM Cosmetic/Covert Nanites | COLONY AVAIL | TEMPLATES COST | PRE-BUILT AVAIL | NANITES COST |
 |---|---|---|---|---|
@@ -116,7 +137,10 @@ class BsRecipeTest(unittest.TestCase):
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")
         self.assertEqual((a["Glow Genes"]["type"], a["Glow Genes"]["category"], a["Glow Genes"]["essence"]),
-                         ("bioware", "therapeutic-geneware", "0.1"))
+                         ("geneware", "therapeutic-geneware", "0.1"))
+        # each with its book's type: symbionts, transgenic infusions, nanohives (nanoware)
+        self.assertEqual([(a[n]["type"], a[n]["category"]) for n in ("Purr Leech", "Fur Pack", "Tiny Hive")],
+                         [("symbionts", "symbionts"), ("transgenics", "transgenic-infusions"), ("nanoware", "nanohives-supports")])
         s = a["Made-Up Shells (Sleek)"]
         self.assertEqual((s["type"], s["cost"], s["avail"]), ("cyberware", "99000", "5"))
         g = entries(self.res, "gear")

@@ -7,7 +7,7 @@ import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
 import { legality, rated, ratingRange } from '../engine/values'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
-import type { Sr6Entry, Sr6Kind } from '../model/types'
+import { GRADED_TYPES, type Sr6Entry, type Sr6Kind } from '../model/types'
 import { ATTR_NAMES, n, useSr6Editor } from './editor'
 
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
@@ -31,6 +31,10 @@ export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?:
 
 /** The grades whose Essence factor the table has set (only those are offered). */
 export const gradesSet = (cr: CreationRules) => GRADES.filter(g => num(cr, `grade:${g}:essence`) !== undefined)
+/** Grades are for cyberware and bioware; geneware, nanoware, symbionts and transgenics are bought as printed. */
+const gradesFor = (cr: CreationRules, e?: Sr6Entry) => (e && GRADED_TYPES.includes(e.attrs.type ?? '') ? gradesSet(cr) : [])
+/** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
+export const groupOf = (e: Sr6Entry) => (e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category)
 
 /** A line's name: the catalog's, else the stored one; marked when its entry is gone. */
 export function LineName({ x }: { x: Sr6Purchase }) {
@@ -52,7 +56,7 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
 }) {
   const { c, cr } = useSr6Editor()
   const [chosen, setChosen] = useState<PickedItem | null>(null)
-  const offered = grades ? gradesSet(cr) : []
+  const offered = (e?: Sr6Entry) => (grades ? gradesFor(cr, e) : [])
   const entries = kinds.flatMap(k => [...c.entries[k].values()]).filter(e => !filter || filter(e)).sort((a, z) => a.name.localeCompare(z.name))
   const close = () => { setChosen(null); onClose() }
   const add = (p: PickedItem) => { if (!onAdd(p)) close() }
@@ -60,7 +64,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
     const e = entries.find(x => `${x.kind}:${x.id}` === key)
     if (!e) return
     const range = ratingRange(e.attrs.rating)
-    if (range.length > 1 || offered.length) setChosen({ e, rating: range.length > 1 ? range[0] : undefined, grade: offered[0] })
+    const gs = offered(e)
+    if (range.length > 1 || gs.length) setChosen({ e, rating: range.length > 1 ? range[0] : undefined, grade: gs[0] })
     else add({ e })
   }
   const range = chosen ? ratingRange(chosen.e.attrs.rating) : []
@@ -75,16 +80,16 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
           {range.length > 1 && <label className="inline">Rating
             <select value={chosen.rating} onChange={e => setChosen({ ...chosen, rating: Number(e.target.value) })}>
               {range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>}
-          {offered.length > 0 && <label className="inline">Grade
+          {offered(chosen.e).length > 0 && <label className="inline">Grade
             <select value={chosen.grade} onChange={e => setChosen({ ...chosen, grade: e.target.value })}>
-              {offered.map(g => <option key={g} value={g}>{cap(g)}</option>)}</select></label>}
+              {offered(chosen.e).map(g => <option key={g} value={g}>{cap(g)}</option>)}</select></label>}
         </div>
         {price && <p>Cost <b>{price.cost || '—'}</b> · Availability <b>{price.avail || '—'}</b>{price.essence && <> · Essence <b>{price.essence}</b></>}</p>}
       </div> : <Picker placeholder="Search" onPick={pick}
-        groups={[...new Set(entries.map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}
+        groups={[...new Set(entries.map(e => groupOf(e) ?? ''))].filter(Boolean).sort()}
         items={entries.map(e => {
           const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1)
-          return { id: `${e.kind}:${e.id}`, name: e.name, group: e.attrs.category,
+          return { id: `${e.kind}:${e.id}`, name: e.name, group: groupOf(e),
             meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`].filter(Boolean).join(', '),
             label: <span className="muted">{e.source} p.{e.page}</span>, search: `${e.source} p.${e.page}`,
             price: p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}` }
@@ -143,7 +148,7 @@ export const isAccessory = (e: Sr6Entry) => /accessor/i.test(e.attrs.category ??
 /** A line's rating and grade, changed in place where the entry comes in ratings or grades are offered. */
 function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades?: boolean }) {
   const { data, cr, act } = useSr6Editor()
-  const range = ratingRange(entryOf(x, data)?.attrs.rating), offered = grades ? gradesSet(cr) : []
+  const e = entryOf(x, data), range = ratingRange(e?.attrs.rating), offered = grades ? gradesFor(cr, e) : []
   if (range.length < 2 && !offered.length) return (x.rating || x.grade)
     ? <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && cap(x.grade)].filter(Boolean).join(' · ')}</div> : null
   return <div className="row muted">

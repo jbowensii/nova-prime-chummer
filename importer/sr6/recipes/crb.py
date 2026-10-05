@@ -477,7 +477,7 @@ class _Catalog:
             head = "" if head.upper() in NAME_HEADERS or head == "type" else head
             attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
             if kind == "augmentations":
-                attrs = {"type": "bioware" if any("bioware" in c for c in ctx) else "cyberware", **attrs}
+                attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
             for n, g in self.variants(name, f):
@@ -675,6 +675,18 @@ def _md(b):
         + [(list(s), list(s.values())) for s in b.stats]
     return "\n".join("\n".join(["| " + " | ".join(h) + " |", "|" + "---|" * len(h), "| " + " | ".join(r) + " |"])
                      for h, r in rows)
+
+
+# the words in an augmentation table's title, first header or category that name its type (the first found wins: a
+# geneware table's header reads `BIOWARE GENEWARE …`); else cyberware
+WARE_TYPES = (("symbiont", "symbionts"), ("transgenic", "transgenics"), ("geneware", "geneware"), ("genetic", "geneware"),
+              ("nano", "nanoware"), ("bioware", "bioware"))
+
+
+def ware_type(keys):
+    """An augmentation's type (common.xsd): cyberware, bioware, geneware, nanoware, symbionts or transgenics."""
+    hay = " ".join(keys).lower()
+    return next((t for w, t in WARE_TYPES if w in hay), "cyberware")
 
 
 def _kind(chapter, ctx, section, book=None):

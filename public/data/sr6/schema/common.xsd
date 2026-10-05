@@ -198,7 +198,7 @@
   <xs:complexType name="Augmentation">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="type" use="required">
-        <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/></xs:restriction></xs:simpleType>
+        <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/><xs:enumeration value="geneware"/><xs:enumeration value="nanoware"/><xs:enumeration value="symbionts"/><xs:enumeration value="transgenics"/></xs:restriction></xs:simpleType>
       </xs:attribute>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>

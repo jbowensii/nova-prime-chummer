@@ -3,7 +3,7 @@
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
-import { SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
@@ -97,10 +97,18 @@ export function entryValues(e: Sr6Entry, rating?: number): Sr6Values {
   return v
 }
 
+/** An entry's attributes as printed, but an augmentation's type as cyberware or bioware (the Foundry module knows only
+ *  those two): geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type kept in `ware`. */
+export function exportAttrs(e: Sr6Entry): Record<string, string> {
+  const a = { ...e.attrs }
+  if (e.kind === 'augmentations' && a.type && augFamily(a.type) !== a.type) { a.ware = a.type; a.type = augFamily(a.type) }
+  return a
+}
+
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return { id: e.id, kind: e.kind, name: e.name, source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
-    attrs: { ...e.attrs }, parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating),
+    attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating),
     ...(text && e.text ? { description: e.text } : {}) }
 }
 /** A line whose catalog entry is gone (or a custom one): what the runner file still has. */

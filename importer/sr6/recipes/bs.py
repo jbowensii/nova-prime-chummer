@@ -1,5 +1,5 @@
 """Shadowrun: Body Shop (BS), the core augmentation book -> the SR6 catalog: cyberware (with cyberlimbs and their
-enhancements), bioware, geneware (bioware, by category) and nanoware (cyberware, by category), nanotech and drugs
+enhancements), bioware, geneware, symbionts, transgenics and nanoware (each its own type), nanotech and drugs
 (gear), the implant weapons, the augmentation qualities, the augmented critters and the rule sections (the implant
 grades, cybermancy: no catalog kind of their own), ids unscoped (run scopes them as bs.<slug>), descriptions in the
 private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout

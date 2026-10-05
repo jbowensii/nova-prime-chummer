@@ -51,7 +51,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
 | weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, defense, capacity, avail, cost | — |
-| augmentations | augmentation | type* cyberware\|bioware, category*, rating, essence, capacity, avail, cost | — |
+| augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, … as printed), avail, cost (where the book prints them: the core rulebook's per type) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per, slots | — |
