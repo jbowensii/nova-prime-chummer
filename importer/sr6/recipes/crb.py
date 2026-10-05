@@ -280,6 +280,7 @@ class _Catalog:
         self.pending = []  # unknown columns of the entry being read: reported when it is added
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
+        self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
@@ -476,6 +477,8 @@ class _Catalog:
             b = _text_stats(b, HEADERS["npcs" if kind == "contacts" else kind])
         if kind in STAT_KINDS and len(parts := _side_by_side(b)) > 1:
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])
+        if kind in STAT_KINDS and self.split and len(parts := self.split(b)) > 1:
+            return all([self._entry(kind, cat, p, page, ctx) for p in parts])  # one stat block, several names
         if kind in ROW_KINDS and b.row is not None and not any(list(b.row.values())[1:]):
             return True  # a group heading printed as a row (`Patches` over the patches): no entry
         if kind in ROW_KINDS and b.row is None or kind in STAT_KINDS and not b.stats \
@@ -727,6 +730,7 @@ def extract(regrouped, ctx=None, book=None):
     bk = book or sys.modules[__name__]
     cat = _Catalog(bk.ID, bk.ID.lower(), bk.BOOK)
     cat.unrated = getattr(bk, "UNRATED_NPCS", None)
+    cat.split = getattr(bk, "split_being", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
         if b.chapter != chapter:
