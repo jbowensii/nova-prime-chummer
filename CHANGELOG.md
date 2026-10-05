@@ -44,6 +44,10 @@
   each from the shared weapon boxes), weapon mods, vehicles and drones, armor and armor mods, implants, comm gear,
   ammunition and other gear, spells, adept powers, metamagics, rituals, qualities, its martial art styles and
   techniques (a new kind on Game data, which Firing Squad's import now fills too) and the rule sections.
+- **Hack & Slash can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its matrix gear
+  (cyberhacks, dataterms, deck cases, components and mods, data taps, tag bombs, commlink hacks and apps, agents,
+  cyberkits, codemods), complex forms, echoes, sprites, qualities, the matrix security NPCs and the rule sections
+  (hosts, IC, programs, foundations and resonance realms among them).
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 

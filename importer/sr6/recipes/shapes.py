@@ -152,12 +152,28 @@ def boxes(bs):
     row regroup paired keeps its pairing, its headers named as the core rulebook's."""
     bs = list(bs)
     known = {k for b in bs if b.type in ("item", "section") for k in keys(b.name)}
+    said = {(b.chapter, norm(k)): v for b in bs for k, v in b.labels.items() if v}  # `**Code Buddy:** …` lines
     gone, out = set(), []
+
+    def described(i, b, name):
+        """(text, labels) of the description of `name`: the nearest heading of its name with text and no box of its
+        own (it then goes), else a labelled line of its name in the chapter."""
+        near = sorted((j for j, d in enumerate(bs) if j not in gone and d.chapter == b.chapter and _desc(d)
+                       and _match(name, d.name)), key=lambda j: (j > i, abs(j - i)))
+        if near:
+            gone.add(near[0])
+            return bs[near[0]].text, bs[near[0]].labels
+        return said.get((b.chapter, norm(name)), ""), {}
+
     for i, b in enumerate(bs):
         if b.row is not None:
             first = next(iter(b.row), "")
             row = {first: b.row[first], **cells({h: v for h, v in b.row.items() if h != first})}
-            out.append(replace(b, row=row, header=list(row)))
+            b = replace(b, row=row, header=list(row))
+            if not b.text.strip():
+                text, labels = described(i, b, b.name)
+                b = replace(b, text=text, labels={**labels, **b.labels})
+            out.append(b)
             continue
         items = rows(b.stats, known) if b.stats else None
         if not items or not all(priced(c) for c in items):
@@ -179,12 +195,8 @@ def boxes(bs):
             continue
         for c in items:
             name = " ".join(c[col].split())
-            near = sorted((j for j, d in enumerate(bs) if j not in gone and d.chapter == b.chapter and _desc(d)
-                           and _match(name, d.name)), key=lambda j: (j > i, abs(j - i)))
-            if near:
-                gone.add(near[0])
-            d = bs[near[0]] if near else None
-            out.append(_row_block(b, name, c, b.name, d.text if d else "", d.labels if d else {}, col))
+            text, labels = described(i, b, name)
+            out.append(_row_block(b, name, c, b.name, text, labels, col))
     taken = {id(bs[j]) for j in gone}
     return [b for b in out if id(b) not in taken]
 
