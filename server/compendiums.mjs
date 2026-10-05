@@ -3,8 +3,8 @@
 //            /api/compendiums*
 //   SR6:     <sr6:data kind="compendium"> (docs/sr6-data-format.md) in characters/sr6/.compendiums/<owner>/<id>.xml at
 //            /api/sr6/compendiums* (api() strips /sr6; the routes below are the same)
-// Editors and the admin only: need() gives players 403 on every route, and a request that waited for the lock checks the role
-// again. Each store takes only its own game's root and refuses a body naming the other game's namespaces anywhere (an
+// Editors and the admin only but /shared: need() gives players 403 on every other route, and a request that waited for the
+// lock checks the role again. Each store takes only its own game's root and refuses a body naming the other game's namespaces anywhere (an
 // embedded runner or entry from the other game); campaign sharing and source ids are that game's only.
 //
 //   GET    /api/compendiums        -> [{ id, file, rev, xml, owner, ownerName }] those the caller may read: their own; the
@@ -14,6 +14,9 @@
 //                                  sets rev and updatedAt. The owner only (403 on an id another account holds). The source id
 //                                  is fixed once saved and unique across the books' sources and every compendium (409)
 //   DELETE /api/compendiums/:id    moves it to .trash/ as <id>-<ms since 1970>.xml
+//   GET    /api/compendiums/shared -> the same rows, for anyone signed in (players' runners use their entries; read only):
+//                                    sharing="table" ones, and sharing="campaign" ones whose campaign the caller is a GM or
+//                                    member of while the owner GMs it. Never private ones, and never their NPCs (taken out)
 import { mkdir, readdir, readFile, rename, rmdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { attr, writeAtomic } from './books.mjs'
@@ -27,6 +30,14 @@ const fail = (code, message) => Object.assign(new Error(message), { code })
 // the other game's namespace where a plain-text check can't see it: written with a character or entity reference, or
 // declared in a DTD. Linear: an xmlns value ends at its closing quote.
 const HIDDEN_NS = /<!DOCTYPE|\sxmlns(?::[\w.-]+)?="[^"]*&/i
+
+// an embedded NPC (any prefix, or none): a <character> element and everything in it. Characters don't nest.
+const NPC = /<(?:[\w.-]+:)?character\b(?:[^>]*\/>|[\s\S]*?<\/(?:[\w.-]+:)?character\s*>)/g
+/** The compendium file without its NPCs, for players; null when one can't be taken out cleanly (never sent then). */
+export function withoutNpcs(xml) {
+  const out = xml.replace(NPC, '')
+  return /<(?:[\w.-]+:)?character\b|<!DOCTYPE|<!\[CDATA\[/i.test(out) ? null : out
+}
 
 /** game: GAMES.ca2 or GAMES.sr6 (its data root and the other game's namespace); home: that game's characters folder;
  *  sourceFiles: its books' source lists (missing ones are skipped); campaigns: that game's. */
@@ -70,6 +81,15 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
     }
     return out
   }
+  /** For anyone: the table ones and those shared with a campaign `me` is in (GM or member) that the owner still GMs. */
+  async function shared(me) {
+    const out = []
+    for (const c of await all()) {
+      const sharing = attr(c.tag, 'sharing'), cid = attr(c.tag, 'campaign')
+      if (sharing === 'table' || (sharing === 'campaign' && cid && await campaigns.holds(me.username, cid) && await campaigns.leads(c.owner, cid))) out.push(c)
+    }
+    return out
+  }
   async function body(req, res) {
     const big = () => { res.setHeader('Connection', 'close'); return fail(413, 'a compendium can’t be larger than 20 MB') }
     if (Number(req.headers['content-length']) > MAX) throw big()
@@ -90,6 +110,17 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
       const me = auth.current(who.id)
       if (!me || !['admin', 'editor'].includes(me.role)) return send(res, 403, { error: 'your account can’t do this' })
       return send(res, 200, (await readable(me)).map(({ id, file, rev, xml, owner }) => ({ id, file, rev, xml, owner, ownerName: auth.nameOf(owner) })))
+    }
+    if (p === '/api/compendiums/shared') {
+      if (req.method !== 'GET') return send(res, 405, { error: 'method not allowed' })
+      const me = auth.current(who.id)
+      if (!me) return send(res, 401, { error: 'sign in first' })
+      const rows = []
+      for (const { id, file, rev, xml, owner } of await shared(me)) {
+        const bare = withoutNpcs(xml)
+        if (bare != null) rows.push({ id, file, rev, xml: bare, owner, ownerName: auth.nameOf(owner) })
+      }
+      return send(res, 200, rows)
     }
     const m = p.match(/^\/api\/compendiums\/([^/]+)$/)
     if (!m) return send(res, 404, { error: 'not found' })
