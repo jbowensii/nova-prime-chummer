@@ -25,6 +25,14 @@
 - **Metavariants can be picked in priority creation.** Once the Sixth World Companion is re-imported, each
   metavariant is offered at the metatype priorities its development table allows, with its own adjustment points, and
   its karma comes out of your starting karma.
+- **Only a GM approves a rule problem** (both games). Players no longer see **GM approve** on Review. A GM (an editor)
+  or the admin approves, or revokes, a problem on a player's runner from its read-only view, when the runner is in a
+  campaign they run; the player sees it on their next load. Their own runners they approve as before.
+- **More months of the same lifestyle add up.** A Lifestyle spend on the Shadowrun 6 Ledger for the lifestyle the
+  runner has adds its months (3 months, then 2 more: 5); another lifestyle replaces it.
+- **An accessory's rating can be changed in place** on a Shadowrun 6 runner (and its grade, where it takes one).
+- **Importing a runner right after opening the list** no longer fails with "changed elsewhere" when its id is taken:
+  the copy gets a new id (both games).
 
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 

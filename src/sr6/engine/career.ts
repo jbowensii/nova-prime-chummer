@@ -65,7 +65,8 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (i >= 0) b.contacts[i] = structuredClone(a.line); else b.contacts.push(structuredClone(a.line))
       return
     }
-    case 'lifestyle': b.lifestyle = { id: a.id, months: a.months }; return
+    // more months of the lifestyle the runner has add to it; another lifestyle replaces it
+    case 'lifestyle': b.lifestyle = { id: a.id, months: a.months + (b.lifestyle?.id === a.id ? b.lifestyle.months : 0) }; return
     case 'convert': case 'other': return
   }
 }

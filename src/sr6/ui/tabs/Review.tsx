@@ -12,7 +12,8 @@ import { sr6Tabs } from '../EditorView'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 
 export function ReviewTab() {
-  const { ch, v, d, budgets, update, replace, career } = useSr6Editor()
+  const { ch, v, d, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
+  const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
   const [asking, setAsking] = useState<'finalize' | 'draft' | null>(null)
@@ -24,12 +25,13 @@ export function ReviewTab() {
   const ready = canFinalizeSr6(v)
   const name = ch.identity.streetName || ch.identity.name || 'this runner'
 
-  const approve = () => {
+  const [err, setErr] = useState('')
+  const done = (r: string | null) => { setErr(r ?? ''); return !r }
+  const approve = async () => {
     const x = approving!
-    update(c => { c.overrides.push({ code: x.code, path: x.path, note: note.trim() }) })
-    setApproving(null); setNote('')
+    if (done(await approveAll!([...ch.overrides, { code: x.code, path: x.path, note: note.trim() }]))) { setApproving(null); setNote('') }
   }
-  const revoke = (x: Violation) => update(c => { c.overrides = c.overrides.filter(o => !(o.code === x.code && o.path === x.path)) })
+  const revoke = async (x: Violation) => done(await approveAll!(ch.overrides.filter(o => !(o.code === x.code && o.path === x.path))))
   const finalize = () => { const next = finalizeSr6(ch, budgets, v); if (next) replace(next); setAsking(null) }
   const draft = () => { const next = draftAgain(ch); if (next) replace(next); setAsking(null) }
 
@@ -48,8 +50,8 @@ export function ReviewTab() {
           <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>{x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}</span>
           <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
           {!career && <span className="row">
-            {x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
-            {x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
+            {gm && x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+            {gm && x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
           </span>}
           {o && <span className="note">GM: {o.note || 'approved'}</span>}
         </div>
@@ -67,7 +69,8 @@ export function ReviewTab() {
         ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`]])}
       {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Table setup → Creation rules).</p>}
 
-      <hr className="sep" />
+      {err && <p className="banner err" role="alert">{err}</p>}
+      {!ro && <><hr className="sep" />
       <h2>Finalize</h2>
       {!career ? <>
         <p>Finalizing is the last check of creation. It records the karma and nuyen left; the build is then read only.</p>
@@ -79,7 +82,7 @@ export function ReviewTab() {
           {' '}<a href={sr6EditHref(ch.id, 'print')}>Print it</a> or export a copy.</p>
         <div><button className="btn" disabled={!drafting} onClick={() => setAsking('draft')}>Back to draft</button>
           {!drafting && <span className="muted"> Void the ledger’s earnings and spends first (newest first).</span>}</div>
-      </>}
+      </>}</>}
 
       <Modal open={!!approving} onClose={() => setApproving(null)} title="GM approval"
         actions={<><button className="btn" onClick={() => setApproving(null)}>Cancel</button><button className="btn primary" disabled={!note.trim()} onClick={approve}>Approve</button></>}>

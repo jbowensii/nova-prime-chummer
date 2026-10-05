@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Browser, type Page } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -56,6 +56,20 @@ async function shoot(page: Page, name: string) {
   await page.setViewportSize(DESK)
 }
 const row = (page: Page, name: string) => page.locator('.dossier', { hasText: name })
+/** Gil (an editor) in a page of his own; the runner `id` of Pat's in Gil's campaign Zip Table (made the first time). */
+async function gilWith(browser: Browser, pat: Page, id: string): Promise<Page> {
+  const origin = base.replace(/\/$/, ''), headers = { Origin: origin }
+  const gil = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
+  await signIn(gil, '/#/sr6', 'gil')
+  const mine = await (await gil.request.get('/api/sr6/campaigns')).json() as { id: string; name: string }[]
+  let camp = mine.find(c => c.name === 'Zip Table')?.id
+  if (!camp) {
+    camp = (await (await gil.request.post('/api/sr6/campaigns', { data: { name: 'Zip Table' }, headers })).json() as { id: string }).id
+    expect((await gil.request.post(`/api/sr6/campaigns/${camp}/members`, { data: { user: 'pat' }, headers })).ok()).toBe(true)
+    expect((await pat.request.post(`/api/sr6/campaigns/${camp}/runners`, { data: { id }, headers })).ok()).toBe(true)
+  }
+  return gil
+}
 const file = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
 
 test('the runners page: empty, a method that needs settings, a new runner, import, export, repair, trash', async ({ page }) => {
@@ -335,6 +349,13 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await gun.getByRole('button', { name: 'Add an accessory to Zap Gun' }).click()
   await dlg.getByText('Zap Scope').click()
   await expect(gun).toContainText('Zap Scope')
+  // a rated accessory: its rating changes in place on the line
+  await gun.getByRole('button', { name: 'Add an accessory to Zap Gun' }).click()
+  await dlg.getByText('Glow Sight').click()
+  await dlg.getByRole('button', { name: 'Add', exact: true }).click()
+  await gun.getByLabel('Glow Sight on Zap Gun: rating').selectOption('3')
+  await gun.getByRole('button', { name: 'Remove Glow Sight 3 from Zap Gun' }).click() // (the rest of the run counts without it)
+  await expect(gun).not.toContainText('Glow Sight')
   await work.getByRole('button', { name: 'Add armor…' }).click()
   await dlg.getByText('Padded Vest').click()
   await work.getByLabel('Padded Vest is worn').check()
@@ -403,7 +424,8 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(page).toHaveURL(/#\/sr6$/)
 })
 
-test('Review: each problem links to its tab; GM approval; Finalize makes the build read only; Back to draft', async ({ page }) => {
+test('Review: each problem links to its tab; GM approval; Finalize makes the build read only; Back to draft', async ({ page, browser }) => {
+  test.setTimeout(60000)
   await signIn(page, '/#/sr6', 'pat')
   await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
@@ -432,17 +454,29 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(work.locator('.viol .sev.err')).toHaveCount(1)
 
-  // the GM approves it with a note, revokes, approves again
-  await eyes.getByRole('button', { name: 'GM approve' }).click()
-  await dlg.getByLabel('Why the GM allows it').fill('Street doc friend, agreed at session zero')
-  await dlg.getByRole('button', { name: 'Approve' }).click()
-  await expect(eyes).toContainText('Approved')
-  await expect(eyes).toContainText('GM: Street doc friend, agreed at session zero')
-  await eyes.getByRole('button', { name: 'Revoke' }).click()
-  await expect(eyes).toContainText('Problem')
-  await eyes.getByRole('button', { name: 'GM approve' }).click()
-  await dlg.getByLabel('Why the GM allows it').fill('Street doc friend')
-  await dlg.getByRole('button', { name: 'Approve' }).click()
+  // only a GM approves: Pat, a player, has no button; Gil, the GM of a campaign the runner is in, approves it with a note
+  // on his read-only view, revokes, approves again
+  await expect(eyes.getByRole('button', { name: 'GM approve' })).toHaveCount(0)
+  await savedOnServer(page, /name="Fixer Fred"[^>]*connection="1"/) // Pat's latest is on the server before Gil writes
+  const zipId = page.url().split('/c/')[1].split('/')[0]
+  const gil = await gilWith(browser, page, zipId)
+  await gil.goto(`/#/sr6/c/${zipId}/review`)
+  const geyes = gil.locator('main.work .viol', { hasText: 'Glow Eyes' }), gdlg = gil.getByRole('dialog')
+  await geyes.getByRole('button', { name: 'GM approve' }).click()
+  await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend, agreed at session zero')
+  await gdlg.getByRole('button', { name: 'Approve' }).click()
+  await expect(geyes).toContainText('Approved')
+  await expect(geyes).toContainText('GM: Street doc friend, agreed at session zero')
+  await geyes.getByRole('button', { name: 'Revoke' }).click()
+  await expect(geyes).toContainText('Problem')
+  await geyes.getByRole('button', { name: 'GM approve' }).click()
+  await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend')
+  await gdlg.getByRole('button', { name: 'Approve' }).click()
+  await expect(geyes).toContainText('Approved')
+  await expect(gil.getByRole('button', { name: 'Finalize runner' })).toHaveCount(0) // still Pat's to finalize
+  await gil.close()
+  await page.reload()
+  await expect(eyes).toContainText('GM: Street doc friend')
   await expect(tabs.filter({ hasText: 'Review' })).toHaveText('Review')
   // the derived values
   await expect(work.locator('.sr6-derived div', { hasText: 'Defense Rating' })).toContainText('5')
@@ -491,7 +525,7 @@ test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no 
   await expect(sheet.locator('.sr6-boxes').first().locator('span')).toHaveCount(10)
   await expect(sheet.locator('tr', { hasText: 'Zap Gun' })).toContainText('9/7/—/—/—')
   await expect(sheet.locator('tr', { hasText: 'Zap Gun' })).toContainText('with Zap Scope')
-  await expect(sheet.locator('tr', { hasText: 'Glow Eyes' })).toContainText('alpha')
+  await expect(sheet.locator('tr', { hasText: 'Glow Eyes' })).toContainText('Alpha')
   await expect(sheet).toContainText('Cozy × 1 month')
   await expect(sheet).toContainText('Zap Gun licence (2)')
   await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
@@ -563,7 +597,8 @@ test('a point-buy runner: character points left, Review cites the rule; two tabs
   await b.close()
 })
 
-test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s runner shows it on Review', async ({ page }) => {
+test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s runner shows it on Review', async ({ page, browser }) => {
+  test.setTimeout(60000)
   await signIn(page, '/#/sr6/table', 'ada')
   await page.getByLabel('Highest skill rank', { exact: true }).fill('2')
   await page.getByRole('button', { name: 'Save creation rules' }).click()
@@ -579,15 +614,27 @@ test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s ru
   await page.getByRole('button', { name: 'Back to draft' }).click()
   await dlg.getByRole('button', { name: 'Back to draft' }).click()
   await expect(cap).toContainText('CRB p.61')
-  // approved and finalized again, for the tests after this one
-  await cap.getByRole('button', { name: 'GM approve' }).click()
-  await dlg.getByLabel('Why the GM allows it').fill('Old cap')
-  await dlg.getByRole('button', { name: 'Approve' }).click()
+  // approved by Gil, its campaign's GM, and finalized again, for the tests after this one
+  await savedOnServer(page, /^(?![\s\S]*finalizedAt=)/) // the draft is on the server before Gil writes
+  const zipId = page.url().split('/c/')[1].split('/')[0]
+  const gil = await gilWith(browser, page, zipId)
+  await gil.goto(`/#/sr6/c/${zipId}/review`)
+  await gil.locator('main.work .viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' }).getByRole('button', { name: 'GM approve' }).click()
+  await gil.getByRole('dialog').getByLabel('Why the GM allows it').fill('Old cap')
+  await gil.getByRole('dialog').getByRole('button', { name: 'Approve' }).click()
+  await expect(gil.locator('main.work .viol', { hasText: 'Tinkering rank 3' })).toContainText('Approved')
+  await gil.close()
+  await page.reload()
+  await expect(cap).toContainText('Approved')
   await page.getByRole('button', { name: 'Finalize runner' }).click()
   await dlg.getByRole('button', { name: 'Finalize', exact: true }).click()
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
   // the later tests open it from the server: approved, then finalized again (the ledger's last entry)
   await savedOnServer(page, /type="finalize"[^>]*\/>\s*<\/ledger>[\s\S]*Old cap/)
+  // Zip Spark leaves Zip Table again
+  const camps = await (await page.request.get('/api/sr6/campaigns')).json() as { id: string; name: string }[]
+  const zip = camps.find(c => c.name === 'Zip Table')!.id
+  expect((await page.request.delete(`/api/sr6/campaigns/${zip}/runners/${zipId}`, { headers: { Origin: base.replace(/\/$/, '') } })).ok()).toBe(true)
 })
 
 test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat’s runner in it uses them, Pat reads them', async ({ page, browser }) => {

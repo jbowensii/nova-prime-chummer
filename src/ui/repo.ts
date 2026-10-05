@@ -13,6 +13,14 @@ export interface Unreadable { file: string; rev: number; xml: string; error: str
 export type SaveResult =
   | { ok: true; rev?: number; file?: string }
   | { ok: false; conflict?: { rev: number; file: string; updatedAt?: string }; error?: string }
+/** An imported file saved as new: when its id turns out taken after all (the list hadn't loaded yet, or another tab saved
+ *  one), once more under a fresh id. Both games' runner lists. */
+export async function saveAsNew<T extends { id: string }>(save: (ch: T) => Promise<SaveResult>, ch: T, freshId: () => string): Promise<{ ch: T; r: SaveResult }> {
+  const r = await save(ch)
+  if (r.ok || !r.conflict) return { ch, r }
+  const again = { ...ch, id: freshId() }
+  return { ch: again, r: await save(again) }
+}
 /** keepalive: the request may outlive the page (flush on leave); only honored for bodies under 60 KB */
 export interface SaveOpts { force?: boolean; filename?: string; keepalive?: boolean }
 

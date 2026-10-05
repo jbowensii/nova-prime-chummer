@@ -10,6 +10,7 @@ import { because, canEdit, send, useMe, type User } from './auth'
 import { AskRules } from './AskRules'
 import { Modal } from './bits'
 import type { Game } from './game'
+import type { Override } from '../model/types'
 
 export interface Person { username?: string; name: string }
 export interface CampaignRunner { key: string; mine: boolean; ownerName: string; streetName: string; level: string; package: string; id?: string; owner?: string }
@@ -26,6 +27,10 @@ export function campaignLinks(game: Game = 'ca2') {
 }
 /** The caller's campaigns of `game` (Shadowrun 6's at /api/sr6/campaigns). */
 export const loadCampaigns = async (game: Game = 'ca2'): Promise<Campaign[]> => (await send(campaignLinks(game).api(), undefined, 'GET')).json()
+/** A GM's (or the admin's) approvals on another account's runner in a campaign they run, replaced on the server (the
+ *  runner stays its player's; only its GMs and the admin may). */
+export const approveRunner = (game: Game, campaign: string, runner: string, overrides: Override[]) =>
+  send(campaignLinks(game).api(`/${campaign}/runners/${encodeURIComponent(runner)}/overrides`), { overrides }, 'PUT')
 /** Whether `me` plays in or runs `c` (only then can they put a runner in it); the admin sees every campaign without being in it. */
 export const joined = (c: Campaign, me: User | null) => c.you !== 'admin' || [...c.gms, ...c.members].some(p => p.username === me?.username)
 const names = (ps: Person[]) => ps.map(p => p.name).join(', ')

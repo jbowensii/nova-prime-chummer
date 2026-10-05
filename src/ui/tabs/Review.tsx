@@ -11,7 +11,8 @@ const tabFor = (path: string) => {
 }
 
 export function ReviewTab() {
-  const { c, ch, d, v, p, balance, update, replace, career } = useEditor()
+  const { c, ch, d, v, p, balance, replace, career, ro, approve: approveAll } = useEditor()
+  const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
   const [finalizing, setFinalizing] = useState(false)
@@ -19,12 +20,13 @@ export function ReviewTab() {
   const ready = canFinalize(v)
   const earned = activeEvents(ch).some(e => e.type === 'earn')
 
-  const approve = () => {
+  const [err, setErr] = useState('')
+  const done = (r: string | null) => { setErr(r ?? ''); return !r }
+  const approve = async () => {
     const x = approving!
-    update(d => { d.overrides.push({ code: x.code, path: x.path, note: note.trim() }) })
-    setApproving(null); setNote('')
+    if (done(await approveAll!([...ch.overrides, { code: x.code, path: x.path, note: note.trim() }]))) { setApproving(null); setNote('') }
   }
-  const revoke = (x: Violation) => update(d => { d.overrides = d.overrides.filter(o => !(o.code === x.code && o.path === x.path)) })
+  const revoke = async (x: Violation) => done(await approveAll!(ch.overrides.filter(o => !(o.code === x.code && o.path === x.path))))
 
   return (
     <div className="stack">
@@ -43,8 +45,8 @@ export function ReviewTab() {
               <span className="msg">{x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
               <span className="row">
                 {tab && !x.approved && <a className="btn small quiet" href={editHref(ch, tab)}>Fix</a>}
-                {x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
-                {x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
+                {gm && x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+                {gm && x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
               </span>
               {o && <span className="note">GM: {o.note || 'approved'}</span>}
             </div>
@@ -52,7 +54,8 @@ export function ReviewTab() {
         })}
       </div>
 
-      {!ch.npc && <><hr className="sep" />
+      {err && <p className="banner err" role="alert">{err}</p>}
+      {!ch.npc && !ro && <><hr className="sep" />
       <h2>Finalize</h2>
       {!career ? <>
         <p>Finalizing is the last check of creation. It locks nothing: afterwards you can still add, change or remove anything.

@@ -125,12 +125,19 @@ export function Bonuses({ uid, name, bonuses, rated: hasRating }: { uid: string;
 
 /** The accessories fitted to a line, each removable, and the picker to fit another. */
 export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; name: string; kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }) {
-  const { act, data } = useSr6Editor()
+  const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
   return <span className="row">
     {host.accessories.map(a => {
-      const label = `${entryOf(a, data)?.name ?? a.name ?? 'Accessory'}${a.rating ? ` ${a.rating}` : ''}`
-      return <span key={a.uid} className="chip">{label}
+      const e = entryOf(a, data), own = e?.name ?? a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
+      const range = ratingRange(e?.attrs.rating), grades = e ? gradesFor(cr, data, e) : []
+      // its rating and grade change in place, as a line's do
+      return <span key={a.uid} className="chip">{range.length > 1 ? own : label}
+        {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
+          onChange={ev => act({ op: 'rate', uid: a.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select>}
+        {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
+          onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
+          <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeName(data, g)}</option>)}</select>}
         <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>×</button></span>
     })}
     <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} onClick={() => setOpen(true)}>Accessory…</button>

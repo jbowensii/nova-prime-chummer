@@ -6,7 +6,7 @@ import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
 import { because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
 import { Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from './bits'
-import { useRepo, type Stored, type Unreadable } from './repo'
+import { saveAsNew, useRepo, type Stored, type Unreadable } from './repo'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
@@ -177,6 +177,11 @@ export function Library({ c }: { c: Catalog }) {
     return r.ok ? null : r.error ?? `${ch.identity.streetName || 'That runner'} changed elsewhere; open it to sort it out.`
   }
   const store = async (ch: Character, rev?: number) => { const err = await saveError(ch, rev); if (err) setMsg(err); return !err }
+  /** an imported runner, under a new id if its own turns out taken: the runner saved, and why not (null: saved) */
+  const saveImport = async (x: Character) => {
+    const { ch, r } = await saveAsNew(c => repo.save(c), x, newId)
+    return { ch, err: r.ok ? null : r.error ?? `${ch.identity.streetName || 'That runner'} changed elsewhere; open it to sort it out.` }
+  }
 
   const create = async () => {
     const ch = blankCharacter(level, meta)
@@ -192,9 +197,8 @@ export function Library({ c }: { c: Catalog }) {
       const r = readCharacterFile(await f.text())
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
       if (r.character.npc) { bad.push(`${f.name}: this is an NPC, not a runner. ${canEdit(me) ? 'Import it on NPCs & Critters.' : 'Only GMs keep NPCs.'}`); continue }
-      const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() }
-      const err = await saveError(ch) // the summary below replaces the message: a failed save goes in it
-      if (err) bad.push(`${f.name}: ${err}`); else done.push(ch.identity.streetName || ch.identity.name)
+      const { ch, err } = await saveImport({ ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() })
+      if (err) bad.push(`${f.name}: ${err}`); else { done.push(ch.identity.streetName || ch.identity.name); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()
