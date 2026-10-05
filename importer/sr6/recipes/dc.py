@@ -77,13 +77,13 @@ def _value_line(ln):
     return toks if len(toks) >= 7 and all(_VALUE.fullmatch(t.replace(" ", "")) for t in toks) else None
 
 
-def vehicle_values(b):
-    """The box's eleven values in print order, else None. The speed pair may print in a table of its own, the rest on
-    a value line; a table row of capitals continues its header (`INT | SPD`). Only the box's first table and value line
-    are its own (a box printed right after it may run into it)."""
-    tables = [[list(s.values()) for s in b.stats]] if b.stats else [rows for _, rows in crb._tables(b.text)][:1]
-    tv = _tokens(c for row in (tables[0] if tables else []) for c in row if c and not _CAPS.fullmatch(c))
-    lv = next((v for ln in b.text.splitlines() if not ln.startswith("|") and (v := _value_line(ln))), [])
+def _summary(h):
+    return h[0].upper().startswith("VEHICLE")  # the aircraft table reprinting the boxes (`VEHICLE JETPACK | HAND …`)
+
+
+def _combine(rows, lv):
+    """A speed table's rows and a value line's tokens -> the eleven values, else None."""
+    tv = _tokens(c for row in rows for c in row if c and not _CAPS.fullmatch(c))
     if len(tv) == 2 and len(lv) == 9:
         return lv[:2] + tv + lv[2:]
     if len(tv) + len(lv) == len(VEHICLE) and not (tv and lv):
@@ -91,10 +91,42 @@ def vehicle_values(b):
     return None
 
 
+def _value_lines(text):
+    return [i for i, ln in enumerate(text.splitlines()) if not ln.startswith("|") and _value_line(ln)]
+
+
+def vehicle_values(b):
+    """The box's eleven values in print order, else None. The speed pair may print in a table of its own, the rest on
+    a value line; a table row of capitals continues its header (`INT | SPD`). Only the box's first table and value line
+    are its own (a box printed right after it may run into it: extra_boxes)."""
+    tables = [[list(s.values()) for s in b.stats]] if b.stats else [r for h, r in crb._tables(b.text) if not _summary(h)][:1]
+    vl = _value_lines(b.text)
+    return _combine(tables[0] if tables else [], _value_line(b.text.splitlines()[vl[0]]) if vl else [])
+
+
+def extra_boxes(b):
+    """The boxes run into this one (a lower-case box title reads as a table title, so its box joins the box before
+    it, its title lost): (values or None, its lines), one per value line after the first."""
+    lines, vl, out = b.text.splitlines(), _value_lines(b.text), []
+    for k, i in enumerate(vl[1:], 1):
+        seg = lines[vl[k - 1] + 1:i]
+        start = next((j for j, ln in enumerate(seg) if ln.startswith("|")), len(seg))
+        tables = [r for h, r in crb._tables("\n".join(seg)) if not _summary(h)]
+        end = vl[k + 1] if k + 1 < len(vl) else len(lines)
+        tail = lines[i + 1:end]
+        tail = tail[:next((j for j, ln in enumerate(tail) if ln.startswith("|")), len(tail))]
+        out.append((_combine(tables[-1] if tables else [], _value_line(lines[i])), vl[k - 1] + 1 + start, tail))
+    return out
+
+
 def _strip(text):
-    """The box's text without its stat lines (the header line and the values)."""
-    return "\n".join(ln for ln in text.splitlines() if not _value_line(ln)
-                     and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip()))
+    """The box's text without its stat lines (the header line and the values) and the aircraft table."""
+    out, summary = [], False
+    for ln in text.splitlines():
+        summary = ln.startswith("|") and (summary or _summary(crb._cells(ln)))
+        if not summary and not _value_line(ln) and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip()):
+            out.append(ln)
+    return "\n".join(out)
 
 
 def _title(name):
@@ -110,22 +142,40 @@ def _prep(bs, report):
     """Vehicle boxes as catalog rows (named without their class, the description: the level-3 section before them that
     shares a word with the name, which then is no rule); modification headings priced by small MOD SLOTS / RATING /
     AVAILABILITY / COST tables as rows (one per printed row: a rated row named by its rating); sized catalogs named."""
-    out, desc, used, mod = [], None, set(), ""
+    out, desc, used, mod, read = [], None, set(), "", set()
+    summary = _summary_rows(bs)
     for b in bs:
         ch = norm(b.chapter)
+        if b.type == "section" and b.level == 3 and any(c in ch for c in VEHICLE_CHAPTERS) \
+                and (v := vehicle_values(b)) is not None:  # a box printed with no title (`GTI Revolution`)
+            row = {"VEHICLE": b.name, **dict(zip(VEHICLE, v))}
+            out.append(replace(b, type="item", level=5, header=list(row), row=row, stats=[], text=_strip(b.text),
+                               label=b.tags))
+            read.add(_key(v))
+            continue
         if b.type == "section":
             desc = b if b.level == 3 else desc
             out.append(b)
             continue
         if any(c in ch for c in VEHICLE_CHAPTERS) and b.row is None and b.level == 5 \
                 and (v := vehicle_values(b)) is not None:
-            name = _title(b.name)
+            name, extra = _title(b.name), extra_boxes(b)
             row = {"VEHICLE": name, **dict(zip(VEHICLE, v))}
-            text = _strip(b.text)
+            text = _strip("\n".join(b.text.splitlines()[:extra[0][1]]) if extra else b.text)
             if desc is not None and _words(desc.name) & _words(name):
                 text, used = "\n\n".join(t for t in (desc.text.strip(), text.strip()) if t), used | {id(desc)}
             out.append(replace(b, name=name, header=list(row), row=row, stats=[], text=text,
                                label=re.search(r"\(([^()]*)\)\s*$", b.name).group(1) if b.name.endswith(")") else ""))
+            read.add(_key(v))
+            for ev, _, tail in extra:  # named by the aircraft table's row with its values, else reported
+                if ev is None or (hit := summary.get(_key(ev))) is None:
+                    report.append({"kind": "missing-value", "file": "vehicles.xml", "name": f"a box after {name}",
+                                   "field": "name" if ev else "stats", "page": max(1, b.page - PAGE_OFFSET)})
+                    continue
+                row = {"VEHICLE": hit[0], **dict(zip(VEHICLE, ev))}
+                out.append(replace(b, name=hit[0], header=list(row), row=row, stats=[], labels={}, label=hit[1],
+                                   text="\n".join(tail)))
+                read.add(_key(ev))
             continue
         if any(c in ch for c in VEHICLE_CHAPTERS) and b.row is None and b.level == 5 and (b.stats or "¥" in b.text):
             report.append({"kind": "missing-value", "file": "vehicles.xml", "name": b.name, "field": "stats",
@@ -157,7 +207,34 @@ def _prep(bs, report):
             row = {"GEAR": f"{base} ({size})", **{k: v for k, v in b.row.items() if k != first}}
             b = replace(b, name=row["GEAR"], row=row, header=list(row), labels={**b.labels, first.capitalize(): cell})
         out.append(b)
+    names = {norm(b.name) for b in out if b.row is not None and b.header[:1] == ["VEHICLE"]}
+    for k, (name, _, page) in summary.items():  # a vehicle the aircraft table lists that no box gave
+        if k not in read and norm(name) not in names:  # (a box printing other values than the table is no loss)
+            report.append({"kind": "missing-value", "file": "vehicles.xml", "name": name, "field": "stats", "page": page})
     return [b for b in out if id(b) not in used]
+
+
+def _key(values):
+    return tuple(v.replace(" ", "").replace("¥", "").replace(",", "") for v in values)
+
+
+def _summary_rows(bs):
+    """The aircraft table's rows: their values (_key) -> (name, class, page). The table prints a class as a name-only
+    row (`ROTORCRAFT`), its first in the header (`VEHICLE JETPACK`)."""
+    out, group = {}, ""
+    for b in bs:
+        tables = [(h, r) for h, r in crb._tables(b.text) if _summary(h)]
+        if b.row is not None and b.header and _summary(b.header):
+            tables.append((b.header, [list(b.row.values())]))
+        for h, rows in tables:
+            group = h[0][len("VEHICLE"):].strip() or group
+            for r in rows:
+                if len(r) == len(VEHICLE) + 1 and r[0] and not any(r[1:]):
+                    if not r[0].lower().startswith("standard upgrades"):
+                        group = r[0]
+                elif len(r) == len(VEHICLE) + 1 and r[0]:
+                    out[_key(r[1:])] = (r[0], group.lower(), max(1, b.page - PAGE_OFFSET))
+    return out
 
 
 def fix(b, parent2):

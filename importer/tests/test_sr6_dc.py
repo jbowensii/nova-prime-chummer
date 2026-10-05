@@ -36,6 +36,39 @@ A made-up van that lumbers.
 | 5/6 | 8 | 10 | 110 20 | 12 3 | 2 | 8 | 4 | 60,000¥ |
 <!-- page 90 -->
 # RARE AIR
+### Sky Sled
+A made-up sled.
+##### Sky Sled (made-up jetpack)
+| SPD INT | TOP SPD |
+|---|---|
+| 20 | 100 |
+**HAND ACC BODY ARM PILOT SENS SEAT AVAIL COST**
+5 10 3 1 1 0 1 1 7,500¥
+**Standard Upgrades:** A made-up seat
+##### sky crate (made-up jetpack)
+| SPD INT | TOP SPD |
+|---|---|
+| 15 | 80 |
+**HAND ACC BODY ARM PILOT SENS SEAT AVAIL COST**
+6 10 6 2 1 0 1 1 23,000¥
+**Standard Upgrades:** A made-up strap
+##### lost crate (made-up jetpack)
+| SPD INT | TOP SPD |
+|---|---|
+| 11 | 81 |
+**HAND ACC BODY ARM PILOT SENS SEAT AVAIL COST**
+6 10 6 2 1 0 1 1 9,000¥
+### Hush Glider
+##### (made-up gravdrive)
+A made-up glider whose box has no title.
+**SPD TOP**
+**HAND ACC BODY ARM PILOT SENS SEAT AVAIL COST**
+**INT SPD**
+2 120 400 2,000 20 18 5 4 2/8 9 23,000,000¥
+| VEHICLE JETPACK | HAND | ACC | SPD INT | TOP SPD | BODY | ARM | PILOT | SENS | SEAT | AVAIL | COST |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Sky Crate | 6 | 10 | 15 | 80 | 6 | 2 | 1 | 0 | 1 | 1 | 23,000¥ |
+| Ghost Kite | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1¥ |
 ## Aerial Drones
 ### Buzz Fly
 A made-up drone that buzzes.
@@ -118,6 +151,19 @@ class DcRecipeTest(unittest.TestCase):
                        "field": "stats", "page": 89}, self.res.report)
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("scooter that zips", texts[("vehicles", "zippo-scoot")])
+        # a lower-case box title is lost in the box before: named by the aircraft table's row with its values
+        self.assertEqual((v["Sky Crate"]["category"], v["Sky Crate"]["interval"], v["Sky Crate"]["cost"]),
+                         ("jetpack", "15", "23000"))
+        self.assertEqual(v["Sky Sled"]["cost"], "7500")
+        self.assertNotIn("strap", texts[("vehicles", "sky-sled")])
+        self.assertIn("strap", texts[("vehicles", "sky-crate")])
+        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "a box after Sky Sled", "field": "name",
+                       "page": 89}, self.res.report)  # one the table doesn't list
+        hush = v["Hush Glider"]  # a box with no title: the section's
+        self.assertEqual((hush["category"], hush["accel"], hush["seats"]), ("made-up-gravdrive", "120", "2/8"))
+        self.assertNotIn("VEHICLE", texts[("vehicles", "hush-glider")])
+        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "Ghost Kite", "field": "stats",
+                       "page": 89}, self.res.report)  # in the table, in no box
         self.assertNotIn("Zippo Scoot", entries(self.res, "rules"))  # its description went to the vehicle
 
     def test_modifications_and_gear(self):

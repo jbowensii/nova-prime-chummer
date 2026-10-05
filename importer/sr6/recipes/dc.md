@@ -15,8 +15,12 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
   pair put back in its place. A box whose values don't come to eleven is reported (missing-value), never guessed.
 - The category is the level-2 section (motorcycles, cars … ground/aerial/aquatic/anthroform drones); the aircraft have
   none, so their class in the box title (vtol, rotorcraft, fixed-wing …). A lower-case box title (`krime karrier`)
-  reads as a table title, its box joins the box before it: only that box's first table and value line are read.
-- The aircraft table (first header VEHICLE …, PDF pages 91-92) reprints the aircraft boxes: skipped.
+  reads as a table title, its box joins the box before it (its title lost): each value line after the box's first is
+  such a box, named by the aircraft table's row with the same values (its class: the table's class row), else
+  reported. A box printed with no title (GTI Revolution) is the level-3 section's own: named by it, its tag the class.
+- The aircraft table (first header VEHICLE …, PDF pages 91-92) reprints the aircraft boxes: skipped, but a row no box
+  gave (by values or name) is reported, so no aircraft is lost unreported. The DSEC's box has that table run into its
+  text: a VEHICLE table is never a speed table, and is left out of the description.
 - Vehicle modifications (MAKING IT YOURS): level-4 headings (or level-5 ones under them: hardpoints, tires; `Rating N`,
   `Level N`, `Version N` name a level of the modification above) priced by small tables in their text
   (`MOD SLOTS | RATING`, `AVAILABILITY | COST`; one entry a printed row). Gear, category the level-2 section (chassis,
