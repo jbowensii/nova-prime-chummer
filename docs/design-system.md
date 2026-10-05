@@ -99,3 +99,14 @@ code change.
   book.
 - Check contrast in both themes: rust on paper and cream on indigo both
   pass AA for body sizes.
+
+## The Shadowrun 6 look
+
+Every `#/sr6/...` page has `data-game="sr6"` on the root (App.tsx; the game picker has `"pick"`, Anarchy `"ca2"`), and
+`src/sr6/ui/theme.css` maps the tokens above to the SR6 core rulebook's colors under it, light and dark: magenta
+`#960370` (sampled from the books) for titles, outlines and the accent (`--yellow` is the accent token, so it's magenta
+there, with white text on it), page `#f9f9f8`, sidebar grey `#ecece7`; dark is `#120c15` with neon magenta `#ff6ccf` /
+`#f04dbd` and teal `#4fd3dc`. Headings are Montserrat (the book's wide geometric caps), body text stays Crimson Pro.
+Decoration is our own drawing (a circuit-board tile, hatched heading rules, rounded outlined panels, the "SECTION // SUB"
+folio); no book art. Anarchy's rules are never touched: every SR6 rule is scoped to `[data-game]` or `.sr6-*`.
+tests/ui/background.test.ts checks the SR6 tokens' contrast over the worst background art too.

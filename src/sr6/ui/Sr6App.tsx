@@ -19,10 +19,19 @@ import { listSr6Compendiums } from './compendiumStore'
 import { Sr6Compendiums } from './Compendiums'
 import { CampaignCreation, ServerCreation, type Loaded } from './Creation'
 import { Sr6Data } from './Data'
-import { Sr6EditorView } from './EditorView'
+import { NPC_TABS, SR6_TABS, Sr6EditorView } from './EditorView'
 import { Sr6Npcs } from './Npcs'
 import { Sr6Rules } from './Rules'
 import { Sr6Runners } from './Runners'
+
+const FOLIO: Record<string, string> = { '': 'Your runners', npcs: 'NPCs & Critters', compendiums: 'Compendiums', campaigns: 'Campaigns',
+  books: 'Books', users: 'Users', trash: 'Trash', rules: 'Rules', data: 'Game data', table: 'Table setup' }
+/** The book's page footer, "SECTION // SUB" (theme.css .sr6-folio): drawn from data-folio, so it's never read twice or found as page text. */
+function folio(page: string, route: string[]) {
+  if (page !== 'c' && page !== 'n') return `Shadowrun 6 // ${FOLIO[page] ?? FOLIO['']}`
+  const tab = route[2] ?? (page === 'n' ? 'stats' : 'concept')
+  return `${page === 'n' ? 'NPCs & Critters' : 'Your runners'} // ${[...SR6_TABS, ...NPC_TABS].find(([k]) => k === tab)?.[1] ?? ''}`
+}
 
 export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const me = useMe(), admin = isAdmin(me)
@@ -65,6 +74,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     <RepoContext.Provider value={repo}>
       {failed && <p className="banner err" role="alert" style={{ margin: 0 }}>The SR6 game data didn’t load: {failed}</p>}
       {body}
+      {route[2] !== 'print' && <footer className="sr6-folio" data-folio={folio(page, route)} aria-hidden="true" />}
     </RepoContext.Provider>
   )
 }
