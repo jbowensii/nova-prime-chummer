@@ -8,8 +8,9 @@ import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
-import type { Sr6Data } from './data'
+import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
+import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { attackRatings, legality, rated, ratingRange } from './values'
 
@@ -129,7 +130,9 @@ export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc => defined({
   rating: npc.rating, group: npc.kind === 'contact' ? 'Contact' : npc.group,
   from: npc.from, stats: npcValues(npc), lines: npc.lines.map(l => ({ ...l })), pools: npcPools(npc, data) })
 
-export function exportSr6Runner(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
+/** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/engine/house.ts). */
+export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
+  const c = withSr6House(all, ch).c, data = c === all ? allData : sr6Data(c)
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
   const voided = voidedIds(ch), lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)

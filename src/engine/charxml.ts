@@ -1,9 +1,9 @@
 // Character <-> XML (docs/character-format.md, public/data/schema/character.xsd).
 // The file a runner is saved as on the server, and what Export writes.
 // Summary fields sit on the root element so a server can list files without parsing them.
-import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry, Npc } from '../model/types'
+import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry, Npc, VehicleBase } from '../model/types'
 import { ATTRS } from '../model/types'
-import { toAmp, toItem } from './parse'
+import { toAmp, toItem, toVehicle } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
@@ -33,9 +33,12 @@ const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, prin
   + t.effects.map(effectXml).join('') + `<narrative>${esc(t.narrative)}</narrative>`)
 const catalogItemXml = (i: Item) => el('item', { id: i.id, kind: i.kind, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, source: i.source, page: i.page },
   text('name', i.name) + `<text>${esc(i.text)}</text>`)
+const chassisXml = (v: VehicleBase) => el('vehicle', { id: v.id, pilot: v.pilot, body: v.body, handling: v.handling, speed: v.speed,
+  flyingSpeed: v.flyingSpeed, armor: v.armor, mount: v.mount, source: v.source, page: v.page }, text('name', v.name))
 
 const ampXml = (a: AmpEntry) => el('amp', { uid: a.uid, type: a.type, name: a.name, catalogId: a.catalogId, linkedItem: a.linkedItem, vehicle: a.vehicle, realSin: a.realSin },
-  text('narrative', a.narrative) + a.effects.map(effectXml).join('') + (a.snapshot ? `<snapshot>${templateXml(a.snapshot)}</snapshot>` : ''))
+  text('narrative', a.narrative) + a.effects.map(effectXml).join('') + (a.snapshot ? `<snapshot>${templateXml(a.snapshot)}</snapshot>` : '')
+  + (a.chassis ? `<chassis>${chassisXml(a.chassis)}</chassis>` : ''))
 const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price, starting: i.starting, note: i.note, over: i.over },
   i.snapshot ? `<snapshot>${catalogItemXml(i.snapshot)}</snapshot>` : '')
 
@@ -107,6 +110,8 @@ function readAmp(e: Element): AmpEntry {
   if (e.getAttribute('realSin') === 'true') a.realSin = true
   const snap = kid(e, 'snapshot')
   if (snap?.firstElementChild) a.snapshot = toAmp(snap.firstElementChild)
+  const chassis = kid(e, 'chassis')?.firstElementChild
+  if (chassis) a.chassis = toVehicle(chassis)
   return a
 }
 function readItem(e: Element): ItemEntry {

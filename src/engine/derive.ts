@@ -105,7 +105,7 @@ const t3 = (x: number): Thresholds => [x, x + 3, x + 6]
 /** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles the base Speed only (the chassis' flying
  *  speed when it has one); Speed upgrades add after that. */
 export function vehicleStats(c: Catalog, a: AmpEntry): VehicleStats | undefined {
-  const ch = a.vehicle ? c.vehicles.get(a.vehicle) : undefined
+  const ch = a.vehicle ? c.vehicles.get(a.vehicle) ?? a.chassis : undefined
   if (!ch) return undefined
   const n = (ref: string) => a.effects.filter(e => e.ref === ref).length
   const flying = n('flying') > 0
