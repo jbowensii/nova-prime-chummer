@@ -80,6 +80,21 @@ async function signIn(page: Page) {
 const put = async (page: Page, path: string, xml: string) =>
   expect((await page.request.put(path, { data: xml, headers: { 'Content-Type': 'application/xml', Origin: new URL(base).origin } })).status()).toBeLessThan(300)
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+/** the printable width (px at 96 dpi) inside the sheets' 8 mm page margins */
+const CONTENT = { Letter: Math.floor(8.5 * 96 - 2 * 8 * 96 / 25.4), A4: Math.floor(210 * 96 / 25.4 - 2 * 8 * 96 / 25.4) }
+/** in print emulation at the page's content width: every box of the sheet lies inside it (`framed`: its four borders drawn) */
+async function boxesInside(page: Page, sel: string, box: string, format: keyof typeof CONTENT, framed: boolean) {
+  await page.setViewportSize({ width: CONTENT[format], height: 1000 })
+  const out = await page.locator(`${sel} ${box}`).evaluateAll((els, [w, framed]) => els.flatMap(e => {
+    const r = e.getBoundingClientRect(), cs = getComputedStyle(e), id = e.querySelector('h2')?.textContent ?? e.className
+    return [r.left < 0 && `${id}: left ${r.left}`, r.right > w && `${id}: right ${r.right} > ${w}`,
+      ...(framed ? ['Top', 'Right', 'Bottom', 'Left'] : []).map(s => parseFloat(cs.getPropertyValue(`border-${s.toLowerCase()}-width`)) > 0 ? '' : `${id}: no ${s} border`)].filter(Boolean)
+  }), [CONTENT[format], framed] as const)
+  expect(out, `${format}: ${out.join('; ')}`).toEqual([])
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), format).toBeLessThanOrEqual(0)
+  await page.setViewportSize(DESK)
+}
+
 /** screen view (desktop and phone, no sideways scroll), print emulation, then Letter and A4 PDFs of at most `pages` pages */
 async function shootAndPrint(page: Page, sel: string, name: string, pages: number) {
   await fits(page)
@@ -91,7 +106,8 @@ async function shootAndPrint(page: Page, sel: string, name: string, pages: numbe
   await page.emulateMedia({ media: 'print' })
   await expect(page.locator(sel)).toBeVisible()
   await expect(page.locator('.sheet-tools')).toBeHidden()
-  for (const format of ['Letter', 'A4']) {
+  for (const format of ['Letter', 'A4'] as const) {
+    await (sel === 'article.sr6-book' ? boxesInside(page, sel, '.k-box', format, true) : boxesInside(page, sel, 'section, .n-top, .n-keys', format, false))
     const glyphs = pageGlyphs(await page.pdf({ format, printBackground: true, path: `${SHOTS}/${name}-${format.toLowerCase()}.pdf` }))
     expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBe(pages)
     expect(glyphs.every(k => k > 400), `${name} ${format}: a near-empty page (${glyphs})`).toBe(true)

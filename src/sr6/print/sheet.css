@@ -30,12 +30,12 @@
   --wash: rgb(255 255 255 / calc(0.6 * var(--art))); background-color: var(--wash); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .sheet-wrap:has(> .sr6-book, > .sr6-neon) > .sheet-tools { max-width: 52rem; }
 
-/* ---- Book style (BookSheet.tsx): the official sheet's two columns of boxes, each open on the page's edge with its
-   inner corners rounded, cyan caps titles, pink rules; condition monitors three boxes a row; Edge as hexagons ---- */
-.sr6-book { padding: 1rem 0; page: sr6book; }
+/* ---- Book style (BookSheet.tsx): the official sheet's two columns of boxes, each closed with all four corners rounded
+   and kept inside the printable area (a box open on the page's edge got cut off), cyan caps titles, pink rules; condition monitors three boxes a row; Edge as hexagons ---- */
+.sr6-book { padding: 1rem 1.2rem; page: sr6book; }
 .k-page { display: flex; flex-direction: column; gap: 0.55rem; }
 .k-page2 { break-before: page; margin-top: 1.6rem; }
-.k-head { display: flex; align-items: end; justify-content: space-between; gap: 1.2rem; padding: 0 1.2rem 0.3rem; }
+.k-head { display: flex; align-items: end; justify-content: space-between; gap: 1.2rem; padding: 0 0.4rem 0.3rem; }
 .k-brand { font: 600 9pt/1 var(--sr6-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--k-ink-2); white-space: nowrap; }
 .k-brand b { display: inline-block; font: 700 22pt/1 var(--sr6-display); letter-spacing: 0.04em; color: var(--k-ink); padding-bottom: 0.2rem;
   background: repeating-linear-gradient(-55deg, var(--k-pink) 0 1.6px, transparent 1.6px 3.6px) left bottom / 100% 4px no-repeat; }
@@ -45,9 +45,8 @@
 .k-col { display: flex; flex-direction: column; gap: 0.55rem; min-width: 0; }
 .k-box { border: 1.3px solid var(--k-pink); padding: 0.3rem 0.8rem 0.45rem; break-inside: avoid; min-width: 0; position: relative;
   -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.k-box.k-l { border-left: 0; border-radius: 0 14px 14px 0; padding-left: 1.2rem; }
-.k-box.k-r { border-right: 0; border-radius: 14px 0 0 14px; padding-right: 1.2rem; }
-.k-box.k-wide { border-left: 0; border-right: 0; border-radius: 0; margin-top: 0.55rem; padding: 0.3rem 1.2rem 0.45rem; }
+.k-box { border-radius: 14px; }
+.k-box.k-wide { margin-top: 0.55rem; }
 .k-box.k-long { break-inside: auto; }
 .k-box h2 { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; color: var(--k-cyan); margin: 0 0 0.2rem; line-height: 1.1; break-after: avoid; }
 .k-box h3 { font-size: 8.5pt; font-weight: 700; color: var(--k-ink); margin: 0 0 0.2rem; text-align: center; }
@@ -166,7 +165,6 @@
 @media (max-width: 700px) {
   .k-grid, .k-split, .k-monitor, .k-attrs { grid-template-columns: minmax(0, 1fr); }
   .k-head { flex-wrap: wrap; }
-  .k-box.k-l, .k-box.k-r { border: 1.3px solid var(--k-pink); border-radius: 14px; padding: 0.3rem 0.8rem 0.45rem; }
   .k-row { flex-wrap: wrap; }
   .k-ranged, .n-weapons, .n-veh { display: block; overflow-x: auto; }
   .n-body { grid-template-columns: minmax(0, 1fr); }
@@ -175,7 +173,7 @@
   .n-skills tbody { grid-template-columns: minmax(0, 1fr); }
   .n-top { flex-wrap: wrap; }
 }
-@page sr6book { margin: 8mm 4mm; }
+@page sr6book { margin: 8mm; }
 @page sr6neon { margin: 8mm; }
 @media print {
   .sr6-book, .sr6-neon { --art: var(--art-print, 0); max-width: none; box-shadow: none; }
