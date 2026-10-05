@@ -5,8 +5,10 @@
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
-//   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import
-//   GET    /api/books                 -> [{ id, file, state, message, source, name, canon, recipe, imported, counts, busy, review, coreUnread, coreAi }]
+//   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import (the same
+//                                     file, by sha256, as an entry: that entry, imported again; 409 while it's busy)
+//   GET    /api/books                 -> [{ id, file, state, step?, message, source, extra?, name, canon, recipe, imported, counts, busy, review, coreUnread, coreAi }]
+//                                     (state of a busy book: queued, importing with its step, removing; extra: the further sources)
 //   GET    /api/books/:id/report      -> import.xml
 //   POST   /api/books/:id/reimport    clears the book's outputs, then imports again
 //   DELETE /api/books/:id[?files=1]   clears the book's outputs (files=1: also its Library folder)
@@ -96,6 +98,9 @@ export const limitReached = n => n === 0 ? 'You have no questions today.'
   : `${n === 1 ? 'You’ve used today’s question.' : `You’ve used all ${n} of today’s questions.`} Ask again tomorrow.`
 const MAX_QUESTION = 500 // importer/ask.py MAX_QUESTION; its provider call gives up at 50 s, the server's askTimeout (60 s) stops it
 const ASK_AT_ONCE = 3 // questions being answered on the whole server (each is a Python process)
+const STEPS = ['converting', 'identifying', 'extracting', 'proposing', 'applying'] // a job's steps, as the importer writes them
+const SHA256 = /^[0-9a-f]{64}$/
+const KEEP = ['done', 'skipped', 'superseded'] // an import that went through (of one file's entries, the newest of these stays)
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
@@ -274,11 +279,18 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     const rv = rootTag(reviewHead, 'review')
     const it = rootTag(imp, 'import'), st = rootTag(status, 'status')
     const counts = Object.fromEntries([...(imp ?? '').matchAll(/<file\b[^>]*>/g)].map(m => [attr(m[0], 'name'), Number(attr(m[0], 'entries'))]))
+    // a busy book shows its job (Waiting; Importing… and its step; Removing), never its last state or error, which its
+    // status.xml may hold until the job's first step writes (if the new import fails, its own error shows)
+    const now = attr(st, 'state'), job = running?.game === game && running.id === id ? running : null
+    const cmd = job?.steps.at(-1)?.[AREAS[game].pre.length]
+    const state = !busy(id, game) ? now ?? 'queued' : !job ? 'queued' : cmd === 'run' ? 'importing' : cmd === 'remove' ? 'removing'
+      : STEPS.includes(now) ? now : 'queued'
     return {
-      id, file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'), state: busy(id, game) && !(running?.game === game && running.id === id) ? 'queued' : attr(st, 'state') ?? 'queued',
-      message: status ? unesc(status.replace(/^[\s\S]*?<status\b[^>]*>|<\/status>[\s\S]*$/g, '')) : '',
+      id, file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'), state, ...state === 'importing' && STEPS.includes(now) ? { step: now } : {},
+      message: status && (!busy(id, game) || now === 'queued' || STEPS.includes(now)) ? unesc(status.replace(/^[\s\S]*?<status\b[^>]*>|<\/status>[\s\S]*$/g, '')) : '',
       source: attr(it, 'source'), name: attr(it, 'name'), canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
       recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id, game),
+      ...attr(it, 'extra') ? { extra: attr(it, 'extra').split(' ').filter(Boolean) } : {}, // further sources (an SR6 city chapter)
       review: rv ? (attr(rv, 'done') === attr(rv, 'parts') ? 'done' : 'partial') : undefined,
       coreUnread: coreUnread(imp), coreAi: coreRows(imp, 'core-ai'),
     }
@@ -309,8 +321,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       return send(res, 413, { error: 'the file is larger than 500 MB' })
     }
     const id = `${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`
-    const dir = join(area.library, id), file = safeName(req.headers['x-filename'])
-    await mkdir(dir, { recursive: true })
+    // streamed to a hidden folder (not a book id, so not listed), then made the entry: a new one, or the same file's
+    const tmp = join(area.library, `.upload-${id}`), file = safeName(req.headers['x-filename'])
+    await mkdir(tmp, { recursive: true })
     const sha = createHash('sha256')
     let size = 0
     try {
@@ -320,22 +333,36 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
           sha.update(c)
           yield c
         }
-      }, createWriteStream(join(dir, 'original.pdf'), { flags: 'wx' }))
-      const fh = await open(join(dir, 'original.pdf'))
+      }, createWriteStream(join(tmp, 'original.pdf'), { flags: 'wx' }))
+      const fh = await open(join(tmp, 'original.pdf'))
       const head = Buffer.alloc(5)
       await fh.read(head, 0, 5, 0).finally(() => fh.close())
       if (head.toString('latin1') !== '%PDF-') throw fail(415, 'this file is not a PDF')
     } catch (e) {
-      await rm(dir, { recursive: true, force: true })
+      await rm(tmp, { recursive: true, force: true })
       if (e.code === 413) res.setHeader('Connection', 'close')
       return send(res, typeof e.code === 'number' ? e.code : 500, { error: e.code === 413 || e.code === 415 ? e.message : 'upload failed' })
     }
     const hex = sha.digest('hex')
+    // the same file again (same game, same sha256): its entry is imported again in place, whatever its state (another
+    // printing has another sha256: a new entry). Busy: refused. Read by AI: kept as it is (a re-import drops the review's entries)
+    const same = (await entries(game)).filter(e => e.sha === hex).sort(newestFirst)[0]
+    if (same && (busy(same.id, game) || same.recipe === 'ai')) {
+      await rm(tmp, { recursive: true, force: true })
+      return busy(same.id, game) ? send(res, 409, { error: 'this book is already being imported or removed; try again when it’s done' })
+        : send(res, 202, { id: same.id })
+    }
+    const dir = join(area.library, same?.id ?? id)
+    if (same) {
+      await rename(join(tmp, 'original.pdf'), join(dir, 'original.pdf'))
+      await rm(tmp, { recursive: true, force: true })
+    } else await rename(tmp, dir)
     await writeAtomic(join(dir, 'upload.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<upload file="${esc(file)}" size="${size}" sha256="${hex}" uploaded="${new Date().toISOString()}"/>\n`)
     if (game === 'ca2') await dropPackMarks(hex) // a book file uploaded again: chosen over a loaded data pack, as with Re-import
-    await setStatus(id, 'queued', '', game)
-    enqueue(id, [[...area.pre, 'run', dir, '--custom', area.custom, '--file', file]], game)
-    return send(res, 202, { id })
+    await setStatus(same?.id ?? id, 'queued', '', game)
+    enqueue(same?.id ?? id, [...same ? [[...area.pre, 'remove', dir, '--custom', area.custom]] : [],
+      [...area.pre, 'run', dir, '--custom', area.custom, '--file', file]], game)
+    return send(res, 202, { id: same?.id ?? id })
   }
 
   async function aiSettings() {
@@ -584,6 +611,44 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 204, '', 'text/plain')
   }
 
+  /** The game's Library entries with a PDF's sha256: [{ id, sha, state, recipe, when (uploaded, else imported) }]. */
+  async function entries(game) {
+    const lib = AREAS[game].library, out = []
+    for (const d of await readdir(lib, { withFileTypes: true }).catch(() => [])) {
+      if (!d.isDirectory() || !BOOK_ID.test(d.name)) continue
+      const [up, imp, st] = await Promise.all([['upload.xml', 'upload'], ['import.xml', 'import'], ['status.xml', 'status']]
+        .map(async ([f, root]) => rootTag(await readOr(join(lib, d.name, f)), root)))
+      out.push({ id: d.name, sha: attr(up, 'sha256') ?? attr(imp, 'sha256') ?? '', state: attr(st, 'state'), recipe: attr(imp, 'recipe'),
+        when: attr(up, 'uploaded') ?? attr(imp, 'imported') ?? '' })
+    }
+    return out.filter(e => SHA256.test(e.sha))
+  }
+  const newestFirst = (a, b) => b.when.localeCompare(a.when) || b.id.localeCompare(a.id)
+  /** Before 0.9.4 every upload was a new entry, so one PDF uploaded twice (a failed book tried again) left two. Per game and
+   *  sha256 one stays: the newest whose import went through (KEEP), else the newest. The others go by the usual remove
+   *  (--files; outputs the kept copy also holds stay, the index and sources are rebuilt). A data pack's mark on that file
+   *  (core-rebuild.xml, found by sha256) moves to the entry kept. */
+  async function dedupe() {
+    for (const game of Object.keys(AREAS)) {
+      const lib = AREAS[game].library, groups = new Map()
+      for (const e of await entries(game)) if (!busy(e.id, game)) groups.set(e.sha, [...groups.get(e.sha) ?? [], e])
+      for (const g of groups.values()) {
+        if (g.length < 2) continue
+        g.sort(newestFirst)
+        const keep = g.find(e => KEEP.includes(e.state)) ?? g[0], drop = g.filter(e => e !== keep)
+        const kept = rootTag(await readOr(join(lib, keep.id, 'core-rebuild.xml')), 'rebuild')
+        for (const e of drop) {
+          const mark = await readOr(join(lib, e.id, 'core-rebuild.xml'))
+          if (mark && (!kept || (attr(rootTag(mark, 'rebuild'), 'pack') && !attr(kept, 'pack')))) await writeAtomic(join(lib, keep.id, 'core-rebuild.xml'), mark)
+          await setStatus(e.id, 'queued', `The same file as ${keep.id}: this copy is removed`, game)
+          enqueue(e.id, [[...AREAS[game].pre, 'remove', join(lib, e.id), '--custom', AREAS[game].custom, '--files']], game)
+        }
+        const name = attr(rootTag(await readOr(join(lib, keep.id, 'upload.xml')), 'upload'), 'file') ?? keep.id
+        console.log(`Books${game === 'sr6' ? ' (SR6)' : ''}: ${name} was uploaded ${g.length} times: kept ${keep.id}, removing ${drop.map(e => e.id).join(', ')}`)
+      }
+    }
+  }
+
   /** After a restart no job is running, so a book left mid-job would look stuck forever. */
   async function sweep() {
     const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
@@ -669,7 +734,12 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     return books
   }
-  const started = sweep().then(recoverCore).then(rebuildCore).catch(e => console.error(e.stack))
+  const started = sweep().then(recoverCore).then(dedupe).then(rebuildCore).catch(e => console.error(e.stack))
+  for (const a of Object.values(AREAS)) { // uploads cut off by a stop
+    try {
+      for (const f of readdirSync(a.library)) if (f.startsWith('.upload-')) rmSync(join(a.library, f), { recursive: true, force: true })
+    } catch { /* no folder yet */ }
+  }
   // zips left by a stop mid-download, mid-preview or mid-restore
   try {
     for (const f of readdirSync(backups, { withFileTypes: true }))

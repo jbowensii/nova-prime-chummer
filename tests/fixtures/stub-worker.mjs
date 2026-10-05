@@ -96,7 +96,7 @@ if (sr6 && cmd === 'run') {
     status(target, 'done')
   }
 } else if (cmd === 'remove') {
-  const src = readFileSync(join(target, 'import.xml'), 'utf8').match(/source="([^"]+)"/)?.[1]
+  const src = existsSync(join(target, 'import.xml')) ? readFileSync(join(target, 'import.xml'), 'utf8').match(/source="([^"]+)"/)?.[1] : null // a failed book has none
   if (src) {
     rmSync(join(opt('--custom'), 'imported', src.toLowerCase()), { recursive: true, force: true })
     sync(opt('--custom'), src, null)

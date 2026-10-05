@@ -1,6 +1,6 @@
 // @vitest-environment node
 // Books API with a stub worker (tests/fixtures/stub-worker.mjs) in place of `python -m importer`.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -27,7 +27,7 @@ beforeAll(() => new Promise<void>(ok => {
 }))
 afterAll(() => srv.close())
 
-type Book = { id: string; file: string; state: string; message: string; source?: string; counts: Record<string, number>; busy: boolean; review?: string }
+type Book = { id: string; file: string; state: string; message: string; source?: string; recipe?: string; counts: Record<string, number>; busy: boolean; review?: string }
 const list = async (): Promise<Book[]> => (await fetch(`${base}/api/books`)).json()
 async function waitFor(id: string, state: string): Promise<Book | undefined> {
   for (let i = 0; i < 600; i++) { // 15 s
@@ -98,6 +98,48 @@ test('a failed worker is reported with its stderr, keys redacted', async () => {
   const b = await waitFor(id, 'failed')
   expect(b!.message).toContain('boom')
   expect(b!.message).not.toContain('SECRETSTUBKEY')
+})
+
+test('the same PDF uploaded again is imported again into its entry, whatever state it was in; a different one is a new entry', async () => {
+  const before = (await list()).length
+  const a = (await (await upload(pdf('again'), 'Again.pdf')).json()).id
+  await waitFor(a, 'done')
+  const r = await upload(pdf('again'), 'Again (copy).pdf')
+  expect([r.status, (await r.json()).id]).toEqual([202, a])
+  await waitFor(a, 'done')
+  expect(readFileSync(join(library, a, 'upload.xml'), 'utf8')).toContain('file="Again (copy).pdf"')
+  const c = (await (await upload(pdf('crash again'), 'Broken.pdf')).json()).id // a failed entry
+  await waitFor(c, 'failed')
+  expect((await (await upload(pdf('crash again'), 'Broken.pdf')).json()).id).toBe(c)
+  expect(await waitFor(c, 'failed')).toMatchObject({ message: expect.stringContaining('boom') })
+  expect((await list()).length).toBe(before + 2)
+  expect(readdirSync(library).filter(n => n.startsWith('.upload'))).toEqual([]) // the second copy's folder is gone
+  const d = (await (await upload(pdf('again, another printing'), 'Again.pdf')).json()).id
+  expect(d).not.toBe(a)
+  await waitFor(d, 'done')
+  expect((await list()).length).toBe(before + 3)
+})
+
+test('the same PDF while its entry is busy: 409, nothing added', async () => {
+  const s = (await (await upload(pdf('slow busy'))).json()).id
+  const n = (await list()).length
+  const r = await upload(pdf('slow busy'))
+  expect([r.status, (await r.json()).error]).toEqual([409, 'this book is already being imported or removed; try again when it’s done'])
+  expect((await list()).length).toBe(n)
+  await waitFor(s, 'done')
+})
+
+test('a busy book shows Waiting or Importing, never its last state or error', async () => {
+  const f = (await (await upload(pdf('crash waits'))).json()).id
+  await waitFor(f, 'failed')
+  const s = (await (await upload(pdf('slow runs'))).json()).id
+  await vi.waitFor(async () => expect((await list()).find(b => b.id === s)).toMatchObject({ state: 'importing', busy: true }), { timeout: 5000, interval: 25 })
+  expect((await upload(pdf('crash waits'))).status).toBe(202)
+  // a status.xml still saying failed while the book waits (as left by a step before the queue reached it) isn't shown
+  writeFileSync(join(library, f, 'status.xml'), '<status state="failed" updated="2026-10-05T00:00:00Z">the old error</status>\n')
+  expect((await list()).find(b => b.id === f)).toMatchObject({ state: 'queued', message: '', busy: true })
+  expect(await waitFor(f, 'failed')).toMatchObject({ message: expect.stringContaining('boom') }) // the new import's own error
+  await waitFor(s, 'done')
 })
 
 test('AI settings: keys are write-only', async () => {
@@ -194,6 +236,13 @@ test('AI proposals: dry run, propose, review, apply', async () => {
   expect((await fetch(`${base}/api/books/${id}/reimport`, { method: 'POST' })).status).toBe(409) // would drop the applied review
 })
 
+test('a book read by AI uploaded again keeps its applied entries (a re-import would drop them)', async () => {
+  const r = await upload(pdf('needs-ai'))
+  const { id } = await r.json()
+  expect(r.status).toBe(202)
+  expect((await list()).find(b => b.id === id)).toMatchObject({ state: 'done', recipe: 'ai', source: 'MYBOOK', busy: false })
+})
+
 test('re-import clears and rebuilds; delete removes outputs, and with files=1 the book', async () => {
   expect((await fetch(`${base}/api/books/${first}/reimport`, { method: 'POST' })).status).toBe(202)
   await waitFor(first, 'done')
@@ -222,4 +271,39 @@ test('a stop starts nothing more: the running import is killed and the queued on
     await new Promise(r => setTimeout(r, 2500)) // past the slow run's 1.5 s: before the fix the queued book started here
     expect(readFileSync(log, 'utf8')).not.toContain(next.id)
   } finally { vi.unstubAllEnvs(); s.close() }
+})
+
+test('on start, the same PDF uploaded more than once (per game) is merged: the newest successful entry stays, the others are removed', async () => {
+  const d = mkdtempSync(join(tmpdir(), 'ca2-books-dupes-')), log = join(d, 'calls.log'), lib = join(d, 'library')
+  writeFileSync(log, '')
+  vi.stubEnv('STUB_LOG', log)
+  const said = vi.spyOn(console, 'log').mockImplementation(() => {})
+  const S1 = 'a'.repeat(64), S2 = 'b'.repeat(64), S3 = 'c'.repeat(64)
+  const entry = (at: string, id: string, sha: string, uploaded: string, state: string, extra: Record<string, string> = {}) => {
+    mkdirSync(join(lib, at, id), { recursive: true })
+    writeFileSync(join(lib, at, id, 'upload.xml'), `<upload file="${id}.pdf" size="1" sha256="${sha}" uploaded="${uploaded}"/>\n`)
+    writeFileSync(join(lib, at, id, 'status.xml'), `<status state="${state}" updated="${uploaded}">${state === 'failed' ? 'boom' : ''}</status>\n`)
+    for (const [f, text] of Object.entries(extra)) writeFileSync(join(lib, at, id, f), text)
+  }
+  entry('', 'x-old', S1, '2026-01-01T00:00:00.000Z', 'failed', { 'core-rebuild.xml': `<rebuild sha256="${S1}" pack="2026-01-01" files="weapons.xml"/>\n` })
+  entry('', 'x-mid', S1, '2026-02-01T00:00:00.000Z', 'done')
+  entry('', 'x-new', S1, '2026-03-01T00:00:00.000Z', 'failed')
+  entry('', 'y-one', S2, '2026-01-01T00:00:00.000Z', 'done')
+  entry('', 'z-a', S3, '2026-01-01T00:00:00.000Z', 'failed') // none succeeded: the newest stays
+  entry('', 'z-b', S3, '2026-02-01T00:00:00.000Z', 'failed')
+  entry('sr6', 's-a', S2, '2026-01-01T00:00:00.000Z', 'done')
+  entry('sr6', 's-b', S2, '2026-02-01T00:00:00.000Z', 'skipped')
+  entry('sr6', 's-c', S1, '2026-01-01T00:00:00.000Z', 'done') // the same file as x-*, but the other game's
+  const s = createServer({ staticDir: 'public', charDir: join(d, 'chars'), customDir: join(d, 'custom'), libraryDir: lib,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  try {
+    await (s as unknown as { started: Promise<void> }).started
+    const left = () => [...readdirSync(lib).filter(n => /^[a-z]-/.test(n)), ...readdirSync(join(lib, 'sr6')).map(n => `sr6/${n}`)].sort()
+    await vi.waitFor(() => expect(left()).toEqual(['sr6/s-b', 'sr6/s-c', 'x-mid', 'y-one', 'z-b']), { timeout: 15000, interval: 25 })
+    expect(readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' ')).sort())
+      .toEqual(['remove x-new', 'remove x-old', 'remove z-a', 'sr6:remove s-a'])
+    // the data pack's mark on that file moves to the entry kept (the start-up core rebuild reads it by the file's sha256)
+    expect(readFileSync(join(lib, 'x-mid', 'core-rebuild.xml'), 'utf8')).toContain('pack="2026-01-01"')
+    expect(said.mock.calls.flat().join('\n')).toContain('x-mid.pdf was uploaded 3 times: kept x-mid, removing x-new, x-old')
+  } finally { said.mockRestore(); vi.unstubAllEnvs(); s.stopJobs(); s.close() }
 })

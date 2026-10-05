@@ -138,6 +138,59 @@ class PrintingsTest(unittest.TestCase):
         run(b, self.custom, convert_pdf=False)
         self.assertEqual((self.status(a)[0], self.status(b)[0]), ("done", "done"))
 
+    def sources(self):
+        return {s.get("id"): s for s in ET.parse(os.path.join(self.custom, "imported", "sources.xml")).getroot()}
+
+    def test_a_city_chapter_is_listed_in_sources_xml_like_its_book_also_from_a_superseded_printing(self):
+        new = self.book("a-new", NEW)
+        old = self.book("b-old", OLD, BOOK_MD + CITY_MD)
+        with mock.patch.dict(crb_city.CITIES, {_sha(OLD): CITY[CITY_SHA]}, clear=True):
+            run(new, self.custom, convert_pdf=False)
+            run(old, self.custom, convert_pdf=False)
+        self.assertEqual(self.status(old)[0], "superseded")
+        city = self.sources().get("CRB-FZ")
+        self.assertIsNotNone(city)
+        self.assertEqual(city.find("name").text, "Made-Up Core Rulebook: City Edition Fizzburg")
+        self.assertEqual((city.get("publisher"), city.get("canon"), city.get("sha256")), (self.sources()["CRB"].get("publisher"), "true", _sha(OLD)))
+        self.assertEqual(city.get("texts"), "texts/crb-fz.xml")
+        self.assertEqual(self.sources()["CRB"].get("sha256"), _sha(NEW))  # the superseded printing's own source isn't listed
+        remove(old, self.custom)
+        self.assertNotIn("CRB-FZ", self.sources())
+
+    def test_reimporting_a_superseded_printing_from_before_city_chapters_reads_its_chapter_and_stays_superseded(self):
+        new = self.book("a-new", NEW)
+        old = self.book("b-old", OLD, BOOK_MD.replace("Zap Gun", "Zip Gun") + CITY_MD)
+        with mock.patch.dict(crb_city.CITIES, {}, clear=True):  # the city chapter code didn't exist yet
+            run(new, self.custom, convert_pdf=False)
+            run(old, self.custom, convert_pdf=False)
+        self.assertIsNone(xmlio.read_import(old).get("extra"))
+        with mock.patch.dict(crb_city.CITIES, {_sha(OLD): CITY[CITY_SHA]}, clear=True):
+            xmlio.write_status(old, "queued")  # the server's Re-import: queued, remove, run
+            remove(old, self.custom)
+            run(old, self.custom, convert_pdf=False)
+        self.assertEqual(self.status(old), ("superseded", "Superseded by New Printing"))
+        self.assertEqual(self.status(new), ("done", ""))
+        self.assertTrue(os.path.isfile(os.path.join(self.custom, "imported", "crb-fz", "qualities.xml")))
+        self.assertIn("crb.zap-gun", self.weapons())
+        self.assertNotIn("crb.zip-gun", self.weapons())
+        self.assertEqual(self.loaded_files()["CRB"], _sha(NEW))
+        self.assertIn("CRB-FZ", self.loaded_files())
+
+    def test_removing_a_duplicate_city_edition_keeps_the_city_chapter_the_other_copy_loads(self):
+        # the server's merge of one PDF uploaded twice: the duplicate is removed (with its folder), the copy kept stays whole
+        a, b = self.book("a", OLD, BOOK_MD + CITY_MD), self.book("b", OLD, BOOK_MD + CITY_MD)
+        with mock.patch.dict(crb_city.CITIES, {_sha(OLD): CITY[CITY_SHA]}, clear=True):
+            run(a, self.custom, convert_pdf=False)
+            run(b, self.custom, convert_pdf=False)
+        remove(a, self.custom, forget=True)
+        self.assertEqual(self.status(b), ("done", ""))
+        self.assertTrue(os.path.isfile(os.path.join(self.custom, "imported", "crb-fz", "qualities.xml")))
+        self.assertTrue(os.path.isfile(os.path.join(self.custom, "texts", "crb-fz.xml")))
+        self.assertIn('href="crb-fz/qualities.xml"', Path(self.custom, "imported", "index.xml").read_text(encoding="utf8"))
+        self.assertIn("crb.zap-gun", self.weapons())
+        remove(b, self.custom)  # the last copy: the city chapter goes with it
+        self.assertFalse(os.path.exists(os.path.join(self.custom, "imported", "crb-fz")))
+
 
 
 class SkippedTest(unittest.TestCase):

@@ -25,7 +25,7 @@ test.beforeAll(async () => {
   }
   book('a-errata', 'skipped', 'Nothing to import: errata (applied with its book)', 'file="made-up-errata.pdf" sha256="00"')
   book('b-older', 'superseded', 'Superseded by City Edition Made-Up (CAT00000M, 2099)',
-    'file="made-up-older.pdf" sha256="01" recipe="crb" source="CRB" name="Shadowrun, Sixth World Core Rulebook"')
+    'file="made-up-older.pdf" sha256="01" recipe="crb" source="CRB" name="Shadowrun, Sixth World Core Rulebook" extra="CRB-HK"')
   book('c-unknown', 'failed', 'no SR6 recipe matched this book', 'file="made-up-other.pdf" sha256="02"')
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
@@ -53,6 +53,8 @@ test('SR6 Books: skipped and superseded files are calm, an unknown one fails', a
   await expect(older.getByRole('button', { name: 'Remove' })).toBeVisible()
   await expect(older.getByRole('button', { name: 'Re-import' })).toBeVisible()
   await expect(page.locator('.supported li', { hasText: /\bCRB\b(?!-)/ })).not.toContainText('Imported') // not loaded
+  await expect(page.locator('.supported li', { hasText: 'CRB-HK' })).toContainText('Imported') // its city chapter is
+  await expect(page.locator('.supported li', { hasText: 'CRB-SEA' })).toContainText('Not yet')
 
   const other = page.locator('.book', { hasText: 'made-up-other.pdf' })
   await expect(other.locator('.state')).toHaveText('Failed')

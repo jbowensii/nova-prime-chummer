@@ -13,16 +13,21 @@ import { accountHeader, because, sessionEnded } from './auth'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
+  /** while importing: the importer's current step (converting, identifying, extracting) */
+  step?: string
+  /** further sources the book holds (an SR6 City Edition's city chapter), loaded from a superseded printing too */
+  extra?: string[]
   /** core files the book's recipe couldn't read (the AI can propose their rows) */
   coreUnread?: string[]
   /** core files read by AI from this book (accepted on the review screen): to check against the book */
   coreAi?: string[] }
 
-const STATE: Record<string, string> = { queued: 'Waiting', converting: 'Reading the PDF', identifying: 'Recognizing the book',
+// a busy book: Waiting (queued), Importing… with its step, Removing, never its last state or error (server/books.mjs)
+const STATE: Record<string, string> = { queued: 'Waiting', importing: 'Importing…', removing: 'Removing', converting: 'Reading the PDF', identifying: 'Recognizing the book',
   extracting: 'Extracting entries', 'needs-ai': 'Needs AI', proposing: 'Asking the AI', review: 'Ready to review',
   applying: 'Adding entries', done: 'Imported', failed: 'Failed', removed: 'Removed',
   skipped: 'Skipped', superseded: 'Superseded' } // SR6: a known file with nothing to import; an older printing not loaded
-const LIVE = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
+const LIVE = ['queued', 'importing', 'removing', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
 export const PROVIDER_NAMES: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI-compatible', gemini: 'Google Gemini', anythingllm: 'AnythingLLM' }
 const KINDS: [RegExp, string, string][] = [[/^amps/, 'amp', 'amps'], [/^spells/, 'spell', 'spells'], [/^complexforms/, 'complex form', 'complex forms'],
   [/^gear/, 'gear item', 'gear items'], [/^weapons/, 'weapon', 'weapons'], [/^armor/, 'armor', 'armor'], [/^rules/, 'rule', 'rules'],
@@ -275,7 +280,8 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
     } catch (e) { setMsg(because('Couldn’t open the report', (e as Error).message)) }
   }
 
-  const importedSources = new Set((books ?? []).filter(b => b.state === 'done' && b.source).map(b => b.source))
+  const importedSources = new Set((books ?? []).flatMap(b => [...b.state === 'done' && b.source ? [b.source] : [],
+    ...['done', 'superseded'].includes(b.state) ? b.extra ?? [] : []]))
   const dupes = c && !sr6 && report?.book.source ? [...dupeGroups(c).values()]
     .map(ids => ids.map(id => c.amps.get(id) ?? c.items.get(id) ?? c.rules.get(id)!).filter(Boolean))
     .filter(g => g.some(e => e.source === report.book.source)) : []
@@ -314,7 +320,7 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
               {b.canon === false && <> <NonCanon /></>}
             </div>
             <div className="meta">
-              <span className={`state ${b.state}`}>{STATE[b.state] ?? b.state}</span>
+              <span className={`state ${b.state}`}>{STATE[b.state] ?? b.state}{b.step && ` ${STATE[b.step] ?? b.step}`}</span>
               {b.name && b.file && <> {b.file}</>}
               {b.recipe && <> · {b.recipe === 'ai' ? 'read by AI' : `recipe ${b.recipe}`}</>}
               {b.imported && <> · {new Date(b.imported).toLocaleDateString()}</>}
