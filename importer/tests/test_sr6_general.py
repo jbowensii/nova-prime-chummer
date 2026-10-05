@@ -100,7 +100,7 @@ You lost a made-up parcel and made a made-up enemy.
 
 
 def run_recipe(md=BOOK_MD, book=BOOK):
-    regrouped, _ = regroup.regroup(book.prepare(md), book.ALIASES, name_headers=book.NAME_HEADERS)
+    regrouped, _ = regroup.regroup(book.prepare_md(md), book.ALIASES, name_headers=book.NAME_HEADERS)
     return book.extract(regrouped)
 
 
@@ -115,7 +115,7 @@ class GeneralRecipeTest(unittest.TestCase):
         cls.texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(cls.res.texts)}
 
     def test_prepare_titles_a_stat_block_set_in_body_type(self):
-        lines = BOOK.prepare(BOOK_MD).splitlines()
+        lines = BOOK.prepare_md(BOOK_MD).splitlines()
         i = lines.index("##### Fizz Trooper")
         self.assertEqual(lines[i + 1], "##### (Professional Rating 3)")
         self.assertNotIn("fizz trooper", lines)  # the box title in body type under the tag line

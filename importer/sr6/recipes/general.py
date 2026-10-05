@@ -4,7 +4,7 @@ Professional Rating where printed; a contact's also as a contacts entry), critte
 augmentation and vehicle tables, spells, qualities, life modules and the rule sections, ids unscoped (run scopes them
 as <id>.<slug>), descriptions in the private texts. Each known book is a recipe of its own in RECIPES (its source id,
 name, and how its title or first page names it); they share the core rulebook's reading (crb.extract). Reads only
-regrouped.md (importer/sr6/regroup.py), after prepare() titles the stat blocks set in body type; layout notes in
+regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
 import re
 from dataclasses import replace
@@ -216,7 +216,7 @@ class Book:
             return min(0.95, 0.8 + 0.05 * len(self.PHRASES))
         return 0.0
 
-    def prepare(self, md):
+    def prepare_md(self, md):
         """book.md with a stat block's title as a heading where the book sets it in body type: the name line right
         over a being's band (`Red Tide Follower`), or over its tag line (`(Professional Rating 4)`, `(Force 5)`,
         `(Male Human)`, which then reads as the heading's tags), a tag at the name's end too; a heading in lower case

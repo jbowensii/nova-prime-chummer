@@ -78,7 +78,7 @@ A made-up bopping drone.
 
 
 def run_recipe(md=BOOK_MD):
-    regrouped, _ = regroup.regroup(bn.prepare(md), bn.ALIASES, name_headers=bn.NAME_HEADERS)
+    regrouped, _ = regroup.regroup(bn.prepare_md(md), bn.ALIASES, name_headers=bn.NAME_HEADERS)
     return bn.extract(regrouped)
 
 
@@ -92,7 +92,7 @@ class BnRecipeTest(unittest.TestCase):
         cls.res = run_recipe()
 
     def test_prepare(self):
-        md = bn.prepare(BOOK_MD)
+        md = bn.prepare_md(BOOK_MD)
         self.assertNotIn("BESTIAL NATURE", md)
         self.assertNotIn("# 10", md.splitlines())
         self.assertNotIn("**PAGE**", md)

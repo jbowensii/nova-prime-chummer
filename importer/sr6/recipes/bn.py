@@ -3,7 +3,7 @@ the book's metatype-like option, a positive quality from its minimum base cost) 
 (qualities named `<add-on> (Shifter add-on)`), the Animalism powers (metamagics: one a grade of animalism, as
 metamagics are one a grade of initiation), the shifter gear (armor, gear, ammunition, drones) and the rule sections,
 ids unscoped (run scopes them as bn.<slug>), descriptions in the private texts. Reads only regrouped.md
-(importer/sr6/regroup.py), after prepare() cleans book.md, with the core rulebook's reading (crb.extract); layout notes
+(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (crb.extract); layout notes
 in bn.md. A line or value that doesn't read is reported, never guessed."""
 import re
 import sys
@@ -43,7 +43,7 @@ _RUNNING = re.compile(r"(#+ )?(BESTIAL NATURE|\d{1,2})|\*\*PAGE\*\*")  # each pa
 _SPLIT = re.compile(r"(?<![\w'’])([A-Z][A-Za-z]{0,3}) ([A-Za-z][a-z]*)\b")  # `Sh ifter`, `SI Ns`: a heading's word kerned apart
 
 
-def prepare(md):
+def prepare_md(md):
     """book.md without the running head, page number and `PAGE` tab on each page's top (the converter reads them as
     text and chapter headings), and its headings' words joined where the display face's kerning split them (`Si xth`,
     `Pe lican`, `A nimalism`): unless the second part is a word of the book and the joined one isn't (`A tale`)."""

@@ -114,7 +114,7 @@ The critter breaks in a made-up way.
 
 
 def run_recipe(md=BOOK_MD):
-    regrouped, _ = regroup.regroup(wl.prepare(md), wl.ALIASES, name_headers=wl.NAME_HEADERS)
+    regrouped, _ = regroup.regroup(wl.prepare_md(md), wl.ALIASES, name_headers=wl.NAME_HEADERS)
     return wl.extract(regrouped)
 
 
