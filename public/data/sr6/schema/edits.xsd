@@ -47,6 +47,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="martialtechnique"><xs:complexType><xs:complexContent><xs:extension base="sr6:MartialTechnique">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="tradition"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="critterpower"><xs:complexType><xs:complexContent><xs:extension base="sr6:CritterPower">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="critter"><xs:complexType><xs:complexContent><xs:extension base="sr6:Being">

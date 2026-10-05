@@ -150,6 +150,7 @@ HEADERS = {
     "metamagics": {}, "echoes": {}, "skills": {},
     "martialarts": {"CATEGORY": "categories", "SIGNATURE TECHNIQUE": "signature"},
     "martialtechniques": {"CATEGORY": "category"},
+    "traditions": {},
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",

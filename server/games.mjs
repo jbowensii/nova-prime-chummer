@@ -15,7 +15,7 @@ export const SR6_KINDS = {
   weapons: 'weapon', armor: 'armor', augmentations: 'augmentation', electronics: 'device', gear: 'gear',
   vehicles: 'vehicle', spells: 'spell', rituals: 'ritual', adeptpowers: 'adeptpower', complexforms: 'complexform',
   metamagics: 'metamagic', echoes: 'echo', martialarts: 'martialart', martialtechniques: 'martialtechnique',
-  critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit',
+  traditions: 'tradition', critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit',
   npcs: 'npc', sprites: 'sprite', lifestyles: 'lifestyle', contacts: 'contact',
   lifemodules: 'lifemodule', rules: 'rule',
 }

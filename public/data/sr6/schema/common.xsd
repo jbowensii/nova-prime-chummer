@@ -41,6 +41,7 @@
       <xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/><xs:enumeration value="complexforms"/>
       <xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="critterpowers"/>
       <xs:enumeration value="martialarts"/><xs:enumeration value="martialtechniques"/>
+      <xs:enumeration value="traditions"/>
       <xs:enumeration value="critters"/><xs:enumeration value="spirits"/><xs:enumeration value="npcs"/>
       <xs:enumeration value="sprites"/><xs:enumeration value="lifestyles"/><xs:enumeration value="contacts"/>
       <xs:enumeration value="lifemodules"/><xs:enumeration value="rules"/>

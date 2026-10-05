@@ -7,4 +7,5 @@
   <source id="FS" publisher="Catalyst Game Labs" canon="true" texts="texts/fs.xml"><name>Shadowrun: Firing Squad</name></source>
   <source id="DA" publisher="Catalyst Game Labs" canon="true" texts="texts/da.xml"><name>Shadowrun: Deadly Arts</name></source>
   <source id="HS" publisher="Catalyst Game Labs" canon="true" texts="texts/hs.xml"><name>Shadowrun: Hack &amp; Slash</name></source>
+  <source id="SW" publisher="Catalyst Game Labs" canon="true" texts="texts/sw.xml"><name>Shadowrun: Street Wyrd</name></source>
 </sr6:data>

@@ -48,6 +48,9 @@
   (cyberhacks, dataterms, deck cases, components and mods, data taps, tag bombs, commlink hacks and apps, agents,
   cyberkits, codemods), complex forms, echoes, sprites, qualities, the matrix security NPCs and the rule sections
   (hosts, IC, programs, foundations and resonance realms among them).
+- **Street Wyrd can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its spells, adept
+  powers, metamagics, traditions (a new kind on Game data), preparations, spirits and spirit powers, qualities and
+  the rule sections.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 

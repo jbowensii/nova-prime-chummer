@@ -28,6 +28,7 @@ KINDS = {
     "echoes": "echo",
     "martialarts": "martialart",
     "martialtechniques": "martialtechnique",
+    "traditions": "tradition",
     "critterpowers": "critterpower",
     "critters": "critter",
     "spirits": "spirit",

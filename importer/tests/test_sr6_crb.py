@@ -363,8 +363,9 @@ class CrbRecipeTest(unittest.TestCase):
                   "critterpowers": "Glimmer", "critters": "Fuzzbeast", "spirits": "Spirits of Fizz",
                   "npcs": "Corner Goon", "sprites": "Gadget Sprite", "lifestyles": "Shoebox", "contacts": "Fixer Fred",
                   "rules": "Making Trouble"}
-        # the core rulebook has no life modules (the Companion's) nor martial arts (Firing Squad's, Deadly Arts')
-        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques"})
+        # the core rulebook has no life modules (the Companion's), martial arts (Firing Squad's, Deadly Arts') nor
+        # traditions of their own (Street Wyrd's)
+        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques", "traditions"})
         for kind, name in expect.items():
             self.assertIn(name, entries(self.res, kind), kind)
 
