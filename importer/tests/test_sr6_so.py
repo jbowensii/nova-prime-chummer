@@ -38,6 +38,12 @@ Made-up words on social spells.
 |---|---|---|---|
 | LOS | M | S | 4 |
 The target smiles in a made-up glow.
+#### Peek Mind
+##### (Detection)
+| RANGE | TYPE | DURATION | DV |
+|---|---|---|---|
+| Touch | M | S | 3 |
+The caster peeks in a made-up way.
 #### Hush Ward
 (Anchored)
 **Threshold:** 3
@@ -113,6 +119,7 @@ class SoRecipeTest(unittest.TestCase):
         s = entries(self.res, "spells")["Glow Smile"]
         self.assertEqual({k: s.get(k) for k in ("category", "tags", "range", "dv")},
                          {"category": "illusion", "tags": None, "range": "LOS", "dv": "4"})
+        self.assertEqual(entries(self.res, "spells")["Peek Mind"]["category"], "detection")  # its tag line a heading
         self.assertEqual(entries(self.res, "rituals")["Hush Ward"], {"id": "hush-ward", "source": "SO", "page": "107",
                                                                      "threshold": "3", "keywords": "Anchored"})
         p = entries(self.res, "adeptpowers")["Sweet Voice"]

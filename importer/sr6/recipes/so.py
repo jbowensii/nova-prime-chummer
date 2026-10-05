@@ -15,6 +15,8 @@ from importer.sr6.regroup import blocks, keys, norm
 ID, NAME, PUBLISHER, CANON = "SO", "Shadowrun: Smooth Operations", "Catalyst Game Labs", True
 BOOK = "Smooth Operations"
 SHA256 = ("ac28226a5c08491663398b124b270d0e511d3845ff35c312d9f6ce9b1b250286",)  # the owner's copy (latest)
+# heading sizes -> levels: the guess takes the contents' 11 pt for a level and leaves out the 9 pt tag lines
+HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 171  # PDF page: a novel's preview starts here (left out)
 ALIASES = {}
@@ -93,10 +95,10 @@ def fix(b, parent2):
     ch = norm(b.chapter)
     first = next((ln for ln in b.text.splitlines() if ln.strip()), "")
     if ch == MAGIC and b.type == "item" and (m := _TAG.fullmatch(first.strip())):
-        spell = norm(m.group(1)) in crb.SPELL_CATEGORIES
-        b = replace(b, tags="" if spell else m.group(1), label=norm(m.group(1)) if spell else b.label,
-                    text=b.text.replace(first, "", 1).strip())
-    if ch == ARCHETYPES and b.type == "section" and "Metatype" in b.labels and "| B | A |" in b.text:
+        b = replace(b, tags=m.group(1), text=b.text.replace(first, "", 1).strip())
+    if ch == MAGIC and b.type == "item" and norm(b.tags) in crb.SPELL_CATEGORIES:  # (or read as a level-5 tag line)
+        b = replace(b, label=norm(b.tags), tags="")
+    if ch == ARCHETYPES and "Metatype" in b.labels and (b.stats or "| B | A |" in b.text):  # (bands in a section's text)
         b = replace(crb._text_stats(b, crb._BEING), type="item", label=f"metatype: {b.labels['Metatype']}")
     if ch == MAGIC and norm(parent2) == "alchemical preps" and b.type == "item" and (c := b.labels.get("Cost")):
         m = re.fullmatch(r"(.+?)\s*/\s*(\w+)", c)

@@ -1,8 +1,9 @@
 # SR6 Smooth Operations (SO): layout survey
 
 Structure only, no book text. The owner's PDF (SHA-256 in `so.py`, the latest copy): 178 pages, printed page = PDF
-page − 1 (`PAGE_OFFSET`). From PDF page 171 a novel's preview (`END_PAGE`, left out). The converter's guessed heading
-sizes are right.
+page − 1 (`PAGE_OFFSET`). From PDF page 171 a novel's preview (`END_PAGE`, left out). Heading sizes
+(`HEADING_LEVELS`): 60, 21, 15, 13, 9 as the core rulebook's; the guess takes the contents' 11 pt for level 5 and
+leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 
 ## Item shapes
 
