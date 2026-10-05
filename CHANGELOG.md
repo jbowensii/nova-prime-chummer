@@ -43,6 +43,7 @@
 - **Wild Life can be imported** on Shadowrun 6 **Books** (supported list): its critters with their stat blocks (172, each with its habitat), the new critter powers (Fragile and Carrier marked as weaknesses), critter gear and the rule sections; a stat band whose header shares a line with the next column's label (Firing Squad's Street Veteran) is read too.
 - **Bestial Nature can be imported** on Shadowrun 6 **Books** (supported list): the Shifter quality's four forms and its 34 positive and negative add-ons (as qualities), the 13 Animalism powers (as metamagics), its armor, gear, silver bullets and drones, and the rule sections.
 - **Smooth Operations can be imported** on Shadowrun 6 **Books** (supported list): its spells, ritual, adept powers, metamagics and alchemical preparations, its social gear (clothing, armor modification, accessories, apps, espionage gear), its qualities, its six faces as sample runners, and the rule sections.
+- **Explosive Decompression can be imported** on Shadowrun 6 **Books** (supported list): its spacesuits, space gear and energy weapons, its thruster packs, spaceships, starships and drones, the mission rosters' NPCs, and the rule sections.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 

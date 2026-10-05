@@ -8,4 +8,5 @@
   <source id="WL" publisher="Catalyst Game Labs" canon="true" texts="texts/wl.xml"><name>Shadowrun: Wild Life</name></source>
   <source id="BN" publisher="Catalyst Game Labs" canon="true" texts="texts/bn.xml"><name>Shadowrun: Bestial Nature</name></source>
   <source id="SO" publisher="Catalyst Game Labs" canon="true" texts="texts/so.xml"><name>Shadowrun: Smooth Operations</name></source>
+  <source id="ED" publisher="Catalyst Game Labs" canon="true" texts="texts/ed.xml"><name>Shadowrun: Explosive Decompression</name></source>
 </sr6:data>

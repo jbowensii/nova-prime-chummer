@@ -134,7 +134,7 @@ HEADERS = {
              "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
-                 "HAND (ON/OFF ROAD)": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
+                 "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
                  "ARMOR": "armor", "PILOT": "pilot", "SENSOR": "sensor", "SEATS": "seats", "SEAT": "seats",
                  "SPD INT": "interval", "TOP SPD": "topSpeed", "BOD": "body", "ARM": "armor", "SENS": "sensor", **_PRICE},
     "spells": {"RANGE": "range", "TYPE": "type", "DURATION": "duration", "DV": "dv", "DRAIN": "dv", "DAMAGE": "damage"},
@@ -269,6 +269,7 @@ class _Catalog:
         self.cols = set()  # (kind, column) already reported unknown
         self.pending = []  # unknown columns of the entry being read: reported when it is added
         self.last_meta = None
+        self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
@@ -504,8 +505,8 @@ class _Catalog:
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
                 m = re.search(r"professional rating\s*(\d+)\s*[:–—-]?\s*(.*)", b.section, re.I)
-                attrs = {"rating": m and int(m.group(1)), "group": (m and m.group(2).strip()) or None}
-                if not m:
+                attrs = {"rating": m and int(m.group(1)), "group": (m.group(2).strip() if m else self.unrated) or None}
+                if not m and not self.unrated:
                     return False
             else:
                 attrs = {"category": cat}
@@ -669,6 +670,7 @@ def extract(regrouped, ctx=None, book=None):
     SECTIONS); this one by default."""
     bk = book or sys.modules[__name__]
     cat = _Catalog(bk.ID, bk.ID.lower(), bk.BOOK)
+    cat.unrated = getattr(bk, "UNRATED_NPCS", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
         if b.chapter != chapter:
