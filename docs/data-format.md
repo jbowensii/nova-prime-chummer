@@ -515,6 +515,11 @@ server (behind `/api/compendiums`, never under the public `/custom/` path):
   with the GM's own text in `<narrative>`/`<text>` (never a book's); and
   NPCs as `<ca2:character>` elements exactly as a character file's root
   (`docs/character-format.md`), each with its `<npc>` block.
+- Players read the `table` ones and those shared with a campaign they play
+  in (while the owner GMs it) through `GET /api/compendiums/shared`, never
+  private ones and never the NPCs (the server takes them out); a runner sees
+  the table's and its own campaign's. A runner keeps a copy of each
+  compendium entry it uses (`docs/character-format.md`).
 - In the app the compendiums a GM can read load as overlays after the edits
   layer and before the `custom/index.xml` house rules. Their entries join
   the catalog under the compendium's source, `canon="false"`, origin user

@@ -2,12 +2,12 @@
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
 import { useState, type ReactNode } from 'react'
-import { Modal, Picker, Stepper } from '../../ui/bits'
+import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
 import { legality, rated, ratingRange } from '../engine/values'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
-import type { Sr6Entry, Sr6Kind } from '../model/types'
+import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradesFor, type GradeFactor } from '../engine/grades'
 import { ATTR_NAMES, n, useSr6Editor } from './editor'
@@ -31,6 +31,12 @@ export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?:
 
 /** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
 export const groupOf = (e: Sr6Entry) => (e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category)
+
+/** House and the compendium's name for a GM compendium's entry (nothing for a book's). */
+export function House({ c, source }: { c: Sr6Catalog; source: string }) {
+  const s = c.sources.get(source)
+  return s?.compendium ? <HouseChip name={s.name} /> : null
+}
 
 /** A line's name: the catalog's, else the stored one; marked when its entry is gone. */
 export function LineName({ x }: { x: Sr6Purchase }) {
@@ -88,7 +94,7 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
           const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1)
           return { id: `${e.kind}:${e.id}`, name: e.name, group: groupOf(e),
             meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`].filter(Boolean).join(', '),
-            label: <span className="muted">{e.source} p.{e.page}</span>, search: `${e.source} p.${e.page}`,
+            label: <><span className="muted">{e.source} p.{e.page}</span> <House c={c} source={e.source} /></>, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
             price: p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}` }
         })} />}
     </Modal>

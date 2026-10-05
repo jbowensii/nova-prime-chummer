@@ -64,7 +64,7 @@ export interface Sr6Entry {
 export interface Sr6Source {
   id: string; name: string; publisher: string; canon: boolean; published?: string; cat?: string; texts?: string; file?: string; sha256?: string; imported?: string
   origin: 'shipped' | 'imported' | 'user'
-  compendium?: { id: string; owner: string }
+  compendium?: { id: string; owner: string; campaign?: string }
 }
 /** A GM's SR6 compendium (src/sr6/engine/compendium.ts): entries of the compendium kinds citing its own source, and NPCs.
  *  owner/ownerName come from the server (the folder it's stored in), never from the file. */

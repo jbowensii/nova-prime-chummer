@@ -125,8 +125,7 @@ custom/sr6/
 
 The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (merged by source id), then the files in
 `custom/sr6/imported/index.xml` (the same id replaces, `<remove>` deletes), then the texts file each source names, then
-`custom/sr6/edits/edits.xml` and `edits/texts.xml`, then (a GM's catalog only) the compendiums they can read
-(see Compendiums below).
+`custom/sr6/edits/edits.xml` and `edits/texts.xml`, then the compendiums the account can read (see Compendiums below).
 
 **Scoping.** Every imported id is scoped by its source (`crb.zap-gun`), as the Anarchy books are, so two books never
 clash. Attribute `abbr` and skill `attr` values are never scoped.
@@ -305,7 +304,10 @@ A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by 
   block.
 - Never the other game's: the server refuses a body that names an Anarchy namespace anywhere, and the app refuses an
   Anarchy compendium, an embedded Anarchy runner and any entry in another namespace.
-- In the catalog: a GM's SR6 catalog loads every compendium they can read after the edits layer (players' load none).
+- In the catalog: a GM's SR6 catalog loads every compendium they can read after the edits layer; a player's the `table`
+  ones and those shared with an SR6 campaign they play in (`GET /api/sr6/compendiums/shared`: no private ones, no NPCs),
+  and a runner sees the table's and its own campaign's. A runner keeps copies of those it uses (`<house>`,
+  docs/sr6-character-format.md).
   Its source joins as a house source (`origin: user`, non-canon, publisher: the owner's name); its entries join their
   kinds, its NPCs none. It never replaces anything: a compendium whose source id is already a book's is skipped (Game
   data lists why), and so is one entry whose id another source's entry of that kind already holds. Load book NPCs

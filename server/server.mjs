@@ -35,7 +35,8 @@
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
 //   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs);
-//                                        /api/sr6/compendiums* the SR6 ones in characters/sr6/.compendiums/<username>/
+//                                        /api/sr6/compendiums* the SR6 ones in characters/sr6/.compendiums/<username>/;
+//                                        GET .../compendiums/shared: the table and campaign ones a player may use, no NPCs
 //   /api/backgrounds*                    background art from library/backgrounds (server/backgrounds.mjs);
 //                                        /api/sr6/backgrounds* SR6's own set from library/sr6/backgrounds
 //   /api/auth/oidc/*, /api/auth-settings  Sign in with Authelia and its settings (server/oidc.mjs)

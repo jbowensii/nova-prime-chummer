@@ -47,6 +47,16 @@
 - **An accessory's rating can be changed in place** on a Shadowrun 6 runner (and its grade, where it takes one).
 - **Importing a runner right after opening the list** no longer fails with "changed elsewhere" when its id is taken:
   the copy gets a new id (both games).
+- **Players' runners can use the GMs' compendiums** (both games, each game's own). A compendium shared with the table
+  is offered to every player's runners; one shared with a campaign, to the runners in that campaign. Private ones stay
+  with their GM. In the pickers a compendium's entries carry a **House** chip with the compendium's name.
+- **Players read, never edit.** Players get the shared entries through a read-only route (`/api/compendiums/shared`,
+  `/api/sr6/compendiums/shared`); a compendium's NPCs are never sent to them.
+- **A runner keeps what it took.** A runner keeps its own copy of every compendium entry it uses (an Anarchy vehicle its
+  chassis; an SR6 runner its qualities, powers, gear and lifestyle), so it still prices, prints and exports the same
+  when the compendium is unshared or deleted. Review then notes that the entry's source is no longer available.
+- Exports (runner file, Foundry export) carry those copies, so the importer and the Foundry module still get the
+  entries' data.
 
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 

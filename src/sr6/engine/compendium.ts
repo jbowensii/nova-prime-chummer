@@ -94,9 +94,9 @@ export function sr6CompendiumXml(comp: Sr6Compendium): string {
 }
 
 /** The catalog source a compendium's entries cite: a house source (non-canon, origin user) of its owner. */
-export const sr6CompendiumSource = (comp: Pick<Sr6Compendium, 'id' | 'source' | 'name' | 'owner' | 'ownerName'>): Sr6Source =>
+export const sr6CompendiumSource = (comp: Pick<Sr6Compendium, 'id' | 'source' | 'name' | 'owner' | 'ownerName' | 'sharing' | 'campaign'>): Sr6Source =>
   ({ id: comp.source, name: comp.name, publisher: comp.ownerName ?? comp.owner ?? '', canon: false, origin: 'user',
-    compendium: { id: comp.id, owner: comp.owner ?? '' } })
+    compendium: { id: comp.id, owner: comp.owner ?? '', ...comp.sharing === 'campaign' && comp.campaign ? { campaign: comp.campaign } : {} } })
 
 /** Never throws: a bad file comes back with what's wrong. */
 export function readSr6Compendium(xml: string): { ok: true; compendium: Sr6Compendium } | { ok: false; error: string } {

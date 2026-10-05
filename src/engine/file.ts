@@ -2,6 +2,7 @@
 import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, Npc, StartingGear } from '../model/types'
 import { BACKDROPS, newId } from '../model/types'
 import { ampFromTemplate, isSinner, plain, sinnerTemplate } from './amps'
+import { houseSource } from './canon'
 
 export const FORMAT_VERSION = 1
 
@@ -154,8 +155,29 @@ export function parseCharacterFile(text: string): Parsed {
 
 /** Store a copy of each catalog entry on the character so it still prints if the data later disappears. */
 export function snapshotEntries(c: Catalog, ch: Character): Character {
-  const out = structuredClone(ch)
+  const out = structuredClone(keepHouse(c, ch))
   for (const a of out.build.amps) if (a.catalogId && c.amps.has(a.catalogId)) a.snapshot = c.amps.get(a.catalogId)
   for (const i of out.build.items) if (i.catalogId && c.items.has(i.catalogId)) i.snapshot = c.items.get(i.catalogId)
   return out
+}
+
+/** The runner with a copy of each compendium entry it uses, so it keeps pricing, printing and exporting them when the
+ *  compendium is unshared or deleted: an amp's or item's snapshot (taken when picked) follows the live entry, and a vehicle
+ *  keeps its chassis. Book entries are left as they are. */
+export function keepHouse(c: Catalog, ch: Character): Character {
+  const fresh = <T extends { source: string }>(live: T | undefined, had: T | undefined) => (live && houseSource(c, live.source) ? live : had)
+  const amps = ch.build.amps.map(a => {
+    const snapshot = a.catalogId ? fresh(c.amps.get(a.catalogId), a.snapshot) : a.snapshot
+    const v = a.vehicle ? c.vehicles.get(a.vehicle) : undefined
+    const chassis = v ? (houseSource(c, v.source) ? v : undefined) : a.chassis
+    if (snapshot === a.snapshot && chassis === a.chassis) return a
+    const { chassis: _, ...rest } = a
+    return { ...rest, ...snapshot ? { snapshot } : {}, ...chassis ? { chassis } : {} }
+  })
+  const items = ch.build.items.map(i => {
+    const snapshot = i.catalogId ? fresh(c.items.get(i.catalogId), i.snapshot) : i.snapshot
+    return snapshot === i.snapshot ? i : { ...i, snapshot }
+  })
+  return amps.some((a, n) => a !== ch.build.amps[n]) || items.some((i, n) => i !== ch.build.items[n])
+    ? { ...ch, build: { ...ch.build, amps, items } } : ch
 }

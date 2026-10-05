@@ -19,6 +19,7 @@ function pickBest<T extends { source: string }>(c: Catalog, matches: T[]): T | u
 function rescopeAmp(c: Catalog, e: AmpEntry): AmpEntry {
   if (!e.catalogId || c.amps.has(e.catalogId)) return e
   const source = e.snapshot?.source?.toLowerCase()
+  if (source && e.catalogId.startsWith(`${source}.`)) return e // already scoped: an entry that is gone (a compendium's), kept as it is
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.amps.has(scoped)) return { ...e, catalogId: scoped }
   const name = normalizeName(e.snapshot?.name ?? e.name)
@@ -29,6 +30,7 @@ function rescopeAmp(c: Catalog, e: AmpEntry): AmpEntry {
 function rescopeItem(c: Catalog, e: ItemEntry): ItemEntry {
   if (!e.catalogId || c.items.has(e.catalogId)) return e
   const source = e.snapshot?.source?.toLowerCase()
+  if (source && e.catalogId.startsWith(`${source}.`)) return e // already scoped: an entry that is gone (a compendium's), kept as it is
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.items.has(scoped)) return { ...e, catalogId: scoped }
   const name = normalizeName(e.snapshot?.name ?? e.name)

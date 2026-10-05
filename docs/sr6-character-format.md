@@ -36,6 +36,7 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
     <lifestyle id="crb.cozy" months="2"/>
     <sin uid="s1" name="Pat Roe" kind="fake" rating="3"><licence name="Zap Gun" rating="2"/></sin>
   </build>
+  <house><quality id="street.lucky-socks" source="STREET" page="1" kind="positive" karma="7"><name>Lucky Socks</name><text>…</text></quality></house>
   <override code="skill.cap" path="skills.crb.gab">GM ok</override>
 </sr6:character>
 ```
@@ -46,6 +47,12 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
 draft with none picked yet. `finalizedAt`, `finalKarma` and `finalNuyen` are set by Finalize (the karma and nuyen left);
 `campaign` is set through the server. `rev` is the server's revision counter and is left out of exports. `sampleKey`:
 see NPCs below.
+
+`<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, purchases and
+accessories, lifestyle; career spends included), in the SR6 data files' own format with their text, refreshed on every
+change while the compendium is readable. When it no longer is (unshared or deleted), each copy stands in for its entry
+(prices, rules, sheet and exports) and Review notes "its source … is no longer available; the runner keeps its own
+copy". Book entries are never copied here.
 
 ## Build
 
