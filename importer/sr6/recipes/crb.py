@@ -723,3 +723,9 @@ def extract(regrouped, ctx=None, book=None):
         cat.report += rows
     return Result(files=files, texts=cat.texts_xml() if cat.texts else None, samples=runners, report=cat.report,
                   source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
+
+
+def extra(md, sha):
+    """A City Edition's city chapter as a source of its own (crb_city.py; run.py writes Result.extra)."""
+    from importer.sr6.recipes import crb_city
+    return crb_city.extra(md, sha)

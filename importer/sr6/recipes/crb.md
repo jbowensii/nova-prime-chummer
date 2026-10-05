@@ -2,10 +2,30 @@
 
 Structure only, no book text. The owner's PDFs (SHA-256s in `crb.py`): the 2019 printing, 322 pages, 612 × 765 pt, and
 the City Editions (Hong Kong, the latest printing, 2025; Seattle; Berlin), 342–349 pages: the same pages 1–321 (some
-values and names updated), then a chapter on the city and fiction after the index, which `END_PAGE` leaves out. Their
+values and names updated), then a chapter on the city and fiction after the index, which `END_PAGE` leaves out (the
+city chapter is read apart: below). Their
 first pages name no core rulebook and carry no title, so they are known by fingerprint only. Printed page = PDF page − 1
 (`PAGE_OFFSET`) in all of them. The real-book check runs on the Hong Kong edition (the owner's rule: the latest
 printing).
+
+## The City Editions' city chapter (crb_city.py)
+
+Each City Edition's city chapter is a source of its own (CRB-SEA, CRB-BER, CRB-HK; `crb.extra` -> `Result.extra`, which
+run.py writes to custom/sr6/imported/<source>/ beside the CRB, records in import.xml `extra`, and removes with the
+book), so the CRB catalog stays the 2019 printing's. Only its game pages are read (`CITIES`: PDF pages Seattle 328-341,
+Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back cover are left out. In them:
+
+- Qualities: level-3 headings with `Cost:` / `Bonus:` lines (bold or, in Berlin, plain bullets).
+- Contacts: a level-3 heading with a metatype line (`Female Elf`, read as a tag or a level-4 heading), the description,
+  then a level-5 box with the band (or the band in the description itself: Trubble): a contact and its NPC. A box
+  printing two beings' bands into each other (Seattle's Brynne Taggart and Ni Ni Xiaolu, Berlin's Cashmere and Saif
+  Alhazred) is not guessed: those contacts are reported.
+- Gear: small tables under lower-case titles (ITEM, TYPE or VEHICLE first: one entry a row) or a box's own table (named
+  by the box or the heading it describes; several tables under one heading: `Ballistic Tent (2)`); Berlin's street
+  weapons as bold names with bracketed stats; Berlin's prices print thousands with a dot (`32.000¥`). A vehicle table
+  printed in the text of a section whose name another box with its own table has (Berlin's airbike values in the
+  walker's section) is reported, as is a box title with no values (the Kuznechik Airbike).
+- The rest (plot hooks, the city's reputation and heat modifiers, gear descriptions no row took): rule sections.
 
 ## Fonts (converter sr6 layout, Task 2)
 

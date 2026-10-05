@@ -5,6 +5,7 @@ same states and records as Anarchy's run (importer/__main__.py), every SR6 data 
 import hashlib
 import os
 import re
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -50,6 +51,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                                        variants=getattr(recipe, "VARIANT_ROWS", False))
         xmlio.write_file(os.path.join(book_dir, "regrouped.md"), text)
         res = recipe.extract(text)
+        if hasattr(recipe, "extra"):  # the further sources the book holds (a City Edition's city chapter)
+            res.extra = recipe.extra(md, meta["sha256"])
         for r in report:  # regroup reports PDF pages; the import report prints the book's
             if isinstance(r.get("page"), int):
                 r["page"] = max(1, r["page"] - recipe.PAGE_OFFSET)
@@ -59,11 +62,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         with sr6_root():
             texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
             # the texts first: a corrupt texts file fails the import before any overlay is replaced
-            texts = None
-            if res.texts:  # each description in paragraphs, words split across the PDF's lines rejoined (importer/reflow.py)
-                entries = xmlio.texts_entries(xmlio.scope(res.texts, src, ids))
-                words = reflow.vocabulary(t for _, _, t in entries)
-                texts = xmlio.merged_texts(texts_path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries])
+            texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
             samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
             samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
             for name, xml in res.files.items():
@@ -74,7 +73,12 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                 xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
             if samples:
                 xmlio.write_file(samples_path, samples)
-            xmlio.write_import(book_dir, report=report + res.report,
+            for x in (old.get("extra") or "").split() if old is not None else ():
+                _drop(custom_dir, x)  # the last import's further sources
+            for x in res.extra:
+                _write_extra(custom_dir, x)
+            xmlio.write_import(book_dir, report=report + res.report + [r for x in res.extra for r in x.report],
+                               extra=" ".join(x.source["id"] for x in res.extra) or None,
                                files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
                                recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
                                name=res.source["name"], publisher=res.source["publisher"],
@@ -89,8 +93,37 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         raise
 
 
+def _texts(path, xml, src, ids):
+    """The source's texts file with `xml`'s descriptions merged in: each in paragraphs, words split across the PDF's
+    lines rejoined (importer/reflow.py)."""
+    entries = xmlio.texts_entries(xmlio.scope(xml, src, ids))
+    words = reflow.vocabulary(t for _, _, t in entries)
+    return xmlio.merged_texts(path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries])
+
+
+def _write_extra(custom_dir, res):
+    """A further source the book holds (Result.extra): its catalog in custom/sr6/imported/<source>/, its texts."""
+    src = res.source["id"]
+    ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
+    for name, xml in res.files.items():
+        xmlio.write_overlay(os.path.join(custom_dir, "imported", src.lower()), name, xml, ids)
+    if res.texts:
+        path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
+        xmlio.write_file(path, _texts(path, res.texts, src, ids))
+
+
+def _drop(custom_dir, src):
+    shutil.rmtree(os.path.join(custom_dir, "imported", src.lower()), ignore_errors=True)
+    texts = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
+    if os.path.exists(texts):
+        os.remove(texts)
+
+
 def remove(book_dir, custom_dir, forget=False):
     """Anarchy's remove (importer/__main__.py) under the sr6:data root: it rewrites the samples list too (SR6 has no npcs
-    list)."""
+    list). The book's further sources (import.xml extra) go with it."""
+    imp = xmlio.read_import(book_dir)
+    for x in (imp.get("extra") or "").split() if imp is not None else ():
+        _drop(custom_dir, x)
     with sr6_root():
         anarchy.remove(book_dir, custom_dir, forget=forget)
