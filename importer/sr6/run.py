@@ -26,10 +26,11 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
     try:
         xmlio.write_status(book_dir, "converting")
         if convert_pdf:
-            # a printing a recipe knows by its fingerprint may come with its heading sizes (the guess can miss them)
+            # a printing a recipe knows by its fingerprint may come with its heading sizes and font (the guess can miss them)
             sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest()
-            levels = next((r.HEADING_LEVELS for r in RECIPES if sha in r.SHA256 and hasattr(r, "HEADING_LEVELS")), None)
-            meta = convert(pdf, md_path, sr6=True, levels=levels)
+            known = next((r for r in RECIPES if sha in r.SHA256), None)
+            meta = convert(pdf, md_path, sr6=True, levels=getattr(known, "HEADING_LEVELS", None),
+                           heading=getattr(known, "HEADING_FONT", None))
         else:
             sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest() if os.path.exists(pdf) else ""
             meta = {"converter": SR6_CONVERTER_VERSION, "sha256": sha, "title": ""}

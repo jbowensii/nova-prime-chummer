@@ -10,4 +10,5 @@
   <source id="SW" publisher="Catalyst Game Labs" canon="true" texts="texts/sw.xml"><name>Shadowrun: Street Wyrd</name></source>
   <source id="LL" publisher="Catalyst Game Labs" canon="true" texts="texts/ll.xml"><name>Shadowrun: Lofwyr's Legions</name></source>
   <source id="JD" publisher="Catalyst Game Labs" canon="true" texts="texts/jd.xml"><name>Shadowrun: Johnson 'Dex</name></source>
+  <source id="IA" publisher="Catalyst Game Labs" canon="true" texts="texts/ia.xml"><name>Shadowrun: Ingentis Athletes</name></source>
 </sr6:data>

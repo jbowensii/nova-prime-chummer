@@ -498,8 +498,9 @@ class _Catalog:
                      "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None, "maxLevel": levels}
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
-                m = re.search(r"professional rating\s*(\d+)\s*[:–—-]?\s*(.*)", b.section, re.I)
-                attrs = {"rating": m and int(m.group(1)), "group": (m and m.group(2).strip()) or None}
+                # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing none
+                m = re.search(r"professional rating\s*(\d+)?\s*[:–—-]?\s*(.*)", b.section, re.I)
+                attrs = {"rating": m and m.group(1) and int(m.group(1)), "group": (m and m.group(2).strip()) or None}
                 if not m:
                     return False
             else:

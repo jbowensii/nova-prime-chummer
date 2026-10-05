@@ -58,6 +58,8 @@
   NPCs, the drake qualities and drake powers, its martial art and the rule sections.
 - **Johnson 'Dex can be imported** on Shadowrun 6 **Books** (it is now in the supported list): each Mr. Johnson card
   becomes a contact (with its bio, plot hooks, gear level and favors) and an NPC with its stats, plus the deck's rules.
+- **Ingentis Athletes can be imported** on Shadowrun 6 **Books** (it is now in the supported list): its ten troll
+  athletes as NPCs (read from the book's stat lines), the one priced weapon among their gear, and the troll variant rules.
 
 ## 0.9.1 — 2026-10-04: Shadowrun 6 fixes, Table setup, two-row header
 

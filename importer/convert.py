@@ -329,10 +329,11 @@ def _reading_order(blocks, mid):
 
 
 def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, sr6: bool = False,
-            levels: dict | None = None) -> dict:
+            levels: dict | None = None, heading: str | None = None) -> dict:
     """pages: optional 1-based inclusive (first, last) range to convert. sr6: the Shadowrun 6 layout
     (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped). levels: the SR6 heading
-    sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them)."""
+    sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them); heading: the headings' font
+    family, likewise."""
     if sr6:
         from importer.sr6 import layout
     with open(pdf_path, "rb") as f:
@@ -342,6 +343,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
         fonts = layout.fonts(pdf) if sr6 else None
         if fonts and levels:
             fonts.levels = levels
+        if fonts and heading:
+            fonts.heading = heading
         big = None if sr6 else _bands(pdf)[1]
         first, last = pages or (1, len(pdf.pages))
         for n, page in enumerate(pdf.pages[first - 1 : last], first):

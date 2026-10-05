@@ -117,6 +117,11 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertIn("# Gadget Shop", lines)
         self.assertIn("## Shop Rules", lines)
         self.assertNotIn("# GADGETS", lines)
+        convert(pdf, md, sr6=True, heading="Helvetica")  # a family set in no line: no headings by font
+        with open(md, encoding="utf8") as f:
+            lines = f.read().splitlines()
+        self.assertNotIn("# GADGETS", lines)
+        self.assertIn("GADGETS", lines)
 
     def test_anarchy_mode_unchanged(self):
         _, lines = _convert(sr6=False)
