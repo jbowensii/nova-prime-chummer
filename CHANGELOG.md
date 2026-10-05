@@ -13,7 +13,8 @@
   Shop.
 - **Autosofts can be bought.** The core rulebook's autosofts (Clearsight, Evasion, Targeting…) import as programs priced
   by the book's rating formula, and programs and autosofts can now be bought on **Gear** (at a rating) and fitted to a
-  vehicle or drone.
+  vehicle or drone. Double Clutch's skill autosofts (Biotech, Con (Performance)…) import as programs too, with their
+  ratings (the book prints no price for them).
 - **NPCs that share a stat block are all imported.** Where a Shadowrun 6 book prints one stat block for two names
   (Final Bets' Houngan/Mambo, Slip Streams' Government Agent/Corp Troubleshooter), two beings in one band (Missions'
   Saeder-Krupp Guard and Combat Mage, The Third Parallel, Collapsing Now) or several beings in one box (Lethal
