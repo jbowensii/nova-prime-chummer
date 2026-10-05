@@ -84,7 +84,7 @@ def _vehicle(text):
     return {VEHICLE[h]: cells[h] for h in VEHICLE} if set(cells) == set(VEHICLE) else None
 
 
-def _band(text):
+def band(text):
     """A stat band printed as a bold header line over a value line (`**B A R S W L I C ESS**`) -> [{header: value}]."""
     lines = text.splitlines()
     for i, ln in enumerate(lines[:-1]):
@@ -132,9 +132,9 @@ def _prep(bs, report):
             used.add(id(d))
             labels = {("Skills" if k == "Active Skills" else k): v for k, v in {**d.labels, **b.labels}.items()}
             section = b.section if d.level == 3 or "professional rating" in norm(b.section) else "Group: Archetype"
-            if not b.stats and (band := _band(b.text)):  # its attributes as a header and a value line
+            if not b.stats and (bd := band(b.text)):  # its attributes as a header and a value line
                 b = crb._text_stats(b, crb.HEADERS["npcs"])
-                b = replace(b, stats=band + b.stats)
+                b = replace(b, stats=bd + b.stats)
             b = replace(b, labels=labels, section=section,
                         text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t))
         out.append(b)

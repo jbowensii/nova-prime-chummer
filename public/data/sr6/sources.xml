@@ -10,4 +10,5 @@
   <source id="KK" publisher="Catalyst Game Labs" canon="true" texts="texts/kk.xml"><name>Krime Katalog</name></source>
   <source id="NF" publisher="Catalyst Game Labs" canon="true" texts="texts/nf.xml"><name>Shadowrun: No Future</name></source>
   <source id="TS" publisher="Catalyst Game Labs" canon="true" texts="texts/ts.xml"><name>Shadowrun: Tarnished Star</name></source>
+  <source id="AW" publisher="Catalyst Game Labs" canon="true" texts="texts/aw.xml"><name>Shadowrun: Astral Ways</name></source>
 </sr6:data>

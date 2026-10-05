@@ -8,6 +8,7 @@ from importer.sr6.recipes import dc
 from importer.sr6.recipes import kk
 from importer.sr6.recipes import nf
 from importer.sr6.recipes import ts
+from importer.sr6.recipes import aw
 
 THRESHOLD = 0.6
 RECIPES = [crb, swc, fs]
@@ -16,6 +17,7 @@ RECIPES += [dc]
 RECIPES += [kk]
 RECIPES += [nf]
 RECIPES += [ts]
+RECIPES += [aw]
 
 
 def identify(meta, md_head):
