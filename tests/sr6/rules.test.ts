@@ -33,13 +33,15 @@ const pick = (b: Sr6Build, kind: Sr6Build['picks'][number]['kind'], id: string, 
   b.picks.push({ uid, kind, id, ...more })
   return uid
 }
-/** The fixture's three unresolved metatype traits are warnings from the catalog itself (data.unresolved). */
 const errors = (ch: Sr6Character, over?: Over) => check(ch, over).filter(v => v.severity === 'error').map(v => v.code)
 
 test('a blank legal runner has no errors; the catalog’s own problems pass through as warnings', () => {
   const v = check(runner())
   expect(v.filter(x => x.severity === 'error')).toEqual([])
-  expect(v.filter(x => x.code === 'data.unresolved')).toHaveLength(3)
+  // a catalog problem shows only on a runner that uses the entry: this stonefolk runner gets Stonefolk's, a glimmerkin doesn't
+  expect(v.filter(x => x.code === 'data.unresolved').map(x => x.path)).toEqual(['metatypes.crb.stonefolk'])
+  const glim = runner(); glim.build.metatype = 'crb.glimmerkin'
+  expect(check(glim).filter(x => x.code === 'data.unresolved').map(x => x.path)).not.toContain('metatypes.crb.stonefolk')
 })
 
 // priorities and legality

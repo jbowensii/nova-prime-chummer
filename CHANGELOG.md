@@ -2,6 +2,9 @@
 
 ## Unreleased (next build)
 
+- **A runner's Review lists only the catalog problems it is touched by.** A book's unreadable number or a metatype trait
+  that isn't in the catalog used to show on every Shadowrun 6 runner (dozens of notes about books the runner never
+  used); now it shows only on runners that use that entry. The Books page's import report still lists them all.
 - **Shadowrun 6's neon is a shade softer, and pink is only a highlight.** Links, hovers, tags and other small text are
   cyan now (pink small text was hard to read); pink stays for the rule under titles, the current tab and focus. In the
   dark look the cyan and pink are toned down and the glows are fainter.
