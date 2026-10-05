@@ -38,9 +38,9 @@ test('rules reference: search the quick-reference sheets', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Rules reference' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Table rules' })).toHaveCount(0) // book content only: the switches are on Table setup
   await page.getByLabel('Search the rules').fill('spec')
-  await expect(page.locator('.rule-list dt', { hasText: 'Risk Reduction (spec)' })).toBeVisible()
+  await expect(page.locator('.rule-toc li', { hasText: 'Risk Reduction (spec)' })).toBeVisible()
   await page.getByLabel('Search the rules').fill('no such rule')
-  await expect(page.locator('.rule-list dt')).toHaveCount(0)
+  await expect(page.locator('.rule-toc li')).toHaveCount(0)
   await page.getByLabel('Search the rules').fill('')
   await page.getByLabel('Sheet').selectOption('test')
   await expect(page.getByRole('heading', { name: 'Test' })).toBeVisible()

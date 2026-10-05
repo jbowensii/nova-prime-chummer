@@ -186,12 +186,13 @@ test('an editor edits an entry and reads the player’s runner read-only', async
   expect(puts).toEqual([])
 
   await page.goto('/#/rules')
-  const rule = page.locator('.rule-list > div', { hasText: 'Risk Reduction (spec)' })
+  const rule = page.locator('.rule-toc li', { hasText: 'Risk Reduction (spec)' })
   await rule.getByRole('button', { name: 'Edit Risk Reduction (spec)' }).click()
   await page.getByRole('dialog').last().getByLabel('Description', { exact: true }).fill('Reroll a die, made-up text.')
   await page.getByRole('dialog').last().getByRole('button', { name: 'Save changes' }).click()
   await expect(page.locator('.toast', { hasText: 'Saved Risk Reduction (spec).' })).toBeVisible()
-  await expect(rule.locator('dd')).toHaveText('Reroll a die, made-up text.')
+  await rule.getByRole('link', { name: 'Risk Reduction (spec)' }).click()
+  await expect(page.locator('dialog.drawer .prose')).toHaveText('Reroll a die, made-up text.')
 })
 
 test('change password, sign out, sign in with the new one', async ({ page }) => {

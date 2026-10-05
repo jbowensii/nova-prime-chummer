@@ -1,5 +1,13 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **Rules opens on a table of contents** (both games). The page lists every rule title, by sheet on Anarchy and by
+  chapter on Shadowrun 6; the book, sheet or chapter and search boxes narrow the list. Click a title and the rule slides
+  out from the side with its own address (#/rules/… on Anarchy, #/sr6/rules/… on Shadowrun 6), so a reload or a shared
+  link opens the same rule. Esc or Close goes back to the list. A Shadowrun 6 section links to its subsections, and on
+  Anarchy the Edit button and the Edited mark are on both the list and the rule.
+
 ## 0.9.7 — 2026-10-05: neon Shadowrun 6 colours, background art shows again
 
 - **Shadowrun 6 is neon, mostly cyan.** Titles, outlines, buttons and the logo tag are neon cyan; neon pink comes second
