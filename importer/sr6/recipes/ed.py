@@ -135,6 +135,21 @@ def _rosters(bs):
     return [b for b in out if id(b) not in taken]
 
 
+def _tagged(bs):
+    """A gear section whose text holds a one-row stat table with no name column, its row naming the section's tag
+    (`(Grenade Launcher)` over a TYPE row `Grenade Launcher`: the ArmTech SSG-69A1, its band landing in its text) ->
+    an item with that row, named by the section."""
+    out = []
+    for b in bs:
+        t = next(((h, r) for h, r in crb._tables(b.text) if len(r) == 1 and h[0].upper() == "TYPE"
+                  and norm(r[0][0]) == norm(b.tags)), None) if norm(b.chapter) == GEAR and b.tags and b.row is None else None
+        if t:
+            row = {"WEAPON": b.name, **dict(zip(t[0], t[1][0]))}
+            b = replace(b, type="item", row=row, header=list(row), text=b.text.replace(fs._md_table(*t), "").strip())
+        out.append(b)
+    return out
+
+
 def _vehicle(b):
     return any(h.upper() in ("HAND", "HANDL", "ACCEL") for h in (b.stats[0] if b.stats else b.header))
 
@@ -164,11 +179,11 @@ def kind(chapter, b, parent2):
     if head & {"DEFENSE RATING", "DR"}:
         return "armor", "spacesuits"
     if head & {"DV", "MODE", "MODES"}:
-        return "weapons", "energy-weapons"
+        return "weapons", slug(b.tags) if b.tags else "energy-weapons"  # (the grenade launcher: its tag)
     if head & {"AVAIL", "AVAILABILITY", "COST"}:
         return "gear", slug(parent2) or "gear"
     return None, None
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(_rosters(_described(list(blocks(regrouped)))), ctx, book=sys.modules[__name__])
+    return crb.extract(_rosters(_tagged(_described(list(blocks(regrouped))))), ctx, book=sys.modules[__name__])

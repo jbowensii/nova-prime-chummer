@@ -37,6 +37,22 @@ def match(meta, md_head):
     return 0.9 if re.search(r"wild\s+life", hay, re.I) and re.search(r"critter", hay, re.I) else 0.0
 
 
+def prepare(md):
+    """book.md with a box title as an item heading when the box's bands run straight into another column's prose (a
+    line in lower case that runs on to a heading, not to the box's labels: the trojan rat, whose labels print after the
+    next box's garbled band): read as a table title, its bands and labels would go to the box before it."""
+    lines = md.splitlines()
+    for i, ln in enumerate(lines[:-1]):
+        if (m := re.fullmatch(r"(##### )([a-z])(.*)", ln)) and lines[i + 1].startswith("| B | A |"):
+            j = i + 1
+            while j < len(lines) and lines[j].startswith("|"):
+                j += 1
+            k = next((k for k in range(j, len(lines)) if lines[k].startswith(("#", "**"))), len(lines))
+            if j < len(lines) and lines[j][:1].islower() and k < len(lines) and lines[k].startswith("#"):
+                lines[i] = m.group(1) + _cap(m.group(2) + m.group(3))
+    return "\n".join(lines) + "\n"
+
+
 def _being(b):
     return bool(b.stats) and any(h.upper() in _BAND for h in b.stats[0])
 

@@ -40,6 +40,13 @@ in space.
 | HANDL | ACCEL | SPD INT | TOP SPEED | BODY | ARMOR | PILOT | SENSOR | AVAIL | COST |
 |---|---|---|---|---|---|---|---|---|---|
 | 2 | 8 | 10 | 70 | 5 | 10 | 2 | 2 | 4(L) | 7,000¥ |
+## Arms and Weaponry
+### MadeTech Boomer
+##### (Grenade Launcher)
+A made-up launcher for space.
+| TYPE | DV | MODES | ATTACK RATINGS | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|---|
+| Grenade Launcher | Ammo | SA | 4/9/8/—/— | 10(c) | 4(I) | 2,000¥ |
 <!-- page 88 -->
 # PREPARE FOR LAUNCH
 ## Spaceships
@@ -97,6 +104,9 @@ class EdRecipeTest(unittest.TestCase):
         self.assertEqual((v["MadeCorp Comet"]["category"], v["MadeCorp Comet"]["seats"]), ("spaceships", "2"))
         self.assertIn("ship, quick", self.texts[("vehicles", "madecorp-comet")])
         self.assertNotIn("MadeCorp Comet", entries(self.res, "rules"))
+        w = entries(self.res, "weapons")["MadeTech Boomer"]  # its band (no name column) in its text, its tag its type
+        self.assertEqual((w["category"], w["type"], w["cost"]), ("grenade-launcher", "Grenade Launcher", "2000"))
+        self.assertIn("launcher for space", self.texts[("weapons", "madetech-boomer")])
 
     def test_rosters(self):
         n = entries(self.res, "npcs")["Made Guard"]

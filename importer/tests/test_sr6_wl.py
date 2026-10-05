@@ -61,6 +61,32 @@ A made-up hare that zips.
 |---|---|---|---|---|
 | 3 | 10/2 | A1, I3 | 9 | 15/30/+3 |
 More made-up words on hares.
+### Glow Vole
+A made-up vole that glows.
+##### glow vole
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 3 | 4 | 1 | 2 | 1 | 3 | 1 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 2 | 7/1 | A1, I2 | 8 | 5/10/+1 |
+**Skills:** Stealth 3
+##### dusk vole
+| B | A | R | S | W | L | I | C | R | ESS |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 3 | 4 | 1 | 2 | 1 | 3 | 1 | 5 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 2 | 7/1 | A1, I2 | 8 | 5/10/+1 |
+another column's made-up words that run on
+past the box.
+##### static owl
+| B A R MATRIX DR | S |
+|---|---|
+| 1 | 2 |
+5 6/4 A1, I5 10
+**Skills:** Cracking 3
+**Echoes:** Made-up Echo
 #### Critter Corner: Hum Goat
 Made-up advice on goats.
 <!-- page 180 -->
@@ -88,7 +114,7 @@ The critter breaks in a made-up way.
 
 
 def run_recipe(md=BOOK_MD):
-    regrouped, _ = regroup.regroup(md, wl.ALIASES, name_headers=wl.NAME_HEADERS)
+    regrouped, _ = regroup.regroup(wl.prepare(md), wl.ALIASES, name_headers=wl.NAME_HEADERS)
     return wl.extract(regrouped)
 
 
@@ -104,7 +130,12 @@ class WlRecipeTest(unittest.TestCase):
 
     def test_critters_from_their_boxes_with_their_section_text(self):
         c = entries(self.res, "critters")
-        self.assertEqual(set(c), {"Young Fizz Mole", "Elder Fizz Mole", "Hum Goat", "Zip Hare"})
+        self.assertEqual(set(c), {"Young Fizz Mole", "Elder Fizz Mole", "Hum Goat", "Zip Hare", "Glow Vole", "Dusk Vole"})
+        # a box whose bands run into another column's prose, its labels after the next box's garbled band
+        d = c["Dusk Vole"]
+        self.assertEqual((d.get("rea"), d.get("res"), d.findtext("skills")), ("4", "5", "Cracking 3"))
+        self.assertEqual(c["Glow Vole"].findtext("skills"), "Stealth 3")
+        self.assertIn("vole that glows", self.texts[("critters", "dusk-vole")])
         self.assertEqual((c["Zip Hare"].get("agi"), c["Zip Hare"].get("cm")), ("6", "9"))  # its box read as a table title
         y = c["Young Fizz Mole"]
         self.assertEqual({k: y.get(k) for k in ("category", "bod", "mag", "dr", "move", "page")},

@@ -20,7 +20,8 @@ printed page = PDF page − 1 (`PAGE_OFFSET`).
   only `Space Suit` is named by its title (`aresspace guardian`) and takes that suit's description.
 - Gear (`ITEM AVAIL COST`, the E-PECS `ITEM DEVICE RATING …`): gear, category its level-2 section.
 - The rEvolution Arms lasers (`WEAPON TYPE DV MODE …`): weapons, category energy-weapons. The ArmTech grenade
-  launcher's band (no name column) lands in the next section's text: not read.
+  launcher's band (no name column, its row `Grenade Launcher`) lands in its own section's text: the section whose
+  `(Grenade Launcher)` tag its row names takes it (category grenade-launcher).
 - Thruster packs, spaceships, starships, drones (`HAND`/`HANDL ACCEL SPD INT TOP SPD …`): vehicles, category thruster
   packs or the level-2 section; each takes the description whose heading holds all its title's words (its name too
   when the heading's words are all in the title: `Evomars rifter` -> `EvoMars Rifter`). The generic escape pod's
