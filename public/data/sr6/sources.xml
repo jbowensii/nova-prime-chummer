@@ -6,4 +6,5 @@
   <source id="SWC" publisher="Catalyst Game Labs" canon="true" texts="texts/swc.xml"><name>Shadowrun: Sixth World Companion</name></source>
   <source id="FS" publisher="Catalyst Game Labs" canon="true" texts="texts/fs.xml"><name>Shadowrun: Firing Squad</name></source>
   <source id="WL" publisher="Catalyst Game Labs" canon="true" texts="texts/wl.xml"><name>Shadowrun: Wild Life</name></source>
+  <source id="BN" publisher="Catalyst Game Labs" canon="true" texts="texts/bn.xml"><name>Shadowrun: Bestial Nature</name></source>
 </sr6:data>

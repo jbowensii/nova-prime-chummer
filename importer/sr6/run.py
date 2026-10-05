@@ -45,6 +45,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             return None
 
         xmlio.write_status(book_dir, "extracting")
+        if hasattr(recipe, "prepare"):  # a book's own page furniture the converter can't tell (a running head on top)
+            md = recipe.prepare(md)
         text, report = regroup.regroup(md, recipe.ALIASES, name_headers=recipe.NAME_HEADERS,
                                        end_page=getattr(recipe, "END_PAGE", None))
         xmlio.write_file(os.path.join(book_dir, "regrouped.md"), text)
