@@ -34,6 +34,9 @@ from pathlib import Path
 from xml.sax.saxutils import quoteattr
 
 from importer import DATA_DIR, find_core_file, use_custom, xmlio
+
+# A source id as it may name a folder or file under custom/ (letters, digits, dash, underscore; no dots or slashes).
+SAFE_SOURCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
 from importer.convert import CONVERTER_VERSION, convert
 from importer.recipes import RECIPES, identify
 
@@ -151,6 +154,8 @@ def remove(book_dir, custom_dir, forget=False, status=True):
     library = os.path.dirname(os.path.normpath(book_dir))
     imp = xmlio.read_import(book_dir)
     src = imp.get("source") if imp is not None else None
+    if src and not SAFE_SOURCE_ID.fullmatch(src):  # a tampered import.xml must not point the deletes outside custom/
+        src = None
     if src:
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         others = _same_source(book_dir, src)

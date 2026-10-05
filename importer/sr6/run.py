@@ -120,6 +120,8 @@ def _write_extra(custom_dir, res):
 
 
 def _drop(custom_dir, src):
+    if not anarchy.SAFE_SOURCE_ID.fullmatch(src or ""):  # an id read from import.xml: never a path
+        return
     shutil.rmtree(os.path.join(custom_dir, "imported", src.lower()), ignore_errors=True)
     texts = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
     if os.path.exists(texts):
