@@ -20,7 +20,7 @@ test('SR6 pages carry the SR6 theme, light and dark; Anarchy pages don’t', asy
   })
   expect(await plain()).toEqual({ image: 'none', after: 'none', afterImage: 'none' })
   await dark(page)
-  expect(await look(page)).toMatchObject({ heading: 'rgb(0, 229, 255)', bg: 'rgb(6, 11, 19)' })
+  expect(await look(page)).toMatchObject({ heading: 'rgb(44, 198, 220)', bg: 'rgb(6, 11, 19)' })
   expect(await plain()).toEqual({ image: 'none', after: 'none', afterImage: 'none' })
   await page.reload() // the theme is this browser's setting, not the page's: back to light
   await page.goto('/#/sr6/rules')

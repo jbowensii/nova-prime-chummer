@@ -1,5 +1,11 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **Shadowrun 6's neon is a shade softer, and pink is only a highlight.** Links, hovers, tags and other small text are
+  cyan now (pink small text was hard to read); pink stays for the rule under titles, the current tab and focus. In the
+  dark look the cyan and pink are toned down and the glows are fainter.
+
 ## 0.9.9 — 2026-10-05: two new Shadowrun 6 character sheets
 
 - Shadowrun 6 runners print in two new styles (Sheet type, or Settings → Printed sheet): Book style, laid out like the

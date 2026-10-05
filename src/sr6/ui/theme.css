@@ -9,9 +9,9 @@
 
 :root {
   --sr6-cyan: #005c6b;
-  --sr6-neon: #00e5ff;
+  --sr6-neon: #2cc6dc;
   --sr6-pink: #a8006a;
-  --sr6-neon-pink: #ff52d9;
+  --sr6-neon-pink: #d24cb4;
   --sr6-display: 'Montserrat', 'Rethink Sans', system-ui, sans-serif;
   /* the book's hatched heading rule */
   --sr6-hatch: repeating-linear-gradient(-55deg, var(--sr6-hatch-c) 0 1.6px, transparent 1.6px 3.6px);
@@ -31,7 +31,7 @@
   --field: #ffffff;
   --yellow: #005c6b;
   --accent-ink: #ffffff;
-  --rust: #a8006a;
+  --rust: #0a5a73;
   --indigo: #5a22c0;
   --panel: #e8f1f5;
   --panel-text: #102028;
@@ -53,31 +53,31 @@
 /* dark: blue-black, neon cyan first, neon pink second */
 :root[data-game='sr6'][data-theme='dark'] {
   --bg: #060b13;
-  --text: #e6f7ff;
+  --text: #dbe9ef;
   --text-2: #c3dbe6;
   --text-3: #8fa9b6;
-  --heading: #00e5ff;
+  --heading: #2cc6dc;
   --rule: #1c3344;
   --surface: #0b1420;
   --zebra: #0f1b2a;
   --cream: #0f1b2a;
   --field: #0c1725;
-  --yellow: #00e5ff;
+  --yellow: #2cc6dc;
   --accent-ink: #001319;
-  --rust: #ff52d9;
-  --indigo: #b388ff;
+  --rust: #8fd8e6;
+  --indigo: #ab95d9;
   --panel: #0b1828;
   --panel-text: #e6f7ff;
   --panel-muted: #9fbccb;
   --ok: #39ff88;
   --warn: #ff9f1c;
   --err: #ff5c75;
-  --focus: #ff52d9;
-  --sr6-line: #00b8d9;
-  --sr6-hatch-c: #ff52d9;
-  --sr6-tag: #00e5ff;
+  --focus: #d24cb4;
+  --sr6-line: #1d9db5;
+  --sr6-hatch-c: #d24cb4;
+  --sr6-tag: #2cc6dc;
   --sr6-tag-ink: #001319;
-  --sr6-glow: 0 0 18px rgb(0 229 255 / 0.16);
+  --sr6-glow: 0 0 18px rgb(44 198 220 / 0.1);
 }
 
 /* ---- the page: plain --bg, no texture (background art, when the admin has some, is Background.tsx's .bg-art) ---- */
@@ -90,7 +90,7 @@
   border-bottom: 0; padding-bottom: 0.32em; background: var(--sr6-hatch) left bottom / 100% 0.22em no-repeat;
 }
 :root[data-game='sr6'] .lib h2:not(dialog h2) { display: inline-block; }
-:root[data-game='sr6'][data-theme='dark'] :is(h1, h2) { text-shadow: 0 0 14px rgb(0 229 255 / 0.35); }
+:root[data-game='sr6'][data-theme='dark'] :is(h1, h2) { text-shadow: 0 0 14px rgb(44 198 220 / 0.18); }
 :root[data-game='sr6'] :is(.tabs a, .kinds button, .settings legend, .provider legend, .dossier .title, .who .name, .book .title, .left) { font-weight: 600; }
 :root[data-game='sr6'] .tabs a[aria-current='page'] { border-bottom-color: var(--sr6-hatch-c); }
 :root[data-game='sr6'][data-texture='full'] .tabs a { font-family: var(--display); text-transform: uppercase; font-size: 0.92rem; letter-spacing: 0.03em; }
@@ -211,12 +211,12 @@
 .game.sr6 .what { color: #2c3e48; }
 .game.sr6:hover .what, .game.sr6:focus-visible .what { color: #102028; }
 :root[data-theme='dark'] .game.sr6 {
-  color: #e6f7ff; border-color: #00b8d9; box-shadow: 0 0 22px rgb(0 229 255 / 0.18);
+  color: #e6f7ff; border-color: #1d9db5; box-shadow: 0 0 22px rgb(44 198 220 / 0.12);
   background: #060b13;
 }
-:root[data-theme='dark'] .game.sr6:hover, :root[data-theme='dark'] .game.sr6:focus-visible { box-shadow: inset 8px 0 0 var(--sr6-neon), 0 0 26px rgb(0 229 255 / 0.3); }
+:root[data-theme='dark'] .game.sr6:hover, :root[data-theme='dark'] .game.sr6:focus-visible { box-shadow: inset 8px 0 0 var(--sr6-neon), 0 0 26px rgb(44 198 220 / 0.2); }
 :root[data-theme='dark'] .game.sr6 .name { color: #e6f7ff; }
-:root[data-theme='dark'] .game.sr6 .name b { color: #00e5ff; text-shadow: 0 0 14px rgb(0 229 255 / 0.5);
+:root[data-theme='dark'] .game.sr6 .name b { color: #2cc6dc; text-shadow: 0 0 14px rgb(44 198 220 / 0.3);
   background-image: repeating-linear-gradient(-55deg, var(--sr6-neon-pink) 0 1.6px, transparent 1.6px 3.6px); }
 :root[data-theme='dark'] .game.sr6 .what { color: #c3dbe6; }
 :root[data-theme='dark'] .game.sr6:hover .what, :root[data-theme='dark'] .game.sr6:focus-visible .what { color: #e6f7ff; }
