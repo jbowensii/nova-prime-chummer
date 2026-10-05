@@ -8,7 +8,7 @@ import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, type Sr6Attr, type Sr6Build, ty
 import { allBudgets, attrRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
-import { makeProvider, type Provider } from './providers'
+import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
 
 interface Ctx { data: Sr6Data; cr: CreationRules; ch: Sr6Character; b: Sr6Build; p: Provider; budgets: Sr6Budgets }
@@ -185,6 +185,15 @@ const RULES: Rule[] = [
     const cap = c.budgets.contactPoints.ratingCap
     return c.b.contacts.filter(x => x.connection > cap || x.loyalty > cap)
       .map(x => ({ path: `contacts.${x.uid}`, message: `${x.name || 'A contact'}’s connection or loyalty is above ${cap}.` }))
+  } },
+  // SWC p. 31: karma buys contact ratings only up to Charisma: what a contact has above it must come from the points
+  { code: 'contact.karmaCap', severity: 'error', tab: 'contacts', setting: c => (c.p.contactPools ? ['lifepath.contactKarma'] : []), check: c => {
+    if (!c.p.contactPools || num(c.cr, 'lifepath.contactKarma') === undefined) return null
+    const cha = attrRating(c.b, 'cha', c.p)
+    const above = c.b.contacts.map(x => ({ x, types: x.types ?? [], need: Math.max(0, x.connection - cha) + Math.max(0, x.loyalty - cha) }))
+    if (!uncovered(c.p.contactPools(c.b), above)) return null
+    const names = above.filter(a => a.need).map(a => a.x.name || 'a contact').join(', ')
+    return { message: `Karma can’t raise a contact’s connection or loyalty above your Charisma (${cha}): the contact points don’t cover ${names} above it.` }
   } },
   { code: 'knowledge.budget', severity: 'error', tab: 'skills', setting: c => (c.p.knowledgePoints ? [] : ['knowledgePerLog']),
     check: c => over(c.budgets.knowledgePoints, 'Knowledge points') },

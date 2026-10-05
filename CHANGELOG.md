@@ -14,6 +14,17 @@
 - **Autosofts can be bought.** The core rulebook's autosofts (Clearsight, Evasion, Targeting…) import as programs priced
   by the book's rating formula, and programs and autosofts can now be bought on **Gear** (at a rating) and fitted to a
   vehicle or drone.
+- **NPCs that share a stat block are all imported.** Where a Shadowrun 6 book prints one stat block for two names
+  (Final Bets' Houngan/Mambo, Slip Streams' Government Agent/Corp Troubleshooter), two beings in one band (Missions'
+  Saeder-Krupp Guard and Combat Mage, The Third Parallel, Collapsing Now) or several beings in one box (Lethal
+  Harvest's chimeras), each now loads as its own NPC with its stats, instead of only one (or one with mixed stats).
+  Re-import those books, then **Load book NPCs**.
+- **Lifepath follows Born This Way.** Attributes whose metatype maximum is above 6 start at 2, and a runner who is
+  neither awakened nor emerged gains 1 Edge (both on Table setup). Karma can no longer raise a contact's connection or
+  loyalty above your Charisma: what is above it must come from the modules' contact points.
+- **Metavariants can be picked in priority creation.** Once the Sixth World Companion is re-imported, each
+  metavariant is offered at the metatype priorities its development table allows, with its own adjustment points, and
+  its karma comes out of your starting karma.
 
 ## 0.9.5 — 2026-10-05: one copy of each book NPC, numbered versions
 

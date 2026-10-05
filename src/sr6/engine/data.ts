@@ -39,6 +39,8 @@ export interface Sr6MetatypeView {
   id: string; name: string; ranges: Record<RangeAttr, [number, number]>; traits: string[]; page: number
   /** a trait printed with its level (`Hardy 2`: a leveled quality at level 2), by quality id; absent: level 1 */
   traitLevels?: Record<string, number>
+  /** a metavariant's adjustment points per metatype priority letter (absent: the priority table's row lists it or not) */
+  priority?: Partial<Record<Letter, number>>
 }
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
 export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number }
@@ -128,7 +130,9 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
       if (!id) warn('data.unresolved', e, `${e.name}’s trait “${p.text}” isn’t a quality in the catalog.`)
       return id ? [id] : []
     })
-    return [e.id, { id: e.id, name: e.name, ranges, traits, page: e.page, ...(Object.keys(traitLevels).length ? { traitLevels } : {}) }]
+    const priority = Object.fromEntries(parts(e, 'priority').map(p => [p.attrs.letter, count(e, p.attrs.points, `adjustment points at ${p.attrs.letter}`)]))
+    return [e.id, { id: e.id, name: e.name, ranges, traits, page: e.page, ...(Object.keys(traitLevels).length ? { traitLevels } : {}),
+      ...(Object.keys(priority).length ? { priority } : {}) }]
   }))
 
   const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: count(e, e.attrs.maxLevel, 'highest level', 1) })

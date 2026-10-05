@@ -123,6 +123,16 @@
       </xs:element>
       <!-- racial qualities, by name as printed (S2 resolves them) -->
       <xs:element name="trait" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- a metavariant's adjustment points at each metatype priority it can be taken at (the Sixth World Companion's
+           development table): priority creation offers it at those letters, the priority table not listing it -->
+      <xs:element name="priority" minOccurs="0" maxOccurs="5">
+        <xs:complexType>
+          <xs:attribute name="letter" use="required">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-E]"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="points" type="xs:nonNegativeInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
       <xs:group ref="sr6:tail"/>
     </xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>

@@ -45,7 +45,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | file / kind | tag | attributes | children |
 |---|---|---|---|
 | priorities | priority | letter* (A–E) | metatype (name*, points* int)×n, attributes (points* int), skills (points* int), magic (kind* full\|aspected\|mystic-adept\|adept\|technomancer\|mundane, rating int)×n, resources (nuyen* int) |
-| metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n |
+| metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
@@ -74,10 +74,16 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills; contactTypes (academic, corporate, criminal, engineering, government, magic, matrix, media, medical, street; absent: any) | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
 
+Metavariants under priority creation: the Companion's development table gives each metavariant its adjustment
+points at the metatype priorities it can be taken at (its `<priority>` children); the priority provider offers it at
+those letters beside the metatypes the priority table lists, and its `metatypeKarma:<id>` comes out of the starting
+karma (a metatype the table lists costs none there).
+
 Implant grades (`grades`): the core rulebook's grade table (used, alphaware, betaware, deltaware) and Body Shop's omega
 grade, exoware (cyberware only) and gammaware (an Essence factor only: it isn't offered). A grade's key is its name
 without "ware" or "grade" (`alpha`, `omega`, `exo`); the creation settings `grade:<key>:essence|cost|avail` replace
-its factors, so the standard five (which ship as settings) can be changed on Table setup. The augmentation picker
+the factors of the standard five (which ship as settings) on Table setup; another grade's are its catalog entry's
+(an edit changes them). The augmentation picker
 offers every grade whose Essence factor is set (a catalog grade also needs its cost) to the types it is for. The
 Foundry book export leaves grades out (a purchase carries its grade's key).
 
@@ -238,7 +244,9 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Lifepath | `lifepath.contactRatingCap` | number | lifepath | Highest contact rating |
 | Lifepath | `lifepath.bestAttributeBonus` | number | optional | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
 | Lifepath | `lifepath.repeatModules` | number | optional | Adult modules that may be taken twice (unset: none) |
-| Lifepath | `lifepath.contactKarma` | number | optional | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points) |
+| Lifepath | `lifepath.contactKarma` | number | optional | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points). Karma never raises a contact's connection or loyalty above Charisma: the points must pay for what is above it (SWC p. 31) |
+| Lifepath | `lifepath.raisedAttributeStart` | number | optional | Attributes whose metatype maximum is above `attributeBaseMax` start at (Born This Way; unset: 1) |
+| Lifepath | `lifepath.mundaneEdge` | number | optional | Edge a runner neither awakened nor emerged gains (Born This Way; unset: none) |
 | Augmentation grades | `grade:standard:essence` | number | optional | Standard: Essence times |
 | Augmentation grades | `grade:standard:cost` | number | optional | Standard: cost times |
 | Augmentation grades | `grade:standard:avail` | number | optional | Standard: Availability plus |

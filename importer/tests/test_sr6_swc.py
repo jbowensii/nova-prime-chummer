@@ -82,6 +82,14 @@ Made-up notes.
 **1–6 1–6**
 **INT CHA EDG**
 **1–6 1–5 1–6**
+## Life and Death
+#### Made-Up Development Table
+| METAVARIANT | AVERAGE HEIGHT (M) | CUSTOMIZATION KARMA | PRIORITY A | PRIORITY B | ADJUSTMENT POINTS PRIORITY C | PRIORITY D | PRIORITY E |
+|---|---|---|---|---|---|---|---|
+| Glimmerlings | 1.10 | 5 | 12 | 10 | 8 | 3 | N/A |
+| Stonekin | 2.20 | 10 | N/A | 11 | 9 | 4 | 1 |
+| Human | 1.70 | 0 | N/A | N/A | 9 | 4 | 1 |
+| Shadowkin | 1.50 | 5 | 13 | 11 | 9 | 4 | 1 |
 <!-- page 30 -->
 # PEOPLE OF EXCEPTIONAL QUALITY
 #### Lucky Charm
@@ -191,6 +199,15 @@ class SwcRecipeTest(unittest.TestCase):
         self.assertEqual((ranges("Stonekin")["int"], ranges("Stonekin")["cha"]), (("1", "6"), ("1", "5")))
         self.assertEqual(mt["Stonekin"].get("page"), "19")
         self.assertEqual(self.rep("missing-value"), [])
+
+    def test_metavariants_priority_points(self):
+        """The development table: a metavariant's adjustment points at each priority it can be taken at; N/A: none."""
+        mt = entries(self.res, "metatypes")
+        pts = lambda n: {p.get("letter"): p.get("points") for p in mt[n].iter("priority")}
+        self.assertEqual(pts("Glimmerling"), {"A": "12", "B": "10", "C": "8", "D": "3"})  # `Glimmerlings`: the plural row
+        self.assertEqual(pts("Stonekin"), {"B": "11", "C": "9", "D": "4", "E": "1"})
+        self.assertEqual(pts("Dimling"), {})
+        self.assertEqual([r["name"] for r in self.rep("unmatched") if r.get("file") == "metatypes.xml"], ["Shadowkin"])
 
     def test_qualities_and_sub_qualities(self):
         q = entries(self.res, "qualities")

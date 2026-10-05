@@ -35,12 +35,12 @@ export const PURCHASE_TAB: Record<PurchaseKind, string> = {
 const round2 = (x: number) => Math.round(x * 100) / 100
 const n0 = (cr: CreationRules, key: string) => num(cr, key) ?? 0
 
-/** Natural rating: 1 + points + adjustment + karma; Magic or Resonance (whichever the magic kind uses) starts at the
+/** Natural rating: 1 (lifepath: what it starts at) + points + adjustment + karma; Magic or Resonance (whichever the magic kind uses) starts at the
  *  method's rating instead, the other at 0. */
 export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
   const a = b.attributes[k], resonance = MAGIC_KINDS[b.magic].resonance
   const base = k === 'mag' ? (resonance ? 0 : p.magicRating(b)) : k === 'res' ? (resonance ? p.magicRating(b) : 0) : 1
-  return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0)
+  return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0) + (p.startBonus?.(b, k) ?? 0)
 }
 
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number) =>

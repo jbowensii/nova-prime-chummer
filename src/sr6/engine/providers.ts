@@ -32,6 +32,10 @@ export interface Provider {
   contactPoints?(b: Sr6Build): Pool & { ratingCap: number; karma?: number }
   /** lifepath: what the method adds to an attribute's natural rating (the best attribute and its overflow) */
   attributeBonus?(b: Sr6Build, k: Sr6Attr): number
+  /** lifepath: what an attribute starts at above 1 (Born This Way: a raised metatype maximum, a mundane's Edge) */
+  startBonus?(b: Sr6Build, k: Sr6Attr): number
+  /** lifepath: each module's contact points with the contact types they go to (none: any) */
+  contactPools?(b: Sr6Build): { types?: string[]; points: number }[]
   /** lifepath's knowledge points (from the modules, not Logic) */
   knowledgePoints?(b: Sr6Build): Pool
   /** lifepath's adult modules this runner may take, taken ones marked; again: taken once and may be taken a second time */
@@ -72,6 +76,7 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
 
   if (method === 'priority' || method === 'sumtoten') {
     const row = (b: Sr6Build, col: keyof Sr6Build['priorities']) => { const l = b.priorities[col]; return l ? data.priorities[l] : undefined }
+    const letterPoints = (b: Sr6Build, m?: Sr6MetatypeView) => { const l = b.priorities.metatype; return l && m?.priority ? m.priority[l] : undefined }
     const magicRow = (b: Sr6Build) => row(b, 'magic')?.magic ?? {}
     return {
       ...base,
@@ -85,13 +90,15 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       attributePoints: b => row(b, 'attributes')?.attributes ?? 0,
       skillPoints: b => row(b, 'skills')?.skills ?? 0,
       nuyen: b => row(b, 'resources')?.nuyen ?? 0,
-      // no metavariants (R: the S1 metatype format has none)
-      adjustmentPoints: b => (b.metatype && row(b, 'metatype')?.metatypes[b.metatype]) || 0,
+      // a metatype the table's row lists, else a metavariant at its own points for that letter (SWC's development table)
+      adjustmentPoints: b => (b.metatype && (row(b, 'metatype')?.metatypes[b.metatype] ?? letterPoints(b, data.metatypes[b.metatype]))) || 0,
       legalMetatypes: b => {
         const r = row(b, 'metatype')
-        return r ? Object.values(data.metatypes).filter(m => m.id in r.metatypes)
-          .map(m => ({ id: m.id, name: m.name, adjustmentPoints: r.metatypes[m.id] })).sort(byName) : []
+        return r ? Object.values(data.metatypes).filter(m => m.id in r.metatypes || letterPoints(b, m) !== undefined)
+          .map(m => ({ id: m.id, name: m.name, adjustmentPoints: r.metatypes[m.id] ?? letterPoints(b, m)! })).sort(byName) : []
       },
+      // a metavariant (one the table's row doesn't list) costs its karma out of the starting karma (SWC p. 91)
+      metatypeKarma: b => (b.metatype && row(b, 'metatype')?.metatypes[b.metatype] === undefined ? n(`metatypeKarma:${b.metatype}`) : 0),
       legalMagic: b => { const by = magicRow(b); return KINDS.filter(k => k in by || k === 'mundane').map(kind => ({ kind, rating: by[kind] ?? 0 })) },
       magicRating: b => magicRow(b)[b.magic] ?? 0,
     }
@@ -159,23 +166,32 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     return v
   }
   const start = (k: MagicKind) => (awakened(k) ? n(`lifepath.startRating:${k}`) : 0)
+  const contactPools = (b: Sr6Build) => modules(b).filter(m => m.grants.contactPoints).map(m => ({ types: m.contactTypes, points: m.grants.contactPoints! }))
   const allows = (k: MagicKind, req?: string) => {
     const f = MAGIC_KINDS[k]
     return !req || (req === 'awakened' ? f.spells || f.powers : req === 'emerged' ? f.resonance
       : req === 'adept' ? f.powers : req === 'magician' ? f.spells : true)
+  }
+  /** SWC p. 32 (Born This Way): an attribute whose metatype maximum is above attributeBaseMax starts at
+   *  lifepath.raisedAttributeStart, the others at 1; a runner neither awakened nor emerged gains lifepath.mundaneEdge */
+  const startBonus = (b: Sr6Build, k: Sr6Attr) => {
+    const m = data.metatypes[b.metatype], cap = num(cr, 'attributeBaseMax'), raised = num(cr, 'lifepath.raisedAttributeStart')
+    const max = m && k in m.ranges ? m.ranges[k as keyof Sr6MetatypeView['ranges']][1] : 0
+    return (raised !== undefined && cap !== undefined && max > cap ? raised - 1 : 0) + (k === 'edg' && !awakened(b.magic) ? n('lifepath.mundaneEdge') : 0)
   }
   /** the best attribute rises by lifepath.bestAttributeBonus up to its metatype maximum; what that leaves over goes on
    *  bestExtra */
   const best = (b: Sr6Build) => {
     const bonus = n('lifepath.bestAttributeBonus'), m = data.metatypes[b.metatype]
     const max = b.bestAttr && m && b.bestAttr in m.ranges ? m.ranges[b.bestAttr as keyof Sr6MetatypeView['ranges']][1] : Infinity
-    const up = b.bestAttr ? Math.max(0, Math.min(bonus, max - 1)) : 0
+    const up = b.bestAttr ? Math.max(0, Math.min(bonus, max - 1 - startBonus(b, b.bestAttr))) : 0
     return { up, over: b.bestAttr ? bonus - up : 0 }
   }
   return {
     ...base,
     lettersValid: () => true,
     attributeBonus: (b, k) => (k === b.bestAttr ? best(b).up : 0) + (k === b.bestExtra && b.bestExtra !== b.bestAttr ? best(b).over : 0),
+    startBonus,
     metatypeKarma: b => (b.metatype ? n(`metatypeKarma:${b.metatype}`) : 0),
     attributePoints: b => sum(b, 'attributePoints'),
     skillPoints: b => sum(b, 'skillPoints'),
@@ -184,8 +200,9 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     legalMetatypes: () => everyMetatype(0),
     legalMagic: () => everyKind(start),
     magicRating: b => start(b.magic),
+    contactPools,
     contactPoints: b => {
-      const pools = modules(b).filter(m => m.grants.contactPoints).map(m => ({ types: m.contactTypes, points: m.grants.contactPoints! }))
+      const pools = contactPools(b)
       const max = pools.reduce((s, x) => s + x.points, 0), need = contactSpend(b)
       const short = uncovered(pools, b.contacts.map(c => ({ types: c.types ?? [], need: c.connection + c.loyalty })))
       const price = num(cr, 'lifepath.contactKarma'), ratingCap = n('lifepath.contactRatingCap')

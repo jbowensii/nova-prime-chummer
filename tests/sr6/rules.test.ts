@@ -251,6 +251,19 @@ test('magic: overspent power points; a mystic adept buys no more than its priori
 })
 
 // contacts and knowledge
+test('lifepath: karma buys contact ratings only up to Charisma; above it the module points must pay', () => {
+  const ch = runner({ method: 'lifepath', metatype: GLIM })
+  ch.build.lifepath.push({ id: 'crb.street-sweeper', choices: {} })  // 3 contact points, any type
+  ch.build.attributes.cha.points = 1  // Charisma 2
+  ch.build.contacts.push({ uid: 'c1', name: 'Fixer', archetype: 'fixer', connection: 4, loyalty: 1 })  // 2 above Charisma
+  expect(codes(ch)).not.toContain('contact.karmaCap')  // the points pay for what's above it, karma the rest
+  ch.build.contacts.push({ uid: 'c2', name: 'Doc', archetype: 'doc', connection: 4, loyalty: 2 })  // 2 more above it: 4, 3 points
+  expect(only(ch, 'contact.karmaCap')[0].message).toMatch(/above your Charisma \(2\).*Fixer, Doc/)
+  ch.build.attributes.cha.points = 2  // Charisma 3: 2 above it, the points cover them
+  expect(codes(ch)).not.toContain('contact.karmaCap')
+  expect(codes(ch, { unset: ['lifepath.contactKarma'] })).not.toContain('contact.karmaCap')  // karma buys none at all then
+})
+
 test('contacts: a rating above Charisma and overspent points are flagged', () => {
   const ch = runner()
   ch.build.attributes.cha.points = 2 // CHA 3: 9 points, cap 3
