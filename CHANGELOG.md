@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.2 — 2026-10-04: every Shadowrun 6 book, Sixth World Companion and lifepath
 
 - **The Sixth World Companion can be imported** on Shadowrun 6 **Books** (it is now in the supported list). From your
   copy of the book the app reads its life modules (the three opening ones and the 86 adult choices and events, with
