@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.9.4 — 2026-10-05: one entry per book file, clearer import status, City Edition chapters
 
 - **Uploading a book again replaces its row instead of adding one** (Anarchy and Shadowrun 6 **Books**). If the file is
   the same PDF as a book already in the list (the very same file, whatever its name), that book is imported again in
