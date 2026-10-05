@@ -1,55 +1,45 @@
 // The printable SR6 sheet (#/sr6/c/<id>/print): the Anarchy print page's toolbar (Back, Print, Sheet type, Background)
 // and paper (src/print/sheet.css: its page-break rules, art veil and print styles) with the SR6 runner's blocks.
 // Browser "Save as PDF" makes the PDF. An NPC prints its header, its NPC block (NpcBlock.tsx), background and notes.
-import { PRINT_STYLES } from '../../ui/settings'
+// A runner's Book style and Neon sheets: BookSheet.tsx, NeonSheet.tsx (an NPC prints its block whatever the style).
+import { SR6_PRINT_STYLES } from '../../ui/settings'
 import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { HeaderBars } from '../../ui/nav'
 import { IconButton, IconLink } from '../../ui/icons'
-import { SheetType, useSheetArt } from '../../print/shared'
+import { SheetType, usePrintStyle, useSheetArt } from '../../print/shared'
 import '../../print/sheet.css'
 import './sheet.css'
 import { entryOf, priced } from '../engine/budgets'
-import { balances } from '../engine/career'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, type PickKind, type PurchaseKind, type Sr6Attr } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
 import { npcHeadline } from '../engine/npc'
 import { NpcBlock } from './NpcBlock'
+import { BookSheet } from './BookSheet'
+import { NeonSheet } from './NeonSheet'
+import { band, PICKS, runnerView } from './view'
 
-/** the SR6 sheet has no book-style layout: the two paper styles */
-const STYLES = PRINT_STYLES.filter(([v]) => v !== 'book')
-const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
-  ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
-const band = (v: number | null) => (v === null ? '—' : String(v))
 const boxes = (k: number | null, cls = '') => k === null ? <span className="s-small">— (a setting isn’t set)</span>
   : <div className="s-boxes sr6-boxes">{Array.from({ length: k }, (_, i) => <span key={i} className={cls} />)}</div>
 
 export function Sr6Sheet() {
-  const { ch, data, cr, d, career } = useSr6Editor()
-  const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic]
-  const name = ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner')
-  const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
-  const nameOf = (x: (typeof b.purchases)[number]) => entryOf(x, data)?.name ?? x.name ?? 'Custom item'
-  const rated = (x: (typeof b.purchases)[number]) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', ')
+  const ctx = useSr6Editor(), { ch, data, cr, d } = ctx
+  const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic], style = usePrintStyle()
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, karma, nuyen } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}</div>
   const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
   const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
-  const know = b.knowledge.filter(x => x.kind === 'knowledge'), langs = b.knowledge.filter(x => x.kind === 'language')
-  const gear = [...lines('electronics'), ...lines('programs'), ...lines('gear')]
-  const lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)
-  // career: the ledger's balances (the sheet already shows the runner as it stands)
-  const { karma, nuyen } = career ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
 
   return (
     <div className="sheet-wrap">
       <div className="sheet-tools"><HeaderBars>
         <IconLink icon="back" label="Back to editing" href={sr6Href(ch, ch.npc ? 'stats' : 'review')} />
         <IconButton className="primary" icon="print" label="Print or save as PDF" onClick={() => print()} />
-        <SheetType styles={STYLES} />
+        <SheetType styles={SR6_PRINT_STYLES} />
         {art.tools}
       </HeaderBars></div>
-      {ch.npc ? <article className="sheet sr6-sheet" style={art.vars}>
+      {!ch.npc && style === 'book' ? <BookSheet art={art} /> : !ch.npc && style === 'neon' ? <NeonSheet art={art} /> : ch.npc ? <article className="sheet sr6-sheet" style={art.vars}>
         {art.layer}
         <div className="s-top">
           <header className="s-head">

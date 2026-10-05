@@ -6,6 +6,12 @@ Shadowrun 6's example characters (the core rulebook's ten archetypes, Smooth Ope
 against their stat blocks, the way Anarchy's were in 0.5.4 and 0.5.6: an example character is what its book prints.
 Our own mistakes are fixed; what the book prints against the rules now shows on the runner's Review tab.
 
+**Printed sheets**
+- Shadowrun 6 runners print in two new styles (Sheet type, or Settings → Printed sheet): Book style, laid out like the
+  official character sheet's boxes over two pages (Edge as hexagons, damage tracks three boxes a row), and Neon, one
+  dense page for play with the best dice pools up front, in dark ink with cyan and pink accents. Anarchy's sheets are
+  unchanged; with Neon picked, an Anarchy runner prints Printer-friendly.
+
 **Review**
 - A book sample keeps the numbers its stat block prints: attributes (natural and augmented), Essence, initiative,
   condition monitors and Defense Rating. Where the rules give another, Review notes it with the book's page, such as

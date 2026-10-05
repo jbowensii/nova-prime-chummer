@@ -1,0 +1,33 @@
+// What every SR6 printed sheet (Sheet.tsx: Printer-friendly and Full color; BookSheet.tsx; NeonSheet.tsx) reads off the
+// runner: its name, purchase lines by kind, names and ratings, weapons split ranged/melee, languages and knowledge, gear,
+// lifestyle and the karma and nuyen left (career: the ledger's balances).
+import { entryOf } from '../engine/budgets'
+import { balances } from '../engine/career'
+import type { PickKind, PurchaseKind, Sr6Purchase } from '../model/character'
+import type { Sr6Ctx } from '../ui/editor'
+
+export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
+  ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
+export const band = (v: number | null) => (v === null ? '—' : String(v))
+export const AR_BANDS = ['Close', 'Near', 'Medium', 'Far', 'Extreme']
+
+export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'd' | 'career'>) {
+  const b = ch.build
+  const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
+  const nameOf = (x: Sr6Purchase) => entryOf(x, data)?.name ?? x.name ?? 'Custom item'
+  const attrsOf = (x: Sr6Purchase) => entryOf(x, data)?.attrs ?? {}
+  // a weapon with modes or ammo shoots; the rest (blades, clubs, unarmed extras) are melee
+  const ranged = (x: Sr6Purchase) => { const a = attrsOf(x); return !!(a.modes || a.ammo) }
+  const { karma, nuyen } = career ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
+  return {
+    name: ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner'),
+    lines, nameOf, attrsOf,
+    rated: (x: Sr6Purchase) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', '),
+    bands: (x: Sr6Purchase) => d.attackRatings.weapons.find(a => a.uid === x.uid)?.bands ?? [null, null, null, null, null],
+    rangedWeapons: lines('weapons').filter(ranged), meleeWeapons: lines('weapons').filter(x => !ranged(x)),
+    know: b.knowledge.filter(x => x.kind === 'knowledge'), langs: b.knowledge.filter(x => x.kind === 'language'),
+    gear: [...lines('electronics'), ...lines('programs'), ...lines('gear')],
+    lifestyle: b.lifestyle && data.entry('lifestyles', b.lifestyle.id),
+    karma, nuyen,
+  }
+}
