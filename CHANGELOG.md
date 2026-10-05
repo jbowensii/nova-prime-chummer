@@ -1,5 +1,15 @@
 # Release notes
 
+## Unreleased (next build)
+
+- Shadowrun 6 runners print in two more styles (Sheet type, or Settings → Printed sheet), for six in all: Hex, one page
+  with the attributes and the damage tracks as hexagons (the tracks on a dark band, boxes past the runner's monitor
+  blacked out), every skill as [rank] [pool], core combat, qualities and a blank Edge panel by cost; and Dossier, rounded
+  panels under magenta title bars over up to two pages (personal data, Edge and nuyen, portrait, attributes, positive and
+  negative qualities, condition monitor, skills, weapons, armor, then augmentations, gear, contacts, IDs, magic and
+  vehicles), printed with the date and page number at the foot. Anarchy's sheets are unchanged; with Hex or Dossier
+  picked, an Anarchy runner prints Printer-friendly.
+
 ## 0.9.10 — 2026-10-05: softer neon, pink as a highlight, Review notes only for what a runner uses
 
 - **A runner's Review lists only the catalog problems it is touched by.** A book's unreadable number or a metatype trait

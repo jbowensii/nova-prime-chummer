@@ -13,7 +13,7 @@ import { Modal } from './bits'
  *  strength (print/shared.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
 /** sr6SheetArt / sr6SheetArtPrint / sr6SheetArtStrength: the same three for Shadowrun 6's sheets, kept apart from Anarchy's
  *  (each game has its own art; print/shared.tsx useSheetArt) */
-export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book' | 'neon'; art: 'on' | 'off'; artStrength: number
+export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book' | 'neon' | 'hex' | 'dossier'; art: 'on' | 'off'; artStrength: number
   sheetArt: 'on' | 'off'; sheetArtPrint: 'on' | 'off'; sheetArtStrength?: number
   sr6SheetArt?: 'on' | 'off'; sr6SheetArtPrint?: 'on' | 'off'; sr6SheetArtStrength?: number }
 const KEY = 'ca2.settings.v1'
@@ -44,10 +44,13 @@ export function saveSettings(s: Settings) {
 
 /** The printed sheet's styles: here and on the print page's toolbar (print/shared.tsx SheetType). */
 export const PRINT_STYLES: [Settings['print'], string, string][] = [['plain', 'Printer-friendly', 'Book styling on white, no textures.'], ['color', 'Full color', 'Paper and paint, like a page from the PDF.'], ['book', 'Book style', 'Laid out like the rulebook’s example sheet.']]
-/** Shadowrun 6's: the two paper styles, its own Book style (the official sheet's boxes) and Neon (one dense page for play).
- *  Anarchy has no Neon: its print page shows Printer-friendly for it (EditorView PrintSheet). */
+/** Shadowrun 6's: the two paper styles, its own Book style (the official sheet's boxes), Neon (one dense page for play),
+ *  Hex (one page, attributes and tracks as hexagons) and Dossier (rounded panels under magenta bars, up to two pages).
+ *  Anarchy has none of the last three: its print page shows Printer-friendly for them (EditorView PrintSheet). */
 export const SR6_PRINT_STYLES: typeof PRINT_STYLES = [...PRINT_STYLES.slice(0, 2), ['book', 'Book style', 'Laid out like the official character sheet.'],
-  ['neon', 'Neon', 'One dense page for play: dark ink, cyan and pink accents.']]
+  ['neon', 'Neon', 'One dense page for play: dark ink, cyan and pink accents.'],
+  ['hex', 'Hex', 'One page: attributes and damage tracks as hexagons, hatched titles.'],
+  ['dossier', 'Dossier', 'Rounded panels under magenta title bars, up to two pages.']]
 
 const GROUPS: { key: keyof Settings; label: string; options: [string, string, string][] }[] = [
   { key: 'theme', label: 'Theme', options: [['light', 'Book (light)', 'The printed page: paper, ink, rust and yellow.'], ['dark', 'Indigo (dark)', 'The book’s sidebar colors as a dark page.']] },

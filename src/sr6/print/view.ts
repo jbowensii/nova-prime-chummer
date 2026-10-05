@@ -1,15 +1,21 @@
-// What every SR6 printed sheet (Sheet.tsx: Printer-friendly and Full color; BookSheet.tsx; NeonSheet.tsx) reads off the
-// runner: its name, purchase lines by kind, names and ratings, weapons split ranged/melee, languages and knowledge, gear,
-// lifestyle and the karma and nuyen left (career: the ledger's balances).
+// What every SR6 printed sheet (Sheet.tsx: Printer-friendly and Full color; BookSheet.tsx; NeonSheet.tsx; HexSheet.tsx;
+// DossierSheet.tsx) reads off the runner: its name, purchase lines by kind, names and ratings, weapons split ranged/melee,
+// every skill, languages and knowledge, gear, lifestyle and the karma and nuyen left (career: the ledger's balances).
 import { entryOf } from '../engine/budgets'
 import { balances } from '../engine/career'
 import type { PickKind, PurchaseKind, Sr6Purchase } from '../model/character'
+import type { Sr6Data } from '../engine/data'
+import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
 
 export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
   ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
 export const band = (v: number | null) => (v === null ? '—' : String(v))
 export const AR_BANDS = ['Close', 'Near', 'Medium', 'Far', 'Extreme']
+/** every catalog skill by name: the runner's pools, the rest at rank 0 (no pool where it can't be rolled untrained) */
+export const allSkills = (d: Sr6Derived, data: Sr6Data): (Omit<Sr6Pool, 'dp'> & { dp?: number })[] => [...d.pools,
+  ...Object.values(data.skills).filter(s => !d.pools.some(p => p.skill === s.id)).map(s => ({ skill: s.id, label: s.name, rank: 0, attr: s.attr }))]
+  .sort((x, y) => x.label.localeCompare(y.label))
 
 export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'd' | 'career'>) {
   const b = ch.build
