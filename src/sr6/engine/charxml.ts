@@ -4,7 +4,7 @@
 import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../engine/charxml'
 import { BACKDROPS, type Backdrop } from '../../model/types'
 import {
-  BONUS_TARGETS, CONTACT_TYPES, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
+  BONUS_TARGETS, CONTACT_TYPES, CORE_ATTRS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
   SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
   type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
   type Sr6Npc, type Sr6Pick, type Sr6Purchase, type Sr6Quality,
@@ -158,7 +158,7 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   Object.assign(out, def({ aspectedSkill: str(b, 'aspectedSkill'), tradition: str(b, 'tradition'),
     drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix),
     ...Object.fromEntries((['bestAttr', 'bestExtra'] as const).map(k => [k, b.getAttribute(k) == null ? undefined
-      : oneOf(b.getAttribute(k), SR6_ATTRS, 'best attribute', undefined, fix)])) }))
+      : oneOf(b.getAttribute(k), CORE_ATTRS, 'best attribute', undefined, fix)])) }))
   for (const k of ['powerPointsBought', 'initiation', 'submersion', 'karmaToNuyen'] as const) out[k] = num(b, k, 0)
   each(kids(b, 'priority'), e => {
     const l = e.getAttribute('letter')

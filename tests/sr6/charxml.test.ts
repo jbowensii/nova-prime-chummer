@@ -108,6 +108,18 @@ test('missing numbers read as 0; an unknown method or magic is refused, or repai
   expect(fix).toEqual([expect.stringContaining('“freeform”'), expect.stringContaining('“dragon”')])
 })
 
+test('the best attribute is a core one: Edge, Magic or Resonance is refused, or repaired away with a note', async () => {
+  const root = (build: string) => `<sr6:character xmlns:sr6="${SR6_CHAR_NS}" formatVersion="1" id="m" updatedAt="x"><build method="lifepath" magic="mundane" ${build}/></sr6:character>`
+  expect(xmlToSr6(root('bestAttr="mag"'))).toEqual({ ok: false, reason: expect.stringContaining('“mag”') })
+  const fix: string[] = []
+  const f = xmlToSr6(root('bestAttr="str" bestExtra="edg"'), { repair: fix })
+  expect(f.ok && [f.character.build.bestAttr, f.character.build.bestExtra]).toEqual(['str', undefined])
+  expect(fix).toEqual([expect.stringContaining('“edg”')])
+  const blank = sr6ToXml(blankSr6('lifepath', 'b-1', '2026-10-03T10:00:00.000Z'))
+  expect(await valid(blank.replace('<build ', '<build bestAttr="str" '))).toEqual([])
+  expect(await valid(blank.replace('<build ', '<build bestAttr="res" '))).not.toEqual([])
+})
+
 test('each game refuses the other’s runner, saying where it belongs', () => {
   expect(xmlToSr6(CA2)).toEqual({ ok: false, reason: 'This is a Shadowrun Anarchy runner. Import it on the Anarchy side.' })
   expect(xmlToCharacter(sr6ToXml(full()))).toEqual({ ok: false, reason: 'This is a Shadowrun 6 runner. Import it on the Shadowrun 6 side.' })

@@ -60,6 +60,11 @@
     <xs:enumeration value="wil"/><xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
     <xs:enumeration value="edg"/><xs:enumeration value="mag"/><xs:enumeration value="res"/>
   </xs:restriction></xs:simpleType>
+  <!-- the core attributes (lifepath's best attribute: never Edge, Magic or Resonance) -->
+  <xs:simpleType name="CoreAttr"><xs:restriction base="c:Attr">
+    <xs:enumeration value="bod"/><xs:enumeration value="agi"/><xs:enumeration value="rea"/><xs:enumeration value="str"/>
+    <xs:enumeration value="wil"/><xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
+  </xs:restriction></xs:simpleType>
   <xs:simpleType name="Count"><xs:restriction base="xs:nonNegativeInteger"/></xs:simpleType>
 
   <xs:complexType name="Build">
@@ -173,8 +178,8 @@
     <xs:attribute name="submersion" type="c:Count"/>
     <xs:attribute name="karmaToNuyen" type="c:Count"/>
     <!-- lifepath: the best attribute, and the one that takes what its maximum leaves over -->
-    <xs:attribute name="bestAttr" type="c:Attr"/>
-    <xs:attribute name="bestExtra" type="c:Attr"/>
+    <xs:attribute name="bestAttr" type="c:CoreAttr"/>
+    <xs:attribute name="bestExtra" type="c:CoreAttr"/>
   </xs:complexType>
 
   <!-- a knowledge skill or language, its name as the text; native: the free native language -->
