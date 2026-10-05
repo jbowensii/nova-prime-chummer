@@ -519,3 +519,21 @@ test('a failed save on import says why, on Your runners and on NPCs & Critters',
   await page.locator('input[type=file]').setInputFiles(file('goon.xml', 'tests/fixtures/sr6/npc-grunt.xml', 'fail-npc-1'))
   await expect(page.getByRole('status').filter({ hasText: 'goon.xml: the disk is full (test)' })).toBeVisible()
 })
+
+test('an NPC imported before the list loads, its id already taken, saves under a new id', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'gil')
+  const xml = readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8').replace(/ id="[^"]+"/, ' id="npc-twice-1"').replace('Corner Goon', 'Made-up Twice')
+  expect((await page.request.put('/api/sr6/npcs/npc-twice-1', { data: xml, headers: { 'Content-Type': 'application/xml', ...ORIGIN() } })).ok()).toBe(true)
+  let release!: () => void
+  const held = new Promise<void>(r => { release = r })
+  const hold = async (r: Route) => { if (r.request().method() === 'GET') await held; await r.fallback() }
+  await page.route(u => u.pathname.endsWith('/api/sr6/npcs'), hold)
+  await page.goto('/#/sr6/npcs')
+  await expect(page.getByText('Loading NPCs…')).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles(xmlFile('twice.xml', xml))
+  await expect(page.getByRole('status').filter({ hasText: 'Imported Made-up Twice.' })).toBeVisible()
+  release()
+  const twice = (await (await page.request.get('/api/sr6/npcs')).json()).filter((r: { xml: string }) => r.xml.includes('Made-up Twice'))
+  expect(twice).toHaveLength(2)
+  await page.unroute(u => u.pathname.endsWith('/api/sr6/npcs'))
+})

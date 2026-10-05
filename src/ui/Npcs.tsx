@@ -17,7 +17,7 @@ import { editHref } from './editor'
 import { downloadRunners, ExportRunnersDialog } from './Foundry'
 import { arrange, exportCharacter, FindDuplicates, ownerGroups, type SortBy } from './Library'
 import { Face } from './Portrait'
-import { npcRepoFor, useRepo, type Stored, type Unreadable } from './repo'
+import { npcRepoFor, saveAsNew, useRepo, type Stored, type Unreadable } from './repo'
 import { bookNpcs, readCharacterFile, readSample } from './samples'
 import { loadTrash } from './Trash'
 
@@ -115,9 +115,10 @@ export function NpcsScreen({ c, section = 'npcs' }: { c: Catalog; section?: Sect
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
       if (!r.character.npc) { bad.push(`${f.name}: this is a runner, not an NPC (it has no NPC block). Import it on Your runners.`); continue }
       // an NPC has no career: a finalized runner's ledger never comes along
-      const ch = { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id, campaign: undefined, finalizedAt: undefined,
-        finalRemaining: undefined, carry: undefined, career: [], lastExportedAt: new Date().toISOString() }
-      const err = await saveError(ch) // the summary below replaces the message: a failed save goes in it
+      // its id taken after all (the list hadn't loaded yet): saved under a new one
+      const { ch, r: saved } = await saveAsNew(x => repo.save(x), { ...r.character, id: have.has(r.character.id) ? newId() : r.character.id,
+        campaign: undefined, finalizedAt: undefined, finalRemaining: undefined, carry: undefined, career: [], lastExportedAt: new Date().toISOString() }, newId)
+      const err = saved.ok ? null : saved.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.` // the summary below replaces the message
       if (err) bad.push(`${f.name}: ${err}`); else { done.push(nameOf(ch)); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))

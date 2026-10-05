@@ -45,8 +45,8 @@
 - **More months of the same lifestyle add up.** A Lifestyle spend on the Shadowrun 6 Ledger for the lifestyle the
   runner has adds its months (3 months, then 2 more: 5); another lifestyle replaces it.
 - **An accessory's rating can be changed in place** on a Shadowrun 6 runner (and its grade, where it takes one).
-- **Importing a runner right after opening the list** no longer fails with "changed elsewhere" when its id is taken:
-  the copy gets a new id (both games).
+- **Importing a runner or an NPC right after opening the list** no longer fails with "changed elsewhere" when its id is
+  taken: the copy gets a new id (both games, Your runners and NPCs & Critters).
 - **Players' runners can use the GMs' compendiums** (both games, each game's own). A compendium shared with the table
   is offered to every player's runners; one shared with a campaign, to the runners in that campaign. Private ones stay
   with their GM. In the pickers a compendium's entries carry a **House** chip with the compendium's name.

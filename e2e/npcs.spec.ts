@@ -177,6 +177,24 @@ test('a failed save on import says why, on NPCs & Critters and on Your runners',
   await expect(page.getByRole('status')).toHaveText('runner.xml: the disk is full (test)')
 })
 
+test('an NPC imported before the list loads, its id already taken, saves under a new id', async ({ page }) => {
+  await signIn(page, 'eve')
+  const file = { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-twice-1')) }
+  expect((await page.request.fetch(`${base}api/npcs/npc-twice-1`, { method: 'PUT', data: file.buffer.toString(), headers: { 'Content-Type': 'application/xml', Origin: origin } })).ok()).toBe(true)
+  let release!: () => void
+  const held = new Promise<void>(r => { release = r })
+  const hold = async (r: Route) => { if (r.request().method() === 'GET') await held; await r.fallback() }
+  await page.route(u => u.pathname.endsWith('/api/npcs'), hold)
+  await page.goto('/#/npcs')
+  await expect(page.getByText('Loading NPCs…')).toBeVisible()
+  await page.locator('input[type=file]').setInputFiles(file)
+  await expect(page.getByRole('status')).toHaveText('Imported Made-up Wisp.')
+  release()
+  const wisps = (await (await api(page, 'GET', 'npcs')).json()).filter((r: { xml: string }) => r.xml.includes('Made-up Wisp'))
+  expect(wisps).toHaveLength(2)
+  await page.unroute(u => u.pathname.endsWith('/api/npcs'))
+})
+
 test('share with a campaign: its co-GM reads and prints it; unshare', async ({ page }) => {
   await signIn(page, 'eve')
   const camp = await (await api(page, 'POST', 'campaigns', { name: 'Made-up Run', note: '' })).json()

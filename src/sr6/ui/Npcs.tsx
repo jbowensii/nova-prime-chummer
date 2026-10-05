@@ -20,7 +20,8 @@ import { arrange, ownerGroups, type SortBy } from '../../ui/Library'
 import { PageHeader } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
 import type { Stored as StoredComp } from '../../ui/compendiumStore'
-import type { Stored, Unreadable } from '../../ui/repo'
+import { newId } from '../../model/types'
+import { saveAsNew, type Stored, type Unreadable } from '../../ui/repo'
 import { unedited } from '../../ui/samples'
 import { loadTrash } from '../../ui/Trash'
 import type { CreationRules } from '../engine/creation'
@@ -177,8 +178,10 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
     for (const f of picked) {
       const r = readSr6NpcImport(await f.text(), have)
       if (!r.ok) { bad.push(`${f.name}: ${r.reason}`); continue }
-      const err = await saveError(r.ch) // the summary below replaces the message: a failed save goes in it
-      if (err) bad.push(`${f.name}: ${err}`); else { done.push(nameOf(r.ch)); have.add(r.ch.id) }
+      // its id taken after all (the list hadn't loaded yet): saved under a new one
+      const { ch, r: saved } = await saveAsNew(x => repo.save(x), r.ch, newId)
+      const err = saved.ok ? null : saved.error ?? `${nameOf(ch)} changed elsewhere; open it to sort it out.` // the summary below replaces the message
+      if (err) bad.push(`${f.name}: ${err}`); else { done.push(nameOf(ch)); have.add(ch.id) }
     }
     setMsg([done.length ? `Imported ${done.join(', ')}.` : '', ...bad].filter(Boolean).join(' '))
     void refresh()

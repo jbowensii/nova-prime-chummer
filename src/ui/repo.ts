@@ -14,7 +14,7 @@ export type SaveResult =
   | { ok: true; rev?: number; file?: string }
   | { ok: false; conflict?: { rev: number; file: string; updatedAt?: string }; error?: string }
 /** An imported file saved as new: when its id turns out taken after all (the list hadn't loaded yet, or another tab saved
- *  one), once more under a fresh id. Both games' runner lists. */
+ *  one), once more under a fresh id. Both games' runner and NPC lists. */
 export async function saveAsNew<T extends { id: string }>(save: (ch: T) => Promise<SaveResult>, ch: T, freshId: () => string): Promise<{ ch: T; r: SaveResult }> {
   const r = await save(ch)
   if (r.ok || !r.conflict) return { ch, r }
