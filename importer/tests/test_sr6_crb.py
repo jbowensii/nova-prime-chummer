@@ -550,7 +550,8 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual([(k, t[k].get("cost"), t[k].get("capacity")) for k in ("Tail (synthetic)", "Tail (obvious)")],
                          [("Tail (synthetic)", "9000", "3"), ("Tail (obvious)", "7000", "6")])
         self.assertEqual(entries(self.res, "vehicles")["Zoom Bike"].get("category"), "cars")
-        for v in ("Capacity x 70", "Rating^2 x 100", "(Force +3) L", "+500", "(Rating/3)(L)", "100 + (rating x 10)", "—"):
+        for v in ("Capacity x 70", "Rating^2 x 100", "(Force +3) L", "+500", "(Rating/3)(L)", "100 + (rating x 10)", "—",
+                  "Rating x .3"):
             self.assertTrue(crb.readable(v), v)
         for v in ("12x", "900 + Gizmo", "300/350", "10–900", "Rating^"):
             self.assertFalse(crb.readable(v), v)

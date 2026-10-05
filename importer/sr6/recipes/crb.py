@@ -209,7 +209,7 @@ def readable(v):
     if v.strip() in ("", "—"):
         return True
     s = _VAR.sub(" R ", _LEGAL.sub("", v).strip().lstrip("+"))
-    toks = re.findall(r"\d+(?:\.\d+)?|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
+    toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
     if "/" in toks and "R" not in toks:
         return False  # `300/350`: two prices, not a division
     pos = [0]
@@ -224,7 +224,7 @@ def readable(v):
             ok = expr() and peek() == ")"
             pos[0] += 1
             return ok
-        return t == "R" or bool(t and re.fullmatch(r"\d+(?:\.\d+)?", t))
+        return t == "R" or bool(t and re.fullmatch(r"\d+(?:\.\d+)?|\.\d+", t))
 
     def power():
         ok = factor()

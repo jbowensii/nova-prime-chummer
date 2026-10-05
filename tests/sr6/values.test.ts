@@ -9,6 +9,7 @@ test('rated reads plain numbers, Rating formulas and add-ons; avail suffixes are
   expect(rated('Rating × 500', 3)).toEqual({ n: 1500, ok: true })
   expect(rated('500 × Rating', 3)).toEqual({ n: 1500, ok: true })
   expect(rated('Rating x 0.1', 3).n).toBeCloseTo(0.3)
+  expect(rated('Rating x .3', 2).n).toBeCloseTo(0.6) // the book drops the leading 0
   expect(rated('Rating * 7', 2)).toEqual({ n: 14, ok: true })
   expect(rated('(Rating × 2) + 1', 2)).toEqual({ n: 5, ok: true })
   expect(rated('Rating + 3', 2)).toEqual({ n: 5, ok: true })
