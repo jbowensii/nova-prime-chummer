@@ -13,7 +13,7 @@ import { Modal } from './bits'
  *  strength (print/shared.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
 /** sr6SheetArt / sr6SheetArtPrint / sr6SheetArtStrength: the same three for Shadowrun 6's sheets, kept apart from Anarchy's
  *  (each game has its own art; print/shared.tsx useSheetArt) */
-export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book'; art: 'on' | 'off'; artStrength: number
+export interface Settings { theme: 'light' | 'dark'; texture: 'flat' | 'accents' | 'full'; print: 'plain' | 'color' | 'book' | 'neon'; art: 'on' | 'off'; artStrength: number
   sheetArt: 'on' | 'off'; sheetArtPrint: 'on' | 'off'; sheetArtStrength?: number
   sr6SheetArt?: 'on' | 'off'; sr6SheetArtPrint?: 'on' | 'off'; sr6SheetArtStrength?: number }
 const KEY = 'ca2.settings.v1'
@@ -44,6 +44,10 @@ export function saveSettings(s: Settings) {
 
 /** The printed sheet's styles: here and on the print page's toolbar (print/shared.tsx SheetType). */
 export const PRINT_STYLES: [Settings['print'], string, string][] = [['plain', 'Printer-friendly', 'Book styling on white, no textures.'], ['color', 'Full color', 'Paper and paint, like a page from the PDF.'], ['book', 'Book style', 'Laid out like the rulebook’s example sheet.']]
+/** Shadowrun 6's: the two paper styles, its own Book style (the official sheet's boxes) and Neon (one dense page for play).
+ *  Anarchy has no Neon: its print page shows Printer-friendly for it (EditorView PrintSheet). */
+export const SR6_PRINT_STYLES: typeof PRINT_STYLES = [...PRINT_STYLES.slice(0, 2), ['book', 'Book style', 'Laid out like the official character sheet.'],
+  ['neon', 'Neon', 'One dense page for play: dark ink, cyan and pink accents.']]
 
 const GROUPS: { key: keyof Settings; label: string; options: [string, string, string][] }[] = [
   { key: 'theme', label: 'Theme', options: [['light', 'Book (light)', 'The printed page: paper, ink, rust and yellow.'], ['dark', 'Indigo (dark)', 'The book’s sidebar colors as a dark page.']] },
@@ -55,21 +59,21 @@ const GROUPS: { key: keyof Settings; label: string; options: [string, string, st
 export function SettingsButton() {
   const [open, setOpen] = useState(false)
   const [s, setS] = useState(loadSettings)
-  const me = useMe(), admin = isAdmin(me)
+  const me = useMe(), admin = isAdmin(me), sr6 = /^#\/sr6(\/|$)/.test(location.hash)
   const set = (k: keyof Settings, v: string | number) => { const next = { ...loadSettings(), [k]: v } as Settings; // fresh: the sheet saves its own settings too
     setS(next); saveSettings(next) }
   return (
     <>
-      <IconButton icon="settings" label="Settings" onClick={() => setOpen(true)} />
+      <IconButton icon="settings" label="Settings" onClick={() => { setS(loadSettings()); setOpen(true) /* fresh: the print page sets the sheet type too */ }} />
       <Modal open={open} onClose={() => setOpen(false)} title="Settings">
         <div className="settings">
-          {GROUPS.filter(g => g.key !== 'art' || me).map(g => ( /* background art: a server's */
+          {GROUPS.filter(g => g.key !== 'art' || me).map(g => g.key === 'print' && sr6 ? { ...g, options: SR6_PRINT_STYLES } : g).map(g => ( /* background art: a server's */
             <fieldset key={g.key}>
               <legend>{g.label}</legend>
               <div className="choices">
                 {g.options.map(([value, label, hint]) => (
                   <label key={value} title={hint}>
-                    <input type="radio" name={g.key} value={value} checked={s[g.key] === value} onChange={() => set(g.key, value)} />
+                    <input type="radio" name={g.key} value={value} checked={(g.key === 'print' && !g.options.some(([v]) => v === s.print) ? 'plain' : s[g.key]) === value} onChange={() => set(g.key, value)} />
                     {label}
                   </label>
                 ))}
@@ -87,7 +91,7 @@ export function SettingsButton() {
             <p className="muted">The AI provider and keys the importer uses for books its recipes can’t read.</p>
             <a className="btn" href="#/books/ai" onClick={() => setOpen(false)}>Open AI settings</a></fieldset>}
           {/* the gallery of the game this page is in (#/sr6…: Shadowrun 6's own set) */}
-          {me?.role === 'admin' && <BackgroundSettings game={/^#\/sr6(\/|$)/.test(location.hash) ? 'sr6' : 'ca2'} />}
+          {me?.role === 'admin' && <BackgroundSettings game={sr6 ? 'sr6' : 'ca2'} />}
           {admin && <SignInSettings />}
           {admin && <BackupSettings />}
         </div>

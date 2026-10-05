@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.9.9 — 2026-10-05: two new Shadowrun 6 character sheets
+
+- Shadowrun 6 runners print in two new styles (Sheet type, or Settings → Printed sheet): Book style, laid out like the
+  official character sheet's boxes over two pages (Edge as hexagons, damage tracks three boxes a row), and Neon, one
+  dense page for play with the best dice pools up front, in dark ink with cyan and pink accents. Anarchy's sheets are
+  unchanged; with Neon picked, an Anarchy runner prints Printer-friendly.
+- Settings shows the printed sheet style you last picked, even when you changed it on the print page.
+
 ## 0.9.8 — 2026-10-05: rules contents, example characters checked, circuit board as default art
 
 Shadowrun 6's example characters (the core rulebook's ten archetypes, Smooth Operations' six faces) were checked
