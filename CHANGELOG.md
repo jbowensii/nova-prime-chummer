@@ -1,5 +1,12 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **An adept gets a power point for every point of Magic, raised Magic included** (CRB p.157). Power points came only
+  from the priority's Magic, so an adept who raised Magic with adjustment points or karma read as overspent; the
+  importer's priority fit counts them the same way. The core rulebook's Adept now has no rule problems (import the core
+  rulebook again to get it).
+
 ## 0.9.10 — 2026-10-05: softer neon, pink as a highlight, Review notes only for what a runner uses
 
 - **A runner's Review lists only the catalog problems it is touched by.** A book's unreadable number or a metatype trait

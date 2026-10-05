@@ -140,11 +140,17 @@ test('the priority Magic, not the adjusted rating, sets the allotment', () => {
   expect(budgets(b).spellSlots.max).toBe(12)
 })
 
-test('an adept gets power points equal to priority Magic; a leveled power costs per level', () => {
+test('an adept gets power points equal to Magic, raised Magic included (CRB p.157); a leveled power costs per level', () => {
   const b = runner({ magic: 'adept' }) // magic B: adept 5
   pick(b, 'adeptpowers', 'crb.quick-step', { level: 3 })
   expect(budgets(b).powerPoints).toEqual({ max: 5, spent: 0.75, left: 4.25, cap: 5 })
   expect(budgets(b).karma.spent).toBe(0)
+})
+test('Magic raised with adjustment points or karma raises an adept’s power points too', () => {
+  const b = runner({ magic: 'adept' }) // magic B: adept 5
+  b.attributes.mag.adjust = 1
+  b.attributes.mag.karma = 1
+  expect(budgets(b).powerPoints).toMatchObject({ max: 7, cap: 7 })
 })
 
 test('a mystic adept splits its Magic between power points and spells; a technomancer gets forms', () => {

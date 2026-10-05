@@ -152,7 +152,7 @@ def spend(need, rows, cs):
     to_nuyen = math.ceil(short / rate) if short > 0 and rate else 0
     karma += to_nuyen
     over = max(0.0, karma - n("startingKarma") - need["neg"])
-    pp_over = max(0.0, need["pp"] - rating) if kind == "adept" else 0.0
+    pp_over = max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
     gap = abs(left - need["left"]) if need["left"] is not None else 0
     return (pp_over, over, gap), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,

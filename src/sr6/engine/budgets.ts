@@ -186,10 +186,11 @@ export function essenceBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules): Sr
   return { ...pool(n0(cr, 'essence'), spent), left: round2(n0(cr, 'essence') - spent), magicLoss: Math.ceil(spent - 1e-9) }
 }
 
-/** An adept's power points are its priority Magic; a mystic adept's are the ones it bought (capped by that Magic); in
- *  point buy they're bought with character points. A leveled power costs per level. */
+/** An adept's power points are its Magic: one per point, the priority's and any raised with adjustment points or karma
+ *  (CRB p.157); a mystic adept's are the ones it bought (capped by that Magic); in point buy they're bought with
+ *  character points. A leveled power costs per level. */
 export function powerPoints(b: Sr6Build, data: Sr6Data, p: Provider): Sr6Budgets['powerPoints'] {
-  const k = MAGIC_KINDS[b.magic], rating = p.magicRating(b)
+  const k = MAGIC_KINDS[b.magic], rating = attrRating(b, 'mag', p)
   const max = !k.powers ? 0 : b.method === 'pointbuy' ? b.cp.powerPoints : k.paysPowers ? b.powerPointsBought : rating
   const spent = round2(b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => {
     const v = data.powers[x.id]
