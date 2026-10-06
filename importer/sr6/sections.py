@@ -33,6 +33,7 @@ HEADING_KINDS = [
 ]
 # kind -> the words of a heading (the block's own or its parent's) whose bold run-ins are its entries
 RUNIN_KINDS = [
+    ("gear", re.compile(r"\bfoci\b", re.I)),  # `Enchanting Foci`: its kinds of focus, priced as the `Enchanting focus` row
     ("echoes", re.compile(r"\bechoes\b", re.I)),
     ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
@@ -233,6 +234,8 @@ class Reader:
                 name, attrs = _action_attrs(name, chain, "", para)
             if kind == "programs":
                 attrs = {"type": program_type(chain[-1] if chain else "")}
+            if kind == "gear":  # a kind of the class its heading names: priced as that class's row
+                attrs = {"category": "foci", "_class": class_row(chain[-1] if chain else "")}
             if kind == "qualities":
                 attrs = quality_attrs(name, chain, para)
                 name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
@@ -346,6 +349,17 @@ def step_qualities(b, page, path):
         if attrs:
             out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
     return out
+
+
+def class_row(heading):
+    """The row a heading over kinds of one class names (`Enchanting Foci` -> `Enchanting focus`)."""
+    words = heading.split()
+    if not words:
+        return ""
+    last = words[-1]
+    one = "focus" if last.lower() == "foci" else last[:-3] + "y" if last.lower().endswith("ies") else \
+        last[:-1] if last.lower().endswith("s") else last
+    return " ".join(words[:-1] + [one.lower()])
 
 
 def program_type(heading):

@@ -206,6 +206,26 @@ This negative quality hurts.
                           "Sore Feet": ("negative", "5")})
         self.assertNotIn("Starting point", q)
 
+    def test_kinds_of_a_class_priced_by_its_row(self):
+        md = """<!-- page 155 -->
+# MAGIC
+## Foci
+#### Glow Foci
+**Bright focus:** A bright focus glows.
+**Dim focus:** A dim focus barely glows.
+#### Odd Foci
+**Odd focus:** No row prices it.
+# GEAR
+#### foci
+| ITEM | AVAIL | COST |
+|---|---|---|
+| Glow focus | (Force) L | Force x 500¥ |
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        g = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["gear.xml"])}
+        self.assertEqual((g["Bright focus"]["cost"], g["Dim focus"]["avail"]), ("Force x 500", "(Force) L"))
+        self.assertNotIn("Odd focus", g)
+
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}
         self.assertIn("Fizz Probe", rules)

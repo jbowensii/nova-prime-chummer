@@ -336,6 +336,12 @@ class _Catalog:
             self.pending = []
         if f.kind == "qualities" and a.get("karma") is not None:
             a["karma"] = int(a["karma"])
+        cls = a.pop("_class", None)
+        if cls:  # a kind of a class the book prices by one row (`Enchanting focus`): that row's price
+            row = next((e for e in self.entries[f.kind] if norm(e["name"]) == norm(cls)), None)
+            if row is None:
+                return
+            a.update({k: row["attrs"][k] for k in ("rating", "karma", "avail", "cost") if row["attrs"].get(k)})
         self.add(f.kind, f.name, f.page, a, f.children, f.text)
 
     def check(self, kind, name, attrs, page):
