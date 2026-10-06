@@ -15,7 +15,7 @@ export const SR6_NS = 'urn:chummer-sr6:data:1'
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
 const KINDS = new Set(Object.keys(SR6_KINDS))
 const OWN = new Set(['id', 'source', 'page'])
-const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue', 'found']) // (<found>: the importer's provenance note, not a part)
+const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue', 'found', 'alias']) // (<found>, <alias>: the importer's notes, not parts)
 const SHIPPED = 'data/sr6/'
 const CUSTOM = 'custom/sr6/'
 

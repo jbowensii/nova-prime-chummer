@@ -506,7 +506,8 @@ def corpus(books, sources=None, apply_errata=True):
         for el in tree.getroot():
             if isinstance(el.tag, str) and el.get("id") is not None:
                 entries.append((b, src, kind, el, path))
-                by_name.setdefault((kind, norm(el.findtext("name") or "")), []).append((b, src, el))
+                for n in dict.fromkeys([el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias")]):
+                    by_name.setdefault((kind, norm(n)), []).append((b, src, el))
     changed, n = set(), {"corpus": 0, "errata": 0, "searched": 0}
     if apply_errata:
         _apply_errata(bs, entries, changed, n)

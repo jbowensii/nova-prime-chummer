@@ -73,6 +73,8 @@
         <xs:element name="formula" type="sr6:Formula"/>
         <xs:element name="issue" type="sr6:Issue"/>
         <xs:element name="found" type="sr6:Found"/>
+        <!-- another name the book prints the item under (a table row's shorter name, its description heading's) -->
+        <xs:element name="alias" type="xs:string"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>

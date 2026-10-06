@@ -36,6 +36,7 @@ class Block:
     labels: dict = field(default_factory=dict)
     text: str = ""
     level: int = 0
+    aliases: list = field(default_factory=list)  # the other name the book prints the item under (row / heading)
 
 
 def norm(name, aliases=None):
@@ -85,6 +86,23 @@ def shorter_name(row, heading):
         return True
     return (len(rw) > 1 and "".join(rw[:-1]) == "".join(hw[:-1]) and len(rw[-1]) >= 3 and hw[-1].startswith(rw[-1])
             and rw[-1] != hw[-1])
+
+
+def distinct(name):
+    """A name distinctive enough to be an alias: two words or more, or one with a digit (not `Fragmentation`)."""
+    w = norm(name).split()
+    return len(w) > 1 or any(c.isdigit() for c in name)
+
+
+def other_name(row, heading):
+    """The heading a row kept its own name under is the item's other name (an alias): the row prints it shorter
+    (`GMC Bulldog` under `GMC Bulldog Step-Van`), or the two spell it differently (`Zip pick set` / `Zip pick kit`,
+    paired by the book's aliases). Not a heading over several items, nor one the row only adds to (`Widget w/ case`
+    under `Widget`)."""
+    if not distinct(heading) or re.search(r"\band\b|&|/|,", heading):
+        return False
+    hw, rw = set(norm(heading).split()), set(norm(row).split())
+    return shorter_name(row, heading) or not hw <= rw and not rw <= hw
 
 
 def _names(name):
@@ -619,9 +637,11 @@ def _emit(units):
                      for t in u.stats for r in t.rows]
             label = u.name if u.kind == "box" else ""
             for t, r in u.rows or [(None, None)]:
-                out.append(Block("item", u.name if r and id(r) in u.full else r[0] if r else u.name, u.chapter, u.section,
-                                 t.title if t else label, u.page, list(t.header) if t else [],
-                                 _row(t.header, r) if t else None, stats, u.tags, dict(u.labels), text, u.level))
+                name = u.name if r and id(r) in u.full else r[0] if r else u.name
+                al = [u.name] if r and name != u.name and other_name(name, u.name) else []
+                out.append(Block("item", name, u.chapter, u.section, t.title if t else label, u.page,
+                                 list(t.header) if t else [], _row(t.header, r) if t else None, stats, u.tags,
+                                 dict(u.labels), text, u.level, al))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
             out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r))
                     for r in t.unpaired]
@@ -659,7 +679,7 @@ def _md(header, rows):
 
 def render(b):
     meta = {"name": b.name, "chapter": b.chapter, "section": b.section, "label": b.label, "page": b.page,
-            "tags": b.tags, "level": b.level, "row": b.row is not None}
+            "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {})}
     lines = [f"<!-- {b.type} {json.dumps(meta, ensure_ascii=False)} -->"]
     if b.row is not None:
         lines += _md(b.header, [[b.row.get(h, "") for h in b.header]])
@@ -702,5 +722,6 @@ def blocks(text):
             else:
                 stats += [_row(h, r) for r in rows]
         out.append(Block(m.group(1), meta["name"], meta["chapter"], meta["section"], meta["label"], meta["page"],
-                         header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"]))
+                         header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"],
+                         meta.get("aliases", [])))
     return out

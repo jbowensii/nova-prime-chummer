@@ -7,7 +7,7 @@ import re
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
-from importer.sr6.regroup import full_name, keys, norm
+from importer.sr6.regroup import full_name, keys, norm, other_name
 
 # a box's first column naming its rows (`NAME`, `CASE TYPE`, `DIGITAL WEAPON CODEMODS`, `IC`, …)
 NAME_COL = re.compile(r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
@@ -135,12 +135,18 @@ def _match(name, d):
         len(nw) == 1 and len(nw[0]) >= 5 and len(dw) == 2 and dw[1] == nw[0] and name[:1].isupper())
 
 
-def _row_block(b, name, c, label, text=None, labels=None, col=None):
+def _row_block(b, name, c, label, text=None, labels=None, col=None, aliases=None):
     if col is not None:
         c = {h: v for h, v in c.items() if h != col}
     row = {"ITEM": name, **c}
     return replace(b, type="item", name=name, row=row, header=list(row), stats=[], label=label,
-                   text=b.text if text is None else text, labels=b.labels if labels is None else labels)
+                   text=b.text if text is None else text, labels=b.labels if labels is None else labels,
+                   aliases=list(b.aliases) if aliases is None else aliases)
+
+
+def _alias(name, head):
+    """The heading's name as an alias when the row prints the item shorter (`ZX-48` under `Bloop ZX-48 Thunderer`)."""
+    return [head] if head and norm(head) != norm(name) and other_name(name, head) else []
 
 
 def priced(c):
@@ -177,9 +183,22 @@ def boxes(bs):
             b = replace(b, row=row, header=list(row))
             if not b.text.strip():
                 text, labels, head = described(i, b, b.name)
-                b = replace(b, text=text, labels={**labels, **b.labels},
-                            name=head if full_name(b.name, head) else b.name)  # the heading's full name
+                full = full_name(b.name, head)
+                b = replace(b, text=text, labels={**labels, **b.labels}, name=head if full else b.name,  # its full name
+                            aliases=b.aliases or ([] if full else _alias(b.name, head)))
             out.append(b)
+            # a stat box printed under the row's table, its own named rows of the same columns (a weapon table
+            # stacked over two more): each row an item
+            more = rows(b.stats, known) if b.stats else None
+            col = name_col([cells(s) for s in b.stats]) if more else None
+            if more and col is not None and col.upper() not in ("TYPE", "SIZE", "CLASS") and all(priced(c) for c in more):
+                out[-1] = replace(b, stats=[])
+                for c in more:
+                    name = " ".join(c[col].split())
+                    text, labels, head = described(i, b, name)
+                    full = full_name(name, head)
+                    out.append(_row_block(b, head if full else name, c, b.label, text, labels, col,
+                                          [] if full else _alias(name, head)))
             continue
         items = rows(b.stats, known) if b.stats else None
         if not items or not all(priced(c) for c in items):
@@ -202,8 +221,11 @@ def boxes(bs):
         for c in items:
             name = " ".join(c[col].split())
             text, labels, head = described(i, b, name)
-            name = head if full_name(name, head) else name  # (a maker in front: the heading's full name)
-            out.append(_row_block(b, name, c, b.name, text, labels, col))
+            full = full_name(name, head)  # (a maker in front: the heading's full name)
+            al = [] if full else _alias(name, head)
+            if not al and not full and len(items) == 1 and words(name) < words(b.name):  # a box of one: its title heads it
+                al = [b.name]
+            out.append(_row_block(b, head if full else name, c, b.name, text, labels, col, al))
     taken = {id(bs[j]) for j in gone}
     return [b for b in out if id(b) not in taken]
 

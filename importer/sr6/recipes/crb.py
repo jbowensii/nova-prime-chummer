@@ -286,9 +286,10 @@ class _Catalog:
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
         self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
         self.index = None  # the book's tables and prose (resolve.Index): where a value an entry's row leaves out is found
+        self.last_weapon = None  # the weapon read last: a supply table printed right after it is its ammunition
         self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
 
-    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None):
+    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=()):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         base = slug(name) or KINDS[kind]
         i, n = base, 2
@@ -304,8 +305,15 @@ class _Catalog:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
-        e = {"id": i, "name": name, "page": page, "attrs": attrs or {}, "children": list(children), "row": row or {},
-             "where": self.where, "text": text}
+        al = [a for a in dict.fromkeys(aliases) if a and norm(a) != norm(name)]  # another name it is printed under
+        e = {"id": i, "name": name, "page": page, "attrs": attrs or {},
+             "children": list(children) + [("alias", {}, a) for a in al], "row": row or {}, "where": self.where,
+             "text": text, "aliases": al}
+        if kind == "weapons":
+            self.last_weapon = e
+        elif kind == "gear" and self.last_weapon and (sup := supply_aliases(name, self.last_weapon)):
+            e["children"] += [("alias", {}, a) for a in sup]
+            e["aliases"] += sup
         self.entries[kind].append(e)
         if text.strip():
             self.texts.append((kind, i, text.strip()))
@@ -533,7 +541,8 @@ class _Catalog:
                 a = {**attrs, **g}
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
-                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})})
+                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
+                         aliases=b.aliases if n == name else ())
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -587,7 +596,7 @@ class _Catalog:
         attrs.update(f)
         listed = {k for k in b.labels if k.lower() in LISTS} if kind in STAT_KINDS else set()
         self.check(kind, name, attrs, page)
-        self.add(kind, name, page, attrs, children, "\n".join(prose + [_text(b, listed)]))
+        self.add(kind, name, page, attrs, children, "\n".join(prose + [_text(b, listed)]), aliases=b.aliases)
         return True
 
     def contact(self, b, page):
@@ -708,6 +717,26 @@ AMMO_HOLDERS = {"internal magazine": "m", "clip": "c", "drum": "d", "belt": "bel
 _COUNT_WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
 _AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bhold(?:s|ing)?\s+(?:up\s+to\s+)?(\d+|"
                         + "|".join(_COUNT_WORDS) + r")\s+(?:bolts?|rounds?|arrows?|darts?|shells?|shots?|grenades?)\b", re.I)
+
+
+SUPPLIES = ("fuel", "ammo", "ammunition", "rounds", "bolts", "arrows", "darts", "rockets", "missiles", "grenades",
+            "batteries", "power packs")  # what a weapon's supply table is titled after (the game's words)
+
+
+def supply_aliases(name, weapon):
+    """`<words> Fuel` printed right after a weapon whose heading ends with those words (`Vehicle Flamethrower Fuel`
+    after `Hellfire`, headed `Ares Hellfire Vehicle Flamethrower`) is that weapon's: `Hellfire Fuel`, `Fuel for
+    Hellfire`. [] otherwise."""
+    n = norm(name).split()
+    sup = next((w for w in SUPPLIES if " ".join(n[-len(w.split()):]) == w), None)
+    head = n[:-len(sup.split())] if sup else []
+    if not sup or not head:
+        return []
+    for h in [weapon["name"], *weapon.get("aliases", ())]:
+        if norm(h).split()[-len(head):] == head:
+            w, s = weapon["name"], name.split()[-len(sup.split()):]
+            return [f"{w} {' '.join(s)}", f"{' '.join(s)} for {w}"]
+    return []
 
 
 def ammo_from_text(text):

@@ -91,9 +91,10 @@ def match(cl6, ours):
         if found[i] or not c["page"]:
             continue
         key = toks(c["name"])
-        hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8) and contained(key, toks(o["name"]))
-                and (near(o["page"], c["page"], 1) or (min(len(key), len(toks(o["name"]))) >= 2 and
-                                                       near(o["page"], c["page"], 3)) or (len(key) >= 2 and key <= toks(o["name"])))]
+        hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8) and any(
+                contained(key, toks(n)) and (near(o["page"], c["page"], 1) or (min(len(key), len(toks(n))) >= 2 and
+                                                                             near(o["page"], c["page"], 3))
+                                             or (len(key) >= 2 and key <= toks(n))) for n in _names(o))]
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)

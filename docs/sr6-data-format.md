@@ -167,6 +167,13 @@ sources of one date that disagree leave the issue), or `errata` (an errata PDF's
 when the errata is newer than the printing; the text keeps the value it replaced). `source` and `page` say where it is
 printed. It is provenance for the owner: the app leaves it out of the entry.
 
+**`<alias>name</alias>`**: another name the book prints the item under. A table row keeps its own name and takes its
+description heading's as an alias when the heading prints it longer (`Bloop Hauler` under `Bloop Hauler Long-Van`) or
+spells it another way; a box's one row takes the box's title (`Scorcher` under `Bloop Scorcher Vehicle Sprayer`); a
+supply table printed right after a weapon and titled with the end of its heading (`Vehicle Sprayer Fuel`) takes
+`Scorcher Fuel` and `Fuel for Scorcher`. The importer's resolving pass and the measurement match on aliases too; the
+app leaves them out of the entry.
+
 **Searched.** An issue says how far the importer looked: `searched="book"` (its tables and its text) at import,
 `searched="book,corpus"` once the corpus pass, run after every import, has looked in every other source of the library
 too. Only then is a `missing` issue really nothing printed anywhere the library holds. A field the book prints two values
