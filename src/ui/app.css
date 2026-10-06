@@ -765,3 +765,10 @@ table.contacts td.end { text-align: right; }
 .lib .tabs.sections a { font-size: 1.15rem; padding: 0.5rem 1.1rem; border-bottom-width: 4px; }
 .lib .tabs.sections a[aria-current='page'] { background: var(--zebra); }
 .npcgroup { font-size: 1.1rem; margin: 1.2rem 0 0.4rem; }
+
+/* Books → Re-import all: the heading's button and the progress line under it */
+.books-head { align-items: baseline; }
+.books-head h2 { margin-bottom: 0.4rem; }
+.reimport-all { margin: 0 0 1rem; }
+.reimport-all p { margin: 0 0 0.3rem; }
+.reimport-all progress { width: 100%; max-width: 32rem; accent-color: var(--heading); }

@@ -76,7 +76,7 @@ describe('with an admin, an editor and a player', () => {
     ['PUT', '/api/edits/items/x', 'editor', '<edit/>'], ['DELETE', '/api/edits/items/x', 'editor'], ['POST', '/api/edits/sources', 'editor', '{}'],
     ['PUT', '/api/table-rules', 'editor', '{}'], ['GET', '/api/campaigns', 'user'], ['POST', '/api/campaigns', 'editor', '{}'], ['GET', '/custom/table-rules.xml', 'user'], ['GET', '/api/samples', 'user'],
     ['GET', '/api/books', 'admin'], ['POST', '/api/books', 'admin', 'not a pdf'], ['GET', '/api/books/nope/report', 'admin'],
-    ['POST', '/api/books/nope/reimport', 'admin'], ['POST', '/api/books/nope/ai', 'admin'], ['DELETE', '/api/books/nope', 'admin'],
+    ['POST', '/api/books/nope/reimport', 'admin'], ['POST', '/api/books/reimport-all', 'admin'], ['POST', '/api/sr6/books/reimport-all', 'admin'], ['POST', '/api/books/nope/ai', 'admin'], ['DELETE', '/api/books/nope', 'admin'],
     ['GET', '/api/review/nope', 'admin'], ['PUT', '/api/review/nope', 'admin', '<review/>'],
     ['GET', '/api/ai-settings', 'admin'], ['PUT', '/api/ai-settings', 'admin', '<nope/>'], ['PUT', '/api/ai-keys', 'admin', '<nope/>'],
     ['GET', '/api/ai-models?provider=nope', 'admin'], ['POST', '/api/ai-test?provider=nope', 'admin'],

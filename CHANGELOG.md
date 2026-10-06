@@ -16,6 +16,12 @@
 - **Override files.** Game data → Your catalog edits has **Export my edits…** (all edits, or one book's, as an edits
   file with their descriptions) and **Import edits…**, which previews what a file adds, changes and conflicts with
   before anything is saved. Pick Keep mine or Take theirs for each conflict. Editors and the admin, both games.
+- **Re-import all books** (Books page, the admin, both games) rebuilds every book's catalog, rules and samples from its
+  PDF after a confirm. Your edits, runners and NPCs are kept. The books queue one after another, each showing Waiting,
+  Importing… and Imported, under a line counting how many are done. A book whose last import was made from the same
+  PDF by the same importer version skips the slow PDF reading. A book folder that holds only its PDF (restored or
+  copied in by hand) shows "Not imported yet" and imports from scratch. Books read by AI are left out, as with
+  Re-import.
 
 ## 0.9.11 — 2026-10-05: example characters audited, Hex and Dossier sheets, adept power points
 
