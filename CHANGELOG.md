@@ -2,6 +2,8 @@
 
 ## Unreleased (next build)
 
+- **Table setup → Creation rules fits its panel on Shadowrun 6.** A long quality name in a dropdown pushed the table past
+  the panel and cut off the Page and Standard columns.
 - Shadowrun 6 runners print in two more styles (Sheet type, or Settings → Printed sheet), for six in all: Hex, one page
   with the attributes and the damage tracks as hexagons (the tracks on a dark band, boxes past the runner's monitor
   blacked out), every skill as [rank] [pool], core combat, qualities and a blank Edge panel by cost; and Dossier, rounded
