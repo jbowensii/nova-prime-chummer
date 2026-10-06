@@ -480,13 +480,28 @@ def run(corpus, cl6, verdicts=None):
             k = by.get((r["id"], r["src"], r["where"]), 0)
             r["strength"] = "digit swap" if "digit swap" in r["where"] else f"{k} field{'s' if k > 1 else ''} from that row"
     apply_verdicts(rows, verdicts or {})
-    # a field no book prints (no reading of ours holds it, and no text found holds Commlink6's value) is Commlink6's
-    # own: out of the fields compared, counted on its own line
-    left = Counter()
+    # a field no book prints is Commlink6's own: out of the fields compared, counted on its own line. Either no reading
+    # of ours holds it and no text near the object holds Commlink6's value, or ours is a readable value and Commlink6's
+    # (one value) is printed nowhere in the object's book family (its cap, `999999999`, for a dearer price; no
+    # legality for a row printing one)
+    left, text = Counter(), {}
+
+    def nowhere(r):
+        fam = lineage.family(r["src"])
+        if fam not in text:
+            text[fam] = "\n".join(ln.text for b in corpus.books if lineage.family(b.belongs) == fam for ln in b.md())
+        v = r["cl6"].strip()
+        toks = {v} | ({f"{int(float(v)):,}"} if re.fullmatch(r"\d{4,}(?:\.0+)?", v) else set())
+        return not any(re.search(rf"(?<![\d,.]){re.escape(t)}(?![\d,.])", text[fam]) for t in toks)
+
+    def invented(r):
+        return (r["family"] == "not found" and not r.get("verdict") and why_not(r) == "a different value, printed nowhere"
+                and not re.search(r"\bR\d", r["cl6"]) and not re.search(r"[*?]", r["winner"])
+                and (r["field"] == "legality" or ours.value(r["winner"]) is not None) and nowhere(r))
     for r in rows:
         if r["field"]:
             left[(r["src"], r["id"])] += 1
-            if r["family"] == "not found" and not r["winner"] and not r.get("verdict"):
+            if r["family"] == "not found" and (not r["winner"] and not r.get("verdict") or r["winner"] and invented(r)):
                 r["family"] = "Commlink6-only field"
                 n["fields compared"] -= 1
                 n["Commlink6-only fields"] += 1

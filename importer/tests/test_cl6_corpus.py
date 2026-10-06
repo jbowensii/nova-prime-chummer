@@ -221,10 +221,12 @@ class TraceTest(unittest.TestCase):
         c = corpus.Corpus([book("A", "2020-03", entries=[entry("Zorp widget", src="a", avail="2", cost="100")])])
         rows, _ = trace.run(c, [self.rec(cost={None: 40.0}, rating=(1, 4))])
         self.assertEqual({r["field"]: r["family"] for r in rows}, {"cost": "description sentence", "rating": "description sentence"})
-        rows, _ = trace.run(c, [self.rec(cost={None: 999.0})])
-        self.assertEqual(rows[0]["family"], "not found")
+        rows, _ = trace.run(c, [self.rec(cost={None: 75.0})])
+        self.assertEqual(rows[0]["family"], "not found")  # printed in the book, not by the object
+        rows, n = trace.run(c, [self.rec(cost={None: 999.0})])
+        self.assertEqual((rows[0]["family"], n["Commlink6-only fields"]), ("Commlink6-only field", 1))  # printed nowhere
         rows, _ = trace.run(c, [self.rec(cost={None: 1000.0})])
-        self.assertEqual(rows[0]["family"], "not found")  # 100 → 1000 is no swap
+        self.assertNotEqual(rows[0]["family"], "Commlink6 misread")  # 100 → 1000 is no swap
         self.assertTrue(trace._swapped("1500", "5100"))
         self.assertFalse(trace._swapped("1500", "1500"))
 

@@ -168,8 +168,10 @@ The report's sections:
   line. A record is Commlink6's own (`canon.cl6_only`) when it is a rule setting (rule options), a record it retired
   (`Depreciated …`), or an option row priced at zero that is not for sale (availability 99: a firing mode, a range, a
   pilot rating) or points elsewhere (`Adapter (see …)`). A field is Commlink6's own when ours is empty and the
-  printed line shows neither value (the report), or when no reading of ours holds the field and no text holds
-  Commlink6's value (the trace, family `Commlink6-only field`).
+  printed line shows neither value (the report), or, in the trace (family `Commlink6-only field`), when no reading of
+  ours holds the field and no text near the object holds Commlink6's value, or when ours is a readable value and
+  Commlink6's one value is printed nowhere in the object's book (its `999999999` cap for a dearer price, no legality
+  for a row that prints one).
 - **Completeness by book and by kind.** The gap plan's K1 kinds (actions, packs, ammunition types, mentor spirits,
   vehicle design, data structures, quality paths, spell features, contact types, quality sets, licence types, magic
   types, rule options, senses, true elements) are catalog kinds of ours now (`canon.SECTION_KINDS`), read from the
