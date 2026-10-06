@@ -107,6 +107,7 @@ def _elements(md):
                 rows.append(_cells(lines[i]))
                 i += 1
             header, rows = _header_rest(_cells(ln), rows)
+            rows = [_repair_row(header, r) for r in rows]
             prev = out[-1] if out else None
             if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
                 t = prev[2]  # a second header row under the first, its values under it: one table, side by side
@@ -140,6 +141,49 @@ def _header_rest(header, rows):
             and all(not c or _HEAD_WORD.fullmatch(c) for c in r)):
         return [f"{h} {c}".strip() for h, c in zip(header, r)], rows[1:]
     return header, rows
+
+
+# the shape of a cell under a column the books print in every stat table (a general vocabulary of the game's columns)
+_DASH = r"[—–-]"
+_COLUMN_SHAPES = {
+    "MODES": r"(?:SS|SA|BF|FA)(?:\s*\([^)]*\))?(?:\s*/\s*(?:SS|SA|BF|FA)(?:\s*\([^)]*\))?)*|" + _DASH,
+    "ATTACK RATINGS": rf"(?:{_DASH}|\d+\*?)(?:\s*/\s*(?:{_DASH}|\d+\*?)){{4}}(?:\s*\([^)]*\))?",
+    "AMMO": r"(?:\d+\s*(?:x\s*\d+\s*)?\([^)]*\)|Energy)(?:\s*(?:\+|\bor\b|\bper\b).*)?|" + _DASH,
+    "AVAIL": rf"\d+\s*(?:\(?[LIF]\)?)?|{_DASH}",
+    "COST": rf"[\d,.]+\s*¥.*|{_DASH}",
+}
+_COLUMN_NAMES = {"MODE": "MODES", "ATTACK RATING": "ATTACK RATINGS", "AR": "ATTACK RATINGS",
+                 "AVAILABILITY": "AVAIL", "AVAIL.": "AVAIL"}
+
+
+def _shape(h):
+    h = " ".join(h.upper().rstrip("*†").split())
+    return _COLUMN_SHAPES.get(_COLUMN_NAMES.get(h, h))
+
+
+def _fits(h, v):
+    sh = _shape(h)
+    return sh is None or not v.strip() or re.fullmatch(sh, v.strip()) is not None
+
+
+def _repair_row(header, row):
+    """A row the converter set with two cells run into one (`SS(1)—/14/20/22/18(4km)`: the mode and the attack
+    ratings), every later cell one column to the left and a stray cell at its end: the run-together cell is split
+    where both halves fit their columns' shapes (_COLUMN_SHAPES), the later cells move back into place and the stray
+    one goes. Only when every shaped cell then fits; otherwise the row stays as printed."""
+    if len(row) not in (len(header), len(header) - 1) or all(_fits(h, v) for h, v in zip(header, row)):
+        return row
+    for i in range(1, min(len(row), len(header) - 1)):
+        a, b, v = header[i], header[i + 1], row[i].strip()
+        if not (_shape(a) and _shape(b)):
+            continue
+        for k in range(1, len(v)):
+            x, y = v[:k].strip(), v[k:].strip()
+            if x and y and _fits(a, x) and _fits(b, y):
+                fixed = (row[:i] + [x, y] + row[i + 1:])[:len(header)]
+                if all(_fits(h, c) for h, c in zip(header, fixed)):
+                    return fixed
+    return row
 
 
 def _stacked(t, header, rows):

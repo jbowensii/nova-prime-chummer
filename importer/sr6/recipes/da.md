@@ -33,8 +33,8 @@ fiction's at 27, so the recipe gives the sizes (`HEADING_LEVELS`); a title's sec
 
 ## Not read
 
-The medical gear price list prints as text lines under a mangled header; a few weapon rows whose columns ran together
-keep shifted values (reported as book-value).
+The medical gear price list prints as text lines under a mangled header. A weapon row whose columns ran together is
+repaired when its cells fit their columns (below); one that doesn't keeps its shifted values (book-value).
 
 ## Table shapes and value styles (importer v2)
 
@@ -44,6 +44,11 @@ keep shifted values (reported as book-value).
 - **Header cell on two lines.** `ATTACK` over a first row holding only `RATINGS`: joined into the header (`_header_rest`).
 - **A box's next item after a note.** A box (`Linear Kinetic Cannons`) lists items one table each with a `Note:` and
   plain text between them: a later table with the box's header stays one of its rows.
+- **Cells run together.** The vehicle weapon tables (lasers, railguns) have rows where the converter set two
+  cells as one (`SS(1)—/14/20/22/18(4km)`: mode and attack ratings; `—/—/10/12/12 (16km) 40(br) + Energy`: attack
+  ratings and ammo), the later cells one column left and a stray price at the end. regroup's `_repair_row` splits the
+  cell where both halves fit their columns' shapes (MODES, ATTACK RATINGS, AMMO, AVAIL, COST) and drops the stray
+  cell, only when every shaped cell then fits. Otherwise the row stays as printed (book-value report).
 
 ## Real-book check (local, nothing committed)
 

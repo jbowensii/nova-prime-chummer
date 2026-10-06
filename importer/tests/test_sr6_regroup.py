@@ -457,3 +457,27 @@ class StackedTablesTest(unittest.TestCase):
     def test_a_box_row_after_a_note_stays_in_the_box(self):
         stats = self.items["Blasters"].stats
         self.assertEqual([s["NAME"] for s in stats], ["Blip Gun", "Blop Gun"])
+
+
+class RepairRowTest(unittest.TestCase):
+    """Invented rows with two cells run together by the converter."""
+    H = ["NAME", "DV", "MODE", "ATTACK RATINGS", "AMMO", "AVAIL", "COST"]
+
+    def test_mode_and_attack_ratings_run_together(self):
+        row = ["Zorp", "9P", "SA(2)—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥", "2,000¥"]
+        self.assertEqual(regroup._repair_row(self.H, row),
+                         ["Zorp", "9P", "SA(2)", "—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥"])
+
+    def test_attack_ratings_and_ammo_run_together(self):
+        h = self.H[:5] + ["TYPE"] + self.H[5:]
+        row = ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km) 10(br) + Energy", "Z1", "6(I)", "900¥", "50¥"]
+        self.assertEqual(regroup._repair_row(h, row),
+                         ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km)", "10(br) + Energy", "Z1", "6(I)", "900¥"])
+
+    def test_a_row_that_reads_stays(self):
+        row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
+        self.assertIs(regroup._repair_row(self.H, row), row)
+
+    def test_no_split_that_fits_leaves_the_row_as_printed(self):
+        row = ["Quux", "4P", "weird", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
+        self.assertEqual(regroup._repair_row(self.H, row), row)
