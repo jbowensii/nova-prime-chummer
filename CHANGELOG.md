@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased (next build)
+## 0.10.0 — 2026-10-06: book data from the PDFs, closer: formulas, data issues, override files, re-import all
 
 - **Book values stay canon; what the book leaves out is flagged.** Where a book prints no value, or one the importer
   can't read, the entry carries an issue. Game data and the item pickers show a warning badge with the field, a short
@@ -22,6 +22,19 @@
   PDF by the same importer version skips the slow PDF reading. A book folder that holds only its PDF (restored or
   copied in by hand) shows "Not imported yet" and imports from scratch. Books read by AI are left out, as with
   Re-import.
+- **The Shadowrun 6 importer writes the book's formulas and flags what it leaves out.** A value printed as a rule
+  (Rating × 2,000¥, Force × 4,000¥, a price per CF or per dose, 2,000¥ plus 500¥ per additional dart, a cheaper open
+  version, one price per rating band, a DV of (1–10) S) is imported as its formula, so the builder prices it at the
+  rating and quantity you buy. An energy weapon's ammo is worked out from the power supply it comes with. A missing
+  availability, price, Karma, Essence, rating range, firing mode, ammo or vehicle stat, a value no style reads
+  ("Special") and a cell printing two values get an issue, shown with the badge above. A price worked out from another
+  item you pick (Commlink cost plus rating × 100) is an issue that states the rule, for you to settle with an edit.
+- **Shadowrun 6 books read closer.** Table rows whose cells the PDF ran together, headers set on two lines, rows that
+  print a shorter name than their description, a DV with its blast or a note in the same cell, a header printed twice,
+  a price with a thousands point (1.200), vehicles printed as a stat line in the text, an ammo count or per-unit price
+  only the description gives, and a Companion quality priced "See text" are now read. Weapons and armor carry their
+  rating range (a mount priced by Size), and a weapon power supply its Energy. Import the books again (or Re-import
+  all) to get them.
 
 ## 0.9.11 — 2026-10-05: example characters audited, Hex and Dossier sheets, adept power points
 
