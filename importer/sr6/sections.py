@@ -196,7 +196,7 @@ class Reader:
             name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
         if kind == "vehicledesign":
             attrs = {"category": chain[-1] if chain else None}
-            if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Junkyard Frankenstein (x0.5 BP)`
+            if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Scrap Frame (x0.5 BP)`
                 name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
@@ -226,7 +226,7 @@ class Reader:
             for nxt in lines[i + 1:]:
                 n2 = _RUNIN.match(nxt)
                 if n2 and not FIELD_LABELS.match(n2.group("name").strip()) or nxt.startswith(("#", "|")) or not nxt.strip():
-                    break  # (its own labelled lines, `• **Cost:** 2 Karma`, are its paragraph's)
+                    break  # (its own labelled lines, `• **Cost:** N Karma`, are its paragraph's)
                 body.append(nxt.strip())
             para = "\n".join(x for x in body if x)  # (its lines kept: the texts are reflowed later)
             attrs = {}

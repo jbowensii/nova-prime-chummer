@@ -181,8 +181,8 @@ _GROUP_LINE = re.compile(r"^[A-Z][\w'’&./-]*(?:\s+[\w'’&./-]+){0,5}$")
 
 
 def _text_rows(header, lines, i):
-    """A NAME | AVAIL | COST table whose later rows the converter set as plain lines (`Mage Pen 2 20¥`): those rows,
-    up to the first line of another shape; a name-only line (`Medkit`) names the rows under it (`Medkit Advanced
+    """A NAME | AVAIL | COST table whose later rows the converter set as plain lines (`Glow Pen 2 20¥`): those rows,
+    up to the first line of another shape; a name-only line (`Zap Kit`) names the rows under it (`Zap Kit Basic
     (Rating 1–6)`). (header, rows, next line) or None. A last header cell ending in the price word (the next table's
     header run into it: `RANGE TYPE DURATION DV COST`) is that word."""
     hu = [h.upper() for h in header]

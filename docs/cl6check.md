@@ -104,6 +104,9 @@ Books sort by date, then by label. Beginner Box material is context only: it is 
 Another book's text counts only when that book catalogues the object too, or imports nothing (a card deck). Another
 book's entry counts only under the object's own name, and in a kind its home book gives it.
 
+**Found objects.** An entry of ours under the object's name is the object even when it prints no field the tool
+compares (a mentor spirit, a tradition, a metamagic): it is found, with no fields compared.
+
 **Found values.** A field the importer filled from an errata (`<found how="errata">`, importer/sr6/resolve.py) is
 read as that errata's observation, dated by it, not the book's.
 
@@ -160,8 +163,11 @@ The report's sections:
 
   Accuracy is given twice. Raw counts every difference. "b as printed" counts verified printed differences as
   equal.
-- **Completeness by book and by kind.** An unmodelled kind is a gap-plan K1 kind (actions, packs, ammo types,
-  mentor spirits, …).
+- **Completeness by book and by kind.** The gap plan's K1 kinds (actions, packs, ammunition types, mentor spirits,
+  vehicle design, data structures, quality paths, spell features, contact types, quality sets, licence types, magic
+  types, rule options, senses, true elements) are catalog kinds of ours now (`canon.SECTION_KINDS`), read from the
+  books' own sections: their records count in every denominator. An unmodelled kind is a record type none of ours
+  maps to.
 - **Field families.** For each family, the records where Commlink6 has the datum, and those where ours is equal.
   The families are subtype, skill/spec, social, size/ammo, variants, slots, effects, choices, requires, and
   Commlink6's UI tags counted as data (decision D5): relevance (topics such as MAGICAL or a skill/specialization),

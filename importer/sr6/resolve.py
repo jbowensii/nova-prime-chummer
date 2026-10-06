@@ -344,7 +344,7 @@ def errata(md):
                 for n, v in zip(names, vals):
                     out.append((group_page, n, f, _errata_value(f, v), None))
             continue
-        if head and (m := _CHANGE_COST.search(ln)):  # `Change … the cost to 2,100¥.` under a heading naming the item
+        if head and (m := _CHANGE_COST.search(ln)):  # `Change … the cost to N¥.` under a heading naming the item
             f = ERRATA_FIELDS[m.group(1).lower()]
             out.append((head[0], head[1], f, _errata_value(f, m.group(2)), None))
     return out
@@ -421,7 +421,7 @@ def _tail(name):
 
 
 def cards(md):
-    """A card deck's stat lines: {norm name: {field: value}} (`## ares predator VI` over `**Availability:** 2(L)
+    """A card deck's stat lines: {norm name: {field: value}} (`## zorp predator X` over `**Availability:** 2(L)
     **Cost:** 750¥`)."""
     out, name = {}, None
     for ln in (md or "").splitlines():

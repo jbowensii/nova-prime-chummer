@@ -120,7 +120,7 @@ printing (the loaded printing is the newest).
 ## Sections read as kinds (importer v3, sections.py)
 
 - **Foci kinds:** the run-ins under `#### Enchanting Foci`, `#### Metamagic Foci`, … (Alchemical focus, Centering focus)
-  are gear, priced as their class's row (`Enchanting focus`: Force x 5,000¥) in the same book; a run-in whose class
+  are gear, priced as their class's row (`Enchanting focus`: its Force formula) in the same book; a run-in whose class
   row the book doesn't print is left out.
 - **Shared classifier (A5):** the echoes (`### Echoes`), the basic and hacking programs (`#### Basic` / `#### Hacking` under
   `### Programs`) and the autosofts (`### Autosofts`) are read as run-ins by the shared vocabulary in sections.py; the

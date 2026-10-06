@@ -74,8 +74,8 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 ## Sections read as kinds (importer v3, sections.py)
 
 - **Converter recovery (regroup):** the `New Medical Tools/Gear` table keeps only its first row as a table; the rest
-  are plain lines `Name avail price¥` (a name-only line, `Medkit`, over one-word sub-rows `Advanced (Rating 1–6) 4
-  Rating x 300¥`). Regroup reads them back as the table's rows (`Medkit Advanced (Rating 1–6)`); its last header cell
+  are plain lines `Name avail price¥` (a name-only line, `Medkit`, over one-word sub-rows `<Sub> (Rating 1–6) <avail>
+  Rating x <N>¥`). Regroup reads them back as the table's rows (`Medkit <Sub> (Rating 1–6)`); its last header cell
   carries the next table's header run into it (`RANGE TYPE DURATION DV COST`: read as COST).
 - **Vehicle design:** the `#### Name` headings under `### Mil-spec Design Options` (`Mil-spec Comms (I, II, III)`: one
   each; `(1-12)`: the rating range). Not yet: the warheads' Capacity notes (prose, p. 146).

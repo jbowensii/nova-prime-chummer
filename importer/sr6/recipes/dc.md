@@ -59,7 +59,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 - **Qualities:** `### The Motorpool` under `## Positive Qualities` (its Karma is in its text: an issue until read).
 - **Vehicle design:** each row of a table with a BUILD POINTS column (the chassis, powertrain and console type
   tables: its first header the category); each `#### Name` under `### Design Options and Quality Factors`, `###
-  Design Modifications`, `### Quality Factors` (a heading over several, `Heavy Duty/Lightweight`, one entry each; `(x0.5
+  Design Modifications`, `### Quality Factors` (a heading over several, `Heavy Duty/Lightweight`, one entry each; `(xN
   BP)` its build points).
 - **Actions:** `## Edge Actions` and `## Chase Edge Actions` (THE RIGGER ADVANTAGE): each `### Name`; `## Edge
   Boosts`; `### New Major Action` (`#### Backseat Driver`); the bold `**N Edge: Name**` lines of the Motorpool
