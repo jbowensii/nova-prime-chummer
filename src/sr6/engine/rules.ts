@@ -305,7 +305,7 @@ const RULES: Rule[] = [
     }) : []
   }) },
   // the accessories' bracketed capacity ([2], [Rating]) comes out of the host's capacity
-  { code: 'catalog.capacity', severity: 'warning', tab: 'gear', check: c => c.b.purchases.flatMap(x => {
+  { code: 'catalog.capacity', severity: 'error', tab: 'gear', check: c => c.b.purchases.flatMap(x => {
     const he = entryOf(x, c.data), cap = capacityOf(he, ratingOf(x, he))
     if (cap === null || !x.accessories.length) return []
     const used = x.accessories.reduce((t, a) => { const e = entryOf(a, c.data); return t + capacityUsed(e, ratingOf(a, e)) }, 0)

@@ -74,7 +74,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
       <section aria-labelledby="x-combat"><Title id="x-combat">Core combat</Title>
         <div className="x-combat">
           <table className="x-weapons"><thead><tr><th>Weapons</th><th>DV</th><th>Mode</th><th>Close</th><th>Near</th><th>Med</th><th>Far</th><th>Ext</th><th>Ammo</th></tr></thead>
-            <tbody>{weapons.map(x => { const a = attrsOf(x); return <tr key={x.uid}><td>{nameOf(x)}{x.accessories.length > 0 && <span className="x-small"> + {x.accessories.map(nameOf).join(', ')}</span>}</td>
+            <tbody>{weapons.map(x => { const a = attrsOf(x); return <tr key={x.uid}><td>{nameOf(x)}{x.accessories.length > 0 && <span className="x-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>}</td>
               <td>{a.dv}</td><td>{a.modes}</td>{v.bands(x).map((y, i) => <td key={i}>{band(y)}</td>)}<td>{a.ammo}</td></tr> })}
               {blanks(weapons.length, 4, i => <tr key={`b${i}`} className="x-blank" aria-hidden="true">{Array.from({ length: 9 }, (_, j) => <td key={j} />)}</tr>)}</tbody></table>
           <div>

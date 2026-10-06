@@ -240,9 +240,13 @@ table a book's catalog rows come from, by the book's own words, never an item's 
 
 The app (`src/sr6/engine/categories.ts`): an accessory goes only on a host of a category its record `fits` (the
 accessory action refuses another, `wrong-host`); the accessory picker lists only those; Review warns about an
-accessory on the wrong host (`catalog.accessoryHost`, cited to the accessory's page) and about accessories whose
-bracketed capacity (`[2]`, `[Rating]`) adds up to more than the host's capacity at its rating (`catalog.capacity`). An
-accessory of a category with no record (an import before categories) is offered as before, by its category's word.
+accessory on the wrong host (`catalog.accessoryHost`, cited to the accessory's page), and it is a problem (an error)
+when the accessories' bracketed capacity (`[2]`, `[Rating]`) adds up to more than the host's capacity at its rating
+(`catalog.capacity`). An accessory of a category with no record (an import before categories) is offered as before, by
+its category's word. **An accessory's bonuses are its host's**, never the runner's: a Strength bonus on a cyberlimb's
+accessory raises that limb's own Strength (the runner's natural rating plus the accessories'), an armor (Defense) bonus
+that limb's armor; the runner's attributes, Defense Rating and initiative leave them out. The host's own values show on
+its line ("This item: STR 5, Armor +2"), beside it on the sheets and in Review's derived values (derive.ts `hosts`).
 
 **The general table reader** (`importer/sr6/tables.py`): any table is an item table when its columns carry item
 stats (Avail or Cost, or a kind's stat set); everything else (modifiers, thresholds, skill lists) is a rules table,

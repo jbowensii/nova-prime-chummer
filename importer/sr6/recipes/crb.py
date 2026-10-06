@@ -1102,8 +1102,10 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
-        cat.section(f)
+        if sections.is_path(f, template):
+            cat.section(f)
     for e in cat.entries["programs"]:
         # a program's price: the book's `Cyberprogram, <type>` row; an autosoft's the `Autosoft` row, with its ratings
         # (the core rulebook's)

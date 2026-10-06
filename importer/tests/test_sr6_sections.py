@@ -49,8 +49,39 @@ Probe a thing.
 The road is long.
 ##### Step 1: First Mile
 Walk.
+**Cost:** 4 Karma
 ##### Step 2: Last Mile
 Walk more.
+**Cost:** 6 Karma
+"""
+
+PATHS = """<!-- page 76 -->
+# GLOW DECKER
+## Quality Paths
+### Glow Shield
+A made-up path.
+#### Bright Wall
+A made-up step.
+**Cost:** 5 Karma
+#### Brighter Wall
+**Cost:** 8 Karma
+### Roleplaying
+Made-up advice on playing a glow decker.
+### Strategies
+Made-up strategies.
+#### Combat
+Made-up combat advice.
+# FIZZ ADEPT
+## Quality Paths
+### Roleplaying
+Made-up advice.
+### Strategies
+Made-up strategies.
+# ZORP RIGGER
+### Roleplaying
+Made-up advice.
+### Strategies
+Made-up strategies.
 """
 
 
@@ -106,6 +137,7 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual(sorted(self.kind("datastructures")), ["Fizz Key", "Zap Shell"])
         p = self.kind("qualitypaths")["Long Road"]
         self.assertEqual([s.text for s in p.findall("step")], ["Step 1: First Mile", "Step 2: Last Mile"])
+
 
     def test_packs(self):
         text, _ = regroup.regroup(PACKS, crb.ALIASES, name_headers=crb.NAME_HEADERS)
@@ -310,6 +342,14 @@ Made-up bonuses.
         files = crb.extract(text).files
         self.assertEqual(sorted(e.findtext("name") for e in ET.fromstring(files["martialtechniques.xml"])),
                          ["Glow Grip", "Spin Kick"])
+
+    def test_a_path_needs_steps_and_a_name_of_its_own(self):
+        """A heading under a Quality Paths section is a path only with steps under it and a name of its own: the
+        `Roleplaying` and `Strategies` advice every chapter prints (one with steps under it too) is none."""
+        text, _ = regroup.regroup(PATHS, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        p = {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files["qualitypaths.xml"])}
+        self.assertEqual(list(p), ["Glow Shield"])
+        self.assertEqual([s.text for s in p["Glow Shield"].findall("step")], ["Bright Wall", "Brighter Wall"])
 
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}

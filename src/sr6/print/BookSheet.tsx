@@ -50,7 +50,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
   const armor = lines('armor'), worn = armor.find(x => x.worn) ?? armor[0]
   const ranged = v.rangedWeapons[0], melee = v.meleeWeapons[0]
   const licences = b.sins.flatMap(s => s.licences.map(l => `${l.name} ${l.rating}`))
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="k-small">with {x.accessories.map(nameOf).join(', ')}</div>
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="k-small">with {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</div>
   const skillTable = (rows: typeof trained, key: string) => <table key={key} className="k-skills">
     <thead><tr><th>Skill</th><th>Rnk</th><th>Att</th><th>Pool</th></tr></thead>
     <tbody>{pad(rows.map(p => <tr key={p.skill}><td>{p.label}

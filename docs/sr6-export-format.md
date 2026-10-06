@@ -92,7 +92,9 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
 `bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute or `initDice`), evaluated: × the
-rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too.
+rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
+accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
+them out.
 
 ### Values
 

@@ -71,6 +71,7 @@ class Found:
     children: list = field(default_factory=list)  # (tag, attrs, text)
     text: str = ""
     block: object = None  # the heading's block (a kind the recipes read already reads its fields from it)
+    priced_steps: int = 0  # a quality path's steps that are qualities priced in Karma
 
 
 def _kind_of(name, rules):
@@ -150,7 +151,9 @@ class Reader:
                 self.path[2] = self.path[2] or lv
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
-                    out += step_qualities(b, page, self.path[1].name)
+                    qs = step_qualities(b, page, self.path[1].name)
+                    self.path[1].priced_steps += bool(qs)
+                    out += qs
         if heading:
             out += self._heading(b, page, chain, parent)
             if PACK_WORD.search(b.name):
@@ -364,6 +367,25 @@ def quality_attrs(name, chain, text):
     k = (bonus if kind == "negative" else cost) or cost or bonus
     karma = next((g for g in k.groups() if g), None) if k else None
     return {"kind": kind, "karma": karma}
+
+
+def template_headings(bs, chapters=3):
+    """The headings a book repeats in `chapters` chapters or more (Shadow Cast's `Roleplaying`, `Strategies`, `Combat`
+    in every archetype's chapter): its own page template, never an entry's name."""
+    seen = {}
+    for b in bs:
+        if b.level and b.level > 1:
+            seen.setdefault(norm(b.name), set()).add(b.chapter)
+    return {n for n, cs in seen.items() if len(cs) >= chapters}
+
+
+def is_path(f, template=frozenset()):
+    """A quality path has a path's structure: steps under it (one priced in Karma is enough by itself), and a name of
+    its own, not one of the book's template headings. A heading under a `Quality Paths` section without (a chapter's
+    `Roleplaying`, `Strategies`, `Combat` advice) is no path."""
+    if f.kind != "qualitypaths":
+        return True
+    return f.priced_steps > 0 or any(t == "step" for t, _, _ in f.children) and norm(f.name) not in template
 
 
 def step_qualities(b, page, path):

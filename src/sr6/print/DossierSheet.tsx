@@ -38,7 +38,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
   const qual = ({ q, x }: (typeof quals)[number]) => <tr key={q.uid}><td>{x?.name ?? q.name ?? q.id}{x?.perLevel && ` ${q.level}`}
     {(q.free || q.note) && <span className="d-small"> {[q.free && 'metatype', q.note].filter(Boolean).join(', ')}</span>}</td></tr>
   const pos = quals.filter(x => !x.x || x.x.positive), neg = quals.filter(x => x.x && !x.x.positive)
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="d-small"> + {x.accessories.map(nameOf).join(', ')}</span>
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="d-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
   const attrRows: [string, ReactNode, ReactNode][] = [...CORE_ATTRS, 'edg' as const, ...(mr ? [mr] : [])].map(a => [ATTR_NAMES[a], d.attrs[a].natural, <b>{d.attrs[a].augmented}</b>])
   // CRB: a Minor Action, plus one per initiative die
   const derived: [string, ReactNode, ReactNode][] = [['Minor Actions', dice === null ? '' : 1 + dice, <b>{dice === null ? '' : 1 + dice}</b>],

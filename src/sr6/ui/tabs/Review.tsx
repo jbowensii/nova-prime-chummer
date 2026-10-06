@@ -66,7 +66,9 @@ export function ReviewTab() {
         ['Physical monitor', d.monitors.physical], ['Stun monitor', d.monitors.stun], ['Overflow', d.monitors.overflow],
         ['Defense Rating', d.defenseRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
         ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
-        ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`]])}
+        ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`],
+        // an item's own values from its accessories (a cyberlimb's Strength): the item's, not the runner's
+        ...d.hosts.map(h => [h.name, h.text] as [string, string])])}
       {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Table setup → Creation rules).</p>}
 
       {err && <p className="banner err" role="alert">{err}</p>}

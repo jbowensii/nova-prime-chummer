@@ -126,7 +126,8 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 const bonuses = (bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).flatMap(b => (b.target === 'defense' ? [] : [{ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }]))
 
-/** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating. */
+/** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating
+ *  (they are its host's, not the runner's: derived.attributes leaves them out). */
 function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true): Sr6ExportPurchase {
   const e = entryOf(x, data)
   // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)

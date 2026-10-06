@@ -5,6 +5,7 @@ import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
 import { capacityOf, capacityUsed, entryLabel, entrySearch, fitsHost } from '../../src/sr6/engine/categories'
 import { validateSr6 } from '../../src/sr6/engine/rules'
+import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { blankSr6 } from '../../src/sr6/model/character'
 import { buildOf, made, STONE } from './fixture'
 
@@ -56,4 +57,28 @@ test('the accessory action refuses another host’s accessory; Review flags a mi
   expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({ severity: 'warning', source: 'CRB', page: 283,
     message: 'Eyeware accessory: Glare filter is for Eyeware, not Torqlimb: Limb (synthetic).' })
   expect(v.find(x => x.code === 'catalog.capacity')!.message).toBe('Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.')
+})
+
+test('an accessory’s bonuses are its host’s: the limb’s own STR and armor change, the runner’s attributes don’t', () => {
+  const { b, data, cr, ch, act } = setup()
+  act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })
+  const limb = b.purchases[0]
+  act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 2 })
+  const plate = limb.accessories[0]
+  const before = deriveSr6(data, cr, ch)
+  expect(act({ op: 'bonus', uid: plate.uid, bonuses: [{ target: 'str', value: 2 }, { target: 'defense', value: 1, perRating: true }] })).toEqual({ ok: true })
+  const d = deriveSr6(data, cr, ch)
+  expect(d.attrs.str).toEqual(before.attrs.str) // the runner's Strength: unchanged
+  expect(d.defenseRating).toBe(before.defenseRating)
+  expect(d.hosts).toEqual([{ uid: limb.uid, name: 'Torqlimb: Limb (synthetic)',
+    values: [{ target: 'str', value: before.attrs.str.natural + 2 }, { target: 'defense', value: 2 }],
+    text: `STR ${before.attrs.str.natural + 2}, Armor +2` }])
+  // a bonus on the line itself is still the runner's
+  act({ op: 'bonus', uid: limb.uid, bonuses: [{ target: 'str', value: 1 }] })
+  expect(deriveSr6(data, cr, ch).attrs.str.augmented).toBe(before.attrs.str.augmented + 1)
+  // over its capacity: a Review error
+  act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
+  act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
+  expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.capacity')).toMatchObject({ severity: 'error',
+    message: 'Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.' })
 })

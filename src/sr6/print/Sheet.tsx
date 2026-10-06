@@ -30,8 +30,8 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
 export function Sr6Sheet() {
   const ctx = useSr6Editor(), { ch, data, cr, d } = ctx
   const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic], style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, karma, nuyen } = runnerView(ctx)
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}</div>
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, karma, nuyen, host } = runnerView(ctx)
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}{host(x) && ` (${host(x)})`}</div>
   const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
   const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
 

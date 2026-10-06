@@ -1,5 +1,42 @@
 # Release notes
 
+## 0.10.1 — 2026-10-06: categories and accessories
+
+Import the Shadowrun 6 books again (Books page → **Re-import all**) to get these: the catalogs change, saved runners keep
+working.
+
+- **Every item knows its table.** The title of the table an item is printed in is its category: the core rulebook's
+  cyberlimb table makes **Cyberlimb**, its row **Arm (synthetic)** the item. Where a row's printed name needs that to be
+  understood (a bare part such as Arm, Armor or Gel), Chummer shows it as **Cyberlimb: Arm (synthetic)** in every list,
+  picker, Game data, Review, the ledger and the sheets. The printed name stays the item's name, and the category is
+  its own field in exports. Search finds it by either, by both together and by the names the book composes
+  (cyberarm, synthetic cyberarm, gel ammo).
+- **Accessories go on the items they're made for.** A table titled "Cyberlimb accessories" (or modifications, mods,
+  enhancements) fits cyberlimbs; "Weapon accessories" fit weapons. The accessory picker on a bought item lists only the
+  accessories that fit it, a misfit can't be added, and Review flags one a runner file still holds, with the page.
+  Where the book has no table for the host a title names, the category is flagged for you to settle instead of guessed.
+  The same name in two accessory tables (a cyberlimb's Armor and another table's) is two items with their own prices.
+- **An accessory's bonuses are its host's.** A bonus you put on an accessory changes the item it's fitted to, not the
+  runner: a cyberlimb's Strength or armor shows on the limb's line ("This item: STR 5, Armor +2"), on the sheets
+  beside it and in Review's derived values, and the runner's attributes stay as they are. The capacity accessories take
+  ([2], [Rating]) is counted against their host's, and going over is a Review problem.
+- **Echoes: 25, not 247.** An adventure titled "Echoes of a Lost Signal" turned every bold label in it (GM Note, Race,
+  Age…) into an echo. A heading now names a kind only when the kind's word ends it ("New Echoes"). Four junk programs
+  went the same way.
+- **Shadow Cast's quality paths: no more "Roleplaying", "Strategies", "Combat".** A quality path needs steps under it
+  and a name of its own, not a heading the book repeats in every chapter (43 → 37 there; each of the 37 is printed as a
+  quality path).
+- **Deadly Arts' Armsman polearm is read.** Its four configurations (Knife, One-hand, Spear, Pike) are four weapons
+  with their own printed stats, in the category Armsman Collapsible Polearm, made by Cougar Weapons; the footnotes on
+  their cells are kept with the cells, and the wireless bonus goes with each. A close-combat weapon's type (Blade) gives
+  its Close Combat specialization.
+- **More read from the books:** Body Shop's cyberware martial arts techniques, a priced table no book recipe read
+  (Hack & Slash's IC types, Smooth Operations' BBS costs), footnotes on any table cell. Every priced table is now
+  classified the same way in every book, and a table that doesn't fit the pattern (no title, a title naming no
+  category, an accessory table with no host) is listed in the import report for checking.
+- Measured against Commlink6: completeness 88.78% → 89.32% (Cyberarm, Cyberleg, Cyberskull, Cybertorso, Gel ammo,
+  the Implanted Shotgun and more now match), accuracy 95.65%.
+
 ## 0.10.0 — 2026-10-06: book data from the PDFs, closer: formulas, data issues, override files, re-import all
 
 - **Book values stay canon; what the book leaves out is flagged.** Where a book prints no value, or one the importer

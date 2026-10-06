@@ -35,7 +35,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
   const keys = ([['Initiative', init(d.initiative)], ['Astral init.', init(d.astralInit)], ['Defense', d.defenseRating], ['Unarmed AR', d.attackRatings.unarmed],
     ['Essence', n(d.essence)], ['Composure', d.composure], ['Judge int.', d.judgeIntentions], ['Memory', d.memory], ['Lift/carry', d.liftCarry],
     ['Drain', d.drain], ['Fading', d.fading]] as [string, ReactNode][]).filter(([, x]) => x !== undefined)
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="n-small"> + {x.accessories.map(nameOf).join(', ')}</span>
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="n-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
   const picks = b.picks.length > 0 && PICKS.map(([kind, label]) => [label, b.picks.filter(x => x.kind === kind)] as const).filter(([, xs]) => xs.length)
   const role = [data.metatypes[b.metatype]?.name, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic], k.spells && b.tradition].filter(Boolean).join(' · ')
 

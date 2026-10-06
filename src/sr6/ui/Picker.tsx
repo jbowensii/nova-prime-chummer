@@ -164,7 +164,9 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
         {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
           onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
           <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeName(data, g)}</option>)}</select>}
-        <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>×</button></span>
+        <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>×</button>
+        {/* what it does to its host (a cyberlimb's Strength), never to the runner */}
+        <Bonuses uid={a.uid} name={`${own} on ${name}`} bonuses={a.bonuses} rated={!!a.rating} /></span>
     })}
     <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} onClick={() => setOpen(true)}>Accessory…</button>
     <CatalogPicker title={`Add an accessory to ${name}`} open={open} onClose={() => setOpen(false)} kinds={kinds} filter={fits}
@@ -204,9 +206,10 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
   kind: PurchaseKind; title: string; one: string; grades?: boolean; detail?: (x: Sr6Purchase) => ReactNode
   accessories?: { kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }; bonuses?: boolean; hint?: ReactNode
 }) {
-  const { ch, data, cr, act } = useSr6Editor()
+  const { ch, data, cr, act, d } = useSr6Editor()
   const [adding, setAdding] = useState(false)
   const rows = ch.build.purchases.filter(x => x.kind === kind)
+  const own = (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text
   const ware = kind === 'augmentations'
   return <section className="stack">
     <div className="row"><h3 style={{ margin: 0 }}>{title}</h3><span className="spacer" />
@@ -222,6 +225,7 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
             <RatingGrade x={x} name={name} grades={grades} />
             {detail && <div className="muted">{detail(x)}</div>}
             {accessories && <div><Accessories host={x} name={name} {...accessories} /></div>}
+            {own(x) && <div className="muted" aria-label={`${name}: its own values`}>This item: {own(x)}</div>}
             {bonuses && <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={!!x.rating} /></div>}</td>
           {STACKS.has(kind) && <td><Stepper label={`${name} quantity`} value={x.qty} min={1} max={999} onChange={qty => act({ op: 'quantity', uid: x.uid, qty })} /></td>}
           {kind === 'armor' && <td><input type="checkbox" aria-label={`${name} is worn`} checked={!!x.worn} onChange={ev => act({ op: 'wear', uid: x.uid, worn: ev.target.checked })} /></td>}
