@@ -58,7 +58,7 @@ function mergeSource(prev: Sr6Source | undefined, s: Sr6Source): Sr6Source {
 
 export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
   const c: Sr6Catalog = { entries: Object.fromEntries(Object.keys(SR6_KINDS).map(k => [k, new Map()])) as Sr6Catalog['entries'],
-    sources: new Map(), original: new Map(), files: [], errors: [] }
+    sources: new Map(), original: new Map(), moved: new Map(), files: [], errors: [] }
   for (const f of files) {
     const doc = new DOMParser().parseFromString(f.xml, 'text/xml')
     const perr = doc.getElementsByTagName('parsererror')[0]
@@ -120,6 +120,11 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
         if (bad) throw new Error(`<${bad.localName}> doesn’t belong in a ${kind} file (<${tag}> entries only)`)
         const entries = els.filter(el => el.localName === tag).map(el => toEntry(el, k))
         for (const e of entries) c.entries[k].set(e.id, e)
+        // an id the entry had in an earlier import (importer/sr6/moved.py): resolveEntry finds it under the old one
+        els.forEach(el => { for (const a of el.children) if (a.localName === 'alias' && a.getAttribute('id')) {
+          const from = a.getAttribute('kind') ?? k
+          if (KINDS.has(from)) c.moved.set(entryKey(from as Sr6Kind, a.getAttribute('id')!), { kind: k, id: el.getAttribute('id') ?? '' })
+        } })
         for (const el of els.filter(el => el.localName === 'remove')) c.entries[k].delete(el.getAttribute('id') ?? '')
       } else throw new Error(`unknown kind "${kind}"`)
     } catch (e) {
@@ -139,6 +144,15 @@ function formulaIssues(c: Sr6Catalog) {
     const r = bookValue(e, f.field, ratingRange(e.attrs.rating)[0], find)
     if (r.error && !e.issues?.some(x => x.field === f.field)) e.issues = [...e.issues ?? [], { field: f.field, code: 'unreadable', note: `its formula: ${r.error}` }]
   }
+}
+
+/** The entry of (kind, id), or the one an old id (an earlier import's, see Sr6Catalog.moved) now names: it may be of
+ *  another kind. */
+export function resolveEntry(c: Pick<Sr6Catalog, 'entries' | 'moved'>, kind: Sr6Kind, id: string): Sr6Entry | undefined {
+  const e = c.entries[kind]?.get(id)
+  if (e) return e
+  const m = c.moved?.get(entryKey(kind, id))
+  return m && c.entries[m.kind].get(m.id)
 }
 
 /** The catalog's entries by kind and id, for a formula's ref(). */

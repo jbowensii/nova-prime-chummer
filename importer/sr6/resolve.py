@@ -524,7 +524,7 @@ def corpus(books, sources=None, apply_errata=True):
         for el in tree.getroot():
             if isinstance(el.tag, str) and el.get("id") is not None:
                 entries.append((b, src, kind, el, path))
-                for n in dict.fromkeys([el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias")]):
+                for n in dict.fromkeys([el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias") if a.get("id") is None]):
                     by_name.setdefault((kind, norm(n)), []).append((b, src, el))
     changed, n = set(), {"corpus": 0, "errata": 0, "searched": 0}
     if apply_errata:

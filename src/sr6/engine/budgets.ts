@@ -32,7 +32,7 @@ export interface Sr6Budgets {
 
 /** The editor tab each purchase kind is bought on. */
 export const PURCHASE_TAB: Record<PurchaseKind, string> = {
-  weapons: 'gear', armor: 'gear', electronics: 'gear', programs: 'gear', gear: 'gear', augmentations: 'augmentations', vehicles: 'vehicles',
+  weapons: 'gear', armor: 'gear', electronics: 'gear', programs: 'gear', gear: 'gear', augmentations: 'augmentations', vehicles: 'vehicles', ammotypes: 'gear',
 }
 const round2 = (x: number) => Math.round(x * 100) / 100
 const n0 = (cr: CreationRules, key: string) => num(cr, key) ?? 0

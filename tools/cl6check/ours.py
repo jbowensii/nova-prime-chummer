@@ -160,7 +160,7 @@ def _entries(src_dir, src):
                 attrs[f"formula:{f.get('field')}"] = "|".join(
                     [expr] + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)] + ([f"opts={opts}"] if opts else []))
             out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
-                        "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias")],
+                        "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias") if x.get("id") is None],
                         "attrs": attrs, "families": families(e),
                         "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
                         # where the importer found a value the row leaves out (resolve.py): field -> how

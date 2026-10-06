@@ -12,7 +12,7 @@ from pathlib import Path
 
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import NS, regroup, resolve
+from importer.sr6 import NS, moved, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, skipped
 
 
@@ -77,6 +77,9 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         others = [(p, d, st) for p, d, st in _same_source(book_dir, src) if p and mine]
         newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
         older = [] if newer else [(p, d, st) for p, d, st in others if st in ("done", "superseded") and p < mine]
+        prev = moved.previous(out_dir)  # the ids the last import wrote (read before anything replaces them)
+        prev_extra = {x: moved.previous(os.path.join(custom_dir, "imported", x.lower()))
+                      for x in (old.get("extra") or "").split()} if old is not None else {}
         if any(st == "done" for _, _, st in older):
             _drop(custom_dir, src)  # the older printing's catalog, texts and sample runners (this one's replace them)
         with sr6_root():
@@ -86,8 +89,9 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                 texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
                 samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
                 samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
-                for name, xml in res.files.items():
-                    xmlio.write_overlay(out_dir, name, xml, ids)
+                files, _ = moved.carry(prev, {n: xmlio.scope(x, src, ids) for n, x in res.files.items()})
+                for name, xml in files.items():
+                    xmlio.write_file(os.path.join(out_dir, name), xml)
                 if texts:
                     xmlio.write_file(texts_path, texts)
                 for s in res.samples:  # sr6:character files, their ids already scoped
@@ -97,7 +101,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             for x in (old.get("extra") or "").split() if old is not None else ():
                 _drop(custom_dir, x)  # the last import's further sources
             for x in res.extra:
-                _write_extra(custom_dir, x)
+                _write_extra(custom_dir, x, prev_extra.get(x.source["id"], {}))
             xmlio.write_import(book_dir, report=report + res.report + [r for x in res.extra for r in x.report],
                                extra=" ".join(x.source["id"] for x in res.extra) or None,
                                extras=[{"id": x.source["id"], "name": x.source["name"], "publisher": x.source["publisher"],
@@ -173,12 +177,14 @@ def _texts(path, xml, src, ids):
     return xmlio.merged_texts(path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries])
 
 
-def _write_extra(custom_dir, res):
-    """A further source the book holds (Result.extra): its catalog in custom/sr6/imported/<source>/, its texts."""
+def _write_extra(custom_dir, res, prev=None):
+    """A further source the book holds (Result.extra): its catalog in custom/sr6/imported/<source>/ (with the old ids
+    of its last import, `prev`, as id aliases), its texts."""
     src = res.source["id"]
     ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
-    for name, xml in res.files.items():
-        xmlio.write_overlay(os.path.join(custom_dir, "imported", src.lower()), name, xml, ids)
+    files, _ = moved.carry(prev or {}, {n: xmlio.scope(x, src, ids) for n, x in res.files.items()})
+    for name, xml in files.items():
+        xmlio.write_file(os.path.join(custom_dir, "imported", src.lower(), name), xml)
     if res.texts:
         path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
         xmlio.write_file(path, _texts(path, res.texts, src, ids))

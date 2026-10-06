@@ -89,12 +89,20 @@
         <xs:element name="formula" type="sr6:Formula"/>
         <xs:element name="issue" type="sr6:Issue"/>
         <xs:element name="found" type="sr6:Found"/>
-        <!-- another name the book prints the item under (a table row's shorter name, its description heading's) -->
-        <xs:element name="alias" type="xs:string"/>
+        <!-- another name the book prints the item under (a table row's shorter name, its description heading's); or,
+             with id (and kind, when it was another), an id the entry had in an earlier import: the app resolves the
+             old id to this entry and turns a saved runner's old id into this one -->
+        <xs:element name="alias" type="sr6:Alias"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
   </xs:group>
+  <xs:complexType name="Alias">
+    <xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="kind" type="xs:string"/>
+    </xs:extension></xs:simpleContent>
+  </xs:complexType>
   <!-- how a field is worked out (src/engine/formula.ts): R rating, Q quantity, M Magic, B the field's printed value,
        opt.<id>; tier(), ref(kind:id, field[, R]), ceil, floor, min, max, + - * /. The attribute stays as printed.
        unit and qty: the price is for qty units ("10" "rounds"). round: up (the default) or down. -->

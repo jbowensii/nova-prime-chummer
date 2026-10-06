@@ -99,7 +99,8 @@ const printedXml = (p?: Sr6Printed) => (p ? el('printed', { source: p.source, pa
 export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
   const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
-    printedXml(ch.printed), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note)))].filter(Boolean).join('\n  ')
+    printedXml(ch.printed), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
+    ...(ch.migrated ?? []).map(m => el('migrated', m))].filter(Boolean).join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
     lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen, sampleKey: ch.sampleKey })
@@ -298,6 +299,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       printed: printed ? { source: str(printed, 'source') ?? '', page: num(printed, 'page', 0),
         values: Object.fromEntries(kids(printed, 'value').map(v => [v.getAttribute('key') ?? '', v.getAttribute('value') ?? ''])) } : undefined,
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: o.textContent ?? '' })),
+      migrated: kids(r, 'migrated').length ? kids(r, 'migrated').map(m => ({ from: m.getAttribute('from') ?? '', to: m.getAttribute('to') ?? '', at: m.getAttribute('at') ?? '' })) : undefined,
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),
     })
     return def({ ok: true as const, character: ch, rev: num(r, 'rev') })

@@ -10,7 +10,7 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [['gear', 'Other gear'], ['electr
 const band = (v: number | null) => (v === null ? '—' : String(v))
 
 export function GearTab() {
-  const { d, act } = useSr6Editor()
+  const { ch, d, act } = useSr6Editor()
   const [custom, setCustom] = useState(false)
   const [name, setName] = useState(''), [kind, setKind] = useState<PurchaseKind>('gear'), [cost, setCost] = useState(''), [avail, setAvail] = useState('')
   const ar = (uid: string) => { const w = d.attackRatings.weapons.find(x => x.uid === uid); return w && `AR ${w.bands.map(band).join('/')}` }
@@ -26,6 +26,8 @@ export function GearTab() {
       <PurchaseSection kind="electronics" title="Electronics" one="electronics" bonuses />
       <PurchaseSection kind="programs" title="Programs and autosofts" one="a program" />
       <PurchaseSection kind="gear" title="Other gear" one="other gear" bonuses />
+      {/* an ammunition type a runner bought as gear before the importer filed it apart (src/sr6/engine/migrate.ts) */}
+      {ch.build.purchases.some(x => x.kind === 'ammotypes') && <PurchaseSection kind="ammotypes" title="Ammunition types" one="an ammunition type" />}
       <Modal open={custom} onClose={close} title="Custom item"
         actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!name.trim()} onClick={add}>Add item</button></>}>
         <p className="muted">Something the catalog doesn’t have, at your own price (the GM checks it).</p>

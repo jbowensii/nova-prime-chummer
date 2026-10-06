@@ -199,6 +199,16 @@ supply table printed right after a weapon and titled with the end of its heading
 `Scorcher Fuel` and `Fuel for Scorcher`. The importer's resolving pass and the measurement match on aliases too; the
 app leaves them out of the entry.
 
+**`<alias id="…" kind="…"/>`**: an id the entry had in an earlier import (owner decision D2). When a re-import renames,
+moves or re-kinds an entry (`Zap mic` becomes `Zap microphone`; `Fizz Rounds` moves from gear to ammunition types), the
+importer reads the source's previous import before replacing it and gives each new entry the old ids it replaces
+(importer/sr6/moved.py): same source, matched by name once a printed rating range, case, punctuation and a plural s
+are set aside, else by a maker's name added in front, else by abbreviated words, and only when one new entry matches.
+`kind` is set when the old one was another kind. An old entry's own id aliases go with it, so every old id survives a
+chain of re-imports. The app resolves an old id to the entry (Sr6Catalog.moved, `resolveEntry`), and the runner editor
+turns a saved runner's old ids into the new ones on load (src/sr6/engine/migrate.ts), recording each in `<migrated>`
+(docs/sr6-character-format.md).
+
 **Searched.** An issue says how far the importer looked: `searched="book"` (its tables and its text) at import,
 `searched="book,corpus"` once the corpus pass, run after every import, has looked in every other source of the library
 too. Only then is a `missing` issue really nothing printed anywhere the library holds. A field the book prints two values

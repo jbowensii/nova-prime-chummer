@@ -106,6 +106,8 @@ export interface Sr6Catalog {
   entries: Record<Sr6Kind, Map<string, Sr6Entry>>
   sources: Map<string, Sr6Source>
   original: Map<string, Sr6Entry>
+  /** an id an entry had in an earlier import (its <alias id kind>), by entryKey(old kind, old id): where it is now */
+  moved: Map<string, { kind: Sr6Kind; id: string }>
   files: { file: string; kind: string; entries: number }[]
   errors: { file: string; message: string }[]
 }

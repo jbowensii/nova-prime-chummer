@@ -32,7 +32,7 @@ export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' |
     bands: (x: Sr6Purchase) => d.attackRatings.weapons.find(a => a.uid === x.uid)?.bands ?? [null, null, null, null, null],
     rangedWeapons: lines('weapons').filter(ranged), meleeWeapons: lines('weapons').filter(x => !ranged(x)),
     know: b.knowledge.filter(x => x.kind === 'knowledge'), langs: b.knowledge.filter(x => x.kind === 'language'),
-    gear: [...lines('electronics'), ...lines('programs'), ...lines('gear')],
+    gear: [...lines('electronics'), ...lines('programs'), ...lines('gear'), ...lines('ammotypes')],
     lifestyle: b.lifestyle && data.entry('lifestyles', b.lifestyle.id),
     karma, nuyen,
   }
