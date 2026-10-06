@@ -304,6 +304,8 @@ _BONUS = re.compile(r"\*\*Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma
 def quality_attrs(name, chain, text):
     """A quality's kind (positive, negative: its heading's words, else its Cost or Bonus line, else its text naming
     it a positive or negative quality) and Karma; {} when nothing says which."""
+    if any(re.search(r"\blifestyle", h, re.I) for h in chain) or re.match(r"^[A-Z]\.\s", name):
+        return {}  # (a lifestyle's qualities are bought with the lifestyle; `B. For 3 or 4 …` is an option)
     near = next((h.lower() for h in reversed(chain) if re.search(r"(?:positive|negative)\s+qualit", h, re.I)), "")
     near = "" if "positive" in near and "negative" in near else near  # (`New Positive and Negative Qualities`)
     cost, bonus = _COST.search(text or ""), _BONUS.search(text or "")

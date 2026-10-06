@@ -700,6 +700,13 @@ class _Catalog:
             v, how, page = r
             e["attrs"][f] = int(v) if kind == "qualities" and f == "karma" else v
             out.append(("found", {"field": f, "how": how, "source": self.source, "page": page}, None))
+        a = e["attrs"]
+        if out and not (a.get("rating") or "").strip() and _VAR.search(f"{a.get('cost', '')} {a.get('avail', '')}"):
+            # a rated price found: the range its name or its capacity prints is the rating it comes in
+            m = NAME_RATING.search(e["name"])
+            rng = m.group(1) if m else a.get("capacity") if re.fullmatch(r"\s*\d+\s*[–-]\s*\d+\s*", a.get("capacity") or "") else None
+            if rng:
+                a["rating"] = rng.strip()
         return out
 
     def xml(self, kind):
