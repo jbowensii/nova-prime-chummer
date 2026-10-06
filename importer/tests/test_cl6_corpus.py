@@ -4,8 +4,14 @@ import os
 import shutil
 import tempfile
 import unittest
+from pathlib import Path
 
-from tools.cl6check import corpus, lineage, trace
+from tools.cl6check import corpus, crops, lineage, trace
+
+
+def put(path, text):
+    Path(path).write_text(text, encoding="utf8")
+
 
 MD = """<!-- page 3 -->
 # GIZMOS
@@ -130,20 +136,20 @@ class CorpusTest(unittest.TestCase):
         root = tempfile.mkdtemp()
         try:
             src = os.path.join(root, "sources.xml")
-            open(src, "w", encoding="utf8").write(SOURCES)
+            put(src, SOURCES)
             runs = os.path.join(root, "runs")
             for run, sid in (("b", "GZB"), ("a", "GZA"), ("e", "")):
                 lib = os.path.join(runs, run, "library", "sr6", "book1")
                 os.makedirs(lib)
                 pdf = "Gizmo-Errata.pdf" if not sid else f"{run}.pdf"
                 attrs = f'source="{sid}" recipe="none"' if sid else ""
-                open(os.path.join(lib, "import.xml"), "w", encoding="utf8").write(
+                put(os.path.join(lib, "import.xml"),
                     f'<import {attrs} file="{pdf}" sha256="00"><files/></import>')
-                open(os.path.join(lib, "book.md"), "w", encoding="utf8").write(MD)
+                put(os.path.join(lib, "book.md"), MD)
                 if sid:
                     cat = os.path.join(runs, run, "custom", "sr6", "imported", sid.lower())
                     os.makedirs(cat)
-                    open(os.path.join(cat, "gear.xml"), "w", encoding="utf8").write(
+                    put(os.path.join(cat, "gear.xml"),
                         CATALOG.format(src=sid.lower(), avail="2" if run == "a" else "3"))
             meta = {"a": ("2020-03-15", ""), "b": ("", ""), "e": ("2020-04-01", "")}
             extra = corpus.EXTRA
@@ -261,6 +267,46 @@ class MoreTest(unittest.TestCase):
         self.assertEqual(len(trace._per_rating(per, "cost", obs, "a")), 3)
         obs[1].value = "250"
         self.assertEqual(trace._per_rating(per, "cost", obs, "a"), [])
+
+
+class StepThreeTest(unittest.TestCase):
+    def test_a_section_default_applies_but_never_beats_the_items_own_value(self):
+        md = ("<!-- page 1 -->\n## Gizmos\nAll of these gizmos have Availability 4(L) unless noted.\n#### Zorp widget\n"
+              "| TYPE | COST |\n|---|---|\n| Gizmo | 100¥ |\n#### Blarg roller\n| TYPE | AVAIL | COST |\n|---|---|---|\n"
+              "| Gizmo | 2 | 50¥ |\n")
+        c = corpus.Corpus([book("A", "2020-03", md)])
+        zorp = chains(c, ["Zorp widget"], ("gear",))
+        self.assertEqual((lineage.winner(zorp["avail"]).kind, lineage.winner(zorp["avail"]).value), ("section", "4(L)"))
+        self.assertEqual(lineage.winner(chains(c, ["Blarg roller"], ("gear",))["avail"]).value, "2")
+
+    def test_a_footnote_and_a_later_part_are_not_the_items_rows(self):
+        md = ("<!-- page 1 -->\n#### Zorp widget\n##### zorp staff\n| TYPE | DV |\n|---|---|\n| Club | 4S/4P* |\n"
+              "| †Maximum range | is 8 |\n##### detachable blade\n| TYPE | DV |\n|---|---|\n| Blade | 2P |\n")
+        ch = chains(corpus.Corpus([book("A", "2020-03", md)]), ["Zorp widget"])
+        self.assertEqual(lineage.winner(ch["dv"]).value, "4S/4P*")
+        self.assertEqual([(o.value, o.variant) for o in ch["dv"]], [("4S/4P*", ""), ("2P", "detachable blade")])
+
+    def test_verdicts_and_weak_links(self):
+        rows = [{"src": "a", "id": "x", "field": "avail", "family": "another column", "where": "w", "winner": "3",
+                 "cl6": "5"},
+                {"src": "a", "id": "y", "field": "cost", "family": "Commlink6 misread", "where": "w", "winner": "200",
+                 "cl6": "100", "strength": "1 field from that row"},
+                {"src": "a", "id": "z", "field": "cost", "family": "not found", "where": "", "winner": "345",
+                 "cl6": "325"}]
+        trace.apply_verdicts(rows, {"a|y|cost": {"family": "Commlink6 misread", "note": "row above", "crop": "c.png"},
+                                    "a|z|cost": {"family": "Commlink6 misread", "note": "the page prints ours"}})
+        self.assertEqual([r["family"] for r in rows], ["not found", "Commlink6 misread", "Commlink6 misread"])
+        self.assertEqual(rows[0]["verdict"], trace.WEAK)
+        self.assertIn("c.png", rows[1]["where"])
+
+
+    def test_locate_finds_the_value_beside_the_name(self):
+        w = lambda t, x, y: {"text": t, "x0": x, "x1": x + 20, "top": y, "bottom": y + 8}  # noqa: E731
+        words = [w("Zorp", 10, 100), w("widget", 35, 100), w("2", 200, 100), w("100¥", 260, 100),
+                 w("Blarg", 10, 112), w("3", 200, 112), w("1,000¥", 260, 112), w("Zorp", 10, 300)]
+        self.assertEqual(crops.locate(words, "Zorp widget", "100¥"), (10, 100, 280, 108))
+        self.assertEqual(crops.locate(words, "Blarg roller", "1000"), (10, 112, 280, 120))
+        self.assertIsNone(crops.locate(words, "Zorp widget", "555"))
 
 
 if __name__ == "__main__":

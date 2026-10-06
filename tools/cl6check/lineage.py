@@ -9,6 +9,8 @@ An observation (Obs) is one value of one field that one book prints for the obje
   card's bold header row and the values under it, a quick-start card's range lines);
 - `bracket`: an NPC's stat line `Name [Type, DV 4P, SS, 9/9/6/—/—, 12(c), w/ …]`, context only (a character's
   modified copy);
+- `section`: a general statement above the object (a section's intro, a table's footnote: 'all of these …
+  Availability N'), its section default;
 - `errata`: an errata statement naming the object: `X's Near AR is changed from A to B`, `Change the cost to
   N¥` under a heading naming it, `X: Availability N`. A change to one attack-rating band is a patch on the value
   before it.
@@ -118,18 +120,22 @@ def _own(cell, names):
 
 
 def from_block(book, i, names):
-    """The table rows with no name of their own under heading i, and the rows naming a variant of the object."""
-    ls, out = book.md(), []
+    """The table rows with no name of their own under heading i, and the rows naming a variant of the object. The first
+    stat block is the object's own; a later one under a sub-heading naming something else (a weapon's detachable
+    blade) is that part's, a variant."""
+    ls, out, first = book.md(), [], None
     for ln in K.section(ls, i):
         cells = ln.cells()
         if not cells:
             continue
+        first = first or ln.heading  # the first stat block under the heading is the object's own
         h0, c0 = ln.header[0].upper(), next(iter(cells.values()))
         if h0 in NAME_HEADERS:
             if _named(c0, names) and not _own(c0, names):
                 out += from_row(book, ln, "block", c0)  # a variant row: 'Widget Rating 2'
             continue
-        out += from_row(book, ln, "block", f"{h0.title()} {c0}" if h0 in VARIANT_HEADERS else "")
+        part = ln.heading if ln.heading not in (ls[i].heading, first) and not _named(ln.heading, names) else ""
+        out += from_row(book, ln, "block", f"{h0.title()} {c0}" if h0 in VARIANT_HEADERS else part)
     return out
 
 
@@ -268,6 +274,57 @@ def from_errata(book, names):
     return out
 
 
+GENERAL = re.compile(r"\b(?:all|every|each|these|those|unless otherwise|any)\b", re.I)
+FOOTNOTE = re.compile(r"^\s*\|?\s*[*†](?!\*)\s*\S")
+
+
+def section_text(book, i):
+    """[(heading, Line, text)]: the general statements over line i: for each heading above it, one level up at a time,
+    its intro (the paragraph up to the next heading) and the footnotes ('*', '†') of its first 400 lines."""
+    key = ("section", id(book), i)
+    if key in _CACHE:
+        return _CACHE[key]
+    ls, out = book.md(), []
+    lv = ls[i].level or 7
+    for k in range(i - 1, -1, -1):
+        if not 0 < ls[k].level < lv:
+            continue
+        lv = ls[k].level
+        intro = []
+        for x in ls[k + 1:]:
+            if x.level:
+                break
+            intro.append(x)
+        if intro:
+            out.append((ls[k], intro[0], " ".join(x.text for x in intro if not x.text.startswith("|"))))
+        for x in ls[k + 1:k + 401]:
+            if x.level and x.level <= lv:
+                break
+            if FOOTNOTE.match(x.text):
+                out.append((ls[k], x, x.text.strip("| ")))
+        if lv <= 1:
+            break
+    _CACHE[key] = out
+    return out
+
+
+def from_section(book, i):
+    """Section defaults over line i: a field and value a general statement gives ('All of these have Availability N',
+    a table's footnote), as observations of kind `section`; the object's own value wins over them in its book."""
+    out = []
+    for head, ln, text in section_text(book, i):
+        for sentence in re.split(r"(?<=[.;!?])\s+(?=[A-Z*])", _clean(text)):
+            if not GENERAL.search(sentence):
+                continue
+            for m in (m for f, rx in FIELD_WORDS for m in re.finditer(rx, sentence, re.I)):
+                f = next(f for f, rx in FIELD_WORDS if re.fullmatch(rx, m.group(0), re.I))
+                v = re.compile(CONNECT + f"({VALUE[f]})", re.I).match(sentence, m.end())
+                if v:
+                    out.append(Obs(book, f, _clean(v.group(1)), f"book.md L{ln.no} p.{ln.page} section [{head.heading[:50]}]",
+                                   "section", book.context, "", ln))
+    return out
+
+
 family = K.family
 
 
@@ -286,7 +343,7 @@ def observe(corpus, kinds, names, home=None):
     for b in corpus.books:
         if b.errata:
             out += from_errata(b, names)
-    by_book = {}
+    by_book, sections = {}, []
     for b, ln in corpus.mentions(names):
         by_book.setdefault(id(b), (b, []))[1].append(ln)
     for b, found in by_book.values():
@@ -295,7 +352,10 @@ def observe(corpus, kinds, names, home=None):
         text = home is None or not b.sources or family(b.belongs) == home or id(b) in cataloguing
         ls = b.md()
         idx = {ln.no: i for i, ln in enumerate(ls)}
+        home_book = text and (home is None or family(b.belongs) == home or id(b) in cataloguing)
         for ln in found:
+            if home_book and (ln.level or (ln.cells() and _own(next(iter(ln.cells().values())), names))):
+                sections += from_section(b, idx[ln.no])
             if ln.level and text:
                 out += from_block(b, idx[ln.no], names)
                 if ln.level <= 2:
@@ -310,7 +370,7 @@ def observe(corpus, kinds, names, home=None):
             elif "[" in ln.text and not ln.level:
                 out += from_bracket(b, ln, names)
     seen, text = set(), []
-    for o in out:  # a stat block under two headings naming the object is read once
+    for o in sections + out:  # a stat block under two headings naming the object is read once; a section default first
         key = (id(o.book), o.line.no if o.line is not None else o.where, o.field, o.value)
         if key not in seen:
             seen.add(key)

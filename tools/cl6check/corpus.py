@@ -59,7 +59,7 @@ class Line:
         if not self.header or not self.text.startswith("|") or SEP.match(self.text):
             return {}
         cs = [c.strip() for c in self.text.strip().strip("|").split("|")]
-        if cs and cs[0].startswith("*"):  # a footnote set as a row
+        if cs and cs[0][:1] in ("*", "†", "‡"):  # a footnote set as a row
             return {}
         return {h.upper(): c for h, c in zip(self.header, cs)}
 

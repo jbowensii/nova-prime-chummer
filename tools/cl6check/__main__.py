@@ -7,7 +7,7 @@
       else .extract/cl6check (gitignored). The baseline is <out>/baseline.json unless --baseline names one.
   python -m tools.cl6check import <books file> <out dir> [-j 10]
       a fresh `importer sr6 check` of every book in parallel; each line of the books file is `<run name>|<pdf path>`.
-  python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>]
+  python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
       the corpus of every import run, ordered by the PDFs' dates; every Commlink6 value traced to where it sits
       (trace.py): <out>/cl6-trace.csv (owner only) and <out>/cl6-trace.md.
 """
@@ -88,6 +88,7 @@ def main(argv=None):
         p.add_argument("--runs", required=True)
         p.add_argument("--out", required=True)
         p.add_argument("--jar")
+        p.add_argument("--verdicts", help="the owner's page verdicts (JSON, outside the repo)")
         a = p.parse_args(argv[1:])
         jar = reader.find_jar(a.jar)
         if jar is None:
@@ -95,7 +96,8 @@ def main(argv=None):
             return 0
         recs, _ = reader.read(jar)
         c = corpus.load(a.runs, os.path.join(REPO, "public", "data", "sr6", "sources.xml"))
-        rows, n = trace.run(c, [canon.canonical(r) for r in recs])
+        verdicts = json.load(open(a.verdicts, encoding="utf8")) if a.verdicts else None
+        rows, n = trace.run(c, [canon.canonical(r) for r in recs], verdicts)
         trace.write(a.out, rows, n, c)
         with open(os.path.join(a.out, "cl6-trace.md"), "w", encoding="utf8") as f:
             f.write(trace.markdown(rows, n, c))

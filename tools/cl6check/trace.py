@@ -10,6 +10,8 @@ searched for and given the first family that holds Commlink6's value, with its m
 - per-rating or variant row: Commlink6 keeps the Rating 1 value of a per-rating price; its per-rating values or its
   rating range are the object's rows printed one per rating; another entry or row of the object with a qualifier;
 - errata sentence: an errata statement's value;
+- section default: a general statement above the object (a section's intro, a table footnote) gives it;
+- conversion error: a page verdict found Commlink6's number printed in our item's cell (we read it wrong);
 - older printing or superseded: an earlier printing of the same book, or an earlier source the winner replaced;
 - another book: a different book's row, card or NPC line (context: an NPC line or quick-start material), or a
   class-price row in any book ('<Kind>, <class>' for an item of that class);
@@ -22,7 +24,8 @@ searched for and given the first family that holds Commlink6's value, with its m
 - another column: another column of the object's own row in the winning book;
 - not found.
 
-A misread is not counted against our accuracy. `run(corpus, cl6)` returns (rows, counts); `write()` writes the CSV
+A misread is not counted against our accuracy. Weak links (another column, a one-field misread, one digit off) are settled by the
+owner's page verdicts (apply_verdicts); one with no verdict goes to not found. `run(corpus, cl6)` returns (rows, counts); `write()` writes the CSV
 (owner only: names and values), `markdown()` the owner's section."""
 import csv
 import os
@@ -32,8 +35,9 @@ from collections import Counter
 from tools.cl6check import corpus as K
 from tools.cl6check import fields, lineage, match, ours
 
-FAMILIES = ("own row", "older printing or superseded", "errata sentence", "Commlink6 misread", "another book",
-            "description sentence", "per-rating or variant row", "heading", "another column", "not found")
+FAMILIES = ("own row", "older printing or superseded", "errata sentence", "section default", "conversion error",
+            "Commlink6 misread", "another book", "description sentence", "per-rating or variant row", "heading",
+            "another column", "not found")
 ATTR = {"legality": "avail", "spell type": "type", "drain": "dv", "spell category": "category", "pp cost": "cost",
         "per level": "perLevel", "power type": "type", "positive": "kind", "attribute": "attr"}
 CUE = {"cost": r"¥|nuyen|\bcost", "avail": r"avail", "legality": r"avail|legal|illegal|restricted|forbidden",
@@ -128,6 +132,7 @@ def _matches(c, kind, attr, value, f, rating=None):
             tries.append((re.match(r"\s*(\d+)", v) or re.match("", "")).group(0).strip() or v)
     if f == "dv":
         tries.append(v.rstrip("*† "))
+        tries.append(v.split("/")[0].strip())  # '4S/4P': two forms of the weapon, the first
     return "with a note" if any(t != v and _strict(c, kind, attr, t, f, rating) for t in tries) else None
 
 
@@ -236,6 +241,7 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
         return next((o for o in hits if pred(o)), None)
     for name, pred in (
             ("errata sentence", lambda o: o.kind == "errata"),
+            ("section default", lambda o: o.kind == "section"),
             ("per-rating or variant row", lambda o: win is not None and o.book is win.book and o.kind == "catalog"
              and win.kind == "catalog" and o.where != win.where),  # two entries of one book: two variants
             ("own row", lambda o: win is not None and o.book is win.book and not o.variant and not o.context),
@@ -399,8 +405,9 @@ def _matched_names(corpus, cl6):
     return out
 
 
-def run(corpus, cl6):
-    """(rows, counts): one row per differing field of every Commlink6 record we model, and the tallies."""
+def run(corpus, cl6, verdicts=None):
+    """(rows, counts): one row per differing field of every Commlink6 record we model, and the tallies. verdicts:
+    {'src|id|field': {family, note, crop}} read off the rendered page (the owner's file, see apply_verdicts)."""
     rows, n = [], Counter()
     matched = _matched_names(corpus, cl6)
     for c in cl6:
@@ -433,7 +440,8 @@ def run(corpus, cl6):
         for fld in done:
             w = lineage.winner(chains.get(ATTR.get(fld, fld), []))
             if fld not in differ and w is not None:  # where the equal values come from
-                src = ("errata" if w.book.errata else "card" if w.kind == "card" else
+                src = ("errata" if w.book.errata else "card" if w.kind == "card" else "section default"
+                       if w.kind == "section" else
                        "home book" if lineage.family(w.book.belongs) == lineage.family(c["src"]) else "another book")
                 n[f"equal via {src}"] += 1
         for d in diffs:
@@ -449,7 +457,31 @@ def run(corpus, cl6):
         if r.get("family") == "Commlink6 misread":
             k = by.get((r["id"], r["src"], r["where"]), 0)
             r["strength"] = "digit swap" if "digit swap" in r["where"] else f"{k} field{'s' if k > 1 else ''} from that row"
+    apply_verdicts(rows, verdicts or {})
     return rows, n
+
+
+WEAK = "weak link, not confirmed on the page"
+
+
+def weak(r):
+    """A link the page must confirm: another column, a misread backed by one field of the neighbouring row, or a
+    value one digit off ours."""
+    return (r["family"] == "another column" or (r["family"] == "Commlink6 misread" and r.get("strength", "").startswith("1 "))
+            or (r["family"] == "not found" and why_not(r) == "one digit off"))
+
+
+def apply_verdicts(rows, verdicts):
+    """The page verdicts (step 3): each row the owner's file names takes its family, with the note and the crop as its
+    location; a weak link no verdict confirms goes to not found (a one-digit-off value stays not found)."""
+    for r in rows:
+        v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}")
+        if v:
+            r["family"], r["verdict"] = v["family"], v.get("note", "")
+            r["where"] = f"{v.get('note', '')} (page crop {v['crop']})" if v.get("crop") else v.get("note", "")
+            r["crop"] = v.get("crop", "")
+        elif weak(r) and r["family"] != "not found":
+            r["family"], r["verdict"] = "not found", WEAK
 
 
 ENUM_FIELDS = {"range", "duration", "action", "power type", "spell type", "spell category", "activation", "positive",
@@ -457,8 +489,11 @@ ENUM_FIELDS = {"range", "duration", "action", "power type", "spell type", "spell
 
 
 def why_not(r):
-    """A not-found difference's kind, for reading the list: Commlink6's value where our text prints none for the field,
-    a Commlink6 term (an enum) the book words otherwise, one digit off, or a value printed nowhere."""
+    """A not-found difference's kind, for reading the list: a weak link the page did not confirm, Commlink6's value where
+    our text prints none for the field, a Commlink6 term (an enum) the book words otherwise, one digit off, or a value
+    printed nowhere."""
+    if r.get("verdict"):
+        return "checked on the page, not settled" if r["verdict"] != WEAK else WEAK
     if not r["winner"]:
         return "we print no value for this field"
     if r["field"] in ENUM_FIELDS:
@@ -541,7 +576,7 @@ def markdown(rows, n, corpus):
 def write(out_dir, rows, n, corpus):
     os.makedirs(out_dir, exist_ok=True)
     keys = ["src", "id", "name", "page", "kind", "field", "cl6", "winner", "winner_where", "family", "where", "evidence",
-            "strength"]
+            "strength", "verdict", "crop"]
     with open(os.path.join(out_dir, "cl6-trace.csv"), "w", encoding="utf-8-sig", newline="") as fh:
         w = csv.DictWriter(fh, keys, extrasaction="ignore")
         w.writeheader()

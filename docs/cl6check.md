@@ -58,6 +58,7 @@ the overlay changes.
 | `report.py` | Builds the metrics, the cause of every miss, the deltas against the baseline, and the files. |
 | `corpus.py` | Our book data as one corpus ordered by publication date: one import run per SR6 PDF (every core rulebook printing, the errata, the card decks and handouts the importer skips). Each book has its date, its book.md and regrouped.md as lines (page, heading and its level, table header) and its catalog entries. `entries()` groups an object across every book by kind and loose name; `variants()` finds the entries printing the name with a qualifier; `mentions()` finds every line printing a name (through a word index); `disagreements()` lists the books whose PDF date and sources.xml month differ. |
 | `lineage.py` | For one object, every value each book prints, ordered by publication date per field, from these readers: catalog fields; table rows printing the name; stat blocks with no name under a heading naming it; card stat lines; NPC bracket lines (context only); errata statements. The winner is the value published last. |
+| `crops.py` | Renders the printed page around a value (pypdfium2) to read it by eye: `locate()` finds the value beside the item's name in pdfplumber's words; `crop()` saves the band with the rows around it; `sheet()` stacks labelled crops. |
 | `trace.py` | Traces every Commlink6 value to where it sits in the corpus, and gives each difference a pattern family (see below). |
 
 ### The corpus and the trace (phase 1 of the parity work)
@@ -95,6 +96,9 @@ Books sort by date, then by label. Beginner Box material is context only: it is 
 
   A qualifier before the name (`Rating 7 Widgets`, `Deluxe-grade Widget …`) makes the statement another
   variant's.
+- Section defaults: a general statement above the object ("all / every / each / these … Availability N") in a
+  section's intro or a table footnote, one heading level up at a time. It applies to every item under the section;
+  the item's own value wins over it.
 
 Another book's text counts only when that book catalogues the object too, or imports nothing (a card deck). Another
 book's entry counts only under the object's own name, and in a kind its home book gives it.
@@ -108,6 +112,8 @@ The order of the checks is in trace.py's module docstring. The families:
 - own row;
 - per-rating or variant row;
 - errata sentence;
+- section default;
+- conversion error (from a page verdict);
 - older printing or superseded;
 - another book;
 - Commlink6 misread (the row above or below, or two adjacent digits swapped);
@@ -117,6 +123,21 @@ The order of the checks is in trace.py's module docstring. The families:
 - not found.
 
 A misread is not counted against our accuracy.
+
+**Page verdicts (step 3).** A weak link must be confirmed on the printed page. Weak links are:
+- another column;
+- a misread backed by one field of the neighbouring row;
+- a value one digit off ours.
+
+To confirm one, crop the page (`crops.py`), read it, and record the verdict in the owner's verdicts file:
+`{"<src>|<id>|<field>": {"family", "note", "crop"}}`. The file lives outside the repo. Pass it with
+`trace --verdicts <json>`.
+
+A verdict sets the row's family, with the note and the crop as its location:
+- the page prints Commlink6's number in our item's cell: a conversion error;
+- the page prints ours: a Commlink6 misread, unless the page shows another pattern.
+
+A weak link with no verdict goes to not found.
 
 ## Reading the report
 
