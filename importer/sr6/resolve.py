@@ -79,6 +79,8 @@ def good(field, v):
         return bool(re.fullmatch(r"\+?\s*" + _NUM + r"\s*¥?|(?:rating|capacity|force|level)\s*[x×*]\s*" + _NUM + r"\s*¥?", v, re.I))
     if field == "rating":
         return bool(_RANGE.fullmatch(v) or re.fullmatch(r"\d+", v))
+    if field == "capacity" and _RANGE.fullmatch(v):
+        return True  # (a capacity range: the rating an item priced by capacity comes in)
     if field in ("essence", "capacity"):
         return bool(re.fullmatch(r"\[?\s*(?:\d*\.\d+|\d+)\s*\]?|\(?rating\)?\s*[x×*]\s*(?:\d*\.\d+|\d+)", v, re.I))
     if field == "karma":
@@ -188,6 +190,22 @@ class Index:
         plural = n[:-1] + "s "
         return [(p, s) for p, s, ns, b in self._sents
                 if len(n) > 4 and (n in ns or plural in ns or names_item(b, name) and norm(b) == norm(name))]
+
+
+def same_row(index, headers, kind, entry, field, value):
+    """{field: value} of the other columns of the one row that gave `value` for `field` (a row naming the item):
+    the gaps it fills too. {} when several rows gave it."""
+    cols = columns(headers, kind, field)
+    rows = [cells for _, row, cells in index.rows if any(names_item(row, n) for n in [entry["name"], *entry.get("aliases", ())])
+            and any(_clean(cells.get(h, ""), field) == value for h in cols)]
+    if len(rows) != 1:
+        return {}
+    out = {}
+    for h, v in rows[0].items():
+        g = headers.get(kind, {}).get(h)
+        if g and g != field and good(g, v) and g in ("capacity", "rating", "essence", "avail", "cost"):
+            out[g] = _clean(v, g)
+    return out
 
 
 def columns(headers, kind, field):

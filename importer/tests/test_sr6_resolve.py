@@ -46,6 +46,14 @@ class BookCirclesTest(unittest.TestCase):
         self.assertIsNone(resolve.search_book(self.index, crb.HEADERS, "gear", e, "avail", ""))
         self.assertEqual(resolve.text_values("cost", ["It costs 300¥, or costs 400¥ with a case."]), {"300", "400"})
 
+    def test_the_same_row_fills_the_other_gaps(self):
+        idx = resolve.Index([block("Glim Lists", 30, text="| ITEM | CAPACITY | AVAIL | COST |
+|---|---|---|---|
+"
+                                                          "| Glim mic | 1–6 | 2 | Capacity x 50¥ |")], 1, crb._tables, shapes.RENAME)
+        e = {"name": "Glim microphone", "page": 29, "attrs": {}}
+        self.assertEqual(resolve.same_row(idx, crb.HEADERS, "gear", e, "cost", "Capacity x 50"), {"capacity": "1–6", "avail": "2"})
+
     def test_names_item(self):
         self.assertTrue(resolve.names_item("Glim mic", "Glim microphone"))
         self.assertTrue(resolve.names_item("ZX-48", "Bloop ZX-48 Thunderer"))

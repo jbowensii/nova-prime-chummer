@@ -179,7 +179,8 @@ SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
 MAGIC = (("mystic adept", "mystic-adept"), ("aspected", "aspected"), ("full", "full"), ("adept", "adept"),
          ("technomancer", "technomancer"))
 LEVELS = re.compile(r"\s*\(\s*1\s+to\s+(\d+)\s*\)\s*$", re.I)
-NAME_RATING = re.compile(r"\s*\((?:rating\s*)?(\d+\s*[–-]\s*\d+)\)\s*$", re.I)
+NAME_RATING = re.compile(r"\s*\((?:rating\s*)?(\d+\s*[–-]\s*\d+)\)(?=\)?\s*$)", re.I)  # (also a note's own: `X (Y (1–4))`)
+TAG_RATING = re.compile(r"^\s*\(?\s*rating\s*(\d+\s*[–-]\s*\d+)\s*\)?\s*$", re.I)  # a tag line `(rating 1-4)`
 _TABLE_SEP = re.compile(r"\|(?:-+\|)+$")
 
 
@@ -537,7 +538,9 @@ class _Catalog:
             if kind == "augmentations":
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
-                name, f["rating"] = name[:m.start()], m.group(1)
+                name, f["rating"] = name[:m.start()] + name[m.end():].strip(), m.group(1)
+            if "rating" not in f and (m := TAG_RATING.match(b.tags or "")):
+                f["rating"] = m.group(1)  # the heading's tag line gives its range: `(rating 1-4)`
             if "rating" not in f and re.search(r"(?i)\b(?:size|level|force|grade)\b", f.get("cost", "") + f.get("avail", "")):
                 # priced by its Size (Level, Force…): the range its SIZE column prints is the rating it comes in
                 rng = next((v for h, v in (b.row or {}).items() if h.upper() in ("SIZE", "LEVEL", "FORCE", "GRADE")
@@ -700,6 +703,11 @@ class _Catalog:
             v, how, page = r
             e["attrs"][f] = int(v) if kind == "qualities" and f == "karma" else v
             out.append(("found", {"field": f, "how": how, "source": self.source, "page": page}, None))
+            if how == "table":  # the same row's other columns the entry's own row leaves empty (a capacity range)
+                for g, w in resolve.same_row(self.index, HEADERS, kind, e, f, v).items():
+                    if not (e["attrs"].get(g) or "").strip():
+                        e["attrs"][g] = w
+                        out.append(("found", {"field": g, "how": how, "source": self.source, "page": page}, None))
         a = e["attrs"]
         if out and not (a.get("rating") or "").strip() and _VAR.search(f"{a.get('cost', '')} {a.get('avail', '')}"):
             # a rated price found: the range its name or its capacity prints is the rating it comes in
