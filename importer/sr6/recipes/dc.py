@@ -312,6 +312,7 @@ def extract(regrouped, ctx=None):
     res = crb.extract(_prep(bs, report), ctx, book=sys.modules[__name__])
     res.report += report  # a vehicle box whose values don't read
     cat = crb._Catalog(ID, ID.lower(), BOOK)
+    cat.index = crb.resolve.Index(bs, PAGE_OFFSET, crb._tables, crb.shapes.RENAME)
     _autosofts(bs, cat)
     if cat.entries["programs"]:
         res.files["programs.xml"] = cat.xml("programs")

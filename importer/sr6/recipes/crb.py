@@ -19,7 +19,8 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, formula
+from importer.sr6 import KINDS, NS, archetypes, formula, resolve
+from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
@@ -284,6 +285,7 @@ class _Catalog:
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
         self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
+        self.index = None  # the book's tables and prose (resolve.Index): where a value an entry's row leaves out is found
         self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None):
@@ -648,12 +650,36 @@ class _Catalog:
             tiered = formula.tier_groups(es) if kind in formula.FORMULA_FIELDS else {}
             for e in es:
                 opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
-                e["children"] += formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable,
-                                                  opts, e.get("text") or "")
+                kids = formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable, opts,
+                                        e.get("text") or "")
+                if self.index is not None and any(c[0] == "issue" for c in kids):
+                    found = self.resolve(kind, e, kids)
+                    if found:
+                        kids = formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)),
+                                                readable, opts, e.get("text") or "") + found
+                    kids = [(t, {**a, "searched": "book"} if t == "issue" else a, x) for t, a, x in kids]
+                e["children"] += kids
                 if kind == "weapons" and supplies and re.fullmatch(r"(?i)\s*energy\s*", e["attrs"].get("ammo") or "") and (
                         x := formula.energy_ammo(e.get("text"), "\n".join(sections.get(e["where"], ())), supplies)):
                     e["children"].insert(next((i for i, c in enumerate(e["children"]) if c[0] == "issue"),
                                               len(e["children"])), ("formula", {"field": "ammo", "round": "down"}, x))
+
+    def resolve(self, kind, e, kids):
+        """The issues' fields found elsewhere in the book (resolve.py's first two circles), written to the entry's
+        attributes: [("found", {field, how, page}, None)]. A field the row prints but no rule reads (unreadable) is
+        looked for too; two values printed, or a rule pricing it off another item (ambiguous), is the book's."""
+        out = []
+        for t, a, _ in kids:
+            if t != "issue" or a["code"] == "ambiguous":
+                continue
+            f = a["field"]
+            r = resolve.search_book(self.index, HEADERS, kind, e, f, e.get("text") or "")
+            if not r:
+                continue
+            v, how, page = r
+            e["attrs"][f] = int(v) if kind == "qualities" and f == "karma" else v
+            out.append(("found", {"field": f, "how": how, "source": self.source, "page": page}, None))
+        return out
 
     def xml(self, kind):
         self.rules()
@@ -803,7 +829,9 @@ def extract(regrouped, ctx=None, book=None):
     cat.unrated = getattr(bk, "UNRATED_NPCS", None)
     cat.split = getattr(bk, "split_being", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
-    for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
+    bs = list(blocks(regrouped) if isinstance(regrouped, str) else regrouped)
+    cat.index = resolve.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
+    for b in bs:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
         if b.type == "section" and b.level == 2:

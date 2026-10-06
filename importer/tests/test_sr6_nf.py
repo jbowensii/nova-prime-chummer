@@ -87,7 +87,7 @@ class NfRecipeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # the variant table prints untitled after another item's text (the book's yo-yo table)
-        with mock.patch.dict(nf.ERRATA, {"Spin Top (Bladed)": "3(L)"}, clear=True),                 mock.patch.object(nf, "UNTITLED", "Spin Top"):
+        with mock.patch.object(nf, "UNTITLED", "Spin Top"):
             cls.res = run_recipe()
 
     def test_weapons(self):
@@ -95,7 +95,8 @@ class NfRecipeTest(unittest.TestCase):
         self.assertEqual(w["Spin Top (Hardened)"], {"id": "spin-top-hardened", "source": "NF", "page": "156",
                                                     "category": "exotic-weapons", "dv": "2S", "ar": "7/—/—/—/—",
                                                     "avail": "8", "cost": "400"})
-        self.assertEqual((w["Spin Top (Bladed)"]["ar"], w["Spin Top (Bladed)"]["avail"]), ("7/2/—/—/—", "3(L)"))  # errata
+        # the printed Fifth Edition availability: the errata PDF corrects it in the corpus pass (resolve.py)
+        self.assertEqual((w["Spin Top (Bladed)"]["ar"], w["Spin Top (Bladed)"]["avail"]), ("7/2/—/—/—", "12R"))
         self.assertEqual(w["Glow Stick"]["category"], "clubs")
         self.assertEqual((w["Fizz Bomb"]["dv"], w["Fizz Bomb"]["category"]), ("9P/5P/1P/—", "grenades"))
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}

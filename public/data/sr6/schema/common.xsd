@@ -72,6 +72,7 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="formula" type="sr6:Formula"/>
         <xs:element name="issue" type="sr6:Issue"/>
+        <xs:element name="found" type="sr6:Found"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -98,6 +99,23 @@
       <xs:attribute name="field" type="sr6:Field" use="required"/>
       <xs:attribute name="code" use="required"><xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="missing"/><xs:enumeration value="unreadable"/><xs:enumeration value="ambiguous"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:attribute name="page" type="xs:positiveInteger"/>
+      <!-- where the importer looked before writing it (importer/sr6/resolve.py): the book (its tables and text), and
+           the corpus (every other source of the library) -->
+      <xs:attribute name="searched"><xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="book"/><xs:enumeration value="book,corpus"/></xs:restriction></xs:simpleType></xs:attribute>
+    </xs:extension></xs:simpleContent>
+  </xs:complexType>
+  <!-- a value the entry's own row leaves out (or prints unreadably), found elsewhere (importer/sr6/resolve.py): another
+       table or a sentence of the same book (how="table", "text"), another source of the library (how="corpus"), or an
+       errata newer than the book (how="errata": the text is the value it replaced); source and page: where it is printed -->
+  <xs:complexType name="Found">
+    <xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="field" type="sr6:Field" use="required"/>
+      <xs:attribute name="how" use="required"><xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="table"/><xs:enumeration value="text"/><xs:enumeration value="corpus"/>
+        <xs:enumeration value="errata"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:attribute name="source" type="sr6:SourceId"/>
       <xs:attribute name="page" type="xs:positiveInteger"/>
     </xs:extension></xs:simpleContent>
   </xs:complexType>

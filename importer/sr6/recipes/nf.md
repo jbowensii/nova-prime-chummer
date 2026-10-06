@@ -26,12 +26,18 @@ out). A setting book: its catalog is the GAME INFORMATION chapter; the book prin
 
 ## Errata
 
-`No-Future-SR6-errata.pdf` (in the owner's folder) lists SR6 availabilities for the gear printed with Fifth Edition's:
-plain values for named entries, applied as recipe data (`ERRATA`; `+1` / `+2` for the synth links, which add to the
-instrument's). Not applied (rules, renames or removals, so the import keeps the book's print): the Molotov's Burning
-status, the trenchcoat's concealability, the cybereyes and cyberears re-rated 6 and 7, the vision and audio
-enhancements removed, autovoice and vocal expansion without ratings and hacked autovoice removed, Stolen Gear's new
-rules (0 Karma), the Companion versions of the life modules, the page references.
+`No-Future-SR6-errata.pdf` (in the owner's folder) lists SR6 availabilities for the gear printed with Fifth Edition's.
+The recipe keeps the book's print; the corpus pass (`importer/sr6/resolve.py`, run after every import) applies the
+errata's value statements to this book's entries when the errata PDF is in the library and newer than the book:
+- bullets under a heading naming a page (`<Group> p. N` over `● <Variant>: Availability N`): the entry on that page
+  whose name holds the bullet's words (`<Group> (<Variant>)`);
+- `adds +1 Availability` (the synth links): `+1`, added to the instrument's own;
+- `Rating N <A> / <B>: Essence …, Capacity …, Availability …, Cost x¥ / y¥` (the cybersenses): one statement per
+  name (`Rating N <B>` for the second), a `/` value pairwise, any other value for both.
+
+The replaced value is kept in a `<found how="errata">` child. Not applied (rules, renames or removals): the Molotov's
+Burning status, the trenchcoat's concealability, the re-rating of the cybereyes and cyberears rows themselves, the
+enhancements removed, Stolen Gear's new rules, the Companion versions of the life modules, the page references.
 
 ## Formula styles and issues (importer v2)
 

@@ -10,7 +10,7 @@ import re
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS
+from importer.sr6 import KINDS, resolve
 from importer.sr6.recipes import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
 from importer.sr6.regroup import blocks, norm
@@ -431,7 +431,9 @@ def _vehicle(cat, b, band, page):
 def extract(regrouped, ctx=None):
     cat = _Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
     chapter, group, stack, ranges, dev = None, "", [], [], []
-    for b in blocks(regrouped):
+    bs = list(blocks(regrouped))
+    cat.index = resolve.Index(bs, PAGE_OFFSET, _tables, shapes.RENAME)
+    for b in bs:
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)
         if b.chapter != chapter:
             chapter, group, stack = b.chapter, "", []

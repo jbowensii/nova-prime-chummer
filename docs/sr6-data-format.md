@@ -116,8 +116,10 @@ Three more kinds complete the set:
 
 ## Formulas and issues
 
-Book values are canon: the printed attribute is never rewritten. Where the importer can say how a value is worked out,
-or that the book leaves it out, the entry carries it as a child. The app reads both; an edit (Game data's Edit, or an
+Book values are canon: the printed attribute is never rewritten from anything but print. Where the importer can say
+how a value is worked out, or that the book leaves it out, the entry carries it as a child; where the entry's own row
+leaves a value out and the books print it elsewhere, the importer writes that printed value and says where it found it
+(`<found>`, below). The app reads both; an edit (Game data's Edit, or an
 override file) is how a table sets what the book leaves out.
 
 ```xml
@@ -154,6 +156,21 @@ the note, the page) in Game data and the pickers, and Game data's **Needs attent
 A runner that uses one gets a cited Review note ("Null Box: the book prints no availability, set it in Game data or an
 override file."), never an error. An edit (or an override file) that sets the field clears its issue; the edit dialog
 still shows what the book has ("book: none printed").
+
+**`<found field how source? page?>replaced</found>`** (from `importer/sr6/resolve.py`): the field's value was printed
+somewhere other than the entry's own row. `how` is `table` (another table of the same book whose row names the item and
+has the column: a summary table, a gear list in another chapter, the implant table that prices an implant weapon),
+`text` (a sentence of the same book printing the value with its word: `ratings 1 to 6`, `Availability 4`, the item's
+own description first), `corpus` (another source of the library: the same kind and name in another book, a card
+deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft`; the latest published wins, and
+sources of one date that disagree leave the issue), or `errata` (an errata PDF's statement on its own book, applied
+when the errata is newer than the printing; the text keeps the value it replaced). `source` and `page` say where it is
+printed. It is provenance for the owner: the app leaves it out of the entry.
+
+**Searched.** An issue says how far the importer looked: `searched="book"` (its tables and its text) at import,
+`searched="book,corpus"` once the corpus pass, run after every import, has looked in every other source of the library
+too. Only then is a `missing` issue really nothing printed anywhere the library holds. A field the book prints two values
+for, or prices off another item (`ambiguous`), is the book's own: only a later source settles it.
 
 **Edits.** An edit keeps the book's formulas, except for a field it sets otherwise (the value typed wins), and never
 stores issues: an edited entry's issues are the book's, less the fields the edit sets.

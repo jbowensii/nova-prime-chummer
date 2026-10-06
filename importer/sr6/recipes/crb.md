@@ -103,6 +103,20 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
   magazines holding a count of bolts): `ammo_from_text` reads `N(m)` from the holder vocabulary (`AMMO_HOLDERS`:
   internal magazine m, clip c, drum d, belt, cylinder cy, break action b, muzzle loader ml).
 
+## Where a value the row leaves out is printed (importer v3, resolve.py)
+
+Before an issue is written, the same book is searched (every recipe that reads through `crb.extract` gets this):
+- **Another table naming the item:** the implant weapons (hand razors, spurs, cyberjaw, handblade, hardening) print
+  their attack in the weapon tables and their price in the cyberware tables; the shields print DR, avail and cost in
+  the armor table; the sensors print `Capacity x N¥` under shorter names (`Laser mic`, `Omni-directional mic`).
+- **A sentence:** a rating range in the description (`ratings 1 to 6`, `maximum rating 9`): headjammers, jammers,
+  locks, maglocks, tutorsofts, fake SINs and licenses, sensor arrays.
+- **The corpus** (other books): the `Cyberprogram, <type>` and `Autosoft` rows price the other books' programs and
+  autosofts by their type.
+
+The core rulebook's errata (Aug 2019, Feb 2020) predate the City Editions; their statements apply only to the 2019
+printing (the loaded printing is the newest).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"

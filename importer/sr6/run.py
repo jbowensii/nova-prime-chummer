@@ -6,12 +6,13 @@ import hashlib
 import os
 import re
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import NS, regroup
+from importer.sr6 import NS, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, skipped
 
 
@@ -43,6 +44,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         if why := skipped(meta, file_name):  # before identify: an errata's first page reads as its book's
             xmlio.write_import(book_dir, **rec)
             xmlio.write_status(book_dir, "skipped", f"Nothing to import: {why}")
+            _corpus(book_dir, custom_dir)  # an errata or a card deck: read with the books it reprints
             return None
         recipe, score = identify(meta, md[:4000])
         if recipe is None:
@@ -113,10 +115,20 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
         if not newer:
             xmlio.write_status(book_dir, "done")
+        _corpus(book_dir, custom_dir)
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
+
+
+def _corpus(book_dir, custom_dir):
+    """The third circle (resolve.py): every book's open issues looked for in the rest of the library, each errata
+    applied to its own book. A failure there leaves this import as it is (its issues stay open)."""
+    try:
+        resolve.library(os.path.dirname(os.path.normpath(book_dir)), custom_dir)
+    except Exception as e:  # noqa: BLE001
+        print(f"corpus pass: {type(e).__name__}: {e}", file=sys.stderr)
 
 
 def _pdf_title(pdf):

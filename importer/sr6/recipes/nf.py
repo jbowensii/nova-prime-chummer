@@ -6,8 +6,8 @@ Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's readi
 nf.md. The book has no NPC or contact with stats.
 
 Its gear prints in small tables under lower-case titles, some with Fifth Edition columns (a range's attack ratings
-CLOSE … EXTREME in columns of their own): they are joined to the core rulebook's ATTACK RATINGS. The errata's plain
-availability values (ERRATA) replace the printed ones; its other changes are rules or renames, left out (nf.md)."""
+CLOSE … EXTREME in columns of their own): they are joined to the core rulebook's ATTACK RATINGS. The errata PDF's
+values are applied by the corpus pass (importer/sr6/resolve.py) when it is in the library (nf.md)."""
 import re
 import sys
 from dataclasses import replace
@@ -58,14 +58,6 @@ UNTITLED = "Yo-Yo"
 # a row named by a rating (`Rating 5`) -> `<table> (Rating 5)`
 RATED = re.compile(r"Rating \d+")
 _RANGE = re.compile(r"\s*\(\d+-\d+\)$")  # a name's rating range: `ProCam (1-12)`
-# The errata's availability for named entries (it prints them for SR6; the book's are Fifth Edition's): the entry's
-# name -> avail. A `+N` raises the instrument's own.
-ERRATA = {"Rising Star": "2", "Big Time": "3", "External Synth": "+1", "Internal Synth": "+2",
-          "Yo-Yo (Hardened)": "2", "Yo-Yo (Bladed)": "3(L)", "Yo-Yo (Monofilament)": "6(I)",
-          "Rolling Blades (Hardened)": "2", "Rolling Blades (Bladed)": "3(L)", "Molotov": "1(I)", "Pitchfork": "1",
-          "Graffiti Kit": "1", "Ford Broadcast": "2", "S-B Condor": "3", "Press Pass": "2(L)", "ProCam": "1",
-          "SmartCam External": "2", "SmartCam Internal": "4", "Basic Press": "1", "Small Press": "4",
-          "Industrial Press": "7"}
 
 
 def match(meta, md_head):
@@ -77,7 +69,7 @@ def match(meta, md_head):
 
 def fix(b, parent2):
     """A catalog row in the core rulebook's headers: the range columns joined to ATTACK RATINGS, a grenade's blast
-    columns to its DV, the rest renamed (or, when it has no attribute, to the text); the errata's availability."""
+    columns to its DV, the rest renamed (or, when it has no attribute, to the text)."""
     if b.row is None or not b.header or b.header[0].upper() not in TABLES:
         return b
     cells, labels = list(b.row.items()), dict(b.labels)
@@ -98,8 +90,6 @@ def fix(b, parent2):
                 labels.setdefault(h.capitalize(), v)
             continue
         row[h if vehicle and hu == "ARMOR" else RENAME.get(hu, h)] = v
-    if (av := ERRATA.get(_RANGE.sub("", row[b.header[0]]))) is not None:
-        row = {k: (av if k.upper() in ("AVAIL", "AVAILABILITY") else v) for k, v in row.items()}
     return replace(b, name=row[b.header[0]], header=list(row), row=row, labels=labels)
 
 

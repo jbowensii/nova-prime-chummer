@@ -162,7 +162,9 @@ def _entries(src_dir, src):
             out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
                         "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias")],
                         "attrs": attrs, "families": families(e),
-                        "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")]})
+                        "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
+                        # where the importer found a value the row leaves out (resolve.py): field -> how
+                        "found": {x.get("field"): x.get("how") for x in e.findall("found")}})
     return out
 
 

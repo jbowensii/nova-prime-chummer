@@ -104,6 +104,9 @@ Books sort by date, then by label. Beginner Box material is context only: it is 
 Another book's text counts only when that book catalogues the object too, or imports nothing (a card deck). Another
 book's entry counts only under the object's own name, and in a kind its home book gives it.
 
+**Found values.** A field the importer filled from an errata (`<found how="errata">`, importer/sr6/resolve.py) is
+read as that errata's observation, dated by it, not the book's.
+
 **Winner.** The winner is the value published last. A reprint of a value its book family already printed keeps the
 date that value first appeared. For example, the Hong Kong printing repeating the 2019 text does not make that value
 newer than another book's.

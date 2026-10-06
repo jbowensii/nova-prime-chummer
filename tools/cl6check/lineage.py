@@ -90,10 +90,15 @@ def _clean(v):
     return re.sub(r"\*+|_", "", v or "").strip().rstrip(".").strip()
 
 
-def from_entry(book, e, variant=""):
+def from_entry(book, e, variant="", errata_book=None):
+    """The entry's fields; one the importer took from an errata (resolve.py) is that errata's observation, dated by it
+    (errata_book: the latest errata of the entry's book), not the book's."""
     where = f"catalog {e['src']}/{e['kind']} id={e['id']} p.{e['page']}"
-    return [Obs(book, f, v, where, "catalog", book.context, variant, label=e["name"]) for f, v in e["attrs"].items()
-            if f not in SKIP_ATTRS and v not in (None, "")]
+    errata = {f for f, how in (e.get("found") or {}).items() if how == "errata"}
+    return [Obs(errata_book, f, v, where + " (errata applied)", "errata", errata_book.context, variant, label=e["name"])
+            if f in errata and errata_book is not None else
+            Obs(book, f, v, where, "catalog", book.context, variant, label=e["name"]) for f, v in e["attrs"].items()
+            if f not in SKIP_ATTRS and v not in (None, "") and (f not in errata or errata_book is not None)]
 
 
 def from_row(book, ln, kind="row", variant=""):
@@ -377,8 +382,11 @@ def observe(corpus, kinds, names, home=None):
         if key not in seen:
             seen.add(key)
             text.append(o)
-    text += [o for b, e in ents for o in from_entry(b, e)]
-    text += [o for b, e in corpus.variants(kinds, names, home) for o in from_entry(b, e, e["name"])]
+    def errata_of(b):
+        return max((x for x in corpus.books if x.errata and family(x.belongs) == family(b.belongs)),
+                   key=lambda x: x.order, default=None)
+    text += [o for b, e in ents for o in from_entry(b, e, "", errata_of(b))]
+    text += [o for b, e in corpus.variants(kinds, names, home) for o in from_entry(b, e, e["name"], errata_of(b))]
     return text
 
 
