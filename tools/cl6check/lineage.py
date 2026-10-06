@@ -340,8 +340,10 @@ def observe(corpus, kinds, names, home=None):
     if ents and not corpus._find("n1", kinds, names):  # found without its parenthetical: read the text that way too
         names += [x for x in (re.sub(r"\s*\([^)]*\)", "", n).strip() for n in names) if x and x not in names]
     out = []
+    # an errata corrects its own book: another book's item of the same name is not its (No Future's `Hardened` yo-yo
+    # is not Deadly Arts' `Hardened`)
     for b in corpus.books:
-        if b.errata:
+        if b.errata and (home is None or family(b.belongs) == home):
             out += from_errata(b, names)
     by_book, sections = {}, []
     for b, ln in corpus.mentions(names):

@@ -44,7 +44,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 
 ## Formula styles and issues (importer v2)
 
-- `N¥ per CF` (trailers, the SPACE column giving the count range) -> `Q*N` with `unit="CF" qty="1-9"`. The
+- `N¥ per CF` (trailers, the SPACE column giving the count range) -> `Q*N` with `unit="CF"` (the count range stays in the text: `qty` is the units one price buys). The
   section's sentence pricing open versions at half is an option on the trailers and sidecars (section_options):
   `(Q*N)*(1 - 0.5*opt.open)`.
 - `N¥ x Rating`, slots `N x Rating`, `N per level`, `Adds N per level`, `N per Rating point` -> `R*N`. Seats `2/6`.

@@ -38,16 +38,18 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 - `N¥ per dose` (drugs, toxins, nanites), `Rating x N¥ per dose` -> `Q*N`, `Q*(R*N)`, unit dose. `Rating x N¥`,
   `(Rating) x N¥`, Essence `Rating x 0.N`, avail `(Rating + N)(L)` -> `R*N`, `(R + N)`. Capacity `[Rating]`,
   `(Rating/2)`.
-- A price naming what it holds (`N¥ + contents`) -> `N + B` (B: the contents' price, chosen by the user).
+- A price naming what it holds (`N¥ + contents`): an `ambiguous` issue stating the rule (`N + base`); the user
+  prices the contents.
 - Issues: rows printing `*` (a footnote: the single cybereye is priced from the core cybereyes) are `unreadable`;
   rated rows with no range `missing rating`; the colony/kit products printed two to a row keep the first, the
   second product's avail and price unread.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - **A price per unit in the description.** A row with a plain price whose description prices it per length
-  (`per ten centimeters`, with a minimum and maximum): `Q*N`, unit `10 cm`, qty from the minimum and maximum
+  (`per ten centimeters`, with a minimum and maximum): `Q*N`, unit `10 cm` (the minimum and maximum stay in the text)
   (`formula.text_unit`).
 - A row printing only footnote marks (`*`) whose description prices it off another item (`one half the Essence
-  and nuyen cost`, `one half the capacity`): `B*0.5` for those fields, `B` for the rest (the single cybereye).
+  and nuyen cost`, `one half the capacity`): an `ambiguous` issue per field stating the rule (`base*0.5`, `base`)
+  (the single cybereye: the base system is the user's to pick).
 - Rows by level (`Telescoping modification (Level 1)`, `(Level 2)`): one `tier()` rule where the levels differ
   (capacity `tier(R; 1: 2; 2: 4)`); the same price on each level stays a plain number.
 

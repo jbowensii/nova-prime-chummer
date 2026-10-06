@@ -53,7 +53,7 @@ def formula_values(a, field, rs):
         return None
     expr, *kv = raw.split("|")
     kv = dict(x.split("=", 1) for x in kv)
-    lo, _, hi = (kv.get("qty") or "").partition("-")
+    lo, _, hi = (kv.get("count") or "").partition("-")  # (ours.py: the count range its row prints)
     opts = [o for o in (kv.get("opts") or "").split(",") if o]
     out = {}
     for r in rs:
@@ -164,7 +164,7 @@ def compare(c, o):
     if f.get("rating") and k in PRICED:
         lo, hi = f["rating"]
         mine = O.rating_range(a.get("rating"))
-        q = re.search(r"\|qty=(\d+)-(\d+)", a.get("formula:cost") or "")
+        q = re.search(r"\|count=(\d+)-(\d+)", a.get("formula:cost") or "")
         if q and int(q.group(2)) == hi:  # a per-unit price's count range: Commlink6 counts it as the rating
             mine = (int(q.group(1)), hi)
         add("rating", None if mine and mine[1] == hi else {

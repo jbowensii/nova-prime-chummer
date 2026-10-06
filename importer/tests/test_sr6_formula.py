@@ -12,7 +12,7 @@ class GrammarTest(unittest.TestCase):
         self.assertEqual(F.evaluate("-2 + 3*(R - 1)", R=2), 1)
 
     def test_tier_bands_and_open_band(self):
-        e = "tier(R; 1-3: R*100; 4-6: R*500; 9: 7000; 10-: R*1000)"
+        e = "tier(R; 1-3: R*100; 4-6: R*500; 9: 7000; 10+: R*1000)"
         self.assertEqual([F.evaluate(e, R=r) for r in (2, 5, 9, 12)], [200, 2500, 7000, 12000])
         self.assertIsNone(F.evaluate(e, R=8))  # no band holds it
 
@@ -86,10 +86,16 @@ class ChildrenTest(unittest.TestCase):
     def kids(self, kind, attrs, **kw):
         return F.children(kind, attrs, 12, **kw)
 
-    def test_per_unit_price_takes_its_count_range(self):
+    def test_per_unit_price(self):
+        # (qty is the app's units per price, never the count range a row prints: that stays in the text)
         self.assertEqual(self.kids("gear", {"category": "box", "avail": "2", "cost": "80", "per": "CF"},
                                    row={"BOX": "Zorp Box", "SPACE": "1–6", "SIZE": "3"}),
-                         [("formula", {"field": "cost", "unit": "CF", "qty": "1-6"}, "Q*80")])
+                         [("formula", {"field": "cost", "unit": "CF"}, "Q*80")])
+
+    def test_a_price_off_another_item_is_an_issue_stating_its_rule(self):
+        k = self.kids("gear", {"category": "x", "rating": "1–4", "avail": "2", "cost": "Gizmo cost plus rating x 70"})
+        self.assertEqual(k, [("issue", {"field": "cost", "code": "ambiguous", "page": 12},
+                              "priced from another item: base + R*70")])
 
     def test_issues(self):
         k = self.kids("gear", {"category": "x", "cost": "Rating x 50", "avail": ""})
@@ -109,8 +115,7 @@ class ChildrenTest(unittest.TestCase):
         opts = F.section_options("Lidded versions of all boxes are available at twice the listed cost.")
         self.assertEqual(opts, [("lidded", "lidded", 2.0)])
         k = self.kids("gear", {"category": "x", "avail": "2", "cost": "80", "per": "CF"}, options=opts)
-        self.assertEqual(k, [("option", {"id": "lidded", "name": "lidded"}, None),
-                             ("formula", {"field": "cost", "unit": "CF"}, "(Q*80)*(1 + 1*opt.lidded)")])
+        self.assertEqual(k, [("formula", {"field": "cost", "unit": "CF"}, "(Q*80)*(1 + 1*opt.lidded)")])
         self.assertTrue(F.names("Boxes and Crates", "Small box"))
         self.assertFalse(F.names("Boxes and Crates", "Zorp gun"))
 
@@ -121,8 +126,8 @@ class ChildrenTest(unittest.TestCase):
         t = F.tier_groups(es)
         self.assertEqual(len(t), 3)
         rule = t[id(es[0])]
-        self.assertEqual(rule["cost"], "tier(R; 1-2: R*100; 3-4: R*300; 5-: R*900)")
-        self.assertEqual(rule["avail"], "tier(R; 1-2: 2; 3-4: 4; 5-: R)")
+        self.assertEqual(rule["cost"], "tier(R; 1-2: R*100; 3-4: R*300; 5+: R*900)")
+        self.assertEqual(rule["avail"], "tier(R; 1-2: 2; 3-4: 4; 5+: R)")
         self.assertEqual(F.evaluate(rule["cost"], R=6), 5400)
 
 
@@ -201,15 +206,15 @@ class MoreStylesTest(unittest.TestCase):
     def test_description_option(self):
         k = F.children("vehicles", {"category": "boats", "avail": "2", "cost": "2,000"}, 5,
                        text="**Note:** Faster with the tiny motor (costs 300¥).")
-        self.assertEqual(k, [("option", {"id": "tiny-motor", "name": "tiny motor"}, None),
-                             ("formula", {"field": "cost"}, "2000 + 300*opt.tiny-motor")])
+        self.assertEqual(k, [("formula", {"field": "cost"}, "2000 + 300*opt.tiny-motor")])
 
     def test_half_of_a_base_item(self):
         k = F.children("augmentations", {"type": "cyberware", "category": "eyes", "essence": "*", "capacity": "*",
                                          "avail": "*", "cost": "*"}, 5,
                        text="One glow eye costs one half the Essence and nuyen cost, and has one half the capacity.")
-        self.assertEqual({c[1]["field"]: c[2] for c in k if c[0] == "formula"},
-                         {"cost": "B*0.5", "essence": "B*0.5", "capacity": "B*0.5", "avail": "B"})
+        self.assertEqual({c[1]["field"]: c[2] for c in k if c[0] == "issue"},
+                         {f: "priced from another item: base*0.5" for f in ("cost", "essence", "capacity")}
+                         | {"avail": "priced from another item: base"})
 
     def test_rating_dv(self):
         k = F.children("weapons", {"category": "x", "dv": "(1–8) S", "avail": "2", "cost": "100"}, 5)

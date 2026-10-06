@@ -10,12 +10,13 @@ The grammar:
     EXPR   := term (('+' | '-') term)*
     term   := factor (('*' | '/') factor)*
     factor := number | R | Q | M | B | opt.<id> | '(' EXPR ')' | '-' factor | call
-    call   := tier(EXPR; lo-hi: EXPR; …; lo-: EXPR) | ref(kind:id, field[, EXPR])
+    call   := tier(EXPR; lo-hi: EXPR; …; lo+: EXPR) | ref(kind:id, field[, EXPR])
             | ceil(EXPR) | floor(EXPR) | min(EXPR, EXPR) | max(EXPR, EXPR)
-R is the rating (Force, Level, Size, Grade alike), Q the count bought (the formula's unit and qty give what and how
-many), M the character's Magic, B the same field of the base item (the item this one is built on or fitted to: the
-commlink a hack goes in, the instrument a link doubles), opt.<id> 1 when the entry's <option id> is chosen. `/` rounds
-up unless the formula says round="down".
+R is the rating (Force, Level, Size, Grade alike), Q the count bought (the formula's unit names it), M the character's
+Magic, B the field's own printed value (the app's), opt.<id> 1 when that option is chosen. `/` rounds up unless the
+formula says round="down"; the open last band of a tier is `lo+:`. The readers below use B for the base item a price is
+worked out from (the commlink a hack goes in, the instrument a link doubles): no catalog id names it, so _formula()
+writes such a rule as an `ambiguous` issue stating it (`base + R*100`), never as a formula.
 
 Readers here are general: the books' value styles (`Rating x 2,000¥`, `300¥ per CF`, `2,000¥ (+500¥ per additional
 dart)`, `x2`, `Commlink cost plus rating x 100`, `[4,000¥ x Size]`, `Magic*100¥`, a seat count `2/6`, rows of rating
@@ -97,7 +98,10 @@ def parse(expr):
                 take(";")
                 lo = number()
                 hi = lo
-                if peek("-"):
+                if peek("+"):  # an open last band: `7+:`
+                    take("+")
+                    hi = None
+                elif peek("-"):
                     take("-")
                     hi = None if peek(":") else number()
                 take(":")
@@ -378,7 +382,7 @@ def tier(bands):
     bands = sorted(bands, key=lambda b: b[0])
     if len({e for _, _, e in bands}) == 1:
         return bands[0][2]
-    parts = [f"{lo}-{'' if hi is None else hi}: {e}" if hi != lo else f"{lo}: {e}" for lo, hi, e in bands]
+    parts = [f"{lo}+: {e}" if hi is None else f"{lo}-{hi}: {e}" if hi != lo else f"{lo}: {e}" for lo, hi, e in bands]
     return "tier(R; " + "; ".join(parts) + ")"
 
 
@@ -392,14 +396,6 @@ def band(rating):
     if re.fullmatch(r"\d+", t):
         return int(t), int(t)
     return None
-
-
-def qty_range(cells):
-    """The count range a per-unit price is bought in: the row's one range cell (`1–9`) that isn't its rating, as
-    `1-9`; None when the row prints none or several."""
-    found = [b for h, v in cells.items() if h.upper() not in ("RATING", "DEVICE RATING")
-             for b in [band(v)] if b and b[1] and b[0] != b[1]]
-    return f"{found[0][0]}-{found[0][1]}" if len(found) == 1 else None
 
 
 def two_values(text):
@@ -550,8 +546,18 @@ def names(heading, name):
     return bool(hw & {_stem(w) for w in re.findall(r"[a-z]+", name.lower())})
 
 
+def _formula(f, expr, extra, page):
+    """A field's <formula>, or, for a rule priced off another item the book leaves to the buyer (B in the readers
+    above: the commlink a hack is built from, the instrument a link doubles), an <issue code="ambiguous"> stating that
+    rule: the app's B is the field's own printed value, and no catalog id names the base item."""
+    if "B" in variables(expr):
+        rule = re.sub(r"\bB\b", "base", expr)
+        return "issue", {"field": f, "code": "ambiguous", "page": page}, _short(f"priced from another item: {rule}", 60)
+    return "formula", {"field": f, **({"unit": extra["unit"]} if extra.get("unit") else {})}, expr
+
+
 def children(kind, attrs, page, row=None, tiered=None, readable=None, options=(), text=""):
-    """[(tag, attrs, text)]: the entry's <option>, <formula> and <issue> children. tiered: {field: EXPR} the entry's
+    """[(tag, attrs, text)]: the entry's <formula> and <issue> children. tiered: {field: EXPR} the entry's
     band group gives (tier_groups); row: its printed row (a per-unit price's count range); readable(value): True when
     the app's rated() reads a value as it stands; options: [(id, name, price factor)] its section offers
     (section_options), applied to its cost; text: its description (a price per unit it states: text_unit)."""
@@ -567,38 +573,25 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
                 (fmt(p), {}) if (p := plain(v, f)) is not None else None)):
             expr, extra = got
             for oid, name, factor in options:  # a version its section prices apart: a factor
-                out.append(("option", {"id": oid, "name": name}, None))
                 expr = f"({expr})*(1 {'-' if factor < 1 else '+'} {fmt(abs(factor - 1))}*opt.{oid})"
             for oid, name, price in adds:  # a part its description prices: added when chosen
-                out.append(("option", {"id": oid, "name": name}, None))
                 expr = f"{expr} + {fmt(price)}*opt.{oid}"
-            a = {"field": f, **({"unit": extra["unit"]} if "unit" in extra else {})}
-            if "unit" in extra and (q := qty_range(row or {})):
-                a["qty"] = q
-            out.append(("formula", a, expr))
+            out.append(_formula(f, expr, extra, page))
             continue
         if v is not None and halves and re.fullmatch(r"\s*[*†‡]\s*", v):
             # a cell printing only a footnote mark, its description pricing the item off another (`one half the
             # Essence and nuyen cost` of the base system): half the base item's value, or the base's own
-            out.append(("formula", {"field": f}, "B*0.5" if f in halves else "B"))
+            out.append(_formula(f, "B*0.5" if f in halves else "B", {}, page))
             continue
         if f == "cost" and v is not None and (p := plain(v, f)) is not None and (tu := text_unit(text)):
-            a = {"field": f, "unit": tu[0], **({"qty": tu[1]} if tu[1] else {})}
-            out.append(("formula", a, f"Q*{fmt(p)}"))  # its description prices it per unit
+            out.append(_formula(f, f"Q*{fmt(p)}", {"unit": tu[0]}, page))  # its description prices it per unit
             continue
         if v is None or _DASH.fullmatch(v) or plain(v, f) is not None or band(v.strip("[] ")):
             continue  # (a range, `1–6`, is the rating or capacity the item comes in)
         got = read(v, f)
         if got:
             expr, extra = got
-            a = {"field": f}
-            if "unit" in extra:
-                a["unit"] = extra["unit"]
-                q = qty_range(row or {}) if "Q" in variables(expr) else None
-                if q:
-                    a["qty"] = q
-            out += [("option", {"id": i, "name": n}, None) for i, n in extra.get("options", ())]
-            out.append(("formula", a, expr))
+            out.append(_formula(f, expr, extra, page))
             uses_r |= "R" in variables(expr)
         elif two_values(v):
             out.append(("issue", {"field": f, "code": "ambiguous", "page": page}, f"two values printed: {_short(v)}"))
@@ -624,8 +617,7 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
     r = attrs.get("rating")
     if uses_r and (r is None or not str(r).strip() or _DASH.fullmatch(str(r))):
         out.append(("issue", {"field": "rating", "code": "missing", "page": page}, _NOTE["rating"]))
-    order = {"option": 0, "formula": 1, "issue": 2}  # the schema's order
-    return sorted(out, key=lambda c: order[c[0]])
+    return sorted(out, key=lambda c: c[0] != "formula")  # (formulas first, then issues: any order is valid)
 
 
 _BAND_NAME = re.compile(r"\s*\((?:rating\s*|level\s*|version\s*)?(\d+\s*(?:[–-]\s*\d+|\+)?)\)\s*$", re.I)

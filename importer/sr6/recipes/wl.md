@@ -26,7 +26,7 @@ converter's guessed heading sizes are right (60, 21, 15, 13, 9). No index or rep
 
 ## Formula styles and issues (importer v2)
 
-- `+N% item's normal price` -> `B*1.N`. Issues: critter gear priced `Critter's Body x N¥` needs the critter's
+- `+N% item's normal price`: an `ambiguous` issue stating the rule (`base*1.N`). Issues: critter gear priced `Critter's Body x N¥` needs the critter's
   Body (`unreadable`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 

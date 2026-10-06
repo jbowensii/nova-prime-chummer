@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from tools.cl6check import canon
 
+COUNT = re.compile(r"\*\*[A-Za-z ]+:\*\*\s*(\d+)\s*[–-]\s*(\d+)\s*$", re.M)
 SKIP = {"rules", "attributes", "priorities", "index", "sources", "samples"}
 NONE = re.compile(r"^\s*[—–-]?\s*$")
 LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
@@ -153,11 +154,11 @@ def _entries(src_dir, src):
             if not name:
                 continue
             attrs = dict(e.attrib)
-            opts = ",".join(o.get("id") for o in e.findall("option"))
             for f in e.findall("formula"):  # the importer's rule for a field, beside its printed value: formula:<field>
+                expr = (f.text or "").strip()
+                opts = ",".join(sorted({m for m in re.findall(r"opt\.([a-z0-9][a-z0-9.-]*[a-z0-9])", expr)}))
                 attrs[f"formula:{f.get('field')}"] = "|".join(
-                    [(f.text or "").strip()] + [f"{k}={f.get(k)}" for k in ("qty", "round") if f.get(k)]
-                    + ([f"opts={opts}"] if opts else []))
+                    [expr] + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)] + ([f"opts={opts}"] if opts else []))
             out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
                         "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias")],
                         "attrs": attrs, "families": families(e),
@@ -199,4 +200,8 @@ def load(path):
         if run not in books:
             books[run] = _book_dirs(os.path.join(run, "library"))
         out[src] = Source(src, _entries(base, src), books[run].get(src), _texts(os.path.join(sr6, "texts", f"{src}.xml")))
+        for e in out[src].entries:  # a per-unit price's count range, as its row printed it (a labelled `1–9` cell)
+            for k, v in list(e["attrs"].items()):
+                if k.startswith("formula:") and "|unit=" in v and (m := COUNT.search(out[src].texts.get(e["id"], ""))):
+                    e["attrs"][k] = f"{v}|count={m.group(1)}-{m.group(2)}"
     return out

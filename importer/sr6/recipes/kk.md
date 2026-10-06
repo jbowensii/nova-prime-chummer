@@ -29,7 +29,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
 
 ## Formula styles and issues (importer v2)
 
-- `x2`, `x3` (a multiple of the base item's price) -> `B*2`, `B*3`.
+- `x2`, `x3` (a multiple of the base item's price): an `ambiguous` issue stating the rule (`base*2`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - Issues: a vehicle row read in part (no speed columns) gets `missing` per stat.
 

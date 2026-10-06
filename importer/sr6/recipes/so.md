@@ -37,7 +37,8 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 
 - Rows by rating band (`Transforming Garment (Rating 1–2)` …) -> one `tier()` rule. `Rating x N¥ (10 uses)`: the
   note set aside -> `R*N`. Avail `Rating/2` -> `R/2`. `N¥ per charge` (preparations) -> `Q*N`.
-- `N¥ + Certified Credstick Cost`, `N¥ + Weapon Cost` -> `N + B` (B: the credstick or weapon it is made from).
+- `N¥ + Certified Credstick Cost`, `N¥ + Weapon Cost`: an `ambiguous` issue stating the rule (`N + base`: the
+  credstick or weapon it is made from is the user's).
 - Issues: the preparations print no availability (`missing avail`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 

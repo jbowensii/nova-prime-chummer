@@ -40,7 +40,7 @@ rules (Suppressive Fire), so it is not applied: the import keeps the book's prin
 ## Formula styles and issues (importer v2)
 
 - `Rating x N¥`, `(Rating x N¥)`, capacity `[Rating x N]` -> `R*N`; `N¥ + (Rating x N¥)` -> `N + (R*N)`; `x2`
-  (a multiple of the weapon's price) -> `B*2`. Ammo `12 x2(c)` (two clips) stays as printed.
+  (a multiple of the weapon's price): an `ambiguous` issue stating `base*2`. Ammo `12 x2(c)` (two clips) stays as printed.
 - Issues: rated accessories with no rating range (`missing rating`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - A DV given by the rating (`(1–10) S`) -> `<formula field="dv">R</formula>`.
