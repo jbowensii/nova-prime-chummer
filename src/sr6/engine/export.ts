@@ -3,7 +3,7 @@
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
-import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { augFamily, DISPLAY_KINDS, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
@@ -200,8 +200,9 @@ const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] =
 /** A books file: each ticked source still in the catalog (unknown ids skipped), with its entries of every kind in
  *  SR6_KINDS order, then catalog order, as the app sees them (edits applied); their text only when `descriptions`. */
 export function exportSr6Books(c: Sr6Catalog, data: Sr6Data, sources: string[], o: Sr6ExportOpts): Sr6ExportFile {
-  // not the implant grades: Foundry has no item for them (a purchase carries its grade's key)
-  const kinds = (Object.keys(SR6_KINDS) as Sr6Kind[]).filter(k => k !== 'grades')
+  // not the implant grades: Foundry has no item for them (a purchase carries its grade's key); nor the kinds only listed
+  // as printed (DISPLAY_KINDS)
+  const kinds = (Object.keys(SR6_KINDS) as Sr6Kind[]).filter(k => k !== 'grades' && !DISPLAY_KINDS.has(k))
   return { ...envelope('books', o), books: sources.flatMap(id => {
     const s = c.sources.get(id)
     if (!s) return []

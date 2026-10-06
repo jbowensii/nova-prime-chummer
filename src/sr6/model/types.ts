@@ -6,7 +6,8 @@ import type { Sr6Character } from './character'
 export type Sr6Kind =
   | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations' | 'grades'
   | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
-  | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
+  | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules'
+  | 'actions' | 'packs' | 'vehicledesign' | 'ammotypes' | 'mentorspirits' | 'datastructures' | 'qualitypaths' | 'spellfeatures' | 'contacttypes' | 'qualitysets' | 'licencetypes' | 'magictypes' | 'ruleoptions' | 'senses' | 'trueelements' | 'rules'
 
 export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   priorities: { tag: 'priority', label: 'Priorities' },
@@ -39,8 +40,29 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   lifestyles: { tag: 'lifestyle', label: 'Lifestyles' },
   contacts: { tag: 'contact', label: 'Contacts' },
   lifemodules: { tag: 'lifemodule', label: 'Life modules' },
+  actions: { tag: 'action', label: 'Actions' },
+  packs: { tag: 'pack', label: 'Gear packs' },
+  vehicledesign: { tag: 'design', label: 'Vehicle design' },
+  ammotypes: { tag: 'ammotype', label: 'Ammunition types' },
+  mentorspirits: { tag: 'mentorspirit', label: 'Mentor spirits' },
+  datastructures: { tag: 'datastructure', label: 'Data structures' },
+  qualitypaths: { tag: 'qualitypath', label: 'Quality paths' },
+  spellfeatures: { tag: 'spellfeature', label: 'Spell features' },
+  contacttypes: { tag: 'contacttype', label: 'Contact types' },
+  qualitysets: { tag: 'qualityset', label: 'Quality sets' },
+  licencetypes: { tag: 'licencetype', label: 'Licence types' },
+  magictypes: { tag: 'magictype', label: 'Magic types' },
+  ruleoptions: { tag: 'ruleoption', label: 'Rule options' },
+  senses: { tag: 'sense', label: 'Senses' },
+  trueelements: { tag: 'trueelement', label: 'True elements' },
   rules: { tag: 'rule', label: 'Rules' },
 }
+
+/** The kinds read from the books' own sections and tables (actions, packs, …): listed in Game data as printed, with no
+ *  rules of their own yet (the owner decides how each is used), and left out of the Foundry export. */
+export const DISPLAY_KINDS: ReadonlySet<Sr6Kind> = new Set<Sr6Kind>(['actions', 'packs', 'vehicledesign', 'ammotypes',
+  'mentorspirits', 'datastructures', 'qualitypaths', 'spellfeatures', 'contacttypes', 'qualitysets', 'licencetypes',
+  'magictypes', 'ruleoptions', 'senses', 'trueelements'])
 
 /** An augmentation's type (common.xsd). Grades (alpha, beta…) apply to cyberware and bioware only (CRB p. 283, Body Shop
  *  p. 29); the others are bought as printed. */

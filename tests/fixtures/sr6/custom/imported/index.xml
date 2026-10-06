@@ -31,5 +31,20 @@
   <file href="crb/lifestyles.xml"/>
   <file href="crb/contacts.xml"/>
   <file href="crb/lifemodules.xml"/>
+  <file href="crb/actions.xml"/>
+  <file href="crb/packs.xml"/>
+  <file href="crb/vehicledesign.xml"/>
+  <file href="crb/ammotypes.xml"/>
+  <file href="crb/mentorspirits.xml"/>
+  <file href="crb/datastructures.xml"/>
+  <file href="crb/qualitypaths.xml"/>
+  <file href="crb/spellfeatures.xml"/>
+  <file href="crb/contacttypes.xml"/>
+  <file href="crb/qualitysets.xml"/>
+  <file href="crb/licencetypes.xml"/>
+  <file href="crb/magictypes.xml"/>
+  <file href="crb/ruleoptions.xml"/>
+  <file href="crb/senses.xml"/>
+  <file href="crb/trueelements.xml"/>
   <file href="crb/rules.xml"/>
 </overlays>

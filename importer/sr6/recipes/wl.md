@@ -30,6 +30,10 @@ converter's guessed heading sizes are right (60, 21, 15, 13, 9). No index or rep
   Body (`unreadable`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `### Critter Command Actions` (each `#### Name`) and the critter `Edge Actions`.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Wild Life-Core Critter Book-CAT28008.pdf>" --out "%TEMP%\wl-check"

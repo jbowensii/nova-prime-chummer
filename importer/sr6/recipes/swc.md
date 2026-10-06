@@ -50,6 +50,12 @@ recipe reads both.
 - **Run-in prices.** A quality whose price line says `See text` takes the Karma its own paragraphs print
   (`bonus of N Karma`, a second for the Awakened: karma and karmaMax).
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Contact types:** the bullets (`• **Academic:** …`) under `## Contact Types`.
+- **Quality paths:** `#### Quality Path: Name` under `## Quality Paths`, the headings under each its steps.
+- **Actions:** `## New Optional Edge Actions` (bullets with the action they go with).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<the Companion PDF>" --out "%TEMP%\swc-check"

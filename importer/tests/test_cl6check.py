@@ -121,8 +121,9 @@ class CanonTest(unittest.TestCase):
         self.assertIn("Zorp Big", c["aliases"])
 
     def test_kinds_and_sources(self):
-        self.assertEqual(canon.kind_of("item", {"type": "PACK"}), ("packs", False))
-        self.assertEqual(canon.kind_of("action", {}), ("actions", False))
+        self.assertEqual(canon.kind_of("item", {"type": "PACK"}), ("packs", True))  # (read from the books' sections)
+        self.assertEqual(canon.kind_of("action", {}), ("actions", True))
+        self.assertEqual(canon.kind_of("unheardof", {}), ("unheardof", False))
         self.assertEqual(canon.kind_of("npc", {"type": "SPIRIT"}), ("spirits", True))
         self.assertEqual(canon.source_of("core", "gear_seattle"), "crb-sea")
         self.assertEqual(canon.source_of("core", "gear"), "crb")

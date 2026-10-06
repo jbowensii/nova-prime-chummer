@@ -71,6 +71,11 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 - Mounts and launchers priced by Size take the SIZE column's range as their rating.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `## New Edge Actions` (REGISTERED AS A LETHAL WEAPON): each `### Name`. The `**New Edge Action:
+  Called Shot: …**` bold lines of the advanced weapon rules are not read yet (no section of their own).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Deadly Arts-Core Advanced Combat Rulebook-CAT28011.pdf>" --out "%TEMP%\da-check"

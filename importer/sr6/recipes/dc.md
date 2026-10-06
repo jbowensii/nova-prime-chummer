@@ -54,6 +54,12 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 - A part the description prices beside a vehicle (`… the mini-outboard (costs 500¥)`) is an option on its cost:
   `3500 + 500*opt.mini-outboard`.
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `## Edge Actions` and `## Chase Edge Actions` (THE RIGGER ADVANTAGE): each `### Name`; `## Edge
+  Boosts`; `### New Major Action` (`#### Backseat Driver`); the bold `**N Edge: Name**` lines of the Motorpool
+  quality. A heading's own bold lines (`Cost: N Edge`) are its fields.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"

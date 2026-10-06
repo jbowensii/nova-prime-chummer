@@ -77,6 +77,29 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | contacts | contact | connection, loyalty, archetype | — |
 | lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills; contactTypes (academic, corporate, criminal, engineering, government, magic, matrix, media, medical, street; absent: any) | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
+| actions | action | type (minor, major, edge, boost: the section's words), timing initiative\|anytime, edge int (an Edge action or boost's cost), with (the action it goes with), category (its section) | — |
+| packs | pack | category, cost, essence (as printed) | item (text)×n: the contents as printed |
+| vehicledesign | design | category (chassis, powertrain, console, …: its table), bp, rating, slots, avail, cost (as printed) | — |
+| ammotypes | ammotype | category, dv, ar (the modifiers as printed), avail, cost (a multiplier `x2` or a price) | — |
+| qualitypaths | qualitypath | — | step (text)×n: the headings under it |
+| qualitysets | qualityset | karma, metatypes (as printed) | quality (text)×n |
+| mentorspirits, datastructures, spellfeatures, contacttypes, licencetypes, magictypes, ruleoptions, senses, trueelements | mentorspirit, datastructure, spellfeature, contacttype, licencetype, magictype, ruleoption, sense, trueelement | category | — |
+
+**Kinds read from the books' own sections** (actions, packs, vehicle design, ammunition types, mentor spirits, data
+structures, quality paths, spell features, contact types, quality sets, licence types, magic types, rule options,
+senses, true elements): Game data lists them as printed, with their description; the app has no rules for them yet (an
+Edge action on the Edge panel, say, is for the owner to decide), and the Foundry export leaves them out. The importer
+reads them by the book's own section words (`importer/sr6/sections.py`), never by an item's name:
+- a heading whose parent heading names the kind is an entry: `#### Avoid Incoming (A)` under `### Minor Actions`,
+  `### Backdoor Entry` under `## Matrix Actions`, `#### Bear` under `### Mentor Spirit Archetypes`; so is a heading
+  naming its kind before a colon (`Quality Path: Critter Bond`, `New Edge Action: …`, `New Contact Type: …`). A
+  lower-case box title, a heading naming the kind itself and an example are not;
+- a bold run-in (`• **Reroll one die:** …`) under a heading naming a run-in kind (Edge boosts and actions, data
+  structures, contact types) is an entry;
+- an action's type comes from its section's words (or a Matrix action's `(Major)` tag), its timing from `(I)`/`(A)`,
+  its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
+
+The rule sections stay as they were (the rules contents still list them).
 
 Metavariants under priority creation: the Companion's development table gives each metavariant its adjustment
 points at the metatype priorities it can be taken at (its `<priority>` children); the priority provider offers it at

@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, formula, resolve
+from importer.sr6 import KINDS, NS, archetypes, formula, resolve, sections
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -860,6 +860,7 @@ def extract(regrouped, ctx=None, book=None):
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     bs = list(blocks(regrouped) if isinstance(regrouped, str) else regrouped)
     cat.index = resolve.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
+    sec = sections.Reader()
     for b in bs:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
@@ -868,6 +869,8 @@ def extract(regrouped, ctx=None, book=None):
         b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
         cat.where = (b.chapter, b.section)
         ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
+        for f in sec.feed(b, page):  # the kinds the book prints as sections (actions, mentor spirits, …): sections.py
+            f.children = cat.add(f.kind, f.name, f.page, f.attrs, f.children, f.text)["children"]  # (steps come later)
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)
         if cat.last_meta is not None and not any(t == "trait" for t, _, _ in cat.last_meta["children"]) \

@@ -16,8 +16,9 @@ TAG_KINDS = {
     "tradition": ("traditions",), "lifemod": ("lifemodules",), "skill": ("skills",),
     "npc": ("npcs", "critters", "spirits", "sprites", "contacts"),
 }
-# record types (and item types) we have no catalog kind for yet: the gap plan's K1 kinds
-UNMODELLED = {"action": "actions", "ammotype": "ammotypes", "mentorspirit": "mentorspirits",
+# record types (and item types) that were the gap plan's K1 kinds, each now a catalog kind of ours (read from the books'
+# sections and tables, displayed as printed); a type missing here is unmodelled
+SECTION_KINDS = {"action": "actions", "ammotype": "ammotypes", "mentorspirit": "mentorspirits",
               "contacttype": "contacttypes", "qpath": "qualitypaths", "licensetype": "licencetypes",
               "set": "qualitysets", "datastructure": "datastructures", "trueelement": "trueelements",
               "feature": "spellfeatures", "sense": "senses", "interpretation": "ruleoptions", "magicreson": "magictypes",
@@ -47,12 +48,12 @@ def source_of(book, file):
 
 def kind_of(tag, attrs):
     """(kind, modelled): the kind a record is reported under, and whether we have a catalog kind for it."""
-    if tag in UNMODELLED:
-        return UNMODELLED[tag], False
+    if tag in SECTION_KINDS:
+        return SECTION_KINDS[tag], True
     if tag == "item":
         t = attrs.get("type", "")
         if t == "PACK":
-            return "packs", False
+            return "packs", True
         if t.startswith("WEAPON") or t == "AMMUNITION":
             return "weapons", True
         if t == "ARMOR":
@@ -334,7 +335,7 @@ def canonical(rec):
     elif tag == "skill":
         f["attribute"] = a.get("attr")
     return {"book": rec["book"], "src": source_of(rec["book"], rec["file"]), "file": rec["file"], "tag": tag, "id": rec["id"], "name": rec["name"],
-            "page": rec["page"], "kind": kind, "modelled": modelled, "pool": TAG_KINDS.get(tag, ()) if modelled else (),
+            "page": rec["page"], "kind": kind, "modelled": modelled, "pool": (TAG_KINDS.get(tag, ()) if kind not in SECTION_KINDS.values() and kind != "packs" else (kind,)) if modelled else (),
             "aliases": aliases(rec["name"], rec["variants"]), "fields": {k: x for k, x in f.items() if x},
             "families": families(el, a, rec["variants"]), "el": el}
 

@@ -45,6 +45,13 @@ rules (Suppressive Fire), so it is not applied: the import keeps the book's prin
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - A DV given by the rating (`(1–10) S`) -> `<formula field="dv">R</formula>`.
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `## New Edge Actions` (HONING YOUR EDGE): each `### Name` an Edge action, its cost in `Cost: N Edge`;
+  `## New Edge Boosts` (`### N-Edge Boost`). Not actions: `New Edge Actions by Cost` (its `N Edge` lists).
+- **Quality paths:** `## Quality Paths` (VIOLENT ENDS): each `### Name`, its steps the `#### Starting point`,
+  `#### Step N: …` headings under it.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Firing Squad-Core Combat Rulebook-CAT28002.pdf>" --out "%TEMP%\fs-check"

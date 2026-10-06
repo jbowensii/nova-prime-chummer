@@ -405,7 +405,9 @@ class CrbRecipeTest(unittest.TestCase):
                   "rules": "Making Trouble"}
         # the core rulebook has no life modules (the Companion's), martial arts (Firing Squad's, Deadly Arts') nor
         # traditions of their own (Street Wyrd's)
-        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques", "traditions"})
+        # (nor the kinds read from sections, sections.py: test_sr6_sections)
+        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques", "traditions"}
+                         - set(sr6.SECTION_KINDS))
         for kind, name in expect.items():
             self.assertIn(name, entries(self.res, kind), kind)
 

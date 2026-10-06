@@ -439,7 +439,8 @@ def run(corpus, cl6, verdicts=None):
         ents = corpus.entries(kinds, names, home)
         obs = lineage.observe(corpus, kinds, names, home)
         own = [o for o in obs if not o.context and not o.variant]
-        if not own:
+        # (an entry of ours under the object's name is the object, even one printing no field: a mentor spirit)
+        if not own and not any(e["kind"] in kinds and not b.context for b, e in ents):
             n["object not found"] += 1
             rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
                          "field": "", "family": "object not found",

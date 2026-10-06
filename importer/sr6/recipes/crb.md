@@ -117,6 +117,19 @@ Before an issue is written, the same book is searched (every recipe that reads t
 The core rulebook's errata (Aug 2019, Feb 2020) predate the City Editions; their statements apply only to the 2019
 printing (the loaded printing is the newest).
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `### Minor Actions` and `### Major Actions` under `Game Timing and Actions` (each `#### Name (I|A)`;
+  the `actions` table pairs its rows with them, so the name comes plain and the `(I)/(A)` from the heading, an
+  alias); `#### N-Edge Boosts` and `#### Edge Actions` under `Spending Edge`, as bullets (`• **Name (Action):** …
+  Cost: N Edge`); `## Matrix Actions` (each `### Name` with its `(Major)`/`(Minor)` tag line); the Matrix Edge
+  actions as bullets. Not actions: the `edge actions by cost` lists, the box titles in lower case.
+- **Mentor spirits:** `#### Name` under `### Mentor Spirit Archetypes` (their Advantages and Disadvantages are a level
+  further down: the description).
+- Prose only, not read (no section of their own): the magic types (the Magic/Resonance step's five options), the
+  licence types (Fake License's paragraph), the senses (Enhanced Perception), the ritual keywords (the Rituals intro's
+  bold run-ins: no section words).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"

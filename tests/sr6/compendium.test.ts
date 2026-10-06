@@ -8,7 +8,7 @@ import { compendiumXml } from '../../src/engine'
 import { blankSr6Entry, COMP_KINDS, copySr6Entry, entryProblem, fieldRule, newEntryId, readSr6Compendium, sr6CompendiumSource, sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6EntryXml } from '../../src/sr6/engine/load'
-import { SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
+import { DISPLAY_KINDS, SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
 import type { Sr6Character } from '../../src/sr6/model/character'
 import { fixtureCatalog } from './fixture'
 
@@ -89,7 +89,8 @@ test('refused: wrong root, kind or namespace; the other game’s file or runner;
 
 test('COMP_KINDS: every kind but the creation-structure ones, each with common.xsd’s attribute names and string children', () => {
   const XS = 'http://www.w3.org/2001/XMLSchema'
-  const left = ['priorities', 'metatypes', 'attributes', 'skills', 'grades', 'lifemodules', 'rules']
+  // (and the kinds only listed as printed: DISPLAY_KINDS)
+  const left = ['priorities', 'metatypes', 'attributes', 'skills', 'grades', 'lifemodules', 'rules', ...DISPLAY_KINDS]
   expect(Object.keys(COMP_KINDS)).toEqual(Object.keys(SR6_KINDS).filter(k => !left.includes(k)))
   const common = new DOMParser().parseFromString(readFileSync(SCHEMA + 'common.xsd', 'utf8'), 'text/xml')
   const types = new Map([...common.documentElement.children].filter(t => t.localName === 'complexType').map(t => [t.getAttribute('name'), t]))

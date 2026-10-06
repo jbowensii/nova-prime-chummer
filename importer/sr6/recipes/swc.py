@@ -10,7 +10,7 @@ import re
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, resolve
+from importer.sr6 import KINDS, resolve, sections
 from importer.sr6.recipes import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
 from importer.sr6.regroup import blocks, norm
@@ -433,8 +433,11 @@ def extract(regrouped, ctx=None):
     chapter, group, stack, ranges, dev = None, "", [], [], []
     bs = list(blocks(regrouped))
     cat.index = resolve.Index(bs, PAGE_OFFSET, _tables, shapes.RENAME)
+    kinds = sections.Reader()
     for b in bs:
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)
+        for f in kinds.feed(b, page):  # the kinds the book prints as sections (sections.py)
+            f.children = cat.add(f.kind, f.name, f.page, f.attrs, f.children, f.text)["children"]  # (steps come later)
         if b.chapter != chapter:
             chapter, group, stack = b.chapter, "", []
         if b.level <= 4:

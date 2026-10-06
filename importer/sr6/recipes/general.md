@@ -55,6 +55,12 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   value line, headers interleaved or run together): `shapes.vehicle_band` reads them; the general recipe does not
   file them as vehicles yet (NPC rides, not catalog items).
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Quality paths** (Shadow Cast): `### Quality Path: Name` under `## Quality paths`, its steps the headings under
+  it; a chapter printing those names only its `Quality Path:` headings as paths (`Roleplaying`, `Strategies`
+  after them are its sections).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-30 Nights-Campaign Book-CAT28400.pdf>" --out "%TEMP%\general-check"

@@ -42,6 +42,13 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 - Issues: the preparations print no availability (`missing avail`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `## New Status Edge Actions`, `## Response Edge Actions` and the Edge actions under `Spending Edge on
+  Social Tests` (SOCIAL EDGE): each `#### Name`.
+- **Mentor spirits:** `#### Name` under `## Mentor Spirits` (MANA-INFUSED MANNERS).
+- **Quality paths:** the `Quality Path: Name` headings.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Smooth Operations-Core Face Rulebook-CAT28009.pdf>" --out "%TEMP%\so-check"

@@ -36,6 +36,11 @@ out: `RULE_PARTS`, `RULE_BOOK_CHAPTERS`).
 
 - **Two fields in one cell.** Airship weapons print the blast in the DV cell (`8P(10m blast)`): `dv` and `blast`.
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Actions:** `### New Edge Action: Prepare to Board!` (a heading naming its kind).
+- **Contact types:** `### New Contact Type: Free Spirit`.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Astral Ways-Setting Book-CAT28101.pdf>" --out "%TEMP%\aw-check"
