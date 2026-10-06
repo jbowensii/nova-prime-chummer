@@ -598,7 +598,7 @@ class _Catalog:
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
-                         aliases=[*(b.aliases if n == name else ()), *code_alias(n, b.label)])
+                         aliases=(b.aliases if n == name else []) or code_alias(n, b.label))  # (a heading's fuller name first)
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -824,7 +824,8 @@ _CLASS_WORDS = re.compile(r"\s+(?:ammunition|ammo|rounds)$", re.I)
 
 
 def code_alias(name, title):
-    """A row named only by a code takes its table's title in front as its other name, the title's last word made
+    """A row named only by a code (and no heading's fuller name) takes its table's title in front as its other name,
+    the title's last word made
     singular and an `Ammunition` word dropped (`m60` in `Mortar bombs`: `Mortar bomb m60`; `B60` in `Autocannon
     Ammunition`: `Autocannon B60`)."""
     stem = _CLASS_WORDS.sub("", (title or "").strip())
