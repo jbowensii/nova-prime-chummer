@@ -56,6 +56,21 @@ the overlay changes.
 | `patterns.py` | Finds and scores the general rules that predict Commlink6's UI tags (see Patterns below). |
 | `modifiers.py` | Expresses Commlink6's modifications as path-and-value modifiers, aligns them with our descriptions, and mines phrase templates (see Modifier patterns below). |
 | `report.py` | Builds the metrics, the cause of every miss, the deltas against the baseline, and the files. |
+| `corpus.py` | Our book data as one corpus ordered by publication date: one import run per SR6 PDF (every core rulebook printing, the errata, the card decks and handouts the importer skips). Each book has its date (sources.xml `published`; a core printing takes its City Edition's; the PDFs with no source take theirs from `EXTRA`; errata sort after a book of the same month), its book.md and regrouped.md as lines (page, heading, table header) and its catalog entries. `entries()` groups an object across every book by kind and loose name with aliases; `mentions()` finds every line printing a name. |
+| `lineage.py` | For one object, every value each book prints (catalog fields and table cells), ordered by publication date per field; the winner is the value published last. |
+
+### The corpus (phase 1 of the parity work)
+
+Import every SR6 PDF into one folder of runs (`python -m tools.cl6check import <books file> <runs>`, one line per
+PDF, the four core printings and the errata included), then:
+
+```python
+from tools.cl6check import corpus, lineage
+c = corpus.load("<runs>", "public/data/sr6/sources.xml")
+chains = lineage.lineage(lineage.observe(c, {"weapons"}, ["<name>"]))
+```
+
+Commlink6 stays the answer key: the corpus is built only from the PDFs.
 
 ## Reading the report
 
