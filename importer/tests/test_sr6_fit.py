@@ -51,10 +51,24 @@ class FitTest(unittest.TestCase):
 
     def test_past_the_pools_the_cheapest_ranks_are_karma(self):
         """2 attribute points for 4 ranks: the karma goes on the lowest ratings (CHA 2, then LOG 2), each rank its rating
-        times the per-rank price; a skill past its points likewise, a specialization costing karma once it has none."""
+        times the per-rank price; a skill past its points likewise; a specialization takes a skill point left over, else
+        karma (never a rank moved to karma to make room: a rank costs at least as much)."""
         n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "log": 2, "cha": 2}, skills=[(3, 1), (1, 1)])
         rows = {c: {"metas": {"pixie": 1}, "attributes": 2, "skills": 3, "letter": "Z"} for c in fit.COLUMNS}
         score, got = fit.spend(n, rows, CS)
         self.assertEqual((got["attrs"]["bod"], got["attrs"]["log"], got["attrs"]["cha"]), ([2, 0, 0], [0, 0, 1], [0, 0, 1]))
-        self.assertEqual(got["skills"], [(2, 1), (0, 1)])  # 3 points: rank 1 then 3's top to karma, 2 + its spec on points
-        self.assertEqual(score[1], 4)  # LOG 2×4 + CHA 2×4 + the rank-3 top 3×3 + the rank-1 skill 1×3 and its spec 6: 34, 4 past 30
+        self.assertEqual(got["skills"], [(3, 0), (0, 1)])  # 3 points for 4 ranks: the rank-1 skill to karma, none left
+        self.assertEqual(score[1], 1)  # LOG 2×4 + CHA 2×4 + the rank-1 skill 1×3 + both specs 2×6: 31, 1 past 30
+        rows["skills"] = {**rows["skills"], "skills": 5}  # 5 points: both ranks, then the first spec; the second has none
+        self.assertEqual(fit.spend(n, rows, CS)[1]["skills"], [(3, 0), (1, 0)])
+        self.assertEqual(fit.spend(n, rows, CS)[0][1], 0)  # 16 + one spec 6: 22
+
+    def test_sum_to_ten_when_no_priority_assignment_fits(self):
+        """Letters may repeat under Sum-to-Ten (values from the settings, adding up to at most the target): taken only when
+        every priority assignment overspends and it overspends less; the build says which method."""
+        n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 5, "agi": 5, "rea": 3}, skills=[(5, 0), (5, 0)])
+        s10 = {**CS, "sumToTenTarget": 10.0, **{f"letterValue:{L}": v for L, v in zip("ABCDE", (4.0, 3.0, 2.0, 1.0, 0.0))}}
+        self.assertEqual(fit.fit(n, ROWS, CS)["method"], "priority")  # no Sum-to-Ten settings: priority only
+        got = fit.fit(n, ROWS, s10)
+        self.assertEqual((got["method"], got["letters"]["attributes"], got["letters"]["skills"]), ("sumtoten", "A", "A"))
+        self.assertEqual(fit.fit(need(skills=[(1, 0)]), ROWS, s10)["method"], "priority")  # one that fits stays priority

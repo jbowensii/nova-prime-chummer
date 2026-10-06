@@ -6,6 +6,16 @@
   from the priority's Magic, so an adept who raised Magic with adjustment points or karma read as overspent; the
   importer's priority fit counts them the same way. The core rulebook's Adept now has no rule problems (import the core
   rulebook again to get it).
+- **A specialization the skill points can't cover is bought with karma** (5 karma, CRB p.69) instead of overspending
+  the skill points, so a runner whose ranks use up the points can still take one.
+- **A quality priced in a range (Allergy's 2 to 20) keeps the karma it was taken for.** Qualities shows a karma stepper
+  for it; before, it always counted its lowest price.
+- **Shadowrun 6 sample runners, read closer.** A metatype's own quality is free even when the block doesn't say
+  "trait" (Smooth Operations' troll, dwarf, elf and ork faces were paying for theirs); an Allergy is priced from its
+  printed severity and allergen; a face's qualities from the Sixth World Companion, Double Clutch, Firing Squad or Power
+  Plays are found when that book is imported; and a sample no priority assignment can pay for is fitted with
+  Sum-to-Ten. The core rulebook's Covert-Ops Specialist and Face and four of Smooth Operations' faces are now within
+  their karma (import the books again to get them).
 
 ## 0.9.10 — 2026-10-05: softer neon, pink as a highlight, Review notes only for what a runner uses
 

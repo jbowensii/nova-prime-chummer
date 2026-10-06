@@ -2,16 +2,18 @@
 built from each printed stat block against the book's own catalog (the recipe's entries, ids scoped as run() scopes them)
 and, for another book's samples (Smooth Operations' faces), the core rulebook's catalog as already imported.
 
-What maps: the metatype, the priorities that overspend least for what the block prints (fit.py: the attributes and
-skills spent from their pools, karma past them; without a priority table that holds the runner, none, and each rank
-sits in the attribute or skill points, R), the attributes' natural values, the magic kind (spells, adept powers,
-complex forms), skills with their specialization (+2) or expertise (+3), knowledge skills and languages (Logic's points
-first, the rest bought with karma), qualities (a "(… trait)" one is a free metatype trait), spells, adept powers and
-complex forms, contacts (C/L), the lifestyle, gear, augmentations (with a printed grade), vehicles and weapons found in
-the catalog by name, and fake SINs with their licences. A standard boost carries the bonuses it gives (BOOSTS). The
-printed attributes, Essence, initiative, condition monitors and Defense Rating go in <printed> for Review to compare,
-never corrected. Everything else (the printed lines, starting nuyen, what the catalog doesn't have) goes in the notes
-and, when a listed thing isn't found, in the report (unmatched-item). No description text is copied."""
+What maps: the metatype, the priorities that overspend least for what the block prints (fit.py, Sum-to-Ten when no
+priority assignment fits: the attributes and skills spent from their pools, karma past them; without a priority table
+that holds the runner, none, and each rank sits in the attribute or skill points, R), the attributes' natural values,
+the magic kind (spells, adept powers, complex forms), skills with their specialization (+2) or expertise (+3),
+knowledge skills and languages (Logic's points first, the rest bought with karma), qualities (one of the metatype's
+own, or one printed "(… trait)", is a free metatype trait), spells, adept powers and complex forms, contacts (C/L),
+the lifestyle, gear, augmentations (with a printed grade), vehicles and weapons found in the catalog by name, and fake
+SINs with their licences. A standard boost carries the bonuses it gives (BOOSTS). The printed attributes, Essence,
+initiative, condition monitors and Defense Rating go in <printed> for Review to compare, never corrected. Everything
+else (the printed lines, starting nuyen, what the catalog doesn't have) goes in the notes and, when a listed thing
+isn't found, in the report (unmatched-item).
+No description text is copied."""
 import math
 import re
 from xml.sax.saxutils import escape, quoteattr
@@ -186,20 +188,23 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         need["karma"] += 0 if native or free > 0 else setting("karmaKnowledge")
         free -= 0 if native else 1
         lines.append(f'<knowledge uid="k{next(uid)}" kind="language"{_a("native", native and "true")} {ranks}>{_x(lang)}</knowledge>')
+    # the metatype's own qualities (CRB p.64) are free whether or not the block marks them "(… trait)"
+    traits = {norm(t or "") for tag, _, t in meta[3].get("children", []) if tag == "trait"} if meta else set()
     for q in split(labels.get("qualities", "")):
         hit, level, note = _named(idx, ["qualities"], q)
         if not hit:
             miss("Qualities", q)
             continue
-        free = note and re.search(r"\btrait\b", note, re.I)
-        qa = hit[3].get("attrs", {})  # its karma (budgets.ts qualityKarma): × level when per level
-        cost = 0 if free else abs(num(qa.get("karma"))) * ((level or 1) if qa.get("perLevel") == "true" else 1)
+        free = (note and re.search(r"\btrait\b", note, re.I)) or norm(f"{hit[2]} {level or ''}") in traits
+        qa = hit[3].get("attrs", {})  # its karma (budgets.ts qualityCost): × level when per level; a ranged one's own
+        took = _allergy(hit[2], note, num(qa.get("karmaMax"))) if qa.get("karmaMax") else None
+        cost = 0 if free else took or abs(num(qa.get("karma"))) * ((level or 1) if qa.get("perLevel") == "true" else 1)
         if qa.get("kind") == "negative":
             need["neg"] += cost
         else:
             need["karma"] += cost * (setting("positiveQualityFactor") or 1)
         need["debt"] |= hit[1] == cs.get("inDebtQuality")
-        lines.append(f'<quality uid="q{next(uid)}" id={quoteattr(hit[1])} level="{level or 1}"{_a("free", free and "true")}'
+        lines.append(f'<quality uid="q{next(uid)}" id={quoteattr(hit[1])} level="{level or 1}"{_a("karma", took)}{_a("free", free and "true")}'
                      f'{_a("note", None if free else note)} name={quoteattr(hit[2])}/>')
     for kind, items in picks.items():
         for p in items:
@@ -289,13 +294,16 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
             elif tag == "resources":
                 r["nuyen"] = num(ca["nuyen"])
     got = fit.fit(need, rows, cs) if meta and rows and cs else None
+    method = got["method"] if got else "priority"
     if got:
         head = [f'<priority column="{c}" letter="{L}"/>' for c, L in got["letters"].items()]
         head += [f'<attribute id="{a}" points="{p}" adjust="{j}" karma="{k}"/>' for a, (p, j, k) in ((a, got["attrs"][a]) for a in ATTRS)]
         head += [f'<skill id={quoteattr(i)} points="{p}" karma="{k}"{_a("spec", sp)}{_a("expertise", ex)}/>'
                  for (i, _, sp, ex), (p, k) in zip(skills, got["skills"])]
         notes.append("Priorities fitted to the printed stat block: the letters that overspend least; what the attribute, "
-                     "adjustment and skill points can’t hold is bought with karma, and nuyen past the resources with karma.")
+                     "adjustment and skill points can’t hold is bought with karma, and nuyen past the resources with karma."
+                     + (" No priority assignment holds it within the karma, so it’s built with Sum-to-Ten (Sixth World "
+                        "Companion), whose letters may repeat." if got["method"] == "sumtoten" else ""))
     else:  # natural = 1 + points for the eight and Edge; Magic and Resonance start at 0 without priorities
         head = [f'<attribute id="{a}" points="{max(0, v - (0 if a in ("mag", "res") else 1))}" adjust="0" karma="0"/>'
                 for a, v in need["attrs"].items()]
@@ -314,15 +322,32 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
              "dr": labels.get("defense rating") or row.get("DR")}
     shown = "".join(f'<value key="{k}" value={quoteattr(_s(v))}/>' for k, v in shown.items() if v and _s(v))
 
-    root = {"formatVersion": 1, "id": sid, "streetName": name, "metatype": meta[1] if meta else "", "method": "priority",
+    root = {"formatVersion": 1, "id": sid, "streetName": name, "metatype": meta[1] if meta else "", "method": method,
             "updatedAt": updated}
     xml = (HEAD + f'<sr6:character xmlns:sr6="{CHAR_NS}"' + "".join(_a(k, v) for k, v in root.items()) + ">\n"
            f"  <background>{_x(f'{name} archetype. {src} p.{page}.')}</background>\n"
            f"  <notes>{_x(chr(10).join(notes))}</notes>\n"
            + (f'  <printed source={quoteattr(src)} page="{page}">{shown}</printed>\n' if shown else "") +
-           f'  <build method="priority" magic="{magic}"{_a("karmaToNuyen", got and got["karmaToNuyen"])}>\n    '
+           f'  <build method="{method}" magic="{magic}"{_a("karmaToNuyen", got and got["karmaToNuyen"])}>\n    '
            + "\n    ".join(head + lines) + "\n  </build>\n</sr6:character>\n")
     return sid, xml, report
+
+
+# CRB p.75, Allergy: its most karma less the allergen's modifier and the severity's; an allergen printed without its kind
+# takes the kind of the book's example it names
+ALLERGEN = {"common": 0, "seasonal": 3, "uncommon": 6, "rare": 9}
+SEVERITY = {"extreme": 0, "severe": 3, "moderate": 6, "mild": 9}
+EXAMPLES = {"pollen": "seasonal", "insect stings": "seasonal", "seasonal molds": "seasonal", "grass": "common",
+            "molds": "common", "soy": "common", "strawberries": "uncommon", "wheat": "uncommon", "dairy": "uncommon",
+            "precious metals": "rare"}
+
+
+def _allergy(name, note, top):
+    """An Allergy's karma from its printed `(severity, allergen)`, or None when it isn't one or doesn't say both."""
+    words = [norm(w) for w in split(note or "")]
+    kind = next((w for w in words if w in ALLERGEN), None) or next((EXAMPLES[w] for w in words if w in EXAMPLES), None)
+    sev = next((SEVERITY[w] for w in words if w in SEVERITY), None)
+    return int(top - ALLERGEN[kind] - sev) if norm(name).startswith("allergy") and kind and sev is not None else None
 
 
 def _rank(free):

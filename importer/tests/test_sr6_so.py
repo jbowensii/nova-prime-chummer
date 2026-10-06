@@ -28,6 +28,7 @@ A made-up face who talks.
 |---|---|---|---|---|
 | 3 | 7/1 | A1/I2 | 9/10 | 10/15/+1 |
 **Active Skills:** Con 6, Influence 6
+**Qualities:** Pointy Ears, Allergy (Moderate, grass), Odd Charm
 **Gear:** Made-up suit
 <!-- page 108 -->
 # MANA- INFUSED MANNERS
@@ -166,6 +167,24 @@ class SoRecipeTest(unittest.TestCase):
                          {"init": "7 + 1D6", "cm": "9/10", "dr": "3"})
         alone = ET.fromstring(self.res.samples[0]["xml"])
         self.assertEqual((alone.get("metatype"), list(alone.iter("skill"))), (None, []))
+
+    def test_faces_cite_every_book_imported_and_price_their_qualities(self):
+        """A face's qualities come from any book already imported (the core rulebook's first); one of its metatype's own
+        is free though the block doesn't say "trait"; an Allergy is priced from its printed severity and allergen (the
+        most karma less their modifiers). Invented catalogs."""
+        def write(book, kind, body):
+            os.makedirs(os.path.join(custom, "imported", book), exist_ok=True)
+            with open(os.path.join(custom, "imported", book, f"{kind}.xml"), "w", encoding="utf8") as f:
+                f.write(f'<sr6:data xmlns:sr6="{sr6.NS}" kind="{kind}" version="1">{body}</sr6:data>')
+        with tempfile.TemporaryDirectory() as custom:
+            write("crb", "metatypes", '<metatype id="crb.elf" source="CRB" page="9"><name>Elf</name><trait>Pointy Ears</trait></metatype>')
+            write("crb", "qualities", '<quality id="crb.pointy-ears" source="CRB" page="9" kind="positive" karma="5"><name>Pointy Ears</name></quality>'
+                  '<quality id="crb.allergy" source="CRB" page="9" kind="negative" karma="2" karmaMax="30"><name>Allergy</name></quality>')
+            write("zz", "qualities", '<quality id="zz.odd-charm" source="ZZ" page="4" kind="positive" karma="4"><name>Odd Charm</name></quality>')
+            regrouped, _ = regroup.regroup(BOOK_MD, so.ALIASES, name_headers=so.NAME_HEADERS, end_page=so.END_PAGE)
+            face = ET.fromstring(so.extract(regrouped, {"custom_dir": custom}).samples[0]["xml"])
+        self.assertEqual([(q.get("id"), q.get("free"), q.get("karma")) for q in face.iter("quality")],
+                         [("crb.pointy-ears", "true", None), ("crb.allergy", None, "24"), ("zz.odd-charm", None, None)])
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

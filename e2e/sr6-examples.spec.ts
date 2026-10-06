@@ -63,7 +63,7 @@ test('Your runners: Load example characters copies the book’s sample runners o
   await expect(page.getByText('No runners yet.')).toBeVisible()
   await page.getByRole('button', { name: 'Load example characters' }).click()
   await expect(status(page)).toHaveText('Added 1 example character.')
-  await expect(row(page, 'Glow Runner')).toContainText('Glimmerkin, Priority')
+  await expect(row(page, 'Glow Runner')).toContainText('Glimmerkin, Sum to ten') // the fixture's rows hold it only with Sum-to-Ten's repeated letters
   await page.getByRole('button', { name: 'Load example characters' }).click()
   await expect(status(page)).toHaveText('The example characters are already in your runners.')
   await expect(row(page, 'Glow Runner')).toHaveCount(1)

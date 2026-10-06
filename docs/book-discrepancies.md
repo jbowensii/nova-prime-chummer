@@ -60,7 +60,13 @@ book. Not modelled, so not compared: a skill raised by a ware (reflex
 recorder) and a cyberlimb's own attributes. The book prints no priorities:
 the importer picks the letters that overspend least for the printed build
 (Magic and Edge on adjustment points, what a pool can't hold bought with
-karma, nuyen past the resources with karma), and Review shows what is still
+karma, a specialization the skill points left over can't cover bought with
+karma, nuyen past the resources with karma); when no priority assignment fits
+the karma, it tries the Sixth World Companion's Sum-to-Ten (letters may repeat)
+and takes it when it overspends less. A metatype's own quality is free whether
+or not the block says "trait"; an Allergy is priced from its printed severity
+and allergen; a quality another imported book prints (a face's Sixth World
+Companion quality) is found in that book's catalog. Review shows what is still
 overspent.
 
 ## Expanded-list entries the rulebook doesn't print
