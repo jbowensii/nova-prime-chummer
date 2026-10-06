@@ -30,6 +30,7 @@ out: `RULE_PARTS`, `RULE_BOOK_CHAPTERS`).
 
 - Foci `Force x N¥` (and their bonding Karma) -> `R*N`; ammunition `+100%` -> `B*2` (twice the base round).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- Issues: the airship weapon table has no MODE or AMMO column: each ranged weapon gets `missing` modes and ammo.
 
 ## Table shapes and value styles (importer v2)
 

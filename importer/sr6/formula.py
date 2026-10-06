@@ -425,6 +425,8 @@ FORMULA_FIELDS = {"weapons": ("cost", "avail"), "armor": ("cost", "avail", "capa
                   "vehicles": ("cost", "avail", "seats"), "programs": ("cost", "avail"), "lifestyles": ("cost",)}
 # the fields an entry of a kind needs: none printed is an issue
 NEEDED = {k: ("avail", "cost") for k in PRICED} | {"lifestyles": ("cost",), "qualities": ("karma",)}
+VEHICLE_STATS = {"handling": "handling", "accel": "acceleration", "interval": "speed interval", "topSpeed": "top speed",
+                 "body": "body", "armor": "armor", "pilot": "pilot", "sensor": "sensor", "seats": "seats"}
 _NOTE = {"avail": "no availability printed", "cost": "no price printed", "karma": "no Karma cost printed",
          "rating": "no rating range printed", "essence": "no Essence printed"}
 _DASH = re.compile(r"\s*(?:[—–-]+|n/a)[*†]?\s*", re.I)
@@ -608,6 +610,15 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             out.append(("issue", {"field": f, "code": "missing", "page": page}, _NOTE[f]))
     if kind == "augmentations" and not (attrs.get("essence") or "").strip() and not (attrs.get("capacity") or "").strip():
         out.append(("issue", {"field": "essence", "code": "missing", "page": page}, _NOTE["essence"]))
+    bands = [b for b in re.split(r"\s*/\s*", re.sub(r"\([^)]*\)", "", attrs.get("ar") or "")) if b.strip()]
+    if kind == "weapons" and len([b for b in bands if not _DASH.fullmatch(b)]) > 1 and not re.search(r"(?i)only", attrs.get("ar") or ""):
+        for f, note in (("modes", "no firing modes printed"), ("ammo", "no ammo printed")):
+            if not (attrs.get(f) or "").strip():  # a ranged weapon (attack ratings past Close) needs both
+                out.append(("issue", {"field": f, "code": "missing", "page": page}, note))
+    if kind == "vehicles" and sum(1 for f in VEHICLE_STATS if (attrs.get(f) or "").strip()) >= 4:
+        for f in VEHICLE_STATS:
+            if not (attrs.get(f) or "").strip():  # a stat line read in part: the field it leaves out
+                out.append(("issue", {"field": f, "code": "missing", "page": page}, f"no {VEHICLE_STATS[f]} printed"))
     if kind == "weapons" and (m := re.fullmatch(r"\s*\(\s*\d+\s*[–-]\s*\d+\s*\)\s*([PS](?:\([a-z]+\))?)\s*", attrs.get("dv") or "")):
         out.append(("formula", {"field": "dv"}, "R"))  # `(1–10) S`: a DV the rating gives, in its range
     r = attrs.get("rating")

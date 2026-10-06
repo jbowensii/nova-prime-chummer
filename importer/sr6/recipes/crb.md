@@ -89,6 +89,7 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
 - Issues: a rated price with no rating range anywhere (`missing rating`, about 50: armor and gear rows priced
   `Rating x N¥`); rows the table prints with no avail or price (`missing`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- Issues: the crossbows' rows print no firing modes (`missing modes`).
 
 ## Table shapes and value styles (importer v2)
 

@@ -91,7 +91,8 @@ one row per rating band (all its rows get the same `tier()` rule). A plain numbe
 ```
 
 - `missing`: the book prints nothing for a field the kind needs (an item's availability or price, a quality's Karma,
-  the rating range a rated price needs, an implant's Essence).
+  the rating range a rated price needs, an implant's Essence, a ranged weapon's firing modes or ammo, a vehicle stat
+  its stat line leaves out).
 - `unreadable`: it prints something no formula reads (`Body x 500`, `Special`, a word).
 - `ambiguous`: it prints two values for one field (`800¥/1,600¥`, `400¥ (A); 450¥ (B)`).
 

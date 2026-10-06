@@ -231,3 +231,19 @@ class MoreStylesTest(unittest.TestCase):
         self.assertEqual(t, {"capacity": "tier(R; 1: 2; 2: 4)"})
         k = F.children("augmentations", {**es[0]["attrs"], "type": "cyberware", "essence": "—"}, 4, tiered=t)
         self.assertEqual(k, [("formula", {"field": "capacity"}, "tier(R; 1: 2; 2: 4)")])
+
+
+class StatIssuesTest(unittest.TestCase):
+    """Invented: a ranged weapon or a vehicle read in part gets an issue per field the book leaves out."""
+
+    def test_ranged_weapon_without_modes_or_ammo(self):
+        k = F.children("weapons", {"category": "x", "dv": "5P", "ar": "—/8/9/7/—", "avail": "4", "cost": "900"}, 6)
+        self.assertEqual([c[1]["field"] for c in k if c[0] == "issue"], ["modes", "ammo"])
+        melee = F.children("weapons", {"category": "x", "dv": "3P", "ar": "8/—/—/—/—", "avail": "2", "cost": "100"}, 6)
+        self.assertEqual(melee, [])
+
+    def test_vehicle_read_in_part(self):
+        k = F.children("vehicles", {"category": "x", "handling": "3", "accel": "10", "interval": "20", "topSpeed": "90",
+                                    "body": "8", "armor": "4", "avail": "2", "cost": "9000"}, 6)
+        self.assertEqual([(c[1]["field"], c[2]) for c in k],
+                         [("pilot", "no pilot printed"), ("sensor", "no sensor printed"), ("seats", "no seats printed")])
