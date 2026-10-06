@@ -1,5 +1,6 @@
 // Itemized creation budgets (a port of SR6 Forge's budgets.mjs): pure functions over a build, the catalog views
-// (Sr6Data), the table's creation rules and the method's provider. Prices come from the catalog strings through rated();
+// (Sr6Data), the table's creation rules and the method's provider. Prices come from the catalog through bookValue (a
+// <formula>, else the printed string read by rated());
 // a value the app can't read counts 0 (priced().ok false, Review warns); an unset creation setting counts 0 (Review
 // warns that it isn't set). Never NaN.
 import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Skill } from '../model/character'
@@ -8,7 +9,8 @@ import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
-import { rated, ratingRange } from './values'
+import { fieldName } from '../../engine/formula'
+import { bookValue, dataFind, ratingRange } from './values'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -64,26 +66,37 @@ export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => 
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1
 
 /** A purchase line's cost (× qty, accessories added), Availability (its own; accessories are checked one by one) and
- *  Essence (× qty, accessories added), at its rating and grade. A custom item (no id) uses the player's numbers. A value
- *  the app can't read counts 0 and makes ok false. */
-export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost: number; avail: number; essence: number; ok: boolean } {
-  let cost: number, avail: number, essence: number, ok = true
+ *  Essence (× qty, accessories added), at its rating, quantity and grade: an entry's <formula> when it has one
+ *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
+ *  work out counts 0 and makes ok false (unpriced: the cost is the one); notes: what a formula had to assume. */
+export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
+  let cost: number, avail: number, essence: number, ok = true, unpriced = false
+  const notes: string[] = [], perLine = new Set<string>()
   if (!x.id) { cost = x.cost ?? 0; avail = x.avail ?? 0; essence = x.essence ?? 0 }
   else {
-    const e = entryOf(x, data), r = ratingOf(x, e)
-    const read = (attr: string) => { const v = rated(e?.attrs[attr], r); if (!v.ok) ok = false; return v.n ?? 0 }
+    // ratingOf's rating, but none for an unrated item (a formula then notes it; a printed value reads at 1 as before)
+    const e = entryOf(x, data), r = x.rating ?? ratingRange(e?.attrs.rating)[0], find = dataFind(data)
+    const read = (attr: string) => {
+      const v = bookValue(e, attr, r, find, { Q: x.qty })
+      if (!v.ok) { ok = false; if (attr === 'cost') unpriced = true }
+      if (v.perLine) perLine.add(attr)
+      notes.push(...v.notes.map(n => `${fieldName(attr)}: ${n}`))
+      return v.n ?? 0
+    }
     cost = read('cost'); avail = read('avail'); essence = read('essence')
   }
   if (x.grade) {
     const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)
     cost *= g('cost') ?? 1; essence *= g('essence') ?? 1; avail += g('avail') ?? 0
   }
-  cost *= x.qty; essence *= x.qty
+  // a formula with Q in it already works out the whole line
+  if (!perLine.has('cost')) cost *= x.qty
+  if (!perLine.has('essence')) essence *= x.qty
   for (const a of x.accessories) {
     const pa = priced(a, data, cr)
     cost += pa.cost; essence += pa.essence; ok &&= pa.ok
   }
-  return { cost, avail, essence: round2(essence), ok }
+  return { cost, avail, essence: round2(essence), ok, unpriced, notes }
 }
 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
@@ -170,7 +183,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       priced(x, data, cr).cost, PURCHASE_TAB[x.kind])
   if (b.lifestyle) {
     const e = data.entry('lifestyles', b.lifestyle.id), m = b.lifestyle.months
-    add('lifestyle', `${e?.name ?? b.lifestyle.id} lifestyle × ${s(m, 'month')}`, (rated(e?.attrs.cost).n ?? 0) * m, 'contacts')
+    add('lifestyle', `${e?.name ?? b.lifestyle.id} lifestyle × ${s(m, 'month')}`, (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * m, 'contacts')
   }
   for (const sin of b.sins) {
     // a real SIN comes with its quality; its licences are still bought

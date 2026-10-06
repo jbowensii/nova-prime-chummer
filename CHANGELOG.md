@@ -1,5 +1,22 @@
 # Release notes
 
+## Unreleased (next build)
+
+- **Book values stay canon; what the book leaves out is flagged.** Where a book prints no value, or one the importer
+  can't read, the entry carries an issue. Game data and the item pickers show a warning badge with the field, a short
+  note and the book's page, and Game data's new **Needs attention** button (with its count) lists only those entries.
+  A runner that uses one gets a cited Review note, such as "Null Box: the book prints no availability, set it in Game
+  data or an override file." It's a note, never an error. Setting the field with Edit clears the badge; the edit dialog
+  still shows what the book has ("book: none printed"). Both games; Anarchy's importer doesn't write issues yet.
+- **Prices worked out by the book's formula.** An entry can say how a value is worked out (Rating × 200, a price by
+  rating band, another item's price plus 50, a price per 10 rounds). The builder prices what you buy at its rating and
+  quantity, in the budgets, the ledger and the exports. Lists show the formula and its range ("Rating × 200¥
+  (200–1,200¥)"), and a bought item shows its price with the formula on hover. A formula that refers to something
+  missing leaves the item unpriced instead of free. In Anarchy, an item's cost formula works from the standard price.
+- **Override files.** Game data → Your catalog edits has **Export my edits…** (all edits, or one book's, as an edits
+  file with their descriptions) and **Import edits…**, which previews what a file adds, changes and conflicts with
+  before anything is saved. Pick Keep mine or Take theirs for each conflict. Editors and the admin, both games.
+
 ## 0.9.11 — 2026-10-05: example characters audited, Hex and Dossier sheets, adept power points
 
 - **An adept gets a power point for every point of Magic, raised Magic included** (CRB p.157). Power points came only

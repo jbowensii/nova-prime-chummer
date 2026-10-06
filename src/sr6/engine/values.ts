@@ -1,3 +1,6 @@
+import { evalFormula, formulaOf, type Formula, type Vars } from '../../engine/formula'
+import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
+
 // Book values as the SR6 catalog keeps them (strings, as printed: "Rating × 500", "5(L)", "9/7/—/—/—") read as numbers.
 // Never NaN: a value the app can't read is { n: null, ok: false } and the caller counts it 0 and warns.
 
@@ -99,4 +102,38 @@ export function attackRatings(s: string | undefined): { bands: (number | null)[]
     return Number(p)
   })
   return { bands, ok }
+}
+
+/** Finds a catalog entry by kind and id (a formula's ref()); undefined for a kind or id the catalog doesn't have. */
+export type Find = (kind: string, id: string) => Sr6Entry | undefined
+/** As Find, over the engine's catalog view. */
+export const dataFind = (data: { entry(kind: Sr6Kind, id: string): Sr6Entry | undefined }): Find =>
+  (kind, id) => (Object.hasOwn(SR6_KINDS, kind) ? data.entry(kind as Sr6Kind, id) : undefined)
+/** A field's value: n null when there is none (ok) or the app can't work it out (not ok, error says why for a formula).
+ *  formula: the entry's formula for the field; notes: what it had to assume; perLine: the formula counts the quantity. */
+export interface BookValue { n: number | null; ok: boolean; formula?: Formula; notes: string[]; error?: string; perLine?: boolean }
+
+/** "1,000¥" → "1000": a printed value as rated() reads it */
+const plain = (s: string | undefined) => s?.replace(/¥/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')
+
+/** A field of entry `e` at `rating`: its <formula> when it has one (B: the printed value, Q, M and opt.<id> from `vars`),
+ *  else the printed value read by rated() (an absent rating reads as 1). A ref() looks up `find`; one that finds nothing
+ *  leaves the value unworked (n null, not ok), never 0. */
+export function bookValue(e: Sr6Entry | undefined, field: string, rating?: number, find?: Find, vars: Omit<Vars, 'R' | 'B'> = {}, depth = 0): BookValue {
+  const raw = e?.attrs[field], f = formulaOf(e?.formulas, field)
+  if (!f) { const v = rated(raw, rating ?? 1); return { n: v.n, ok: v.ok, notes: [] } }
+  if (depth > 8) return { n: null, ok: false, formula: f, notes: [], error: 'its refs go round in a circle' }
+  const printed = rated(plain(raw), rating ?? 1)
+  const r = evalFormula(f, { ...vars, R: rating, B: printed.ok ? printed.n : null },
+    (kind, id, fld, at) => bookValue(find?.(kind, id), fld, at, find, {}, depth + 1).n)
+  return { n: r.n, ok: r.n !== null, formula: f, notes: r.notes, ...r.error ? { error: r.error } : {}, ...r.usesQ ? { perLine: true } : {} }
+}
+
+/** A formula's values over the ratings the entry comes in (just one without a rating range): [lowest, highest], or null
+ *  when it can't be worked out at one of them. */
+export function formulaRange(e: Sr6Entry, field: string, find?: Find): [number, number] | null {
+  const rs = ratingRange(e.attrs.rating)
+  const ns = (rs.length ? rs : [undefined]).map(r => bookValue(e, field, r, find).n)
+  if (ns.some(n => n === null)) return null
+  return [Math.min(...ns as number[]), Math.max(...ns as number[])]
 }

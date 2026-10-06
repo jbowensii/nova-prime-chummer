@@ -5,7 +5,8 @@ import { houseSource, nonCanonUses } from './canon'
 import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, rawAmpRating } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
-import { price, slotLapse } from './price'
+import { catalogItem, itemPrice, price, slotLapse } from './price'
+import { issueNote, type Issue } from './formula'
 import { hasNoMetatype } from './npc'
 
 /** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. */
@@ -200,6 +201,17 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
     if (i.over && !/\bshield\b/i.test(i.name))
       add('armor.stack', 'warning', path, `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`, 148)
+  }
+
+  // an entry the runner uses whose book leaves a value out (or prints one the importer couldn't read): a note, cited
+  const noteIssues = (path: string, e?: { name: string; source: string; issues?: Issue[] }) => {
+    for (const x of e?.issues ?? []) add('catalog.issue', 'warning', path, issueNote(e!.name, x), x.page, e!.source)
+  }
+  for (const a of b.amps) noteIssues(`amps.${a.uid}`, a.catalogId ? c.amps.get(a.catalogId) : undefined)
+  for (const i of b.items) {
+    noteIssues(`items.${i.uid}`, i.catalogId ? c.items.get(i.catalogId) : undefined)
+    const pr = itemPrice(c.pricing, i, catalogItem(c, i))
+    if (pr.error) add('catalog.formula', 'warning', `items.${i.uid}`, `${i.name}: its cost formula can’t be worked out (${pr.error}); the standard price counts.`)
   }
 
   const n = ch.narrative
