@@ -49,6 +49,10 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
   ratings and ammo), the later cells one column left and a stray price at the end. regroup's `_repair_row` splits the
   cell where both halves fit their columns' shapes (MODES, ATTACK RATINGS, AMMO, AVAIL, COST) and drops the stray
   cell, only when every shaped cell then fits. Otherwise the row stays as printed (book-value report).
+- **A header printed twice.** `… | AVAIL | COST | COST` (the mobile lodge): the first cell keeps the header (the
+  price), the second is `COST (2)` (reported as an unknown column).
+- **Rows under a nicknamed heading** (`MGL-48` under `ArmTech MGL-48 Decimator`, `Ballista II` under `Ballista II
+  Missile System`): the row's name stays; the heading only describes it.
 
 ## Formula styles and issues (importer v2)
 

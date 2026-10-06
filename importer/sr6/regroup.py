@@ -64,6 +64,29 @@ def keys(name, aliases=None):
     return [k for k in dict.fromkeys(out) if k] or [""]
 
 
+def full_name(row, heading):
+    """True when a heading prints a row's item under its full name, so the entry takes it: the row drops a maker or
+    brand in front (`Bulldog` / `GMC Bulldog`) or cuts its last word short (`Laser mic` / `Laser microphone`). A heading
+    adding words after the row's name (`Ballista II Missile System`, a nickname) is a description title, not the name."""
+    rw, hw = norm(row).split(), norm(heading).split()
+    if not shorter_name(row, heading):
+        return False
+    return hw[len(hw) - len(rw):] == rw or (len(rw) > 1 and hw[-1].startswith(rw[-1]) and hw[-1] != rw[-1])
+
+
+def shorter_name(row, heading):
+    """True when a row's name is a shorter printing of a heading's: its words all among the heading's, two or more of
+    them or one with a digit (`MGL-48` in `Armtech MGL-48`, `GMC Bulldog` in `GMC Bulldog Step-Van`), or the heading's
+    with its last word cut short (`Laser mic`, `Omni-directional mic` for `… microphone`)."""
+    rw, hw = norm(row).split(), norm(heading).split()
+    if not rw or not hw or rw == hw or re.search(r"\band\b|&|/|,", heading):
+        return False  # (a heading over several items names none of them in full)
+    if len(rw) < len(hw) and set(rw) <= set(hw) and (len(rw) > 1 or re.search(r"\d", rw[0])) and " ".join(rw) in " ".join(hw):
+        return True
+    return (len(rw) > 1 and "".join(rw[:-1]) == "".join(hw[:-1]) and len(rw[-1]) >= 3 and hw[-1].startswith(rw[-1])
+            and rw[-1] != hw[-1])
+
+
 def _names(name):
     """A heading `A 70/75` stands for `A 70` and `A 75`, `Devil Rat/Demon Rat` for each."""
     m = re.match(r"(.*\s)([\w-]+(?:/[\w-]+)+)$", name)
@@ -214,6 +237,7 @@ class _Unit:
     merged: bool = False
     pos: int = 0
     box_labels: bool = False  # labelled lines taken as a stat box (not lines met in the description)
+    full: set = field(default_factory=set)  # id() of the rows printing a shorter name: named by this heading
     shared: bool = False  # a box holding a description it shares with other boxes
 
     def has_box(self):
@@ -423,6 +447,8 @@ def _chapter(units, aliases, name_headers, report, variants=False):
             if d:
                 taken.add((id(d), k))
                 d.rows.append((t, r))
+                if full_name(r[0], d.name):  # (paired by an alias: the heading prints the full name)
+                    d.full.add(id(r))
             if k and k in seen:
                 report.append({"kind": "duplicate", "of": "row", "name": r[0], "table": t.title or t.header[0],
                                "page": t.page, "chapter": chapter, "paired": d.name if d else ""})
@@ -431,6 +457,20 @@ def _chapter(units, aliases, name_headers, report, variants=False):
             seen.add(k)
             if not d:
                 t.unpaired.append(r)
+    # a row printing a shorter name than its description's heading (`Laser mic` / `Laser microphone`, `MGL-48` /
+    # `Armtech MGL-48`, `GMC Bulldog` / `GMC Bulldog Step-Van`) takes the one description no row took whose name holds
+    # it; it is named by that heading when the heading is its full name (full_name)
+    free = [d for d in descs if not d.rows and not d.has_box()]
+    for t, r in list(unpaired):
+        near = [d for d in free if r and shorter_name(r[0], d.name)]
+        if len(near) == 1:
+            d = near[0]
+            d.rows.append((t, r))
+            if full_name(r[0], d.name):
+                d.full.add(id(r))
+            free.remove(d)
+            unpaired.remove((t, r))
+            t.unpaired.remove(r)
     # a heading ending in "series" takes every unpaired row starting with the rest of its key
     for d in descs:
         k = keys(d.name, aliases)[0]
@@ -507,9 +547,12 @@ def _text(body):
 
 def _row(header, r):
     r = list(r) + [""] * (len(header) - len(r))
-    # a band's second R is Resonance (`B A R S W L I C R ESS`); any other header printed twice keeps its last cell
-    # ponytail: key cells by position if a book prints another header twice
-    return dict(zip(["RES" if h == "R" and "R" in header[:i] else h for i, h in enumerate(header)], r))
+    # a band's second R is Resonance (`B A R S W L I C R ESS`); any other header printed again is `<header> (2)`, the
+    # first cell keeping the header (`… | AVAIL | COST | COST`: the price is the first)
+    names = []
+    for i, h in enumerate(header):
+        names.append("RES" if h == "R" and "R" in header[:i] else f"{h} ({header[:i].count(h) + 1})" if h in header[:i] else h)
+    return dict(zip(names, r))
 
 
 def _emit(units):
@@ -525,7 +568,7 @@ def _emit(units):
             stats = [_row(t.header, r) for t in u.stats for r in t.rows]
             label = u.name if u.kind == "box" else ""
             for t, r in u.rows or [(None, None)]:
-                out.append(Block("item", r[0] if r else u.name, u.chapter, u.section,
+                out.append(Block("item", u.name if r and id(r) in u.full else r[0] if r else u.name, u.chapter, u.section,
                                  t.title if t else label, u.page, list(t.header) if t else [],
                                  _row(t.header, r) if t else None, stats, u.tags, dict(u.labels), text, u.level))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:

@@ -31,6 +31,10 @@ out: `RULE_PARTS`, `RULE_BOOK_CHAPTERS`).
 - Foci `Force x N¥` (and their bonding Karma) -> `R*N`; ammunition `+100%` -> `B*2` (twice the base round).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Table shapes and value styles (importer v2)
+
+- **Two fields in one cell.** Airship weapons print the blast in the DV cell (`8P(10m blast)`): `dv` and `blast`.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Astral Ways-Setting Book-CAT28101.pdf>" --out "%TEMP%\aw-check"

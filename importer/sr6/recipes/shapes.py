@@ -7,7 +7,7 @@ import re
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
-from importer.sr6.regroup import keys, norm
+from importer.sr6.regroup import full_name, keys, norm
 
 # a box's first column naming its rows (`NAME`, `CASE TYPE`, `DIGITAL WEAPON CODEMODS`, `IC`, …)
 NAME_COL = re.compile(r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
@@ -156,14 +156,14 @@ def boxes(bs):
     gone, out = set(), []
 
     def described(i, b, name):
-        """(text, labels) of the description of `name`: the nearest heading of its name with text and no box of its
-        own (it then goes), else a labelled line of its name in the chapter."""
+        """(text, labels, heading) of the description of `name`: the nearest heading of its name with text and no box
+        of its own (it then goes), else a labelled line of its name in the chapter (heading "")."""
         near = sorted((j for j, d in enumerate(bs) if j not in gone and d.chapter == b.chapter and _desc(d)
                        and _match(name, d.name)), key=lambda j: (j > i, abs(j - i)))
         if near:
             gone.add(near[0])
-            return bs[near[0]].text, bs[near[0]].labels
-        return said.get((b.chapter, norm(name)), ""), {}
+            return bs[near[0]].text, bs[near[0]].labels, bs[near[0]].name
+        return said.get((b.chapter, norm(name)), ""), {}, ""
 
     for i, b in enumerate(bs):
         if b.row is not None:
@@ -171,8 +171,9 @@ def boxes(bs):
             row = {first: b.row[first], **cells({h: v for h, v in b.row.items() if h != first})}
             b = replace(b, row=row, header=list(row))
             if not b.text.strip():
-                text, labels = described(i, b, b.name)
-                b = replace(b, text=text, labels={**labels, **b.labels})
+                text, labels, head = described(i, b, b.name)
+                b = replace(b, text=text, labels={**labels, **b.labels},
+                            name=head if full_name(b.name, head) else b.name)  # the heading's full name
             out.append(b)
             continue
         items = rows(b.stats, known) if b.stats else None
@@ -195,7 +196,8 @@ def boxes(bs):
             continue
         for c in items:
             name = " ".join(c[col].split())
-            text, labels = described(i, b, name)
+            text, labels, head = described(i, b, name)
+            name = head if full_name(name, head) else name  # (a maker in front: the heading's full name)
             out.append(_row_block(b, name, c, b.name, text, labels, col))
     taken = {id(bs[j]) for j in gone}
     return [b for b in out if id(b) not in taken]

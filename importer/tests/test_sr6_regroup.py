@@ -481,3 +481,38 @@ class RepairRowTest(unittest.TestCase):
     def test_no_split_that_fits_leaves_the_row_as_printed(self):
         row = ["Quux", "4P", "weird", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertEqual(regroup._repair_row(self.H, row), row)
+
+
+class NamesAndCellsTest(unittest.TestCase):
+    """Invented names: a row printing a shorter name than its description's heading; a header printed twice."""
+
+    def test_shorter_and_full_names(self):
+        self.assertTrue(regroup.shorter_name("Zap mic", "Zap microphone"))
+        self.assertTrue(regroup.shorter_name("Ultra-sonic mic", "Ultrasonic microphone"))
+        self.assertTrue(regroup.shorter_name("ZX-9", "Blarg ZX-9 Thunderer"))
+        self.assertFalse(regroup.shorter_name("Pistol", "Heavy Pistol"))  # one word, no digit
+        self.assertFalse(regroup.shorter_name("Glow rope", "Glow rope and glow stick"))  # a heading over two items
+        self.assertTrue(regroup.full_name("Zap mic", "Zap microphone"))
+        self.assertTrue(regroup.full_name("Thunder 9", "Blarg Thunder 9"))  # a maker in front: the full name
+        self.assertFalse(regroup.full_name("Thunder 9", "Thunder 9 Rocket System"))  # words after it: a title
+
+    def test_a_short_row_pairs_with_its_heading_and_takes_its_full_name(self):
+        md = """<!-- page 2 -->
+# GIZMOS
+## Sound Gizmos
+#### Zap microphone
+A zap mic hears zaps.
+#### sound gizmos
+| DEVICE | AVAIL | COST |
+|---|---|---|
+| Zap mic | 2 | 100¥ |
+"""
+        items = _items(regroup.regroup(md, name_headers=frozenset({"DEVICE"}))[0])
+        self.assertIn("Zap microphone", items)
+        self.assertEqual(items["Zap microphone"].row["DEVICE"], "Zap mic")
+        self.assertEqual(items["Zap microphone"].text, "A zap mic hears zaps.")
+
+    def test_a_header_printed_twice_keeps_the_first_cell(self):
+        self.assertEqual(regroup._row(["NAME", "AVAIL", "COST", "COST"], ["Zorp", "4", "900¥", "2"]),
+                         {"NAME": "Zorp", "AVAIL": "4", "COST": "900¥", "COST (2)": "2"})
+        self.assertEqual(regroup._row(["B", "R", "R"], ["1", "2", "3"]), {"B": "1", "R": "2", "RES": "3"})

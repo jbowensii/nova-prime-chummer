@@ -196,6 +196,7 @@ def _value(attr, v):
         return "—"
     if attr == "cost":
         v = re.sub(r"(?<=\d),(?=\d{3})", "", v).replace("¥", "").strip()
+        v = re.sub(r"^(\d{1,3})\.(\d{3})$", r"\1\2", v)  # `1.200¥`: a thousands point
     return v
 
 
@@ -347,6 +348,12 @@ class _Catalog:
             a = cols.get(k.upper())
             if a and v and a not in out:
                 out[a] = _value(a, v)
+        if kind == "weapons" and (m := re.fullmatch(r"(.+?)\s*\(\s*(\d[\d.,]*\s*m)\s+blast\s*\)", out.get("dv", ""), re.I)):
+            out["dv"] = m.group(1)  # `8P(10m blast)`: the DV and the blast run into one cell
+            out.setdefault("blast", m.group(2))
+        if kind == "weapons" and (m := re.fullmatch(r"(\d+\s*[PS](?:\([^)]*\))?)\s*\+\s*([a-z].*)", out.get("dv", ""), re.I)):
+            out["dv"] = m.group(1)  # `1P + special`: the DV, and a note for the text
+            out.setdefault("prose", []).append(f"**DV:** {m.group(1)} + {m.group(2)}")
         if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))) \
                 and m.group(1).count("(") == m.group(1).count(")"):  # (not `2,000¥ (+500¥ per additional dart)`)
             out["cost"] = m.group(1)  # "50 per 100m"; "15 per 10" under a COST (PER 10 ROUNDS) column

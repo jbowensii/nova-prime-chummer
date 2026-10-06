@@ -44,6 +44,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   second product's avail and price unread.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Table shapes and value styles (importer v2)
+
+- **Thousands point.** A few prices print `1.200¥`: read as 1200 (a point followed by exactly three digits).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"

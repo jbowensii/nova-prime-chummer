@@ -128,3 +128,26 @@ class ChildrenTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CellSplitTest(unittest.TestCase):
+    """crb._Catalog.fields on invented rows: two fields in one cell, a thousands point."""
+
+    def fields(self, kind, row):
+        from importer.sr6.recipes import crb
+        from importer.sr6.regroup import Block
+        b = Block("item", next(iter(row.values())), "GEAR", "", "", 3, list(row), row)
+        return crb._Catalog().fields(kind, b, 2)
+
+    def test_dv_and_blast(self):
+        f = self.fields("weapons", {"WEAPON": "Zorp Cannon", "DV": "9P(15m blast)", "AVAIL": "8", "COST": "9,000¥"})
+        self.assertEqual((f["dv"], f["blast"]), ("9P", "15m"))
+
+    def test_dv_and_a_note(self):
+        f = self.fields("weapons", {"WEAPON": "Zorp Dart", "DV": "2P + special", "AVAIL": "3", "COST": "300¥"})
+        self.assertEqual(f["dv"], "2P")
+        self.assertIn("**DV:** 2P + special", f["prose"])
+
+    def test_thousands_point(self):
+        self.assertEqual(self.fields("gear", {"ITEM": "Zorp Refill", "AVAIL": "2", "COST": "2.400¥"})["cost"], "2400")
+        self.assertEqual(self.fields("gear", {"ITEM": "Zorp Dust", "AVAIL": "2", "COST": "0.5¥"})["cost"], "0.5")
