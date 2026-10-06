@@ -202,6 +202,31 @@ Eyes see.
 """
 
 
+class BoldHeaderTableTest(unittest.TestCase):
+    def test_rows_under_a_bold_header_line_and_names_wrapped_around_them(self):
+        md = """**WEAPON TYPE DV ATTACK RATING AVAIL COST**
+Zapper Exotic 2P 10/—/—/—/— 3(L) 200¥
+Zip
+Exotic 4P 10/—/—/—/— 6(I) 500¥
+(Heavy)
+Blip
+Exotic 2P 3/—/—/—/— 4(L) 125¥
+Stomp
+Mete
+900¥
+Hammer Exotic 2P 6/—/—/—/— 5(I)
+(Double)
+*Footnote.
+"""
+        t = [v for k, _, v in regroup._elements(md) if k == "t"][0]
+        self.assertEqual(t.header, ["WEAPON", "TYPE", "DV", "ATTACK RATING", "AVAIL", "COST"])
+        self.assertEqual([(r[0], r[-1]) for r in t.rows], [("Zapper", "200¥"), ("Zip (Heavy)", "500¥"),
+                                                         ("Blip Stomp", "125¥"), ("Mete Hammer (Double)", "900¥")])
+        rows = regroup._elements("**NAME CLASS RANGE AVAIL COST**\nm40 0 3 km 4(L) 750¥\nm60 1 7 km 5(L) 900¥\n")[0][2].rows
+        self.assertEqual([r[:3] for r in rows], [["m40", "0", "3 km"], ["m60", "1", "7 km"]])
+        self.assertEqual([r[0] for r in regroup._rating_groups(rows)], ["m40", "m60"])  # a model code, no variant
+
+
 class RegroupRulesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

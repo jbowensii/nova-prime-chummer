@@ -81,6 +81,12 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
   each; `(1-12)`: the rating range). Not yet: the warheads' Capacity notes (prose, p. 146).
 - **Actions:** `## New Edge Actions` (REGISTERED AS A LETHAL WEAPON): each `### Name`. The `**New Edge Action:
   Called Shot: …**` bold lines of the advanced weapon rules are not read yet (no section of their own).
+- **Bold-header tables (regroup `_bold_table`):** `New Exotic Weapons`, the Armsman polearm and `Mortar bombs` print
+  their header as one bold line (`**WEAPON TYPE DV ATTACK RATING AVAIL COST**`) and each row as a plain line, read
+  from the right by the columns' shapes (`3 km`: a range with its unit). A name wrapped around its row (`Goblin` over
+  the values, `Stomper` under; `Garrote` + `(Razorwire)`) and a price set on a line of its own are joined. A
+  lower-case model code (`m60`) is a row of its own, not a variant of the row above. Not yet: the rocket and missile
+  table (`Standard 0 (60mm` / `Rocket x .5m) …`: every cell wrapped column by column).
 
 ## Real-book check (local, nothing committed)
 

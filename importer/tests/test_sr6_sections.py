@@ -206,6 +206,24 @@ This negative quality hurts.
                           "Sore Feet": ("negative", "5")})
         self.assertNotIn("Starting point", q)
 
+    def test_headings_bought_as_a_quality_at_the_sections_price(self):
+        md = """<!-- page 70 -->
+# GLOW AND GRACE
+## Zorp Paths and Their Gifts
+##### (15 Karma)
+Zorps begin a path by selecting it as a quality.
+### Inner Hum
+Every path hums.
+### Glower's Path
+Followers glow.
+### Fizzing Path
+Followers fizz.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
+        self.assertEqual({n: (a["kind"], a["karma"]) for n, a in q.items()},
+                         {"Glower's Path": ("positive", "15"), "Fizzing Path": ("positive", "15")})
+
     def test_kinds_of_a_class_priced_by_its_row(self):
         md = """<!-- page 155 -->
 # MAGIC

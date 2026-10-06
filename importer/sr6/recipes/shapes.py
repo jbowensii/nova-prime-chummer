@@ -69,7 +69,8 @@ def rows(stats, known=frozenset()):
     name column continues the item above it (`ARMOR | PILOT …` under `NAME | HAND …`). A named row with at most one
     other cell beside full rows is a name wrapped onto two rows (`Ruhrmetall` over `SF-10 …`): it joins the row whose
     joined name is a heading's (`known`: norm keys), else the row below when one of its cells breaks off (`50(c) or`),
-    else the row above. A row named in parentheses or lower case (`(when link fired)`) is a variant of the one above."""
+    else the row above. A row named in parentheses or lower case (`(when link fired)`) is a variant of the one above; a model code
+    (`m60`) is not."""
     rs = [cells(s) for s in stats]
     col = name_col(rs)
     named = lambda r: col is not None and next(iter(r), "") == col and bool(r[col].strip())
@@ -100,7 +101,7 @@ def rows(stats, known=frozenset()):
                 out[-1] = {**_join(out[-1], r), "_wrapped": True}
                 i += 1
                 continue
-        if out and named(out[-1]) and re.match(r"\(|[a-z]", r[col].strip()):
+        if out and named(out[-1]) and re.match(r"\(|[a-z]", r[col].strip()) and not re.match(r"[a-z]+-?\d", r[col].strip()):
             r = {**r, col: f"{out[-1][col]} {r[col].strip()}"}
         out.append(r)
         i += 1

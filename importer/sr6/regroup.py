@@ -170,9 +170,96 @@ def _elements(md):
             # a heading printed twice in a row (`Spirits of Air` over its box `SPIRITS OF AIR`) is one
             elif not (prev and prev[0] == "h" and norm(prev[2][1]) == norm(text)):
                 out.append(("h", page, (level, text)))
+        elif (m := _BOLD_HEAD.match(ln.strip())) and (bt := _bold_table(m.group(1), lines, i)) is not None:
+            header, rows, i = bt
+            out.append(("t", page, _Table(header, rows, page, pos=len(out))))
         else:
             out.append(("x", page, ln))
     return out
+
+
+# a table whose header the converter set as one bold line and its rows as plain lines (`**WEAPON TYPE DV ATTACK
+# RATING AVAIL COST**`, `Zapper Exotic 2P 8/—/—/—/— 3(L) 200¥`): a name column first, the price columns last
+_BOLD_HEAD = re.compile(r"^\*\*((?:NAME|ITEM|WEAPON|GEAR|DEVICE|ARMOR)\s[A-Z][A-Z0-9 ./()#-]*\s(?:AVAIL\.?|AVAILABILITY)\s+COST)\*\*$")
+_MULTI = ("ATTACK RATINGS", "ATTACK RATING", "DEVICE RATING", "TOP SPEED", "SPEED INT", "SPD INT")
+_PRICE_ONLY = re.compile(r"^[\d,.]+\s*¥$")
+_BOLD_SHAPES = {"RANGE": r"[\d.]+\s*(?:km|m)|" + "[—–-]"}  # (a range printed with its unit: two words)
+
+
+def _bold_columns(head):
+    """The columns of a one-line header: its words, the game's two-word columns (`ATTACK RATING`) kept whole."""
+    words, cols = head.split(), []
+    while words:
+        two = " ".join(words[:2])
+        if two in _MULTI:
+            cols.append(two)
+            words = words[2:]
+        else:
+            cols.append(words.pop(0))
+    return cols
+
+
+def _bold_row(cols, ln, cost=None):
+    """(name, values) of a plain row line under _bold_columns, read from its right (each column one cell: a shaped
+    column by its shape, another one word); the name is what is left, maybe empty (printed around the values). A
+    row with no price of its own takes `cost` (the price the converter set on a line of its own above it)."""
+    s = re.sub(r"[*†‡]", "", ln).strip()
+    vals = []
+    for c in reversed(cols[1:]):
+        if c == "COST" and cost and not re.search(r"¥\s*$", s):
+            vals.append(cost)
+            continue
+        sh = _BOLD_SHAPES.get(c) or _shape(c)
+        m = re.search(rf"(?:^|\s)({sh})$", s) if sh else re.search(r"(?:^|\s)(\S+)$", s)
+        if not m:
+            return None
+        vals.append(m.group(1).strip())
+        s = s[:m.start(1)].strip()
+    return s, vals[::-1]
+
+
+def _bold_table(head, lines, i):
+    """(header, rows, next line) of a bold-header table (_BOLD_HEAD) from line i, else None. A name the converter
+    wrapped around its row (`Zap` over the values, `Glove` under them; `(Heavy)` under them) is joined: a line that is
+    no row goes with the row under it when that row prints no name, or comes after a row that printed none (one
+    capitalised line, or a parenthesised one, completes it); a line holding only a price is the next row's price."""
+    cols = _bold_columns(head)
+    items, cost, j = [], None, i
+    while j < len(lines):
+        ln = lines[j].strip()
+        if not ln or _PAGE.match(ln):
+            j += 1
+            continue
+        if ln.startswith(("#", "|", "*", ">", "<!--")) or len(ln) > 60:
+            break
+        if _PRICE_ONLY.match(ln):
+            cost = ln
+        elif (r := _bold_row(cols, ln, cost)) is not None:
+            items.append(["row", r[0], r[1], r[0] == "", []])
+            cost = None
+        else:
+            items.append(["frag", re.sub(r"[*†‡]", "", ln).strip()])
+        j += 1
+    rows, pending = [], []
+    for k, it in enumerate(items):
+        if it[0] == "row":
+            it[1] = " ".join(pending + [it[1]]).strip()
+            pending = []
+            rows.append(it)
+            continue
+        nxt = items[k + 1] if k + 1 < len(items) else None
+        prev = rows[-1] if rows and items[k - 1] is rows[-1] else None
+        back = prev is not None and (it[1].startswith("(") or prev[3] and not prev[4] and not (nxt and nxt[0] == "row" and nxt[3]))
+        if back:
+            prev[4].append(it[1])
+            prev[1] = f"{prev[1]} {it[1]}"
+        else:
+            pending.append(it[1])
+    if pending or not rows or any(not r[1] for r in rows):
+        rows = [r for r in rows if r[1]]
+    if not rows:
+        return None
+    return cols, [[r[1]] + r[2] for r in rows], j
 
 
 _TEXT_ROW = re.compile(r"^(?P<name>[A-Z(][^|¥]*?\S)\s+(?P<avail>\d{1,2}\s*(?:\(\s*[LIF]\s*\)|[LIF])?|[—–-])\s+"
@@ -612,10 +699,10 @@ _RATING_ROW = re.compile(r"Rating \d+$")
 def _rating_groups(rows, first=None):
     """A row with only its name (`Cyberears basic system`) over `Rating N` rows: those rows are `<name> (Rating N)`,
     and the name-only row goes; `Rating N` rows with no such row are `<first> (Rating N)` (first: the table's first
-    header, `Fuse`). A row named in lower case (`w/helmet`) is a variant of the row above."""
+    header, `Fuse`). A row named in lower case (`w/helmet`) is a variant of the row above; not a model code (`m60`)."""
     out, group = [], first
     for r in rows:
-        if r and r[0][:1].islower() and out and out[-1][0]:
+        if r and r[0][:1].islower() and not re.match(r"[a-z]+-?\d", r[0]) and out and out[-1][0]:
             out.append([f"{out[-1][0]} {r[0]}"] + list(r[1:]))
         elif r and r[0] and not any(r[1:]):
             group = r[0]

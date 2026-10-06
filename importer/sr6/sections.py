@@ -171,6 +171,8 @@ class Reader:
             if m := rx.match(name):
                 self.prefixed.add((len(chain), parent))
                 return [f for f in [self._make(kind, m.group(1).strip(), b, page, chain)] if f]
+        if f := self._bought_as_quality(b, page, chain):
+            return [f]
         kind = _kind_of(parent, HEADING_KINDS)
         if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
             kind = "actions"
@@ -182,6 +184,21 @@ class Reader:
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
         return [f for f in [self._make(kind, name, b, page, chain)] if f]
+
+    def _bought_as_quality(self, b, page, chain):
+        """A heading under a section whose text says its entries are taken as a quality, at the price its tag prints
+        (`Adept Ways` (20 Karma): "… by selecting it as a quality"): an entry is a heading named with the section's own
+        noun (`Artisan's Way` under `Adept Ways`), a positive quality at that price."""
+        if not self.stack:
+            return None
+        pb = self.stack[-1][2]
+        karma = re.fullmatch(r"\(?(\d+)\s*Karma\)?", (pb.tags or "").strip(), re.I)
+        noun = re.search(r"(\w+?)s\b", pb.name)
+        if not karma or not noun or not re.search(r"\bas\s+an?\s+(?:positive\s+)?quality\b", " ".join((pb.text or "").split()), re.I):
+            return None
+        if not re.search(rf"\b{re.escape(noun.group(1))}$", b.name.strip(), re.I):
+            return None
+        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": karma.group(1)}, [], _body(b), b)
 
     def _make(self, kind, name, b, page, chain):
         attrs, text = {}, b.text or ""
