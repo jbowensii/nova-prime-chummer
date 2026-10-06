@@ -110,6 +110,7 @@ class Reader:
     def feed(self, b, page):
         if b.chapter != self.chapter:
             self.chapter, self.stack, self.path, self.prefixed = b.chapter, [], None, set()
+            self.packs = False  # a chapter printing PACK headings: a heading over a `(N nuyen)` line there is a pack
         out, lv = [], b.level or 0
         heading = lv > 0
         while heading and self.stack and self.stack[-1][0] >= lv:
@@ -125,6 +126,10 @@ class Reader:
                     self.path[1].children.append(("step", {}, b.name))
         if heading:
             out += self._heading(b, page, chain, parent)
+            if PACK_WORD.search(b.name):
+                self.packs = True
+            if not out:
+                out += packs(b, page, parent, self.packs)
         rk = _kind_of(b.name, RUNIN_KINDS) or _kind_of(parent, RUNIN_KINDS)
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
@@ -183,6 +188,95 @@ class Reader:
                 name, attrs = _action_attrs(name, chain, "", para)
             out.append(Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], para))
         return out
+
+
+# --- gear packs (the Sixth World Companion's PACKs) -----------------------------------------------------------------
+
+PACK_WORD = re.compile(r"\bPACKS?\b")  # the book's own word for them, set in capitals
+_PACKS = re.compile(r"\bpacks\b", re.I)
+_PRICE_LINE = re.compile(r"^\(\s*([\d,]+)\s*nuyen\s*\)\s*$", re.I)
+_NUYEN = re.compile(r"\*\*\s*([\d,]+)\s*(?:\*\*\s*\*\*\s*)?nuyen\s*\*\*\s*$", re.I)
+_RATING_PRICE = re.compile(r"^([A-Z][A-Za-z]*(?:\s+[A-Za-z]+)*)\s+Rating\s+(\d+)\s*:\s*([\d,]+)\s*nuyen\s*$")
+_ESSENCE = re.compile(r"\*\*\s*Essence(?:\s+Cost)?\s*:\s*\*\*\s*([\d.]+)", re.I)
+NOT_CONTENTS = re.compile(r"skill|qualit|attribute|note|essence|priority|recommend|karma", re.I)  # labels not contents
+_LIST = re.compile(r"^\*\*([A-Z][^*:]{1,30}):\*\*\s*(.+)$")
+
+
+def _pack_name(name):
+    """`Hacker PACK A` -> `Hacker Pack A`, `Armed Yamaha Growler PACK` -> `Armed Yamaha Growler` (the kind's word)."""
+    name = re.sub(r"\s+PACKS?\s*$", "", name.strip())
+    return re.sub(r"\bPACK\b", "Pack", name)
+
+
+def _items(text):
+    """A contents list as printed, split at its commas (not those inside parentheses)."""
+    out, depth, cur = [], 0, ""
+    for ch in " ".join(text.split()):
+        depth += ch == "("
+        depth -= ch == ")"
+        if ch == "," and depth == 0:
+            out.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur.strip())
+    return [x for x in (re.sub(r"\s*(?:-\s+)", "", x) for x in out) if x]
+
+
+def _joined(text):
+    """The text with words split over two lines rejoined and each paragraph (a bold line and its wrapped rest) one
+    line."""
+    out = []
+    for ln in (text or "").splitlines():
+        ln = ln.strip()
+        if out and ln and not ln.startswith(("**", "#", "|", "(", "<!--")) and not _RATING_PRICE.match(ln) \
+                and not _PRICE_LINE.match(ln) and not out[-1].endswith((".", "!", "?")) \
+                and not _PRICE_LINE.match(out[-1]) and not _RATING_PRICE.match(out[-1]):
+            out[-1] = re.sub(r"(\w)-$", r"\1", out[-1]) + ("" if out[-1].endswith("-") else " ") + ln
+        elif out and ln.startswith("**") and re.fullmatch(r"\*\*[\d,]*\s*nuyen\*\*|\*\*nuyen\*\*", ln):
+            out[-1] += " " + ln
+        else:
+            out.append(ln)
+    return out
+
+
+def packs(b, page, parent, chapter_has_packs):
+    """The packs a block prints: the block itself when its heading names a PACK or sits under a `… PACKs` heading (or in a
+    chapter of them) over a `(N nuyen)` line; else each `**Name** (w/ contents): **N nuyen**` paragraph, or
+    `Pilot Rating N: N nuyen` line, of a block under a `… PACKs` heading."""
+    lines = _joined(b.text)
+    first = next((ln for ln in lines if ln), "")
+    label_text = "\n".join(f"**{k}:** {v}" for k, v in b.labels.items())
+    out = []
+    in_packs = _PACKS.search(b.name) or _PACKS.search(parent or "")
+    if (m := _PRICE_LINE.match(first)) and (PACK_WORD.search(b.name) or in_packs or chapter_has_packs):
+        attrs = {"category": parent or None, "cost": m.group(1).replace(",", "")}
+        if e := _ESSENCE.search(label_text + "\n" + (b.text or "")):
+            attrs["essence"] = e.group(1)
+        items = []
+        for ln in lines + [f"**{k}:** {v}" for k, v in b.labels.items()]:
+            if (lm := _LIST.match(ln)) and not NOT_CONTENTS.search(lm.group(1)):
+                items += _items(lm.group(2))
+        return [Found("packs", _pack_name(b.name), page, {k: v for k, v in attrs.items() if v},
+                      [("item", {}, x) for x in dict.fromkeys(items)], _body(b))]
+    if not in_packs:
+        return []
+    for ln in lines:
+        if (m := re.match(r"^\*\*([^*]+?):?\*\*:?\s*(.*)$", ln)) and (p := _NUYEN.search(ln)):
+            name = m.group(1).strip().rstrip(":")
+            rest = m.group(2)[:_NUYEN.search(m.group(2)).start()] if _NUYEN.search(m.group(2)) else ""
+            rest = rest.strip().rstrip(":").strip()
+            contents = re.sub(r"^\(\s*w/\s*", "", rest)
+            contents = contents[:-1] if rest.startswith("(") and contents.endswith(")") else contents
+            out.append(Found("packs", _pack_name(name), page, {"category": b.name, "cost": p.group(1).replace(",", "")},
+                             [("item", {}, x) for x in _items(contents)], ln))
+        elif m := _RATING_PRICE.match(ln):
+            out.append(Found("packs", f"{_pack_name(b.name)} {m.group(2)}", page,
+                             {"category": b.name, "cost": m.group(3).replace(",", "")}, [], ln))
+    own = [f for f in out if f.attrs.get("category") == b.name]
+    if PACK_WORD.search(b.name) and not _PACKS.search(b.name) and len(own) == 1:  # the PACK heading's own price line
+        own[0].name, own[0].attrs["category"], own[0].text = _pack_name(b.name), parent or None, _body(b)
+    return out
 
 
 def _body(b):

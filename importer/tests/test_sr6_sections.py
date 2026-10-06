@@ -54,6 +54,34 @@ Walk more.
 """
 
 
+PACKS = """<!-- page 50 -->
+# SUIT UP
+#### Starter Zorp PACK
+(2,500 nuyen)
+Everything to start with.
+**Gear:** Glow stick (rating 2), fizz tape (10)
+## Weapons PACKs
+#### Zappers
+Zappers zap.
+**Zap Pistol** (w/ zap sight, 10 zap darts):
+**1,175 nuyen**
+**Big Zapper** (w/ zap sight, zap scope): **2,015**
+**nuyen**
+## Gizmo PACKs
+#### Gizmo PACK A
+(10,500 nuyen)
+For gizmo users.
+**Essence Cost:** 0.5
+**Recommended Skills:** Tinkering
+#### Glow Autosofts
+Autosofts for glowing drones.
+Pilot Rating 2: 2,000 nuyen
+Glowing rating 2
+Pilot Rating 3: 4,500 nuyen
+Glowing rating 3
+"""
+
+
 class SectionKindsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -78,6 +106,18 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual(sorted(self.kind("datastructures")), ["Fizz Key", "Zap Shell"])
         p = self.kind("qualitypaths")["Long Road"]
         self.assertEqual([s.text for s in p.findall("step")], ["Step 1: First Mile", "Step 2: Last Mile"])
+
+    def test_packs(self):
+        text, _ = regroup.regroup(PACKS, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        p = {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files["packs.xml"])}
+        self.assertEqual((p["Starter Zorp"].get("cost"), [i.text for i in p["Starter Zorp"].findall("item")]),
+                         ("2500", ["Glow stick (rating 2)", "fizz tape (10)"]))
+        self.assertEqual((p["Zap Pistol"].get("cost"), p["Zap Pistol"].get("category")), ("1175", "Zappers"))
+        self.assertEqual([i.text for i in p["Zap Pistol"].findall("item")], ["zap sight", "10 zap darts"])
+        self.assertEqual(p["Big Zapper"].get("cost"), "2015")
+        self.assertEqual((p["Gizmo Pack A"].get("cost"), p["Gizmo Pack A"].get("essence")), ("10500", "0.5"))
+        self.assertEqual(p["Gizmo Pack A"].findall("item"), [])  # (recommended skills are no contents)
+        self.assertEqual((p["Glow Autosofts 2"].get("cost"), p["Glow Autosofts 3"].get("cost")), ("2000", "4500"))
 
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}

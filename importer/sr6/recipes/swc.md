@@ -55,6 +55,13 @@ recipe reads both.
 - **Contact types:** the bullets (`• **Academic:** …`) under `## Contact Types`.
 - **Quality paths:** `#### Quality Path: Name` under `## Quality Paths`, the headings under each its steps.
 - **Actions:** `## New Optional Edge Actions` (bullets with the action they go with).
+- **Packs** (SUIT UP): a heading over a `(N nuyen)` line in the chapter printing PACK headings (`#### Hacker PACK A`,
+  `#### Dirt Poor` under `## Complete Character PACKs`, `#### Armed Suzuki Mirage` under `## Bikes`), its `**Essence
+  Cost:**` and its labelled contents lists (`**Gear:**`, `**Weapons:**`; not `Recommended Skills`); each `**Name** (w/
+  contents): **N nuyen**` paragraph under a `… PACKs` heading (the weapon, armor, sensor and identity packs; the price
+  may wrap onto its own line); each `Pilot Rating N: N nuyen` line (the autosoft packs: `Recon Autosofts 2`). A
+  trailing `PACK` is dropped from the name (`Armed GMC Bulldog`), one inside it reads `Pack` (`Hacker Pack A`). Two
+  packs of one weapon (plain and silenced) keep the printed name twice; the book doesn't name the second.
 
 ## Real-book check (local, nothing committed)
 
