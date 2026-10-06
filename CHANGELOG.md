@@ -36,6 +36,19 @@
   rating range (a mount priced by Size), and a weapon power supply its Energy. Import the books again (or Re-import
   all) to get them.
 
+- **A missing value is searched for across all the books before it's flagged.** The importer looks in the item's other
+  tables and sentences in its own book, then in the other printings, the cards and the other books, latest published
+  first, and records where it found the value. Only what nothing prints becomes an issue, marked as searched. The
+  official errata are applied to their own book.
+- **Fifteen new kinds in Game data, read from the books:** actions (Edge actions and the rest), gear packs, vehicle
+  design, ammunition types, mentor spirits, data structures, quality paths and sets, spell features, contact types and
+  more. They're listed and searchable; how each is used comes later. Also read now: Deadly Arts' melee and mortar
+  tables, Street Wyrd's adept ways (as qualities), Body Shop's transgenic versions (priced by their rule from the base
+  item), rating ranges from rated prices, and items found only in a section's running text.
+- **Saved runners keep working when an import renames or moves an entry.** Each import records the old id of an entry
+  it renamed, re-kinded or merged; the app finds the new entry, and a runner's lines are updated when it loads (noted in
+  the file). A runner that bought APDS or another ammunition type as gear finds it under Ammunition types.
+
 ## 0.9.11 — 2026-10-05: example characters audited, Hex and Dossier sheets, adept power points
 
 - **An adept gets a power point for every point of Magic, raised Magic included** (CRB p.157). Power points came only
