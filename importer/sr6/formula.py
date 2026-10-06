@@ -463,6 +463,34 @@ def section_options(text):
     return out
 
 
+_LENGTH = {"mm": 0.1, "millimeter": 0.1, "cm": 1, "centimeter": 1, "m": 100, "meter": 100, "metre": 100}
+_WORD_NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "ten": 10, "twenty": 20, "hundred": 100}
+_TEXT_UNIT = re.compile(r"\bcost\s+is\s+(?:based\s+on\s+[a-z]+\s+)?per\s+(?:(\d+|[a-z]+)\s+)?([a-z]+?)s?\b"
+                        r"(?:\s*\(\s*minimum\s+([\d.]+)\s*([a-z]+?)s?\s*,\s*maximum\s+([\d.]+)\s*([a-z]+?)s?\s*\))?", re.I)
+
+
+def text_unit(text):
+    """(unit, qty or None) of a price its description gives per unit (`cost is … per ten centimeters (minimum 10 cm,
+    maximum 1 meter)` -> ('10 cm', '1-10')), else None."""
+    m = _TEXT_UNIT.search(" ".join((text or "").split()))
+    if not m:
+        return None
+    n = m.group(1)
+    size = float(n) if n and n.isdigit() else _WORD_NUM.get((n or "one").lower())
+    word = m.group(2).lower()
+    if size is None:
+        return None
+    base = _LENGTH.get(word)
+    unit = f"{fmt(size)} {'cm' if base == 1 else 'm' if base == 100 else word}" if size != 1 else _unit(word)
+    qty = None
+    if m.group(3) and base and _LENGTH.get(m.group(4).lower()) and _LENGTH.get(m.group(6).lower()):
+        lo = float(m.group(3)) * _LENGTH[m.group(4).lower()] / (size * base)
+        hi = float(m.group(5)) * _LENGTH[m.group(6).lower()] / (size * base)
+        if lo.is_integer() and hi.is_integer():
+            qty = f"{int(lo)}-{int(hi)}"
+    return unit, qty
+
+
 def _stem(w):
     """A word's singular, roughly (boxes -> box, lorries -> lorry, trailers -> trailer)."""
     if w.endswith("ies") and len(w) > 4:
@@ -478,11 +506,11 @@ def names(heading, name):
     return bool(hw & {_stem(w) for w in re.findall(r"[a-z]+", name.lower())})
 
 
-def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()):
+def children(kind, attrs, page, row=None, tiered=None, readable=None, options=(), text=""):
     """[(tag, attrs, text)]: the entry's <option>, <formula> and <issue> children. tiered: {field: EXPR} the entry's
     band group gives (tier_groups); row: its printed row (a per-unit price's count range); readable(value): True when
     the app's rated() reads a value as it stands; options: [(id, name, price factor)] its section offers
-    (section_options), applied to its cost."""
+    (section_options), applied to its cost; text: its description (a price per unit it states: text_unit)."""
     out, tiered, uses_r = [], tiered or {}, False
     for f in FORMULA_FIELDS.get(kind, ()):
         v = printed(attrs, f)
@@ -500,6 +528,10 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             if "unit" in extra and (q := qty_range(row or {})):
                 a["qty"] = q
             out.append(("formula", a, expr))
+            continue
+        if f == "cost" and v is not None and (p := plain(v, f)) is not None and (tu := text_unit(text)):
+            a = {"field": f, "unit": tu[0], **({"qty": tu[1]} if tu[1] else {})}
+            out.append(("formula", a, f"Q*{fmt(p)}"))  # its description prices it per unit
             continue
         if v is None or _DASH.fullmatch(v) or plain(v, f) is not None or band(v.strip("[] ")):
             continue  # (a range, `1–6`, is the rating or capacity the item comes in)

@@ -515,6 +515,8 @@ class _Catalog:
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
+            if kind == "weapons" and "ammo" not in f and (ammo := ammo_from_text(b.text)):
+                f["ammo"] = ammo  # its row prints no ammo, its description does (`internal magazines that hold …`)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
                         and re.fullmatch(r"\d+\s*[–-]\s*\d+", g.get("capacity", "")):
@@ -633,7 +635,7 @@ class _Catalog:
             for e in es:
                 opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
                 e["children"] += formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable,
-                                                  opts)
+                                                  opts, e.get("text") or "")
 
     def xml(self, kind):
         self.rules()
@@ -654,6 +656,25 @@ class _Catalog:
 
 def _attrs(d):
     return "".join(f" {k}={quoteattr(_s(v))}" for k, v in d.items() if v is not None and v != "")
+
+
+# what a weapon's ammunition comes in, as the books' AMMO cells abbreviate it (the game's vocabulary)
+AMMO_HOLDERS = {"internal magazine": "m", "clip": "c", "drum": "d", "belt": "belt", "cylinder": "cy",
+                "break action": "b", "muzzle": "ml"}
+_COUNT_WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
+_AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bhold(?:s|ing)?\s+(?:up\s+to\s+)?(\d+|"
+                        + "|".join(_COUNT_WORDS) + r")\s+(?:bolts?|rounds?|arrows?|darts?|shells?|shots?|grenades?)\b", re.I)
+
+
+def ammo_from_text(text):
+    """A weapon's ammo as its description words it (`internal magazines that hold up to four bolts` -> `4(m)`), or
+    None."""
+    m = _AMMO_TEXT.search(" ".join((text or "").split()))
+    if not m:
+        return None
+    n = m.group(2).lower()
+    n = str(_COUNT_WORDS.index(n)) if n in _COUNT_WORDS else n
+    return f"{n}({AMMO_HOLDERS[m.group(1).lower()]})"
 
 
 def _text(b, skip=()):

@@ -168,3 +168,28 @@ class VehicleBandTest(unittest.TestCase):
         self.assertEqual(_columns("HAND S INP TD SPTO EEP D ARMORPILOT".split()),
                          ["HANDLING", "SPEED INTERVAL", "TOP SPEED", "ARMOR", "PILOT"])
         self.assertIsNone(_columns("HAND ZORP".split()))
+
+
+class DescriptionValuesTest(unittest.TestCase):
+    """Values a row leaves out and its (invented) description words."""
+
+    def test_ammo_in_the_description(self):
+        from importer.sr6.recipes.crb import ammo_from_text
+        self.assertEqual(ammo_from_text("Zorpbows have internal magazines that hold up to three bolts."), "3(m)")
+        self.assertEqual(ammo_from_text("Its drum holds 30 rounds."), "30(d)")
+        self.assertIsNone(ammo_from_text("It holds a grudge."))
+
+    def test_price_per_unit_in_the_description(self):
+        self.assertEqual(F.text_unit("Cost is based on length per ten centimeters (minimum 20 cm, maximum 1 meter)."),
+                         ("10 cm", "2-10"))
+        self.assertEqual(F.text_unit("Cost is per glob."), ("glob", None))
+        k = F.children("gear", {"category": "x", "avail": "2", "cost": "400"}, 3, text="Cost is per glob.")
+        self.assertEqual(k, [("formula", {"field": "cost", "unit": "glob"}, "Q*400")])
+
+    def test_quality_price_see_text(self):
+        from importer.sr6.recipes import swc
+        cat = swc._Catalog("SWC", "swc", "x")
+        swc._qualities(cat, "Glum Aura", "**Bonus:** See text\nA glum aura grants a bonus of 6 Karma. For the "
+                                         "Awakened this quality has a bonus of 11 Karma.", 9)
+        a = cat.entries["qualities"][0]["attrs"]
+        self.assertEqual((a["karma"], a["karmaMax"], a["kind"]), (6, 11, "negative"))

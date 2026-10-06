@@ -57,7 +57,8 @@ def formula_values(a, field, rs):
     opts = [o for o in (kv.get("opts") or "").split(",") if o]
     out = {}
     for r in rs:
-        qs = [int(hi or lo)] if lo else [r if r is not None else 1]  # (Commlink6 prices a range at its top)
+        # Commlink6 counts a per-unit price as the rating (R1, R2 …), or prices a count range at its top
+        qs = [r] if r is not None else [int(hi or lo)] if lo else [1]
         vals = set()
         for q in qs:
             for bits in range(2 ** len(opts)):
@@ -163,6 +164,9 @@ def compare(c, o):
     if f.get("rating") and k in PRICED:
         lo, hi = f["rating"]
         mine = O.rating_range(a.get("rating"))
+        q = re.search(r"\|qty=(\d+)-(\d+)", a.get("formula:cost") or "")
+        if q and int(q.group(2)) == hi:  # a per-unit price's count range: Commlink6 counts it as the rating
+            mine = (int(q.group(1)), hi)
         add("rating", None if mine and mine[1] == hi else {
             "field": "rating", "ours": a.get("rating", ""), "cl6": f"{lo}–{hi}", "cl6_tok": f"{lo}-{hi}",
             "ours_tok": a.get("rating") or None,
@@ -231,8 +235,9 @@ def compare(c, o):
         add("duration", _str_field("duration", a.get("duration"), f.get("duration"), first(1), False))
     if k == "qualities" and c["tag"] == "quality":
         if f.get("karma"):
+            top = (a.get("karmaMax") or "").lstrip("-")  # the highest of the prices it prints (Commlink6 may split them)
             add("karma", _num_field("karma", (a.get("karma") or "").lstrip("-") or None,
-                                    {None: abs(float(f["karma"]))}))
+                                    {None: abs(float(f["karma"]))}, formula={None: {float(top)}} if top else None))
         if f.get("positive"):
             mine = "true" if a.get("kind") == "positive" else "false"
             add("positive", None if mine == f["positive"] else {"field": "positive", "ours": a.get("kind", ""),

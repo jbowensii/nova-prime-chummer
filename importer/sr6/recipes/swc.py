@@ -349,6 +349,14 @@ def _qualities(cat, name, text, page):
         lv = re.search(r"max(?:imum)?\.?\s*(?:of\s*)?(\d+)\s*levels?", karma, re.I)
         attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k and int(k.group(1)),
                  "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None, "maxLevel": lv and int(lv.group(1))}
+        if not k and re.search(r"\bsee\s+text\b", karma, re.I):
+            # `Bonus: See text`: the prices its own paragraphs print (`a bonus of 8 Karma … a bonus of 15 Karma`),
+            # up to the next quality's price line
+            nxt = next((j for j in range(i + 1, len(lines)) if _KARMA.match(lines[j])), len(lines))
+            ks = [int(x) for x in re.findall(r"\b(?:bonus|cost)\s+of\s+(\d+)\s+Karma", " ".join(lines[i + 1:nxt]), re.I)]
+            if ks:
+                k = True
+                attrs.update(karma=min(ks), karmaMax=max(ks) if len(set(ks)) > 1 else None)
         if not k:
             cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": qname, "field": "karma",
                                "value": karma, "page": page})

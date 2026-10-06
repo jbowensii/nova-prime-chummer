@@ -98,6 +98,9 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
   word, or a maker in front). A heading that adds words after the row's name (`… Step-Van`) is a title: the row's
   name stays.
 - **Two fields in one cell.** A DV with a note (`1P + special`): the DV, the note to the text.
+- **A value only the description gives.** The crossbows' table prints no ammo; their description does (internal
+  magazines holding a count of bolts): `ammo_from_text` reads `N(m)` from the holder vocabulary (`AMMO_HOLDERS`:
+  internal magazine m, clip c, drum d, belt, cylinder cy, break action b, muzzle loader ml).
 
 ## Real-book check (local, nothing committed)
 

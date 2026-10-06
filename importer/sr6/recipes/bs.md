@@ -43,6 +43,9 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   rated rows with no range `missing rating`; the colony/kit products printed two to a row keep the first, the
   second product's avail and price unread.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- **A price per unit in the description.** A row with a plain price whose description prices it per length
+  (`per ten centimeters`, with a minimum and maximum): `Q*N`, unit `10 cm`, qty from the minimum and maximum
+  (`formula.text_unit`).
 
 ## Table shapes and value styles (importer v2)
 
