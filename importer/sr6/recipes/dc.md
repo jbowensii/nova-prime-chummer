@@ -39,6 +39,8 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 
 - **Stacked bands.** A modification's price tables print `MOD SLOTS | RATING` over `AVAILABILITY | COST`: joined
   into one band by regroup (`_stacked`), read as before.
+- **Interleaved two-line headers.** The bold header lines print `S INP TD` / `T SO PDP` (SPD INT, TOP SPD
+  interleaved); the boxes read by position, and `regroup.deinterleave` / `shapes.vehicle_band` name them when needed.
 
 ## Formula styles and issues (importer v2)
 

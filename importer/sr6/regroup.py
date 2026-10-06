@@ -130,6 +130,7 @@ def _elements(md):
                 rows.append(_cells(lines[i]))
                 i += 1
             header, rows = _header_rest(_cells(ln), rows)
+            header = [deinterleave(h) or h for h in header]
             rows = [_repair_row(header, r) for r in rows]
             prev = out[-1] if out else None
             if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
@@ -150,6 +151,34 @@ def _elements(md):
         else:
             out.append(("x", page, ln))
     return out
+
+
+# column headers the books set on two lines (a general vocabulary of the stat columns): the converter, reading a
+# header cell's two lines letter by letter across, can interleave them (`S INP TD` for SPD over INT)
+TWO_LINE_HEADERS = ("SPD INT", "TOP SPD", "SPEED INT", "SPEED TOP", "TOP SPEED", "SPEED INTERVAL", "ATTACK RATINGS",
+                    "DEVICE RATING", "DATA PROCESSING", "DEFENSE RATING", "MOD SLOTS", "SIZE CLASS")
+
+
+def _interleaves(s, a, b):
+    """True when s is a and b with their letters interleaved, each in its order."""
+    if len(s) != len(a) + len(b):
+        return False
+    ok = {(0, 0)}
+    for k, ch in enumerate(s, 1):
+        ok = {(i + 1, j) for i, j in ok if i < len(a) and a[i] == ch} | {(i, j + 1) for i, j in ok if j < len(b) and b[j] == ch}
+        if not ok:
+            return False
+    return (len(a), len(b)) in ok
+
+
+def deinterleave(cell):
+    """The two-line header (TWO_LINE_HEADERS) whose lines the cell holds interleaved (`S INP TD` -> `SPD INT`,
+    `T SO PDP` -> `TOP SPD`), else None. A cell that already reads is left to the caller."""
+    s = re.sub(r"[\s.]", "", cell.upper())
+    if not s.isalpha() or cell.upper().strip() in TWO_LINE_HEADERS:
+        return None
+    return next((h for h in TWO_LINE_HEADERS if (w := h.split()) and len(w) == 2
+                 and (_interleaves(s, w[0], w[1]) or _interleaves(s, w[1], w[0]))), None)
 
 
 _PRICE_HEAD = {"AVAIL", "AVAILABILITY", "AVAIL.", "COST"}
@@ -286,6 +315,15 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     continue
             if _is_label(level, text):
                 nxt = els[i] if i < end else None
+                if nxt and nxt[0] == "x" and (tag := re.fullmatch(r"\(([^()]{2,60})\)", nxt[2].strip())):
+                    # a lower-case title over a tag line (`evo landtreader` + `(Personal Motor Vehicle)`): an item
+                    # whose description and stats follow
+                    cur = _Unit("item", text, level, page, chapter, section, tags=tag.group(1))
+                    cur.pos = i - 1
+                    units.append(cur)
+                    i += 1
+                    mode, fresh = "box", False
+                    continue
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
                     continue  # an art caption: dropped, the text flows on
                 # a stat box: a title an item heading has, or one-row bands followed by labelled lines

@@ -11,7 +11,8 @@ import re
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
 from importer.sr6 import KINDS
-from importer.sr6.recipes.crb import _BEING, _Catalog, _md, _tables, _text
+from importer.sr6.recipes import shapes
+from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
@@ -405,6 +406,18 @@ def _contact(cat, name, text, page, band=""):
     return True
 
 
+def _vehicle(cat, b, band, page):
+    """A vehicle printed with its stats in its text (shapes.vehicle_band): a vehicles entry, its tag line the
+    category, a lower-case title capitalized."""
+    cols = HEADERS["vehicles"]
+    attrs = {"category": slug(b.tags) or "vehicles", **{cols[h]: _value(cols[h], v) for h, v in band.items() if h in cols}}
+    name = b.name.title() if b.name[:1].islower() else b.name
+    keep = [ln for ln in b.text.splitlines() if not ln.startswith("|") and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip())
+            and not re.fullmatch(r"[\d/—–\-+*.,()¥A-Z ]+", ln.strip())]
+    cat.add("vehicles", name, page, attrs, (), "\n".join(keep).strip())
+    return True
+
+
 # --- the book ------------------------------------------------------------------------------------------------------
 
 def extract(regrouped, ctx=None):
@@ -442,6 +455,8 @@ def extract(regrouped, ctx=None):
             done = _qualities(cat, b.name, text, page)
         elif ch == CONTACTS and b.type == "item":
             done = _contact(cat, b.name, text, page, _md(b))
+        elif b.type == "item" and len(band := shapes.vehicle_band(b.text)) >= 6:
+            done = _vehicle(cat, b, band, page)
         if done:
             continue
         if not any(c == ch for c in RULE_CHAPTERS):

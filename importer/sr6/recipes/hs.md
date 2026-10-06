@@ -34,6 +34,12 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 - Issues: hacks and programs with no avail or price printed (`missing`), rated rows with no range.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Table shapes and value styles (importer v2)
+
+- **Interleaved two-line headers.** A vehicle table's `SPD` over `INT` and `TOP` over `SPD` come out of the
+  converter letter by letter across (`S INP TD`, `T SO PDP`): regroup's `deinterleave` puts them back from the
+  vocabulary of two-line headers (`TWO_LINE_HEADERS`).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Hack & Slash-Core Matrix Rulebook-CAT28006.pdf>" --out "%TEMP%\hs-check"

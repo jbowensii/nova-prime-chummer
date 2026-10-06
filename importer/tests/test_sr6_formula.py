@@ -151,3 +151,20 @@ class CellSplitTest(unittest.TestCase):
     def test_thousands_point(self):
         self.assertEqual(self.fields("gear", {"ITEM": "Zorp Refill", "AVAIL": "2", "COST": "2.400¥"})["cost"], "2400")
         self.assertEqual(self.fields("gear", {"ITEM": "Zorp Dust", "AVAIL": "2", "COST": "0.5¥"})["cost"], "0.5")
+
+
+class VehicleBandTest(unittest.TestCase):
+    """shapes.vehicle_band on an invented vehicle's text."""
+
+    def test_header_line_with_a_speed_table(self):
+        from importer.sr6.recipes.shapes import vehicle_band
+        text = ("A zoomy thing.\n| SPD INT | TOP SPD |\n|---|---|\n| 12 | 40 |\n"
+                "**HAND ACC BOD ARM PIL SENS SEATAVAIL COST**\n3 6 4 2 1 1 2 3(L) 9,900¥\n**Standard Equipment:** none")
+        b = vehicle_band(text)
+        self.assertEqual((b["SPEED INTERVAL"], b["TOP SPEED"], b["SEATS"], b["AVAIL"], b["COST"]), ("12", "40", "2", "3(L)", "9,900¥"))
+
+    def test_interleaved_and_run_together_headers(self):
+        from importer.sr6.recipes.shapes import _columns
+        self.assertEqual(_columns("HAND S INP TD SPTO EEP D ARMORPILOT".split()),
+                         ["HANDLING", "SPEED INTERVAL", "TOP SPEED", "ARMOR", "PILOT"])
+        self.assertIsNone(_columns("HAND ZORP".split()))

@@ -516,3 +516,23 @@ A zap mic hears zaps.
         self.assertEqual(regroup._row(["NAME", "AVAIL", "COST", "COST"], ["Zorp", "4", "900¥", "2"]),
                          {"NAME": "Zorp", "AVAIL": "4", "COST": "900¥", "COST (2)": "2"})
         self.assertEqual(regroup._row(["B", "R", "R"], ["1", "2", "3"]), {"B": "1", "R": "2", "RES": "3"})
+
+
+class InterleavedHeaderTest(unittest.TestCase):
+    """Invented: a two-line header cell the converter interleaved; a lower-case title over a tag line."""
+
+    def test_deinterleave(self):
+        self.assertEqual(regroup.deinterleave("S INP TD"), "SPD INT")
+        self.assertEqual(regroup.deinterleave("T SO PDP"), "TOP SPD")
+        self.assertIsNone(regroup.deinterleave("HAND"))
+        self.assertIsNone(regroup.deinterleave("SPD INT"))
+
+    def test_table_header_put_back(self):
+        md = "# CARS\n##### zoomer (Car)\n| HAND | S INP TD | T SO PDP | COST |\n|---|---|---|---|\n| 3 | 9 | 90 | 900¥ |\n"
+        t = [v for k, _, v in regroup._elements(md) if k == "t"][0]
+        self.assertEqual(t.header, ["HAND", "SPD INT", "TOP SPD", "COST"])
+
+    def test_lower_case_title_over_a_tag_line_is_an_item(self):
+        md = "<!-- page 4 -->\n# RIDES\n## Odd Rides\nIntro.\n##### blip roller\n(Personal Roller)\nA roller that blips.\n"
+        item = _items(regroup.regroup(md)[0])["blip roller"]
+        self.assertEqual((item.tags, item.text), ("Personal Roller", "A roller that blips."))

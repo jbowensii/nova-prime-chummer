@@ -42,6 +42,12 @@ recipe reads both.
 - No price formulas. Issues: two qualities print no Karma (`missing karma`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Table shapes and value styles (importer v2)
+
+- **A vehicle in the text.** A lower-case title over a tag line (`(Personal Motor Vehicle)`) is an item (regroup);
+  its stats print as a speed table (`SPD INT | TOP SPD`) and a bold header line over a value line, headers run
+  together (`SEATAVAIL`): `shapes.vehicle_band` reads them into a vehicles entry, the tag its category.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<the Companion PDF>" --out "%TEMP%\swc-check"
