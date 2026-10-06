@@ -227,6 +227,8 @@
   <xs:complexType name="Weapon">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string" use="required"/>
+      <!-- the ratings (Size, Level …) a rated weapon or mount comes in, where the book prints them -->
+      <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="dv" type="xs:string"/>
       <xs:attribute name="modes" type="xs:string"/>
       <xs:attribute name="ar" type="xs:string"/>
@@ -243,6 +245,7 @@
   <xs:complexType name="Armor">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string" use="required"/>
+      <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="defense" type="xs:string"/>
       <xs:attribute name="capacity" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
@@ -320,6 +323,8 @@
       <xs:attribute name="per" type="xs:string"/>
       <!-- a vehicle modification's modification slots, a formula like the cost ("1/3 body (rounded up)") -->
       <xs:attribute name="slots" type="xs:string"/>
+      <!-- a weapon power supply's Energy (an energy weapon's ammo formula reads it: ref(gear:<id>, energy)) -->
+      <xs:attribute name="energy" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

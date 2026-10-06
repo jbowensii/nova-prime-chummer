@@ -51,6 +51,8 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 - Issues: tires and mods printing two prices (`800¥/1,600¥`) or slots `2 or 1 CF` are `ambiguous`; slots `1/3 body
   (rounded up)` and prices `Body x N¥` need the vehicle's Body (no grammar variable): `unreadable`.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- A part the description prices beside a vehicle (`… the mini-outboard (costs 500¥)`) is an option on its cost:
+  `3500 + 500*opt.mini-outboard`.
 
 ## Real-book check (local, nothing committed)
 

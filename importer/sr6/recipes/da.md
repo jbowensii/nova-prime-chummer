@@ -53,14 +53,22 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
   price), the second is `COST (2)` (reported as an unknown column).
 - **Rows under a nicknamed heading** (`MGL-48` under `ArmTech MGL-48 Decimator`, `Ballista II` under `Ballista II
   Missile System`): the row's name stays; the heading only describes it.
+- **A note under each of a box's tables** (`Note:`, `Crew Served:` under each weapon of a box): kept with that
+  table's row (regroup: the table's `notes`, emitted as NOTE … columns, read into the item's text), not only the
+  box's first.
+- **Model names under a maker's heading.** A box row `Firebolt` takes the description under `Ares Firebolt`
+  (`shapes._match`: one word of five letters or more, the heading's second word).
 
 ## Formula styles and issues (importer v2)
 
 - Vehicle weapon mounts `N¥ + [N¥ x Size]`, avail `N(I) + Size` -> `N + (N*R)`, `N + R` (Size is the rating).
   Seats `2/6` -> `2 + 6`. Shots `N¥ per shot` -> `Q*N`, unit shot. Modes `up to FA`: every mode up to full auto
   (the fire-mode ladder SA, BF, FA; no formula, the reading is the app's).
-- Energy weapons print `Energy` as their ammo and `Uses N Energy per … shot` in a note: the shots a power supply
-  gives are the power supply table's ENERGY over N (not read yet: the note is prose).
+- Energy weapons print `Energy` as their ammo and `Uses N Energy per … shot` in a note: `ref(gear:<supply>,
+  energy)/N`, rounded down, the supply the note or description names (`Includes power backpack`, `uses a power
+  clip`) or the section's prose (`come with power clips`); the power supply table's ENERGY column is the gear's
+  `energy`. A weapon naming no supply gets none. `20(c) + Energy` (railguns) keeps its printed ammo.
+- Mounts and launchers priced by Size take the SIZE column's range as their rating.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Real-book check (local, nothing committed)

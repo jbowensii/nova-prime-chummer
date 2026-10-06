@@ -46,6 +46,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 - **A price per unit in the description.** A row with a plain price whose description prices it per length
   (`per ten centimeters`, with a minimum and maximum): `Q*N`, unit `10 cm`, qty from the minimum and maximum
   (`formula.text_unit`).
+- A row printing only footnote marks (`*`) whose description prices it off another item (`one half the Essence
+  and nuyen cost`, `one half the capacity`): `B*0.5` for those fields, `B` for the rest (the single cybereye).
+- Rows by level (`Telescoping modification (Level 1)`, `(Level 2)`): one `tier()` rule where the levels differ
+  (capacity `tier(R; 1: 2; 2: 4)`); the same price on each level stays a plain number.
 
 ## Table shapes and value styles (importer v2)
 

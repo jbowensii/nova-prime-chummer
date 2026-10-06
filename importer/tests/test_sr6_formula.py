@@ -193,3 +193,41 @@ class DescriptionValuesTest(unittest.TestCase):
                                          "Awakened this quality has a bonus of 11 Karma.", 9)
         a = cat.entries["qualities"][0]["attrs"]
         self.assertEqual((a["karma"], a["karmaMax"], a["kind"]), (6, 11, "negative"))
+
+
+class MoreStylesTest(unittest.TestCase):
+    """Invented: options a description prices, a row of footnote marks priced off a base item, energy shots."""
+
+    def test_description_option(self):
+        k = F.children("vehicles", {"category": "boats", "avail": "2", "cost": "2,000"}, 5,
+                       text="**Note:** Faster with the tiny motor (costs 300¥).")
+        self.assertEqual(k, [("option", {"id": "tiny-motor", "name": "tiny motor"}, None),
+                             ("formula", {"field": "cost"}, "2000 + 300*opt.tiny-motor")])
+
+    def test_half_of_a_base_item(self):
+        k = F.children("augmentations", {"type": "cyberware", "category": "eyes", "essence": "*", "capacity": "*",
+                                         "avail": "*", "cost": "*"}, 5,
+                       text="One glow eye costs one half the Essence and nuyen cost, and has one half the capacity.")
+        self.assertEqual({c[1]["field"]: c[2] for c in k if c[0] == "formula"},
+                         {"cost": "B*0.5", "essence": "B*0.5", "capacity": "B*0.5", "avail": "B"})
+
+    def test_rating_dv(self):
+        k = F.children("weapons", {"category": "x", "dv": "(1–8) S", "avail": "2", "cost": "100"}, 5)
+        self.assertIn(("formula", {"field": "dv"}, "R"), k)
+
+    def test_energy_shots(self):
+        sup = {"power cell": "zz.power-cell", "power pack": "zz.power-pack"}
+        self.assertEqual(F.energy_ammo("Includes power pack. Uses 4 Energy per individual shot.", "", sup),
+                         "ref(gear:zz.power-pack, energy)/4")
+        self.assertEqual(F.energy_ammo("Uses 2 Energy per shot.", "These come with power cells as standard.", sup),
+                         "ref(gear:zz.power-cell, energy)/2")
+        self.assertIsNone(F.energy_ammo("Uses 2 Energy per shot.", "", sup))
+        self.assertEqual(F.evaluate("ref(gear:zz.power-cell, energy)/3", ref=lambda t, f, r: 10.0, round="down"), 3)
+
+    def test_level_rows_share_a_tier_and_ask_no_rating(self):
+        es = [{"name": "Zorp Arm (Level 1)", "page": 4, "attrs": {"category": "a", "capacity": "[2]", "avail": "4", "cost": "500"}},
+              {"name": "Zorp Arm (Level 2)", "page": 4, "attrs": {"category": "a", "capacity": "[4]", "avail": "4", "cost": "500"}}]
+        t = F.tier_groups(es)[id(es[0])]
+        self.assertEqual(t, {"capacity": "tier(R; 1: 2; 2: 4)"})
+        k = F.children("augmentations", {**es[0]["attrs"], "type": "cyberware", "essence": "—"}, 4, tiered=t)
+        self.assertEqual(k, [("formula", {"field": "capacity"}, "tier(R; 1: 2; 2: 4)")])

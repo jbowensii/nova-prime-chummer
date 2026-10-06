@@ -491,6 +491,48 @@ def text_unit(text):
     return unit, qty
 
 
+_TEXT_OPTION = re.compile(r"\bthe\s+([a-z][a-z' -]{2,30}?)\s*\(\s*costs?\s+([\d,]+)\s*¥\s*\)", re.I)
+_HALF = re.compile(r"\bone\s+half\s+(?:of\s+)?the\s+((?:essence|nuyen\s+cost|cost|price|capacity|availability)"
+                   r"(?:\s*(?:,|and)\s*(?:the\s+)?(?:essence|nuyen\s+cost|cost|price|capacity|availability))*)", re.I)
+
+
+def text_options(text):
+    """[(id, name, price)]: parts the description prices beside the item (`powered by the mini-outboard (costs
+    500¥)`), each an option added to its cost."""
+    return [(_slug(m.group(1)), m.group(1).strip(), _n(m.group(2))) for m in _TEXT_OPTION.finditer(" ".join((text or "").split()))]
+
+
+def half_of(text):
+    """The fields the description says are half another item's (`one half the Essence and nuyen cost`, `one half the
+    capacity`): {'essence', 'cost', 'capacity', 'avail'}."""
+    out = set()
+    for m in _HALF.finditer(" ".join((text or "").split())):
+        w = m.group(1).lower()
+        out |= {f for f, k in (("essence", "essence"), ("cost", "cost"), ("cost", "price"), ("capacity", "capacity"),
+                               ("avail", "availability")) if k in w}
+    return out
+
+
+_ENERGY_USE = re.compile(r"\buses\s+([\d.]+)\s+energy\s+per\s+(?:individual\s+)?(?:shot|projectile)", re.I)
+_SUPPLY = re.compile(r"\b(?:includes|come\s+with|uses\s+an?)\s+((?:[a-z]+\s+){0,2}?power\s+[a-z]+?)s?\b", re.I)
+
+
+def energy_ammo(text, section_text, supplies):
+    """An energy weapon's shots: `Uses N Energy per … shot` in its note, the power supply it comes with (its note's
+    `Includes power backpack`, else its section's `come with power clips`) -> `ref(gear:<supply id>, energy)/N`, rounded
+    down; supplies: {name (lower): gear id} of the book's power supplies. None when either is missing."""
+    use = _ENERGY_USE.search(" ".join((text or "").split()))
+    if not use:
+        return None
+    for t in (text, section_text):
+        for m in _SUPPLY.finditer(" ".join((t or "").split())):
+            want = _stem(m.group(1).lower().split()[-1])
+            sid = next((i for n, i in supplies.items() if _stem(n.split()[-1]) == want and names(m.group(1), n)), None)
+            if sid:
+                return f"ref(gear:{sid}, energy)/{fmt(float(use.group(1)))}"
+    return None
+
+
 def _stem(w):
     """A word's singular, roughly (boxes -> box, lorries -> lorry, trailers -> trailer)."""
     if w.endswith("ies") and len(w) > 4:
@@ -512,22 +554,31 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
     the app's rated() reads a value as it stands; options: [(id, name, price factor)] its section offers
     (section_options), applied to its cost; text: its description (a price per unit it states: text_unit)."""
     out, tiered, uses_r = [], tiered or {}, False
+    adds = text_options(text) if kind in PRICED else []
+    halves = half_of(text)
     for f in FORMULA_FIELDS.get(kind, ()):
         v = printed(attrs, f)
         if f in tiered:
-            out.append(("formula", {"field": f}, tiered[f]))
-            uses_r = True
+            out.append(("formula", {"field": f}, tiered[f]))  # (its band is its rating: no range to ask for)
             continue
-        if f == "cost" and options and v is not None and (got := read(v, f) or (
+        if f == "cost" and (options or adds) and v is not None and (got := read(v, f) or (
                 (fmt(p), {}) if (p := plain(v, f)) is not None else None)):
             expr, extra = got
-            for oid, name, factor in options:
+            for oid, name, factor in options:  # a version its section prices apart: a factor
                 out.append(("option", {"id": oid, "name": name}, None))
                 expr = f"({expr})*(1 {'-' if factor < 1 else '+'} {fmt(abs(factor - 1))}*opt.{oid})"
+            for oid, name, price in adds:  # a part its description prices: added when chosen
+                out.append(("option", {"id": oid, "name": name}, None))
+                expr = f"{expr} + {fmt(price)}*opt.{oid}"
             a = {"field": f, **({"unit": extra["unit"]} if "unit" in extra else {})}
             if "unit" in extra and (q := qty_range(row or {})):
                 a["qty"] = q
             out.append(("formula", a, expr))
+            continue
+        if v is not None and halves and re.fullmatch(r"\s*[*†‡]\s*", v):
+            # a cell printing only a footnote mark, its description pricing the item off another (`one half the
+            # Essence and nuyen cost` of the base system): half the base item's value, or the base's own
+            out.append(("formula", {"field": f}, "B*0.5" if f in halves else "B"))
             continue
         if f == "cost" and v is not None and (p := plain(v, f)) is not None and (tu := text_unit(text)):
             a = {"field": f, "unit": tu[0], **({"qty": tu[1]} if tu[1] else {})}
@@ -557,6 +608,8 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             out.append(("issue", {"field": f, "code": "missing", "page": page}, _NOTE[f]))
     if kind == "augmentations" and not (attrs.get("essence") or "").strip() and not (attrs.get("capacity") or "").strip():
         out.append(("issue", {"field": "essence", "code": "missing", "page": page}, _NOTE["essence"]))
+    if kind == "weapons" and (m := re.fullmatch(r"\s*\(\s*\d+\s*[–-]\s*\d+\s*\)\s*([PS](?:\([a-z]+\))?)\s*", attrs.get("dv") or "")):
+        out.append(("formula", {"field": "dv"}, "R"))  # `(1–10) S`: a DV the rating gives, in its range
     r = attrs.get("rating")
     if uses_r and (r is None or not str(r).strip() or _DASH.fullmatch(str(r))):
         out.append(("issue", {"field": "rating", "code": "missing", "page": page}, _NOTE["rating"]))
@@ -564,7 +617,7 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
     return sorted(out, key=lambda c: order[c[0]])
 
 
-_BAND_NAME = re.compile(r"\s*\((?:rating\s*)?(\d+\s*(?:[–-]\s*\d+|\+)?)\)\s*$", re.I)
+_BAND_NAME = re.compile(r"\s*\((?:rating\s*|level\s*|version\s*)?(\d+\s*(?:[–-]\s*\d+|\+)?)\)\s*$", re.I)
 
 
 def tier_groups(entries):

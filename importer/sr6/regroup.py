@@ -110,6 +110,7 @@ class _Table:
     catalog: bool = False
     pos: int = 0  # its place in the book's elements
     unpaired: list = field(default_factory=list)  # catalog rows no description took
+    notes: dict = field(default_factory=dict)  # the labelled lines printed right under it in a box (`Note:`)
 
 
 def _elements(md):
@@ -361,8 +362,12 @@ def _units(els, start, end, chapter, item_keys, aliases):
             m = _LABEL.match(v)
             if m:
                 key, value = m.group(2).strip(), m.group(3).strip()
-                label, last, listy = ((cur, key) if key not in cur.labels else None), v, not value
+                targets = [cur.labels] if key not in cur.labels else []
                 cur.labels.setdefault(key, value)
+                if mode == "box" and cur.stats and key not in cur.stats[-1].notes:
+                    cur.stats[-1].notes[key] = value  # a note under one of a box's tables: that table's item's
+                    targets.append(cur.stats[-1].notes)
+                label, last, listy = ((targets, key) if targets else None), v, not value
                 if mode == "box":
                     cur.box_labels = True
                     continue
@@ -373,10 +378,12 @@ def _units(els, start, end, chapter, item_keys, aliases):
                 # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text (but a
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.
-                u, key = label
-                prev = u.labels[key]
-                joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
-                u.labels[key], last = joined + v.strip(), v
+                targets, key = label
+                for d in targets:
+                    prev = d[key]
+                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
+                    d[key] = joined + v.strip()
+                last = v
                 if mode == "box":
                     continue
             else:
@@ -603,7 +610,13 @@ def _emit(units):
             out.append(Block("section", u.name, u.chapter, u.section, "", u.page, tags=u.tags, labels=dict(u.labels),
                              text=text, level=u.level))
         else:
-            stats = [_row(t.header, r) for t in u.stats for r in t.rows]
+            # a box of several one-row tables, a note under each: each row keeps its own notes (as columns: NOTE …)
+            # (an item's row: named, not a being's or a vehicle's band)
+            several = sum(1 for t in u.stats if len(t.rows) == 1) > 1
+            stats = [{**_row(t.header, r), **({k.upper(): x for k, x in t.notes.items()}
+                                              if several and len(t.rows) == 1 and len(t.header[0]) > 2
+                                              and re.search(r"[A-Za-z]{2}", r[0] if r else "") else {})}
+                     for t in u.stats for r in t.rows]
             label = u.name if u.kind == "box" else ""
             for t, r in u.rows or [(None, None)]:
                 out.append(Block("item", u.name if r and id(r) in u.full else r[0] if r else u.name, u.chapter, u.section,

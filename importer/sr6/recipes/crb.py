@@ -140,6 +140,7 @@ HEADERS = {
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
+             "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
@@ -515,6 +516,12 @@ class _Catalog:
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
+            if "rating" not in f and re.search(r"(?i)\b(?:size|level|force|grade)\b", f.get("cost", "") + f.get("avail", "")):
+                # priced by its Size (Level, Force…): the range its SIZE column prints is the rating it comes in
+                rng = next((v for h, v in (b.row or {}).items() if h.upper() in ("SIZE", "LEVEL", "FORCE", "GRADE")
+                            and re.fullmatch(r"\s*\d+\s*[–-]\s*\d+\s*", v or "")), None)
+                if rng:
+                    f["rating"] = rng.strip()
             if kind == "weapons" and "ammo" not in f and (ammo := ammo_from_text(b.text)):
                 f["ammo"] = ammo  # its row prints no ammo, its description does (`internal magazines that hold …`)
             for n, g in self.variants(name, f):
@@ -630,12 +637,23 @@ class _Catalog:
         # cost`): an option on the priced items of its section that its heading names
         said = [(e["where"], e["name"], o) for es in self.entries.values() for e in es
                 for o in formula.section_options(e.get("text") or "")]
+        # the book's weapon power supplies (gear with an Energy): an energy weapon's shots are read off the one it
+        # comes with
+        supplies = {re.sub(r"^.*\((.+)\)\s*$", r"\1", e["name"]).lower(): f"{self.source.lower()}.{e['id']}"
+                    for e in self.entries["gear"] if (e["attrs"].get("energy") or "").strip()}
+        sections = {}  # the section prose (rule entries) by place
+        for e in self.entries["rules"]:
+            sections.setdefault(e["where"], []).append(e.get("text") or "")
         for kind, es in self.entries.items():
             tiered = formula.tier_groups(es) if kind in formula.FORMULA_FIELDS else {}
             for e in es:
                 opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
                 e["children"] += formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable,
                                                   opts, e.get("text") or "")
+                if kind == "weapons" and supplies and re.fullmatch(r"(?i)\s*energy\s*", e["attrs"].get("ammo") or "") and (
+                        x := formula.energy_ammo(e.get("text"), "\n".join(sections.get(e["where"], ())), supplies)):
+                    e["children"].insert(next((i for i, c in enumerate(e["children"]) if c[0] == "issue"),
+                                              len(e["children"])), ("formula", {"field": "ammo", "round": "down"}, x))
 
     def xml(self, kind):
         self.rules()

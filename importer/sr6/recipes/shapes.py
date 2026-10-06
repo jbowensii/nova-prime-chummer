@@ -127,7 +127,12 @@ def _desc(b):
 
 
 def _match(name, d):
-    return bool(set(keys(name)) & set(keys(d))) or len(words(name)) > 1 and words(name) <= words(d)
+    """A box row's name and a description heading name the same item: a shared key, the row's words all in the
+    heading's, or a one-word row name (a model name, 5 letters or more) the heading prints after its maker (`Firebolt`
+    under `Ares Firebolt`)."""
+    nw, dw = norm(name).split(), norm(d).split()
+    return bool(set(keys(name)) & set(keys(d))) or len(words(name)) > 1 and words(name) <= words(d) or (
+        len(nw) == 1 and len(nw[0]) >= 5 and len(dw) == 2 and dw[1] == nw[0] and name[:1].isupper())
 
 
 def _row_block(b, name, c, label, text=None, labels=None, col=None):
