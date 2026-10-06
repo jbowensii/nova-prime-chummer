@@ -62,6 +62,15 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 - **Qualities:** the bold run-ins under `#### Positive Qualities` / `#### Negative Qualities` (CHANGING THE CODE), each
   with its `• **Cost:** N Karma` line (a label printed again under a heading leaves the rest to the text: regroup).
 
+- **Derived items (sections.py `derived`):** `Transgenics As Bioware` states its rule against the base item
+  (`... cost fifty percent more Essence than their bioware equivalent, but cost thirty percent less nuyen`) and lists
+  what it applies to (`The following bioware can be imitated through transgenic infusions`, then `Bioware: ...`,
+  `Biosenses: ...` lines). Each listed item is an augmentation `Transgenic <item>` with `<formula>`s
+  `ref(augmentations:<base>, essence[, R])*1.5` and `ref(..., cost[, R])*0.7`; its type, category, rating range and
+  availability are the base's. A listed item the book has no entry for (frog tongues, webbed hands and feet) keeps
+  the rule as an `ambiguous` issue. Not yet: `chemical glands and exhalation spray (corrosive spit and fangs,)
+  natural venoms`, whose comma sits inside the parentheses.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"

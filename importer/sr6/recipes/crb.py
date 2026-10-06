@@ -336,6 +336,8 @@ class _Catalog:
             self.pending = []
         if f.kind == "qualities" and a.get("karma") is not None:
             a["karma"] = int(a["karma"])
+        if "_base" in a:
+            return self.derived(f, a)
         cls = a.pop("_class", None)
         if cls:  # a kind of a class the book prices by one row (`Enchanting focus`): that row's price
             row = next((e for e in self.entries[f.kind] if norm(e["name"]) == norm(cls)), None)
@@ -343,6 +345,32 @@ class _Catalog:
                 return
             a.update({k: row["attrs"][k] for k in ("rating", "karma", "avail", "cost") if row["attrs"].get(k)})
         self.add(f.kind, f.name, f.page, a, f.children, f.text)
+
+    def derived(self, f, a):
+        """An item a section derives from one of the book's (sections.derived): the base item found by its name
+        (singular, the first words of a longer name: `gills` is `Gills (freshwater/saltwater/air)`) in the kind whose
+        entries are of the base's type (`bioware`); its rating range and availability kept, each field the rule
+        names its base's times the factor (`ref()`, at the item's rating). No base found: the rule as an ambiguous
+        issue (`priced from another item`)."""
+        want = [regroup_stem(w) for w in norm(a["_base"]).split()]
+        kinds = [k for k in formula.PRICED if any(a["_basekind"].lower() in (e["attrs"].get("type") or "").lower()
+                                                   for e in self.entries[k])] or [f.kind]
+        base, kind = next(((e, k) for k in kinds for e in self.entries[k]
+                     if [regroup_stem(w) for w in norm(re.sub(r"\([^()]*\)", "", e["name"])).split()][:len(want)] == want
+                     and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
+        rule, kids, attrs = a["_rule"], [], {}
+        if base:
+            attrs = {k: base["attrs"][k] for k in ("type", "category", "rating", "avail") if base["attrs"].get(k)}
+            r = ", R" if base["attrs"].get("rating") else ""
+            for fld, x in a["_factors"].items():
+                attrs[fld] = _short_rule(rule, fld)
+                kids.append(("formula", {"field": fld}, f"ref({kind}:{self.source.lower()}.{base['id']}, {fld}{r})*{x:g}"))
+        else:  # (its type the base's, its category the rule's word: `transgenic`)
+            attrs = {"type": a["_basekind"].lower(), "category": slug(f.name.split()[0])}
+            for fld in a["_factors"]:
+                kids.append(("issue", {"field": fld, "code": "ambiguous", "page": f.page},
+                             f"priced from another item: {_short_rule(rule, fld)}"))
+        self.add(kind, f.name, f.page, attrs, kids, f.text)["derived"] = True  # (its table row is its base's)
 
     def check(self, kind, name, attrs, page):
         """Report a price the app can't read (book-value): kept as printed."""
@@ -688,7 +716,10 @@ class _Catalog:
                 opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
                 kids = formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable, opts,
                                         e.get("text") or "")
-                if self.index is not None and any(c[0] == "issue" for c in kids):
+                # (a field the entry already has a formula for, a derived item's: no issue for its printed rule)
+                have = {ca["field"] for t, ca, _ in e["children"] if t in ("formula", "issue")}
+                kids = [k for k in kids if k[1].get("field") not in have]
+                if self.index is not None and not e.get("derived") and any(c[0] == "issue" for c in kids):
                     found = self.resolve(kind, e, kids)
                     if found:
                         kids = formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)),
@@ -760,6 +791,17 @@ _AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bho
 
 SUPPLIES = ("fuel", "ammo", "ammunition", "rounds", "bolts", "arrows", "darts", "rockets", "missiles", "grenades",
             "batteries", "power packs")  # what a weapon's supply table is titled after (the game's words)
+
+
+def regroup_stem(w):
+    return formula._stem(w)
+
+
+def _short_rule(rule, field):
+    """The part of a derivation rule about one field, as printed (`fifty percent more Essence`)."""
+    word = "essence" if field == "essence" else "nuyen"
+    m = re.search(rf"[\w-]+\s*(?:%|percent)\s+(?:more|less)\s+{word}", rule, re.I)
+    return f"{m.group(0)} than the base item" if m else rule
 
 
 CODE = re.compile(r"[A-Za-z]{0,3}-?\d+[A-Za-z]{0,2}|[A-Z]{2,5}")  # a row named by a code: `m60`, `B25`, `HEX`

@@ -165,7 +165,32 @@ def _entries(src_dir, src):
                         "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
                         # where the importer found a value the row leaves out (resolve.py): field -> how
                         "found": {x.get("field"): x.get("how") for x in e.findall("found")}})
-    return out
+    return _inline_refs(out)
+
+
+_REF = re.compile(r"ref\(\s*([a-z]+):([^,\s)]+)\s*,\s*(\w+)\s*(?:,\s*R\s*)?\)")
+
+
+def _inline_refs(entries):
+    """A formula citing another entry of the source (`ref(augmentations:x, cost, R)*0.7`, an item derived from it) with
+    that entry's own formula for the field, or its printed number, put in its place, so the formula can be evaluated."""
+    from importer.sr6 import formula as F
+    by = {(e["kind"], e["id"]): e["attrs"] for e in entries}
+
+    def sub(m):
+        a = by.get((m.group(1), m.group(2)))
+        if a is None:
+            return m.group(0)
+        f = a.get(f"formula:{m.group(3)}")
+        if f and "ref(" not in f:
+            return f"({f.split('|')[0]})"
+        p = F.plain(a.get(m.group(3)) or "", m.group(3))
+        return m.group(0) if p is None else f"({p:g})"
+    for e in entries:
+        for k, v in list(e["attrs"].items()):
+            if k.startswith("formula:") and "ref(" in v:
+                e["attrs"][k] = _REF.sub(sub, v)
+    return entries
 
 
 def _texts(path):

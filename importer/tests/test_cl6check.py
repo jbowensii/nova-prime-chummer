@@ -279,3 +279,13 @@ class ReportTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InlineRefsTest(unittest.TestCase):
+    def test_a_ref_takes_the_cited_entrys_formula_or_number(self):
+        es = [{"kind": "gear", "id": "gz.a", "attrs": {"cost": "Rating x 100", "formula:cost": "R*100"}},
+              {"kind": "gear", "id": "gz.b", "attrs": {"cost": "2,000¥"}},
+              {"kind": "gear", "id": "gz.c", "attrs": {"formula:cost": "ref(gear:gz.a, cost, R)*0.7"}},
+              {"kind": "gear", "id": "gz.d", "attrs": {"formula:cost": "ref(gear:gz.b, cost)*0.5|unit=x"}}]
+        out = {e["id"]: e["attrs"].get("formula:cost") for e in ours._inline_refs(es)}
+        self.assertEqual((out["gz.c"], out["gz.d"]), ("(R*100)*0.7", "(2000)*0.5|unit=x"))

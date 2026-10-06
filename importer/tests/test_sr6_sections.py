@@ -224,6 +224,30 @@ Followers fizz.
         self.assertEqual({n: (a["kind"], a["karma"]) for n, a in q.items()},
                          {"Glower's Path": ("positive", "15"), "Fizzing Path": ("positive", "15")})
 
+    def test_items_a_section_derives_by_a_rule(self):
+        md = """<!-- page 90 -->
+# GEAR
+## Biotech
+#### bioware
+| BODYWARE | ESSENCE | AVAILABILITY | COST |
+|---|---|---|---|
+| Glow gland | 0.2 | 4 | 1,000¥ |
+| Fizz fins | 0.4 | 6 | 3,000¥ |
+## Zorpgenics
+### Zorpgenics As Bioware
+Zorpgenics cost fifty percent more Essence than their bioware equivalent, but cost thirty percent less nuyen.
+The following bioware can be imitated through zorpgenic infusions. Each counts as one.
+Bioware: glow glands (bright ones), fizz fins, wobble ears.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        aug = {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files["augmentations.xml"])}
+        g = aug["Zorpgenic glow glands"]
+        self.assertEqual({f.get("field"): f.text for f in g.findall("formula")},
+                         {"essence": "ref(augmentations:crb.glow-gland, essence)*1.5", "cost": "ref(augmentations:crb.glow-gland, cost)*0.7"})
+        self.assertEqual((g.get("avail"), g.get("type")), ("4", "bioware"))
+        w = aug["Zorpgenic wobble ears"]  # no base item printed: the rule, as an ambiguous issue
+        self.assertEqual({(i.get("field"), i.get("code")) for i in w.findall("issue")}, {("essence", "ambiguous"), ("cost", "ambiguous"), ("avail", "missing")})
+
     def test_kinds_of_a_class_priced_by_its_row(self):
         md = """<!-- page 155 -->
 # MAGIC

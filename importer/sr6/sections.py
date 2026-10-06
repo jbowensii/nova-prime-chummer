@@ -144,7 +144,7 @@ class Reader:
                 self.packs = True
             if not out:
                 out += packs(b, page, parent, self.packs)
-        out += design_tables(b, page) + quality_sets(b, page)
+        out += design_tables(b, page) + quality_sets(b, page) + derived(b, page)
         rk = _kind_of(b.name, RUNIN_KINDS)
         if not rk and re.fullmatch(r"(?i)basic|hacking", b.name.strip()) and re.search(r"(?i)\bprograms\b", parent):
             rk = "programs"  # `Basic` and `Hacking` under `Programs`
@@ -397,6 +397,60 @@ def split_names(name):
         return [f"{m.group(1)} {x.strip()}" for x in m.group(2).split(",")]
     parts = [p.strip() for p in re.split(r"\s*/\s*|\s+and\s+", name) if p.strip()]
     return parts if len(parts) > 1 else [name]
+
+
+# --- items a section derives from others by a rule (Body Shop's transgenic infusions) -------------------------------
+
+_NUMBER_WORDS = {"ten": 10, "twenty": 20, "twenty-five": 25, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
+                 "seventy": 70, "seventy-five": 75, "eighty": 80, "ninety": 90, "hundred": 100, "one hundred": 100}
+_PCT = r"(\d+|[a-z]+(?:-[a-z]+)?)\s*(?:%|percent)\s+(more|less)\s+(essence|nuyen)"
+_RULE = re.compile(rf"\bcosts?\s+{_PCT}\s+than\s+their\s+([\w-]+)\s+equivalents?(?:,?\s*(?:but|and)\s+costs?\s+{_PCT})?",
+                   re.I)
+_FOLLOWING = re.compile(r"\bthe\s+following\s+([\w-]+)\s+can\s+be\s+(?:imitated|reproduced|replicated)\s+"
+                        r"(?:through|by|as|with)\s+([\w-]+)\s+[\w-]+s?\b", re.I)
+_LIST_LINE = re.compile(r"^(?:[A-Z][^:]{0,60}):\s*(.+)$")
+DERIVED_FIELDS = {"essence": "essence", "nuyen": "cost"}
+
+
+def _pct(word):
+    w = word.lower()
+    return int(w) if w.isdigit() else _NUMBER_WORDS.get(w)
+
+
+def derived(b, page):
+    """Items a section derives from the book's own by a rule: its text states the rule as percentages against the
+    base item (`… cost fifty percent more Essence than their bioware equivalent, but cost thirty percent less nuyen`)
+    and lists what it applies to (`The following bioware can be imitated through transgenic infusions` and then
+    `Label: a, b, c` lines). Each listed item is an entry `<Adjective> <item>` (`Transgenic gills`) whose fields
+    are the base item's times the factors (`_base`, `_factors`, resolved by the recipe against its entries)."""
+    text = " ".join(_joined(b.text or ""))
+    rule, follow = _RULE.search(text), _FOLLOWING.search(text)
+    if not rule or not follow:
+        return []
+    factors = {}
+    for n, d, f in (rule.group(1, 2, 3), rule.group(5, 6, 7)):
+        if n and _pct(n) is not None:
+            factors[DERIVED_FIELDS[f.lower()]] = round(1 + (_pct(n) if d.lower() == "more" else -_pct(n)) / 100, 4)
+    if not factors:
+        return []
+    adj = follow.group(2)[:1].upper() + follow.group(2)[1:].lower()
+    out, seen = [], set()
+    for ln in _joined(b.text or ""):
+        if ln.startswith(("**", "#", "|", ">")):
+            continue
+        m = _LIST_LINE.match(ln.strip())
+        if not m or m.start(1) > 70 or "," not in m.group(1):
+            continue
+        for item in _items(re.sub(r"\([^()]*\)", "", m.group(1)).rstrip(".")):
+            item = re.sub(r"^(?:and|or|most(?:\s+forms\s+of)?)\s+", "", item.strip(" .;"), flags=re.I)
+            if not item or len(item.split()) > 5 or norm(item) in seen:
+                continue
+            seen.add(norm(item))
+            rule_text = rule.group(0)
+            out.append(Found("augmentations", f"{adj} {item}", page,
+                             {"_base": item, "_basekind": follow.group(1), "_factors": factors, "_rule": rule_text}, [],
+                             ""))
+    return out
 
 
 # --- gear packs (the Sixth World Companion's PACKs) -----------------------------------------------------------------
