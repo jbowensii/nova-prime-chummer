@@ -163,6 +163,13 @@ The report's sections:
 
   Accuracy is given twice. Raw counts every difference. "b as printed" counts verified printed differences as
   equal.
+
+  **Commlink6-only** (owner decision): what no book prints is left out of both measures and counted on its own
+  line. A record is Commlink6's own (`canon.cl6_only`) when it is a rule setting (rule options), a record it retired
+  (`Depreciated …`), or an option row priced at zero that is not for sale (availability 99: a firing mode, a range, a
+  pilot rating) or points elsewhere (`Adapter (see …)`). A field is Commlink6's own when ours is empty and the
+  printed line shows neither value (the report), or when no reading of ours holds the field and no text holds
+  Commlink6's value (the trace, family `Commlink6-only field`).
 - **Completeness by book and by kind.** The gap plan's K1 kinds (actions, packs, ammunition types, mentor spirits,
   vehicle design, data structures, quality paths, spell features, contact types, quality sets, licence types, magic
   types, rule options, senses, true elements) are catalog kinds of ours now (`canon.SECTION_KINDS`), read from the

@@ -45,7 +45,8 @@ def compare(cl6, mine, pdf=True):
                 "matched": bool(hits), "how": how, "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
                 "families": {f: bool(o) and any(h["families"].get(f) == v for h in hits)
-                             for f, v in c["families"].items()}, "cause": "", "excluded": None}
+                             for f, v in c["families"].items()}, "cause": "", "excluded": None,
+                "cl6only": bool(c.get("cl6only"))}
             if not c["page"]:
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:

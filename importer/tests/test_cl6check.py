@@ -120,6 +120,12 @@ class CanonTest(unittest.TestCase):
         self.assertEqual(canon.labels(fam), {"relevance:matrix"})
         self.assertIn("Zorp Big", c["aliases"])
 
+    def test_commlink6_only_records(self):
+        only = lambda x: canon.canonical(rec(x))["cl6only"]
+        self.assertTrue(only('<item id="z" type="ACCESSORY" avail="99" price="0" modonly="true"/>'))
+        self.assertFalse(only('<item id="z" type="ACCESSORY" avail="4" price="0" modonly="true"/>'))
+        self.assertFalse(only('<item id="z" type="ACCESSORY" modonly="true"/>'))
+
     def test_kinds_and_sources(self):
         self.assertEqual(canon.kind_of("item", {"type": "PACK"}), ("packs", True))  # (read from the books' sections)
         self.assertEqual(canon.kind_of("action", {}), ("actions", True))

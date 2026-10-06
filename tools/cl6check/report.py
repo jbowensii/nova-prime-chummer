@@ -88,6 +88,18 @@ def metrics(results, extras, excluded, meta):
     """The metrics dict (counts only) from the per-record results."""
     m = {"meta": meta}
     tot = len(results)
+    # Commlink6's own records and fields (no book prints them) are left out of both measures, on a line of their own
+    only = [r for r in results if r.get("cl6only")]
+    nf, kept = 0, []
+    for r in results:
+        if r.get("cl6only"):
+            continue
+        gone = {d["field"] for d in r["diffs"] if d["why"].startswith("ours empty") and d.get("pdf") == "neither"}
+        nf += len(gone)
+        kept.append(r | {"compared": [f for f in r["compared"] if f not in gone],
+                         "diffs": [d for d in r["diffs"] if d["field"] not in gone]})
+    results = kept
+    m["cl6_only"] = {"records": len(only), "fields": nf}
     owned = [r for r in results if r.get("excluded") is None]
     matched = [r for r in results if r["matched"]]
 
@@ -207,6 +219,8 @@ def markdown(m, dl=None):
          f"| completeness, kinds we model ({c['modelled']['records']:,}) | {c['modelled']['matched']:,} = {c['modelled']['pct']}%{_d('completeness.modelled.pct', dl)} |",
          f"| completeness, owned pages ({c['owned']['records']:,}) | {c['owned']['matched']:,} = {c['owned']['pct']}%{_d('completeness.owned.pct', dl)} |",
          f"| accuracy: matched records with every compared field equal | {a['exact']:,} / {a['matched']:,} = **{a['pct']}%**{_d('accuracy.pct', dl)} |",
+         f"| Commlink6-only, left out of both: records no book prints as an item / fields no book prints | "
+         f"{m.get('cl6_only', {}).get('records', 0):,} / {m.get('cl6_only', {}).get('fields', 0):,} |",
          f"| accuracy, verified printed differences (class b) as printed | {a['exact_but_b']:,} = {a['pct_b_as_printed']}%{_d('accuracy.pct_b_as_printed', dl)} |",
          f"| matched records with a class-a (importer) error | {a['with_class_a']:,} |", "",
          "Excluded from the owned denominator: " + (", ".join(f"{k} {v}" for k, v in c["excluded_from_owned"].items())

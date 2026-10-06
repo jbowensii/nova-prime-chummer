@@ -428,6 +428,11 @@ def run(corpus, cl6, verdicts=None):
     matched = _matched_names(corpus, cl6)
     for c in cl6:
         n["records"] += 1
+        if c.get("cl6only"):
+            n["Commlink6-only records"] += 1
+            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
+                         "field": "", "family": "Commlink6-only record", "where": ""})
+            continue
         if not c["modelled"]:
             n["unmodelled kind"] += 1
             continue
@@ -475,6 +480,18 @@ def run(corpus, cl6, verdicts=None):
             k = by.get((r["id"], r["src"], r["where"]), 0)
             r["strength"] = "digit swap" if "digit swap" in r["where"] else f"{k} field{'s' if k > 1 else ''} from that row"
     apply_verdicts(rows, verdicts or {})
+    # a field no book prints (no reading of ours holds it, and no text found holds Commlink6's value) is Commlink6's
+    # own: out of the fields compared, counted on its own line
+    left = Counter()
+    for r in rows:
+        if r["field"]:
+            left[(r["src"], r["id"])] += 1
+            if r["family"] == "not found" and not r["winner"] and not r.get("verdict"):
+                r["family"] = "Commlink6-only field"
+                n["fields compared"] -= 1
+                n["Commlink6-only fields"] += 1
+                left[(r["src"], r["id"])] -= 1
+    n["records exact"] += sum(1 for k, v in left.items() if v == 0)
     return rows, n
 
 
@@ -529,7 +546,7 @@ def _cell(v, n=28):
 def markdown(rows, n, corpus):
     """The owner's section of cl6-examples.md: the dates, the counts per family with two examples each, and the full
     not-found list."""
-    diffs = [r for r in rows if r["family"] != "object not found"]
+    diffs = [r for r in rows if r["field"] and r["family"] != "Commlink6-only field"]
     fam = Counter(r["family"] for r in diffs)
     mis = fam["Commlink6 misread"]
     out = ["## Phase 1 full run: every Commlink6 object traced", ""]
@@ -551,6 +568,10 @@ def markdown(rows, n, corpus):
             f"({100 * n['fields equal'] / max(1, n['fields compared']):.2f}%); with the {mis} Commlink6 misreads not counted "
             f"against us {100 * (n['fields equal'] + mis) / max(1, n['fields compared']):.2f}%.",
             f"- Records with every field equal: {n['records exact']} of {n['objects']}.",
+            f"- Commlink6-only, left out of both counts above: {n['Commlink6-only records']} records no book prints as "
+            f"an item (rule settings, retired records, option rows priced at zero and not for sale) and "
+            f"{n['Commlink6-only fields']} fields no book prints (no reading of ours holds one, and no text holds "
+            f"Commlink6's value).",
             "- Where the equal values' winners come from: " + ", ".join(
                 f"{k[10:]} {v}" for k, v in sorted(n.items()) if k.startswith("equal via ")) + ".",
             f"- Differences: {len(diffs)}.", "", "| family | differences |", "|---|---:|"]

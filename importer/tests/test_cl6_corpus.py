@@ -228,6 +228,13 @@ class TraceTest(unittest.TestCase):
         self.assertTrue(trace._swapped("1500", "5100"))
         self.assertFalse(trace._swapped("1500", "1500"))
 
+    def test_commlink6_only_records_and_fields_are_counted_apart(self):
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[entry("Zorp widget", src="a", cost="100")])])
+        rows, n = trace.run(c, [self.rec(cost={None: 100.0}, avail={None: (7, "")}), self.rec() | {"cl6only": True}])
+        self.assertEqual({r["family"] for r in rows}, {"Commlink6-only field", "Commlink6-only record"})
+        self.assertEqual((n["records"], n["Commlink6-only records"], n["objects"]), (2, 1, 1))
+        self.assertEqual((n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1))
+
 
 class MoreTest(unittest.TestCase):
     def test_a_reprint_keeps_its_first_date(self):

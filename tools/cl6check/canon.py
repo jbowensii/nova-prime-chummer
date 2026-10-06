@@ -277,6 +277,16 @@ def aliases(name, variants):
     return sorted(out - {name})
 
 
+def cl6_only(kind, name, a, tag):
+    """A Commlink6 record that is no book's item, left out of both denominators and counted on its own line: its rule
+    settings (rule options), a record it retired ('Depreciated …'), and an option row it prices at zero and marks not
+    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)')."""
+    if kind == "ruleoptions" or re.match(r"(?i)depreciat", name):
+        return True
+    return tag in ("item", "itemenhancement") and a.get("price") == "0" and (
+        (a.get("avail") or "").startswith("99") or "(see " in name)
+
+
 def canonical(rec):
     """The canonical record of a reader record."""
     el, a, tag = rec["el"], rec["attrs"], rec["tag"]
@@ -337,7 +347,8 @@ def canonical(rec):
     return {"book": rec["book"], "src": source_of(rec["book"], rec["file"]), "file": rec["file"], "tag": tag, "id": rec["id"], "name": rec["name"],
             "page": rec["page"], "kind": kind, "modelled": modelled, "pool": (TAG_KINDS.get(tag, ()) if kind not in SECTION_KINDS.values() and kind != "packs" else (kind,)) if modelled else (),
             "aliases": aliases(rec["name"], rec["variants"]), "fields": {k: x for k, x in f.items() if x},
-            "families": families(el, a, rec["variants"]), "el": el}
+            "families": families(el, a, rec["variants"]), "el": el,
+            "cl6only": cl6_only(kind, rec["name"], a, tag)}
 
 
 def _variant_values(el, ident, raw=False):
