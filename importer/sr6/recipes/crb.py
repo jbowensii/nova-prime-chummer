@@ -321,6 +321,16 @@ class _Catalog:
             self.texts.append((kind, i, text.strip()))
         return e
 
+    def section(self, f):
+        """Add a sections.py entry, unless the recipe's own reading wrote it already (a quality heading with its Cost
+        line)."""
+        if any(norm(e["name"]) == norm(f.name) for e in self.entries[f.kind]):
+            return
+        a = dict(f.attrs)
+        if f.kind == "qualities" and a.get("karma") is not None:
+            a["karma"] = int(a["karma"])
+        self.add(f.kind, f.name, f.page, a, f.children, f.text)
+
     def check(self, kind, name, attrs, page):
         """Report a price the app can't read (book-value): kept as printed."""
         for a in ("cost", "avail"):
@@ -877,7 +887,7 @@ def extract(regrouped, ctx=None, book=None):
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     bs = list(blocks(regrouped) if isinstance(regrouped, str) else regrouped)
     cat.index = resolve.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
-    sec = sections.Reader()
+    sec, found = sections.Reader(), []
     for b in bs:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
@@ -886,8 +896,7 @@ def extract(regrouped, ctx=None, book=None):
         b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
         cat.where = (b.chapter, b.section)
         ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
-        for f in sec.feed(b, page):  # the kinds the book prints as sections (actions, mentor spirits, …): sections.py
-            f.children = cat.add(f.kind, f.name, f.page, f.attrs, f.children, f.text)["children"]  # (steps come later)
+        found += sec.feed(b, page)  # the kinds the book prints as sections (actions, mentor spirits, …): sections.py
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)
         if cat.last_meta is not None and not any(t == "trait" for t, _, _ in cat.last_meta["children"]) \
@@ -945,6 +954,8 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
+        cat.section(f)
     for e in cat.entries["programs"]:
         # a program's price: the book's `Cyberprogram, <type>` row; an autosoft's the `Autosoft` row, with its ratings
         # (the core rulebook's)

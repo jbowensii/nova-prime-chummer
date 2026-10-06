@@ -57,6 +57,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 
 - **Thousands point.** A few prices print `1.200¥`: read as 1200 (a point followed by exactly three digits).
 
+## Sections read as kinds (importer v3, sections.py)
+
+- **Qualities:** the bold run-ins under `#### Positive Qualities` / `#### Negative Qualities` (CHANGING THE CODE), each
+  with its `• **Cost:** N Karma` line (a label printed again under a heading leaves the rest to the text: regroup).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"

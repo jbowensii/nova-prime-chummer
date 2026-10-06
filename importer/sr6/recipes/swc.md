@@ -52,6 +52,8 @@ recipe reads both.
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Qualities:** each quality path step (`##### Critter Bond: Lost`) is a quality too, named without the path
+  (`Lost`), positive with a Cost line, negative with a Bonus line.
 - **Quality sets:** each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE
   METAGENIC QUALITIES | NEGATIVE …`, the metagenic collectives under `Collectives`): its Karma, metatypes and qualities.
 - **Contact types:** the bullets (`• **Academic:** …`) under `## Contact Types`.

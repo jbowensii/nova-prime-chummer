@@ -433,11 +433,10 @@ def extract(regrouped, ctx=None):
     chapter, group, stack, ranges, dev = None, "", [], [], []
     bs = list(blocks(regrouped))
     cat.index = resolve.Index(bs, PAGE_OFFSET, _tables, shapes.RENAME)
-    kinds = sections.Reader()
+    kinds, found = sections.Reader(), []
     for b in bs:
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)
-        for f in kinds.feed(b, page):  # the kinds the book prints as sections (sections.py)
-            f.children = cat.add(f.kind, f.name, f.page, f.attrs, f.children, f.text)["children"]  # (steps come later)
+        found += kinds.feed(b, page)  # the kinds the book prints as sections (sections.py)
         if b.chapter != chapter:
             chapter, group, stack = b.chapter, "", []
         if b.level <= 4:
@@ -482,6 +481,8 @@ def extract(regrouped, ctx=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     "\n\n".join(x for x in (_md(b), text) if x), parent=parent)
         stack.append((level, e["id"]))
+    for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
+        cat.section(f)
     if ranges:
         _metavariants(cat, ranges)
     _development(cat, dev)

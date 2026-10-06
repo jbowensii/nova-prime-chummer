@@ -380,6 +380,12 @@ def _units(els, start, end, chapter, item_keys, aliases):
             m = _LABEL.match(v)
             if m:
                 key, value = m.group(2).strip(), m.group(3).strip()
+                if mode == "box" and key in cur.labels and not (cur.stats and key not in cur.stats[-1].notes):
+                    # a label printed again under the heading: a list of entries, each with its own labelled lines
+                    # (`**Name:** …` + `• **Cost:** …` twice): the rest is text
+                    mode, label = "text", None
+                    cur.body.append(v)
+                    continue
                 targets = [cur.labels] if key not in cur.labels else []
                 cur.labels.setdefault(key, value)
                 if mode == "box" and cur.stats and key not in cur.stats[-1].notes:

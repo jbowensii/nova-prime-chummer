@@ -57,6 +57,7 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Qualities** (Shadow Cast): each quality path step with a `Karma Cost` line.
 - **Quality paths** (Shadow Cast): `### Quality Path: Name` under `## Quality paths`, its steps the headings under
   it; a chapter printing those names only its `Quality Path:` headings as paths (`Roleplaying`, `Strategies`
   after them are its sections).

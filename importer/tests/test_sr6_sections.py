@@ -178,6 +178,34 @@ A worm that zaps.
         a = {e.findtext("name"): e for e in ET.fromstring(res.files["actions.xml"])}
         self.assertEqual(a["Zap Worm"].get("type"), "major")
 
+    def test_qualities_from_sections(self):
+        md = """<!-- page 104 -->
+# CHANGING THE CODE
+### New Positive and Negative Qualities
+#### Positive Qualities
+**Glow Fan:** You love glowing things.
+• **Cost:** 2 Karma
+• **Game effect:** +1 Edge near glow.
+**Fizz Soul:** Your soul fizzes.
+• **Cost:** 10 Karma
+#### Negative Qualities
+**Zap Nose:** Zaps make you sneeze.
+• **Bonus:** 4 Karma
+## Quality Paths
+### Long Road
+#### Starting point
+Begin here.
+#### Step 1: Sore Feet
+This negative quality hurts.
+• **Bonus:** 5 Karma
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
+        self.assertEqual({n: (q[n]["kind"], q[n].get("karma")) for n in ("Glow Fan", "Fizz Soul", "Zap Nose", "Sore Feet")},
+                         {"Glow Fan": ("positive", "2"), "Fizz Soul": ("positive", "10"), "Zap Nose": ("negative", "4"),
+                          "Sore Feet": ("negative", "5")})
+        self.assertNotIn("Starting point", q)
+
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}
         self.assertIn("Fizz Probe", rules)

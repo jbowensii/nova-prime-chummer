@@ -22,6 +22,7 @@ from importer.sr6.regroup import norm
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
+    ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
                            r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),
@@ -30,6 +31,7 @@ HEADING_KINDS = [
 ]
 # kind -> the words of a heading (the block's own or its parent's) whose bold run-ins are its entries
 RUNIN_KINDS = [
+    ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b", re.I)),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
     ("contacttypes", re.compile(r"\bcontact\s+types\b", re.I)),
@@ -128,6 +130,7 @@ class Reader:
                 self.path[2] = self.path[2] or lv
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
+                    out += step_qualities(b, page, self.path[1].name)
         if heading:
             out += self._heading(b, page, chain, parent)
             if PACK_WORD.search(b.name):
@@ -158,7 +161,7 @@ class Reader:
         for kind, rx in PREFIX:
             if m := rx.match(name):
                 self.prefixed.add((len(chain), parent))
-                return [self._make(kind, m.group(1).strip(), b, page, chain)]
+                return [f for f in [self._make(kind, m.group(1).strip(), b, page, chain)] if f]
         kind = _kind_of(parent, HEADING_KINDS)
         if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
             kind = "actions"
@@ -169,7 +172,7 @@ class Reader:
             return []
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
-        return [self._make(kind, name, b, page, chain)]
+        return [f for f in [self._make(kind, name, b, page, chain)] if f]
 
     def _make(self, kind, name, b, page, chain):
         attrs, text = {}, b.text or ""
@@ -177,6 +180,11 @@ class Reader:
             # the row a table pairs with the heading prints the name plain: its heading's (I)/(A) is in the aliases
             full = next((a for a in getattr(b, "aliases", ()) if norm(a).startswith(norm(name))), name)
             name, attrs = _action_attrs(full, chain, b.tags, text)
+        if kind == "qualities":
+            attrs = quality_attrs(name, chain, _body(b))
+            if not attrs:
+                return None
+            name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
         if kind == "vehicledesign":
             attrs = {"category": chain[-1] if chain else None}
             if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Junkyard Frankenstein (x0.5 BP)`
@@ -188,7 +196,12 @@ class Reader:
     def _runins(self, b, page, kind, chain):
         out, seen = [], set()
         # (regroup hands the block's leading labelled lines over as labels, the rest stays in the text)
-        t = "\n".join([f"**{k}:** {v}" for k, v in b.labels.items() if f"**{k}:**" not in (b.text or "")] + [b.text or ""])
+        lead = []
+        for k, v in b.labels.items():  # (until the first the text prints itself: read there, after a repeated label)
+            if f"**{k}:**" in (b.text or "") and " ".join(v.split()[:3]) in " ".join((b.text or "").split()):
+                break
+            lead.append(f"**{k}:** {v}")
+        t = "\n".join(lead + [b.text or ""])
         t = re.sub(r"\*\*\s*\n\s*\*\*", " ", t)  # a bold name wrapped onto two lines
         lines = t.splitlines()
         for i, ln in enumerate(lines):
@@ -202,13 +215,19 @@ class Reader:
             seen.add(norm(name))
             body = [m.group("rest").strip()]
             for nxt in lines[i + 1:]:
-                if _RUNIN.match(nxt) or nxt.startswith(("#", "|")) or not nxt.strip():
-                    break
+                n2 = _RUNIN.match(nxt)
+                if n2 and not FIELD_LABELS.match(n2.group("name").strip()) or nxt.startswith(("#", "|")) or not nxt.strip():
+                    break  # (its own labelled lines, `• **Cost:** 2 Karma`, are its paragraph's)
                 body.append(nxt.strip())
             para = " ".join(x for x in body if x)
             attrs = {}
             if kind == "actions":
                 name, attrs = _action_attrs(name, chain, "", para)
+            if kind == "qualities":
+                attrs = quality_attrs(name, chain, para)
+                name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
+                if not attrs:
+                    continue
             out.append(Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], para))
         return out
 
@@ -275,6 +294,45 @@ def quality_sets(b, page):
             out.append(Found("qualitysets", r[0].strip(), page, {k: v for k, v in (
                 ("karma", r[karma].strip()), ("metatypes", r[meta].strip() if meta is not None else "")) if v},
                 [("quality", {}, x) for x in items], ""))
+    return out
+
+
+_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma", re.I)
+_BONUS = re.compile(r"\*\*Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma", re.I)
+
+
+def quality_attrs(name, chain, text):
+    """A quality's kind (positive, negative: its heading's words, else its Cost or Bonus line, else its text naming
+    it a positive or negative quality) and Karma; {} when nothing says which."""
+    near = next((h.lower() for h in reversed(chain) if re.search(r"(?:positive|negative)\s+qualit", h, re.I)), "")
+    near = "" if "positive" in near and "negative" in near else near  # (`New Positive and Negative Qualities`)
+    cost, bonus = _COST.search(text or ""), _BONUS.search(text or "")
+    if "negative qualit" in near or not near and bonus and not cost:
+        kind = "negative"
+    elif "positive qualit" in near or cost:
+        kind = "positive"
+    elif m := re.search(r"\b(positive|negative)\s+quality\b", text or "", re.I):
+        kind = m.group(1).lower()
+    else:
+        return {}
+    k = (bonus if kind == "negative" else cost) or cost or bonus
+    karma = next((g for g in k.groups() if g), None) if k else None
+    return {"kind": kind, "karma": karma}
+
+
+def step_qualities(b, page, path):
+    """A quality path's step is a quality (or several: `Step 2: No Code or Penitent or Re-Bound`), its name without the
+    path's and the step's number: `Critter Bond: Lost` -> `Lost`, `Step 1: Broken Code` -> `Broken Code`."""
+    name = re.sub(r"^\s*step\s+(?:\d+|one|two|three|four|five)\s*:\s*", "", b.name, flags=re.I)
+    name = re.sub(rf"^\s*{re.escape(path)}\s*:\s*", "", name, flags=re.I)
+    if re.fullmatch(r"(?i)starting\s+point|how\s+to\s+move\s+on", name.strip()):
+        return []
+    body = _body(b)
+    out = []
+    for n in re.split(r"\s+or\s+", name):
+        attrs = quality_attrs(n, [], body)
+        if attrs:
+            out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
     return out
 
 
