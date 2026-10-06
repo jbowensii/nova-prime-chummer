@@ -88,6 +88,20 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
   lower-case model code (`m60`) is a row of its own, not a variant of the row above. Not yet: the rocket and missile
   table (`Standard 0 (60mm` / `Rocket x .5m) …`: every cell wrapped column by column).
 
+## Product configurations and footnotes (categories.py, shapes.configurations)
+
+- **A maker's product with configurations.** The Cougar Weapons Armsman Collapsible Polearm is a box titled with the maker
+  and the product (two lines in print, one heading in book.md) over rows named by configuration (`Knife`, `One-hand`,
+  `Spear`, `Pike`, header `WEAPON TYPE DV ATTACK RATING AVAIL COST`). Each row is its own weapon with its own printed
+  stats; category Armsman Collapsible Polearm, maker Cougar Weapons, TYPE Blade (Close Combat, Blades). The two
+  footnotes on the AR cells are those rows' `<note field="ar">`; the wireless bonus is in each row's text. Commlink6's
+  `Cougar Polearm (Small)` and `(Large)` bundle the rows under a name the book doesn't print: cl6check counts them
+  Commlink6-only. (Before: the box's WEAPON header wasn't a name column, so the four rows were only rule text.)
+
+## Kept table maps (the general table reader, tables.py)
+
+`kind()` stays: measured, the general reader agrees on 62 of 77 tables. Deadly Arts files weapon mods, launchers, VLS cells and racks as weapons (no DV column), power supplies, mortar bombs, railgun ammo and warheads as gear (they print DV), and armor mods as armor.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Deadly Arts-Core Advanced Combat Rulebook-CAT28011.pdf>" --out "%TEMP%\da-check"

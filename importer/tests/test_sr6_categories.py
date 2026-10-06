@@ -47,7 +47,7 @@ POLEARM_MD = """<!-- page 40 -->
 # BLEEDERS & BONE BREAKERS
 ## Game Information: Polearms
 #### Zapco Weapons Glimmer Folding Polearm
-A made-up folding polearm.
+A made-up folding polearm: it folds from a knife to a spear.
 ##### Zapco Weapons Glimmer Folding Polearm
 **WEAPON TYPE DV ATTACK RATING AVAIL COST**
 Knife Blade 3P 8/—/—/—/— 4(L) 900¥
@@ -134,6 +134,21 @@ class CategoriesTest(unittest.TestCase):
         out, n = moved.carry(prev, {"gear.xml": xml})
         glow = next(e for e in ET.fromstring(out["gear.xml"]) if e.get("category") == "Glowware enhancement")
         self.assertEqual([a.get("id") for a in glow.findall("alias") if a.get("id")], ["crb.armor-2"])
+
+
+class GeneralTableReaderTest(unittest.TestCase):
+    """importer/sr6/tables.py: an item table by its columns, its kind by its column signature then its category."""
+
+    def test_kinds_by_columns(self):
+        from importer.sr6 import tables as T
+        self.assertEqual(T.kind_of(["ITEM", "HANDL", "ACCEL", "BODY", "AVAIL", "COST"]), "vehicles")
+        self.assertEqual(T.kind_of(["ITEM", "ESSENCE", "AVAIL", "COST"]), "augmentations")
+        self.assertEqual(T.kind_of(["WEAPON", "DV", "ATTACK RATING", "AVAIL", "COST"]), "weapons")
+        self.assertEqual(T.kind_of(["ITEM", "DEFENSE RATING", "AVAIL", "COST"]), "armor")
+        self.assertEqual(T.kind_of(["ITEM", "AVAIL", "COST"], "glow armor jackets"), "armor")  # its category's word
+        self.assertEqual(T.kind_of(["ITEM", "AVAIL", "COST"], "armor modifications"), "gear")  # (an accessory: no host's kind)
+        self.assertIsNone(T.kind_of(["SITUATION", "DICE POOL MODIFIER"]))  # a rules table
+        self.assertIsNone(T.kind_of(["THRESHOLD", "RESULT"]))
 
 
 class ConfigurationsTest(unittest.TestCase):

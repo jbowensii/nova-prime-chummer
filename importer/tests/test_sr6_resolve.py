@@ -121,7 +121,9 @@ class CorpusTest(unittest.TestCase):
                 '<name>Cyberprogram, basic</name></gear>',
                 '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>'])
             _book(lib, "b", "done", source="ZZB", bname="Shadowrun: Zorp Beta", custom=custom, entries=[
-                '<gear id="zzb.glim" source="ZZB" page="7" category="x" avail="3(L)" cost="100"><name>Glim</name></gear>'])
+                '<gear id="zzb.glim" source="ZZB" page="7" category="x" avail="3(L)" cost="100"><name>Glim</name></gear>',
+                # (a newer book's row named like a program type, in no software table: no program's class row)
+                '<gear id="zzb.basic" source="ZZB" page="9" category="Subscription tier" avail="3" cost="200"><name>Basic</name></gear>'])
             _write(os.path.join(custom, "imported", "zzb", "programs.xml"),
                    f'<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="{NS}" kind="programs" version="1">\n'
                    '  <program id="zzb.peek" source="ZZB" page="8" type="basic"><name>Peek</name>'

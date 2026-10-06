@@ -25,14 +25,16 @@ from importer.sr6.formula import _stem
 from importer.sr6.regroup import norm
 
 # a table's own words, not its category's
-NOISE = re.compile(r"\btable\s*[\d.]+[a-z]?\b|\((?:[^()]*)\)|\b(?:cost|costs|and\s+capacity|capacity|table|tables|chart|"
+NOISE = re.compile(r"\btable\s*[\d.]+[a-z]?\b|\((?:[^()]*)\)|\b(?:cost|costs|and\s+capacity|capacity|table|tables|"
+                   r"chart|"
                    r"list|listing|prices?|pricing|summary|stats|statistics|continued|cont)\b", re.I)
 CONNECT = {"and", "or", "of", "the", "for", "with", "a", "an", "&", "to", "in", "on", "by"}
 ACCESSORY = {"accessory", "accessorie", "modification", "mod", "enhancement"}  # (singular, as _stem() leaves them)
 SPLIT_END = {"and", "or", "of", "&", "for", "with", "the", "to", "-", "–", ","}
 # a host named by a kind's or an augmentation type's own word: the kind (`weapon accessories` fit every weapon)
 KIND_WORDS = {"weapon": "weapons", "armor": "armor", "armour": "armor", "vehicle": "vehicles", "drone": "vehicles",
-              "device": "electronics", "electronic": "electronics", "commlink": "electronics", "cyberdeck": "electronics",
+              "device": "electronics", "electronic": "electronics", "commlink": "electronics",
+              "cyberdeck": "electronics",
               "cyberware": "augmentations", "bioware": "augmentations", "geneware": "augmentations",
               "nanoware": "augmentations", "implant": "augmentations", "augmentation": "augmentations",
               "gear": "gear", "program": "programs"}
@@ -63,7 +65,8 @@ def category_name(title, seen=None):
     if not ws or not any(len(w) > 2 and w.replace("-", "").isalpha() for w in ws):
         return None
     # the head of each part a title joins (`and`, `/`): its last word, singular
-    ws = [singular(w, seen) if i == len(ws) - 1 or ws[i + 1] in ("and", "or", "&", "/") else w for i, w in enumerate(ws)]
+    ws = [singular(w, seen) if i == len(ws) - 1 or ws[i + 1] in ("and", "or", "&", "/") else w
+          for i, w in enumerate(ws)]
     out = " ".join(ws).replace(" / ", "/")
     return out[:1].upper() + out[1:]
 
@@ -81,7 +84,8 @@ def hosts(name):
     if not ws or _stem(ws[-1]) not in ACCESSORY:
         return None
     rest = " ".join(ws[:-1])
-    return [h for h in (" ".join(_stem(w) for w in p.split()) for p in re.split(r"\s*(?:\band\b|\bor\b|&|/|,)\s*", rest)) if h]
+    parts = re.split(r"\s*(?:\band\b|\bor\b|&|/|,)\s*", rest)
+    return [h for h in (" ".join(_stem(w) for w in p.split()) for p in parts) if h]
 
 
 def key(s):
@@ -143,7 +147,8 @@ def bare_part(name, cat, voc, others, accessory, cohesion, parts=False, maker=fr
     toks = re.findall(r"[A-Za-z0-9][A-Za-z0-9'/-]*", core)
     if not toks or len(toks) > 3:
         return 0.0, []
-    if any(re.search(r"\d|[a-z][A-Z]", t) for t in toks) or toks[0] in maker             or len(toks) > 1 and toks[0][:1].isupper() and not voc.common(toks[0]):
+    if any(re.search(r"\d|[a-z][A-Z]", t) for t in toks) or toks[0] in maker \
+            or len(toks) > 1 and toks[0][:1].isupper() and not voc.common(toks[0]):
         return 0.0, []  # a maker's or model's name
     cw = {_stem(w) for w in words(cat) if len(w) > 3}
     if cw & {_stem(w.lower()) for w in toks}:
@@ -172,7 +177,8 @@ def _aliases(name, made):
 
 
 def classify(t, kinds_of, names, seen=None):
-    """A table's verdict: (category name, confidence high|low, why). why is None when it fits the pattern (a title naming
+    """A table's verdict: (category name, confidence high|low, why). why is None when it fits the pattern (a title
+    naming
     a category, rows of one kind, an accessory table with its host); else one of WHY. A title naming only the kind
     (`vehicles` over `Microdrones`) takes its section's category. names: the book's category names by key()."""
     title, section = t["title"], t["section"]
@@ -268,8 +274,9 @@ def build(cat, texts, row_kinds):
         made = {id(e): voc.composed(core_of(e["name"]), c["name"]) if len(core_of(e["name"]).split()) == 1 else []
                 for e in es}
         parts = sum(1 for m in made.values() if m) * 3 >= len(es)
-        if parts:  # the stem the prose composes its siblings with (`cyber`: cyberarm, cyberskull) composes every part
-            stems = {m[:-len(core_of(e["name"]))] for e in es for m in made[id(e)] if " " not in m}
+        if parts:  # the stem the prose composes two siblings or more with (`cyber`: cyberarm, cyberskull): every part
+            n = collections.Counter(m[:-len(core_of(e["name"]))] for e in es for m in set(made[id(e)]) if " " not in m)
+            stems = {s for s, k in n.items() if k > 1}
             for e in es:
                 p = core_of(e["name"]).lower()
                 if not made[id(e)] and " " not in p:
@@ -297,7 +304,8 @@ def build(cat, texts, row_kinds):
             missing = [h for h in hs if h not in names and h not in KIND_WORDS]
             if missing or not hs:
                 kids.append(("issue", {"field": "fits", "code": "missing", "page": c["page"]},
-                             f"no {' or '.join(missing)} category in the book" if missing else "the title names no host"))
+                             f"no {' or '.join(missing)} category in the book" if missing
+                             else "the title names no host"))
         fits = [names.get(h) or h.capitalize() for h in hs if h in names or h in KIND_WORDS] if hs else []
         attrs = {"of": kind, "table": c["table"] or None, "section": c["section"] or None,
                  "confidence": "low" if c["confidence"] == "low" else None, "why": c["why"],

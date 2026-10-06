@@ -24,6 +24,7 @@ from importer.sr6.regroup import norm
 HEADING_KINDS = [
     ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b", re.I)),
     ("traditions", re.compile(r"^traditions$", re.I)),
+    ("martialtechniques", re.compile(r"\bmartial\s+arts?\s+techniques$", re.I)),  # `Cyberware Martial Arts Techniques`
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
                            r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
@@ -191,7 +192,8 @@ class Reader:
         if (len(chain), parent) in self.prefixed:
             return []
         if not kind or not name[:1].isupper() and not name[:1].isdigit() or EXAMPLE.search(name) \
-                or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("("):
+                or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("(") \
+                or name.isupper() and len(name.split()) > 1:  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`)
             return []
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]

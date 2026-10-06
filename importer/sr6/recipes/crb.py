@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, formula, resolve, sections
+from importer.sr6 import KINDS, NS, archetypes, categories, formula, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -1079,6 +1079,9 @@ def extract(regrouped, ctx=None, book=None):
             kind, kcat = _kind(ch, ctx_keys, False, bk)
         if hasattr(bk, "kind"):
             kind, kcat = bk.kind(ch, b, parent2)
+        if not kind and b.row is not None and b.header and (g := tables.kind_of(b.header, b.label, b.section)) \
+                and (b.label or b.header[0].upper() in NAME_HEADERS) and re.search(r"[A-Za-z]{2}", b.name):
+            kind, kcat = g, None  # a priced table the recipe leaves unread: the general reader's (tables.py)
         if kind in ("gear", "weapons") and ammo_type(b):
             kind = "ammotypes"  # priced as a multiple of the ammunition it modifies
         if kind == "skip" or kind and cat.entry(kind, kcat, b, page, ctx_keys):

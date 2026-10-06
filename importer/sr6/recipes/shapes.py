@@ -171,15 +171,15 @@ def maker_split(title):
     return "", title
 
 
-def configurations(b, items, col, described):
+def configurations(b, items, col, described, lower=frozenset()):
     """A box whose rows are one product's configurations (`Knife`, `One-hand`, `Spear`, `Pike` under `Cougar Weapons
-    Armsman Collapsible Polearm`): rows named by short generic words (two at most, no digit, no description heading of
-    their own) under a title of three words or more. Each row is its own item with its own printed stats, named as
-    printed; the box's title is their product (and maker), its description, notes and wireless bonus theirs. None when
-    the box isn't one."""
+    Armsman Collapsible Polearm`): rows named by short generic words (two at most, no digit, words the book prints in
+    lower case: `lower`; a model's name is none, `Estolica`; no description heading of their own) under a title of three
+    words or more. Each row is its own item with its own printed stats, named as printed; the box's title is their
+    product (and maker), its description, notes and wireless bonus theirs. None when the box isn't one."""
     names = [" ".join(c[col].split()) for c in items]
     if len(b.name.split()) < 3 or any(len(n.split()) > 2 or re.search(r"\d|[a-z][A-Z]", n) or not n[:1].isupper()
-                                      for n in names):
+                                      or not all(w.lower() in lower for w in re.findall(r"[A-Za-z]+", n)) for n in names):
         return None
     if any(described(n, peek=True)[2] for n in names):
         return None  # a row with a description of its own is an item of its own
@@ -200,6 +200,7 @@ def boxes(bs):
     row regroup paired keeps its pairing, its headers named as the core rulebook's."""
     bs = list(bs)
     known = {k for b in bs if b.type in ("item", "section") for k in keys(b.name)}
+    lower = {w for b in bs for w in re.findall(r"(?<![A-Za-z])[a-z]+", b.text or "")}  # the words the prose prints in lower case
     said = {(b.chapter, norm(k)): v for b in bs for k, v in b.labels.items() if v}  # `**Code Buddy:** …` lines
     gone, out = set(), []
 
@@ -243,7 +244,8 @@ def boxes(bs):
             out.append(b)
             continue
         col = name_col([cells(s) for s in b.stats])
-        if col is not None and col.upper() not in ("TYPE", "SIZE", "CLASS") and len(items) > 1 and (cfg :=configurations(b, items, col, lambda n, peek=False: described(i, b, n, peek))):
+        if col is not None and col.upper() not in ("TYPE", "SIZE", "CLASS") and len(items) > 1 and (cfg := configurations(
+                b, items, col, lambda n, peek=False: described(i, b, n, peek), lower)):
             out += cfg
             continue
         if col is not None and col.upper() in ("TYPE", "SIZE", "CLASS"):

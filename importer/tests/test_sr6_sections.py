@@ -293,6 +293,24 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         self.assertEqual(names("echoes"), ["Fizz Link", "Glow Mind"])
         self.assertEqual(names("programs"), ["Glow Pilot"])
 
+    def test_techniques_under_a_section_naming_them(self):
+        md = """<!-- page 33 -->
+# CHROME LIFE
+## Chrome Fighting
+### Zapware Martial Arts Techniques
+Made-up techniques for made-up limbs.
+#### Glow Grip
+Grip with a glowing hand.
+#### Spin Kick
+Kick while spinning.
+#### ZAPWARE OVERDRIVE BONUSES
+Made-up bonuses.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        self.assertEqual(sorted(e.findtext("name") for e in ET.fromstring(files["martialtechniques.xml"])),
+                         ["Glow Grip", "Spin Kick"])
+
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}
         self.assertIn("Fizz Probe", rules)
