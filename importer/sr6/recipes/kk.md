@@ -27,6 +27,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
 - Not read, reported (missing-value): stats printed as text lines (the AKM-97 assault rifle, the Ditch shotgun) and the
   rows broken over the notes (Krime Carpet, Krime Runner).
 
+## Formula styles and issues (importer v2)
+
+- `x2`, `x3` (a multiple of the base item's price) -> `B*2`, `B*3`.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Krime Katalog-Gear Catalog-none.pdf>" --out "%TEMP%\kk-check"

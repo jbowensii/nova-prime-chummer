@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes
+from importer.sr6 import KINDS, NS, archetypes, formula
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
@@ -282,8 +282,9 @@ class _Catalog:
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
         self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
+        self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
 
-    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
+    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         base = slug(name) or KINDS[kind]
         i, n = base, 2
@@ -299,7 +300,8 @@ class _Catalog:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
-        e = {"id": i, "name": name, "page": page, "attrs": attrs or {}, "children": list(children)}
+        e = {"id": i, "name": name, "page": page, "attrs": attrs or {}, "children": list(children), "row": row or {},
+             "where": self.where, "text": text}
         self.entries[kind].append(e)
         if text.strip():
             self.texts.append((kind, i, text.strip()))
@@ -345,7 +347,8 @@ class _Catalog:
             a = cols.get(k.upper())
             if a and v and a not in out:
                 out[a] = _value(a, v)
-        if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))):
+        if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))) \
+                and m.group(1).count("(") == m.group(1).count(")"):  # (not `2,000¥ (+500¥ per additional dart)`)
             out["cost"] = m.group(1)  # "50 per 100m"; "15 per 10" under a COST (PER 10 ROUNDS) column
             out.setdefault("per", m.group(2))
         return out
@@ -511,7 +514,8 @@ class _Catalog:
                     g["rating"] = g["capacity"]  # priced by capacity: bought at a capacity in its range
                 a = {**attrs, **g}
                 self.check(kind, n, a, page)
-                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]))
+                # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
+                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})})
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -607,7 +611,25 @@ class _Catalog:
 
     # --- the files ---
 
+    def rules(self):
+        """Each entry's <formula> and <issue> children (importer/sr6/formula.py), once, after every entry is read: a
+        band group's rule needs all its rows."""
+        if getattr(self, "_ruled", False):
+            return
+        self._ruled = True
+        # a section's statement of a cheaper or dearer version (`open construction versions … at half the listed
+        # cost`): an option on the priced items of its section that its heading names
+        said = [(e["where"], e["name"], o) for es in self.entries.values() for e in es
+                for o in formula.section_options(e.get("text") or "")]
+        for kind, es in self.entries.items():
+            tiered = formula.tier_groups(es) if kind in formula.FORMULA_FIELDS else {}
+            for e in es:
+                opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
+                e["children"] += formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable,
+                                                  opts)
+
     def xml(self, kind):
+        self.rules()
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
             a = {"id": e["id"], "source": self.source, "page": e["page"], **e["attrs"]}
@@ -741,6 +763,7 @@ def extract(regrouped, ctx=None, book=None):
         if b.type == "section" and b.level == 2:
             parent2 = b.name
         b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
+        cat.where = (b.chapter, b.section)
         ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)

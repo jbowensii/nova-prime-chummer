@@ -37,6 +37,13 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
 The Firing Squad errata PDF in the owner's folder mixes value fixes with renames, an added modification and rewritten
 rules (Suppressive Fire), so it is not applied: the import keeps the book's printed values.
 
+## Formula styles and issues (importer v2)
+
+- `Rating x N¥`, `(Rating x N¥)`, capacity `[Rating x N]` -> `R*N`; `N¥ + (Rating x N¥)` -> `N + (R*N)`; `x2`
+  (a multiple of the weapon's price) -> `B*2`. Ammo `12 x2(c)` (two clips) stays as printed.
+- Issues: rated accessories with no rating range (`missing rating`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Firing Squad-Core Combat Rulebook-CAT28002.pdf>" --out "%TEMP%\fs-check"

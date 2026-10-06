@@ -25,6 +25,15 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
   `Name (Professional Rating N)` that reads as the section's tag line; the section is the group.
 - The virtual life entities (`A S D F W L I C EDG SPK` bands) have no catalog kind: rule sections.
 
+## Formula styles and issues (importer v2)
+
+- Rows by rating band (`Matrix Relay` 1–3, 4–6, 7–9 and `(Rating 10+)`; modules 1–4, 5–8, `(Rating 9)`): one
+  `tier()` rule for cost and avail on every row, the last band open (`10-:`).
+- `Commlink cost plus rating x N¥` -> `B + R*N` (B: the commlink it is built from). `N¥ (+N¥ per additional dart)`
+  -> `N + N*(Q - 1)`, unit dart. `N¥ per sensor type`, `N¥/pair`, `N¥/glove` -> `Q*N`. `N¥ + program's cost` -> `N + B`.
+- Issues: hacks and programs with no avail or price printed (`missing`), rated rows with no range.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Hack & Slash-Core Matrix Rulebook-CAT28006.pdf>" --out "%TEMP%\hs-check"

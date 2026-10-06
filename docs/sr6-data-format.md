@@ -20,8 +20,9 @@ Every file has the same root, and one file holds one kind:
 - `kind` names the catalog and picks the schema (`public/data/sr6/schema/<kind>.xsd`, sharing `common.xsd`).
   `version` is the schema version, currently `1`. Child elements are unqualified.
 - Every entry has `id` (pattern `[a-z0-9][a-z0-9.-]*`, unique within its kind), `source` (a source id, pattern
-  `[A-Z][A-Z0-9-]{0,19}`) and `page` (the printed page). Then a `<name>`, the kind's own children, and an optional
-  `<text>`, which is empty in imported files.
+  `[A-Z][A-Z0-9-]{0,19}`) and `page` (the printed page). Then a `<name>`, the kind's own children, its `<option>`,
+  `<formula>` and `<issue>` children (see Formulas and issues below), and an optional `<text>`, which is empty in
+  imported files.
 - An overlay removes an entry loaded before it with `<remove id="..."/>`.
 - **Values are kept as printed**, as strings: dashes are normalized to `—`, `¥` and thousands commas are dropped from
   costs, and nothing else changes. Formulas such as `Rating × 500` or `F+1` stay formulas (the builder parses them).
@@ -34,9 +35,97 @@ Every file has the same root, and one file holds one kind:
   `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
   `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
-  (`900 + Gizmo`) stays as printed and is reported.
+  (`900 + Gizmo`) stays as printed; its `<formula>` reads it (`900 + B`).
 - **Cross-references are names** for now: metatype traits, critter powers, NPC gear and weapons are lists as printed.
 - **No prose in the catalog files.** Descriptions, game effects and rule text go only to the source's texts file.
+
+## Formulas and issues
+
+The book's values are canon: the printed attribute always stays as printed. Two optional children, which any entry may
+carry, say how to evaluate it and where the book leaves a gap. Both come from the importer
+(`importer/sr6/formula.py`); an edit can add, change or drop them like any other part of an entry.
+
+### `<formula>`: the rule behind a printed value
+
+```xml
+<formula field="cost|avail|rating|essence|capacity|seats|ammo|…" round="up|down" unit="CF" qty="1-9">EXPR</formula>
+```
+
+- `field` names the attribute it evaluates (several formulas, one per field). The attribute keeps the printed text.
+- `round`: how `/` rounds, `up` (the default) or `down`. The books seldom say; up is the rule unless one does.
+- `unit` and `qty`, for a price per unit: what `Q` counts (`CF`, `dose`, `pair`, `dart`, `10` …) and the range the count
+  is bought in (`1-9`; absent: any count). `per` on the entry keeps its meaning (what one printed price buys).
+
+**EXPR** is one small grammar:
+
+```
+EXPR   := term (('+' | '-') term)*
+term   := factor (('*' | '/') factor)*
+factor := number | R | Q | M | B | opt.<id> | '(' EXPR ')' | '-' factor | call
+call   := tier(R; lo-hi: EXPR; …; lo-: EXPR)     rating bands; `lo: EXPR` is one rating, the last band may be open
+        | ref(kind:id, field[, EXPR])          another entry's value (at that rating)
+        | ceil(EXPR) | floor(EXPR) | min(EXPR, EXPR) | max(EXPR, EXPR)
+```
+
+| variable | meaning |
+|---|---|
+| `R` | the rating the item is bought at (Force, Level, Size, Grade and Capacity-priced items alike; `rating` gives the range) |
+| `Q` | the count bought (the formula's `unit` and `qty`) |
+| `M` | the character's Magic |
+| `B` | the same field of the base item: the item this one is built on, fitted to or priced from (the commlink a hack goes in, the instrument a link doubles, the credstick a stick is made of). The builder asks for it when the entry has no host |
+| `opt.<id>` | 1 when the entry's `<option id>` is chosen, else 0 |
+
+`<option id="…" name="…"/>` declares an option a formula reads (a part bought with the item, or a version the book
+prices apart, such as a section offering open versions of its items at half price).
+
+A value with no number to evaluate (a missing variable, a `ref` to an entry not loaded, a rating outside every band)
+is unpriced, never 0. The importer writes a formula for every printed value that is one: `Rating x 2,000¥`,
+`(Rating/3)`, `12,000¥ + [4,000¥ x Size]`, `Magic*100¥`, `300¥ per CF`, `2,000¥ (+500¥ per additional dart)`, `x2`,
+`Commlink cost plus rating x 100`, `250¥ + Certified Credstick Cost`, front and back seats `2/6`, and a table printing
+one row per rating band (all its rows get the same `tier()` rule). A plain number gets none.
+
+### `<issue>`: a gap the user settles
+
+```xml
+<issue field="avail|cost|rating|karma|essence|…" code="missing|unreadable|ambiguous" page="N">short note</issue>
+```
+
+- `missing`: the book prints nothing for a field the kind needs (an item's availability or price, a quality's Karma,
+  the rating range a rated price needs, an implant's Essence).
+- `unreadable`: it prints something no formula reads (`Body x 500`, `Special`, a word).
+- `ambiguous`: it prints two values for one field (`800¥/1,600¥`, `400¥ (A); 450¥ (B)`).
+
+The note is a few words (`no availability printed`, `printed: Special`), never book text. The UI flags the field as it
+flags a sample runner's Review error; the user's edit (`edits/edits.xml`) gives the value and drops the issue. A dash
+or `n/a` is a printed value, not an issue.
+
+### Three invented examples
+
+```xml
+<!-- rating bands: one rule on every band row -->
+<gear id="zz.glow-relay" source="ZZ" page="12" category="relays" rating="4–6" avail="4(L)" cost="Rating x 500">
+  <name>Glow Relay</name>
+  <formula field="cost">tier(R; 1-3: R*100; 4-6: R*500; 7-: R*2000)</formula>
+  <formula field="avail">tier(R; 1-3: 2; 4-6: 4; 7-: R)</formula>
+</gear>
+<!-- rating 5: 2,500¥, avail 4(L) -->
+
+<!-- a price per unit with a cheaper version -->
+<gear id="zz.crate" source="ZZ" page="30" category="crates" avail="2" cost="40" per="CF">
+  <name>Crate</name>
+  <option id="open" name="open"/>
+  <formula field="cost" unit="CF" qty="1-8">(Q*40)*(1 - 0.5*opt.open)</formula>
+</gear>
+<!-- 8 CF: 320¥; 8 CF, open: 160¥ -->
+
+<!-- the base item's price, and a field the book leaves out -->
+<gear id="zz.buzz-hack" source="ZZ" page="77" category="hacks" rating="1–4" cost="Widget cost plus rating x 50">
+  <name>Buzz Hack</name>
+  <formula field="cost">B + R*50</formula>
+  <issue field="avail" code="missing" page="77">no availability printed</issue>
+</gear>
+<!-- on a 1,000¥ widget at rating 2: 1,100¥; the availability is the user's to give -->
+```
 
 ## Kinds
 

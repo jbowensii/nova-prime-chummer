@@ -37,6 +37,11 @@ recipe reads both.
   values) with `Active Skills:` as an NPC (group Contact).
 - Everything else in the chapters is a rule section; PACKs (SUIT UP) are bundles of other books' gear: rules.
 
+## Formula styles and issues (importer v2)
+
+- No price formulas. Issues: two qualities print no Karma (`missing karma`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<the Companion PDF>" --out "%TEMP%\swc-check"

@@ -44,12 +44,43 @@ def ratings(c, a):
     return list(range(rr[0], rr[1] + 1)) if rr else [None]
 
 
-def _num_field(field, ours_s, cl, extra=()):
+def formula_values(a, field, rs):
+    """{rating: {values}} our stored formula (the importer's <formula field>, ours.py's `formula:<field>`) gives at
+    each rating: at the top of its qty range (Commlink6 flattens a per-unit price there), or the rating as the count and every choice of its options; None when the entry has none or it needs something unknown (B, ref)."""
+    from importer.sr6 import formula as F
+    raw = a.get(f"formula:{field}")
+    if not raw:
+        return None
+    expr, *kv = raw.split("|")
+    kv = dict(x.split("=", 1) for x in kv)
+    lo, _, hi = (kv.get("qty") or "").partition("-")
+    opts = [o for o in (kv.get("opts") or "").split(",") if o]
+    out = {}
+    for r in rs:
+        qs = [int(hi or lo)] if lo else [r if r is not None else 1]  # (Commlink6 prices a range at its top)
+        vals = set()
+        for q in qs:
+            for bits in range(2 ** len(opts)):
+                try:
+                    v = F.evaluate(expr, R=1 if r is None else r, Q=q, opt={o: bits >> i & 1 for i, o in enumerate(opts)},
+                                   round=kv.get("round", "up"))
+                except F.FormulaError:
+                    return None
+                if v is not None:
+                    vals.add(v)
+        out[r] = vals
+    return out if any(out.values()) else None
+
+
+def _num_field(field, ours_s, cl, extra=(), formula=None):
     """A diff for a numeric field, None when equal, SKIP when Commlink6 has no number. cl: {rating: number}; extra:
-    Commlink6's variant values (a row of ours may print one variant: the colony nanites, the obvious cyberarm)."""
+    Commlink6's variant values (a row of ours may print one variant: the colony nanites, the obvious cyberarm);
+    formula: formula_values() of our stored formula (equal when it gives Commlink6's value at each rating)."""
     vals = [v for v in cl.values() if isinstance(v, float)]
     if not vals:
         return SKIP
+    if formula and all(any(close(x, v) for x in formula.get(r, ())) for r, v in cl.items() if isinstance(v, float)):
+        return None
     if ours_s is None or O.NONE.match(ours_s):
         if all(v == 0 for v in vals):
             return None  # our dash for Commlink6's 0
@@ -112,11 +143,12 @@ def compare(c, o):
     rs = ratings(c, a)
     if "cost" in f and k in PRICED:
         cl = {r: f["cost"].get(r if r in f["cost"] else next(iter(f["cost"]))) for r in rs}
-        add("cost", _num_field("cost", a.get("cost"), cl, f.get("cost_variants", ())))
+        add("cost", _num_field("cost", a.get("cost"), cl, f.get("cost_variants", ()), formula_values(a, "cost", list(cl))))
     if "avail" in f and k in PRICED:
         cl = {r: f["avail"].get(r if r in f["avail"] else next(iter(f["avail"]))) for r in rs}
         num = _num_field("avail", None if (a.get("avail") or "").startswith("+") else a.get("avail"),
-                         {r: float(v[0]) for r, v in cl.items()}, f.get("avail_variants", ()))
+                         {r: float(v[0]) for r, v in cl.items()}, f.get("avail_variants", ()),
+                         formula_values(a, "avail", list(cl)))
         if num and num != SKIP and re.search(r"¥|\d{3}", a.get("avail") or ""):
             num["why"] = "ours holds a price (columns shifted)"
         add("avail", num if not (a.get("avail") or "").startswith("+") else None)
@@ -139,13 +171,15 @@ def compare(c, o):
             if not mine else "max differs"})
     if "essence" in f and k == "augmentations":
         add("essence", _num_field("essence", a.get("essence"), {r: f["essence"].get(r if r in f["essence"] else
-                                                                                       next(iter(f["essence"]))) for r in rs}))
+                                                                                       next(iter(f["essence"]))) for r in rs},
+                                  formula=formula_values(a, "essence", rs)))
     cap = a.get("capacity")
     if cap is not None and not O.NONE.match(cap) or "capacity_used" in f and k == "augmentations":
         key = "capacity_used" if (cap or "").strip().startswith("[") or "capacity_offered" not in f else "capacity_offered"
         if key in f:
             add("capacity", _num_field("capacity", (cap or "").strip("[] ") or None,
-                                       {r: f[key].get(r if r in f[key] else next(iter(f[key]))) for r in rs}))
+                                       {r: f[key].get(r if r in f[key] else next(iter(f[key]))) for r in rs},
+                                       formula=formula_values(a, "capacity", rs)))
     if k == "weapons":
         nd = lambda s: re.sub(r"[\s()]", "", s or "").upper()
         if f.get("dv") and not f["dv"].startswith("0"):
@@ -153,7 +187,7 @@ def compare(c, o):
         if f.get("ar"):
             add("ar", _str_field("ar", a.get("ar"), f["ar"], bands))
         if f.get("modes"):
-            nm = lambda s: frozenset(t for t in re.split(r"[/,\s]+", re.sub(r"\([^)]*\)", "", s or "").upper()) if t)
+            nm = lambda s: frozenset(t for t in re.split(r"[/,\s]+", re.sub(r"\([^)]*\)", "", up_to(s)).upper()) if t)
             add("modes", _str_field("modes", a.get("modes"), f["modes"], nm, tokens=False))
         if f.get("ammo"):
             na = lambda s: re.sub(r"[\s()]|(?<=\d),(?=\d{3})", "", re.sub(r"\s+or\s+", "/", (s or "").lower()))
@@ -167,6 +201,10 @@ def compare(c, o):
             if f.get(fld) not in (None, ""):
                 mine = ns(a.get(fld))
                 parts = re.findall(r"\d+", mine)
+                fv = formula_values(a, fld, [None])
+                if fv and re.fullmatch(r"\d+", ns(f[fld])) and any(close(x, float(ns(f[fld]))) for x in fv[None]):
+                    add(fld, None)  # our formula (`2/6` seats: 2 + 6)
+                    continue
                 if re.fullmatch(r"\d+", ns(f[fld])) and len(parts) > 1 and ns(f[fld]) in parts:
                     add(fld, None)  # two printed values (2/10 seats, 18(24) with an armor kit): Commlink6 keeps one
                     continue
@@ -209,6 +247,15 @@ def compare(c, o):
     if k == "skills" and f.get("attribute"):
         add("attribute", _str_field("attribute", a.get("attr"), f["attribute"], first3, False))
     return done, diffs
+
+
+MODE_LADDER = ("SA", "BF", "FA")
+
+
+def up_to(s):
+    """`up to FA` -> `SA/BF/FA`: every firing mode up to the one printed (the game's mode ladder)."""
+    m = re.fullmatch(r"\s*up\s+to\s+(SA|BF|FA)\s*", s or "", re.I)
+    return "/".join(MODE_LADDER[:MODE_LADDER.index(m.group(1).upper()) + 1]) if m else (s or "")
 
 
 def bands(s):

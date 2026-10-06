@@ -50,6 +50,15 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
   cell where both halves fit their columns' shapes (MODES, ATTACK RATINGS, AMMO, AVAIL, COST) and drops the stray
   cell, only when every shaped cell then fits. Otherwise the row stays as printed (book-value report).
 
+## Formula styles and issues (importer v2)
+
+- Vehicle weapon mounts `N¥ + [N¥ x Size]`, avail `N(I) + Size` -> `N + (N*R)`, `N + R` (Size is the rating).
+  Seats `2/6` -> `2 + 6`. Shots `N¥ per shot` -> `Q*N`, unit shot. Modes `up to FA`: every mode up to full auto
+  (the fire-mode ladder SA, BF, FA; no formula, the reading is the app's).
+- Energy weapons print `Energy` as their ammo and `Uses N Energy per … shot` in a note: the shots a power supply
+  gives are the power supply table's ENERGY over N (not read yet: the note is prose).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Deadly Arts-Core Advanced Combat Rulebook-CAT28011.pdf>" --out "%TEMP%\da-check"

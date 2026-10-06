@@ -65,11 +65,56 @@
     <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
   </xs:attributeGroup>
 
-  <!-- every entry: <name>, its kind's children, then an optional <text> (empty in imports: the description is in the
-       source's texts file) -->
+  <!-- every entry: <name>, its kind's children, then its options, formulas and issues, then an optional <text> (empty
+       in imports: the description is in the source's texts file) -->
   <xs:group name="tail">
-    <xs:sequence><xs:element name="text" type="xs:string" minOccurs="0"/></xs:sequence>
+    <xs:sequence>
+      <xs:element name="option" type="sr6:Option" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="formula" type="sr6:Formula" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="issue" type="sr6:Issue" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="text" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
   </xs:group>
+
+  <!-- the field a formula or an issue is about: an attribute of the entry (cost, avail, rating, essence, capacity, ammo,
+       seats …), or qty (the count a per-unit price is bought in) -->
+  <xs:simpleType name="Field">
+    <xs:restriction base="xs:string"><xs:pattern value="[a-z][A-Za-z]*"/></xs:restriction>
+  </xs:simpleType>
+  <!-- a formula for one field (docs/sr6-data-format.md, "Formulas and issues"): the printed attribute stays as printed;
+       this is the rule the app evaluates. EXPR: numbers, R Q M B opt.<id>, + - * / ( ), tier(R; lo-hi: EXPR; …),
+       ref(kind:id, field[, EXPR]), ceil floor min max. round: how `/` rounds (default up). unit and qty: what Q counts
+       and the range it is bought in (a per-unit price) -->
+  <xs:complexType name="Formula">
+    <xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="field" type="sr6:Field" use="required"/>
+      <xs:attribute name="round">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="up"/><xs:enumeration value="down"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="unit" type="xs:string"/>
+      <xs:attribute name="qty">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9]+(-[0-9]*)?"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+    </xs:extension></xs:simpleContent>
+  </xs:complexType>
+  <!-- a field the book prints nothing for (missing), prints in a way the importer can't read (unreadable), or prints
+       two ways (ambiguous): the UI flags it, an edit settles it. The note is a few words, never book text -->
+  <xs:complexType name="Issue">
+    <xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="field" type="sr6:Field" use="required"/>
+      <xs:attribute name="code" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="missing"/><xs:enumeration value="unreadable"/><xs:enumeration value="ambiguous"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="page" type="xs:positiveInteger"/>
+    </xs:extension></xs:simpleContent>
+  </xs:complexType>
+  <!-- an option a formula's opt.<id> reads (1 when chosen): a part bought with the item, printed beside it -->
+  <xs:complexType name="Option">
+    <xs:attribute name="id" type="sr6:Id" use="required"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
   <xs:complexType name="Entry">
     <xs:sequence><xs:element name="name" type="xs:string"/><xs:group ref="sr6:tail"/></xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>

@@ -40,6 +40,16 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 - **Stacked bands.** A modification's price tables print `MOD SLOTS | RATING` over `AVAILABILITY | COST`: joined
   into one band by regroup (`_stacked`), read as before.
 
+## Formula styles and issues (importer v2)
+
+- `N¥ per CF` (trailers, the SPACE column giving the count range) -> `Q*N` with `unit="CF" qty="1-9"`. The
+  section's sentence pricing open versions at half is an option on the trailers and sidecars (section_options):
+  `(Q*N)*(1 - 0.5*opt.open)`.
+- `N¥ x Rating`, slots `N x Rating`, `N per level`, `Adds N per level`, `N per Rating point` -> `R*N`. Seats `2/6`.
+- Issues: tires and mods printing two prices (`800¥/1,600¥`) or slots `2 or 1 CF` are `ambiguous`; slots `1/3 body
+  (rounded up)` and prices `Body x N¥` need the vehicle's Body (no grammar variable): `unreadable`.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"

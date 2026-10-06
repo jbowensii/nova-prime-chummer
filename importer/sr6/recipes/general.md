@@ -43,6 +43,12 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   labelled lines, read with the Companion's reader (`swc._lifemodule`); the run goes on through a page's running head.
   Emerald City prints none (its lifepath-flavoured entries are qualities).
 
+## Formula styles and issues (importer v2)
+
+- The few priced tables: `Rating x N¥`, Essence `Rating x .N` -> `R*N`; `N¥/NV` -> `Q*N`, unit NV.
+- Issues: items a book lists with no avail or price (`missing`), words in an avail cell (`unreadable`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-30 Nights-Campaign Book-CAT28400.pdf>" --out "%TEMP%\general-check"

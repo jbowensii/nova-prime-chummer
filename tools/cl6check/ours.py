@@ -152,9 +152,16 @@ def _entries(src_dir, src):
             name = (e.findtext("name") or "").strip()
             if not name:
                 continue
+            attrs = dict(e.attrib)
+            opts = ",".join(o.get("id") for o in e.findall("option"))
+            for f in e.findall("formula"):  # the importer's rule for a field, beside its printed value: formula:<field>
+                attrs[f"formula:{f.get('field')}"] = "|".join(
+                    [(f.text or "").strip()] + [f"{k}={f.get(k)}" for k in ("qty", "round") if f.get(k)]
+                    + ([f"opts={opts}"] if opts else []))
             out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
                         "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias")],
-                        "attrs": dict(e.attrib), "families": families(e)})
+                        "attrs": attrs, "families": families(e),
+                        "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")]})
     return out
 
 

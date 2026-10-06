@@ -33,6 +33,14 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 - **A second table of the names.** The perfumes print an effects table and a price table, each with the names
   in its first column: two tables, never one stacked row (the second's first column repeats the first's).
 
+## Formula styles and issues (importer v2)
+
+- Rows by rating band (`Transforming Garment (Rating 1–2)` …) -> one `tier()` rule. `Rating x N¥ (10 uses)`: the
+  note set aside -> `R*N`. Avail `Rating/2` -> `R/2`. `N¥ per charge` (preparations) -> `Q*N`.
+- `N¥ + Certified Credstick Cost`, `N¥ + Weapon Cost` -> `N + B` (B: the credstick or weapon it is made from).
+- Issues: the preparations print no availability (`missing avail`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Smooth Operations-Core Face Rulebook-CAT28009.pdf>" --out "%TEMP%\so-check"

@@ -33,6 +33,17 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   multiplier`, `can only be applied to cyberware`); the sections stay rules too. Cybermancy, surgery, drug rules: rule
   sections.
 
+## Formula styles and issues (importer v2)
+
+- `N¥ per dose` (drugs, toxins, nanites), `Rating x N¥ per dose` -> `Q*N`, `Q*(R*N)`, unit dose. `Rating x N¥`,
+  `(Rating) x N¥`, Essence `Rating x 0.N`, avail `(Rating + N)(L)` -> `R*N`, `(R + N)`. Capacity `[Rating]`,
+  `(Rating/2)`.
+- A price naming what it holds (`N¥ + contents`) -> `N + B` (B: the contents' price, chosen by the user).
+- Issues: rows printing `*` (a footnote: the single cybereye is priced from the core cybereyes) are `unreadable`;
+  rated rows with no range `missing rating`; the colony/kit products printed two to a row keep the first, the
+  second product's avail and price unread.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"
