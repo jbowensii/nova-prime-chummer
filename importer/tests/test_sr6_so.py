@@ -128,11 +128,11 @@ class SoRecipeTest(unittest.TestCase):
         self.assertEqual((p["cost"], p["perLevel"], p["maxLevel"]), ("0.25", "true", "3"))
         self.assertIn("Astral Wink", entries(self.res, "metamagics"))
         g = entries(self.res, "gear")["Wink in a Bottle"]
-        self.assertEqual((g["category"], g["cost"], g["per"]), ("alchemical-preps", "300", "charge"))
+        self.assertEqual((g["category"], g["cost"], g["per"]), ("Alchemical preps", "300", "charge"))
 
     def test_gear_with_its_section_text(self):
         g = entries(self.res, "gear")
-        self.assertEqual((g["Fuzzy Suit"]["category"], g["Fuzzy Suit"]["rating"]), ("clothing", "1–6"))
+        self.assertEqual((g["Fuzzy Suit"]["category"], g["Fuzzy Suit"]["rating"]), ("Clothing", "1–6"))
         self.assertIn("fuzzy suit", self.texts[("gear", "fuzzy-suit")])
         self.assertIn("suit rules", self.texts[("gear", "fuzzy-suit")])  # its Game Information
         self.assertEqual((g["Blink Cape (Rating 3–4)"]["cost"], g["Blink Cape (Rating 1–2)"]["avail"]), ("Rating x 1900", "5"))

@@ -85,14 +85,14 @@ class KkRecipeTest(unittest.TestCase):
 
     def test_weapons_read_from_the_sr6_half(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Krime Popper"], {"id": "krime-popper", "source": "KK", "page": "3", "category": "firearms",
+        self.assertEqual(w["Krime Popper"], {"id": "krime-popper", "source": "KK", "page": "3", "category": "Firearms",
                                              "dv": "3P", "modes": "SA", "ar": "7/7/—/—/—", "ammo": "9(c)",
                                              "avail": "2(L)", "cost": "150"})
         self.assertEqual((w["Krime Twin"]["cost"], w["Krime Twin (GL)"]["dv"]), ("900", "As Grenade"))
 
     def test_ammo_rows_joined_and_vehicle_across_pages(self):
         g = entries(self.res, "ammotypes")  # (priced as a multiple of the ammunition: crb.ammo_type)
-        self.assertEqual((g["Krime Fizz Rounds"]["category"], g["Krime Fizz Rounds"]["avail"]), ("ammo", "3(L)"))
+        self.assertEqual((g["Krime Fizz Rounds"]["category"], g["Krime Fizz Rounds"]["avail"]), ("Ammo", "3(L)"))
         self.assertEqual(g["Krime Glow Slugs Extra Bright"]["cost"], "x3")
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("slugs that glow", texts[("ammotypes", "krime-glow-slugs-extra-bright")])

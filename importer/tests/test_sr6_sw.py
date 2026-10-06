@@ -141,7 +141,7 @@ class SwRecipeTest(unittest.TestCase):
         self.assertEqual(set(entries(self.res, "metamagics")), {"Glow Attunement", "Glow Summoning"})
         self.assertIn("made-up dice", self.texts[("metamagics", "glow-summoning")])
         v = entries(self.res, "gear")["Glow Vial"]
-        self.assertEqual((v["category"], v["cost"], v["per"]), ("preparations", "450", "charge"))
+        self.assertEqual((v["category"], v["cost"], v["per"]), ("Preparations", "450", "charge"))
 
     def test_traditions_and_qualities(self):
         self.assertEqual(set(entries(self.res, "traditions")), {"Glow Tradition", "Traditions of Fizz"})

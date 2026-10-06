@@ -153,7 +153,7 @@ class WlRecipeTest(unittest.TestCase):
                          {"type": "P", "action": "Major", "range": "LOS", "duration": "Instant", "weakness": None})
         self.assertEqual(p["Brittle"].get("weakness"), "true")  # a stat block lists it as a weakness
         g = entries(self.res, "gear")["Fizz Harness"]
-        self.assertEqual((g.get("category"), g.get("cost")), ("critter-gear", "300"))
+        self.assertEqual((g.get("category"), g.get("cost")), ("Critter gear", "300"))
         r = entries(self.res, "rules")
         self.assertIn("Snuggly", r)  # critter qualities are for critters: rules
         self.assertIn("Critter Corner: Hum Goat", r)

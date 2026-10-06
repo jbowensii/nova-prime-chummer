@@ -106,7 +106,7 @@ class DaRecipeTest(unittest.TestCase):
         w = entries(self.res, "weapons")
         self.assertEqual(set(w), {"Fizz Popper", "Ruhrzap SF-1", "Ruhrzap SF-1 (when overcharged)"})
         self.assertEqual({k: w["Fizz Popper"][k] for k in ("category", "type", "dv", "modes", "ammo", "avail", "cost")},
-                         {"category": "zap-guns", "type": "Pistol", "dv": "3P", "modes": "SA", "ammo": "10(c)",
+                         {"category": "Zap gun", "type": "Pistol", "dv": "3P", "modes": "SA", "ammo": "10(c)",
                           "avail": "2(L)", "cost": "300"})
         self.assertEqual((w["Ruhrzap SF-1"]["ammo"], w["Ruhrzap SF-1"]["cost"]), ("50(c) or 100(belt)", "7600"))
         self.assertIn("long name", self.texts[("weapons", "ruhrzap-sf-1")])
@@ -115,7 +115,7 @@ class DaRecipeTest(unittest.TestCase):
     def test_vehicle_box_under_its_heading(self):
         v = entries(self.res, "vehicles")["Made Walker “Stompy”"]
         self.assertEqual({k: v[k] for k in ("category", "handling", "interval", "topSpeed", "seats", "cost")},
-                         {"category": "walking-vehicles", "handling": "2/2", "interval": "20", "topSpeed": "70",
+                         {"category": "Walking vehicles", "handling": "2/2", "interval": "20", "topSpeed": "70",
                           "seats": "1", "cost": "73500"})
 
     def test_martial_arts(self):

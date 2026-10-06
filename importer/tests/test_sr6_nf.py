@@ -93,12 +93,12 @@ class NfRecipeTest(unittest.TestCase):
     def test_weapons(self):
         w = entries(self.res, "weapons")
         self.assertEqual(w["Spin Top (Hardened)"], {"id": "spin-top-hardened", "source": "NF", "page": "156",
-                                                    "category": "exotic-weapons", "dv": "2S", "ar": "7/—/—/—/—",
+                                                    "category": "Exotic weapons", "dv": "2S", "ar": "7/—/—/—/—",
                                                     "avail": "8", "cost": "400"})
         # the printed Fifth Edition availability: the errata PDF corrects it in the corpus pass (resolve.py)
         self.assertEqual((w["Spin Top (Bladed)"]["ar"], w["Spin Top (Bladed)"]["avail"]), ("7/2/—/—/—", "12R"))
-        self.assertEqual(w["Glow Stick"]["category"], "clubs")
-        self.assertEqual((w["Fizz Bomb"]["dv"], w["Fizz Bomb"]["category"]), ("9P/5P/1P/—", "grenades"))
+        self.assertEqual(w["Glow Stick"]["category"], "Clubs")
+        self.assertEqual((w["Fizz Bomb"]["dv"], w["Fizz Bomb"]["category"]), ("9P/5P/1P/—", "Grenades"))
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("Made-up note", texts[("weapons", "spin-top-bladed")])
         self.assertIn("top that spins", texts[("weapons", "spin-top-bladed")])  # its item's description

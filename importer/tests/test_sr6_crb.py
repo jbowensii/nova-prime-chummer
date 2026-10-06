@@ -402,7 +402,7 @@ class CrbRecipeTest(unittest.TestCase):
                   "complexforms": "Static Fizz", "metamagics": "Bright Aura", "echoes": "Quick Think",
                   "critterpowers": "Glimmer", "critters": "Fuzzbeast", "spirits": "Spirits of Fizz",
                   "npcs": "Corner Goon", "sprites": "Gadget Sprite", "lifestyles": "Shoebox", "contacts": "Fixer Fred",
-                  "rules": "Making Trouble"}
+                  "rules": "Making Trouble", "categories": "Zappers"}
         # the core rulebook has no life modules (the Companion's), martial arts (Firing Squad's, Deadly Arts') nor
         # traditions of their own (Street Wyrd's)
         # (nor the kinds read from sections, sections.py: test_sr6_sections)
@@ -413,11 +413,11 @@ class CrbRecipeTest(unittest.TestCase):
 
     def test_attributes(self):
         w = entries(self.res, "weapons")["Zap Gun"].attrib
-        self.assertEqual(w, {"id": "zap-gun", "source": "CRB", "page": "250", "category": "zappers", "dv": "3P",
+        self.assertEqual(w, {"id": "zap-gun", "source": "CRB", "page": "250", "category": "Zappers", "dv": "3P",
                              "modes": "SA", "ar": "8/10/—/—", "ammo": "10(c)", "avail": "2", "cost": "1250"})
         self.assertEqual(entries(self.res, "weapons")["Lost Blaster"].get("avail"), "—")
         a = entries(self.res, "augmentations")["Glow Gland"].attrib
-        self.assertEqual((a["type"], a["category"], a["rating"], a["essence"]), ("bioware", "bioware", "1–3", "0.2"))
+        self.assertEqual((a["type"], a["category"], a["rating"], a["essence"]), ("bioware", "Bioware", "1–3", "0.2"))
         self.assertEqual(entries(self.res, "electronics")["Clunker Deck"].get("array"), "4 3 2 1")
         self.assertEqual(entries(self.res, "gear")["Gizmo Kit"].get("cost"), "Rating x 100")
         v = entries(self.res, "vehicles")["Zoom Bike"].attrib
@@ -557,11 +557,11 @@ class CrbRecipeTest(unittest.TestCase):
         lens = entries(self.res, "electronics")["Spy Lens"]
         self.assertEqual((lens.get("cost"), lens.get("capacity"), lens.get("rating")), ("Capacity x 70", "1–4", "1–4"))
         b = entries(self.res, "augmentations")["Brain Fizzer"]  # the rating range printed in the name
-        self.assertEqual((b.get("rating"), b.get("cost"), b.get("category")), ("1–4", "Rating^2 x 100", "headware"))
+        self.assertEqual((b.get("rating"), b.get("cost"), b.get("category")), ("1–4", "Rating^2 x 100", "Headware"))
         t = entries(self.res, "augmentations")
         self.assertEqual([(k, t[k].get("cost"), t[k].get("capacity")) for k in ("Tail (synthetic)", "Tail (obvious)")],
                          [("Tail (synthetic)", "9000", "3"), ("Tail (obvious)", "7000", "6")])
-        self.assertEqual(entries(self.res, "vehicles")["Zoom Bike"].get("category"), "cars")
+        self.assertEqual(entries(self.res, "vehicles")["Zoom Bike"].get("category"), "Cars")
         for v in ("Capacity x 70", "Rating^2 x 100", "(Force +3) L", "+500", "(Rating/3)(L)", "100 + (rating x 10)", "—",
                   "Rating x .3"):
             self.assertTrue(crb.readable(v), v)

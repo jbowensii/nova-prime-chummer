@@ -11,7 +11,7 @@ from importer.sr6.regroup import full_name, keys, norm, other_name
 
 # a box's first column naming its rows (`NAME`, `CASE TYPE`, `DIGITAL WEAPON CODEMODS`, `IC`, …)
 NAME_COL = re.compile(r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
-                      r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL)$")
+                      r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL|WEAPON)$")
 # headers printed in short or run together -> the core rulebook's (a tuple: two headers, the value split at its last space)
 RENAME = {"SPD INT": "SPEED INTERVAL", "SPD INTERVAL": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "SEAT": "SEATS",
           "ACC": "ACCEL", "BOD": "BODY", "ARM": "ARMOR", "PIL": "PILOT", "SENS": "SENSOR", "AVAILABILITY": "AVAIL",
@@ -154,6 +154,42 @@ def priced(c):
     return bool({h.upper() for h in c} & (PRICE | VEHICLE))
 
 
+# the words a maker's name ends with (`Cougar Weapons`, `Ares Arms`): the game's corporate vocabulary
+CORPORATE = {"weapons", "arms", "armaments", "firearms", "munitions", "ordnance", "industries", "industrial", "systems",
+             "technologies", "technology", "tech", "defense", "defence", "corporation", "corp", "inc", "ltd",
+             "manufacturing", "motors", "dynamics", "electronics", "enterprises", "international", "labs", "aerospace"}
+
+
+def maker_split(title):
+    """(maker, product) of a title that prints a maker before its product (`Cougar Weapons Armsman Collapsible
+    Polearm`: Cougar Weapons, Armsman Collapsible Polearm): the words up to a corporate word among the first three, a
+    product of two words or more after them; else ("", title)."""
+    ws = title.split()
+    for k in range(1, min(3, len(ws) - 2) + 1):
+        if ws[k - 1].lower().strip(".,") in CORPORATE and all(w[:1].isupper() for w in ws[:k]):
+            return " ".join(ws[:k]), " ".join(ws[k:])
+    return "", title
+
+
+def configurations(b, items, col, described):
+    """A box whose rows are one product's configurations (`Knife`, `One-hand`, `Spear`, `Pike` under `Cougar Weapons
+    Armsman Collapsible Polearm`): rows named by short generic words (two at most, no digit, no description heading of
+    their own) under a title of three words or more. Each row is its own item with its own printed stats, named as
+    printed; the box's title is their product (and maker), its description, notes and wireless bonus theirs. None when
+    the box isn't one."""
+    names = [" ".join(c[col].split()) for c in items]
+    if len(b.name.split()) < 3 or any(len(n.split()) > 2 or re.search(r"\d|[a-z][A-Z]", n) or not n[:1].isupper()
+                                      for n in names):
+        return None
+    if any(described(n, peek=True)[2] for n in names):
+        return None  # a row with a description of its own is an item of its own
+    text, labels, head = described(b.name)
+    maker, product = maker_split(b.name)
+    body = "\n\n".join(t for t in (text.strip(), b.text.strip()) if t)
+    return [replace(_row_block(b, n, c, b.name, body, {**labels, **b.labels}, col), product=product, maker=maker)
+            for n, c in zip(names, items)]
+
+
 def boxes(bs):
     """Stat boxes -> item blocks with the box as their row (crb.extract's ROW_KINDS read a row): a box listing several
     items one a row becomes one block a row, each with the description of the heading of its name (its words all in
@@ -167,13 +203,14 @@ def boxes(bs):
     said = {(b.chapter, norm(k)): v for b in bs for k, v in b.labels.items() if v}  # `**Code Buddy:** …` lines
     gone, out = set(), []
 
-    def described(i, b, name):
+    def described(i, b, name, peek=False):
         """(text, labels, heading) of the description of `name`: the nearest heading of its name with text and no box
-        of its own (it then goes), else a labelled line of its name in the chapter (heading "")."""
+        of its own (it then goes, unless only peeking), else a labelled line of its name in the chapter (heading "")."""
         near = sorted((j for j, d in enumerate(bs) if j not in gone and d.chapter == b.chapter and _desc(d)
                        and _match(name, d.name)), key=lambda j: (j > i, abs(j - i)))
         if near:
-            gone.add(near[0])
+            if not peek:
+                gone.add(near[0])
             return bs[near[0]].text, bs[near[0]].labels, bs[near[0]].name
         return said.get((b.chapter, norm(name)), ""), {}, ""
 
@@ -206,6 +243,9 @@ def boxes(bs):
             out.append(b)
             continue
         col = name_col([cells(s) for s in b.stats])
+        if col is not None and col.upper() not in ("TYPE", "SIZE", "CLASS") and len(items) > 1 and (cfg :=configurations(b, items, col, lambda n, peek=False: described(i, b, n, peek))):
+            out += cfg
+            continue
         if col is not None and col.upper() in ("TYPE", "SIZE", "CLASS"):
             out += [_row_block(b, f"{b.name} ({c[col]})", c, b.name, col=col) for c in items]
             continue

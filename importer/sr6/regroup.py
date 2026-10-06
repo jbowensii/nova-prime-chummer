@@ -37,6 +37,9 @@ class Block:
     text: str = ""
     level: int = 0
     aliases: list = field(default_factory=list)  # the other name the book prints the item under (row / heading)
+    # a configuration row of one product (shapes.boxes): the product its box titles, and that title's maker
+    product: str = ""
+    maker: str = ""
 
 
 def norm(name, aliases=None):
@@ -203,7 +206,15 @@ def _bold_row(cols, ln, cost=None):
     """(name, values) of a plain row line under _bold_columns, read from its right (each column one cell: a shaped
     column by its shape, another one word); the name is what is left, maybe empty (printed around the values). A
     row with no price of its own takes `cost` (the price the converter set on a line of its own above it)."""
-    s = re.sub(r"[*†‡]", "", ln).strip()
+    # the cells are read with their footnote marks set aside; a value keeps its cell's mark at its end (`10/6*/—` ->
+    # `10/6/—*`), for its footnote (crb.footnote)
+    marks, keep = {}, []
+    for ch in re.sub(r"\s+(?=[*†‡])", "", ln.strip()):
+        if ch in "*†‡":
+            marks[len(keep)] = marks.get(len(keep), "") + ch
+        else:
+            keep.append(ch)
+    s = "".join(keep).strip()
     vals = []
     for c in reversed(cols[1:]):
         if c == "COST" and cost and not re.search(r"¥\s*$", s):
@@ -213,7 +224,8 @@ def _bold_row(cols, ln, cost=None):
         m = re.search(rf"(?:^|\s)({sh})$", s) if sh else re.search(r"(?:^|\s)(\S+)$", s)
         if not m:
             return None
-        vals.append(m.group(1).strip())
+        v = m.group(1).strip()
+        vals.append(v + "".join(x for p, x in marks.items() if m.start(1) < p <= m.start(1) + len(v)))
         s = s[:m.start(1)].strip()
     return s, vals[::-1]
 

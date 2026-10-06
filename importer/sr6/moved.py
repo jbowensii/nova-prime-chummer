@@ -10,11 +10,16 @@ one match wins:
    s are set aside ('Spy Tag' -> 'Spy Tags', 'X (Y (1-4))' -> 'X (Y)', 'APDS' gear -> 'APDS' ammunition type);
 2. the new name ends with the old one's words (a maker's name added: 'GE Vindicator' -> 'Ares-GE Vindicator');
 3. the old name abbreviates the new one's words ('Laser mic' -> 'Laser microphone').
+A tier matching several new entries keeps those of the old entry's category, when that leaves one (`Armor` in the
+cyberlimb accessories and in another accessory category: two items, the second id now naming its category; a category
+renamed with its title, `cyberlimb-accessories` -> `Cyberlimb accessory`, compares by its words).
 An old entry's own id aliases go with it, so a chain of re-imports keeps every old id."""
 import os
 import re
 
 from lxml import etree
+
+from importer.sr6 import categories
 
 RANGE = re.compile(r"\(\s*(?:rating\s*)?\d+\s*[-‐-―]\s*\d+\s*\)", re.I)
 
@@ -40,6 +45,11 @@ def _abbrev(old, new):
 TIERS = (lambda o, n: o == n, lambda o, n: len(n) > len(o) and n[-len(o):] == o, _abbrev)
 
 
+def _cat(c):
+    """A category, old (`cyberlimb-cost-and-capacity`) or new (`Cyberlimb`), as its words compare."""
+    return categories.key(categories.category_name((c or "").replace("-", " ")) or "")
+
+
 def _entries(xml_or_tree):
     root = xml_or_tree if not isinstance(xml_or_tree, str) else etree.fromstring(xml_or_tree.encode("utf8"))
     kind = root.get("kind")
@@ -51,7 +61,8 @@ def _names(el):
 
 
 def previous(folder):
-    """{(kind, id): (names, [(kind, id) of its id aliases])} of the import in `folder` (empty when there is none)."""
+    """{(kind, id): (names, [(kind, id) of its id aliases], category)} of the import in `folder` (empty when there is
+    none)."""
     out = {}
     if not os.path.isdir(folder):
         return out
@@ -64,7 +75,7 @@ def previous(folder):
             continue
         for el in els:
             out[(kind, el.get("id"))] = (_names(el), [(a.get("kind") or kind, a.get("id")) for a in el.findall("alias")
-                                                     if a.get("id")])
+                                                     if a.get("id")], _cat(el.get("category")))
     return out
 
 
@@ -79,7 +90,7 @@ def carry(prev, files):
             new[(kind, el.get("id"))] = el
     added = [(k, el, [words(n) for n in _names(el)]) for k, el in new.items() if k not in prev]
     give = {}  # new key -> [(kind, id)]
-    for old, (names, olds) in prev.items():
+    for old, (names, olds, *cat) in prev.items():
         if old in new:
             target = old
         else:
@@ -87,6 +98,8 @@ def carry(prev, files):
             target = None
             for test in TIERS:
                 hits = {k for k, _, nws in added if any(test(o, n) for o in ows for n in nws)}
+                if len(hits) > 1 and cat and cat[0]:  # (the same name in several categories: the old one's)
+                    hits = {k for k in hits if _cat(new[k].get("category")) == cat[0]} or hits
                 if hits:
                     target = hits.pop() if len(hits) == 1 else None
                     break

@@ -54,6 +54,7 @@ KINDS = {
     "ruleoptions": "ruleoption",
     "senses": "sense",
     "trueelements": "trueelement",
+    "categories": "category",
     "rules": "rule",
 }
 # the kinds read from the books' own sections and tables (importer/sr6/sections.py), listed as printed: DISPLAY_KINDS in

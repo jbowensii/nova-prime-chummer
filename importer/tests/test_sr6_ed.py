@@ -95,17 +95,17 @@ class EdRecipeTest(unittest.TestCase):
 
     def test_gear_and_vehicles(self):
         a = entries(self.res, "armor")["Fizz Suit"]  # a one-row table named by its title
-        self.assertEqual((a["category"], a["defense"], a["cost"]), ("spacesuits", "+2", "4000"))
+        self.assertEqual((a["category"], a["defense"], a["cost"]), ("Spacesuits", "+2", "4000"))
         self.assertIn("suit that fizzes", self.texts[("armor", "fizz-suit")])
         self.assertEqual(entries(self.res, "gear")["Glow Boots"]["cost"], "300")
         v = entries(self.res, "vehicles")
         self.assertEqual((v["Zoom Pack"]["category"], v["Zoom Pack"]["handling"], v["Zoom Pack"]["cost"]),
-                         ("thruster-packs", "2", "7000"))
-        self.assertEqual((v["MadeCorp Comet"]["category"], v["MadeCorp Comet"]["seats"]), ("spaceships", "2"))
+                         ("Thruster pack", "2", "7000"))
+        self.assertEqual((v["MadeCorp Comet"]["category"], v["MadeCorp Comet"]["seats"]), ("Spaceships", "2"))
         self.assertIn("ship, quick", self.texts[("vehicles", "madecorp-comet")])
         self.assertNotIn("MadeCorp Comet", entries(self.res, "rules"))
         w = entries(self.res, "weapons")["MadeTech Boomer"]  # its band (no name column) in its text, its tag its type
-        self.assertEqual((w["category"], w["type"], w["cost"]), ("grenade-launcher", "Grenade Launcher", "2000"))
+        self.assertEqual((w["category"], w["type"], w["cost"]), ("Grenade launcher", "Grenade Launcher", "2000"))
         self.assertIn("launcher for space", self.texts[("weapons", "madetech-boomer")])
 
     def test_rosters(self):

@@ -446,10 +446,18 @@ def run(corpus, cl6, verdicts=None):
         own = [o for o in obs if not o.context and not o.variant]
         # (an entry of ours under the object's name is the object, even one printing no field: a mentor spirit)
         if not own and not any(e["kind"] in kinds and not b.context for b, e in ents):
+            printed = corpus.mentions(names)
+            if not printed and any(match.bundled(c["name"], e) for b in corpus.books if lineage.family(b.belongs) == home
+                                   and not b.errata for e in b.entries if e["kind"] in kinds):
+                # a listing Commlink6 composed of a product's rows (`Cougar Polearm (Small)`): no book's item
+                n["Commlink6-only records"] += 1
+                rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
+                             "field": "", "family": "Commlink6-only record", "where": "composed from a product's rows"})
+                continue
             n["object not found"] += 1
             rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
                          "field": "", "family": "object not found",
-                         "where": "name printed in text" if corpus.mentions(names) else "name nowhere in text"})
+                         "where": "name printed in text" if printed else "name nowhere in text"})
             continue
         n["objects"] += 1
         kind = next((e["kind"] for _, e in ents if e["kind"] in kinds), c["kind"])

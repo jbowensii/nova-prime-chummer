@@ -157,21 +157,21 @@ class FsRecipeTest(unittest.TestCase):
 
     def test_weapons_from_their_boxes_merged_headers_split(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Zap Knife"], {"id": "zap-knife", "source": "FS", "page": "9", "category": "blades",
+        self.assertEqual(w["Zap Knife"], {"id": "zap-knife", "source": "FS", "page": "9", "category": "Blades", "skill": "Close Combat", "spec": "Blades",
                                           "type": "Blade", "dv": "2P", "ar": "7/—/—/—/—", "avail": "2(L)", "cost": "150"})
         r = w["Glow Rifle Mk II"]  # its box titled shorter than its heading
-        self.assertEqual((r["category"], r["ar"], r["ammo"], r["avail"], r["cost"]), ("rifles", "3/9/11/7/2", "24(c)", "4(L)", "3300"))
-        self.assertEqual(w["Grip Tape"]["category"], "weapon-modifications")
+        self.assertEqual((r["category"], r["ar"], r["ammo"], r["avail"], r["cost"]), ("Rifle", "3/9/11/7/2", "24(c)", "4(L)", "3300"))
+        self.assertEqual(w["Grip Tape"]["category"], "Weapon modifications")
         self.assertFalse(any(n.startswith("*") for n in w))
 
     def test_ammo_armor_and_modifications(self):
         # (priced as a multiple of the ammunition: an ammunition type, crb.ammo_type)
-        self.assertEqual(entries(self.res, "ammotypes")["Fizz Rounds"]["category"], "ammo")
+        self.assertEqual(entries(self.res, "ammotypes")["Fizz Rounds"]["category"], "Ammo")
         a = entries(self.res, "armor")
         self.assertEqual({k: a["Puff Jacket"][k] for k in ("category", "defense", "capacity", "cost")},
-                         {"category": "armor", "defense": "+3", "capacity": "6", "cost": "900"})
+                         {"category": "Armor", "defense": "+3", "capacity": "6", "cost": "900"})
         self.assertEqual((a["Layer Suit (Light)"]["defense"], a["Layer Suit (Heavy)"]["cost"]), ("+4", "9000"))
-        self.assertEqual((a["Pocket Patch"]["category"], a["Glow Lining"]["capacity"]), ("armor-modifications", "[2]"))
+        self.assertEqual((a["Pocket Patch"]["category"], a["Glow Lining"]["capacity"]), ("Armor modifications", "[2]"))
         # a suit table printed in the next section's text: back to the section naming its rows, its Extras rows folded
         self.assertEqual((a["Card House (Jack of Dice)"]["cost"], a["Card House (Queen of Cups)"]["defense"]), ("1000", "+4"))
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
