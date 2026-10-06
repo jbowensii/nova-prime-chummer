@@ -22,6 +22,8 @@ from importer.sr6.regroup import norm
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
+    ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b", re.I)),
+    ("traditions", re.compile(r"^traditions$", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
                            r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
@@ -31,6 +33,9 @@ HEADING_KINDS = [
 ]
 # kind -> the words of a heading (the block's own or its parent's) whose bold run-ins are its entries
 RUNIN_KINDS = [
+    ("echoes", re.compile(r"\bechoes\b", re.I)),
+    ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b", re.I)),
+    ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b", re.I)),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
@@ -63,6 +68,7 @@ class Found:
     attrs: dict = field(default_factory=dict)
     children: list = field(default_factory=list)  # (tag, attrs, text)
     text: str = ""
+    block: object = None  # the heading's block (a kind the recipes read already reads its fields from it)
 
 
 def _kind_of(name, rules):
@@ -139,6 +145,8 @@ class Reader:
                 out += packs(b, page, parent, self.packs)
         out += design_tables(b, page) + quality_sets(b, page)
         rk = _kind_of(b.name, RUNIN_KINDS)
+        if not rk and re.fullmatch(r"(?i)basic|hacking", b.name.strip()) and re.search(r"(?i)\bprograms\b", parent):
+            rk = "programs"  # `Basic` and `Hacking` under `Programs`
         if not rk and KEYWORDS.search(b.name) and re.search(r"\bkeywords\b", b.text or "", re.I):
             rk = "spellfeatures"  # a spell or ritual section introducing its keywords, each a bold run-in
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
@@ -168,7 +176,7 @@ class Reader:
         if (len(chain), parent) in self.prefixed:
             return []
         if not kind or not name[:1].isupper() and not name[:1].isdigit() or EXAMPLE.search(name) \
-                or _kind_of(name, HEADING_KINDS + RUNIN_KINDS) or name.startswith("("):
+                or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("("):
             return []
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
@@ -191,7 +199,7 @@ class Reader:
                 name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
-        return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b))
+        return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b), b)
 
     def _runins(self, b, page, kind, chain):
         out, seen = [], set()
@@ -208,8 +216,8 @@ class Reader:
             m = _RUNIN.match(ln)
             if not m:
                 continue
-            name = " ".join(m.group("name").split()).strip()
-            if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+") \
+            name = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(m.group("name").split()).strip())  # (`Vi- sion`)
+            if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[") \
                     or len(name) > 70 or norm(name) in seen:
                 continue
             seen.add(norm(name))
@@ -219,10 +227,12 @@ class Reader:
                 if n2 and not FIELD_LABELS.match(n2.group("name").strip()) or nxt.startswith(("#", "|")) or not nxt.strip():
                     break  # (its own labelled lines, `• **Cost:** 2 Karma`, are its paragraph's)
                 body.append(nxt.strip())
-            para = " ".join(x for x in body if x)
+            para = "\n".join(x for x in body if x)  # (its lines kept: the texts are reflowed later)
             attrs = {}
             if kind == "actions":
                 name, attrs = _action_attrs(name, chain, "", para)
+            if kind == "programs":
+                attrs = {"type": program_type(chain[-1] if chain else "")}
             if kind == "qualities":
                 attrs = quality_attrs(name, chain, para)
                 name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
@@ -336,6 +346,16 @@ def step_qualities(b, page, path):
         if attrs:
             out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
     return out
+
+
+def program_type(heading):
+    """A program's type, from the heading listing it: `Basic Cyberprograms` -> basic, `Autosofts` -> autosoft,
+    `Commlink Apps` -> app (the game's own words)."""
+    h = heading.lower()
+    for w, t in (("autosoft", "autosoft"), ("e-soft", "e-soft"), ("app", "app"), ("hacking", "hacking"), ("basic", "basic")):
+        if re.search(rf"\b{w}", h):
+            return t
+    return h.strip() or "program"
 
 
 def split_names(name):

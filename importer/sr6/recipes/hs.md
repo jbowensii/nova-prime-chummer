@@ -43,6 +43,9 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Shared classifier (A5):** the echoes (`### New Echoes`), the basic and hacking cyberprograms and the commlink apps
+  (`## Commlink Apps`, type app) are run-ins sections.py reads; the recipe's LABEL_SECTIONS map is gone. The new sprite
+  powers (`### Name` under `## New Sprite Powers`) are critter powers.
 - **Matrix actions** under a section of another name (`### Movie Matrix Magic!`): a heading whose next heading is a
   Matrix test line (`(Illegal) Cracking + Logic vs. … (Major)`) is an action, its type from that line.
 - **Actions:** `### Matrix Actions` (Game Information): each `#### Name`; `#### Edge Actions`: `##### Name (N Edge)`;

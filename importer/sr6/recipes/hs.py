@@ -28,9 +28,7 @@ NAME_HEADERS = frozenset({"ITEM", "RATING", "APP", "CODING LIBRARY", "AGENT RATI
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"qualities", "sprites"}
-LABEL_SECTIONS = {("techno tools", "new echoes"): "echoes",
-                  ("digital toolbox", "basic cyberprograms"): ("programs", {"type": "basic"}),
-                  ("digital toolbox", "hacking cyberprograms"): ("programs", {"type": "hacking"})}
+LABEL_SECTIONS = {}  # (the echoes, programs and critter powers listed as run-ins: sections.py reads them in every book)
 RULE_CHAPTERS = ("wild and free", "field guide to hacking", "gadgets and gizmos", "elegant architecture",
                  "digital toolbox", "techno tools", "points of sprite", "quality hacking", "union forever",
                  "virtual life", "at the base", "infinite memory", "know your enemy", "matrix business")

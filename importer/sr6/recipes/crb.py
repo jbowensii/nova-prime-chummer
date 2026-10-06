@@ -108,9 +108,7 @@ SECTIONS = [
 SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 section blocks in this book
 # a section (or item heading) whose labelled lines are each an entry (name: the label; text: its value, or its paragraph
 # in the block's text when that is longer): kind, or (kind, attributes)
-LABEL_SECTIONS = {("matrix", "echoes"): "echoes", ("matrix", "basic"): ("programs", {"type": "basic"}),
-                  ("matrix", "hacking"): ("programs", {"type": "hacking"}),
-                  ("rigging", "autosofts"): ("programs", {"type": "autosoft"})}
+LABEL_SECTIONS = {}  # (the echoes, programs and critter powers listed as run-ins: sections.py reads them in every book)
 # chapters whose unmapped sections (and level-4 headings with no row or box) are rule sections
 RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
                  "running the game", "gear")
@@ -324,10 +322,18 @@ class _Catalog:
 
     def section(self, f):
         """Add a sections.py entry, unless the recipe's own reading wrote it already (a quality heading with its Cost
-        line)."""
-        if any(norm(e["name"]) == norm(f.name) for e in self.entries[f.kind]):
+        line; a program of the same type). A heading of a kind this module reads (a sprite power's Range and Duration
+        lines) has its fields read as the recipe would."""
+        same = lambda e: norm(e["name"]) == norm(f.name) and all(  # noqa: E731
+            e["attrs"].get(k) == f.attrs.get(k) for k in ("type",) if f.attrs.get(k))
+        if any(same(e) for e in self.entries[f.kind]):
             return
         a = dict(f.attrs)
+        if f.block is not None and f.kind in HEADERS and HEADERS[f.kind]:
+            fl = self.fields(f.kind, _text_stats(f.block, HEADERS[f.kind]), f.page)
+            fl.pop("prose", None)
+            a = {**fl, **a}
+            self.pending = []
         if f.kind == "qualities" and a.get("karma") is not None:
             a["karma"] = int(a["karma"])
         self.add(f.kind, f.name, f.page, a, f.children, f.text)

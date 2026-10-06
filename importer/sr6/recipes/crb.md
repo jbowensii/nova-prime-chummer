@@ -119,6 +119,10 @@ printing (the loaded printing is the newest).
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Shared classifier (A5):** the echoes (`### Echoes`), the basic and hacking programs (`#### Basic` / `#### Hacking` under
+  `### Programs`) and the autosofts (`### Autosofts`) are read as run-ins by the shared vocabulary in sections.py; the
+  recipe's own LABEL_SECTIONS map for them is gone. The sprite powers (`#### Name` under `### Sprite Powers`) and the
+  traditions (`#### Hermeticism` under `### Traditions`) are entries too (the sprite powers print no Range or Duration).
 - **Spell features:** the bold run-ins of the `## Rituals` intro, which says its rituals have keywords (Anchored,
   Material Link, …).
 - **Ammunition types:** the `ammo types` table (TYPES | AR | DV | COST MULTIPLIER): each row an ammunition type, its

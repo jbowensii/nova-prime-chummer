@@ -21,7 +21,7 @@ NAME_HEADERS = frozenset()
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = set()
-LABEL_SECTIONS = {("drakes", "basic drake powers"): "critterpowers", ("drakes", "dracogenesis powers"): "critterpowers"}
+LABEL_SECTIONS = {}  # (the echoes, programs and critter powers listed as run-ins: sections.py reads them in every book)
 RULE_CHAPTERS = ("those who serve the dragon", "drakes", "new initiatory group", "new martial art")
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
