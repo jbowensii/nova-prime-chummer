@@ -684,3 +684,8 @@ class CodeAliasTest(unittest.TestCase):
         self.assertEqual(crb.code_alias("B25", "Zapcannon Ammunition"), ["Zapcannon B25"])
         self.assertEqual(crb.code_alias("Zap Gun", "Zappers"), [])
         self.assertEqual(crb.code_alias("ZX-9", ""), [])
+
+    def test_a_placeholder_series_names_its_models(self):
+        self.assertEqual(crb.series_models("Zap XX-10 Series", "Formula: Zapbolt (ZB-10) or Quakebolt (QB-10)"),
+                         ["Zap ZB-10", "Zap QB-10"])
+        self.assertEqual(crb.series_models("Zap Ten", "ZB-10"), [])

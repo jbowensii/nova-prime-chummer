@@ -306,6 +306,7 @@ class _Catalog:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
+        aliases = [*aliases, *series_models(name, text)]
         al = [a for a in dict.fromkeys(aliases) if a and norm(a) != norm(name)]  # another name it is printed under
         e = {"id": i, "name": name, "page": page, "attrs": attrs or {},
              "children": list(children) + [("alias", {}, a) for a in al], "row": row or {}, "where": self.where,
@@ -791,6 +792,20 @@ _AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bho
 
 SUPPLIES = ("fuel", "ammo", "ammunition", "rounds", "bolts", "arrows", "darts", "rockets", "missiles", "grenades",
             "batteries", "power packs")  # what a weapon's supply table is titled after (the game's words)
+
+
+_SERIES = re.compile(r"\b(X{2,})(-?\d+)\b")
+
+
+def series_models(name, text):
+    """A series named with a placeholder (`Zap XX-10 Series`): the models its text prints in the placeholder's place
+    (`ZB-10`, `QB-10`), each as `Zap ZB-10`."""
+    m = _SERIES.search(name)
+    if not m or not text:
+        return []
+    stem = re.sub(r"\s+series\s*$", "", name, flags=re.I)
+    codes = re.findall(rf"\b([A-Z]{{{len(m.group(1))}}}){re.escape(m.group(2))}\b", text)
+    return [stem.replace(m.group(0), c + m.group(2)) for c in dict.fromkeys(codes) if c != m.group(1)]
 
 
 def regroup_stem(w):
