@@ -34,7 +34,16 @@ fiction's at 27, so the recipe gives the sizes (`HEADING_LEVELS`); a title's sec
 ## Not read
 
 The medical gear price list prints as text lines under a mangled header; a few weapon rows whose columns ran together
-keep shifted values (reported as book-value); the Ferrus series' second band is a separate box.
+keep shifted values (reported as book-value).
+
+## Table shapes and value styles (importer v2)
+
+- **Stacked bands.** A wide weapon or vehicle row is printed as two one-row tables, the second headed with
+  the price columns (`NAME … ATTACK RATINGS` over `AMMO | AVAIL | COST`; `NAME | HAND …` over `ARMOR … AVAIL | COST`).
+  regroup joins them into one row (`_stacked`: as many rows, no shared header, the price columns only in the second).
+- **Header cell on two lines.** `ATTACK` over a first row holding only `RATINGS`: joined into the header (`_header_rest`).
+- **A box's next item after a note.** A box (`Linear Kinetic Cannons`) lists items one table each with a `Note:` and
+  plain text between them: a later table with the box's header stays one of its rows.
 
 ## Real-book check (local, nothing committed)
 

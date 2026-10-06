@@ -28,6 +28,11 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
   else is reported unmatched. The band `DR | I/ID | AC | CM` gives the printed initiative, monitors and Defense Rating. The book prints no contact or grunt stat blocks.
 - The Shadowland BBS subscriptions (`SUBSCRIPTION AVAIL COST MINIMUM REP`): a rule table.
 
+## Table shapes and value styles (importer v2)
+
+- **A second table of the names.** The perfumes print an effects table and a price table, each with the names
+  in its first column: two tables, never one stacked row (the second's first column repeats the first's).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Smooth Operations-Core Face Rulebook-CAT28009.pdf>" --out "%TEMP%\so-check"

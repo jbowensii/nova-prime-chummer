@@ -403,3 +403,57 @@ class RealBookShapesTest(unittest.TestCase):
     def test_end_page_leaves_out_the_back_matter(self):
         self.assertNotIn("INDEX", self.text)
         self.assertEqual(self.blocks[-1].name, "Winding Up")
+
+
+STACKED = """<!-- page 5 -->
+# BLASTERS
+## Blaster Shop
+#### Zorp Cannon
+A zorp cannon zorps.
+| NAME | TYPE | DV | MODE | ATTACK |
+|---|---|---|---|---|
+|  |  |  |  | RATINGS |
+| Zorp Cannon | Launcher | 4P | SS | —/5/6/7/8 |
+| AMMO | AVAIL | COST |
+|---|---|---|
+| 2(c) | 6(I) | 9,000¥ |
+#### Fizz Charges
+Fizzy.
+| PRODUCT | EFFECT |
+|---|---|
+| Fizz Charges | fizzy |
+| NAME | AVAIL | COST |
+|---|---|---|
+| Fizz Charges | 2 | 30¥ |
+##### Blasters
+| NAME | DV | AVAIL | COST |
+|---|---|---|---|
+| Blip Gun | 2P | 2 | 100¥ |
+**Note:** a blip gun blips.
+The note goes on over a line or two of plain text.
+| NAME | DV | AVAIL | COST |
+|---|---|---|---|
+| Blop Gun | 3P | 3 | 200¥ |
+"""
+
+
+class StackedTablesTest(unittest.TestCase):
+    """Invented: a row set as two stacked bands, a header cell on two lines, a box's next row after a note."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.items = _items(regroup.regroup(STACKED)[0])
+
+    def test_second_band_joins_the_row(self):
+        r = self.items["Zorp Cannon"].row
+        self.assertEqual((r["ATTACK RATINGS"], r["AMMO"], r["AVAIL"], r["COST"]), ("—/5/6/7/8", "2(c)", "6(I)", "9,000¥"))
+
+    def test_a_second_table_of_the_names_stays_apart(self):
+        tables = regroup._elements(STACKED)
+        heads = [t.header for k, _, t in tables if k == "t"]
+        self.assertIn(["PRODUCT", "EFFECT"], heads)
+        self.assertIn(["NAME", "AVAIL", "COST"], heads)
+
+    def test_a_box_row_after_a_note_stays_in_the_box(self):
+        stats = self.items["Blasters"].stats
+        self.assertEqual([s["NAME"] for s in stats], ["Blip Gun", "Blop Gun"])

@@ -35,6 +35,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
   rating); Language and Knowledge, whose lines set their own ratings, stay in the rules. The e-softs (labelled lines
   run together with other items' text), chases, building a vehicle and repairs: rule sections.
 
+## Table shapes and value styles (importer v2)
+
+- **Stacked bands.** A modification's price tables print `MOD SLOTS | RATING` over `AVAILABILITY | COST`: joined
+  into one band by regroup (`_stacked`), read as before.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"

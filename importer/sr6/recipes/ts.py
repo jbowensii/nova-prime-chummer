@@ -77,10 +77,10 @@ def _vehicle(text):
     of either: the Honda Raptor's box prints none, its values run into the VAA Estrada's)."""
     tabs = crb._tables(text)
     hand = [t for t in tabs if t[0][:1] == ["HAND"]]
-    pilot = [t for t in tabs if t[0][:1] == ["PILOT"]]
+    pilot = [t for t in tabs if "PILOT" in t[0]]  # its own table, or the second band joined to the first (regroup)
     if len(hand) != 1 or len(pilot) != 1 or re.search(r"\d¥$", text, re.M) and len(re.findall(r"\d¥", text)) > 1:
         return None
-    cells = {h: v for t in (hand[0], pilot[0]) if len(t[1]) == 1 for h, v in zip(t[0], t[1][0])}
+    cells = {h: v for t in {id(t): t for t in (hand[0], pilot[0])}.values() if len(t[1]) == 1 for h, v in zip(t[0], t[1][0])}
     return {VEHICLE[h]: cells[h] for h in VEHICLE} if set(cells) == set(VEHICLE) else None
 
 

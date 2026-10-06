@@ -106,7 +106,13 @@ def _elements(md):
             while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
                 rows.append(_cells(lines[i]))
                 i += 1
-            out.append(("t", page, _Table(_cells(ln), rows, page, pos=len(out))))
+            header, rows = _header_rest(_cells(ln), rows)
+            prev = out[-1] if out else None
+            if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
+                t = prev[2]  # a second header row under the first, its values under it: one table, side by side
+                t.header, t.rows = t.header + header, [a + b for a, b in zip(t.rows, rows)]
+                continue
+            out.append(("t", page, _Table(header, rows, page, pos=len(out))))
         elif m := _HEADING.match(ln):
             level, text = len(m.group(1)), m.group(2).strip()
             prev = out[-1] if out else None
@@ -120,6 +126,30 @@ def _elements(md):
         else:
             out.append(("x", page, ln))
     return out
+
+
+_PRICE_HEAD = {"AVAIL", "AVAILABILITY", "AVAIL.", "COST"}
+_HEAD_WORD = re.compile(r"[A-Z][A-Z/.()]*(?: [A-Z][A-Z/.()]*)*")
+
+
+def _header_rest(header, rows):
+    """A header cell set on two lines (`ATTACK` over `RATINGS`): the first row holds only the rest of some header cells
+    (capitals, no digits, its name cell empty) -> joined into the header."""
+    r = rows[0] if rows else None
+    if (r and len(r) == len(header) and not r[0] and any(r)
+            and all(not c or _HEAD_WORD.fullmatch(c) for c in r)):
+        return [f"{h} {c}".strip() for h, c in zip(header, r)], rows[1:]
+    return header, rows
+
+
+def _stacked(t, header, rows):
+    """True when a table printed right under t continues t's rows (the book sets a wide row as two stacked bands:
+    `NAME | TYPE | DV | MODE | ATTACK RATINGS` over `AMMO | AVAIL | COST`): as many rows, headers sharing no cell, and
+    the second band carrying the price columns."""
+    up = {h.upper() for h in t.header}
+    return (bool(rows) and len(rows) == len(t.rows) and not up & {h.upper() for h in header}
+            and bool(_PRICE_HEAD & {h.upper() for h in header}) and not _PRICE_HEAD & up
+            and not any(a[:1] == b[:1] and a[:1] != [""] for a, b in zip(t.rows, rows)))  # (a second table of the names)
 
 
 # --- units: what one heading (or a chapter's lead) holds --------------------------------------------------------
@@ -216,8 +246,10 @@ def _units(els, start, end, chapter, item_keys, aliases):
         elif kind == "t":
             fresh, label = False, None
             v.section = section
-            # a section's tables are its text; an item's or box's tables right under its heading are its stat box
-            (cur.stats if mode == "box" and cur.kind != "section" else cur.body).append(v)
+            # a section's tables are its text; an item's or box's tables right under its heading are its stat box, and
+            # so is a later one with a header of that box (a box's next item printed after a note on the one above)
+            boxed = mode == "box" or any(s.header == v.header for s in cur.stats)
+            (cur.stats if boxed and cur.kind != "section" else cur.body).append(v)
         else:
             fresh = False
             m = _LABEL.match(v)
