@@ -11,7 +11,8 @@ import re
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
 from importer.sr6 import KINDS
-from importer.sr6.recipes.crb import _BEING, _Catalog, _md, _tables, _text
+from importer.sr6.recipes import shapes
+from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
@@ -348,6 +349,14 @@ def _qualities(cat, name, text, page):
         lv = re.search(r"max(?:imum)?\.?\s*(?:of\s*)?(\d+)\s*levels?", karma, re.I)
         attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k and int(k.group(1)),
                  "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None, "maxLevel": lv and int(lv.group(1))}
+        if not k and re.search(r"\bsee\s+text\b", karma, re.I):
+            # `Bonus: See text`: the prices its own paragraphs print (`a bonus of 8 Karma … a bonus of 15 Karma`),
+            # up to the next quality's price line
+            nxt = next((j for j in range(i + 1, len(lines)) if _KARMA.match(lines[j])), len(lines))
+            ks = [int(x) for x in re.findall(r"\b(?:bonus|cost)\s+of\s+(\d+)\s+Karma", " ".join(lines[i + 1:nxt]), re.I)]
+            if ks:
+                k = True
+                attrs.update(karma=min(ks), karmaMax=max(ks) if len(set(ks)) > 1 else None)
         if not k:
             cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": qname, "field": "karma",
                                "value": karma, "page": page})
@@ -405,6 +414,18 @@ def _contact(cat, name, text, page, band=""):
     return True
 
 
+def _vehicle(cat, b, band, page):
+    """A vehicle printed with its stats in its text (shapes.vehicle_band): a vehicles entry, its tag line the
+    category, a lower-case title capitalized."""
+    cols = HEADERS["vehicles"]
+    attrs = {"category": slug(b.tags) or "vehicles", **{cols[h]: _value(cols[h], v) for h, v in band.items() if h in cols}}
+    name = b.name.title() if b.name[:1].islower() else b.name
+    keep = [ln for ln in b.text.splitlines() if not ln.startswith("|") and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip())
+            and not re.fullmatch(r"[\d/—–\-+*.,()¥A-Z ]+", ln.strip())]
+    cat.add("vehicles", name, page, attrs, (), "\n".join(keep).strip())
+    return True
+
+
 # --- the book ------------------------------------------------------------------------------------------------------
 
 def extract(regrouped, ctx=None):
@@ -442,6 +463,8 @@ def extract(regrouped, ctx=None):
             done = _qualities(cat, b.name, text, page)
         elif ch == CONTACTS and b.type == "item":
             done = _contact(cat, b.name, text, page, _md(b))
+        elif b.type == "item" and len(band := shapes.vehicle_band(b.text)) >= 6:
+            done = _vehicle(cat, b, band, page)
         if done:
             continue
         if not any(c == ch for c in RULE_CHAPTERS):

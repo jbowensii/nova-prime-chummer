@@ -34,7 +34,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                            heading=getattr(known, "HEADING_FONT", None))
         else:
             sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest() if os.path.exists(pdf) else ""
-            meta = {"converter": SR6_CONVERTER_VERSION, "sha256": sha, "title": ""}
+            meta = {"converter": SR6_CONVERTER_VERSION, "sha256": sha, "title": _pdf_title(pdf)}
         md = Path(md_path).read_text(encoding="utf8")
         meta["pages"] = len(re.findall(r"<!-- page \d+ -->", md))
         rec = {"file": file_name, "sha256": meta["sha256"], "converter": meta["converter"], "pages": meta["pages"]}
@@ -117,6 +117,19 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
+
+
+def _pdf_title(pdf):
+    """The PDF's metadata title ('' when absent or unreadable): a book identified by its title (a general recipe) is
+    identified again when re-run from its book.md."""
+    if not os.path.exists(pdf):
+        return ""
+    import pdfplumber
+    try:
+        with pdfplumber.open(pdf) as d:
+            return (d.metadata or {}).get("Title", "") or ""
+    except Exception:  # noqa: BLE001 (an unreadable PDF has no title)
+        return ""
 
 
 def _printing(sha):

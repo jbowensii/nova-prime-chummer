@@ -33,6 +33,12 @@ status, the trenchcoat's concealability, the cybereyes and cyberears re-rated 6 
 enhancements removed, autovoice and vocal expansion without ratings and hacked autovoice removed, Stolen Gear's new
 rules (0 Karma), the Companion versions of the life modules, the page references.
 
+## Formula styles and issues (importer v2)
+
+- Rows by rating (the advanced cyberware rows) -> `tier()` rules for cost, avail, Essence, capacity. `x2` (twice
+  the instrument's price): an `ambiguous` issue stating `base*2`. `Rating x N¥`, avail `(Rating x N)` -> `R*N`.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-No Future-Sourcebook-CAT27453.pdf>" --out "%TEMP%\nf-check"

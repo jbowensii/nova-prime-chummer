@@ -53,13 +53,13 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
-| weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
-| armor | armor | category*, defense, capacity, avail, cost | — |
+| weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
+| armor | armor | category*, rating, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
-| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
 | rituals | ritual | keywords, threshold | — |
@@ -157,6 +157,64 @@ still shows what the book has ("book: none printed").
 
 **Edits.** An edit keeps the book's formulas, except for a field it sets otherwise (the value typed wins), and never
 stores issues: an edited entry's issues are the book's, less the fields the edit sets.
+
+### What the importer writes (`importer/sr6/formula.py`)
+
+The SR6 importer reads the books' value styles into formulas, by the style, never by an item's name (each book's notes
+are in its recipe's `.md` under `importer/sr6/recipes/`):
+
+| printed | formula |
+|---|---|
+| `Rating x 2,000¥`, `Force x 4,000¥`, `Capacity x 50¥` (the capacity range is the rating), avail `Rating(L)` | `R*2000`, `R*4000`, `R*50`, `R` |
+| `(Rating/3)` | `(R/3)` (rounding up: the books don't say otherwise) |
+| `12,000¥ + [4,000¥ x Size]`, avail `6(I) + Size` (the SIZE column's range is the rating) | `12000 + (4000*R)`, `6 + R` |
+| `Magic*100¥` | `M*100` |
+| `300¥ per CF`, `250¥/pair`, `Rating x 200¥ per dose` | `Q*300`, `Q*250`, `Q*(R*200)`, `unit="CF"` … |
+| `2,000¥ (+500¥ per additional dart)` | `2000 + 500*(Q - 1)`, `unit="dart"` |
+| `500¥ (+100¥ for thermal smoke)`, `… the mini-outboard (costs 500¥)` in the description | `500 + 100*opt.thermal-smoke` |
+| a section's open versions at half the listed price | `(Q*300)*(1 - 0.5*opt.open)` |
+| rows printed one per rating band or level (`Matrix Relay` 1–3, 4–6, 7–9, `(Rating 10+)`) | one `tier(R; 1-3: R*1000; 4-6: R*5000; 7-9: R*20000; 10+: R*50000)` on every row |
+| seats `2/6`, `2+2` (front and back) | `2 + 6`, `2 + 2` |
+| a DV `(1–10) S` | `R` (field `dv`) |
+| an energy weapon's `Uses 2 Energy per shot`, with the power supply it comes with | `ref(gear:da.weapon-power-supplies-power-clip, energy)/2`, `round="down"` |
+
+A price worked out from another item the buyer picks (`Commlink cost plus rating x 100`, `x2`, `+100%`, `250¥ +
+Certified Credstick Cost`, a row of `*` priced at `one half the Essence and nuyen cost` of a base system) has no catalog
+id to `ref`, and `B` is the field's own printed value: the importer writes it as an `ambiguous` issue stating the rule
+(`priced from another item: base + R*100`), for the user to settle. A count range a row prints beside a per-unit price
+(a trailer's SPACE `1–9`) stays in the text; `qty` is only ever the units one price buys.
+
+Issues the importer writes: `missing` for an item's avail or cost, a quality's Karma, the rating range a rated value
+needs (a band row has its band), an implant's Essence, a ranged weapon's modes or ammo, a vehicle stat its stat line
+leaves out; `unreadable` for a word or a value no style reads (`Special`, `Body x 500¥`); `ambiguous` for two values in
+one cell (`800¥/1,600¥`, `400¥ (A); 450¥ (B)`) and for a price off another item. A dash or `n/a` is a printed value.
+
+Three invented examples:
+
+```xml
+<!-- rating bands: the same rule on every band row -->
+<gear id="zz.glow-relay" source="ZZ" page="12" category="relays" rating="4–6" avail="4(L)" cost="Rating x 500">
+  <name>Glow Relay</name>
+  <formula field="cost">tier(R; 1-3: R*100; 4-6: R*500; 7+: R*2000)</formula>
+  <formula field="avail">tier(R; 1-3: 2; 4-6: 4; 7+: R)</formula>
+</gear>
+<!-- rating 5: 2,500¥, avail 4(L) -->
+
+<!-- a price per unit with a cheaper version -->
+<gear id="zz.crate" source="ZZ" page="30" category="crates" avail="2" cost="40" per="CF">
+  <name>Crate</name>
+  <formula field="cost" unit="CF">(Q*40)*(1 - 0.5*opt.open)</formula>
+</gear>
+<!-- 8 CF: 320¥; 8 CF, open: 160¥ -->
+
+<!-- a price off another item, and a field the book leaves out -->
+<gear id="zz.buzz-hack" source="ZZ" page="77" category="hacks" rating="1–4" cost="Widget cost plus rating x 50">
+  <name>Buzz Hack</name>
+  <issue field="cost" code="ambiguous" page="77">priced from another item: base + R*50</issue>
+  <issue field="avail" code="missing" page="77">no availability printed</issue>
+</gear>
+<!-- the user's edit gives the price (a 1,000¥ widget at rating 2: 1,100¥) and the availability -->
+```
 
 ## Override files
 

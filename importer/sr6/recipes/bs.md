@@ -33,6 +33,30 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   multiplier`, `can only be applied to cyberware`); the sections stay rules too. Cybermancy, surgery, drug rules: rule
   sections.
 
+## Formula styles and issues (importer v2)
+
+- `N¥ per dose` (drugs, toxins, nanites), `Rating x N¥ per dose` -> `Q*N`, `Q*(R*N)`, unit dose. `Rating x N¥`,
+  `(Rating) x N¥`, Essence `Rating x 0.N`, avail `(Rating + N)(L)` -> `R*N`, `(R + N)`. Capacity `[Rating]`,
+  `(Rating/2)`.
+- A price naming what it holds (`N¥ + contents`): an `ambiguous` issue stating the rule (`N + base`); the user
+  prices the contents.
+- Issues: rows printing `*` (a footnote: the single cybereye is priced from the core cybereyes) are `unreadable`;
+  rated rows with no range `missing rating`; the colony/kit products printed two to a row keep the first, the
+  second product's avail and price unread.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- **A price per unit in the description.** A row with a plain price whose description prices it per length
+  (`per ten centimeters`, with a minimum and maximum): `Q*N`, unit `10 cm` (the minimum and maximum stay in the text)
+  (`formula.text_unit`).
+- A row printing only footnote marks (`*`) whose description prices it off another item (`one half the Essence
+  and nuyen cost`, `one half the capacity`): an `ambiguous` issue per field stating the rule (`base*0.5`, `base`)
+  (the single cybereye: the base system is the user's to pick).
+- Rows by level (`Telescoping modification (Level 1)`, `(Level 2)`): one `tier()` rule where the levels differ
+  (capacity `tier(R; 1: 2; 2: 4)`); the same price on each level stays a plain number.
+
+## Table shapes and value styles (importer v2)
+
+- **Thousands point.** A few prices print `1.200¥`: read as 1200 (a point followed by exactly three digits).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"

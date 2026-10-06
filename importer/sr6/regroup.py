@@ -64,6 +64,29 @@ def keys(name, aliases=None):
     return [k for k in dict.fromkeys(out) if k] or [""]
 
 
+def full_name(row, heading):
+    """True when a heading prints a row's item under its full name, so the entry takes it: the row drops a maker or
+    brand in front (`Bulldog` / `GMC Bulldog`) or cuts its last word short (`Laser mic` / `Laser microphone`). A heading
+    adding words after the row's name (`Ballista II Missile System`, a nickname) is a description title, not the name."""
+    rw, hw = norm(row).split(), norm(heading).split()
+    if not shorter_name(row, heading):
+        return False
+    return hw[len(hw) - len(rw):] == rw or (len(rw) > 1 and hw[-1].startswith(rw[-1]) and hw[-1] != rw[-1])
+
+
+def shorter_name(row, heading):
+    """True when a row's name is a shorter printing of a heading's: its words all among the heading's, two or more of
+    them or one with a digit (`MGL-48` in `Armtech MGL-48`, `GMC Bulldog` in `GMC Bulldog Step-Van`), or the heading's
+    with its last word cut short (`Laser mic`, `Omni-directional mic` for `… microphone`)."""
+    rw, hw = norm(row).split(), norm(heading).split()
+    if not rw or not hw or rw == hw or re.search(r"\band\b|&|/|,", heading):
+        return False  # (a heading over several items names none of them in full)
+    if len(rw) < len(hw) and set(rw) <= set(hw) and (len(rw) > 1 or re.search(r"\d", rw[0])) and " ".join(rw) in " ".join(hw):
+        return True
+    return (len(rw) > 1 and "".join(rw[:-1]) == "".join(hw[:-1]) and len(rw[-1]) >= 3 and hw[-1].startswith(rw[-1])
+            and rw[-1] != hw[-1])
+
+
 def _names(name):
     """A heading `A 70/75` stands for `A 70` and `A 75`, `Devil Rat/Demon Rat` for each."""
     m = re.match(r"(.*\s)([\w-]+(?:/[\w-]+)+)$", name)
@@ -87,6 +110,7 @@ class _Table:
     catalog: bool = False
     pos: int = 0  # its place in the book's elements
     unpaired: list = field(default_factory=list)  # catalog rows no description took
+    notes: dict = field(default_factory=dict)  # the labelled lines printed right under it in a box (`Note:`)
 
 
 def _elements(md):
@@ -106,7 +130,15 @@ def _elements(md):
             while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
                 rows.append(_cells(lines[i]))
                 i += 1
-            out.append(("t", page, _Table(_cells(ln), rows, page, pos=len(out))))
+            header, rows = _header_rest(_cells(ln), rows)
+            header = [deinterleave(h) or h for h in header]
+            rows = [_repair_row(header, r) for r in rows]
+            prev = out[-1] if out else None
+            if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
+                t = prev[2]  # a second header row under the first, its values under it: one table, side by side
+                t.header, t.rows = t.header + header, [a + b for a, b in zip(t.rows, rows)]
+                continue
+            out.append(("t", page, _Table(header, rows, page, pos=len(out))))
         elif m := _HEADING.match(ln):
             level, text = len(m.group(1)), m.group(2).strip()
             prev = out[-1] if out else None
@@ -120,6 +152,101 @@ def _elements(md):
         else:
             out.append(("x", page, ln))
     return out
+
+
+# column headers the books set on two lines (a general vocabulary of the stat columns): the converter, reading a
+# header cell's two lines letter by letter across, can interleave them (`S INP TD` for SPD over INT)
+TWO_LINE_HEADERS = ("SPD INT", "TOP SPD", "SPEED INT", "SPEED TOP", "TOP SPEED", "SPEED INTERVAL", "ATTACK RATINGS",
+                    "DEVICE RATING", "DATA PROCESSING", "DEFENSE RATING", "MOD SLOTS", "SIZE CLASS")
+
+
+def _interleaves(s, a, b):
+    """True when s is a and b with their letters interleaved, each in its order."""
+    if len(s) != len(a) + len(b):
+        return False
+    ok = {(0, 0)}
+    for k, ch in enumerate(s, 1):
+        ok = {(i + 1, j) for i, j in ok if i < len(a) and a[i] == ch} | {(i, j + 1) for i, j in ok if j < len(b) and b[j] == ch}
+        if not ok:
+            return False
+    return (len(a), len(b)) in ok
+
+
+def deinterleave(cell):
+    """The two-line header (TWO_LINE_HEADERS) whose lines the cell holds interleaved (`S INP TD` -> `SPD INT`,
+    `T SO PDP` -> `TOP SPD`), else None. A cell that already reads is left to the caller."""
+    s = re.sub(r"[\s.]", "", cell.upper())
+    if not s.isalpha() or cell.upper().strip() in TWO_LINE_HEADERS:
+        return None
+    return next((h for h in TWO_LINE_HEADERS if (w := h.split()) and len(w) == 2
+                 and (_interleaves(s, w[0], w[1]) or _interleaves(s, w[1], w[0]))), None)
+
+
+_PRICE_HEAD = {"AVAIL", "AVAILABILITY", "AVAIL.", "COST"}
+_HEAD_WORD = re.compile(r"[A-Z][A-Z/.()]*(?: [A-Z][A-Z/.()]*)*")
+
+
+def _header_rest(header, rows):
+    """A header cell set on two lines (`ATTACK` over `RATINGS`): the first row holds only the rest of some header cells
+    (capitals, no digits, its name cell empty) -> joined into the header."""
+    r = rows[0] if rows else None
+    if (r and len(r) == len(header) and not r[0] and any(r)
+            and all(not c or _HEAD_WORD.fullmatch(c) for c in r)):
+        return [f"{h} {c}".strip() for h, c in zip(header, r)], rows[1:]
+    return header, rows
+
+
+# the shape of a cell under a column the books print in every stat table (a general vocabulary of the game's columns)
+_DASH = r"[—–-]"
+_COLUMN_SHAPES = {
+    "MODES": r"(?:SS|SA|BF|FA)(?:\s*\([^)]*\))?(?:\s*/\s*(?:SS|SA|BF|FA)(?:\s*\([^)]*\))?)*|" + _DASH,
+    "ATTACK RATINGS": rf"(?:{_DASH}|\d+\*?)(?:\s*/\s*(?:{_DASH}|\d+\*?)){{4}}(?:\s*\([^)]*\))?",
+    "AMMO": r"(?:\d+\s*(?:x\s*\d+\s*)?\([^)]*\)|Energy)(?:\s*(?:\+|\bor\b|\bper\b).*)?|" + _DASH,
+    "AVAIL": rf"\d+\s*(?:\(?[LIF]\)?)?|{_DASH}",
+    "COST": rf"[\d,.]+\s*¥.*|{_DASH}",
+}
+_COLUMN_NAMES = {"MODE": "MODES", "ATTACK RATING": "ATTACK RATINGS", "AR": "ATTACK RATINGS",
+                 "AVAILABILITY": "AVAIL", "AVAIL.": "AVAIL"}
+
+
+def _shape(h):
+    h = " ".join(h.upper().rstrip("*†").split())
+    return _COLUMN_SHAPES.get(_COLUMN_NAMES.get(h, h))
+
+
+def _fits(h, v):
+    sh = _shape(h)
+    return sh is None or not v.strip() or re.fullmatch(sh, v.strip()) is not None
+
+
+def _repair_row(header, row):
+    """A row the converter set with two cells run into one (`SS(1)—/14/20/22/18(4km)`: the mode and the attack
+    ratings), every later cell one column to the left and a stray cell at its end: the run-together cell is split
+    where both halves fit their columns' shapes (_COLUMN_SHAPES), the later cells move back into place and the stray
+    one goes. Only when every shaped cell then fits; otherwise the row stays as printed."""
+    if len(row) not in (len(header), len(header) - 1) or all(_fits(h, v) for h, v in zip(header, row)):
+        return row
+    for i in range(1, min(len(row), len(header) - 1)):
+        a, b, v = header[i], header[i + 1], row[i].strip()
+        if not (_shape(a) and _shape(b)):
+            continue
+        for k in range(1, len(v)):
+            x, y = v[:k].strip(), v[k:].strip()
+            if x and y and _fits(a, x) and _fits(b, y):
+                fixed = (row[:i] + [x, y] + row[i + 1:])[:len(header)]
+                if all(_fits(h, c) for h, c in zip(header, fixed)):
+                    return fixed
+    return row
+
+
+def _stacked(t, header, rows):
+    """True when a table printed right under t continues t's rows (the book sets a wide row as two stacked bands:
+    `NAME | TYPE | DV | MODE | ATTACK RATINGS` over `AMMO | AVAIL | COST`): as many rows, headers sharing no cell, and
+    the second band carrying the price columns."""
+    up = {h.upper() for h in t.header}
+    return (bool(rows) and len(rows) == len(t.rows) and not up & {h.upper() for h in header}
+            and bool(_PRICE_HEAD & {h.upper() for h in header}) and not _PRICE_HEAD & up
+            and not any(a[:1] == b[:1] and a[:1] != [""] for a, b in zip(t.rows, rows)))  # (a second table of the names)
 
 
 # --- units: what one heading (or a chapter's lead) holds --------------------------------------------------------
@@ -140,6 +267,7 @@ class _Unit:
     merged: bool = False
     pos: int = 0
     box_labels: bool = False  # labelled lines taken as a stat box (not lines met in the description)
+    full: set = field(default_factory=set)  # id() of the rows printing a shorter name: named by this heading
     shared: bool = False  # a box holding a description it shares with other boxes
 
     def has_box(self):
@@ -188,6 +316,15 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     continue
             if _is_label(level, text):
                 nxt = els[i] if i < end else None
+                if nxt and nxt[0] == "x" and (tag := re.fullmatch(r"\(([^()]{2,60})\)", nxt[2].strip())):
+                    # a lower-case title over a tag line (`evo landtreader` + `(Personal Motor Vehicle)`): an item
+                    # whose description and stats follow
+                    cur = _Unit("item", text, level, page, chapter, section, tags=tag.group(1))
+                    cur.pos = i - 1
+                    units.append(cur)
+                    i += 1
+                    mode, fresh = "box", False
+                    continue
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
                     continue  # an art caption: dropped, the text flows on
                 # a stat box: a title an item heading has, or one-row bands followed by labelled lines
@@ -216,15 +353,21 @@ def _units(els, start, end, chapter, item_keys, aliases):
         elif kind == "t":
             fresh, label = False, None
             v.section = section
-            # a section's tables are its text; an item's or box's tables right under its heading are its stat box
-            (cur.stats if mode == "box" and cur.kind != "section" else cur.body).append(v)
+            # a section's tables are its text; an item's or box's tables right under its heading are its stat box, and
+            # so is a later one with a header of that box (a box's next item printed after a note on the one above)
+            boxed = mode == "box" or any(s.header == v.header for s in cur.stats)
+            (cur.stats if boxed and cur.kind != "section" else cur.body).append(v)
         else:
             fresh = False
             m = _LABEL.match(v)
             if m:
                 key, value = m.group(2).strip(), m.group(3).strip()
-                label, last, listy = ((cur, key) if key not in cur.labels else None), v, not value
+                targets = [cur.labels] if key not in cur.labels else []
                 cur.labels.setdefault(key, value)
+                if mode == "box" and cur.stats and key not in cur.stats[-1].notes:
+                    cur.stats[-1].notes[key] = value  # a note under one of a box's tables: that table's item's
+                    targets.append(cur.stats[-1].notes)
+                label, last, listy = ((targets, key) if targets else None), v, not value
                 if mode == "box":
                     cur.box_labels = True
                     continue
@@ -235,10 +378,12 @@ def _units(els, start, end, chapter, item_keys, aliases):
                 # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text (but a
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.
-                u, key = label
-                prev = u.labels[key]
-                joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
-                u.labels[key], last = joined + v.strip(), v
+                targets, key = label
+                for d in targets:
+                    prev = d[key]
+                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
+                    d[key] = joined + v.strip()
+                last = v
                 if mode == "box":
                     continue
             else:
@@ -347,6 +492,8 @@ def _chapter(units, aliases, name_headers, report, variants=False):
             if d:
                 taken.add((id(d), k))
                 d.rows.append((t, r))
+                if full_name(r[0], d.name):  # (paired by an alias: the heading prints the full name)
+                    d.full.add(id(r))
             if k and k in seen:
                 report.append({"kind": "duplicate", "of": "row", "name": r[0], "table": t.title or t.header[0],
                                "page": t.page, "chapter": chapter, "paired": d.name if d else ""})
@@ -355,6 +502,20 @@ def _chapter(units, aliases, name_headers, report, variants=False):
             seen.add(k)
             if not d:
                 t.unpaired.append(r)
+    # a row printing a shorter name than its description's heading (`Laser mic` / `Laser microphone`, `MGL-48` /
+    # `Armtech MGL-48`, `GMC Bulldog` / `GMC Bulldog Step-Van`) takes the one description no row took whose name holds
+    # it; it is named by that heading when the heading is its full name (full_name)
+    free = [d for d in descs if not d.rows and not d.has_box()]
+    for t, r in list(unpaired):
+        near = [d for d in free if r and shorter_name(r[0], d.name)]
+        if len(near) == 1:
+            d = near[0]
+            d.rows.append((t, r))
+            if full_name(r[0], d.name):
+                d.full.add(id(r))
+            free.remove(d)
+            unpaired.remove((t, r))
+            t.unpaired.remove(r)
     # a heading ending in "series" takes every unpaired row starting with the rest of its key
     for d in descs:
         k = keys(d.name, aliases)[0]
@@ -431,9 +592,12 @@ def _text(body):
 
 def _row(header, r):
     r = list(r) + [""] * (len(header) - len(r))
-    # a band's second R is Resonance (`B A R S W L I C R ESS`); any other header printed twice keeps its last cell
-    # ponytail: key cells by position if a book prints another header twice
-    return dict(zip(["RES" if h == "R" and "R" in header[:i] else h for i, h in enumerate(header)], r))
+    # a band's second R is Resonance (`B A R S W L I C R ESS`); any other header printed again is `<header> (2)`, the
+    # first cell keeping the header (`… | AVAIL | COST | COST`: the price is the first)
+    names = []
+    for i, h in enumerate(header):
+        names.append("RES" if h == "R" and "R" in header[:i] else f"{h} ({header[:i].count(h) + 1})" if h in header[:i] else h)
+    return dict(zip(names, r))
 
 
 def _emit(units):
@@ -446,10 +610,16 @@ def _emit(units):
             out.append(Block("section", u.name, u.chapter, u.section, "", u.page, tags=u.tags, labels=dict(u.labels),
                              text=text, level=u.level))
         else:
-            stats = [_row(t.header, r) for t in u.stats for r in t.rows]
+            # a box of several one-row tables, a note under each: each row keeps its own notes (as columns: NOTE …)
+            # (an item's row: named, not a being's or a vehicle's band)
+            several = sum(1 for t in u.stats if len(t.rows) == 1) > 1
+            stats = [{**_row(t.header, r), **({k.upper(): x for k, x in t.notes.items()}
+                                              if several and len(t.rows) == 1 and len(t.header[0]) > 2
+                                              and re.search(r"[A-Za-z]{2}", r[0] if r else "") else {})}
+                     for t in u.stats for r in t.rows]
             label = u.name if u.kind == "box" else ""
             for t, r in u.rows or [(None, None)]:
-                out.append(Block("item", r[0] if r else u.name, u.chapter, u.section,
+                out.append(Block("item", u.name if r and id(r) in u.full else r[0] if r else u.name, u.chapter, u.section,
                                  t.title if t else label, u.page, list(t.header) if t else [],
                                  _row(t.header, r) if t else None, stats, u.tags, dict(u.labels), text, u.level))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:

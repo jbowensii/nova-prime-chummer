@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes
+from importer.sr6 import KINDS, NS, archetypes, formula
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
@@ -140,6 +140,7 @@ HEADERS = {
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
+             "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
@@ -196,6 +197,7 @@ def _value(attr, v):
         return "—"
     if attr == "cost":
         v = re.sub(r"(?<=\d),(?=\d{3})", "", v).replace("¥", "").strip()
+        v = re.sub(r"^(\d{1,3})\.(\d{3})$", r"\1\2", v)  # `1.200¥`: a thousands point
     return v
 
 
@@ -282,8 +284,9 @@ class _Catalog:
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
         self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
+        self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
 
-    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
+    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         base = slug(name) or KINDS[kind]
         i, n = base, 2
@@ -299,7 +302,8 @@ class _Catalog:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
-        e = {"id": i, "name": name, "page": page, "attrs": attrs or {}, "children": list(children)}
+        e = {"id": i, "name": name, "page": page, "attrs": attrs or {}, "children": list(children), "row": row or {},
+             "where": self.where, "text": text}
         self.entries[kind].append(e)
         if text.strip():
             self.texts.append((kind, i, text.strip()))
@@ -345,7 +349,14 @@ class _Catalog:
             a = cols.get(k.upper())
             if a and v and a not in out:
                 out[a] = _value(a, v)
-        if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))):
+        if kind == "weapons" and (m := re.fullmatch(r"(.+?)\s*\(\s*(\d[\d.,]*\s*m)\s+blast\s*\)", out.get("dv", ""), re.I)):
+            out["dv"] = m.group(1)  # `8P(10m blast)`: the DV and the blast run into one cell
+            out.setdefault("blast", m.group(2))
+        if kind == "weapons" and (m := re.fullmatch(r"(\d+\s*[PS](?:\([^)]*\))?)\s*\+\s*([a-z].*)", out.get("dv", ""), re.I)):
+            out["dv"] = m.group(1)  # `1P + special`: the DV, and a note for the text
+            out.setdefault("prose", []).append(f"**DV:** {m.group(1)} + {m.group(2)}")
+        if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))) \
+                and m.group(1).count("(") == m.group(1).count(")"):  # (not `2,000¥ (+500¥ per additional dart)`)
             out["cost"] = m.group(1)  # "50 per 100m"; "15 per 10" under a COST (PER 10 ROUNDS) column
             out.setdefault("per", m.group(2))
         return out
@@ -505,13 +516,22 @@ class _Catalog:
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()], m.group(1)
+            if "rating" not in f and re.search(r"(?i)\b(?:size|level|force|grade)\b", f.get("cost", "") + f.get("avail", "")):
+                # priced by its Size (Level, Force…): the range its SIZE column prints is the rating it comes in
+                rng = next((v for h, v in (b.row or {}).items() if h.upper() in ("SIZE", "LEVEL", "FORCE", "GRADE")
+                            and re.fullmatch(r"\s*\d+\s*[–-]\s*\d+\s*", v or "")), None)
+                if rng:
+                    f["rating"] = rng.strip()
+            if kind == "weapons" and "ammo" not in f and (ammo := ammo_from_text(b.text)):
+                f["ammo"] = ammo  # its row prints no ammo, its description does (`internal magazines that hold …`)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
                         and re.fullmatch(r"\d+\s*[–-]\s*\d+", g.get("capacity", "")):
                     g["rating"] = g["capacity"]  # priced by capacity: bought at a capacity in its range
                 a = {**attrs, **g}
                 self.check(kind, n, a, page)
-                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]))
+                # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
+                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})})
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -607,7 +627,36 @@ class _Catalog:
 
     # --- the files ---
 
+    def rules(self):
+        """Each entry's <formula> and <issue> children (importer/sr6/formula.py), once, after every entry is read: a
+        band group's rule needs all its rows."""
+        if getattr(self, "_ruled", False):
+            return
+        self._ruled = True
+        # a section's statement of a cheaper or dearer version (`open construction versions … at half the listed
+        # cost`): an option on the priced items of its section that its heading names
+        said = [(e["where"], e["name"], o) for es in self.entries.values() for e in es
+                for o in formula.section_options(e.get("text") or "")]
+        # the book's weapon power supplies (gear with an Energy): an energy weapon's shots are read off the one it
+        # comes with
+        supplies = {re.sub(r"^.*\((.+)\)\s*$", r"\1", e["name"]).lower(): f"{self.source.lower()}.{e['id']}"
+                    for e in self.entries["gear"] if (e["attrs"].get("energy") or "").strip()}
+        sections = {}  # the section prose (rule entries) by place
+        for e in self.entries["rules"]:
+            sections.setdefault(e["where"], []).append(e.get("text") or "")
+        for kind, es in self.entries.items():
+            tiered = formula.tier_groups(es) if kind in formula.FORMULA_FIELDS else {}
+            for e in es:
+                opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
+                e["children"] += formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable,
+                                                  opts, e.get("text") or "")
+                if kind == "weapons" and supplies and re.fullmatch(r"(?i)\s*energy\s*", e["attrs"].get("ammo") or "") and (
+                        x := formula.energy_ammo(e.get("text"), "\n".join(sections.get(e["where"], ())), supplies)):
+                    e["children"].insert(next((i for i, c in enumerate(e["children"]) if c[0] == "issue"),
+                                              len(e["children"])), ("formula", {"field": "ammo", "round": "down"}, x))
+
     def xml(self, kind):
+        self.rules()
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
             a = {"id": e["id"], "source": self.source, "page": e["page"], **e["attrs"]}
@@ -625,6 +674,25 @@ class _Catalog:
 
 def _attrs(d):
     return "".join(f" {k}={quoteattr(_s(v))}" for k, v in d.items() if v is not None and v != "")
+
+
+# what a weapon's ammunition comes in, as the books' AMMO cells abbreviate it (the game's vocabulary)
+AMMO_HOLDERS = {"internal magazine": "m", "clip": "c", "drum": "d", "belt": "belt", "cylinder": "cy",
+                "break action": "b", "muzzle": "ml"}
+_COUNT_WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
+_AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bhold(?:s|ing)?\s+(?:up\s+to\s+)?(\d+|"
+                        + "|".join(_COUNT_WORDS) + r")\s+(?:bolts?|rounds?|arrows?|darts?|shells?|shots?|grenades?)\b", re.I)
+
+
+def ammo_from_text(text):
+    """A weapon's ammo as its description words it (`internal magazines that hold up to four bolts` -> `4(m)`), or
+    None."""
+    m = _AMMO_TEXT.search(" ".join((text or "").split()))
+    if not m:
+        return None
+    n = m.group(2).lower()
+    n = str(_COUNT_WORDS.index(n)) if n in _COUNT_WORDS else n
+    return f"{n}({AMMO_HOLDERS[m.group(1).lower()]})"
 
 
 def _text(b, skip=()):
@@ -741,6 +809,7 @@ def extract(regrouped, ctx=None, book=None):
         if b.type == "section" and b.level == 2:
             parent2 = b.name
         b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
+        cat.where = (b.chapter, b.section)
         ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)

@@ -78,6 +78,31 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
   prices, two items on one row (`A/B` names, a month or a year price, synthetic or obvious limb columns) and a few
   prices naming another item (reported).
 
+## Formula styles and issues (importer v2)
+
+- `Rating x N¥`, `Force x N¥` (foci, also their bonding Karma), `Capacity x N¥` (sensors, priced by their
+  capacity: the capacity range is the rating) -> `R*N`. `(Rating/3)` avail -> `(R/3)`, rounding up (the book never
+  says; Commlink6 rounds down).
+- Rows printed one per rating (`Cyberears (Rating 1)` … with a name-only row over them, `Rating N` rows): the group's
+  cost, avail, Essence and capacity become one `tier()` rule on every row (`tier(R; 1: 1000; 2: 3000; …)`).
+- Capacity used in brackets: `[2]` is a number, `[Rating]` -> `R`. Vehicle seats `1/3` (front/back) -> `1 + 3`.
+- Issues: a rated price with no rating range anywhere (`missing rating`, about 50: armor and gear rows priced
+  `Rating x N¥`); rows the table prints with no avail or price (`missing`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- Issues: the crossbows' rows print no firing modes (`missing modes`).
+
+## Table shapes and value styles (importer v2)
+
+- **Short names in a table.** A gear table may print a shorter name than the item's description heading
+  (`Laser mic` under `#### Laser microphone`, a maker left off): regroup pairs the row with that heading
+  (`shorter_name`) and names the entry by the heading when it is the full name (`full_name`: the abbreviated last
+  word, or a maker in front). A heading that adds words after the row's name (`… Step-Van`) is a title: the row's
+  name stays.
+- **Two fields in one cell.** A DV with a note (`1P + special`): the DV, the note to the text.
+- **A value only the description gives.** The crossbows' table prints no ammo; their description does (internal
+  magazines holding a count of bolts): `ammo_from_text` reads `N(m)` from the holder vocabulary (`AMMO_HOLDERS`:
+  internal magazine m, clip c, drum d, belt, cylinder cy, break action b, muzzle loader ml).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"

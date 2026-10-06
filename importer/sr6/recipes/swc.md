@@ -37,6 +37,19 @@ recipe reads both.
   values) with `Active Skills:` as an NPC (group Contact).
 - Everything else in the chapters is a rule section; PACKs (SUIT UP) are bundles of other books' gear: rules.
 
+## Formula styles and issues (importer v2)
+
+- No price formulas. Issues: two qualities print no Karma (`missing karma`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
+## Table shapes and value styles (importer v2)
+
+- **A vehicle in the text.** A lower-case title over a tag line (`(Personal Motor Vehicle)`) is an item (regroup);
+  its stats print as a speed table (`SPD INT | TOP SPD`) and a bold header line over a value line, headers run
+  together (`SEATAVAIL`): `shapes.vehicle_band` reads them into a vehicles entry, the tag its category.
+- **Run-in prices.** A quality whose price line says `See text` takes the Karma its own paragraphs print
+  (`bonus of N Karma`, a second for the Awakened: karma and karmaMax).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<the Companion PDF>" --out "%TEMP%\swc-check"

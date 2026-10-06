@@ -30,6 +30,17 @@ compares them without spaces, and rule section names keep them.
 - Rules: WORKING THE CASE, the gear chapter's rule sections, and IT'S WHO YOU KNOW's Game Information and blackmail
   sections; the rest of the book is setting, left out. The book prints no qualities.
 
+## Table shapes and value styles (importer v2)
+
+- **Stacked bands.** A vehicle box's two tables (`HAND … ARM` over `PILOT SENSE SEAT AVAIL COST`) come joined from
+  regroup (`_stacked`); `_vehicle` reads either shape.
+
+## Formula styles and issues (importer v2)
+
+- Vehicle seats `2+2`, `1/3` -> `2 + 2`. `N¥ per dose`, `Rating x N¥ per dose` -> `Q*N`, `Q*(R*N)`.
+- Issues: an injector rig's row with no price printed (`missing`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Tarnished Star-Runner Resource Book-CAT28516.pdf>" --out "%TEMP%\ts-check"

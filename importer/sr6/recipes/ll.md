@@ -19,6 +19,11 @@ page number (26) for levels, so `HEADING_LEVELS` gives them. Every page opens wi
 - The drake rules, the costs of being a drake and the initiatory group: rule sections. The opening fiction (SCALES)
   isn't read. The book prints no priced gear: the agents' gear and weapons stay their NPCs' lists.
 
+## Formula styles and issues (importer v2)
+
+- No formula styles: the book prints plain numbers. A field it leaves empty gets an `<issue>` (missing).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Lofwyr's Legions.pdf>" --out "%TEMP%\ll-check"

@@ -26,6 +26,16 @@ out: `RULE_PARTS`, `RULE_BOOK_CHAPTERS`).
   Bonus label).
 - New edge action, contact type, true elements, Miggon mutations, metaplane generator: rule sections.
 
+## Formula styles and issues (importer v2)
+
+- Foci `Force x N¥` (and their bonding Karma) -> `R*N`; ammunition `+100%` (twice the base round): an `ambiguous` issue stating the rule (`base*2`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- Issues: the airship weapon table has no MODE or AMMO column: each ranged weapon gets `missing` modes and ammo.
+
+## Table shapes and value styles (importer v2)
+
+- **Two fields in one cell.** Airship weapons print the blast in the DV cell (`8P(10m blast)`): `dv` and `blast`.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Astral Ways-Setting Book-CAT28101.pdf>" --out "%TEMP%\aw-check"
