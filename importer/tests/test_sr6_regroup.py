@@ -536,3 +536,25 @@ class InterleavedHeaderTest(unittest.TestCase):
         md = "<!-- page 4 -->\n# RIDES\n## Odd Rides\nIntro.\n##### blip roller\n(Personal Roller)\nA roller that blips.\n"
         item = _items(regroup.regroup(md)[0])["blip roller"]
         self.assertEqual((item.tags, item.text), ("Personal Roller", "A roller that blips."))
+
+
+class TextRowsTest(unittest.TestCase):
+    def test_rows_the_converter_set_as_lines(self):
+        md = """<!-- page 5 -->
+# GEAR
+#### Glow Kits
+| ITEM | AVAIL | RANGE TYPE COST |
+|---|---|---|
+| Glow Stick | 1 | 20¥ |
+Fizz Pen 2 40¥
+Zap Kit
+Basic (Rating 1–6) 3 Rating x 100¥
+Deluxe (Rating 1–6) 4 Rating x 250¥
+Wobble Lamp 3 1,500¥
+Glow kits glow in the dark.
+"""
+        bs = [b for b in blocks(regroup.regroup(md, name_headers={"ITEM"})[0]) if b.row is not None]
+        rows = {b.name: (b.row.get("AVAIL"), b.row.get("COST")) for b in bs}
+        self.assertEqual(rows["Fizz Pen"], ("2", "40¥"))
+        self.assertEqual(rows["Zap Kit Basic (Rating 1–6)"], ("3", "Rating x 100¥"))
+        self.assertEqual(rows["Wobble Lamp"], ("3", "1,500¥"))  # (a name of several words ends the group)

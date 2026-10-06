@@ -151,6 +151,9 @@ def _elements(md):
             header, rows = _header_rest(_cells(ln), rows)
             header = [deinterleave(h) or h for h in header]
             rows = [_repair_row(header, r) for r in rows]
+            if (more := _text_rows(header, lines, i)) is not None:
+                header, extra, i = more
+                rows += extra
             prev = out[-1] if out else None
             if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
                 t = prev[2]  # a second header row under the first, its values under it: one table, side by side
@@ -170,6 +173,45 @@ def _elements(md):
         else:
             out.append(("x", page, ln))
     return out
+
+
+_TEXT_ROW = re.compile(r"^(?P<name>[A-Z(][^|¥]*?\S)\s+(?P<avail>\d{1,2}\s*(?:\(\s*[LIF]\s*\)|[LIF])?|[—–-])\s+"
+                       r"(?P<cost>(?:Rating\s*[x×]\s*)?\d[\d,.]*\s*¥.*)$")
+_GROUP_LINE = re.compile(r"^[A-Z][\w'’&./-]*(?:\s+[\w'’&./-]+){0,5}$")
+
+
+def _text_rows(header, lines, i):
+    """A NAME | AVAIL | COST table whose later rows the converter set as plain lines (`Mage Pen 2 20¥`): those rows,
+    up to the first line of another shape; a name-only line (`Medkit`) names the rows under it (`Medkit Advanced
+    (Rating 1–6)`). (header, rows, next line) or None. A last header cell ending in the price word (the next table's
+    header run into it: `RANGE TYPE DURATION DV COST`) is that word."""
+    hu = [h.upper() for h in header]
+    if len(header) < 3 or not any("AVAIL" in h for h in hu[1:-1]) or not hu[-1].endswith("COST"):
+        return None
+    rows, group, j, last = [], "", i, i
+    while j < len(lines):
+        ln = lines[j].strip()
+        if not ln or _PAGE.match(ln):
+            j += 1
+            continue
+        m = _TEXT_ROW.match(ln)
+        if m:
+            own = re.sub(r"\s*\([^()]*\)\s*$", "", m.group("name"))
+            group = group if group and len(own.split()) == 1 else ""  # (a sub-row is one word: `Advanced`, `MD-9`)
+            name = f"{group} {m.group('name')}" if group else m.group("name")
+            rows.append([name] + [""] * (len(header) - 3) + [m.group("avail"), m.group("cost")])
+            j += 1
+            last = j
+            continue
+        if _GROUP_LINE.match(ln) and j + 1 < len(lines) and _TEXT_ROW.match(lines[j + 1].strip()) and rows:
+            group = ln
+            j += 1
+            continue
+        break
+    if not rows:
+        return None
+    header = header[:-1] + ["COST"] if hu[-1] != "COST" else header
+    return header, rows, last
 
 
 # column headers the books set on two lines (a general vocabulary of the stat columns): the converter, reading a
