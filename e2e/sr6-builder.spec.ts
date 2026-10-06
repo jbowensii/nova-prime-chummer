@@ -529,7 +529,7 @@ test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no 
   await expect(sheet).toContainText('Cozy × 1 month')
   await expect(sheet).toContainText('Zap Gun licence (2)')
   await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Neon'])
+  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Neon', 'Hex', 'Dossier'])
   await page.screenshot({ path: `${SHOTS}/print-sheet-light.png`, fullPage: true })
   await page.getByRole('combobox', { name: 'Sheet type' }).selectOption('color')
   await page.screenshot({ path: `${SHOTS}/print-sheet-color.png`, fullPage: true })

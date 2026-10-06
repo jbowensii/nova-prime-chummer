@@ -7,9 +7,10 @@ import { createServer } from '../server/server.mjs'
 import { pageGlyphs } from './pdf'
 
 // SR6 printed sheets, 0.9.8: the Sheet type picker offers Printer-friendly, Full color, Book style (the official sheet's
-// boxes) and Neon (one dense page). A made-up runner (Pat's, on a server of its own with the made-up SR6 fixture) prints
-// in both new styles: their sections, no sideways scroll on screen, the sheet in print emulation, and Letter/A4 PDFs
-// (Book style two pages, Neon one). Anarchy's print page shows Printer-friendly when Neon is saved. Screenshots and PDFs
+// boxes), Neon (one dense page), Hex (one page of hexagons) and Dossier (magenta-barred panels). A made-up runner (Pat's,
+// on a server of its own with the made-up SR6 fixture) prints in the four SR6-only styles: their sections, no sideways
+// scroll on screen, the sheet in print emulation, and Letter/A4 PDFs (Book style two pages, Neon and Hex one, Dossier at
+// most two). Anarchy's print page shows Printer-friendly when an SR6-only style is saved. Screenshots and PDFs
 // go to .extract/screenshots/sr6-sheets (not committed).
 const PW = { pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-sheets'
@@ -96,7 +97,9 @@ async function boxesInside(page: Page, sel: string, box: string, format: keyof t
 }
 
 /** screen view (desktop and phone, no sideways scroll), print emulation, then Letter and A4 PDFs of at most `pages` pages */
-async function shootAndPrint(page: Page, sel: string, name: string, pages: number) {
+const BOXES: Record<string, [string, boolean]> = { 'article.sr6-book': ['.k-box', true], 'article.sr6-neon': ['section, .n-top, .n-keys', false],
+  'article.sr6-hex': ['section', false], 'article.sr6-dossier': ['.d-panel', true] }
+async function shootAndPrint(page: Page, sel: string, name: string, pages: number, atMost = false) {
   await fits(page)
   await page.screenshot({ path: `${SHOTS}/${name}-screen.png`, fullPage: true })
   await page.setViewportSize(PHONE)
@@ -107,21 +110,22 @@ async function shootAndPrint(page: Page, sel: string, name: string, pages: numbe
   await expect(page.locator(sel)).toBeVisible()
   await expect(page.locator('.sheet-tools')).toBeHidden()
   for (const format of ['Letter', 'A4'] as const) {
-    await (sel === 'article.sr6-book' ? boxesInside(page, sel, '.k-box', format, true) : boxesInside(page, sel, 'section, .n-top, .n-keys', format, false))
+    await boxesInside(page, sel, BOXES[sel][0], format, BOXES[sel][1])
     const glyphs = pageGlyphs(await page.pdf({ format, printBackground: true, path: `${SHOTS}/${name}-${format.toLowerCase()}.pdf` }))
-    expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBe(pages)
+    if (atMost) expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBeLessThanOrEqual(pages)
+    else expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBe(pages)
     expect(glyphs.every(k => k > 400), `${name} ${format}: a near-empty page (${glyphs})`).toBe(true)
   }
   await page.emulateMedia({ media: 'screen' })
 }
 
-test('SR6 print: the Sheet type picker offers all four; Book style and Neon print the runner', async ({ page }) => {
+test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and Dossier print the runner', async ({ page }) => {
   await signIn(page)
   await put(page, '/api/sr6/characters/neon-moth', RUNNER)
   await page.goto('/#/sr6/c/neon-moth/print')
   await page.reload()
   const type = page.getByRole('combobox', { name: 'Sheet type' })
-  await expect(type.locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Neon'])
+  await expect(type.locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Neon', 'Hex', 'Dossier'])
   // the plain sheet's numbers, to check the new ones against
   const plain = page.locator('article.sheet.sr6-sheet')
   await expect(plain.locator('h1')).toHaveText('Neon Moth')
@@ -185,13 +189,77 @@ test('SR6 print: the Sheet type picker offers all four; Book style and Neon prin
   expect(await neon.locator('h1').evaluate(e => getComputedStyle(e).color)).toBe('rgb(16, 32, 40)')
   await shootAndPrint(page, 'article.sr6-neon', 'neon', 1)
 
-  // Settings on an SR6 page offers the same four
+  // Hex: one page; attributes as hexagons, every skill in brackets, the tracks on a dark band
+  await type.selectOption('hex')
+  const hex = page.locator('article.sr6-hex')
+  await expect(hex).toBeVisible()
+  await expect(neon).toHaveCount(0)
+  await expect(hex.getByRole('heading', { level: 2 })).toHaveText(['Personal data', 'Attributes', 'Skills', 'Core combat', 'Qualities', 'Edge'])
+  await expect(hex.getByRole('region', { name: 'Personal data' })).toContainText('Neon Moth')
+  await expect(hex.getByRole('region', { name: 'Personal data' })).toContainText('Glimmerkin')
+  await expect(hex.locator('.x-attrs > div > span')).toHaveText(['BOD', 'AGI', 'REA', 'STR', 'WIL', 'LOG', 'INT', 'CHA', 'M/R'])
+  await expect(hex.locator('.x-attrs svg')).toHaveCount(9)
+  await expect(hex.getByRole('region', { name: 'Attributes' }).locator('.x-f', { hasText: 'Defense Rating' })).toContainText(defense)
+  // every catalog skill: the runner's, and the rest at rank 0
+  const skills = hex.getByRole('region', { name: 'Skills' })
+  await expect(skills.locator('li', { hasText: 'Tinkering (LOG)' })).toContainText('Gizmos')
+  await expect(skills.locator('li', { hasText: 'Wirespeak (RES)' })).toContainText('[0]')
+  const combat = hex.getByRole('region', { name: 'Core combat' })
+  await expect(combat.locator('tr', { hasText: 'Zap Gun' })).toContainText('8(c)')
+  await expect(combat.locator('tr', { hasText: 'Padded Vest' })).toContainText('Worn')
+  await expect(combat.locator('.x-big svg')).toHaveCount(3)
+  await expect(hex.getByRole('region', { name: 'Qualities' })).toContainText('Butterfingers')
+  await expect(hex.getByRole('region', { name: 'Edge' }).locator('.x-costs b')).toHaveText(['1', '2', '3', '4', '5'])
+  const band = hex.getByRole('region', { name: 'Condition monitor' })
+  const hexTrack = band.getByRole('img', { name: `Physical damage track: ${physical} boxes` })
+  await expect(hexTrack.locator('svg')).toHaveCount(Math.max(18, Math.ceil(physical / 3) * 3))
+  await expect(hexTrack.locator('svg.off')).toHaveCount(Math.max(18, Math.ceil(physical / 3) * 3) - physical)
+  await expect(band.getByRole('img', { name: `Stun damage track: ${stun} boxes` }).locator('svg.off')).toHaveCount(15 - stun)
+  await expect(band.getByRole('img', { name: /^Overflow: \d+ boxes$/ })).toBeVisible()
+  // the band is dark ink, and keeps it printed
+  expect(await band.evaluate(e => [getComputedStyle(e).backgroundColor, getComputedStyle(e).printColorAdjust])).toEqual(['rgb(16, 32, 40)', 'exact'])
+  await shootAndPrint(page, 'article.sr6-hex', 'hex', 1)
+
+  // Dossier: magenta-barred panels, up to two pages
+  await type.selectOption('dossier')
+  const dos = page.locator('article.sr6-dossier')
+  await expect(dos).toBeVisible()
+  await expect(hex).toHaveCount(0)
+  for (const h of ['Personal data', 'Edge / Nuyen', 'Portrait', 'Attributes', 'Qualities', 'Condition monitor', 'Skills', 'Weapons', 'Armor',
+    'Augmentations', 'Contacts', 'Gear', 'IDs / lifestyle', 'Magic', 'Vehicles & drones', 'Notes'])
+    await expect(dos.getByRole('heading', { name: h, exact: true })).toBeVisible()
+  expect(await dos.getByRole('heading', { name: 'Personal data' }).evaluate(e => { const cs = getComputedStyle(e); return [cs.backgroundColor, cs.color, cs.textTransform] }))
+    .toEqual(['rgb(168, 0, 106)', 'rgb(255, 255, 255)', 'uppercase'])
+  const personal = dos.getByRole('region', { name: 'Personal data' })
+  await expect(personal.locator('.d-pairs > div', { hasText: 'Alias' })).toContainText('Neon Moth')
+  await expect(personal.locator('.d-pairs > div').nth(1)).toContainText('Mara Testwing')
+  await expect(personal.locator('.d-pairs > div', { hasText: 'Magic/Resonance' })).toContainText('Full magician')
+  await expect(dos.getByRole('region', { name: 'Edge / Nuyen' }).getByRole('img', { name: /^Edge points: \d+$/ })).toBeVisible()
+  const attrs = dos.getByRole('region', { name: 'Attributes' })
+  for (const r of ['Body', 'Charisma', 'Edge', 'Magic', 'Minor Actions', 'Initiative (Matrix)', 'Initiative (Astral)', 'Lift/Carry'])
+    await expect(attrs.getByRole('rowheader', { name: r, exact: true })).toBeVisible()
+  const quals = dos.getByRole('region', { name: 'Qualities' })
+  await expect(quals.locator('table').first()).toContainText('Knack')
+  await expect(quals.locator('table').last()).toContainText('Butterfingers')
+  await expect(dos.getByRole('img', { name: `Physical damage track: ${physical} boxes` }).locator('span')).toHaveCount(physical)
+  await expect(dos.getByRole('img', { name: `Stun damage track: ${stun} boxes` }).locator('span')).toHaveCount(stun)
+  await expect(dos.getByRole('region', { name: 'Condition monitor' })).toContainText('Overflow')
+  await expect(dos.getByRole('region', { name: 'Skills' }).locator('tr', { hasText: 'Tinkering' })).toContainText('Gizmos')
+  await expect(dos.getByRole('region', { name: 'Skills' })).toContainText('Lang: Sperethiel (Native)')
+  await expect(dos.getByRole('region', { name: 'Weapons' }).locator('.d-ranged tr', { hasText: 'Fizz Rifle' })).toContainText('SA/BF')
+  await expect(dos.getByRole('region', { name: 'Weapons' }).locator('.d-melee')).toContainText('Made-up Shock Baton')
+  await expect(dos.getByRole('region', { name: 'Armor' }).locator('tr', { hasText: 'Defensive rating' })).toContainText(defense)
+  await expect(dos.locator('.d-foot')).toContainText('created with Chummer')
+  await shootAndPrint(page, 'article.sr6-dossier', 'dossier', 2, true)
+
+  // Settings on an SR6 page offers the same six
   await page.getByRole('button', { name: 'Settings' }).click()
   const dlg = page.getByRole('dialog', { name: 'Settings' })
-  await expect(dlg.getByRole('radio', { name: 'Neon' })).toBeChecked()
+  await expect(dlg.getByRole('group', { name: 'Printed sheet' }).getByRole('radio')).toHaveCount(6)
+  await expect(dlg.getByRole('radio', { name: 'Dossier' })).toBeChecked()
   await dlg.getByRole('button', { name: 'Close' }).click()
 
-  // Anarchy has no Neon: its print page shows Printer-friendly for it
+  // Anarchy has no Neon, Hex or Dossier: its print page shows Printer-friendly for them
   await put(page, '/api/characters/anarchy-neon', CA2)
   await page.goto('/#/c/anarchy-neon/print')
   await page.reload()
