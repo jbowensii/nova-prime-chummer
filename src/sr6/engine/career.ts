@@ -6,7 +6,7 @@
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers.
 import { newId, type Violation } from '../../model/types'
 import type { PickKind, Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6LedgerEntry } from '../model/character'
-import { attrRating, priced, skillRank } from './budgets'
+import { attrRating, priced, qualityCost, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
@@ -181,7 +181,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!(a.line.level >= 1)) no('below-one')
       if ((had?.level ?? 0) + a.line.level > (v.perLevel ? v.maxLevel : 1)) no('at-maximum')
       const label = `Quality: ${v.name}${v.perLevel ? ` ${(had?.level ?? 0) + a.line.level}` : ''}`
-      return { label, karma: Math.abs(v.karma!) * a.line.level * need('advance.qualityFactor') }
+      return { label, karma: qualityCost(a.line, v) * need('advance.qualityFactor') }
     }
     case 'buyoff': {
       const q = b.qualities.find(x => x.uid === a.target) ?? no('not-taken')
@@ -189,7 +189,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const v = data.qualities[q.id] ?? no('unknown-entry')
       if (v.positive) no('not-negative')
       if (v.karma === null) no('book-value')
-      return { label: `Buy off: ${v.name}`, karma: Math.abs(v.karma!) * (v.perLevel ? q.level : 1) * need('advance.buyOffFactor') }
+      return { label: `Buy off: ${v.name}`, karma: qualityCost(q, v) * need('advance.buyOffFactor') }
     }
     case 'pick': {
       const { kind, id } = a.line

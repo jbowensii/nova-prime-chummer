@@ -74,7 +74,8 @@ copy". Book entries are never copied here.
 - `<contact types>`: one or two of the Sixth World Companion's contact types (`academic`, `corporate`, `criminal`,
   `engineering`, `government`, `magic`, `matrix`, `media`, `medical`, `street`); lifepath's contact points go by type.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
-  catalog name when it was added, shown if the entry later leaves the catalog.
+  catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
+  in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear` or `vehicles`; `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and

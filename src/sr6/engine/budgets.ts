@@ -2,10 +2,10 @@
 // (Sr6Data), the table's creation rules and the method's provider. Prices come from the catalog strings through rated();
 // a value the app can't read counts 0 (priced().ok false, Review warns); an unset creation setting counts 0 (Review
 // warns that it isn't set). Never NaN.
-import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Skill } from '../model/character'
+import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Skill } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import { num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, type Sr6Data } from './data'
+import { MAGIC_KINDS, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { rated, ratingRange } from './values'
@@ -86,14 +86,21 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost
   return { cost, avail, essence: round2(essence), ok }
 }
 
-/** Karma from qualities: positive ones cost |karma| × level (× positiveQualityFactor), negative ones give it; free
- *  traits and qualities gone from the catalog count nothing. */
+/** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
+ *  taken for (kept within the range; the lowest when it isn't set). */
+export function qualityCost(q: Sr6Quality, v: Sr6QualityView): number {
+  const lo = Math.abs(v.karma ?? 0), each = v.karmaMax != null && q.karma != null ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma)) : lo
+  return each * (v.perLevel ? q.level : 1)
+}
+
+/** Karma from qualities: positive ones cost qualityCost (× positiveQualityFactor), negative ones give it; free traits and
+ *  qualities gone from the catalog count nothing. */
 export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { pos: number; neg: number } {
   let pos = 0, neg = 0
   for (const q of b.qualities) {
     const v = data.qualities[q.id]
     if (q.free || !v) continue
-    const total = Math.abs(v.karma ?? 0) * (v.perLevel ? q.level : 1)
+    const total = qualityCost(q, v)
     if (v.positive) pos += total * (num(cr, 'positiveQualityFactor') ?? 1); else neg += total
   }
   return { pos, neg }
@@ -130,12 +137,10 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     for (let i = 0; i < ranks; i++) cost += (to - i) * perRank
     add(`attr:${k}`, `${k.toUpperCase()} ${to - ranks} → ${to} (${s(ranks, 'rank')} by karma)`, cost, 'attributes')
   }
-  let skills = 0
+  let skills = skillSpend(b, cr, p.skillPoints(b)).karma * n0(cr, 'karmaSpec')
   for (const sk of b.skills) {
     const top = skillRank(sk)
     for (let i = 0; i < sk.karma; i++) skills += (top - i) * n0(cr, 'karmaSkillPerRank')
-    // a skill with no skill points pays for its specialization and expertise in karma
-    if (!sk.points) skills += ((sk.spec ? 1 : 0) + (sk.expertise ? 1 : 0)) * n0(cr, 'karmaSpec')
   }
   add('skills', 'Skill ranks bought with karma', skills, 'skills')
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
@@ -209,10 +214,21 @@ export function knowledgePoints(b: Sr6Build, cr: CreationRules, p: Provider): Bu
   return p.knowledgePoints?.(b) ?? pool(attrRating(b, 'log', p) * n0(cr, 'knowledgePerLog'), knowledgeSpend(b))
 }
 
-/** Skill points spent: ranks, and a specialization or expertise on a skill that has skill points. */
-export function skillPointsSpent(b: Sr6Build, cr: CreationRules): number {
-  return b.skills.reduce((t, sk) => t + sk.points
-    + (sk.points ? (sk.spec ? n0(cr, 'skillPointsSpec') : 0) + (sk.expertise ? n0(cr, 'skillPointsExpertise') : 0) : 0), 0)
+/** Skill points spent, and how many specializations and expertises karma buys: the ranks take their points; a
+ *  specialization (or an expertise, at its own price) on a skill with skill points takes the points still left, and one
+ *  they don't cover is bought with karma (CRB p.66: a specialization costs a skill rank; p.69: or 5 karma), as is one on
+ *  a skill with only karma ranks. An unset price counts 0 (an expertise then is Review's skill.expertise error). */
+export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number): { points: number; karma: number } {
+  let points = b.skills.reduce((t, sk) => t + sk.points, 0), karma = 0
+  const take = (on: boolean, cost: number) => {
+    if (on && (cost === 0 || points + cost <= pool)) points += cost
+    else karma++
+  }
+  for (const sk of b.skills) {
+    if (sk.spec) take(sk.points > 0, n0(cr, 'skillPointsSpec'))
+    if (sk.expertise) take(sk.points > 0, n0(cr, 'skillPointsExpertise'))
+  }
+  return { points, karma }
 }
 
 /** Every budget, as the editor's budget panel shows them. */
@@ -223,7 +239,7 @@ export function allBudgets(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pro
   return {
     attributePoints: pool(p.attributePoints(b), spend('points')),
     adjustmentPoints: pool(p.adjustmentPoints(b), spend('adjust')),
-    skillPoints: pool(p.skillPoints(b), skillPointsSpent(b, cr)),
+    skillPoints: pool(p.skillPoints(b), skillSpend(b, cr, p.skillPoints(b)).points),
     karma: karmaBudget(b, data, cr, p),
     nuyen: nuyenBudget(b, data, cr, p),
     essence: essenceBudget(b, data, cr),

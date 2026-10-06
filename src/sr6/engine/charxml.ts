@@ -28,7 +28,7 @@ function purchaseXml(p: Sr6Purchase): string {
 
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
-const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, free: q.free, note: q.note, name: q.name })
+const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name })
 const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
 const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
   types: c.types?.length ? c.types.join(' ') : undefined })
@@ -147,7 +147,7 @@ const readKnowledge = (e: Element): Sr6Knowledge => def({ uid: e.getAttribute('u
   kind: oneOf(e.getAttribute('kind'), ['knowledge', 'language'] as const, 'knowledge kind')!, native: yes(e, 'native'),
   points: num(e, 'points', 0), karma: num(e, 'karma', 0) })
 const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1),
-  free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
+  karma: num(e, 'karma'), free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
 const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
   id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
 const readContact = (e: Element): Sr6Contact => {

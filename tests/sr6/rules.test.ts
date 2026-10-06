@@ -157,7 +157,9 @@ test('skills: overspent skill points are flagged', () => {
   ch.build.skills.push({ id: 'crb.gab', points: 5, karma: 0, spec: 'Fibbing' }, { id: 'crb.tinkering', points: 5, karma: 0 },
     { id: 'crb.hexing', points: 0, karma: 0 })
   expect(codes(ch)).not.toContain('skill.overspent') // 5 + 3 + 5 = 13 of 23
-  ch.build.skills[1].points = 16
+  ch.build.skills[1].points = 16 // 21 ranks: the specialization's 3 points don't fit, so karma buys it instead
+  expect(codes(ch)).not.toContain('skill.overspent')
+  ch.build.skills[1].points = 19 // the ranks alone are past the 23
   expect(codes(ch)).toContain('skill.overspent')
 })
 

@@ -216,11 +216,12 @@
     <xs:attribute name="karma" type="c:Count" use="required"/>
   </xs:extension></xs:simpleContent></xs:complexType>
 
-  <!-- free: a metatype trait; name: the catalog name when added -->
+  <!-- free: a metatype trait; name: the catalog name when added; karma: what a quality priced in a range was taken for -->
   <xs:complexType name="Quality">
     <xs:attribute name="uid" type="xs:string" use="required"/>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="level" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="karma" type="c:Count"/>
     <xs:attribute name="free" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="name" type="xs:string"/>

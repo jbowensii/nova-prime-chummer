@@ -30,7 +30,7 @@ function full(): Sr6Character {
   b.attributes.agi = { points: 3, adjust: 1, karma: 0 }; b.attributes.edg = { points: 0, adjust: 2, karma: 1 }
   b.skills = [{ id: 'crb.gab', points: 5, karma: 1, spec: 'Haggling', expertise: 'Fibbing' }, { id: 'crb.hexing', points: 2, karma: 0 }]
   b.knowledge = [{ uid: 'k1', name: 'Sperethiel', kind: 'language', native: true, points: 0, karma: 0 }, { uid: 'k2', name: 'Soy <brands>', kind: 'knowledge', points: 3, karma: 1 }]
-  b.qualities = [{ uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' }, { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' }]
+  b.qualities = [{ uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' }, { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' }, { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11 }]
   b.picks = [{ uid: 'p1', kind: 'spells', id: 'crb.glow-ward' }, { uid: 'p2', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, name: 'Quick Step',
     bonuses: [{ target: 'rea', value: 1, perRating: true }, { target: 'initDice', value: 1 }] }]
   b.purchases = [

@@ -116,6 +116,16 @@ test('a metatype swap moves the free traits and keeps the paid qualities; a free
   expect(ch.identity.metatype).toBe(GLIM)
 })
 
+test('a quality priced in a range takes the karma chosen within it; one with a single price refuses it', () => {
+  const { b, act } = runner({ over: { data: d => { d.qualities['crb.butterfingers'].karmaMax = 14 } } })
+  expect(act({ op: 'quality', id: 'crb.butterfingers', karma: 12 })).toEqual(ok)
+  expect(act({ op: 'quality', id: 'crb.butterfingers', karma: 13 })).toEqual(ok)
+  expect(b.qualities.map(q => [q.id, q.level, q.karma])).toEqual([['crb.butterfingers', 1, 13]])
+  expect(act({ op: 'quality', id: 'crb.butterfingers', karma: 15 })).toEqual(no('karma-range'))
+  expect(act({ op: 'quality', id: 'crb.butterfingers', karma: 7 })).toEqual(no('karma-range'))
+  expect(act({ op: 'quality', id: 'crb.knack', karma: 5 })).toEqual(no('karma-range'))
+})
+
 test('qualities: taken once, a level within the highest, removed by uid', () => {
   const { b, act } = runner()
   expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 2 })).toEqual(ok)
