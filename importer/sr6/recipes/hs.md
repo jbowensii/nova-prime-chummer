@@ -43,6 +43,8 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Matrix actions** under a section of another name (`### Movie Matrix Magic!`): a heading whose next heading is a
+  Matrix test line (`(Illegal) Cracking + Logic vs. … (Major)`) is an action, its type from that line.
 - **Actions:** `### Matrix Actions` (Game Information): each `#### Name`; `#### Edge Actions`: `##### Name (N Edge)`;
   `### AI and EI Actions`.
 - **Mentor spirits (paragons):** `#### Name (The Title)` under `### Sample Paragons`; the `Paragon (Positive

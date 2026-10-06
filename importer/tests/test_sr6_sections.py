@@ -151,6 +151,33 @@ Fizz rounds fizz.
         a = {e.findtext("name"): e.attrib for e in ET.fromstring(res.files["ammotypes.xml"])}
         self.assertEqual({k: a["Fizz Rounds"][k] for k in ("ar", "dv", "cost")}, {"ar": "+1", "dv": "-1", "cost": "x2"})
 
+    def test_sets_keywords_and_matrix_test_lines(self):
+        md = """<!-- page 117 -->
+# MAGIC
+## Rituals
+Some rituals have keywords, with rules of their own.
+**Glowing:** A glowing ritual glows.
+**Humming:** A humming ritual hums.
+## Collectives
+#### zorp changelings
+| TYPE | KARMA | METATYPE | POSITIVE METAGENIC QUALITIES | NEGATIVE METAGENIC QUALITIES |
+|---|---|---|---|---|
+| Zorpling | 12 | Elf, human | Glow Skin, Fizz Ears (Long) | Odd Hair |
+## Movie Hacks
+#### Zap Worm
+##### (Illegal) Hacking + Logic vs. Firewall (Major) Admin
+A worm that zaps.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        res = crb.extract(text)
+        q = {e.findtext("name"): e for e in ET.fromstring(res.files["qualitysets.xml"])}["Zorpling"]
+        self.assertEqual((q.get("karma"), q.get("metatypes"), [x.text for x in q.findall("quality")]),
+                         ("12", "Elf, human", ["Glow Skin", "Fizz Ears (Long)", "Odd Hair"]))
+        f = [e.findtext("name") for e in ET.fromstring(res.files["spellfeatures.xml"])]
+        self.assertEqual(f, ["Glowing", "Humming"])
+        a = {e.findtext("name"): e for e in ET.fromstring(res.files["actions.xml"])}
+        self.assertEqual(a["Zap Worm"].get("type"), "major")
+
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}
         self.assertIn("Fizz Probe", rules)

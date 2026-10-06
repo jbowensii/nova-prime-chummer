@@ -119,6 +119,8 @@ printing (the loaded printing is the newest).
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Spell features:** the bold run-ins of the `## Rituals` intro, which says its rituals have keywords (Anchored,
+  Material Link, …).
 - **Ammunition types:** the `ammo types` table (TYPES | AR | DV | COST MULTIPLIER): each row an ammunition type, its
   price the multiplier as printed (no availability or price of its own to ask for).
 - **Actions:** `### Minor Actions` and `### Major Actions` under `Game Timing and Actions` (each `#### Name (I|A)`;

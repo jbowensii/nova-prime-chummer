@@ -52,6 +52,8 @@ recipe reads both.
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Quality sets:** each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE
+  METAGENIC QUALITIES | NEGATIVE …`, the metagenic collectives under `Collectives`): its Karma, metatypes and qualities.
 - **Contact types:** the bullets (`• **Academic:** …`) under `## Contact Types`.
 - **Quality paths:** `#### Quality Path: Name` under `## Quality Paths`, the headings under each its steps.
 - **Actions:** `## New Optional Edge Actions` (bullets with the action they go with).

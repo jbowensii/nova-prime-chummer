@@ -44,6 +44,7 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Actions:** the `#### Name` headings under `## Spending Edge on Social Tests` (its Edge boosts).
 - **Actions:** `## New Status Edge Actions`, `## Response Edge Actions` and the Edge actions under `Spending Edge on
   Social Tests` (SOCIAL EDGE): each `#### Name`.
 - **Mentor spirits:** `#### Name` under `## Mentor Spirits` (MANA-INFUSED MANNERS).

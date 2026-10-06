@@ -16,13 +16,14 @@ heading and its section print: an action's type (minor, major, edge, boost: the 
 Edge`), the action it goes with (`Anticipation (Multiple Attacks, Ranged Attack)`); a quality path's steps (the headings
 under it)."""
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from importer.sr6.regroup import norm
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
-    ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b", re.I)),
+    ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
+                           r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),
     ("qualitypaths", re.compile(r"\bquality\s+paths?\s*$", re.I)),
     ("vehicledesign", re.compile(r"\bdesign\s+(?:options?|modifications?)\b|\bquality\s+factors?\b", re.I)),
@@ -41,7 +42,9 @@ PREFIX = [("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$",
 FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
                           r"requirements?|prerequisites?|example|bonus|duration|test|limit|threshold|range|choose\s+one|"
                           r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
-                          r"use\s+an\s+edge\s+action|wireless\s+bonus)$", re.I)
+                          r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?)$", re.I)
+# a Matrix action's test line, set under its heading: `(Illegal) Cracking + Logic vs. Willpower + Firewall (Major)`
+MATRIX_TEST = re.compile(r"\((?:il)?legal\)[^;]*\((?:major|minor)\b", re.I)
 EXAMPLE = re.compile(r"\b(?:example|sample|summary|table|definition|note)s?\b|\bby\s+cost\b|^\d+\s*-?\s*edge$"
                      r"|\((?:positive|negative)\s+quality\)", re.I)
 _TIMING = re.compile(r"\s*\((I|A)\)\s*$")
@@ -116,7 +119,7 @@ class Reader:
         heading = lv > 0
         while heading and self.stack and self.stack[-1][0] >= lv:
             self.stack.pop()
-        chain = [n for _, n in self.stack]
+        chain = [x[1] for x in self.stack]
         parent = chain[-1] if chain else ""
         if heading and self.path:
             if lv <= self.path[0]:
@@ -131,12 +134,20 @@ class Reader:
                 self.packs = True
             if not out:
                 out += packs(b, page, parent, self.packs)
-        out += design_tables(b, page)
-        rk = _kind_of(b.name, RUNIN_KINDS) or _kind_of(parent, RUNIN_KINDS)
+        out += design_tables(b, page) + quality_sets(b, page)
+        rk = _kind_of(b.name, RUNIN_KINDS)
+        if not rk and KEYWORDS.search(b.name) and re.search(r"\bkeywords\b", b.text or "", re.I):
+            rk = "spellfeatures"  # a spell or ritual section introducing its keywords, each a bold run-in
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
         if heading:
-            self.stack.append((lv, b.name))
+            # a Matrix action's test line set as a heading of its own under it: its parent heading is the action
+            if MATRIX_TEST.search(b.name) and self.stack and not self.stack[-1][3]:
+                plv, pname, pb, _, ppage = self.stack[-1]
+                pb = replace(pb, tags=f"{pb.tags}; {b.name}" if pb.tags else b.name)
+                out.append(self._make("actions", pname, pb, ppage, chain[:-1]))
+                self.stack[-1] = (plv, pname, pb, True, ppage)
+            self.stack.append((lv, b.name, b, bool(out), page))
             qp = next((f for f in out if f.kind == "qualitypaths"), None)
             if qp:
                 self.path = [lv, qp, None]
@@ -149,6 +160,8 @@ class Reader:
                 self.prefixed.add((len(chain), parent))
                 return [self._make(kind, m.group(1).strip(), b, page, chain)]
         kind = _kind_of(parent, HEADING_KINDS)
+        if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
+            kind = "actions"
         if (len(chain), parent) in self.prefixed:
             return []
         if not kind or not name[:1].isupper() and not name[:1].isdigit() or EXAMPLE.search(name) \
@@ -237,6 +250,31 @@ def design_tables(b, page):
                                                                          "bp": r[bp].strip() or None}, [], ""))
     for f in out:
         f.attrs = {k: v for k, v in f.attrs.items() if v}
+    return out
+
+
+KEYWORDS = re.compile(r"\b(?:rituals?|spells?)\b", re.I)
+
+
+def quality_sets(b, page):
+    """Each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE METAGENIC
+    QUALITIES | …`: the Companion's metagenic collectives): a set of qualities bought together."""
+    out = []
+    for header, rows in _md_tables(b.text) + ([(b.header, [[b.row.get(h, "") for h in b.header]])]
+                                               if b.row is not None and b.header else []):
+        hu = [h.upper() for h in header]
+        qs = [i for i, h in enumerate(hu) if "QUALITIES" in h]
+        karma = next((i for i, h in enumerate(hu) if "KARMA" in h), None)
+        if not qs or karma is None or not header:
+            continue
+        meta = next((i for i, h in enumerate(hu) if "METATYPE" in h), None)
+        for r in rows:
+            if not r or not r[0].strip() or len(r) < len(header):
+                continue
+            items = [x for i in qs for x in _items(r[i]) if x and x != "—"]
+            out.append(Found("qualitysets", r[0].strip(), page, {k: v for k, v in (
+                ("karma", r[karma].strip()), ("metatypes", r[meta].strip() if meta is not None else "")) if v},
+                [("quality", {}, x) for x in items], ""))
     return out
 
 
