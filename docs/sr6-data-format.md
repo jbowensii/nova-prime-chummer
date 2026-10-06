@@ -188,7 +188,9 @@ own description first), `corpus` (another source of the library: the same kind a
 deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft`; the latest published wins, and
 sources of one date that disagree leave the issue), or `errata` (an errata PDF's statement on its own book, applied
 when the errata is newer than the printing; the text keeps the value it replaced). `source` and `page` say where it is
-printed. It is provenance for the owner: the app leaves it out of the entry.
+printed. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
+(an errata or card deck uploaded later counts too); a book removed leaves the values it gave other books until those
+are imported again.
 
 **`<alias>name</alias>`**: another name the book prints the item under. A table row keeps its own name and takes its
 description heading's as an alias when the heading prints it longer (`Bloop Hauler` under `Bloop Hauler Long-Van`) or
