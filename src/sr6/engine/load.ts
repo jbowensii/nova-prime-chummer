@@ -15,7 +15,7 @@ export const SR6_NS = 'urn:chummer-sr6:data:1'
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
 const KINDS = new Set(Object.keys(SR6_KINDS))
 const OWN = new Set(['id', 'source', 'page'])
-const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue', 'found', 'alias']) // (<found>, <alias>: the importer's notes, not parts)
+const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue', 'found', 'alias', 'note']) // (<found>, <alias>, <note>: the importer's notes, not parts)
 const SHIPPED = 'data/sr6/'
 const CUSTOM = 'custom/sr6/'
 
@@ -38,6 +38,10 @@ export function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
   const { formulas, issues } = readFormulasAndIssues(el)
   if (formulas.length) e.formulas = formulas
   if (issues.length) e.issues = issues
+  const aliases = kids.filter(k => k.localName === 'alias' && !k.getAttribute('id') && k.textContent).map(k => k.textContent!.trim())
+  if (aliases.length) e.aliases = aliases
+  const notes = kids.filter(k => k.localName === 'note').map(k => ({ field: k.getAttribute('field') ?? '', text: k.textContent ?? '' }))
+  if (notes.length) e.notes = notes
   return e
 }
 

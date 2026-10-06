@@ -8,6 +8,7 @@ import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { makeProvider } from './providers'
 import { attackRatings, rated } from './values'
+import { entryLabel } from './categories'
 
 export interface Sr6Pool {
   skill: string; label: string; rank: number; attr: string
@@ -94,7 +95,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
     attackRatings: { unarmed: A('rea') + A('str'), weapons: b.purchases.filter(x => x.kind === 'weapons').map(x => {
       const e = entryOf(x, data)
-      return { uid: x.uid, name: e?.name ?? x.name ?? 'Weapon', bands: attackRatings(e?.attrs.ar).bands }
+      return { uid: x.uid, name: e ? entryLabel(e) : x.name ?? 'Weapon', bands: attackRatings(e?.attrs.ar).bands }
     }) },
     // CRB pp. 67–68: Composure WIL + CHA, Judge Intentions WIL + INT, Memory LOG + INT, Lift/Carry BOD + WIL
     composure: A('wil') + A('cha'), judgeIntentions: A('wil') + A('int'), memory: A('log') + A('int'), liftCarry: A('bod') + A('wil'),

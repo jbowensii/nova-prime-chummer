@@ -84,6 +84,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | qualitypaths | qualitypath | — | step (text)×n: the headings under it |
 | qualitysets | qualityset | karma, metatypes (as printed) | quality (text)×n |
 | mentorspirits, datastructures, spellfeatures, contacttypes, licencetypes, magictypes, ruleoptions, senses, trueelements | mentorspirit, datastructure, spellfeature, contacttype, licencetype, magictype, ruleoption, sense, trueelement | category | — |
+| categories | category | of* (the kind its rows are), table, section, confidence (`low`), why, fits, accessories (see Categories) | — |
 
 **Kinds read from the books' own sections** (actions, packs, vehicle design, ammunition types, mentor spirits, data
 structures, quality paths, spell features, contact types, quality sets, licence types, magic types, rule options,
@@ -191,6 +192,73 @@ when the errata is newer than the printing; the text keeps the value it replaced
 printed. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
 (an errata or card deck uploaded later counts too); a book removed leaves the values it gave other books until those
 are imported again.
+
+## Categories
+
+An item's category is the title of the table it is printed in (owner's model, 2026-10-06): the core rulebook's
+`cyberlimb cost and capacity` is the category **Cyberlimb**, its row `Arm (synthetic)` the item. The title is what tells
+cyberware from bioware and a cyberlimb's accessories from a weapon's. `importer/sr6/categories.py` reads it for every
+table a book's catalog rows come from, by the book's own words, never an item's name:
+
+- **`category`** on a table row (weapons, armor, augmentations, electronics, gear, vehicles, ammunition types) is the
+  human name of the title (or section) its recipe took: the words about the table itself set aside (`cost and capacity`,
+  `table`, `list`, `stats`, a number), the head of each joined part singular where the book prints the singular (`helmets
+  and shields` → Helmet and shield; `clothes` stays). A box titled with its own item's name takes its section, as before.
+  A product's configurations (below) take the product.
+- **categories.xml**: one `<category of="<kind>">` record per (kind, category), its `<name>` the category, with the
+  printed `table` and `section` titles and the link between accessories and hosts, stored once:
+  - a title whose last word is `accessories`, `modifications`, `mods` or `enhancements` is an **accessory category**; the
+    words before it name its hosts (`cyberlimb accessories` → `fits="Cyberlimb"`; `cyberarm and cyberleg mods` → two).
+    A host is a category of the same book by that name, or a kind or augmentation type by its own word (`weapon
+    accessories` fit every weapon, `bioware` a bioware augmentation). The host's record lists its accessory categories
+    (`accessories="Cyberlimb accessory"`). A host the book has no category for is an issue on the record (`<issue
+    field="fits" code="missing">`), never a guess;
+  - `confidence="low"` and `why`: the name came from the section heading (the table has no title, its title names no
+    category or was split over two lines).
+- **`group`** on a row whose printed name needs its category to be understood (a bare part: `Arm`, `Armor`, `Gel`): the
+  app shows `Cyberlimb: Arm (synthetic)` in every list, picker, Review message, ledger line and sheet. The printed
+  `<name>` never changes. The importer scores each row 0 to 1 from the book's own words: a short name (one word +0.3,
+  two +0.2) of common words (+0.2: the book prints them in lower case), a composed name the prose prints (+0.3:
+  `cyberarm`, `gel ammo`), a name the book uses for something else too (+0.2: `Armor` is also a spell and a rule), an
+  accessory table (+0.25), a table of mostly one-word rows (+0.1) or a third of them composed (+0.15). A maker's or
+  model's name (a digit, a capital inside a word, a maker the book's own `Maker Model` names teach, a first word the
+  prose never prints in lower case) or a name with its category's words scores 0. From 0.65 the row gets `group`.
+- **Composed search names**: such a row also gets the composed names the book prints as `<alias>`es (below): its
+  category's stem with the part (`cyber` + `arm`: `Cyberarm`, `Cyberarm (synthetic)`, `Synthetic cyberarm`), and in a
+  table of parts the same stem on every one-word row (`Cyberleg`). Commlink6's own names are never written; they are
+  only what cl6check measures against.
+- **Repeated names**: the same name in another category is another item, with its own printed values; its id names its
+  category when the plain one is taken (`crb.glowware-enhancements.armor`), and an earlier import's id follows it by
+  its category (moved.py).
+- **A product's configurations** (`shapes.configurations`): a box titled with a maker and a product (`Cougar Weapons
+  Armsman Collapsible Polearm`, the maker found by the game's corporate words: Weapons, Arms, Industries…) whose rows are
+  short generic words (`Knife`, `One-hand`, `Spear`, `Pike`): each row its own item as printed, `category` the product,
+  `maker` the maker, `group` the product; the box's description, footnotes and wireless bonus go with every row.
+- The import report lists each table that doesn't fit the pattern (`kind="category"`, `why`): no title, a title naming
+  no category, a title naming only the kind (`vehicles` over `Microdrones`: the section's category is taken), a title
+  split across lines, mixed rows (a table of two kinds), an accessory table with no host.
+
+The app (`src/sr6/engine/categories.ts`): an accessory goes only on a host of a category its record `fits` (the
+accessory action refuses another, `wrong-host`); the accessory picker lists only those; Review warns about an
+accessory on the wrong host (`catalog.accessoryHost`, cited to the accessory's page) and about accessories whose
+bracketed capacity (`[2]`, `[Rating]`) adds up to more than the host's capacity at its rating (`catalog.capacity`). An
+accessory of a category with no record (an import before categories) is offered as before, by its category's word.
+
+**The general table reader** (`importer/sr6/tables.py`): any table is an item table when its columns carry item
+stats (Avail or Cost, or a kind's stat set); everything else (modifiers, thresholds, skill lists) is a rules table,
+never catalogued. An item table's kind comes from its column signature (two vehicle stats: vehicles; ESSENCE:
+augmentations; DV with an attack rating, mode or ammo: weapons; DEFENSE RATING: armor; a device rating, attribute
+array or programs: electronics; COST MULTIPLIER: ammunition types), then its category's own words, else gear. It reads
+the priced tables a recipe leaves unread (titled, or with a name column, and rows named with letters). Where a recipe
+reads a table it keeps its own kind: measured over the corpus, the reader gives the same kind for 84% of the recipes'
+tables, and the rest are the books' own filing (a weapon mod filed as a weapon, armor modifications as armor, drone
+parts as electronics, ammunition as weapons or vehicles) that a column signature can't tell; re-kinding them would move
+ids for no gain. Each recipe's notes say where it keeps its map.
+
+**More attributes of a table row**: `maker` (above); a weapon's `skill` and `spec` from its TYPE (`Blade`: Close
+Combat, Blades; Club: Clubs; Unarmed). **`<note field>`**: the footnote a mark on a cell points to (`10/6*` with `*
+Maximum range is 4 meters` under the table): the value is kept without the mark and the footnote is the field's note
+(Game data shows it with the entry's values).
 
 **`<alias>name</alias>`**: another name the book prints the item under. A table row keeps its own name and takes its
 description heading's as an alias when the heading prints it longer (`Bloop Hauler` under `Bloop Hauler Long-Van`) or

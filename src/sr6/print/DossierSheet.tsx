@@ -12,6 +12,7 @@ import { CORE_ATTRS, MAGIC_KIND_LABELS } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { allSkills, band, PICKS, runnerView } from './view'
+import { entryLabel } from '../engine/categories'
 
 function Panel({ id, title, className = '', children }: { id: string; title: string; className?: string; children: ReactNode }) {
   return <section className={`d-panel ${className}`} aria-labelledby={id}><h2 id={id}>{title}</h2><div className="d-body">{children}</div></section>
@@ -162,7 +163,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
           b.initiation > 0 && `Initiate ${b.initiation}`, b.submersion > 0 && `Submersion ${b.submersion}`].filter(Boolean).join(' · ')}</p>
         <table><thead><tr><th>Name</th><th>Kind</th><th>Type/target</th><th>Range</th><th>Duration</th><th>Drain</th></tr></thead>
           <tbody>{picks.flatMap(([label, xs]) => xs.map(x => { const e = data.entry(x.kind, x.id), a = e?.attrs ?? {}
-            return <tr key={x.uid}><td>{e?.name ?? x.name ?? x.id}{x.level !== undefined && ` ${x.level}`}</td><td>{label}</td>
+            return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}{x.level !== undefined && ` ${x.level}`}</td><td>{label}</td>
               <td>{[a.category, a.type, a.keywords].filter(Boolean).join(', ')}</td><td>{a.range}</td><td>{a.duration}</td><td>{a.dv ?? a.fade}</td></tr> }))}</tbody></table>
       </Panel>}
 

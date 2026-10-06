@@ -11,6 +11,7 @@ import { CORE_ATTRS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6A
 import type { Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, type PickedItem } from '../Picker'
+import { entryLabel } from '../../engine/categories'
 
 const OPS = [['attribute', 'Raise attribute'], ['skill', 'Raise skill'], ['spec', 'Specialization'], ['expertise', 'Expertise'],
   ['knowledge', 'Knowledge or language'], ['quality', 'Buy quality'], ['buyoff', 'Buy off quality'],
@@ -123,7 +124,7 @@ export function LedgerTab() {
           <label>Name<input value={f.name} onChange={e => set({ name: e.target.value })} /></label>
         </>}
         {(op === 'quality' || op === 'pick' || op === 'purchase') && <div style={{ alignSelf: 'end' }}>
-          {picked && <span>{picked.e.name}{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
+          {picked && <span>{entryLabel(picked.e)}{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
           <button className="btn small" onClick={() => setPicking(true)} disabled={op === 'pick' && !learnable.length}>{picked ? 'Change…' : 'Pick from the catalog…'}</button></div>}
         {op === 'buyoff' && <label>Quality<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.qualities.filter(q => !q.free && data.qualities[q.id]?.positive === false)
@@ -132,7 +133,7 @@ export function LedgerTab() {
           <option value="">None</option>{[...c.entries[initKind].values()].sort((x, y) => x.name.localeCompare(y.name))
             .map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>}
         {op === 'drop' && <label>Item<select value={f.target} onChange={e => set({ target: e.target.value })}>
-          <option value="">Pick one</option>{b.purchases.map(x => <option key={x.uid} value={x.uid}>{(x.id && data.entry(x.kind, x.id)?.name) || x.name || 'Custom item'}</option>)}</select></label>}
+          <option value="">Pick one</option>{b.purchases.map(x => <option key={x.uid} value={x.uid}>{(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}</option>)}</select></label>}
         {op === 'lifestyle' && <>
           <label>Lifestyle<select value={f.target} onChange={e => set({ target: e.target.value })}>
             <option value="">Pick one</option>{[...c.entries.lifestyles.values()].map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>

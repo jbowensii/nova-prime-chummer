@@ -11,6 +11,7 @@ import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
+import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 
 interface Ctx { data: Sr6Data; cr: CreationRules; ch: Sr6Character; b: Sr6Build; p: Provider; budgets: Sr6Budgets }
 /** A broken rule: where (default: the rule's tab), what, and its citation when it isn't the setting's. */
@@ -41,7 +42,7 @@ function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string }> {
     for (const a of x.accessories) yield { x: a, path }
   }
 }
-const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => c.data.entry(x.kind, x.id)?.name ?? x.name ?? x.id
+const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => { const e = c.data.entry(x.kind, x.id); return e ? entryLabel(e) : x.name ?? x.id }
 
 const RULES: Rule[] = [
   { code: 'prio.allAssigned', severity: 'error', tab: 'method',
@@ -294,6 +295,23 @@ const RULES: Rule[] = [
     }
     return hits
   } },
+  // an accessory whose category is for another kind of host (categories.ts: a cyberlimb's armor on a weapon)
+  { code: 'catalog.accessoryHost', severity: 'warning', tab: 'gear', check: c => c.b.purchases.flatMap(x => {
+    const he = entryOf(x, c.data)
+    return he ? x.accessories.flatMap(a => {
+      const e = entryOf(a, c.data)
+      return e && fitsHost(c.data.categories, e, he) === false ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`,
+        message: `${nameOf(c, a)} is for ${hostsOf(c.data.categories, e).join(' or ')}, not ${nameOf(c, x)}.`, ...entryCite(e) }] : []
+    }) : []
+  }) },
+  // the accessories' bracketed capacity ([2], [Rating]) comes out of the host's capacity
+  { code: 'catalog.capacity', severity: 'warning', tab: 'gear', check: c => c.b.purchases.flatMap(x => {
+    const he = entryOf(x, c.data), cap = capacityOf(he, ratingOf(x, he))
+    if (cap === null || !x.accessories.length) return []
+    const used = x.accessories.reduce((t, a) => { const e = entryOf(a, c.data); return t + capacityUsed(e, ratingOf(a, e)) }, 0)
+    return used > cap ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`,
+      message: `${nameOf(c, x)}: its accessories take ${used} capacity; it has ${cap}.`, ...entryCite(he) }] : []
+  }) },
   // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
   { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },
 ]
@@ -321,7 +339,7 @@ function printedHits(c: Ctx): Hit[] {
   return hits
 }
 
-const nameOf = (c: Ctx, x: Sr6Purchase) => entryOf(x, c.data)?.name ?? x.name ?? x.id ?? 'Custom item'
+const nameOf = (c: Ctx, x: Sr6Purchase) => { const e = entryOf(x, c.data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
 
 /** Every broken creation rule on `ch`, the catalog's own problems, and a warning per unset setting a rule needed; approved
  *  from the GM's overrides (code and path). */

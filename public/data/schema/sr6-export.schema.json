@@ -329,6 +329,10 @@
         "name": {
           "type": "string"
         },
+        "label": {
+          "description": "How Chummer shows the item when that differs from its printed name: its category first (\"Cyberlimb: Arm (synthetic)\"). The category itself is attrs.category (attrs.group when the name needs it).",
+          "type": "string"
+        },
         "source": {
           "type": "string"
         },

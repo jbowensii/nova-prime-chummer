@@ -7,6 +7,7 @@ import type { PickKind, PurchaseKind, Sr6Purchase } from '../model/character'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
+import { entryLabel } from '../engine/categories'
 
 export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
   ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
@@ -20,7 +21,7 @@ export const allSkills = (d: Sr6Derived, data: Sr6Data): (Omit<Sr6Pool, 'dp'> & 
 export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'd' | 'career'>) {
   const b = ch.build
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
-  const nameOf = (x: Sr6Purchase) => entryOf(x, data)?.name ?? x.name ?? 'Custom item'
+  const nameOf = (x: Sr6Purchase) => { const e = entryOf(x, data); return e ? entryLabel(e) : x.name ?? 'Custom item' }
   const attrsOf = (x: Sr6Purchase) => entryOf(x, data)?.attrs ?? {}
   // a weapon with modes or ammo shoots; the rest (blades, clubs, unarmed extras) are melee
   const ranged = (x: Sr6Purchase) => { const a = attrsOf(x); return !!(a.modes || a.ammo) }

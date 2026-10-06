@@ -22,6 +22,7 @@ import { NeonSheet } from './NeonSheet'
 import { HexSheet } from './HexSheet'
 import { DossierSheet } from './DossierSheet'
 import { band, PICKS, runnerView } from './view'
+import { entryLabel } from '../engine/categories'
 
 const boxes = (k: number | null, cls = '') => k === null ? <span className="s-small">— (a setting isn’t set)</span>
   : <div className="s-boxes sr6-boxes">{Array.from({ length: k }, (_, i) => <span key={i} className={cls} />)}</div>
@@ -140,7 +141,7 @@ export function Sr6Sheet() {
             b.submersion > 0 && `Submersion grade ${b.submersion}`].filter(Boolean).join(' · ')}</p>
           <table className="sr6-picks"><tbody>
             {PICKS.flatMap(([kind, label]) => b.picks.filter(x => x.kind === kind).map(x => <tr key={x.uid}>
-              <td><b>{data.entry(kind, x.id)?.name ?? x.name ?? x.id}</b>{x.level !== undefined && ` ${x.level}`}</td><td>{label.replace(/s$/, '')}</td></tr>))}
+              <td><b>{(e => (e ? entryLabel(e) : x.name ?? x.id))(data.entry(kind, x.id))}</b>{x.level !== undefined && ` ${x.level}`}</td><td>{label.replace(/s$/, '')}</td></tr>))}
           </tbody></table>
         </section>}
         <div className="s-cols">

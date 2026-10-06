@@ -7,7 +7,7 @@ export type Sr6Kind =
   | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations' | 'grades'
   | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
   | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules'
-  | 'actions' | 'packs' | 'vehicledesign' | 'ammotypes' | 'mentorspirits' | 'datastructures' | 'qualitypaths' | 'spellfeatures' | 'contacttypes' | 'qualitysets' | 'licencetypes' | 'magictypes' | 'ruleoptions' | 'senses' | 'trueelements' | 'rules'
+  | 'actions' | 'packs' | 'vehicledesign' | 'ammotypes' | 'mentorspirits' | 'datastructures' | 'qualitypaths' | 'spellfeatures' | 'contacttypes' | 'qualitysets' | 'licencetypes' | 'magictypes' | 'ruleoptions' | 'senses' | 'trueelements' | 'categories' | 'rules'
 
 export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   priorities: { tag: 'priority', label: 'Priorities' },
@@ -55,6 +55,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   ruleoptions: { tag: 'ruleoption', label: 'Rule options' },
   senses: { tag: 'sense', label: 'Senses' },
   trueelements: { tag: 'trueelement', label: 'True elements' },
+  categories: { tag: 'category', label: 'Categories' },
   rules: { tag: 'rule', label: 'Rules' },
 }
 
@@ -62,7 +63,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
  *  rules of their own yet (the owner decides how each is used), and left out of the Foundry export. */
 export const DISPLAY_KINDS: ReadonlySet<Sr6Kind> = new Set<Sr6Kind>(['actions', 'packs', 'vehicledesign', 'ammotypes',
   'mentorspirits', 'datastructures', 'qualitypaths', 'spellfeatures', 'contacttypes', 'qualitysets', 'licencetypes',
-  'magictypes', 'ruleoptions', 'senses', 'trueelements'])
+  'magictypes', 'ruleoptions', 'senses', 'trueelements', 'categories'])
 
 /** An augmentation's type (common.xsd). Grades (alpha, beta…) apply to cyberware and bioware only (CRB p. 283, Body Shop
  *  p. 29); the others are bought as printed. */
@@ -86,6 +87,11 @@ export interface Sr6Entry {
   /** <issue> children: a field the book prints nothing for, or that the importer couldn't read; also a formula that can't
    *  be worked out (load.ts). An edit that sets the field clears its issue (the book's stays in `original`). */
   issues?: Issue[]
+  /** <alias> names: the other names the book prints it under, and the composed names of a bare part (`Cyberarm` for the
+   *  Cyberlimb row `Arm (synthetic)`): searched, never shown as its name */
+  aliases?: string[]
+  /** <note field> children: a cell's footnote */
+  notes?: { field: string; text: string }[]
 }
 /** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). published ("2019-08") and cat
  *  ("CAT28000"): the publication order (src/sr6/engine/npc.ts byPublication). */

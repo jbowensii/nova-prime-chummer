@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import type { PurchaseKind } from '../../model/character'
 import { useSr6Editor } from '../editor'
-import { isAccessory, PurchaseSection } from '../Picker'
+import { ACCESSORY_KINDS, isAccessory, PurchaseSection } from '../Picker'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [['gear', 'Other gear'], ['electronics', 'Electronics'], ['weapons', 'Weapon'], ['armor', 'Armor']]
 const band = (v: number | null) => (v === null ? '—' : String(v))
@@ -20,7 +20,7 @@ export function GearTab() {
     <div className="stack">
       <div className="row"><h2 style={{ margin: 0 }}>Gear</h2><span className="spacer" />
         <button className="btn small quiet" onClick={() => setCustom(true)}>Custom item…</button></div>
-      <PurchaseSection kind="weapons" title="Weapons" one="a weapon" detail={x => ar(x.uid)} accessories={{ kinds: ['gear'], filter: isAccessory }}
+      <PurchaseSection kind="weapons" title="Weapons" one="a weapon" detail={x => ar(x.uid)} accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         hint={`Unarmed: AR ${d.attackRatings.unarmed}.`} />
       <PurchaseSection kind="armor" title="Armor" one="armor" bonuses hint={`Defense Rating ${d.defenseRating} with the armor worn.`} />
       <PurchaseSection kind="electronics" title="Electronics" one="electronics" bonuses />

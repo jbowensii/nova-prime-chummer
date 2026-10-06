@@ -17,6 +17,8 @@ export interface BrowseRow {
   details?: string
   /** its description: searched, and shown under Description */
   text?: string
+  /** other words a search finds it by (its category with its name, the names it is printed under) */
+  search?: string
   /** after the source: Edited, House… */
   marks?: ReactNode
   /** its Edit button or link */
@@ -72,7 +74,7 @@ export function CatalogBrowser({ kinds, books, tableClass }: { kinds: BrowseKind
   const kind = inBook.find(k => k.id === kindId) ?? inBook[0]
   const groups = kind ? [...new Set(kind.rows.map(r => r.group || OTHER))].sort((a, b) => a === OTHER ? 1 : b === OTHER ? -1 : a.localeCompare(b)) : []
   const rows = kind?.rows.filter(r => !group || (r.group || OTHER) === group) ?? []
-  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => `${r.name} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase().includes(t)) }))
+  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => `${r.name} ${r.search ?? ''} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase().includes(t)) }))
     .filter(k => k.rows.length) : []
   const pick = (id: string) => { setKind(id); setGroup('') }
 

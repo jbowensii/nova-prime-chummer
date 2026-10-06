@@ -11,6 +11,7 @@ import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
+import { entryLabel } from './categories'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -173,7 +174,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }
 }
 
-const purchaseName = (x: Sr6Purchase, data: Sr6Data) => entryOf(x, data)?.name ?? x.name ?? x.id ?? 'Custom item'
+const purchaseName = (x: Sr6Purchase, data: Sr6Data) => { const e = entryOf(x, data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
 
 export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
   const breakdown: BudgetLine[] = []

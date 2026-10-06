@@ -9,6 +9,7 @@ import type { CreationCatalog } from './creation'
 import { gradeKey } from './grades'
 import { rated } from './values'
 import { resolveEntry } from './load'
+import { categoryIndex } from './categories'
 
 /** What each magic kind can have (game vocabulary, no numbers). paysPowers: buys its power points (mystic adept). */
 export const MAGIC_KINDS: Record<MagicKind, { spells: boolean; powers: boolean; paysPowers: boolean; resonance: boolean }> = {
@@ -67,6 +68,8 @@ export interface Sr6Data extends CreationCatalog {
   grades: Record<string, Sr6GradeView>
   /** any catalog entry, for what has no typed view (gear, spells…) */
   entry(kind: Sr6Kind, id: string): Sr6Entry | undefined
+  /** the categories' records (categories.ts categoryIndex): an accessory category's hosts */
+  categories: Map<string, Sr6Entry[]>
   /** names that didn't resolve (data.unresolved), numbers that didn't read (data.bookValue) and the entries' issues
    *  (catalog.issue), as warnings */
   problems: Violation[]
@@ -172,5 +175,6 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   for (const map of Object.values(c.entries)) for (const e of map.values()) for (const x of e.issues ?? [])
     problems.push({ code: 'catalog.issue', severity: 'warning', path: `${e.kind}.${e.id}`, message: issueNote(e.name, x), source: e.source, page: x.page ?? e.page })
 
-  return { priorities, metatypes, skills, qualities, powers, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id) }
+  return { priorities, metatypes, skills, qualities, powers, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id),
+    categories: categoryIndex(all('categories')) }
 }

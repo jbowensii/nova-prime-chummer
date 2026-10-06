@@ -16,13 +16,15 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../mode
 import { Sr6EditEntry } from './EditEntry'
 import { Sr6ExportBooksPanel } from './Foundry'
 import { formulaShown, groupOf as pickerGroup } from './Picker'
+import { entryLabel, entrySearch } from '../engine/categories'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
 const TAGS = Object.fromEntries(KINDS.map(k => [SR6_KINDS[k].tag, k]))
 /** "category zappers · dv 3P · cost Rating × 50": an entry's printed values, then its formulas with their values over its
  *  ratings ("cost = Rating × 50¥ (50–200¥)") */
 const details = (e: Sr6Entry, find: Find) => [...Object.entries(e.attrs).map(([k, v]) => `${k} ${v}`),
-  ...(e.formulas ?? []).map(f => `${f.field} = ${formulaShown(e, f.field, find)}`)].join(' · ')
+  ...(e.formulas ?? []).map(f => `${f.field} = ${formulaShown(e, f.field, find)}`),
+  ...(e.notes ?? []).map(x => `${x.field} note: ${x.text}`), ...(e.aliases?.length ? [`also ${e.aliases.join(', ')}`] : [])].join(' · ')
 /** an entry's sub-category inside its kind: its category (weapons by type, spells, gear by book section…), else these */
 const GROUP: Partial<Record<Sr6Kind, (e: Sr6Entry) => string | undefined>> = {
   augmentations: pickerGroup, // cyberware, bioware, geneware…, then body area or table
@@ -42,12 +44,12 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
   const compOf = (e: Sr6Entry) => c.sources.get(e.source)?.compendium
   // a compendium's entry is edited in its compendium (the edits layer loads before it, so an edit would never show)
   const editButton = (e: Sr6Entry) => editor && (compOf(e) ? compOf(e)!.owner === me?.username
-    && <a className="btn small quiet" aria-label={`Edit ${e.name}`} href={`#/sr6/compendiums/${compOf(e)!.id}/${encodeURIComponent(e.id)}`}>Edit</a>
-    : <button type="button" className="btn small quiet" aria-label={`Edit ${e.name}`} onClick={() => { setMsg(''); setEditing({ kind: e.kind, id: e.id }) }}>Edit</button>)
+    && <a className="btn small quiet" aria-label={`Edit ${entryLabel(e)}`} href={`#/sr6/compendiums/${compOf(e)!.id}/${encodeURIComponent(e.id)}`}>Edit</a>
+    : <button type="button" className="btn small quiet" aria-label={`Edit ${entryLabel(e)}`} onClick={() => { setMsg(''); setEditing({ kind: e.kind, id: e.id }) }}>Edit</button>)
 
   const find = catalogFind(c)
   const kinds = KINDS.map(k => ({ id: k, label: SR6_KINDS[k].label, rows: [...c.entries[k].values()].map(e => ({
-    key: e.id, name: e.name, source: e.source, page: e.page, group: groupOf(e), details: details(e, find), text: e.text, action: editButton(e), issues: e.issues,
+    key: e.id, name: entryLabel(e), search: entrySearch(e), source: e.source, page: e.page, group: groupOf(e), details: details(e, find), text: e.text, action: editButton(e), issues: e.issues,
     marks: <>{e.edited && <EditedMark />}{compOf(e) && <span className="noncanon">House</span>}</>,
   })) }))
   const books = [...c.sources.values()].filter(s => perSource(s.id)).map(s => ({ id: s.id, name: s.compendium ? `${s.name} (House)` : s.name }))
@@ -83,7 +85,7 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
           <div className="scroll-x"><table className="data sr6-edits"><thead><tr><th>Entry</th><th>Kind</th><th>Status</th><th /></tr></thead>
             <tbody>{edits.map(e => {
               const state = c.original.has(entryKey(e.kind, e.id)) ? 'changed' : 'orphan'
-              return <tr key={entryKey(e.kind, e.id)}><td><b>{e.name}</b> <span className="src">{e.source} p.{e.page}</span></td><td>{SR6_KINDS[e.kind].label}</td>
+              return <tr key={entryKey(e.kind, e.id)}><td><b>{entryLabel(e)}</b> <span className="src">{e.source} p.{e.page}</span></td><td>{SR6_KINDS[e.kind].label}</td>
                 <td className={state === 'orphan' ? 'warn' : undefined}>{STATE_TEXT[state]}</td><td className="num">{editButton(e)}</td></tr>
             })}</tbody></table></div>
         )}

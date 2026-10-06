@@ -3,7 +3,7 @@
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="augmentations" version="1">
   <augmentation id="crb.glow-eyes" source="CRB" page="283" type="cyberware" category="eyeware" rating="1–3" essence="Rating × 0.1" capacity="—" avail="3" cost="Rating × 500"><name>Glow Eyes</name><text/></augmentation>
   <augmentation id="crb.spring-tendons" source="CRB" page="290" type="bioware" category="basic bioware" rating="1–4" essence="Rating × 0.2" avail="5(L)" cost="Rating × 9000"><name>Spring Tendons</name><alias id="crb.spring-tendons-1-4"/><text/></augmentation>
-  <augmentation id="crb.limb-synthetic" source="CRB" page="288" type="cyberware" category="Zaplimb" essence="1" capacity="6" avail="4" cost="9000" group="Zaplimb"><name>Limb (synthetic)</name><alias>Zaplimb</alias><alias>Synthetic zaplimb</alias><text/></augmentation>
-  <augmentation id="crb.plating" source="CRB" page="289" type="cyberware" category="Zaplimb accessory" rating="1–3" capacity="[Rating]" avail="5" cost="Rating × 1000" group="Zaplimb accessory"><name>Plating</name><alias id="crb.plating-2"/><text/></augmentation>
-  <augmentation id="crb.zap-goggles-mod" source="CRB" page="283" type="cyberware" category="Eyeware accessory" capacity="[2]" avail="3" cost="800" group="Eyeware accessory"><name>Glare filter</name><text/></augmentation>
+  <augmentation id="crb.limb-synthetic" source="CRB" page="288" type="cyberware" category="Torqlimb" essence="1" capacity="6" avail="4" cost="9000" group="Torqlimb"><name>Limb (synthetic)</name><alias>Torqlimb</alias><alias>Synthetic torqlimb</alias><text/></augmentation>
+  <augmentation id="crb.plating" source="CRB" page="289" type="cyberware" category="Torqlimb accessory" rating="1–3" capacity="[Rating]" avail="5" cost="Rating × 1000" group="Torqlimb accessory"><name>Plating</name><alias id="crb.plating-2"/><text/></augmentation>
+  <augmentation id="crb.glare-filter" source="CRB" page="283" type="cyberware" category="Eyeware accessory" capacity="[2]" avail="3" cost="800" group="Eyeware accessory"><name>Glare filter</name><text/></augmentation>
 </sr6:data>

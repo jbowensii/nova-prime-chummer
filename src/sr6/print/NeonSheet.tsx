@@ -11,6 +11,7 @@ import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
 import { n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { band, PICKS, runnerView } from './view'
+import { entryLabel } from '../engine/categories'
 
 const H = ({ id, children }: { id: string; children: ReactNode }) => <h2 id={id}>{children}</h2>
 
@@ -113,7 +114,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
               b.initiation > 0 && `Initiate ${b.initiation}`, b.submersion > 0 && `Submersion ${b.submersion}`].filter(Boolean).join(' · ')}</p>
             {picks.map(([label, xs]) => <p key={label}><span className="n-lbl">{label}</span> {xs.map(x => {
               const e = data.entry(x.kind, x.id), a = e?.attrs ?? {}, drain = a.dv ?? a.fade
-              return `${e?.name ?? x.name ?? x.id}${x.level !== undefined ? ` ${x.level}` : ''}${drain ? ` (${x.kind === 'complexforms' ? 'F' : 'D'}${drain})` : ''}` }).join(', ')}</p>)}
+              return `${e ? entryLabel(e) : x.name ?? x.id}${x.level !== undefined ? ` ${x.level}` : ''}${drain ? ` (${x.kind === 'complexforms' ? 'F' : 'D'}${drain})` : ''}` }).join(', ')}</p>)}
           </section>}
           {(lines('electronics').length > 0 || lines('programs').length > 0) && <section aria-labelledby="n-matrix"><H id="n-matrix">Matrix</H>
             <ul className="n-flow">{lines('electronics').map(x => { const a = attrsOf(x); return <li key={x.uid}><b>{nameOf(x)}</b>

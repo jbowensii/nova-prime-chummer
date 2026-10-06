@@ -14,6 +14,7 @@ import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { catalogFind } from './load'
 import { attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
+import { entryLabel } from './categories'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export', SR6_EXPORT_VERSION = 1
 export interface Sr6ExportOpts { descriptions: boolean; now: string; appVersion: string }
@@ -28,7 +29,9 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty */
 export interface Sr6ExportBonus { target: Sr6Attr | 'initDice'; value: number }
 /** A thing on a runner or in a book: the catalog entry as printed (attrs, parts) plus Chummer's values. */
-export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name: string; source?: string; page?: number; canon: boolean
+/** name: as printed; label: how Chummer shows it, its category first when its name needs it (`Cyberlimb: Arm (synthetic)`),
+ *  only when that differs (attrs.category and attrs.group hold the category) */
+export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name: string; label?: string; source?: string; page?: number; canon: boolean
   attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string }
 export interface Sr6ExportPurchase extends Sr6ExportItem { uid: string; qty: number; grade?: string; worn: boolean; note?: string
   bonuses: Sr6ExportBonus[]; accessories: Sr6ExportPurchase[] }
@@ -111,7 +114,7 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
 
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
-  return { id: e.id, kind: e.kind, name: e.name, source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
+  return { id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
     attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating, catalogFind(c)),
     ...(text && e.text ? { description: e.text } : {}) }
 }
