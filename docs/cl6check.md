@@ -56,21 +56,67 @@ the overlay changes.
 | `patterns.py` | Finds and scores the general rules that predict Commlink6's UI tags (see Patterns below). |
 | `modifiers.py` | Expresses Commlink6's modifications as path-and-value modifiers, aligns them with our descriptions, and mines phrase templates (see Modifier patterns below). |
 | `report.py` | Builds the metrics, the cause of every miss, the deltas against the baseline, and the files. |
-| `corpus.py` | Our book data as one corpus ordered by publication date: one import run per SR6 PDF (every core rulebook printing, the errata, the card decks and handouts the importer skips). Each book has its date (sources.xml `published`; a core printing takes its City Edition's; the PDFs with no source take theirs from `EXTRA`; errata sort after a book of the same month), its book.md and regrouped.md as lines (page, heading, table header) and its catalog entries. `entries()` groups an object across every book by kind and loose name with aliases; `mentions()` finds every line printing a name. |
-| `lineage.py` | For one object, every value each book prints (catalog fields and table cells), ordered by publication date per field; the winner is the value published last. |
+| `corpus.py` | Our book data as one corpus ordered by publication date: one import run per SR6 PDF (every core rulebook printing, the errata, the card decks and handouts the importer skips). Each book has its date, its book.md and regrouped.md as lines (page, heading and its level, table header) and its catalog entries. `entries()` groups an object across every book by kind and loose name; `variants()` finds the entries printing the name with a qualifier; `mentions()` finds every line printing a name (through a word index); `disagreements()` lists the books whose PDF date and sources.xml month differ. |
+| `lineage.py` | For one object, every value each book prints, ordered by publication date per field, from these readers: catalog fields; table rows printing the name; stat blocks with no name under a heading naming it; card stat lines; NPC bracket lines (context only); errata statements. The winner is the value published last. |
+| `trace.py` | Traces every Commlink6 value to where it sits in the corpus, and gives each difference a pattern family (see below). |
 
-### The corpus (phase 1 of the parity work)
-
-Import every SR6 PDF into one folder of runs (`python -m tools.cl6check import <books file> <runs>`, one line per
-PDF, the four core printings and the errata included), then:
-
-```python
-from tools.cl6check import corpus, lineage
-c = corpus.load("<runs>", "public/data/sr6/sources.xml")
-chains = lineage.lineage(lineage.observe(c, {"weapons"}, ["<name>"]))
-```
+### The corpus and the trace (phase 1 of the parity work)
 
 Commlink6 stays the answer key: the corpus is built only from the PDFs.
+
+1. Import every SR6 PDF into one folder of runs: `python -m tools.cl6check import <books file> <runs>`, one line per
+   PDF, with the four core printings and the errata included.
+2. Trace: `python -m tools.cl6check trace --runs <runs> --out <dir>` writes:
+   - `<dir>/cl6-trace.csv`: one row per difference, with names and values. It is for the owner only.
+   - `<dir>/cl6-trace.md`: the dates, the counts per family with examples, and the full not-found list.
+
+**Dates.** A book's date is its PDF's own. The tool takes the first of these that applies:
+1. the metadata modification date;
+2. the creation date.
+
+Either is taken only when it falls in the year the book prints in its © line, or the year after; a later date is a
+re-save. Without one, the tool uses the © year with sources.xml's month. Failing that, it uses sources.xml alone.
+
+Books sort by date, then by label. Beginner Box material is context only: it is listed, but never wins.
+
+**Readers.** Each reader adds observations of an object:
+- Catalog entries.
+- Table rows whose first cell names the object. A first cell that names it with a qualifier is another variant's
+  row.
+- Stat blocks with no name of their own, under a heading naming the object. A first cell such as `Rating 3` names
+  the variant.
+- Card stat lines, such as `**DV:** 3P **Mode:** SA` or a vehicle card's bold header row. A card's second
+  configuration is left out.
+- NPC lines such as `Name [Type, DV 3P, SA/BF, …]`. These are context only.
+- Errata statements:
+  - `X's Near AR is changed from A to B`: a patch on one attack-rating band of the value before it;
+  - `Change … the cost to N¥` under a heading naming the object;
+  - `X: Availability N`.
+
+  A qualifier before the name (`Rating 7 Widgets`, `Deluxe-grade Widget …`) makes the statement another
+  variant's.
+
+Another book's text counts only when that book catalogues the object too, or imports nothing (a card deck). Another
+book's entry counts only under the object's own name, and in a kind its home book gives it.
+
+**Winner.** The winner is the value published last. A reprint of a value its book family already printed keeps the
+date that value first appeared. For example, the Hong Kong printing repeating the 2019 text does not make that value
+newer than another book's.
+
+**Families.** Each difference between Commlink6 and the winner goes to the first family that holds Commlink6's value.
+The order of the checks is in trace.py's module docstring. The families:
+- own row;
+- per-rating or variant row;
+- errata sentence;
+- older printing or superseded;
+- another book;
+- Commlink6 misread (the row above or below, or two adjacent digits swapped);
+- heading;
+- description sentence;
+- another column;
+- not found.
+
+A misread is not counted against our accuracy.
 
 ## Reading the report
 
