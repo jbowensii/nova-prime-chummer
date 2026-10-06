@@ -268,6 +268,31 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         self.assertEqual((g["Bright focus"]["cost"], g["Dim focus"]["avail"]), ("Force x 500", "(Force) L"))
         self.assertNotIn("Odd focus", g)
 
+    def test_a_title_that_only_mentions_a_kind_names_none(self):
+        """The kind's words must head the heading: `New Echoes` lists echoes; a book or group titled `Echoes of …`
+        doesn't, and a `Program Slots` heading lists no programs."""
+        md = """<!-- page 60 -->
+# Echoes of a Glowing Fizz
+**Scenario Overview:** The runners chase a glow.
+**GM Note:** Keep it moving.
+# TECHNO TOOLS
+## Zorp Clan
+### Echoes of the Zorp
+**Posted by:** a zorp.
+### New Echoes
+**Fizz Link:** You link to the fizz.
+**Glow Mind:** Your mind glows.
+### Active Program Slots
+**Core Slots:** Two of them.
+### Glow Autosofts and E-Softs
+**Glow Pilot:** It pilots glowing things.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+        self.assertEqual(names("echoes"), ["Fizz Link", "Glow Mind"])
+        self.assertEqual(names("programs"), ["Glow Pilot"])
+
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}
         self.assertIn("Fizz Probe", rules)

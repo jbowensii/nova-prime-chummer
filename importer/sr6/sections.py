@@ -76,6 +76,18 @@ def _kind_of(name, rules):
     return next((k for k, rx in rules if rx.search(name or "")), None)
 
 
+# what may follow the kind's words when they head a heading: nothing, a parenthetical, a colon, or more of the same
+# (`Autosofts and E-Softs`)
+_HEAD_TAIL = re.compile(r"\s*(?:$|[(:]|and\b|&)", re.I)
+
+
+def _runin_kind(name):
+    """The run-in kind a heading names as its head noun: the kind's words end it (`New Echoes`, `Basic Drake Powers`).
+    A title that only mentions them (`Echoes of a Lost Signal`, a book's own title; `Echoes of Divinations`, a group)
+    names no kind."""
+    return next((k for k, rx in RUNIN_KINDS for m in rx.finditer(name or "") if _HEAD_TAIL.match(name, m.end())), None)
+
+
 def _action_attrs(name, chain, tags="", text=""):
     """(clean name, attributes) of an action: its type from the section words, timing, Edge cost and companion action."""
     a = {}
@@ -145,7 +157,7 @@ class Reader:
             if not out:
                 out += packs(b, page, parent, self.packs)
         out += design_tables(b, page) + quality_sets(b, page) + derived(b, page)
-        rk = _kind_of(b.name, RUNIN_KINDS)
+        rk = _runin_kind(b.name)
         if not rk and re.fullmatch(r"(?i)basic|hacking", b.name.strip()) and re.search(r"(?i)\bprograms\b", parent):
             rk = "programs"  # `Basic` and `Hacking` under `Programs`
         if not rk and KEYWORDS.search(b.name) and re.search(r"\bkeywords\b", b.text or "", re.I):
