@@ -807,7 +807,7 @@ def extract(regrouped, ctx=None, book=None):
                                for a in ("rating", "avail", "cost") if a in row["attrs"]})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    runners, core = [], _core(ctx) if samples and bk.ID != ID else None
+    runners, core = [], _core(ctx, bk.ID) if samples and bk.ID != ID else None
     for name, b, page in samples:
         sid, xml, rows = archetypes.build(bk.ID, name, b, page, cat.entries, updated, core)
         runners.append({"file": f"{sid}.xml", "xml": xml, "name": name, "role": "Archetype", "page": page})
@@ -816,17 +816,21 @@ def extract(regrouped, ctx=None, book=None):
                   source={"id": bk.ID, "name": bk.NAME, "publisher": bk.PUBLISHER, "canon": bk.CANON})
 
 
-def _core(ctx):
-    """The core rulebook's catalog as imported (custom/sr6/imported/crb/<kind>.xml; ctx["custom_dir"]: custom/sr6), which
-    another book's sample runners cite: kind -> [{id (scoped), name, attrs, children}]; {} before it's imported."""
-    d = os.path.join((ctx or {}).get("custom_dir") or "", "imported", ID.lower())
+def _core(ctx, own=None):
+    """The catalogs already imported (custom/sr6/imported/<book>/<kind>.xml; ctx["custom_dir"]: custom/sr6), which
+    another book's sample runners cite (a face printed with a Sixth World Companion quality): kind -> [{id (scoped), name,
+    attrs, children}], the core rulebook's first, then the other books' (not `own`'s) by folder; {} before any is."""
+    base = os.path.join((ctx or {}).get("custom_dir") or "", "imported")
+    found = (ctx or {}).get("custom_dir") and os.path.isdir(base)
+    books = sorted(os.listdir(base), key=lambda b: (b != ID.lower(), b)) if found else []
     out = {}
-    for f in sorted(os.listdir(d)) if (ctx or {}).get("custom_dir") and os.path.isdir(d) else []:
-        if f.endswith(".xml"):
-            root = ET.parse(os.path.join(d, f)).getroot()
-            out[root.get("kind")] = [{"id": e.get("id"), "name": e.findtext("name") or "", "attrs": dict(e.attrib),
-                                      "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")]}
-                                     for e in root]
+    for d in (os.path.join(base, b) for b in books if b != (own or "").lower() and os.path.isdir(os.path.join(base, b))):
+        for f in sorted(os.listdir(d)):
+            if f.endswith(".xml"):
+                root = ET.parse(os.path.join(d, f)).getroot()
+                out.setdefault(root.get("kind"), []).extend(
+                    {"id": e.get("id"), "name": e.findtext("name") or "", "attrs": dict(e.attrib),
+                     "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")]} for e in root)
     return out
 
 

@@ -1,7 +1,8 @@
 // The printable SR6 sheet (#/sr6/c/<id>/print): the Anarchy print page's toolbar (Back, Print, Sheet type, Background)
 // and paper (src/print/sheet.css: its page-break rules, art veil and print styles) with the SR6 runner's blocks.
 // Browser "Save as PDF" makes the PDF. An NPC prints its header, its NPC block (NpcBlock.tsx), background and notes.
-// A runner's Book style and Neon sheets: BookSheet.tsx, NeonSheet.tsx (an NPC prints its block whatever the style).
+// A runner's Book style, Neon, Hex and Dossier sheets: BookSheet.tsx, NeonSheet.tsx, HexSheet.tsx, DossierSheet.tsx (an NPC
+// prints its block whatever the style).
 import { SR6_PRINT_STYLES } from '../../ui/settings'
 import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { HeaderBars } from '../../ui/nav'
@@ -18,6 +19,8 @@ import { npcHeadline } from '../engine/npc'
 import { NpcBlock } from './NpcBlock'
 import { BookSheet } from './BookSheet'
 import { NeonSheet } from './NeonSheet'
+import { HexSheet } from './HexSheet'
+import { DossierSheet } from './DossierSheet'
 import { band, PICKS, runnerView } from './view'
 
 const boxes = (k: number | null, cls = '') => k === null ? <span className="s-small">— (a setting isn’t set)</span>
@@ -39,7 +42,8 @@ export function Sr6Sheet() {
         <SheetType styles={SR6_PRINT_STYLES} />
         {art.tools}
       </HeaderBars></div>
-      {!ch.npc && style === 'book' ? <BookSheet art={art} /> : !ch.npc && style === 'neon' ? <NeonSheet art={art} /> : ch.npc ? <article className="sheet sr6-sheet" style={art.vars}>
+      {!ch.npc && style === 'book' ? <BookSheet art={art} /> : !ch.npc && style === 'neon' ? <NeonSheet art={art} />
+        : !ch.npc && style === 'hex' ? <HexSheet art={art} /> : !ch.npc && style === 'dossier' ? <DossierSheet art={art} /> : ch.npc ? <article className="sheet sr6-sheet" style={art.vars}>
         {art.layer}
         <div className="s-top">
           <header className="s-head">

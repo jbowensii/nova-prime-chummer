@@ -2,7 +2,7 @@
 // a picker for each side, and the net karma line against the cap.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
-import { qualityKarma } from '../../engine/budgets'
+import { qualityCost, qualityKarma } from '../../engine/budgets'
 import { num } from '../../engine/creation'
 import { n, useSr6Editor } from '../editor'
 import { House } from '../Picker'
@@ -27,7 +27,9 @@ export function QualitiesTab() {
           <td><b>{v?.name ?? q.name ?? q.id}</b>{!v && <span className="err"> (no longer in the catalog)</span>}
             {q.free && <> <span className="noncanon">Metatype trait</span></>}</td>
           <td>{v?.perLevel ? <Stepper label={`${v.name} level`} value={q.level} min={1} max={v.maxLevel} onChange={level => act({ op: 'quality', id: q.id, level })} /> : ''}</td>
-          <td className="num">{q.free ? 'free' : v?.karma == null ? '?' : `${positive ? '−' : '+'}${n(v.karma * q.level)}`}</td>
+          <td className="num">{q.free ? 'free' : v?.karma == null ? '?' : v.karmaMax != null
+            ? <Stepper label={`${v.name} karma`} value={qualityCost(q, v) / (v.perLevel ? q.level : 1)} min={Math.abs(v.karma)} max={Math.abs(v.karmaMax)} onChange={karma => act({ op: 'quality', id: q.id, karma })} />
+            : `${positive ? '−' : '+'}${n(qualityCost(q, v))}`}</td>
           <td>{!q.free && <button className="btn small quiet" onClick={() => act({ op: 'quality', remove: q.uid })}>Remove</button>}</td>
         </tr>
       })}</tbody>

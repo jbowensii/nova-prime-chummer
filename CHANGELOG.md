@@ -1,5 +1,31 @@
 # Release notes
 
+## 0.9.11 — 2026-10-05: example characters audited, Hex and Dossier sheets, adept power points
+
+- **An adept gets a power point for every point of Magic, raised Magic included** (CRB p.157). Power points came only
+  from the priority's Magic, so an adept who raised Magic with adjustment points or karma read as overspent; the
+  importer's priority fit counts them the same way. The core rulebook's Adept now has no rule problems (import the core
+  rulebook again to get it).
+- **A specialization the skill points can't cover is bought with karma** (5 karma, CRB p.69) instead of overspending
+  the skill points, so a runner whose ranks use up the points can still take one.
+- **A quality priced in a range (Allergy's 2 to 20) keeps the karma it was taken for.** Qualities shows a karma stepper
+  for it; before, it always counted its lowest price.
+- **Shadowrun 6 sample runners, read closer.** A metatype's own quality is free even when the block doesn't say
+  "trait" (Smooth Operations' troll, dwarf, elf and ork faces were paying for theirs); an Allergy is priced from its
+  printed severity and allergen; a face's qualities from the Sixth World Companion, Double Clutch, Firing Squad or Power
+  Plays are found when that book is imported; and a sample no priority assignment can pay for is fitted with
+  Sum-to-Ten. The core rulebook's Covert-Ops Specialist and Face and four of Smooth Operations' faces are now within
+  their karma (import the books again to get them).
+- **Table setup → Creation rules fits its panel on Shadowrun 6.** A long quality name in a dropdown pushed the table past
+  the panel and cut off the Page and Standard columns.
+- Shadowrun 6 runners print in two more styles (Sheet type, or Settings → Printed sheet), for six in all: Hex, one page
+  with the attributes and the damage tracks as hexagons (the tracks on a dark band, boxes past the runner's monitor
+  blacked out), every skill as [rank] [pool], core combat, qualities and a blank Edge panel by cost; and Dossier, rounded
+  panels under magenta title bars over up to two pages (personal data, Edge and nuyen, portrait, attributes, positive and
+  negative qualities, condition monitor, skills, weapons, armor, then augmentations, gear, contacts, IDs, magic and
+  vehicles), printed with the date and page number at the foot. Anarchy's sheets are unchanged; with Hex or Dossier
+  picked, an Anarchy runner prints Printer-friendly.
+
 ## 0.9.10 — 2026-10-05: softer neon, pink as a highlight, Review notes only for what a runner uses
 
 - **A runner's Review lists only the catalog problems it is touched by.** A book's unreadable number or a metatype trait

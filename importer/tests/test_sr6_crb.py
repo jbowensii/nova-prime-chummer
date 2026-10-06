@@ -580,17 +580,20 @@ class CrbRecipeTest(unittest.TestCase):
         b = g.find("build")
         self.assertEqual((g.get("id"), g.get("streetName"), g.get("metatype"), b.get("magic")), ("crb.glow-runner", "Glow Runner", "crb.glimmerkin", "adept"))
         # the priorities fitted (importer/sr6/fit.py): this book's rows hold the adept only at A and Glimmerkin at A and E;
-        # B to D print nothing, so the attributes and the skill are bought with karma, the nuyen with karma too
+        # B to D print nothing, so no priority assignment holds it within the karma, and Sum-to-Ten's letters (which may
+        # repeat) do better: attributes at A as well as magic, the skill on E's points and karma, the nuyen with karma
+        self.assertEqual((g.get("method"), b.get("method")), ("sumtoten", "sumtoten"))
         self.assertEqual([(x.get("column"), x.get("letter")) for x in b.iter("priority")],
-                         [("metatype", "E"), ("attributes", "B"), ("magic", "A"), ("skills", "C"), ("resources", "D")])
+                         [("metatype", "E"), ("attributes", "A"), ("magic", "A"), ("skills", "E"), ("resources", "E")])
         self.assertEqual({a.get("id"): (a.get("points"), a.get("adjust"), a.get("karma")) for a in b.iter("attribute")}, {
-            "bod": ("0", "0", "2"), "agi": ("0", "0", "4"), "rea": ("0", "0", "3"), "str": ("0", "0", "1"), "wil": ("0", "0", "2"),
-            "log": ("0", "0", "1"), "int": ("0", "0", "3"), "cha": ("0", "0", "2"), "edg": ("0", "1", "2"), "mag": ("0", "0", "0"),
+            "bod": ("2", "0", "0"), "agi": ("4", "0", "0"), "rea": ("3", "0", "0"), "str": ("1", "0", "0"), "wil": ("2", "0", "0"),
+            "log": ("1", "0", "0"), "int": ("3", "0", "0"), "cha": ("2", "0", "0"), "edg": ("0", "1", "2"), "mag": ("0", "0", "0"),
             "res": ("0", "0", "0")})  # Magic 5: the priority's; Edge's 3 ranks past 1: the 1 adjustment point, then karma
         self.assertEqual([(x.get("id"), x.get("points"), x.get("karma"), x.get("spec")) for x in b.iter("skill")],
-                         [("crb.tinkering", "0", "3", "Gizmos")])
-        self.assertEqual(b.get("karmaToNuyen"), "19")
+                         [("crb.tinkering", "2", "1", "Gizmos")])
+        self.assertEqual(b.get("karmaToNuyen"), "14")
         self.assertIn("Priorities fitted to the printed stat block", g.findtext("notes"))
+        self.assertIn("built with Sum-to-Ten", g.findtext("notes"))
         self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],
                          [("Glow Lore", "knowledge", None), ("Puddle Streets", "knowledge", None), ("Plainspeak", "language", "true"), ("Glimmertongue", "language", None)])
         # Logic 2: two knowledge points; the language past them is bought with karma

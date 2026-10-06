@@ -70,10 +70,23 @@ test('a specialization costs skill points; an expertise its own; karma ranks are
   const b = runner()
   b.skills.push({ id: 'crb.gab', points: 3, karma: 0, spec: 'Haggling' }, { id: 'crb.tinkering', points: 2, karma: 2, expertise: 'Clockwork' })
   const { skillPoints, karma } = budgets(b)
-  expect(skillPoints).toEqual({ max: 11, spent: 3 + 3 + 2 + 5, left: -2 })
+  // 5 ranks and the specialization's 3 fit the 11; the expertise's 5 don't, so it's bought with karma (7)
+  expect(skillPoints).toEqual({ max: 11, spent: 3 + 3 + 2, left: 3 })
   expect(skillRank(b.skills[1])).toBe(4)
-  expect(karma.spent).toBe((4 + 3) * 3)
-  expect(karma.breakdown).toContainEqual({ key: 'skills', label: 'Skill ranks bought with karma', amount: 21, sign: 'spend', tab: 'skills' })
+  expect(karma.spent).toBe((4 + 3) * 3 + 7)
+  expect(karma.breakdown).toContainEqual({ key: 'skills', label: 'Skill ranks bought with karma', amount: 28, sign: 'spend', tab: 'skills' })
+})
+
+test('a specialization the skill points left over can’t cover is bought with karma, never overspending the points', () => {
+  const b = runner() // 11 skill points; a specialization 3 of them, or 7 karma
+  b.skills.push({ id: 'crb.gab', points: 6, karma: 0, spec: 'Haggling' }, { id: 'crb.tinkering', points: 3, karma: 0, spec: 'Gizmos' })
+  let { skillPoints, karma } = budgets(b)
+  expect(skillPoints).toEqual({ max: 11, spent: 9, left: 2 }) // 9 ranks: 2 points left, neither specialization fits
+  expect(karma.spent).toBe(2 * 7)
+  b.skills[1].points = 2;
+  ({ skillPoints, karma } = budgets(b))
+  expect(skillPoints).toEqual({ max: 11, spent: 8 + 3, left: 0 }) // 3 left: the first takes them, the second is karma's
+  expect(karma.spent).toBe(7)
 })
 
 test('a specialization on a skill with only karma ranks is bought with karma', () => {
@@ -85,6 +98,17 @@ test('a specialization on a skill with only karma ranks is bought with karma', (
 })
 
 // qualities and karma
+test('a quality priced in a range costs the karma it was taken for, kept within the range; unset, the lowest', () => {
+  const b = runner(), ranged: Over = { data: d => { d.qualities['crb.butterfingers'].karmaMax = 14 } }
+  quality(b, 'crb.butterfingers')
+  expect(budgets(b, ranged).karma.max).toBe(40 + 8)
+  b.qualities[0].karma = 11
+  expect(budgets(b, ranged).karma.max).toBe(40 + 11)
+  b.qualities[0].karma = 99
+  expect(budgets(b, ranged).karma.max).toBe(40 + 14)
+  expect(budgets(b).karma.max).toBe(40 + 8) // no range: its own karma, whatever the line says
+})
+
 test('free traits cost nothing; negatives add karma and positives spend it, level times karma', () => {
   const b = runner()
   quality(b, 'crb.stoneskin', 1, true)
@@ -140,11 +164,17 @@ test('the priority Magic, not the adjusted rating, sets the allotment', () => {
   expect(budgets(b).spellSlots.max).toBe(12)
 })
 
-test('an adept gets power points equal to priority Magic; a leveled power costs per level', () => {
+test('an adept gets power points equal to Magic, raised Magic included (CRB p.157); a leveled power costs per level', () => {
   const b = runner({ magic: 'adept' }) // magic B: adept 5
   pick(b, 'adeptpowers', 'crb.quick-step', { level: 3 })
   expect(budgets(b).powerPoints).toEqual({ max: 5, spent: 0.75, left: 4.25, cap: 5 })
   expect(budgets(b).karma.spent).toBe(0)
+})
+test('Magic raised with adjustment points or karma raises an adept’s power points too', () => {
+  const b = runner({ magic: 'adept' }) // magic B: adept 5
+  b.attributes.mag.adjust = 1
+  b.attributes.mag.karma = 1
+  expect(budgets(b).powerPoints).toMatchObject({ max: 7, cap: 7 })
 })
 
 test('a mystic adept splits its Magic between power points and spells; a technomancer gets forms', () => {

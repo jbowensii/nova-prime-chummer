@@ -80,6 +80,7 @@ export const REASONS: Record<string, string> = {
   'free-trait': 'A metatype trait can’t be removed.',
   'no-levels': 'That has no levels.',
   'max-level': 'That’s already at its highest level.',
+  'karma-range': 'That karma is outside the quality’s range.',
   duplicate: 'The runner already has that power, and it has no levels.',
   'rating-range': 'That rating is outside the item’s range.',
   'own-line': 'Each of these is its own line: add another one instead.',

@@ -1,9 +1,9 @@
 """The priorities a book's sample runner (importer/sr6/archetypes.py) was most likely built with: of the 120 ways to give
 the letters A-E to the five columns, the one that overspends least for the build the stat block prints. Magic (or
 Resonance) above the magic priority's rating and Edge go on adjustment points, what's left of those on the metatype's
-raised attributes; the core attributes on attribute points; skill ranks (and a specialization each) on skill points.
-Whatever a pool can't hold is bought with karma, the cheapest ranks first, and nuyen past the resources with karma
-turned into nuyen. Overspent is then karma past the starting karma (and power points past the magic rating); ties go
+raised attributes; the core attributes on attribute points; skill ranks on skill points, a specialization on the
+points still left. Whatever a pool can't hold is bought with karma, the cheapest ranks first, and nuyen past the
+resources with karma turned into nuyen. Overspent is then karma past the starting karma (and power points past the magic rating); ties go
 to the nuyen left nearest the printed starting nuyen. The numbers are the creation settings the app ships
 (public/data/sr6/creation-defaults.xml) and the catalog's priority rows; nothing is read from the book's text."""
 import itertools
@@ -133,15 +133,19 @@ def spend(need, rows, cs):
     for k, w, t in zip(CORE, want, took):
         build[k][0], build[k][2] = w - t, t
         karma += _karma(a.get(k, 1), t, n("karmaAttrPerRank"))
-    # a skill's specialization costs a skill point while it has points, else karma (budgets.ts)
-    ranks, specs = [r for r, _ in need["skills"]], [s for _, s in need["skills"]]
-    took = [0] * len(ranks)
-    used = lambda: sum(r - t + (s * n("skillPointsSpec") if r > t else 0) for r, t, s in zip(ranks, took, specs))
-    while used() > skl.get("skills", 0) and any(r > t for r, t in zip(ranks, took)):
-        took[min((i for i in range(len(ranks)) if ranks[i] > took[i]), key=lambda i: ranks[i] - took[i])] += 1
+    # the ranks take the skill points (the cheapest past them bought with karma); a specialization on a skill with points
+    # takes a point still left, else karma, never dearer than a karma rank (budgets.ts skillSpend)
+    ranks, specs, pool = [r for r, _ in need["skills"]], [s for _, s in need["skills"]], skl.get("skills", 0)
+    took = _cheapest(ranks, [0] * len(ranks), max(0, sum(ranks) - pool))
     skills = [(r - t, t) for r, t in zip(ranks, took)]
-    karma += sum(_karma(r, t, n("karmaSkillPerRank")) + (s * n("karmaSpec") if r == t else 0)
-                 for r, t, s in zip(ranks, took, specs))
+    karma += sum(_karma(r, t, n("karmaSkillPerRank")) for r, t in zip(ranks, took))
+    left, cost = pool - sum(p for p, _ in skills), n("skillPointsSpec")
+    for (p, _), s in zip(skills, specs):
+        for _ in range(s):
+            if p and cost <= left:
+                left -= cost
+            else:
+                karma += n("karmaSpec")
     free = rating * n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic") if special else 0
     if special == "res":
         karma += max(0, need["forms"] - free) * n("karmaForm") + need["spells"] * n("karmaSpell")
@@ -152,7 +156,7 @@ def spend(need, rows, cs):
     to_nuyen = math.ceil(short / rate) if short > 0 and rate else 0
     karma += to_nuyen
     over = max(0.0, karma - n("startingKarma") - need["neg"])
-    pp_over = max(0.0, need["pp"] - rating) if kind == "adept" else 0.0
+    pp_over = max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
     gap = abs(left - need["left"]) if need["left"] is not None else 0
     return (pp_over, over, gap), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
@@ -160,12 +164,22 @@ def spend(need, rows, cs):
 
 
 def fit(need, priorities, cs):
-    """The build of the letter assignment that overspends least (see spend), or None when none holds the runner.
-    priorities: letter -> {letter, metas (name lower-cased -> adjustment points), attributes, skills, magic (kind ->
-    rating), nuyen}."""
-    best = None
-    for letters in itertools.permutations("ABCDE"):
-        got = spend(need, {c: {**priorities.get(L, {}), "letter": L} for c, L in zip(COLUMNS, letters)}, cs)
-        if got and (best is None or got[0] < best[0]):
-            best = got
-    return best and best[1]
+    """The build of the letter assignment that overspends least (see spend), or None when none holds the runner: the
+    priority system's (each letter once) first; when the best of those overspends, Sum-to-Ten's too (SWC p.28: any
+    letters whose values add up to at most sumToTenTarget), taken when it overspends less (its build's method
+    "sumtoten"). priorities: letter -> {letter, metas (name lower-cased -> adjustment points), attributes, skills, magic
+    (kind -> rating), nuyen}."""
+    def best(assignments, method):
+        out = None
+        for letters in assignments:
+            got = spend(need, {c: {**priorities.get(L, {}), "letter": L} for c, L in zip(COLUMNS, letters)}, cs)
+            if got and (out is None or got[0] < out[0]):
+                out = (got[0], {**got[1], "method": method})
+        return out
+    got = best(itertools.permutations("ABCDE"), "priority")
+    value, target = {L: cs.get(f"letterValue:{L}") for L in "ABCDE"}, cs.get("sumToTenTarget")
+    if (got is None or got[0][:2] > (0, 0)) and isinstance(target, float) and all(isinstance(v, float) for v in value.values()):
+        s10 = best((ls for ls in itertools.product("ABCDE", repeat=5) if sum(value[L] for L in ls) <= target), "sumtoten")
+        if s10 and (got is None or s10[0][:2] < got[0][:2]):
+            got = s10
+    return got and got[1]

@@ -228,3 +228,7 @@
 :root[data-game='sr6'] .kinds button { text-transform: none; letter-spacing: 0; font-size: 0.95rem; }
 :root[data-game='sr6'] .viol .msg a { color: var(--text); text-decoration: none; }
 :root[data-game='sr6'] .viol .msg a:hover, :root[data-game='sr6'] .viol .msg a:focus-visible { color: var(--rust); text-decoration: underline; }
+
+/* Table setup → Creation rules: a long quality name in a value's dropdown widened the table past its panel and cut off the
+   right-hand columns; the dropdown wraps to the column instead */
+.sr6-creation table.data :is(select, input:not([type=checkbox])) { max-width: 16rem; width: 100%; }

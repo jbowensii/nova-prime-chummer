@@ -43,8 +43,9 @@ export interface Sr6Purchase {
 }
 export interface Sr6Skill { id: string; points: number; karma: number; spec?: string; expertise?: string }
 export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | 'language'; native?: true; points: number; karma: number }
-/** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes). */
-export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string }
+/** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes).
+ *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */
+export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string; karma?: number }
 export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string }
 /** types: the Sixth World Companion's contact types (lifepath's contact points go by type). */
 export interface Sr6Contact { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }

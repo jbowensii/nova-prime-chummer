@@ -18,7 +18,7 @@ export type Op =
   | { op: 'spec'; target: string; spec: string | null }
   | { op: 'expertise'; target: string; expertise: string | null }
   /** add a quality, or set the level of one taken (leveled ones only) */
-  | { op: 'quality'; id: string; level?: number } | { op: 'quality'; remove: string }
+  | { op: 'quality'; id: string; level?: number; karma?: number } | { op: 'quality'; remove: string }
   /** add a spell, power, form…; a leveled power taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
@@ -158,13 +158,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const v = data.qualities[op.id]
       if (!v) return no('unknown-entry')
       const taken = b.qualities.find(x => x.id === op.id && !x.free)
-      if (taken && op.level === undefined) return no('already-taken')
-      const level = op.level ?? 1
+      if (taken && op.level === undefined && op.karma === undefined) return no('already-taken')
+      const level = op.level ?? taken?.level ?? 1
       if (level !== 1 && !v.perLevel) return no('no-levels')
       if (level < 1) return no('below-one')
       if (level > v.maxLevel && v.perLevel) return no('max-level')
-      if (taken) taken.level = level
-      else b.qualities.push({ uid: newId(), id: op.id, level, name: v.name })
+      if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax))) return no('karma-range')
+      if (taken) { taken.level = level; if (op.karma !== undefined) taken.karma = op.karma }
+      else b.qualities.push({ uid: newId(), id: op.id, level, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
       return OK
     }
     case 'pick': {
