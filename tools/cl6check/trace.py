@@ -42,7 +42,7 @@ ATTR = {"legality": "avail", "spell type": "type", "drain": "dv", "spell categor
         "per level": "perLevel", "power type": "type", "positive": "kind", "attribute": "attr"}
 CUE = {"cost": r"¥|nuyen|\bcost", "avail": r"avail", "legality": r"avail|legal|illegal|restricted|forbidden",
        "rating": r"rating", "essence": r"essence", "capacity": r"capacity|\[", "karma": r"karma", "dv": r"\bDV\b|damage",
-       "ar": r"attack|\bAR\b|/", "modes": r"mode|\b(?:SS|SA|BF|FA)\b", "ammo": r"ammo|\(c\)|\(m\)|\(d\)|\(b\)",
+       "ar": r"attack|\bAR\b|/", "modes": r"mode|\b(?:SS|SA|BF|FA)\b", "ammo": r"ammo|\(c\)|\(m\)|\(d\)|\(b\)|magazine|clip|hold|load",
        "range": r"range", "duration": r"duration", "action": r"action", "power type": r"type", "spell type": r"type",
        "drain": r"drain", "fade": r"fade", "threshold": r"threshold", "activation": r"activation|action",
        "pp cost": r"\bpp\b|power points?", "defense": r"defense|\bDR\b", "seats": r"seat"}
@@ -67,7 +67,8 @@ def token_re(c, f):
     fl = c["fields"]
     if f == "rating" and fl.get("rating"):
         lo, hi = fl["rating"]
-        return rf"\b{lo}\s*(?:–|-|to)\s*{hi}\b|maximum rating (?:is |of )?{hi}\b|ratings? up to {hi}\b"
+        return (rf"\b{lo}\s*(?:–|-|to|and)\s*{hi}\b|maximum rating (?:is |of )?{hi}\b|ratings? up to {hi}\b"
+                rf"|max(?:imum)? rating[^.]{{0,20}}\b{hi}\b")
     if f in ("cost", "essence") and fl.get(f):
         v = next(iter(fl[f].values()))
         if isinstance(v, float) and v:
@@ -84,6 +85,13 @@ def token_re(c, f):
         return ENUM[raw]
     if re.fullmatch(r"[A-Z_]+", raw):
         return r"\b" + raw.replace("_", r"\s+") + r"\b"
+    if f == "ammo":
+        m = re.fullmatch(r"(\d+)\s*\((\w+)\)", raw)
+        if m:
+            n = int(m.group(1))
+            word = WORDS[n] if n < len(WORDS) else str(n)
+            return (rf"(?<![\w]){re.escape(raw)}(?![\w])|\b(?:{n}|{word})\s+(?:\w+\s+)?"
+                    rf"(?:bolts?|rounds?|shots?|missiles?|rockets?|grenades?|arrows?|darts?|shells?)\b")
     if f == "ar":
         parts = [p for p in raw.split(",")]
         while parts and not parts[-1]:
@@ -92,6 +100,7 @@ def token_re(c, f):
     return r"(?<![\w])" + re.escape(raw).replace(r"\ ", r"\s*") + r"(?![\w])"
 
 
+WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
 NUMERIC = {"cost", "avail", "essence", "capacity", "karma", "pp cost", "defense", "threshold"}
 
 
@@ -137,9 +146,10 @@ def _matches(c, kind, attr, value, f, rating=None):
 
 
 def _rating_of(o):
-    """The rating an observation is printed for: 'Widget Rating 3', a 'Rating 3' row, an entry id ending '-3'."""
+    """The rating an observation is printed for: 'Widget Rating 3', a 'Rating 3' or 'Level 2' row, an entry id ending
+    '-3'."""
     for t in (o.label, o.variant):
-        m = re.search(r"(?i)\b(?:rating|r)\s*(\d+)\b", t or "")
+        m = re.search(r"(?i)\b(?:rating|level|r)\s*(\d+)\b", t or "")
         if m:
             return m
     return re.search(r"id=\S*?-(?:rating-)?(\d+)(?=\s|$)", o.where) if o.kind == "catalog" else None
@@ -284,9 +294,15 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
         for b, ln in heads:
             if pat.search(ln.text):
                 return "heading", f"{b.label} book.md L{ln.no} p.{ln.page} [{ln.text.strip('# ')[:60]}]", pat.search(ln.text).group(0)
+        before = {}
+        for b, ln in prose:
+            ls = b.md()
+            k = next((j for j, x in enumerate(ls) if x.no == ln.no), 0)
+            before[(id(b), ln.no)] = ls[k - 1].text if k and not ls[k - 1].level else ""
         for b, ln in prose:
             m = pat.search(ln.text)
-            if m and cue.search(ln.text):
+            near = before[(id(b), ln.no)] + " " + ln.text  # a sentence wraps: its field word may be on the line above
+            if m and cue.search(near):
                 return "description sentence", f"{b.label} book.md L{ln.no} p.{ln.page} [{ln.heading[:50]}]", m.group(0)
     for b, ln, word in _class_rows(corpus, chains, kind):
         for n in lineage.from_row(b, ln):

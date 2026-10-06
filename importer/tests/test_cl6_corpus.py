@@ -309,5 +309,42 @@ class StepThreeTest(unittest.TestCase):
         self.assertIsNone(crops.locate(words, "Zorp widget", "555"))
 
 
+class DescriptionTest(unittest.TestCase):
+    def test_a_count_in_words_and_a_wrapped_rating_range(self):
+        md = ("<!-- page 1 -->\n#### Zorp launcher\nIts internal magazines hold up to four bolts.\n"
+              "Zorp launchers are available with ratings from\n1 to 6.\n| WEAPON | COST |\n|---|---|\n| Zorp launcher | 100¥ |\n")
+        c = corpus.Corpus([book("A", "2020-03", md, entries=[entry("Zorp launcher", src="a", kind="weapons", cost="100")])])
+        rec = {"book": "a", "src": "a", "file": "w", "tag": "item", "id": "z", "name": "Zorp launcher", "page": "1",
+               "kind": "weapons", "modelled": True, "pool": ("weapons",), "aliases": [], "families": {},
+               "fields": {"ammo": "4(m)", "rating": (1, 6), "cost": {r: 100.0 * r for r in range(1, 7)}}}
+        rows, _ = trace.run(c, [rec])
+        fam = {r["field"]: r["family"] for r in rows}
+        self.assertEqual(fam["ammo"], "description sentence")
+        self.assertEqual(fam["rating"], "description sentence")
+
+
+class FormulaTest(unittest.TestCase):
+    def test_read_printed_formulas(self):
+        from tools.cl6check import formula as F
+        self.assertEqual(F.read("Rating x 2,000¥"), ("rating * 2000", "rating"))
+        self.assertEqual(F.read("1,000¥ + [500¥ x Size]"), ("1000 + 500 * rating", "rating"))
+        self.assertEqual(F.read("300¥ per CF"), ("300 * qty", "qty"))
+        self.assertEqual(F.read("2,000¥ (+500¥ per additional widget)"), ("2000 + 500 * (qty - 1)", "qty"))
+        self.assertEqual(F.read("Rating x 50 (10 uses)"), ("rating * 50", "rating"))
+        self.assertEqual(F.read("(Force +3) L"), ("(rating +3)", "rating"))
+        self.assertIsNone(F.read("See text"))
+
+    def test_flattened_values(self):
+        from tools.cl6check import formula as F
+        self.assertEqual(F.flattened("1000 + [500 x Size]", {1: 1500, 2: 2000}), "rating 1..2: 1000 + 500 * rating")
+        self.assertIn("rounds down", F.flattened("(Rating/3)", {1: 0, 2: 0, 3: 1, 6: 2}))
+        self.assertEqual(F.flattened("300¥ per CF", {None: 2700}, qty=[9]), "300 * qty at count 9")
+        self.assertEqual(F.flattened("Rating x 2500", {None: 5000}), "rating * 2500 at rating 2")
+        self.assertIsNone(F.flattened("Rating x 2500", {1: 2500, 2: 4000}))
+        self.assertEqual(F.tiered([(1, 3, "rating * 1000"), (4, 6, "rating * 5000")], 4), 20000)
+        self.assertEqual(F.evaluate("rating / 3", {"rating": 4}), 2)
+        self.assertEqual(F.evaluate("rating / 3", {"rating": 4}, div="floor"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
