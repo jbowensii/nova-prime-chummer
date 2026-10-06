@@ -676,3 +676,11 @@ class CrbRecipeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CodeAliasTest(unittest.TestCase):
+    def test_a_row_named_by_a_code_takes_its_tables_title(self):
+        self.assertEqual(crb.code_alias("m60", "Zap bombs"), ["Zap bomb m60"])
+        self.assertEqual(crb.code_alias("B25", "Zapcannon Ammunition"), ["Zapcannon B25"])
+        self.assertEqual(crb.code_alias("Zap Gun", "Zappers"), [])
+        self.assertEqual(crb.code_alias("ZX-9", ""), [])

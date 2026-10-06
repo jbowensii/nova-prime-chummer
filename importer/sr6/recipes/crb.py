@@ -569,7 +569,7 @@ class _Catalog:
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
-                         aliases=b.aliases if n == name else ())
+                         aliases=[*(b.aliases if n == name else ()), *code_alias(n, b.label)])
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -760,6 +760,22 @@ _AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bho
 
 SUPPLIES = ("fuel", "ammo", "ammunition", "rounds", "bolts", "arrows", "darts", "rockets", "missiles", "grenades",
             "batteries", "power packs")  # what a weapon's supply table is titled after (the game's words)
+
+
+CODE = re.compile(r"[A-Za-z]{0,3}-?\d+[A-Za-z]{0,2}|[A-Z]{2,5}")  # a row named by a code: `m60`, `B25`, `HEX`
+_CLASS_WORDS = re.compile(r"\s+(?:ammunition|ammo|rounds)$", re.I)
+
+
+def code_alias(name, title):
+    """A row named only by a code takes its table's title in front as its other name, the title's last word made
+    singular and an `Ammunition` word dropped (`m60` in `Mortar bombs`: `Mortar bomb m60`; `B60` in `Autocannon
+    Ammunition`: `Autocannon B60`)."""
+    stem = _CLASS_WORDS.sub("", (title or "").strip())
+    if not CODE.fullmatch(name.strip()) or not stem or not stem[:1].isalpha() or len(stem.split()) > 4:
+        return []
+    w = stem.split()
+    last = w[-1][:-3] + "y" if w[-1].lower().endswith("ies") else w[-1][:-1] if re.search(r"[^s]s$", w[-1]) else w[-1]
+    return [" ".join(w[:-1] + [last, name.strip()])]
 
 
 def supply_aliases(name, weapon):
