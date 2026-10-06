@@ -45,6 +45,14 @@
             <xs:attribute name="path" type="xs:string" use="required"/>
           </xs:extension></xs:simpleContent></xs:complexType>
         </xs:element>
+        <!-- a catalog id turned into the one a re-import gave the entry (its <alias id kind>): kind/id each -->
+        <xs:element name="migrated" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:attribute name="from" type="xs:string" use="required"/>
+            <xs:attribute name="to" type="xs:string" use="required"/>
+            <xs:attribute name="at" type="xs:dateTime" use="required"/>
+          </xs:complexType>
+        </xs:element>
       </xs:sequence>
       <xs:attribute name="formatVersion" type="xs:positiveInteger" use="required"/>
       <xs:attribute name="id" type="xs:string" use="required"/>
@@ -377,7 +385,7 @@
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="weapons"/><xs:enumeration value="armor"/><xs:enumeration value="augmentations"/>
         <xs:enumeration value="electronics"/><xs:enumeration value="programs"/><xs:enumeration value="gear"/>
-        <xs:enumeration value="vehicles"/>
+        <xs:enumeration value="vehicles"/><xs:enumeration value="ammotypes"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string"/>

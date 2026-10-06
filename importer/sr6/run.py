@@ -6,12 +6,13 @@ import hashlib
 import os
 import re
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import NS, regroup
+from importer.sr6 import NS, moved, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, skipped
 
 
@@ -34,7 +35,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                            heading=getattr(known, "HEADING_FONT", None))
         else:
             sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest() if os.path.exists(pdf) else ""
-            meta = {"converter": SR6_CONVERTER_VERSION, "sha256": sha, "title": ""}
+            meta = {"converter": SR6_CONVERTER_VERSION, "sha256": sha, "title": _pdf_title(pdf)}
         md = Path(md_path).read_text(encoding="utf8")
         meta["pages"] = len(re.findall(r"<!-- page \d+ -->", md))
         rec = {"file": file_name, "sha256": meta["sha256"], "converter": meta["converter"], "pages": meta["pages"]}
@@ -43,6 +44,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         if why := skipped(meta, file_name):  # before identify: an errata's first page reads as its book's
             xmlio.write_import(book_dir, **rec)
             xmlio.write_status(book_dir, "skipped", f"Nothing to import: {why}")
+            _corpus(book_dir, custom_dir)  # an errata or a card deck: read with the books it reprints
             return None
         recipe, score = identify(meta, md[:4000])
         if recipe is None:
@@ -75,6 +77,9 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         others = [(p, d, st) for p, d, st in _same_source(book_dir, src) if p and mine]
         newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
         older = [] if newer else [(p, d, st) for p, d, st in others if st in ("done", "superseded") and p < mine]
+        prev = moved.previous(out_dir)  # the ids the last import wrote (read before anything replaces them)
+        prev_extra = {x: moved.previous(os.path.join(custom_dir, "imported", x.lower()))
+                      for x in (old.get("extra") or "").split()} if old is not None else {}
         if any(st == "done" for _, _, st in older):
             _drop(custom_dir, src)  # the older printing's catalog, texts and sample runners (this one's replace them)
         with sr6_root():
@@ -84,8 +89,9 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                 texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
                 samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
                 samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
-                for name, xml in res.files.items():
-                    xmlio.write_overlay(out_dir, name, xml, ids)
+                files, _ = moved.carry(prev, {n: xmlio.scope(x, src, ids) for n, x in res.files.items()})
+                for name, xml in files.items():
+                    xmlio.write_file(os.path.join(out_dir, name), xml)
                 if texts:
                     xmlio.write_file(texts_path, texts)
                 for s in res.samples:  # sr6:character files, their ids already scoped
@@ -95,7 +101,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             for x in (old.get("extra") or "").split() if old is not None else ():
                 _drop(custom_dir, x)  # the last import's further sources
             for x in res.extra:
-                _write_extra(custom_dir, x)
+                _write_extra(custom_dir, x, prev_extra.get(x.source["id"], {}))
             xmlio.write_import(book_dir, report=report + res.report + [r for x in res.extra for r in x.report],
                                extra=" ".join(x.source["id"] for x in res.extra) or None,
                                extras=[{"id": x.source["id"], "name": x.source["name"], "publisher": x.source["publisher"],
@@ -113,10 +119,33 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
         if not newer:
             xmlio.write_status(book_dir, "done")
+        _corpus(book_dir, custom_dir)
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
+
+
+def _corpus(book_dir, custom_dir):
+    """The third circle (resolve.py): every book's open issues looked for in the rest of the library, each errata
+    applied to its own book. A failure there leaves this import as it is (its issues stay open)."""
+    try:
+        resolve.library(os.path.dirname(os.path.normpath(book_dir)), custom_dir)
+    except Exception as e:  # noqa: BLE001
+        print(f"corpus pass: {type(e).__name__}: {e}", file=sys.stderr)
+
+
+def _pdf_title(pdf):
+    """The PDF's metadata title ('' when absent or unreadable): a book identified by its title (a general recipe) is
+    identified again when re-run from its book.md."""
+    if not os.path.exists(pdf):
+        return ""
+    import pdfplumber
+    try:
+        with pdfplumber.open(pdf) as d:
+            return (d.metadata or {}).get("Title", "") or ""
+    except Exception:  # noqa: BLE001 (an unreadable PDF has no title)
+        return ""
 
 
 def _printing(sha):
@@ -148,12 +177,14 @@ def _texts(path, xml, src, ids):
     return xmlio.merged_texts(path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries])
 
 
-def _write_extra(custom_dir, res):
-    """A further source the book holds (Result.extra): its catalog in custom/sr6/imported/<source>/, its texts."""
+def _write_extra(custom_dir, res, prev=None):
+    """A further source the book holds (Result.extra): its catalog in custom/sr6/imported/<source>/ (with the old ids
+    of its last import, `prev`, as id aliases), its texts."""
     src = res.source["id"]
     ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
-    for name, xml in res.files.items():
-        xmlio.write_overlay(os.path.join(custom_dir, "imported", src.lower()), name, xml, ids)
+    files, _ = moved.carry(prev or {}, {n: xmlio.scope(x, src, ids) for n, x in res.files.items()})
+    for name, xml in files.items():
+        xmlio.write_file(os.path.join(custom_dir, "imported", src.lower(), name), xml)
     if res.texts:
         path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
         xmlio.write_file(path, _texts(path, res.texts, src, ids))

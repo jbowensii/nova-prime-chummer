@@ -405,7 +405,9 @@ class CrbRecipeTest(unittest.TestCase):
                   "rules": "Making Trouble"}
         # the core rulebook has no life modules (the Companion's), martial arts (Firing Squad's, Deadly Arts') nor
         # traditions of their own (Street Wyrd's)
-        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques", "traditions"})
+        # (nor the kinds read from sections, sections.py: test_sr6_sections)
+        self.assertEqual(set(expect), set(sr6.KINDS) - {"lifemodules", "martialarts", "martialtechniques", "traditions"}
+                         - set(sr6.SECTION_KINDS))
         for kind, name in expect.items():
             self.assertIn(name, entries(self.res, kind), kind)
 
@@ -674,3 +676,16 @@ class CrbRecipeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CodeAliasTest(unittest.TestCase):
+    def test_a_row_named_by_a_code_takes_its_tables_title(self):
+        self.assertEqual(crb.code_alias("m60", "Zap bombs"), ["Zap bomb m60"])
+        self.assertEqual(crb.code_alias("B25", "Zapcannon Ammunition"), ["Zapcannon B25"])
+        self.assertEqual(crb.code_alias("Zap Gun", "Zappers"), [])
+        self.assertEqual(crb.code_alias("ZX-9", ""), [])
+
+    def test_a_placeholder_series_names_its_models(self):
+        self.assertEqual(crb.series_models("Zap XX-10 Series", "Formula: Zapbolt (ZB-10) or Quakebolt (QB-10)"),
+                         ["Zap ZB-10", "Zap QB-10"])
+        self.assertEqual(crb.series_models("Zap Ten", "ZB-10"), [])

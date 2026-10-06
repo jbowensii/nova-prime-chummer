@@ -35,6 +35,36 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
   rating); Language and Knowledge, whose lines set their own ratings, stay in the rules. The e-softs (labelled lines
   run together with other items' text), chases, building a vehicle and repairs: rule sections.
 
+## Table shapes and value styles (importer v2)
+
+- **Stacked bands.** A modification's price tables print `MOD SLOTS | RATING` over `AVAILABILITY | COST`: joined
+  into one band by regroup (`_stacked`), read as before.
+- **Interleaved two-line headers.** The bold header lines print `S INP TD` / `T SO PDP` (SPD INT, TOP SPD
+  interleaved); the boxes read by position, and `regroup.deinterleave` / `shapes.vehicle_band` name them when needed.
+
+## Formula styles and issues (importer v2)
+
+- `N¥ per CF` (trailers, the SPACE column giving the count range) -> `Q*N` with `unit="CF"` (the count range stays in the text: `qty` is the units one price buys). The
+  section's sentence pricing open versions at half is an option on the trailers and sidecars (section_options):
+  `(Q*N)*(1 - 0.5*opt.open)`.
+- `N¥ x Rating`, slots `N x Rating`, `N per level`, `Adds N per level`, `N per Rating point` -> `R*N`. Seats `2/6`.
+- Issues: tires and mods printing two prices (`800¥/1,600¥`) or slots `2 or 1 CF` are `ambiguous`; slots `1/3 body
+  (rounded up)` and prices `Body x N¥` need the vehicle's Body (no grammar variable): `unreadable`.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+- A part the description prices beside a vehicle (`… the mini-outboard (costs 500¥)`) is an option on its cost:
+  `3500 + 500*opt.mini-outboard`.
+
+## Sections read as kinds (importer v3, sections.py)
+
+- **Qualities:** `### The Motorpool` under `## Positive Qualities` (its Karma is in its text: an issue until read).
+- **Vehicle design:** each row of a table with a BUILD POINTS column (the chassis, powertrain and console type
+  tables: its first header the category); each `#### Name` under `### Design Options and Quality Factors`, `###
+  Design Modifications`, `### Quality Factors` (a heading over several, `Heavy Duty/Lightweight`, one entry each; `(xN
+  BP)` its build points).
+- **Actions:** `## Edge Actions` and `## Chase Edge Actions` (THE RIGGER ADVANTAGE): each `### Name`; `## Edge
+  Boosts`; `### New Major Action` (`#### Backseat Driver`); the bold `**N Edge: Name**` lines of the Motorpool
+  quality. A heading's own bold lines (`Cost: N Edge`) are its fields.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"

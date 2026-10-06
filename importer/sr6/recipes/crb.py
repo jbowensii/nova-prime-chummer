@@ -19,7 +19,8 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes
+from importer.sr6 import KINDS, NS, archetypes, formula, resolve, sections
+from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
@@ -107,9 +108,7 @@ SECTIONS = [
 SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 section blocks in this book
 # a section (or item heading) whose labelled lines are each an entry (name: the label; text: its value, or its paragraph
 # in the block's text when that is longer): kind, or (kind, attributes)
-LABEL_SECTIONS = {("matrix", "echoes"): "echoes", ("matrix", "basic"): ("programs", {"type": "basic"}),
-                  ("matrix", "hacking"): ("programs", {"type": "hacking"}),
-                  ("rigging", "autosofts"): ("programs", {"type": "autosoft"})}
+LABEL_SECTIONS = {}  # (the echoes, programs and critter powers listed as run-ins: sections.py reads them in every book)
 # chapters whose unmapped sections (and level-4 headings with no row or box) are rule sections
 RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
                  "running the game", "gear")
@@ -140,6 +139,7 @@ HEADERS = {
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
+             "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
@@ -161,6 +161,8 @@ HEADERS = {
     "martialarts": {"CATEGORY": "categories", "SIGNATURE TECHNIQUE": "signature"},
     "martialtechniques": {"CATEGORY": "category"},
     "traditions": {},
+    "ammotypes": {"AR": "ar", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "DV": "dv", "COST MULTIPLIER": "cost",
+                  "MULTIPLIER": "cost", "COST": "cost", "AVAIL": "avail", "AVAILABILITY": "avail", "TYPE": "", "TYPES": ""},
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
@@ -168,14 +170,15 @@ LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPow
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
 PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "lifestyles"}  # cost/avail checked
-ROW_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles"}  # need a table row and a category
+ROW_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "ammotypes"}  # need a table row and a category
 STAT_KINDS = {"critters", "spirits", "npcs", "sprites"}  # need a stat band
 BOX_KINDS = {"spells", "qualities", "adeptpowers", "critterpowers", "complexforms", "rituals"}  # need a band, labels or tags
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
 MAGIC = (("mystic adept", "mystic-adept"), ("aspected", "aspected"), ("full", "full"), ("adept", "adept"),
          ("technomancer", "technomancer"))
 LEVELS = re.compile(r"\s*\(\s*1\s+to\s+(\d+)\s*\)\s*$", re.I)
-NAME_RATING = re.compile(r"\s*\((?:rating\s*)?(\d+\s*[–-]\s*\d+)\)\s*$", re.I)
+NAME_RATING = re.compile(r"\s*\((?:rating\s*)?(\d+\s*[–-]\s*\d+)\)(?=\)?\s*$)", re.I)  # (also a note's own: `X (Y (1–4))`)
+TAG_RATING = re.compile(r"^\s*\(?\s*rating\s*(\d+\s*[–-]\s*\d+)\s*\)?\s*$", re.I)  # a tag line `(rating 1-4)`
 _TABLE_SEP = re.compile(r"\|(?:-+\|)+$")
 
 
@@ -196,6 +199,7 @@ def _value(attr, v):
         return "—"
     if attr == "cost":
         v = re.sub(r"(?<=\d),(?=\d{3})", "", v).replace("¥", "").strip()
+        v = re.sub(r"^(\d{1,3})\.(\d{3})$", r"\1\2", v)  # `1.200¥`: a thousands point
     return v
 
 
@@ -282,8 +286,11 @@ class _Catalog:
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
         self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
+        self.index = None  # the book's tables and prose (resolve.Index): where a value an entry's row leaves out is found
+        self.last_weapon = None  # the weapon read last: a supply table printed right after it is its ammunition
+        self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
 
-    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None):
+    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=()):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         base = slug(name) or KINDS[kind]
         i, n = base, 2
@@ -299,11 +306,72 @@ class _Catalog:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
-        e = {"id": i, "name": name, "page": page, "attrs": attrs or {}, "children": list(children)}
+        aliases = [*aliases, *series_models(name, text)]
+        al = [a for a in dict.fromkeys(aliases) if a and norm(a) != norm(name)]  # another name it is printed under
+        e = {"id": i, "name": name, "page": page, "attrs": attrs or {},
+             "children": list(children) + [("alias", {}, a) for a in al], "row": row or {}, "where": self.where,
+             "text": text, "aliases": al}
+        if kind == "weapons":
+            self.last_weapon = e
+        elif kind == "gear" and self.last_weapon and (sup := supply_aliases(name, self.last_weapon)):
+            e["children"] += [("alias", {}, a) for a in sup]
+            e["aliases"] += sup
         self.entries[kind].append(e)
         if text.strip():
             self.texts.append((kind, i, text.strip()))
         return e
+
+    def section(self, f):
+        """Add a sections.py entry, unless the recipe's own reading wrote it already (a quality heading with its Cost
+        line; a program of the same type). A heading of a kind this module reads (a sprite power's Range and Duration
+        lines) has its fields read as the recipe would."""
+        same = lambda e: norm(e["name"]) == norm(f.name) and all(  # noqa: E731
+            e["attrs"].get(k) == f.attrs.get(k) for k in ("type",) if f.attrs.get(k))
+        if any(same(e) for e in self.entries[f.kind]):
+            return
+        a = dict(f.attrs)
+        if f.block is not None and f.kind in HEADERS and HEADERS[f.kind]:
+            fl = self.fields(f.kind, _text_stats(f.block, HEADERS[f.kind]), f.page)
+            fl.pop("prose", None)
+            a = {**fl, **a}
+            self.pending = []
+        if f.kind == "qualities" and a.get("karma") is not None:
+            a["karma"] = int(a["karma"])
+        if "_base" in a:
+            return self.derived(f, a)
+        cls = a.pop("_class", None)
+        if cls:  # a kind of a class the book prices by one row (`Enchanting focus`): that row's price
+            row = next((e for e in self.entries[f.kind] if norm(e["name"]) == norm(cls)), None)
+            if row is None:
+                return
+            a.update({k: row["attrs"][k] for k in ("rating", "karma", "avail", "cost") if row["attrs"].get(k)})
+        self.add(f.kind, f.name, f.page, a, f.children, f.text)
+
+    def derived(self, f, a):
+        """An item a section derives from one of the book's (sections.derived): the base item found by its name
+        (singular, the first words of a longer name: `gills` is `Gills (freshwater/saltwater/air)`) in the kind whose
+        entries are of the base's type (`bioware`); its rating range and availability kept, each field the rule
+        names its base's times the factor (`ref()`, at the item's rating). No base found: the rule as an ambiguous
+        issue (`priced from another item`)."""
+        want = [regroup_stem(w) for w in norm(a["_base"]).split()]
+        kinds = [k for k in formula.PRICED if any(a["_basekind"].lower() in (e["attrs"].get("type") or "").lower()
+                                                   for e in self.entries[k])] or [f.kind]
+        base, kind = next(((e, k) for k in kinds for e in self.entries[k]
+                     if [regroup_stem(w) for w in norm(re.sub(r"\([^()]*\)", "", e["name"])).split()][:len(want)] == want
+                     and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
+        rule, kids, attrs = a["_rule"], [], {}
+        if base:
+            attrs = {k: base["attrs"][k] for k in ("type", "category", "rating", "avail") if base["attrs"].get(k)}
+            r = ", R" if base["attrs"].get("rating") else ""
+            for fld, x in a["_factors"].items():
+                attrs[fld] = _short_rule(rule, fld)
+                kids.append(("formula", {"field": fld}, f"ref({kind}:{self.source.lower()}.{base['id']}, {fld}{r})*{x:g}"))
+        else:  # (its type the base's, its category the rule's word: `transgenic`)
+            attrs = {"type": a["_basekind"].lower(), "category": slug(f.name.split()[0])}
+            for fld in a["_factors"]:
+                kids.append(("issue", {"field": fld, "code": "ambiguous", "page": f.page},
+                             f"priced from another item: {_short_rule(rule, fld)}"))
+        self.add(kind, f.name, f.page, attrs, kids, f.text)["derived"] = True  # (its table row is its base's)
 
     def check(self, kind, name, attrs, page):
         """Report a price the app can't read (book-value): kept as printed."""
@@ -345,7 +413,14 @@ class _Catalog:
             a = cols.get(k.upper())
             if a and v and a not in out:
                 out[a] = _value(a, v)
-        if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))):
+        if kind == "weapons" and (m := re.fullmatch(r"(.+?)\s*\(\s*(\d[\d.,]*\s*m)\s+blast\s*\)", out.get("dv", ""), re.I)):
+            out["dv"] = m.group(1)  # `8P(10m blast)`: the DV and the blast run into one cell
+            out.setdefault("blast", m.group(2))
+        if kind == "weapons" and (m := re.fullmatch(r"(\d+\s*[PS](?:\([^)]*\))?)\s*\+\s*([a-z].*)", out.get("dv", ""), re.I)):
+            out["dv"] = m.group(1)  # `1P + special`: the DV, and a note for the text
+            out.setdefault("prose", []).append(f"**DV:** {m.group(1)} + {m.group(2)}")
+        if kind in PRICED and (m := re.fullmatch(r"(.+?)\s+per\s+(.+)", out.get("cost", ""))) \
+                and m.group(1).count("(") == m.group(1).count(")"):  # (not `2,000¥ (+500¥ per additional dart)`)
             out["cost"] = m.group(1)  # "50 per 100m"; "15 per 10" under a COST (PER 10 ROUNDS) column
             out.setdefault("per", m.group(2))
         return out
@@ -504,14 +579,26 @@ class _Catalog:
             if kind == "augmentations":
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
-                name, f["rating"] = name[:m.start()], m.group(1)
+                name, f["rating"] = name[:m.start()] + name[m.end():].strip(), m.group(1)
+            if "rating" not in f and (m := TAG_RATING.match(b.tags or "")):
+                f["rating"] = m.group(1)  # the heading's tag line gives its range: `(rating 1-4)`
+            if "rating" not in f and re.search(r"(?i)\b(?:size|level|force|grade)\b", f.get("cost", "") + f.get("avail", "")):
+                # priced by its Size (Level, Force…): the range its SIZE column prints is the rating it comes in
+                rng = next((v for h, v in (b.row or {}).items() if h.upper() in ("SIZE", "LEVEL", "FORCE", "GRADE")
+                            and re.fullmatch(r"\s*\d+\s*[–-]\s*\d+\s*", v or "")), None)
+                if rng:
+                    f["rating"] = rng.strip()
+            if kind == "weapons" and "ammo" not in f and (ammo := ammo_from_text(b.text)):
+                f["ammo"] = ammo  # its row prints no ammo, its description does (`internal magazines that hold …`)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
                         and re.fullmatch(r"\d+\s*[–-]\s*\d+", g.get("capacity", "")):
                     g["rating"] = g["capacity"]  # priced by capacity: bought at a capacity in its range
                 a = {**attrs, **g}
                 self.check(kind, n, a, page)
-                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]))
+                # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
+                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
+                         aliases=(b.aliases if n == name else []) or code_alias(n, b.label))  # (a heading's fuller name first)
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -565,7 +652,7 @@ class _Catalog:
         attrs.update(f)
         listed = {k for k in b.labels if k.lower() in LISTS} if kind in STAT_KINDS else set()
         self.check(kind, name, attrs, page)
-        self.add(kind, name, page, attrs, children, "\n".join(prose + [_text(b, listed)]))
+        self.add(kind, name, page, attrs, children, "\n".join(prose + [_text(b, listed)]), aliases=b.aliases)
         return True
 
     def contact(self, b, page):
@@ -607,7 +694,75 @@ class _Catalog:
 
     # --- the files ---
 
+    def rules(self):
+        """Each entry's <formula> and <issue> children (importer/sr6/formula.py), once, after every entry is read: a
+        band group's rule needs all its rows."""
+        if getattr(self, "_ruled", False):
+            return
+        self._ruled = True
+        # a section's statement of a cheaper or dearer version (`open construction versions … at half the listed
+        # cost`): an option on the priced items of its section that its heading names
+        said = [(e["where"], e["name"], o) for es in self.entries.values() for e in es
+                for o in formula.section_options(e.get("text") or "")]
+        # the book's weapon power supplies (gear with an Energy): an energy weapon's shots are read off the one it
+        # comes with
+        supplies = {re.sub(r"^.*\((.+)\)\s*$", r"\1", e["name"]).lower(): f"{self.source.lower()}.{e['id']}"
+                    for e in self.entries["gear"] if (e["attrs"].get("energy") or "").strip()}
+        sections = {}  # the section prose (rule entries) by place
+        for e in self.entries["rules"]:
+            sections.setdefault(e["where"], []).append(e.get("text") or "")
+        for kind, es in self.entries.items():
+            tiered = formula.tier_groups(es) if kind in formula.FORMULA_FIELDS else {}
+            for e in es:
+                opts = [o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])]
+                kids = formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)), readable, opts,
+                                        e.get("text") or "")
+                # (a field the entry already has a formula for, a derived item's: no issue for its printed rule)
+                have = {ca["field"] for t, ca, _ in e["children"] if t in ("formula", "issue")}
+                kids = [k for k in kids if k[1].get("field") not in have]
+                if self.index is not None and not e.get("derived") and any(c[0] == "issue" for c in kids):
+                    found = self.resolve(kind, e, kids)
+                    if found:
+                        kids = formula.children(kind, e["attrs"], e["page"], e.get("row"), tiered.get(id(e)),
+                                                readable, opts, e.get("text") or "") + found
+                    kids = [(t, {**a, "searched": "book"} if t == "issue" else a, x) for t, a, x in kids]
+                e["children"] += kids
+                if kind == "weapons" and supplies and re.fullmatch(r"(?i)\s*energy\s*", e["attrs"].get("ammo") or "") and (
+                        x := formula.energy_ammo(e.get("text"), "\n".join(sections.get(e["where"], ())), supplies)):
+                    e["children"].insert(next((i for i, c in enumerate(e["children"]) if c[0] == "issue"),
+                                              len(e["children"])), ("formula", {"field": "ammo", "round": "down"}, x))
+
+    def resolve(self, kind, e, kids):
+        """The issues' fields found elsewhere in the book (resolve.py's first two circles), written to the entry's
+        attributes: [("found", {field, how, page}, None)]. A field the row prints but no rule reads (unreadable) is
+        looked for too; two values printed, or a rule pricing it off another item (ambiguous), is the book's."""
+        out = []
+        for t, a, _ in kids:
+            if t != "issue" or a["code"] == "ambiguous":
+                continue
+            f = a["field"]
+            r = resolve.search_book(self.index, HEADERS, kind, e, f, e.get("text") or "")
+            if not r:
+                continue
+            v, how, page = r
+            e["attrs"][f] = int(v) if kind == "qualities" and f == "karma" else v
+            out.append(("found", {"field": f, "how": how, "source": self.source, "page": page}, None))
+            if how == "table":  # the same row's other columns the entry's own row leaves empty (a capacity range)
+                for g, w in resolve.same_row(self.index, HEADERS, kind, e, f, v).items():
+                    if not (e["attrs"].get(g) or "").strip():
+                        e["attrs"][g] = w
+                        out.append(("found", {"field": g, "how": how, "source": self.source, "page": page}, None))
+        a = e["attrs"]
+        if out and not (a.get("rating") or "").strip() and _VAR.search(f"{a.get('cost', '')} {a.get('avail', '')}"):
+            # a rated price found: the range its name or its capacity prints is the rating it comes in
+            m = NAME_RATING.search(e["name"])
+            rng = m.group(1) if m else a.get("capacity") if re.fullmatch(r"\s*\d+\s*[–-]\s*\d+\s*", a.get("capacity") or "") else None
+            if rng:
+                a["rating"] = rng.strip()
+        return out
+
     def xml(self, kind):
+        self.rules()
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
             a = {"id": e["id"], "source": self.source, "page": e["page"], **e["attrs"]}
@@ -625,6 +780,102 @@ class _Catalog:
 
 def _attrs(d):
     return "".join(f" {k}={quoteattr(_s(v))}" for k, v in d.items() if v is not None and v != "")
+
+
+# what a weapon's ammunition comes in, as the books' AMMO cells abbreviate it (the game's vocabulary)
+AMMO_HOLDERS = {"internal magazine": "m", "clip": "c", "drum": "d", "belt": "belt", "cylinder": "cy",
+                "break action": "b", "muzzle": "ml"}
+_COUNT_WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
+_AMMO_TEXT = re.compile(r"\b(" + "|".join(AMMO_HOLDERS) + r")s?\b[^.]{0,40}?\bhold(?:s|ing)?\s+(?:up\s+to\s+)?(\d+|"
+                        + "|".join(_COUNT_WORDS) + r")\s+(?:bolts?|rounds?|arrows?|darts?|shells?|shots?|grenades?)\b", re.I)
+
+
+SUPPLIES = ("fuel", "ammo", "ammunition", "rounds", "bolts", "arrows", "darts", "rockets", "missiles", "grenades",
+            "batteries", "power packs")  # what a weapon's supply table is titled after (the game's words)
+
+
+_SERIES = re.compile(r"\b(X{2,})(-?\d+)\b")
+
+
+def series_models(name, text):
+    """A series named with a placeholder (`Zap XX-10 Series`): the models its text prints in the placeholder's place
+    (`ZB-10`, `QB-10`), each as `Zap ZB-10`."""
+    m = _SERIES.search(name)
+    if not m or not text:
+        return []
+    stem = re.sub(r"\s+series\s*$", "", name, flags=re.I)
+    codes = re.findall(rf"\b([A-Z]{{{len(m.group(1))}}}){re.escape(m.group(2))}\b", text)
+    return [stem.replace(m.group(0), c + m.group(2)) for c in dict.fromkeys(codes) if c != m.group(1)]
+
+
+def regroup_stem(w):
+    return formula._stem(w)
+
+
+def _short_rule(rule, field):
+    """The part of a derivation rule about one field, as printed (`fifty percent more Essence`)."""
+    word = "essence" if field == "essence" else "nuyen"
+    m = re.search(rf"[\w-]+\s*(?:%|percent)\s+(?:more|less)\s+{word}", rule, re.I)
+    return f"{m.group(0)} than the base item" if m else rule
+
+
+CODE = re.compile(r"[A-Za-z]{0,3}-?\d+[A-Za-z]{0,2}|[A-Z]{2,5}")  # a row named by a code: `m60`, `B25`, `HEX`
+_CLASS_WORDS = re.compile(r"\s+(?:ammunition|ammo|rounds)$", re.I)
+
+
+def code_alias(name, title):
+    """A row named only by a code (and no heading's fuller name) takes its table's title in front as its other name,
+    the title's last word made
+    singular and an `Ammunition` word dropped (`m60` in `Mortar bombs`: `Mortar bomb m60`; `B60` in `Autocannon
+    Ammunition`: `Autocannon B60`)."""
+    stem = _CLASS_WORDS.sub("", (title or "").strip())
+    if not CODE.fullmatch(name.strip()) or not stem or not stem[:1].isalpha() or len(stem.split()) > 4:
+        return []
+    w = stem.split()
+    last = w[-1][:-3] + "y" if w[-1].lower().endswith("ies") else w[-1][:-1] if re.search(r"[^s]s$", w[-1]) else w[-1]
+    return [" ".join(w[:-1] + [last, name.strip()])]
+
+
+def supply_aliases(name, weapon):
+    """`<words> Fuel` printed right after a weapon whose heading ends with those words (`Vehicle Flamethrower Fuel`
+    after `Hellfire`, headed `Ares Hellfire Vehicle Flamethrower`) is that weapon's: `Hellfire Fuel`, `Fuel for
+    Hellfire`. [] otherwise."""
+    n = norm(name).split()
+    sup = next((w for w in SUPPLIES if " ".join(n[-len(w.split()):]) == w), None)
+    head = n[:-len(sup.split())] if sup else []
+    if not sup or not head:
+        return []
+    for h in [weapon["name"], *weapon.get("aliases", ())]:
+        if norm(h).split()[-len(head):] == head:
+            w, s = weapon["name"], name.split()[-len(sup.split()):]
+            return [f"{w} {' '.join(s)}", f"{' '.join(s)} for {w}"]
+    return []
+
+
+_MULTIPLE = re.compile(r"^\s*(?:x\s*\d+(?:\.\d+)?|\+\s*\d+\s*%)\s*$", re.I)
+_AMMO_WORDS = re.compile(r"\b(?:ammo|ammunition|rounds?|bolts?|arrows?|warheads?|slugs?|shells?|bullets?)\b", re.I)
+
+
+def ammo_type(b):
+    """A row priced as a multiple of the ammunition it modifies (a COST MULTIPLIER column, or `x2` / `+100%` in an
+    ammunition table): an ammunition type, not an item of its own."""
+    if b.row is None or not b.header:
+        return False
+    if any("MULTIPLIER" in h.upper() for h in b.header):
+        return True
+    cost = next((v for h, v in b.row.items() if h.upper() in ("COST", "PRICE")), "")
+    return bool(_MULTIPLE.match(cost or "")) and bool(_AMMO_WORDS.search(" ".join([b.name, b.label, b.section, *b.header])))
+
+
+def ammo_from_text(text):
+    """A weapon's ammo as its description words it (`internal magazines that hold up to four bolts` -> `4(m)`), or
+    None."""
+    m = _AMMO_TEXT.search(" ".join((text or "").split()))
+    if not m:
+        return None
+    n = m.group(2).lower()
+    n = str(_COUNT_WORDS.index(n)) if n in _COUNT_WORDS else n
+    return f"{n}({AMMO_HOLDERS[m.group(1).lower()]})"
 
 
 def _text(b, skip=()):
@@ -735,13 +986,18 @@ def extract(regrouped, ctx=None, book=None):
     cat.unrated = getattr(bk, "UNRATED_NPCS", None)
     cat.split = getattr(bk, "split_being", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
-    for b in blocks(regrouped) if isinstance(regrouped, str) else regrouped:
+    bs = list(blocks(regrouped) if isinstance(regrouped, str) else regrouped)
+    cat.index = resolve.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
+    sec, found = sections.Reader(), []
+    for b in bs:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
         if b.type == "section" and b.level == 2:
             parent2 = b.name
         b = bk.fix(b, parent2) if hasattr(bk, "fix") else b
+        cat.where = (b.chapter, b.section)
         ch, page = norm(b.chapter), max(1, b.page - bk.PAGE_OFFSET)
+        found += sec.feed(b, page)  # the kinds the book prints as sections (actions, mentor spirits, …): sections.py
         for header, rows in _tables(b.text):  # the priority and metatype tables (rule tables in regroup's output)
             cat.table(header, rows, page)
         if cat.last_meta is not None and not any(t == "trait" for t, _, _ in cat.last_meta["children"]) \
@@ -779,6 +1035,8 @@ def extract(regrouped, ctx=None, book=None):
             kind, kcat = _kind(ch, ctx_keys, False, bk)
         if hasattr(bk, "kind"):
             kind, kcat = bk.kind(ch, b, parent2)
+        if kind in ("gear", "weapons") and ammo_type(b):
+            kind = "ammotypes"  # priced as a multiple of the ammunition it modifies
         if kind == "skip" or kind and cat.entry(kind, kcat, b, page, ctx_keys):
             continue
         rule_chapter = ch and any(c in ch for c in bk.RULE_CHAPTERS)
@@ -797,6 +1055,8 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
+        cat.section(f)
     for e in cat.entries["programs"]:
         # a program's price: the book's `Cyberprogram, <type>` row; an autosoft's the `Autosoft` row, with its ratings
         # (the core rulebook's)

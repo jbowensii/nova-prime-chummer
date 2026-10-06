@@ -1,6 +1,6 @@
 """CLI for the importer package.
   python -m importer convert <pdf> <md> [--pages A-B]
-  python -m importer run <library/book-id> --custom <custom dir> [--md] [--file NAME]
+  python -m importer run <library/book-id> --custom <custom dir> [--md | --reuse] [--file NAME]
   python -m importer propose <library/book-id> --library <library dir> [--dry-run] [--fresh] [--core]
   python -m importer remove <library/book-id> --custom <custom dir> [--files]
   python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
@@ -37,7 +37,7 @@ from importer import DATA_DIR, find_core_file, use_custom, xmlio
 
 # A source id as it may name a folder or file under custom/ (letters, digits, dash, underscore; no dots or slashes).
 SAFE_SOURCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
-from importer.convert import CONVERTER_VERSION, convert
+from importer.convert import CONVERTER_VERSION, convert, reusable
 from importer.recipes import RECIPES, identify
 
 USAGE = __doc__.strip()
@@ -340,7 +340,9 @@ def _cmd_run(argv):
         print(USAGE, file=sys.stderr)
         return 2
     file_name = argv[argv.index("--file") + 1] if "--file" in argv else None
-    res = run(argv[0], argv[2], convert_pdf="--md" not in argv, file_name=file_name)
+    # --md: book.md as it is; --reuse: book.md when it was made from this PDF by this converter, else convert
+    keep = "--md" in argv or ("--reuse" in argv and reusable(argv[0], CONVERTER_VERSION))
+    res = run(argv[0], argv[2], convert_pdf=not keep, file_name=file_name)
     state = xmlio.ET.parse(os.path.join(argv[0], "status.xml")).getroot().get("state")
     extra = f" source={quoteattr(res.source['id'])} files={quoteattr(' '.join(res.files))}" if res else ""
     print(f"<result state={quoteattr(state)}{extra} />")

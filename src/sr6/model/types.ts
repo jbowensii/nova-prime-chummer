@@ -1,11 +1,13 @@
 // The Shadowrun 6 catalog's kinds: one data file per kind (custom/sr6/imported/<source>/<kind>.xml), each entry under
 // its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format.md.
+import type { Formula, Issue } from '../../engine/formula'
 import type { Sr6Character } from './character'
 
 export type Sr6Kind =
   | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations' | 'grades'
   | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
-  | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules' | 'rules'
+  | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules'
+  | 'actions' | 'packs' | 'vehicledesign' | 'ammotypes' | 'mentorspirits' | 'datastructures' | 'qualitypaths' | 'spellfeatures' | 'contacttypes' | 'qualitysets' | 'licencetypes' | 'magictypes' | 'ruleoptions' | 'senses' | 'trueelements' | 'rules'
 
 export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   priorities: { tag: 'priority', label: 'Priorities' },
@@ -38,8 +40,29 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   lifestyles: { tag: 'lifestyle', label: 'Lifestyles' },
   contacts: { tag: 'contact', label: 'Contacts' },
   lifemodules: { tag: 'lifemodule', label: 'Life modules' },
+  actions: { tag: 'action', label: 'Actions' },
+  packs: { tag: 'pack', label: 'Gear packs' },
+  vehicledesign: { tag: 'design', label: 'Vehicle design' },
+  ammotypes: { tag: 'ammotype', label: 'Ammunition types' },
+  mentorspirits: { tag: 'mentorspirit', label: 'Mentor spirits' },
+  datastructures: { tag: 'datastructure', label: 'Data structures' },
+  qualitypaths: { tag: 'qualitypath', label: 'Quality paths' },
+  spellfeatures: { tag: 'spellfeature', label: 'Spell features' },
+  contacttypes: { tag: 'contacttype', label: 'Contact types' },
+  qualitysets: { tag: 'qualityset', label: 'Quality sets' },
+  licencetypes: { tag: 'licencetype', label: 'Licence types' },
+  magictypes: { tag: 'magictype', label: 'Magic types' },
+  ruleoptions: { tag: 'ruleoption', label: 'Rule options' },
+  senses: { tag: 'sense', label: 'Senses' },
+  trueelements: { tag: 'trueelement', label: 'True elements' },
   rules: { tag: 'rule', label: 'Rules' },
 }
+
+/** The kinds read from the books' own sections and tables (actions, packs, …): listed in Game data as printed, with no
+ *  rules of their own yet (the owner decides how each is used), and left out of the Foundry export. */
+export const DISPLAY_KINDS: ReadonlySet<Sr6Kind> = new Set<Sr6Kind>(['actions', 'packs', 'vehicledesign', 'ammotypes',
+  'mentorspirits', 'datastructures', 'qualitypaths', 'spellfeatures', 'contacttypes', 'qualitysets', 'licencetypes',
+  'magictypes', 'ruleoptions', 'senses', 'trueelements'])
 
 /** An augmentation's type (common.xsd). Grades (alpha, beta…) apply to cyberware and bioware only (CRB p. 283, Body Shop
  *  p. 29); the others are bought as printed. */
@@ -51,13 +74,18 @@ export const GRADED_TYPES: readonly string[] = ['cyberware', 'bioware']
 export const augFamily = (type: string | undefined): 'cyberware' | 'bioware' =>
   type === 'bioware' || type === 'geneware' || type === 'symbionts' || type === 'transgenics' ? 'bioware' : 'cyberware'
 
-/** An entry's child element other than <name> and <text> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
+/** An entry's child element other than <name>, <text>, <formula> and <issue> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
 export interface Sr6Part { tag: string; attrs: Record<string, string>; text: string }
 /** One catalog entry, generic in S1 (S2 adds typed views). attrs: every attribute but id, source and page, as printed;
  * text: its description (the texts files); edited/by: from the edits layer (custom/sr6/edits/edits.xml). */
 export interface Sr6Entry {
   id: string; kind: Sr6Kind; name: string; source: string; page: number; attrs: Record<string, string>; parts: Sr6Part[]; text: string
   edited?: boolean; by?: string
+  /** <formula> children: how a field is worked out (src/engine/formula.ts); the attribute stays as printed */
+  formulas?: Formula[]
+  /** <issue> children: a field the book prints nothing for, or that the importer couldn't read; also a formula that can't
+   *  be worked out (load.ts). An edit that sets the field clears its issue (the book's stays in `original`). */
+  issues?: Issue[]
 }
 /** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). published ("2019-08") and cat
  *  ("CAT28000"): the publication order (src/sr6/engine/npc.ts byPublication). */
@@ -78,6 +106,8 @@ export interface Sr6Catalog {
   entries: Record<Sr6Kind, Map<string, Sr6Entry>>
   sources: Map<string, Sr6Source>
   original: Map<string, Sr6Entry>
+  /** an id an entry had in an earlier import (its <alias id kind>), by entryKey(old kind, old id): where it is now */
+  moved: Map<string, { kind: Sr6Kind; id: string }>
   files: { file: string; kind: string; entries: number }[]
   errors: { file: string; message: string }[]
 }

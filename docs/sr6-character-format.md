@@ -54,6 +54,12 @@ see NPCs below.
 `cm` (`11/10`, Physical/Stun) or `dr`. Review compares each with what the rules give and warns where they differ ("REA:
 the book prints 4(6); the rules give 4(7)", the page cited); the file never corrects them. A copy keeps them.
 
+`<migrated from to at>` (last): a catalog id the runner named that a re-import renamed, moved or re-kinded, turned into
+the new one when the runner was opened (`from` and `to` are `<kind>/<id>`; the entry's `<alias id kind>`,
+docs/sr6-data-format.md). Purchases and their accessories, picks, qualities, the lifestyle, the metatype and the ledger's
+lines are turned when the new entry's kind fits the line; a line whose entry is gone with no successor keeps its id and
+its snapshot.
+
 `<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, purchases and
 accessories, lifestyle; career spends included), in the SR6 data files' own format with their text, refreshed on every
 change while the compendium is readable. When it no longer is (unshared or deleted), each copy stands in for its entry
@@ -77,7 +83,8 @@ copy". Book entries are never copied here.
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
-- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear` or `vehicles`; `rating` for rated
+- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
+  before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when

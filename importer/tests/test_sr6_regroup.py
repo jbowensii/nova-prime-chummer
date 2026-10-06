@@ -202,6 +202,31 @@ Eyes see.
 """
 
 
+class BoldHeaderTableTest(unittest.TestCase):
+    def test_rows_under_a_bold_header_line_and_names_wrapped_around_them(self):
+        md = """**WEAPON TYPE DV ATTACK RATING AVAIL COST**
+Zapper Exotic 2P 10/—/—/—/— 3(L) 200¥
+Zip
+Exotic 4P 10/—/—/—/— 6(I) 500¥
+(Heavy)
+Blip
+Exotic 2P 3/—/—/—/— 4(L) 125¥
+Stomp
+Mete
+900¥
+Hammer Exotic 2P 6/—/—/—/— 5(I)
+(Double)
+*Footnote.
+"""
+        t = [v for k, _, v in regroup._elements(md) if k == "t"][0]
+        self.assertEqual(t.header, ["WEAPON", "TYPE", "DV", "ATTACK RATING", "AVAIL", "COST"])
+        self.assertEqual([(r[0], r[-1]) for r in t.rows], [("Zapper", "200¥"), ("Zip (Heavy)", "500¥"),
+                                                         ("Blip Stomp", "125¥"), ("Mete Hammer (Double)", "900¥")])
+        rows = regroup._elements("**NAME CLASS RANGE AVAIL COST**\nm40 0 3 km 4(L) 750¥\nm60 1 7 km 5(L) 900¥\n")[0][2].rows
+        self.assertEqual([r[:3] for r in rows], [["m40", "0", "3 km"], ["m60", "1", "7 km"]])
+        self.assertEqual([r[0] for r in regroup._rating_groups(rows)], ["m40", "m60"])  # a model code, no variant
+
+
 class RegroupRulesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -403,3 +428,158 @@ class RealBookShapesTest(unittest.TestCase):
     def test_end_page_leaves_out_the_back_matter(self):
         self.assertNotIn("INDEX", self.text)
         self.assertEqual(self.blocks[-1].name, "Winding Up")
+
+
+STACKED = """<!-- page 5 -->
+# BLASTERS
+## Blaster Shop
+#### Zorp Cannon
+A zorp cannon zorps.
+| NAME | TYPE | DV | MODE | ATTACK |
+|---|---|---|---|---|
+|  |  |  |  | RATINGS |
+| Zorp Cannon | Launcher | 4P | SS | —/5/6/7/8 |
+| AMMO | AVAIL | COST |
+|---|---|---|
+| 2(c) | 6(I) | 9,000¥ |
+#### Fizz Charges
+Fizzy.
+| PRODUCT | EFFECT |
+|---|---|
+| Fizz Charges | fizzy |
+| NAME | AVAIL | COST |
+|---|---|---|
+| Fizz Charges | 2 | 30¥ |
+##### Blasters
+| NAME | DV | AVAIL | COST |
+|---|---|---|---|
+| Blip Gun | 2P | 2 | 100¥ |
+**Note:** a blip gun blips.
+The note goes on over a line or two of plain text.
+| NAME | DV | AVAIL | COST |
+|---|---|---|---|
+| Blop Gun | 3P | 3 | 200¥ |
+"""
+
+
+class StackedTablesTest(unittest.TestCase):
+    """Invented: a row set as two stacked bands, a header cell on two lines, a box's next row after a note."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.items = _items(regroup.regroup(STACKED)[0])
+
+    def test_second_band_joins_the_row(self):
+        r = self.items["Zorp Cannon"].row
+        self.assertEqual((r["ATTACK RATINGS"], r["AMMO"], r["AVAIL"], r["COST"]), ("—/5/6/7/8", "2(c)", "6(I)", "9,000¥"))
+
+    def test_a_second_table_of_the_names_stays_apart(self):
+        tables = regroup._elements(STACKED)
+        heads = [t.header for k, _, t in tables if k == "t"]
+        self.assertIn(["PRODUCT", "EFFECT"], heads)
+        self.assertIn(["NAME", "AVAIL", "COST"], heads)
+
+    def test_a_box_row_after_a_note_stays_in_the_box(self):
+        stats = self.items["Blasters"].stats
+        self.assertEqual([s["NAME"] for s in stats], ["Blip Gun", "Blop Gun"])
+
+
+class RepairRowTest(unittest.TestCase):
+    """Invented rows with two cells run together by the converter."""
+    H = ["NAME", "DV", "MODE", "ATTACK RATINGS", "AMMO", "AVAIL", "COST"]
+
+    def test_mode_and_attack_ratings_run_together(self):
+        row = ["Zorp", "9P", "SA(2)—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥", "2,000¥"]
+        self.assertEqual(regroup._repair_row(self.H, row),
+                         ["Zorp", "9P", "SA(2)", "—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥"])
+
+    def test_attack_ratings_and_ammo_run_together(self):
+        h = self.H[:5] + ["TYPE"] + self.H[5:]
+        row = ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km) 10(br) + Energy", "Z1", "6(I)", "900¥", "50¥"]
+        self.assertEqual(regroup._repair_row(h, row),
+                         ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km)", "10(br) + Energy", "Z1", "6(I)", "900¥"])
+
+    def test_a_row_that_reads_stays(self):
+        row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
+        self.assertIs(regroup._repair_row(self.H, row), row)
+
+    def test_no_split_that_fits_leaves_the_row_as_printed(self):
+        row = ["Quux", "4P", "weird", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
+        self.assertEqual(regroup._repair_row(self.H, row), row)
+
+
+class NamesAndCellsTest(unittest.TestCase):
+    """Invented names: a row printing a shorter name than its description's heading; a header printed twice."""
+
+    def test_shorter_and_full_names(self):
+        self.assertTrue(regroup.shorter_name("Zap mic", "Zap microphone"))
+        self.assertTrue(regroup.shorter_name("Ultra-sonic mic", "Ultrasonic microphone"))
+        self.assertTrue(regroup.shorter_name("ZX-9", "Blarg ZX-9 Thunderer"))
+        self.assertFalse(regroup.shorter_name("Pistol", "Heavy Pistol"))  # one word, no digit
+        self.assertFalse(regroup.shorter_name("Glow rope", "Glow rope and glow stick"))  # a heading over two items
+        self.assertTrue(regroup.full_name("Zap mic", "Zap microphone"))
+        self.assertTrue(regroup.full_name("Thunder 9", "Blarg Thunder 9"))  # a maker in front: the full name
+        self.assertFalse(regroup.full_name("Thunder 9", "Thunder 9 Rocket System"))  # words after it: a title
+
+    def test_a_short_row_pairs_with_its_heading_and_takes_its_full_name(self):
+        md = """<!-- page 2 -->
+# GIZMOS
+## Sound Gizmos
+#### Zap microphone
+A zap mic hears zaps.
+#### sound gizmos
+| DEVICE | AVAIL | COST |
+|---|---|---|
+| Zap mic | 2 | 100¥ |
+"""
+        items = _items(regroup.regroup(md, name_headers=frozenset({"DEVICE"}))[0])
+        self.assertIn("Zap microphone", items)
+        self.assertEqual(items["Zap microphone"].row["DEVICE"], "Zap mic")
+        self.assertEqual(items["Zap microphone"].text, "A zap mic hears zaps.")
+
+    def test_a_header_printed_twice_keeps_the_first_cell(self):
+        self.assertEqual(regroup._row(["NAME", "AVAIL", "COST", "COST"], ["Zorp", "4", "900¥", "2"]),
+                         {"NAME": "Zorp", "AVAIL": "4", "COST": "900¥", "COST (2)": "2"})
+        self.assertEqual(regroup._row(["B", "R", "R"], ["1", "2", "3"]), {"B": "1", "R": "2", "RES": "3"})
+
+
+class InterleavedHeaderTest(unittest.TestCase):
+    """Invented: a two-line header cell the converter interleaved; a lower-case title over a tag line."""
+
+    def test_deinterleave(self):
+        self.assertEqual(regroup.deinterleave("S INP TD"), "SPD INT")
+        self.assertEqual(regroup.deinterleave("T SO PDP"), "TOP SPD")
+        self.assertIsNone(regroup.deinterleave("HAND"))
+        self.assertIsNone(regroup.deinterleave("SPD INT"))
+
+    def test_table_header_put_back(self):
+        md = "# CARS\n##### zoomer (Car)\n| HAND | S INP TD | T SO PDP | COST |\n|---|---|---|---|\n| 3 | 9 | 90 | 900¥ |\n"
+        t = [v for k, _, v in regroup._elements(md) if k == "t"][0]
+        self.assertEqual(t.header, ["HAND", "SPD INT", "TOP SPD", "COST"])
+
+    def test_lower_case_title_over_a_tag_line_is_an_item(self):
+        md = "<!-- page 4 -->\n# RIDES\n## Odd Rides\nIntro.\n##### blip roller\n(Personal Roller)\nA roller that blips.\n"
+        item = _items(regroup.regroup(md)[0])["blip roller"]
+        self.assertEqual((item.tags, item.text), ("Personal Roller", "A roller that blips."))
+
+
+class TextRowsTest(unittest.TestCase):
+    def test_rows_the_converter_set_as_lines(self):
+        md = """<!-- page 5 -->
+# GEAR
+#### Glow Kits
+| ITEM | AVAIL | RANGE TYPE COST |
+|---|---|---|
+| Glow Stick | 1 | 20¥ |
+Fizz Pen 2 40¥
+Zap Kit
+Basic (Rating 1–6) 3 Rating x 100¥
+Deluxe (Rating 1–6) 4 Rating x 250¥
+Wobble Lamp 3 1,500¥
+Glow kits glow in the dark.
+"""
+        bs = [b for b in blocks(regroup.regroup(md, name_headers={"ITEM"})[0]) if b.row is not None]
+        rows = {b.name: (b.row.get("AVAIL"), b.row.get("COST")) for b in bs}
+        self.assertEqual(rows["Fizz Pen"], ("2", "40¥"))
+        self.assertEqual(rows["Zap Kit Basic (Rating 1–6)"], ("3", "Rating x 100¥"))
+        self.assertEqual(rows["Wobble Lamp"], ("3", "1,500¥"))  # (a name of several words ends the group)

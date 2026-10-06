@@ -43,6 +43,25 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   labelled lines, read with the Companion's reader (`swc._lifemodule`); the run goes on through a page's running head.
   Emerald City prints none (its lifepath-flavoured entries are qualities).
 
+## Formula styles and issues (importer v2)
+
+- The few priced tables: `Rating x N¥`, Essence `Rating x .N` -> `R*N`; `N¥/NV` -> `Q*N`, unit NV.
+- Issues: items a book lists with no avail or price (`missing`), words in an avail cell (`unreadable`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
+## Table shapes and value styles (importer v2)
+
+- **Vehicle bands in the text** (30 Nights, Assassins Night, The Third Parallel print a bold header line over a
+  value line, headers interleaved or run together): `shapes.vehicle_band` reads them; the general recipe does not
+  file them as vehicles yet (NPC rides, not catalog items).
+
+## Sections read as kinds (importer v3, sections.py)
+
+- **Qualities** (Shadow Cast): each quality path step with a `Karma Cost` line.
+- **Quality paths** (Shadow Cast): `### Quality Path: Name` under `## Quality paths`, its steps the headings under
+  it; a chapter printing those names only its `Quality Path:` headings as paths (`Roleplaying`, `Strategies`
+  after them are its sections).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-30 Nights-Campaign Book-CAT28400.pdf>" --out "%TEMP%\general-check"

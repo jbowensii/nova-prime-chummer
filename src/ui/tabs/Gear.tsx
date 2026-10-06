@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { itemCost } from '../../engine'
+import { formulaText, itemCost, itemPrice } from '../../engine'
+import { IssueBadges } from '../Issues'
 import type { ItemEntry, ItemKind, Pricing } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
@@ -118,7 +119,12 @@ export function GearTab() {
                             <option value="">Carried</option><option value="main">Main armor</option><option value="alt">Alternate</option>
                           </select>
                         </td>}
-                        <td className="num">{fmt(itemCost(c.pricing, i))}</td>
+                        <td className="num">{(() => {
+                          // a formula's price shows the formula on hover (and what it had to assume)
+                          const pr = itemPrice(c.pricing, i, cat)
+                          return pr.formula ? <span className="has-formula" title={[formulaText(pr.formula, pr.base.toLocaleString('en-US')), ...pr.notes, ...pr.error ? [`Can’t be worked out (${pr.error}): the standard price counts.`] : []].join('\n')}>
+                            {fmt(pr.n)}{pr.error && <span className="warn"> ?</span>}</span> : fmt(pr.n)
+                        })()}</td>
                         <td className="num">
                           {kind !== 'spell' && kind !== 'complex-form' && !amp && <button className="btn small quiet" onClick={() => toAmp(i)}>Make it an amp</button>}
                           <button className="btn small quiet" onClick={() => remove(i)}>Remove</button>
@@ -138,8 +144,12 @@ export function GearTab() {
           groups={[...new Set([...c.items.values()].filter(i => i.kind === adding).map(i => i.category ?? ''))].filter(Boolean)}
           items={[...c.items.values()].filter(i => i.kind === adding).map(i => ({
             id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`].filter(Boolean).join(', '),
-            label: <SourceLabel c={c} source={i.source} page={i.page} id={i.id} />, search: `${i.source} ${c.sources.get(i.source)?.name ?? ''} p.${i.page}`,
-            text: i.text, price: fmt(itemCost(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor })),
+            label: <><SourceLabel c={c} source={i.source} page={i.page} id={i.id} /> <IssueBadges issues={i.issues} source={i.source} /></>,
+            search: `${i.source} ${c.sources.get(i.source)?.name ?? ''} p.${i.page}`,
+            text: i.text, price: (() => {
+              const pr = itemPrice(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor }, i)
+              return pr.formula ? `${formulaText(pr.formula, pr.base.toLocaleString('en-US'))} (${pr.error ? 'unpriced' : fmt(pr.n)})` : fmt(pr.n)
+            })(),
             action: <EditButton kind="items" id={i.id} name={i.name} />,
           }))} />}
       </Modal>

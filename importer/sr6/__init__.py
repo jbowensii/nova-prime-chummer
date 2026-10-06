@@ -39,5 +39,25 @@ KINDS = {
     "lifestyles": "lifestyle",
     "contacts": "contact",
     "lifemodules": "lifemodule",
+    "actions": "action",
+    "packs": "pack",
+    "vehicledesign": "design",
+    "ammotypes": "ammotype",
+    "mentorspirits": "mentorspirit",
+    "datastructures": "datastructure",
+    "qualitypaths": "qualitypath",
+    "spellfeatures": "spellfeature",
+    "contacttypes": "contacttype",
+    "qualitysets": "qualityset",
+    "licencetypes": "licencetype",
+    "magictypes": "magictype",
+    "ruleoptions": "ruleoption",
+    "senses": "sense",
+    "trueelements": "trueelement",
     "rules": "rule",
 }
+# the kinds read from the books' own sections and tables (importer/sr6/sections.py), listed as printed: DISPLAY_KINDS in
+# src/sr6/model/types.ts
+SECTION_KINDS = ("actions", "packs", "vehicledesign", "ammotypes", "mentorspirits", "datastructures", "qualitypaths",
+                 "spellfeatures", "contacttypes", "qualitysets", "licencetypes", "magictypes", "ruleoptions", "senses",
+                 "trueelements")

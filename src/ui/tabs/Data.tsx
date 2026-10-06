@@ -3,11 +3,14 @@
 import type { Catalog, Item, ItemKind, Ref } from '../../model/types'
 import { PageHeader } from '../nav'
 import { canEdit, useMe } from '../auth'
-import { NonCanon } from '../bits'
+import { fmt, NonCanon } from '../bits'
+import { formulaText, itemPrice, type Formula } from '../../engine'
 import { CatalogBrowser, type BrowseKind, type BrowseRow } from '../CatalogBrowser'
 import { EditButton, EditedMark, editState, STATE_TEXT, useOpenEdit, type EditKind } from '../EditEntry'
 import { SourceLabel } from '../SourceLabel'
 import { ExportBooksPanel } from '../Foundry'
+import { OverrideFiles, type OverrideGame } from '../OverrideFiles'
+import { entryXml } from '../../engine'
 
 const KINDS: [EditKind, string][] = [['amps', 'Amp'], ['items', 'Item'], ['rules', 'Rule']]
 
@@ -27,13 +30,18 @@ const vals = (xs: [string, unknown][]) => xs.filter(([, v]) => v != null && v !=
 function browseKinds(c: Catalog): BrowseKind[] {
   const row = (e: Ref & { name: string }, more: Partial<BrowseRow>): BrowseRow => ({ key: e.id, name: e.name, source: e.source, page: e.page, ...more })
   const edited = (e: { edited?: boolean }) => e.edited ? <EditedMark /> : undefined
+  // a formula with its value (the standard price is B for an item's cost; Anarchy items have no ratings)
+  const formulas = (e: { formulas?: Formula[] }, i?: Item) => (e.formulas ?? []).map(f => {
+    const v = f.field === 'cost' && i ? itemPrice(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor }, i) : undefined
+    return `${f.field} = ${formulaText(f, v?.base.toLocaleString('en-US'))}${v ? ` (${v.error ? 'unpriced' : fmt(v.n)})` : ''}`
+  }).join(' · ')
   const item = (i: Item): BrowseRow => row(i, { group: i.category, text: i.text, marks: edited(i), action: <EditButton kind="items" id={i.id} name={i.name} />,
-    details: vals([['specialist', i.specialist], ['armor', i.armor], ['dv', i.dv], ['ranges', i.ranges]]) })
+    issues: i.issues, details: [vals([['specialist', i.specialist], ['armor', i.armor], ['dv', i.dv], ['ranges', i.ranges]]), formulas(i, i)].filter(Boolean).join(' · ') })
   const items = [...c.items.values()]
   return [
     { id: 'amps', label: 'Amps', rows: [...c.amps.values()].map(a => row(a, { group: c.ampTypes.get(a.type)?.name ?? a.type, text: a.narrative,
-      marks: edited(a), action: <EditButton kind="amps" id={a.id} name={a.name} />,
-      details: vals([['rating', a.printedRating], ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')]]) })) },
+      marks: edited(a), action: <EditButton kind="amps" id={a.id} name={a.name} />, issues: a.issues,
+      details: [vals([['rating', a.printedRating], ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')]]), formulas(a)].filter(Boolean).join(' · ') })) },
     { id: 'ampeffects', label: 'Amp effects', rows: [...c.ampEffects.values()].map(e => row(e, { group: e.category,
       details: vals([['rating', e.rating], ['for', e.types.join(', ')], ['max', e.max]]) })) },
     ...ITEM_KINDS.map(([k, label]) => ({ id: k, label, rows: items.filter(i => i.kind === k).map(item) })),
@@ -49,7 +57,17 @@ function browseKinds(c: Catalog): BrowseKind[] {
   ]
 }
 
-export function DataScreen({ c }: { c: Catalog }) {
+/** Anarchy's edits layer as an override file (OverrideFiles): amps, items and rules; formulas and issues stay the book's. */
+const overrides = (c: Catalog, books: { id: string; name: string }[]): OverrideGame => ({
+  dir: 'custom/edits/', api: 'edits', ns: 'urn:chummer-anarchy2:data:1', prefix: 'ca2', file: 'chummer-edits', books,
+  tags: { amp: 'amps', item: 'items', rule: 'rules' }, descTag: t => (t === 'amp' ? 'narrative' : 'text'), strip: ['issue', 'formula'],
+  current: (kind, id) => {
+    const e = KINDS.some(([k]) => k === kind) ? c[kind as EditKind].get(id) : undefined
+    return e && { xml: entryXml(kind as EditKind, e), edited: !!e.edited, text: 'narrative' in e ? e.narrative : e.text }
+  },
+})
+
+export function DataScreen({ c, reload }: { c: Catalog; reload: () => Promise<void> }) {
   const count = counts(c)
   const kinds = browseKinds(c), used = new Set(kinds.flatMap(k => k.rows.map(r => r.source)))
   const openEdit = useOpenEdit()
@@ -84,6 +102,7 @@ export function DataScreen({ c }: { c: Catalog }) {
           <button className="btn small" onClick={() => openEdit({ kind: 'items' })}>Add an item</button>
           <button className="btn small" onClick={() => openEdit({ kind: 'rules' })}>Add a rule</button>
         </div>
+        <OverrideFiles g={overrides(c, [...c.sources.values()].filter(s => used.has(s.id)).map(s => ({ id: s.id, name: s.name })))} reload={reload} />
         {edits.length === 0 ? <p className="muted">No edits yet.</p> : (
           <div className="scroll-x"><table className="data edits"><thead><tr><th>Entry</th><th>Kind</th><th>Status</th><th /></tr></thead>
             <tbody>{edits.map(({ kind, label, e, name, state }) => (

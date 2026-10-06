@@ -6,7 +6,7 @@
 import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, ItemEntry, KnowledgeEntry } from '../model/types'
 import { ATTRS, newId } from '../model/types'
 import { ampCtx, ampChangeCost, ampRating } from './amps'
-import { attrCost, attrMax, itemCost, partPrices, price, skillCost } from './price'
+import { attrCost, attrMax, catalogItem, itemCost, partPrices, price, skillCost } from './price'
 
 type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, 'id' | 'at'> : never) : never
 const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISOString(), ...e }) as CareerEvent
@@ -248,7 +248,7 @@ export function makeAdvance(c: Catalog, ch: Character, path: string, to: number)
   }
   throw new Error(`cannot advance "${path}"`)
 }
-export const makeBuy = (c: Catalog, item: ItemEntry) => stamp({ type: 'buy', item, cost: itemCost(c.pricing, item) })
+export const makeBuy = (c: Catalog, item: ItemEntry) => stamp({ type: 'buy', item, cost: itemCost(c.pricing, item, catalogItem(c, item)) })
 export const makeSell = (itemUid: string) => stamp({ type: 'sell', itemUid })
 export const makeSpec = (c: Catalog, skill: string, spec: string) => stamp({ type: 'spec-add', skill, spec, cost: c.pricing.spec })
 export const makeKnowledge = (c: Catalog, e: KnowledgeEntry, pay = !e.from) =>

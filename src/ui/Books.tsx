@@ -9,7 +9,7 @@ import type { Catalog } from '../model/types'
 import { SR6_KINDS, type Sr6Kind } from '../sr6/model/types'
 import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
-import { accountHeader, because, sessionEnded } from './auth'
+import { accountHeader, because, isAdmin, sessionEnded, useMe } from './auth'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
@@ -26,7 +26,7 @@ export interface Book { id: string; file?: string; state: string; message: strin
 const STATE: Record<string, string> = { queued: 'Waiting', importing: 'Importing…', removing: 'Removing', converting: 'Reading the PDF', identifying: 'Recognizing the book',
   extracting: 'Extracting entries', 'needs-ai': 'Needs AI', proposing: 'Asking the AI', review: 'Ready to review',
   applying: 'Adding entries', done: 'Imported', failed: 'Failed', removed: 'Removed',
-  skipped: 'Skipped', superseded: 'Superseded' } // SR6: a known file with nothing to import; an older printing not loaded
+  skipped: 'Skipped', superseded: 'Superseded', uploaded: 'Not imported yet' } // SR6: a known file with nothing to import; an older printing not loaded
 const LIVE = ['queued', 'importing', 'removing', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
 export const PROVIDER_NAMES: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI-compatible', gemini: 'Google Gemini', anythingllm: 'AnythingLLM' }
 const KINDS: [RegExp, string, string][] = [[/^amps/, 'amp', 'amps'], [/^spells/, 'spell', 'spells'], [/^complexforms/, 'complex form', 'complex forms'],
@@ -207,6 +207,10 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
   const [offline, setOffline] = useState(false)
   const [live, setLive] = useState('') // spoken only: upload start/end and state changes
   const settled = useRef<string | null>(null)
+  // Re-import all: the confirm, then the books it queued (the progress line follows them) and those it left out
+  const [allAsk, setAllAsk] = useState(false)
+  const [batch, setBatch] = useState<{ ids: string[]; skipped: { id: string; why: string }[] } | null>(null)
+  const admin = isAdmin(useMe())
   const states = useRef(new Map<string, string>())
 
   // a failed poll keeps the last list and keeps polling; only a real answer replaces it
@@ -280,6 +284,22 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
     } catch (e) { setMsg(because('Couldn’t open the report', (e as Error).message)) }
   }
 
+  const reimportable = (books ?? []).filter(b => b.recipe !== 'ai')
+  const reimportAll = async () => {
+    setAllAsk(false); setMsg(null)
+    try {
+      const r = await api<{ queued: string[]; skipped: { id: string; why: string }[] }>(`${bookApi}/reimport-all`, { method: 'POST' })
+      setBatch({ ids: r.queued, skipped: r.skipped })
+    } catch (e) { setMsg(because('Couldn’t re-import the books', (e as Error).message)) }
+    void refresh()
+  }
+  const label = (id: string) => { const b = books?.find(x => x.id === id); return b?.name ?? b?.file ?? id }
+  const progress = batch && books && (() => {
+    const of = batch.ids.map(id => books.find(b => b.id === id)).filter((b): b is Book => !!b)
+    const finished = of.filter(b => !b.busy && !LIVE.includes(b.state)), now = of.find(b => b.busy && b.state !== 'queued')
+    return { n: batch.ids.length, done: finished.length, failed: finished.filter(b => b.state === 'failed').length, now }
+  })()
+
   const importedSources = new Set((books ?? []).flatMap(b => [...b.state === 'done' && b.source ? [b.source] : [],
     ...['done', 'superseded'].includes(b.state) ? b.extra ?? [] : []]))
   const dupes = c && !sr6 && report?.book.source ? [...dupeGroups(c).values()]
@@ -311,7 +331,17 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
 
       {!sr6 && <DataPack reload={reload} />}
 
-      <h2>Your books</h2>
+      <div className="row books-head"><h2>Your books</h2><span className="spacer" />
+        {admin && reimportable.length > 0 && <button className="btn small" disabled={!!progress && progress.done < progress.n}
+          onClick={() => setAllAsk(true)}>Re-import all books</button>}</div>
+      {progress && <div className="reimport-all" role="status">
+        <p>{progress.done < progress.n
+          ? <>Re-importing all books: {progress.done} of {progress.n} done{progress.now && <>, now {label(progress.now.id)}</>}.</>
+          : <>Re-imported {progress.n === 1 ? '1 book' : `${progress.n} books`}{progress.failed ? `, ${progress.failed} failed` : ''}.{' '}
+            <button className="btn small quiet" onClick={() => setBatch(null)}>Dismiss</button></>}</p>
+        <progress max={progress.n || 1} value={progress.done} aria-label="Re-import all books" />
+        {batch!.skipped.length > 0 && <p className="muted">Left out: {batch!.skipped.map(x => `${label(x.id)} (${x.why})`).join(', ')}.</p>}
+      </div>}
       {books === null ? <p className="muted">Loading books…</p> : books.length === 0 ? <p className="muted">No books uploaded yet.</p> : books.map(b => (
         <div className="book" key={b.id}>
           <div>
@@ -341,7 +371,7 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
               : <button className="btn small primary" disabled={b.busy} onClick={() => void ask(b)}>Read the tables with AI</button>)}
             {!sr6 && b.review && (!b.source || canCoreAi(b)) && !LIVE.includes(b.state) && <a className="btn small primary" href={`#/books/${b.id}/review`}>Review</a>}
             {b.state === 'done' && <button className="btn small quiet" onClick={() => void openReport(b)}>Report</button>}
-            {['done', 'failed', 'removed', 'needs-ai', 'superseded'].includes(b.state) && b.recipe !== 'ai' &&
+            {['done', 'failed', 'removed', 'needs-ai', 'superseded', 'uploaded'].includes(b.state) && b.recipe !== 'ai' &&
               <button className="btn small quiet" disabled={b.busy} onClick={() => void act('re-import the book', () => api(`${bookApi}/${b.id}/reimport`, { method: 'POST' }))}>Re-import</button>}
             {!LIVE.includes(b.state) && <button className="btn small quiet" disabled={b.busy} onClick={() => { setWithFiles(b.state === 'removed'); setRemoving(b) }}>Remove</button>}
           </div>
@@ -359,6 +389,13 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
           </li>
         ))}
       </ul>
+
+      <Modal open={allAsk} onClose={() => setAllAsk(false)} title="Re-import all books"
+        actions={<><button className="btn" onClick={() => setAllAsk(false)}>Cancel</button>
+          <button className="btn primary" onClick={() => void reimportAll()}>Re-import all</button></>}>
+        <p>Re-import all {reimportable.length} books? Each book’s catalog, rules and samples are rebuilt from its PDF. Your edits,
+          runners and NPCs are kept. This can take a while.</p>
+      </Modal>
 
       <Modal open={!!removing} onClose={() => setRemoving(null)} title={`Remove ${removing?.name ?? removing?.file ?? 'this book'}?`}
         actions={<><button className="btn" onClick={() => setRemoving(null)}>Keep</button>

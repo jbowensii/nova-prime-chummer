@@ -138,7 +138,7 @@ function exportItem(c: Catalog, it: ItemEntry, dv: Map<string, { dv: string; amm
   const text = cat?.text
   return { uid: it.uid, ...it.catalogId ? { catalogId: it.catalogId } : {}, kind: it.kind, name: it.name,
     ...cat ? { source: cat.source, page: cat.page } : {}, ...cat?.category ? { category: cat.category } : {},
-    canon: isCanonSource(c, cat?.source), price: itemCost(c.pricing, it),
+    canon: isCanonSource(c, cat?.source), price: itemCost(c.pricing, it, cat),
     ...it.starting ? { starting: it.starting } : {}, ...it.note ? { note: it.note } : {},
     ...it.kind === 'weapon' ? { weapon: { dv: dv.get(it.uid)?.dv ?? it.dv ?? cat?.dv ?? '', dvText: it.dv ?? cat?.dv ?? '',
       ranges: parseRanges(it.ranges ?? cat?.ranges), specialist: !!(it.specialist ?? cat?.specialist), ammo: dv.get(it.uid)?.ammo ?? [] } } : {},

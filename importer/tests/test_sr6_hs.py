@@ -138,7 +138,8 @@ class HsRecipeTest(unittest.TestCase):
         r = entries(self.res, "rules")
         self.assertIn("Basic Cyberprograms", r)  # the programs' sections stay rule sections too
         p = entries(self.res, "programs")
-        self.assertEqual({k: v.get("type") for k, v in p.items()}, {"Fizz Host": "basic", "Zap Kit": "hacking"})
+        self.assertEqual({k: v.get("type") for k, v in p.items()},  # (a commlink app listed as a run-in: sections.py)
+                         {"Fizz Host": "basic", "Zap Kit": "hacking", "Glow Buddy": "app"})
         self.assertNotIn("avail", p["Zap Kit"])  # the book prints no price for a program
         self.assertNotIn("Not Read", r)
 

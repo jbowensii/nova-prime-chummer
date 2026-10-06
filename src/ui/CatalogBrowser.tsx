@@ -1,8 +1,12 @@
 // Game data's catalog browser (both games, 0.9.1): a Book dropdown (all books, or one imported source or compendium),
 // then the kinds with their counts (a list beside the entries; tabs across the top on a phone), the chosen kind's
 // sub-categories when it has more than one, and that kind's entries. A search box looks across every kind; its results
-// are grouped by kind. Each game maps its catalog to BrowseKind rows (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
+// are grouped by kind. Needs attention shows only the entries with an issue (a value the book leaves out or the importer
+// couldn't read, src/engine/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
+// (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useState, type ReactNode } from 'react'
+import type { Issue } from '../engine/formula'
+import { IssueBadges } from './Issues'
 import { Prose } from './Prose'
 
 export interface BrowseRow {
@@ -17,6 +21,8 @@ export interface BrowseRow {
   marks?: ReactNode
   /** its Edit button or link */
   action?: ReactNode
+  /** what needs attention: shown as badges, and Needs attention lists only these rows */
+  issues?: Issue[]
 }
 export interface BrowseKind { id: string; label: string; rows: BrowseRow[] }
 export interface Book { id: string; name: string }
@@ -43,7 +49,7 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
     <div className="scroll-x">
       <table className={`data browse ${className ?? ''}`.trim()}><thead><tr><th>Entry</th><th>Values</th><th /></tr></thead>
         <tbody>{shown.map(r => (
-          <tr key={r.key}><td><b>{r.name}</b> <span className="srcline"><span className="src">{r.source} p.{r.page}</span>{r.marks}</span></td>
+          <tr key={r.key}><td><b>{r.name}</b> <span className="srcline"><span className="src">{r.source} p.{r.page}</span>{r.marks}<IssueBadges issues={r.issues} source={r.source} /></span></td>
             <td><span className="muted">{r.details}</span>
               {r.text && <details className="desc"><summary>Description</summary><Prose text={r.text} /></details>}</td><td className="num">{r.action}</td></tr>
         ))}</tbody></table>
@@ -56,7 +62,10 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
 export function CatalogBrowser({ kinds, books, tableClass }: { kinds: BrowseKind[]; books: Book[]; tableClass?: string }) {
   const [book, setBook] = useState('')
   const [q, setQ] = useState('')
-  const inBook = kinds.map(k => ({ ...k, rows: book ? k.rows.filter(r => r.source === book) : k.rows }))
+  const [attention, setAttention] = useState(false)
+  const bookRows = kinds.map(k => ({ ...k, rows: book ? k.rows.filter(r => r.source === book) : k.rows }))
+  const needing = bookRows.reduce((n, k) => n + k.rows.filter(r => r.issues?.length).length, 0)
+  const inBook = attention ? bookRows.map(k => ({ ...k, rows: k.rows.filter(r => r.issues?.length) })) : bookRows
   const [kindId, setKind] = useState(() => kinds.find(k => k.rows.length)?.id ?? kinds[0]?.id)
   const [group, setGroup] = useState('')
   const t = q.trim().toLowerCase()
@@ -72,6 +81,13 @@ export function CatalogBrowser({ kinds, books, tableClass }: { kinds: BrowseKind
       <div className="row browse-top">
         <BookSelect books={books} value={book} onChange={b => { setBook(b); setGroup('') }} />
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search everything" aria-label="Search the catalog" />
+        <button type="button" className="attention" aria-pressed={attention} disabled={!needing && !attention}
+          title="Entries whose book leaves a value out, or prints one the importer couldn’t read"
+          onClick={() => {
+            const on = !attention, first = bookRows.find(k => k.rows.some(r => r.issues?.length))
+            setAttention(on); setGroup('')
+            if (on && first && !bookRows.find(k => k.id === kindId)?.rows.some(r => r.issues?.length)) setKind(first.id)
+          }}>Needs attention <span className="n">{needing}</span></button>
       </div>
       {t ? (
         <div className="browse-hits">
@@ -92,7 +108,7 @@ export function CatalogBrowser({ kinds, books, tableClass }: { kinds: BrowseKind
               {groups.map(g => <button key={g} type="button" aria-pressed={g === group} onClick={() => setGroup(g)}>
                 {cap(g)} <span className="n">{kind.rows.filter(r => (r.group || OTHER) === g).length}</span></button>)}
             </div>}
-            {rows.length === 0 ? <p className="muted">No {kind.label.toLowerCase()}{book ? ' in this book' : ' yet'}.</p>
+            {rows.length === 0 ? <p className="muted">No {kind.label.toLowerCase()}{attention ? ' needs attention' : ''}{book ? ' in this book' : attention ? '' : ' yet'}.</p>
               : <Rows key={`${kind.id} ${book} ${group}`} rows={rows} className={tableClass} />}
           </div>
         </div>

@@ -8,9 +8,13 @@
 //   POST   /api/books                 body: the PDF (application/pdf, X-Filename) -> 202 { id }, queues an import (the same
 //                                     file, by sha256, as an entry: that entry, imported again; 409 while it's busy)
 //   GET    /api/books                 -> [{ id, file, state, step?, message, source, extra?, name, canon, recipe, imported, counts, busy, review, coreUnread, coreAi }]
-//                                     (state of a busy book: queued, importing with its step, removing; extra: the further sources)
+//                                     (state of a busy book: queued, importing with its step, removing; uploaded: a folder with its PDF
+//                                     never imported; extra: the further sources)
 //   GET    /api/books/:id/report      -> import.xml
 //   POST   /api/books/:id/reimport    clears the book's outputs, then imports again
+//   POST   /api/books/reimport-all    queues a re-import of every book with its original.pdf (not one read by AI, not a busy one):
+//                                     -> 202 { queued: [id…], skipped: [{ id, why }] }; each is the single re-import, from the PDF
+//                                     alone if that's all the folder has; book.md is reused when the importer can (run --reuse)
 //   DELETE /api/books/:id[?files=1]   clears the book's outputs (files=1: also its Library folder)
 //   POST   /api/books/:id/ai[?dryRun=1|fresh=1]  AI proposals for a needs-ai book, or for the weapons/armor tables a recipe
 //                                     couldn't read (dryRun: { parts, provider }, sends nothing; fresh: replace finished
@@ -283,7 +287,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     // status.xml may hold until the job's first step writes (if the new import fails, its own error shows)
     const now = attr(st, 'state'), job = running?.game === game && running.id === id ? running : null
     const cmd = job?.steps.at(-1)?.[AREAS[game].pre.length]
-    const state = !busy(id, game) ? now ?? 'queued' : !job ? 'queued' : cmd === 'run' ? 'importing' : cmd === 'remove' ? 'removing'
+    // a folder with no status yet (its PDF put there by hand or a restore, never imported): not imported, nothing running
+    const state = !busy(id, game) ? now ?? 'uploaded' : !job ? 'queued' : cmd === 'run' ? 'importing' : cmd === 'remove' ? 'removing'
       : STEPS.includes(now) ? now : 'queued'
     return {
       id, file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'), state, ...state === 'importing' && STEPS.includes(now) ? { step: now } : {},
@@ -1010,6 +1015,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       return send(res, 204, '', 'text/plain')
     }
 
+    if (p === '/api/books/reimport-all') return reimportAll(req, res, send)
     const m = p.match(/^\/api\/(books|review)\/([^/]+)(?:\/(report|reimport|ai))?$/)
     return m ? bookRoute(req, res, url, send, m) : false
   }
@@ -1030,8 +1036,50 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (p === '/api/books' && (req.method === 'POST' || req.method === 'GET')) return books(req, res, send, 'sr6')
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who, 'sr6')
     if (p === '/api/creation') return creation(req, res, send)
+    if (p === '/api/books/reimport-all') return reimportAll(req, res, send, 'sr6')
     const m = p.match(/^\/api\/(books)\/([^/]+)(?:\/(report|reimport))?$/)
     return m ? bookRoute(req, res, url, send, m, 'sr6') : false
+  }
+
+  /** Clear a book's outputs and import it again from its original.pdf (the converted book.md reused when the importer
+   *  finds it made from the same file by the same converter). The caller checked it isn't busy or read by AI. */
+  async function queueReimport(id, game) {
+    const area = AREAS[game], dir = bookDir(id, game)
+    const imp = rootTag(await readOr(join(dir, 'import.xml')), 'import')
+    const file = attr(imp, 'file') ?? attr(rootTag(await readOr(join(dir, 'upload.xml')), 'upload'), 'file')
+    // the admin chose the book over a loaded data pack: its pack marks go (this folder's, and any for the same file)
+    if (game === 'ca2') {
+      if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
+      await dropPackMarks(attr(imp, 'sha256'))
+    }
+    await setStatus(id, 'queued', '', game)
+    enqueue(id, [[...area.pre, 'remove', dir, '--custom', area.custom],
+      [...area.pre, 'run', dir, '--custom', area.custom, '--reuse', ...(file ? ['--file', file] : [])]], game)
+  }
+
+  /** POST /api/[sr6/]books/reimport-all: every book folder with its PDF, in upload order (ids sort by time). One at a
+   *  time, so a second click finds the first one's books busy instead of queueing them twice. */
+  let reimporting = Promise.resolve()
+  async function reimportAll(req, res, send, game = 'ca2') {
+    if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' })
+    const run = reimporting.then(() => queueAll(game))
+    reimporting = run.catch(() => {})
+    return send(res, 202, await run)
+  }
+  async function queueAll(game) {
+    const lib = AREAS[game].library
+    await mkdir(lib, { recursive: true })
+    const ids = (await readdir(lib, { withFileTypes: true })).filter(d => d.isDirectory() && BOOK_ID.test(d.name)).map(d => d.name).sort()
+    const queued = [], skipped = []
+    for (const id of ids) {
+      const dir = join(lib, id)
+      const why = busy(id, game) ? 'busy' : !await stat(join(dir, 'original.pdf')).then(() => true, () => false) ? 'no PDF'
+        : attr(rootTag(await readOr(join(dir, 'import.xml')), 'import'), 'recipe') === 'ai' ? 'read by AI' : null
+      if (why) { skipped.push({ id, why }); continue }
+      await queueReimport(id, game)
+      queued.push(id)
+    }
+    return { queued, skipped }
   }
 
   /** One book's routes: m = [, books|review, id, action]. */
@@ -1075,14 +1123,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (action === 'reimport' && method === 'POST') {
       needsQuiet()
       if (attr(imp, 'recipe') === 'ai') throw fail(409, 'a book read by AI can’t be re-imported; remove it, or apply its review again')
-      const file = attr(imp, 'file') ?? attr(rootTag(hasUpload, 'upload'), 'file')
-      // the admin chose the book over a loaded data pack: its pack marks go (this folder's, and any for the same file)
-      if (game === 'ca2') {
-        if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
-        await dropPackMarks(attr(imp, 'sha256'))
-      }
-      await setStatus(id, 'queued', '', game)
-      enqueue(id, [[...area.pre, 'remove', dir, '--custom', area.custom], [...area.pre, 'run', dir, '--custom', area.custom, ...(file ? ['--file', file] : [])]], game)
+      await queueReimport(id, game)
       return send(res, 202, { id })
     }
     if (action === 'ai' && method === 'POST') {

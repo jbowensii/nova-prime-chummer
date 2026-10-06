@@ -37,6 +37,36 @@ recipe reads both.
   values) with `Active Skills:` as an NPC (group Contact).
 - Everything else in the chapters is a rule section; PACKs (SUIT UP) are bundles of other books' gear: rules.
 
+## Formula styles and issues (importer v2)
+
+- No price formulas. Issues: two qualities print no Karma (`missing karma`).
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
+## Table shapes and value styles (importer v2)
+
+- **A vehicle in the text.** A lower-case title over a tag line (`(Personal Motor Vehicle)`) is an item (regroup);
+  its stats print as a speed table (`SPD INT | TOP SPD`) and a bold header line over a value line, headers run
+  together (`SEATAVAIL`): `shapes.vehicle_band` reads them into a vehicles entry, the tag its category.
+- **Run-in prices.** A quality whose price line says `See text` takes the Karma its own paragraphs print
+  (`bonus of N Karma`, a second for the Awakened: karma and karmaMax).
+
+## Sections read as kinds (importer v3, sections.py)
+
+- **Qualities:** each quality path step (`##### Critter Bond: Lost`) is a quality too, named without the path
+  (`Lost`), positive with a Cost line, negative with a Bonus line.
+- **Quality sets:** each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE
+  METAGENIC QUALITIES | NEGATIVE …`, the metagenic collectives under `Collectives`): its Karma, metatypes and qualities.
+- **Contact types:** the bullets (`• **Academic:** …`) under `## Contact Types`.
+- **Quality paths:** `#### Quality Path: Name` under `## Quality Paths`, the headings under each its steps.
+- **Actions:** `## New Optional Edge Actions` (bullets with the action they go with).
+- **Packs** (SUIT UP): a heading over a `(N nuyen)` line in the chapter printing PACK headings (`#### Hacker PACK A`,
+  `#### Dirt Poor` under `## Complete Character PACKs`, `#### Armed Suzuki Mirage` under `## Bikes`), its `**Essence
+  Cost:**` and its labelled contents lists (`**Gear:**`, `**Weapons:**`; not `Recommended Skills`); each `**Name** (w/
+  contents): **N nuyen**` paragraph under a `… PACKs` heading (the weapon, armor, sensor and identity packs; the price
+  may wrap onto its own line); each `Pilot Rating N: N nuyen` line (the autosoft packs: `Recon Autosofts 2`). A
+  trailing `PACK` is dropped from the name (`Armed GMC Bulldog`), one inside it reads `Pack` (`Hacker Pack A`). Two
+  packs of one weapon (plain and silenced) keep the printed name twice; the book doesn't name the second.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<the Companion PDF>" --out "%TEMP%\swc-check"

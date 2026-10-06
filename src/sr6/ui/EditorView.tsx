@@ -19,6 +19,7 @@ import { sr6Data, type Sr6Data } from '../engine/data'
 import { deriveSr6 } from '../engine/derive'
 import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../engine/house'
 import { makeProvider } from '../engine/providers'
+import { migrateSr6Ids } from '../engine/migrate'
 import { validateSr6 } from '../engine/rules'
 import { MAGIC_KINDS } from '../engine/data'
 import type { MagicKind, Sr6Character } from '../model/character'
@@ -59,7 +60,7 @@ export const NPC_TABS: [string, string][] = [['concept', 'Concept'], ['stats', '
 export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {
   const repo = useMemo(() => npc ? sr6NpcRepo() : sr6Repo(), [npc])
   const href = npc ? sr6NpcHref : sr6EditHref, noun = npc ? 'NPC' : 'runner'
-  const save = useAutosave(repo, id, { noun, tab, prepare: ch => ch, editHref: (ch, t) => href(ch.id, t), home: doc => npc ? sr6NpcsHref(doc?.npc) : '#/sr6',
+  const save = useAutosave(repo, id, { noun, tab, prepare: ch => migrateSr6Ids(ch, all), editHref: (ch, t) => href(ch.id, t), home: doc => npc ? sr6NpcsHref(doc?.npc) : '#/sr6',
     inEditor: h => h.startsWith(href(id, '')) })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)

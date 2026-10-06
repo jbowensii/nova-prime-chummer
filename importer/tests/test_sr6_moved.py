@@ -1,0 +1,58 @@
+"""Old ids keep loading (importer/sr6/moved.py): a re-import's renamed, moved or re-kinded entries carry their old ids.
+All names made up."""
+import os
+import tempfile
+import unittest
+
+from importer.sr6 import moved
+
+HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!-- made up -->\n'
+
+
+def data(kind, *entries):
+    tag = kind[:-1] if kind.endswith("s") else kind
+    body = "".join(f'<{tag} id="{i}"><name>{n}</name>{extra}<text/></{tag}>' for i, n, extra in entries)
+    return f'{HEAD}<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="{kind}" version="1">{body}</sr6:data>\n'
+
+
+class MovedTest(unittest.TestCase):
+    def prev(self, files):
+        d = tempfile.mkdtemp()
+        for n, x in files.items():
+            with open(os.path.join(d, n), "w", encoding="utf8") as f:
+                f.write(x)
+        return moved.previous(d)
+
+    def test_words_and_tiers(self):
+        self.assertEqual(moved.words("Zorp Gland (Rating 1-4)"), moved.words("Zorp glands"))
+        self.assertTrue(moved._abbrev(moved.words("Omni-zap mic"), moved.words("Omnizap microphone")))
+        self.assertFalse(moved._abbrev(moved.words("Zap mic"), moved.words("Zap microphone kit")))
+
+    def test_renamed_moved_and_kept_ids(self):
+        prev = self.prev({
+            "gear.xml": data("gear", ("zz.fizz", "Fizz", ""), ("zz.zap-mic", "Zap mic", ""), ("zz.blip", "Blip", ""),
+                             ("zz.kept", "Kept", '<alias id="zz.kept-old"/>')),
+            "weapons.xml": data("weapons", ("zz.bonk-9", "Bonk 9", ""))})
+        new = {"gear.xml": data("gear", ("zz.zap-microphone", "Zap microphone", ""), ("zz.kept", "Kept", ""),
+                                ("zz.blop", "Blop", ""), ("zz.blap", "Blap", "")),
+               "ammotypes.xml": data("ammotypes", ("zz.fizz", "Fizz", "")),
+               "weapons.xml": data("weapons", ("zz.acme-bonk-9", "Acme Bonk 9", ""))}
+        out, n = moved.carry(prev, new)
+        self.assertEqual(n, 4)
+        self.assertIn('<name>Fizz</name><alias id="zz.fizz" kind="gear"/><text/>', out["ammotypes.xml"])
+        self.assertIn('<alias id="zz.zap-mic"/>', out["gear.xml"])
+        self.assertIn('<alias id="zz.kept-old"/>', out["gear.xml"])  # an old alias goes on
+        self.assertIn('<alias id="zz.bonk-9"/>', out["weapons.xml"])
+        self.assertNotIn("zz.blip", out["gear.xml"])  # nothing new is named like it
+        self.assertTrue(out["gear.xml"].startswith(HEAD))
+        out2, n2 = moved.carry(self.prev(out), out)  # the next import keeps them, adds nothing
+        self.assertEqual((n2, out2["ammotypes.xml"].count("<alias"), out2["gear.xml"].count("<alias")), (0, 1, 2))
+
+    def test_two_candidates_are_no_match(self):
+        prev = self.prev({"gear.xml": data("gear", ("zz.tag", "Tag", ""))})
+        out, n = moved.carry(prev, {"gear.xml": data("gear", ("zz.red-tag", "Red Tag", ""), ("zz.blue-tag", "Blue Tag", ""))})
+        self.assertEqual(n, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

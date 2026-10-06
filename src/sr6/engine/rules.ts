@@ -285,6 +285,15 @@ const RULES: Rule[] = [
     }
     return hits
   } },
+  // what a formula had to assume (no rating given: worked out at rating 1…)
+  { code: 'catalog.formula', severity: 'warning', tab: 'gear', check: c => {
+    const hits: Hit[] = []
+    for (const { x, path } of lines(c.b)) {
+      const { notes } = priced({ ...x, accessories: [] }, c.data, c.cr)
+      if (notes.length) hits.push({ path, message: `${nameOf(c, x)}: ${notes.join('; ')}.`, ...entryCite(entryOf(x, c.data)) })
+    }
+    return hits
+  } },
   // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
   { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },
 ]

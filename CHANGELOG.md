@@ -1,5 +1,54 @@
 # Release notes
 
+## 0.10.0 — 2026-10-06: book data from the PDFs, closer: formulas, data issues, override files, re-import all
+
+- **Book values stay canon; what the book leaves out is flagged.** Where a book prints no value, or one the importer
+  can't read, the entry carries an issue. Game data and the item pickers show a warning badge with the field, a short
+  note and the book's page, and Game data's new **Needs attention** button (with its count) lists only those entries.
+  A runner that uses one gets a cited Review note, such as "Null Box: the book prints no availability, set it in Game
+  data or an override file." It's a note, never an error. Setting the field with Edit clears the badge; the edit dialog
+  still shows what the book has ("book: none printed"). Both games; Anarchy's importer doesn't write issues yet.
+- **Prices worked out by the book's formula.** An entry can say how a value is worked out (Rating × 200, a price by
+  rating band, another item's price plus 50, a price per 10 rounds). The builder prices what you buy at its rating and
+  quantity, in the budgets, the ledger and the exports. Lists show the formula and its range ("Rating × 200¥
+  (200–1,200¥)"), and a bought item shows its price with the formula on hover. A formula that refers to something
+  missing leaves the item unpriced instead of free. In Anarchy, an item's cost formula works from the standard price.
+- **Override files.** Game data → Your catalog edits has **Export my edits…** (all edits, or one book's, as an edits
+  file with their descriptions) and **Import edits…**, which previews what a file adds, changes and conflicts with
+  before anything is saved. Pick Keep mine or Take theirs for each conflict. Editors and the admin, both games.
+- **Re-import all books** (Books page, the admin, both games) rebuilds every book's catalog, rules and samples from its
+  PDF after a confirm. Your edits, runners and NPCs are kept. The books queue one after another, each showing Waiting,
+  Importing… and Imported, under a line counting how many are done. A book whose last import was made from the same
+  PDF by the same importer version skips the slow PDF reading. A book folder that holds only its PDF (restored or
+  copied in by hand) shows "Not imported yet" and imports from scratch. Books read by AI are left out, as with
+  Re-import.
+- **The Shadowrun 6 importer writes the book's formulas and flags what it leaves out.** A value printed as a rule
+  (Rating × 2,000¥, Force × 4,000¥, a price per CF or per dose, 2,000¥ plus 500¥ per additional dart, a cheaper open
+  version, one price per rating band, a DV of (1–10) S) is imported as its formula, so the builder prices it at the
+  rating and quantity you buy. An energy weapon's ammo is worked out from the power supply it comes with. A missing
+  availability, price, Karma, Essence, rating range, firing mode, ammo or vehicle stat, a value no style reads
+  ("Special") and a cell printing two values get an issue, shown with the badge above. A price worked out from another
+  item you pick (Commlink cost plus rating × 100) is an issue that states the rule, for you to settle with an edit.
+- **Shadowrun 6 books read closer.** Table rows whose cells the PDF ran together, headers set on two lines, rows that
+  print a shorter name than their description, a DV with its blast or a note in the same cell, a header printed twice,
+  a price with a thousands point (1.200), vehicles printed as a stat line in the text, an ammo count or per-unit price
+  only the description gives, and a Companion quality priced "See text" are now read. Weapons and armor carry their
+  rating range (a mount priced by Size), and a weapon power supply its Energy. Import the books again (or Re-import
+  all) to get them.
+
+- **A missing value is searched for across all the books before it's flagged.** The importer looks in the item's other
+  tables and sentences in its own book, then in the other printings, the cards and the other books, latest published
+  first, and records where it found the value. Only what nothing prints becomes an issue, marked as searched. The
+  official errata are applied to their own book.
+- **Fifteen new kinds in Game data, read from the books:** actions (Edge actions and the rest), gear packs, vehicle
+  design, ammunition types, mentor spirits, data structures, quality paths and sets, spell features, contact types and
+  more. They're listed and searchable; how each is used comes later. Also read now: Deadly Arts' melee and mortar
+  tables, Street Wyrd's adept ways (as qualities), Body Shop's transgenic versions (priced by their rule from the base
+  item), rating ranges from rated prices, and items found only in a section's running text.
+- **Saved runners keep working when an import renames or moves an entry.** Each import records the old id of an entry
+  it renamed, re-kinded or merged; the app finds the new entry, and a runner's lines are updated when it loads (noted in
+  the file). A runner that bought APDS or another ammunition type as gear finds it under Ammunition types.
+
 ## 0.9.11 — 2026-10-05: example characters audited, Hex and Dossier sheets, adept power points
 
 - **An adept gets a power point for every point of Magic, raised Magic included** (CRB p.157). Power points came only

@@ -69,6 +69,36 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="lifemodule"><xs:complexType><xs:complexContent><xs:extension base="sr6:LifeModule">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="action"><xs:complexType><xs:complexContent><xs:extension base="sr6:Action">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="pack"><xs:complexType><xs:complexContent><xs:extension base="sr6:Pack">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="design"><xs:complexType><xs:complexContent><xs:extension base="sr6:Design">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="ammotype"><xs:complexType><xs:complexContent><xs:extension base="sr6:AmmoType">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="mentorspirit"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="datastructure"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="qualitypath"><xs:complexType><xs:complexContent><xs:extension base="sr6:QualityPath">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="spellfeature"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="contacttype"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="qualityset"><xs:complexType><xs:complexContent><xs:extension base="sr6:QualitySet">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="licencetype"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="magictype"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="ruleoption"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="sense"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="trueelement"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="rule"><xs:complexType><xs:complexContent><xs:extension base="sr6:Rule">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
       </xs:choice>

@@ -91,12 +91,13 @@ class KkRecipeTest(unittest.TestCase):
         self.assertEqual((w["Krime Twin"]["cost"], w["Krime Twin (GL)"]["dv"]), ("900", "As Grenade"))
 
     def test_ammo_rows_joined_and_vehicle_across_pages(self):
-        g = entries(self.res, "gear")
+        g = entries(self.res, "ammotypes")  # (priced as a multiple of the ammunition: crb.ammo_type)
         self.assertEqual((g["Krime Fizz Rounds"]["category"], g["Krime Fizz Rounds"]["avail"]), ("ammo", "3(L)"))
         self.assertEqual(g["Krime Glow Slugs Extra Bright"]["cost"], "x3")
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
-        self.assertIn("slugs that glow", texts[("gear", "krime-glow-slugs-extra-bright")])
-        self.assertIn("**Ar:** +2", texts[("gear", "krime-glow-slugs-extra-bright")])
+        self.assertIn("slugs that glow", texts[("ammotypes", "krime-glow-slugs-extra-bright")])
+        self.assertTrue(g["Krime Glow Slugs Extra Bright"].get("ar") == "+2"
+                        or "**Ar:** +2" in texts[("ammotypes", "krime-glow-slugs-extra-bright")])
         v = entries(self.res, "vehicles")["Krime Putter Car"]  # the SR5 table on its page, the SR6 one on the next
         self.assertEqual((v["handling"], v["interval"], v["armor"], v["seats"], v["cost"]), ("2/4", "10", "2", "2", "9000"))
 

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
 import { NameField } from '../../../ui/tabs/Skills'
 import { num } from '../../engine/creation'
-import { rated } from '../../engine/values'
+import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, useSr6Editor } from '../editor'
 import { Suggest } from './Skills'
@@ -54,7 +54,8 @@ export function ContactsTab() {
         <label className="inline">Lifestyle <select aria-label="Lifestyle" value={b.lifestyle?.id ?? ''}
           onChange={e => act({ op: 'lifestyle', id: e.target.value || null, months: b.lifestyle?.months })}>
           <option value="">None</option>
-          {lifestyles.map(l => <option key={l.id} value={l.id}>{l.name} ({rated(l.attrs.cost).n === null ? '?' : `${n(rated(l.attrs.cost).n!)}¥`} a month)</option>)}
+          {lifestyles.map(l => { const v = bookValue(l, 'cost', undefined, dataFind(data)).n
+            return <option key={l.id} value={l.id}>{l.name} ({v === null ? '?' : `${n(v)}¥`} a month)</option> })}
           {b.lifestyle && !data.entry('lifestyles', b.lifestyle.id) && <option value={b.lifestyle.id}>{b.lifestyle.id} (no longer in the catalog)</option>}
         </select></label>
         {b.lifestyle && <span className="row">Months <Stepper label="Lifestyle months" value={b.lifestyle.months} min={1} max={999}

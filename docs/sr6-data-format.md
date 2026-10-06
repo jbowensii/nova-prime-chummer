@@ -35,6 +35,10 @@ Every file has the same root, and one file holds one kind:
   `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
   (`900 + Gizmo`) stays as printed and is reported.
+- **Formulas and issues** (optional children of any entry, after its kind's own children and before `<text>`; see
+  Formulas and issues below): `<formula field="cost">R * 200</formula>` says how a field is worked out, the printed
+  attribute staying as printed; `<issue field="avail" code="missing" page="91">note</issue>` marks a field the book
+  prints nothing for, or one the importer couldn't read.
 - **Cross-references are names** for now: metatype traits, critter powers, NPC gear and weapons are lists as printed.
 - **No prose in the catalog files.** Descriptions, game effects and rule text go only to the source's texts file.
 
@@ -49,13 +53,13 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
-| weapons | weapon | category*, dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
-| armor | armor | category*, defense, capacity, avail, cost | — |
+| weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
+| armor | armor | category*, rating, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
-| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
 | rituals | ritual | keywords, threshold | — |
@@ -73,6 +77,29 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | contacts | contact | connection, loyalty, archetype | — |
 | lifemodules | lifemodule | stage* opening\|adult, requires awakened\|emerged\|adept\|magician; ints attributePoints, skillPoints, adjustmentPoints, nuyen, contactPoints, knowledgeSkills; contactTypes (academic, corporate, criminal, engineering, government, magic, matrix, media, medical, street; absent: any) | choice (kind* mixed, points int, options* tokens: an attribute bod … res, `skill:<skill id>` or `nuyen:<int>`)×n |
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
+| actions | action | type (minor, major, edge, boost: the section's words), timing initiative\|anytime, edge int (an Edge action or boost's cost), with (the action it goes with), category (its section) | — |
+| packs | pack | category, cost, essence (as printed) | item (text)×n: the contents as printed |
+| vehicledesign | design | category (chassis, powertrain, console, …: its table), bp, rating, slots, avail, cost (as printed) | — |
+| ammotypes | ammotype | category, dv, ar (the modifiers as printed), avail, cost (a multiplier `x2` or a price) | — |
+| qualitypaths | qualitypath | — | step (text)×n: the headings under it |
+| qualitysets | qualityset | karma, metatypes (as printed) | quality (text)×n |
+| mentorspirits, datastructures, spellfeatures, contacttypes, licencetypes, magictypes, ruleoptions, senses, trueelements | mentorspirit, datastructure, spellfeature, contacttype, licencetype, magictype, ruleoption, sense, trueelement | category | — |
+
+**Kinds read from the books' own sections** (actions, packs, vehicle design, ammunition types, mentor spirits, data
+structures, quality paths, spell features, contact types, quality sets, licence types, magic types, rule options,
+senses, true elements): Game data lists them as printed, with their description; the app has no rules for them yet (an
+Edge action on the Edge panel, say, is for the owner to decide), and the Foundry export leaves them out. The importer
+reads them by the book's own section words (`importer/sr6/sections.py`), never by an item's name:
+- a heading whose parent heading names the kind is an entry: `#### Avoid Incoming (A)` under `### Minor Actions`,
+  `### Backdoor Entry` under `## Matrix Actions`, `#### Bear` under `### Mentor Spirit Archetypes`; so is a heading
+  naming its kind before a colon (`Quality Path: Critter Bond`, `New Edge Action: …`, `New Contact Type: …`). A
+  lower-case box title, a heading naming the kind itself and an example are not;
+- a bold run-in (`• **Reroll one die:** …`) under a heading naming a run-in kind (Edge boosts and actions, data
+  structures, contact types) is an entry;
+- an action's type comes from its section's words (or a Matrix action's `(Major)` tag), its timing from `(I)`/`(A)`,
+  its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
+
+The rule sections stay as they were (the rules contents still list them).
 
 Metavariants under priority creation: the Companion's development table gives each metavariant its adjustment
 points at the metatype priorities it can be taken at (its `<priority>` children); the priority provider offers it at
@@ -109,6 +136,152 @@ Three more kinds complete the set:
   order.
 - `texts`: `<text of="<kind>" id="<entry id>">…</text>`, merged into the entry's `<text>` by (kind, id).
 - `edits`: entries of any kind above, each with `by` (the account that saved it).
+
+## Formulas and issues
+
+Book values are canon: the printed attribute is never rewritten from anything but print. Where the importer can say
+how a value is worked out, or that the book leaves it out, the entry carries it as a child; where the entry's own row
+leaves a value out and the books print it elsewhere, the importer writes that printed value and says where it found it
+(`<found>`, below). The app reads both; an edit (Game data's Edit, or an
+override file) is how a table sets what the book leaves out.
+
+```xml
+<gear id="crb.flare-kit" source="CRB" page="270" rating="1–6" avail="2" cost="Rating × 200">
+  <name>Flare Kit</name><formula field="cost">R * 200</formula><text/></gear>
+<gear id="crb.null-box" source="CRB" page="271" cost="150">
+  <name>Null Box</name><issue field="avail" code="missing" page="91">no availability printed</issue><text/></gear>
+```
+
+**`<formula field round? unit? qty?>EXPR</formula>`.** `field` is the attribute it works out (`cost`, `avail`, `rating`,
+`ammo`, `essence`…). The builder prices a bought item with it, at the item's rating, quantity and options, in the
+budgets, the ledger and the exports (which show the plain number); without one the printed value is read as above.
+EXPR is read by the app's own small parser (`src/engine/formula.ts`, never `eval`):
+
+- numbers, `+ - * /` (`×` too), parentheses, a leading minus;
+- `R` the rating, `Q` the quantity, `M` the runner's Magic, `B` this field's printed value, `opt.<id>` an option;
+- `tier(R; 1-3: a; 4-6: b; 7+: c)`: the value of the band the first argument falls in (a single number is a band);
+- `ref(kind:id, field[, R])`: another entry's value (its formula, else its printed value), at this rating or the one
+  given, e.g. `ref(gear:crb.flare-kit, cost, 2) + 50`;
+- `ceil(x)`, `floor(x)`, `min(a, b, …)`, `max(a, b, …)`.
+
+The result rounds up to a whole number (`round="down"` rounds down; Essence keeps two decimals). `unit` and `qty` say
+the price is for `qty` `unit`s (`unit="rounds" qty="10"`). A formula that uses `Q` works out the whole line, so the
+line's quantity isn't multiplied in again. A variable the app isn't given (an unrated item's `R`, say) counts as 1, and
+Review notes it. A formula that can't be read, or a `ref` to an entry or value that isn't there, leaves the item
+**unpriced** (never 0): the entry gets an issue (code `unreadable`) and the builder shows "unpriced".
+
+Game data and the pickers show a formula with its values over the entry's ratings (`Rating × 200¥ (200–1,200¥)`); a
+bought item shows its value, with the formula on hover.
+
+**`<issue field code page?>note</issue>`.** `code` is `missing` (the book prints nothing), `unreadable` or
+`ambiguous`; `page` is where the book has the entry; the text is a short note. The app shows a warning badge (the field,
+the note, the page) in Game data and the pickers, and Game data's **Needs attention** filter lists only these entries.
+A runner that uses one gets a cited Review note ("Null Box: the book prints no availability, set it in Game data or an
+override file."), never an error. An edit (or an override file) that sets the field clears its issue; the edit dialog
+still shows what the book has ("book: none printed").
+
+**`<found field how source? page?>replaced</found>`** (from `importer/sr6/resolve.py`): the field's value was printed
+somewhere other than the entry's own row. `how` is `table` (another table of the same book whose row names the item and
+has the column: a summary table, a gear list in another chapter, the implant table that prices an implant weapon),
+`text` (a sentence of the same book printing the value with its word: `ratings 1 to 6`, `Availability 4`, the item's
+own description first), `corpus` (another source of the library: the same kind and name in another book, a card
+deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft`; the latest published wins, and
+sources of one date that disagree leave the issue), or `errata` (an errata PDF's statement on its own book, applied
+when the errata is newer than the printing; the text keeps the value it replaced). `source` and `page` say where it is
+printed. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
+(an errata or card deck uploaded later counts too); a book removed leaves the values it gave other books until those
+are imported again.
+
+**`<alias>name</alias>`**: another name the book prints the item under. A table row keeps its own name and takes its
+description heading's as an alias when the heading prints it longer (`Bloop Hauler` under `Bloop Hauler Long-Van`) or
+spells it another way; a box's one row takes the box's title (`Scorcher` under `Bloop Scorcher Vehicle Sprayer`); a
+supply table printed right after a weapon and titled with the end of its heading (`Vehicle Sprayer Fuel`) takes
+`Scorcher Fuel` and `Fuel for Scorcher`. The importer's resolving pass and the measurement match on aliases too; the
+app leaves them out of the entry.
+
+**`<alias id="…" kind="…"/>`**: an id the entry had in an earlier import (owner decision D2). When a re-import renames,
+moves or re-kinds an entry (`Zap mic` becomes `Zap microphone`; `Fizz Rounds` moves from gear to ammunition types), the
+importer reads the source's previous import before replacing it and gives each new entry the old ids it replaces
+(importer/sr6/moved.py): same source, matched by name once a printed rating range, case, punctuation and a plural s
+are set aside, else by a maker's name added in front, else by abbreviated words, and only when one new entry matches.
+`kind` is set when the old one was another kind. An old entry's own id aliases go with it, so every old id survives a
+chain of re-imports. The app resolves an old id to the entry (Sr6Catalog.moved, `resolveEntry`), and the runner editor
+turns a saved runner's old ids into the new ones on load (src/sr6/engine/migrate.ts), recording each in `<migrated>`
+(docs/sr6-character-format.md).
+
+**Searched.** An issue says how far the importer looked: `searched="book"` (its tables and its text) at import,
+`searched="book,corpus"` once the corpus pass, run after every import, has looked in every other source of the library
+too. Only then is a `missing` issue really nothing printed anywhere the library holds. A field the book prints two values
+for, or prices off another item (`ambiguous`), is the book's own: only a later source settles it.
+
+**Edits.** An edit keeps the book's formulas, except for a field it sets otherwise (the value typed wins), and never
+stores issues: an edited entry's issues are the book's, less the fields the edit sets.
+
+### What the importer writes (`importer/sr6/formula.py`)
+
+The SR6 importer reads the books' value styles into formulas, by the style, never by an item's name (each book's notes
+are in its recipe's `.md` under `importer/sr6/recipes/`):
+
+| printed | formula |
+|---|---|
+| `Rating x 2,000¥`, `Force x 4,000¥`, `Capacity x 50¥` (the capacity range is the rating), avail `Rating(L)` | `R*2000`, `R*4000`, `R*50`, `R` |
+| `(Rating/3)` | `(R/3)` (rounding up: the books don't say otherwise) |
+| `12,000¥ + [4,000¥ x Size]`, avail `6(I) + Size` (the SIZE column's range is the rating) | `12000 + (4000*R)`, `6 + R` |
+| `Magic*100¥` | `M*100` |
+| `300¥ per CF`, `250¥/pair`, `Rating x 200¥ per dose` | `Q*300`, `Q*250`, `Q*(R*200)`, `unit="CF"` … |
+| `2,000¥ (+500¥ per additional dart)` | `2000 + 500*(Q - 1)`, `unit="dart"` |
+| `500¥ (+100¥ for thermal smoke)`, `… the mini-outboard (costs 500¥)` in the description | `500 + 100*opt.thermal-smoke` |
+| a section's open versions at half the listed price | `(Q*300)*(1 - 0.5*opt.open)` |
+| rows printed one per rating band or level (`Matrix Relay` 1–3, 4–6, 7–9, `(Rating 10+)`) | one `tier(R; 1-3: R*1000; 4-6: R*5000; 7-9: R*20000; 10+: R*50000)` on every row |
+| seats `2/6`, `2+2` (front and back) | `2 + 6`, `2 + 2` |
+| a DV `(1–10) S` | `R` (field `dv`) |
+| an energy weapon's `Uses 2 Energy per shot`, with the power supply it comes with | `ref(gear:da.weapon-power-supplies-power-clip, energy)/2`, `round="down"` |
+
+A price worked out from another item the buyer picks (`Commlink cost plus rating x 100`, `x2`, `+100%`, `250¥ +
+Certified Credstick Cost`, a row of `*` priced at `one half the Essence and nuyen cost` of a base system) has no catalog
+id to `ref`, and `B` is the field's own printed value: the importer writes it as an `ambiguous` issue stating the rule
+(`priced from another item: base + R*100`), for the user to settle. A count range a row prints beside a per-unit price
+(a trailer's SPACE `1–9`) stays in the text; `qty` is only ever the units one price buys.
+
+Issues the importer writes: `missing` for an item's avail or cost, a quality's Karma, the rating range a rated value
+needs (a band row has its band), an implant's Essence, a ranged weapon's modes or ammo, a vehicle stat its stat line
+leaves out; `unreadable` for a word or a value no style reads (`Special`, `Body x 500¥`); `ambiguous` for two values in
+one cell (`800¥/1,600¥`, `400¥ (A); 450¥ (B)`) and for a price off another item. A dash or `n/a` is a printed value.
+
+Three invented examples:
+
+```xml
+<!-- rating bands: the same rule on every band row -->
+<gear id="zz.glow-relay" source="ZZ" page="12" category="relays" rating="4–6" avail="4(L)" cost="Rating x 500">
+  <name>Glow Relay</name>
+  <formula field="cost">tier(R; 1-3: R*100; 4-6: R*500; 7+: R*2000)</formula>
+  <formula field="avail">tier(R; 1-3: 2; 4-6: 4; 7+: R)</formula>
+</gear>
+<!-- rating 5: 2,500¥, avail 4(L) -->
+
+<!-- a price per unit with a cheaper version -->
+<gear id="zz.crate" source="ZZ" page="30" category="crates" avail="2" cost="40" per="CF">
+  <name>Crate</name>
+  <formula field="cost" unit="CF">(Q*40)*(1 - 0.5*opt.open)</formula>
+</gear>
+<!-- 8 CF: 320¥; 8 CF, open: 160¥ -->
+
+<!-- a price off another item, and a field the book leaves out -->
+<gear id="zz.buzz-hack" source="ZZ" page="77" category="hacks" rating="1–4" cost="Widget cost plus rating x 50">
+  <name>Buzz Hack</name>
+  <issue field="cost" code="ambiguous" page="77">priced from another item: base + R*50</issue>
+  <issue field="avail" code="missing" page="77">no availability printed</issue>
+</gear>
+<!-- the user's edit gives the price (a 1,000¥ widget at rating 2: 1,100¥) and the availability -->
+```
+
+## Override files
+
+Game data's **Export my edits…** (editors and the admin) saves the edits layer, every edit or one book's, as an edits
+file in its own format (`edits.xsd`), each edit's own description in its `<text>`. **Import edits…** reads such a file
+and previews it: new entries, changes to a book's entry (the fields that change), and conflicts with an edit already
+here, each with Keep mine or Take theirs. Save edits sends the chosen entries one by one as edits made in the app
+(`PUT /api/sr6/edits/<kind>/<id>`); a refused one is listed with why. The file's issues are left out.
 
 ## Layout and load order
 

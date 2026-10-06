@@ -31,6 +31,12 @@ printed page = PDF page − 1 (`PAGE_OFFSET`).
   group). The custom vehicles and drones listed with them stay in the rules.
 - No qualities: the book prints none. Everything else (space travel, the void, comms, the 20 mission logs) is rules.
 
+## Formula styles and issues (importer v2)
+
+- `Rating x N¥` -> `R*N`; seats `N/N*` (footnote mark set aside) -> sum. Issues: seats `Special`, a defense
+  `+N [per rating]` and words in a price are `unreadable`.
+  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Explosive Decompression.pdf>" --out "%TEMP%\ed-check"
