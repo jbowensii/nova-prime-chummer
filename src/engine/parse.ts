@@ -3,12 +3,18 @@ import type {
   AmpEffect, AmpTemplate, AmpType, AttrId, Attribute, EffectParam, Item, ItemKind, Level, Lifestyle, LoadError,
   Metatype, Package, Pricing, Ref, Rule, Skill, Source, TemplateItem, VehicleBase,
 } from '../model/types'
+import { readFormulasAndIssues } from './formula'
 
 const str = (el: Element, n: string) => el.getAttribute(n) ?? undefined
 const num = (el: Element, n: string) => { const v = el.getAttribute(n); return v == null ? undefined : Number(v) }
 const req = (el: Element, n: string) => Number(el.getAttribute(n))
 const bool = (el: Element, n: string) => el.getAttribute(n) === 'true'
 const child = (el: Element, n: string) => el.getElementsByTagName(n)[0]?.textContent?.trim() ?? ''
+/** an entry's formulas and issues, only when it has some */
+const extras = (el: Element) => {
+  const { formulas, issues } = readFormulasAndIssues(el)
+  return { ...formulas.length ? { formulas } : {}, ...issues.length ? { issues } : {} }
+}
 const ref = (el: Element): Ref => ({ id: el.getAttribute('id')!, source: el.getAttribute('source')!, page: req(el, 'page') })
 
 export const toLevel = (el: Element): Level => ({ ...ref(el), name: child(el, 'name'), nuyen: req(el, 'nuyen'),
@@ -67,7 +73,7 @@ export const toAmp = (el: Element): AmpTemplate => {
   return { ...ref(el), name: child(el, 'name'), type: el.getAttribute('type')!, item, mod: bool(el, 'mod') || undefined,
     effects: [...el.getElementsByTagName('effect')].map(e => ({ ref: e.getAttribute('ref')!, param: str(e, 'param'),
       value: num(e, 'value'), note: str(e, 'note') })),
-    narrative: child(el, 'narrative'), printedRating: num(el, 'printedRating'), vehicle: str(el, 'vehicle') }
+    narrative: child(el, 'narrative'), printedRating: num(el, 'printedRating'), vehicle: str(el, 'vehicle'), ...extras(el) }
 }
 
 export const toVehicle = (el: Element): VehicleBase => ({ ...ref(el), name: child(el, 'name'), pilot: req(el, 'pilot'),
@@ -84,7 +90,7 @@ export const toLifestyle = (el: Element): Lifestyle => ({ ...ref(el), name: chil
 
 export const toItem = (el: Element): Item => ({ ...ref(el), name: child(el, 'name'), kind: el.getAttribute('kind') as ItemKind,
   specialist: bool(el, 'specialist') || undefined, armor: num(el, 'armor'), dv: str(el, 'dv'), ranges: str(el, 'ranges'),
-  category: str(el, 'category'), text: child(el, 'text') })
+  category: str(el, 'category'), text: child(el, 'text'), ...extras(el) })
 
 export interface ParsedFile { kind: string; entries: Element[]; removals: string[]; error?: LoadError }
 

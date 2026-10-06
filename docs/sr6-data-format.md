@@ -35,6 +35,10 @@ Every file has the same root, and one file holds one kind:
   `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
   (`900 + Gizmo`) stays as printed and is reported.
+- **Formulas and issues** (optional children of any entry, after its kind's own children and before `<text>`; see
+  Formulas and issues below): `<formula field="cost">R * 200</formula>` says how a field is worked out, the printed
+  attribute staying as printed; `<issue field="avail" code="missing" page="91">note</issue>` marks a field the book
+  prints nothing for, or one the importer couldn't read.
 - **Cross-references are names** for now: metatype traits, critter powers, NPC gear and weapons are lists as printed.
 - **No prose in the catalog files.** Descriptions, game effects and rule text go only to the source's texts file.
 
@@ -109,6 +113,58 @@ Three more kinds complete the set:
   order.
 - `texts`: `<text of="<kind>" id="<entry id>">…</text>`, merged into the entry's `<text>` by (kind, id).
 - `edits`: entries of any kind above, each with `by` (the account that saved it).
+
+## Formulas and issues
+
+Book values are canon: the printed attribute is never rewritten. Where the importer can say how a value is worked out,
+or that the book leaves it out, the entry carries it as a child. The app reads both; an edit (Game data's Edit, or an
+override file) is how a table sets what the book leaves out.
+
+```xml
+<gear id="crb.flare-kit" source="CRB" page="270" rating="1–6" avail="2" cost="Rating × 200">
+  <name>Flare Kit</name><formula field="cost">R * 200</formula><text/></gear>
+<gear id="crb.null-box" source="CRB" page="271" cost="150">
+  <name>Null Box</name><issue field="avail" code="missing" page="91">no availability printed</issue><text/></gear>
+```
+
+**`<formula field round? unit? qty?>EXPR</formula>`.** `field` is the attribute it works out (`cost`, `avail`, `rating`,
+`ammo`, `essence`…). The builder prices a bought item with it, at the item's rating, quantity and options, in the
+budgets, the ledger and the exports (which show the plain number); without one the printed value is read as above.
+EXPR is read by the app's own small parser (`src/engine/formula.ts`, never `eval`):
+
+- numbers, `+ - * /` (`×` too), parentheses, a leading minus;
+- `R` the rating, `Q` the quantity, `M` the runner's Magic, `B` this field's printed value, `opt.<id>` an option;
+- `tier(R; 1-3: a; 4-6: b; 7+: c)`: the value of the band the first argument falls in (a single number is a band);
+- `ref(kind:id, field[, R])`: another entry's value (its formula, else its printed value), at this rating or the one
+  given, e.g. `ref(gear:crb.flare-kit, cost, 2) + 50`;
+- `ceil(x)`, `floor(x)`, `min(a, b, …)`, `max(a, b, …)`.
+
+The result rounds up to a whole number (`round="down"` rounds down; Essence keeps two decimals). `unit` and `qty` say
+the price is for `qty` `unit`s (`unit="rounds" qty="10"`). A formula that uses `Q` works out the whole line, so the
+line's quantity isn't multiplied in again. A variable the app isn't given (an unrated item's `R`, say) counts as 1, and
+Review notes it. A formula that can't be read, or a `ref` to an entry or value that isn't there, leaves the item
+**unpriced** (never 0): the entry gets an issue (code `unreadable`) and the builder shows "unpriced".
+
+Game data and the pickers show a formula with its values over the entry's ratings (`Rating × 200¥ (200–1,200¥)`); a
+bought item shows its value, with the formula on hover.
+
+**`<issue field code page?>note</issue>`.** `code` is `missing` (the book prints nothing), `unreadable` or
+`ambiguous`; `page` is where the book has the entry; the text is a short note. The app shows a warning badge (the field,
+the note, the page) in Game data and the pickers, and Game data's **Needs attention** filter lists only these entries.
+A runner that uses one gets a cited Review note ("Null Box: the book prints no availability, set it in Game data or an
+override file."), never an error. An edit (or an override file) that sets the field clears its issue; the edit dialog
+still shows what the book has ("book: none printed").
+
+**Edits.** An edit keeps the book's formulas, except for a field it sets otherwise (the value typed wins), and never
+stores issues: an edited entry's issues are the book's, less the fields the edit sets.
+
+## Override files
+
+Game data's **Export my edits…** (editors and the admin) saves the edits layer, every edit or one book's, as an edits
+file in its own format (`edits.xsd`), each edit's own description in its `<text>`. **Import edits…** reads such a file
+and previews it: new entries, changes to a book's entry (the fields that change), and conflicts with an edit already
+here, each with Keep mine or Take theirs. Save edits sends the chosen entries one by one as edits made in the app
+(`PUT /api/sr6/edits/<kind>/<id>`); a refused one is listed with why. The file's issues are left out.
 
 ## Layout and load order
 

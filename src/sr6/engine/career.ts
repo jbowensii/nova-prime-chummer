@@ -12,7 +12,7 @@ import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
-import { rated, ratingRange } from './values'
+import { bookValue, dataFind, ratingRange } from './values'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
 /** Contact and Other: the amounts and label the player types. */
@@ -250,7 +250,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'lifestyle': {
       const e = data.entry('lifestyles', a.id) ?? no('unknown-entry')
       if (!(a.months >= 1)) no('below-one')
-      const v = rated(e.attrs.cost)
+      const v = bookValue(e, 'cost', undefined, dataFind(data))
       if (!v.ok || v.n === null) no('book-value')
       return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}`, nuyen: v.n! * a.months }
     }

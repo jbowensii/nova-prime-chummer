@@ -1,5 +1,5 @@
 """CLI for the SR6 importer (python -m importer sr6 ...).
-  python -m importer sr6 run <library/sr6/book-id> --custom <custom/sr6> [--md] [--file NAME]
+  python -m importer sr6 run <library/sr6/book-id> --custom <custom/sr6> [--md | --reuse] [--file NAME]
   python -m importer sr6 remove <library/sr6/book-id> --custom <custom/sr6> [--files]
   python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3: refused)
   python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6>
@@ -72,7 +72,10 @@ def _cmd_run(argv):
         print(USAGE, file=sys.stderr)
         return 2
     file_name = argv[argv.index("--file") + 1] if "--file" in argv else None
-    res = run(argv[0], argv[2], convert_pdf="--md" not in argv, file_name=file_name)
+    from importer.convert import SR6_CONVERTER_VERSION, reusable
+    # --md: book.md as it is; --reuse: book.md when it was made from this PDF by this converter, else convert
+    keep = "--md" in argv or ("--reuse" in argv and reusable(argv[0], SR6_CONVERTER_VERSION))
+    res = run(argv[0], argv[2], convert_pdf=not keep, file_name=file_name)
     state = xmlio.ET.parse(os.path.join(argv[0], "status.xml")).getroot().get("state")
     extra = f" source={quoteattr(res.source['id'])} files={quoteattr(' '.join(res.files))}" if res else ""
     print(f"<result state={quoteattr(state)}{extra} />")

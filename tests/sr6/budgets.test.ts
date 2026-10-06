@@ -215,9 +215,9 @@ test('knowledge: Logic times the setting free, a native language free, karma ran
 test('rated gear costs, weighs Essence and rises in Availability by rating; unrated gear keeps its flat price', () => {
   const { data, cr } = made()
   const line = (kind: PurchaseKind, id: string, rating?: number): Sr6Purchase => ({ uid: 'x', kind, id, rating, qty: 1, accessories: [] })
-  expect(priced(line('augmentations', 'crb.glow-eyes', 2), data, cr)).toEqual({ cost: 1000, avail: 3, essence: 0.2, ok: true })
-  expect(priced(line('electronics', 'crb.buzz-box', 4), data, cr)).toEqual({ cost: 600, avail: 4, essence: 0, ok: true })
-  expect(priced(line('weapons', 'crb.zap-gun'), data, cr)).toEqual({ cost: 290, avail: 2, essence: 0, ok: true })
+  expect(priced(line('augmentations', 'crb.glow-eyes', 2), data, cr)).toMatchObject({ cost: 1000, avail: 3, essence: 0.2, ok: true })
+  expect(priced(line('electronics', 'crb.buzz-box', 4), data, cr)).toMatchObject({ cost: 600, avail: 4, essence: 0, ok: true })
+  expect(priced(line('weapons', 'crb.zap-gun'), data, cr)).toMatchObject({ cost: 290, avail: 2, essence: 0, ok: true })
   expect(priced(line('gear', 'crb.tangle-rope'), data, cr).cost).toBe(50) // no rating: the lowest it comes in
 })
 
@@ -236,7 +236,7 @@ test('an accessory adds its cost; a grade multiplies Essence and cost and raises
 test('a custom item costs what the player says; a stacked line costs per unit', () => {
   const { data, cr } = made()
   expect(priced({ uid: 'c', kind: 'gear', name: 'Lucky charm', cost: 75, avail: 1, qty: 1, accessories: [] }, data, cr))
-    .toEqual({ cost: 75, avail: 1, essence: 0, ok: true })
+    .toMatchObject({ cost: 75, avail: 1, essence: 0, ok: true })
   expect(priced({ uid: 's', kind: 'gear', id: 'crb.zap-pellets', qty: 3, accessories: [] }, data, cr).cost).toBe(63)
 })
 
@@ -245,7 +245,7 @@ test('a value the app can’t read counts 0 and says so; totals stay numbers', (
   buy(b, 'weapons', 'crb.zap-gun')
   buy(b, 'weapons', 'crb.fizz-rifle-70')
   const r = budgets(b, { data: d => { d.entry('weapons', 'crb.zap-gun')!.attrs.cost = '12x' } })
-  expect(priced(b.purchases[0], r.data, r.cr)).toEqual({ cost: 0, avail: 2, essence: 0, ok: false })
+  expect(priced(b.purchases[0], r.data, r.cr)).toMatchObject({ cost: 0, avail: 2, essence: 0, ok: false })
   expect(r.nuyen.spent).toBe(1150)
   expect(Number.isFinite(r.nuyen.left)).toBe(true)
 })

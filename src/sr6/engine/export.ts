@@ -12,7 +12,8 @@ import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
 import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
-import { attackRatings, legality, rated, ratingRange } from './values'
+import { catalogFind } from './load'
+import { attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export', SR6_EXPORT_VERSION = 1
 export interface Sr6ExportOpts { descriptions: boolean; now: string; appVersion: string }
@@ -74,10 +75,12 @@ const pair = (s: string | undefined): [number, number] | undefined => {
 const defined = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
 
 /** Chummer's numbers for an entry at `rating` (else the lowest it comes in, else none). */
-export function entryValues(e: Sr6Entry, rating?: number): Sr6Values {
+export function entryValues(e: Sr6Entry, rating?: number, find?: Find): Sr6Values {
   const a = e.attrs, r = rating ?? ratingRange(a.rating)[0]
-  const v: Sr6Values = defined({ rating: r, cost: e.kind === 'adeptpowers' ? undefined : num(a.cost, r), avail: num(a.avail, r),
-    legality: legality(a.avail), essence: num(a.essence, r), capacity: num(a.capacity?.replace(/^\s*\[(.*)\]\s*$/, '$1'), r), defense: num(a.defense, r),
+  // cost, Availability and Essence as the builder prices them: a formula's value, else the printed one
+  const val = (f: string) => bookValue(e, f, r, find).n ?? undefined
+  const v: Sr6Values = defined({ rating: r, cost: e.kind === 'adeptpowers' ? undefined : val('cost'), avail: val('avail'),
+    legality: legality(a.avail), essence: val('essence'), capacity: num(a.capacity?.replace(/^\s*\[(.*)\]\s*$/, '$1'), r), defense: num(a.defense, r),
     karma: num(a.karma, r), powerCost: e.kind === 'adeptpowers' ? num(a.cost, r) : undefined, drain: e.kind === 'spells' ? num(a.dv, r) : undefined,
     // a ritual's threshold of `Force` is the ritual's own Force, not the rating the item is bought at
     fade: num(a.fade, r), threshold: /[a-z]/i.test(a.threshold ?? '') ? undefined : num(a.threshold, r) })
@@ -109,7 +112,7 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return { id: e.id, kind: e.kind, name: e.name, source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
-    attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating),
+    attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating, catalogFind(c)),
     ...(text && e.text ? { description: e.text } : {}) }
 }
 /** A line whose catalog entry is gone (or a custom one): what the runner file still has. */

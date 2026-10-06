@@ -7,12 +7,15 @@
 // whose source id is already a book's is skipped, and so is an entry whose id another source's entry holds.
 import type { SourceFile } from '../../engine/load'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { formulaXml, openIssues, readFormulasAndIssues } from '../../engine/formula'
 import { readSr6Compendium, sr6CompendiumSource } from './compendium'
+import { bookValue, ratingRange, type Find } from './values'
 
 export const SR6_NS = 'urn:chummer-sr6:data:1'
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
 const KINDS = new Set(Object.keys(SR6_KINDS))
 const OWN = new Set(['id', 'source', 'page'])
+const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue'])
 const SHIPPED = 'data/sr6/'
 const CUSTOM = 'custom/sr6/'
 
@@ -28,10 +31,13 @@ export function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
   const e: Sr6Entry = {
     id: el.getAttribute('id') ?? '', kind, name: kids.find(k => k.localName === 'name')?.textContent ?? '',
     source: el.getAttribute('source') ?? '', page: Number(el.getAttribute('page')) || 0, attrs: attrsOf(el, new Set([...OWN, 'by'])),
-    parts: kids.filter(k => k.localName !== 'name' && k.localName !== 'text').map(k => ({ tag: k.localName, attrs: attrsOf(k), text: k.textContent ?? '' })),
+    parts: kids.filter(k => !OWN_KIDS.has(k.localName)).map(k => ({ tag: k.localName, attrs: attrsOf(k), text: k.textContent ?? '' })),
     text: kids.find(k => k.localName === 'text')?.textContent ?? '',
   }
   if (!e.id) throw new Error(`a <${el.localName}> has no id`)
+  const { formulas, issues } = readFormulasAndIssues(el)
+  if (formulas.length) e.formulas = formulas
+  if (issues.length) e.issues = issues
   return e
 }
 
@@ -95,6 +101,17 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
           const e = edits[i], map = c.entries[e.kind], prev = map.get(e.id)
           if (prev && !prev.edited) c.original.set(entryKey(e.kind, e.id), prev)
           if (!e.text && prev) e.text = prev.text
+          const book = c.original.get(entryKey(e.kind, e.id))
+          if (book) {
+            // a field the edit sets otherwise drops the book's formula and issue for it (the book's stay in `original`);
+            // the edit's own formulas win, the book's fill in the rest
+            const changed = (f: string) => (e.attrs[f] ?? '') !== (book.attrs[f] ?? '')
+            const own = new Set(e.formulas?.map(f => f.field))
+            const formulas = [...e.formulas ?? [], ...(book.formulas ?? []).filter(f => !own.has(f.field) && !changed(f.field))]
+            const issues = openIssues(book.issues, changed) ?? []
+            if (formulas.length) e.formulas = formulas; else delete e.formulas
+            if (issues.length) e.issues = issues; else delete e.issues
+          }
           map.set(e.id, { ...e, edited: true, by: el.getAttribute('by') ?? undefined })
         })
       } else if (KINDS.has(kind)) {
@@ -110,8 +127,22 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
     }
     c.files.push({ file: f.file, kind, entries: els.filter(el => el.localName !== 'remove').length })
   }
+  formulaIssues(c)
   return c
 }
+
+/** A formula that can't be worked out (it can't be read, or refers to an entry or value that isn't there) is an issue of
+ *  its entry, so Game data, the pickers and Review show it; the entry stays unpriced, never 0. Checked at its lowest rating. */
+function formulaIssues(c: Sr6Catalog) {
+  const find = catalogFind(c)
+  for (const map of Object.values(c.entries)) for (const e of map.values()) for (const f of e.formulas ?? []) {
+    const r = bookValue(e, f.field, ratingRange(e.attrs.rating)[0], find)
+    if (r.error && !e.issues?.some(x => x.field === f.field)) e.issues = [...e.issues ?? [], { field: f.field, code: 'unreadable', note: `its formula: ${r.error}` }]
+  }
+}
+
+/** The catalog's entries by kind and id, for a formula's ref(). */
+export const catalogFind = (c: Sr6Catalog): Find => (kind, id) => (KINDS.has(kind) ? c.entries[kind as Sr6Kind].get(id) : undefined)
 
 const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
 
@@ -150,12 +181,12 @@ export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Pro
 const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const attrList = (a: Record<string, string>) => Object.entries(a).map(([k, v]) => ` ${k}="${esc(v)}"`).join('')
 
-/** The entry element: id, source, page, its attributes, <name>, its parts as they are, then <text>. For an edit body
- * (PUT sr6/edits/<kind>/<id>) an empty <text/> (descriptions go in the edit's <description>); `withText`: the entry's own
+/** The entry element: id, source, page, its attributes, <name>, its parts as they are, its formulas (never its issues:
+ * those are the book's), then <text>. For an edit body (PUT sr6/edits/<kind>/<id>) an empty <text/> (descriptions go in the edit's <description>); `withText`: the entry's own
  * text (a compendium's, src/sr6/engine/compendium.ts). */
 export function sr6EntryXml(e: Sr6Entry, withText = false): string {
   const tag = SR6_KINDS[e.kind].tag
   const parts = e.parts.map(p => p.text ? `<${p.tag}${attrList(p.attrs)}>${esc(p.text)}</${p.tag}>` : `<${p.tag}${attrList(p.attrs)}/>`).join('')
   const text = withText && e.text ? `<text>${esc(e.text)}</text>` : '<text/>'
-  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${text}</${tag}>`
+  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${formulaXml(e.formulas, esc)}${text}</${tag}>`
 }

@@ -12,6 +12,7 @@ import {
   toSource, toVehicle,
 } from './parse'
 import { compendiumSource, readCompendium } from './compendium'
+import { openIssues, type Formula, type Issue } from './formula'
 
 export const DATA_FILES = ['sources', 'levels', 'metatypes', 'attributes', 'skills', 'pricing', 'amptypes', 'ampeffects',
   'packages', 'vehicles', 'weapons', 'armor', 'lifestyles']
@@ -39,10 +40,22 @@ function mergeSource(prev: Source | undefined, s: Source): Source {
  * keeps the replaced entry's (the private text an import brought); custom/edits/texts.xml loads after. */
 function editEntry(c: Catalog, el: Element) {
   const id = el.getAttribute('id')!
-  const put = <T extends { edited?: boolean }>(map: Map<string, T>, orig: Map<string, T>, e: T, text: keyof T) => {
+  type Extra = { edited?: boolean; formulas?: Formula[]; issues?: Issue[] }
+  const put = <T extends Extra>(map: Map<string, T>, orig: Map<string, T>, e: T, text: keyof T) => {
     const prev = map.get(id)
     if (prev && !prev.edited) orig.set(id, prev)
     if (!e[text] && prev) e[text] = prev[text]
+    // the edit keeps the book's formulas (an edit is saved without them) and its issues, except for a field it sets otherwise
+    const book = orig.get(id)
+    if (book) {
+      const changed = (f: string) => {
+        const k = (f === 'rating' && 'printedRating' in book ? 'printedRating' : f) as keyof T
+        return String(e[k] ?? '') !== String(book[k] ?? '')
+      }
+      if (!e.formulas && book.formulas) e.formulas = book.formulas.filter(f => !changed(f.field))
+      const issues = openIssues(book.issues, changed)
+      if (issues?.length) e.issues = issues; else delete e.issues
+    }
     map.set(id, { ...e, edited: true })
   }
   if (el.localName === 'amp') put(c.amps, c.original.amps, toAmp(el), 'narrative')

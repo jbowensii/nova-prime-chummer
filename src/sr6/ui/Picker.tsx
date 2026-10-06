@@ -5,7 +5,9 @@ import { useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
-import { legality, rated, ratingRange } from '../engine/values'
+import { bookValue, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
+import { formulaOf, formulaText } from '../../engine/formula'
+import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
@@ -18,8 +20,8 @@ import { ATTR_NAMES, n, useSr6Editor } from './editor'
 export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?: string, data?: Sr6Data): { cost: string; avail: string; essence: string } {
   const g = (k: GradeFactor) => (cr && grade ? (data ? gradeFactor(cr, data, grade, k) : num(cr, `grade:${grade}:${k}`)) : undefined)
   const show = (attr: string, f: (v: number) => string) => {
-    const v = rated(e.attrs[attr], rating)
-    return !v.ok ? '?' : v.n === null ? '' : f(v.n)
+    const v = bookValue(e, attr, rating, data && dataFind(data))
+    return !v.ok ? (v.formula ? 'unpriced' : '?') : v.n === null ? '' : f(v.n)
   }
   const legal = legality(e.attrs.avail)
   return {
@@ -27,6 +29,15 @@ export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?:
     avail: show('avail', v => `${v + (g('avail') ?? 0)}${legal ? `(${legal})` : ''}`),
     essence: show('essence', v => n(Math.round(v * (g('essence') ?? 1) * 100) / 100)),
   }
+}
+
+/** A field's formula and its values over the ratings the entry comes in: "Rating × 200¥ (200–1,200¥)", "(unpriced)"
+ *  when it can't be worked out; undefined without a formula. */
+export function formulaShown(e: Sr6Entry, field: string, find?: Find): string | undefined {
+  const f = formulaOf(e.formulas, field)
+  if (!f) return undefined
+  const r = formulaRange(e, field, find), u = field === 'cost' ? '¥' : ''
+  return `${formulaText(f, e.attrs[field])} (${!r ? 'unpriced' : r[0] === r[1] ? `${n(r[0])}${u}` : `${n(r[0])}–${n(r[1])}${u}`})`
 }
 
 /** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
@@ -87,15 +98,17 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
             <select value={chosen.grade} onChange={e => setChosen({ ...chosen, grade: e.target.value })}>
               {offered(chosen.e).map(g => <option key={g} value={g}>{gradeName(data, g)}</option>)}</select></label>}
         </div>
-        {price && <p>Cost <b>{price.cost || '—'}</b> · Availability <b>{price.avail || '—'}</b>{price.essence && <> · Essence <b>{price.essence}</b></>}</p>}
+        {price && <p>Cost <b title={formulaShown(chosen.e, 'cost', dataFind(data))}>{price.cost || '—'}</b> · Availability <b title={formulaShown(chosen.e, 'avail', dataFind(data))}>{price.avail || '—'}</b>{price.essence && <> · Essence <b>{price.essence}</b></>}</p>}
+        <IssueBadges issues={chosen.e.issues} source={chosen.e.source} />
       </div> : <Picker placeholder="Search" onPick={pick}
         groups={[...new Set(entries.map(e => groupOf(e) ?? ''))].filter(Boolean).sort()}
         items={entries.map(e => {
-          const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1)
+          const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1, undefined, undefined, data), formula = formulaShown(e, 'cost', dataFind(data))
           return { id: `${e.kind}:${e.id}`, name: e.name, group: groupOf(e),
             meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`].filter(Boolean).join(', '),
-            label: <><span className="muted">{e.source} p.{e.page}</span> <House c={c} source={e.source} /></>, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
-            price: p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}` }
+            label: <><span className="muted">{e.source} p.{e.page}</span> <House c={c} source={e.source} /> <IssueBadges issues={e.issues} source={e.source} /></>,
+            search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
+            price: formula ?? (p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}`) }
         })} />}
     </Modal>
   )
@@ -193,7 +206,7 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
       <thead><tr><th>{title}</th>{(STACKS.has(kind) || kind === 'armor') && <th>{kind === 'armor' ? 'Worn' : 'Qty'}</th>}
         {ware && <th className="num">Essence</th>}<th className="num">Avail</th><th className="num">Cost</th><th /></tr></thead>
       <tbody>{rows.map(x => {
-        const e = entryOf(x, data), name = e?.name ?? x.name ?? 'Custom item', p = priced(x, data, cr)
+        const e = entryOf(x, data), name = e?.name ?? x.name ?? 'Custom item', p = priced(x, data, cr), cf = formulaOf(e?.formulas, 'cost')
         return <tr key={x.uid}>
           <td><LineName x={x} />
             <RatingGrade x={x} name={name} grades={grades} />
@@ -204,7 +217,10 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
           {kind === 'armor' && <td><input type="checkbox" aria-label={`${name} is worn`} checked={!!x.worn} onChange={ev => act({ op: 'wear', uid: x.uid, worn: ev.target.checked })} /></td>}
           {ware && <td className="num">{n(p.essence)}</td>}
           <td className="num">{p.avail}{legality(e?.attrs.avail) ? `(${legality(e?.attrs.avail)})` : ''}</td>
-          <td className="num">{n(p.cost)}¥{!p.ok && <span className="warn" title="A value the app can’t read counts 0"> ?</span>}</td>
+          <td className="num">{/* a formula's price shows the formula on hover (and what it had to assume) */}
+            <span className={cf ? 'has-formula' : undefined} title={cf ? [formulaText(cf), ...p.notes].join('\n') : undefined}>
+              {p.unpriced ? <span className="warn">unpriced</span> : `${n(p.cost)}¥`}</span>
+            {!p.ok && !p.unpriced && <span className="warn" title="A value the app can’t read counts 0"> ?</span>}</td>
           <td className="num"><button className="btn small quiet" aria-label={`Remove ${name}`} onClick={() => act({ op: 'purchase', remove: x.uid })}>Remove</button></td>
         </tr>
       })}</tbody>

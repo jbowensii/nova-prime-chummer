@@ -9,7 +9,7 @@
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
 // anything else with exit 3 like the real check (importer/backup.py, run for real in backup-python.test.ts); datapack
 // export/import likewise (importer/datapack.py, run for real in datapack-python.test.ts).
-// `sr6 <command> …` (the Shadowrun 6 importer): run copies the made-up SR6 fixture (tests/fixtures/sr6/custom: imported/,
+// `sr6 <command> …` (the Shadowrun 6 importer; "slow" in the PDF: its run takes 1.5 s too): run copies the made-up SR6 fixture (tests/fixtures/sr6/custom: imported/,
 // texts/) into --custom with an import.xml (CRB, recipe crb, the counts, one unpaired-row); remove deletes imported/crb and
 // texts/crb.xml; edit set|remove as below, in <custom>/edits/ with the SR6 root and kinds.
 import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -56,6 +56,7 @@ const overlay = (custom, src, name, entries) => {
 
 if (sr6 && cmd === 'run') {
   const custom = opt('--custom'), crb = join(SR6_FIXTURE, 'imported', 'crb')
+  if (existsSync(join(target, 'original.pdf')) && readFileSync(join(target, 'original.pdf'), 'latin1').includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500)
   for (const d of ['imported', 'texts']) cpSync(join(SR6_FIXTURE, d), join(custom, d), { recursive: true })
   const files = readdirSync(crb).map(f => `<file name="${f}" entries="${readFileSync(join(crb, f), 'utf8').match(/^ {2}<\w+ id="/gm)?.length ?? 0}"/>`)
   writeFileSync(join(target, 'import.xml'), `<import file="made-up-sr6.pdf" sha256="00" converter="sr6-1" pages="1" score="1.00" recipe="crb" source="CRB" ${

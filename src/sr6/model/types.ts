@@ -1,5 +1,6 @@
 // The Shadowrun 6 catalog's kinds: one data file per kind (custom/sr6/imported/<source>/<kind>.xml), each entry under
 // its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format.md.
+import type { Formula, Issue } from '../../engine/formula'
 import type { Sr6Character } from './character'
 
 export type Sr6Kind =
@@ -51,13 +52,18 @@ export const GRADED_TYPES: readonly string[] = ['cyberware', 'bioware']
 export const augFamily = (type: string | undefined): 'cyberware' | 'bioware' =>
   type === 'bioware' || type === 'geneware' || type === 'symbionts' || type === 'transgenics' ? 'bioware' : 'cyberware'
 
-/** An entry's child element other than <name> and <text> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
+/** An entry's child element other than <name>, <text>, <formula> and <issue> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
 export interface Sr6Part { tag: string; attrs: Record<string, string>; text: string }
 /** One catalog entry, generic in S1 (S2 adds typed views). attrs: every attribute but id, source and page, as printed;
  * text: its description (the texts files); edited/by: from the edits layer (custom/sr6/edits/edits.xml). */
 export interface Sr6Entry {
   id: string; kind: Sr6Kind; name: string; source: string; page: number; attrs: Record<string, string>; parts: Sr6Part[]; text: string
   edited?: boolean; by?: string
+  /** <formula> children: how a field is worked out (src/engine/formula.ts); the attribute stays as printed */
+  formulas?: Formula[]
+  /** <issue> children: a field the book prints nothing for, or that the importer couldn't read; also a formula that can't
+   *  be worked out (load.ts). An edit that sets the field clears its issue (the book's stays in `original`). */
+  issues?: Issue[]
 }
 /** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). published ("2019-08") and cat
  *  ("CAT28000"): the publication order (src/sr6/engine/npc.ts byPublication). */

@@ -38,6 +38,36 @@
     <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
   </xs:attributeGroup>
 
+  <!-- an amp's or item's <formula>s and <issue>s, just before its description (src/engine/formula.ts, docs/data-format.md):
+       how a field is worked out (an item's cost: B is the standard price from pricing.xml), and a field the book prints
+       nothing for or the importer couldn't read. The edits layer doesn't store them (an edit keeps the book's). -->
+  <xs:simpleType name="Field">
+    <xs:restriction base="xs:string"><xs:pattern value="[a-zA-Z][a-zA-Z0-9]*"/></xs:restriction>
+  </xs:simpleType>
+  <xs:group name="extras">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="formula">
+          <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+            <xs:attribute name="field" type="ca2:Field" use="required"/>
+            <xs:attribute name="round"><xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="up"/><xs:enumeration value="down"/></xs:restriction></xs:simpleType></xs:attribute>
+            <xs:attribute name="unit" type="xs:string"/>
+            <xs:attribute name="qty" type="xs:string"/>
+          </xs:extension></xs:simpleContent></xs:complexType>
+        </xs:element>
+        <xs:element name="issue">
+          <xs:complexType><xs:simpleContent><xs:extension base="xs:string">
+            <xs:attribute name="field" type="ca2:Field" use="required"/>
+            <xs:attribute name="code" use="required"><xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="missing"/><xs:enumeration value="unreadable"/><xs:enumeration value="ambiguous"/></xs:restriction></xs:simpleType></xs:attribute>
+            <xs:attribute name="page" type="xs:positiveInteger"/>
+          </xs:extension></xs:simpleContent></xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:sequence>
+  </xs:group>
+
   <!-- entry types of amps.xsd, items.xsd and rules.xsd (also the edits layer, edits.xsd, and compendium.xsd) -->
   <xs:complexType name="Amp">
     <xs:sequence>
@@ -64,6 +94,7 @@
           <xs:attribute name="note" type="xs:string"/>
         </xs:complexType>
       </xs:element>
+      <xs:group ref="ca2:extras"/>
       <xs:element name="narrative" type="xs:string"/>
     </xs:sequence>
     <xs:attributeGroup ref="ca2:ref"/>
@@ -75,6 +106,7 @@
   <xs:complexType name="Item">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
+      <xs:group ref="ca2:extras"/>
       <xs:element name="text" type="xs:string"/>
     </xs:sequence>
     <xs:attributeGroup ref="ca2:ref"/>

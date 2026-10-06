@@ -379,7 +379,10 @@ dialog .actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-
 .backup label.check { margin: 0; color: var(--text); }
 .backup .small { font-size: 0.9rem; }
 .backup .file, .datapack .file, .sr6-creation .file { position: relative; display: inline-block; margin-top: 0.8rem; }
-.backup .file input, .datapack .file input, .sr6-creation .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.backup .file input, .datapack .file input, .sr6-creation .file input, .overrides .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.overrides .file { position: relative; display: inline-block; }
+.overrides .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.override-preview td.warn { font-weight: 600; }
 .backup .file:focus-within, .datapack .file:focus-within, .sr6-creation .file:focus-within { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .backup progress { vertical-align: middle; accent-color: var(--yellow); }
 .datapack { margin-bottom: 1.5rem; }
@@ -643,6 +646,19 @@ dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size:
 .browse-top { margin: 0.8rem 0 1.1rem; }
 .browse-top input[type='search'] { flex: 1 1 14rem; width: auto; min-width: 0; }
 .browse-top select { width: auto; max-width: 100%; }
+.browse-top button.attention { padding: 0.25rem 0.75rem; border: 1px solid var(--warn); border-radius: 999px; background: var(--surface); color: var(--warn);
+  cursor: pointer; font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
+.browse-top button.attention:disabled { border-color: var(--rule); color: var(--text-3); cursor: default; }
+.browse-top button.attention[aria-pressed='true'] { background: var(--warn); color: var(--surface); }
+.browse-top button.attention[aria-pressed='true'] .n { color: inherit; }
+.browse-top button.attention .n { font-variant-numeric: tabular-nums; color: var(--text-3); }
+/* a catalog entry's data issue (Issues.tsx): the book leaves a value out, or prints one the importer couldn't read */
+.issue-badge { display: inline-block; font-size: 0.72rem; line-height: 1.35; padding: 0 0.4rem; border: 1px solid var(--warn); color: var(--warn);
+  font-family: var(--sans); font-weight: 600; letter-spacing: 0.01em; white-space: normal; }
+.issue-badge b { text-transform: uppercase; font-size: 0.66rem; letter-spacing: 0.05em; }
+.issue-badge .src { color: inherit; opacity: 0.85; }
+.field-notes { display: flex; flex-direction: column; font-size: 0.8rem; font-weight: 400; }
+.has-formula { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
 label.book-pick { display: flex; align-items: center; gap: 0.5rem; max-width: 100%; }
 .browser { margin-bottom: 2.2rem; }
 .browse-body { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
@@ -749,3 +765,10 @@ table.contacts td.end { text-align: right; }
 .lib .tabs.sections a { font-size: 1.15rem; padding: 0.5rem 1.1rem; border-bottom-width: 4px; }
 .lib .tabs.sections a[aria-current='page'] { background: var(--zebra); }
 .npcgroup { font-size: 1.1rem; margin: 1.2rem 0 0.4rem; }
+
+/* Books → Re-import all: the heading's button and the progress line under it */
+.books-head { align-items: baseline; }
+.books-head h2 { margin-bottom: 0.4rem; }
+.reimport-all { margin: 0 0 1rem; }
+.reimport-all p { margin: 0 0 0.3rem; }
+.reimport-all progress { width: 100%; max-width: 32rem; accent-color: var(--heading); }

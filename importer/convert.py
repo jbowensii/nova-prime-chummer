@@ -328,6 +328,24 @@ def _reading_order(blocks, mid):
     return out
 
 
+def reusable(book_dir: str, version: str) -> bool:
+    """book.md can stand in for original.pdf: the book's last import (import.xml, which a remove keeps) converted this same
+    file with this converter version. A re-import then skips the conversion (Books → Re-import all: run --reuse)."""
+    import os
+    import xml.etree.ElementTree as ET
+    pdf, md, imp = (os.path.join(book_dir, f) for f in ("original.pdf", "book.md", "import.xml"))
+    if not (os.path.exists(pdf) and os.path.exists(md) and os.path.exists(imp)):
+        return False
+    try:
+        rec = ET.parse(imp).getroot()
+    except ET.ParseError:
+        return False
+    if rec.get("converter") != version or not rec.get("sha256"):
+        return False
+    with open(pdf, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest() == rec.get("sha256")
+
+
 def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, sr6: bool = False,
             levels: dict | None = None, heading: str | None = None) -> dict:
     """pages: optional 1-based inclusive (first, last) range to convert. sr6: the Shadowrun 6 layout

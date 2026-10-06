@@ -4,7 +4,7 @@
 // the book's own text, unchanged) means "use the book's text".
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml } from '../engine'
+import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml, fieldName, ISSUE_BOOK, type Issue } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule, Source, VehicleBase } from '../model/types'
 import { because, canEdit, useMe } from './auth'
 import { Modal } from './bits'
@@ -117,6 +117,8 @@ export function EntryForm({ c, kind, entry, sources, save: put, onDone, onCancel
   const [effectsText, setEffectsText] = useState(rule.effects.join(' '))
   const adding = !entry
   const src = adding ? (source === '+' ? newSource.id : source) : entry.source
+  // what the book leaves out of the entry (kept visible after an edit sets it)
+  const bookIssues = edits && entry ? ((original || entry) as { issues?: Issue[] }).issues : undefined
 
   const newId = (name: string) => {
     const base = `${src.toLowerCase()}.${slug(name)}`
@@ -163,6 +165,9 @@ export function EntryForm({ c, kind, entry, sources, save: put, onDone, onCancel
             {state === 'changed' ? 'Restore book version' : state === 'orphan' ? 'Remove edit' : 'Delete entry'}</button>
         </div>) : null}
       {state === 'orphan' && <p className="muted">The book this entry came from was removed, so the edit can’t be saved again. Remove it, or re-import the book.</p>}
+      {bookIssues?.length ? <div className="editstate"><p style={{ margin: 0 }}>Needs attention in the book:</p><ul style={{ margin: 0 }}>{bookIssues.map((x, i) =>
+        <li key={i}>{fieldName(x.field)}: <span className="warn">book: {ISSUE_BOOK[x.code]}</span>{x.page ? ` (p.${x.page})` : ''}{x.note ? ` · ${x.note}` : ''}
+          {!(entry as { issues?: Issue[] }).issues?.some(y => y.field === x.field) && <span className="muted"> · set by your edit</span>}</li>)}</ul></div> : null}
       {adding && (
         <div className="grid2">
           {edits && <label>House-rule source

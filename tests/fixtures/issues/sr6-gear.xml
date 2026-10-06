@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Made-up SR6 gear with formulas and issues (tests/sr6/issues.test.ts, e2e/issues-formulas.spec.ts). No book text. -->
+<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1">
+  <gear id="crb.flare-kit" source="CRB" page="270" category="survival" rating="1–6" avail="2" cost="Rating × 200"><name>Flare Kit</name><formula field="cost">R * 200</formula><text/></gear>
+  <gear id="crb.null-box" source="CRB" page="271" category="survival" cost="150"><name>Null Box</name><issue field="avail" code="missing" page="91">no availability printed</issue><text/></gear>
+  <gear id="crb.ghost-link" source="CRB" page="272" category="survival" avail="3" cost="see text"><name>Ghost Link</name><formula field="cost">ref(gear:crb.nowhere, cost)</formula><text/></gear>
+  <gear id="crb.tier-lamp" source="CRB" page="273" category="survival" rating="1–6" avail="Rating ÷ 2" cost="100 (1–3), 250 (4–6)"><name>Tier Lamp</name><formula field="cost">tier(R; 1-3: 100; 4-6: 250)</formula><formula field="avail" round="down">R / 2</formula><text/></gear>
+  <gear id="crb.flare-tin" source="CRB" page="274" category="ammunition" avail="1" cost="20"><name>Flare Tin</name><formula field="cost" unit="flares" qty="10">B</formula><text/></gear>
+  <gear id="crb.flare-pack" source="CRB" page="274" category="survival" avail="2" cost="see Flare Kit"><name>Flare Pack</name><formula field="cost">ref(gear:crb.flare-kit, cost, 2) + 50</formula><text/></gear>
+</sr6:data>

@@ -481,6 +481,8 @@ with the importer’s Markdown, in the `library` folder (never served over
 HTTP). A known book is imported at once into `custom/imported/<source>/`,
 with a report of anything that didn’t match what the book prints. Re-import
 reruns it; Remove takes its entries out again (and optionally deletes the PDF).
+**Re-import all books** reruns every book from its PDF, one after another (after
+an importer update, say), keeping your edits, runners and NPCs.
 
 A book no recipe knows can go to an AI: set up Anthropic, an OpenAI-compatible
 server (OpenAI, OpenRouter, LiteLLM, Ollama, LM Studio), Google Gemini or

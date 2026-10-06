@@ -182,10 +182,11 @@ These are the base chassis for vehicle amps.
 - `specialist="true"` marks sniper rifles, grenade launchers, machine guns
   and heavier weapons (priced at `weaponSpecialist`).
 - `armor` is the armor rating (priced per point).
+- Optional `<formula>` and `<issue>` children, before `<text>` (Formulas and issues, below).
 
 ### amps
 
-`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note?/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note?/>*<formula/>*<issue/>*<narrative/></amp>`
 
 - `<item>` (equipment amps only) is the base item bought with the amp, priced
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
@@ -468,6 +469,33 @@ with each book's rating.
 writes the same files a recipe would, under the source id, title and canon
 status chosen on the review screen. A source id that a recipe, the shipped
 data or the user's `custom/sources.xml` owns can't be taken.
+
+## Formulas and issues
+
+As in Shadowrun 6 (`docs/sr6-data-format.md`, Formulas and issues; the parser is shared), an amp or item may carry
+`<formula field round? unit? qty?>EXPR</formula>` and `<issue field code page?>note</issue>` children, in any order,
+just before its description (`<text>`, an amp's `<narrative>`):
+
+```xml
+<item id="test.flash-pack" kind="gear" source="TEST" page="11"><name>Flash Pack</name><formula field="cost">B * 3</formula><text></text></item>
+<item id="test.odd-blade" kind="weapon" source="TEST" page="12"><name>Odd Blade</name><issue field="dv" code="missing" page="12">no damage printed</issue><text></text></item>
+```
+
+- An item's `cost` formula prices it in the builder, the ledger and the exports; `B` is the standard price for its
+  kind from `pricing.xml` (a GM's price still wins). Anarchy items have no rating: a formula using `R` counts it as 1,
+  and Review notes it. A formula that can't be worked out leaves the standard price, and Review says why.
+- Other fields (an amp's `rating`) show in Game data with their formula.
+- An issue (`code`: `missing`, `unreadable`, `ambiguous`) shows as a warning badge in Game data and the pickers, Game
+  data's Needs attention filter lists those entries, and a runner that has one gets a cited Review note. An edit that
+  sets the field clears it; the edit dialog still lists what the book has. The importer doesn't write Anarchy issues
+  yet; the app reads them now.
+- The edits layer stores neither: an edit keeps the book's formulas and issues (less the fields it sets).
+
+**Override files.** Game data's Export my edits… and Import edits… (editors and the admin) save the edits layer, all
+of it or one book's, as an edits file (`edits.xsd`, each edit's description in its `<text>` or `<narrative>`), and load
+one back with a preview (new entries, changes to a book's entry, conflicts with your edits: keep mine or take theirs).
+Each chosen entry is saved as an edit made in the app (`PUT /api/edits/<kind>/<id>`), so the same checks apply; a new
+entry needs its house-rule source here first.
 
 ## Edits layer (`custom/edits/`)
 

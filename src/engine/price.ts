@@ -1,5 +1,6 @@
 // Nuyen pricing (CRB p.83). One price list for creation and advancement.
-import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, Pricing } from '../model/types'
+import type { Build, Catalog, Character, Item, ItemEntry, KnowledgeEntry, Pricing } from '../model/types'
+import { evalFormula, formulaOf, type Formula } from './formula'
 import { ATTRS } from '../model/types'
 import { ampCtx, ampRating } from './amps'
 
@@ -19,9 +20,25 @@ export function skillCost(p: Pricing, from: number, to: number): number {
   return n
 }
 
-export function itemCost(p: Pricing, i: ItemEntry): number {
-  if (i.starting) return 0
-  if (i.price != null) return Math.max(0, i.price) // a GM price below 0 would pay the runner (validate.ts item.negativePrice)
+/** An item's price: free starting gear, a GM's price, its catalog entry's cost formula (B: the standard price below),
+ *  else the standard price for its kind from pricing.xml. `cat`: its catalog entry (default: the snapshot taken when
+ *  picked). A formula that can't be worked out leaves the standard price (itemPrice says why). */
+export function itemCost(p: Pricing, i: ItemEntry, cat: Item | undefined = i.snapshot): number {
+  return itemPrice(p, i, cat).n
+}
+
+/** itemCost with its workings: the formula (B: `base`, the standard price), what it assumed, why it can't be worked out. */
+export function itemPrice(p: Pricing, i: ItemEntry, cat: Item | undefined = i.snapshot): { n: number; base: number; formula?: Formula; notes: string[]; error?: string } {
+  const std = standardCost(p, i)
+  if (i.starting) return { n: 0, base: std, notes: [] }
+  if (i.price != null) return { n: Math.max(0, i.price), base: std, notes: [] } // a GM price below 0 would pay the runner (validate.ts item.negativePrice)
+  const f = formulaOf(cat?.formulas, 'cost')
+  if (!f) return { n: std, base: std, notes: [] }
+  const r = evalFormula(f, { B: std })
+  return r.n === null ? { n: std, base: std, formula: f, notes: r.notes, error: r.error } : { n: Math.max(0, r.n), base: std, formula: f, notes: r.notes }
+}
+
+function standardCost(p: Pricing, i: ItemEntry): number {
   switch (i.kind) {
     case 'armor': return (i.armor ?? 0) * p.armorPoint
     case 'weapon': return i.specialist ? p.weaponSpecialist : p.weaponStandard
@@ -30,6 +47,9 @@ export function itemCost(p: Pricing, i: ItemEntry): number {
     default: return p.equipment
   }
 }
+
+/** The item's catalog entry: the live one, else its snapshot. */
+export const catalogItem = (c: Catalog, i: ItemEntry) => (i.catalogId ? c.items.get(i.catalogId) : undefined) ?? i.snapshot
 
 export interface Breakdown { attributes: number; skills: number; amps: number; gear: number; spells: number }
 export interface PriceBreakdown extends Breakdown { total: number; budget: number; remaining: number }
@@ -67,7 +87,7 @@ export function priceParts(c: Catalog, b: Build, metatype: string, keywords: str
       ...sk.specs.map(sp => ({ key: `spec:${sk.id}:${sp}`, cat: 'skills' as const, price: p.spec }))]),
     ...b.knowledge.map(k => ({ key: `knowledge:${k.from ?? k.id ?? `${k.kind}:${k.name}`}`, cat: 'skills' as const, price: knowledgePaid(b, keywords, k) ? p.knowledge : 0 })),
     ...b.amps.map(a => ({ key: `amp:${a.uid}`, cat: 'amps' as const, price: ampRating(c, a, { ...ampCtx(b, a, c), negativeOk: negativeOk.has(a.uid) }) * p.ampPoint })),
-    ...b.items.map(i => ({ key: `item:${i.uid}`, cat: magic(i) ? 'spells' as const : 'gear' as const, price: itemCost(p, i) })),
+    ...b.items.map(i => ({ key: `item:${i.uid}`, cat: magic(i) ? 'spells' as const : 'gear' as const, price: itemCost(p, i, catalogItem(c, i)) })),
   ]
 }
 

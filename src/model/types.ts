@@ -1,5 +1,6 @@
 // Shared vocabulary for engine and UI. Catalog types mirror the XML data kinds
 // (docs/data-format.md); Character types mirror the .ca2.json file.
+import type { Formula, Issue } from '../engine/formula'
 
 export type AttrId = 'str' | 'agi' | 'wil' | 'log' | 'cha';
 export const ATTRS: AttrId[] = ['str', 'agi', 'wil', 'log', 'cha'];
@@ -31,7 +32,9 @@ export interface TemplateItem { kind: 'gear' | 'weapon' | 'armor'; specialist?: 
   armor?: number; dv?: string; ranges?: string }
 /** mod: an add-on applied to an existing amp of `type` (ammo, accessories, vehicle mods, grades) */
 export interface AmpTemplate extends Ref { name: string; type: string; item?: TemplateItem; mod?: boolean;
-  effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string; edited?: boolean }
+  effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string; edited?: boolean
+  /** <formula> and <issue> children (src/engine/formula.ts): how a field is worked out, what the book left out */
+  formulas?: Formula[]; issues?: Issue[] }
 export interface VehicleBase extends Ref { name: string; pilot: number; body: number;
   handling: number; speed: number; flyingSpeed?: number; armor: number; mount: string }
 export interface Package extends Ref { name: string; level: string; archetype: string;
@@ -40,7 +43,9 @@ export interface Package extends Ref { name: string; level: string; archetype: s
   equipment: number; spells: number }
 export type ItemKind = 'gear' | 'weapon' | 'armor' | 'spell' | 'complex-form';
 export interface Item extends Ref { name: string; kind: ItemKind; specialist?: boolean;
-  armor?: number; dv?: string; ranges?: string; category?: string; text: string; edited?: boolean }
+  armor?: number; dv?: string; ranges?: string; category?: string; text: string; edited?: boolean
+  /** <formula> and <issue> children (src/engine/formula.ts); a cost formula prices the item (price.ts itemCost) */
+  formulas?: Formula[]; issues?: Issue[] }
 export interface Lifestyle extends Ref { name: string; perRun: number; text: string }
 /** a book or document the data comes from; canon = the game's official rules (sources.xml) */
 /** origin: which sources file defined it last (shipped public/data, generated custom/imported, the user's custom).

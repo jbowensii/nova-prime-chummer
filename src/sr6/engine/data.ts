@@ -1,6 +1,7 @@
 // Typed views over the SR6 catalog for the creation engine: the generic S1 entries (attributes and parts as printed)
 // read once into the shapes the providers, budgets and rules use. Names the book prints (a priority row's metatypes, a
 // metatype's traits) are resolved to ids here; what can't be resolved or read is a warning in `problems`, never a guess.
+import { issueNote } from '../../engine/formula'
 import type { Violation } from '../../model/types'
 import type { MagicKind, PickKind, Sr6Attr, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
@@ -65,7 +66,8 @@ export interface Sr6Data extends CreationCatalog {
   grades: Record<string, Sr6GradeView>
   /** any catalog entry, for what has no typed view (gear, spells…) */
   entry(kind: Sr6Kind, id: string): Sr6Entry | undefined
-  /** names that didn't resolve (data.unresolved) and numbers that didn't read (data.bookValue), as warnings */
+  /** names that didn't resolve (data.unresolved), numbers that didn't read (data.bookValue) and the entries' issues
+   *  (catalog.issue), as warnings */
   problems: Violation[]
 }
 
@@ -164,6 +166,10 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
       avail: decimal(e, e.attrs.avail, 'Availability modifier'), page: e.page,
       ...(e.attrs.types ? { types: e.attrs.types.split(/\s+/).filter(Boolean) } : {}) }]
   }))
+
+  // an entry the book leaves a value out of (or the importer couldn't read): Review notes it on the runners that use it
+  for (const map of Object.values(c.entries)) for (const e of map.values()) for (const x of e.issues ?? [])
+    problems.push({ code: 'catalog.issue', severity: 'warning', path: `${e.kind}.${e.id}`, message: issueNote(e.name, x), source: e.source, page: x.page ?? e.page })
 
   return { priorities, metatypes, skills, qualities, powers, lifemodules, grades, problems, entry: (kind, id) => c.entries[kind].get(id) }
 }
