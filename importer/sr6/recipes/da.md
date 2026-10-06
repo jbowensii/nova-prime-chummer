@@ -73,6 +73,8 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Vehicle design:** the `#### Name` headings under `### Mil-spec Design Options` (`Mil-spec Comms (I, II, III)`: one
+  each; `(1-12)`: the rating range). Not yet: the warheads' Capacity notes (prose, p. 146).
 - **Actions:** `## New Edge Actions` (REGISTERED AS A LETHAL WEAPON): each `### Name`. The `**New Edge Action:
   Called Shot: …**` bold lines of the advanced weapon rules are not read yet (no section of their own).
 

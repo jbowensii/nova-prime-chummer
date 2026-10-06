@@ -25,6 +25,7 @@ HEADING_KINDS = [
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b", re.I)),
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),
     ("qualitypaths", re.compile(r"\bquality\s+paths?\s*$", re.I)),
+    ("vehicledesign", re.compile(r"\bdesign\s+(?:options?|modifications?)\b|\bquality\s+factors?\b", re.I)),
 ]
 # kind -> the words of a heading (the block's own or its parent's) whose bold run-ins are its entries
 RUNIN_KINDS = [
@@ -41,7 +42,7 @@ FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|ef
                           r"requirements?|prerequisites?|example|bonus|duration|test|limit|threshold|range|choose\s+one|"
                           r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
                           r"use\s+an\s+edge\s+action|wireless\s+bonus)$", re.I)
-EXAMPLE = re.compile(r"\b(?:example|sample|summary|table|definition)s?\b|\bby\s+cost\b|^\d+\s*-?\s*edge$"
+EXAMPLE = re.compile(r"\b(?:example|sample|summary|table|definition|note)s?\b|\bby\s+cost\b|^\d+\s*-?\s*edge$"
                      r"|\((?:positive|negative)\s+quality\)", re.I)
 _TIMING = re.compile(r"\s*\((I|A)\)\s*$")
 _EDGE = re.compile(r"\s*\((\d+)\s*Edge\)\s*$", re.I)
@@ -130,6 +131,7 @@ class Reader:
                 self.packs = True
             if not out:
                 out += packs(b, page, parent, self.packs)
+        out += design_tables(b, page)
         rk = _kind_of(b.name, RUNIN_KINDS) or _kind_of(parent, RUNIN_KINDS)
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
@@ -152,6 +154,8 @@ class Reader:
         if not kind or not name[:1].isupper() and not name[:1].isdigit() or EXAMPLE.search(name) \
                 or _kind_of(name, HEADING_KINDS + RUNIN_KINDS) or name.startswith("("):
             return []
+        if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
+            return [self._make(kind, n, b, page, chain) for n in split_names(name)]
         return [self._make(kind, name, b, page, chain)]
 
     def _make(self, kind, name, b, page, chain):
@@ -160,6 +164,12 @@ class Reader:
             # the row a table pairs with the heading prints the name plain: its heading's (I)/(A) is in the aliases
             full = next((a for a in getattr(b, "aliases", ()) if norm(a).startswith(norm(name))), name)
             name, attrs = _action_attrs(full, chain, b.tags, text)
+        if kind == "vehicledesign":
+            attrs = {"category": chain[-1] if chain else None}
+            if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Junkyard Frankenstein (x0.5 BP)`
+                name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
+            if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
+                name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
         return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b))
 
     def _runins(self, b, page, kind, chain):
@@ -188,6 +198,56 @@ class Reader:
                 name, attrs = _action_attrs(name, chain, "", para)
             out.append(Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], para))
         return out
+
+
+# --- vehicle design (Double Clutch's design rules) ---------------------------------------------------------------
+
+_SEP = re.compile(r"\|(?:\s*:?-+:?\s*\|)+\s*$")
+
+
+def _md_tables(text):
+    """The markdown tables of a text: [(header, rows)]."""
+    lines, out, i = (text or "").splitlines(), [], 0
+    while i < len(lines):
+        if lines[i].startswith("|") and i + 1 < len(lines) and _SEP.match(lines[i + 1]):
+            header, rows, i = [c.strip() for c in lines[i].strip().strip("|").split("|")], [], i + 2
+            while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
+                rows.append([c.strip() for c in lines[i].strip().strip("|").split("|")])
+                i += 1
+            out.append((header, rows))
+        else:
+            i += 1
+    return out
+
+
+def design_tables(b, page):
+    """Each row of a table with a BUILD POINTS column (the chassis, powertrain and console type tables): a vehicle
+    design part, its category the table's first header (`chassis type`), its build points as printed."""
+    tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else []) \
+        + [(list(x), [list(x.values())]) for x in b.stats] + _md_tables(b.text)
+    out = []
+    for header, rows in tables:
+        hu = [h.upper() for h in header]
+        if "BUILD POINTS" not in hu or len(header) < 2:
+            continue
+        bp = hu.index("BUILD POINTS")
+        for r in rows:
+            if r and r[0].strip() and len(r) > bp:
+                out.append(Found("vehicledesign", r[0].strip(), page, {"category": header[0].lower(),
+                                                                         "bp": r[bp].strip() or None}, [], ""))
+    for f in out:
+        f.attrs = {k: v for k, v in f.attrs.items() if v}
+    return out
+
+
+def split_names(name):
+    """A heading naming several parts: `Heavy Duty/Lightweight`, `High Performance/Racing/ Economy Engines`, `Twin
+    Linked and Quad Linked`, `Mil-spec Comms (I, II, III)` (each numeral one part); else [name]."""
+    m = re.match(r"^(.*?)\s*\(((?:[IVX]+|\d+)(?:\s*,\s*(?:[IVX]+|\d+))+)\)\s*$", name)
+    if m:
+        return [f"{m.group(1)} {x.strip()}" for x in m.group(2).split(",")]
+    parts = [p.strip() for p in re.split(r"\s*/\s*|\s+and\s+", name) if p.strip()]
+    return parts if len(parts) > 1 else [name]
 
 
 # --- gear packs (the Sixth World Companion's PACKs) -----------------------------------------------------------------

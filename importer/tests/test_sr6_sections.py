@@ -119,6 +119,38 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual(p["Gizmo Pack A"].findall("item"), [])  # (recommended skills are no contents)
         self.assertEqual((p["Glow Autosofts 2"].get("cost"), p["Glow Autosofts 3"].get("cost")), ("2000", "4500"))
 
+    def test_vehicle_design_and_ammunition_types(self):
+        md = """<!-- page 150 -->
+# GEAR
+## Build It
+#### frame type table
+| FRAME TYPE | BOD | BUILD POINTS |
+|---|---|---|
+| Zoom Frame | 4 | 3 |
+### Design Modifications
+#### Heavy Hull/Light Hull
+Hulls.
+#### Glow Comms (I, II)
+Comms.
+#### Scrap Frame (x0.5 BP)
+Cheap.
+## Ammunition
+#### zap ammo types
+| TYPES | AR | DV | COST MULTIPLIER |
+|---|---|---|---|
+| Fizz Rounds | +1 | -1 | x2 |
+#### Fizz Rounds
+Fizz rounds fizz.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        res = crb.extract(text)
+        d = {e.findtext("name"): e.attrib for e in ET.fromstring(res.files["vehicledesign.xml"])}
+        self.assertEqual((d["Zoom Frame"]["category"], d["Zoom Frame"]["bp"]), ("frame type", "3"))
+        self.assertTrue({"Heavy Hull", "Light Hull", "Glow Comms I", "Glow Comms II"} <= set(d))
+        self.assertEqual(d["Scrap Frame"]["bp"], "x0.5")
+        a = {e.findtext("name"): e.attrib for e in ET.fromstring(res.files["ammotypes.xml"])}
+        self.assertEqual({k: a["Fizz Rounds"][k] for k in ("ar", "dv", "cost")}, {"ar": "+1", "dv": "-1", "cost": "x2"})
+
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}
         self.assertIn("Fizz Probe", rules)

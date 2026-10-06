@@ -47,6 +47,7 @@ rules (Suppressive Fire), so it is not applied: the import keeps the book's prin
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Ammunition types:** the `TYPE | DV | ATTACK RATINGS | AVAIL | COST MULTIPLIER` table (handloaded, match-grade).
 - **Actions:** `## New Edge Actions` (HONING YOUR EDGE): each `### Name` an Edge action, its cost in `Cost: N Edge`;
   `## New Edge Boosts` (`### N-Edge Boost`). Not actions: `New Edge Actions by Cost` (its `N Edge` lists).
 - **Quality paths:** `## Quality Paths` (VIOLENT ENDS): each `### Name`, its steps the `#### Starting point`,

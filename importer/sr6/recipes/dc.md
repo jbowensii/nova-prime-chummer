@@ -56,6 +56,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 
 ## Sections read as kinds (importer v3, sections.py)
 
+- **Vehicle design:** each row of a table with a BUILD POINTS column (the chassis, powertrain and console type
+  tables: its first header the category); each `#### Name` under `### Design Options and Quality Factors`, `###
+  Design Modifications`, `### Quality Factors` (a heading over several, `Heavy Duty/Lightweight`, one entry each; `(x0.5
+  BP)` its build points).
 - **Actions:** `## Edge Actions` and `## Chase Edge Actions` (THE RIGGER ADVANTAGE): each `### Name`; `## Edge
   Boosts`; `### New Major Action` (`#### Backseat Driver`); the bold `**N Edge: Name**` lines of the Motorpool
   quality. A heading's own bold lines (`Cost: N Edge`) are its fields.

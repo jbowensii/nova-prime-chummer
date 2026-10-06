@@ -163,6 +163,8 @@ HEADERS = {
     "martialarts": {"CATEGORY": "categories", "SIGNATURE TECHNIQUE": "signature"},
     "martialtechniques": {"CATEGORY": "category"},
     "traditions": {},
+    "ammotypes": {"AR": "ar", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "DV": "dv", "COST MULTIPLIER": "cost",
+                  "MULTIPLIER": "cost", "COST": "cost", "AVAIL": "avail", "AVAILABILITY": "avail", "TYPE": "", "TYPES": ""},
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
@@ -170,7 +172,7 @@ LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPow
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
 PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "lifestyles"}  # cost/avail checked
-ROW_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles"}  # need a table row and a category
+ROW_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "ammotypes"}  # need a table row and a category
 STAT_KINDS = {"critters", "spirits", "npcs", "sprites"}  # need a stat band
 BOX_KINDS = {"spells", "qualities", "adeptpowers", "critterpowers", "complexforms", "rituals"}  # need a band, labels or tags
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
@@ -739,6 +741,21 @@ def supply_aliases(name, weapon):
     return []
 
 
+_MULTIPLE = re.compile(r"^\s*(?:x\s*\d+(?:\.\d+)?|\+\s*\d+\s*%)\s*$", re.I)
+_AMMO_WORDS = re.compile(r"\b(?:ammo|ammunition|rounds?|bolts?|arrows?|warheads?|slugs?|shells?|bullets?)\b", re.I)
+
+
+def ammo_type(b):
+    """A row priced as a multiple of the ammunition it modifies (a COST MULTIPLIER column, or `x2` / `+100%` in an
+    ammunition table): an ammunition type, not an item of its own."""
+    if b.row is None or not b.header:
+        return False
+    if any("MULTIPLIER" in h.upper() for h in b.header):
+        return True
+    cost = next((v for h, v in b.row.items() if h.upper() in ("COST", "PRICE")), "")
+    return bool(_MULTIPLE.match(cost or "")) and bool(_AMMO_WORDS.search(" ".join([b.name, b.label, b.section, *b.header])))
+
+
 def ammo_from_text(text):
     """A weapon's ammo as its description words it (`internal magazines that hold up to four bolts` -> `4(m)`), or
     None."""
@@ -908,6 +925,8 @@ def extract(regrouped, ctx=None, book=None):
             kind, kcat = _kind(ch, ctx_keys, False, bk)
         if hasattr(bk, "kind"):
             kind, kcat = bk.kind(ch, b, parent2)
+        if kind in ("gear", "weapons") and ammo_type(b):
+            kind = "ammotypes"  # priced as a multiple of the ammunition it modifies
         if kind == "skip" or kind and cat.entry(kind, kcat, b, page, ctx_keys):
             continue
         rule_chapter = ch and any(c in ch for c in bk.RULE_CHAPTERS)
