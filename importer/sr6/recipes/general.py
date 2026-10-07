@@ -194,6 +194,23 @@ def _split_shared(lines):
     return out
 
 
+_KICKER = re.compile(r"(#{2,6}) ([^#].*:)$")
+
+
+def _kickers(lines):
+    """A heading ending in a colon right over a bigger one (`##### Part of the Family:` over `### Deserted`): one
+    heading, the bigger one's level (`### Part of the Family: Deserted`)."""
+    out = []
+    for ln in lines:
+        m = re.match(r"(#{1,6}) (.+)$", ln)
+        k = _KICKER.match(out[-1]) if out else None
+        if m and k and len(m.group(1)) < len(k.group(1)):
+            out[-1] = f"{m.group(1)} {k.group(2)} {m.group(2)}"
+        else:
+            out.append(ln)
+    return out
+
+
 def _slash_names(name):
     """The names one stat block printed for several stands for (`Saint Joseph Houngan/Mambo`: Saint Joseph Houngan
     and Saint Joseph Mambo; `Government Agent/Corp Troubleshooter`: both), else [name]."""
@@ -306,8 +323,9 @@ class Book:
         over a being's band (`Red Tide Follower`), or over its tag line (`(Professional Rating 4)`, `(Force 5)`,
         `(Male Human)`, which then reads as the heading's tags), a tag at the name's end too; a heading in lower case
         there gets a capital (a box title over a tag line reads as an art caption); a tag line with more after it
-        (`(Professional Rating 4), Human`) as one tag."""
-        lines = _split_shared(md.splitlines())
+        (`(Professional Rating 4), Human`) as one tag. A kicker set small over a heading (`Part of the Family:` over
+        `Deserted`, `Event:` over a life module's title) is one heading with it, at the heading's level."""
+        lines = _kickers(_split_shared(md.splitlines()))
         bare = lambda s: re.sub(r"^#{4,5} ", "", s.strip())
         for i, ln in enumerate(lines):
             if not _BAND_LINE.match(ln):

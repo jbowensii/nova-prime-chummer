@@ -52,7 +52,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int | — |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (kind* quality, category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, rating, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
@@ -101,6 +101,23 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
   its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
 
 The rule sections stay as they were (the rules contents still list them).
+
+**Qualities granted and chosen** (importer v4, `sections.py`, `effects.py`). A section that lists what it grants
+(`### Powers` or `### Characteristics` under `## Returned Soldiers`, its text naming the section's noun) makes each heading under the list a quality with Karma 0, `granted`, its
+category the section's noun and the list's (`Returned Soldier power`); a power is positive, a characteristic (which
+costs nothing) a drawback, negative. A heading printing its price in Karma (`Returned Soldier (12 Karma)`) is a positive
+quality at that price, and the choices its text offers from those lists ("Select two powers … and one characteristic
+…") are its `<choice kind="quality" category count max>` (max: the most the list allows, "no more than three"). The
+builder lists a granted quality with "granted only" and warns (`quality.granted`) when the runner has no quality
+offering its list, or more of the list than its choices allow; choosing from a list is not automated yet.
+
+The prose's effects (`importer/sr6/effects.py`, the first phrase templates of the gap plan's effects grammar): `boost
+X by N` / `increase X by N`, `+N to X`, `X +N` → `<effect target op="add" value>`; `reduce the cost of Edge boosts
+and actions by N … on tests using <Skill>` → `op="edge-cost" value="-N"`; `<Skill> + <Attribute> (N) test` → `<test
+skill attr threshold>`, a test the quality calls for. Targets come from the game's vocabulary (attributes, skills,
+Defense Rating, Initiative, Composure …), never an item's name. An effect read from a sentence that sets a condition
+(`when`, `while`, `if`, `at will`, `with a Minor Action` …) is `confidence="low"`: shown, never applied. The app applies
+none of them yet (phase 6).
 
 Metavariants under priority creation: the Companion's development table gives each metavariant its adjustment
 points at the metatype priorities it can be taken at (its `<priority>` children); the priority provider offers it at

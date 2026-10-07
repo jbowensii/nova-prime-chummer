@@ -64,6 +64,36 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   it; a chapter printing those names only its `Quality Path:` headings as paths (`Roleplaying`, `Strategies`
   after them are its sections).
 
+## Game Information chapters (the adventure and plot books)
+
+The rules items an adventure or plot book prints sit in a `Game Information` chapter (Dealers of Death, Shadows in
+Focus: New Orleans, Slip Streams …): a **kind heading** (`POSITIVE QUALITIES`, `NEGATIVE QUALITIES`, `QUALITY PATHS`,
+`Life Modules`, `ADEPT POWERS`, `SPELLS`, `Powers`, `Characteristics`, `Swamp Gear`, `Vehicles & Drones`) introduces
+items, each a **child heading** with its stat line or labels (`Cost:`, `Bonus:`, `Game Effect:`, `Activation:`, a
+toxin's `Vector:`/`Speed:`/`Power:`, a box table) and its description. The category is the kind heading (a table's
+title first), the chapter giving the context. Read with the general reading, nothing per book:
+
+- **Magazine-style books** (the 16 to 32 page PDFs: Dealers of Death, New Orleans, Age of Rust, Los Alamos, the
+  Missions): the converter drops the running head and page number printed on every page (`layout.fonts`: a line in
+  the top band repeated in place, font and words on half the pages or more), so the book's own heading sizes get the
+  levels (a size on the cover alone gets none); before, the running title, the series line and the page number took
+  three of the five levels and the item names (15 and 13 pt) came out as body text.
+- **Two columns over a full-width box** (Dealers of Death p. 10, a `Developing immunity` sidebar under the qualities):
+  the gutter is accepted when every row it splits is two columns meeting in the content stream, the box's lines
+  aside; a line set at the box's margin (its title) is the box's. Before, the two columns were read line by line,
+  interleaved, and a name set in two lines (`Developed` / `Immunity`) came out split.
+- **A kicker over a name** (`Part of the Family:` set small over `Deserted`): `prepare_md` makes them one heading, the
+  name's level (`Part of the Family: Deserted`, the name as printed); a quality
+  path step set at the path heading's own level and naming the path is its step, under its printed name.
+- **Kinds by heading**: qualities (Cost or Bonus in Karma), adept powers (`ADEPT POWERS`, each child with its Cost or
+  Activation label), toxins (a heading over `Vector`, `Speed` and `Power` lines: gear, category the heading over it),
+  spells (their box), gear, weapons and vehicles (their tables), life modules (the Companion's form).
+- **Lists a section grants** (Slip Streams' `Powers` and `Characteristics` under `Returned Soldiers`, the list's
+  text naming the section): Karma-0 qualities, `granted`, category `Returned Soldier power` / `Returned Soldier
+  characteristic` (a characteristic is a drawback: negative); a heading priced in Karma (`Returned Soldier (12
+  Karma)`) is a quality whose text's `Select two powers … and one characteristic …` are its choices; the prose's
+  effects and tests (`effects.py`). See docs/sr6-data-format.md, Qualities granted and chosen.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-30 Nights-Campaign Book-CAT28400.pdf>" --out "%TEMP%\general-check"

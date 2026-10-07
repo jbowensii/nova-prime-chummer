@@ -42,6 +42,9 @@ test('skills, qualities, powers and life modules', () => {
   expect(d.skills['crb.hexing']).toMatchObject({ attr: 'mag', untrained: false })
   expect(d.qualities['crb.lucky-streak']).toEqual({ id: 'crb.lucky-streak', name: 'Lucky Streak', positive: true, karma: 4, karmaMax: null, perLevel: true, maxLevel: 3, page: 70 })
   expect(d.qualities['crb.butterfingers']).toMatchObject({ positive: false, karma: 8, perLevel: false, maxLevel: 1 })
+  expect(d.qualities['crb.made-up-gift']).toMatchObject({ karma: 0, granted: true, category: 'Wanderer gift' })
+  expect(d.qualities['crb.wanderer']).toMatchObject({ karma: 9, choices: [{ category: 'Wanderer gift', count: 1, max: 2 }] })
+  expect(d.qualities['crb.knack'].granted).toBeUndefined()
   expect(d.powers['crb.quick-step']).toEqual({ id: 'crb.quick-step', name: 'Quick Step', cost: 0.25, perLevel: true, maxLevel: 4, page: 157 })
   expect(d.lifemodules['crb.hatchling-days']).toEqual({ id: 'crb.hatchling-days', name: 'Hatchling Days', stage: 'opening',
     grants: { attributePoints: 3, skillPoints: 1, nuyen: 1000 }, choices: [], page: 31 })

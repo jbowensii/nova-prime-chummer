@@ -193,9 +193,13 @@ def _gutter_crossings(rows, x, tol=0):
     lines must vertically overlap a left-side line, so an indented block
     that merely follows the body (below it) isn't mistaken for a column.
     """
-    left, right, cross = [], [], 0
+    left, right, crossing, jumps, splits = [], [], [], 0, 0
     for row in rows:
-        for line in _split_at(row, x, tol):
+        parts = _split_at(row, x, tol)
+        if len(parts) == 2:
+            splits += 1
+            jumps += _jump(parts[0][-1], parts[1][0])
+        for line in parts:
             span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
             side = _kind(*_line_extent(line), x, tol)
             if side == "left":
@@ -203,10 +207,21 @@ def _gutter_crossings(rows, x, tol=0):
             elif side == "right":
                 right.append(span)
             else:
-                cross += 1
-    total = len(left) + len(right) + cross
-    if len(left) < _MIN_LINES_PER_SIDE or len(right) < _MIN_LINES_PER_SIDE or cross / total >= _MAX_CROSS_FRACTION:
+                crossing.append(span)
+    cross, total = len(crossing), len(left) + len(right) + len(crossing)
+    if len(left) < _MIN_LINES_PER_SIDE or len(right) < _MIN_LINES_PER_SIDE:
         return None
+    if cross / total >= _MAX_CROSS_FRACTION:
+        # (the SR6 layout) a full-width box over or under the two columns (a sidebar across the page): its lines
+        # don't count when every row the gutter splits is two columns meeting in the content stream (_jump); only the
+        # crossing lines between the columns' tops and bottoms do
+        top = max(min(t for t, _ in left), min(t for t, _ in right))
+        bottom = min(max(b for _, b in left), max(b for _, b in right))
+        inside = sum(top <= t < bottom for t, _ in crossing)
+        zone = inside + sum(top <= t < bottom for t, _ in left + right)
+        if not tol or splits < _MIN_LINES_PER_SIDE or jumps < splits or not zone or inside / zone >= _MAX_CROSS_FRACTION:
+            return None
+        # (scored by all its crossing lines: a gutter the plain rule accepts wins)
     beside = sum(any(t < lb and lt < b for lt, lb in left) for t, b in right)
     return cross if beside >= _MIN_LINES_PER_SIDE else None
 
@@ -232,6 +247,23 @@ def _find_gutter(rows, right, left=0, tol=0):
     }
     scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
+
+
+_BOX_MARGIN = 4  # pt; a line starting this far left of the left column's lines
+
+
+def _box_margin(blocks, xs):
+    """(the SR6 layout) A line set at a full-width box's left margin, left of the left column's (the box's title, or its
+    last short line), above or below the right column, is the box's: a band, not the column's (a heading beside the
+    right column stays in its column). blocks: (top, kind, text), xs: each line's x0."""
+    col = sorted(x for (_, k, _), x in zip(blocks, xs) if k == "left")
+    box = [x for (_, k, _), x in zip(blocks, xs) if k == "band"]
+    right = [t for t, k, _ in blocks if k == "right"]
+    if not col or not box or not right:
+        return blocks
+    edge = col[len(col) // 2] - _BOX_MARGIN
+    return [(t, "band" if k == "left" and x < edge and any(abs(x - b) <= 2 for b in box)
+             and not min(right) <= t <= max(right) else k, s) for (t, k, s), x in zip(blocks, xs)]
 
 
 def _kind(x0, x1, mid, tol=0):
@@ -379,7 +411,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                                                        keep_blank_chars=False, return_chars=True)
             bands = []
             if sr6:
-                all_words = layout.furniture(page, all_words)
+                all_words = layout.furniture(page, all_words, fonts.running)
                 for w in all_words:
                     w["base"] = -w["chars"][0]["matrix"][5]
                 bands = layout.band_tables(all_words, fonts, page.rects)
@@ -392,7 +424,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             mid = _find_gutter(rows, page.width, tol=tol)
             lines = [part for row in rows for part in _split_at(row, mid, tol)] if mid else rows
 
-            blocks, geo = [], []
+            blocks, geo, xs = [], [], []
             for line in lines:
                 size = round(max(w["size"] for w in line), 1)
                 level = layout.heading_level(line, fonts) if sr6 else _heading_level(size, big)
@@ -401,8 +433,9 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 x0, x1 = _line_extent(line)
                 blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid, tol), text))
                 geo.append((level, max(w["bottom"] for w in line), size))
+                xs.append(x0)
             if sr6:
-                blocks = layout.join_headings(blocks, geo)
+                blocks = layout.join_headings(_box_margin(blocks, xs), geo)
             for t in tables:
                 md = _table_md(_table_cells(t, all_words))
                 if md:

@@ -20,6 +20,7 @@ under it)."""
 import re
 from dataclasses import dataclass, field, replace
 
+from importer.sr6 import effects
 from importer.sr6.regroup import norm
 
 # kind -> the words of a parent heading whose child headings are its entries
@@ -31,12 +32,18 @@ HEADING_KINDS = [
     ("traditions", re.compile(r"^traditions$", re.I)),
     ("martialtechniques", re.compile(r"\bmartial\s+arts?\s+techniques$", re.I)),  # `Cyberware Martial Arts Techniques`
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
+    # a kind a Game Information chapter lists under a heading of its own (`ADEPT POWERS`): each heading under it that
+    # prints the kind's own labels (FIELDED) is one, its fields read from them as the recipe reads them
+    ("adeptpowers", re.compile(r"^(?:new\s+)?adept\s+powers$", re.I)),
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
                            r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),
     ("qualitypaths", re.compile(r"\bquality\s+paths?\s*$", re.I)),
     ("vehicledesign", re.compile(r"\bdesign\s+(?:options?|modifications?)\b|\bquality\s+factors?\b", re.I)),
 ]
+# the labels an entry of a kind read under its own heading prints (an adept power's Cost in PP, its Activation)
+FIELDED = {"adeptpowers": {"cost", "activation"}}
+TOXIN_LABELS = {"vector", "speed", "power"}  # a toxin's stat lines (the core rulebook's toxin form)
 # kind -> the words of a heading (the block's own or its parent's) whose bold run-ins are its entries
 RUNIN_KINDS = [
     ("gear", re.compile(r"\bfoci\b", re.I)),  # `Enchanting Foci`: its kinds of focus, priced as the `Enchanting focus` row
@@ -66,6 +73,28 @@ _TIMING = re.compile(r"\s*\((I|A)\)\s*$")
 _EDGE = re.compile(r"\s*\((\d+)\s*Edge\)\s*$", re.I)
 _EDGE_FIRST = re.compile(r"^(\d+)\s*Edge\s*:\s*(.+)$", re.I)
 _RUNIN = re.compile(r"^\W{0,3}\*\*(?P<name>[^*]+?)(?::\*\*|\*\*\s*:|:?\*\*\s*$)(?P<rest>.*)$")
+
+
+# the lists of what a section grants (`Powers`, `Characteristics` under `Returned Soldiers`)
+GRANTED_LIST = re.compile(r"(powers|characteristics)", re.I)
+# `Select two powers from the list … and one characteristic from …`: (count, noun) pairs
+CHOOSE = re.compile(r"(?:\b(?:select|choose|pick|take)\s+|\band\s+)(\d+|one|two|three|four|five|six)\s+(\w+?)s?\s+from\b",
+                    re.I)
+_COUNTS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
+
+
+def _count(w):
+    return int(w) if w.isdigit() else _COUNTS.get(w.lower())
+
+
+def _singular(name):
+    """`Returned Soldiers` -> `Returned Soldier`, `Abilities` -> `Ability` (its last word's)."""
+    words = name.split()
+    if not words:
+        return ""
+    last = words[-1]
+    one = last[:-3] + "y" if last.lower().endswith("ies") else last[:-1] if last.lower().endswith("s")         and not last.lower().endswith("ss") else last
+    return " ".join(words[:-1] + [one])
 
 
 @dataclass
@@ -140,6 +169,7 @@ class Reader:
     def __init__(self):
         self.stack, self.chapter, self.path = [], None, None  # path: [level, Found, its steps' level]
         self.prefixed = set()  # the parent headings a `Kind: Name` child names its kind under (the others aren't)
+        self.granted = {}  # a granted list's noun (`power`) -> (its category, the most of it one may have, or None)
 
     def feed(self, b, page):
         if b.chapter != self.chapter:
@@ -152,13 +182,16 @@ class Reader:
         chain = [x[1] for x in self.stack]
         parent = chain[-1] if chain else ""
         if heading and self.path:
-            if lv <= self.path[0]:
+            # a step set at the path heading's own level naming its path (`Part of the Family: Deserted`): its step,
+            # under its printed name
+            named = lv == self.path[0] and re.match(rf"\s*{re.escape(self.path[1].name)}\s*:", b.name, re.I)
+            if lv <= self.path[0] and not named:
                 self.path = None
             else:  # a quality path's steps: the headings right under it
                 self.path[2] = self.path[2] or lv
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
-                    qs = step_qualities(b, page, self.path[1].name)
+                    qs = step_qualities(b, page, "" if named else self.path[1].name)  # (named: as printed)
                     self.path[1].priced_steps += any(q.path is None for q in qs)
                     for q in qs:
                         q.path = q.path and self.path[1]
@@ -202,6 +235,14 @@ class Reader:
                 return [f for f in [self._make(kind, m.group(1).strip(), b, page, chain)] if f]
         if f := self._bought_as_quality(b, page, chain):
             return [f]
+        if f := self._granted_quality(b, page):
+            return [f]
+        if TOXIN_LABELS <= {k.lower() for k in b.labels} and name[:1].isupper() and "|" not in (b.text or ""):
+            # a toxin's stat lines (Vector, Speed, Power …) under its heading, no price table (a drug's row is read
+            # with its table): gear, its category the heading over it
+            return [Found("gear", name, page, {"category": parent or None}, [], _body(b), b)]
+        if f := self._priced_heading(b, page, chain):
+            return [f]
         kind = _kind_of(parent, HEADING_KINDS)
         if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
             kind = "actions"
@@ -211,6 +252,8 @@ class Reader:
                 or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("(") \
                 or name.isupper() and len(name.split()) > 1:  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`)
             return []
+        if kind in FIELDED and not FIELDED[kind] & {k.lower() for k in b.labels}:
+            return []  # (a heading under the kind's heading that prints none of its labels: a rule section)
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
         return [f for f in [self._make(kind, name, b, page, chain)] if f]
@@ -229,6 +272,45 @@ class Reader:
         if not re.search(rf"\b{re.escape(noun.group(1))}$", b.name.strip(), re.I):
             return None
         return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": karma.group(1)}, [], _body(b), b)
+
+    def _granted_quality(self, b, page):
+        """A heading under a `Powers` or `Characteristics` heading whose text names the section over it (`### Powers`
+        under `## Returned Soldiers`: the list's text naming the section's noun) is a quality that
+        section grants, never bought on its own: Karma 0, granted, its category the section's noun and the list's
+        (`Returned Soldier power`). A power is positive; a characteristic, which costs nothing, a drawback (negative:
+        the owner's rule). Its effects are its prose's (effects.py)."""
+        if len(self.stack) < 2 or not b.name[:1].isupper() or EXAMPLE.search(b.name):
+            return None
+        _, lname, lb, _, _ = self.stack[-1]
+        m = GRANTED_LIST.fullmatch(lname.strip())
+        owner = _singular(self.stack[-2][1].strip())
+        if not m or not owner or not re.search(rf"\b{re.escape(owner)}s?\b", " ".join((lb.text or "").split()), re.I):
+            return None
+        noun = _singular(m.group(1)).lower()
+        cat = f"{owner} {noun}"
+        most = re.search(r"\bno\s+more\s+than\s+(\w+)\b", " ".join((lb.text or "").split()), re.I)
+        self.granted[noun] = (cat, _count(most.group(1)) if most else None)
+        body = _body(b)
+        return Found("qualities", b.name.strip(), page, {"kind": "positive" if noun == "power" else "negative",
+                                                         "karma": "0", "granted": "true", "category": cat},
+                     effects.read(body), body, b)
+
+    def _priced_heading(self, b, page, chain):
+        """A heading printing its price in Karma (`Returned Soldier (12 Karma)`) is a positive quality at that price; the
+        choices its text offers from the granted lists read before it (`Select two powers … and one characteristic …`)
+        are its <choice>s (kind quality, the list's category, count; max: the most the list allows)."""
+        m = re.fullmatch(r"(.+?)\s*\((\d+)\s*Karma\)", b.name.strip(), re.I)
+        if not m or not m.group(1)[:1].isupper():
+            return None
+        body = _body(b)
+        kids = []
+        for n, noun in CHOOSE.findall(" ".join(body.split())):
+            cat, most = self.granted.get(_singular(noun).lower(), (None, None))
+            if cat and _count(n):
+                kids.append(("choice", {"kind": "quality", "category": cat, "count": str(_count(n)),
+                                        **({"max": str(most)} if most else {})}, None))
+        return Found("qualities", m.group(1).strip(), page, {"kind": "positive", "karma": m.group(2)},
+                     kids + effects.read(body), body, b)
 
     def _make(self, kind, name, b, page, chain):
         attrs, text = {}, b.text or ""
@@ -436,7 +518,8 @@ def step_qualities(b, page, path):
     the path imposes, negative, with an issue saying the book doesn't state it (its Karma gets the usual missing
     issue). Those are marked with their path (`path`)."""
     name = re.sub(r"^\s*step\s+(?:\d+|one|two|three|four|five)\s*:\s*", "", b.name, flags=re.I)
-    name = re.sub(rf"^\s*{re.escape(path)}\s*:\s*", "", name, flags=re.I)
+    if path:
+        name = re.sub(rf"^\s*{re.escape(path)}\s*:\s*", "", name, flags=re.I)
     if re.fullmatch(r"(?i)starting\s+point|how\s+to\s+move\s+on", name.strip()):
         return []
     body = _body(b)

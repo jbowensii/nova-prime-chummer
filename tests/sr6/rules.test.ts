@@ -184,6 +184,22 @@ test('qualities: a level above the highest is flagged, with the quality’s page
   expect(only(ch, 'quality.level')).toMatchObject([{ path: `qualities.${knack}` }])
 })
 
+test('qualities: one granted only needs a quality offering its list, and no more of it than the choices allow', () => {
+  const ch = runner()
+  const data = (d: Parameters<NonNullable<Over['data']>>[0]) => {
+    const q = { positive: true, karma: 0, karmaMax: null, perLevel: false, maxLevel: 1, page: 9 }
+    d.qualities['crb.made-up-power'] = { ...q, id: 'crb.made-up-power', name: 'Made-Up Power', category: 'Wanderer power', granted: true }
+    d.qualities['crb.other-power'] = { ...q, id: 'crb.other-power', name: 'Other Power', category: 'Wanderer power', granted: true }
+    d.qualities['crb.wanderer'] = { ...q, id: 'crb.wanderer', name: 'Wanderer', karma: 9, choices: [{ category: 'Wanderer power', count: 1, max: null }] }
+  }
+  quality(ch.build, 'crb.made-up-power')
+  expect(only(ch, 'quality.granted', { data })).toMatchObject([{ severity: 'warning' }])
+  quality(ch.build, 'crb.wanderer')
+  expect(only(ch, 'quality.granted', { data })).toEqual([])
+  quality(ch.build, 'crb.other-power')
+  expect(only(ch, 'quality.granted', { data })).toHaveLength(1)
+})
+
 // karma, nuyen, gear
 test('karma and nuyen overspent are errors; leftovers above the settings are warnings', () => {
   const ch = runner()

@@ -46,7 +46,10 @@ export interface Sr6MetatypeView {
   priority?: Partial<Record<Letter, number>>
 }
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
-export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number }
+/** granted: never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
+export interface Sr6QualityChoice { category: string; count: number; max: number | null }
+export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number
+  category?: string; granted?: boolean; choices?: Sr6QualityChoice[] }
 export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
 export interface Sr6LifeModuleView {
   id: string; name: string; stage: 'opening' | 'adult'; requires?: string; grants: Partial<Record<Grant, number>>
@@ -145,7 +148,10 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   const skills = Object.fromEntries(all('skills').map(e => [e.id, { id: e.id, name: e.name, attr: e.attrs.attr ?? '',
     untrained: e.attrs.untrained === 'true', specs: parts(e, 'spec').map(p => p.text), page: e.page }]))
   const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.name, positive: e.attrs.kind !== 'negative',
-    karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page }]))
+    karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page,
+    ...(e.attrs.category ? { category: e.attrs.category } : {}), ...(e.attrs.granted === 'true' ? { granted: true } : {}),
+    ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',
+      count: count(e, p.attrs.count, 'choice count', 1), max: p.attrs.max ? count(e, p.attrs.max, 'choice max', 1) : null })) } : {}) }]))
   const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),
     ...levels(e), page: e.page }]))
   const lifemodules = Object.fromEntries(all('lifemodules').map(e => [e.id, {

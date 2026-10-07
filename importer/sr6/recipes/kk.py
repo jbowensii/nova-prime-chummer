@@ -17,6 +17,9 @@ ID, NAME, PUBLISHER, CANON = "KK", "Krime Katalog", "Catalyst Game Labs", True
 BOOK = "Krime Katalog"
 SHA256 = ("d04fab850a4589fdbd5bac99673ff04ad385b6011a9041ae968b6e4ddd9dd967",)  # the owner's copy
 PAGE_OFFSET = 0  # the page numbers print the PDF's
+# heading sizes -> levels (a recipe hint): the items' 27 pt titles level 2, the lists' 15 pt level 5; the running head
+# (43 pt) and page number (26 pt) are page furniture the converter drops (layout.fonts)
+HEADING_LEVELS = {27.0: 2, 21.0: 4, 15.0: 5}
 ALIASES = {}
 NAME_HEADERS = frozenset()
 
@@ -26,12 +29,17 @@ LABEL_SECTIONS = {}
 RULE_CHAPTERS = ("krime katalog",)  # the company profiles and what isn't read stay as rule sections
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
-CHAPTER = "krime katalog"  # its running head, read as a chapter heading on every page
+CHAPTER = "krime katalog"  # its running head: the book's one chapter (prepare_md)
 _CAPTION = re.compile(r"([^:]*?)\s*:\s*sr\s*([56])\b(?:\s+stats)?", re.I)
 # printed headers -> the core rulebook's (crb.HEADERS)
 RENAME = {"ATTACK": "ATTACK RATINGS", "SPEED INT": "SPEED INTERVAL", "SENS": "SENSOR", "BOD": "BODY", "ARM": "ARMOR",
           "SEAT": "SEATS", "NAME": "ITEM", "TYPES": "ITEM"}
 PROSE = {"AR", "DV"}  # an ammunition's modifiers: gear has no attribute for them
+
+
+def prepare_md(md):
+    """book.md under one chapter heading, the book's running head (the converter drops it from each page)."""
+    return f"# {BOOK}\n" + md
 
 
 def match(meta, md_head):

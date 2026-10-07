@@ -272,8 +272,42 @@
     <xs:attribute name="untrained" type="sr6:Bool" use="required"/>
   </xs:complexType>
 
+  <!-- a quality's effects (importer/sr6/effects.py): what its prose states, as a path from the character to a target
+       (attr:<abbr>, skill:<id>, derived:<name>), an operator (add; edge-cost: Edge boosts and actions on tests with the
+       target cost that much more) and a value; confidence="low": read from a sentence that sets a condition, shown and
+       never applied. A test the quality calls for: skill + attribute (threshold). A choice it grants: count picks from
+       the catalog's qualities of one category (max: the most the list allows). -->
+  <xs:complexType name="Effect">
+    <xs:attribute name="target" type="xs:string" use="required"/>
+    <xs:attribute name="op" use="required"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="add"/><xs:enumeration value="edge-cost"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="value" type="xs:string" use="required"/>
+    <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="Test">
+    <xs:attribute name="skill" type="xs:string" use="required"/>
+    <xs:attribute name="attr" type="xs:string" use="required"/>
+    <xs:attribute name="threshold" type="xs:nonNegativeInteger"/>
+  </xs:complexType>
+  <xs:complexType name="QualityChoice">
+    <xs:attribute name="kind" use="required"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="quality"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="category" type="xs:string" use="required"/>
+    <xs:attribute name="count" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="max" type="xs:positiveInteger"/>
+  </xs:complexType>
   <xs:complexType name="Quality">
-    <xs:complexContent><xs:extension base="sr6:Entry">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="effect" type="sr6:Effect"/>
+        <xs:element name="test" type="sr6:Test"/>
+        <xs:element name="choice" type="sr6:QualityChoice"/>
+      </xs:choice>
+      <xs:group ref="sr6:tail"/>
+    </xs:sequence>
+    <xs:attributeGroup ref="sr6:ref"/>
       <xs:attribute name="kind" use="required">
         <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="positive"/><xs:enumeration value="negative"/></xs:restriction></xs:simpleType>
       </xs:attribute>
@@ -282,7 +316,10 @@
       <xs:attribute name="karmaMax" type="xs:integer"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
-    </xs:extension></xs:complexContent>
+      <!-- the list it is printed in (`Returned Soldier power`); granted: never bought on its own, only granted (by a
+           quality's choice: Karma 0) -->
+      <xs:attribute name="category" type="xs:string"/>
+      <xs:attribute name="granted" type="sr6:True"/>
   </xs:complexType>
 
   <xs:complexType name="Weapon">
