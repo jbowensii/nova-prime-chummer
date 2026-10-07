@@ -48,7 +48,9 @@ rules (Suppressive Fire), so it is not applied: the import keeps the book's prin
 ## Sections read as kinds (importer v3, sections.py)
 
 - **Qualities:** each quality path step (`#### Step 2: No Code or Penitent or Re-Bound`: three), its kind from its
-  Cost or Bonus line or its text naming it a positive or negative quality.
+  Cost or Bonus line or its text naming it a positive or negative quality. A step printing neither (most of
+  VIOLENT ENDS' paths) is still a quality, negative with a `kind` issue (importer v4); one that only grants a quality
+  printed elsewhere (`gain the X quality`) is not.
 - **Ammunition types:** the `TYPE | DV | ATTACK RATINGS | AVAIL | COST MULTIPLIER` table (handloaded, match-grade).
 - **Actions:** `## New Edge Actions` (HONING YOUR EDGE): each `### Name` an Edge action, its cost in `Cost: N Edge`;
   `## New Edge Boosts` (`### N-Edge Boost`). Not actions: `New Edge Actions by Cost` (its `N Edge` lists).
