@@ -538,6 +538,11 @@ class RepairRowTest(unittest.TestCase):
         row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertIs(regroup._repair_row(self.H, row), row)
 
+    def test_a_price_printed_under_avail_is_not_split(self):
+        # (`7,500¥` under AVAIL is a misprint to report, not `7` and `,500¥` with the last price dropped)
+        row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "7,500¥", "17,500¥"]
+        self.assertEqual(regroup._repair_row(self.H, row), row)
+
     def test_no_split_that_fits_leaves_the_row_as_printed(self):
         row = ["Quux", "4P", "weird", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertEqual(regroup._repair_row(self.H, row), row)

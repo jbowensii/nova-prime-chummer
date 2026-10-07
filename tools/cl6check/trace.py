@@ -438,7 +438,7 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
         if b.order != last:
             continue
         d2, f2 = fields.compare(c, {"attrs": e["attrs"], "kind": e["kind"]})
-        if sorted(d2) == sorted(done) and len(f2) < len(best if best is not None else diffs):
+        if set(done) <= set(d2) and len(f2) < len(best if best is not None else diffs):  # (it compares as much)
             best = f2
     return best
 

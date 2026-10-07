@@ -566,6 +566,8 @@ def _repair_row(header, row):
         if not (_shape(a) and _shape(b)):
             continue
         for k in range(1, len(v)):
+            if v[k - 1].isdigit() and v[k] in ",.0123456789":
+                continue  # (never inside a number: `7,500¥` under AVAIL is the book's, not `7` and `,500¥`)
             x, y = v[:k].strip(), v[k:].strip()
             if x and y and _fits(a, x) and _fits(b, y):
                 fixed = (row[:i] + [x, y] + row[i + 1:])[:len(header)]
