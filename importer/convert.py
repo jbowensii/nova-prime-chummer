@@ -266,6 +266,21 @@ def _box_margin(blocks, xs):
              and not min(right) <= t <= max(right) else k, s) for (t, k, s), x in zip(blocks, xs)]
 
 
+def _box_titles(blocks, geo, boxes):
+    """(the SR6 layout) A heading in one text column, below every line of the other, right over a full-width table
+    (`boxes`: their tops) is that table's title: a band, read with its table after both columns (not at the end of
+    its column, the other column's text between them). blocks: (top, kind, text), geo: (level, bottom, size)."""
+    out = []
+    for i, ((t, k, s), (lv, bottom, size)) in enumerate(zip(blocks, geo)):
+        if lv and k in ("left", "right"):
+            other = [tt for tt, kk, _ in blocks if kk == ("right" if k == "left" else "left")]
+            under = [b for b in boxes if b >= bottom - 1]
+            if other and t > max(other) and under and min(under) - bottom < 2 * size                     and not any(t < tt < min(under) for tt, kk, _ in blocks if kk == k):
+                k = "band"
+        out.append((t, k, s))
+    return out
+
+
 def _kind(x0, x1, mid, tol=0):
     """Classify an item spanning [x0, x1) as 'left', 'right', or a full-width 'band'. tol (the SR6 layout): a line
     split up to tol off mid (a boxed sidebar's gutter) still sits in its column."""
@@ -435,7 +450,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 geo.append((level, max(w["bottom"] for w in line), size))
                 xs.append(x0)
             if sr6:
-                blocks = layout.join_headings(_box_margin(blocks, xs), geo)
+                boxes = [bbox[1] for bbox, _, _ in bands if _kind(bbox[0], bbox[2], mid, tol) == "band"]
+                blocks = layout.join_headings(_box_titles(_box_margin(blocks, xs), geo, boxes), geo)
             for t in tables:
                 md = _table_md(_table_cells(t, all_words))
                 if md:

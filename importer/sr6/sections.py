@@ -170,7 +170,7 @@ class Reader:
     toxins = False
 
     def __init__(self):
-        self.stack, self.chapter, self.path = [], None, None  # path: [level, Found, its steps' level]
+        self.stack, self.chapter, self.path = [], None, None  # path: [level, Found, its steps' level, step prices]
         self.prefixed = set()  # the parent headings a `Kind: Name` child names its kind under (the others aren't)
         self.granted = {}  # a granted list's noun (`power`) -> (its category, the most of it one may have, or None)
 
@@ -191,14 +191,17 @@ class Reader:
             if lv <= self.path[0] and not named:
                 self.path = None
             else:  # a quality path's steps: the headings right under it
-                self.path[2] = self.path[2] or lv
+                if not INTRO_STEP.fullmatch(b.name.strip()):  # (an intro set a level above the steps: `Starting Point`)
+                    self.path[2] = self.path[2] or lv
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
-                    qs = step_qualities(b, page, "" if named else self.path[1].name)  # (named: as printed)
+                    qs = step_qualities(b, page, "" if named else self.path[1].name, self.path[1].name, self.path[3])
                     self.path[1].priced_steps += any(q.path is None for q in qs)
                     for q in qs:
                         q.path = q.path and self.path[1]
                     out += qs
+        if self.path:
+            self.path[3].update(step_prices(b.text))  # (prices the prose gives the steps after it)
         if heading:
             out += self._heading(b, page, chain, parent)
             if PACK_WORD.search(b.name):
@@ -227,7 +230,7 @@ class Reader:
             self.stack.append((lv, b.name, b, bool(out), page))
             qp = next((f for f in out if f.kind == "qualitypaths"), None)
             if qp:
-                self.path = [lv, qp, None]
+                self.path = [lv, qp, None, step_prices(b.text)]
         return out
 
     def _heading(self, b, page, chain, parent):
@@ -517,27 +520,50 @@ def _granted(name, body):
     return bool(re.search(rf"(?i)\b(?:gains?|purchases?|buys?|takes?|receives?)\s+the\s+{n}\s+quality\b|\b{n}\s+quality\s*\(p\.", one))
 
 
-def step_qualities(b, page, path):
+INTRO_STEP = re.compile(r"(?i)start(?:ing)?\s+point|how\s+to\s+move\s+on")  # a path's intro, no step
+_BARE_STEP = re.compile(r"(?i)step\s+(\d+|one|two|three|four|five)")
+# a step's price in its prose: `spend 10 Karma`, `By investing 10 Karma`, `an expenditure of 15 Karma`
+_STEP_PRICE = re.compile(r"(?i)\b(?:(?:spend(?:ing|s)?|invest(?:ing|s)?|expenditure\s+of|pay(?:ing|s)?|costs?)\s+(\d+)\s+Karma\b"
+                         r"|(\d+)\s+Karma\s+(?:expenditure|investment)\b)")  # (`with a 15 Karma expenditure`)
+# a price the path's prose gives a later step: `They must spend 10 Karma, and they move to step 1`
+_MOVE_PRICE = re.compile(r"(?i)\b(\d+)\s+Karma\b[^.]{0,40}?\bmove\s+(?:on\s+)?to\s+step\s+(\d+|one|two|three|four|five)\b")
+_STEP_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5"}
+
+
+def step_prices(text):
+    """{step number: Karma} the prose gives the steps after it (`spend 10 Karma, and they move to step 1`)."""
+    return {_STEP_WORDS.get(m.group(2).lower(), m.group(2)): m.group(1) for m in _MOVE_PRICE.finditer(" ".join((text or "").split()))}
+
+
+def step_qualities(b, page, path, owner="", prices=None):
     """A quality path's step is a quality (or several: `Step 2: No Code or Penitent or Re-Bound`), its name without the
     path's and the step's number: `Critter Bond: Lost` -> `Lost`, `Step 1: Broken Code` -> `Broken Code`. Its kind
     and Karma are its Cost or Bonus line's (quality_attrs). A step printing neither is still the path's quality when
     it is named as a step (`Step 1: X`, `Path: X`) or prints a Game Effect (a bare heading may name a quality the step
     grants, printed elsewhere: `Mentor Spirit`): a Cost line in nuyen or by a rule makes it positive, else it is one
     the path imposes, negative, with an issue saying the book doesn't state it (its Karma gets the usual missing
-    issue). Those are marked with their path (`path`)."""
+    issue). Those are marked with their path (`path`). A bare step heading (`Step 2`, owner decision 2026-10-07) is
+    the path's quality named as printed, its path (`owner`) its category and group (shown `Gestalt: Step 2`), positive,
+    its Karma the price its prose states (`By investing 10 Karma`) or the path's prose gives it (`prices`)."""
     name = re.sub(r"^\s*step\s+(?:\d+|one|two|three|four|five)\s*:\s*", "", b.name, flags=re.I)
     if path:
         name = re.sub(rf"^\s*{re.escape(path)}\s*:\s*", "", name, flags=re.I)
-    if re.fullmatch(r"(?i)starting\s+point|how\s+to\s+move\s+on", name.strip()):
+    if INTRO_STEP.fullmatch(name.strip()):
         return []
     body = _body(b)
     out = []
+    if (m := _BARE_STEP.fullmatch(name.strip())) and owner:
+        attrs = quality_attrs(name, [], body) or {"kind": "positive"}
+        if not attrs.get("karma"):
+            k = _STEP_PRICE.search(" ".join(body.split()))
+            attrs["karma"] = (k.group(1) or k.group(2)) if k else (prices or {}).get(_STEP_WORDS.get(m.group(1).lower(), m.group(1)))
+        attrs.update({"category": owner, "group": owner, "_id": f"{owner} {name.strip()}"})
+        return [Found("qualities", name.strip(), page, {k: v for k, v in attrs.items() if v}, [], body, b, path=True)]
     for n in re.split(r"\s+or\s+", name):
         attrs = quality_attrs(n, [], body)
         if attrs:
             out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
-        elif n.strip()[:1].isupper() and (name != b.name or _EFFECT.search(body)) \
-                and not re.fullmatch(r"(?i)step\s+\S+", n.strip()) and not _granted(n.strip(), body):
+        elif n.strip()[:1].isupper() and (name != b.name or _EFFECT.search(body))                 and not _BARE_STEP.fullmatch(n.strip()) and not _granted(n.strip(), body):
             kids = [] if _ANY_COST.search(body) else [
                 ("issue", {"field": "kind", "code": "missing", "page": page},
                  "no Karma cost or bonus printed: a step the quality path imposes, positive or negative not stated")]

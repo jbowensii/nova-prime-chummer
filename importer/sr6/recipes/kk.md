@@ -17,6 +17,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
   the SR6 stats. An item with several SR6 captions (`krime soldier GL`, `krime PARTY (FRAG)`) is several entries,
   named by what the caption adds to the heading. `ATTACK` + `RATINGS …` (the header printed over two lines) is the
   attack ratings.
+- A caption naming both editions over a vehicle's two bands (Krime Runner): the SR5 half prints its price in the first
+  band (`DAM AP BLAST AVAIL COST`), the SR6 half's first band follows it on the same row and its second band is the
+  next table printing a price of its own (`PILOT SENS SEAT AVAIL COST`); the SR5 half's second band (no price) is left
+  out. A header cell the converter split one word off (`SPEED` | `INT.TOP SPEED`) is mended (`SPEED INT.` | `TOP
+  SPEED`).
 - Weapon accessories and ammunition: level-5 headings with their text, then one caption over both editions' list
   tables (accessories: two NAME tables, the second SR6; ammunition: one table, its SR6 half a TYPES list set in narrow
   columns: names over two rows, an attack rating over three, two items run into one row): joined back into one row an

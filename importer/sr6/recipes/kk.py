@@ -77,6 +77,13 @@ def _stat_sets(text):
             if len(costs) > 1:
                 k = costs[0] + 1
                 out.append((subj, h[k:], [r[k:] for r in rows]))
+            elif costs and costs[0] + 1 < len(h) and len(rows) == 1:
+                # the SR6 half's first band after the SR5 half's price, its second band the next table printing a
+                # price of its own (a vehicle's PILOT … AVAIL COST under it; the SR5 half's second band prints none)
+                k = costs[0] + 1
+                nxt = next((t for t in tabs[1:] if {"AVAIL", "COST"} <= {x.upper() for x in t[0]} and len(t[1]) == 1), None)
+                head, row = h[k:] + (nxt[0] if nxt else []), rows[0][k:] + (nxt[1][0] if nxt else [])
+                out.append((subj, head, [row]))
             elif len(tabs) > 1 and tabs[1][0] == h:
                 out.append((subj, *tabs[1]))
             else:
@@ -105,6 +112,16 @@ def _stat_sets(text):
             mode, subj, tabs = ("both" if eds == {"5", "6"} else "sr6" if eds == {"6"} else None), caps[-1][0], []
         i += 1
     flush()
+    return out
+
+
+def _unglue(header):
+    """A header whose cells the converter split one word off (`SPEED` | `INT.TOP SPEED`): an abbreviation glued to the
+    next cell's first word (`INT.TOP`) ends the cell before it (`SPEED INT.` | `TOP SPEED`)."""
+    out = list(header)
+    for i in range(1, len(out)):
+        if m := re.match(r"([A-Z]+\.)(?=[A-Z])", out[i]):
+            out[i - 1], out[i] = f"{out[i - 1]} {m.group(1)}", out[i][m.end():]
     return out
 
 
@@ -182,7 +199,7 @@ def _prep(bs, report):
             continue
         page = max(1, b.page - PAGE_OFFSET)
         for subj, header, rows in sets:
-            header = [RENAME.get(h.upper(), h.upper()) for h in header]
+            header = [RENAME.get(h.upper().rstrip("."), h.upper()) for h in _unglue(header)]
             marker, cat = _kind(header)
             if header and header[0] == "ITEM" and marker:  # one row a vehicle (`Bazoo Basic`, `Bazoo Redline` …)
                 for r in rows:

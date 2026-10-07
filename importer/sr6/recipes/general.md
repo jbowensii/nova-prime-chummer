@@ -85,6 +85,13 @@ title first), the chapter giving the context. Read with the general reading, not
 - **Two stat tables side by side in the two text columns, a few points apart** (Tarnished Star's Honda Raptor beside
   the VAA Estrada-77): two header rows with no x in common are two tables, never one header stacked over two lines
   (only a label of a cell or two stacks beside another line). Before, the two merged and the Raptor's stats were lost.
+- **A title at the foot of one column over a full-width table** (Deadly Arts p. 143's `Unguided Launcher`, below
+  both columns): the table's title, read with it after both columns (before, the other column's text came between
+  them and the launcher was a rule section). A heading below every line of the other column, under 2 line heights
+  over a full-width table, with nothing of its column between.
+- **A quality path's bare steps** (Shadow Cast's `Gestalt` and `Operations Ace`: `Step 1`, `Step 2`): qualities named
+  as printed, the path their category and group (`Gestalt: Step 2`), Karma from `By investing 10 Karma` or the path's
+  `spend 10 Karma, and they move to step 1` (sections.py, every book).
 - **A kicker over a name** (`Part of the Family:` set small over `Deserted`): `prepare_md` makes them one heading, the
   name's level (`Part of the Family: Deserted`, the name as printed); a quality
   path step set at the path heading's own level and naming the path is its step, under its printed name.

@@ -52,7 +52,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (kind* quality, category*, count* int, max int)×n: see Qualities granted and chosen |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (kind* quality, category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, rating, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
@@ -110,6 +110,15 @@ quality at that price, and the choices its text offers from those lists ("Select
 …") are its `<choice kind="quality" category count max>` (max: the most the list allows, "no more than three"). The
 builder lists a granted quality with "granted only" and warns (`quality.granted`) when the runner has no quality
 offering its list, or more of the list than its choices allow; choosing from a list is not automated yet.
+
+A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
+named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
+its prose states (`By investing 10 Karma`) or the one the path's prose gives it (`spend 10 Karma, and they move to step
+1`), else the usual missing issue. Its id is the path's and the step's (`shc.gestalt-step-2`).
+
+A value outside its field's SR6 vocabulary (`importer/sr6/vocab.py`: a critter power's action `Complex`, `Simple` or
+`Free`; an adept power's activation likewise; an availability's legality `R` or `F`, SR5's) stays as printed with an
+`<issue code="unreadable">` saying why; the corpus pass looks for the field in the other books.
 
 The prose's effects (`importer/sr6/effects.py`, the first phrase templates of the gap plan's effects grammar): `boost
 X by N` / `increase X by N`, `+N to X`, `X +N` → `<effect target op="add" value>`; `reduce the cost of Edge boosts

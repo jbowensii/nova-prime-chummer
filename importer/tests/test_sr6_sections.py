@@ -249,13 +249,14 @@ You gain the Glow Fan quality at half its cost.
                           "Sore Feet": ("negative", "5")})
         self.assertNotIn("Starting point", q)
         # unpriced steps: named as steps they are qualities (a nuyen Cost line: positive; nothing: negative, an
-        # issue saying so); a bare heading (a quality the step grants) and a bare `Step 3` are not
+        # issue saying so); a bare heading (a quality the step grants) is not; a bare `Step 3` is the path's quality
+        # under its printed name, the path its group (owner decision 2026-10-07)
         self.assertEqual({n: q[n]["kind"] for n in ("Blisters", "Calluses", "Rest Stop")},
                          {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"})
         issues = {e.findtext("name"): [i.get("field") for i in e.iter("issue")] for e in res}
         self.assertIn("kind", issues["Blisters"])
         self.assertNotIn("kind", issues["Rest Stop"])
-        self.assertNotIn("Step 3", q)
+        self.assertEqual((q["Step 3"]["group"], q["Step 3"]["id"]), ("Long Road", "long-road-step-3"))
         self.assertEqual(sum(e.findtext("name") == "Glow Fan" for e in res), 1)
 
     def test_headings_bought_as_a_quality_at_the_sections_price(self):

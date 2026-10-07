@@ -343,7 +343,7 @@ class _Catalog:
         line; a program of the same type). A heading of a kind this module reads (a sprite power's Range and Duration
         lines) has its fields read as the recipe would."""
         same = lambda e: norm(e["name"]) == norm(f.name) and all(  # noqa: E731
-            e["attrs"].get(k) == f.attrs.get(k) for k in ("type",) if f.attrs.get(k))
+            e["attrs"].get(k) == f.attrs.get(k) for k in ("type", "group") if f.attrs.get(k))  # (a path's `Step 1`)
         if any(same(e) for e in self.entries[f.kind]):
             return
         a = dict(f.attrs)
@@ -362,7 +362,8 @@ class _Catalog:
             if row is None:
                 return
             a.update({k: row["attrs"][k] for k in ("rating", "karma", "avail", "cost") if row["attrs"].get(k)})
-        self.add(f.kind, f.name, f.page, a, f.children, f.text)
+        cid = a.pop("_id", None)  # (an id of its own: `Gestalt Step 1`, the printed name `Step 1` shared)
+        self.add(f.kind, f.name, f.page, a, f.children, f.text, cid=slug(cid) if cid else None)
 
     def derived(self, f, a):
         """An item a section derives from one of the book's (sections.derived): the base item found by its name

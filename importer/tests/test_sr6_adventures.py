@@ -30,6 +30,11 @@ class MagazineLayoutTest(unittest.TestCase):
                   "#### Other Thing", "##### Kicker Part:", "#### Third Thing"):
             self.assertIn(h, self.lines)
 
+    def test_a_title_over_a_full_width_table_stays_with_it(self):
+        i = self.lines.index("#### Boxed Gadget")
+        self.assertEqual(self.lines[i + 1], "| SIZE | MODE | AVAIL | COST |")
+        self.assertLess(self.lines.index("Fifth right words 4"), i)
+
     def test_two_header_bands_in_two_columns_are_two_tables(self):
         self.assertIn("| HAND | ACCEL | BOD | COST |", self.lines)
         self.assertIn("| PILOT | SEAT | AVAIL | COST |", self.lines)
@@ -187,6 +192,50 @@ class VariantGroupTest(unittest.TestCase):
 
     def test_off_without_the_hint(self):
         self.assertIn("Red Tube", self.names(False))
+
+
+class OwnerDecisionsTest(unittest.TestCase):
+    def test_sr6_vocabulary(self):
+        from importer.sr6 import vocab
+        self.assertIn("Complex", vocab.invalid("action", "Complex"))
+        self.assertIsNone(vocab.invalid("action", "Major"))
+        self.assertIn('"R"', vocab.invalid("avail", "12R"))
+        self.assertIsNone(vocab.invalid("avail", "6(I)"))
+        self.assertIsNone(vocab.invalid("cost", "Complex"))  # (no vocabulary)
+
+    def test_lineage_passes_over_a_later_sr5_value(self):
+        from types import SimpleNamespace as NS
+        from tools.cl6check import lineage
+        old = NS(order=1, date="2019", belongs="aaa", label="Made-Up Book", context=False)
+        new = NS(order=2, date="2021", belongs="bbb", label="Later Made-Up Book", context=False)
+        obs = [lineage.Obs(old, "action", "Major", "x"), lineage.Obs(new, "action", "Complex", "y")]
+        chain = lineage.lineage(obs)["action"]
+        self.assertEqual(lineage.winner(chain).value, "Major")
+        self.assertTrue(chain[1].invalid)
+        self.assertEqual(lineage.winner(chain[1:]).value, "Complex")  # (no valid printing: the latest stands)
+
+    def test_bare_steps_are_the_path_qualities(self):
+        r, out = sections.Reader(), []
+        for b in [_b("Quality Paths", 2), _b("Quality Path: Made-Up Way", 3),
+                  _b("Starting Point", 4, "To start, they must spend 7 Karma, and they move to step 1."),
+                  _b("Step 1", 4, "They learn a trick."), _b("Step 2", 4, "By investing 12 Karma, they learn more.")]:
+            out += r.feed(b, 10)
+        qs = [(f.name, f.attrs) for f in out if f.kind == "qualities"]
+        self.assertEqual(qs, [
+            ("Step 1", {"kind": "positive", "karma": "7", "category": "Made-Up Way", "group": "Made-Up Way",
+                        "_id": "Made-Up Way Step 1"}),
+            ("Step 2", {"kind": "positive", "karma": "12", "category": "Made-Up Way", "group": "Made-Up Way",
+                        "_id": "Made-Up Way Step 2"})])
+
+    def test_kk_sr6_half_over_two_bands(self):
+        from importer.sr6.recipes import kk
+        self.assertEqual(kk._unglue(["HAND", "SPEED", "INT.TOP SPEED"]), ["HAND", "SPEED INT.", "TOP SPEED"])
+        t = "\n".join(["krime zoomer: SR5 krime zoomer: SR6",
+                       "| DAM | AVAIL | COST | HAND | BOD |", "|---|---|---|---|---|", "| 4P | 6R | 900¥ | 3/4 | 2 |",
+                       "| PILOT | AVAIL | COST |", "|---|---|---|", "| 2 | 3(L) | 800¥ |",
+                       "| HAND | BOD | PILOT |", "|---|---|---|", "| 1 | 1 | 1 |"])
+        self.assertEqual(kk._stat_sets(t), [("krime zoomer", ["HAND", "BOD", "PILOT", "AVAIL", "COST"],
+                                             [["3/4", "2", "2", "3(L)", "800¥"]])])
 
 
 if __name__ == "__main__":

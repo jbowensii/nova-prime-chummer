@@ -128,7 +128,11 @@ read as that errata's observation, dated by it, not the book's.
 
 **Winner.** The winner is the value published last. A reprint of a value its book family already printed keeps the
 date that value first appeared. For example, the Hong Kong printing repeating the 2019 text does not make that value
-newer than another book's.
+newer than another book's. Only a valid SR6 value wins (owner decision 2026-10-07): a value outside its field's SR6
+vocabulary (`importer/sr6/vocab.py`: an action `Complex`, `Simple` or `Free`, an availability's legality `R` or `F`)
+is recorded in the chain with why (`Obs.invalid`) and passed over; the latest valid value before it wins (Los Alamos'
+`Complex` for Silence falls back to Street Wyrd's `Major`). When no printing is valid the latest stands. The trace
+counts these fields (`later value not SR6, passed over`).
 
 **Variant rows.** A record also matches our variant rows (entries printing its name with a qualifier, in the latest of
 its home family's books that print one). When one of them agrees with the record on the same fields with fewer

@@ -8,4 +8,5 @@
   <quality id="crb.deep-pockets-debt" source="CRB" page="75" kind="negative" karma="9"><name>Deep Pockets Debt</name><text/></quality>
   <quality id="crb.made-up-gift" source="CRB" page="76" kind="positive" karma="0" category="Wanderer gift" granted="true"><name>Made-Up Gift</name><effect target="derived:defense" op="add" value="1" confidence="low"/><test skill="skill:perception" attr="attr:int" threshold="2"/><text/></quality>
   <quality id="crb.wanderer" source="CRB" page="76" kind="positive" karma="9"><name>Wanderer</name><choice kind="quality" category="Wanderer gift" count="1" max="2"/><text/></quality>
+  <quality id="crb.wander-path-step-1" source="CRB" page="77" kind="positive" karma="10" category="Wander Path" group="Wander Path"><name>Step 1</name><text/></quality>
 </sr6:data>

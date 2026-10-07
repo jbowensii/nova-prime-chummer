@@ -320,6 +320,9 @@
            quality's choice: Karma 0) -->
       <xs:attribute name="category" type="xs:string"/>
       <xs:attribute name="granted" type="sr6:True"/>
+      <!-- the quality path a bare step heading belongs to (`Step 2` under `Quality Path: Gestalt`): the app shows
+           "Gestalt: Step 2" -->
+      <xs:attribute name="group" type="xs:string"/>
   </xs:complexType>
 
   <xs:complexType name="Weapon">

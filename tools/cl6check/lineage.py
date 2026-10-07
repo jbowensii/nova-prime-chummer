@@ -19,6 +19,7 @@ and `winner()` is the last-published value that is neither context nor another v
 import re
 from dataclasses import dataclass
 
+from importer.sr6 import vocab
 from importer.sr6.recipes import crb, general
 from tools.cl6check import corpus as K
 from tools.cl6check import match
@@ -84,6 +85,7 @@ class Obs:
     line: object = None  # the Line it was read from
     patch: dict = None  # errata: {band index: value} on the attack rating before it
     label: str = ""  # a catalog entry's name
+    invalid: str = ""  # why the value is no SR6 value of its field (importer/sr6/vocab.py): it never wins
 
 
 def _clean(v):
@@ -404,6 +406,7 @@ def lineage(obs):
     becomes the whole attack rating it changes."""
     out = {}
     for o in sorted(obs, key=lambda o: o.book.order):
+        o.invalid = vocab.invalid(o.field, o.value) or ""  # (recorded in the chain: the report shows why it lost)
         chain = out.setdefault(o.field, [])
         if o.patch:
             base = next((x for x in reversed(chain) if not x.context and not x.variant and _patched(x.value, {})), None)
@@ -424,13 +427,13 @@ def same(a, b):
     return norm(a) == norm(b)
 
 
-def versions(chain):
+def versions(chain, valid=True):
     """[(version date, Obs)] of the object's own observations: a reprint of a value its book family already printed
     (the 2019 core text again in the Hong Kong printing) keeps the date that value was first published, so a
     later printing that changes nothing does not make an older value newer than another book's."""
     out, last = [], {}
     for o in chain:
-        if o.context or o.variant or (o.patch and "/" not in o.value):
+        if o.context or o.variant or (o.patch and "/" not in o.value) or valid and o.invalid:
             continue
         fam = family(o.book.belongs) or o.book.label
         prev = last.get(fam)
@@ -442,8 +445,10 @@ def versions(chain):
 
 def winner(chain):
     """The object's own observation (not context, not a variant's, not an unresolved patch) whose value was published
-    last: by the date each value first appeared in its book family's printings, then by book order."""
-    vs = versions(chain)
+    last: by the date each value first appeared in its book family's printings, then by book order. Only a valid SR6
+    value wins (owner decision 2026-10-07): an SR5 leftover printed later (`Complex` for an action) falls back to the
+    latest valid one before it; when no printing is valid, the latest stands."""
+    vs = versions(chain) or versions(chain, valid=False)
     if not vs:
         return None
     order = {id(o): k for k, (_, o) in enumerate(vs)}

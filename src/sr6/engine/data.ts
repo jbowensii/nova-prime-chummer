@@ -147,7 +147,8 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: count(e, e.attrs.maxLevel, 'highest level', 1) })
   const skills = Object.fromEntries(all('skills').map(e => [e.id, { id: e.id, name: e.name, attr: e.attrs.attr ?? '',
     untrained: e.attrs.untrained === 'true', specs: parts(e, 'spec').map(p => p.text), page: e.page }]))
-  const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.name, positive: e.attrs.kind !== 'negative',
+  // (a quality path's bare step shows with its path: `Gestalt: Step 2`)
+  const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.attrs.group ? `${e.attrs.group}: ${e.name}` : e.name, positive: e.attrs.kind !== 'negative',
     karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page,
     ...(e.attrs.category ? { category: e.attrs.category } : {}), ...(e.attrs.granted === 'true' ? { granted: true } : {}),
     ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',

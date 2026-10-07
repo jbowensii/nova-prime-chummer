@@ -566,6 +566,8 @@ def run(corpus, cl6, verdicts=None):
         differ = {d["field"] for d in diffs}
         for fld in done:
             w = lineage.winner(chains.get(ATTR.get(fld, fld), []))
+            if w is not None and any(o.invalid and o.book.order > w.book.order for o in chains.get(ATTR.get(fld, fld), [])):
+                n["later value not SR6, passed over"] += 1  # (an SR5 leftover printed later: lineage.winner)
             if fld not in differ and w is not None:  # where the equal values come from
                 src = ("errata" if w.book.errata else "card" if w.kind == "card" else "section default"
                        if w.kind == "section" else
