@@ -238,6 +238,14 @@ class TraceTest(unittest.TestCase):
         self.assertEqual((n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1))
 
 
+    def test_fields_compare_with_the_variant_row_that_agrees_most(self):
+        ents = [entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget (large)", src="a", avail="2", cost="300")]
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=ents)])
+        rows, n = trace.run(c, [self.rec(cost={None: 300.0}, avail={None: (2, "")})])
+        self.assertEqual(([r["field"] for r in rows], n["fields equal"], n["compared with a variant row"]), ([], 2, 1))
+        rows, n = trace.run(c, [self.rec(cost={None: 300.0}, avail={None: (3, "")})])  # the large row differs less
+        self.assertEqual([r["field"] for r in rows], ["avail"])  # (the large row: one difference, not two)
+
     def test_a_record_no_name_finds_is_matched_by_its_stats(self):
         """Commlink6's hand-made name: several stats agree with one unmatched entry and none conflicts (a rename, our
         printed name kept); one stat, a conflict or a tie is only listed for review."""

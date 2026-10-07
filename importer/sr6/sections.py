@@ -495,6 +495,22 @@ def _pct(word):
     return int(w) if w.isdigit() else _NUMBER_WORDS.get(w)
 
 
+def _listed(text):
+    """The items of a derived list line, as printed: split at its commas; `A and B` when both halves are two words or
+    more (`chemical glands and exhalation spray`, not `webbed hands and feet`); a parenthetical listing several
+    (`(corrosive spit and fangs)`) adds them, one saying `no …` or naming one other thing doesn't. A comma set inside
+    the closing parenthesis (`(… fangs,)`) is the list's."""
+    text = re.sub(r",\s*\)", "),", text).rstrip(".")
+    out = []
+    for item in _items(re.sub(r"\([^()]*\)", "", text)):
+        halves = re.split(r"\s+and\s+", item.strip(" .;"))
+        out += halves if len(halves) == 2 and all(len(h.split()) >= 2 for h in halves) else [item]
+    for paren in re.findall(r"\(([^()]*)\)", text):
+        if not re.match(r"(?i)\s*no\b", paren) and re.search(r",|\band\b", paren):
+            out += [p for p in re.split(r"\s*,\s*|\s+and\s+", paren) if p.strip()]
+    return out
+
+
 def derived(b, page):
     """Items a section derives from the book's own by a rule: its text states the rule as percentages against the
     base item (`… cost fifty percent more Essence than their bioware equivalent, but cost thirty percent less nuyen`)
@@ -519,7 +535,7 @@ def derived(b, page):
         m = _LIST_LINE.match(ln.strip())
         if not m or m.start(1) > 70 or "," not in m.group(1):
             continue
-        for item in _items(re.sub(r"\([^()]*\)", "", m.group(1)).rstrip(".")):
+        for item in _listed(m.group(1)):
             item = re.sub(r"^(?:and|or|most(?:\s+forms\s+of)?)\s+", "", item.strip(" .;"), flags=re.I)
             if not item or len(item.split()) > 5 or norm(item) in seen:
                 continue

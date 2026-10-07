@@ -421,6 +421,25 @@ def _matched_names(corpus, cl6):
     return out
 
 
+def _closer_variant(corpus, c, kinds, names, done, diffs):
+    """The diffs against the variant row of ours (an entry printing the object's name with a qualifier, in the latest
+    of its home family's books that print one) that agrees with record c on the same fields with fewer differences,
+    or None. A record matches a parent and its variant rows; its fields compare against the one that agrees most."""
+    home = lineage.family(c["src"])
+    vs = [(b, e) for b, e in corpus.variants(kinds, names, home) if e["kind"] in kinds and not b.errata and not b.context]
+    if not vs:
+        return None
+    last = max(b.order for b, _ in vs)
+    best = None
+    for b, e in vs:
+        if b.order != last:
+            continue
+        d2, f2 = fields.compare(c, {"attrs": e["attrs"], "kind": e["kind"]})
+        if sorted(d2) == sorted(done) and len(f2) < len(best if best is not None else diffs):
+            best = f2
+    return best
+
+
 def _unmatched(corpus, cl6):
     """{family: ([our entries no Commlink6 record matches], [those one does])} in each book family's own (non-errata)
     books: the pool stat matching draws on, and the entries a unique match must not also fit."""
@@ -528,6 +547,9 @@ def run(corpus, cl6, verdicts=None):
         chains = lineage.lineage(obs)
         # a rename is compared with the entry its stats matched: another table's row may print the same short name
         done, diffs = fields.compare(c, {"attrs": renamed["attrs"], "kind": kind} if renamed else winners_entry(chains, kind))
+        if diffs and not renamed and (v := _closer_variant(corpus, c, kinds, names, done, diffs)) is not None:
+            diffs = v  # the variant row of ours that agrees most (`Widget (Large)` for Commlink6's one `Widget`)
+            n["compared with a variant row"] += 1
         n["fields compared"] += len(done)
         n["fields equal"] += len(done) - len(diffs)
         n["records exact"] += not diffs

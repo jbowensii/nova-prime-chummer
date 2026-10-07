@@ -3,7 +3,7 @@ run-ins, `Kind: Name` headings, a quality path's steps. Invented book only."""
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import regroup
+from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb
 
 MD = """<!-- page 40 -->
@@ -299,6 +299,10 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         self.assertEqual((g.get("avail"), g.get("type")), ("4", "bioware"))
         w = aug["Zorpgenic wobble ears"]  # no base item printed: the rule, as an ambiguous issue
         self.assertEqual({(i.get("field"), i.get("code")) for i in w.findall("issue")}, {("essence", "ambiguous"), ("cost", "ambiguous"), ("avail", "missing")})
+        # `A and B` of two-word halves is two items; a parenthetical listing several adds them; a comma set inside the
+        # closing parenthesis is the list's; `webbed hands and feet` stays one
+        self.assertEqual(sections._listed("glow glands and fizz spray (zap spit and fangs,) hum venoms, webbed hands and feet."),
+                         ["glow glands", "fizz spray", "hum venoms", "webbed hands and feet", "zap spit", "fangs"])
 
     def test_kinds_of_a_class_priced_by_its_row(self):
         md = """<!-- page 155 -->

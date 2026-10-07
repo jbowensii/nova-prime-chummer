@@ -78,6 +78,7 @@ The recipe's map stays: measured, the general reader agrees on 41 of 46 tables. 
 ## Commlink6 check (importer v4)
 
 - Stat matching (cl6check): Commlink6 names an endosymbiont variant and a fuel row its own way; their stats find them (2 renames).
+- Transgenic infusions (importer v4): the derived list's `A and B` of two-word halves is two items (`chemical glands and exhalation spray`), a parenthetical listing several adds them (`(corrosive spit and fangs,)`, its stray comma the list's), `webbed hands and feet` stays one: seven more derived items. Commlink6 flattens some of their rated prices to Rating 1 (corrosive spit).
 
 ## Real-book check (local, nothing committed)
 

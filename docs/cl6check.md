@@ -129,6 +129,11 @@ read as that errata's observation, dated by it, not the book's.
 date that value first appeared. For example, the Hong Kong printing repeating the 2019 text does not make that value
 newer than another book's.
 
+**Variant rows.** A record also matches our variant rows (entries printing its name with a qualifier, in the latest of
+its home family's books that print one). When one of them agrees with the record on the same fields with fewer
+differences than the winners, the record is compared with that row (`compared with a variant row`): Commlink6's one
+`Widget` may be our `Widget (Large)`.
+
 **Families.** Each difference between Commlink6 and the winner goes to the first family that holds Commlink6's value.
 The order of the checks is in trace.py's module docstring. The families:
 - own row;
