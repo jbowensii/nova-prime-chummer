@@ -265,6 +265,12 @@ class TraceTest(unittest.TestCase):
         tie = by[("q", "object not found")]["stat"]  # two names agree: a tie, never a rename
         self.assertEqual(sorted(s["name"] for s in tie), ["Quux lens", "Quux loupe"])
         self.assertEqual(by[("x", "object not found")]["stat"], [])  # the avail conflicts with the one cost that agrees
+        # one row printing two names: each record whose name shares a word with one of them is that one's rename
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n",
+                                entries=[entry("Zing / Zang Drone", src="a", avail="4", cost="700", rating="1–2")])])
+        rows, n = trace.run(c, [rec("g", "Acme Zing", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2)),
+                                rec("h", "Acme Zang", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2))])
+        self.assertEqual(n["renamed by stats"], 2)
 
 
 class MoreTest(unittest.TestCase):

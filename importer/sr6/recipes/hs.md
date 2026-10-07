@@ -60,6 +60,7 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 - Stat matching (cl6check): Commlink6 names a cable spool and a rail gun row their own way; their stats find them (2 renames).
 - Section kinds (importer v4): VIRTUAL LIFE's `Inherent Virtual Life Form Qualities` headings are critter powers (a being's inherent qualities are its powers; their Type/Action/Range/Duration are in the prose, not read); POINTS OF SPRITE's `New Sprite Types` headings are sprites.
 - Sprite commands (importer v4): POINTS OF SPRITE's `New Sprite Commands` run-ins (under each sprite's heading) are critter powers.
+- Stat matching (cl6check): Commlink6 names the two drones one row prints together (`A / B Drone`) with their maker; each shares a word with its own part of the row: 2 renames.
 
 ## Real-book check (local, nothing committed)
 

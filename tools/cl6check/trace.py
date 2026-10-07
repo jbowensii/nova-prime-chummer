@@ -470,9 +470,19 @@ def stat_matches(corpus, cl6, missing):
         free, used = pool.get(lineage.family(c["src"]), ([], []))
         got[id(c)] = match.by_stats(c, [e for e in free if e["kind"] in kinds], [e for e in used if e["kind"] in kinds])
     taken = Counter(match.n1(v[1]["name"]) for v in got.values() if v[0] == "strong")
+    by_id = {id(c): c for c in missing}
+
+    def part(c, e):
+        """The one part of a row printing several names (`Malakim / Ophanim Drone`) that shares a word with c's name."""
+        parts = [p for p in match.split_names(e["name"]) if p != e["name"]]
+        hits = {p for p in parts for w in match.toks(c["name"]) if len(w) >= 4 and w in match.toks(p)}
+        return next(iter(hits)) if len(hits) == 1 else None
+    parts = Counter((match.n1(v[1]["name"]), part(by_id[k], v[1])) for k, v in got.items() if v[0] == "strong")
     for k, v in got.items():
         if v[0] == "strong" and taken[match.n1(v[1]["name"])] > 1:
-            got[k] = ("weak", None, [(v[1], v[2], [])])
+            p = part(by_id[k], v[1])
+            if p is None or parts[(match.n1(v[1]["name"]), p)] > 1:  # (each its own part of the row: no tie)
+                got[k] = ("weak", None, [(v[1], v[2], [])])
     return got
 
 
