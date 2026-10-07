@@ -809,12 +809,15 @@ class _Catalog:
 
 
 def merge_xml(old, new):
-    """One kind's catalog file (xml()'s shape) with another's entries added: those whose id it lacks."""
-    have = set(re.findall(r'^  <\w+ id="([^"]+)"', old, re.M))
-    add = [ln for ln in new.splitlines(keepends=True)
-           if (m := re.match(r'  <\w+ id="([^"]+)"', ln)) and m.group(1) not in have]
-    i = old.rindex("</sr6:data>")
-    return old[:i] + "".join(add) + old[i:]
+    """One kind's catalog file (xml()'s shape) with another's entries added; an entry of `new` replaces the one of
+    `old` with its id (the book's own reading is the closer one)."""
+    entry = re.compile(r'  <\w+ id="([^"]+)"')
+    add = [ln for ln in new.splitlines(keepends=True) if entry.match(ln)]
+    ids = {entry.match(ln).group(1) for ln in add}
+    keep = [ln for ln in old.splitlines(keepends=True) if not ((m := entry.match(ln)) and m.group(1) in ids)]
+    out = "".join(keep)
+    i = out.rindex("</sr6:data>")
+    return out[:i] + "".join(add) + out[i:]
 
 
 def _attrs(d):
