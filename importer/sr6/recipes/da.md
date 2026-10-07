@@ -129,19 +129,25 @@ General rules (regroup, crb, cl6check), each measured on the 74-book corpus:
   cyberweapon features and enhancements (p. 45). A row's lines are split as the book centres its values on them (as
   many over as under, or one more over); a rocket's class wraps too (`0 (40mm x` over `1m)`, shape `CLASS`); a name
   header printed on two lines around the others (`CYBERWARE` / `ESSENCE CAP COST` / `FEATURE`); a `Note:` between
-  rows stays text; lines after the last row are text again. The p. 58 header prints AVAIL over the sensor column
-  (`PILOT AVAIL SENSOR COST` over `0 0 5(I)`): a bold table whose AVAIL cells print no legality letter while most of a
-  neighbour's do has the two swapped (`_swapped_avail`).
+  rows stays text; lines after the last row are text again.
+- **Search names for the products** (owner, 2026-10-07): each product also goes by its weapon class and size
+  (`Assault Cannon B25`, `Assault Cannon B25 HEX`, `Autocannon B60 HEX`): the title's class when the book heads it
+  (`Autocannon Ammunition` under `Autocannons`), else the later band's words after its first, that first word the tag.
+- **Items priced in a sentence** (crb `sentence_items`, owner 2026-10-07): `Small caliber railgun ammo is 3x the normal
+  cost` is an ammunition type, cost `x3`; `The Foundation focus is a spell focus for purposes of cost, availability,
+  and bonding cost (p. 168, SR6)` is gear (Foci) priced by `ref(gear:crb.spell-focus, cost|avail|karma, R)`, the
+  printed fields `As spell focus` (the Foundation and Spotting foci).
 
 After the merge with the adventure branch's converter (sr6-6), the medical gear list is a real table under its
 heading (a box): a row grouped under a name-only row is named with it, as a catalog row is (`Medkit Advanced (Rating
 1–6)`); regroup's run-together repair never splits inside a number (the MGL-24 prints `7,500¥` under AVAIL: the book's
 misprint, kept as printed for an override edit).
 
-Recipe hints (da.py): `DRUG` names the drugs table's rows (their headings are sections); a priced NAME table in a rule
+Recipe hints (da.py): a structural hint about one misplaced header (owner, 2026-10-07): the p. 58 rockets table
+prints AVAIL over the sensor column (`PILOT AVAIL SENSOR COST` over `0 0 5(I)`); a table whose AVAIL cells print no
+legality letter while most of a neighbour's do has the two columns' values swapped (`_swap_avail`). `DRUG` names the drugs table's rows (their headings are sections); a priced NAME table in a rule
 heading's text is a list of items titled by that heading (`Expanded Rocket/Missile Rules`: Standard Rocket, Standard
 Missile; `_text_list`).
 
-Left (da-gaps.md): Commlink6's composed names (`Railguns & Linear Kinetic Cannons`, `Hardened`), `Urumi` (no row
-printed), `Foundation Focus` (priced as the core rulebook's spell focus by a sentence), the converter's two boxes side
-by side (`Combat MAID`) and the Incision spell set inside the medical gear table.
+Left (da-gaps.md): the converter's two boxes side by side (`Combat MAID`, p. 177) and the Incision spell set inside
+the medical gear table (p. 182); Commlink6's own records and conventions are owner verdicts (cl6-verdicts).

@@ -329,4 +329,8 @@ def load(runs, sources_xml, meta=pdf_meta):
     months = published(sources_xml)
     books = [book_of(r, os.path.join(runs, r), months, meta) for r in sorted(os.listdir(runs))
              if os.path.exists(os.path.join(runs, r, "library", "sr6", "book1", "import.xml"))]
-    return Corpus(sorted(books, key=lambda b: b.order))
+    books = sorted(books, key=lambda b: b.order)
+    # a formula citing another book's entry (`ref(gear:crb.spell-focus, cost, R)`): resolved over the merged corpus, as
+    # the app's merged catalog does (each book's own refs were resolved on loading it)
+    ours._inline_refs([e for b in books for e in b.entries])
+    return Corpus(books)

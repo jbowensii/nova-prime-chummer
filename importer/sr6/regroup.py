@@ -124,8 +124,9 @@ def _cells(line):
 
 
 class _Row(list):
-    """A table row (its cells) with the name-only row it is grouped under, if any."""
+    """A table row (its cells) with the name-only row it is grouped under, if any, and the other names it goes by."""
     group = ""
+    aliases = ()
 
 
 _INDENT, _BOLD_MARK = "\u00a0", "\u2002"  # the converter's first-cell marks (layout._first_marks)
@@ -215,7 +216,9 @@ def _elements(md):
                 rows += extra
             rows = _row_groups(body, rows)
             prev = out[-1] if out else None
-            if prev and prev[0] == "x" and (two := _products(header, rows, prev[2].strip())):
+            title = out[-2][2][1] if prev and len(out) > 1 and out[-2][0] == "h" else ""
+            heads = {k for e in out if e[0] == "h" for k in keys(e[2][1])}
+            if prev and prev[0] == "x" and (two := _products(header, rows, prev[2].strip(), title, heads)):
                 header, rows = two  # (the band line names the products: not text)
                 out.pop()
                 prev = out[-1] if out else None
@@ -367,26 +370,6 @@ def _centered(items):
     return solve(0, gaps[0])
 
 
-def _swapped_avail(header, rows):
-    """A header printing AVAIL over the wrong one of two neighbouring columns (Deadly Arts' rockets: `PILOT AVAIL
-    SENSOR COST` over `0 0 5(I) 2,000¥`): no AVAIL cell prints a legality letter while most of the neighbour's do ->
-    the header with the two swapped; else the header as printed."""
-    hs = [h.upper() for h in header]
-    if "AVAIL" not in hs:
-        return header
-    a = hs.index("AVAIL")
-    legal = lambda k: [bool(re.search(r"\d\s*\(?[LIF]\)?$", r[k].strip())) for r in rows if k < len(r) and r[k].strip() not in ("", "-", "—", "–")]
-    if any(legal(a)) or not legal(a):
-        return header
-    for k in (a - 1, a + 1):
-        if 0 < k < len(header) and k != hs.index("AVAIL") and hs[k] not in _PRICE_HEAD and \
-                2 * sum(legal(k)) > len(legal(k)) > 0:
-            out = list(header)
-            out[a], out[k] = out[k], out[a]
-            return out
-    return header
-
-
 def _bold_table(cols, lines, i):
     """(header, rows, next line, notes) of a bold-header table (_bold_head's columns) from line i, else None. A name
     the converter wrapped around its row (`Zap` over the values, `Glove` under them; `(Heavy)` under them) is joined:
@@ -446,8 +429,7 @@ def _bold_table(cols, lines, i):
     rows = [r for r in rows if r[1]]
     if not rows:
         return None
-    rows = [[r[1]] + [v or "" for v in r[2]] for r in rows]
-    return _swapped_avail(cols, rows), rows, j, notes
+    return cols, [[r[1]] + [v or "" for v in r[2]] for r in rows], j, notes
 
 
 _TEXT_ROW = re.compile(r"^(?P<name>[A-Z(][^|¥]*?\S)\s+(?P<avail>\d{1,2}\s*(?:\(\s*[LIF]\s*\)|[LIF])?|[—–-])\s+"
@@ -589,7 +571,10 @@ def _band_names(line, n):
     return out if len(out) == n else None
 
 
-def _products(header, rows, line):
+_AMMO_WORD = re.compile(r"\s+(?:ammunition|ammo|rounds|shells)$", re.I)
+
+
+def _products(header, rows, line, title="", heads=frozenset()):
     """A table printing products side by side (Deadly Arts' ammunition: `SIZE | AVAIL | COST PER 10 | BLAST PROFILE |
     AVAIL | COST PER 10` under the band line `regular HEX Assault Cannon`): its price columns again after the first set,
     a band line naming each set. -> (header, rows) a row a product: the first band's under the row's name, each later
@@ -608,16 +593,24 @@ def _products(header, rows, line):
         return None
     first = [header[0]] + [header[i] for i in sets[0]]
     extra = list(dict.fromkeys(header[i] for s in sets[1:] for i in s if header[i] not in first))
+    # the weapon class the products are for, as a search name (`Assault Cannon B25`, `Autocannon B60 HEX`): the
+    # title's when the book heads that class (`Autocannon Ammunition`: its `Autocannons`), else a later band's words
+    # after its first (`HEX Assault Cannon`), its first word the band's tag
+    own = _AMMO_WORD.sub("", title).strip()
+    cls = own if own and own != title and set(keys(own)) & heads else         next((b.split(None, 1)[1] for b in names[1:] if len(b.split()) > 1), "")
+    tag = lambda b: b.split()[0] if len(b.split()) > 1 else b  # noqa: E731
     out_h = first + extra
     out = []
     for r in rows:
         r = list(r) + [""] * (len(header) - len(r))
         out.append(_Row([r[0]] + [r[i] for i in sets[0]] + [""] * len(extra)))
+        out[-1].aliases = (f"{cls} {r[0]}",) if cls else ()
         for s, band in zip(sets[1:], names[1:]):
             if not any(re.search(r"[^\s—–-]", r[i]) for i in s):
                 continue  # (no such product in this size: dashes only)
             cells = {header[i]: r[i] for i in s}
             out.append(_Row([f"{r[0]} ({band})"] + [cells.get(h, "") for h in out_h[1:]]))
+            out[-1].aliases = (f"{cls} {r[0]} {tag(band)}",) if cls else ()
     return out_h, out
 
 
@@ -1113,7 +1106,8 @@ def _emit(units):
                                  table=t.parent if t else ""))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
             out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r),
-                          group=getattr(r, "group", ""), table=t.parent) for r in t.unpaired]
+                          aliases=list(getattr(r, "aliases", ())), group=getattr(r, "group", ""), table=t.parent)
+                    for r in t.unpaired]
     return out
 
 

@@ -92,6 +92,15 @@ caboose car
 | HAND | ACCEL | SPD INT | TOP SPD | BODY | ARMOR | PILOT | SENSOR | SEAT | AVAIL | COST |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 4/5 | 15 | 15 | 75 | 12 | 12 | 4 | 4 | — | 6(L) | 27,000¥ |
+## Made Rockets
+#### Made Launcher Notes
+Made-up notes on launchers.
+##### Made Rockets and Missiles
+**NAME CLASS RANGE CAP PILOT AVAIL SENSOR COST**
+Zip 0 (20mm x
+1 km 16 0 0 5(I) 2,000¥
+Rocket 1m)
+Zop Missile 1 (30mm x 1m) 2 km 20 3 2 7(I) 9,000¥
 ## Made Darts
 #### Made Dart Rules
 Made-up darts fly far.
@@ -100,6 +109,10 @@ Made-up darts fly far.
 | Plain Dart | 1 km | 5(I) | 2,000¥ |
 | Smart Dart | 1 km | 6(I) | 4,500¥ |
 More made-up words about darts.
+Made zap ammo is 2x the normal cost for the weapon type.
+#### Glow Focus
+The Glow focus is a spell focus for purposes of cost,
+availability, and bonding cost (p. 168, SR6). It glows.
 ### Fizzbang
 A made-up drug that fizzes.
 ##### drugs
@@ -196,11 +209,19 @@ class DaRecipeTest(unittest.TestCase):
         self.assertEqual({k: g["Z25"][k] for k in ("category", "avail", "cost", "per")},
                          {"category": "Made ammunition", "avail": "3(I)", "cost": "130", "per": "10"})
         self.assertEqual((g["Z25 (ZAP Made Shell)"]["avail"], g["Z25 (ZAP Made Shell)"]["cost"]), ("5(I)", "450"))
+        al = {e.findtext("name"): [a.text for a in e.findall("alias")] for e in ET.fromstring(self.res.files["gear.xml"])}
+        self.assertIn("Made Shell Z25", al["Z25"])  # (the class a later band names, as a search name)
+        self.assertIn("Made Shell Z25 ZAP", al["Z25 (ZAP Made Shell)"])
+        # the title's class when the book heads it (`Autocannon Ammunition` under `Autocannons`)
+        h = ["SIZE", "AVAIL", "COST PER 10", "BLAST PROFILE", "AVAIL", "COST PER 10"]
+        _, rows = regroup._products(h, [["B60", "8(I)", "2,500¥", "12P(2m)", "6(I)", "7,500¥"]],
+                                    "regular HEX Assault Cannon", "Autocannon Ammunition", {"autocannon"})
+        self.assertEqual([r.aliases for r in rows], [("Autocannon B60",), ("Autocannon B60 HEX",)])
         self.assertIn("Z1", g)
         self.assertNotIn("Z1 (ZAP Made Shell)", g)  # (dashes only: no such product)
         # a list titled as ammunition types: its rows are ammunition types, a nameless row a band of the one above
         a = entries(self.res, "ammotypes")
-        self.assertEqual(set(a), {"Boom", "Boom (Capacity 20)", "Fizz"})
+        self.assertEqual(set(a) - {"Made zap ammo"}, {"Boom", "Boom (Capacity 20)", "Fizz"})
         self.assertEqual((a["Boom (Capacity 20)"]["avail"], a["Fizz"]["cost"]), ("+1(I)", "x 2 Base Cost"))
         self.assertTrue(a["Fizz"]["category"].startswith("Shell type"))  # (its title)
 
@@ -215,6 +236,13 @@ class DaRecipeTest(unittest.TestCase):
         self.assertIn("Made Dart Rules", entries(self.res, "rules"))
         # the drugs table (DRUG, a name header of the book's): its rows are items
         self.assertEqual((g["Popper"]["cost"], g["Popper"]["per"]), ("50", "dose"))
+        # an item priced in a sentence: an ammunition type by its multiplier, a focus as the core rulebook's
+        self.assertEqual(entries(self.res, "ammotypes")["Made zap ammo"]["cost"], "x2")
+        glow = next(e for e in ET.fromstring(self.res.files["gear.xml"]) if e.findtext("name") == "Glow Focus")
+        self.assertEqual([(f.get("field"), f.text) for f in glow.findall("formula")],
+                         [(k, f"ref(gear:crb.spell-focus, {k}, R)") for k in ("cost", "avail", "karma")])
+        # the book's misplaced header (AVAIL over the sensor column): read by the values' shapes
+        self.assertEqual((g["Zip Rocket"]["avail"], g["Zop Missile"]["avail"]), ("5(I)", "7(I)"))
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

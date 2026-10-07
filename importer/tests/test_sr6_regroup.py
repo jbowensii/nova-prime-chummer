@@ -228,7 +228,8 @@ Hammer Exotic 2P 6/—/—/—/— 5(I)
 
     def test_cells_wrapped_around_centred_values(self):
         # a name and a class cell wrapped over lines, the values level with the middle line (or the lower of two), a
-        # note between rows, the header's AVAIL printed over the other column, the text after the table its own
+        # note between rows, the text after the table its own (a header printed out of place stays as printed: the
+        # recipe's hint, da._swap_avail)
         md = """**NAME CLASS RANGE CAP PILOT AVAIL SENSOR COST**
 Zip 0 (20mm x
 1.5 Km 16 0 0 5(I) 2,000¥
@@ -247,7 +248,7 @@ made-up text after the table.
 """
         els = regroup._elements(md)
         t = els[0][2]
-        self.assertEqual(t.header, ["NAME", "CLASS", "RANGE", "CAP", "PILOT", "SENSOR", "AVAIL", "COST"])
+        self.assertEqual(t.header, ["NAME", "CLASS", "RANGE", "CAP", "PILOT", "AVAIL", "SENSOR", "COST"])
         self.assertEqual([r[:2] + r[-2:] for r in t.rows], [
             ["Zip Dart", "0 (20mm x 1m)", "5(I)", "2,000¥"], ["Zop Lance", "1 (30mm x .5m)", "6(I)", "3,000¥"],
             ["Boost Option for Darts", "", "+1(I)", "+500¥"], ["1,000-meter wire spools", "-", "6", "900¥"]])

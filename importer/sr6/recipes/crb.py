@@ -945,6 +945,43 @@ _MULTIPLE = re.compile(r"^\s*(?:x\s*\d+(?:\.\d+)?|\+\s*\d+\s*%)\s*$", re.I)
 _AMMO_WORDS = re.compile(r"\b(?:ammo|ammunition|rounds?|bolts?|arrows?|warheads?|slugs?|shells?|bullets?)\b", re.I)
 
 
+# an ammunition priced in a sentence as a multiple of the weapon's normal ammunition (`Small caliber railgun ammo is 3x
+# the normal cost for the weapon type`): an ammunition type, its cost the multiplier
+_AMMO_MULTIPLE = re.compile(r"(?:^|[.!?]\s+)([A-Z][\w-]*(?:\s+[\w-]+){0,4}?\s+(?:ammo|ammunition|rounds))\s+(?:is|are|costs?)\s+"
+                            r"(\d+(?:\.\d+)?)\s*(?:x|×|times)\s+(?:the\s+)?(?:normal|base|regular|listed)\s+(?:cost|price)")
+# an item priced in a sentence as another book's item (`The Foundation focus is a spell focus for purposes of cost,
+# availability, and bonding cost (p. 168, SR6)`): its price fields that item's, at its own rating
+_PRICED_AS = re.compile(r"\bThe\s+([A-Z][\w-]*(?:\s+[\w-]+){0,3}?)\s+is\s+an?\s+([\w-]+(?:\s+[\w-]+){0,3}?)\s+"
+                        r"for\s+(?:the\s+)?purposes?\s+of\s+(cost[^()]*?)\s*\(p\.\s*\d+,\s*SR6\)")
+_CORE = "crb"  # `SR6` in a cross-reference: the core rulebook
+
+
+def sentence_items(bs, offset):
+    """[(kind, name, page, attrs, children, text)] of the items a book prices only in a sentence of another block's
+    text (_AMMO_MULTIPLE, _PRICED_AS), each once (a description printed twice: its first)."""
+    heads = {norm(b.name): b.name for b in bs}
+    out, seen = [], set()
+    for b in bs:
+        text = " ".join(" ".join([b.text, *b.labels.values()]).split())
+        page = max(1, b.page - offset)
+        for m in _AMMO_MULTIPLE.finditer(text):
+            name = m.group(1)[:1].upper() + m.group(1)[1:]
+            if norm(name) not in seen:
+                seen.add(norm(name))
+                out.append(("ammotypes", name, page, {"category": "Ammo type", "cost": f"x{m.group(2)}"}, (), m.group(0).strip(". ")))
+        for m in _PRICED_AS.finditer(text):
+            name, base, fields = heads.get(norm(m.group(1)), m.group(1)), m.group(2), m.group(3)
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            flds = [f for f, w in (("cost", "cost"), ("avail", "availability"), ("karma", "bonding")) if w in fields]
+            ref = f"gear:{_CORE}.{slug(base)}"
+            kids = tuple(("formula", {"field": f}, f"ref({ref}, {f}, R)") for f in flds)
+            attrs = {"category": "Foci" if base.lower().endswith("focus") else "", **{f: f"As {base}" for f in flds}}
+            out.append(("gear", name, page, {k: v for k, v in attrs.items() if v}, kids, m.group(0).strip(". ")))
+    return out
+
+
 def ammo_type(b):
     """A row priced as a multiple of the ammunition it modifies (a COST MULTIPLIER column, or `x2` / `+100%` in an
     ammunition table): an ammunition type, not an item of its own."""
@@ -1161,6 +1198,9 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
+        if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
+            cat.add(kind, name, page, attrs, kids, text)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):

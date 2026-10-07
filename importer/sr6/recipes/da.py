@@ -90,13 +90,41 @@ def _text_list(b):
     return out + [replace(b, text=(b.text[:m.start()] + b.text[m.end():]).strip())]
 
 
+# a structural hint about one misplaced header (Rockets and Missiles, p. 58): the header prints `PILOT AVAIL SENSOR
+# COST` over rows `0 0 5(I) 2,000¥`, AVAIL set over the sensor column (the p. 57 table prints `SENSOR AVAIL`): read
+# by the values' shapes, as the owner decided (2026-10-07)
+_LEGAL = re.compile(r"\d\s*\(?[LIF]\)?$")
+
+
+def _swap_avail(bs):
+    """A table's row blocks whose AVAIL cells print no legality letter while most of a neighbouring column's do (the
+    misplaced header above): the two columns' values swapped."""
+    tables = {}
+    for b in bs:
+        if b.row is not None and "AVAIL" in b.row:
+            tables.setdefault((b.label, tuple(b.row)), []).append(b)
+    swap = {}
+    for (_, head), rows in tables.items():
+        filled = lambda h: [r.row[h].strip() for r in rows if r.row[h].strip() not in ("", "-", "—", "–")]  # noqa: E731
+        a = head.index("AVAIL")
+        if not filled("AVAIL") or any(_LEGAL.search(v) for v in filled("AVAIL")):
+            continue
+        for k in (a - 1, a + 1):
+            if 0 < k < len(head) and head[k] not in ("COST", "AVAIL") and filled(head[k]) \
+                    and 2 * sum(bool(_LEGAL.search(v)) for v in filled(head[k])) > len(filled(head[k])):
+                swap.update({id(r): head[k] for r in rows})
+                break
+    return [replace(b, row={**b.row, "AVAIL": b.row[swap[id(b)]], swap[id(b)]: b.row["AVAIL"]}) if id(b) in swap else b
+            for b in bs]
+
+
 def prepare(bs):
     """The book's shapes as crb.extract reads them: stat boxes as rows (shapes.boxes), a spell section (`Aerial Flare
     (Manipulation)` over its band) as a spell item of that category, a quality's `(Positive)` suffix dropped, a ritual's
     `(Anchored, Spell)` its keywords, the martial arts' lines as labels, a `New Cyberware:` line naming the next box's
     category."""
     out, group = [], ""
-    for b in [x for b in shapes.boxes(bs) for x in (_text_list(b) or [b])]:
+    for b in _swap_avail([x for b in shapes.boxes(bs) for x in (_text_list(b) or [b])]):
         if b.type == "item" and not b.text.strip() and not b.stats and b.row is None and (m := _NEW.match(b.name)):
             group = m.group(1)
             continue
