@@ -787,7 +787,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     return books
   }
-  const started = resume().then(recoverCore).then(() => pump()).then(dedupe).then(rebuildCore).catch(e => console.error(e.stack))
+  // pump() resolves when its first job ends: started (and dedupe, rebuildCore) must not wait for a resumed import
+  const started = resume().then(recoverCore).then(() => { pump() }).then(dedupe).then(rebuildCore).catch(e => console.error(e.stack))
   for (const a of Object.values(AREAS)) { // uploads cut off by a stop
     try {
       for (const f of readdirSync(a.library)) if (f.startsWith('.upload-')) rmSync(join(a.library, f), { recursive: true, force: true })
