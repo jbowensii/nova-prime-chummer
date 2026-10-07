@@ -8,7 +8,9 @@ Actions`, `Mentor Spirits`, `Data Structures`, `Quality Paths`, `Contact Types`,
   `New Edge Action: Prepare to Board!`, `New Contact Type: Free Spirit`). A lower-case box title, a heading naming the
   kind itself (`Minor Actions` under `Game Timing and Actions`) and an example are not;
 - **a bold run-in** (`• **Reroll one die:** …`, `**2 Edge: Black Thumb**`) in a block whose heading, or whose parent's,
-  names a run-in kind is an entry: the Edge boosts and Edge actions, the data structures, the contact types.
+  names a run-in kind is an entry: the Edge boosts and Edge actions, the data structures, the contact types. A run-in
+  naming the kind itself (`Electronic Warfare Programs:`) introduces it; a run-in `**2 Edge: Name**` is an Edge action
+  wherever it is printed.
 
 The entries are written as well as the rule sections (the rules contents keep them). Their attributes are what the
 heading and its section print: an action's type (minor, major, edge, boost: the section's words; a Matrix action's
@@ -49,7 +51,7 @@ PREFIX = [("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$",
           ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I))]
 # run-in labels that are a field of the block, not an entry of its kind
 FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
-                          r"requirements?|prerequisites?|example|bonus|duration|test|limit|threshold|range|choose\s+one|"
+                          r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"
                           r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
                           r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?)$", re.I)
 # a Matrix action's test line, set under its heading: `(Illegal) Cracking + Logic vs. Willpower + Firewall (Major)`
@@ -169,8 +171,12 @@ class Reader:
             rk = "programs"  # `Basic` and `Hacking` under `Programs`
         if not rk and KEYWORDS.search(b.name) and re.search(r"\bkeywords\b", b.text or "", re.I):
             rk = "spellfeatures"  # a spell or ritual section introducing its keywords, each a bold run-in
+        if not rk and heading and not out and (pk := _runin_kind(parent)):
+            rk = pk  # the parent heading names the kind (`Core Vehicle Modifications` under `Autosofts and E-Softs`)
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
+        elif not rk and not out:  # `**2 Edge: Black Thumb**`: an Edge action wherever it is printed
+            out += [f for f in self._runins(b, page, "actions", chain + [b.name], _EDGE_FIRST)]
         if heading:
             # a Matrix action's test line set as a heading of its own under it: its parent heading is the action
             if MATRIX_TEST.search(b.name) and self.stack and not self.stack[-1][3]:
@@ -239,7 +245,9 @@ class Reader:
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
         return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b), b)
 
-    def _runins(self, b, page, kind, chain):
+    def _runins(self, b, page, kind, chain, only=None):
+        """The block's bold run-ins as entries of `kind`; only: a pattern the run-in's name must match (and then
+        names the kind itself: `2 Edge: X` is an Edge action)."""
         out, seen = [], set()
         # (regroup hands the block's leading labelled lines over as labels, the rest stays in the text)
         lead = []
@@ -255,10 +263,14 @@ class Reader:
             if not m:
                 continue
             name = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(m.group("name").split()).strip())  # (`Vi- sion`)
+            if only is not None and not only.match(name):
+                continue
             if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[") \
                     or len(name) > 70 or norm(name) in seen:
                 continue
             seen.add(norm(name))
+            if _runin_kind(name) == kind:
+                continue  # (`Electronic Warfare Programs:` introduces the kind)
             body = [m.group("rest").strip()]
             for nxt in lines[i + 1:]:
                 n2 = _RUNIN.match(nxt)
@@ -269,8 +281,11 @@ class Reader:
             attrs = {}
             if kind == "actions":
                 name, attrs = _action_attrs(name, chain, "", para)
+                if only is not None:
+                    attrs["type"] = "edge"
             if kind == "programs":
-                attrs = {"type": program_type(chain[-1] if chain else "")}
+                own = re.search(r"(?i)\b(?:this|these|the)\s+(autosoft|e-soft|app)s?\b", para)  # (its own words)
+                attrs = {"type": own.group(1).lower() if own else program_type(chain[-1] if chain else "")}
             if kind == "gear":  # a kind of the class its heading names: priced as that class's row
                 attrs = {"category": "foci", "_class": class_row(chain[-1] if chain else "")}
             if kind == "qualities":

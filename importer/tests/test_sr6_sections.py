@@ -320,6 +320,33 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         self.assertEqual((g["Bright focus"]["cost"], g["Dim focus"]["avail"]), ("Force x 500", "(Force) L"))
         self.assertNotIn("Odd focus", g)
 
+    def test_runins_under_a_parent_naming_the_kind_and_edge_actions_anywhere(self):
+        """A heading's run-ins are its parent's kind when the parent names one (and the heading is no entry); a
+        run-in naming the kind itself introduces it; a program's own words give its type; `N Edge: X` is an Edge
+        action wherever it is printed."""
+        md = """<!-- page 140 -->
+# MAKING IT ZORP
+### Autosofts and E-Softs
+#### Core Zorp Mods
+**Zorp Programs:** Zorp programs are a hybrid of things.
+**Glow Jack:** This e-soft opens glowing locks.
+**Fizz Pilot:** It flies fizzily.
+#### Zorp Rules
+**Rules:** A made-up rule.
+## Positive Qualities
+### The Zorp Pool
+#### Fix It
+**2 Edge: Lucky Spanner**
+Spend 2 Edge to fix a zorp.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        p = {e.findtext("name"): e.attrib for e in ET.fromstring(files["programs.xml"])}
+        self.assertEqual(sorted(p), ["Fizz Pilot", "Glow Jack"])
+        self.assertEqual((p["Glow Jack"]["type"], p["Fizz Pilot"]["type"]), ("e-soft", "core zorp mods"))
+        a = {e.findtext("name"): e.attrib for e in ET.fromstring(files["actions.xml"])}
+        self.assertEqual((a["Lucky Spanner"]["type"], a["Lucky Spanner"]["edge"]), ("edge", "2"))
+
     def test_a_title_that_only_mentions_a_kind_names_none(self):
         """The kind's words must head the heading: `New Echoes` lists echoes; a book or group titled `Echoes of …`
         doesn't, and a `Program Slots` heading lists no programs."""

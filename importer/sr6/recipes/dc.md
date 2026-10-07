@@ -72,6 +72,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 ## Commlink6 check (importer v4)
 
 - Stat matching (cl6check): Commlink6 names the turreted weapon mounts as mount-type-size; their stats find them (2 renames).
+- Programs (importer v4): the e-softs printed as run-ins under `New RCC Basic Programs` and `Core Vehicle Modifications` (their parent `Autosofts and E-Softs` names the kind) are read with the shared reading's other programs (the autosoft list no longer replaces them); a program calling itself an e-soft is one, priced as an autosoft (the book's rule). The gear-head qualities' `**2 Edge: Name**` run-ins are Edge actions.
 
 ## Real-book check (local, nothing committed)
 

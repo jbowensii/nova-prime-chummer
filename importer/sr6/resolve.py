@@ -392,6 +392,7 @@ _CARD_LABEL = re.compile(r"\*\*([A-Za-z ]+):\*\*\s*(.*?)(?=\s*\*\*[A-Za-z ]+:\*\
 # name, from the entry's type; the words its category must hold, when the name is the bare type: `Autosoft` in the
 # Software table, not a `Basic` subscription tier in another book) (the game's own words)
 CLASS_ROWS = {"programs": (("cyberprogram {type}", None), ("{type}", re.compile(r"(?i)soft|program")))}
+PRICED_AS = {"e-soft": "autosoft"}  # a class the game prices as another (Double Clutch: e-softs as autosofts)
 FIXABLE = ("missing", "unreadable")  # (an ambiguous field is the book's own two values, or a rule)
 
 
@@ -557,7 +558,8 @@ def corpus(books, sources=None, apply_errata=True):
                     cands.append((cb.date or "", v, None, None, None))
             if el.get("type"):
                 for pat, cat in CLASS_ROWS.get(kind, ()):
-                    for ob, osrc, oel in by_name.get(("gear", norm(pat.format(type=el.get("type")))), ()):
+                    t = PRICED_AS.get(el.get("type"), el.get("type"))
+                    for ob, osrc, oel in by_name.get(("gear", norm(pat.format(type=t))), ()):
                         if cat is None or cat.search(oel.get("category") or ""):
                             offer(cands, ob, osrc, oel, f)
             if iss.get("code") not in FIXABLE:  # the book prints two values or a rule: only a later source settles it

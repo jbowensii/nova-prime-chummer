@@ -808,6 +808,15 @@ class _Catalog:
                 f'<sr6:data xmlns:sr6="{NS}" kind="texts" version="1">\n{body}</sr6:data>\n')
 
 
+def merge_xml(old, new):
+    """One kind's catalog file (xml()'s shape) with another's entries added: those whose id it lacks."""
+    have = set(re.findall(r'^  <\w+ id="([^"]+)"', old, re.M))
+    add = [ln for ln in new.splitlines(keepends=True)
+           if (m := re.match(r'  <\w+ id="([^"]+)"', ln)) and m.group(1) not in have]
+    i = old.rindex("</sr6:data>")
+    return old[:i] + "".join(add) + old[i:]
+
+
 def _attrs(d):
     return "".join(f" {k}={quoteattr(_s(v))}" for k, v in d.items() if v is not None and v != "")
 
