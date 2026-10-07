@@ -63,7 +63,7 @@ test('a queue left in jobs.json runs again in its own order, and its Re-import a
   const custom = join(dir, 'custom')
   vi.stubEnv('STUB_LOG', log)
   folder(lib, 'z1-second', 'queued')
-  folder(lib, 'z2-first', 'converting', '', { marker: 'slow' }) // running at the stop (1.5 s: still busy when asked)
+  folder(lib, 'z2-first', 'converting', '', { marker: 'hold' }) // running at the stop: held until the test releases it
   folder(join(lib, 'sr6'), 'y1-third', 'queued')
   const reimport = (game: string, id: string) => {
     const [pre, l, c] = game === 'sr6' ? [['sr6'], join(lib, 'sr6'), join(custom, 'sr6')] : [[], lib, custom]
@@ -80,6 +80,7 @@ test('a queue left in jobs.json runs again in its own order, and its Re-import a
     expect(await (await fetch(`${base}/api/books/reimport-all`)).json())
       .toEqual({ queued: ['z1-second', 'z2-first'], skipped: [{ id: 'z0', why: 'no PDF' }] })
     expect((await list(base)).find(b => b.id === 'z1-second')).toMatchObject({ busy: true }) // (queued, or importing by now)
+    writeFileSync(join(lib, 'z2-first', 'release'), '')
     for (const id of ['z2-first', 'z1-second']) await settled(base, 'books', id)
     await settled(base, 'sr6/books', 'y1-third')
     expect(runs(log)).toEqual(['z2-first', 'z1-second', 'y1-third'])
