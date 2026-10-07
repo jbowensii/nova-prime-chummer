@@ -102,6 +102,10 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 
 `kind()` stays: measured, the general reader agrees on 62 of 77 tables. Deadly Arts files weapon mods, launchers, VLS cells and racks as weapons (no DV column), power supplies, mortar bombs, railgun ammo and warheads as gear (they print DV), and armor mods as armor.
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names the PAG by its full title, the MAID drones with the maker and without the class, and a fuel row by its weapon; their stats find them (5 renames).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Deadly Arts-Core Advanced Combat Rulebook-CAT28011.pdf>" --out "%TEMP%\da-check"

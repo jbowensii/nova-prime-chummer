@@ -75,6 +75,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 
 The recipe's map stays: measured, the general reader agrees on 41 of 46 tables. The critter cyberlimb accessories and exoframe modules (no ESSENCE column) are augmentations in the book's filing.
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names an endosymbiont variant and a fuel row its own way; their stats find them (2 renames).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"

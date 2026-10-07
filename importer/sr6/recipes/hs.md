@@ -55,6 +55,10 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 - **Data structures:** the bold run-ins under `#### Types of Data Structures`.
 - **Quality paths:** `## Quality Path: Cyberadept` (its steps: the headings under it).
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names a cable spool and a rail gun row their own way; their stats find them (2 renames).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Hack & Slash-Core Matrix Rulebook-CAT28006.pdf>" --out "%TEMP%\hs-check"

@@ -37,6 +37,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
 
 - **Ammunition types:** the Krime ammunition rows priced `xN` (a multiple of the ammunition they replace).
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names three grenade rows as 'Grenade, <name>'; their stats find them (3 renames).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Krime Katalog-Gear Catalog-none.pdf>" --out "%TEMP%\kk-check"

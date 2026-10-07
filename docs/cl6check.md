@@ -107,6 +107,21 @@ book's entry counts only under the object's own name, and in a kind its home boo
 **Found objects.** An entry of ours under the object's name is the object even when it prints no field the tool
 compares (a mentor spirit, a tradition, a metamagic): it is found, with no fields compared.
 
+**Renamed by stats.** Commlink6 renamed some items by hand (`VI Ace of Cups` for a row printed `Vashon Island (Ace of
+Cups)`). A record no name finds is compared by its stats, not its name, with our entries in its own book and kinds that
+no Commlink6 record matches (`match.by_stats`). The stats are the compared fields (cost and every other number
+formula-aware, at every rating; availability, DV, AR, modes, ammo, Essence, capacity, rating range, defense, the
+vehicle stats); categorical fields such as a spell's type, and the quality's sign, tell too little and don't count. A
+field agrees only where our entry prints a value, and conflicts only where it prints another one.
+- **Strong**: three stats or more agree exactly (two on the record's own page, ±1), none conflicts, and the match is
+  unique: one item of ours (its variant rows count as one), no entry another record already matches fits as well, and
+  no other missing record matches the same entry. It counts as found (family `renamed by stats`), compared with that
+  entry. Our printed name stays canonical; Commlink6's is only a search alias.
+- **Weak** (one stat, or ties): not counted. The not-found row lists the candidates (`stat`).
+
+The owner's review list, `stat-match-review.csv` (book, page, kind, Commlink6 name, verdict, candidate, agreeing and
+conflicting stats; names only, never committed), holds the strong matches first, then the weak candidates.
+
 **Found values.** A field the importer filled from an errata (`<found how="errata">`, importer/sr6/resolve.py) is
 read as that errata's observation, dated by it, not the book's.
 

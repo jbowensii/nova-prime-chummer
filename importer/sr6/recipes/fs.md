@@ -59,6 +59,10 @@ rules (Suppressive Fire), so it is not applied: the import keeps the book's prin
 
 `kind()` stays: measured, the general reader agrees on 40 of 87 tables. Firing Squad files its weapon modifications and accessories (no DV) as weapons, and Toughweave as armor.
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names the armor rows of two makers by an abbreviated maker plus the variant, a maker-product row by the product, and one weapon by another spelling; their stats find them (9 renames).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Firing Squad-Core Combat Rulebook-CAT28002.pdf>" --out "%TEMP%\fs-check"

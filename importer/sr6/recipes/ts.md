@@ -41,6 +41,10 @@ compares them without spaces, and rule section names keep them.
 - Issues: an injector rig's row with no price printed (`missing`).
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names the four Rampart shield rows maker plus mark; their stats find them (4 renames).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Tarnished Star-Runner Resource Book-CAT28516.pdf>" --out "%TEMP%\ts-check"

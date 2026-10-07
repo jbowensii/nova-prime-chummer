@@ -421,11 +421,60 @@ def _matched_names(corpus, cl6):
     return out
 
 
+def _unmatched(corpus, cl6):
+    """{family: ([our entries no Commlink6 record matches], [those one does])} in each book family's own (non-errata)
+    books: the pool stat matching draws on, and the entries a unique match must not also fit."""
+    used, by_src = set(), {}
+    for c in cl6:
+        if c["modelled"] and not c.get("cl6only"):
+            by_src.setdefault(lineage.family(c["src"]), []).append(c)
+    out = {}
+    for fam, recs in by_src.items():
+        ents = [e for b in corpus.books if lineage.family(b.belongs) == fam and not b.errata and not b.context
+                for e in b.entries]
+        for _, hits, _ in match.match(recs, ents):
+            used.update(match.n1(h["name"]) for h in hits)
+        names = {match.n1(n) for c in recs for n in (c["name"], *c["aliases"])}
+        out[fam] = ([e for e in ents if match.n1(e["name"]) not in used | names],
+                    [e for e in ents if match.n1(e["name"]) in used | names])
+    return out
+
+
+def stat_matches(corpus, cl6, missing):
+    """{id(record): (verdict, our entry or None, details)} for the records no name finds (missing): match.by_stats
+    against our unmatched entries of the record's book and kinds. A strong match whose entry another missing record
+    also matches strongly is a tie: weak."""
+    pool = _unmatched(corpus, cl6)
+    got = {}
+    for c in missing:
+        kinds = set(c["pool"]) or {c["kind"]}
+        free, used = pool.get(lineage.family(c["src"]), ([], []))
+        got[id(c)] = match.by_stats(c, [e for e in free if e["kind"] in kinds], [e for e in used if e["kind"] in kinds])
+    taken = Counter(match.n1(v[1]["name"]) for v in got.values() if v[0] == "strong")
+    for k, v in got.items():
+        if v[0] == "strong" and taken[match.n1(v[1]["name"])] > 1:
+            got[k] = ("weak", None, [(v[1], v[2], [])])
+    return got
+
+
 def run(corpus, cl6, verdicts=None):
     """(rows, counts): one row per differing field of every Commlink6 record we model, and the tallies. verdicts:
-    {'src|id|field': {family, note, crop}} read off the rendered page (the owner's file, see apply_verdicts)."""
+    {'src|id|field': {family, note, crop}} read off the rendered page (the owner's file, see apply_verdicts).
+    A record no name finds is matched by its stats (stat_matches): a strong match is a rename (family 'renamed by
+    stats', our printed name kept, Commlink6's an alias); weak candidates go on the not-found row as `stat`."""
     rows, n = [], Counter()
     matched = _matched_names(corpus, cl6)
+
+    def lookup(c, names):
+        home = lineage.family(c["src"])
+        kinds = set(c["pool"]) or {c["kind"]}
+        ents = corpus.entries(kinds, names, home)
+        obs = lineage.observe(corpus, kinds, names, home)
+        own = [o for o in obs if not o.context and not o.variant]
+        found = bool(own) or any(e["kind"] in kinds and not b.context for b, e in ents)
+        return found, ents, obs
+
+    todo, missing = [], []
     for c in cl6:
         n["records"] += 1
         if c.get("cl6only"):
@@ -440,29 +489,45 @@ def run(corpus, cl6, verdicts=None):
         home = lineage.family(c["src"])
         if not any(lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)):
             names += [x for x in matched.get(id(c), []) if x not in names]  # its own book prints it another way
-        kinds = set(c["pool"]) or {c["kind"]}
-        ents = corpus.entries(kinds, names, home)
-        obs = lineage.observe(corpus, kinds, names, home)
-        own = [o for o in obs if not o.context and not o.variant]
+        found, ents, obs = lookup(c, names)
         # (an entry of ours under the object's name is the object, even one printing no field: a mentor spirit)
-        if not own and not any(e["kind"] in kinds and not b.context for b, e in ents):
+        if not found:
             printed = corpus.mentions(names)
             if not printed and any(match.bundled(c["name"], e) for b in corpus.books if lineage.family(b.belongs) == home
-                                   and not b.errata for e in b.entries if e["kind"] in kinds):
+                                   and not b.errata for e in b.entries if e["kind"] in (set(c["pool"]) or {c["kind"]})):
                 # a listing Commlink6 composed of a product's rows (`Cougar Polearm (Small)`): no book's item
                 n["Commlink6-only records"] += 1
                 rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
                              "field": "", "family": "Commlink6-only record", "where": "composed from a product's rows"})
                 continue
-            n["object not found"] += 1
-            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
-                         "field": "", "family": "object not found",
-                         "where": "name printed in text" if printed else "name nowhere in text"})
+            missing.append((c, names, printed))
             continue
+        todo.append((c, names, ents, obs, None))
+    stats = stat_matches(corpus, cl6, [c for c, _, _ in missing])
+    for c, names, printed in missing:
+        verdict, o, det = stats[id(c)]
+        if verdict == "strong":
+            n["renamed by stats"] += 1
+            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
+                         "field": "", "family": "renamed by stats", "where": o["name"], "agree": det})
+            names = [*names, o["name"]]
+            todo.append((c, names, *lookup(c, names)[1:], o))
+            continue
+        n["object not found"] += 1
+        n["stat match, weak"] += bool(det)
+        rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
+                     "field": "", "family": "object not found",
+                     "where": "name printed in text" if printed else "name nowhere in text",
+                     "stat": [{"verdict": "tie" if sum(match.strong(c, e, ok) for e, ok, _ in det) > 1 else "weak",
+                               "name": e["name"], "page": e["page"], "agree": ok, "conflict": bad}
+                              for e, ok, bad in det]})
+    for c, names, ents, obs, renamed in todo:
+        kinds = set(c["pool"]) or {c["kind"]}
         n["objects"] += 1
-        kind = next((e["kind"] for _, e in ents if e["kind"] in kinds), c["kind"])
+        kind = renamed["kind"] if renamed else next((e["kind"] for _, e in ents if e["kind"] in kinds), c["kind"])
         chains = lineage.lineage(obs)
-        done, diffs = fields.compare(c, winners_entry(chains, kind))
+        # a rename is compared with the entry its stats matched: another table's row may print the same short name
+        done, diffs = fields.compare(c, {"attrs": renamed["attrs"], "kind": kind} if renamed else winners_entry(chains, kind))
         n["fields compared"] += len(done)
         n["fields equal"] += len(done) - len(diffs)
         n["records exact"] += not diffs

@@ -160,6 +160,10 @@ printing (the loaded printing is the newest).
 
 The recipe's `SECTIONS` map stays: measured, the general reader agrees on 60 of 77 tables. The rest are the book's filing a column signature can't tell: weapon accessories filed as weapons, armor modifications as armor, `ammo types` as ammunition types (no COST MULTIPLIER header in the weapons table's sense), the sensor function rows (no price column: the reader would call them rules), `Communications and Countermeasures` and `sensors` as electronics.
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names two cyber-implant weapon rows and an ammo row its own way (the category or a count added); their stats find them (3 renames). Nothing changes in the import.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"
