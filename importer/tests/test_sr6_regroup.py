@@ -635,3 +635,32 @@ Wobbles get fixed.
         self.assertNotIn(("Plain", "GIZMOS"), rows)  # titled with its item's name: that item's variants
         self.assertNotIn(("Wobble Kit", "REPAIRS"), rows)  # a later chapter prints the list again
         self.assertIn("| Shiny | x1.5 | +1 |", regroup.regroup(self.MD)[0])  # (kept in the text)
+
+
+class RowGroupsAndSubTablesTest(unittest.TestCase):
+    """Indented rows under a name-only row, a bold name-only row over rows of one price shape, and sub-tables stacked
+    under one table's title (the core rulebook's `magical goods table`: foci, formulae, supplies). Made up; the
+    converter's marks: two no-break spaces for an indented first cell, an en space for a bold one."""
+    MD = ("<!-- page 9 -->\n# GIZMOS\n## Gizmo Shop\n#### Zorp Gadgets\nZorp gadgets are made up.\n#### zorp gear table\n"
+          "##### widgets\n| TYPE | BONDING COST | AVAIL | COST |\n|---|---|---|---|\n| Glow widget | 2 | 3 | 500¥ |\n"
+          "| PLANS | AVAIL | COST |\n|---|---|---|\n| Zap plan | 2 | 100¥ |\n| \u2002Fizz plans |  |  |\n| Small | 1 | 10¥ |\n"
+          "| Large | 2 | 20¥ |\n| Other kit | 3 | 9¥/day |\n"
+          "| SUPPLIES | AVAIL | COST |\n|---|---|---|\n| Zorp dust | 1 | 5¥ |\n| Zorp wire | 1 | 5¥ |\n"
+          "#### Hire\nHiring is made up.\n#### hire table\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Plans club |  |  |\n"
+          "| \u00a0\u00a0Bronze | 1 | 50¥/month or 500¥/year |\n| \u00a0\u00a0Gold | 1 | 90¥ |\n| Lone gizmo | 1 | 5¥ |\n")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.items = {b.name: b for b in blocks(regroup.regroup(cls.MD, name_headers=frozenset({"TYPE", "ITEM"}))[0])
+                     if b.row is not None}
+
+    def test_indented_rows_are_their_name_only_rows_group(self):
+        self.assertEqual([self.items[n].group for n in ("Bronze", "Gold", "Lone gizmo")], ["Plans club", "Plans club", ""])
+
+    def test_a_bold_name_only_row_groups_the_rows_of_one_price_shape(self):
+        self.assertEqual([self.items[n].group for n in ("Small", "Large", "Other kit", "Zap plan")], ["Fizz plans", "Fizz plans", "", ""])
+
+    def test_sub_tables_take_their_first_header_and_keep_the_tables_title(self):
+        got = {n: (self.items[n].label, self.items[n].table) for n in ("Glow widget", "Zap plan", "Zorp dust")}
+        self.assertEqual(got, {"Glow widget": ("widgets", "zorp gear table"), "Zap plan": ("plans", "zorp gear table"),
+                               "Zorp dust": ("supplies", "zorp gear table")})

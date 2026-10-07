@@ -62,6 +62,8 @@ class ReadTest(unittest.TestCase):
     def test_base_item_values(self):
         self.check("x3", "B*3")
         self.check("(Widget) x 2", "B*2")
+        self.check("Gizmo cost x 0.25", "B*0.25")  # a share of the item it is made for (`Focus cost x 0.25`)
+        self.check("As gizmo", "B", "avail")
         self.check("+50%", "B*1.5")
         self.check("Gizmo cost plus rating x 70", "B + R*70")
         self.check("120¥ + Gizmo Cost", "120 + B")

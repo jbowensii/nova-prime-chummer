@@ -212,6 +212,10 @@ class MatchTest(unittest.TestCase):
              c("Sm. Zorp/Med. Zorp (10x)")], mine)}
         self.assertEqual(got["Flare Glow"], ("split word-order", ["Glow/Bright Glow Flare"]))
         self.assertEqual(got["Sm. Zorp/Med. Zorp (10x)"], ("abbreviated", ["Small Zorp/Medium Zorp"]))
+        rows = [entry("Bronze (year)", group="Zorp contract"), entry("Gold (year)", group="Zorp contract")]
+        two = {x[0]["name"]: (x[2], [o["name"] for o in x[1]]) for x in match.match([c("Zorp Contract"), c("Zorp Gold (1 Year)")], rows)}
+        self.assertEqual(two["Zorp Contract"], ("group head", ["Bronze (year)", "Gold (year)"]))  # (its rows)
+        self.assertEqual(two["Zorp Gold (1 Year)"], ("contained", ["Gold (year)"]))
         self.assertEqual(got["Grenade, Party"], ("alias", ["Party grenade"]))
         self.assertEqual(got["Zorp buoy"], ("loose", ["Zorp Buoys"]))
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))

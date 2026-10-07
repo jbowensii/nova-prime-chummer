@@ -144,16 +144,24 @@ def match(cl6, ours):
         if found[i] or not c["page"]:
             continue
         key = toks(c["name"])
-        hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8) and any(
+        # (not a row whose group the record names: `DocWagon Contract` is the group head stage's, its rows the levels')
+        hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8)
+                and n1(o.get("attrs", {}).get("group") or "") != n1(c["name"]) and any(
                 contained(key, toks(n)) and (near(o["page"], c["page"], 1) or (min(len(key), len(toks(n))) >= 2 and
                                                                              near(o["page"], c["page"], 3))
                                              or (len(key) >= 2 and key <= toks(n))) for n in _names(o))]
+        share = {id(o): max(len(key & toks(n)) for n in _names(o)) for o in hits}  # the rows sharing the most words
+        hits = [o for o in hits if share[id(o)] == max(share.values())]  # (`Ritual Spellcasting`, not `Spellcasting`)
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)
     for i, c in enumerate(cl6):  # our row named within its category (group): `Implanted Shotgun` is `Shotgun` there
         if found[i] is None and pool[i] and (hits := [o for o in pool[i] if grouped(c["name"], o)]):
             found[i] = (hits, "group")
+    for i, c in enumerate(cl6):  # the name of a group of our rows (`DocWagon Contract`: the rows grouped under it)
+        if found[i] is None and pool[i] and (hits := [o for o in pool[i] if o.get("attrs", {}).get("group")
+                                                     and n1(o["attrs"]["group"]) == n1(c["name"])]):
+            found[i] = (hits, "group head")
     for i, c in enumerate(cl6):
         if found[i] or not pool[i]:
             continue

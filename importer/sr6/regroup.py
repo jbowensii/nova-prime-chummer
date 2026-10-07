@@ -40,6 +40,8 @@ class Block:
     # a configuration row of one product (shapes.boxes): the product its box titles, and that title's maker
     product: str = ""
     maker: str = ""
+    group: str = ""  # the name-only row its table row is grouped under (`DocWagon contracts` over `Basic`): _row_groups
+    table: str = ""  # the title of the table its row's table is a sub-table of (`magical goods table`)
 
 
 def norm(name, aliases=None):
@@ -121,6 +123,55 @@ def _cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 
 
+class _Row(list):
+    """A table row (its cells) with the name-only row it is grouped under, if any."""
+    group = ""
+
+
+_INDENT, _BOLD_MARK = "\u00a0", "\u2002"  # the converter's first-cell marks (layout._first_marks)
+
+
+def _row_groups(lines, rows):
+    """rows (the table's final rows) as _Row with their group: a name-only row heads the rows printed indented under
+    it until the indent ends; a bold name-only row with no indent under it (a centred column gives none) heads the
+    rows after it while their prices keep one shape (`N¥`), ending at a row of another shape, a bold or name-only row.
+    lines: the table's body lines as book.md prints them (the marks), matched to the rows by name. `Rating N` rows are
+    rating groups (_rating_groups), not these."""
+    raw = []
+    for ln in lines:
+        first = ln.strip()[1:-1].split("|")[0].lstrip(" \t")
+        cells = _cells(ln)
+        raw.append((cells[0], first.startswith(_INDENT), _BOLD_MARK in first[:3], not any(cells[1:]),
+                    re.sub(r"\d[\d,.]*", "N", " | ".join(cells[1:]))))
+    group = [""] * len(raw)
+    i = 0
+    while i < len(raw):
+        name, _, bold, bare, _ = raw[i]
+        name = name if re.match(r"[^\W_]", name) else ""  # (a note in brackets, `(Any man-portable weapon)`: no group)
+        j = i + 1
+        if bare and name and j < len(raw) and raw[j][1] and not raw[i][1]:
+            while j < len(raw) and raw[j][1]:
+                group[j] = name
+                j += 1
+        elif bare and bold and name and j < len(raw) and not raw[j][1] and not raw[j][2] and not raw[j][3]:
+            shape = raw[j][4]
+            while j < len(raw) and not raw[j][2] and not raw[j][3] and raw[j][4] == shape:
+                group[j] = name
+                j += 1
+        i = j
+    out, k = [], 0
+    for r in rows:
+        x = _Row(r)
+        for m in range(k, len(raw)):
+            if raw[m][0] and r and raw[m][0] == r[0]:
+                if group[m] and not _RATING_ROW.match(r[0]):
+                    x.group = group[m]
+                k = m + 1
+                break
+        out.append(x)
+    return out
+
+
 @dataclass
 class _Table:
     header: list
@@ -133,6 +184,7 @@ class _Table:
     unpaired: list = field(default_factory=list)  # catalog rows no description took
     notes: dict = field(default_factory=dict)  # the labelled lines printed right under it in a box (`Note:`)
     titled: bool = False  # printed right under its own title (not the second of tables stacked under one)
+    parent: str = ""  # the title of the table it is a sub-table of (`magical goods table` over `foci`, `formulae`)
 
 
 def _elements(md):
@@ -146,11 +198,12 @@ def _elements(md):
         if m := _PAGE.match(ln):
             page = int(m.group(1))
         elif ln.startswith("|") and i < len(lines) and _SEP.match(lines[i]):
-            rows = []
+            rows, body = [], []
             i += 1
             # rows run to the next header (a header line has its rule under it)
             while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
                 rows.append(_cells(lines[i]))
+                body.append(lines[i])
                 i += 1
             header, rows = _header_rest(_cells(ln), rows)
             header = [deinterleave(h) or h for h in header]
@@ -158,6 +211,7 @@ def _elements(md):
             if (more := _text_rows(header, lines, i)) is not None:
                 header, extra, i = more
                 rows += extra
+            rows = _row_groups(body, rows)
             prev = out[-1] if out else None
             if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
                 t = prev[2]  # a second header row under the first, its values under it: one table, side by side
@@ -437,6 +491,18 @@ class _Unit:
         return any(isinstance(b, str) for b in self.body)
 
 
+# a first header that is a name column's own word, not a class of things (`FORMULAE`, `GRENADES`)
+NAME_COLUMNS = {"TYPE", "TYPES", "ITEM", "ITEMS", "NAME", "WEAPON", "WEAPONS", "GEAR", "DEVICE", "CLASS", "ARMOR"}
+
+
+def _names_class(header, first):
+    """A table stacked under another's title whose first header names its own class of things (`FORMULAE`,
+    `MAGICAL SUPPLIES` under `foci`): that header is its title."""
+    h = (header[0] if header else "").strip().upper()
+    return (bool(re.fullmatch(r"[A-Z][A-Z ]{3,}", h)) and h not in NAME_COLUMNS
+            and h != (first[0] if first else "").strip().upper())
+
+
 def _is_label(level, text):
     """A table title, box title or art caption: its first letter is lower case (`ares predator VI`)."""
     first = re.search(r"[^\W\d_]", text)
@@ -446,7 +512,7 @@ def _is_label(level, text):
 def _units(els, start, end, chapter, item_keys, aliases):
     """The chapter's units in reading order. item_keys: the norm keys of its item headings (a lower-case title
     with one of them is a stat box)."""
-    units, section = [], ""
+    units, section, over = [], "", None
     cur = _Unit("section", chapter, 1, els[start][1] if start < end else 0, chapter, "")
     units.append(cur)
     mode = "text"  # "box": right after a heading, taking tags, tables and labelled lines
@@ -485,6 +551,11 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     i += 1
                     mode, fresh = "box", False
                     continue
+                if nxt and nxt[0] == "h" and _is_label(nxt[2][0], nxt[2][1]):
+                    # a table's title over its sub-tables' titles (`magical goods table` / `foci`, `vehicles` /
+                    # `microdrones`): a title naming a table or a plural class, not an art caption (`panther xxl`)
+                    over = text if re.search(r"(?i)\btables?$|[a-z][^s\W]s$", text.strip()) else None
+                    continue
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
                     continue  # an art caption: dropped, the text flows on
                 # a stat box: a title an item heading has, or one-row bands followed by labelled lines
@@ -498,9 +569,14 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     first = i
                     while i < end and els[i][0] == "t":
                         t = els[i][2]
-                        t.title, t.section, t.titled = text, section, i == first
+                        t.title, t.section, t.titled, t.parent = text, section, i == first, over or ""
+                        if i > first and _names_class(t.header, els[first][2].header):
+                            # a sub-table: its first header names its class (`FORMULAE` stacked under `foci`), the
+                            # table's title stays its table's
+                            t.title, t.titled, t.parent = t.header[0].lower(), True, over or text
                         cur.body.append(t)
                         i += 1
+                    over = None
                     continue
                 cur = _Unit("box", text, level, page, chapter, section)
             elif level <= 3:
@@ -508,6 +584,7 @@ def _units(els, start, end, chapter, item_keys, aliases):
                 cur = _Unit("section", text, level, page, chapter, section)
             else:
                 cur = _Unit("item", text, level, page, chapter, section)
+            over = None  # (a heading ends a table title's run)
             cur.pos = i - 1
             units.append(cur)
             mode, fresh = "box", cur.kind != "box"
@@ -642,11 +719,12 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
     def price_list(t):
         """A price list set in running text (the credsticks' `TYPE | MAX VALUE | AVAIL | COST` inside a description):
         an availability and a cost column, every row led by a name (none by a number: a rating band), two rows at
-        least, half of them priced (`500¥`, not a grade's `x1.2` multiplier). Its rows are items, unless a later
-        chapter prints them again in a table (the rigging chapter's `vehicle modding` reprints the gear chapter's
-        list: the later chapter's is the catalog). Only a table under its own title, in an item's text, is asked
-        (not a stat box, nor the second of tables stacked under one title), and not one titled with the item's own
-        name (`rapid transit` under `Rapid Transit`: its variants, the recipe's to read)."""
+        least, half of them priced (`500¥`, not a grade's `x1.2` multiplier). Its rows are items, but a row a later
+        chapter prints again in a table is that chapter's (the rigging chapter's `vehicle modding` reprints the gear
+        chapter's list; the magic chapter's `formulae` adds only `Ritual Spellcasting` to the gear chapter's). Only a
+        table in an item's text under its own title or a first header naming its class (`FORMULAE`) is asked (not a
+        stat box, nor a second table stacked under one title), and not one titled with the item's own name (`rapid
+        transit` under `Rapid Transit`: its variants, the recipe's to read)."""
         hs = [h.upper() for h in t.header]
         cost = next((i for i, h in enumerate(hs) if h.startswith("COST")), None)
         if cost is None or len(hs) < 3 or len(t.rows) < 2 or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs) \
@@ -654,12 +732,21 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             return False
         priced = sum(1 for r in t.rows if len(r) > cost and re.search(r"\d", r[cost])
                      and not re.match(r"\s*[x×]", r[cost]))
-        return 2 * priced >= len(t.rows) and 2 * sum(1 for r in t.rows if norm(r[0]) in later) < len(t.rows)
+        if 2 * priced < len(t.rows):
+            return False
+        own = [r for r in t.rows if norm(r[0]) not in later]  # (the rows a later chapter prints again are its)
+        if own and len(own) < len(t.rows):
+            t.rows = own
+        return bool(own)
 
     tables = []
     for u in [u for u in units if not u.merged]:
         for t in [b for b in u.body if isinstance(b, _Table)]:
-            t.catalog = is_catalog(t) or u.kind == "item" and t.titled and not _same(t.title, u.name) and price_list(t)
+            cls = not t.titled and _names_class(t.header, [])  # (no title: its first header names its class)
+            t.catalog = is_catalog(t) or u.kind == "item" and (t.titled or cls) \
+                and not _same(t.title, u.name) and price_list(t)
+            if t.catalog and cls and not t.title:
+                t.title = t.header[0].lower()
             tables += [t] if t.catalog else []
         if u.kind == "item":  # a catalog table right under an item heading isn't that item's box
             for t in [t for t in u.stats if is_catalog(t)]:
@@ -814,10 +901,11 @@ def _emit(units):
                 al = [u.name] if r and name != u.name and other_name(name, u.name) else []
                 out.append(Block("item", name, u.chapter, u.section, t.title if t else label, u.page,
                                  list(t.header) if t else [], _row(t.header, r) if t else None, stats, u.tags,
-                                 dict(u.labels), text, u.level, al))
+                                 dict(u.labels), text, u.level, al, group=getattr(r, "group", ""),
+                                 table=t.parent if t else ""))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
-            out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r))
-                    for r in t.unpaired]
+            out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r),
+                          group=getattr(r, "group", ""), table=t.parent) for r in t.unpaired]
     return out
 
 
@@ -854,7 +942,8 @@ def _md(header, rows):
 
 def render(b):
     meta = {"name": b.name, "chapter": b.chapter, "section": b.section, "label": b.label, "page": b.page,
-            "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {})}
+            "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {}),
+            **({"group": b.group} if b.group else {}), **({"table": b.table} if b.table else {})}
     lines = [f"<!-- {b.type} {json.dumps(meta, ensure_ascii=False)} -->"]
     if b.row is not None:
         lines += _md(b.header, [[b.row.get(h, "") for h in b.header]])
@@ -898,5 +987,5 @@ def blocks(text):
                 stats += [_row(h, r) for r in rows]
         out.append(Block(m.group(1), meta["name"], meta["chapter"], meta["section"], meta["label"], meta["page"],
                          header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"],
-                         meta.get("aliases", [])))
+                         meta.get("aliases", []), group=meta.get("group", ""), table=meta.get("table", "")))
     return out

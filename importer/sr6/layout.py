@@ -447,7 +447,35 @@ def _table(head, header, bounds, rows_lines, bands, labels):
     used = head + [w for ln in rows_lines for w in ln]
     bbox = (min(w["x0"] for w in used), min(w["top"] for w in head), max(w["x1"] for w in used),
             max(w["bottom"] for w in used))
-    return bbox, [header] + [[_text([w for w in r[2] if col(w) == c]) for c in range(len(header))] for r in rows], used
+    cells = [[_text([w for w in r[2] if col(w) == c]) for c in range(len(header))] for r in rows]
+    for cs, mark in zip(cells, _first_marks([[w for w in r[2] if col(w) == 0] for r in rows])):
+        cs[0] = mark + cs[0] if cs[0] else cs[0]
+    return bbox, [header] + cells, used
+
+
+INDENT, BOLD = "  ", " "  # first-cell marks in book.md (whitespace: a reader that strips never sees them)
+_INDENT_MIN, _INDENT_MAX = 4, 30  # pt; a first cell set this much right of the column's flush edge is indented
+
+
+def _first_marks(firsts):
+    """Each row's mark for its first cell: INDENT when set right of the column's flush left edge (only in a column set
+    flush left: its names start at three x at most), BOLD when bold among regular names, else ''. A row group (the
+    core rulebook's `DocWagon contracts` over its indented levels, a bold `Spell formula` over the spell categories)
+    is read from them in regroup."""
+    xs = [min(w["x0"] for w in f) if f else None for f in firsts]
+    known = [x for x in xs if x is not None]
+    if not known:
+        return [""] * len(firsts)
+    base = min(known)
+    edges = []  # the column's left edges (1 pt apart at least): a flush-left column has one, two or three
+    for x in sorted(known):
+        if not edges or x - edges[-1] > 1:
+            edges.append(x)
+    flush = len(edges) <= 3 and len(known) > len(edges)  # (a centred column: an edge for almost every name)
+    bold = [bool(f) and all(_is_bold(w) for w in f) for f in firsts]
+    some_bold = any(bold) and not all(b for b, f in zip(bold, firsts) if f)
+    return [(INDENT if flush and x is not None and _INDENT_MIN <= x - base <= _INDENT_MAX else "")
+            + (BOLD if some_bold and b else "") for x, b in zip(xs, bold)]
 
 
 def join_headings(blocks, geo):

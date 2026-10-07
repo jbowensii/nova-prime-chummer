@@ -246,6 +246,17 @@ class TraceTest(unittest.TestCase):
         self.assertEqual((n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1))
 
 
+    def test_owner_verdicts_and_commlink6_zero_prices(self):
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[entry("Zorp widget", src="a", avail="2", cost="100")])])
+        recs = [self.rec(cost={None: 0.0}, avail={None: (2, "")}),  # Commlink6 prices it 0: its own field
+                self.rec() | {"id": "made", "name": "Composed Zorp"},  # the owner: Commlink6's own record
+                self.rec(cost={None: 100.0}) | {"id": "renamed", "name": "Zorp gadget"}]  # the owner: our Zorp widget
+        verdicts = {"a|made|": {"family": "Commlink6-only record", "note": "composed"},
+                    "a|renamed|": {"family": "renamed", "rename": "Zorp widget"}}
+        rows, n = trace.run(c, recs, verdicts)
+        self.assertEqual(sorted(r["family"] for r in rows), ["Commlink6-only field", "Commlink6-only record"])
+        self.assertEqual((n["Commlink6-only records"], n["objects"], n["fields compared"], n["fields equal"]), (1, 2, 2, 2))
+
     def test_two_entries_of_one_name_the_record_is_the_one_nearest_its_page(self):
         e1, e2 = entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget", src="a", avail="5", cost="900")
         e1.update(id="a.zorp-widget", page="3")

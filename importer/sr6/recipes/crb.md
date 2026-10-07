@@ -179,15 +179,32 @@ The recipe's `SECTIONS` map stays: measured, the general reader agrees on 60 of 
 - **Foci availability** `(Force) L`, `(Force +3) L`: a formula (`R`, `R + 3`), the legality after the bracket.
 - **A row printing two names** (`Colt Government 2076/Manhunter`): the second part, never printed whole, takes the
   short form the book prints (`Colt Manhunter`, the NPCs' gear) as an alias.
-- Still prose or a decision for the owner (`chummer/books/crb-gaps.md`, worked examples): the credsticks' group name,
-  name-only group rows (`DocWagon contracts`, `Spell formula`), the senses (Improved Sense's choice list), the magic
-  types (Magic/Resonance step paragraphs), the licence types (Fake License's list), counterspelling's two forms and
-  Augmentation overdrive as actions, the grenades' category (first header GRENADES under the title `explosives`) and
-  the `Explosive Packages` rating bands, prices printed only in a sentence (Water-Repellent Coating, the Predator VI's
-  spare clip).
-- The rigging chapter's `Rigger Programs` run-ins repeat the matrix chapter's programs (`See the Programs section`):
-  they come out as second entries (`crb.armor-2`, type `rigger programs`); in the 2019, Seattle and Berlin printings
-  `Armor` takes a cyberware row's `Rating x 5,000¥`. A reprint rule is for later.
+- Still prose or open (`chummer/books/crb-gaps.md`): the senses (Improved Sense's choice list), the magic types
+  (Magic/Resonance step paragraphs), the licence types (Fake License's list), the `Explosive Packages` rating bands,
+  prices printed only in a sentence (Water-Repellent Coating, the Predator VI's spare clip).
+- Owner decisions (2026-10-07), every book:
+  - **Row groups** (converter sr6-5 marks a first cell indented, or bold among regular names; regroup `_row_groups`):
+    a name-only row over indented rows groups them until the indent ends (`DocWagon contracts` over Basic …
+    Super-platinum, `Slap patches` over the patches, p. 281); a bold name-only row with no indent under it (a centred
+    column) groups the rows after it while their prices keep one shape (`Spell formula` over the five categories,
+    p. 294). The row keeps its printed name; `group` holds the group (`DocWagon contract: Basic`), with search names
+    in both of Commlink6's orders (`DocWagon Basic contract`, `Basic DocWagon contract`). A `N/month or N/year` price
+    stays two entries, `per` month and year.
+  - **Sub-tables** (regroup): a table title over several stacked tables (`magical goods table`: `foci`, then
+    `FORMULAE`, then `MAGICAL SUPPLIES`): each stacked table whose first header names a class is its own, that header
+    its category (Formula, Magical supply), the parent title kept as the categories' `table`; its own columns map
+    its fields. The magic chapter's copy adds only `Ritual Spellcasting` (the ritual formula, 3L 1,000¥) to the gear
+    chapter's; `Focus formula` is priced `Focus cost x 0.25`, availability `As focus`: an `ambiguous` issue stating
+    the rule (base: the focus made).
+  - **First header over the title**: a plural class header the title doesn't name is the category (GRENADES under
+    `explosives`: Grenade; `weapon accessories` over ACCESSORY keeps its title).
+  - **Forms as actions**: a heading the section above names as one of its forms (Counterspelling: boosted defense
+    and dispelling) is an action; Augmentation overdrive stays a rule.
+  - **Reprinted lists**: run-ins whose intro points to the page that defines them (`Rigger Programs`, `See the
+    Programs section … (p. 184)`) reference those entries; no second entry.
+  - cl6check: the owner's Commlink6-only records (composed or split, not printed here, renamed NPCs, extra licence
+    types) and renames are verdicts in `chummer/cl6check/cl6-verdicts.json`; Commlink6's price 0 for a priced item is
+    its own field.
 
 ## Real-book check (local, nothing committed)
 

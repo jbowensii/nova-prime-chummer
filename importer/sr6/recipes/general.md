@@ -57,6 +57,9 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 - **A price list in a description** (regroup `price_list`, every recipe): a titled table in an item's text with AVAIL
   and COST columns, its rows names and half of them priced, is a catalog (the core rulebook's credsticks); not a
   grade table (`x1.2`), a second stacked table, one titled with its item's name, or one a later chapter reprints.
+- **Row groups and sub-tables** (converter sr6-5, regroup): a name-only row over indented rows (or a bold one over
+  rows of one price shape) is their `group`; a table stacked under another's title whose first header names a class
+  is a sub-table of its own, that header its category, the parent title kept.
 - **The page's bottom band** (converter sr6-4): only the running feet's faces are dropped there; a table's last rows
   and body lines reaching into the band stay (NPC gear lines, reference rows).
 

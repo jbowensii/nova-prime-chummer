@@ -50,7 +50,7 @@ def words(s):
 
 def singular(w, seen=None):
     """A word's singular, when the book prints it (`clothes` stays: no `clothe`); without the book's words, _stem's."""
-    s = _stem(w)
+    s = w[:-1] if len(w) > 5 and w.endswith("ae") else _stem(w)  # (a Latin plural: `formulae`)
     return s if seen is None or s == w or s in seen else w
 
 
@@ -252,7 +252,7 @@ def build(cat, texts, row_kinds):
             names.setdefault(key(cname), cname)
         for kind, e in rows:
             name = human(e, t, voc.seen)
-            c = cats.setdefault((kind, key(name)), {"name": name, "table": t["title"], "section": t["section"],
+            c = cats.setdefault((kind, key(name)), {"name": name, "table": t.get("parent") or t["title"], "section": t["section"],
                                                      "page": e["page"], "confidence": conf, "why": why if conf == "low" else None,
                                                      "entries": []})
             c["entries"].append(e)
@@ -290,7 +290,7 @@ def build(cat, texts, row_kinds):
             elif c["confidence"] == "low":
                 conf = round(max(0.0, conf - 0.1), 2)
             groups.append((e, kind, c, conf, m))
-            if conf >= GROUP_AT:
+            if conf >= GROUP_AT and not e["attrs"].get("group"):  # (a printed group row's name stays: regroup)
                 e["attrs"]["group"] = c["name"]
                 have = {norm(x) for x in e["aliases"] + [e["name"]]}
                 al = [a for a in _aliases(e["name"], m) if norm(a) not in have]

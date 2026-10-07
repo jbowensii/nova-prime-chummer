@@ -79,6 +79,7 @@ class Found:
     block: object = None  # the heading's block (a kind the recipes read already reads its fields from it)
     priced_steps: int = 0  # a quality path's steps that are qualities priced in Karma
     path: object = None  # an unpriced quality path step's path: written only when that is a path (is_path)
+    cites: tuple = ()  # the pages a run-in list's intro points to (`See the Programs section … (p. 184)`): reprint()
 
 
 def _kind_of(name, rules):
@@ -95,6 +96,16 @@ def _runin_kind(name):
     A title that only mentions them (`Echoes of a Lost Signal`, a book's own title; `Echoes of Divinations`, a group)
     names no kind."""
     return next((k for k, rx in RUNIN_KINDS for m in rx.finditer(name or "") if _HEAD_TAIL.match(name, m.end())), None)
+
+
+ACTION_WORD = re.compile(r"\baction\b", re.I)
+
+
+def forms(text):
+    """The names a section's text gives as its forms (`comes in one of two forms: boosted defense and dispelling`),
+    in norm form."""
+    m = re.search(r"\bforms?\b[^.:;]{0,40}:\s*([^.;]+)", " ".join((text or "").split()), re.I)
+    return {norm(x) for x in re.split(r",\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+", m.group(1)) if x.strip()} if m else set()
 
 
 def _action_attrs(name, chain, tags="", text=""):
@@ -203,6 +214,13 @@ class Reader:
         if f := self._bought_as_quality(b, page, chain):
             return [f]
         kind = _kind_of(parent, HEADING_KINDS)
+        if not kind and self.stack and norm(name) in forms(self.stack[-1][2].text):
+            # a heading the section above names as one of its forms, and an action (owner, 2026-10-07):
+            # Counterspelling "comes in one of two forms: boosted defense and dispelling"
+            f = self._make("actions", name, b, page, chain) if ACTION_WORD.search(b.text or "") else None
+            if f and "type" not in f.attrs and (t := re.search(r"\b(major|minor)\s+action\b", b.text or "", re.I)):
+                f.attrs["type"] = t.group(1).lower()
+            return [f] if f else []
         if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
             kind = "actions"
         if (len(chain), parent) in self.prefixed:
@@ -262,6 +280,8 @@ class Reader:
         t = "\n".join(lead + [b.text or ""])
         t = re.sub(r"\*\*\s*\n\s*\*\*", " ", t)  # a bold name wrapped onto two lines
         lines = t.splitlines()
+        intro = "\n".join(lines[:next((i for i, ln in enumerate(lines) if _RUNIN.match(ln)), len(lines))])
+        cites = tuple(int(n) for n in re.findall(r"\(\s*p\.\s*(\d+)\s*\)", re.sub(r"\*\*", "", intro)))
         for i, ln in enumerate(lines):
             m = _RUNIN.match(ln)
             if not m:
@@ -301,8 +321,16 @@ class Reader:
                 name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
                 if not attrs:
                     continue
-            out.append(Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], para))
+            out.append(Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], para, cites=cites))
         return out
+
+
+def reprint(f, entries):
+    """True when run-in f repeats an entry its list's intro points to (the rigging chapter's `Rigger Programs`, `See
+    the Programs section … (p. 184)`, lists the matrix chapter's programs again): an entry of its kind and name on a
+    cited page (or the next: an entry runs over a page). The list references it; no second entry is made."""
+    return bool(f.cites) and any(norm(e["name"]) == norm(f.name) and str(e["page"]).isdigit()
+                                 and any(0 <= int(e["page"]) - c <= 1 for c in f.cites) for e in entries)
 
 
 # --- vehicle design (Double Clutch's design rules) ---------------------------------------------------------------

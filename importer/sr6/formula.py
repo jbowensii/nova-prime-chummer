@@ -304,7 +304,7 @@ def read(text, field="cost"):
       `300¥ per CF`, `250¥/pair`, `Rating x 200¥ per dose`    -> Q*300, Q*(R*200), unit CF / pair / dose
       `CF x 500`, `500 x CF`                                  -> Q*500, unit CF
       `… cost x the number of occupants`                      -> B*Q, unit occupant
-      `x2`, `(Camera) x 2`                                    -> B*2
+      `x2`, `(Camera) x 2`, `Focus cost x 0.25`               -> B*2, B*0.25; avail `As focus` -> B
       `+100%`, `Armor cost increased 5%`, `20% vehicle price`  -> B*2, B*1.05, B*0.2
       `Commlink cost plus rating x 100`, `As Rocket + R x 50`  -> B + R*100
       `250¥ + Certified Credstick Cost`, `2,000¥ + Commlink`  -> 250 + B
@@ -338,7 +338,10 @@ def read(text, field="cost"):
         return f"Q*{fmt(_n(m.group(1) or m.group(2)))}", {"unit": "CF"}
     if m := re.fullmatch(r"(?:\d+\s+months?\s+of\s+)?[a-z][a-z ]*?\s+cost\s+x\s+the\s+number\s+of\s+([a-z]+)", t, re.I):
         return "B*Q", {"unit": _unit(m.group(1))}
-    if m := re.fullmatch(rf"(?:\([^()]+\)\s*)?[x*]\s*({_NUM})", t, re.I):
+    if field == "avail" and re.fullmatch(r"as\s+(?:the\s+)?[a-z][a-z ]*", t, re.I):
+        return "B", {}  # `As focus`: the availability of the item it is made for
+    # (`Focus cost x 0.25`: a share of the price of the item it is made for)
+    if m := re.fullmatch(rf"(?:\([^()]+\)\s*|[a-z][a-z ]*?\s+cost\s+)?[x*]\s*({_NUM})", t, re.I):
         return f"B*{fmt(_n(m.group(1)))}", {}
     if m := re.fullmatch(rf"(?:\+\s*({_NUM})\s*%(?:\s+[a-z' ]+)?|[a-z ]+?\bincreased\s+({_NUM})\s*%)", t, re.I):
         return f"B*{fmt(1 + _n(m.group(1) or m.group(2)) / 100)}", {}

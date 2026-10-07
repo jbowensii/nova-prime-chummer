@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, formula, resolve, sections, tables
+from importer.sr6 import KINDS, NS, archetypes, categories, formula, regroup, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -86,6 +86,7 @@ SECTIONS = [
     ("gear", "drone", "vehicles", None),
     ("gear", "", "gear", None),
     ("game concepts", "lifestyle", "lifestyles", None),
+    ("magic", "formula", "gear", None),  # the formulae table (the magic chapter's copy adds the ritual formula)
     ("magic", "ritual", "rituals", None),
     ("magic", "adept power", "adeptpowers", None),
     ("magic", "metamagic", "metamagics", None),
@@ -335,7 +336,8 @@ class _Catalog:
         k = (b.label or "", b.section or "")
         if self._table is None or self._table[0] != k:
             self._table = (k, len(self.tables))
-            self.tables[len(self.tables)] = {"title": k[0], "section": k[1], "page": page, "product": b.product}
+            self.tables[len(self.tables)] = {"title": k[0], "section": k[1], "page": page, "product": b.product,
+                                             "parent": b.table}  # (a sub-table's: its table's title)
         return self._table[1]
 
     def section(self, f):
@@ -343,8 +345,10 @@ class _Catalog:
         line; a program of the same type). A heading of a kind this module reads (a sprite power's Range and Duration
         lines) has its fields read as the recipe would."""
         same = lambda e: norm(e["name"]) == norm(f.name) and all(  # noqa: E731
-            e["attrs"].get(k) == f.attrs.get(k) for k in ("type",) if f.attrs.get(k))
-        if any(same(e) for e in self.entries[f.kind]):
+            e["attrs"].get(k) == f.attrs.get(k) for k in ("type",) if f.attrs.get(k)) and (
+            not f.attrs.get("category") or slug(e["attrs"].get("category") or "") in ("", slug(f.attrs["category"])))
+        # (a focus kind `Ritual Spellcasting` is not the formula row of that name)
+        if any(same(e) for e in self.entries[f.kind]) or sections.reprint(f, self.entries[f.kind]):
             return
         a = dict(f.attrs)
         if f.block is not None and f.kind in HEADERS and HEADERS[f.kind]:
@@ -595,10 +599,16 @@ class _Catalog:
                 f or b.tags or kind in ("qualities", "adeptpowers") and b.labels):
             return False  # a rule table under the heading, not the kind's stat band
         if kind in ROW_KINDS:
-            # the table's title, else its first header when it names a category (CARS, not WEAPON), else the section
+            # the first header when it names a class of things (GRENADES under the title `explosives`, not WEAPON or
+            # TYPE: owner, 2026-10-07), else the table's title, else the section
             label, head = slug(b.label), slug(b.header[0] if b.header else "")
-            head = "" if head.upper() in NAME_HEADERS or head == "type" else head
-            attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
+            head = "" if head.upper() in NAME_HEADERS or head.upper().replace("-", " ") in regroup.NAME_COLUMNS else head
+            # (a plural class the title doesn't name: `weapon accessories` over ACCESSORY keeps its title)
+            narrower = head if re.search(r"[^s]s$", head) and formula._stem(head.split("-")[-1]) not in {
+                formula._stem(w) for w in label.split("-")} else ""
+            attrs["category"] = cat or narrower or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
+            if b.group:  # a row printed under a name-only row (`DocWagon contracts`): `DocWagon contract: Basic`
+                attrs["group"] = group_name(b.group)
             if kind == "augmentations":
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
@@ -626,7 +636,8 @@ class _Catalog:
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 e = self.add(kind, n, page, a, notes, "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
                              aliases=(b.aliases if n == name else []) or code_alias(n, b.label)
-                             or (printed_short(n, self.index) if n != name else []))  # (a heading's fuller name first)
+                             or (printed_short(n, self.index) if n != name else [])  # (a heading's fuller name first)
+                             or (grouped_names(n, a["group"]) if a.get("group") else []))
                 e["tab"] = self.table_of(b, page)
                 if b.product:
                     e["product"] = b.product
@@ -864,6 +875,28 @@ def _short_rule(rule, field):
 
 CODE = re.compile(r"[A-Za-z]{0,3}-?\d+[A-Za-z]{0,2}|[A-Z]{2,5}")  # a row named by a code: `m60`, `B25`, `HEX`
 _CLASS_WORDS = re.compile(r"\s+(?:ammunition|ammo|rounds)$", re.I)
+
+
+def group_name(head):
+    """A group row's name as its rows' group: its last word singular, the rest as printed (`DocWagon contracts` ->
+    `DocWagon contract`, `Slap patches` -> `Slap patch`)."""
+    ws = head.split()
+    return " ".join(ws[:-1] + [categories.singular(ws[-1].lower())]) if ws else head
+
+
+def grouped_names(name, group):
+    """The search names of a row named within its group (owner, 2026-10-07: as Commlink6 composes them): the row
+    inside the group's name and in front of it (`Basic` in `DocWagon contract`: `DocWagon Basic contract`, `Basic
+    DocWagon contract`); a row ending in the group's own last word once (`Antidote patch` in `Slap patch`: `Slap
+    Antidote patch`). A qualifier the row's name ends with (`(month)`) stays at the end."""
+    m = re.match(r"(.*?)\s*(\([^()]*\))?\s*$", name)
+    core, tail = m.group(1), f" {m.group(2)}" if m.group(2) else ""
+    gw, cw = group.split(), core.split()
+    if not gw or not cw:
+        return []
+    if formula._stem(cw[-1].lower()) == formula._stem(gw[-1].lower()):
+        return [" ".join(gw[:-1] + cw) + tail] if len(gw) > 1 else []
+    return [" ".join(gw[:-1] + cw + gw[-1:]) + tail, f"{core} {group}{tail}"]
 
 
 def printed_short(name, index):

@@ -9,10 +9,11 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-4"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+SR6_CONVERTER_VERSION = "sr6-5"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
 # split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
 # dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's faces (a table's
-# last rows and body lines reaching into it stay)
+# last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
+# bold among regular names (an en space): its row groups (layout._first_marks)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -289,7 +290,9 @@ def _cell_lines(words, cell):
 
 
 def _table_md(rows):
-    rows = [[(c or "").replace("\n", "<br>").strip() for c in r] for r in rows if any(r)]
+    # (an SR6 band's first-cell marks, leading no-break and en spaces, stay: layout._first_marks)
+    keep = lambda c: (re.match(r"[  ]*", c).group() if c.strip() else "") + c.strip()  # noqa: E731
+    rows = [[keep((c or "").replace("\n", "<br>")) for c in r] for r in rows if any(r)]
     if not rows:
         return []
     head, *body = rows

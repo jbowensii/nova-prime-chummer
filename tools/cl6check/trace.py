@@ -527,7 +527,19 @@ def run(corpus, cl6, verdicts=None):
         if not c["modelled"]:
             n["unmodelled kind"] += 1
             continue
+        # the owner's verdict on the record (`src|id|`; `kind` when two records share an id: a licence and an implant)
+        rv = (verdicts or {}).get(f"{c['src']}|{c['id']}|", {})
+        rv = rv if rv.get("kind") in (None, c["kind"]) else {}
+        if rv.get("family") == "Commlink6-only record":
+            v = rv
+            n["Commlink6-only records"] += 1
+            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
+                         "field": "", "family": "Commlink6-only record", "where": v.get("note") or "the owner's verdict"})
+            continue
         names = [c["name"], *c["aliases"]]
+        # the owner's rename (a verdict naming the printed entry Commlink6's record is: `Ritual formula` is the
+        # formulae table's `Ritual Spellcasting`)
+        names += [x for x in [rv.get("rename")] if x]
         home = lineage.family(c["src"])
         if not any(lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)):
             names += [x for x in matched.get(id(c), []) if x not in names]  # its own book prints it another way
@@ -619,7 +631,12 @@ def run(corpus, cl6, verdicts=None):
     for r in rows:
         if r["field"]:
             left[(r["src"], r["id"])] += 1
-            if r["family"] == "not found" and (not r["winner"] and not r.get("verdict") or r["winner"] and invented(r)):
+            # Commlink6's price 0 for an item the book prices (owner, 2026-10-07), and a field the owner's verdict calls
+            # Commlink6's own: out of the fields compared
+            zero = r["field"] == "cost" and re.fullmatch(r"0(?:\.0+)?", str(r["cl6"]).strip()) \
+                and ours.value(r["winner"]) not in (None, 0)
+            if r["family"] == "Commlink6-only field" or zero or r["family"] == "not found" and (
+                    not r["winner"] and not r.get("verdict") or r["winner"] and invented(r)):
                 r["family"] = "Commlink6-only field"
                 n["fields compared"] -= 1
                 n["Commlink6-only fields"] += 1
@@ -642,7 +659,7 @@ def apply_verdicts(rows, verdicts):
     """The page verdicts (step 3): each row the owner's file names takes its family, with the note and the crop as its
     location; a weak link no verdict confirms goes to not found (a one-digit-off value stays not found)."""
     for r in rows:
-        v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}")
+        v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}") if r["field"] else None  # (a record's: run())
         if v:
             r["family"], r["verdict"] = v["family"], v.get("note", "")
             r["where"] = f"{v.get('note', '')} (page crop {v['crop']})" if v.get("crop") else v.get("note", "")

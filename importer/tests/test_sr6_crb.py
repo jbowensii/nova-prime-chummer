@@ -685,6 +685,12 @@ class CodeAliasTest(unittest.TestCase):
         self.assertEqual(crb.code_alias("Zap Gun", "Zappers"), [])
         self.assertEqual(crb.code_alias("ZX-9", ""), [])
 
+    def test_a_grouped_row_is_named_within_its_group(self):
+        self.assertEqual((crb.group_name("Zorp contracts"), crb.group_name("Glow patches")), ("Zorp contract", "Glow patch"))
+        self.assertEqual(crb.grouped_names("Bronze (month)", "Zorp contract"),
+                         ["Zorp Bronze contract (month)", "Bronze Zorp contract (month)"])
+        self.assertEqual(crb.grouped_names("Fizz patch", "Glow patch"), ["Glow Fizz patch"])  # (its own last word once)
+
     def test_a_split_name_the_book_never_prints_takes_its_printed_short_form(self):
         class Index:  # the book's sentences (invented): the short form only
             def mentions(self, name):
