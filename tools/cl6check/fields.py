@@ -194,7 +194,9 @@ def compare(c, o):
             nm = lambda s: frozenset(t for t in re.split(r"[/,\s]+", re.sub(r"\([^)]*\)", "", up_to(s)).upper()) if t)
             add("modes", _str_field("modes", a.get("modes"), f["modes"], nm, tokens=False))
         if f.get("ammo"):
-            na = lambda s: re.sub(r"[\s()]|(?<=\d),(?=\d{3})", "", re.sub(r"\s+or\s+", "/", (s or "").lower()))
+            # (a cell printing the magazine and what else the weapon draws on, `20(c) + Energy`, prints its ammo)
+            na = lambda s: re.sub(r"[\s()]|(?<=\d),(?=\d{3})", "", re.sub(r"\s+or\s+", "/", re.sub(
+                r"(?<=\))\s*\+\s*[a-z][a-z ]*$", "", (s or "").lower())))
             add("ammo", _str_field("ammo", a.get("ammo"), f["ammo"], na))
     if f.get("defense") and k == "armor":
         add("defense", _num_field("defense", (a.get("defense") or "").lstrip("+") or None,
