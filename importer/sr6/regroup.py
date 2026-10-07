@@ -1095,7 +1095,11 @@ def _emit(units):
             # a box of several one-row tables, a note under each: each row keeps its own notes (as columns: NOTE …)
             # (an item's row: named, not a being's or a vehicle's band)
             several = sum(1 for t in u.stats if len(t.rows) == 1) > 1
-            stats = [{**({"TYPE": t.variant} if t.variant else {}), **_row(t.header, r), **({k.upper(): x for k, x in t.notes.items()}
+            # (a box row grouped under a name-only row, `Medkit` over its indented `Advanced (Rating 1–6)`: named
+            # with its group, as a catalog row is: `Medkit Advanced (Rating 1–6)`)
+            stats = [{**({"TYPE": t.variant} if t.variant else {}),
+                      **_row(t.header, [f"{r.group} {r[0]}"] + list(r[1:]) if getattr(r, "group", "") else r),
+                      **({k.upper(): x for k, x in t.notes.items()}
                                               if several and len(t.rows) == 1 and len(t.header[0]) > 2
                                               and re.search(r"[A-Za-z]{2}", r[0] if r else "") else {})}
                      for t in u.stats for r in t.rows]

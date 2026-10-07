@@ -133,6 +133,11 @@ General rules (regroup, crb, cl6check), each measured on the 74-book corpus:
   (`PILOT AVAIL SENSOR COST` over `0 0 5(I)`): a bold table whose AVAIL cells print no legality letter while most of a
   neighbour's do has the two swapped (`_swapped_avail`).
 
+After the merge with the adventure branch's converter (sr6-6), the medical gear list is a real table under its
+heading (a box): a row grouped under a name-only row is named with it, as a catalog row is (`Medkit Advanced (Rating
+1–6)`); regroup's run-together repair never splits inside a number (the MGL-24 prints `7,500¥` under AVAIL: the book's
+misprint, kept as printed for an override edit).
+
 Recipe hints (da.py): `DRUG` names the drugs table's rows (their headings are sections); a priced NAME table in a rule
 heading's text is a list of items titled by that heading (`Expanded Rocket/Missile Rules`: Standard Rocket, Standard
 Missile; `_text_list`).

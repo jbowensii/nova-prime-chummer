@@ -538,6 +538,12 @@ class RepairRowTest(unittest.TestCase):
         row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertIs(regroup._repair_row(self.H, row), row)
 
+    def test_a_box_row_grouped_under_a_name_only_row_takes_its_name(self):
+        md = ("# MADE CHAPTER\n##### Zap Kits\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Zap Kit |  |  |\n"
+              "| \u00a0\u00a0Small (Rating 1–6) | 2 | Rating x 10¥ |\n| Glow Pen | 2 | 20¥ |\n")
+        b = next(b for b in blocks(regroup.regroup(md)[0]) if b.name == "Zap Kits")
+        self.assertEqual([s["ITEM"] for s in b.stats], ["Zap Kit", "Zap Kit Small (Rating 1–6)", "Glow Pen"])
+
     def test_a_price_printed_under_avail_is_not_split(self):
         # (`7,500¥` under AVAIL is a misprint to report, not `7` and `,500¥` with the last price dropped)
         row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "7,500¥", "17,500¥"]
