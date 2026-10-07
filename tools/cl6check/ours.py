@@ -32,7 +32,7 @@ def value(s, rating=1):
     unreadable."""
     if s is None or NONE.match(s) or len(s) > 100:
         return None
-    src = LEGAL.sub("", s.replace("¥", "")).strip().lstrip("+")
+    src = LEGAL.sub("", re.sub(r"(?i)\s+each\s*$", "", s.replace("¥", ""))).strip().lstrip("+")  # (`1500 each`)
     src = re.sub(r"(?<=\d),(?=\d{3}\b)", "", src)
     src = re.sub(r"[×x*]", " * ", src)
     src = re.sub(r"(?i)\b(?:rating|capacity|force|level)\b", " R ", src).strip()

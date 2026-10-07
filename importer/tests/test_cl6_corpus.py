@@ -287,7 +287,8 @@ class MoreTest(unittest.TestCase):
     def test_matches_with_a_note_and_per_rating(self):
         rec = TraceTest.rec(None, cost={None: 1900.0})
         self.assertEqual(trace._matches(rec, "gear", "cost", "1900", "cost"), "exact")
-        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 each", "cost"), "with a note")
+        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 each", "cost"), "exact")  # a unit price, read as the app does
+        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 per crate", "cost"), "with a note")
         self.assertEqual(trace._matches(rec, "gear", "cost", "1.900", "cost"), "with a note")
         self.assertIsNone(trace._matches(rec, "gear", "cost", "1800", "cost"))
         a = book("A", "2020-03", belongs="a")

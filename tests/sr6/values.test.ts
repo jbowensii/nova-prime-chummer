@@ -17,6 +17,7 @@ test('rated reads plain numbers, Rating formulas and add-ons; avail suffixes are
   expect(rated('5(L)')).toEqual({ n: 5, ok: true })
   expect(rated('Rating (F)', 3)).toEqual({ n: 3, ok: true })
   expect(rated('7I')).toEqual({ n: 7, ok: true })
+  expect(rated('1500 each')).toEqual({ n: 1500, ok: true }) // a unit price
   expect(rated('Rating × 150')).toEqual({ n: 150, ok: true })
 })
 

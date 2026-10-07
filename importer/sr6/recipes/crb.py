@@ -213,7 +213,7 @@ def readable(v):
     optional leading + (an add-on's price) and a legality suffix."""
     if v.strip() in ("", "—"):
         return True
-    s = _VAR.sub(" R ", _LEGAL.sub("", v).strip().lstrip("+"))
+    s = _VAR.sub(" R ", _LEGAL.sub("", re.sub(r"(?i)\s+each\s*$", "", v)).strip().lstrip("+"))  # (`1500 each`)
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
     if "/" in toks and "R" not in toks:
         return False  # `300/350`: two prices, not a division

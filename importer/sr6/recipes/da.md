@@ -105,6 +105,7 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 ## Commlink6 check (importer v4)
 
 - Stat matching (cl6check): Commlink6 names the PAG by its full title, the MAID drones with the maker and without the class, and a fuel row by its weapon; their stats find them (5 renames).
+- Unit prices (importer v4): the artillery, cannon, mortar and railgun ammunition rows print `N each`; the app (values.ts rated()), the importer's readable() and cl6check read it as N.
 
 ## Real-book check (local, nothing committed)
 
