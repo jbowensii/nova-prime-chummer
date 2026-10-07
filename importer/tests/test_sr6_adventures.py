@@ -163,6 +163,26 @@ class WeaponBandTest(unittest.TestCase):
         self.assertEqual(general._weapon_bands(lines), lines)
 
 
+class VariantGroupTest(unittest.TestCase):
+    MD = "\n".join([
+        "# Shopping", "## Spy Gear", "### Sneaky Paints", "Paints that hide a charge.",
+        "| SPY GEAR | AVAIL | COST |", "|---|---|---|", "| Sneaky Paints |  |  |", "| Red Tube | 6(I) | 100 |",
+        "| Blue Tube | 6(I) | 90 |", "| Synthetic | 2 | 20 |", "| Glow Pen | 4 | 250 |", "| Gold Tube | 3 | 50 |",
+        "# Other Chapter", "## Gadgets", "### Glow Pen", "A pen that glows.", "### Synthetic", "A rule section."])
+
+    def names(self, variants):
+        from importer.sr6 import regroup
+        text, _ = regroup.regroup(self.MD, {}, name_headers={"SPY GEAR"}, variants=variants)
+        return [b.name for b in regroup.blocks(text) if b.row is not None]
+
+    def test_group_ends_at_a_row_the_book_describes_elsewhere(self):
+        # (one word, `Synthetic`, is a variant's even where a section of that name exists)
+        self.assertEqual(self.names(True)[1:], ["Sneaky Paints (Red Tube)", "Sneaky Paints (Blue Tube)",
+                                                "Sneaky Paints (Synthetic)", "Glow Pen", "Gold Tube"])
+
+    def test_off_without_the_hint(self):
+        self.assertIn("Red Tube", self.names(False))
+
 
 if __name__ == "__main__":
     unittest.main()

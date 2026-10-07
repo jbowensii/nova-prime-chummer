@@ -644,7 +644,11 @@ def _chapter(units, aliases, name_headers, report, variants=False):
     for t in tables:
         t.rows = _rating_groups(t.rows, t.header[0].capitalize())
         if variants:
-            t.rows = _variants(t.rows, found)
+            described = variants if isinstance(variants, set) else set()
+            # (a row of two words or more the book describes anywhere: `Injector Pen`; one word is a variant's:
+            # `Synthetic`, `Obvious` name sections of their own too)
+            t.rows = _variants(t.rows, lambda n: found(n) or len(n.split()) > 1
+                               and any(k in described for k in keys(n, aliases)))
 
     # each row takes the nearest description with its key that no row with the same name took yet; the widest
     # tables (the stat tables, not a list of names) choose first
@@ -731,7 +735,8 @@ def _rating_groups(rows, first=None):
 
 def _variants(rows, found):
     """A name-only row (`Cybertails`) over rows no description has (`Balance`, `Prehensile`): those rows are
-    `<name> (<row>)` (a row with no name: `<name> (Rating <its second cell>)`) until a row a description has."""
+    `<name> (<row>)` (a row with no name: `<name> (Rating <its second cell>)`) until a row a description has (a
+    heading anywhere in the book names it: `found`)."""
     out, group = [], None
     for r in rows:
         if r and r[0] and not any(r[1:]):
@@ -804,6 +809,8 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []
+    # every heading's keys, book-wide: a variant group ends at a row the book describes anywhere (_variants)
+    heads = {k for e in els if e[0] == "h" and not _is_label(*e[2]) for nm in _names(e[2][1]) for k in keys(nm, aliases)}
     for start, end in bounds:
         if start == end:
             continue
@@ -813,7 +820,7 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
         units = _units(els, start, end, chapter, item_keys, aliases)
         if not chapter and not units[0].body and len(units) == 1:
             continue
-        _chapter(units, aliases, name_headers, report, variants)
+        _chapter(units, aliases, name_headers, report, variants and heads)
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
 

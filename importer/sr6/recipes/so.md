@@ -50,6 +50,13 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 - **Mentor spirits:** `#### Name` under `## Mentor Spirits` (MANA-INFUSED MANNERS).
 - **Quality paths:** the `Quality Path: Name` headings.
 
+## Recipe hints (importer v4)
+
+- **`VARIANT_ROWS`**: the espionage gear table prints a name-only row (`Explosive Cosmetics`) over the rows it groups
+  (`Lipstick`, `Eyeliner`, `Finishing Powder`, `Nail Polish Remover`): each is `Explosive Cosmetics (<row>)`. The group
+  ends at the first row of two words or more the book describes under a heading of its own anywhere (`Injector Pen`),
+  a rule of regroup's `_variants` for every book with the hint (Body Shop's too).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Smooth Operations-Core Face Rulebook-CAT28009.pdf>" --out "%TEMP%\so-check"
