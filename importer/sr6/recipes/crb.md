@@ -163,6 +163,7 @@ The recipe's `SECTIONS` map stays: measured, the general reader agrees on 60 of 
 ## Commlink6 check (importer v4)
 
 - Stat matching (cl6check): Commlink6 names two cyber-implant weapon rows and an ammo row its own way (the category or a count added); their stats find them (3 renames). Nothing changes in the import.
+- Rigger command consoles (importer v4): the RCC table set inside `Resisting Hacking` (first column `RCC`, now a name column) is read: ten consoles, electronics, their DEVICE RATING the rating.
 
 ## Real-book check (local, nothing committed)
 

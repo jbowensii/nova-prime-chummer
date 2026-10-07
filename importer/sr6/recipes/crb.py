@@ -43,7 +43,7 @@ with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
     ALIASES = json.load(_f)
 # first header cells that make a table a catalog in regroup (its rows are items even when no description pairs)
 NAME_HEADERS = {"WEAPON", "WEAPONS", "ARMOR", "ITEM", "AUGMENTATION", "DEVICE", "VEHICLE", "LIFESTYLE", "CYBERJACK",
-                "HEADWARE", "EYEWARE", "EARWARE", "BODYWARE", "LIMB", "GEAR", "CLASS"}
+                "HEADWARE", "EYEWARE", "EARWARE", "BODYWARE", "LIMB", "GEAR", "CLASS", "RCC"}
 
 # (chapter key, context key, kind, category), first match wins. The chapter key is a substring of the block's chapter,
 # the context key of its context (all in norm form; "" is any): for a table row, the table's first header and its

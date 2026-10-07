@@ -367,7 +367,8 @@ def quality_sets(b, page):
 
 
 _COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma"
-                   r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b", re.I)  # (`Karma Cost: 6 points`)
+                   r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b|\*\*Cost:?\*\*:?\s*(\d+)\s*points?\b",
+                   re.I)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
 _BONUS = re.compile(r"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma"
                     r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
 _ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
