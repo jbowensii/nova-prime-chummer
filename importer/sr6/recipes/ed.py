@@ -98,6 +98,10 @@ def _described(bs):
              and (b.type == "item" and b.level == 4 or b.type == "section" and b.level == 3)]
     taken, out = set(), []
     for b in bs:
+        if norm(b.chapter) in (GEAR, SHIPS) and b.row is None and b.stats and not _vehicle(b) \
+                and {"AVAIL", "COST"} & {h.upper() for h in b.stats[0]}:
+            # a priced box under its title (the grenade launcher: its title right over its table) is its row
+            b = replace(b, row={"ITEM": b.name, **b.stats[0]}, header=["ITEM", *b.stats[0]], stats=b.stats[1:])
         if norm(b.chapter) in (GEAR, SHIPS) and (b.row is not None or b.stats and _vehicle(b)):
             name, own = b.name, b.row is None
             if b.row is not None and b.label and not b.text.strip() and not any(_words(name) <= _words(d.name) for d in descs) \
@@ -109,7 +113,7 @@ def _described(bs):
             if d is not None:
                 taken.add(id(d))
                 b = replace(b, text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t),
-                            section=d.section if own else b.section)
+                            section=d.section if own else b.section, tags=b.tags or d.tags)
                 name = d.name if own and _words(d.name) <= _words(name) else name  # (`Mk II` keeps its own)
             if b.row is not None:
                 b = replace(b, name=name, row={**b.row, b.header[0]: name})

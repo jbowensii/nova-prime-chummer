@@ -205,13 +205,30 @@ class MatchTest(unittest.TestCase):
     def test_stages(self):
         def c(name, page="10"):
             return {"name": name, "page": page, "kind": "gear", "pool": ("gear",), "aliases": canon.aliases(name, {})}
-        mine = [entry("Party grenade"), entry("Zorp Buoys"), entry("Gills", page="11"), entry("Far away", page="90")]
+        mine = [entry("Party grenade"), entry("Zorp Buoys"), entry("Gills", page="11"), entry("Far away", page="90"),
+                entry("Glow/Bright Glow Flare", page="40"), entry("Small Zorp/Medium Zorp", page="50")]
         got = {x[0]["name"]: (x[2], [o["name"] for o in x[1]]) for x in match.match(
-            [c("Grenade, Party"), c("Zorp buoy"), c("Transgenic Gills"), c("Nothing like it")], mine)}
+            [c("Grenade, Party"), c("Zorp buoy"), c("Transgenic Gills"), c("Nothing like it"), c("Flare Glow"),
+             c("Sm. Zorp/Med. Zorp (10x)")], mine)}
+        self.assertEqual(got["Flare Glow"], ("split word-order", ["Glow/Bright Glow Flare"]))
+        self.assertEqual(got["Sm. Zorp/Med. Zorp (10x)"], ("abbreviated", ["Small Zorp/Medium Zorp"]))
+        rows = [entry("Bronze (year)", group="Zorp contract"), entry("Gold (year)", group="Zorp contract")]
+        two = {x[0]["name"]: (x[2], [o["name"] for o in x[1]]) for x in match.match([c("Zorp Contract"), c("Zorp Gold (1 Year)")], rows)}
+        self.assertEqual(two["Zorp Contract"], ("group head", ["Bronze (year)", "Gold (year)"]))  # (its rows)
+        self.assertEqual(two["Zorp Gold (1 Year)"], ("contained", ["Gold (year)"]))
         self.assertEqual(got["Grenade, Party"], ("alias", ["Party grenade"]))
         self.assertEqual(got["Zorp buoy"], ("loose", ["Zorp Buoys"]))
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))
         self.assertEqual(got["Nothing like it"], ("", []))
+
+    def test_parentheticals_and_the_records_page(self):
+        # a rating's parenthetical is set aside, a variant's word starting with r is not
+        self.assertEqual(match.n1("Zorp (R 1-6)"), match.n1("Zorp"))
+        self.assertNotEqual(match.n1("Zorp (Ribbonwire)"), match.n1("Zorp"))
+        # rows a record's words are all in: the ones on its own page when some are
+        c = {"name": "Boom Gun ZAP", "page": "20", "kind": "gear", "pool": ("gear",), "aliases": []}
+        mine = [entry("Q1 (ZAP Boom Gun)", page="20"), entry("Q9 (ZAP Boom Gun)", page="27")]
+        self.assertEqual([o["name"] for o in match.match([c], mine)[0][1]], ["Q1 (ZAP Boom Gun)"])
 
 
 class PatternsTest(unittest.TestCase):

@@ -66,7 +66,7 @@ class Sr6RunTest(unittest.TestCase):
         self.assertNotIn("samples", _read(self.custom, "imported", "index.xml"))  # never a catalog file
         self.assertTrue(os.path.isfile(os.path.join(self.book, "regrouped.md")))
         imp = xmlio.read_import(self.book)
-        self.assertEqual((imp.get("recipe"), imp.get("source"), imp.get("converter")), ("crb", "CRB", "sr6-3"))
+        self.assertEqual((imp.get("recipe"), imp.get("source"), imp.get("converter")), ("crb", "CRB", "sr6-6"))
         rows = {(r.get("kind"), r.get("name")): r.attrib for r in imp.iter("row")}
         self.assertEqual(rows[("unpaired-row", "Lost Blaster")]["page"], "250")  # regroup's report, printed pages
         self.assertIn("unknown-column", {k for k, _ in rows})  # and the recipe's

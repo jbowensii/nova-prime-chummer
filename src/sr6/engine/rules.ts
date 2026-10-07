@@ -141,6 +141,22 @@ const RULES: Rule[] = [
       ...entryCite(c.data.entry('qualities', q.id)) }] : []
   }) },
 
+  // a quality granted only (a Returned Soldier power): taken, a quality the runner has must offer its list, and no more
+  // of the list than that quality's choices allow (the list's max, else the choice's count)
+  { code: 'quality.granted', severity: 'warning', tab: 'qualities', check: c => {
+    const offers = c.b.qualities.flatMap(q => c.data.qualities[q.id]?.choices ?? [])
+    const hits: Hit[] = [], taken: Record<string, number> = {}
+    for (const q of c.b.qualities) {
+      const v = c.data.qualities[q.id]
+      if (!v?.granted || !v.category) continue
+      taken[v.category] = (taken[v.category] ?? 0) + 1
+      const room = offers.filter(o => o.category === v.category).reduce((t, o) => t + (o.max ?? o.count), 0)
+      if (!room) hits.push({ path: `qualities.${q.uid}`, message: `${v.name} is granted only, by a quality offering a ${v.category}; the runner has none.`, ...entryCite(c.data.entry('qualities', q.id)) })
+      else if (taken[v.category] > room) hits.push({ path: `qualities.${q.uid}`, message: `More than ${room} ${v.category} qualities taken.`, ...entryCite(c.data.entry('qualities', q.id)) })
+    }
+    return hits
+  } },
+
   { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
   { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {

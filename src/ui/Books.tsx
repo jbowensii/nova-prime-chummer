@@ -217,6 +217,13 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
   const refresh = () => api<Book[]>(bookApi).then(b => { setOffline(false); setBooks(b) }, () => setOffline(true))
   useEffect(() => { if (repo.mode === 'server') { void refresh(); void supportedBooks(sr6 ? 'data/sr6/sources.xml' : 'data/sources.xml').then(setSupported) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // a Re-import all still running (one a server restart resumed too), for a page opened meanwhile: its progress line
+  useEffect(() => {
+    if (repo.mode !== 'server' || !admin) return
+    void api<{ queued: string[]; skipped: { id: string; why: string }[] }>(`${bookApi}/reimport-all`)
+      .then(r => { if (r.queued.length) setBatch(b => b ?? { ids: r.queued, skipped: r.skipped }) }, () => {})
+  }, [admin]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const running = books?.some(b => b.busy || LIVE.includes(b.state))
   useEffect(() => {
     if (!running && !offline) return

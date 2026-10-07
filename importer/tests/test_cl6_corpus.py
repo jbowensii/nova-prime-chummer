@@ -127,6 +127,14 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual([e["name"] for _, e in c.variants({"gear"}, ["Zorp widget"])], ["Zorp widget (deluxe)"])
         self.assertEqual(c.entries({"weapons"}, ["Zorp widget"]), [])
 
+    def test_a_one_word_alias_does_not_pull_in_another_kind(self):
+        a = book("A", "2020-03", entries=[entry("Blaster, Heavy", kind="weapons"), entry("Heavy", kind="gear")])
+        c = corpus.Corpus([a])
+        self.assertEqual([e["name"] for _, e in c.entries({"weapons", "gear"}, ["Blaster, heavy", "heavy"], "a")],
+                         ["Blaster, Heavy"])
+        self.assertEqual([e["name"] for _, e in c.entries({"weapons", "gear"}, ["Heavy gizmo", "heavy"], "a")],
+                         ["Heavy"])  # (the alias alone finds it: kept)
+
     def test_mentions_find_every_line_in_book_order(self):
         c = corpus.Corpus([book("A", "2020-03"), book("B", "2022-07")])
         self.assertEqual([(b.label, ln.no) for b, ln in c.mentions(["Blarg sprocket"])], [("A", 6), ("B", 6)])
@@ -237,6 +245,25 @@ class TraceTest(unittest.TestCase):
         self.assertEqual((n["records"], n["Commlink6-only records"], n["objects"]), (2, 1, 1))
         self.assertEqual((n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1))
 
+
+    def test_owner_verdicts_and_commlink6_zero_prices(self):
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[entry("Zorp widget", src="a", avail="2", cost="100")])])
+        recs = [self.rec(cost={None: 0.0}, avail={None: (2, "")}),  # Commlink6 prices it 0: its own field
+                self.rec() | {"id": "made", "name": "Composed Zorp"},  # the owner: Commlink6's own record
+                self.rec(cost={None: 100.0}) | {"id": "renamed", "name": "Zorp gadget"}]  # the owner: our Zorp widget
+        verdicts = {"a|made|": {"family": "Commlink6-only record", "note": "composed"},
+                    "a|renamed|": {"family": "renamed", "rename": "Zorp widget"}}
+        rows, n = trace.run(c, recs, verdicts)
+        self.assertEqual(sorted(r["family"] for r in rows), ["Commlink6-only field", "Commlink6-only record"])
+        self.assertEqual((n["Commlink6-only records"], n["objects"], n["fields compared"], n["fields equal"]), (1, 2, 2, 2))
+
+    def test_two_entries_of_one_name_the_record_is_the_one_nearest_its_page(self):
+        e1, e2 = entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget", src="a", avail="5", cost="900")
+        e1.update(id="a.zorp-widget", page="3")
+        e2.update(id="a.zorp-widget-2", page="40")
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[e1, e2])])
+        rows, n = trace.run(c, [self.rec(cost={None: 100.0}, avail={None: (2, "")})])
+        self.assertEqual(([r["field"] for r in rows], n["fields equal"]), ([], 2))  # (page 3: not the page-40 one)
 
     def test_fields_compare_with_the_variant_row_that_agrees_most(self):
         ents = [entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget (large)", src="a", avail="2", cost="300")]

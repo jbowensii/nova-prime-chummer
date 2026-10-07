@@ -15,7 +15,8 @@ def n0(s):
 
 def words(s):
     s = (s or "").casefold().replace("’", "'").replace("&", " and ")
-    s = re.sub(r"\((?:rating|force|level|r)[^)]*\)|\brating\s*\d*\b|\[[^\]]*\]", " ", s)
+    # (a rating's parenthetical, `(R 1-6)`, not one whose word starts with r: `(Razorwire)` names a variant)
+    s = re.sub(r"\((?:rating|force|level|r\b)[^)]*\)|\brating\s*\d*\b|\[[^\]]*\]", " ", s)
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return [w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in s.split()]
 
@@ -58,6 +59,26 @@ def split_names(name):
         pre, a, b, post = m.groups()
         out.update({f"{pre}{a}{post}", f"{pre}{b}{post}", f"{pre}{a}", f"{b}{post}"})
     return out
+
+
+def _words_sep(s):
+    """words() keeping each separate, '/' and ',' as spaces (the order matters)."""
+    return words(re.sub(r"\([^)]*\)", " ", s or ""))
+
+
+def abbreviated(name):
+    """A pattern for a name with abbreviated words (a word ending in a full stop: `L.`, `Mach.`), each standing for any
+    word it starts, or None."""
+    raw = re.sub(r"\([^)]*\)", " ", name or "")
+    if not re.search(r"[A-Za-z]\.(?=[\s/A-Za-z]|$)", raw):
+        return None
+    parts = []
+    for tok in re.findall(r"[A-Za-z0-9']+\.?", raw):
+        w = words(tok.rstrip("."))
+        if not w:
+            continue
+        parts.append(re.escape(w[0]) + (r"[a-z0-9]*" if tok.endswith(".") else ""))
+    return re.compile(r" ".join(parts)) if parts else None
 
 
 def _names(o):
@@ -112,21 +133,38 @@ def match(cl6, ours):
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
     stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)])
     stage("word-order", lambda c: [toks(c["name"])], lambda o: [toks(n) for n in _names(o)])
+    # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke Rocket`)
+    stage("split word-order", lambda c: [toks(c["name"])],
+          lambda o: [toks(p) for n in _names(o) for p in split_names(n) if len(toks(p)) > 1])
+    for i, c in enumerate(cl6):  # Commlink6 abbreviating words (`Holdout/L.Pistol/Mach. Pistol`): each a prefix
+        if found[i] is None and pool[i] and (rx := abbreviated(c["name"])):
+            if hits := [o for o in pool[i] if any(rx.fullmatch(" ".join(_words_sep(n))) for n in _names(o))]:
+                found[i] = (hits, "abbreviated")
     used ={id(o) for f in found if f for o in f[0]}
     for i, c in enumerate(cl6):  # one name's words inside the other's, on a nearby page
         if found[i] or not c["page"]:
             continue
         key = toks(c["name"])
-        hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8) and any(
+        # (not a row whose group the record names: `DocWagon Contract` is the group head stage's, its rows the levels')
+        hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8)
+                and n1(o.get("attrs", {}).get("group") or "") != n1(c["name"]) and any(
                 contained(key, toks(n)) and (near(o["page"], c["page"], 1) or (min(len(key), len(toks(n))) >= 2 and
                                                                              near(o["page"], c["page"], 3))
                                              or (len(key) >= 2 and key <= toks(n))) for n in _names(o))]
+        share = {id(o): max(len(key & toks(n)) for n in _names(o)) for o in hits}  # the rows sharing the most words
+        hits = [o for o in hits if share[id(o)] == max(share.values())]  # (`Ritual Spellcasting`, not `Spellcasting`)
+        # (the rows on the record's own page when some are: `Assault Cannon HEX` is p. 140's row, not p. 147's)
+        hits = [o for o in hits if near(o["page"], c["page"])] or hits
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)
     for i, c in enumerate(cl6):  # our row named within its category (group): `Implanted Shotgun` is `Shotgun` there
         if found[i] is None and pool[i] and (hits := [o for o in pool[i] if grouped(c["name"], o)]):
             found[i] = (hits, "group")
+    for i, c in enumerate(cl6):  # the name of a group of our rows (`DocWagon Contract`: the rows grouped under it)
+        if found[i] is None and pool[i] and (hits := [o for o in pool[i] if o.get("attrs", {}).get("group")
+                                                     and n1(o["attrs"]["group"]) == n1(c["name"])]):
+            found[i] = (hits, "group head")
     for i, c in enumerate(cl6):
         if found[i] or not pool[i]:
             continue
@@ -136,7 +174,10 @@ def match(cl6, ours):
         if not best:
             continue
         r0, o0 = best[0]
-        if (len(best) == 1 or r0 - best[1][0] > 0.03) and (r0 >= 0.86 or (r0 >= 0.72 and near(o0["page"], c["page"]))):
+        if (len(best) == 1 or r0 - best[1][0] > 0.03) and (r0 >= 0.86 or (r0 >= 0.72 and near(o0["page"], c["page"]))) \
+                and not (c.get("fields") and stat_agreement(c, o0)[1]
+                         and by_stats(c, [o for o in pool[i] if id(o) not in used and o is not o0])[0] == "strong"):
+            # (a name only like ours, its stats unlike, loses to an entry of ours whose stats are the record's)
             found[i] = ([o0], f"fuzzy {r0:.2f}")
             used.add(id(o0))
     out = []

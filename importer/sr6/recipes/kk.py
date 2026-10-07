@@ -17,6 +17,9 @@ ID, NAME, PUBLISHER, CANON = "KK", "Krime Katalog", "Catalyst Game Labs", True
 BOOK = "Krime Katalog"
 SHA256 = ("d04fab850a4589fdbd5bac99673ff04ad385b6011a9041ae968b6e4ddd9dd967",)  # the owner's copy
 PAGE_OFFSET = 0  # the page numbers print the PDF's
+# heading sizes -> levels (a recipe hint): the items' 27 pt titles level 2, the lists' 15 pt level 5; the running head
+# (43 pt) and page number (26 pt) are page furniture the converter drops (layout.fonts)
+HEADING_LEVELS = {27.0: 2, 21.0: 4, 15.0: 5}
 ALIASES = {}
 NAME_HEADERS = frozenset()
 
@@ -26,12 +29,19 @@ LABEL_SECTIONS = {}
 RULE_CHAPTERS = ("krime katalog",)  # the company profiles and what isn't read stay as rule sections
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
-CHAPTER = "krime katalog"  # its running head, read as a chapter heading on every page
+CHAPTER = "krime katalog"  # its running head: the book's one chapter (prepare_md)
 _CAPTION = re.compile(r"([^:]*?)\s*:\s*sr\s*([56])\b(?:\s+stats)?", re.I)
 # printed headers -> the core rulebook's (crb.HEADERS)
 RENAME = {"ATTACK": "ATTACK RATINGS", "SPEED INT": "SPEED INTERVAL", "SENS": "SENSOR", "BOD": "BODY", "ARM": "ARMOR",
           "SEAT": "SEATS", "NAME": "ITEM", "TYPES": "ITEM"}
 PROSE = {"AR", "DV"}  # an ammunition's modifiers: gear has no attribute for them
+
+
+def prepare_md(md):
+    """book.md with the book's running head as each page's chapter heading again (the converter drops it as page
+    furniture): each page is a chapter, its stat tables paired within it (_prep joins a page's lead block to the item
+    before it)."""
+    return re.sub(r"(?m)^(<!-- page \d+ -->)$", rf"\1\n# {BOOK}", md)
 
 
 def match(meta, md_head):
@@ -67,6 +77,13 @@ def _stat_sets(text):
             if len(costs) > 1:
                 k = costs[0] + 1
                 out.append((subj, h[k:], [r[k:] for r in rows]))
+            elif costs and costs[0] + 1 < len(h) and len(rows) == 1:
+                # the SR6 half's first band after the SR5 half's price, its second band the next table printing a
+                # price of its own (a vehicle's PILOT … AVAIL COST under it; the SR5 half's second band prints none)
+                k = costs[0] + 1
+                nxt = next((t for t in tabs[1:] if {"AVAIL", "COST"} <= {x.upper() for x in t[0]} and len(t[1]) == 1), None)
+                head, row = h[k:] + (nxt[0] if nxt else []), rows[0][k:] + (nxt[1][0] if nxt else [])
+                out.append((subj, head, [row]))
             elif len(tabs) > 1 and tabs[1][0] == h:
                 out.append((subj, *tabs[1]))
             else:
@@ -95,6 +112,16 @@ def _stat_sets(text):
             mode, subj, tabs = ("both" if eds == {"5", "6"} else "sr6" if eds == {"6"} else None), caps[-1][0], []
         i += 1
     flush()
+    return out
+
+
+def _unglue(header):
+    """A header whose cells the converter split one word off (`SPEED` | `INT.TOP SPEED`): an abbreviation glued to the
+    next cell's first word (`INT.TOP`) ends the cell before it (`SPEED INT.` | `TOP SPEED`)."""
+    out = list(header)
+    for i in range(1, len(out)):
+        if m := re.match(r"([A-Z]+\.)(?=[A-Z])", out[i]):
+            out[i - 1], out[i] = f"{out[i - 1]} {m.group(1)}", out[i][m.end():]
     return out
 
 
@@ -172,7 +199,7 @@ def _prep(bs, report):
             continue
         page = max(1, b.page - PAGE_OFFSET)
         for subj, header, rows in sets:
-            header = [RENAME.get(h.upper(), h.upper()) for h in header]
+            header = [RENAME.get(h.upper().rstrip("."), h.upper()) for h in _unglue(header)]
             marker, cat = _kind(header)
             if header and header[0] == "ITEM" and marker:  # one row a vehicle (`Bazoo Basic`, `Bazoo Redline` …)
                 for r in rows:

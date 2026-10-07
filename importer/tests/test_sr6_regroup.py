@@ -226,6 +226,42 @@ Hammer Exotic 2P 6/—/—/—/— 5(I)
         self.assertEqual([r[:3] for r in rows], [["m40", "0", "3 km"], ["m60", "1", "7 km"]])
         self.assertEqual([r[0] for r in regroup._rating_groups(rows)], ["m40", "m60"])  # a model code, no variant
 
+    def test_cells_wrapped_around_centred_values(self):
+        # a name and a class cell wrapped over lines, the values level with the middle line (or the lower of two), a
+        # note between rows, the text after the table its own (a header printed out of place stays as printed: the
+        # recipe's hint, da._swap_avail)
+        md = """**NAME CLASS RANGE CAP PILOT AVAIL SENSOR COST**
+Zip 0 (20mm x
+1.5 Km 16 0 0 5(I) 2,000¥
+Dart 1m)
+Zop 1 (30mm x
+2 km 20 1 1 6(I) 3,000¥
+Lance .5m)
+**Note:** A made-up note on the Zop.
+Boost
+Option for 3 3 +1(I) +500¥
+Darts
+1,000-meter
+wire - - - - - 6 900¥
+spools
+made-up text after the table.
+"""
+        els = regroup._elements(md)
+        t = els[0][2]
+        self.assertEqual(t.header, ["NAME", "CLASS", "RANGE", "CAP", "PILOT", "AVAIL", "SENSOR", "COST"])
+        self.assertEqual([r[:2] + r[-2:] for r in t.rows], [
+            ["Zip Dart", "0 (20mm x 1m)", "5(I)", "2,000¥"], ["Zop Lance", "1 (30mm x .5m)", "6(I)", "3,000¥"],
+            ["Boost Option for Darts", "", "+1(I)", "+500¥"], ["1,000-meter wire spools", "-", "6", "900¥"]])
+        self.assertEqual([v for k, _, v in els[1:]], ["**Note:** A made-up note on the Zop.", "made-up text after the table."])
+        # a name column's header printed on two lines around the others
+        t = regroup._elements("**WIDGET**\n**ESSENCE CAP COST**\n**PART**\nTwo\nZap 0.2 [1] 300¥\nTone\nBuzz 0.5 [6] 1,500¥\n")[0][2]
+        self.assertEqual(t.header, ["WIDGET PART", "ESSENCE", "CAP", "COST"])
+        self.assertEqual(t.rows, [["Two Zap Tone", "0.2", "[1]", "300¥"], ["Buzz", "0.5", "[6]", "1,500¥"]])
+        # two lines a row, the values on the lower
+        t = regroup._elements("**NAME CLASS RANGE CAP AVAIL COST**\nZip 0 (20mm\nDart x .5m) 1 km 16 5(I) 2,000¥\n"
+                              "Zip 0 (20mm\n1 km 16 6(I) 4,000¥\nBolt x .5m)\n")[0][2]
+        self.assertEqual([r[:2] for r in t.rows], [["Zip Dart", "0 (20mm x .5m)"], ["Zip Bolt", "0 (20mm x .5m)"]])
+
 
 class RegroupRulesTest(unittest.TestCase):
     @classmethod
@@ -503,6 +539,17 @@ class RepairRowTest(unittest.TestCase):
         row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertIs(regroup._repair_row(self.H, row), row)
 
+    def test_a_box_row_grouped_under_a_name_only_row_takes_its_name(self):
+        md = ("# MADE CHAPTER\n##### Zap Kits\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Zap Kit |  |  |\n"
+              "| \u00a0\u00a0Small (Rating 1–6) | 2 | Rating x 10¥ |\n| Glow Pen | 2 | 20¥ |\n")
+        b = next(b for b in blocks(regroup.regroup(md)[0]) if b.name == "Zap Kits")
+        self.assertEqual([s["ITEM"] for s in b.stats], ["Zap Kit", "Zap Kit Small (Rating 1–6)", "Glow Pen"])
+
+    def test_a_price_printed_under_avail_is_not_split(self):
+        # (`7,500¥` under AVAIL is a misprint to report, not `7` and `,500¥` with the last price dropped)
+        row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "7,500¥", "17,500¥"]
+        self.assertEqual(regroup._repair_row(self.H, row), row)
+
     def test_no_split_that_fits_leaves_the_row_as_printed(self):
         row = ["Quux", "4P", "weird", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertEqual(regroup._repair_row(self.H, row), row)
@@ -583,3 +630,84 @@ Glow kits glow in the dark.
         self.assertEqual(rows["Fizz Pen"], ("2", "40¥"))
         self.assertEqual(rows["Zap Kit Basic (Rating 1–6)"], ("3", "Rating x 100¥"))
         self.assertEqual(rows["Wobble Lamp"], ("3", "1,500¥"))  # (a name of several words ends the group)
+
+
+class PriceListTest(unittest.TestCase):
+    """A price list set in an item's text (the core rulebook's credsticks under a bank account's heading)."""
+    MD = """<!-- page 7 -->
+# GIZMOS
+## Paying
+#### Zorp Account
+A zorp account holds zorps.
+#### zorp chips
+| TYPE | MAX VALUE | AVAIL | COST |
+|---|---|---|---|
+| Tin | 50¥ | 1 | 2¥ |
+| Brass | 500¥ | 2 | 9¥ |
+#### zorp grades
+| GRADE | COST | AVAIL |
+|---|---|---|
+| Shiny | x1.5 | +1 |
+| Dull | x0.5 | -1 |
+#### Fizz Card
+A fizz card fizzes.
+#### fizz card
+| TYPE | AVAIL | COST |
+|---|---|---|
+| Plain | 1 | 5¥ |
+| Gold | 2 | 50¥ |
+# REPAIRS
+## Zorp Repair
+#### Wobble Fix
+Wobbles get fixed.
+#### wobble kits
+| KIT | AVAIL | COST |
+|---|---|---|
+| Wobble Kit | 1 | 10¥ |
+| Wobble Shop | 3 | 900¥ |
+# SHOP
+#### wobble kits
+| KIT | AVAIL | COST |
+|---|---|---|
+| Wobble Kit | 1 | 10¥ |
+| Wobble Shop | 3 | 900¥ |
+"""
+
+    def test_rows_of_a_price_list_are_items(self):
+        bs = blocks(regroup.regroup(self.MD)[0])
+        rows = {(b.name, b.chapter): b.label for b in bs if b.row is not None}
+        self.assertEqual(rows.get(("Tin", "GIZMOS")), "zorp chips")
+        self.assertIn(("Brass", "GIZMOS"), rows)
+        self.assertNotIn(("Shiny", "GIZMOS"), rows)  # multipliers (`x1.5`): a grade table, not prices
+        self.assertNotIn(("Plain", "GIZMOS"), rows)  # titled with its item's name: that item's variants
+        self.assertNotIn(("Wobble Kit", "REPAIRS"), rows)  # a later chapter prints the list again
+        self.assertIn("| Shiny | x1.5 | +1 |", regroup.regroup(self.MD)[0])  # (kept in the text)
+
+
+class RowGroupsAndSubTablesTest(unittest.TestCase):
+    """Indented rows under a name-only row, a bold name-only row over rows of one price shape, and sub-tables stacked
+    under one table's title (the core rulebook's `magical goods table`: foci, formulae, supplies). Made up; the
+    converter's marks: two no-break spaces for an indented first cell, an en space for a bold one."""
+    MD = ("<!-- page 9 -->\n# GIZMOS\n## Gizmo Shop\n#### Zorp Gadgets\nZorp gadgets are made up.\n#### zorp gear table\n"
+          "##### widgets\n| TYPE | BONDING COST | AVAIL | COST |\n|---|---|---|---|\n| Glow widget | 2 | 3 | 500¥ |\n"
+          "| PLANS | AVAIL | COST |\n|---|---|---|\n| Zap plan | 2 | 100¥ |\n| \u2002Fizz plans |  |  |\n| Small | 1 | 10¥ |\n"
+          "| Large | 2 | 20¥ |\n| Other kit | 3 | 9¥/day |\n"
+          "| SUPPLIES | AVAIL | COST |\n|---|---|---|\n| Zorp dust | 1 | 5¥ |\n| Zorp wire | 1 | 5¥ |\n"
+          "#### Hire\nHiring is made up.\n#### hire table\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Plans club |  |  |\n"
+          "| \u00a0\u00a0Bronze | 1 | 50¥/month or 500¥/year |\n| \u00a0\u00a0Gold | 1 | 90¥ |\n| Lone gizmo | 1 | 5¥ |\n")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.items = {b.name: b for b in blocks(regroup.regroup(cls.MD, name_headers=frozenset({"TYPE", "ITEM"}))[0])
+                     if b.row is not None}
+
+    def test_indented_rows_are_their_name_only_rows_group(self):
+        self.assertEqual([self.items[n].group for n in ("Bronze", "Gold", "Lone gizmo")], ["Plans club", "Plans club", ""])
+
+    def test_a_bold_name_only_row_groups_the_rows_of_one_price_shape(self):
+        self.assertEqual([self.items[n].group for n in ("Small", "Large", "Other kit", "Zap plan")], ["Fizz plans", "Fizz plans", "", ""])
+
+    def test_sub_tables_take_their_first_header_and_keep_the_tables_title(self):
+        got = {n: (self.items[n].label, self.items[n].table) for n in ("Glow widget", "Zap plan", "Zorp dust")}
+        self.assertEqual(got, {"Glow widget": ("widgets", "zorp gear table"), "Zap plan": ("plans", "zorp gear table"),
+                               "Zorp dust": ("supplies", "zorp gear table")})

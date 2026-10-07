@@ -1,5 +1,50 @@
 # Release notes
 
+## 0.10.3 — 2026-10-07: closer to the books
+
+**Every book re-converts on its next re-import** (the converter is now sr6-6): use Books → **Re-import all** to get
+these. Saved runners keep working: an entry the new reading renames keeps its old id as an alias.
+
+Measured against Commlink6 on a clean import of all 74 books: completeness 95.07% (4,164 of 4,380 records), accuracy
+96.52% (11,998 of 12,430 fields); 0.10.1 was 89.32% / 95.65%. Deadly Arts went from 83.90% / 93.58% to 99.69% /
+97.88%.
+
+- **A restart picks up where Re-import all stopped.** An update that recreates the container in the middle of
+  Re-import all no longer leaves the books "stopped" or "Interrupted by a restart": the queue (the running book
+  first) is kept and starts again on the next start, in both games, and the Books page shows its progress again. A
+  time limit now says "timed out", never mistaken for a restart.
+- **Indented groups.** A name-only row over indented rows names them (DocWagon contract: Basic, Gold, Platinum…), and
+  a bold name-only row over rows of one price shape does too (Spell formula: Combat, Detection…). The rows keep their
+  printed names; Chummer shows them with their group.
+- **Stacked sub-tables.** A table stacked under another's title whose first header names a class is its own
+  (FORMULAE, MAGICAL SUPPLIES under the magical goods table), and a plural first header the title doesn't name is
+  the rows' category (GRENADES under explosives). A price list set inside an item's description (the credsticks) is
+  read, and a table's last rows reaching into the page's bottom band (the drug table's Psyche and Zen) stay.
+- **The Game Information reader.** Adventure and plot books' Game Information sections are read: their NPCs and
+  contacts, gear, vehicles, life modules, toxins (from their Vector/Speed/Power lines) and a weapon's stat line set
+  as text. Slip Streams, Dealers of Death, Shadows in Focus: New Orleans, Collapsing Now and The Kechibi Code went
+  from a few entries to almost all of what they print.
+- **Granted powers and characteristics.** Lists a section grants (Powers, Characteristics) are qualities granted at
+  0 Karma, with their category; a heading priced in Karma is a quality whose "select N …" are its choices; the first
+  prose effects are read (quality category, granted, effect, test and choice in the data model, with a Review note).
+- **Only a valid SR6 value wins.** The value printed last wins, but only when it is a valid Shadowrun 6 value: an SR5
+  term (a Complex action, an R or F availability) in a later book no longer replaces the core line's, and the entry
+  says why.
+- **Quality path steps.** A path's bare step heading (Step 2) is a quality shown with its path (Gestalt: Step 2), its
+  Karma read from its prose or the path's; actions a section names as its forms (Boosted Defense, Dispelling) are
+  actions.
+- **Deadly Arts, closer to the book.**
+  - The two-product ammunition tables (regular and HEX side by side): one entry a product, B25 and B25 (HEX Assault
+    Cannon), priced per 10 rounds, searchable as Assault Cannon B25 or Autocannon B60 HEX.
+  - The warhead types (Hex, Frag by Capacity band, APDS, CBU, CHEM, ILL, SMOK) as ammunition types.
+  - The rocket and missile tables whose names and classes wrap over lines, and the extreme cyberweapon features.
+  - The Omukade's three cars, the drugs, and the standard rocket and missile.
+  - Items priced only in a sentence: small-caliber railgun ammo (3x the normal cost), and the Foundation and Spotting
+    foci, priced as the core rulebook's spell focus by a cross-book reference the builder works out.
+- **The new converter (sr6-6).** Running heads and page numbers are page furniture; two stat tables side by side
+  in two columns stay two; a heading at the foot of one column titles the full-width table under it; a table's first
+  cell marks its indented and bold rows; the bottom band drops only the running feet.
+
 ## 0.10.2 — 2026-10-07: more of the books read
 
 - **More Shadowrun 6 entries read from the books.** Every named step of a quality path is now a quality (with "Gain N

@@ -17,9 +17,10 @@ const get = async (path: string) => {
 const FILES = (await collectSr6Files(get)).files
 const CREATION = readFileSync(join(FIXTURE, 'creation.xml'), 'utf8')
 
-/** A fresh catalog built from the fixture files. `patch` rewrites a file's text first (file path → new text). */
-export function fixtureCatalog(patch: (file: string, xml: string) => string = (_, x) => x): Sr6Catalog {
-  return buildSr6Catalog(FILES.map(f => ({ ...f, xml: patch(f.file, f.xml) })))
+/** A fresh catalog built from the fixture files. `patch` rewrites a file's text first (file path → new text); `extra`:
+ *  more files after them (another book's overlay). */
+export function fixtureCatalog(patch: (file: string, xml: string) => string = (_, x) => x, extra: { file: string; xml: string }[] = []): Sr6Catalog {
+  return buildSr6Catalog([...FILES.map(f => ({ ...f, xml: patch(f.file, f.xml) })), ...extra.map(f => ({ ...f, overlay: true }))])
 }
 export const fixtureCreation = (): CreationRules => parseCreation(CREATION).rules
 

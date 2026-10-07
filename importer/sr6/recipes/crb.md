@@ -165,6 +165,47 @@ The recipe's `SECTIONS` map stays: measured, the general reader agrees on 60 of 
 - Stat matching (cl6check): Commlink6 names two cyber-implant weapon rows and an ammo row its own way (the category or a count added); their stats find them (3 renames). Nothing changes in the import.
 - Rigger command consoles (importer v4): the RCC table set inside `Resisting Hacking` (first column `RCC`, now a name column) is read: ten consoles, electronics, their DEVICE RATING the rating.
 
+## Book focus (feat/book-crb): what to look for
+
+- **A price list set in a description** (regroup's `price_list`, every book): the `credsticks` table (`TYPE | MAX
+  VALUE | AVAIL | COST`) sits in the Credit account's text; a titled table in an item's text with AVAIL and COST
+  columns, every row a name and half of them priced, is a catalog: five credsticks, category Credstick. Not one: a
+  grade table (`x1.2` multipliers), the second of tables stacked under one title (the `formulae` table under `foci`),
+  a table titled with its item's name (its variants), or a list a later chapter prints again (the rigging chapter's
+  `vehicle modding` is the gear chapter's vehicle modifications).
+- **Table rows in the page's bottom band** (converter sr6-4, every book): the band drops only the running feet's
+  faces (Njord 9/11 pt here); the reference drug table's `Psyche` and `Zen` rows (p. 312) and NPC gear lines at a
+  page's foot (`Streetline Special […]`, p. 204) are read.
+- **Foci availability** `(Force) L`, `(Force +3) L`: a formula (`R`, `R + 3`), the legality after the bracket.
+- **A row printing two names** (`Colt Government 2076/Manhunter`): the second part, never printed whole, takes the
+  short form the book prints (`Colt Manhunter`, the NPCs' gear) as an alias.
+- Still prose or open (`chummer/books/crb-gaps.md`): the senses (Improved Sense's choice list), the magic types
+  (Magic/Resonance step paragraphs), the licence types (Fake License's list), the `Explosive Packages` rating bands,
+  prices printed only in a sentence (Water-Repellent Coating, the Predator VI's spare clip).
+- Owner decisions (2026-10-07), every book:
+  - **Row groups** (converter sr6-5 marks a first cell indented, or bold among regular names; regroup `_row_groups`):
+    a name-only row over indented rows groups them until the indent ends (`DocWagon contracts` over Basic …
+    Super-platinum, `Slap patches` over the patches, p. 281); a bold name-only row with no indent under it (a centred
+    column) groups the rows after it while their prices keep one shape (`Spell formula` over the five categories,
+    p. 294). The row keeps its printed name; `group` holds the group (`DocWagon contract: Basic`), with search names
+    in both of Commlink6's orders (`DocWagon Basic contract`, `Basic DocWagon contract`). A `N/month or N/year` price
+    stays two entries, `per` month and year.
+  - **Sub-tables** (regroup): a table title over several stacked tables (`magical goods table`: `foci`, then
+    `FORMULAE`, then `MAGICAL SUPPLIES`): each stacked table whose first header names a class is its own, that header
+    its category (Formula, Magical supply), the parent title kept as the categories' `table`; its own columns map
+    its fields. The magic chapter's copy adds only `Ritual Spellcasting` (the ritual formula, 3L 1,000¥) to the gear
+    chapter's; `Focus formula` is priced `Focus cost x 0.25`, availability `As focus`: an `ambiguous` issue stating
+    the rule (base: the focus made).
+  - **First header over the title**: a plural class header the title doesn't name is the category (GRENADES under
+    `explosives`: Grenade; `weapon accessories` over ACCESSORY keeps its title).
+  - **Forms as actions**: a heading the section above names as one of its forms (Counterspelling: boosted defense
+    and dispelling) is an action; Augmentation overdrive stays a rule.
+  - **Reprinted lists**: run-ins whose intro points to the page that defines them (`Rigger Programs`, `See the
+    Programs section … (p. 184)`) reference those entries; no second entry.
+  - cl6check: the owner's Commlink6-only records (composed or split, not printed here, renamed NPCs, extra licence
+    types) and renames are verdicts in `chummer/cl6check/cl6-verdicts.json`; Commlink6's price 0 for a priced item is
+    its own field.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"

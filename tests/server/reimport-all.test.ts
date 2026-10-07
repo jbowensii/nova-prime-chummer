@@ -59,5 +59,6 @@ test('Shadowrun 6: its own books only, the same way', async () => {
   const r = await fetch(`${base}/api/sr6/books/reimport-all`, { method: 'POST' })
   expect(await r.json()).toEqual({ queued: ['s1-only-pdf'], skipped: [] })
   expect((await done('sr6/books', 's1-only-pdf')).source).toBe('CRB')
-  expect((await fetch(`${base}/api/books/reimport-all`)).status).toBe(405)
+  expect((await fetch(`${base}/api/books/reimport-all`, { method: 'PUT' })).status).toBe(405)
+  expect(await (await fetch(`${base}/api/books/reimport-all`)).json()).toEqual({ queued: [], skipped: [] }) // nothing running
 })

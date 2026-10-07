@@ -62,6 +62,17 @@ describe('values', () => {
     expect(bookValue(e('crb.flare-tin'), 'cost', undefined, find).n).toBe(20)
     expect(bookValue(e('crb.flare-pack'), 'cost', undefined, find).n).toBe(450)
   })
+  it('a ref reads another book’s entry: the catalog is merged, its ids scoped by source', () => {
+    // (Deadly Arts' foci are priced as the core rulebook's spell focus: `ref(gear:crb.spell-focus, cost, R)`)
+    const da = `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1"><gear id="da.glow-focus" source="DA" page="9"
+      category="Foci" cost="As flare kit"><name>Glow Focus</name><formula field="cost">ref(gear:crb.flare-kit, cost, R)</formula></gear></sr6:data>`
+    const both = fixtureCatalog((file, xml) => file.endsWith('crb/gear.xml') ? xml.replace('</sr6:data>', `${entries}
+</sr6:data>`) : xml,
+      [{ file: 'custom/sr6/imported/da/gear.xml', xml: da }])
+    const glow = both.entries.gear.get('da.glow-focus')!
+    expect(glow.issues ?? []).toEqual([])
+    expect(bookValue(glow, 'cost', 3, catalogFind(both))).toMatchObject({ n: 600, ok: true })
+  })
   it('a broken ref is unpriced, never 0', () => {
     expect(bookValue(e('crb.ghost-link'), 'cost', 1, find)).toMatchObject({ n: null, ok: false })
     expect(formulaRange(e('crb.ghost-link'), 'cost', find)).toBeNull()

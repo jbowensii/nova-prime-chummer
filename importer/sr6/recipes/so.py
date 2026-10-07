@@ -20,6 +20,9 @@ HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 171  # PDF page: a novel's preview starts here (left out)
 ALIASES = {}
+# a recipe hint: a catalog's name-only row names the rows under it until a row with a description of its own
+# (`Explosive Cosmetics` over `Lipstick`, `Eyeliner` … in the espionage gear table; regroup._variants)
+VARIANT_ROWS = True
 # the gear tables' first headers (their rows are items)
 NAME_HEADERS = frozenset({"OUTFIT", "ARMOR MOD", "NAME", "FASHION ACCESSORIES", "PROFESSIONAL GROOMING SERVICES",
                           "ESPIONAGE GEAR", "SUBSCRIPTION", "GEAR", "ITEM"})

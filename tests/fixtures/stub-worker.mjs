@@ -3,7 +3,7 @@
 // server's routes and the app: status.xml, import.xml, a one-entry overlay listed in
 // custom/imported/index.xml and sources.xml, review.xml, ai-keys.xml, ai-providers.xml, and the edits layer
 // (custom/edits/edits.xml, texts.xml, sources.xml; a <name></name> or a name starting REFUSE is refused like a real check).
-// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s;
+// Markers in the uploaded bytes: "needs-ai" → no recipe matched; "hold" → the run waits for <book>/release; "crash" → exit 1 with a key on stderr; "slow" → the import takes 1.5 s;
 // "core-unread" → the core rulebook (CRB) with its weapons, metatypes and skills tables unread (propose --core offers made-up
 // rows for the unread tables it knows, apply-review --core writes the accepted ones as those core files).
 // backup/restore write and read a fake zip ("PK\x03\x04\n", then JSON of the three folders' files); restore refuses
@@ -77,6 +77,8 @@ if (sr6 && cmd === 'run') {
 } else if (cmd === 'run') {
   const pdf = readFileSync(join(target, 'original.pdf'), 'latin1')
   if (pdf.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500)
+  // "hold": busy until the test writes <book>/release (at most 20 s), so a test can look while it runs, however fast the machine
+  for (let i = 0; pdf.includes('hold') && i < 200 && !existsSync(join(target, 'release')); i++) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
   if (pdf.includes('crash')) {
     process.stderr.write('Traceback: boom, key sk-ant-SECRETSTUBKEY123\n')
     process.exit(1)

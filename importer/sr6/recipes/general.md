@@ -54,6 +54,14 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 - **Vehicle bands in the text** (30 Nights, Assassins Night, The Third Parallel print a bold header line over a
   value line, headers interleaved or run together): `shapes.vehicle_band` reads them; the general recipe does not
   file them as vehicles yet (NPC rides, not catalog items).
+- **A price list in a description** (regroup `price_list`, every recipe): a titled table in an item's text with AVAIL
+  and COST columns, its rows names and half of them priced, is a catalog (the core rulebook's credsticks); not a
+  grade table (`x1.2`), a second stacked table, one titled with its item's name, or one a later chapter reprints.
+- **Row groups and sub-tables** (converter sr6-5, regroup): a name-only row over indented rows (or a bold one over
+  rows of one price shape) is their `group`; a table stacked under another's title whose first header names a class
+  is a sub-table of its own, that header its category, the parent title kept.
+- **The page's bottom band** (converter sr6-4): only the running feet's faces are dropped there; a table's last rows
+  and body lines reaching into the band stay (NPC gear lines, reference rows).
 
 ## Sections read as kinds (importer v3, sections.py)
 
@@ -63,6 +71,59 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 - **Quality paths** (Shadow Cast): `### Quality Path: Name` under `## Quality paths`, its steps the headings under
   it; a chapter printing those names only its `Quality Path:` headings as paths (`Roleplaying`, `Strategies`
   after them are its sections).
+
+## Game Information chapters (the adventure and plot books)
+
+The rules items an adventure or plot book prints sit in a `Game Information` chapter (Dealers of Death, Shadows in
+Focus: New Orleans, Slip Streams …): a **kind heading** (`POSITIVE QUALITIES`, `NEGATIVE QUALITIES`, `QUALITY PATHS`,
+`Life Modules`, `ADEPT POWERS`, `SPELLS`, `Powers`, `Characteristics`, `Swamp Gear`, `Vehicles & Drones`) introduces
+items, each a **child heading** with its stat line or labels (`Cost:`, `Bonus:`, `Game Effect:`, `Activation:`, a
+toxin's `Vector:`/`Speed:`/`Power:`, a box table) and its description. The category is the kind heading (a table's
+title first), the chapter giving the context. Read with the general reading, nothing per book:
+
+- **Magazine-style books** (the 16 to 32 page PDFs: Dealers of Death, New Orleans, Age of Rust, Los Alamos, the
+  Missions): the converter drops the running head and page number printed on every page (`layout.fonts`: a line in
+  the top band repeated in place, font and words on half the pages or more), so the book's own heading sizes get the
+  levels (a size on the cover alone gets none); before, the running title, the series line and the page number took
+  three of the five levels and the item names (15 and 13 pt) came out as body text.
+- **Two columns over a full-width box** (Dealers of Death p. 10, a `Developing immunity` sidebar under the qualities):
+  the gutter is accepted when every row it splits is two columns meeting in the content stream, the box's lines
+  aside; a line set at the box's margin (its title) is the box's. Before, the two columns were read line by line,
+  interleaved, and a name set in two lines (`Developed` / `Immunity`) came out split.
+- **Two stat tables side by side in the two text columns, a few points apart** (Tarnished Star's Honda Raptor beside
+  the VAA Estrada-77): two header rows with no x in common are two tables, never one header stacked over two lines
+  (only a label of a cell or two stacks beside another line). Before, the two merged and the Raptor's stats were lost.
+- **A title at the foot of one column over a full-width table** (Deadly Arts p. 143's `Unguided Launcher`, below
+  both columns): the table's title, read with it after both columns (before, the other column's text came between
+  them and the launcher was a rule section). A heading below every line of the other column, under 2 line heights
+  over a full-width table, with nothing of its column between.
+- **A quality path's bare steps** (Shadow Cast's `Gestalt` and `Operations Ace`: `Step 1`, `Step 2`): qualities named
+  as printed, the path their category and group (`Gestalt: Step 2`), Karma from `By investing 10 Karma` or the path's
+  `spend 10 Karma, and they move to step 1` (sections.py, every book).
+- **A kicker over a name** (`Part of the Family:` set small over `Deserted`): `prepare_md` makes them one heading, the
+  name's level (`Part of the Family: Deserted`, the name as printed); a quality
+  path step set at the path heading's own level and naming the path is its step, under its printed name.
+- **Kinds by heading**: qualities (Cost or Bonus in Karma), adept powers (`ADEPT POWERS`, each child with its Cost or
+  Activation label), toxins (a heading over `Vector`, `Speed` and `Power` lines: gear, category the heading over it),
+  spells (their box), gear, weapons and vehicles (their tables), life modules (the Companion's form).
+- **An item's one stat line** (Dealers of Death's bracelets): a heading whose text holds a one-row priced table with no
+  name column (`TYPE | MODE | DV | … | AVAIL | COST`, the type its first cell) is that item, named by the heading.
+- **A box title a letter or a joining word off its heading** (`ceramic or plasteel knife` under `Ceramic/Plasteel
+  Knife`, `tiffani elegence …` under `Tiffani Elegance …`: difflib ratio of the keys 0.88 or more): the heading's
+  name, the printed one.
+- **A spell box with its category under TYPE** (`TYPE Illusion | RANGE | DV P | DURATION | DRAIN 4`): TYPE the type
+  (P), DV the drain, the category the catalog's (`Illusion spells`).
+- **A weapon's stat line set as text** (The Kechibi Code's Guizhen devices, Falling Point's pistols): a bold header
+  `**DV MODES A RT AT TA INCK G AMMO AVAIL COST**` (the attack ratings' header set sideways) over loose values, the
+  ammunition's holder wrapped around them (`12 (power` … `cell)`): `prepare_md` makes it the box table under its box
+  title (a title in lower case gets capitals: it names the item). The values are read by their shapes (DV, modes,
+  attack ratings, availability before the price); what is left is the ammunition, as printed.
+- **An adept power's cost in Power Points** (`Cost: 0.25 PP per level`): cost 0.25, a level each.
+- **Lists a section grants** (Slip Streams' `Powers` and `Characteristics` under `Returned Soldiers`, the list's
+  text naming the section): Karma-0 qualities, `granted`, category `Returned Soldier power` / `Returned Soldier
+  characteristic` (a characteristic is a drawback: negative); a heading priced in Karma (`Returned Soldier (12
+  Karma)`) is a quality whose text's `Select two powers … and one characteristic …` are its choices; the prose's
+  effects and tests (`effects.py`). See docs/sr6-data-format.md, Qualities granted and chosen.
 
 ## Real-book check (local, nothing committed)
 

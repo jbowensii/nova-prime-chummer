@@ -55,6 +55,8 @@ const restart = async (want?: string) => {
   try {
     if (want) await vi.waitFor(() => expect(calls()).toContain(want), { timeout: 20000, interval: 50 })
     else await new Promise(r => setTimeout(r, 500))
+    // its jobs run to the end (library/.config/jobs.json gone): a job a stop cuts off would run again at the next start
+    await vi.waitFor(() => expect(existsSync(join(library, '.config', 'jobs.json'))).toBe(false), { timeout: 20000, interval: 50 })
   } finally {
     again.stopJobs()
     vi.unstubAllEnvs()

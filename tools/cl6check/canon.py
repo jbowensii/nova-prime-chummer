@@ -277,11 +277,18 @@ def aliases(name, variants):
     return sorted(out - {name})
 
 
+# German words in a record's name (the German edition's names Commlink6 kept for a few records: `Pfeile`,
+# `Druckluftkartusche`, `Kalte Munition`): a vocabulary, never an item's name; English look-alikes (die, fur, mit) left out
+GERMAN = re.compile(r"\b(?:pfeile?|druckluft\w*|\w*kartuschen?|kalte|munition|patronen?|granaten?|geschosse?|bolzen|"
+                    r"kugeln?|und|für|ersatz)\b", re.I)
+
+
 def cl6_only(kind, name, a, tag):
     """A Commlink6 record that is no book's item, left out of both denominators and counted on its own line: its rule
-    settings (rule options), a record it retired ('Depreciated …'), and an option row it prices at zero and marks not
-    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)')."""
-    if kind == "ruleoptions" or re.match(r"(?i)depreciat", name):
+    settings (rule options), a record it retired ('Depreciated …'), an option row it prices at zero and marks not
+    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)'), and a
+    record named in German (no English book prints it)."""
+    if kind == "ruleoptions" or re.match(r"(?i)depreciat", name) or GERMAN.search(name):
         return True
     return tag in ("item", "itemenhancement") and a.get("price") == "0" and (
         (a.get("avail") or "").startswith("99") or "(see " in name)

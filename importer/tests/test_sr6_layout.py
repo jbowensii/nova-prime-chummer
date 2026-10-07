@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from importer.convert import convert
 import pdfplumber
 
-from importer.sr6.layout import _is_furniture, one_layer, rejoin_ligatures
+from importer.sr6.layout import BOLD, INDENT, Fonts, _first_marks, _is_furniture, furniture, one_layer, rejoin_ligatures
 from importer.tests.minipdf import sr6_doubled_pdf, sr6_layout_pdf
 
 
@@ -29,7 +29,7 @@ class Sr6LayoutTest(unittest.TestCase):
         cls.text = "\n".join(cls.lines)
 
     def test_converter_version(self):
-        self.assertEqual(self.meta["converter"], "sr6-3")
+        self.assertEqual(self.meta["converter"], "sr6-6")
         self.assertEqual(_convert(sr6=False)[0]["converter"], "6")
 
     def test_headings_by_font(self):
@@ -54,6 +54,23 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertFalse(_is_furniture(20, 100, card))  # a card's text runs to the edge (Johnson 'Dex)
         self.assertFalse(_is_furniture(340, 200, card))
 
+    def test_first_cell_marks_indent_and_bold(self):
+        w = lambda x, font="Sans-Regular": [{"x0": x, "chars": [{"fontname": "ABC+" + font, "text": "Z"}]}]
+        # a flush-left column: the rows set 9 pt in are indented; a bold name among regular ones is marked
+        self.assertEqual(_first_marks([w(100), w(100), w(109), w(109), w(100, "Sans-Bold"), w(109)]),
+                         ["", "", INDENT, INDENT, BOLD, INDENT])
+        # a centred column (a left edge for each name): no indent
+        self.assertEqual(_first_marks([w(190), w(202), w(199), w(194), w(196)]), [""] * 5)
+
+    def test_a_table_row_in_the_bottom_band_stays(self):
+        page = SimpleNamespace(width=612, height=792)
+        w = lambda text, top, font, size: {"text": text, "x0": 300, "top": top, "size": size, "upright": True,
+                                            "chars": [{"fontname": "ABC+" + font}]}
+        words = [w("Fizz", 700, "Sans-Regular", 7), w("Zen", 770, "Sans-Regular", 7), w("17", 775, "Disp-Regular", 9)]
+        fonts = Fonts("Serif", 10.5, "Disp", {}, frozenset({("Disp", 9.0)}))  # the running feet: 9 pt display face
+        self.assertEqual([x["text"] for x in furniture(page, words, fonts)], ["Fizz", "Zen"])
+        self.assertEqual([x["text"] for x in furniture(page, words)], ["Fizz"])  # (no fonts: the whole band goes)
+
     def test_two_columns_read_column_by_column(self):
         left = [ln for ln in self.lines if ln.startswith("Left column")]
         right = [ln for ln in self.lines if ln.startswith("Right text")]
@@ -77,7 +94,7 @@ class Sr6LayoutTest(unittest.TestCase):
         i = self.lines.index("| THING | UNIT PRICE | NOTES |")
         self.assertEqual(self.lines[i + 2:i + 9], [
             "| Widget | 5 | a small note |", "| Big Long Widget | 8 | a big note |", "| Gizmo | 7 | b note |",
-            "| Extras: spare parts |  |  |", "| Doohickey | 9 | c note |", "| Spare Kit |  |  |",
+            "| Extras: spare parts |  |  |", "| Doohickey | 9 | c note |", "|  Spare Kit |  |  |",  # (bold among regular names: marked)
             "| Sprocket | 2 | d note |"])
 
     def test_offset_sidebar_columns_read_column_by_column(self):

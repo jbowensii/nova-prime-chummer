@@ -426,7 +426,10 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
     of its home family's books that print one) that agrees with record c on the same fields with fewer differences,
     or None. A record matches a parent and its variant rows; its fields compare against the one that agrees most."""
     home = lineage.family(c["src"])
-    vs = [(b, e) for b, e in corpus.variants(kinds, names, home) if e["kind"] in kinds and not b.errata and not b.context]
+    own = {match.n1(n) for n in names}  # (none printed under the name itself: its qualified rows are the variants)
+    vs = corpus.variants(kinds, names, home) or [(b, e) for b, e in corpus.entries(kinds, names, home)
+                                                 if match.n1(e["name"]) not in own]
+    vs = [(b, e) for b, e in vs if e["kind"] in kinds and not b.errata and not b.context]
     if not vs:
         return None
     last = max(b.order for b, _ in vs)
@@ -435,7 +438,7 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
         if b.order != last:
             continue
         d2, f2 = fields.compare(c, {"attrs": e["attrs"], "kind": e["kind"]})
-        if sorted(d2) == sorted(done) and len(f2) < len(best if best is not None else diffs):
+        if set(done) <= set(d2) and len(f2) < len(best if best is not None else diffs):  # (it compares as much)
             best = f2
     return best
 
@@ -469,19 +472,21 @@ def stat_matches(corpus, cl6, missing):
         kinds = set(c["pool"]) or {c["kind"]}
         free, used = pool.get(lineage.family(c["src"]), ([], []))
         got[id(c)] = match.by_stats(c, [e for e in free if e["kind"] in kinds], [e for e in used if e["kind"] in kinds])
-    taken = Counter(match.n1(v[1]["name"]) for v in got.values() if v[0] == "strong")
     by_id = {id(c): c for c in missing}
+    # (a tie is within one book family: another book's entry of the same name is another item)
+    key = lambda k, e: (lineage.family(by_id[k]["src"]), match.n1(e["name"]))
+    taken = Counter(key(k, v[1]) for k, v in got.items() if v[0] == "strong")
 
     def part(c, e):
         """The one part of a row printing several names (`Malakim / Ophanim Drone`) that shares a word with c's name."""
         parts = [p for p in match.split_names(e["name"]) if p != e["name"]]
         hits = {p for p in parts for w in match.toks(c["name"]) if len(w) >= 4 and w in match.toks(p)}
         return next(iter(hits)) if len(hits) == 1 else None
-    parts = Counter((match.n1(v[1]["name"]), part(by_id[k], v[1])) for k, v in got.items() if v[0] == "strong")
+    parts = Counter((key(k, v[1]), part(by_id[k], v[1])) for k, v in got.items() if v[0] == "strong")
     for k, v in got.items():
-        if v[0] == "strong" and taken[match.n1(v[1]["name"])] > 1:
+        if v[0] == "strong" and taken[key(k, v[1])] > 1:
             p = part(by_id[k], v[1])
-            if p is None or parts[(match.n1(v[1]["name"]), p)] > 1:  # (each its own part of the row: no tie)
+            if p is None or parts[(key(k, v[1]), p)] > 1:  # (each its own part of the row: no tie)
                 got[k] = ("weak", None, [(v[1], v[2], [])])
     return got
 
@@ -499,6 +504,24 @@ def run(corpus, cl6, verdicts=None):
         kinds = set(c["pool"]) or {c["kind"]}
         ents = corpus.entries(kinds, names, home)
         obs = lineage.observe(corpus, kinds, names, home)
+        # one book cataloguing two things of one kind under one name (the hacking program `Stealth` and the autosoft
+        # `Stealth`): the record is the one nearest its page
+        groups = {}
+        for b, e in ents:
+            groups.setdefault((id(b), e["kind"], match.n1(e["name"])), []).append(e)
+        far, exact = set(), {match.n0(x) for x in names}
+        rated = re.search(r"(?i)\brating\s*\d", c["name"])
+        for es in groups.values():
+            # (a record named with its rating: the row printing that name, `X Rating 1`, not `X Rating 2`, which
+            # words() reads alike)
+            if rated and 0 < len(ex := {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
+                far |= {e["id"] for e in es if e["id"] not in ex}
+            elif len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
+                d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
+                far |= {i for i, x in d.items() if x > min(d.values())}
+        if far:
+            ents = [(b, e) for b, e in ents if e["id"] not in far]
+            obs = [o for o in obs if (m := re.search(r"\bid=(\S+) ", o.where)) is None or m.group(1) not in far]
         own = [o for o in obs if not o.context and not o.variant]
         found = bool(own) or any(e["kind"] in kinds and not b.context for b, e in ents)
         return found, ents, obs
@@ -514,7 +537,19 @@ def run(corpus, cl6, verdicts=None):
         if not c["modelled"]:
             n["unmodelled kind"] += 1
             continue
+        # the owner's verdict on the record (`src|id|`; `kind` when two records share an id: a licence and an implant)
+        rv = (verdicts or {}).get(f"{c['src']}|{c['id']}|", {})
+        rv = rv if rv.get("kind") in (None, c["kind"]) else {}
+        if rv.get("family") == "Commlink6-only record":
+            v = rv
+            n["Commlink6-only records"] += 1
+            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
+                         "field": "", "family": "Commlink6-only record", "where": v.get("note") or "the owner's verdict"})
+            continue
         names = [c["name"], *c["aliases"]]
+        # the owner's rename (a verdict naming the printed entry Commlink6's record is: `Ritual formula` is the
+        # formulae table's `Ritual Spellcasting`)
+        names += [x for x in [rv.get("rename")] if x]
         home = lineage.family(c["src"])
         if not any(lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)):
             names += [x for x in matched.get(id(c), []) if x not in names]  # its own book prints it another way
@@ -566,6 +601,8 @@ def run(corpus, cl6, verdicts=None):
         differ = {d["field"] for d in diffs}
         for fld in done:
             w = lineage.winner(chains.get(ATTR.get(fld, fld), []))
+            if w is not None and any(o.invalid and o.book.order > w.book.order for o in chains.get(ATTR.get(fld, fld), [])):
+                n["later value not SR6, passed over"] += 1  # (an SR5 leftover printed later: lineage.winner)
             if fld not in differ and w is not None:  # where the equal values come from
                 src = ("errata" if w.book.errata else "card" if w.kind == "card" else "section default"
                        if w.kind == "section" else
@@ -606,7 +643,12 @@ def run(corpus, cl6, verdicts=None):
     for r in rows:
         if r["field"]:
             left[(r["src"], r["id"])] += 1
-            if r["family"] == "not found" and (not r["winner"] and not r.get("verdict") or r["winner"] and invented(r)):
+            # Commlink6's price 0 for an item the book prices (owner, 2026-10-07), and a field the owner's verdict calls
+            # Commlink6's own: out of the fields compared
+            zero = r["field"] == "cost" and re.fullmatch(r"0(?:\.0+)?", str(r["cl6"]).strip()) \
+                and ours.value(r["winner"]) not in (None, 0)
+            if r["family"] == "Commlink6-only field" or zero or r["family"] == "not found" and (
+                    not r["winner"] and not r.get("verdict") or r["winner"] and invented(r)):
                 r["family"] = "Commlink6-only field"
                 n["fields compared"] -= 1
                 n["Commlink6-only fields"] += 1
@@ -629,7 +671,7 @@ def apply_verdicts(rows, verdicts):
     """The page verdicts (step 3): each row the owner's file names takes its family, with the note and the crop as its
     location; a weak link no verdict confirms goes to not found (a one-digit-off value stays not found)."""
     for r in rows:
-        v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}")
+        v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}") if r["field"] else None  # (a record's: run())
         if v:
             r["family"], r["verdict"] = v["family"], v.get("note", "")
             r["where"] = f"{v.get('note', '')} (page crop {v['crop']})" if v.get("crop") else v.get("note", "")

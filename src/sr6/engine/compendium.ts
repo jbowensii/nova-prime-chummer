@@ -16,7 +16,7 @@ const ITEM = ['avail', 'cost']
  *  metatypes, attributes, skills, implant grades, life modules, rules). fields: the kind's attribute names, lines: its string children
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
-  qualities: { fields: ['kind', 'karma', 'karmaMax', 'perLevel', 'maxLevel'] },
+  qualities: { fields: ['kind', 'karma', 'karmaMax', 'perLevel', 'maxLevel', 'category', 'granted', 'group'] },
   weapons: { fields: ['category', 'rating', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM, 'skill', 'spec'] },
   armor: { fields: ['category', 'rating', 'defense', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
@@ -48,7 +48,7 @@ const LEVELS: Record<string, FieldRule> = { perLevel: { choices: ['true'] }, max
 const RATED: Record<string, FieldRule> = { rating: { whole: 'nonNegative' } }
 /** Per kind, the attributes with a rule (tests/sr6/compendium.test.ts keeps it equal to common.xsd). */
 const RULES: Partial<Record<Sr6Kind, Record<string, FieldRule>>> = {
-  qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, karmaMax: { whole: 'any' }, ...LEVELS },
+  qualities: { kind: { required: true, choices: ['positive', 'negative'] }, karma: { whole: 'any' }, karmaMax: { whole: 'any' }, ...LEVELS, granted: { choices: ['true'] } },
   weapons: { category: REQ }, armor: { category: REQ }, electronics: { category: REQ }, programs: { type: REQ }, gear: { category: REQ }, vehicles: { category: REQ },
   augmentations: { type: { required: true, choices: [...AUG_TYPES] }, category: REQ },
   spells: { category: { required: true, choices: ['combat', 'detection', 'health', 'illusion', 'manipulation'] } },

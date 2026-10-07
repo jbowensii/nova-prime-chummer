@@ -24,6 +24,8 @@ bands), never an item's name."""
 import math
 import re
 
+from importer.sr6 import vocab
+
 ROUND_UP, ROUND_DOWN = "up", "down"
 NUMERIC = ("cost", "avail", "essence", "capacity", "karma", "rating", "dv", "seats", "ammo", "slots")
 _VAR_WORDS = r"rating|force|level|size|grade|capacity"
@@ -268,7 +270,8 @@ def _arith(t):
     e = re.sub(rf"\b(?:{_VAR_WORDS})\b", " R ", e, flags=re.I)
     e = re.sub(r"\bmagic\b", " M ", e, flags=re.I)
     e = re.sub(r"(?<![a-z])x(?![a-z])|\*", " * ", e, flags=re.I)
-    e = re.sub(r"\s*\(\s*[LIRF]\s*\)\s*$|(?<=\d)\s*[LIRF]$|(?<=R)\s*[LIRF]$", "", e.strip())  # a legality suffix
+    e = re.sub(r"\s*\(\s*[LIRF]\s*\)\s*$|(?<=\d)\s*[LIRF]$|(?<=R)\s*[LIRF]$|(?<=\))\s*[LIRF]$", "",
+               e.strip())  # a legality suffix (`(Force +3) L`: after the bracket)
     e = " ".join(e.split())
     if not e or re.search(r"[A-Za-z]", re.sub(r"\b[RM]\b", "", e)):
         return None
@@ -303,7 +306,7 @@ def read(text, field="cost"):
       `300¥ per CF`, `250¥/pair`, `Rating x 200¥ per dose`    -> Q*300, Q*(R*200), unit CF / pair / dose
       `CF x 500`, `500 x CF`                                  -> Q*500, unit CF
       `… cost x the number of occupants`                      -> B*Q, unit occupant
-      `x2`, `(Camera) x 2`                                    -> B*2
+      `x2`, `(Camera) x 2`, `Focus cost x 0.25`               -> B*2, B*0.25; avail `As focus` -> B
       `+100%`, `Armor cost increased 5%`, `20% vehicle price`  -> B*2, B*1.05, B*0.2
       `Commlink cost plus rating x 100`, `As Rocket + R x 50`  -> B + R*100
       `250¥ + Certified Credstick Cost`, `2,000¥ + Commlink`  -> 250 + B
@@ -337,7 +340,10 @@ def read(text, field="cost"):
         return f"Q*{fmt(_n(m.group(1) or m.group(2)))}", {"unit": "CF"}
     if m := re.fullmatch(r"(?:\d+\s+months?\s+of\s+)?[a-z][a-z ]*?\s+cost\s+x\s+the\s+number\s+of\s+([a-z]+)", t, re.I):
         return "B*Q", {"unit": _unit(m.group(1))}
-    if m := re.fullmatch(rf"(?:\([^()]+\)\s*)?[x*]\s*({_NUM})", t, re.I):
+    if field == "avail" and re.fullmatch(r"as\s+(?:the\s+)?[a-z][a-z ]*", t, re.I):
+        return "B", {}  # `As focus`: the availability of the item it is made for
+    # (`Focus cost x 0.25`: a share of the price of the item it is made for)
+    if m := re.fullmatch(rf"(?:\([^()]+\)\s*|[a-z][a-z ]*?\s+cost\s+)?[x*]\s*({_NUM})", t, re.I):
         return f"B*{fmt(_n(m.group(1)))}", {}
     if m := re.fullmatch(rf"(?:\+\s*({_NUM})\s*%(?:\s+[a-z' ]+)?|[a-z ]+?\bincreased\s+({_NUM})\s*%)", t, re.I):
         return f"B*{fmt(1 + _n(m.group(1) or m.group(2)) / 100)}", {}
@@ -617,6 +623,10 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
     r = attrs.get("rating")
     if uses_r and (r is None or not str(r).strip() or _DASH.fullmatch(str(r))):
         out.append(("issue", {"field": "rating", "code": "missing", "page": page}, _NOTE["rating"]))
+    flagged = {a["field"] for t, a, _ in out if t == "issue"}
+    for f, v in attrs.items():  # a value outside the field's SR6 vocabulary (an SR5 leftover: vocab.py)
+        if f not in flagged and (why := vocab.invalid(f, v)):
+            out.append(("issue", {"field": f, "code": "unreadable", "page": page}, _short(f"not SR6: {why}", 80)))
     return sorted(out, key=lambda c: c[0] != "formula")  # (formulas first, then issues: any order is valid)
 
 

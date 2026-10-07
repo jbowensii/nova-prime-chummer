@@ -60,6 +60,66 @@ A made-up walker that stomps.
 **Standard Equipment:** Made-up legs.
 ## New Game Rules: Stomping
 Stomp in a made-up way.
+## Made Cannons
+Made-up cannons fire made-up shells.
+##### Made Ammunition
+plain ZAP Made Shell
+| SIZE | AVAIL | COST PER 10 | BLAST PROFILE | AVAIL | COST PER 10 |
+|---|---|---|---|---|---|
+| Z1 | 2(L) | 15¥ | — | — | — |
+| Z25 | 3(I) | 130¥ | 7P(1m)/4P(3m)/— | 5(I) | 450¥ |
+#### Made Ammunition Notes
+Made-up notes about the shells.
+## Made Warheads
+Made-up warheads go on made-up rockets.
+##### shell types
+| TYPE | CAPACITY | BLAST PROFILE | AVAIL | COST |
+|---|---|---|---|---|
+| Boom | 16 | 16P(1m)/10P(3m)/4P(16m) | — | +100¥ |
+|  | 20 | 20P(2m)/14P(4m)/5P(20m) | +1(I) | +200¥ |
+| TYPE | AVAIL | COST |
+|---|---|---|
+| Fizz | +1(I) | x 2 Base Cost |
+## Made Trains
+### Made Rail Train
+A made-up train of cars.
+##### Made Rail Train
+engine car
+| HAND | ACCEL | SPD INT | TOP SPD | BODY | ARMOR | PILOT | SENSOR | SEAT | AVAIL | COST |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3/5 | 10 | 25 | 120 | 16 | 16 | 4 | 4 | 2 | 6(L) | 645,000¥ |
+caboose car
+| HAND | ACCEL | SPD INT | TOP SPD | BODY | ARMOR | PILOT | SENSOR | SEAT | AVAIL | COST |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 4/5 | 15 | 15 | 75 | 12 | 12 | 4 | 4 | — | 6(L) | 27,000¥ |
+## Made Rockets
+#### Made Launcher Notes
+Made-up notes on launchers.
+##### Made Rockets and Missiles
+**NAME CLASS RANGE CAP PILOT AVAIL SENSOR COST**
+Zip 0 (20mm x
+1 km 16 0 0 5(I) 2,000¥
+Rocket 1m)
+Zop Missile 1 (30mm x 1m) 2 km 20 3 2 7(I) 9,000¥
+## Made Darts
+#### Made Dart Rules
+Made-up darts fly far.
+| NAME | RANGE | AVAIL | COST |
+|---|---|---|---|
+| Plain Dart | 1 km | 5(I) | 2,000¥ |
+| Smart Dart | 1 km | 6(I) | 4,500¥ |
+More made-up words about darts.
+Made zap ammo is 2x the normal cost for the weapon type.
+#### Glow Focus
+The Glow focus is a spell focus for purposes of cost,
+availability, and bonding cost (p. 168, SR6). It glows.
+### Fizzbang
+A made-up drug that fizzes.
+##### drugs
+| DRUG | POWER | AVAIL | COST (PER DOSE) |
+|---|---|---|---|
+| Fizzbang | 8 | 5L | 800 ¥ |
+| Popper | 7 | 3L | 50 ¥ |
 <!-- page 140 -->
 # FRAG ORDERS
 ## Game Information: Made-up Warfare
@@ -142,6 +202,47 @@ class DaRecipeTest(unittest.TestCase):
                          [{"NAME": "Ultra Max", "TYPE": "A", "DV": "2P", "AMMO": "30(c) 60(c)", "COST": "5¥"}])
         self.assertEqual(len(shapes.rows(stats)), 2)  # three columns: no wrap
         self.assertIsNone(shapes.rows([{"A": "1", "B": "2"}, {"A": "3", "B": "4"}]))  # unnamed rows: a rule's table
+
+    def test_products_side_by_side_and_ammunition_types(self):
+        g = entries(self.res, "gear")
+        # a band line naming two products over a table printing its prices twice: a row a product
+        self.assertEqual({k: g["Z25"][k] for k in ("category", "avail", "cost", "per")},
+                         {"category": "Made ammunition", "avail": "3(I)", "cost": "130", "per": "10"})
+        self.assertEqual((g["Z25 (ZAP Made Shell)"]["avail"], g["Z25 (ZAP Made Shell)"]["cost"]), ("5(I)", "450"))
+        al = {e.findtext("name"): [a.text for a in e.findall("alias")] for e in ET.fromstring(self.res.files["gear.xml"])}
+        self.assertIn("Made Shell Z25", al["Z25"])  # (the class a later band names, as a search name)
+        self.assertIn("Made Shell Z25 ZAP", al["Z25 (ZAP Made Shell)"])
+        # the title's class when the book heads it (`Autocannon Ammunition` under `Autocannons`)
+        h = ["SIZE", "AVAIL", "COST PER 10", "BLAST PROFILE", "AVAIL", "COST PER 10"]
+        _, rows = regroup._products(h, [["B60", "8(I)", "2,500¥", "12P(2m)", "6(I)", "7,500¥"]],
+                                    "regular HEX Assault Cannon", "Autocannon Ammunition", {"autocannon"})
+        self.assertEqual([r.aliases for r in rows], [("Autocannon B60",), ("Autocannon B60 HEX",)])
+        self.assertIn("Z1", g)
+        self.assertNotIn("Z1 (ZAP Made Shell)", g)  # (dashes only: no such product)
+        # a list titled as ammunition types: its rows are ammunition types, a nameless row a band of the one above
+        a = entries(self.res, "ammotypes")
+        self.assertEqual(set(a) - {"Made zap ammo"}, {"Boom", "Boom (Capacity 20)", "Fizz"})
+        self.assertEqual((a["Boom (Capacity 20)"]["avail"], a["Fizz"]["cost"]), ("+1(I)", "x 2 Base Cost"))
+        self.assertTrue(a["Fizz"]["category"].startswith("Shell type"))  # (its title)
+
+    def test_box_variants_text_lists_and_drugs(self):
+        v = entries(self.res, "vehicles")
+        # a lower-case line over each of a box's bands names that band's variant
+        self.assertEqual((v["Made Rail Train (Engine car)"]["cost"], v["Made Rail Train (Caboose car)"]["cost"]),
+                         ("645000", "27000"))
+        g = entries(self.res, "gear")
+        # a priced NAME table in a rule heading's text: its rows are items, the heading their title
+        self.assertEqual((g["Smart Dart"]["avail"], g["Smart Dart"]["cost"]), ("6(I)", "4500"))
+        self.assertIn("Made Dart Rules", entries(self.res, "rules"))
+        # the drugs table (DRUG, a name header of the book's): its rows are items
+        self.assertEqual((g["Popper"]["cost"], g["Popper"]["per"]), ("50", "dose"))
+        # an item priced in a sentence: an ammunition type by its multiplier, a focus as the core rulebook's
+        self.assertEqual(entries(self.res, "ammotypes")["Made zap ammo"]["cost"], "x2")
+        glow = next(e for e in ET.fromstring(self.res.files["gear.xml"]) if e.findtext("name") == "Glow Focus")
+        self.assertEqual([(f.get("field"), f.text) for f in glow.findall("formula")],
+                         [(k, f"ref(gear:crb.spell-focus, {k}, R)") for k in ("cost", "avail", "karma")])
+        # the book's misplaced header (AVAIL over the sensor column): read by the values' shapes
+        self.assertEqual((g["Zip Rocket"]["avail"], g["Zop Missile"]["avail"]), ("5(I)", "7(I)"))
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

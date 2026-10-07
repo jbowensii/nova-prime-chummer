@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, formula, resolve, sections, tables
+from importer.sr6 import KINDS, NS, archetypes, categories, formula, regroup, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -86,6 +86,7 @@ SECTIONS = [
     ("gear", "drone", "vehicles", None),
     ("gear", "", "gear", None),
     ("game concepts", "lifestyle", "lifestyles", None),
+    ("magic", "formula", "gear", None),  # the formulae table (the magic chapter's copy adds the ritual formula)
     ("magic", "ritual", "rituals", None),
     ("magic", "adept power", "adeptpowers", None),
     ("magic", "metamagic", "metamagics", None),
@@ -138,7 +139,7 @@ HEADERS = {
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
-             "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
+             "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
@@ -162,7 +163,8 @@ HEADERS = {
     "martialtechniques": {"CATEGORY": "category"},
     "traditions": {},
     "ammotypes": {"AR": "ar", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "DV": "dv", "COST MULTIPLIER": "cost",
-                  "MULTIPLIER": "cost", "COST": "cost", "AVAIL": "avail", "AVAILABILITY": "avail", "TYPE": "", "TYPES": ""},
+                  "MULTIPLIER": "cost", "COST": "cost", "AVAIL": "avail", "AVAILABILITY": "avail", "TYPE": "", "TYPES": "",
+                  "CAPACITY": "", "BLAST PROFILE": ""},  # (a warhead type's band: prose)
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
@@ -335,7 +337,8 @@ class _Catalog:
         k = (b.label or "", b.section or "")
         if self._table is None or self._table[0] != k:
             self._table = (k, len(self.tables))
-            self.tables[len(self.tables)] = {"title": k[0], "section": k[1], "page": page, "product": b.product}
+            self.tables[len(self.tables)] = {"title": k[0], "section": k[1], "page": page, "product": b.product,
+                                             "parent": b.table}  # (a sub-table's: its table's title)
         return self._table[1]
 
     def section(self, f):
@@ -343,8 +346,10 @@ class _Catalog:
         line; a program of the same type). A heading of a kind this module reads (a sprite power's Range and Duration
         lines) has its fields read as the recipe would."""
         same = lambda e: norm(e["name"]) == norm(f.name) and all(  # noqa: E731
-            e["attrs"].get(k) == f.attrs.get(k) for k in ("type",) if f.attrs.get(k))
-        if any(same(e) for e in self.entries[f.kind]):
+            e["attrs"].get(k) == f.attrs.get(k) for k in ("type", "group") if f.attrs.get(k)) and (  # (a path's `Step 1`)
+            not f.attrs.get("category") or slug(e["attrs"].get("category") or "") in ("", slug(f.attrs["category"])))
+        # (a focus kind `Ritual Spellcasting` is not the formula row of that name)
+        if any(same(e) for e in self.entries[f.kind]) or sections.reprint(f, self.entries[f.kind]):
             return
         a = dict(f.attrs)
         if f.block is not None and f.kind in HEADERS and HEADERS[f.kind]:
@@ -362,7 +367,8 @@ class _Catalog:
             if row is None:
                 return
             a.update({k: row["attrs"][k] for k in ("rating", "karma", "avail", "cost") if row["attrs"].get(k)})
-        self.add(f.kind, f.name, f.page, a, f.children, f.text)
+        cid = a.pop("_id", None)  # (an id of its own: `Gestalt Step 1`, the printed name `Step 1` shared)
+        self.add(f.kind, f.name, f.page, a, f.children, f.text, cid=slug(cid) if cid else None)
 
     def derived(self, f, a):
         """An item a section derives from one of the book's (sections.derived): the base item found by its name
@@ -411,8 +417,8 @@ class _Catalog:
                 a = cols.get(hu)
                 if a is None and (m := re.fullmatch(r"(\w+) COST \(CAPACITY\)", hu)):
                     a = f"variant:{m.group(1).lower()}"
-                elif a is None and (m := re.fullmatch(r"COST \(PER (.+)\)", hu)):
-                    a, out["per"] = "cost", m.group(1).lower()
+                elif a is None and (m := re.fullmatch(r"COST \(PER (.+)\)|COST PER (\w+)", hu)):  # (`COST PER 10`)
+                    a, out["per"] = "cost", (m.group(1) or m.group(2)).lower()
                 if a is None:  # reported once the entry is added (add()); its value goes to the text
                     self.pending.append({"kind": "unknown-column", "file": f"{kind}.xml", "column": h, "name": b.name,
                                          "page": page})
@@ -595,10 +601,16 @@ class _Catalog:
                 f or b.tags or kind in ("qualities", "adeptpowers") and b.labels):
             return False  # a rule table under the heading, not the kind's stat band
         if kind in ROW_KINDS:
-            # the table's title, else its first header when it names a category (CARS, not WEAPON), else the section
+            # the first header when it names a class of things (GRENADES under the title `explosives`, not WEAPON or
+            # TYPE: owner, 2026-10-07), else the table's title, else the section
             label, head = slug(b.label), slug(b.header[0] if b.header else "")
-            head = "" if head.upper() in NAME_HEADERS or head == "type" else head
-            attrs["category"] = cat or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
+            head = "" if head.upper() in NAME_HEADERS or head.upper().replace("-", " ") in regroup.NAME_COLUMNS else head
+            # (a plural class the title doesn't name: `weapon accessories` over ACCESSORY keeps its title)
+            narrower = head if re.search(r"[^s]s$", head) and formula._stem(head.split("-")[-1]) not in {
+                formula._stem(w) for w in label.split("-")} else ""
+            attrs["category"] = cat or narrower or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
+            if b.group:  # a row printed under a name-only row (`DocWagon contracts`): `DocWagon contract: Basic`
+                attrs["group"] = group_name(b.group)
             if kind == "augmentations":
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
@@ -625,7 +637,9 @@ class _Catalog:
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 e = self.add(kind, n, page, a, notes, "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
-                             aliases=(b.aliases if n == name else []) or code_alias(n, b.label))  # (a heading's fuller name first)
+                             aliases=(b.aliases if n == name else []) or code_alias(n, b.label)
+                             or (printed_short(n, self.index) if n != name else [])  # (a heading's fuller name first)
+                             or (grouped_names(n, a["group"]) if a.get("group") else []))
                 e["tab"] = self.table_of(b, page)
                 if b.product:
                     e["product"] = b.product
@@ -865,6 +879,39 @@ CODE = re.compile(r"[A-Za-z]{0,3}-?\d+[A-Za-z]{0,2}|[A-Z]{2,5}")  # a row named 
 _CLASS_WORDS = re.compile(r"\s+(?:ammunition|ammo|rounds)$", re.I)
 
 
+def group_name(head):
+    """A group row's name as its rows' group: its last word singular, the rest as printed (`DocWagon contracts` ->
+    `DocWagon contract`, `Slap patches` -> `Slap patch`)."""
+    ws = head.split()
+    return " ".join(ws[:-1] + [categories.singular(ws[-1].lower())]) if ws else head
+
+
+def grouped_names(name, group):
+    """The search names of a row named within its group (owner, 2026-10-07: as Commlink6 composes them): the row
+    inside the group's name and in front of it (`Basic` in `DocWagon contract`: `DocWagon Basic contract`, `Basic
+    DocWagon contract`); a row ending in the group's own last word once (`Antidote patch` in `Slap patch`: `Slap
+    Antidote patch`). A qualifier the row's name ends with (`(month)`) stays at the end."""
+    m = re.match(r"(.*?)\s*(\([^()]*\))?\s*$", name)
+    core, tail = m.group(1), f" {m.group(2)}" if m.group(2) else ""
+    gw, cw = group.split(), core.split()
+    if not gw or not cw:
+        return []
+    if formula._stem(cw[-1].lower()) == formula._stem(gw[-1].lower()):
+        return [" ".join(gw[:-1] + cw) + tail] if len(gw) > 1 else []
+    return [" ".join(gw[:-1] + cw + gw[-1:]) + tail, f"{core} {group}{tail}"]
+
+
+def printed_short(name, index):
+    """A part of a row printing two names that the book never prints whole (`Colt Government Manhunter` from `Colt
+    Government 2076/Manhunter`): its first and last words when the book prints those together (`Colt Manhunter`, in
+    the text and the NPCs' gear), as its other name."""
+    ws = name.split()
+    if index is None or len(ws) < 3 or index.mentions(name):
+        return []
+    short = f"{ws[0]} {ws[-1]}"
+    return [short] if index.mentions(short) else []
+
+
 def code_alias(name, title):
     """A row named only by a code (and no heading's fuller name) takes its table's title in front as its other name,
     the title's last word made
@@ -898,13 +945,50 @@ _MULTIPLE = re.compile(r"^\s*(?:x\s*\d+(?:\.\d+)?|\+\s*\d+\s*%)\s*$", re.I)
 _AMMO_WORDS = re.compile(r"\b(?:ammo|ammunition|rounds?|bolts?|arrows?|warheads?|slugs?|shells?|bullets?)\b", re.I)
 
 
+# an ammunition priced in a sentence as a multiple of the weapon's normal ammunition (`Small caliber railgun ammo is 3x
+# the normal cost for the weapon type`): an ammunition type, its cost the multiplier
+_AMMO_MULTIPLE = re.compile(r"(?:^|[.!?]\s+)([A-Z][\w-]*(?:\s+[\w-]+){0,4}?\s+(?:ammo|ammunition|rounds))\s+(?:is|are|costs?)\s+"
+                            r"(\d+(?:\.\d+)?)\s*(?:x|×|times)\s+(?:the\s+)?(?:normal|base|regular|listed)\s+(?:cost|price)")
+# an item priced in a sentence as another book's item (`The Foundation focus is a spell focus for purposes of cost,
+# availability, and bonding cost (p. 168, SR6)`): its price fields that item's, at its own rating
+_PRICED_AS = re.compile(r"\bThe\s+([A-Z][\w-]*(?:\s+[\w-]+){0,3}?)\s+is\s+an?\s+([\w-]+(?:\s+[\w-]+){0,3}?)\s+"
+                        r"for\s+(?:the\s+)?purposes?\s+of\s+(cost[^()]*?)\s*\(p\.\s*\d+,\s*SR6\)")
+_CORE = "crb"  # `SR6` in a cross-reference: the core rulebook
+
+
+def sentence_items(bs, offset):
+    """[(kind, name, page, attrs, children, text)] of the items a book prices only in a sentence of another block's
+    text (_AMMO_MULTIPLE, _PRICED_AS), each once (a description printed twice: its first)."""
+    heads = {norm(b.name): b.name for b in bs}
+    out, seen = [], set()
+    for b in bs:
+        text = " ".join(" ".join([b.text, *b.labels.values()]).split())
+        page = max(1, b.page - offset)
+        for m in _AMMO_MULTIPLE.finditer(text):
+            name = m.group(1)[:1].upper() + m.group(1)[1:]
+            if norm(name) not in seen:
+                seen.add(norm(name))
+                out.append(("ammotypes", name, page, {"category": "Ammo type", "cost": f"x{m.group(2)}"}, (), m.group(0).strip(". ")))
+        for m in _PRICED_AS.finditer(text):
+            name, base, fields = heads.get(norm(m.group(1)), m.group(1)), m.group(2), m.group(3)
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            flds = [f for f, w in (("cost", "cost"), ("avail", "availability"), ("karma", "bonding")) if w in fields]
+            ref = f"gear:{_CORE}.{slug(base)}"
+            kids = tuple(("formula", {"field": f}, f"ref({ref}, {f}, R)") for f in flds)
+            attrs = {"category": "Foci" if base.lower().endswith("focus") else "", **{f: f"As {base}" for f in flds}}
+            out.append(("gear", name, page, {k: v for k, v in attrs.items() if v}, kids, m.group(0).strip(". ")))
+    return out
+
+
 def ammo_type(b):
     """A row priced as a multiple of the ammunition it modifies (a COST MULTIPLIER column, or `x2` / `+100%` in an
     ammunition table): an ammunition type, not an item of its own."""
     if b.row is None or not b.header:
         return False
-    if any("MULTIPLIER" in h.upper() for h in b.header):
-        return True
+    if any("MULTIPLIER" in h.upper() for h in b.header) or regroup.TYPES_TITLE.search(b.label or ""):
+        return True  # (a row of a list titled as ammunition types: `warhead types`)
     cost = next((v for h, v in b.row.items() if h.upper() in ("COST", "PRICE")), "")
     return bool(_MULTIPLE.match(cost or "")) and bool(_AMMO_WORDS.search(" ".join([b.name, b.label, b.section, *b.header])))
 
@@ -1114,6 +1198,9 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
+        if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
+            cat.add(kind, name, page, attrs, kids, text)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):

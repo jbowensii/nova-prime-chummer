@@ -20,7 +20,7 @@ HEADING_LEVELS = {60.0: 1, 56.0: 1, 52.0: 1, 48.0: 1, 40.0: 1, 27.0: 1, 21.0: 2,
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 185  # PDF page: the back cover
 ALIASES = {}
-NAME_HEADERS = frozenset()
+NAME_HEADERS = frozenset({"DRUG"})  # the medical chapter's `drugs` table: its rows are items (their headings are sections)
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"spells"}
@@ -70,13 +70,61 @@ def kind(chapter, b, parent2):
     return None, None
 
 
+# an untitled price list set in a rule heading's text (`Expanded Rocket/Missile Rules`: the standard rocket and missile)
+_TEXT_LIST = re.compile(r"^\| NAME \|.*\n\|(?:---\|)+\n(?:\|.*\|\n?)+", re.M)
+
+
+def _text_list(b):
+    """[row blocks, the block without the list] for a rule heading whose text sets a NAME table every row of which is
+    priced (`2,000¥`), its heading their title; else None (a table of rules, or one of the book's boxes)."""
+    m = _TEXT_LIST.search(b.text) if b.type == "item" and b.row is None and not b.stats else None
+    if not m:
+        return None
+    ls = m.group(0).strip().splitlines()
+    head = [c.strip() for c in ls[0].strip()[1:-1].split("|")]
+    rows = [[c.strip() for c in ln.strip()[1:-1].split("|")] for ln in ls[2:]]
+    if len(rows) < 2 or "COST" not in head or any(len(r) != len(head) or "¥" not in r[head.index("COST")] for r in rows):
+        return None
+    out = [replace(b, name=r[0], row=(row := {head[0]: r[0], **shapes.cells(dict(zip(head[1:], r[1:])))}),
+                   header=list(row), label=b.name, text="", labels={}, aliases=[]) for r in rows]
+    return out + [replace(b, text=(b.text[:m.start()] + b.text[m.end():]).strip())]
+
+
+# a structural hint about one misplaced header (Rockets and Missiles, p. 58): the header prints `PILOT AVAIL SENSOR
+# COST` over rows `0 0 5(I) 2,000¥`, AVAIL set over the sensor column (the p. 57 table prints `SENSOR AVAIL`): read
+# by the values' shapes, as the owner decided (2026-10-07)
+_LEGAL = re.compile(r"\d\s*\(?[LIF]\)?$")
+
+
+def _swap_avail(bs):
+    """A table's row blocks whose AVAIL cells print no legality letter while most of a neighbouring column's do (the
+    misplaced header above): the two columns' values swapped."""
+    tables = {}
+    for b in bs:
+        if b.row is not None and "AVAIL" in b.row:
+            tables.setdefault((b.label, tuple(b.row)), []).append(b)
+    swap = {}
+    for (_, head), rows in tables.items():
+        filled = lambda h: [r.row[h].strip() for r in rows if r.row[h].strip() not in ("", "-", "—", "–")]  # noqa: E731
+        a = head.index("AVAIL")
+        if not filled("AVAIL") or any(_LEGAL.search(v) for v in filled("AVAIL")):
+            continue
+        for k in (a - 1, a + 1):
+            if 0 < k < len(head) and head[k] not in ("COST", "AVAIL") and filled(head[k]) \
+                    and 2 * sum(bool(_LEGAL.search(v)) for v in filled(head[k])) > len(filled(head[k])):
+                swap.update({id(r): head[k] for r in rows})
+                break
+    return [replace(b, row={**b.row, "AVAIL": b.row[swap[id(b)]], swap[id(b)]: b.row["AVAIL"]}) if id(b) in swap else b
+            for b in bs]
+
+
 def prepare(bs):
     """The book's shapes as crb.extract reads them: stat boxes as rows (shapes.boxes), a spell section (`Aerial Flare
     (Manipulation)` over its band) as a spell item of that category, a quality's `(Positive)` suffix dropped, a ritual's
     `(Anchored, Spell)` its keywords, the martial arts' lines as labels, a `New Cyberware:` line naming the next box's
     category."""
     out, group = [], ""
-    for b in shapes.boxes(bs):
+    for b in _swap_avail([x for b in shapes.boxes(bs) for x in (_text_list(b) or [b])]):
         if b.type == "item" and not b.text.strip() and not b.stats and b.row is None and (m := _NEW.match(b.name)):
             group = m.group(1)
             continue

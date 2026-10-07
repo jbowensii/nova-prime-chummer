@@ -249,13 +249,14 @@ You gain the Glow Fan quality at half its cost.
                           "Sore Feet": ("negative", "5")})
         self.assertNotIn("Starting point", q)
         # unpriced steps: named as steps they are qualities (a nuyen Cost line: positive; nothing: negative, an
-        # issue saying so); a bare heading (a quality the step grants) and a bare `Step 3` are not
+        # issue saying so); a bare heading (a quality the step grants) is not; a bare `Step 3` is the path's quality
+        # under its printed name, the path its group (owner decision 2026-10-07)
         self.assertEqual({n: q[n]["kind"] for n in ("Blisters", "Calluses", "Rest Stop")},
                          {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"})
         issues = {e.findtext("name"): [i.get("field") for i in e.iter("issue")] for e in res}
         self.assertIn("kind", issues["Blisters"])
         self.assertNotIn("kind", issues["Rest Stop"])
-        self.assertNotIn("Step 3", q)
+        self.assertEqual((q["Step 3"]["group"], q["Step 3"]["id"]), ("Long Road", "long-road-step-3"))
         self.assertEqual(sum(e.findtext("name") == "Glow Fan" for e in res), 1)
 
     def test_headings_bought_as_a_quality_at_the_sections_price(self):
@@ -457,3 +458,50 @@ Made-up bonuses.
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FormsAndReprintsTest(unittest.TestCase):
+    """A heading the section above names as one of its forms is an action (owner, 2026-10-07); a run-in list that
+    points to the page where its entries are defined reprints them (no second entry). Invented book."""
+    MD = """<!-- page 41 -->
+# MATRIX
+## Programs
+### Programs
+#### Hacking
+• **Zap:** Zaps a made-up icon.
+• **Fizz:** Fizzes it.
+# MAGIC
+## Spells
+### Glowspelling
+Glowspelling dims a glow, and it comes in one of two forms: glow guard and unglowing.
+#### Glow Guard
+To use it, take a Glowspell Major Action and roll.
+#### Unglowing
+The caster chooses the Glowspell action and rolls.
+#### Glow Trick
+Spend a Minor Action to glow.
+# RIGGING
+## Rigs
+#### Rigger Programs
+Riggers can use some programs. See the **Programs** section (p. 40) for more detail.
+**Zap:** +1 to a made-up drone.
+**Wobble:** +2 to another.
+"""
+
+    @classmethod
+    def setUpClass(cls):
+        text, _ = regroup.regroup(cls.MD, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        cls.res = crb.extract(text)
+
+    def kind(self, k):
+        return [(e.findtext("name"), e.get("type"), e.get("page")) for e in ET.fromstring(self.res.files[f"{k}.xml"])]
+
+    def test_a_heading_named_as_one_of_its_sections_forms_is_an_action(self):
+        got = {n: t for n, t, _ in self.kind("actions")}
+        self.assertEqual({n: got.get(n) for n in ("Glow Guard", "Unglowing")}, {"Glow Guard": "major", "Unglowing": None})
+        self.assertNotIn("Glow Trick", got)  # (an action word, but no form of its section)
+
+    def test_a_list_pointing_to_its_entries_page_reprints_them(self):
+        got = self.kind("programs")
+        self.assertEqual([n for n, _, _ in got].count("Zap"), 1)
+        self.assertIn("Wobble", [n for n, _, _ in got])  # (a program the cited page doesn't define: its own entry)
