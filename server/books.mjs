@@ -15,6 +15,9 @@
 //   POST   /api/books/reimport-all    queues a re-import of every book with its original.pdf (not one read by AI, not a busy one):
 //                                     -> 202 { queued: [id…], skipped: [{ id, why }] }; each is the single re-import, from the PDF
 //                                     alone if that's all the folder has; book.md is reused when the importer can (run --reuse)
+//   GET    /api/books/reimport-all    -> { queued, skipped } of the Re-import all still running (one a restart resumed), else empty
+//                                     lists. A restart re-queues the jobs it cut off (library/.config/jobs.json, else the books'
+//                                     statuses), in their order, in both games: resume()
 //   DELETE /api/books/:id[?files=1]   clears the book's outputs (files=1: also its Library folder)
 //   POST   /api/books/:id/ai[?dryRun=1|fresh=1]  AI proposals for a needs-ai book, or for the weapons/armor tables a recipe
 //                                     couldn't read (dryRun: { parts, provider }, sends nothing; fresh: replace finished
@@ -222,7 +225,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       p.stdout.on('data', d => { out = (out + d).slice(-65536) })
       p.stderr.on('data', d => { err = (err + d).slice(-4000) })
       p.on('error', e => { err += e.message })
-      p.on('close', (code, signal) => done({ code: code ?? -1, signal, out, err: signal ? `${err}\nstopped (${signal}, after ${timeout / 1000}s at most)` : err }))
+      // (a signal: the server stopping it, or the time limit; `stopped (SIG…` is what 0.10.2 wrote for both)
+      p.on('close', (code, signal) => done({ code: code ?? -1, signal, out, err: !signal ? err : stopped ? `${err}\nstopped by a restart (${signal})`
+        : `${err}\ntimed out after ${timeout / 1000}s (${signal})` }))
       p.stdin.on('error', () => {})
       p.stdin.end(input ?? '')
     })
@@ -245,7 +250,24 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   function enqueue(id, steps, game = 'ca2') {
     queue.push({ game, id, steps })
+    saveJobs()
     pump()
+  }
+
+  /** The job queue (the running job first) and each game's last Re-import all, in library/.config/jobs.json, so a
+   *  restart (an update recreating the container mid-queue) picks them up where they were (resume). A stop leaves the
+   *  file as it was: the job it kills is still in it. */
+  const JOBS = join(config, 'jobs.json')
+  let batches = { ca2: null, sr6: null }, jobsChain = Promise.resolve()
+  function saveJobs() {
+    if (stopped) return jobsChain
+    const jobs = [...running ? [running] : [], ...queue].map(({ game, id, steps }) => ({ game, id, steps }))
+    for (const [game, b] of Object.entries(batches)) if (b && !b.queued.some(id => busy(id, game))) batches[game] = null // finished
+    const text = JSON.stringify({ jobs, batches }) + '\n', idle = !jobs.length && !batches.ca2 && !batches.sr6
+    // (nothing left: no file, so an idle server's backup holds none)
+    jobsChain = jobsChain.then(() => idle ? rm(JOBS, { force: true }) : mkdir(config, { recursive: true }).then(() => writeAtomic(JOBS, text)))
+      .catch(e => console.error(`couldn’t save the job queue: ${e.message}`))
+    return jobsChain
   }
 
   async function pump() {
@@ -255,6 +277,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       for (const args of running.steps) {
         if (stopped) break
         const r = await importer(args)
+        if (stopped) break // the server is stopping: the job stays in jobs.json for the next start (resume)
         if (r.code === 0) continue
         const st = attr(rootTag(await readOr(join(AREAS[running.game].library, running.id, 'status.xml')), 'status'), 'state')
         const why = (await redact(r.err)).trim().split('\n').slice(-12).join('\n')
@@ -264,6 +287,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       }
     } finally {
       running = null
+      saveJobs()
       pump()
     }
   }
@@ -654,16 +678,40 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
   }
 
-  /** After a restart no job is running, so a book left mid-job would look stuck forever. */
-  async function sweep() {
+  /** After a restart no job is running. The jobs left in jobs.json run again, in their order (the running one first);
+   *  then, in both games and in upload order, a book still showing a job (queued, importing, …) or a restart's failure
+   *  (`Interrupted by a restart`, or the `stopped (SIGTERM…)` 0.10.2 wrote for the book it killed) is re-imported if it
+   *  can be (its PDF, not read by AI), else marked interrupted. A Re-import all left mid-way goes on (its batch kept).
+   *  jobs: false after a restore (a backup's own jobs.json is not run). */
+  async function resume({ jobs = true } = {}) {
+    let saved = null
+    try { saved = jobs ? JSON.parse(await readOr(JOBS, 'null')) : null } catch { saved = null }
+    if (saved?.batches) batches = { ...batches, ...saved.batches }
+    for (const j of saved?.jobs ?? []) {
+      if (!AREAS[j?.game] || !BOOK_ID.test(j.id ?? '') || busy(j.id, j.game) || !Array.isArray(j.steps)) continue
+      if (!await stat(join(AREAS[j.game].library, j.id)).then(() => true, () => false)) continue // removed meanwhile
+      await setStatus(j.id, 'queued', 'Resumed after a restart', j.game)
+      queue.push({ game: j.game, id: j.id, steps: j.steps })
+    }
     const live = ['queued', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
     for (const [game, area] of Object.entries(AREAS)) {
-      for (const d of await readdir(area.library, { withFileTypes: true }).catch(() => [])) {
-        if (!d.isDirectory() || !BOOK_ID.test(d.name) || busy(d.name, game)) continue
-        const st = attr(rootTag(await readOr(join(area.library, d.name, 'status.xml')), 'status'), 'state')
-        if (live.includes(st)) await setStatus(d.name, 'failed', 'Interrupted by a restart — re-import', game)
+      const ids = (await readdir(area.library, { withFileTypes: true }).catch(() => []))
+        .filter(d => d.isDirectory() && BOOK_ID.test(d.name)).map(d => d.name).sort()
+      for (const id of ids) {
+        if (busy(id, game)) continue
+        const dir = join(area.library, id), status = await readOr(join(dir, 'status.xml'))
+        const st = attr(rootTag(status, 'status'), 'state')
+        const cut = live.includes(st) || (st === 'failed' && /Interrupted by a restart|^stopped (?:by a restart|\(SIG)/m.test(unesc(status ?? '')))
+        if (!cut) continue
+        const pdf = await stat(join(dir, 'original.pdf')).then(() => true, () => false)
+        if (pdf && attr(rootTag(await readOr(join(dir, 'import.xml')), 'import'), 'recipe') !== 'ai') {
+          await queueReimport(id, game, { start: false, message: 'Resumed after a restart' })
+        } else if (st !== 'failed' || !/Interrupted by a restart/.test(status)) {
+          await setStatus(id, 'failed', 'Interrupted by a restart — re-import', game)
+        }
       }
     }
+    saveJobs() // (a finished batch goes there) // (the caller starts the queue: at start-up once an interrupted data pack is recovered)
   }
   /** The upgrade path to core data built by the import: a server whose custom/imported/core/ lacks any of the 12 core files
    *  and whose Library holds the core rulebook re-imports it, then the Conversion Guide and DHSA (their Tasking, Emerged
@@ -739,7 +787,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     return books
   }
-  const started = sweep().then(recoverCore).then(dedupe).then(rebuildCore).catch(e => console.error(e.stack))
+  const started = resume().then(recoverCore).then(() => pump()).then(dedupe).then(rebuildCore).catch(e => console.error(e.stack))
   for (const a of Object.values(AREAS)) { // uploads cut off by a stop
     try {
       for (const f of readdirSync(a.library)) if (f.startsWith('.upload-')) rmSync(join(a.library, f), { recursive: true, force: true })
@@ -963,7 +1011,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       await onRestore().catch(e => console.error(e.stack)) // the accounts come from the restored users.xml; every session ends
       restoring = false // only now: a sign-in in between would check the old accounts
     }
-    await sweep()
+    await resume({ jobs: false })
+    pump()
     void rebuildCore().catch(e => console.error(e.stack)) // a backup from before the core data was imported
     const why = (await redact(r.err)).trim().split('\n').pop()
     if (r.code === 3) throw fail(400, why || 'the backup was refused')
@@ -1043,7 +1092,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** Clear a book's outputs and import it again from its original.pdf (the converted book.md reused when the importer
    *  finds it made from the same file by the same converter). The caller checked it isn't busy or read by AI. */
-  async function queueReimport(id, game) {
+  async function queueReimport(id, game, { start = true, message = '' } = {}) {
     const area = AREAS[game], dir = bookDir(id, game)
     const imp = rootTag(await readOr(join(dir, 'import.xml')), 'import')
     const file = attr(imp, 'file') ?? attr(rootTag(await readOr(join(dir, 'upload.xml')), 'upload'), 'file')
@@ -1052,19 +1101,27 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (attr(rootTag(await readOr(join(dir, 'core-rebuild.xml')), 'rebuild'), 'pack')) await rm(join(dir, 'core-rebuild.xml'), { force: true })
       await dropPackMarks(attr(imp, 'sha256'))
     }
-    await setStatus(id, 'queued', '', game)
-    enqueue(id, [[...area.pre, 'remove', dir, '--custom', area.custom],
-      [...area.pre, 'run', dir, '--custom', area.custom, '--reuse', ...(file ? ['--file', file] : [])]], game)
+    await setStatus(id, 'queued', message, game)
+    const steps = [[...area.pre, 'remove', dir, '--custom', area.custom],
+      [...area.pre, 'run', dir, '--custom', area.custom, '--reuse', ...(file ? ['--file', file] : [])]]
+    if (start) enqueue(id, steps, game)
+    else queue.push({ game, id, steps }) // (resume: the caller saves and starts the queue once all are in)
   }
 
   /** POST /api/[sr6/]books/reimport-all: every book folder with its PDF, in upload order (ids sort by time). One at a
    *  time, so a second click finds the first one's books busy instead of queueing them twice. */
   let reimporting = Promise.resolve()
   async function reimportAll(req, res, send, game = 'ca2') {
+    if (req.method === 'GET') { // the batch still running (one a restart resumed too), for a page opened meanwhile
+      const b = batches[game]
+      return send(res, 200, b && b.queued.some(id => busy(id, game)) ? b : { queued: [], skipped: [] })
+    }
     if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' })
     const run = reimporting.then(() => queueAll(game))
     reimporting = run.catch(() => {})
-    return send(res, 202, await run)
+    const r = await run
+    if (r.queued.length) { batches[game] = r; await saveJobs() }
+    return send(res, 202, r)
   }
   async function queueAll(game) {
     const lib = AREAS[game].library
