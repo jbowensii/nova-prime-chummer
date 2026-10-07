@@ -37,6 +37,7 @@ class Fonts:
     size: float  # body size
     heading: str  # display family
     levels: dict  # heading size -> level 1..5
+    foot: frozenset = frozenset()  # (family, size) of the running feet: set in the bottom band on many pages
 
 
 def family(fontname: str) -> str:
@@ -54,10 +55,16 @@ def _is_furniture(x0, top, page):
     return x0 < _EDGE or x0 > page.width - _OUTER or top > page.height - _FOOT
 
 
-def furniture(page, words):
+def furniture(page, words, fonts=None):
     """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band); on a card, its
-    sideways line (the copyright up its edge)."""
-    return [w for w in words if not _is_furniture(w["x0"], w["top"], page) and (page.width >= _CARD or w["upright"])]
+    sideways line (the copyright up its edge). With the book's fonts, a word in the bottom band set in a face the
+    running feet don't use stays: a table's last rows reaching into the band (the core rulebook's drug list)."""
+    def keep(w):
+        if not _is_furniture(w["x0"], w["top"], page):
+            return True
+        return (bool(fonts and fonts.foot) and not _is_furniture(w["x0"], 0, page)
+                and (_word_family(w), round(w["size"], 1)) not in fonts.foot)
+    return [w for w in words if keep(w) and (page.width >= _CARD or w["upright"])]
 
 
 def fonts(pdf, min_pages=None) -> Fonts:
@@ -67,14 +74,18 @@ def fonts(pdf, min_pages=None) -> Fonts:
     pages, while a contents or index page sets many words once in a size of its own."""
     # ponytail: one page in 40 is a guess fitted to one book; make it a recipe constant if another book needs it
     min_pages = min_pages or max(1, round(len(pdf.pages) / 40))
-    chars, pages = Counter(), defaultdict(set)
+    chars, pages, feet = Counter(), defaultdict(set), defaultdict(set)
     for n, page in enumerate(pdf.pages):
         for c in page.chars:
             if c["text"].strip() and not _is_furniture(c["x0"], c["top"], page):
                 key = (family(c["fontname"]), round(c["size"], 1))
                 chars[key] += 1
                 pages[key].add(n)
+            elif c["text"].strip() and page.width >= _CARD and not _is_furniture(c["x0"], 0, page):
+                feet[(family(c["fontname"]), round(c["size"], 1))].add(n)  # the bottom band
         page.flush_cache()
+    # the running feet's faces: in the bottom band on one page in ten at least (a table row reaching it is rare)
+    foot = frozenset(k for k, p in feet.items() if len(p) >= max(2, len(pdf.pages) / 10))
     body, size = max(chars, key=chars.get) if chars else ("", 10.0)
     big = Counter()
     for (fam, s), k in chars.items():
@@ -83,7 +94,7 @@ def fonts(pdf, min_pages=None) -> Fonts:
     heading = max(big, key=big.get) if big else ""
     sizes = sorted((s for (fam, s), p in pages.items() if fam == heading and s > size * 0.8 and len(p) >= min_pages),
                    reverse=True)[:5]
-    return Fonts(body, size, heading, {s: i + 1 for i, s in enumerate(sizes)})
+    return Fonts(body, size, heading, {s: i + 1 for i, s in enumerate(sizes)}, foot)
 
 
 _LAYER_TOL = 1  # pt; a duplicated text layer sits a hundredth of a point off the first

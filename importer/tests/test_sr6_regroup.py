@@ -583,3 +583,55 @@ Glow kits glow in the dark.
         self.assertEqual(rows["Fizz Pen"], ("2", "40¥"))
         self.assertEqual(rows["Zap Kit Basic (Rating 1–6)"], ("3", "Rating x 100¥"))
         self.assertEqual(rows["Wobble Lamp"], ("3", "1,500¥"))  # (a name of several words ends the group)
+
+
+class PriceListTest(unittest.TestCase):
+    """A price list set in an item's text (the core rulebook's credsticks under a bank account's heading)."""
+    MD = """<!-- page 7 -->
+# GIZMOS
+## Paying
+#### Zorp Account
+A zorp account holds zorps.
+#### zorp chips
+| TYPE | MAX VALUE | AVAIL | COST |
+|---|---|---|---|
+| Tin | 50¥ | 1 | 2¥ |
+| Brass | 500¥ | 2 | 9¥ |
+#### zorp grades
+| GRADE | COST | AVAIL |
+|---|---|---|
+| Shiny | x1.5 | +1 |
+| Dull | x0.5 | -1 |
+#### Fizz Card
+A fizz card fizzes.
+#### fizz card
+| TYPE | AVAIL | COST |
+|---|---|---|
+| Plain | 1 | 5¥ |
+| Gold | 2 | 50¥ |
+# REPAIRS
+## Zorp Repair
+#### Wobble Fix
+Wobbles get fixed.
+#### wobble kits
+| KIT | AVAIL | COST |
+|---|---|---|
+| Wobble Kit | 1 | 10¥ |
+| Wobble Shop | 3 | 900¥ |
+# SHOP
+#### wobble kits
+| KIT | AVAIL | COST |
+|---|---|---|
+| Wobble Kit | 1 | 10¥ |
+| Wobble Shop | 3 | 900¥ |
+"""
+
+    def test_rows_of_a_price_list_are_items(self):
+        bs = blocks(regroup.regroup(self.MD)[0])
+        rows = {(b.name, b.chapter): b.label for b in bs if b.row is not None}
+        self.assertEqual(rows.get(("Tin", "GIZMOS")), "zorp chips")
+        self.assertIn(("Brass", "GIZMOS"), rows)
+        self.assertNotIn(("Shiny", "GIZMOS"), rows)  # multipliers (`x1.5`): a grade table, not prices
+        self.assertNotIn(("Plain", "GIZMOS"), rows)  # titled with its item's name: that item's variants
+        self.assertNotIn(("Wobble Kit", "REPAIRS"), rows)  # a later chapter prints the list again
+        self.assertIn("| Shiny | x1.5 | +1 |", regroup.regroup(self.MD)[0])  # (kept in the text)

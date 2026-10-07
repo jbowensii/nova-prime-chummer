@@ -499,6 +499,19 @@ def run(corpus, cl6, verdicts=None):
         kinds = set(c["pool"]) or {c["kind"]}
         ents = corpus.entries(kinds, names, home)
         obs = lineage.observe(corpus, kinds, names, home)
+        # one book cataloguing two things of one kind under one name (the hacking program `Stealth` and the autosoft
+        # `Stealth`): the record is the one nearest its page
+        groups = {}
+        for b, e in ents:
+            groups.setdefault((id(b), e["kind"], match.n1(e["name"])), []).append(e)
+        far = set()
+        for es in groups.values():
+            if len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
+                d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
+                far |= {i for i, x in d.items() if x > min(d.values())}
+        if far:
+            ents = [(b, e) for b, e in ents if e["id"] not in far]
+            obs = [o for o in obs if (m := re.search(r"\bid=(\S+) ", o.where)) is None or m.group(1) not in far]
         own = [o for o in obs if not o.context and not o.variant]
         found = bool(own) or any(e["kind"] in kinds and not b.context for b, e in ents)
         return found, ents, obs

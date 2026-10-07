@@ -275,7 +275,11 @@ class Corpus:
         if not out:
             out = [(b, e) for b, e in self._find("n2", kinds, names) if home is None or family(b.belongs) == home]
         if home is not None:
-            own = {e["kind"] for b, e in out if family(b.belongs) == home}
+            # the kinds the home book gives the object: under its own name when that finds it (an alias of one word,
+            # `standard` of `Crossbow, standard`, doesn't pull in the credstick `Standard`)
+            first = {match.n1(p) for p in match.split_names(names[0])} if names else set()
+            own = {e["kind"] for b, e in out if family(b.belongs) == home and first & _keys(e, match.n1)} \
+                or {e["kind"] for b, e in out if family(b.belongs) == home}
             if own:
                 out = [(b, e) for b, e in out if e["kind"] in own]
         return out

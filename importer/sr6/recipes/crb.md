@@ -165,6 +165,30 @@ The recipe's `SECTIONS` map stays: measured, the general reader agrees on 60 of 
 - Stat matching (cl6check): Commlink6 names two cyber-implant weapon rows and an ammo row its own way (the category or a count added); their stats find them (3 renames). Nothing changes in the import.
 - Rigger command consoles (importer v4): the RCC table set inside `Resisting Hacking` (first column `RCC`, now a name column) is read: ten consoles, electronics, their DEVICE RATING the rating.
 
+## Book focus (feat/book-crb): what to look for
+
+- **A price list set in a description** (regroup's `price_list`, every book): the `credsticks` table (`TYPE | MAX
+  VALUE | AVAIL | COST`) sits in the Credit account's text; a titled table in an item's text with AVAIL and COST
+  columns, every row a name and half of them priced, is a catalog: five credsticks, category Credstick. Not one: a
+  grade table (`x1.2` multipliers), the second of tables stacked under one title (the `formulae` table under `foci`),
+  a table titled with its item's name (its variants), or a list a later chapter prints again (the rigging chapter's
+  `vehicle modding` is the gear chapter's vehicle modifications).
+- **Table rows in the page's bottom band** (converter sr6-4, every book): the band drops only the running feet's
+  faces (Njord 9/11 pt here); the reference drug table's `Psyche` and `Zen` rows (p. 312) and NPC gear lines at a
+  page's foot (`Streetline Special […]`, p. 204) are read.
+- **Foci availability** `(Force) L`, `(Force +3) L`: a formula (`R`, `R + 3`), the legality after the bracket.
+- **A row printing two names** (`Colt Government 2076/Manhunter`): the second part, never printed whole, takes the
+  short form the book prints (`Colt Manhunter`, the NPCs' gear) as an alias.
+- Still prose or a decision for the owner (`chummer/books/crb-gaps.md`, worked examples): the credsticks' group name,
+  name-only group rows (`DocWagon contracts`, `Spell formula`), the senses (Improved Sense's choice list), the magic
+  types (Magic/Resonance step paragraphs), the licence types (Fake License's list), counterspelling's two forms and
+  Augmentation overdrive as actions, the grenades' category (first header GRENADES under the title `explosives`) and
+  the `Explosive Packages` rating bands, prices printed only in a sentence (Water-Repellent Coating, the Predator VI's
+  spare clip).
+- The rigging chapter's `Rigger Programs` run-ins repeat the matrix chapter's programs (`See the Programs section`):
+  they come out as second entries (`crb.armor-2`, type `rigger programs`); in the 2019, Seattle and Berlin printings
+  `Armor` takes a cyberware row's `Rating x 5,000¥`. A reprint rule is for later.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"

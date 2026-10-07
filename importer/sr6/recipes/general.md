@@ -54,6 +54,11 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 - **Vehicle bands in the text** (30 Nights, Assassins Night, The Third Parallel print a bold header line over a
   value line, headers interleaved or run together): `shapes.vehicle_band` reads them; the general recipe does not
   file them as vehicles yet (NPC rides, not catalog items).
+- **A price list in a description** (regroup `price_list`, every recipe): a titled table in an item's text with AVAIL
+  and COST columns, its rows names and half of them priced, is a catalog (the core rulebook's credsticks); not a
+  grade table (`x1.2`), a second stacked table, one titled with its item's name, or one a later chapter reprints.
+- **The page's bottom band** (converter sr6-4): only the running feet's faces are dropped there; a table's last rows
+  and body lines reaching into the band stay (NPC gear lines, reference rows).
 
 ## Sections read as kinds (importer v3, sections.py)
 

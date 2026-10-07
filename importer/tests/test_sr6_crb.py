@@ -685,6 +685,14 @@ class CodeAliasTest(unittest.TestCase):
         self.assertEqual(crb.code_alias("Zap Gun", "Zappers"), [])
         self.assertEqual(crb.code_alias("ZX-9", ""), [])
 
+    def test_a_split_name_the_book_never_prints_takes_its_printed_short_form(self):
+        class Index:  # the book's sentences (invented): the short form only
+            def mentions(self, name):
+                return [(9, "a Zorp Blaster [Pistol]")] if name.lower() == "zorp blaster" else []
+        self.assertEqual(crb.printed_short("Zorp Mark Blaster", Index()), ["Zorp Blaster"])
+        self.assertEqual(crb.printed_short("Zorp Blaster", Index()), [])  # (two words: nothing to drop)
+        self.assertEqual(crb.printed_short("Zorp Mark Zapper", Index()), [])  # (not printed either way)
+
     def test_a_placeholder_series_names_its_models(self):
         self.assertEqual(crb.series_models("Zap XX-10 Series", "Formula: Zapbolt (ZB-10) or Quakebolt (QB-10)"),
                          ["Zap ZB-10", "Zap QB-10"])

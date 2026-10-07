@@ -9,9 +9,10 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-3"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+SR6_CONVERTER_VERSION = "sr6-4"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
 # split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
-# dropped, words split after a ligature joined
+# dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's faces (a table's
+# last rows and body lines reaching into it stay)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -379,7 +380,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                                                        keep_blank_chars=False, return_chars=True)
             bands = []
             if sr6:
-                all_words = layout.furniture(page, all_words)
+                all_words = layout.furniture(page, all_words, fonts)
                 for w in all_words:
                     w["base"] = -w["chars"][0]["matrix"][5]
                 bands = layout.band_tables(all_words, fonts, page.rects)

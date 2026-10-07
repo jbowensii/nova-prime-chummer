@@ -205,9 +205,13 @@ class MatchTest(unittest.TestCase):
     def test_stages(self):
         def c(name, page="10"):
             return {"name": name, "page": page, "kind": "gear", "pool": ("gear",), "aliases": canon.aliases(name, {})}
-        mine = [entry("Party grenade"), entry("Zorp Buoys"), entry("Gills", page="11"), entry("Far away", page="90")]
+        mine = [entry("Party grenade"), entry("Zorp Buoys"), entry("Gills", page="11"), entry("Far away", page="90"),
+                entry("Glow/Bright Glow Flare", page="40"), entry("Small Zorp/Medium Zorp", page="50")]
         got = {x[0]["name"]: (x[2], [o["name"] for o in x[1]]) for x in match.match(
-            [c("Grenade, Party"), c("Zorp buoy"), c("Transgenic Gills"), c("Nothing like it")], mine)}
+            [c("Grenade, Party"), c("Zorp buoy"), c("Transgenic Gills"), c("Nothing like it"), c("Flare Glow"),
+             c("Sm. Zorp/Med. Zorp (10x)")], mine)}
+        self.assertEqual(got["Flare Glow"], ("split word-order", ["Glow/Bright Glow Flare"]))
+        self.assertEqual(got["Sm. Zorp/Med. Zorp (10x)"], ("abbreviated", ["Small Zorp/Medium Zorp"]))
         self.assertEqual(got["Grenade, Party"], ("alias", ["Party grenade"]))
         self.assertEqual(got["Zorp buoy"], ("loose", ["Zorp Buoys"]))
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))

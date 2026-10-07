@@ -268,7 +268,8 @@ def _arith(t):
     e = re.sub(rf"\b(?:{_VAR_WORDS})\b", " R ", e, flags=re.I)
     e = re.sub(r"\bmagic\b", " M ", e, flags=re.I)
     e = re.sub(r"(?<![a-z])x(?![a-z])|\*", " * ", e, flags=re.I)
-    e = re.sub(r"\s*\(\s*[LIRF]\s*\)\s*$|(?<=\d)\s*[LIRF]$|(?<=R)\s*[LIRF]$", "", e.strip())  # a legality suffix
+    e = re.sub(r"\s*\(\s*[LIRF]\s*\)\s*$|(?<=\d)\s*[LIRF]$|(?<=R)\s*[LIRF]$|(?<=\))\s*[LIRF]$", "",
+               e.strip())  # a legality suffix (`(Force +3) L`: after the bracket)
     e = " ".join(e.split())
     if not e or re.search(r"[A-Za-z]", re.sub(r"\b[RM]\b", "", e)):
         return None

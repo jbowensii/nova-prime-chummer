@@ -625,7 +625,8 @@ class _Catalog:
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 e = self.add(kind, n, page, a, notes, "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
-                             aliases=(b.aliases if n == name else []) or code_alias(n, b.label))  # (a heading's fuller name first)
+                             aliases=(b.aliases if n == name else []) or code_alias(n, b.label)
+                             or (printed_short(n, self.index) if n != name else []))  # (a heading's fuller name first)
                 e["tab"] = self.table_of(b, page)
                 if b.product:
                     e["product"] = b.product
@@ -863,6 +864,17 @@ def _short_rule(rule, field):
 
 CODE = re.compile(r"[A-Za-z]{0,3}-?\d+[A-Za-z]{0,2}|[A-Z]{2,5}")  # a row named by a code: `m60`, `B25`, `HEX`
 _CLASS_WORDS = re.compile(r"\s+(?:ammunition|ammo|rounds)$", re.I)
+
+
+def printed_short(name, index):
+    """A part of a row printing two names that the book never prints whole (`Colt Government Manhunter` from `Colt
+    Government 2076/Manhunter`): its first and last words when the book prints those together (`Colt Manhunter`, in
+    the text and the NPCs' gear), as its other name."""
+    ws = name.split()
+    if index is None or len(ws) < 3 or index.mentions(name):
+        return []
+    short = f"{ws[0]} {ws[-1]}"
+    return [short] if index.mentions(short) else []
 
 
 def code_alias(name, title):

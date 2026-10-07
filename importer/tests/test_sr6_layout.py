@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from importer.convert import convert
 import pdfplumber
 
-from importer.sr6.layout import _is_furniture, one_layer, rejoin_ligatures
+from importer.sr6.layout import Fonts, _is_furniture, furniture, one_layer, rejoin_ligatures
 from importer.tests.minipdf import sr6_doubled_pdf, sr6_layout_pdf
 
 
@@ -29,7 +29,7 @@ class Sr6LayoutTest(unittest.TestCase):
         cls.text = "\n".join(cls.lines)
 
     def test_converter_version(self):
-        self.assertEqual(self.meta["converter"], "sr6-3")
+        self.assertEqual(self.meta["converter"], "sr6-4")
         self.assertEqual(_convert(sr6=False)[0]["converter"], "6")
 
     def test_headings_by_font(self):
@@ -53,6 +53,15 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertTrue(_is_furniture(20, 100, book))
         self.assertFalse(_is_furniture(20, 100, card))  # a card's text runs to the edge (Johnson 'Dex)
         self.assertFalse(_is_furniture(340, 200, card))
+
+    def test_a_table_row_in_the_bottom_band_stays(self):
+        page = SimpleNamespace(width=612, height=792)
+        w = lambda text, top, font, size: {"text": text, "x0": 300, "top": top, "size": size, "upright": True,
+                                            "chars": [{"fontname": "ABC+" + font}]}
+        words = [w("Fizz", 700, "Sans-Regular", 7), w("Zen", 770, "Sans-Regular", 7), w("17", 775, "Disp-Regular", 9)]
+        fonts = Fonts("Serif", 10.5, "Disp", {}, frozenset({("Disp", 9.0)}))  # the running feet: 9 pt display face
+        self.assertEqual([x["text"] for x in furniture(page, words, fonts)], ["Fizz", "Zen"])
+        self.assertEqual([x["text"] for x in furniture(page, words)], ["Fizz"])  # (no fonts: the whole band goes)
 
     def test_two_columns_read_column_by_column(self):
         left = [ln for ln in self.lines if ln.startswith("Left column")]

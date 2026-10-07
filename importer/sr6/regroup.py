@@ -132,6 +132,7 @@ class _Table:
     pos: int = 0  # its place in the book's elements
     unpaired: list = field(default_factory=list)  # catalog rows no description took
     notes: dict = field(default_factory=dict)  # the labelled lines printed right under it in a box (`Note:`)
+    titled: bool = False  # printed right under its own title (not the second of tables stacked under one)
 
 
 def _elements(md):
@@ -494,9 +495,10 @@ def _units(els, start, end, chapter, item_keys, aliases):
                 boxed = (j < end and els[j][0] == "x" and _LABEL.match(els[j][2])) or \
                     (j > i or els[i][0] != "t") and any(k in item_keys for k in keys(text, aliases))
                 if not boxed:  # a table title: its tables join the flow, the text goes on in the same unit
+                    first = i
                     while i < end and els[i][0] == "t":
                         t = els[i][2]
-                        t.title, t.section = text, section
+                        t.title, t.section, t.titled = text, section, i == first
                         cur.body.append(t)
                         i += 1
                     continue
@@ -602,7 +604,14 @@ def _share_runs(units, report):
         run = run + [u] if boxed and not u.has_text() else []
 
 
-def _chapter(units, aliases, name_headers, report, variants=False):
+def _same(title, name):
+    """A table title naming the item it is printed under (`heritage line` under `Zoé Heritage Line`, `secondary
+    propulsion systems table` under `Secondary Propulsion Systems`): one holds the other's words."""
+    a, b = (set(norm(x).split()) - {"table", "tables"} for x in (title, name))
+    return bool(a and b) and (a <= b or b <= a)
+
+
+def _chapter(units, aliases, name_headers, report, variants=False, later=frozenset()):
     _merge_boxes(units, aliases, report)
     _share_runs(units, report)
     descs = [u for u in units if u.kind == "item" and not u.merged]
@@ -630,10 +639,27 @@ def _chapter(units, aliases, name_headers, report, variants=False):
             return True
         return 2 * sum(1 for r in t.rows if r and found(r[0])) >= len(t.rows)  # half its rows pair
 
+    def price_list(t):
+        """A price list set in running text (the credsticks' `TYPE | MAX VALUE | AVAIL | COST` inside a description):
+        an availability and a cost column, every row led by a name (none by a number: a rating band), two rows at
+        least, half of them priced (`500¥`, not a grade's `x1.2` multiplier). Its rows are items, unless a later
+        chapter prints them again in a table (the rigging chapter's `vehicle modding` reprints the gear chapter's
+        list: the later chapter's is the catalog). Only a table under its own title, in an item's text, is asked
+        (not a stat box, nor the second of tables stacked under one title), and not one titled with the item's own
+        name (`rapid transit` under `Rapid Transit`: its variants, the recipe's to read)."""
+        hs = [h.upper() for h in t.header]
+        cost = next((i for i, h in enumerate(hs) if h.startswith("COST")), None)
+        if cost is None or len(hs) < 3 or len(t.rows) < 2 or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs) \
+                or hs[0] in _PRICE_HEAD or not all(r and re.match(r"[^\W\d_]", r[0]) for r in t.rows):
+            return False
+        priced = sum(1 for r in t.rows if len(r) > cost and re.search(r"\d", r[cost])
+                     and not re.match(r"\s*[x×]", r[cost]))
+        return 2 * priced >= len(t.rows) and 2 * sum(1 for r in t.rows if norm(r[0]) in later) < len(t.rows)
+
     tables = []
     for u in [u for u in units if not u.merged]:
         for t in [b for b in u.body if isinstance(b, _Table)]:
-            t.catalog = is_catalog(t)
+            t.catalog = is_catalog(t) or u.kind == "item" and t.titled and not _same(t.title, u.name) and price_list(t)
             tables += [t] if t.catalog else []
         if u.kind == "item":  # a catalog table right under an item heading isn't that item's box
             for t in [t for t in u.stats if is_catalog(t)]:
@@ -804,7 +830,9 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []
-    for start, end in bounds:
+    # each chapter's table row names, for price_list's reprint test (a later chapter printing the rows again)
+    rows_in = [{norm(r[0]) for e in els[a:b] if e[0] == "t" for r in e[2].rows if r and r[0]} for a, b in bounds]
+    for n, (start, end) in enumerate(bounds):
         if start == end:
             continue
         chapter = els[start][2][1] if els[start][0] == "h" and els[start][2][0] == 1 else ""
@@ -813,7 +841,7 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
         units = _units(els, start, end, chapter, item_keys, aliases)
         if not chapter and not units[0].body and len(units) == 1:
             continue
-        _chapter(units, aliases, name_headers, report, variants)
+        _chapter(units, aliases, name_headers, report, variants, set().union(*rows_in[n + 1:]))
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
 

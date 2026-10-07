@@ -49,6 +49,8 @@ class ReadTest(unittest.TestCase):
         self.check("Rating x 30¥ (5 uses)", "R*30")
         self.check("[Rating]", "R", "capacity")
         self.check("3(I) + Size", "3 + R", "avail")
+        self.check("(Force) L", "(R)", "avail")  # a focus: the legality after the bracket
+        self.check("(Force +2) L", "(R + 2)", "avail")
 
     def test_per_unit_values(self):
         self.check("70¥ per CF", "Q*70", unit="CF")

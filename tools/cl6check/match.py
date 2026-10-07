@@ -60,6 +60,26 @@ def split_names(name):
     return out
 
 
+def _words_sep(s):
+    """words() keeping each separate, '/' and ',' as spaces (the order matters)."""
+    return words(re.sub(r"\([^)]*\)", " ", s or ""))
+
+
+def abbreviated(name):
+    """A pattern for a name with abbreviated words (a word ending in a full stop: `L.`, `Mach.`), each standing for any
+    word it starts, or None."""
+    raw = re.sub(r"\([^)]*\)", " ", name or "")
+    if not re.search(r"[A-Za-z]\.(?=[\s/A-Za-z]|$)", raw):
+        return None
+    parts = []
+    for tok in re.findall(r"[A-Za-z0-9']+\.?", raw):
+        w = words(tok.rstrip("."))
+        if not w:
+            continue
+        parts.append(re.escape(w[0]) + (r"[a-z0-9]*" if tok.endswith(".") else ""))
+    return re.compile(r" ".join(parts)) if parts else None
+
+
 def _names(o):
     return [o["name"], *o["aliases"]]
 
@@ -112,6 +132,13 @@ def match(cl6, ours):
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
     stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)])
     stage("word-order", lambda c: [toks(c["name"])], lambda o: [toks(n) for n in _names(o)])
+    # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke Rocket`)
+    stage("split word-order", lambda c: [toks(c["name"])],
+          lambda o: [toks(p) for n in _names(o) for p in split_names(n) if len(toks(p)) > 1])
+    for i, c in enumerate(cl6):  # Commlink6 abbreviating words (`Holdout/L.Pistol/Mach. Pistol`): each a prefix
+        if found[i] is None and pool[i] and (rx := abbreviated(c["name"])):
+            if hits := [o for o in pool[i] if any(rx.fullmatch(" ".join(_words_sep(n))) for n in _names(o))]:
+                found[i] = (hits, "abbreviated")
     used ={id(o) for f in found if f for o in f[0]}
     for i, c in enumerate(cl6):  # one name's words inside the other's, on a nearby page
         if found[i] or not c["page"]:
