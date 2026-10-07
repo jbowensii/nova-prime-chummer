@@ -237,6 +237,54 @@ def _spell_box(b):
     return replace(b, stats=[box] + b.stats[1:], section=f"{s['TYPE'][1].strip()} spells")
 
 
+_WEAPON_BAND = re.compile(r"\*\*DV ?MODES? ?(?:ATTACK(?: ?RATINGS?)?|A ?RT ?AT ?TA ?INCK ?G)? ?AMMO ?AVAIL ?COST\*\*")
+_WEAPON_COLUMNS = ["DV", "MODES", "ATTACK RATINGS", "AMMO", "AVAIL", "COST"]
+
+
+def _weapon_band(vals):
+    """A weapon's stat line printed as text under its bold header (its cells set loose, the ammunition's holder
+    wrapped around the others: `12 (power` … `(6–10)S SS/SA 9/8/1/–/– 7(I) 6,000¥` … `cell)`) -> its cells, or None."""
+    one = " ".join(vals.split())
+    dv = re.search(r"\(?\d+(?:[–-]\d+)?\)?\s*[PS](?![a-z])", one)
+    modes = re.search(r"\b(?:SS|SA|BF|FA|SUS)(?:/(?:SS|SA|BF|FA|SUS))*\b", one)
+    ar = re.search(r"[\d–—-]+\*?(?:/[\d–—-]+\*?){4}", one)
+    price = re.search(r"(\d+\s*(?:\([LIRF]\)|[LIRF])?)\s+([\d,]+\s*¥)", one)
+    if not (dv and ar and price):
+        return None
+    rest = one
+    for m in (dv, modes, ar, price):
+        if m:
+            rest = rest.replace(m.group(0), " ", 1)
+    ammo = " ".join(re.sub(r"[†*]", "", rest).split())  # (what is left: the ammunition, its holder rejoined)
+    return [dv.group(0).strip(), modes.group(0) if modes else "", ar.group(0), ammo, price.group(1), price.group(2)]
+
+
+def _weapon_bands(lines):
+    """A weapon's bold stat header over its values in text (`**DV MODES A RT AT TA INCK G AMMO AVAIL COST**`, the
+    attack ratings' header set sideways) -> the stat box table under its box title (regroup pairs it): the values run
+    to the line holding the price, and a wrapped holder's end (`cell)`) right after it."""
+    out, i = [], 0
+    while i < len(lines):
+        if _WEAPON_BAND.fullmatch(lines[i].strip()):
+            j = i + 1
+            while j < len(lines) and j < i + 4 and "¥" not in lines[j]:
+                j += 1
+            j += 1
+            if j < len(lines) and re.fullmatch(r"[a-z]+\)", lines[j].strip()):
+                j += 1
+            cells = _weapon_band(" ".join(lines[i + 1:j]))
+            if cells:
+                if out and (h := re.fullmatch(r"(#{2,6}) ([^A-Z#|]+)", out[-1])):  # its box title in lower case: an item's
+                    out[-1] = f"{h.group(1)} " + " ".join(w[:1].upper() + w[1:] for w in h.group(2).split())
+                out += ["| " + " | ".join(_WEAPON_COLUMNS) + " |", "|" + "---|" * len(_WEAPON_COLUMNS),
+                        "| " + " | ".join(cells) + " |"]
+                i = j
+                continue
+        out.append(lines[i])
+        i += 1
+    return out
+
+
 _KICKER = re.compile(r"(#{2,6}) ([^#].*:)$")
 
 
@@ -368,7 +416,7 @@ class Book:
         there gets a capital (a box title over a tag line reads as an art caption); a tag line with more after it
         (`(Professional Rating 4), Human`) as one tag. A kicker set small over a heading (`Part of the Family:` over
         `Deserted`, `Event:` over a life module's title) is one heading with it, at the heading's level."""
-        lines = _kickers(_split_shared(md.splitlines()))
+        lines = _weapon_bands(_kickers(_split_shared(md.splitlines())))
         bare = lambda s: re.sub(r"^#{4,5} ", "", s.strip())
         for i, ln in enumerate(lines):
             if not _BAND_LINE.match(ln):

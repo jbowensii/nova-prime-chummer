@@ -95,6 +95,11 @@ title first), the chapter giving the context. Read with the general reading, not
   name, the printed one.
 - **A spell box with its category under TYPE** (`TYPE Illusion | RANGE | DV P | DURATION | DRAIN 4`): TYPE the type
   (P), DV the drain, the category the catalog's (`Illusion spells`).
+- **A weapon's stat line set as text** (The Kechibi Code's Guizhen devices, Falling Point's pistols): a bold header
+  `**DV MODES A RT AT TA INCK G AMMO AVAIL COST**` (the attack ratings' header set sideways) over loose values, the
+  ammunition's holder wrapped around them (`12 (power` … `cell)`): `prepare_md` makes it the box table under its box
+  title (a title in lower case gets capitals: it names the item). The values are read by their shapes (DV, modes,
+  attack ratings, availability before the price); what is left is the ammunition, as printed.
 - **An adept power's cost in Power Points** (`Cost: 0.25 PP per level`): cost 0.25, a level each.
 - **Lists a section grants** (Slip Streams' `Powers` and `Characteristics` under `Returned Soldiers`, the list's
   text naming the section): Karma-0 qualities, `granted`, category `Returned Soldier power` / `Returned Soldier

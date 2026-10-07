@@ -146,6 +146,19 @@ class GameInformationShapesTest(unittest.TestCase):
         self.assertEqual([(f.kind, f.name, f.attrs) for f in out], [("gear", "Glow Toad Venom", {"category": "Made-Up Venoms"})])
 
 
+class WeaponBandTest(unittest.TestCase):
+    def test_bold_header_over_loose_values_is_the_box_table(self):
+        lines = ["##### zap baton", "**DV MODES A RT AT TA INCK G AMMO AVAIL COST**", "9 (power",
+                 "(4–8)S SS/SA 8/6/–/–/– 5(I) 1,500¥", "cell)", "Text after."]
+        self.assertEqual(general._weapon_bands(lines), [
+            "##### Zap Baton", "| DV | MODES | ATTACK RATINGS | AMMO | AVAIL | COST |", "|---|---|---|---|---|---|",
+            "| (4–8)S | SS/SA | 8/6/–/–/– | 9 (power cell) | 5(I) | 1,500¥ |", "Text after."])
+
+    def test_no_price_no_table(self):
+        lines = ["**DV MODES ATTACK AMMO AVAIL COST**", "some words only"]
+        self.assertEqual(general._weapon_bands(lines), lines)
+
+
 
 if __name__ == "__main__":
     unittest.main()
