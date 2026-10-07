@@ -38,6 +38,7 @@ class Fonts:
     heading: str  # display family
     levels: dict  # heading size -> level 1..5
     foot: frozenset = frozenset()  # (family, size) of the running feet: set in the bottom band on many pages
+    running: frozenset = frozenset()  # running heads and page numbers (_running_key): page furniture
 
 
 def family(fontname: str) -> str:
@@ -55,46 +56,88 @@ def _is_furniture(x0, top, page):
     return x0 < _EDGE or x0 > page.width - _OUTER or top > page.height - _FOOT
 
 
+_HEAD_BAND = 72  # pt from the top: a running head sits above this
+
+
+def _running_key(family_, size, top, texts):
+    """A top-band line's key: its font, size, place and words, digits aside (a page number is `#`), spaces aside."""
+    return family_, round(size, 1), round(top), re.sub(r"\d+", "#", re.sub(r"\s+", "", "".join(texts)).lower())
+
+
+def _top_lines(items, font, text):
+    """The top band's lines of `items` (chars or words, left to right): {(family, size, top): [item]}."""
+    out = defaultdict(list)
+    for it in sorted(items, key=lambda c: c["x0"]):
+        if it["top"] < _HEAD_BAND and text(it).strip():
+            out[(family(font(it)), round(it["size"], 1), round(it["top"]))].append(it)
+    return out
+
+
 def furniture(page, words, fonts=None):
-    """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band); on a card, its
-    sideways line (the copyright up its edge). With the book's fonts, a word in the bottom band set in a face the
-    running feet don't use stays: a table's last rows reaching into the band (the core rulebook's drug list)."""
+    """Drop margin tab letters, running heads and page numbers (outer edges and the bottom band, and the top band's
+    lines the book repeats on most pages: fonts.running); on a card, its sideways line (the copyright up its edge).
+    With the book's fonts, a word in the bottom band set in a face the running feet don't use stays: a table's last
+    rows reaching into the band (the core rulebook's drug list)."""
+    running = fonts.running if fonts else frozenset()
+    head = {id(w) for k, ws in _top_lines(words, lambda w: w["chars"][0]["fontname"], lambda w: w["text"]).items()
+            if _running_key(*k, (w["text"] for w in ws)) in running for w in ws}
+
     def keep(w):
         if not _is_furniture(w["x0"], w["top"], page):
             return True
         return (bool(fonts and fonts.foot) and not _is_furniture(w["x0"], 0, page)
                 and (_word_family(w), round(w["size"], 1)) not in fonts.foot)
-    return [w for w in words if keep(w) and (page.width >= _CARD or w["upright"])]
+    return [w for w in words if keep(w) and (page.width >= _CARD or w["upright"]) and id(w) not in head]
 
 
 def fonts(pdf, min_pages=None) -> Fonts:
     """Body: the most common (family, size). Heading: the other family with the most chars above body x 1.1. Levels:
     the heading family's sizes above body x 0.8 that appear on at least `min_pages` pages (default one page in 40),
     largest first, as levels 1-5. A page count, not a char count: a chapter title is a few big words on a dozen
-    pages, while a contents or index page sets many words once in a size of its own."""
+    pages, while a contents or index page sets many words once in a size of its own. Running heads: a line in the top
+    band that the book prints in the same place, font and words (digits aside: page numbers) on at least half its
+    pages (3 or more): page furniture, its size no level (a magazine-style book's title and page number on every
+    page would take three)."""
     # ponytail: one page in 40 is a guess fitted to one book; make it a recipe constant if another book needs it
     min_pages = min_pages or max(1, round(len(pdf.pages) / 40))
-    chars, pages, feet = Counter(), defaultdict(set), defaultdict(set)
+    chars, pages, tops, seen, feet = Counter(), defaultdict(set), [], Counter(), defaultdict(set)
     for n, page in enumerate(pdf.pages):
-        for c in page.chars:
-            if c["text"].strip() and not _is_furniture(c["x0"], c["top"], page):
+        body = [c for c in page.chars if c["text"].strip() and not _is_furniture(c["x0"], c["top"], page)]
+        lines = _top_lines(body, lambda c: c["fontname"], lambda c: c["text"])
+        keyed = {_running_key(*k, (c["text"] for c in cs)): cs for k, cs in lines.items()}
+        seen.update(keyed.keys())
+        tops.append(keyed)
+        top = {id(c) for cs in lines.values() for c in cs}
+        for c in body:
+            if id(c) not in top:
                 key = (family(c["fontname"]), round(c["size"], 1))
                 chars[key] += 1
                 pages[key].add(n)
-            elif c["text"].strip() and page.width >= _CARD and not _is_furniture(c["x0"], 0, page):
-                feet[(family(c["fontname"]), round(c["size"], 1))].add(n)  # the bottom band
+        for c in page.chars:  # the bottom band's faces
+            if c["text"].strip() and page.width >= _CARD and _is_furniture(c["x0"], c["top"], page) \
+                    and not _is_furniture(c["x0"], 0, page):
+                feet[(family(c["fontname"]), round(c["size"], 1))].add(n)
         page.flush_cache()
     # the running feet's faces: in the bottom band on one page in ten at least (a table row reaching it is rare)
     foot = frozenset(k for k, p in feet.items() if len(p) >= max(2, len(pdf.pages) / 10))
+    running = frozenset(k for k, m in seen.items() if m >= max(3, len(pdf.pages) / 2))
+    for n, keyed in enumerate(tops):
+        for k, cs in keyed.items():
+            if k not in running:
+                chars[k[:2]] += len(cs)
+                pages[k[:2]].add(n)
     body, size = max(chars, key=chars.get) if chars else ("", 10.0)
     big = Counter()
     for (fam, s), k in chars.items():
         if fam != body and s > size * 1.1:
             big[fam] += k
     heading = max(big, key=big.get) if big else ""
-    sizes = sorted((s for (fam, s), p in pages.items() if fam == heading and s > size * 0.8 and len(p) >= min_pages),
+    # (a book of more than 10 pages: a size printed on its cover alone is no level)
+    cover = len(pdf.pages) > 10
+    sizes = sorted((s for (fam, s), p in pages.items() if fam == heading and s > size * 0.8 and len(p) >= min_pages
+                    and not (cover and p == {0})),
                    reverse=True)[:5]
-    return Fonts(body, size, heading, {s: i + 1 for i, s in enumerate(sizes)}, foot)
+    return Fonts(body, size, heading, {s: i + 1 for i, s in enumerate(sizes)}, foot, running)
 
 
 _LAYER_TOL = 1  # pt; a duplicated text layer sits a hundredth of a point off the first
@@ -249,9 +292,13 @@ def _headers(lines, height):
                 continue
             x0, x1 = min(w["x0"] for w in g), max(w["x1"] for w in g)
             # never a group on this same line: that is a side-by-side table
+            # (two whole header rows side by side, no x in common, are two tables in two text columns, a little
+            # apart: only a label of a cell or two stacks beside another line)
             prev = next((h for h in groups if g[0]["top"] - max(w["top"] for w in h) <= _HEADER_STACK * height
                          and min(w["x0"] for w in h) - _STACK_PAD < x1 and x0 < max(w["x1"] for w in h) + _STACK_PAD
-                         and all(abs(g[0]["top"] - w["top"]) > _LINE_TOLERANCE for w in h)), None)
+                         and all(abs(g[0]["top"] - w["top"]) > _LINE_TOLERANCE for w in h)
+                         and (x0 < max(w["x1"] for w in h) and min(w["x0"] for w in h) < x1
+                              or min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP))) <= 2)), None)
             if prev is not None:
                 prev += g
             else:

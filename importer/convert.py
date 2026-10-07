@@ -9,11 +9,13 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-5"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+SR6_CONVERTER_VERSION = "sr6-6"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
 # split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
 # dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's faces (a table's
 # last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
 # bold among regular names (an en space): its row groups (layout._first_marks)
+# 6: two stat tables side by side in two columns stay two, running heads dropped by their repetition, a heading under
+# the other column titles the full-width table under it (feat/book-adventures, merged)
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -195,9 +197,13 @@ def _gutter_crossings(rows, x, tol=0):
     lines must vertically overlap a left-side line, so an indented block
     that merely follows the body (below it) isn't mistaken for a column.
     """
-    left, right, cross = [], [], 0
+    left, right, crossing, jumps, splits = [], [], [], 0, 0
     for row in rows:
-        for line in _split_at(row, x, tol):
+        parts = _split_at(row, x, tol)
+        if len(parts) == 2:
+            splits += 1
+            jumps += _jump(parts[0][-1], parts[1][0])
+        for line in parts:
             span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
             side = _kind(*_line_extent(line), x, tol)
             if side == "left":
@@ -205,10 +211,21 @@ def _gutter_crossings(rows, x, tol=0):
             elif side == "right":
                 right.append(span)
             else:
-                cross += 1
-    total = len(left) + len(right) + cross
-    if len(left) < _MIN_LINES_PER_SIDE or len(right) < _MIN_LINES_PER_SIDE or cross / total >= _MAX_CROSS_FRACTION:
+                crossing.append(span)
+    cross, total = len(crossing), len(left) + len(right) + len(crossing)
+    if len(left) < _MIN_LINES_PER_SIDE or len(right) < _MIN_LINES_PER_SIDE:
         return None
+    if cross / total >= _MAX_CROSS_FRACTION:
+        # (the SR6 layout) a full-width box over or under the two columns (a sidebar across the page): its lines
+        # don't count when every row the gutter splits is two columns meeting in the content stream (_jump); only the
+        # crossing lines between the columns' tops and bottoms do
+        top = max(min(t for t, _ in left), min(t for t, _ in right))
+        bottom = min(max(b for _, b in left), max(b for _, b in right))
+        inside = sum(top <= t < bottom for t, _ in crossing)
+        zone = inside + sum(top <= t < bottom for t, _ in left + right)
+        if not tol or splits < _MIN_LINES_PER_SIDE or jumps < splits or not zone or inside / zone >= _MAX_CROSS_FRACTION:
+            return None
+        # (scored by all its crossing lines: a gutter the plain rule accepts wins)
     beside = sum(any(t < lb and lt < b for lt, lb in left) for t, b in right)
     return cross if beside >= _MIN_LINES_PER_SIDE else None
 
@@ -234,6 +251,38 @@ def _find_gutter(rows, right, left=0, tol=0):
     }
     scored = [(c, x) for x in sorted(cands) if (c := _gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
+
+
+_BOX_MARGIN = 4  # pt; a line starting this far left of the left column's lines
+
+
+def _box_margin(blocks, xs):
+    """(the SR6 layout) A line set at a full-width box's left margin, left of the left column's (the box's title, or its
+    last short line), above or below the right column, is the box's: a band, not the column's (a heading beside the
+    right column stays in its column). blocks: (top, kind, text), xs: each line's x0."""
+    col = sorted(x for (_, k, _), x in zip(blocks, xs) if k == "left")
+    box = [x for (_, k, _), x in zip(blocks, xs) if k == "band"]
+    right = [t for t, k, _ in blocks if k == "right"]
+    if not col or not box or not right:
+        return blocks
+    edge = col[len(col) // 2] - _BOX_MARGIN
+    return [(t, "band" if k == "left" and x < edge and any(abs(x - b) <= 2 for b in box)
+             and not min(right) <= t <= max(right) else k, s) for (t, k, s), x in zip(blocks, xs)]
+
+
+def _box_titles(blocks, geo, boxes):
+    """(the SR6 layout) A heading in one text column, below every line of the other, right over a full-width table
+    (`boxes`: their tops) is that table's title: a band, read with its table after both columns (not at the end of
+    its column, the other column's text between them). blocks: (top, kind, text), geo: (level, bottom, size)."""
+    out = []
+    for i, ((t, k, s), (lv, bottom, size)) in enumerate(zip(blocks, geo)):
+        if lv and k in ("left", "right"):
+            other = [tt for tt, kk, _ in blocks if kk == ("right" if k == "left" else "left")]
+            under = [b for b in boxes if b >= bottom - 1]
+            if other and t > max(other) and under and min(under) - bottom < 2 * size                     and not any(t < tt < min(under) for tt, kk, _ in blocks if kk == k):
+                k = "band"
+        out.append((t, k, s))
+    return out
 
 
 def _kind(x0, x1, mid, tol=0):
@@ -396,7 +445,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             mid = _find_gutter(rows, page.width, tol=tol)
             lines = [part for row in rows for part in _split_at(row, mid, tol)] if mid else rows
 
-            blocks, geo = [], []
+            blocks, geo, xs = [], [], []
             for line in lines:
                 size = round(max(w["size"] for w in line), 1)
                 level = layout.heading_level(line, fonts) if sr6 else _heading_level(size, big)
@@ -405,8 +454,10 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 x0, x1 = _line_extent(line)
                 blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid, tol), text))
                 geo.append((level, max(w["bottom"] for w in line), size))
+                xs.append(x0)
             if sr6:
-                blocks = layout.join_headings(blocks, geo)
+                boxes = [bbox[1] for bbox, _, _ in bands if _kind(bbox[0], bbox[2], mid, tol) == "band"]
+                blocks = layout.join_headings(_box_titles(_box_margin(blocks, xs), geo, boxes), geo)
             for t in tables:
                 md = _table_md(_table_cells(t, all_words))
                 if md:

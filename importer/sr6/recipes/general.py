@@ -6,14 +6,16 @@ as <id>.<slug>), descriptions in the private texts. Each known book is a recipe 
 name, and how its title or first page names it); they share the core rulebook's reading (crb.extract). Reads only
 regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
+import difflib
 import re
 from collections import Counter
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
+from importer.sr6 import sections
 from importer.sr6.recipes import crb, swc
 from importer.sr6.recipes.fs import _md_table
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, keys, norm
 
 # (source id, name, CAT number or "", the PDF title's pattern, phrases the first page holds when the title is missing)
 # The id: a short form of the book's title (a letter first: THN for 30 Nights), as the core rulebook's CRB.
@@ -194,6 +196,113 @@ def _split_shared(lines):
     return out
 
 
+NEAR_NAME = 0.88  # a box title this close to its heading's name (difflib ratio of their keys) names the same item
+
+
+def _box_named(b):
+    """A stat box under its item's heading, titled a letter or a joining word off it (`ceramic or plasteel knife` under
+    `Ceramic/Plasteel Knife`): named by the heading (the printed name), the box title an alias."""
+    if b.type != "item" or not b.label or b.name != b.label or b.name != b.name.lower() or not b.section:
+        return b
+    a, h = keys(b.name)[0], keys(b.section)[0]
+    if a == h or difflib.SequenceMatcher(None, a, h).ratio() < NEAR_NAME:
+        return b
+    return replace(b, name=b.section, aliases=[*b.aliases, b.name])
+
+
+def _stat_line(b):
+    """An item's heading whose text holds its one stat line: a one-row priced table with no name column (`TYPE | MODE |
+    DV | … | AVAIL | COST`, the type its first cell): that row is the item's, named by the heading."""
+    if b.type != "section" or b.level < 3 or b.stats or b.row is not None:
+        return b
+    ts = crb._tables(b.text)
+    if len(ts) != 1 or len(ts[0][1]) != 1:
+        return b
+    h, rows = ts[0]
+    if not _PRICE & {x.upper() for x in h} or h[0].upper() in _NAME_COLUMNS | {"ITEM", "NAME"} or len(rows[0]) != len(h):
+        return b
+    row = {"ITEM": b.name, **dict(zip(h, rows[0]))}
+    return replace(b, type="item", row=row, header=list(row), text=b.text.replace(_md_table(h, rows), "", 1).strip())
+
+
+def _spell_box(b):
+    """A spell box printing its category under TYPE and its type under DV (`TYPE Illusion | RANGE LOS | DV P | DURATION S
+    | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
+    (`Illusion spells`: the catalog's spell category)."""
+    s = {h.upper(): (h, v) for h, v in (b.stats[0].items() if b.stats else ())}
+    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in crb.SPELL_CATEGORIES \
+            or s["DV"][1].strip().upper() not in ("P", "M"):
+        return b
+    box = {h: v for h, v in b.stats[0].items() if h.upper() not in ("TYPE", "DV", "DRAIN")}
+    box = {s["TYPE"][0]: s["DV"][1], **box, s["DV"][0]: s["DRAIN"][1]}
+    return replace(b, stats=[box] + b.stats[1:], section=f"{s['TYPE'][1].strip()} spells")
+
+
+_WEAPON_BAND = re.compile(r"\*\*DV ?MODES? ?(?:ATTACK(?: ?RATINGS?)?|A ?RT ?AT ?TA ?INCK ?G)? ?AMMO ?AVAIL ?COST\*\*")
+_WEAPON_COLUMNS = ["DV", "MODES", "ATTACK RATINGS", "AMMO", "AVAIL", "COST"]
+
+
+def _weapon_band(vals):
+    """A weapon's stat line printed as text under its bold header (its cells set loose, the ammunition's holder
+    wrapped around the others: `12 (power` … `(6–10)S SS/SA 9/8/1/–/– 7(I) 6,000¥` … `cell)`) -> its cells, or None."""
+    one = " ".join(vals.split())
+    dv = re.search(r"\(?\d+(?:[–-]\d+)?\)?\s*[PS](?![a-z])", one)
+    modes = re.search(r"\b(?:SS|SA|BF|FA|SUS)(?:/(?:SS|SA|BF|FA|SUS))*\b", one)
+    ar = re.search(r"[\d–—-]+\*?(?:/[\d–—-]+\*?){4}", one)
+    price = re.search(r"(\d+\s*(?:\([LIRF]\)|[LIRF])?)\s+([\d,]+\s*¥)", one)
+    if not (dv and ar and price):
+        return None
+    rest = one
+    for m in (dv, modes, ar, price):
+        if m:
+            rest = rest.replace(m.group(0), " ", 1)
+    ammo = " ".join(re.sub(r"[†*]", "", rest).split())  # (what is left: the ammunition, its holder rejoined)
+    return [dv.group(0).strip(), modes.group(0) if modes else "", ar.group(0), ammo, price.group(1), price.group(2)]
+
+
+def _weapon_bands(lines):
+    """A weapon's bold stat header over its values in text (`**DV MODES A RT AT TA INCK G AMMO AVAIL COST**`, the
+    attack ratings' header set sideways) -> the stat box table under its box title (regroup pairs it): the values run
+    to the line holding the price, and a wrapped holder's end (`cell)`) right after it."""
+    out, i = [], 0
+    while i < len(lines):
+        if _WEAPON_BAND.fullmatch(lines[i].strip()):
+            j = i + 1
+            while j < len(lines) and j < i + 4 and "¥" not in lines[j]:
+                j += 1
+            j += 1
+            if j < len(lines) and re.fullmatch(r"[a-z]+\)", lines[j].strip()):
+                j += 1
+            cells = _weapon_band(" ".join(lines[i + 1:j]))
+            if cells:
+                if out and (h := re.fullmatch(r"(#{2,6}) ([^A-Z#|]+)", out[-1])):  # its box title in lower case: an item's
+                    out[-1] = f"{h.group(1)} " + " ".join(w[:1].upper() + w[1:] for w in h.group(2).split())
+                out += ["| " + " | ".join(_WEAPON_COLUMNS) + " |", "|" + "---|" * len(_WEAPON_COLUMNS),
+                        "| " + " | ".join(cells) + " |"]
+                i = j
+                continue
+        out.append(lines[i])
+        i += 1
+    return out
+
+
+_KICKER = re.compile(r"(#{2,6}) ([^#].*:)$")
+
+
+def _kickers(lines):
+    """A heading ending in a colon right over a bigger one (`##### Part of the Family:` over `### Deserted`): one
+    heading, the bigger one's level (`### Part of the Family: Deserted`)."""
+    out = []
+    for ln in lines:
+        m = re.match(r"(#{1,6}) (.+)$", ln)
+        k = _KICKER.match(out[-1]) if out else None
+        if m and k and len(m.group(1)) < len(k.group(1)):
+            out[-1] = f"{m.group(1)} {k.group(2)} {m.group(2)}"
+        else:
+            out.append(ln)
+    return out
+
+
 def _slash_names(name):
     """The names one stat block printed for several stands for (`Saint Joseph Houngan/Mambo`: Saint Joseph Houngan
     and Saint Joseph Mambo; `Government Agent/Corp Troubleshooter`: both), else [name]."""
@@ -228,14 +337,23 @@ def _modules(bs):
     line (the Sixth World Companion's form): a module's title is a run of short lines (`Event:` `Brush With Death`)
     that prose follows, its grants its labelled lines. The run goes on through the page's running head (a section
     named like the chapter, a page number) and stops at the next heading. A part with no grant is no module (a
-    quality printed before them)."""
-    lines, page, on = [], 0, False
+    quality printed before them). A module set as a heading under the `Life Modules` heading (its title the heading,
+    a kicker `Event:` joined to it: prepare_md) is one with its labelled lines, read the same way."""
+    lines, page, on, level, heads = [], 0, False, None, []
     for b in bs:
         head = norm(b.name)
         if on and (head in (norm(b.chapter), "") or head.isdigit()):
             lines += b.text.splitlines()
             continue
-        on = False
+        if level is not None and b.level > level:  # a module under its own heading
+            # (its labelled lines once: the text's own, else regroup's labels)
+            body = b.text if _GRANT.search(b.text) else "\n".join([f"**{k}:** {v}" for k, v in b.labels.items()] + [b.text])
+            if _GRANT.search(body):
+                heads.append((b.name.strip(), body, b.page))
+            continue
+        on, level = False, None
+        if b.level and _MODULES.fullmatch(b.name.strip()):
+            level = b.level
         text = b.text.splitlines()
         at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
             (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(ln.strip())), None)
@@ -258,7 +376,7 @@ def _modules(bs):
         i += 1
     if cur and name and any(_GRANT.search(c) for c in cur):
         out.append((" ".join(name), "\n".join(cur), page))
-    return out
+    return out + heads
 
 
 def _contact(b):
@@ -306,8 +424,9 @@ class Book:
         over a being's band (`Red Tide Follower`), or over its tag line (`(Professional Rating 4)`, `(Force 5)`,
         `(Male Human)`, which then reads as the heading's tags), a tag at the name's end too; a heading in lower case
         there gets a capital (a box title over a tag line reads as an art caption); a tag line with more after it
-        (`(Professional Rating 4), Human`) as one tag."""
-        lines = _split_shared(md.splitlines())
+        (`(Professional Rating 4), Human`) as one tag. A kicker set small over a heading (`Part of the Family:` over
+        `Deserted`, `Event:` over a life module's title) is one heading with it, at the heading's level."""
+        lines = _weapon_bands(_kickers(_split_shared(md.splitlines())))
         bare = lambda s: re.sub(r"^#{4,5} ", "", s.strip())
         for i, ln in enumerate(lines):
             if not _BAND_LINE.match(ln):
@@ -344,6 +463,7 @@ class Book:
         heading (a book printing none) is in the book's."""
         if not b.chapter:
             b = replace(b, chapter=self.BOOK, name=b.name or self.BOOK)
+        b = _spell_box(_stat_line(_box_named(b)))
         if b.type == "item" or b.level >= 2:
             b = _text_bands(b)
             if b.type == "section" and _being(b):
@@ -416,7 +536,11 @@ class Book:
         bs = list(blocks(regrouped)) if isinstance(regrouped, str) else list(regrouped)
         names = {norm(b.name): b.name for b in bs if b.name}.values()  # each printed name once
         self._clash = {n for n, c in Counter(norm(x) for name in names for x in _slash_names(name)).items() if c > 1}
-        res = crb.extract(bs, ctx, book=self)
+        sections.Reader.toxins = True  # (the adventure books' toxins have no price table: read from their lines)
+        try:
+            res = crb.extract(bs, ctx, book=self)
+        finally:
+            sections.Reader.toxins = False
         cat = crb._Catalog(self.ID, self.ID.lower(), self.BOOK)
         for name, text, page in _modules(bs):
             swc._lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))

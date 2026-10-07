@@ -128,7 +128,11 @@ read as that errata's observation, dated by it, not the book's.
 
 **Winner.** The winner is the value published last. A reprint of a value its book family already printed keeps the
 date that value first appeared. For example, the Hong Kong printing repeating the 2019 text does not make that value
-newer than another book's.
+newer than another book's. Only a valid SR6 value wins (owner decision 2026-10-07): a value outside its field's SR6
+vocabulary (`importer/sr6/vocab.py`: an action `Complex`, `Simple` or `Free`, an availability's legality `R` or `F`)
+is recorded in the chain with why (`Obs.invalid`) and passed over; the latest valid value before it wins (Los Alamos'
+`Complex` for Silence falls back to Street Wyrd's `Major`). When no printing is valid the latest stands. The trace
+counts these fields (`later value not SR6, passed over`).
 
 **Variant rows.** A record also matches our variant rows (entries printing its name with a qualifier, in the latest of
 its home family's books that print one). When one of them agrees with the record on the same fields with fewer
@@ -188,7 +192,9 @@ The report's sections:
   **Commlink6-only** (owner decision): what no book prints is left out of both measures and counted on its own
   line. A record is Commlink6's own (`canon.cl6_only`) when it is a rule setting (rule options), a record it retired
   (`Depreciated …`), or an option row priced at zero that is not for sale (availability 99: a firing mode, a range, a
-  pilot rating) or points elsewhere (`Adapter (see …)`). A field is Commlink6's own when ours is empty and the
+  pilot rating) or points elsewhere (`Adapter (see …)`), or a record named in German (`… Pfeile (10x)`,
+  `… Druckluftkartusche`, `Kalte Munition`: a German-word vocabulary, `canon.GERMAN`; no English book prints it). A
+  field is Commlink6's own when ours is empty and the
   printed line shows neither value (the report), or, in the trace (family `Commlink6-only field`), when no reading of
   ours holds the field and no text near the object holds Commlink6's value, or when ours is a readable value and
   Commlink6's one value is printed nowhere in the object's book (its `999999999` cap for a dearer price, no legality

@@ -5,9 +5,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
 
 ## Item shapes
 
-- The running head (KRIME KATALOG) reads as a level-1 heading on every page and the page number as a level-2 one:
-  each page is a chapter in regroup's output. A page's lead block continues the item before it (an item whose stats
-  print on the next page).
+- The running head (KRIME KATALOG, 43 pt) and the page number (26 pt) are page furniture the converter drops (importer
+  v4: a top-band line repeated on most pages). Recipe hints: `HEADING_LEVELS` keeps the book's own sizes at the levels
+  they had (27 pt level 2, 21 pt level 4, 15 pt level 5), and `prepare_md` puts the running head back as each page's
+  chapter heading: each page is a chapter in regroup's output (its list tables pair within the page). A page's lead
+  block continues the item before it (an item whose stats print on the next page).
 - Weapons and vehicles: a level-2 heading per item, its text, then a caption naming the edition (`<item>: sr5 stats
   <item>: sr6 stats`, sometimes at the end of a comment line) over one table holding both editions' columns: the SR6
   half is the columns after the first COST. A caption naming SR6 alone (`<item>: sr6 stats`) is followed by its own
@@ -15,6 +17,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
   the SR6 stats. An item with several SR6 captions (`krime soldier GL`, `krime PARTY (FRAG)`) is several entries,
   named by what the caption adds to the heading. `ATTACK` + `RATINGS …` (the header printed over two lines) is the
   attack ratings.
+- A caption naming both editions over a vehicle's two bands (Krime Runner): the SR5 half prints its price in the first
+  band (`DAM AP BLAST AVAIL COST`), the SR6 half's first band follows it on the same row and its second band is the
+  next table printing a price of its own (`PILOT SENS SEAT AVAIL COST`); the SR5 half's second band (no price) is left
+  out. A header cell the converter split one word off (`SPEED` | `INT.TOP SPEED`) is mended (`SPEED INT.` | `TOP
+  SPEED`).
 - Weapon accessories and ammunition: level-5 headings with their text, then one caption over both editions' list
   tables (accessories: two NAME tables, the second SR6; ammunition: one table, its SR6 half a TYPES list set in narrow
   columns: names over two rows, an attack rating over three, two items run into one row): joined back into one row an

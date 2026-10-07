@@ -24,6 +24,8 @@ bands), never an item's name."""
 import math
 import re
 
+from importer.sr6 import vocab
+
 ROUND_UP, ROUND_DOWN = "up", "down"
 NUMERIC = ("cost", "avail", "essence", "capacity", "karma", "rating", "dv", "seats", "ammo", "slots")
 _VAR_WORDS = r"rating|force|level|size|grade|capacity"
@@ -621,6 +623,10 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
     r = attrs.get("rating")
     if uses_r and (r is None or not str(r).strip() or _DASH.fullmatch(str(r))):
         out.append(("issue", {"field": "rating", "code": "missing", "page": page}, _NOTE["rating"]))
+    flagged = {a["field"] for t, a, _ in out if t == "issue"}
+    for f, v in attrs.items():  # a value outside the field's SR6 vocabulary (an SR5 leftover: vocab.py)
+        if f not in flagged and (why := vocab.invalid(f, v)):
+            out.append(("issue", {"field": f, "code": "unreadable", "page": page}, _short(f"not SR6: {why}", 80)))
     return sorted(out, key=lambda c: c[0] != "formula")  # (formulas first, then issues: any order is valid)
 
 
