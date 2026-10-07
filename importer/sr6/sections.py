@@ -72,6 +72,7 @@ class Found:
     text: str = ""
     block: object = None  # the heading's block (a kind the recipes read already reads its fields from it)
     priced_steps: int = 0  # a quality path's steps that are qualities priced in Karma
+    path: object = None  # an unpriced quality path step's path: written only when that is a path (is_path)
 
 
 def _kind_of(name, rules):
@@ -152,7 +153,9 @@ class Reader:
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
                     qs = step_qualities(b, page, self.path[1].name)
-                    self.path[1].priced_steps += bool(qs)
+                    self.path[1].priced_steps += any(q.path is None for q in qs)
+                    for q in qs:
+                        q.path = q.path and self.path[1]
                     out += qs
         if heading:
             out += self._heading(b, page, chain, parent)
@@ -344,8 +347,12 @@ def quality_sets(b, page):
     return out
 
 
-_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma", re.I)
-_BONUS = re.compile(r"\*\*Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma", re.I)
+_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma"
+                   r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b", re.I)  # (`Karma Cost: 6 points`)
+_BONUS = re.compile(r"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma"
+                    r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
+_ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
+_EFFECT = re.compile(r"\*\*Game\s+Effects?:?\*\*", re.I)
 
 
 def quality_attrs(name, chain, text):
@@ -382,15 +389,28 @@ def template_headings(bs, chapters=3):
 def is_path(f, template=frozenset()):
     """A quality path has a path's structure: steps under it (one priced in Karma is enough by itself), and a name of
     its own, not one of the book's template headings. A heading under a `Quality Paths` section without (a chapter's
-    `Roleplaying`, `Strategies`, `Combat` advice) is no path."""
+    `Roleplaying`, `Strategies`, `Combat` advice) is no path. An unpriced step's quality is written when its path is
+    one."""
     if f.kind != "qualitypaths":
-        return True
+        return f.path is None or is_path(f.path, template)
     return f.priced_steps > 0 or any(t == "step" for t, _, _ in f.children) and norm(f.name) not in template
+
+
+def _granted(name, body):
+    """The step grants a quality printed elsewhere: `gain the Home Ground quality`, `the Home Ground quality (p. 72)`."""
+    one = " ".join((body or "").split())
+    n = re.escape(name)
+    return bool(re.search(rf"(?i)\b(?:gains?|purchases?|buys?|takes?|receives?)\s+the\s+{n}\s+quality\b|\b{n}\s+quality\s*\(p\.", one))
 
 
 def step_qualities(b, page, path):
     """A quality path's step is a quality (or several: `Step 2: No Code or Penitent or Re-Bound`), its name without the
-    path's and the step's number: `Critter Bond: Lost` -> `Lost`, `Step 1: Broken Code` -> `Broken Code`."""
+    path's and the step's number: `Critter Bond: Lost` -> `Lost`, `Step 1: Broken Code` -> `Broken Code`. Its kind
+    and Karma are its Cost or Bonus line's (quality_attrs). A step printing neither is still the path's quality when
+    it is named as a step (`Step 1: X`, `Path: X`) or prints a Game Effect (a bare heading may name a quality the step
+    grants, printed elsewhere: `Mentor Spirit`): a Cost line in nuyen or by a rule makes it positive, else it is one
+    the path imposes, negative, with an issue saying the book doesn't state it (its Karma gets the usual missing
+    issue). Those are marked with their path (`path`)."""
     name = re.sub(r"^\s*step\s+(?:\d+|one|two|three|four|five)\s*:\s*", "", b.name, flags=re.I)
     name = re.sub(rf"^\s*{re.escape(path)}\s*:\s*", "", name, flags=re.I)
     if re.fullmatch(r"(?i)starting\s+point|how\s+to\s+move\s+on", name.strip()):
@@ -401,6 +421,13 @@ def step_qualities(b, page, path):
         attrs = quality_attrs(n, [], body)
         if attrs:
             out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
+        elif n.strip()[:1].isupper() and (name != b.name or _EFFECT.search(body)) \
+                and not re.fullmatch(r"(?i)step\s+\S+", n.strip()) and not _granted(n.strip(), body):
+            kids = [] if _ANY_COST.search(body) else [
+                ("issue", {"field": "kind", "code": "missing", "page": page},
+                 "no Karma cost or bonus printed: a step the quality path imposes, positive or negative not stated")]
+            out.append(Found("qualities", n.strip(), page, {"kind": "negative" if kids else "positive"}, kids, body,
+                             path=True))
     return out
 
 

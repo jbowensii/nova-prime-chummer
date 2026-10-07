@@ -35,9 +35,11 @@ TEXT = {
     ],
     "avail": [(re.compile(r"\bavailability\s*(?:of\s+|is\s+|:\s*)?(\d+\s*(?:\(\s*[LIF]\s*\)|[LIF]\b)?)(?![\d¥,])", re.I), "one")],
     "cost": [(re.compile(r"\b(?:costs?|priced\s+at|price\s+(?:is|of))\s*:?\s*(" + _NUM + r")\s*(?:¥|nuyen)", re.I), "one")],
-    "karma": [(re.compile(r"\b(?:costs?|bonus\s+of|for)\s*:?\s*(\d+)\s+karma\b", re.I), "one")],
+    # (a negative quality's own text may say `Gain N Karma`; a sentence buying one off prices its removal: _BUY_OFF)
+    "karma": [(re.compile(r"\b(?:costs?|bonus\s+of|for|^gain)\s*:?\s*(\d+)\s+karma\b", re.I), "one")],
     "essence": [(re.compile(r"\bessence(?:\s+cost)?\s*(?:of\s+|is\s+|:\s*)(\d*\.\d+|\d+)\b", re.I), "one")],
 }
+_BUY_OFF = re.compile(r"\bbuy(?:s|ing)?\s+(?:\S+\s+){0,6}?off\b|\bbought\s+off\b", re.I)
 _AVAIL = re.compile(r"\d+\s*(?:\(\s*[LIF]\s*\)|[LIF])?")
 _RANGE = re.compile(r"(\d+)\s*[–-]\s*(\d+)")
 _MODES = re.compile(r"(?:SS|SA|BF|FA)(?:\s*(?:/|,)\s*(?:SS|SA|BF|FA))*(?:\s*\(\d+\))?")
@@ -115,6 +117,8 @@ def text_values(field, sents):
     """The distinct values the sentences print for the field ({value})."""
     out = set()
     for s in sents:
+        if field == "karma" and _BUY_OFF.search(s):
+            continue
         for rx, how in TEXT.get(field, ()):
             for m in rx.finditer(s):
                 g = [x for x in m.groups() if x]

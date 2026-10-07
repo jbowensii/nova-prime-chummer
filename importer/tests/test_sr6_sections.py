@@ -230,13 +230,33 @@ Begin here.
 #### Step 1: Sore Feet
 This negative quality hurts.
 • **Bonus:** 5 Karma
+#### Step 2: Blisters or Calluses
+Choose one.
+#### Glow Fan
+The step grants a quality printed above.
+#### Step 3
+Walk on.
+#### Step 4: Glow Fan
+You gain the Glow Fan quality at half its cost.
+#### Long Road: Rest Stop
+**Cost:** 2,000 nuyen
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
-        q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
+        res = ET.fromstring(crb.extract(text).files["qualities.xml"])
+        q = {e.findtext("name"): e.attrib for e in res}
         self.assertEqual({n: (q[n]["kind"], q[n].get("karma")) for n in ("Glow Fan", "Fizz Soul", "Zap Nose", "Sore Feet")},
                          {"Glow Fan": ("positive", "2"), "Fizz Soul": ("positive", "10"), "Zap Nose": ("negative", "4"),
                           "Sore Feet": ("negative", "5")})
         self.assertNotIn("Starting point", q)
+        # unpriced steps: named as steps they are qualities (a nuyen Cost line: positive; nothing: negative, an
+        # issue saying so); a bare heading (a quality the step grants) and a bare `Step 3` are not
+        self.assertEqual({n: q[n]["kind"] for n in ("Blisters", "Calluses", "Rest Stop")},
+                         {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"})
+        issues = {e.findtext("name"): [i.get("field") for i in e.iter("issue")] for e in res}
+        self.assertIn("kind", issues["Blisters"])
+        self.assertNotIn("kind", issues["Rest Stop"])
+        self.assertNotIn("Step 3", q)
+        self.assertEqual(sum(e.findtext("name") == "Glow Fan" for e in res), 1)
 
     def test_headings_bought_as_a_quality_at_the_sections_price(self):
         md = """<!-- page 70 -->

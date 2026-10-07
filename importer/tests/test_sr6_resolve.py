@@ -45,6 +45,7 @@ class BookCirclesTest(unittest.TestCase):
         e = {"name": "Nothing Here", "page": 5, "attrs": {}}
         self.assertIsNone(resolve.search_book(self.index, crb.HEADERS, "gear", e, "avail", ""))
         self.assertEqual(resolve.text_values("cost", ["It costs 300¥, or costs 400¥ with a case."]), {"300", "400"})
+        self.assertEqual(resolve.text_values("karma", ["You may buy it off for 9 Karma.", "Buy off your Zorp quality for 8 Karma.", "Gain 4 Karma, to spend."]), {"4"})
 
     def test_the_same_row_fills_the_other_gaps(self):
         table = "| ITEM | CAPACITY | AVAIL | COST |\n|---|---|---|---|\n| Glim mic | 1–6 | 2 | Capacity x 50¥ |"
