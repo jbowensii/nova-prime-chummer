@@ -278,9 +278,13 @@ def _headers(lines, height):
                 continue
             x0, x1 = min(w["x0"] for w in g), max(w["x1"] for w in g)
             # never a group on this same line: that is a side-by-side table
+            # (two whole header rows side by side, no x in common, are two tables in two text columns, a little
+            # apart: only a label of a cell or two stacks beside another line)
             prev = next((h for h in groups if g[0]["top"] - max(w["top"] for w in h) <= _HEADER_STACK * height
                          and min(w["x0"] for w in h) - _STACK_PAD < x1 and x0 < max(w["x1"] for w in h) + _STACK_PAD
-                         and all(abs(g[0]["top"] - w["top"]) > _LINE_TOLERANCE for w in h)), None)
+                         and all(abs(g[0]["top"] - w["top"]) > _LINE_TOLERANCE for w in h)
+                         and (x0 < max(w["x1"] for w in h) and min(w["x0"] for w in h) < x1
+                              or min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP))) <= 2)), None)
             if prev is not None:
                 prev += g
             else:

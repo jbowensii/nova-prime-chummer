@@ -30,6 +30,10 @@ class MagazineLayoutTest(unittest.TestCase):
                   "#### Other Thing", "##### Kicker Part:", "#### Third Thing"):
             self.assertIn(h, self.lines)
 
+    def test_two_header_bands_in_two_columns_are_two_tables(self):
+        self.assertIn("| HAND | ACCEL | BOD | COST |", self.lines)
+        self.assertIn("| PILOT | SEAT | AVAIL | COST |", self.lines)
+
     def test_columns_read_in_turn_over_a_full_width_box(self):
         at = self.lines.index
         self.assertLess(at("Cool words 2"), at("#### Other Thing"))

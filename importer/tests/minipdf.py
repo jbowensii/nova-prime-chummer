@@ -488,7 +488,8 @@ def sr6_doubled_pdf() -> bytes:
 # (30 pt and 20 pt, top band), which take no heading level. Page 2: a `Game Information` heading, then two text
 # columns sharing their baselines (the left one first in the content stream), a kind heading and an item heading in
 # the left one, an item heading in the right one, and under both a full-width box whose title sits at the box's margin,
-# left of the left column. Page 3 sets a kicker (`Kicker Part:`) over its heading: two headings.
+# left of the left column. Page 3 sets a kicker (`Kicker Part:`) over its heading: two headings. Page 4: two header
+# bands in the two text columns, 8 pt apart: two tables.
 def _magazine_head(n):
     return f"BT /F4 30 Tf 150 750 Td (MADE UP TITLE) Tj ET\nBT /F4 20 Tf 540 752 Td ({n}) Tj ET\n"
 
@@ -506,7 +507,11 @@ SR6_MAGAZINE_OPS = [
     + "BT /F4 13 Tf 90 628 Td (Cool Thing) Tj ET\n" + _sr6_lines(90, 614, "Cool words", 3)
     + "BT /F4 13 Tf 330 663 Td (Other Thing) Tj ET\n" + _sr6_lines(330, 642, "Right words", 6) + _box(450),
     _magazine_head(3) + "BT /F4 9 Tf 72 704 Td (Kicker Part:) Tj ET\nBT /F4 13 Tf 72 690 Td (Third Thing) Tj ET\n" + _sr6_lines(72, 670, "Third words", 4),
-    _magazine_head(4) + "BT /F4 13 Tf 72 690 Td (Fourth Thing) Tj ET\n" + _sr6_lines(72, 670, "Fourth words", 4),
+    _magazine_head(4) + "BT /F4 13 Tf 72 690 Td (Fourth Thing) Tj ET\n" + _sr6_lines(72, 670, "Fourth words", 4)
+    + "".join(_sr6_cell(x, 600, t, "F2") for x, t in ((140, "HAND"), (180, "ACCEL"), (220, "BOD"), (250, "COST")))
+    + "".join(_sr6_cell(x, 590, t) for x, t in ((140, "3/4"), (180, "9"), (220, "6"), (250, "900")))
+    + "".join(_sr6_cell(x, 608, t, "F2") for x, t in ((320, "PILOT"), (360, "SEAT"), (400, "AVAIL"), (440, "COST")))
+    + "".join(_sr6_cell(x, 598, t) for x, t in ((320, "2"), (360, "1"), (400, "3"), (440, "700"))),
 ]
 
 

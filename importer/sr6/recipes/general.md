@@ -82,6 +82,9 @@ title first), the chapter giving the context. Read with the general reading, not
   the gutter is accepted when every row it splits is two columns meeting in the content stream, the box's lines
   aside; a line set at the box's margin (its title) is the box's. Before, the two columns were read line by line,
   interleaved, and a name set in two lines (`Developed` / `Immunity`) came out split.
+- **Two stat tables side by side in the two text columns, a few points apart** (Tarnished Star's Honda Raptor beside
+  the VAA Estrada-77): two header rows with no x in common are two tables, never one header stacked over two lines
+  (only a label of a cell or two stacks beside another line). Before, the two merged and the Raptor's stats were lost.
 - **A kicker over a name** (`Part of the Family:` set small over `Deserted`): `prepare_md` makes them one heading, the
   name's level (`Part of the Family: Deserted`, the name as printed); a quality
   path step set at the path heading's own level and naming the path is its step, under its printed name.
