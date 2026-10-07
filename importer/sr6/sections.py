@@ -24,7 +24,10 @@ from importer.sr6.regroup import norm
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
-    ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b", re.I)),
+    ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b|^inherent\b.*\bqualities$", re.I)),  # (a being's
+    # inherent qualities are its powers: `Inherent Virtual Life Form Qualities`)
+    ("metamagics", re.compile(r"^(?:new\s+|adept\s+)?metamagics?(?:\s+techniques)?$", re.I)),
+    ("sprites", re.compile(r"^(?:new\s+)?sprite\s+types$", re.I)),
     ("traditions", re.compile(r"^traditions$", re.I)),
     ("martialtechniques", re.compile(r"\bmartial\s+arts?\s+techniques$", re.I)),  # `Cyberware Martial Arts Techniques`
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
@@ -48,7 +51,8 @@ RUNIN_KINDS = [
 # a heading naming its kind before a colon (`Quality Path: X`, `New Edge Action: X`, `New Contact Type: X`)
 PREFIX = [("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$", re.I)),
           ("actions", re.compile(r"^(?:new\s+)?(?:(?:status|response|chase)\s+)?(?:edge|major|minor)\s+action\s*:\s*(.+)$", re.I)),
-          ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I))]
+          ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I)),
+          ("metamagics", re.compile(r"^(?:new\s+)?metamagic\s*:\s*(.+)$", re.I))]
 # run-in labels that are a field of the block, not an entry of its kind
 FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
                           r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"

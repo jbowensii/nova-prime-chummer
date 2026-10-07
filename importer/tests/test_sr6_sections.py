@@ -324,6 +324,31 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         self.assertEqual((g["Bright focus"]["cost"], g["Dim focus"]["avail"]), ("Force x 500", "(Force) L"))
         self.assertNotIn("Odd focus", g)
 
+    def test_inherent_qualities_metamagics_and_sprite_types(self):
+        """A being's inherent qualities are its powers; `Adept Metamagics` and `New Metamagic: X` name metamagics;
+        `New Sprite Types` names sprites."""
+        md = """<!-- page 110 -->
+# ZORP LIFE
+## Inherent Zorp Form Qualities
+### Glow Shift
+The zorp glows at will.
+## Adept Metamagics
+### Fizz Way
+An adept fizzes.
+## Game Information
+### New Metamagic: Hum Gift
+A gift of humming.
+## New Sprite Types
+### Wobble Sprite
+**Skills:** Electronics
+**Powers:** Shield
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+        self.assertEqual((names("critterpowers"), names("metamagics"), names("sprites")),
+                         (["Glow Shift"], ["Fizz Way", "Hum Gift"], ["Wobble Sprite"]))
+
     def test_runins_under_a_parent_naming_the_kind_and_edge_actions_anywhere(self):
         """A heading's run-ins are its parent's kind when the parent names one (and the heading is no entry); a
         run-in naming the kind itself introduces it; a program's own words give its type; `N Edge: X` is an Edge

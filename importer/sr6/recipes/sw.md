@@ -40,6 +40,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `sw.py`): 170 pages, p
   noun) is a positive quality at 20 Karma. `Innate Talent`, `Focused Channeling` and `Spark of Brilliance` are the
   ways' shared abilities, not qualities.
 
+## Commlink6 check (importer v4)
+
+- Section kinds (importer v4): FORCE AND GRACE's `Adept Metamagics` headings are metamagics; a `New Metamagic: X` heading names one.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Street Wyrd-Core Magic Rulebook-CAT28003.pdf>" --out "%TEMP%\sw-check"
