@@ -106,6 +106,46 @@ class Cl6GermanNamesTest(unittest.TestCase):
         self.assertFalse(canon.cl6_only("qualities", "Will to Die", {}, "quality"))  # English look-alikes stay
         self.assertFalse(canon.cl6_only("qualities", "Camouflage (Fur)", {}, "quality"))
 
+class GameInformationShapesTest(unittest.TestCase):
+    def test_stat_line_table_makes_the_heading_an_item(self):
+        b = general._stat_line(_b("Zap Bangle", 3, "About it.\n| TYPE | MODE | DV | AVAIL | COST |\n|---|---|---|---|---|\n"
+                                                  "| Light Pistol | SS | 3P | 4L | 900¥ |\nMore."))
+        self.assertEqual((b.type, b.row), ("item", {"ITEM": "Zap Bangle", "TYPE": "Light Pistol", "MODE": "SS", "DV": "3P",
+                                                    "AVAIL": "4L", "COST": "900¥"}))
+        self.assertNotIn("|", b.text)
+
+    def test_a_named_table_stays_a_table(self):
+        b = _b("Canes", 3, "| NAME | DV | AVAIL | COST |\n|---|---|---|---|\n| Sword Cane | 3P | 2 | 400¥ |")
+        self.assertEqual(general._stat_line(b).type, "section")
+
+    def test_box_title_a_letter_off_its_heading_takes_the_heading_name(self):
+        b = Block("item", "zap bangel", "Game Information", "Zap Bangle", "zap bangel", 10)
+        self.assertEqual(general._box_named(b).name, "Zap Bangle")
+        far = Block("item", "glow stick", "Game Information", "Zap Bangle", "glow stick", 10)
+        self.assertEqual(general._box_named(far).name, "glow stick")
+
+    def test_spell_box_with_its_category_under_type(self):
+        b = Block("item", "Hush", "Game Information", "SPELLS", "hush", 10,
+                  stats=[{"TYPE": "Illusion", "RANGE": "LOS", "DV": "P", "DURATION": "S", "DRAIN": "4"}])
+        f = general._spell_box(b)
+        self.assertEqual(f.stats[0], {"TYPE": "P", "RANGE": "LOS", "DURATION": "S", "DV": "4"})
+        self.assertEqual(f.section, "Illusion spells")
+
+    def test_adept_power_cost_in_power_points(self):
+        r, out = sections.Reader(), []
+        for b in [_b("ADEPT POWERS", 3), _b("Quick Toss", 4, "", {"Cost": "0.25 PP per level", "Activation": "Passive"}),
+                  _b("A Rule About Throwing", 4, "No labels here.")]:
+            out += r.feed(b, 10)
+        self.assertEqual([(f.kind, f.name, f.attrs) for f in out],
+                         [("adeptpowers", "Quick Toss", {"cost": "0.25", "perLevel": "true"})])
+
+    def test_toxin_lines_make_gear(self):
+        r, out = sections.Reader(), []
+        for b in [_b("Made-Up Venoms", 3), _b("Glow Toad Venom", 4, "", {"Vector": "Injection", "Speed": "1 minute", "Power": "6"})]:
+            out += r.feed(b, 10)
+        self.assertEqual([(f.kind, f.name, f.attrs) for f in out], [("gear", "Glow Toad Venom", {"category": "Made-Up Venoms"})])
+
+
 
 if __name__ == "__main__":
     unittest.main()

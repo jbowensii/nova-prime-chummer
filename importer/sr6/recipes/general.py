@@ -6,6 +6,7 @@ as <id>.<slug>), descriptions in the private texts. Each known book is a recipe 
 name, and how its title or first page names it); they share the core rulebook's reading (crb.extract). Reads only
 regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
+import difflib
 import re
 from collections import Counter
 from dataclasses import replace
@@ -13,7 +14,7 @@ from dataclasses import replace
 from importer.recipes.dhsa import slug
 from importer.sr6.recipes import crb, swc
 from importer.sr6.recipes.fs import _md_table
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, keys, norm
 
 # (source id, name, CAT number or "", the PDF title's pattern, phrases the first page holds when the title is missing)
 # The id: a short form of the book's title (a letter first: THN for 30 Nights), as the core rulebook's CRB.
@@ -194,6 +195,48 @@ def _split_shared(lines):
     return out
 
 
+NEAR_NAME = 0.88  # a box title this close to its heading's name (difflib ratio of their keys) names the same item
+
+
+def _box_named(b):
+    """A stat box under its item's heading, titled a letter or a joining word off it (`ceramic or plasteel knife` under
+    `Ceramic/Plasteel Knife`): named by the heading (the printed name), the box title an alias."""
+    if b.type != "item" or not b.label or b.name != b.label or b.name != b.name.lower() or not b.section:
+        return b
+    a, h = keys(b.name)[0], keys(b.section)[0]
+    if a == h or difflib.SequenceMatcher(None, a, h).ratio() < NEAR_NAME:
+        return b
+    return replace(b, name=b.section, aliases=[*b.aliases, b.name])
+
+
+def _stat_line(b):
+    """An item's heading whose text holds its one stat line: a one-row priced table with no name column (`TYPE | MODE |
+    DV | … | AVAIL | COST`, the type its first cell): that row is the item's, named by the heading."""
+    if b.type != "section" or b.level < 3 or b.stats or b.row is not None:
+        return b
+    ts = crb._tables(b.text)
+    if len(ts) != 1 or len(ts[0][1]) != 1:
+        return b
+    h, rows = ts[0]
+    if not _PRICE & {x.upper() for x in h} or h[0].upper() in _NAME_COLUMNS | {"ITEM", "NAME"} or len(rows[0]) != len(h):
+        return b
+    row = {"ITEM": b.name, **dict(zip(h, rows[0]))}
+    return replace(b, type="item", row=row, header=list(row), text=b.text.replace(_md_table(h, rows), "", 1).strip())
+
+
+def _spell_box(b):
+    """A spell box printing its category under TYPE and its type under DV (`TYPE Illusion | RANGE LOS | DV P | DURATION S
+    | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
+    (`Illusion spells`: the catalog's spell category)."""
+    s = {h.upper(): (h, v) for h, v in (b.stats[0].items() if b.stats else ())}
+    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in crb.SPELL_CATEGORIES \
+            or s["DV"][1].strip().upper() not in ("P", "M"):
+        return b
+    box = {h: v for h, v in b.stats[0].items() if h.upper() not in ("TYPE", "DV", "DRAIN")}
+    box = {s["TYPE"][0]: s["DV"][1], **box, s["DV"][0]: s["DRAIN"][1]}
+    return replace(b, stats=[box] + b.stats[1:], section=f"{s['TYPE'][1].strip()} spells")
+
+
 _KICKER = re.compile(r"(#{2,6}) ([^#].*:)$")
 
 
@@ -362,6 +405,7 @@ class Book:
         heading (a book printing none) is in the book's."""
         if not b.chapter:
             b = replace(b, chapter=self.BOOK, name=b.name or self.BOOK)
+        b = _spell_box(_stat_line(_box_named(b)))
         if b.type == "item" or b.level >= 2:
             b = _text_bands(b)
             if b.type == "section" and _being(b):

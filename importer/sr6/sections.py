@@ -318,6 +318,10 @@ class Reader:
             # the row a table pairs with the heading prints the name plain: its heading's (I)/(A) is in the aliases
             full = next((a for a in getattr(b, "aliases", ()) if norm(a).startswith(norm(name))), name)
             name, attrs = _action_attrs(full, chain, b.tags, text)
+        if kind == "adeptpowers":  # `Cost: 0.25 PP per level`: its Power Points, a level each
+            cost = next((v for k, v in b.labels.items() if k.lower() == "cost"), "")
+            if m := re.match(r"\s*([\d.]+)\s*(?:PP|power\s+points?)\b(\s*per\s+level)?", cost, re.I):
+                attrs = {"cost": m.group(1), "perLevel": "true" if m.group(2) else None}
         if kind == "qualities":
             attrs = quality_attrs(name, chain, _body(b))
             if not attrs:

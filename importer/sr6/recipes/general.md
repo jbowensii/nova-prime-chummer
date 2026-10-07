@@ -88,6 +88,14 @@ title first), the chapter giving the context. Read with the general reading, not
 - **Kinds by heading**: qualities (Cost or Bonus in Karma), adept powers (`ADEPT POWERS`, each child with its Cost or
   Activation label), toxins (a heading over `Vector`, `Speed` and `Power` lines: gear, category the heading over it),
   spells (their box), gear, weapons and vehicles (their tables), life modules (the Companion's form).
+- **An item's one stat line** (Dealers of Death's bracelets): a heading whose text holds a one-row priced table with no
+  name column (`TYPE | MODE | DV | … | AVAIL | COST`, the type its first cell) is that item, named by the heading.
+- **A box title a letter or a joining word off its heading** (`ceramic or plasteel knife` under `Ceramic/Plasteel
+  Knife`, `tiffani elegence …` under `Tiffani Elegance …`: difflib ratio of the keys 0.88 or more): the heading's
+  name, the printed one.
+- **A spell box with its category under TYPE** (`TYPE Illusion | RANGE | DV P | DURATION | DRAIN 4`): TYPE the type
+  (P), DV the drain, the category the catalog's (`Illusion spells`).
+- **An adept power's cost in Power Points** (`Cost: 0.25 PP per level`): cost 0.25, a level each.
 - **Lists a section grants** (Slip Streams' `Powers` and `Characteristics` under `Returned Soldiers`, the list's
   text naming the section): Karma-0 qualities, `granted`, category `Returned Soldier power` / `Returned Soldier
   characteristic` (a characteristic is a drawback: negative); a heading priced in Karma (`Returned Soldier (12
