@@ -376,6 +376,29 @@ Spend 2 Edge to fix a zorp.
         a = {e.findtext("name"): e.attrib for e in ET.fromstring(files["actions.xml"])}
         self.assertEqual((a["Lucky Spanner"]["type"], a["Lucky Spanner"]["edge"]), ("edge", "2"))
 
+    def test_new_fire_actions_and_sprite_commands(self):
+        """`New Fire Actions …` lists actions as run-ins (`New Edge Action: X` names one; `New Status: X` is none);
+        a sprite's commands under `New Sprite Commands` are its powers."""
+        md = """<!-- page 150 -->
+# ZORP MAYHEM
+#### New Fire Actions and Statuses
+**Called Shot: Glow Fire**
+Fire a glowing shot.
+**New Edge Action: Called Shot: Zap Point**
+Zap a point. Cost 2 Edge.
+**New Status: Glowing**
+You glow.
+# POINTS OF ZORP
+## New Sprite Commands
+### Fizz Sprite
+**Fizz Ken:** Your fizz sprite helps.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+        self.assertEqual((names("actions"), names("critterpowers")),
+                         (["Called Shot: Glow Fire", "Called Shot: Zap Point"], ["Fizz Ken"]))
+
     def test_a_title_that_only_mentions_a_kind_names_none(self):
         """The kind's words must head the heading: `New Echoes` lists echoes; a book or group titled `Echoes of …`
         doesn't, and a `Program Slots` heading lists no programs."""

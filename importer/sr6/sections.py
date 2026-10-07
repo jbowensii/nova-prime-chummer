@@ -41,10 +41,10 @@ HEADING_KINDS = [
 RUNIN_KINDS = [
     ("gear", re.compile(r"\bfoci\b", re.I)),  # `Enchanting Foci`: its kinds of focus, priced as the `Enchanting focus` row
     ("echoes", re.compile(r"\bechoes\b", re.I)),
-    ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b", re.I)),
+    ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b|\bsprite\s+commands\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
-    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b", re.I)),
+    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b", re.I)),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
     ("contacttypes", re.compile(r"\bcontact\s+types\b", re.I)),
 ]
@@ -269,11 +269,15 @@ class Reader:
             name = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(m.group("name").split()).strip())  # (`Vi- sion`)
             if only is not None and not only.match(name):
                 continue
+            if (new := re.match(r"(?i)new\s+([\w ]+?)\s*:", name)) and not _kind_of(
+                    new.group(1) + "s", [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]):
+                continue  # `New Status: Painted` among new actions: another kind of thing
             if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[") \
                     or len(name) > 70 or norm(name) in seen:
                 continue
             seen.add(norm(name))
-            if _runin_kind(name) == kind:
+            pre = next((pm for k, rx in PREFIX if k == kind and (pm := rx.match(name))), None)  # `New Edge Action: X`
+            if not pre and _runin_kind(name) == kind:
                 continue  # (`Electronic Warfare Programs:` introduces the kind)
             body = [m.group("rest").strip()]
             for nxt in lines[i + 1:]:
@@ -284,7 +288,7 @@ class Reader:
             para = "\n".join(x for x in body if x)  # (its lines kept: the texts are reflowed later)
             attrs = {}
             if kind == "actions":
-                name, attrs = _action_attrs(name, chain, "", para)
+                name, attrs = _action_attrs(pre.group(1) if pre else name, chain + ([name] if pre else []), "", para)
                 if only is not None:
                     attrs["type"] = "edge"
             if kind == "programs":

@@ -106,6 +106,7 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 
 - Stat matching (cl6check): Commlink6 names the PAG by its full title, the MAID drones with the maker and without the class, and a fuel row by its weapon; their stats find them (5 renames).
 - Unit prices (importer v4): the artillery, cannon, mortar and railgun ammunition rows print `N each`; the app (values.ts rated()), the importer's readable() and cl6check read it as N.
+- Actions (importer v4): MIL-SPEC MAYHEM's `New Fire Actions and Statuses` lists its called shots as bold title lines: actions (`New Edge Action: X` names an Edge action; `New Status: X` is none).
 
 ## Real-book check (local, nothing committed)
 
