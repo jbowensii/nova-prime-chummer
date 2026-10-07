@@ -237,6 +237,11 @@ def _keys(e, norm):
     return {norm(p) for n in [e["name"], *e["aliases"]] for p in match.split_names(n)} - {""}
 
 
+def _cat(e):
+    """An entry's category as its words."""
+    return match.toks((e.get("attrs") or {}).get("category") or "")
+
+
 @dataclass
 class Corpus:
     books: list  # in publication order
@@ -282,6 +287,11 @@ class Corpus:
                 or {e["kind"] for b, e in out if family(b.belongs) == home}
             if own:
                 out = [(b, e) for b, e in out if e["kind"] in own]
+            # and in a category sharing a word with the home book's: one of another category is another thing of the
+            # same name (Body Shop's `Buzzsaw` implant weapon, Deadly Arts' `Buzzsaw` extreme cyberweapon feature)
+            cats = {_cat(e) for b, e in out if family(b.belongs) == home} - {frozenset()}
+            if cats:
+                out = [(b, e) for b, e in out if family(b.belongs) == home or not _cat(e) or any(_cat(e) & c for c in cats)]
         return out
 
     def variants(self, kinds, names, home=None):

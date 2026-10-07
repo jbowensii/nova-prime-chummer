@@ -221,6 +221,15 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))
         self.assertEqual(got["Nothing like it"], ("", []))
 
+    def test_parentheticals_and_the_records_page(self):
+        # a rating's parenthetical is set aside, a variant's word starting with r is not
+        self.assertEqual(match.n1("Zorp (R 1-6)"), match.n1("Zorp"))
+        self.assertNotEqual(match.n1("Zorp (Ribbonwire)"), match.n1("Zorp"))
+        # rows a record's words are all in: the ones on its own page when some are
+        c = {"name": "Boom Gun ZAP", "page": "20", "kind": "gear", "pool": ("gear",), "aliases": []}
+        mine = [entry("Q1 (ZAP Boom Gun)", page="20"), entry("Q9 (ZAP Boom Gun)", page="27")]
+        self.assertEqual([o["name"] for o in match.match([c], mine)[0][1]], ["Q1 (ZAP Boom Gun)"])
+
 
 class PatternsTest(unittest.TestCase):
     def test_general_rules_are_scored_against_the_tags(self):

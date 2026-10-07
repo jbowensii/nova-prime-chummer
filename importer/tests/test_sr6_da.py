@@ -60,6 +60,53 @@ A made-up walker that stomps.
 **Standard Equipment:** Made-up legs.
 ## New Game Rules: Stomping
 Stomp in a made-up way.
+## Made Cannons
+Made-up cannons fire made-up shells.
+##### Made Ammunition
+plain ZAP Made Shell
+| SIZE | AVAIL | COST PER 10 | BLAST PROFILE | AVAIL | COST PER 10 |
+|---|---|---|---|---|---|
+| Z1 | 2(L) | 15¥ | — | — | — |
+| Z25 | 3(I) | 130¥ | 7P(1m)/4P(3m)/— | 5(I) | 450¥ |
+#### Made Ammunition Notes
+Made-up notes about the shells.
+## Made Warheads
+Made-up warheads go on made-up rockets.
+##### shell types
+| TYPE | CAPACITY | BLAST PROFILE | AVAIL | COST |
+|---|---|---|---|---|
+| Boom | 16 | 16P(1m)/10P(3m)/4P(16m) | — | +100¥ |
+|  | 20 | 20P(2m)/14P(4m)/5P(20m) | +1(I) | +200¥ |
+| TYPE | AVAIL | COST |
+|---|---|---|
+| Fizz | +1(I) | x 2 Base Cost |
+## Made Trains
+### Made Rail Train
+A made-up train of cars.
+##### Made Rail Train
+engine car
+| HAND | ACCEL | SPD INT | TOP SPD | BODY | ARMOR | PILOT | SENSOR | SEAT | AVAIL | COST |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 3/5 | 10 | 25 | 120 | 16 | 16 | 4 | 4 | 2 | 6(L) | 645,000¥ |
+caboose car
+| HAND | ACCEL | SPD INT | TOP SPD | BODY | ARMOR | PILOT | SENSOR | SEAT | AVAIL | COST |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 4/5 | 15 | 15 | 75 | 12 | 12 | 4 | 4 | — | 6(L) | 27,000¥ |
+## Made Darts
+#### Made Dart Rules
+Made-up darts fly far.
+| NAME | RANGE | AVAIL | COST |
+|---|---|---|---|
+| Plain Dart | 1 km | 5(I) | 2,000¥ |
+| Smart Dart | 1 km | 6(I) | 4,500¥ |
+More made-up words about darts.
+### Fizzbang
+A made-up drug that fizzes.
+##### drugs
+| DRUG | POWER | AVAIL | COST (PER DOSE) |
+|---|---|---|---|
+| Fizzbang | 8 | 5L | 800 ¥ |
+| Popper | 7 | 3L | 50 ¥ |
 <!-- page 140 -->
 # FRAG ORDERS
 ## Game Information: Made-up Warfare
@@ -142,6 +189,32 @@ class DaRecipeTest(unittest.TestCase):
                          [{"NAME": "Ultra Max", "TYPE": "A", "DV": "2P", "AMMO": "30(c) 60(c)", "COST": "5¥"}])
         self.assertEqual(len(shapes.rows(stats)), 2)  # three columns: no wrap
         self.assertIsNone(shapes.rows([{"A": "1", "B": "2"}, {"A": "3", "B": "4"}]))  # unnamed rows: a rule's table
+
+    def test_products_side_by_side_and_ammunition_types(self):
+        g = entries(self.res, "gear")
+        # a band line naming two products over a table printing its prices twice: a row a product
+        self.assertEqual({k: g["Z25"][k] for k in ("category", "avail", "cost", "per")},
+                         {"category": "Made ammunition", "avail": "3(I)", "cost": "130", "per": "10"})
+        self.assertEqual((g["Z25 (ZAP Made Shell)"]["avail"], g["Z25 (ZAP Made Shell)"]["cost"]), ("5(I)", "450"))
+        self.assertIn("Z1", g)
+        self.assertNotIn("Z1 (ZAP Made Shell)", g)  # (dashes only: no such product)
+        # a list titled as ammunition types: its rows are ammunition types, a nameless row a band of the one above
+        a = entries(self.res, "ammotypes")
+        self.assertEqual(set(a), {"Boom", "Boom (Capacity 20)", "Fizz"})
+        self.assertEqual((a["Boom (Capacity 20)"]["avail"], a["Fizz"]["cost"]), ("+1(I)", "x 2 Base Cost"))
+        self.assertTrue(a["Fizz"]["category"].startswith("Shell type"))  # (its title)
+
+    def test_box_variants_text_lists_and_drugs(self):
+        v = entries(self.res, "vehicles")
+        # a lower-case line over each of a box's bands names that band's variant
+        self.assertEqual((v["Made Rail Train (Engine car)"]["cost"], v["Made Rail Train (Caboose car)"]["cost"]),
+                         ("645000", "27000"))
+        g = entries(self.res, "gear")
+        # a priced NAME table in a rule heading's text: its rows are items, the heading their title
+        self.assertEqual((g["Smart Dart"]["avail"], g["Smart Dart"]["cost"]), ("6(I)", "4500"))
+        self.assertIn("Made Dart Rules", entries(self.res, "rules"))
+        # the drugs table (DRUG, a name header of the book's): its rows are items
+        self.assertEqual((g["Popper"]["cost"], g["Popper"]["per"]), ("50", "dose"))
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

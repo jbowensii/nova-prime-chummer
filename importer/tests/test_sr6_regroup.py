@@ -226,6 +226,41 @@ Hammer Exotic 2P 6/—/—/—/— 5(I)
         self.assertEqual([r[:3] for r in rows], [["m40", "0", "3 km"], ["m60", "1", "7 km"]])
         self.assertEqual([r[0] for r in regroup._rating_groups(rows)], ["m40", "m60"])  # a model code, no variant
 
+    def test_cells_wrapped_around_centred_values(self):
+        # a name and a class cell wrapped over lines, the values level with the middle line (or the lower of two), a
+        # note between rows, the header's AVAIL printed over the other column, the text after the table its own
+        md = """**NAME CLASS RANGE CAP PILOT AVAIL SENSOR COST**
+Zip 0 (20mm x
+1.5 Km 16 0 0 5(I) 2,000¥
+Dart 1m)
+Zop 1 (30mm x
+2 km 20 1 1 6(I) 3,000¥
+Lance .5m)
+**Note:** A made-up note on the Zop.
+Boost
+Option for 3 3 +1(I) +500¥
+Darts
+1,000-meter
+wire - - - - - 6 900¥
+spools
+made-up text after the table.
+"""
+        els = regroup._elements(md)
+        t = els[0][2]
+        self.assertEqual(t.header, ["NAME", "CLASS", "RANGE", "CAP", "PILOT", "SENSOR", "AVAIL", "COST"])
+        self.assertEqual([r[:2] + r[-2:] for r in t.rows], [
+            ["Zip Dart", "0 (20mm x 1m)", "5(I)", "2,000¥"], ["Zop Lance", "1 (30mm x .5m)", "6(I)", "3,000¥"],
+            ["Boost Option for Darts", "", "+1(I)", "+500¥"], ["1,000-meter wire spools", "-", "6", "900¥"]])
+        self.assertEqual([v for k, _, v in els[1:]], ["**Note:** A made-up note on the Zop.", "made-up text after the table."])
+        # a name column's header printed on two lines around the others
+        t = regroup._elements("**WIDGET**\n**ESSENCE CAP COST**\n**PART**\nTwo\nZap 0.2 [1] 300¥\nTone\nBuzz 0.5 [6] 1,500¥\n")[0][2]
+        self.assertEqual(t.header, ["WIDGET PART", "ESSENCE", "CAP", "COST"])
+        self.assertEqual(t.rows, [["Two Zap Tone", "0.2", "[1]", "300¥"], ["Buzz", "0.5", "[6]", "1,500¥"]])
+        # two lines a row, the values on the lower
+        t = regroup._elements("**NAME CLASS RANGE CAP AVAIL COST**\nZip 0 (20mm\nDart x .5m) 1 km 16 5(I) 2,000¥\n"
+                              "Zip 0 (20mm\n1 km 16 6(I) 4,000¥\nBolt x .5m)\n")[0][2]
+        self.assertEqual([r[:2] for r in t.rows], [["Zip Dart", "0 (20mm x .5m)"], ["Zip Bolt", "0 (20mm x .5m)"]])
+
 
 class RegroupRulesTest(unittest.TestCase):
     @classmethod

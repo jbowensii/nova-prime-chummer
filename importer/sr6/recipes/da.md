@@ -112,3 +112,31 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Deadly Arts-Core Advanced Combat Rulebook-CAT28011.pdf>" --out "%TEMP%\da-check"
+
+## Deadly Arts gaps (book-da)
+
+General rules (regroup, crb, cl6check), each measured on the 74-book corpus:
+- **Products side by side** (regroup `_products`): the ballistic and autocannon ammunition tables print a band line
+  (`regular HEX Assault Cannon`) over a header with its price columns twice (`SIZE | AVAIL | COST PER 10 | BLAST
+  PROFILE | AVAIL | COST PER 10`). A row is one product a band: the first band's under the row's name (`B25`), each
+  later band's `<row> (<band>)` (`B25 (HEX Assault Cannon)`); a band of dashes only is no product. The heading over
+  the table is their title (category). `COST PER 10` is a cost per 10 (crb `fields`).
+- **Ammunition-type lists** (regroup `TYPES_TITLE`): the `warhead types` tables in Naval Weapons' text are ammunition
+  types (crb `ammo_type`), priced as modifiers; a nameless row is a band of the one above (`Hex (Capacity 20)`).
+- **Box variants** (regroup `_VARIANT_LINE`): a lower-case line over each of a box's bands (`command car`, `support
+  car`, `battle wagon` under `Renraku Omukade`) names that band's item: `Renraku Omukade (Command car)`.
+- **Wrapped bold-header tables** (regroup `_bold_table`): the rockets and missiles (pp. 57, 58) and the extreme
+  cyberweapon features and enhancements (p. 45). A row's lines are split as the book centres its values on them (as
+  many over as under, or one more over); a rocket's class wraps too (`0 (40mm x` over `1m)`, shape `CLASS`); a name
+  header printed on two lines around the others (`CYBERWARE` / `ESSENCE CAP COST` / `FEATURE`); a `Note:` between
+  rows stays text; lines after the last row are text again. The p. 58 header prints AVAIL over the sensor column
+  (`PILOT AVAIL SENSOR COST` over `0 0 5(I)`): a bold table whose AVAIL cells print no legality letter while most of a
+  neighbour's do has the two swapped (`_swapped_avail`).
+
+Recipe hints (da.py): `DRUG` names the drugs table's rows (their headings are sections); a priced NAME table in a rule
+heading's text is a list of items titled by that heading (`Expanded Rocket/Missile Rules`: Standard Rocket, Standard
+Missile; `_text_list`).
+
+Left (da-gaps.md): Commlink6's composed names (`Railguns & Linear Kinetic Cannons`, `Hardened`), `Urumi` (no row
+printed), `Foundation Focus` (priced as the core rulebook's spell focus by a sentence), the converter's two boxes side
+by side (`Combat MAID`) and the Incision spell set inside the medical gear table.

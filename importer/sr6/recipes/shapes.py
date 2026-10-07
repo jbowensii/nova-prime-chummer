@@ -11,7 +11,7 @@ from importer.sr6.regroup import full_name, keys, norm, other_name
 
 # a box's first column naming its rows (`NAME`, `CASE TYPE`, `DIGITAL WEAPON CODEMODS`, `IC`, …)
 NAME_COL = re.compile(r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
-                      r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL|WEAPON)$")
+                      r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL|WEAPON|FEATURE|ENHANCEMENT)$")
 # headers printed in short or run together -> the core rulebook's (a tuple: two headers, the value split at its last space)
 RENAME = {"SPD INT": "SPEED INTERVAL", "SPD INTERVAL": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "SEAT": "SEATS",
           "ACC": "ACCEL", "BOD": "BODY", "ARM": "ARMOR", "PIL": "PILOT", "SENS": "SENSOR", "AVAILABILITY": "AVAIL",

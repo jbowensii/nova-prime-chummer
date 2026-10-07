@@ -15,7 +15,8 @@ def n0(s):
 
 def words(s):
     s = (s or "").casefold().replace("’", "'").replace("&", " and ")
-    s = re.sub(r"\((?:rating|force|level|r)[^)]*\)|\brating\s*\d*\b|\[[^\]]*\]", " ", s)
+    # (a rating's parenthetical, `(R 1-6)`, not one whose word starts with r: `(Razorwire)` names a variant)
+    s = re.sub(r"\((?:rating|force|level|r\b)[^)]*\)|\brating\s*\d*\b|\[[^\]]*\]", " ", s)
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return [w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in s.split()]
 
@@ -152,6 +153,8 @@ def match(cl6, ours):
                                              or (len(key) >= 2 and key <= toks(n))) for n in _names(o))]
         share = {id(o): max(len(key & toks(n)) for n in _names(o)) for o in hits}  # the rows sharing the most words
         hits = [o for o in hits if share[id(o)] == max(share.values())]  # (`Ritual Spellcasting`, not `Spellcasting`)
+        # (the rows on the record's own page when some are: `Assault Cannon HEX` is p. 140's row, not p. 147's)
+        hits = [o for o in hits if near(o["page"], c["page"])] or hits
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)
@@ -171,7 +174,10 @@ def match(cl6, ours):
         if not best:
             continue
         r0, o0 = best[0]
-        if (len(best) == 1 or r0 - best[1][0] > 0.03) and (r0 >= 0.86 or (r0 >= 0.72 and near(o0["page"], c["page"]))):
+        if (len(best) == 1 or r0 - best[1][0] > 0.03) and (r0 >= 0.86 or (r0 >= 0.72 and near(o0["page"], c["page"]))) \
+                and not (c.get("fields") and stat_agreement(c, o0)[1]
+                         and by_stats(c, [o for o in pool[i] if id(o) not in used and o is not o0])[0] == "strong"):
+            # (a name only like ours, its stats unlike, loses to an entry of ours whose stats are the record's)
             found[i] = ([o0], f"fuzzy {r0:.2f}")
             used.add(id(o0))
     out = []

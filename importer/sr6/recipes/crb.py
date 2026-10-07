@@ -139,7 +139,7 @@ HEADERS = {
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
-             "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "",  # an ammunition's modifiers: prose
+             "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
@@ -163,7 +163,8 @@ HEADERS = {
     "martialtechniques": {"CATEGORY": "category"},
     "traditions": {},
     "ammotypes": {"AR": "ar", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "DV": "dv", "COST MULTIPLIER": "cost",
-                  "MULTIPLIER": "cost", "COST": "cost", "AVAIL": "avail", "AVAILABILITY": "avail", "TYPE": "", "TYPES": ""},
+                  "MULTIPLIER": "cost", "COST": "cost", "AVAIL": "avail", "AVAILABILITY": "avail", "TYPE": "", "TYPES": "",
+                  "CAPACITY": "", "BLAST PROFILE": ""},  # (a warhead type's band: prose)
 }
 # a being's labelled lists (label, lower case -> child element)
 LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
@@ -415,8 +416,8 @@ class _Catalog:
                 a = cols.get(hu)
                 if a is None and (m := re.fullmatch(r"(\w+) COST \(CAPACITY\)", hu)):
                     a = f"variant:{m.group(1).lower()}"
-                elif a is None and (m := re.fullmatch(r"COST \(PER (.+)\)", hu)):
-                    a, out["per"] = "cost", m.group(1).lower()
+                elif a is None and (m := re.fullmatch(r"COST \(PER (.+)\)|COST PER (\w+)", hu)):  # (`COST PER 10`)
+                    a, out["per"] = "cost", (m.group(1) or m.group(2)).lower()
                 if a is None:  # reported once the entry is added (add()); its value goes to the text
                     self.pending.append({"kind": "unknown-column", "file": f"{kind}.xml", "column": h, "name": b.name,
                                          "page": page})
@@ -948,8 +949,8 @@ def ammo_type(b):
     ammunition table): an ammunition type, not an item of its own."""
     if b.row is None or not b.header:
         return False
-    if any("MULTIPLIER" in h.upper() for h in b.header):
-        return True
+    if any("MULTIPLIER" in h.upper() for h in b.header) or regroup.TYPES_TITLE.search(b.label or ""):
+        return True  # (a row of a list titled as ammunition types: `warhead types`)
     cost = next((v for h, v in b.row.items() if h.upper() in ("COST", "PRICE")), "")
     return bool(_MULTIPLE.match(cost or "")) and bool(_AMMO_WORDS.search(" ".join([b.name, b.label, b.section, *b.header])))
 

@@ -426,7 +426,10 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
     of its home family's books that print one) that agrees with record c on the same fields with fewer differences,
     or None. A record matches a parent and its variant rows; its fields compare against the one that agrees most."""
     home = lineage.family(c["src"])
-    vs = [(b, e) for b, e in corpus.variants(kinds, names, home) if e["kind"] in kinds and not b.errata and not b.context]
+    own = {match.n1(n) for n in names}  # (none printed under the name itself: its qualified rows are the variants)
+    vs = corpus.variants(kinds, names, home) or [(b, e) for b, e in corpus.entries(kinds, names, home)
+                                                 if match.n1(e["name"]) not in own]
+    vs = [(b, e) for b, e in vs if e["kind"] in kinds and not b.errata and not b.context]
     if not vs:
         return None
     last = max(b.order for b, _ in vs)
@@ -469,19 +472,21 @@ def stat_matches(corpus, cl6, missing):
         kinds = set(c["pool"]) or {c["kind"]}
         free, used = pool.get(lineage.family(c["src"]), ([], []))
         got[id(c)] = match.by_stats(c, [e for e in free if e["kind"] in kinds], [e for e in used if e["kind"] in kinds])
-    taken = Counter(match.n1(v[1]["name"]) for v in got.values() if v[0] == "strong")
     by_id = {id(c): c for c in missing}
+    # (a tie is within one book family: another book's entry of the same name is another item)
+    key = lambda k, e: (lineage.family(by_id[k]["src"]), match.n1(e["name"]))
+    taken = Counter(key(k, v[1]) for k, v in got.items() if v[0] == "strong")
 
     def part(c, e):
         """The one part of a row printing several names (`Malakim / Ophanim Drone`) that shares a word with c's name."""
         parts = [p for p in match.split_names(e["name"]) if p != e["name"]]
         hits = {p for p in parts for w in match.toks(c["name"]) if len(w) >= 4 and w in match.toks(p)}
         return next(iter(hits)) if len(hits) == 1 else None
-    parts = Counter((match.n1(v[1]["name"]), part(by_id[k], v[1])) for k, v in got.items() if v[0] == "strong")
+    parts = Counter((key(k, v[1]), part(by_id[k], v[1])) for k, v in got.items() if v[0] == "strong")
     for k, v in got.items():
-        if v[0] == "strong" and taken[match.n1(v[1]["name"])] > 1:
+        if v[0] == "strong" and taken[key(k, v[1])] > 1:
             p = part(by_id[k], v[1])
-            if p is None or parts[(match.n1(v[1]["name"]), p)] > 1:  # (each its own part of the row: no tie)
+            if p is None or parts[(key(k, v[1]), p)] > 1:  # (each its own part of the row: no tie)
                 got[k] = ("weak", None, [(v[1], v[2], [])])
     return got
 
@@ -504,9 +509,14 @@ def run(corpus, cl6, verdicts=None):
         groups = {}
         for b, e in ents:
             groups.setdefault((id(b), e["kind"], match.n1(e["name"])), []).append(e)
-        far = set()
+        far, exact = set(), {match.n0(x) for x in names}
+        rated = re.search(r"(?i)\brating\s*\d", c["name"])
         for es in groups.values():
-            if len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
+            # (a record named with its rating: the row printing that name, `X Rating 1`, not `X Rating 2`, which
+            # words() reads alike)
+            if rated and 0 < len(ex := {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
+                far |= {e["id"] for e in es if e["id"] not in ex}
+            elif len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
                 d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
                 far |= {i for i, x in d.items() if x > min(d.values())}
         if far:
