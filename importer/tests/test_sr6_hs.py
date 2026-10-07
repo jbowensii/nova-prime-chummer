@@ -115,12 +115,12 @@ class HsRecipeTest(unittest.TestCase):
 
     def test_matrix_gear(self):
         e = entries(self.res, "electronics")["Zaphacks (Rating 2)"]
-        self.assertEqual((e["category"], e["avail"], e["cost"]), ("zaphacks", "4(I)", "40000"))
+        self.assertEqual((e["category"], e["avail"], e["cost"]), ("Zaphacks", "4(I)", "40000"))
         g = entries(self.res, "gear")
-        self.assertEqual((g["Glow Tap"]["category"], g["Glow Tap"]["cost"]), ("data-tap", "2000"))
+        self.assertEqual((g["Glow Tap"]["category"], g["Glow Tap"]["cost"]), ("Data tap", "2000"))
         self.assertIn("tap that glows", self.texts[("gear", "glow-tap")])
         self.assertEqual((g["Matrix Relay"]["rating"], g["Matrix Relay"]["cost"]), ("1–3", "Rating x 1000"))
-        self.assertEqual(g["Glow Buddy"]["category"], "commlink-apps")
+        self.assertEqual(g["Glow Buddy"]["category"], "Commlink app")
         self.assertIn("app that glows", self.texts[("gear", "glow-buddy")])  # its labelled line
 
     def test_forms_echoes_sprites(self):

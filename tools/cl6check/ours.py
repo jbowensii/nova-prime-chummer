@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from tools.cl6check import canon
 
 COUNT = re.compile(r"\*\*[A-Za-z ]+:\*\*\s*(\d+)\s*[–-]\s*(\d+)\s*$", re.M)
-SKIP = {"rules", "attributes", "priorities", "index", "sources", "samples"}
+SKIP = {"rules", "attributes", "priorities", "index", "sources", "samples", "categories"}
 NONE = re.compile(r"^\s*[—–-]?\s*$")
 LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
 

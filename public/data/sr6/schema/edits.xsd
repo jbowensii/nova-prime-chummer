@@ -99,6 +99,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="trueelement"><xs:complexType><xs:complexContent><xs:extension base="sr6:Tagged">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="category"><xs:complexType><xs:complexContent><xs:extension base="sr6:Category">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="rule"><xs:complexType><xs:complexContent><xs:extension base="sr6:Rule">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
       </xs:choice>

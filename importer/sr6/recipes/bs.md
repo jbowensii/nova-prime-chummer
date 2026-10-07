@@ -71,6 +71,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   the rule as an `ambiguous` issue. Not yet: `chemical glands and exhalation spray (corrosive spit and fangs,)
   natural venoms`, whose comma sits inside the parentheses.
 
+## Kept table maps (the general table reader, tables.py)
+
+The recipe's map stays: measured, the general reader agrees on 41 of 46 tables. The critter cyberlimb accessories and exoframe modules (no ESSENCE column) are augmentations in the book's filing.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"

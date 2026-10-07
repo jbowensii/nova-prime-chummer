@@ -50,7 +50,7 @@ the overlay changes.
 | `reader.py` | Reads every English record in the jar. Its text is keyed by (prefix, id): `npc.shaman` is not `tradition.shaman`. The text file named like the record's file wins (`core_seattle`, `easycome`). It normalises spelling variants (`val`, swapped `type`/`ref`, boolean spellings). It leaves out German books, `lang="de"` records and records with no English name, and counts them. |
 | `canon.py` | Turns a record into our vocabulary: kind (a record type or item type → our catalog kind; types we have no kind for are *unmodelled*), source id, aliases (`Grenade, Party` → `Party Grenade`; the name joined with each variant). Price, availability, essence and capacity are evaluated at each rating, from `$RATING` formulas and per-rating tables, along with the variants' own values. It also builds the field families. |
 | `ours.py` | Reads our catalog in the same shape. `value()` reads a printed value the way the engine's `rated()` does. |
-| `match.py` | Matches records to entries of the same book, in stages: exact, loose (plurals, punctuation, rating words), no parenthetical, alias, split row (`A / B`), word order, contained (one name's words inside the other's, on a nearby page), fuzzy. A record can match several entries (a parent and its variant rows). Fields are compared against the entry that agrees most. |
+| `match.py` | Matches records to entries of the same book, in stages: exact, loose (plurals, punctuation, rating words), no parenthetical, alias, split row (`A / B`), word order, contained (one name's words inside the other's, on a nearby page), group (Commlink6's name made of our row's words and its category's or maker's: `Implanted Shotgun` is our `Shotgun` in the `Cyber implant weapon` category), fuzzy. A record can match several entries (a parent and its variant rows). Fields are compared against the entry that agrees most. |
 | `fields.py` | Per-field comparators. Numbers are compared at every rating. A printed range compares by containment, and a cell printing several values compares by the values it prints. A variant's value counts as a match. Legality is compared apart from the availability number. |
 | `arbitrate.py` | Classes each difference from the import's own `original.pdf`: **a** = the PDF prints Commlink6's value (an importer error); **b** = it prints ours (a verified printed difference, such as errata or another printing); **c** = not settled. |
 | `patterns.py` | Finds and scores the general rules that predict Commlink6's UI tags (see Patterns below). |
@@ -171,7 +171,9 @@ The report's sections:
   printed line shows neither value (the report), or, in the trace (family `Commlink6-only field`), when no reading of
   ours holds the field and no text near the object holds Commlink6's value, or when ours is a readable value and
   Commlink6's one value is printed nowhere in the object's book (its `999999999` cap for a dearer price, no legality
-  for a row that prints one).
+  for a row that prints one). A record whose name the book prints nowhere, made only of a product's words (its
+  category and maker) and none of a row's own, is a listing Commlink6 composed from the product's rows (`Cougar Polearm
+  (Small)` over the Armsman's Knife, One-hand and Spear): Commlink6-only (`match.bundled`).
 - **Completeness by book and by kind.** The gap plan's K1 kinds (actions, packs, ammunition types, mentor spirits,
   vehicle design, data structures, quality paths, spell features, contact types, quality sets, licence types, magic
   types, rule options, senses, true elements) are catalog kinds of ours now (`canon.SECTION_KINDS`), read from the

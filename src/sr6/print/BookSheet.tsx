@@ -12,6 +12,7 @@ import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { AR_BANDS, band, runnerView } from './view'
+import { entryLabel } from '../engine/categories'
 
 export type SheetArt = Pick<ReturnType<typeof useSheetArt>, 'layer' | 'vars'>
 
@@ -49,7 +50,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
   const armor = lines('armor'), worn = armor.find(x => x.worn) ?? armor[0]
   const ranged = v.rangedWeapons[0], melee = v.meleeWeapons[0]
   const licences = b.sins.flatMap(s => s.licences.map(l => `${l.name} ${l.rating}`))
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="k-small">with {x.accessories.map(nameOf).join(', ')}</div>
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="k-small">with {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</div>
   const skillTable = (rows: typeof trained, key: string) => <table key={key} className="k-skills">
     <thead><tr><th>Skill</th><th>Rnk</th><th>Att</th><th>Pool</th></tr></thead>
     <tbody>{pad(rows.map(p => <tr key={p.skill}><td>{p.label}
@@ -191,13 +192,13 @@ export function BookSheet({ art }: { art: SheetArt }) {
             <Box id="k-spells" title="Spells / preparations / rituals / complex forms" side="r">
               <table className="k-spells"><thead><tr><th>S/P/R/CF</th><th>Type/target</th><th>Range</th><th>Duration</th><th>Drain</th></tr></thead>
                 <tbody>{pad(picks(['spells', 'rituals', 'complexforms']).map(x => { const e = data.entry(x.kind, x.id), a = e?.attrs ?? {}
-                  return <tr key={x.uid}><td>{e?.name ?? x.name ?? x.id}</td><td>{[a.category, a.type, a.keywords].filter(Boolean).join(', ')}</td>
+                  return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}</td><td>{[a.category, a.type, a.keywords].filter(Boolean).join(', ')}</td>
                     <td>{a.range}</td><td>{a.duration}</td><td>{a.dv ?? a.fade ?? a.threshold}</td></tr> }), 5, 5)}</tbody></table>
             </Box>
             <Box id="k-powers" title="Adept powers or other abilities" side="r">
               <table><thead><tr><th>Name</th><th>Level</th><th>Notes</th></tr></thead>
                 <tbody>{pad(picks(['adeptpowers', 'metamagics', 'echoes']).map(x => { const e = data.entry(x.kind, x.id), pw = data.powers[x.id]
-                  return <tr key={x.uid}><td>{e?.name ?? x.name ?? x.id}</td><td>{x.level}</td>
+                  return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}</td><td>{x.level}</td>
                     <td className="k-small">{x.kind === 'adeptpowers' ? pw?.cost != null && `${pw.cost} PP${pw.perLevel ? ' a level' : ''}` : x.kind === 'metamagics' ? 'Metamagic' : 'Echo'}</td></tr> }), 4, 3)}</tbody></table>
             </Box>
           </div>

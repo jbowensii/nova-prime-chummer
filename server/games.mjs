@@ -18,7 +18,7 @@ export const SR6_KINDS = {
   traditions: 'tradition', critterpowers: 'critterpower', critters: 'critter', spirits: 'spirit',
   npcs: 'npc', sprites: 'sprite', lifestyles: 'lifestyle', contacts: 'contact',
   lifemodules: 'lifemodule',
-  actions: 'action', packs: 'pack', vehicledesign: 'design', ammotypes: 'ammotype', mentorspirits: 'mentorspirit', datastructures: 'datastructure', qualitypaths: 'qualitypath', spellfeatures: 'spellfeature', contacttypes: 'contacttype', qualitysets: 'qualityset', licencetypes: 'licencetype', magictypes: 'magictype', ruleoptions: 'ruleoption', senses: 'sense', trueelements: 'trueelement',
+  actions: 'action', packs: 'pack', vehicledesign: 'design', ammotypes: 'ammotype', mentorspirits: 'mentorspirit', datastructures: 'datastructure', qualitypaths: 'qualitypath', spellfeatures: 'spellfeature', contacttypes: 'contacttype', qualitysets: 'qualityset', licencetypes: 'licencetype', magictypes: 'magictype', ruleoptions: 'ruleoption', senses: 'sense', trueelements: 'trueelement', categories: 'category',
   rules: 'rule',
 }
 /** Names an Anarchy listing must never reach: not an account (its folder would be characters/sr6/) nor a book id. */

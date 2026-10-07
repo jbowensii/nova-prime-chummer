@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, formula, resolve, sections
+from importer.sr6 import KINDS, NS, archetypes, categories, formula, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -289,18 +289,26 @@ class _Catalog:
         self.index = None  # the book's tables and prose (resolve.Index): where a value an entry's row leaves out is found
         self.last_weapon = None  # the weapon read last: a supply table printed right after it is its ammunition
         self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
+        # the tables the catalog rows come from (categories.py): index -> {title, section, header, page}; the open one
+        self.tables, self._table = {}, None
+        self.idcat = {k: {} for k in KINDS}  # id -> its entry's category: a name another category repeats
 
-    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=()):
+    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=(), cid=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
-        base = slug(name) or KINDS[kind]
+        base = cid or slug(name) or KINDS[kind]
         i, n = base, 2
         if kind == "rules" and i in self.ids[kind] and parent:
             i = base = f"{parent}-{base}"
+        cat = (attrs or {}).get("category")
+        if kind in ROW_KINDS and cat and i in self.ids[kind] and self.idcat[kind].get(i) != cat:
+            # the same name in another category is another item (a cyberlimb's Armor, a cybereye's): its id names it
+            i = base = f"{slug(cat)}.{base}"
         while i in self.ids[kind]:
             i, n = f"{base}-{n}", n + 1
         if n > 2 and kind != "rules":  # repeated rule subheadings (Advantages, Step 1) are normal
             self.report.append({"kind": "duplicate-id", "file": f"{kind}.xml", "id": i, "name": name, "page": page})
         self.ids[kind].add(i)
+        self.idcat[kind][i] = cat
         for r in self.pending:
             if (r["file"], r["column"]) not in self.cols:
                 self.cols.add((r["file"], r["column"]))
@@ -320,6 +328,15 @@ class _Catalog:
         if text.strip():
             self.texts.append((kind, i, text.strip()))
         return e
+
+    def table_of(self, b, page):
+        """The index of the table the row block `b` is printed in: the open one while its title and section stay the
+        same (categories.py)."""
+        k = (b.label or "", b.section or "")
+        if self._table is None or self._table[0] != k:
+            self._table = (k, len(self.tables))
+            self.tables[len(self.tables)] = {"title": k[0], "section": k[1], "page": page, "product": b.product}
+        return self._table[1]
 
     def section(self, f):
         """Add a sections.py entry, unless the recipe's own reading wrote it already (a quality heading with its Cost
@@ -423,6 +440,11 @@ class _Catalog:
                 and m.group(1).count("(") == m.group(1).count(")"):  # (not `2,000¥ (+500¥ per additional dart)`)
             out["cost"] = m.group(1)  # "50 per 100m"; "15 per 10" under a COST (PER 10 ROUNDS) column
             out.setdefault("per", m.group(2))
+        for a, v in list(out.items()):  # a footnote mark on a cell (`10/6*/—`): the footnote is the field's note
+            if a != "prose" and isinstance(v, str) and (m := _MARK.search(v)) and _MARK.sub("", v).strip() \
+                    and (note := footnote(b.text, m.group(1))):
+                out[a] = _MARK.sub("", v)
+                out.setdefault("_notes", []).append((a, note))
         return out
 
     @staticmethod
@@ -566,6 +588,7 @@ class _Catalog:
             return self.skill(b, page)
         f, name, children, attrs = self.fields(kind, b, page), b.name, [], {}
         prose = f.pop("prose", [])
+        notes = [("note", {"field": a}, t) for a, t in f.pop("_notes", [])]  # its cells' footnotes
         if kind == "qualities" and "karma" not in f and (m := re.search(r"\bCost:\s*([^.\n]*Karma[^.\n]*)", b.text)):
             f["karma"] = m.group(1)  # a cost printed in the text, not as a label
         if kind in STAT_KINDS and len(f) < 3 or kind in BOX_KINDS and not (
@@ -590,6 +613,10 @@ class _Catalog:
                     f["rating"] = rng.strip()
             if kind == "weapons" and "ammo" not in f and (ammo := ammo_from_text(b.text)):
                 f["ammo"] = ammo  # its row prints no ammo, its description does (`internal magazines that hold …`)
+            if kind == "weapons" and (spec := CLOSE_COMBAT.get(formula._stem((f.get("type") or "").strip().lower()))):
+                attrs.update(skill="Close Combat", spec=spec)  # its TYPE (`Blade`): the specialization it is used with
+            if b.maker:
+                attrs["maker"] = b.maker  # a product's configuration row: its title's maker
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
                         and re.fullmatch(r"\d+\s*[–-]\s*\d+", g.get("capacity", "")):
@@ -597,8 +624,11 @@ class _Catalog:
                 a = {**attrs, **g}
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
-                self.add(kind, n, page, a, (), "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
-                         aliases=(b.aliases if n == name else []) or code_alias(n, b.label))  # (a heading's fuller name first)
+                e = self.add(kind, n, page, a, notes, "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
+                             aliases=(b.aliases if n == name else []) or code_alias(n, b.label))  # (a heading's fuller name first)
+                e["tab"] = self.table_of(b, page)
+                if b.product:
+                    e["product"] = b.product
             return True
         elif kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
@@ -652,7 +682,7 @@ class _Catalog:
         attrs.update(f)
         listed = {k for k in b.labels if k.lower() in LISTS} if kind in STAT_KINDS else set()
         self.check(kind, name, attrs, page)
-        self.add(kind, name, page, attrs, children, "\n".join(prose + [_text(b, listed)]), aliases=b.aliases)
+        self.add(kind, name, page, attrs, children + notes, "\n".join(prose + [_text(b, listed)]), aliases=b.aliases)
         return True
 
     def contact(self, b, page):
@@ -878,6 +908,20 @@ def ammo_from_text(text):
     return f"{n}({AMMO_HOLDERS[m.group(1).lower()]})"
 
 
+_MARK = re.compile(r"\s*([*†‡]+)")
+
+
+def footnote(text, mark):
+    """The footnote a mark refers to: a line of the block's text opening with it (`* Maximum range is 4 meters`), not
+    a bold label (`**Wireless Bonus:**`)."""
+    m = re.search(rf"^\s*{re.escape(mark)}(?![*†‡])\s*([^*\s].*?)\s*$", text or "", re.M)
+    return m.group(1) if m else None
+
+
+# a close-combat weapon's TYPE (`Blade`): the Close Combat specialization it is used with (the game's vocabulary)
+CLOSE_COMBAT = {"blade": "Blades", "club": "Clubs", "unarmed": "Unarmed"}
+
+
 def _text(b, skip=()):
     """The block's prose: its box labels (those not already in its text, nor taken as lists), then its text."""
     lines = [f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and f"**{k}:**" not in b.text]
@@ -1035,6 +1079,9 @@ def extract(regrouped, ctx=None, book=None):
             kind, kcat = _kind(ch, ctx_keys, False, bk)
         if hasattr(bk, "kind"):
             kind, kcat = bk.kind(ch, b, parent2)
+        if not kind and b.row is not None and b.header and (g := tables.kind_of(b.header, b.label, b.section)) \
+                and (b.label or b.header[0].upper() in NAME_HEADERS) and re.search(r"[A-Za-z]{2}", b.name):
+            kind, kcat = g, None  # a priced table the recipe leaves unread: the general reader's (tables.py)
         if kind in ("gear", "weapons") and ammo_type(b):
             kind = "ammotypes"  # priced as a multiple of the ammunition it modifies
         if kind == "skip" or kind and cat.entry(kind, kcat, b, page, ctx_keys):
@@ -1055,8 +1102,10 @@ def extract(regrouped, ctx=None, book=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     text, parent=parent)
         stack.append((level, e["id"]))
+    template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
-        cat.section(f)
+        if sections.is_path(f, template):
+            cat.section(f)
     for e in cat.entries["programs"]:
         # a program's price: the book's `Cyberprogram, <type>` row; an autosoft's the `Autosoft` row, with its ratings
         # (the core rulebook's)
@@ -1065,6 +1114,12 @@ def extract(regrouped, ctx=None, book=None):
         if row:  # (`Rating (1-9)`: the rating formula, its range restated)
             e["attrs"].update({a: re.sub(r"^(rating)\s*\(\s*\d+\s*[–-]\s*\d+\s*\)$", r"\1", row["attrs"][a], flags=re.I)
                                for a in ("rating", "avail", "cost") if a in row["attrs"]})
+    # each table's category (its title), the accessory tables' hosts, the rows whose names need their category
+    verdicts, _ = categories.build(cat, [b.text for b in bs] + [v for b in bs for v in b.labels.values()], ROW_KINDS)
+    for t, cname, conf, why, kinds_of in verdicts:
+        if why:
+            cat.report.append({"kind": "category", "name": t["title"] or t["section"], "why": why, "title": t["title"], "section": t["section"],
+                               "category": cname, "confidence": conf, "page": t["page"], "kinds": " ".join(sorted(kinds_of))})
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     runners, core = [], _core(ctx, bk.ID) if samples and bk.ID != ID else None

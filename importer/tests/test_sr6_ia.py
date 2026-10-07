@@ -84,7 +84,7 @@ class IaRecipeTest(unittest.TestCase):
     def test_priced_weapon(self):
         w = entries(self.res, "weapons")["Glow ball (4)"]  # `4 x glow ball`: the price of four
         self.assertEqual((w.get("category"), w.get("dv"), w.get("ar"), w.get("avail"), w.get("cost")),
-                         ("throwing-weapon", "2S", "6/8/—/—/—", "1", "40"))
+                         ("Throwing weapon", "2S", "6/8/—/—/—", "1", "40"))
 
     def test_rules(self):
         r = entries(self.res, "rules")

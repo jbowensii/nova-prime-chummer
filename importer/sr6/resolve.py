@@ -384,9 +384,10 @@ def patch_band(ar, band, value):
 CARD_FIELDS = {"dv": "dv", "mode": "modes", "modes": "modes", "ammo": "ammo", "availability": "avail", "avail": "avail",
                "cost": "cost"}
 _CARD_LABEL = re.compile(r"\*\*([A-Za-z ]+):\*\*\s*(.*?)(?=\s*\*\*[A-Za-z ]+:\*\*|$)")
-# the class a priced row names for every item of that class (`Cyberprogram, hacking`, `Autosoft`): kind -> the row
-# names, from the entry's type (the game's own words)
-CLASS_ROWS = {"programs": ("cyberprogram {type}", "{type}")}
+# the class a priced row names for every item of that class (`Cyberprogram, hacking`, `Autosoft`): kind -> (the row's
+# name, from the entry's type; the words its category must hold, when the name is the bare type: `Autosoft` in the
+# Software table, not a `Basic` subscription tier in another book) (the game's own words)
+CLASS_ROWS = {"programs": (("cyberprogram {type}", None), ("{type}", re.compile(r"(?i)soft|program")))}
 FIXABLE = ("missing", "unreadable")  # (an ambiguous field is the book's own two values, or a rule)
 
 
@@ -551,9 +552,10 @@ def corpus(books, sources=None, apply_errata=True):
                 if v and good(f, v):
                     cands.append((cb.date or "", v, None, None, None))
             if el.get("type"):
-                for pat in CLASS_ROWS.get(kind, ()):
+                for pat, cat in CLASS_ROWS.get(kind, ()):
                     for ob, osrc, oel in by_name.get(("gear", norm(pat.format(type=el.get("type")))), ()):
-                        offer(cands, ob, osrc, oel, f)
+                        if cat is None or cat.search(oel.get("category") or ""):
+                            offer(cands, ob, osrc, oel, f)
             if iss.get("code") not in FIXABLE:  # the book prints two values or a rule: only a later source settles it
                 cands = [c for c in cands if b.date and c[0] > b.date]
             latest = max((c[0] for c in cands), default=None)

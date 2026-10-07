@@ -4,7 +4,7 @@ import { num } from '../../engine/creation'
 import { MAGIC_KINDS } from '../../engine/data'
 import { n, useSr6Editor } from '../editor'
 import { gradesFor } from '../../engine/grades'
-import { isAccessory, PurchaseSection } from '../Picker'
+import { ACCESSORY_KINDS, isAccessory, PurchaseSection } from '../Picker'
 
 export function AugmentationsTab() {
   const { ch, cr, data, budgets } = useSr6Editor()
@@ -17,7 +17,7 @@ export function AugmentationsTab() {
         {num(cr, 'essence') === undefined && ' Essence isn’t set: Table setup → Creation rules.'}
         {gradesFor(cr, data).length === 0 && ' No grades are set up yet (Table setup → Creation rules), so ware is bought without one.'}</p>
       <PurchaseSection kind="augmentations" title="Augmentations" one="an augmentation" grades bonuses
-        accessories={{ kinds: ['gear'], filter: isAccessory }} />
+        accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }} />
     </div>
   )
 }

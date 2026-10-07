@@ -64,6 +64,32 @@ def _names(o):
     return [o["name"], *o["aliases"]]
 
 
+def _like(w, u):
+    return w == u or len(w) >= 4 and len(u) >= 4 and (w.startswith(u) or u.startswith(w))
+
+
+def grouped(name, o):
+    """A Commlink6 name made of our row's own words and its category's or maker's (`Implanted Shotgun`: `Shotgun` in
+    the `Cyber implant weapon` category): every word of our row's name in it, every word of it ours."""
+    own = toks(re.sub(r"\([^)]*\)", " ", o["name"]))
+    a = o.get("attrs", {})
+    pool = own | toks(a.get("category", "")) | toks(a.get("maker", ""))
+    key = toks(re.sub(r"\([^)]*\)", " ", name))
+    return bool(own) and len(key) > len(own) and all(any(_like(w, u) for w in key) for u in own) \
+        and all(any(_like(w, u) for u in pool) for w in key)
+
+
+def bundled(name, o):
+    """A Commlink6 name made only of a product's words (its category and maker), not of the row's own (`Cougar Polearm
+    (Small)` over the `Armsman Collapsible Polearm` rows `Knife`, `Spear`): a listing Commlink6 composed."""
+    a = o.get("attrs", {})
+    pool = toks(a.get("category", "")) | toks(a.get("maker", ""))
+    key = toks(re.sub(r"\([^)]*\)", " ", name))
+    own = toks(re.sub(r"\([^)]*\)", " ", o["name"]))
+    return bool(a.get("maker")) and len(key) >= 2 and all(any(_like(w, u) for u in pool) for w in key) \
+        and not any(_like(w, u) for w in key for u in own)
+
+
 def match(cl6, ours):
     """[(record, [entries], stage)] for every Commlink6 record of one book; entries is [] when nothing matches."""
     by_kind = {}
@@ -86,7 +112,7 @@ def match(cl6, ours):
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
     stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)])
     stage("word-order", lambda c: [toks(c["name"])], lambda o: [toks(n) for n in _names(o)])
-    used = {id(o) for f in found if f for o in f[0]}
+    used ={id(o) for f in found if f for o in f[0]}
     for i, c in enumerate(cl6):  # one name's words inside the other's, on a nearby page
         if found[i] or not c["page"]:
             continue
@@ -98,6 +124,9 @@ def match(cl6, ours):
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)
+    for i, c in enumerate(cl6):  # our row named within its category (group): `Implanted Shotgun` is `Shotgun` there
+        if found[i] is None and pool[i] and (hits := [o for o in pool[i] if grouped(c["name"], o)]):
+            found[i] = (hits, "group")
     for i, c in enumerate(cl6):
         if found[i] or not pool[i]:
             continue

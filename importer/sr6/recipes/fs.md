@@ -55,6 +55,10 @@ rules (Suppressive Fire), so it is not applied: the import keeps the book's prin
 - **Quality paths:** `## Quality Paths` (VIOLENT ENDS): each `### Name`, its steps the `#### Starting point`,
   `#### Step N: …` headings under it.
 
+## Kept table maps (the general table reader, tables.py)
+
+`kind()` stays: measured, the general reader agrees on 40 of 87 tables. Firing Squad files its weapon modifications and accessories (no DV) as weapons, and Toughweave as armor.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Firing Squad-Core Combat Rulebook-CAT28002.pdf>" --out "%TEMP%\fs-check"

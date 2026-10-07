@@ -46,5 +46,6 @@
   <file href="crb/ruleoptions.xml"/>
   <file href="crb/senses.xml"/>
   <file href="crb/trueelements.xml"/>
+  <file href="crb/categories.xml"/>
   <file href="crb/rules.xml"/>
 </overlays>

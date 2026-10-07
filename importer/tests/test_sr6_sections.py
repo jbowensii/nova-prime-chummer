@@ -49,8 +49,39 @@ Probe a thing.
 The road is long.
 ##### Step 1: First Mile
 Walk.
+**Cost:** 4 Karma
 ##### Step 2: Last Mile
 Walk more.
+**Cost:** 6 Karma
+"""
+
+PATHS = """<!-- page 76 -->
+# GLOW DECKER
+## Quality Paths
+### Glow Shield
+A made-up path.
+#### Bright Wall
+A made-up step.
+**Cost:** 5 Karma
+#### Brighter Wall
+**Cost:** 8 Karma
+### Roleplaying
+Made-up advice on playing a glow decker.
+### Strategies
+Made-up strategies.
+#### Combat
+Made-up combat advice.
+# FIZZ ADEPT
+## Quality Paths
+### Roleplaying
+Made-up advice.
+### Strategies
+Made-up strategies.
+# ZORP RIGGER
+### Roleplaying
+Made-up advice.
+### Strategies
+Made-up strategies.
 """
 
 
@@ -106,6 +137,7 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual(sorted(self.kind("datastructures")), ["Fizz Key", "Zap Shell"])
         p = self.kind("qualitypaths")["Long Road"]
         self.assertEqual([s.text for s in p.findall("step")], ["Step 1: First Mile", "Step 2: Last Mile"])
+
 
     def test_packs(self):
         text, _ = regroup.regroup(PACKS, crb.ALIASES, name_headers=crb.NAME_HEADERS)
@@ -267,6 +299,57 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         g = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["gear.xml"])}
         self.assertEqual((g["Bright focus"]["cost"], g["Dim focus"]["avail"]), ("Force x 500", "(Force) L"))
         self.assertNotIn("Odd focus", g)
+
+    def test_a_title_that_only_mentions_a_kind_names_none(self):
+        """The kind's words must head the heading: `New Echoes` lists echoes; a book or group titled `Echoes of …`
+        doesn't, and a `Program Slots` heading lists no programs."""
+        md = """<!-- page 60 -->
+# Echoes of a Glowing Fizz
+**Scenario Overview:** The runners chase a glow.
+**GM Note:** Keep it moving.
+# TECHNO TOOLS
+## Zorp Clan
+### Echoes of the Zorp
+**Posted by:** a zorp.
+### New Echoes
+**Fizz Link:** You link to the fizz.
+**Glow Mind:** Your mind glows.
+### Active Program Slots
+**Core Slots:** Two of them.
+### Glow Autosofts and E-Softs
+**Glow Pilot:** It pilots glowing things.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+        self.assertEqual(names("echoes"), ["Fizz Link", "Glow Mind"])
+        self.assertEqual(names("programs"), ["Glow Pilot"])
+
+    def test_techniques_under_a_section_naming_them(self):
+        md = """<!-- page 33 -->
+# CHROME LIFE
+## Chrome Fighting
+### Zapware Martial Arts Techniques
+Made-up techniques for made-up limbs.
+#### Glow Grip
+Grip with a glowing hand.
+#### Spin Kick
+Kick while spinning.
+#### ZAPWARE OVERDRIVE BONUSES
+Made-up bonuses.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        self.assertEqual(sorted(e.findtext("name") for e in ET.fromstring(files["martialtechniques.xml"])),
+                         ["Glow Grip", "Spin Kick"])
+
+    def test_a_path_needs_steps_and_a_name_of_its_own(self):
+        """A heading under a Quality Paths section is a path only with steps under it and a name of its own: the
+        `Roleplaying` and `Strategies` advice every chapter prints (one with steps under it too) is none."""
+        text, _ = regroup.regroup(PATHS, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        p = {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files["qualitypaths.xml"])}
+        self.assertEqual(list(p), ["Glow Shield"])
+        self.assertEqual([s.text for s in p["Glow Shield"].findall("step")], ["Bright Wall", "Brighter Wall"])
 
     def test_the_rule_sections_stay(self):
         rules = {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])}

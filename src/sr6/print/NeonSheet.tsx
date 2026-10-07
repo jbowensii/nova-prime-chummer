@@ -11,6 +11,7 @@ import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
 import { n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { band, PICKS, runnerView } from './view'
+import { entryLabel } from '../engine/categories'
 
 const H = ({ id, children }: { id: string; children: ReactNode }) => <h2 id={id}>{children}</h2>
 
@@ -34,7 +35,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
   const keys = ([['Initiative', init(d.initiative)], ['Astral init.', init(d.astralInit)], ['Defense', d.defenseRating], ['Unarmed AR', d.attackRatings.unarmed],
     ['Essence', n(d.essence)], ['Composure', d.composure], ['Judge int.', d.judgeIntentions], ['Memory', d.memory], ['Lift/carry', d.liftCarry],
     ['Drain', d.drain], ['Fading', d.fading]] as [string, ReactNode][]).filter(([, x]) => x !== undefined)
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="n-small"> + {x.accessories.map(nameOf).join(', ')}</span>
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="n-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
   const picks = b.picks.length > 0 && PICKS.map(([kind, label]) => [label, b.picks.filter(x => x.kind === kind)] as const).filter(([, xs]) => xs.length)
   const role = [data.metatypes[b.metatype]?.name, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic], k.spells && b.tradition].filter(Boolean).join(' · ')
 
@@ -113,7 +114,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
               b.initiation > 0 && `Initiate ${b.initiation}`, b.submersion > 0 && `Submersion ${b.submersion}`].filter(Boolean).join(' · ')}</p>
             {picks.map(([label, xs]) => <p key={label}><span className="n-lbl">{label}</span> {xs.map(x => {
               const e = data.entry(x.kind, x.id), a = e?.attrs ?? {}, drain = a.dv ?? a.fade
-              return `${e?.name ?? x.name ?? x.id}${x.level !== undefined ? ` ${x.level}` : ''}${drain ? ` (${x.kind === 'complexforms' ? 'F' : 'D'}${drain})` : ''}` }).join(', ')}</p>)}
+              return `${e ? entryLabel(e) : x.name ?? x.id}${x.level !== undefined ? ` ${x.level}` : ''}${drain ? ` (${x.kind === 'complexforms' ? 'F' : 'D'}${drain})` : ''}` }).join(', ')}</p>)}
           </section>}
           {(lines('electronics').length > 0 || lines('programs').length > 0) && <section aria-labelledby="n-matrix"><H id="n-matrix">Matrix</H>
             <ul className="n-flow">{lines('electronics').map(x => { const a = attrsOf(x); return <li key={x.uid}><b>{nameOf(x)}</b>

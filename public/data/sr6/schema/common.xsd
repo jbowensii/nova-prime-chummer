@@ -61,6 +61,7 @@
       <xs:enumeration value="ruleoptions"/>
       <xs:enumeration value="senses"/>
       <xs:enumeration value="trueelements"/>
+      <xs:enumeration value="categories"/>
       <xs:enumeration value="rules"/>
     </xs:restriction>
   </xs:simpleType>
@@ -93,10 +94,40 @@
              with id (and kind, when it was another), an id the entry had in an earlier import: the app resolves the
              old id to this entry and turns a saved runner's old id into this one -->
         <xs:element name="alias" type="sr6:Alias"/>
+        <!-- a cell's footnote: the note its footnote mark points to, for that field (the mark is left out of the value) -->
+        <xs:element name="note" type="sr6:Note"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
   </xs:group>
+  <xs:complexType name="Note">
+    <xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="field" type="sr6:Field" use="required"/>
+    </xs:extension></xs:simpleContent>
+  </xs:complexType>
+  <!-- a table row's place in its category (importer/sr6/categories.py): group, the category's name when the row's own
+       name needs it (a bare part: the app shows "Cyberlimb: Arm (synthetic)"); maker, the maker its product's title
+       prints ("Cougar Weapons") -->
+  <xs:attributeGroup name="grouped">
+    <xs:attribute name="group" type="xs:string"/>
+    <xs:attribute name="maker" type="xs:string"/>
+  </xs:attributeGroup>
+  <!-- one category of a book's table rows (categories.xml): its name (the table's title, singular), the kind its rows
+       are (of), the printed table and section titles, and how they link: an accessory category's hosts (fits) and a
+       host's accessory categories (accessories), names separated by "; ". confidence="low" with why: the name came
+       from the section heading (no title, a title naming no category, a title split across lines). -->
+  <xs:complexType name="Category">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="of" type="sr6:Kind" use="required"/>
+      <xs:attribute name="table" type="xs:string"/>
+      <xs:attribute name="section" type="xs:string"/>
+      <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:attribute name="why" type="xs:string"/>
+      <xs:attribute name="fits" type="xs:string"/>
+      <xs:attribute name="accessories" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
   <xs:complexType name="Alias">
     <xs:simpleContent><xs:extension base="xs:string">
       <xs:attribute name="id" type="xs:string"/>
@@ -269,6 +300,10 @@
       <xs:attribute name="blast" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- a close-combat weapon's skill and specialization, from its TYPE (Blade: Close Combat, Blades) -->
+      <xs:attribute name="skill" type="xs:string"/>
+      <xs:attribute name="spec" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -280,6 +315,7 @@
       <xs:attribute name="capacity" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -294,6 +330,7 @@
       <xs:attribute name="capacity" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -326,6 +363,7 @@
       <xs:attribute name="capacity" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -355,6 +393,7 @@
       <xs:attribute name="slots" type="xs:string"/>
       <!-- a weapon power supply's Energy (an energy weapon's ammo formula reads it: ref(gear:<id>, energy)) -->
       <xs:attribute name="energy" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -372,6 +411,7 @@
       <xs:attribute name="seats" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -625,6 +665,7 @@
       <xs:attribute name="ar" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
   <!-- a quality path: each step's heading a <step> as printed -->

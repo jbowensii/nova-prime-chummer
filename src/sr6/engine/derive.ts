@@ -3,11 +3,12 @@
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
 import { SR6_ATTRS, type Sr6Attr, type Sr6Character } from '../model/character'
-import { allBudgets, attrRating, augmentBonus, entryOf, ratingOf, skillRank } from './budgets'
+import { allBudgets, attrRating, augmentBonus, entryOf, hostBonus, ratingOf, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { makeProvider } from './providers'
 import { attackRatings, rated } from './values'
+import { entryLabel } from './categories'
 
 export interface Sr6Pool {
   skill: string; label: string; rank: number; attr: string
@@ -36,7 +37,14 @@ export interface Sr6Derived {
   karmaLeft: number; nuyenLeft: number; edge: number
   /** the Derived values settings a value needed that aren't set */
   unset: string[]
+  /** the lines whose accessories change the line itself: a cyberlimb's own Strength and Agility (the runner's natural
+   *  rating plus its accessories'), its armor; the runner's attributes are unchanged. text: `STR 5, AGI 4, Armor +2` */
+  hosts: { uid: string; name: string; values: { target: string; value: number }[]; text: string }[]
 }
+/** `STR 5, Armor +2`: a host's own values as shown on its line, the sheets and Review. */
+export const hostText = (values: { target: string; value: number }[]) => values.map(v =>
+  v.target === 'defense' ? `Armor ${v.value >= 0 ? '+' : ''}${v.value}` : v.target === 'initDice' ? `Initiative dice +${v.value}`
+    : `${v.target.toUpperCase()} ${v.value}`).join(', ')
 
 export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Sr6Derived {
   const b = ch.build, p = makeProvider(b.method, data, cr), budgets = allBudgets(b, data, cr, p), kind = MAGIC_KINDS[b.magic]
@@ -94,7 +102,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
     attackRatings: { unarmed: A('rea') + A('str'), weapons: b.purchases.filter(x => x.kind === 'weapons').map(x => {
       const e = entryOf(x, data)
-      return { uid: x.uid, name: e?.name ?? x.name ?? 'Weapon', bands: attackRatings(e?.attrs.ar).bands }
+      return { uid: x.uid, name: e ? entryLabel(e) : x.name ?? 'Weapon', bands: attackRatings(e?.attrs.ar).bands }
     }) },
     // CRB pp. 67–68: Composure WIL + CHA, Judge Intentions WIL + INT, Memory LOG + INT, Lift/Carry BOD + WIL
     composure: A('wil') + A('cha'), judgeIntentions: A('wil') + A('int'), memory: A('log') + A('int'), liftCarry: A('bod') + A('wil'),
@@ -103,5 +111,12 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     ...(kind.resonance ? { fading: A('wil') + A('log') } : {}),
     pools, karmaLeft: budgets.karma.left, nuyenLeft: budgets.nuyen.left, edge: A('edg'),
     unset: [...unset],
+    hosts: b.purchases.flatMap(x => {
+      const add = hostBonus(x), targets = Object.keys(add) as (keyof typeof add)[]
+      if (!targets.length) return []
+      const values = targets.map(t => ({ target: t, value: (t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]! }))
+      const e = entryOf(x, data)
+      return [{ uid: x.uid, name: e ? entryLabel(e) : x.name ?? 'Custom item', values, text: hostText(values) }]
+    }),
   }
 }

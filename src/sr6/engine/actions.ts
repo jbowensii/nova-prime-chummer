@@ -11,6 +11,7 @@ import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
+import { fitsHost } from './categories'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -229,7 +230,9 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         host.accessories = host.accessories.filter(a => a.uid !== op.remove)
         return OK
       }
-      // R: no mount data, so any accessory fits (the picker offers the accessory categories)
+      // an accessory whose category names its hosts goes only on one of them (categories.ts); one naming none, anywhere
+      const acc = data.entry(op.kind, op.id), he = host.id ? data.entry(host.kind, host.id) : undefined
+      if (acc && he && fitsHost(data.categories, acc, he) === false) return no('wrong-host')
       const line = newLine({ kind: op.kind, id: op.id, rating: op.rating }, data, cr)
       if ('reason' in line) return line
       host.accessories.push(line)

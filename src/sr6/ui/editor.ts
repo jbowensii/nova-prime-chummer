@@ -85,6 +85,7 @@ export const REASONS: Record<string, string> = {
   'rating-range': 'That rating is outside the item’s range.',
   'own-line': 'Each of these is its own line: add another one instead.',
   'not-fitted': 'That accessory isn’t fitted to it.',
+  'wrong-host': 'That accessory is for another kind of item.',
   native: 'A native language is free: it has no ranks to buy.',
   'not-point-buy': 'Character points are for point buy only.',
   'not-lifepath': 'Life modules are for lifepath only.',

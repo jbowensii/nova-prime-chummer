@@ -24,6 +24,7 @@ from importer.sr6.regroup import norm
 HEADING_KINDS = [
     ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b", re.I)),
     ("traditions", re.compile(r"^traditions$", re.I)),
+    ("martialtechniques", re.compile(r"\bmartial\s+arts?\s+techniques$", re.I)),  # `Cyberware Martial Arts Techniques`
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
                            r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
@@ -70,10 +71,23 @@ class Found:
     children: list = field(default_factory=list)  # (tag, attrs, text)
     text: str = ""
     block: object = None  # the heading's block (a kind the recipes read already reads its fields from it)
+    priced_steps: int = 0  # a quality path's steps that are qualities priced in Karma
 
 
 def _kind_of(name, rules):
     return next((k for k, rx in rules if rx.search(name or "")), None)
+
+
+# what may follow the kind's words when they head a heading: nothing, a parenthetical, a colon, or more of the same
+# (`Autosofts and E-Softs`)
+_HEAD_TAIL = re.compile(r"\s*(?:$|[(:]|and\b|&)", re.I)
+
+
+def _runin_kind(name):
+    """The run-in kind a heading names as its head noun: the kind's words end it (`New Echoes`, `Basic Drake Powers`).
+    A title that only mentions them (`Echoes of a Lost Signal`, a book's own title; `Echoes of Divinations`, a group)
+    names no kind."""
+    return next((k for k, rx in RUNIN_KINDS for m in rx.finditer(name or "") if _HEAD_TAIL.match(name, m.end())), None)
 
 
 def _action_attrs(name, chain, tags="", text=""):
@@ -137,7 +151,9 @@ class Reader:
                 self.path[2] = self.path[2] or lv
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
-                    out += step_qualities(b, page, self.path[1].name)
+                    qs = step_qualities(b, page, self.path[1].name)
+                    self.path[1].priced_steps += bool(qs)
+                    out += qs
         if heading:
             out += self._heading(b, page, chain, parent)
             if PACK_WORD.search(b.name):
@@ -145,7 +161,7 @@ class Reader:
             if not out:
                 out += packs(b, page, parent, self.packs)
         out += design_tables(b, page) + quality_sets(b, page) + derived(b, page)
-        rk = _kind_of(b.name, RUNIN_KINDS)
+        rk = _runin_kind(b.name)
         if not rk and re.fullmatch(r"(?i)basic|hacking", b.name.strip()) and re.search(r"(?i)\bprograms\b", parent):
             rk = "programs"  # `Basic` and `Hacking` under `Programs`
         if not rk and KEYWORDS.search(b.name) and re.search(r"\bkeywords\b", b.text or "", re.I):
@@ -179,7 +195,8 @@ class Reader:
         if (len(chain), parent) in self.prefixed:
             return []
         if not kind or not name[:1].isupper() and not name[:1].isdigit() or EXAMPLE.search(name) \
-                or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("("):
+                or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("(") \
+                or name.isupper() and len(name.split()) > 1:  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`)
             return []
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
@@ -350,6 +367,25 @@ def quality_attrs(name, chain, text):
     k = (bonus if kind == "negative" else cost) or cost or bonus
     karma = next((g for g in k.groups() if g), None) if k else None
     return {"kind": kind, "karma": karma}
+
+
+def template_headings(bs, chapters=3):
+    """The headings a book repeats in `chapters` chapters or more (Shadow Cast's `Roleplaying`, `Strategies`, `Combat`
+    in every archetype's chapter): its own page template, never an entry's name."""
+    seen = {}
+    for b in bs:
+        if b.level and b.level > 1:
+            seen.setdefault(norm(b.name), set()).add(b.chapter)
+    return {n for n, cs in seen.items() if len(cs) >= chapters}
+
+
+def is_path(f, template=frozenset()):
+    """A quality path has a path's structure: steps under it (one priced in Karma is enough by itself), and a name of
+    its own, not one of the book's template headings. A heading under a `Quality Paths` section without (a chapter's
+    `Roleplaying`, `Strategies`, `Combat` advice) is no path."""
+    if f.kind != "qualitypaths":
+        return True
+    return f.priced_steps > 0 or any(t == "step" for t, _, _ in f.children) and norm(f.name) not in template
 
 
 def step_qualities(b, page, path):

@@ -13,6 +13,7 @@ import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
+import { entryLabel } from './categories'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
 /** Contact and Other: the amounts and label the player types. */
@@ -237,12 +238,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // R: a cost the app can't read isn't guessed; the GM can buy it as a custom line
       const pr = priced(x, data, cr)
       if (!pr.ok) no('book-value')
-      return { label: `${e?.name ?? x.name ?? 'Custom item'}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`, nuyen: pr.cost }
+      return { label: `${e ? entryLabel(e) : x.name ?? 'Custom item'}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`, nuyen: pr.cost }
     }
     case 'drop': {
       // R: no refund; an earning records a sale
       const x = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
-      return { label: `Dropped: ${(x.id && data.entry(x.kind, x.id)?.name) ?? x.name ?? 'Custom item'}` }
+      return { label: `Dropped: ${(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}` }
     }
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')

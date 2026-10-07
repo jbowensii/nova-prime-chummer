@@ -141,6 +141,25 @@ printing (the loaded printing is the newest).
   licence types (Fake License's paragraph), the senses (Enhanced Perception), the ritual keywords (the Rituals intro's
   bold run-ins: no section words).
 
+## Categories (categories.py)
+
+- Every catalog table's title is its rows' category (`cyberlimb cost and capacity` → Cyberlimb); the `vehicles` tables
+  over the drone sections name only the kind, so the sections name the categories (Microdrones, Small drone…).
+- Accessory tables and their hosts: `cyberlimb accessories` fits Cyberlimb, `weapon accessories` every weapon, `armor
+  modifications` all armor, `vehicle modifications` every vehicle. `visual enhancements` and `audio enhancements` name
+  no host the book has a table for (`visual`, `audio`): an issue on their category, for the owner to settle. The
+  electronics `accessories` table names no host at all.
+- Bare parts grouped: the cyberlimbs (`Cyberlimb: Arm (synthetic)`, composed `Cyberarm`; the prose prints cyberarm,
+  cyberskull, cyberhand, and the same stem composes Cyberleg, Cybertorso, Cyberfoot), the cyberlimb accessories (Armor,
+  Gyromount, Holster…), the ammunition types (`Ammo type: Gel`, composed `Gel ammo`), the weapon accessories, the armor
+  modifications, the tools (Kit, Shop, Facility).
+- Tables that don't fit the pattern (import report, `kind="category"`): Clubs and Shotguns print no title (their section
+  names them), the vehicle tables before the drones print none, `helmets and shields` mixes armor and weapon rows.
+
+## Kept table maps (the general table reader, tables.py)
+
+The recipe's `SECTIONS` map stays: measured, the general reader agrees on 60 of 77 tables. The rest are the book's filing a column signature can't tell: weapon accessories filed as weapons, armor modifications as armor, `ammo types` as ammunition types (no COST MULTIPLIER header in the weapons table's sense), the sensor function rows (no price column: the reader would call them rules), `Communications and Countermeasures` and `sensors` as electronics.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Sixth World Core Rulebook-Hong Kong City Edition-CAT28000H.pdf>" --out "%TEMP%\sr6-check"

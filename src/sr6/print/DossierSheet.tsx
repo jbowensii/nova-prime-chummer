@@ -12,6 +12,7 @@ import { CORE_ATTRS, MAGIC_KIND_LABELS } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { allSkills, band, PICKS, runnerView } from './view'
+import { entryLabel } from '../engine/categories'
 
 function Panel({ id, title, className = '', children }: { id: string; title: string; className?: string; children: ReactNode }) {
   return <section className={`d-panel ${className}`} aria-labelledby={id}><h2 id={id}>{title}</h2><div className="d-body">{children}</div></section>
@@ -37,7 +38,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
   const qual = ({ q, x }: (typeof quals)[number]) => <tr key={q.uid}><td>{x?.name ?? q.name ?? q.id}{x?.perLevel && ` ${q.level}`}
     {(q.free || q.note) && <span className="d-small"> {[q.free && 'metatype', q.note].filter(Boolean).join(', ')}</span>}</td></tr>
   const pos = quals.filter(x => !x.x || x.x.positive), neg = quals.filter(x => x.x && !x.x.positive)
-  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="d-small"> + {x.accessories.map(nameOf).join(', ')}</span>
+  const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="d-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
   const attrRows: [string, ReactNode, ReactNode][] = [...CORE_ATTRS, 'edg' as const, ...(mr ? [mr] : [])].map(a => [ATTR_NAMES[a], d.attrs[a].natural, <b>{d.attrs[a].augmented}</b>])
   // CRB: a Minor Action, plus one per initiative die
   const derived: [string, ReactNode, ReactNode][] = [['Minor Actions', dice === null ? '' : 1 + dice, <b>{dice === null ? '' : 1 + dice}</b>],
@@ -162,7 +163,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
           b.initiation > 0 && `Initiate ${b.initiation}`, b.submersion > 0 && `Submersion ${b.submersion}`].filter(Boolean).join(' · ')}</p>
         <table><thead><tr><th>Name</th><th>Kind</th><th>Type/target</th><th>Range</th><th>Duration</th><th>Drain</th></tr></thead>
           <tbody>{picks.flatMap(([label, xs]) => xs.map(x => { const e = data.entry(x.kind, x.id), a = e?.attrs ?? {}
-            return <tr key={x.uid}><td>{e?.name ?? x.name ?? x.id}{x.level !== undefined && ` ${x.level}`}</td><td>{label}</td>
+            return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}{x.level !== undefined && ` ${x.level}`}</td><td>{label}</td>
               <td>{[a.category, a.type, a.keywords].filter(Boolean).join(', ')}</td><td>{a.range}</td><td>{a.duration}</td><td>{a.dv ?? a.fade}</td></tr> }))}</tbody></table>
       </Panel>}
 

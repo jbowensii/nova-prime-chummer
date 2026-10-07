@@ -11,6 +11,7 @@ import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
+import { entryLabel } from './categories'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -47,15 +48,19 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
 
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number) =>
   (bonuses ?? []).filter(x => x.target === k).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
-/** What the player's entered bonuses add to `k` (R: the catalog carries no bonus data): picks by level, purchases by
- *  rating times quantity, accessories by their own rating. */
+/** What the player's entered bonuses add to the runner's `k` (R: the catalog carries no bonus data): picks by level,
+ *  purchases by rating times quantity. An accessory's bonuses are its host item's, never the runner's (hostBonus). */
 export function augmentBonus(b: Sr6Build, k: Bonus['target']): number {
   let total = b.picks.reduce((s, x) => s + bonusOf(x.bonuses, k, x.level ?? 1), 0)
-  for (const x of b.purchases) {
-    total += bonusOf(x.bonuses, k, x.rating ?? 1) * x.qty
-    for (const a of x.accessories) total += bonusOf(a.bonuses, k, a.rating ?? 1)
-  }
+  for (const x of b.purchases) total += bonusOf(x.bonuses, k, x.rating ?? 1) * x.qty
   return total
+}
+/** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
+ *  target -> total, only the targets they touch. */
+export function hostBonus(x: Sr6Purchase): Partial<Record<Bonus['target'], number>> {
+  const out: Partial<Record<Bonus['target'], number>> = {}
+  for (const a of x.accessories) for (const t of new Set((a.bonuses ?? []).map(y => y.target))) out[t] = (out[t] ?? 0) + bonusOf(a.bonuses, t, a.rating ?? 1)
+  return out
 }
 export const augmentedRating = (b: Sr6Build, k: Sr6Attr, p: Provider) => attrRating(b, k, p) + augmentBonus(b, k)
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
@@ -173,7 +178,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }
 }
 
-const purchaseName = (x: Sr6Purchase, data: Sr6Data) => entryOf(x, data)?.name ?? x.name ?? x.id ?? 'Custom item'
+const purchaseName = (x: Sr6Purchase, data: Sr6Data) => { const e = entryOf(x, data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
 
 export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
   const breakdown: BudgetLine[] = []

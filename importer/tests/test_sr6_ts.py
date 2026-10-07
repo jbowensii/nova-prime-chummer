@@ -126,24 +126,26 @@ class TsRecipeTest(unittest.TestCase):
 
     def test_weapons(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Zap Ruger"], {"id": "zap-ruger", "source": "TS", "page": "139", "category": "heavy-pistol",
+        self.assertEqual(w["Zap Ruger"], {"id": "zap-ruger", "source": "TS", "page": "139", "category": "Heavy pistol",
                                           "type": "Heavy Pistol", "dv": "3P", "modes": "SA/BF", "ar": "9/8/6/—/—",
                                           "ammo": "12(c)", "avail": "3(L)", "cost": "1200"})
         self.assertIn("pistol that pops", self.texts[("weapons", "zap-ruger")])  # the heading's description
-        self.assertEqual((w["Glue Gun"]["dv"], w["Glue Gun"]["cost"]), ("2S*", "700"))  # its footnote row: the text
+        self.assertEqual((w["Glue Gun"]["dv"], w["Glue Gun"]["cost"]), ("2S", "700"))  # its footnote row: the text
+        glue = next(e for e in ET.fromstring(self.res.files["weapons.xml"]) if e.findtext("name") == "Glue Gun")
+        self.assertEqual([(n.get("field"), n.text) for n in glue.findall("note")], [("dv", "Made-up footnote")])
         self.assertIn("footnote", self.texts[("weapons", "glue-gun")])
         self.assertIn("glue gun", self.texts[("weapons", "glue-gun")])  # `Fo amglue`: a heading with a stray space
-        self.assertEqual((w["Glue Rocket"]["dv"], w["Glue Rocket"]["category"]), ("14/9/3", "glue-explosives"))
+        self.assertEqual((w["Glue Rocket"]["dv"], w["Glue Rocket"]["category"]), ("14/9/3", "Glue explosives"))
 
     def test_armor(self):
         a = entries(self.res, "armor")
-        self.assertEqual((a["Vest Light"]["defense"], a["Patrol Cap"]["category"]), ("3", "armor"))
+        self.assertEqual((a["Vest Light"]["defense"], a["Patrol Cap"]["category"]), ("3", "Armor"))
         self.assertIn("made-up cap note", self.texts[("armor", "patrol-cap")])  # a Notes row: the row above's
         self.assertIn("made-up note", self.texts[("armor", "vest-light")])
 
     def test_vehicles(self):
         v = entries(self.res, "vehicles")
-        self.assertEqual(v["Putt Scooter"], {"id": "putt-scooter", "source": "TS", "page": "139", "category": "bike",
+        self.assertEqual(v["Putt Scooter"], {"id": "putt-scooter", "source": "TS", "page": "139", "category": "Bike",
                                              "handling": "3/5", "accel": "10", "interval": "20", "topSpeed": "90",
                                              "body": "6", "armor": "2", "pilot": "2", "sensor": "2", "seats": "1",
                                              "avail": "3", "cost": "9000"})

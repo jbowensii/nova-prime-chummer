@@ -157,7 +157,8 @@ test('Game data: a book, then a kind with its counts, its sub-categories, one ki
   await expect(page.locator('table.browse')).not.toContainText('Glow Eyes') // one kind at a time
   // augmentations: cyberware or bioware, then the body area
   await kindButton(page, 'Augmentations').click()
-  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([/^All 2$/, /^Bioware: basic bioware 1$/, /^Cyberware: eyeware 1$/])
+  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([/^All 5$/, /^Bioware: basic bioware 1$/, /^Cyberware: eyeware 1$/,
+    /^Cyberware: Eyeware accessory 1$/, /^Cyberware: Torqlimb 1$/, /^Cyberware: Torqlimb accessory 1$/])
   await category(page, 'Cyberware: eyeware').click()
   await expect(browseRows(page)).toHaveCount(1)
   await expect(browseRows(page)).toContainText('Glow Eyes')

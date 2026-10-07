@@ -65,6 +65,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
   Boosts`; `### New Major Action` (`#### Backseat Driver`); the bold `**N Edge: Name**` lines of the Motorpool
   quality. A heading's own bold lines (`Cost: N Edge`) are its fields.
 
+## Kept table maps (the general table reader, tables.py)
+
+`kind()` stays: measured, the general reader agrees on 173 of 179 tables; Double Clutch files drone racks, hardpoint devices, skin coatings and mechanical arms as gear (vehicle modifications), which print a device rating.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"

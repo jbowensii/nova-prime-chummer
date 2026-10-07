@@ -149,10 +149,10 @@ class AwRecipeTest(unittest.TestCase):
 
     def test_catalog(self):
         v = entries(self.res, "vehicles")["Puff Skiff"]
-        self.assertEqual((v["category"], v["handling"], v["topSpeed"], v["body"], v["cost"]), ("airships", "3", "300", "10", "10000"))
+        self.assertEqual((v["category"], v["handling"], v["topSpeed"], v["body"], v["cost"]), ("Airships", "3", "300", "10", "10000"))
         self.assertEqual(entries(self.res, "weapons")["Pebble Sling"]["ar"], "2/8/10/4/2")
         g = entries(self.res, "gear")["Hush Cloak"]
-        self.assertEqual((g["category"], g["rating"], g["karma"]), ("astral-devices", "1–6", "Force x 1"))
+        self.assertEqual((g["category"], g["rating"], g["karma"]), ("Astral devices", "1–6", "Force x 1"))
         self.assertEqual(entries(self.res, "armor")["Made-Up Suit"]["defense"], "8")
 
     def test_magic(self):

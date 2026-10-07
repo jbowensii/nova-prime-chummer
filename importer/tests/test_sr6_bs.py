@@ -139,7 +139,7 @@ class BsRecipeTest(unittest.TestCase):
     def test_cyberware_variant_rows_named_by_their_group(self):
         a = entries(self.res, "augmentations")
         self.assertEqual(a["Hum box"], {"id": "hum-box", "source": "BS", "page": "29", "type": "cyberware",
-                                        "category": "bodyware", "rating": "1–3", "essence": "Rating x 0.1",
+                                        "category": "Bodyware", "rating": "1–3", "essence": "Rating x 0.1",
                                         "capacity": "[1]", "avail": "2", "cost": "Rating x 500"})
         self.assertEqual((a["Zap tail (Short)"]["essence"], a["Zap tail (Long)"]["cost"]), ("0.2", "2000"))
         self.assertNotIn("Zap tail", a)  # the group row itself is no entry
@@ -149,15 +149,15 @@ class BsRecipeTest(unittest.TestCase):
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")
         self.assertEqual((a["Glow Genes"]["type"], a["Glow Genes"]["category"], a["Glow Genes"]["essence"]),
-                         ("geneware", "therapeutic-geneware", "0.1"))
+                         ("geneware", "Therapeutic geneware", "0.1"))
         # each with its book's type: symbionts, transgenic infusions, nanohives (nanoware)
         self.assertEqual([(a[n]["type"], a[n]["category"]) for n in ("Purr Leech", "Fur Pack", "Tiny Hive")],
-                         [("symbionts", "symbionts"), ("transgenics", "transgenic-infusions"), ("nanoware", "nanohives-supports")])
+                         [("symbionts", "Symbionts"), ("transgenics", "Transgenic infusions"), ("nanoware", "Nanohives & supports")])
         s = a["Made-Up Shells (Sleek)"]
         self.assertEqual((s["type"], s["cost"], s["avail"]), ("cyberware", "99000", "5"))
         g = entries(self.res, "gear")
         self.assertEqual((g["Fizz Swarm (colony template)"]["cost"], g["Fizz Swarm (pre-built)"]["avail"]), ("5000", "2(L)"))
-        self.assertEqual((g["Fizz"]["category"], g["Fizz"]["cost"], g["Fizz"]["avail"]), ("drugs", "70", "3"))
+        self.assertEqual((g["Fizz"]["category"], g["Fizz"]["cost"], g["Fizz"]["avail"]), ("Drugs", "70", "3"))
 
     def test_grades_read_from_their_prose(self):
         g = entries(self.res, "grades")
