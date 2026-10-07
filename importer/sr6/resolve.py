@@ -35,9 +35,11 @@ TEXT = {
     ],
     "avail": [(re.compile(r"\bavailability\s*(?:of\s+|is\s+|:\s*)?(\d+\s*(?:\(\s*[LIF]\s*\)|[LIF]\b)?)(?![\d¥,])", re.I), "one")],
     "cost": [(re.compile(r"\b(?:costs?|priced\s+at|price\s+(?:is|of))\s*:?\s*(" + _NUM + r")\s*(?:¥|nuyen)", re.I), "one")],
-    "karma": [(re.compile(r"\b(?:costs?|bonus\s+of|for)\s*:?\s*(\d+)\s+karma\b", re.I), "one")],
+    # (a negative quality's own text may say `Gain N Karma`; a sentence buying one off prices its removal: _BUY_OFF)
+    "karma": [(re.compile(r"\b(?:costs?|bonus\s+of|for|^gain)\s*:?\s*(\d+)\s+karma\b", re.I), "one")],
     "essence": [(re.compile(r"\bessence(?:\s+cost)?\s*(?:of\s+|is\s+|:\s*)(\d*\.\d+|\d+)\b", re.I), "one")],
 }
+_BUY_OFF = re.compile(r"\bbuy(?:s|ing)?\s+(?:\S+\s+){0,6}?off\b|\bbought\s+off\b", re.I)
 _AVAIL = re.compile(r"\d+\s*(?:\(\s*[LIF]\s*\)|[LIF])?")
 _RANGE = re.compile(r"(\d+)\s*[–-]\s*(\d+)")
 _MODES = re.compile(r"(?:SS|SA|BF|FA)(?:\s*(?:/|,)\s*(?:SS|SA|BF|FA))*(?:\s*\(\d+\))?")
@@ -115,6 +117,8 @@ def text_values(field, sents):
     """The distinct values the sentences print for the field ({value})."""
     out = set()
     for s in sents:
+        if field == "karma" and _BUY_OFF.search(s):
+            continue
         for rx, how in TEXT.get(field, ()):
             for m in rx.finditer(s):
                 g = [x for x in m.groups() if x]
@@ -388,6 +392,7 @@ _CARD_LABEL = re.compile(r"\*\*([A-Za-z ]+):\*\*\s*(.*?)(?=\s*\*\*[A-Za-z ]+:\*\
 # name, from the entry's type; the words its category must hold, when the name is the bare type: `Autosoft` in the
 # Software table, not a `Basic` subscription tier in another book) (the game's own words)
 CLASS_ROWS = {"programs": (("cyberprogram {type}", None), ("{type}", re.compile(r"(?i)soft|program")))}
+PRICED_AS = {"e-soft": "autosoft"}  # a class the game prices as another (Double Clutch: e-softs as autosofts)
 FIXABLE = ("missing", "unreadable")  # (an ambiguous field is the book's own two values, or a rule)
 
 
@@ -553,7 +558,8 @@ def corpus(books, sources=None, apply_errata=True):
                     cands.append((cb.date or "", v, None, None, None))
             if el.get("type"):
                 for pat, cat in CLASS_ROWS.get(kind, ()):
-                    for ob, osrc, oel in by_name.get(("gear", norm(pat.format(type=el.get("type")))), ()):
+                    t = PRICED_AS.get(el.get("type"), el.get("type"))
+                    for ob, osrc, oel in by_name.get(("gear", norm(pat.format(type=t))), ()):
                         if cat is None or cat.search(oel.get("category") or ""):
                             offer(cands, ob, osrc, oel, f)
             if iss.get("code") not in FIXABLE:  # the book prints two values or a rule: only a later source settles it

@@ -367,8 +367,9 @@ class Book:
 
     def kind(self, chapter, b, parent2):
         labels = {k.lower() for k in b.labels}
-        if not b.stats and b.row is None and b.level >= 3 and {"cost", "bonus"} & labels and re.search(r"karma", " ".join(
-                v for k, v in b.labels.items() if k.lower() in ("cost", "bonus")), re.I):
+        if not b.stats and b.row is None and b.level >= 3 and {"cost", "bonus"} & labels and re.search(
+                r"karma|^\s*\d+\s*points?\b", " ".join(v for k, v in b.labels.items() if k.lower() in ("cost", "bonus")),
+                re.I):  # (Emerald City prices its Local Character qualities `5 Points`: Karma points)
             return "qualities", "negative" if "bonus" in labels else "positive"
         if b.type == "section" and not b.stats:
             return None, None

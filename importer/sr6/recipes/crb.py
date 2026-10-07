@@ -43,7 +43,7 @@ with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
     ALIASES = json.load(_f)
 # first header cells that make a table a catalog in regroup (its rows are items even when no description pairs)
 NAME_HEADERS = {"WEAPON", "WEAPONS", "ARMOR", "ITEM", "AUGMENTATION", "DEVICE", "VEHICLE", "LIFESTYLE", "CYBERJACK",
-                "HEADWARE", "EYEWARE", "EARWARE", "BODYWARE", "LIMB", "GEAR", "CLASS"}
+                "HEADWARE", "EYEWARE", "EARWARE", "BODYWARE", "LIMB", "GEAR", "CLASS", "RCC"}
 
 # (chapter key, context key, kind, category), first match wins. The chapter key is a substring of the block's chapter,
 # the context key of its context (all in norm form; "" is any): for a table row, the table's first header and its
@@ -213,7 +213,7 @@ def readable(v):
     optional leading + (an add-on's price) and a legality suffix."""
     if v.strip() in ("", "—"):
         return True
-    s = _VAR.sub(" R ", _LEGAL.sub("", v).strip().lstrip("+"))
+    s = _VAR.sub(" R ", _LEGAL.sub("", re.sub(r"(?i)\s+each\s*$", "", v)).strip().lstrip("+"))  # (`1500 each`)
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
     if "/" in toks and "R" not in toks:
         return False  # `300/350`: two prices, not a division
@@ -806,6 +806,18 @@ class _Catalog:
         body = "".join(f"  <text of={quoteattr(of)} id={quoteattr(i)}>{escape(_s(t))}</text>\n" for of, i, t in self.texts)
         return (HEAD + "<!-- PRIVATE: book text. Do not commit. -->\n"
                 f'<sr6:data xmlns:sr6="{NS}" kind="texts" version="1">\n{body}</sr6:data>\n')
+
+
+def merge_xml(old, new):
+    """One kind's catalog file (xml()'s shape) with another's entries added; an entry of `new` replaces the one of
+    `old` with its id (the book's own reading is the closer one)."""
+    entry = re.compile(r'  <\w+ id="([^"]+)"')
+    add = [ln for ln in new.splitlines(keepends=True) if entry.match(ln)]
+    ids = {entry.match(ln).group(1) for ln in add}
+    keep = [ln for ln in old.splitlines(keepends=True) if not ((m := entry.match(ln)) and m.group(1) in ids)]
+    out = "".join(keep)
+    i = out.rindex("</sr6:data>")
+    return out[:i] + "".join(add) + out[i:]
 
 
 def _attrs(d):

@@ -11,16 +11,18 @@ const MAX_VALUE = 100
 const NONE = /^\s*[—–-]?\s*$/
 /** An availability's legality suffix: (L), (I), (F) or a bare L/I/F at the end. */
 const LEGAL = /\s*(?:\(([LIF])\)|([LIF]))\s*$/
+/** A unit price's word: `1,500 each` is the price of one. */
+const EACH = /\s+each\s*$/i
 
 /** The value at `rating`: a number, `Rating`, `Rating × N`, `N × Rating`, `(Rating × N) + M`, `Rating + M`, `+N` (an
  *  add-on), `Rating^2 × N`, `(Rating/3)`; `×`, `x` and `*` all multiply, `/` divides and rounds up (R); `Capacity`,
- *  `Force` and `Level` (any case) are the rating too (what the item is bought at); a legality suffix is ignored (see
+ *  `Force` and `Level` (any case) are the rating too (what the item is bought at); a unit price's `each` and a legality suffix are ignored (see
  *  legality). The importer's readable() (importer/sr6/recipes/crb.py) accepts the same values. */
 export function rated(s: string | undefined, rating = 1): { n: number | null; ok: boolean } {
   if (s == null) return { n: null, ok: true }
   if (s.length > MAX_VALUE) return { n: null, ok: false }
   if (NONE.test(s)) return { n: null, ok: true }
-  const src = s.replace(LEGAL, '').replace(/^\s*\+/, '').replace(/[×x*]/g, ' * ')
+  const src = s.replace(EACH, '').replace(LEGAL, '').replace(/^\s*\+/, '').replace(/[×x*]/g, ' * ')
     .replace(/\b(?:rating|capacity|force|level)\b/gi, ' R ').trim()
   const tokens = src.split(/\s*([*/^+()])\s*|\s+/).filter(Boolean)
   // `300/350` is two prices (two items), not a division: only a formula with the rating divides

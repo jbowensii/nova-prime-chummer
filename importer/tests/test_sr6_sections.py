@@ -3,7 +3,7 @@ run-ins, `Kind: Name` headings, a quality path's steps. Invented book only."""
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import regroup
+from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb
 
 MD = """<!-- page 40 -->
@@ -230,13 +230,33 @@ Begin here.
 #### Step 1: Sore Feet
 This negative quality hurts.
 • **Bonus:** 5 Karma
+#### Step 2: Blisters or Calluses
+Choose one.
+#### Glow Fan
+The step grants a quality printed above.
+#### Step 3
+Walk on.
+#### Step 4: Glow Fan
+You gain the Glow Fan quality at half its cost.
+#### Long Road: Rest Stop
+**Cost:** 2,000 nuyen
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
-        q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
+        res = ET.fromstring(crb.extract(text).files["qualities.xml"])
+        q = {e.findtext("name"): e.attrib for e in res}
         self.assertEqual({n: (q[n]["kind"], q[n].get("karma")) for n in ("Glow Fan", "Fizz Soul", "Zap Nose", "Sore Feet")},
                          {"Glow Fan": ("positive", "2"), "Fizz Soul": ("positive", "10"), "Zap Nose": ("negative", "4"),
                           "Sore Feet": ("negative", "5")})
         self.assertNotIn("Starting point", q)
+        # unpriced steps: named as steps they are qualities (a nuyen Cost line: positive; nothing: negative, an
+        # issue saying so); a bare heading (a quality the step grants) and a bare `Step 3` are not
+        self.assertEqual({n: q[n]["kind"] for n in ("Blisters", "Calluses", "Rest Stop")},
+                         {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"})
+        issues = {e.findtext("name"): [i.get("field") for i in e.iter("issue")] for e in res}
+        self.assertIn("kind", issues["Blisters"])
+        self.assertNotIn("kind", issues["Rest Stop"])
+        self.assertNotIn("Step 3", q)
+        self.assertEqual(sum(e.findtext("name") == "Glow Fan" for e in res), 1)
 
     def test_headings_bought_as_a_quality_at_the_sections_price(self):
         md = """<!-- page 70 -->
@@ -279,6 +299,10 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         self.assertEqual((g.get("avail"), g.get("type")), ("4", "bioware"))
         w = aug["Zorpgenic wobble ears"]  # no base item printed: the rule, as an ambiguous issue
         self.assertEqual({(i.get("field"), i.get("code")) for i in w.findall("issue")}, {("essence", "ambiguous"), ("cost", "ambiguous"), ("avail", "missing")})
+        # `A and B` of two-word halves is two items; a parenthetical listing several adds them; a comma set inside the
+        # closing parenthesis is the list's; `webbed hands and feet` stays one
+        self.assertEqual(sections._listed("glow glands and fizz spray (zap spit and fangs,) hum venoms, webbed hands and feet."),
+                         ["glow glands", "fizz spray", "hum venoms", "webbed hands and feet", "zap spit", "fangs"])
 
     def test_kinds_of_a_class_priced_by_its_row(self):
         md = """<!-- page 155 -->
@@ -299,6 +323,81 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         g = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["gear.xml"])}
         self.assertEqual((g["Bright focus"]["cost"], g["Dim focus"]["avail"]), ("Force x 500", "(Force) L"))
         self.assertNotIn("Odd focus", g)
+
+    def test_inherent_qualities_metamagics_and_sprite_types(self):
+        """A being's inherent qualities are its powers; `Adept Metamagics` and `New Metamagic: X` name metamagics;
+        `New Sprite Types` names sprites."""
+        md = """<!-- page 110 -->
+# ZORP LIFE
+## Inherent Zorp Form Qualities
+### Glow Shift
+The zorp glows at will.
+## Adept Metamagics
+### Fizz Way
+An adept fizzes.
+## Game Information
+### New Metamagic: Hum Gift
+A gift of humming.
+## New Sprite Types
+### Wobble Sprite
+**Skills:** Electronics
+**Powers:** Shield
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+        self.assertEqual((names("critterpowers"), names("metamagics"), names("sprites")),
+                         (["Glow Shift"], ["Fizz Way", "Hum Gift"], ["Wobble Sprite"]))
+
+    def test_runins_under_a_parent_naming_the_kind_and_edge_actions_anywhere(self):
+        """A heading's run-ins are its parent's kind when the parent names one (and the heading is no entry); a
+        run-in naming the kind itself introduces it; a program's own words give its type; `N Edge: X` is an Edge
+        action wherever it is printed."""
+        md = """<!-- page 140 -->
+# MAKING IT ZORP
+### Autosofts and E-Softs
+#### Core Zorp Mods
+**Zorp Programs:** Zorp programs are a hybrid of things.
+**Glow Jack:** This e-soft opens glowing locks.
+**Fizz Pilot:** It flies fizzily.
+#### Zorp Rules
+**Rules:** A made-up rule.
+## Positive Qualities
+### The Zorp Pool
+#### Fix It
+**2 Edge: Lucky Spanner**
+Spend 2 Edge to fix a zorp.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        p = {e.findtext("name"): e.attrib for e in ET.fromstring(files["programs.xml"])}
+        self.assertEqual(sorted(p), ["Fizz Pilot", "Glow Jack"])
+        self.assertEqual((p["Glow Jack"]["type"], p["Fizz Pilot"]["type"]), ("e-soft", "core zorp mods"))
+        a = {e.findtext("name"): e.attrib for e in ET.fromstring(files["actions.xml"])}
+        self.assertEqual((a["Lucky Spanner"]["type"], a["Lucky Spanner"]["edge"]), ("edge", "2"))
+
+    def test_new_fire_actions_and_sprite_commands(self):
+        """`New Fire Actions …` lists actions as run-ins (`New Edge Action: X` names one; `New Status: X` is none);
+        a sprite's commands under `New Sprite Commands` are its powers."""
+        md = """<!-- page 150 -->
+# ZORP MAYHEM
+#### New Fire Actions and Statuses
+**Called Shot: Glow Fire**
+Fire a glowing shot.
+**New Edge Action: Called Shot: Zap Point**
+Zap a point. Cost 2 Edge.
+**New Status: Glowing**
+You glow.
+# POINTS OF ZORP
+## New Sprite Commands
+### Fizz Sprite
+**Fizz Ken:** Your fizz sprite helps.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        files = crb.extract(text).files
+        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+        self.assertEqual((names("actions"), names("critterpowers")),
+                         (["Called Shot: Glow Fire", "Called Shot: Zap Point"], ["Fizz Ken"]))
 
     def test_a_title_that_only_mentions_a_kind_names_none(self):
         """The kind's words must head the heading: `New Echoes` lists echoes; a book or group titled `Echoes of …`

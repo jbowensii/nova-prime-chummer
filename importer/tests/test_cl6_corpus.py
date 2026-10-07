@@ -238,6 +238,41 @@ class TraceTest(unittest.TestCase):
         self.assertEqual((n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1))
 
 
+    def test_fields_compare_with_the_variant_row_that_agrees_most(self):
+        ents = [entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget (large)", src="a", avail="2", cost="300")]
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=ents)])
+        rows, n = trace.run(c, [self.rec(cost={None: 300.0}, avail={None: (2, "")})])
+        self.assertEqual(([r["field"] for r in rows], n["fields equal"], n["compared with a variant row"]), ([], 2, 1))
+        rows, n = trace.run(c, [self.rec(cost={None: 300.0}, avail={None: (3, "")})])  # the large row differs less
+        self.assertEqual([r["field"] for r in rows], ["avail"])  # (the large row: one difference, not two)
+
+    def test_a_record_no_name_finds_is_matched_by_its_stats(self):
+        """Commlink6's hand-made name: several stats agree with one unmatched entry and none conflicts (a rename, our
+        printed name kept); one stat, a conflict or a tie is only listed for review."""
+        def rec(i, name, **f):
+            return self.rec(**f) | {"id": i, "name": name}
+        ents = [entry("Blarg spanner", src="a", avail="3(L)", cost="450", rating="1–4"),
+                entry("Quux lens", src="a", avail="5", cost="900"), entry("Quux loupe", src="a", avail="5", cost="900"),
+                entry("Zorp widget", src="a", avail="2", cost="100")]
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=ents)])
+        rows, n = trace.run(c, [rec("w", "Zorp widget", cost={None: 100.0}),
+                                rec("s", "Wrench, Blarg", cost={None: 450.0}, avail={None: (3, "L")}, rating=(1, 4)),
+                                rec("q", "Optic, Mirr", cost={None: 900.0}, avail={None: (5, "")}, rating=(1, 1)),
+                                rec("x", "Gadget X", cost={None: 450.0}, avail={None: (4, "")})])
+        by = {(r["id"], r["family"]): r for r in rows}
+        self.assertEqual(by[("s", "renamed by stats")]["where"], "Blarg spanner")  # cost, avail, rating
+        self.assertEqual((n["renamed by stats"], n["objects"], n["object not found"]), (1, 2, 2))
+        tie = by[("q", "object not found")]["stat"]  # two names agree: a tie, never a rename
+        self.assertEqual(sorted(s["name"] for s in tie), ["Quux lens", "Quux loupe"])
+        self.assertEqual(by[("x", "object not found")]["stat"], [])  # the avail conflicts with the one cost that agrees
+        # one row printing two names: each record whose name shares a word with one of them is that one's rename
+        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n",
+                                entries=[entry("Zing / Zang Drone", src="a", avail="4", cost="700", rating="1–2")])])
+        rows, n = trace.run(c, [rec("g", "Acme Zing", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2)),
+                                rec("h", "Acme Zang", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2))])
+        self.assertEqual(n["renamed by stats"], 2)
+
+
 class MoreTest(unittest.TestCase):
     def test_a_reprint_keeps_its_first_date(self):
         # family A prints 100 in 2019 and again in 2025; book B prints 120 in 2022: B's is the version published last
@@ -266,7 +301,8 @@ class MoreTest(unittest.TestCase):
     def test_matches_with_a_note_and_per_rating(self):
         rec = TraceTest.rec(None, cost={None: 1900.0})
         self.assertEqual(trace._matches(rec, "gear", "cost", "1900", "cost"), "exact")
-        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 each", "cost"), "with a note")
+        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 each", "cost"), "exact")  # a unit price, read as the app does
+        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 per crate", "cost"), "with a note")
         self.assertEqual(trace._matches(rec, "gear", "cost", "1.900", "cost"), "with a note")
         self.assertIsNone(trace._matches(rec, "gear", "cost", "1800", "cost"))
         a = book("A", "2020-03", belongs="a")

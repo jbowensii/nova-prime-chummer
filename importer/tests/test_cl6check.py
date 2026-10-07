@@ -192,6 +192,11 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual(d[0]["why"], "ours holds a price (columns shifted)")
         self.assertNotIn("legality", self.cmp(x, cost="10", avail="—")[0])  # an empty avail is the avail's diff
 
+    def test_ammo_with_what_else_it_draws_on(self):
+        c = {"fields": {"ammo": "20(c)"}, "tag": "item"}  # (a canonical record's ammo field, invented)
+        self.assertEqual(fields.compare(c, entry("Zorp", kind="weapons", ammo="20(c) + Energy")), (["ammo"], []))
+        self.assertEqual(len(fields.compare(c, entry("Zorp", kind="weapons", ammo="30(c) + Energy"))[1]), 1)
+
     def test_weapon_bands(self):
         self.assertEqual(fields.bands("10,10,8,,"), fields.bands("10/10/8/—/—"))
 

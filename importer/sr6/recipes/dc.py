@@ -314,6 +314,7 @@ def extract(regrouped, ctx=None):
     cat = crb._Catalog(ID, ID.lower(), BOOK)
     cat.index = crb.resolve.Index(bs, PAGE_OFFSET, crb._tables, crb.shapes.RENAME)
     _autosofts(bs, cat)
-    if cat.entries["programs"]:
-        res.files["programs.xml"] = cat.xml("programs")
+    if cat.entries["programs"]:  # (beside the programs the shared reading found: the e-softs' run-ins)
+        new = cat.xml("programs")
+        res.files["programs.xml"] = crb.merge_xml(res.files["programs.xml"], new) if "programs.xml" in res.files else new
     return res

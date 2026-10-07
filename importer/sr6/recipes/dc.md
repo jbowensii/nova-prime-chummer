@@ -69,6 +69,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 
 `kind()` stays: measured, the general reader agrees on 173 of 179 tables; Double Clutch files drone racks, hardpoint devices, skin coatings and mechanical arms as gear (vehicle modifications), which print a device rating.
 
+## Commlink6 check (importer v4)
+
+- Stat matching (cl6check): Commlink6 names the turreted weapon mounts as mount-type-size; their stats find them (2 renames).
+- Programs (importer v4): the e-softs printed as run-ins under `New RCC Basic Programs` and `Core Vehicle Modifications` (their parent `Autosofts and E-Softs` names the kind) are read with the shared reading's other programs (the autosoft list no longer replaces them); a program calling itself an e-soft is one, priced as an autosoft (the book's rule). The gear-head qualities' `**2 Edge: Name**` run-ins are Edge actions.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"

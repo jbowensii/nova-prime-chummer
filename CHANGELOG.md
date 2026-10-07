@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.10.2 — 2026-10-07: more of the books read
+
+- **More Shadowrun 6 entries read from the books.** Every named step of a quality path is now a quality (with "Gain N
+  Karma" read); bold run-in names under a heading that names their kind (traditions, programs, actions, critter
+  powers), "N Edge: X" Edge actions anywhere, fire actions and sprite commands; e-softs priced as autosofts; inherent
+  qualities as powers; metamagic and sprite-type sections; qualities priced in points; the core rulebook's RCC table;
+  Body Shop's transgenic lists split into their paired items; and a row that prints two names ("A / B Drone") gives
+  both. Double Clutch's autosofts no longer replace the shared programs list.
+- **A price printed "N each" reads as N** in the builder and the importer.
+- Import the books again (Books → Re-import all) to get them.
+
 ## 0.10.1 — 2026-10-06: categories and accessories
 
 Import the Shadowrun 6 books again (Books page → **Re-import all**) to get these: the catalogs change, saved runners keep

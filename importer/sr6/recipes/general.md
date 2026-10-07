@@ -36,7 +36,7 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   RATING`), else gear (a number in `COST` or an `AVAIL` column: a list of restaurants priced `¥¥` stays a table); an
   item's box with a price (`TYPE DV … AVAIL COST`) is its row. Category: the table's title, else its section.
 - Spells: a box with `RANGE` and `DURATION` under a section naming a spell category.
-- Qualities: a heading (level 3 to 5) with `Cost:`/`Bonus:` in Karma (Emerald City's Local Character entries, Power
+- Qualities: a heading (level 3 to 5) with `Cost:`/`Bonus:` in Karma (Emerald City prints `5 Points`: Karma points, importer v4) (Emerald City's Local Character entries, Power
   Plays', Shadow Cast's archetype qualities).
 - Life modules: the Sixth World Companion's adult form printed in body type after a `Life Modules` heading or line
   (Dealers of Death, Shadows in Focus: New Orleans): a title run (`Event:` `Brush With Death`), prose, the grants as
@@ -57,7 +57,9 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 
 ## Sections read as kinds (importer v3, sections.py)
 
-- **Qualities** (Shadow Cast): each quality path step with a `Karma Cost` line.
+- **Qualities** (Shadow Cast): each quality path step with a `Karma Cost` or `Karma Bonus` line (`6 points`), or
+  named as a step (`Step Two: X`) with a Cost line in nuyen (positive); a bare `Step 1` or a step granting a quality
+  printed elsewhere (`gain the X quality`) is none (importer v4).
 - **Quality paths** (Shadow Cast): `### Quality Path: Name` under `## Quality paths`, its steps the headings under
   it; a chapter printing those names only its `Quality Path:` headings as paths (`Roleplaying`, `Strategies`
   after them are its sections).

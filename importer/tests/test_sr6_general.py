@@ -150,6 +150,10 @@ A made-up box that hums.
 A made-up quality.
 • **Cost:** 6 Karma
 • **Game Effect:** Made-up luck.
+### Zorp Local
+A made-up local quality.
+**Cost:** 5 Points
+**Game Effect:** Made-up local pride.
 ##### Life Modules
 Fake Courier
 You ran made-up parcels across a made-up town for years.
@@ -241,6 +245,8 @@ class GeneralRecipeTest(unittest.TestCase):
     def test_quality_and_life_modules(self):
         q = entries(self.res, "qualities")["Lucky Charm"]
         self.assertEqual((q["kind"], q["karma"]), ("positive", "6"))
+        q = entries(self.res, "qualities")["Zorp Local"]  # `5 Points`: Karma points
+        self.assertEqual((q["kind"], q["karma"]), ("positive", "5"))
         m = entries(self.res, "lifemodules")
         self.assertEqual((m["Fake Courier"]["contactPoints"], m["Fake Courier"]["contactTypes"]), ("2", "street"))
         self.assertEqual(m["Event: Lost Parcel"]["nuyen"], "5000")

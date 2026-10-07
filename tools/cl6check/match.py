@@ -150,3 +150,52 @@ def match(cl6, ours):
                 return 0
         out.append((c, sorted(hits, key=lambda o: (o["kind"] != c["kind"], dist(o) > 2, dist(o))), how))
     return out
+
+
+# Stat matching (owner, 2026-10-06): Commlink6 renamed some items by hand. A record no name finds is compared by its
+# stats with our entries no record matches, in the same book and kind. Categorical fields (a spell's type, a power's
+# action) and the quality's sign tell too little to name an item; legality goes with the availability number.
+WEAK_FIELDS = {"positive", "legality", "per level", "spell type", "spell category", "duration", "power type", "action",
+               "activation", "range", "attribute"}
+STRONG_AGREE = 3  # "several stats agree exactly" anywhere in the book; two do on the record's own page (±1)
+
+
+def stat_agreement(c, o):
+    """(agreeing, conflicting) fields of record c against our entry o. A field agrees only where our entry prints a
+    value (our dash for Commlink6's 0 tells nothing), and conflicts only where it prints another one."""
+    from tools.cl6check import fields as F
+    attr = {"spell type": "type", "drain": "dv", "pp cost": "cost", "power type": "type"}
+    done, diffs = F.compare(c, o)
+    bad = [d["field"] for d in diffs if not d.get("why", "").startswith("ours empty")]
+    empty = {d["field"] for d in diffs} - set(bad)
+    a = o["attrs"]
+    ok = [f for f in done if f not in bad and f not in empty and f not in WEAK_FIELDS
+          and (a.get(attr.get(f, f)) or "").strip() not in ("", "—", "–", "-")]
+    return ok, bad
+
+
+def strong(c, o, ok):
+    return len(ok) >= STRONG_AGREE or len(ok) == 2 and near(o["page"], c["page"])
+
+
+def by_stats(c, cands, matched=()):
+    """('strong', entry, agree) when exactly one of our items agrees with record c on several stats and none conflicts:
+    one of cands (our entries no record matches, of c's book and kinds), and none of `matched` (the book's entries
+    other records match) as well. Variant rows of one item (`Widget (small)`, `Widget (large)`) that agree alike are
+    one item. Else ('weak', None, [(entry, agree, conflict)]): the candidates that agree with no conflict on a price or
+    on two stats, best first, at most five."""
+    def agreeing(pool):
+        best = {}
+        for o in pool:
+            ok, bad = stat_agreement(c, o)
+            if ok and not bad:
+                k = n1(o["name"])
+                if k not in best or len(ok) > len(best[k][1]):
+                    best[k] = (o, ok, bad)
+        return list(best.values())
+    mine = agreeing(cands)
+    hits = [v for v in mine if strong(c, v[0], v[1])]
+    if hits and len({n2(v[0]["name"]) for v in hits}) == 1 and not any(strong(c, o, ok) for o, ok, _ in agreeing(matched)):
+        return "strong", hits[0][0], hits[0][1]
+    listed = [v for v in mine if len(v[1]) >= 2 or "cost" in v[1]]
+    return "weak", None, sorted(listed, key=lambda v: -len(v[1]))[:5]

@@ -53,7 +53,10 @@ recipe reads both.
 ## Sections read as kinds (importer v3, sections.py)
 
 - **Qualities:** each quality path step (`##### Critter Bond: Lost`) is a quality too, named without the path
-  (`Lost`), positive with a Cost line, negative with a Bonus line.
+  (`Lost`), positive with a Cost line, negative with a Bonus line. A step with only a Game Effect (most of the
+  paths' steps) is a quality too: negative, with a `kind` issue; a Cost line by a rule (`5 x new rating`) makes it
+  positive (importer v4). Its Karma in the text (`Gain N Karma`) is read; a buy-off price (`buy it off for N
+  Karma`) is not its Karma.
 - **Quality sets:** each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE
   METAGENIC QUALITIES | NEGATIVE …`, the metagenic collectives under `Collectives`): its Karma, metatypes and qualities.
 - **Contact types:** the bullets (`• **Academic:** …`) under `## Contact Types`.

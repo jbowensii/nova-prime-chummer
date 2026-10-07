@@ -51,7 +51,7 @@ the overlay changes.
 | `canon.py` | Turns a record into our vocabulary: kind (a record type or item type → our catalog kind; types we have no kind for are *unmodelled*), source id, aliases (`Grenade, Party` → `Party Grenade`; the name joined with each variant). Price, availability, essence and capacity are evaluated at each rating, from `$RATING` formulas and per-rating tables, along with the variants' own values. It also builds the field families. |
 | `ours.py` | Reads our catalog in the same shape. `value()` reads a printed value the way the engine's `rated()` does. |
 | `match.py` | Matches records to entries of the same book, in stages: exact, loose (plurals, punctuation, rating words), no parenthetical, alias, split row (`A / B`), word order, contained (one name's words inside the other's, on a nearby page), group (Commlink6's name made of our row's words and its category's or maker's: `Implanted Shotgun` is our `Shotgun` in the `Cyber implant weapon` category), fuzzy. A record can match several entries (a parent and its variant rows). Fields are compared against the entry that agrees most. |
-| `fields.py` | Per-field comparators. Numbers are compared at every rating. A printed range compares by containment, and a cell printing several values compares by the values it prints. A variant's value counts as a match. Legality is compared apart from the availability number. |
+| `fields.py` | Per-field comparators. Numbers are compared at every rating. A printed range compares by containment, and a cell printing several values compares by the values it prints. A variant's value counts as a match. Legality is compared apart from the availability number. An ammo cell printing what else the weapon draws on (`20(c) + Energy`) compares by its magazine. |
 | `arbitrate.py` | Classes each difference from the import's own `original.pdf`: **a** = the PDF prints Commlink6's value (an importer error); **b** = it prints ours (a verified printed difference, such as errata or another printing); **c** = not settled. |
 | `patterns.py` | Finds and scores the general rules that predict Commlink6's UI tags (see Patterns below). |
 | `modifiers.py` | Expresses Commlink6's modifications as path-and-value modifiers, aligns them with our descriptions, and mines phrase templates (see Modifier patterns below). |
@@ -107,12 +107,33 @@ book's entry counts only under the object's own name, and in a kind its home boo
 **Found objects.** An entry of ours under the object's name is the object even when it prints no field the tool
 compares (a mentor spirit, a tradition, a metamagic): it is found, with no fields compared.
 
+**Renamed by stats.** Commlink6 renamed some items by hand (`VI Ace of Cups` for a row printed `Vashon Island (Ace of
+Cups)`). A record no name finds is compared by its stats, not its name, with our entries in its own book and kinds that
+no Commlink6 record matches (`match.by_stats`). The stats are the compared fields (cost and every other number
+formula-aware, at every rating; availability, DV, AR, modes, ammo, Essence, capacity, rating range, defense, the
+vehicle stats); categorical fields such as a spell's type, and the quality's sign, tell too little and don't count. A
+field agrees only where our entry prints a value, and conflicts only where it prints another one.
+- **Strong**: three stats or more agree exactly (two on the record's own page, ±1), none conflicts, and the match is
+  unique: one item of ours (its variant rows count as one), no entry another record already matches fits as well, and
+  no other missing record matches the same entry (unless our row prints several names, `A / B Drone`, and each
+  record's name shares a word with its own one of them). It counts as found (family `renamed by stats`), compared with that
+  entry. Our printed name stays canonical; Commlink6's is only a search alias.
+- **Weak** (one stat, or ties): not counted. The not-found row lists the candidates (`stat`).
+
+The owner's review list, `stat-match-review.csv` (book, page, kind, Commlink6 name, verdict, candidate, agreeing and
+conflicting stats; names only, never committed), holds the strong matches first, then the weak candidates.
+
 **Found values.** A field the importer filled from an errata (`<found how="errata">`, importer/sr6/resolve.py) is
 read as that errata's observation, dated by it, not the book's.
 
 **Winner.** The winner is the value published last. A reprint of a value its book family already printed keeps the
 date that value first appeared. For example, the Hong Kong printing repeating the 2019 text does not make that value
 newer than another book's.
+
+**Variant rows.** A record also matches our variant rows (entries printing its name with a qualifier, in the latest of
+its home family's books that print one). When one of them agrees with the record on the same fields with fewer
+differences than the winners, the record is compared with that row (`compared with a variant row`): Commlink6's one
+`Widget` may be our `Widget (Large)`.
 
 **Families.** Each difference between Commlink6 and the winner goes to the first family that holds Commlink6's value.
 The order of the checks is in trace.py's module docstring. The families:

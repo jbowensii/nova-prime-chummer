@@ -8,7 +8,9 @@ Actions`, `Mentor Spirits`, `Data Structures`, `Quality Paths`, `Contact Types`,
   `New Edge Action: Prepare to Board!`, `New Contact Type: Free Spirit`). A lower-case box title, a heading naming the
   kind itself (`Minor Actions` under `Game Timing and Actions`) and an example are not;
 - **a bold run-in** (`• **Reroll one die:** …`, `**2 Edge: Black Thumb**`) in a block whose heading, or whose parent's,
-  names a run-in kind is an entry: the Edge boosts and Edge actions, the data structures, the contact types.
+  names a run-in kind is an entry: the Edge boosts and Edge actions, the data structures, the contact types. A run-in
+  naming the kind itself (`Electronic Warfare Programs:`) introduces it; a run-in `**2 Edge: Name**` is an Edge action
+  wherever it is printed.
 
 The entries are written as well as the rule sections (the rules contents keep them). Their attributes are what the
 heading and its section print: an action's type (minor, major, edge, boost: the section's words; a Matrix action's
@@ -22,7 +24,10 @@ from importer.sr6.regroup import norm
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
-    ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b", re.I)),
+    ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b|^inherent\b.*\bqualities$", re.I)),  # (a being's
+    # inherent qualities are its powers: `Inherent Virtual Life Form Qualities`)
+    ("metamagics", re.compile(r"^(?:new\s+|adept\s+)?metamagics?(?:\s+techniques)?$", re.I)),
+    ("sprites", re.compile(r"^(?:new\s+)?sprite\s+types$", re.I)),
     ("traditions", re.compile(r"^traditions$", re.I)),
     ("martialtechniques", re.compile(r"\bmartial\s+arts?\s+techniques$", re.I)),  # `Cyberware Martial Arts Techniques`
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
@@ -36,20 +41,21 @@ HEADING_KINDS = [
 RUNIN_KINDS = [
     ("gear", re.compile(r"\bfoci\b", re.I)),  # `Enchanting Foci`: its kinds of focus, priced as the `Enchanting focus` row
     ("echoes", re.compile(r"\bechoes\b", re.I)),
-    ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b", re.I)),
+    ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b|\bsprite\s+commands\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
-    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b", re.I)),
+    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b", re.I)),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
     ("contacttypes", re.compile(r"\bcontact\s+types\b", re.I)),
 ]
 # a heading naming its kind before a colon (`Quality Path: X`, `New Edge Action: X`, `New Contact Type: X`)
 PREFIX = [("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$", re.I)),
           ("actions", re.compile(r"^(?:new\s+)?(?:(?:status|response|chase)\s+)?(?:edge|major|minor)\s+action\s*:\s*(.+)$", re.I)),
-          ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I))]
+          ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I)),
+          ("metamagics", re.compile(r"^(?:new\s+)?metamagic\s*:\s*(.+)$", re.I))]
 # run-in labels that are a field of the block, not an entry of its kind
 FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
-                          r"requirements?|prerequisites?|example|bonus|duration|test|limit|threshold|range|choose\s+one|"
+                          r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"
                           r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
                           r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?)$", re.I)
 # a Matrix action's test line, set under its heading: `(Illegal) Cracking + Logic vs. Willpower + Firewall (Major)`
@@ -72,6 +78,7 @@ class Found:
     text: str = ""
     block: object = None  # the heading's block (a kind the recipes read already reads its fields from it)
     priced_steps: int = 0  # a quality path's steps that are qualities priced in Karma
+    path: object = None  # an unpriced quality path step's path: written only when that is a path (is_path)
 
 
 def _kind_of(name, rules):
@@ -152,7 +159,9 @@ class Reader:
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
                     qs = step_qualities(b, page, self.path[1].name)
-                    self.path[1].priced_steps += bool(qs)
+                    self.path[1].priced_steps += any(q.path is None for q in qs)
+                    for q in qs:
+                        q.path = q.path and self.path[1]
                     out += qs
         if heading:
             out += self._heading(b, page, chain, parent)
@@ -166,8 +175,12 @@ class Reader:
             rk = "programs"  # `Basic` and `Hacking` under `Programs`
         if not rk and KEYWORDS.search(b.name) and re.search(r"\bkeywords\b", b.text or "", re.I):
             rk = "spellfeatures"  # a spell or ritual section introducing its keywords, each a bold run-in
+        if not rk and heading and not out and (pk := _runin_kind(parent)):
+            rk = pk  # the parent heading names the kind (`Core Vehicle Modifications` under `Autosofts and E-Softs`)
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
+        elif not rk and not out:  # `**2 Edge: Black Thumb**`: an Edge action wherever it is printed
+            out += [f for f in self._runins(b, page, "actions", chain + [b.name], _EDGE_FIRST)]
         if heading:
             # a Matrix action's test line set as a heading of its own under it: its parent heading is the action
             if MATRIX_TEST.search(b.name) and self.stack and not self.stack[-1][3]:
@@ -236,7 +249,9 @@ class Reader:
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
         return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b), b)
 
-    def _runins(self, b, page, kind, chain):
+    def _runins(self, b, page, kind, chain, only=None):
+        """The block's bold run-ins as entries of `kind`; only: a pattern the run-in's name must match (and then
+        names the kind itself: `2 Edge: X` is an Edge action)."""
         out, seen = [], set()
         # (regroup hands the block's leading labelled lines over as labels, the rest stays in the text)
         lead = []
@@ -252,10 +267,18 @@ class Reader:
             if not m:
                 continue
             name = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(m.group("name").split()).strip())  # (`Vi- sion`)
+            if only is not None and not only.match(name):
+                continue
+            if (new := re.match(r"(?i)new\s+([\w ]+?)\s*:", name)) and not _kind_of(
+                    new.group(1) + "s", [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]):
+                continue  # `New Status: Painted` among new actions: another kind of thing
             if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[") \
                     or len(name) > 70 or norm(name) in seen:
                 continue
             seen.add(norm(name))
+            pre = next((pm for k, rx in PREFIX if k == kind and (pm := rx.match(name))), None)  # `New Edge Action: X`
+            if not pre and _runin_kind(name) == kind:
+                continue  # (`Electronic Warfare Programs:` introduces the kind)
             body = [m.group("rest").strip()]
             for nxt in lines[i + 1:]:
                 n2 = _RUNIN.match(nxt)
@@ -265,9 +288,12 @@ class Reader:
             para = "\n".join(x for x in body if x)  # (its lines kept: the texts are reflowed later)
             attrs = {}
             if kind == "actions":
-                name, attrs = _action_attrs(name, chain, "", para)
+                name, attrs = _action_attrs(pre.group(1) if pre else name, chain + ([name] if pre else []), "", para)
+                if only is not None:
+                    attrs["type"] = "edge"
             if kind == "programs":
-                attrs = {"type": program_type(chain[-1] if chain else "")}
+                own = re.search(r"(?i)\b(?:this|these|the)\s+(autosoft|e-soft|app)s?\b", para)  # (its own words)
+                attrs = {"type": own.group(1).lower() if own else program_type(chain[-1] if chain else "")}
             if kind == "gear":  # a kind of the class its heading names: priced as that class's row
                 attrs = {"category": "foci", "_class": class_row(chain[-1] if chain else "")}
             if kind == "qualities":
@@ -344,8 +370,13 @@ def quality_sets(b, page):
     return out
 
 
-_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma", re.I)
-_BONUS = re.compile(r"\*\*Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma", re.I)
+_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma"
+                   r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b|\*\*Cost:?\*\*:?\s*(\d+)\s*points?\b",
+                   re.I)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
+_BONUS = re.compile(r"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma"
+                    r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
+_ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
+_EFFECT = re.compile(r"\*\*Game\s+Effects?:?\*\*", re.I)
 
 
 def quality_attrs(name, chain, text):
@@ -382,15 +413,28 @@ def template_headings(bs, chapters=3):
 def is_path(f, template=frozenset()):
     """A quality path has a path's structure: steps under it (one priced in Karma is enough by itself), and a name of
     its own, not one of the book's template headings. A heading under a `Quality Paths` section without (a chapter's
-    `Roleplaying`, `Strategies`, `Combat` advice) is no path."""
+    `Roleplaying`, `Strategies`, `Combat` advice) is no path. An unpriced step's quality is written when its path is
+    one."""
     if f.kind != "qualitypaths":
-        return True
+        return f.path is None or is_path(f.path, template)
     return f.priced_steps > 0 or any(t == "step" for t, _, _ in f.children) and norm(f.name) not in template
+
+
+def _granted(name, body):
+    """The step grants a quality printed elsewhere: `gain the Home Ground quality`, `the Home Ground quality (p. 72)`."""
+    one = " ".join((body or "").split())
+    n = re.escape(name)
+    return bool(re.search(rf"(?i)\b(?:gains?|purchases?|buys?|takes?|receives?)\s+the\s+{n}\s+quality\b|\b{n}\s+quality\s*\(p\.", one))
 
 
 def step_qualities(b, page, path):
     """A quality path's step is a quality (or several: `Step 2: No Code or Penitent or Re-Bound`), its name without the
-    path's and the step's number: `Critter Bond: Lost` -> `Lost`, `Step 1: Broken Code` -> `Broken Code`."""
+    path's and the step's number: `Critter Bond: Lost` -> `Lost`, `Step 1: Broken Code` -> `Broken Code`. Its kind
+    and Karma are its Cost or Bonus line's (quality_attrs). A step printing neither is still the path's quality when
+    it is named as a step (`Step 1: X`, `Path: X`) or prints a Game Effect (a bare heading may name a quality the step
+    grants, printed elsewhere: `Mentor Spirit`): a Cost line in nuyen or by a rule makes it positive, else it is one
+    the path imposes, negative, with an issue saying the book doesn't state it (its Karma gets the usual missing
+    issue). Those are marked with their path (`path`)."""
     name = re.sub(r"^\s*step\s+(?:\d+|one|two|three|four|five)\s*:\s*", "", b.name, flags=re.I)
     name = re.sub(rf"^\s*{re.escape(path)}\s*:\s*", "", name, flags=re.I)
     if re.fullmatch(r"(?i)starting\s+point|how\s+to\s+move\s+on", name.strip()):
@@ -401,6 +445,13 @@ def step_qualities(b, page, path):
         attrs = quality_attrs(n, [], body)
         if attrs:
             out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
+        elif n.strip()[:1].isupper() and (name != b.name or _EFFECT.search(body)) \
+                and not re.fullmatch(r"(?i)step\s+\S+", n.strip()) and not _granted(n.strip(), body):
+            kids = [] if _ANY_COST.search(body) else [
+                ("issue", {"field": "kind", "code": "missing", "page": page},
+                 "no Karma cost or bonus printed: a step the quality path imposes, positive or negative not stated")]
+            out.append(Found("qualities", n.strip(), page, {"kind": "negative" if kids else "positive"}, kids, body,
+                             path=True))
     return out
 
 
@@ -453,6 +504,22 @@ def _pct(word):
     return int(w) if w.isdigit() else _NUMBER_WORDS.get(w)
 
 
+def _listed(text):
+    """The items of a derived list line, as printed: split at its commas; `A and B` when both halves are two words or
+    more (`chemical glands and exhalation spray`, not `webbed hands and feet`); a parenthetical listing several
+    (`(corrosive spit and fangs)`) adds them, one saying `no …` or naming one other thing doesn't. A comma set inside
+    the closing parenthesis (`(… fangs,)`) is the list's."""
+    text = re.sub(r",\s*\)", "),", text).rstrip(".")
+    out = []
+    for item in _items(re.sub(r"\([^()]*\)", "", text)):
+        halves = re.split(r"\s+and\s+", item.strip(" .;"))
+        out += halves if len(halves) == 2 and all(len(h.split()) >= 2 for h in halves) else [item]
+    for paren in re.findall(r"\(([^()]*)\)", text):
+        if not re.match(r"(?i)\s*no\b", paren) and re.search(r",|\band\b", paren):
+            out += [p for p in re.split(r"\s*,\s*|\s+and\s+", paren) if p.strip()]
+    return out
+
+
 def derived(b, page):
     """Items a section derives from the book's own by a rule: its text states the rule as percentages against the
     base item (`… cost fifty percent more Essence than their bioware equivalent, but cost thirty percent less nuyen`)
@@ -477,7 +544,7 @@ def derived(b, page):
         m = _LIST_LINE.match(ln.strip())
         if not m or m.start(1) > 70 or "," not in m.group(1):
             continue
-        for item in _items(re.sub(r"\([^()]*\)", "", m.group(1)).rstrip(".")):
+        for item in _listed(m.group(1)):
             item = re.sub(r"^(?:and|or|most(?:\s+forms\s+of)?)\s+", "", item.strip(" .;"), flags=re.I)
             if not item or len(item.split()) > 5 or norm(item) in seen:
                 continue
