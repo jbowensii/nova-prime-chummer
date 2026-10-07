@@ -12,6 +12,7 @@ from collections import Counter
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
+from importer.sr6 import sections
 from importer.sr6.recipes import crb, swc
 from importer.sr6.recipes.fs import _md_table
 from importer.sr6.regroup import blocks, keys, norm
@@ -336,14 +337,23 @@ def _modules(bs):
     line (the Sixth World Companion's form): a module's title is a run of short lines (`Event:` `Brush With Death`)
     that prose follows, its grants its labelled lines. The run goes on through the page's running head (a section
     named like the chapter, a page number) and stops at the next heading. A part with no grant is no module (a
-    quality printed before them)."""
-    lines, page, on = [], 0, False
+    quality printed before them). A module set as a heading under the `Life Modules` heading (its title the heading,
+    a kicker `Event:` joined to it: prepare_md) is one with its labelled lines, read the same way."""
+    lines, page, on, level, heads = [], 0, False, None, []
     for b in bs:
         head = norm(b.name)
         if on and (head in (norm(b.chapter), "") or head.isdigit()):
             lines += b.text.splitlines()
             continue
-        on = False
+        if level is not None and b.level > level:  # a module under its own heading
+            # (its labelled lines once: the text's own, else regroup's labels)
+            body = b.text if _GRANT.search(b.text) else "\n".join([f"**{k}:** {v}" for k, v in b.labels.items()] + [b.text])
+            if _GRANT.search(body):
+                heads.append((b.name.strip(), body, b.page))
+            continue
+        on, level = False, None
+        if b.level and _MODULES.fullmatch(b.name.strip()):
+            level = b.level
         text = b.text.splitlines()
         at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
             (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(ln.strip())), None)
@@ -366,7 +376,7 @@ def _modules(bs):
         i += 1
     if cur and name and any(_GRANT.search(c) for c in cur):
         out.append((" ".join(name), "\n".join(cur), page))
-    return out
+    return out + heads
 
 
 def _contact(b):
@@ -526,7 +536,11 @@ class Book:
         bs = list(blocks(regrouped)) if isinstance(regrouped, str) else list(regrouped)
         names = {norm(b.name): b.name for b in bs if b.name}.values()  # each printed name once
         self._clash = {n for n, c in Counter(norm(x) for name in names for x in _slash_names(name)).items() if c > 1}
-        res = crb.extract(bs, ctx, book=self)
+        sections.Reader.toxins = True  # (the adventure books' toxins have no price table: read from their lines)
+        try:
+            res = crb.extract(bs, ctx, book=self)
+        finally:
+            sections.Reader.toxins = False
         cat = crb._Catalog(self.ID, self.ID.lower(), self.BOOK)
         for name, text, page in _modules(bs):
             swc._lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))

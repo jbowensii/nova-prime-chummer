@@ -165,6 +165,9 @@ def _action_attrs(name, chain, tags="", text=""):
 class Reader:
     """Fed every block in reading order (feed(block, page)), it returns the entries of the section kinds the block is
     or holds."""
+    # toxins read from their stat lines (a book printing no price table for them: the general recipe's books turn it
+    # on while they are read; the core rulebook prices its drugs and toxins in tables of its own)
+    toxins = False
 
     def __init__(self):
         self.stack, self.chapter, self.path = [], None, None  # path: [level, Found, its steps' level]
@@ -237,7 +240,8 @@ class Reader:
             return [f]
         if f := self._granted_quality(b, page):
             return [f]
-        if TOXIN_LABELS <= {k.lower() for k in b.labels} and name[:1].isupper() and "|" not in (b.text or ""):
+        if self.toxins and TOXIN_LABELS <= {k.lower() for k in b.labels} and name[:1].isupper() \
+                and "|" not in (b.text or ""):
             # a toxin's stat lines (Vector, Speed, Power …) under its heading, no price table (a drug's row is read
             # with its table): gear, its category the heading over it
             return [Found("gear", name, page, {"category": parent or None}, [], _body(b), b)]

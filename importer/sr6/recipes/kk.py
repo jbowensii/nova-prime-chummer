@@ -38,8 +38,10 @@ PROSE = {"AR", "DV"}  # an ammunition's modifiers: gear has no attribute for the
 
 
 def prepare_md(md):
-    """book.md under one chapter heading, the book's running head (the converter drops it from each page)."""
-    return f"# {BOOK}\n" + md
+    """book.md with the book's running head as each page's chapter heading again (the converter drops it as page
+    furniture): each page is a chapter, its stat tables paired within it (_prep joins a page's lead block to the item
+    before it)."""
+    return re.sub(r"(?m)^(<!-- page \d+ -->)$", rf"\1\n# {BOOK}", md)
 
 
 def match(meta, md_head):

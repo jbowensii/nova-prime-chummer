@@ -144,8 +144,13 @@ class GameInformationShapesTest(unittest.TestCase):
                          [("adeptpowers", "Quick Toss", {"cost": "0.25", "perLevel": "true"})])
 
     def test_toxin_lines_make_gear(self):
+        bs = [_b("Made-Up Venoms", 3), _b("Glow Toad Venom", 4, "", {"Vector": "Injection", "Speed": "1 minute", "Power": "6"})]
         r, out = sections.Reader(), []
-        for b in [_b("Made-Up Venoms", 3), _b("Glow Toad Venom", 4, "", {"Vector": "Injection", "Speed": "1 minute", "Power": "6"})]:
+        for b in bs:
+            out += r.feed(b, 10)
+        self.assertEqual(out, [])  # (off unless the general recipe reads the book: the core rulebook prices its own)
+        r, r.toxins = sections.Reader(), True
+        for b in bs:
             out += r.feed(b, 10)
         self.assertEqual([(f.kind, f.name, f.attrs) for f in out], [("gear", "Glow Toad Venom", {"category": "Made-Up Venoms"})])
 

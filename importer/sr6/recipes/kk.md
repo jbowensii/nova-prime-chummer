@@ -6,10 +6,10 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
 ## Item shapes
 
 - The running head (KRIME KATALOG, 43 pt) and the page number (26 pt) are page furniture the converter drops (importer
-  v4: a top-band line repeated on most pages). Recipe hints: `HEADING_LEVELS` keeps the book's own sizes at the
-  levels it had (27 pt level 2, 21 pt level 4, 15 pt level 5), and `prepare_md` puts the running head back once, as
-  the book's one chapter heading. An item whose stats print on the next page runs on in its block (no running head
-  breaks it now); a page's lead block opening with the running head is still joined to the item before it.
+  v4: a top-band line repeated on most pages). Recipe hints: `HEADING_LEVELS` keeps the book's own sizes at the levels
+  they had (27 pt level 2, 21 pt level 4, 15 pt level 5), and `prepare_md` puts the running head back as each page's
+  chapter heading: each page is a chapter in regroup's output (its list tables pair within the page). A page's lead
+  block continues the item before it (an item whose stats print on the next page).
 - Weapons and vehicles: a level-2 heading per item, its text, then a caption naming the edition (`<item>: sr5 stats
   <item>: sr6 stats`, sometimes at the end of a comment line) over one table holding both editions' columns: the SR6
   half is the columns after the first COST. A caption naming SR6 alone (`<item>: sr6 stats`) is followed by its own
