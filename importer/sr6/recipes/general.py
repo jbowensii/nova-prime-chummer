@@ -323,13 +323,26 @@ def _slash_names(name):
     return [left, " ".join(head[:k] + [right])]
 
 
-_MODULES = re.compile(r"(?:adult\s+)?life\s+modules?", re.I)
-_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*", re.I)
+_MODULES = re.compile(r"(?:new\s+)?(?:adult\s+|event\s+)?life\s+modules?", re.I)
+# a grant: a bold label (the companion's), or a bulleted one (an errata's: `• Contact Points: 4`)
+_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*|^\s*•\s*(?:choose \w+|contact points|resources):",
+                    re.I | re.M)
+
+
+def _unbold(s):
+    return re.sub(r"\*\*", "", s or "").strip()
+
+
+def _bare(s):
+    """A line without its bold and a trailing colon (`**Adult Life Modules:**`)."""
+    return _unbold(s).rstrip(":").strip()
 
 
 def _title_line(s):
-    return bool(s) and s[0].isupper() and len(s.split()) <= 5 and s[0] not in "•*#|>" and "," not in s \
-        and not re.search(r"[.;!?-]$", s)
+    # (an `Event:` kicker on the title's own line: `Event: You had Fifteen Minutes of Fame`)
+    words = len(re.sub(r"^Event:\s*", "", s or "").split())
+    return bool(s) and s[0].isupper() and words <= (6 if s.startswith("Event:") else 5) and s[0] not in "•*#|>" \
+        and "," not in s and not re.search(r"[.;!?-]$", s)
 
 
 def _modules(bs):
@@ -356,21 +369,28 @@ def _modules(bs):
             level = b.level
         text = b.text.splitlines()
         at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
-            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(ln.strip())), None)
+            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
         if at is not None:
             lines, page, on = lines + [""] + text[at:], page or b.page, True
     out, cur, name = [], [], []
     i = 0
     while i < len(lines):
-        s = lines[i].strip()
-        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)):
+        s = _unbold(lines[i])
+        if _MODULES.fullmatch(_bare(s)):  # (a second list's line, `New Event Life Modules`: no title)
+            if cur and name and any(_GRANT.search(c) for c in cur):
+                out.append((" ".join(name), "\n".join(cur), page))
+            name, cur, i = [], [], i + 1
+            continue
+        # (a title set in bold starts a module after lines with no grant too: an errata's `Student Athlete: Use …`)
+        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)
+                               or re.fullmatch(r"\*\*[^*]+\*\*", lines[i].strip())):
             j = i
-            while j < len(lines) and _title_line(lines[j].strip()):
+            while j < len(lines) and _title_line(_unbold(lines[j])) and not _MODULES.fullmatch(_bare(lines[j])):
                 j += 1
             if j < len(lines) and lines[j].strip() and not lines[j].lstrip().startswith(("•", "**")) and j - i <= 3:
                 if cur and any(_GRANT.search(c) for c in cur):
                     out.append((" ".join(name), "\n".join(cur), page))
-                name, cur, i = [lines[k].strip() for k in range(i, j)], [], j
+                name, cur, i = [_unbold(lines[k]) for k in range(i, j)], [], j
                 continue
         cur.append(lines[i])
         i += 1

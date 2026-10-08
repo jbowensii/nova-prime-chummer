@@ -96,9 +96,10 @@ def shorter_name(row, heading):
 
 
 def distinct(name):
-    """A name distinctive enough to be an alias: two words or more, or one with a digit (not `Fragmentation`)."""
+    """A name distinctive enough to be an alias: two words or more, or one with a digit or an inner capital
+    (`AutoVoice`; not `Fragmentation`)."""
     w = norm(name).split()
-    return len(w) > 1 or any(c.isdigit() for c in name)
+    return len(w) > 1 or any(c.isdigit() for c in name) or bool(re.search(r"[a-z][A-Z]", name))
 
 
 def other_name(row, heading):

@@ -173,6 +173,9 @@ def match(cl6, ours):
         hits = [o for o in hits if share[id(o)] == max(share.values())]  # (`Ritual Spellcasting`, not `Spellcasting`)
         # (the rows on the record's own page when some are: `Assault Cannon HEX` is p. 140's row, not p. 147's)
         hits = [o for o in hits if near(o["page"], c["page"])] or hits
+        # (a record named with a rating: the rows printing that rating when some do, words() leaving it out)
+        if rt := re.search(r"(?i)\brating\s*(\d+)", c["name"]):
+            hits = [o for o in hits if re.search(rf"(?i)\brating\s*{rt.group(1)}\b", o["name"])] or hits
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)

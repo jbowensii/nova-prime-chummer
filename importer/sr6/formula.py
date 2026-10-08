@@ -598,6 +598,11 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
         if f == "cost" and v is not None and (p := plain(v, f)) is not None and (tu := text_unit(text)):
             out.append(_formula(f, f"Q*{fmt(p)}", {"unit": tu[0]}, page))  # its description prices it per unit
             continue
+        if v is not None and re.search(r"\d,\d", _clean(v)):
+            # (a thousands group of other than three digits, `1,00¥`: a misprint, read as its digits but the user's
+            # to settle)
+            out.append(("issue", {"field": f, "code": "unreadable", "page": page}, f"printed: {_short(v)}"))
+            continue
         if v is None or _DASH.fullmatch(v) or plain(v, f) is not None or band(v.strip("[] ")):
             continue  # (a range, `1–6`, is the rating or capacity the item comes in)
         got = read(v, f)

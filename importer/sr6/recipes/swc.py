@@ -68,7 +68,7 @@ def _plain(text):
 _HIDDEN = re.compile(r"^([A-Z][\w/' -]+?)\s*[\[(]\s*(\w+)\s+only\s*[\])]$")  # `Clairvoyant [ Awakened only ]`
 _ONLY = re.compile(r"\s*[\[(]\s*(\w+)\s+only\s*[\])]", re.I)
 _ITEM = re.compile(r"(?=Choose (?:one|two|three|an? \w+):|(?<!: )\+\d+ to |Resources:|Contact Points:|Contact Types:|"
-                   r"Knowledge skills?\b|One rank in|Option:)")
+                   r"Knowledge [Ss]kills?\b|One rank in|Option:)")
 
 
 def _split_hidden(name, text):
@@ -92,6 +92,7 @@ def _options(word):
     w = re.sub(r"^(?:or|and)\s+", "", norm(re.sub(r"\(.*?\)", "", word)))
     if m := re.fullmatch(r"(?:or\s+)?\+?\s*([\d,]+)\s*nuyen", word.strip()):
         return [f"nuyen:{m.group(1).replace(',', '')}"]
+    w = re.sub(r"^\d+\s+(?=[a-z])", "", w)  # (an errata's `+1 Con or +1 Influence`: each option its own bonus)
     if re.fullmatch(r"(?:your )?(?:other )?drain attribute", w):  # Willpower and the tradition's other one
         return ["log", "int", "cha"]
     if w in ATTRS or w in SKILL_IDS or w + "s" in SKILL_IDS:
@@ -152,13 +153,15 @@ def _module_grants(name, text, page, report):
             if c := _choice(it, name, page, report):
                 kids.append(("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None))
             continue
-        if m := re.match(r"Resources:\s*\+?([\d,]+)\s*nuyen", it):
+        if m := re.match(r"Resources:\s*\+?([\d,]+)(?:\s*(?:nuyen|¥))?", it):  # (an errata's `Resources: +75,000`)
             add("nuyen", int(m.group(1).replace(",", "")))
         elif m := re.match(r"Contact Points:\s*(\d+)", it):
             add("contactPoints", int(m.group(1)))
         elif m := re.match(r"Contact Types:\s*(.*)", it):
             types = [norm(t) for t in re.split(r",\s*|\s+or\s+|\s+and\s+", m.group(1).strip(" ."))]
             types = [t for t in types if t]
+            # (the last type run into the prose after the list: `Media Add a negative quality …`)
+            types = [t if t in CONTACT_TYPES or t.split()[0] not in CONTACT_TYPES else t.split()[0] for t in types]
             if types and types[0] != "any":
                 bad = [t for t in types if t not in CONTACT_TYPES]
                 for t in bad:

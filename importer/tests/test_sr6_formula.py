@@ -110,6 +110,9 @@ class ChildrenTest(unittest.TestCase):
         self.assertEqual(k, [("issue", {"field": "cost", "code": "unreadable", "page": 12}, "printed: Ask the troll")])
         k = self.kids("gear", {"category": "x", "avail": "2", "cost": "900/1800"})
         self.assertEqual(k[0][1]["code"], "ambiguous")
+        # (a misprinted thousands group: no number, even one the app would read)
+        k = self.kids("gear", {"category": "x", "avail": "2", "cost": "1,00¥"}, readable=lambda v: True)
+        self.assertEqual(k, [("issue", {"field": "cost", "code": "unreadable", "page": 12}, "printed: 1,00¥")])
         self.assertEqual(self.kids("qualities", {"kind": "positive"})[0][1], {"field": "karma", "code": "missing", "page": 12})
 
     def test_a_plain_entry_gets_nothing(self):

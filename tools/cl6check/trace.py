@@ -510,11 +510,13 @@ def run(corpus, cl6, verdicts=None):
         for b, e in ents:
             groups.setdefault((id(b), e["kind"], match.n1(e["name"])), []).append(e)
         far, exact = set(), {match.n0(x) for x in names}
-        rated = re.search(r"(?i)\brating\s*\d", c["name"])
+        rated = re.search(r"(?i)\brating\s*(\d+)", c["name"])
         for es in groups.values():
             # (a record named with its rating: the row printing that name, `X Rating 1`, not `X Rating 2`, which
-            # words() reads alike)
-            if rated and 0 < len(ex := {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
+            # words() reads alike; or the row printing that rating, `Cybereyes (Rating 6)` for `Cybereyes, Advanced
+            # Rating 6`)
+            if rated and 0 < len(ex := {e["id"] for e in es if re.search(rf"(?i)\brating\s*{rated.group(1)}\b", e["name"])}
+                                 or {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
                 far |= {e["id"] for e in es if e["id"] not in ex}
             elif len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
                 d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}

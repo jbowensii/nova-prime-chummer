@@ -80,6 +80,16 @@ The recipe's map stays: measured, the general reader agrees on 41 of 46 tables. 
 - Stat matching (cl6check): Commlink6 names an endosymbiont variant and a fuel row its own way; their stats find them (2 renames).
 - Transgenic infusions (importer v4): the derived list's `A and B` of two-word halves is two items (`chemical glands and exhalation spray`), a parenthetical listing several adds them (`(corrosive spit and fangs,)`, its stray comma the list's), `webbed hands and feet` stays one: seven more derived items. Commlink6 flattens some of their rated prices to Rating 1 (corrosive spit).
 
+## Importer v5
+
+- Corpus pass: a grouped row the text describes under a bold run-in naming it another way gets that run-in as a
+  search name: `Endo-Mender` for `Endosymbionts (Mender)` (the group's head word before the part), `NDE` for
+  `Genotype Enhancement (NDI)` (a one-letter typo of an all-capital name).
+- A price whose thousands group isn't three digits (`Blubber` `1,00¥`, `Stinger (Tiny)` `5,00¥`) carries an
+  `unreadable` issue, its digits read meanwhile (suggested-overrides.md).
+- Left: `Frog Tongue` and `Increased Myelination` (no table row), `Eye-Light System` (its row named `Light emitters`),
+  the transgenics named another way, `Puppet Cyberware` (a rule heading): decisions-pending.md.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Body Shop-Core Augmentation Book-CAT28007.pdf>" --out "%TEMP%\bs-check"
