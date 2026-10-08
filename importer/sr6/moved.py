@@ -9,7 +9,10 @@ one match wins:
 1. the same words, once a rating range printed in the name ('(1-4)', '(Rating 1-6)'), case, punctuation and a plural
    s are set aside ('Spy Tag' -> 'Spy Tags', 'X (Y (1-4))' -> 'X (Y)', 'APDS' gear -> 'APDS' ammunition type);
 2. the new name ends with the old one's words (a maker's name added: 'GE Vindicator' -> 'Ares-GE Vindicator');
-3. the old name abbreviates the new one's words ('Laser mic' -> 'Laser microphone').
+3. the old name abbreviates the new one's words ('Laser mic' -> 'Laser microphone');
+3a. the old name is the new one plus a qualifier the new reads as a field ('Ascalon Rail Gun (Assault Cannon)' ->
+   'Ascalon Rail Gun', its type now `Assault Cannon`);
+4. an old name naming several (`A and B`, `A, B`) whose every part is a new entry's name: the old id goes to the first.
 A tier matching several new entries keeps those of the old entry's category, when that leaves one (`Armor` in the
 cyberlimb accessories and in another accessory category: two items, the second id now naming its category; a category
 renamed with its title, `cyberlimb-accessories` -> `Cyberlimb accessory`, compares by its words).
@@ -42,7 +45,8 @@ def _abbrev(old, new):
     return i == len(old) and old != new
 
 
-TIERS = (lambda o, n: o == n, lambda o, n: len(n) > len(o) and n[-len(o):] == o, _abbrev)
+TIERS = (lambda o, n: o == n, lambda o, n: len(n) > len(o) and n[-len(o):] == o, _abbrev,
+         lambda o, n: len(o) > len(n) and o[:len(n)] == n)
 
 
 def _cat(c):
@@ -103,6 +107,10 @@ def carry(prev, files):
                 if hits:
                     target = hits.pop() if len(hits) == 1 else None
                     break
+            if target is None:  # (a heading naming two read as two: the first of them)
+                parts = [words(p) for n in names for p in re.split(r"\s+and\s+|\s*,\s*", n) if words(p)]
+                found = [next((k for k, _, nws in added if p in nws), None) for p in parts]
+                target = found[0] if len(parts) > 1 and all(found) else None
             if target is None:
                 continue
         give.setdefault(target, []).extend(([] if old == target else [old]) + olds)

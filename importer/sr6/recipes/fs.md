@@ -23,6 +23,22 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
 - Weapon modifications, melee weapon modifications and weapon accessories: weapons, their level-2 section the category
   (as the core rulebook files its accessories).
 - Tac-apps (HONING YOUR EDGE): an `APP AVAIL COST` table, gear.
+
+## Recipe hints of the book-fs round (structure only)
+
+- A heading naming several items (`… Rhino, Behemoth, Juggernaut`, `… Mod 1 and Mod 2`): each lower-case box under it
+  is the item its title names, spelt as the heading spells it, the heading's text theirs (`_boxes`).
+- A WEAPONS RACK item whose few TYPE rows sit in its text (`Paint Grenades`: Standard, Large) takes them as its box.
+- A SUIT UP section pointing to its stats elsewhere (`(stats on p. 55)`, Vashon Island's later suits): the rows of the
+  armor list on that page whose first word its text prints as a name, and no entry has, are its suits (`_pointed`).
+- A box of its item's own band over priced WEAPON rows (the Underbarrel Weapon Attachment Mount): each row an item
+  grouped under the mount (`_hosted`).
+- The chapter's list of armor modifications reprints the MEMS section's own list: a reprinted row is no second entry.
+- Sentence-priced add-ons and supplies (crb `add_ons`, general): the Pulse's and the laser rifles' batteries, the
+  Colt Agent Special's laser sight, the M-24's arm-brace (its Near/Medium +1 an `item:ar` effect), the tactical
+  hammer's knife/spike head (an accessory of both hammers).
+- The p. 152 summary (PDF 153 on, `END_PAGE`) reprints the chapters' tables: left out, the chapters' rows are the
+  entries (the Heritage Line is p. 16's).
 - Qualities (VIOLENT ENDS): level-3 headings with `Bonus: N Karma` (Phobia prints one a rarity, wrapped: karma the
   lowest, karmaMax the highest); a `(Behavior, 1 to 6)` tag line reads as a heading
   of its own and is joined back. The quality paths' steps have no karma: rules.

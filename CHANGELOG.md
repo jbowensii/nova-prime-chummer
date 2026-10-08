@@ -1,5 +1,39 @@
 # Release notes
 
+## 0.10.4 — 2026-10-08: Firing Squad and brands
+
+Import the books again (Books → **Re-import all**) to get these. Saved runners keep working: an entry the new
+reading renames keeps its old id as an alias.
+
+Measured against Commlink6 on a clean import of all 74 books: completeness 95.93% (4,197 of 4,375 records), accuracy
+96.60% (12,135 of 12,562 fields); 0.10.3 was 95.07% / 96.52%. Firing Squad went from 90.93% / 94.08% to 99.49% /
+95.20%.
+
+- **Brands and versions.** An item can come in several versions, branded and generic, with different stats, and the
+  name tells them apart. A table titled with its heading's own words lists that heading's items; when the heading
+  prints a maker first, the rows are a brand's and are named with it: Zoé Heritage Bearded Axe, Zoé Heritage Tonfa
+  (searchable as Heritage Tonfa and Zoé Tonfa), the brand their maker, while the generic Tonfa stays its own item.
+  Rows of plain words under such a title are the heading's variants: Bayonet (Standard), Bayonet (Retractable).
+- **Configurations.** An item whose box prints unpriced rows under its own (the Dassault Alpenstock's spear and
+  knife, the Krime Thumper's shotgun) has them as configurations: each its own stats, linked to the item, never
+  bought apart.
+- **Reprints.** A book's summary tables at the back reprint its chapters' tables and make no second entries; a list
+  reprinting a section's own list (Firing Squad's MEMS gear) doesn't either.
+- **Quantity and per-unit prices.** "75¥ (per individual blade)" prices by the count bought, with a note when the
+  book gives no maximum.
+- **Accessories and supplies priced in a sentence.** "Batteries cost 100¥ each", "a laser sight (additional 50
+  nuyen)", "an arm-brace for an additional 100 nuyen" are items now, linked to the item they belong to; what the
+  text says an accessory does to its item is read as its effect (the arm-brace's +1 Near and Medium Attack Ratings).
+  A row priced "additional 100¥" (the tactical hammer's knife/spike head) is an accessory of the item's other
+  versions.
+- **Typo search names.** A name printed with a letter three times keeps its printed spelling and is also found
+  under the corrected one (Actioneeer Business Clothing: Actioneer).
+- **Firing Squad, closer to the book.** The rEVOlution Arms Rhino and Behemoth and the Ingram White Knight Mod 1 and
+  Mod 2 (boxes under a heading that names several), the underbarrel weapons, the paint grenades, Vashon Island's
+  later suits (stats on p. 55), the new edge action Yielding Force, the Pacifist and No Code qualities, the Knight
+  Errant and Lone Star Tactical styles, rEVO rounds as an ammunition type, footnotes under a weapon's stat box as
+  its cells' notes, and rows the converter split over two lines.
+
 ## 0.10.3 — 2026-10-07: closer to the books
 
 **Every book re-converts on its next re-import** (the converter is now sr6-6): use Books → **Re-import all** to get

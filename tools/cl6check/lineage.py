@@ -367,7 +367,10 @@ def observe(corpus, kinds, names, home=None):
                 sections += from_section(b, idx[ln.no])
             if ln.level and text:
                 out += from_block(b, idx[ln.no], names)
-                if ln.level <= 2:
+                # (a card titled with the object's name, maybe a maker or nickname more: not one whose title only holds
+                # the name among other words, `onotari arms rhino Hunter A/B` for `Rhino`)
+                if ln.level <= 2 and any(2 * len(match.toks(n) & match.toks(ln.heading)) >= len(match.toks(ln.heading))
+                                         for n in names):
                     out += from_card(b, idx[ln.no])
             elif ln.cells() and text:
                 h0 = ln.header[0].upper()

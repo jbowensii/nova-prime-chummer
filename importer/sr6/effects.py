@@ -76,3 +76,27 @@ def read(text):
             seen.add(k)
             uniq.append(x)
     return uniq
+
+
+_BANDS = ("close", "near", "medium", "far", "extreme")
+_AR = re.compile(r"\b(?:increase|raise|boost|improve)s?\s+(?:the\s+)?((?:(?:close|near|medium|far|extreme)(?:,\s*|\s+and\s+|\s+))+)"
+                 r"attack\s+ratings?\s+by\s+(\d+)\b", re.I)
+
+
+def accessory(text, thing):
+    """[(tag, attrs, None)]: what a sentence of `text` naming the accessory (its last word: `arm-brace`) says it does to
+    the item it fits: `increases the Near and Medium Attack Ratings by 1` -> <effect target="item:ar" op="add"
+    value="0,1,1,0,0">, one value a range band; low confidence when the sentence sets a condition."""
+    word = (thing.split() or [""])[-1].lower()
+    out = []
+    for s in sentences(text):
+        if not word or word not in s.lower():
+            continue
+        for m in _AR.finditer(s):
+            named = {b for b in _BANDS if re.search(rf"\b{b}\b", m.group(1), re.I)}
+            value = ",".join(m.group(2) if b in named else "0" for b in _BANDS)
+            x = ("effect", {"target": "item:ar", "op": "add", "value": value,
+                            **({"confidence": "low"} if _CONDITION.search(s) else {})}, None)
+            if x not in out:  # (a note printed twice: in the text and as a label)
+                out.append(x)
+    return out

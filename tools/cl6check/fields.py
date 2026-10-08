@@ -266,7 +266,8 @@ def up_to(s):
 
 
 def bands(s):
-    """Five attack-rating bands: '10,10,8,,' and '10/10/8/—/—' alike; a parenthetical or footnote star dropped."""
+    """Five attack-rating bands: '10,10,8,,' and '10/10/8/—/—' alike; a parenthetical or footnote mark (`*`, `†`)
+    dropped."""
     parts = re.split(r"[/,]", re.sub(r"\([^)]*\)", "", s or ""))
-    parts = [re.sub(r"[—–\-*\s]", "", x) for x in parts]
+    parts = [re.sub(r"[—–\-*†‡\s]", "", x) for x in parts]
     return "/".join((parts + [""] * 5)[:max(5, len(parts))])

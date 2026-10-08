@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, formula, regroup, resolve, sections, tables
+from importer.sr6 import KINDS, NS, archetypes, categories, effects, formula, regroup, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -294,6 +294,7 @@ class _Catalog:
         # the tables the catalog rows come from (categories.py): index -> {title, section, header, page}; the open one
         self.tables, self._table = {}, None
         self.idcat = {k: {} for k in KINDS}  # id -> its entry's category: a name another category repeats
+        self.idgrp = {k: {} for k in KINDS}  # id -> its entry's group (a name another group of the category repeats)
 
     def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=(), cid=None):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
@@ -301,22 +302,26 @@ class _Catalog:
         i, n = base, 2
         if kind == "rules" and i in self.ids[kind] and parent:
             i = base = f"{parent}-{base}"
-        cat = (attrs or {}).get("category")
+        cat, grp = (attrs or {}).get("category"), (attrs or {}).get("group")
         if kind in ROW_KINDS and cat and i in self.ids[kind] and self.idcat[kind].get(i) != cat:
             # the same name in another category is another item (a cyberlimb's Armor, a cybereye's): its id names it
             i = base = f"{slug(cat)}.{base}"
+        elif kind in ROW_KINDS and grp and i in self.ids[kind] and self.idgrp[kind].get(i) != grp:
+            i = base = f"{slug(grp)}.{base}"  # (or in another group of its category: a line's Tonfa, Zoé Heritage Line's)
         while i in self.ids[kind]:
             i, n = f"{base}-{n}", n + 1
         if n > 2 and kind != "rules":  # repeated rule subheadings (Advantages, Step 1) are normal
             self.report.append({"kind": "duplicate-id", "file": f"{kind}.xml", "id": i, "name": name, "page": page})
         self.ids[kind].add(i)
-        self.idcat[kind][i] = cat
+        self.idcat[kind][i], self.idgrp[kind][i] = cat, grp
         for r in self.pending:
             if (r["file"], r["column"]) not in self.cols:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
         aliases = [*aliases, *series_models(name, text)]
+        if (fixed := _TRIPLE.sub(r"\1\1", name)) != name:
+            aliases.append(fixed)  # a letter printed three times (`Actioneeer`): the spelling as a search name, never a rename
         al = [a for a in dict.fromkeys(aliases) if a and norm(a) != norm(name)]  # another name it is printed under
         e = {"id": i, "name": name, "page": page, "attrs": attrs or {},
              "children": list(children) + [("alias", {}, a) for a in al], "row": row or {}, "where": self.where,
@@ -355,6 +360,7 @@ class _Catalog:
         if f.block is not None and f.kind in HEADERS and HEADERS[f.kind]:
             fl = self.fields(f.kind, _text_stats(f.block, HEADERS[f.kind]), f.page)
             fl.pop("prose", None)
+            fl.pop("_notes", None)
             a = {**fl, **a}
             self.pending = []
         if f.kind == "qualities" and a.get("karma") is not None:
@@ -629,6 +635,8 @@ class _Catalog:
                 attrs.update(skill="Close Combat", spec=spec)  # its TYPE (`Blade`): the specialization it is used with
             if b.maker:
                 attrs["maker"] = b.maker  # a product's configuration row: its title's maker
+            if b.config_of:
+                attrs["configOf"] = slug(b.config_of)  # a shape the item takes (shapes.configuration_rows)
             for n, g in self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
                         and re.fullmatch(r"\d+\s*[–-]\s*\d+", g.get("capacity", "")):
@@ -705,13 +713,14 @@ class _Catalog:
         Rating)."""
         f = self.fields("npcs", b, page)
         f.pop("prose", None)
+        notes = [("note", {"field": a}, t) for a, t in f.pop("_notes", [])]  # its cells' footnotes
         if len(f) < 3:
             return False
         lists = {LISTS[k.lower()]: v for k, v in b.labels.items() if k.lower() in LISTS and v}
         listed = {k for k in b.labels if k.lower() in LISTS or k == "Archetype"}
         self.add("contacts", b.name, page, {"archetype": b.labels.get("Archetype", b.name)}, (), _text(b, listed))
         self.add("npcs", b.name, page, {"group": "Contact", **f},
-                 [(t, {}, lists[t]) for t in dict.fromkeys(LISTS.values()) if t in lists], _text(b, listed))
+                 [(t, {}, lists[t]) for t in dict.fromkeys(LISTS.values()) if t in lists] + notes, _text(b, listed))
         return True
 
     @staticmethod
@@ -883,7 +892,14 @@ def group_name(head):
     """A group row's name as its rows' group: its last word singular, the rest as printed (`DocWagon contracts` ->
     `DocWagon contract`, `Slap patches` -> `Slap patch`)."""
     ws = head.split()
-    return " ".join(ws[:-1] + [categories.singular(ws[-1].lower())]) if ws else head
+    if not ws:
+        return head
+    last = categories.singular(ws[-1].lower())
+    if last == ws[-1].lower():
+        last = ws[-1]  # (as printed: `Zoé Heritage Line`, `System (MEMS)`)
+    elif ws[-1][:1].isupper():
+        last = last[:1].upper() + last[1:]
+    return " ".join(ws[:-1] + [last])
 
 
 def grouped_names(name, group):
@@ -941,7 +957,7 @@ def supply_aliases(name, weapon):
     return []
 
 
-_MULTIPLE = re.compile(r"^\s*(?:x\s*\d+(?:\.\d+)?|\+\s*\d+\s*%)\s*$", re.I)
+_MULTIPLE = re.compile(r"^\s*(?:x\s*\d+(?:\.\d+)?|\+\s*\d+\s*%)\s*¥?\s*$", re.I)  # (`x2¥`: a stray yen sign)
 _AMMO_WORDS = re.compile(r"\b(?:ammo|ammunition|rounds?|bolts?|arrows?|warheads?|slugs?|shells?|bullets?)\b", re.I)
 
 
@@ -980,6 +996,69 @@ def sentence_items(bs, offset):
             attrs = {"category": "Foci" if base.lower().endswith("focus") else "", **{f: f"As {base}" for f in flds}}
             out.append(("gear", name, page, {k: v for k, v in attrs.items() if v}, kids, m.group(0).strip(". ")))
     return out
+
+
+# (owner, 2026-10-08) a supply priced in an item's text: `Batteries cost 100¥ each`
+_SUPPLY = re.compile(r"(?:^|[.!?:]\s+)(?:The\s+)?([A-Z][a-z]+(?:\s+[a-z]+){0,2}?)\s+costs?\s+([\d,]+)\s*(?:¥|nuyen)\s+each\b")
+# an add-on priced in an item's text: `a proprietary laser sight (additional 50 nuyen)`, `“stabilizing arm-brace” for an
+# additional 100 nuyen`
+_ADD_ON = re.compile(r"\b(?:an?|the)\s+(?:[a-z-]+\s+){0,3}?([a-z][\w-]*(?:\s+[a-z][\w-]*){0,2})\s*\(\s*(?:an\s+)?additional\s+"
+                     r"([\d,]+)\s*(?:¥|nuyen)\s*\)"
+                     r"|[“\"]([a-z][\w-]*(?:\s+[a-z][\w-]*){0,3})[”\"]\s+for\s+an\s+additional\s+([\d,]+)\s*(?:¥|nuyen)")
+_ADDITIONAL = re.compile(r"^\s*(?:an?\s+)?additional\s+([\d,]+)\s*¥?\s*$", re.I)
+
+
+_TRIPLE = re.compile(r"([a-z])\1{2,}")  # no English word prints a letter three times (lower case: not `III`, `AAA`)
+
+
+def _flat(text):
+    return re.sub(r"(?<=[a-z])-\s+(?=[a-z])", "", " ".join((text or "").split()))  # (`sta- bilizing`)
+
+
+def add_ons(cat):
+    """Supplies and accessories an item's own text prices (owner, 2026-10-08), each linked to the item:
+    - `Batteries cost 100¥ each`: gear `<item> battery` (`Battery for <item>`), `supplyOf` the item;
+    - `a proprietary laser sight (additional 50 nuyen)`, `“stabilizing arm-brace” for an additional 100 nuyen`: an
+      accessory `<item> <add-on>`, `accessoryOf` the item, what the text states it does to the item its effects
+      (effects.accessory);
+    - a box row priced `additional 100¥` (`Tactical hammer (knife/spike)`) is an accessory of the box's other rows
+      (`Tactical hammer (short)`, `(long)`): its own price the addition.
+    Their availability the book doesn't print: an issue."""
+    hosts = [(k, e) for k in sorted(ROW_KINDS) for e in cat.entries[k] if not e["attrs"].get("supplyOf")]
+    for kind, e in hosts:
+        m = _ADDITIONAL.match(str(e["attrs"].get("cost") or ""))
+        if m and "(" in e["name"]:
+            stem = e["name"][:e["name"].index("(")].strip().lower()
+            sib = [x["id"] for x in cat.entries[kind] if x is not e and x["name"].lower().startswith(stem + " (")
+                   and re.fullmatch(r"[\d.]+", str(x["attrs"].get("cost") or ""))]
+            if sib:
+                e["attrs"].update(cost=m.group(1).replace(",", ""), accessoryOf=" ".join(sib))
+                e["children"] = [c for c in e["children"] if not (c[0] == "issue" and c[1].get("field") == "cost")]
+    seen = {norm(e["name"]) for k in ROW_KINDS for e in cat.entries[k]}
+    for kind, e in hosts:
+        text = _flat("\n".join([e.get("text") or "", *[str(v) for v in (e.get("row") or {}).values()]]))
+        page, label = e["page"], e["name"]
+        for m in _SUPPLY.finditer(text):
+            one = categories.singular(m.group(1).lower())
+            name = f"{label} {one}"
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            cat.add("gear", name, page, {"category": "Supply", "cost": m.group(2).replace(",", ""), "supplyOf": e["id"]},
+                    [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it")],
+                    m.group(0).strip(" .:"), aliases=[f"{one[:1].upper()}{one[1:]} for {label}"])
+        for m in _ADD_ON.finditer(text):
+            thing, price = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+            name = f"{label} {thing}"
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            fx = effects.accessory(text, thing)
+            cat.add(kind if kind == "weapons" else "gear", name, page,
+                    {"category": "Weapon accessory" if kind == "weapons" else "Accessory",
+                     "cost": price.replace(",", ""), "accessoryOf": e["id"]},
+                    [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it"),
+                     *fx], m.group(0).strip(" .:"))
 
 
 def ammo_type(b):
@@ -1201,6 +1280,7 @@ def extract(regrouped, ctx=None, book=None):
     for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
         if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
             cat.add(kind, name, page, attrs, kids, text)
+    add_ons(cat)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):

@@ -269,14 +269,17 @@ class Corpus:
 
     def entries(self, kinds, names, home=None):
         """[(book, entry)] in book order: every catalog entry of these kinds printed under one of these names (or under a
-        row naming several: 'A/B'); when nothing prints them whole, the names without their parentheticals in the home
-        book's printings. With `home` (the object's book, see family()), once the home book catalogues it, another
+        row naming several: 'A/B'); when nothing prints them whole, a name `X (Y)` printed `Y X` (a brand: `Tonfa (Zoé
+        Heritage)`), else the names without their parentheticals in the home book's printings. With `home` (the object's book, see family()), once the home book catalogues it, another
         book's entry counts only under the object's own name (not an alias of it: a short alias names other things in
         other books) and in a kind the home book gives it (a vehicle mod is not the cyberware of the same name)."""
         out = self._find("n1", kinds, names)
         if home is not None and names:  # another book matches on the object's own name, not on an alias of it
             first = {match.n1(p) for p in match.split_names(names[0])}
             out = [(b, e) for b, e in out if family(b.belongs) == home or first & _keys(e, match.n1)]
+        if not out:  # (a brand put after the name, `Tonfa (Zoé Heritage)`, printed first: `Zoé Heritage Tonfa`)
+            first = [f"{m.group(2)} {m.group(1)}" for n in names if (m := re.fullmatch(r"(.+?)\s*\(([^()]+)\)", n or ""))]
+            out = [(b, e) for b, e in self._find("n1", kinds, first) if home is None or family(b.belongs) == home] if first else []
         if not out:
             out = [(b, e) for b, e in self._find("n2", kinds, names) if home is None or family(b.belongs) == home]
         if home is not None:

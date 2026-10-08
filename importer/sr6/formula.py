@@ -303,6 +303,8 @@ def read(text, field="cost"):
     takes (the caller decides whether that is an issue). The styles, in order:
       `2/6`, `2+2` seats (front and back)                     -> 2 + 6
       `2,000¥ (+500¥ per additional dart)`                    -> 2000 + 500*(Q - 1), unit dart
+      `75¥ (per individual blade)`                           -> Q*75, unit individual blade
+      `additional 100¥` (an add-on's price on its item's)     -> B + 100
       `300¥ per CF`, `250¥/pair`, `Rating x 200¥ per dose`    -> Q*300, Q*(R*200), unit CF / pair / dose
       `CF x 500`, `500 x CF`                                  -> Q*500, unit CF
       `… cost x the number of occupants`                      -> B*Q, unit occupant
@@ -331,6 +333,10 @@ def read(text, field="cost"):
     if m := re.fullmatch(rf"({_NUM})\s*\(\+\s*({_NUM})\s+for\s+({_WORDS})\)", t, re.I):
         oid = _slug(m.group(3))
         return f"{fmt(_n(m.group(1)))} + {fmt(_n(m.group(2)))}*opt.{oid}", {"options": [(oid, m.group(3).strip())]}
+    if m := re.fullmatch(rf"({_NUM})\s*¥?\s*\(\s*per\s+({_WORDS})\s*\)\s*\]?", t, re.I):  # `75¥ (per individual blade)`
+        return f"Q*{fmt(_n(m.group(1)))}", {"unit": _unit(m.group(2)), "each": True}
+    if m := re.fullmatch(rf"(?:an?\s+)?additional\s+({_NUM})\s*¥?", t, re.I):  # `additional 100¥`: added to its item's
+        return f"B + {fmt(_n(m.group(1)))}", {}
     if (m := re.fullmatch(rf"(.+?)\s*(?:\bper\b|/)\s*({_UNIT})", t, re.I)) and not _TIME.match(m.group(2)) \
             and not re.match(r"\d", m.group(2)) and (e := _arith(m.group(1))):
         if re.match(rf"(?:{_VAR_WORDS})\b", m.group(2), re.I):  # `1 per Rating point`, `2 per level`: by the rating
@@ -599,6 +605,9 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             expr, extra = got
             out.append(_formula(f, expr, extra, page))
             uses_r |= "R" in variables(expr)
+            if extra.get("each"):  # (bought by the unit, how many at most not printed: the user's to say, no guess)
+                out.append(("issue", {"field": "qty", "code": "missing", "page": page},
+                            f"the most one buys ({extra['unit']}) isn't printed"))
         elif two_values(v):
             out.append(("issue", {"field": f, "code": "ambiguous", "page": page}, f"two values printed: {_short(v)}"))
         elif not (readable and readable(v)):

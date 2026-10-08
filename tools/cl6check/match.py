@@ -1,8 +1,8 @@
 """Match Commlink6's canonical records to our entries of the same book, in stages: exact normalised name → loose
 (plural, punctuation, rating words) → without parentheticals → alias (Commlink6's group/maker and variant forms, our
-<alias>) → one of the names a row of ours prints together → same words in any order → one name's words inside the
-other's on a nearby page → fuzzy. Kind decides the pool; page proximity breaks ties. One record may match several
-entries (a parent and its variant rows). No hand map."""
+<alias>) → one of the names a row of ours prints together → same words in any order → a maker shortened to its
+initials → one name's words inside the other's on a nearby page → fuzzy. Kind decides the pool; page proximity breaks
+ties. One record may match several entries (a parent and its variant rows). No hand map."""
 import difflib
 import re
 
@@ -111,6 +111,14 @@ def bundled(name, o):
         and not any(_like(w, u) for w in key for u in own)
 
 
+def initials(o):
+    """Our entry's names as Commlink6 shortens a maker of two words or more to its initials: `VI Ace of Clubs` for
+    `Vashon Island (Ace of Clubs)`, `VI Steampunk` for `Steampunk` grouped under `Vashon Island`."""
+    pairs = [(m.group(1), m.group(2)) for n in _names(o) if (m := re.fullmatch(r"(.+?)\s*\(([^()]+)\)", n))]
+    pairs += [(g, o["name"]) for k in ("group", "maker") if (g := o.get("attrs", {}).get(k))]
+    return [f"{''.join(w[0] for w in head.split()).upper()} {rest}" for head, rest in pairs if len(head.split()) > 1]
+
+
 def match(cl6, ours):
     """[(record, [entries], stage)] for every Commlink6 record of one book; entries is [] when nothing matches."""
     by_kind = {}
@@ -129,6 +137,11 @@ def match(cl6, ours):
 
     stage("exact", lambda c: [n0(c["name"])], lambda o: [n0(n) for n in _names(o)])
     stage("loose", lambda c: [n1(c["name"])], lambda o: [n1(n) for n in _names(o)])
+    # (a brand Commlink6 puts after the name, `Tonfa (Zoé Heritage)`, that our name prints first: `Zoé Heritage Tonfa`;
+    # before the stage below, which would take the generic `Tonfa`)
+    stage("parenthetical first", lambda c: [n1(f"{m.group(2)} {m.group(1)}")
+                                            for m in [re.fullmatch(r"(.+?)\s*\(([^()]+)\)", c["name"] or "")] if m],
+          lambda o: [n1(n) for n in _names(o)])
     stage("no-parenthetical", lambda c: [n2(c["name"])], lambda o: [n2(n) for n in _names(o)])
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
     stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)])
@@ -136,6 +149,8 @@ def match(cl6, ours):
     # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke Rocket`)
     stage("split word-order", lambda c: [toks(c["name"])],
           lambda o: [toks(p) for n in _names(o) for p in split_names(n) if len(toks(p)) > 1])
+    stage("initials", lambda c: [n2(c["name"])] if re.match(r"[A-Z]{2,3}\s", c["name"]) else [],
+          lambda o: [n2(x) for x in initials(o)])
     for i, c in enumerate(cl6):  # Commlink6 abbreviating words (`Holdout/L.Pistol/Mach. Pistol`): each a prefix
         if found[i] is None and pool[i] and (rx := abbreviated(c["name"])):
             if hits := [o for o in pool[i] if any(rx.fullmatch(" ".join(_words_sep(n))) for n in _names(o))]:

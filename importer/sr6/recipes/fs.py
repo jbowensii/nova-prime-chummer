@@ -110,6 +110,9 @@ def kind(chapter, b, parent2):
     return None, None
 
 
+_SEVERAL = re.compile(r",|\band\b")  # a heading naming several items
+
+
 def _words(name):
     return {w[:-1] if w.endswith("s") else w for w in norm(name).split()}
 
@@ -119,20 +122,34 @@ def _boxes(bs):
     heading a section: SUIT UP's modifications) takes the description right before it when every word of its title
     is in that heading; it is named by the heading. A title still in lower case gets a capital. A SUIT UP heading
     whose stat table regroup left in its text (the table below the text: `CycleWear`) takes it as its box: a table of
-    its own has no name column and a few rows (a list of the chapter's armor or modifications isn't one)."""
-    out = []
+    its own has no name column and a few rows (a list of the chapter's armor or modifications isn't one); so does a
+    WEAPONS RACK heading whose few TYPE rows (`Paint Grenades`: Standard, Large) are its variants. A box under
+    a heading naming several items (`Rhino, Behemoth, Juggernaut`, `Mod 1 and Mod 2`) is the one its title names."""
+    out, several = [], None
     for b in bs:
         prev = out[-1] if out else None
-        if b.level in (3, 4) and not b.stats and b.row is None and norm(b.chapter) == "suit up" and \
+        if b.level in (3, 4) and not b.stats and b.row is None and norm(b.chapter) in ("suit up", "weapons rack") and \
                 (t := next(((h, r) for h, r in crb._tables(b.text) if 0 < len(r) <= _OWN_ROWS and h[0].upper() not in _NAME_COLUMNS
-                           and {"AVAIL", "COST"} & {x.upper() for x in h}), None)):
-            b = replace(b, type="item", stats=[dict(zip(t[0], r)) for r in t[1]])  # its stat table printed in its text
+                           and {"AVAIL", "COST"} & {x.upper() for x in h}
+                           and (norm(b.chapter) == "suit up" or h[0].upper() == "TYPE")), None)):
+            b = replace(b, type="item", stats=[dict(zip(t[0], r)) for r in t[1]  # its stat table printed in its text
+                                               if not re.search(r"[*†‡]", r[0]) and len(r[0].split()) <= 4])  # (not a garbled note)
         if b.type == "item" and (m := _TAG.fullmatch(b.name)) and prev is not None and not prev.text.strip():
             n = _UPTO.search(m.group(1))  # `(Behavior, 1 to 6)`: a tag line read as a heading
             out[-1] = replace(prev, name=prev.name + (f" (1 to {n.group(1)})" if n else ""),
                               tags=m.group(1)[:n.start()] if n else m.group(1), labels={**prev.labels, **b.labels},
                               text=b.text, stats=b.stats, row=b.row, header=b.header)
             continue
+        if b.type == "item" and b.label == b.name and b.row is None and b.stats and several is not None \
+                and several.chapter == b.chapter and _words(b.name) <= _words(several.name):
+            # one of the items a heading names (`rhino` under `rEVOlution Arms Rhino, Behemoth, Juggernaut`): named
+            # as the heading spells its words, the heading's description theirs
+            spelt = {norm(w): w for w in several.name.replace(",", " ").split()}
+            out.append(replace(b, name=" ".join(spelt.get(norm(w), w) for w in b.name.split()), tags=several.tags or b.tags,
+                               text="\n\n".join(t for t in (several.text.strip(), b.text.strip()) if t)))
+            continue
+        if b.level in (3, 4) and not b.stats and b.row is None and b.text.strip():
+            several = b if _SEVERAL.search(b.name) else None
         if b.type == "item" and b.label == b.name and b.row is None and b.stats and prev is not None \
                 and prev.chapter == b.chapter and not prev.stats and prev.row is None and prev.text.strip() \
                 and _words(b.name) <= _words(prev.name):
@@ -182,16 +199,42 @@ def _strays(bs):
     return bs
 
 
+def _hosted(bs):
+    """A box printing its item's own band (no name column: the Underbarrel Weapon Attachment Mount's `AVAIL COST`) over
+    priced rows a name column names (`WEAPON`: Shotgun, Grenade Launcher …): the item keeps its band, each row is an
+    item of its own, named as printed and grouped under the item it fits (`Underbarrel Weapon Attachment Mount:
+    Shotgun`)."""
+    first = lambda s: next(iter(s), "")  # noqa: E731
+    priced = lambda s: any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL"))  # noqa: E731
+    out = []
+    for b in bs:
+        rest = b.stats[1:]
+        if b.type != "item" or b.row is not None or len(rest) < 2 or first(b.stats[0]).upper() in _NAME_COLUMNS \
+                or not all(first(s).upper() in _NAME_COLUMNS - {"APP"} and s[first(s)] and priced(s) for s in rest):
+            out.append(b)
+            continue
+        out.append(replace(b, stats=b.stats[:1]))
+        for s in rest:
+            n = s[first(s)]
+            row = {"ITEM": n, **{h: v for h, v in s.items() if h != first(s)}}
+            out.append(replace(b, name=n, row=row, header=list(row), stats=[], label=b.name, group=b.name))
+    return out
+
+
 def _lists(bs):
     """A box listing several items, one a row: by a name column (`GEAR`: the armor modifications, whose descriptions
     print earlier under headings of their own) or by distinct TYPEs (`Mil-spec Armor` Light, Medium, Heavy) -> one
     block per row, named by its cell (a TYPE after the box's name). An item's own heading block gives it its text
-    and leaves the rules."""
+    and leaves the rules. A named row the chapter printed before as a row of its own (the MEMS section's own list,
+    reprinted in the chapter's list of armor modifications) is that row's: no second entry."""
     first = lambda b: next(iter(b.stats[0]), "") if b.stats else ""
     priced = lambda s: any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL", "AVAILABILITY"))
     listed = [b for b in bs if b.type == "item" and b.row is None and len(b.stats) > 1 and all(map(priced, b.stats))
               and first(b).upper() in _NAME_COLUMNS | {"TYPE"} and len({s.get(first(b)) for s in b.stats}) == len(b.stats)]
-    named = {norm(s[first(b)]): s[first(b)] for b in listed if first(b).upper() != "TYPE" for s in b.stats}
+    have = {(b.chapter, norm(b.name)) for b in bs if b.row is not None}
+    again = lambda b, n: first(b).upper() != "TYPE" and (b.chapter, norm(n)) in have  # noqa: E731
+    named = {norm(s[first(b)]): s[first(b)] for b in listed if first(b).upper() != "TYPE" for s in b.stats
+             if not again(b, s[first(b)])}
     descs = {}
     for b in bs:  # a heading whose words are all in a listed name (`Reactive Armor`: `Reactive Armor Plates`)
         k = next((k for k, n in named.items() if b.type == "section" and b.level == 3 and not b.stats
@@ -208,11 +251,47 @@ def _lists(bs):
         col = first(b)
         for s in b.stats:
             n = s[col] if col.upper() != "TYPE" else f"{b.name} ({s[col]})"
+            if again(b, n):
+                continue
             d = descs.get(norm(n))
             out.append(replace(b, name=n, stats=[{h: v for h, v in s.items() if h != col}], label="",
                                text=d.text if d else b.text, tags=d.tags if d else b.tags))
     return out
 
 
+_STATS_ON = re.compile(r"\(stats\s+on\s+p\.\s*(\d+)\)", re.I)
+
+
+def _squash(s):
+    return re.sub(r"(.)\1+", r"\1", " ".join(s.split()))  # (a letter printed twice too many: `Actioneeer`)
+
+
+def _pointed(bs):
+    """A SUIT UP section whose text points to its stats on another page (`(stats on p. 55)`: Vashon Island's later
+    lines) owns the rows of the armor list printed there (ITEM, DR …) whose first word its text prints as a name (with
+    its capital: `Steampunk`, not the list's `Armor Jacket`) and that no entry of the chapter has: one item each, named
+    as the row prints, grouped under the section."""
+    out = list(bs)
+    for i, b in enumerate(bs):
+        if norm(b.chapter) != "suit up" or b.level != 3 or not (pages := _STATS_ON.findall(b.text)):
+            continue
+        said = _squash(b.text)
+        have = {norm(x.name) for x in bs if x.chapter == b.chapter and (x.row is not None or x.stats)} | {
+            norm(v) for x in bs if x.chapter == b.chapter for s in x.stats for v in list(s.values())[:1]}  # (a box's rows)
+        rows = []
+        for t in bs:
+            if t.chapter != b.chapter or not any(abs(t.page - (int(p) + PAGE_OFFSET)) <= 1 for p in pages):
+                continue
+            for h, rs in crb._tables(t.text):
+                if h[0].upper() == "ITEM" and "DR" in {x.upper() for x in h}:  # (its page: the one pointed to)
+                    rows += [(int(pages[0]) + PAGE_OFFSET, h, r) for r in rs if r[0] and norm(r[0]) not in have
+                             and r[0][:1].isupper() and re.search(rf"\b{re.escape(_squash(r[0].split()[0]))}\b", said)]
+        j = next(k for k, x in enumerate(out) if x is b) + 1
+        out[j:j] = [replace(b, type="item", name=r[0], header=list(h), row=dict(zip(h, r)), stats=[], text="", label="",
+                            page=page, level=4, group=b.name) for page, h, r in rows]
+    return out
+
+
 def extract(regrouped, ctx=None):
-    return crb.extract([shapes.martial(b) for b in _lists(_boxes(_strays(blocks(regrouped))))], ctx, book=sys.modules[__name__])
+    bs = _lists(_hosted(shapes.configuration_rows(_boxes(_pointed(_strays(blocks(regrouped)))))))
+    return crb.extract([x for b in bs for x in shapes.martial_pair(shapes.martial(b))], ctx, book=sys.modules[__name__])
