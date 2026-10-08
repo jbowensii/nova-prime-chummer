@@ -74,7 +74,7 @@ export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRang
  *  Essence (× qty, accessories added), at its rating, quantity and grade: an entry's <formula> when it has one
  *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
  *  work out counts 0 and makes ok false (unpriced: the cost is the one); notes: what a formula had to assume. */
-export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
+export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules, host?: { cost: number; avail: number; essence: number }): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
   let cost: number, avail: number, essence: number, ok = true, unpriced = false
   const notes: string[] = [], perLine = new Set<string>()
   if (!x.id) { cost = x.cost ?? 0; avail = x.avail ?? 0; essence = x.essence ?? 0 }
@@ -82,7 +82,8 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost
     // ratingOf's rating, but none for an unrated item (a formula then notes it; a printed value reads at 1 as before)
     const e = entryOf(x, data), r = x.rating ?? ratingRange(e?.attrs.rating)[0], find = dataFind(data)
     const read = (attr: string) => {
-      const v = bookValue(e, attr, r, find, { Q: x.qty })
+      // (H: the item an add-on is fitted to, its line's own value: a material's `x5` of the ammunition it goes on)
+      const v = bookValue(e, attr, r, find, { Q: x.qty, H: host?.[attr as 'cost' | 'avail' | 'essence'] })
       if (!v.ok) { ok = false; if (attr === 'cost') unpriced = true }
       if (v.perLine) perLine.add(attr)
       notes.push(...v.notes.map(n => `${fieldName(attr)}: ${n}`))
@@ -97,8 +98,9 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules): { cost
   // a formula with Q in it already works out the whole line
   if (!perLine.has('cost')) cost *= x.qty
   if (!perLine.has('essence')) essence *= x.qty
+  const own = { cost, avail, essence }
   for (const a of x.accessories) {
-    const pa = priced(a, data, cr)
+    const pa = priced(a, data, cr, own)
     cost += pa.cost; essence += pa.essence; ok &&= pa.ok
   }
   return { cost, avail, essence: round2(essence), ok, unpriced, notes }

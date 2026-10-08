@@ -195,6 +195,26 @@ def _s(v):
     return ILLEGAL.sub("", str(v))
 
 
+def slash_options(name, text):
+    """(owner, 2026-10-08) A heading naming two options joined by `/` with one price (`Increasing/Reducing Cargo
+    Space (CF Mod)`) whose text offers them as a choice (`expands or reduces`): the two names, each with the heading's
+    other words; else [] (one thing printed two ways: `Easy Assembly/Disassembly`, `Emergency Light Bars/Siren`)."""
+    m = re.fullmatch(r"(.*?)\b([A-Za-z]+)/([A-Za-z]+)\b(.*)", name or "")
+    if not m or "/" in m.group(1) + m.group(4):
+        return []
+    a, b = m.group(2), m.group(3)
+    t = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join((text or "").split())).lower()[:500]
+    if not any(re.search(rf"\b{w[:5].lower()}\w*\s+or\s+\w|\w+\s+or\s+{w[:5].lower()}", t) for w in (a, b)):
+        return []
+    cap = (lambda x: x[:1].upper() + x[1:]) if (name or "")[:1].isupper() else (lambda x: x)
+    return [cap(f"{m.group(1)}{a}{m.group(4)}"), cap(f"{m.group(1)}{b}{m.group(4)}")]  # (`Dexter coprocessor`)
+
+
+# fields whose slash is their own format, not two items' values: handling (on/off road), seats (front/back)
+SLASH_FORMAT = {"handling", "seats"}
+MATERIAL_ADD_ON = "Ammunition accessory"  # (its category: fits the ammunition kind, categories.KIND_WORDS)
+
+
 def _value(attr, v):
     v = " ".join(str(v).split())
     if re.fullmatch(r"[-–—]+|n/a", v, re.I):
@@ -319,7 +339,7 @@ class _Catalog:
                 self.cols.add((r["file"], r["column"]))
                 self.report.append(r)
         self.pending = []
-        aliases = [*aliases, *series_models(name, text)]
+        aliases = [*aliases, *series_models(name, text), *(known_as(name, text) + version_names(name, text) if kind in ROW_KINDS else [])]
         if (fixed := _TRIPLE.sub(r"\1\1", name)) != name:
             aliases.append(fixed)  # a letter printed three times (`Actioneeer`): the spelling as a search name, never a rename
         al = [a for a in dict.fromkeys(aliases) if a and norm(a) != norm(name)]  # another name it is printed under
@@ -388,6 +408,11 @@ class _Catalog:
         base, kind = next(((e, k) for k in kinds for e in self.entries[k]
                      if [regroup_stem(w) for w in norm(re.sub(r"\([^()]*\)", "", e["name"])).split()][:len(want)] == want
                      and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
+        if base is None:  # (owner, 2026-10-08) the same words in another order and form: `webbed hands and feet`
+            want_set = word_stems(a["_base"])     # is `Hand and foot webbing`
+            base, kind = next(((e, k) for k in kinds for e in self.entries[k]
+                               if word_stems(re.sub(r"\([^()]*\)", "", e["name"])) == want_set
+                               and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
         rule, kids, attrs = a["_rule"], [], {}
         if base:
             attrs = {k: base["attrs"][k] for k in ("type", "category", "rating", "avail") if base["attrs"].get(k)}
@@ -476,16 +501,30 @@ class _Catalog:
                 out.append((f"{name} ({v})", g))
             return out
         cost = f.get("cost", "")
+        mats = re.findall(r"\bx\s*(\d+(?:\.\d+)?)\s+for\s+([a-z]+)\b", cost, re.I)
+        if len(mats) > 1 and re.search(r"\bmaterials?\b", cost, re.I):
+            # (owner, 2026-10-08) material multipliers (`x2 for copper or other common materials, x5 for silver …`): an
+            # add-on per material for the ammunition it is loaded in, priced at that ammunition's price times its factor
+            return [(f"{name} ({m.lower()})", dict(f, cost=f"x{x}", category=MATERIAL_ADD_ON, **{"_formula:cost": f"H*{x}"}))
+                    for x, m in mats]
         if m := re.fullmatch(r"(.+?)\s*/\s*(\w+)\s+or\s+(.+?)\s*/\s*(\w+)", cost):
             return [(f"{name} ({m.group(2)})", dict(f, cost=m.group(1), per=m.group(2))),
                     (f"{name} ({m.group(4)})", dict(f, cost=m.group(3), per=m.group(4)))]
         for v in (cost, f.get("avail", "")):
             parts = v.split("/")
             names = _names(name)[:len(parts)] if "/" in name else []
+            if len(names) == 2 and len(names[0].split()) > 1 and names[1].split()[0] != names[0].split()[0] \
+                    and len(names[1].split()) > 1:
+                # (a product row `Maker A/B C`: B shares the maker's words, `Federated Boeing Osprey X`)
+                names[1] = " ".join(names[0].split()[:-1] + names[1].split())
             if len(parts) > 1 and len(names) == len(parts) and all(re.fullmatch(r"\s*\d+\s*(\(\w\))?", p) for p in parts):
+                # (owner, 2026-10-08: A takes each cell's first value, B its second, a cell without a slash is shared;
+                # not a column whose slash is its own format: handling on/off road, seats)
                 def part(k, v, i):
-                    ps = v.split("/")
-                    return ps[i].strip() if k in ("cost", "avail") and len(ps) == len(parts) else v
+                    ps = v.split("/") if isinstance(v, str) else []
+                    own = k in ("cost", "avail") or k not in SLASH_FORMAT and all(
+                        re.fullmatch(r"\s*\d+(?:\.\d+)?\s*(\(\w\))?\s*", p) for p in ps)
+                    return ps[i].strip() if own and len(ps) == len(parts) else v
                 return [(n, {k: part(k, v, i) for k, v in f.items()}) for i, n in enumerate(names)]
         return [(name, f)]
 
@@ -590,7 +629,7 @@ class _Catalog:
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])
         if kind in STAT_KINDS and self.split and len(parts := self.split(b)) > 1:
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])  # one stat block, several names
-        if kind in ROW_KINDS and b.row is not None and not any(list(b.row.values())[1:]):
+        if kind in ROW_KINDS and b.row is not None and not any(list(b.row.values())[1:]) and not b.unlisted:
             return True  # a group heading printed as a row (`Patches` over the patches): no entry
         if kind in ROW_KINDS and b.row is None or kind in STAT_KINDS and not b.stats \
                 or kind in BOX_KINDS and not (b.stats or b.labels or b.tags):
@@ -638,14 +677,16 @@ class _Catalog:
                 attrs["maker"] = b.maker  # a product's configuration row: its title's maker
             if b.config_of:
                 attrs["configOf"] = slug(b.config_of)  # a shape the item takes (shapes.configuration_rows)
-            for n, g in self.variants(name, f):
+            opts = slash_options(name, _text(b)) if b.level else []
+            for n, g in [(o, dict(f)) for o in opts] or self.variants(name, f):
                 if "rating" not in g and _VAR.search(g.get("cost", "") + g.get("avail", "")) \
                         and re.fullmatch(r"\d+\s*[–-]\s*\d+", g.get("capacity", "")):
                     g["rating"] = g["capacity"]  # priced by capacity: bought at a capacity in its range
+                fx = [("formula", {"field": k[9:]}, g.pop(k)) for k in [k for k in g if k.startswith("_formula:")]]
                 a = {**attrs, **g}
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
-                e = self.add(kind, n, page, a, notes, "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
+                e = self.add(kind, n, page, a, [*notes, *fx], "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
                              aliases=(b.aliases if n == name else []) or code_alias(n, b.label)
                              or (printed_short(n, self.index) if n != name else [])  # (a heading's fuller name first)
                              or (grouped_names(n, a["group"]) if a.get("group") else []))
@@ -863,6 +904,71 @@ SUPPLIES = ("fuel", "ammo", "ammunition", "rounds", "bolts", "arrows", "darts", 
 _SERIES = re.compile(r"\b(X{2,})(-?\d+)\b")
 
 
+_KNOWN = re.compile(r"\bknown\s+as\s+(?:the\s+)?[“\"]?([A-Z][\w+'’\-]*(?:\s+[A-Z0-9][\w+'’\-]*)*)")
+_SAID_OF = re.compile(r"\b(?:variants?|versions?|models?)\b[^,;()]*$", re.I)
+
+
+# what a description says its things come in: `Skateboards can be found in both hardened and bladed versions, while
+# roller skates only come in bladed`
+_COME_IN = re.compile(r"\b([a-z]+(?:\s+[a-z]+)?)s\s+(?:can\s+be\s+found|(?:only\s+)?comes?|are\s+(?:only\s+)?(?:available|sold))"
+                      r"\s+(?:only\s+)?in\s+(?:both\s+)?([a-z]+)(?:\s+(?:and|or)\s+([a-z]+))?", re.I)
+
+
+def version_names(name, text):
+    """(owner, 2026-10-08) A variant row `Item (Version)` whose description says which things come in that version
+    (`Skateboards can be found in both hardened and bladed versions, while roller skates only come in bladed` under
+    `Rolling Blades`): `Skateboard (hardened)`, `Roller skate (bladed)`, search names."""
+    m = re.fullmatch(r"(.+?)\s*\(([A-Za-z]+)\)", name or "")
+    if not m:
+        return []
+    v = m.group(2).lower()
+    t = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join((text or "").replace("**", "").split()))
+    out = []
+    for c in _COME_IN.finditer(t):
+        noun = re.sub(r"^(?:while|and|but|the)\s+", "", c.group(1).lower())
+        if v in {x.lower() for x in c.groups()[1:] if x} and noun not in ("version", "model"):
+            out.append(f"{noun[:1].upper()}{noun[1:]} ({v})")
+    return out
+
+
+_IRREGULAR = {"feet": "foot", "teeth": "tooth", "mice": "mouse", "men": "man", "women": "woman"}
+
+
+def word_stems(name):
+    """A name's words as a set of rough stems, `and`/`or`/`of` left out: `webbed hands and feet` and `Hand and foot
+    webbing` are both {web, hand, foot}."""
+    out = set()
+    for w in re.findall(r"[a-z]+", (name or "").lower()):
+        if w in ("and", "or", "of", "the", "a", "an"):
+            continue
+        w = _IRREGULAR.get(w, w)
+        w = re.sub(r"(?:ing|ed|es|s)$", "", w) if len(w) > 4 else w
+        w = re.sub(r"([b-df-hj-np-tv-z])\1$", r"\1", w)  # (`webb` of webbed, webbing)
+        out.add(w)
+    return frozenset(out)
+
+
+def known_as(name, text):
+    """(owner, 2026-10-08) Another name an item's own description gives it, a search name: `Collectively known as
+    “Zippies”` opening a sentence, `the Utility-One (also known as the U1)` after the item's own product name,
+    `wraith paint was also known as “Nopaint”` with the item as the subject, `the licensed variants are simply known
+    as the Krime IV+` said of its variants. Not a thing it mentions (`a rocker … known as Bobby V`, `an engine known as
+    the F245`, `the original White Knight (known as Mod 1 …)`)."""
+    out, words = [], {w for w in norm(name).split() if len(w) > 3}
+    for sent in re.split(r"(?<=[.!?])\s+", re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join((text or "").split()))):
+        for m in _KNOWN.finditer(sent):
+            x, before = m.group(1).strip(), sent[:m.start()]
+            if len(x) < 2 or len(x) <= 3 and x.isalpha() and sent.rstrip().endswith(x + "."):
+                continue  # (`the St.` of `St. Bernard`, the sentence cut at its point)
+            pm = re.search(r"([A-Z][\w’'-]*(?:\s+[\w’'-]+){0,4})\s*\(\s*(?:also\s+)?$", before)
+            subj = re.search(r"\b(?:is|are|was|were)\s+(?:also\s+|simply\s+|commonly\s+|better\s+)?$", before)
+            if re.fullmatch(r"\W*(?:[A-Z]\w*\s+)?", before) or _SAID_OF.search(before) \
+                    or pm and norm(name).endswith(norm(pm.group(1))) \
+                    or subj and words and words <= set(norm(before).split()):
+                out.append(x)
+    return out
+
+
 def series_models(name, text):
     """A series named with a placeholder (`Zap XX-10 Series`): the models its text prints in the placeholder's place
     (`ZB-10`, `QB-10`), each as `Zap ZB-10`."""
@@ -971,10 +1077,110 @@ _AMMO_MULTIPLE = re.compile(r"(?:^|[.!?]\s+)([A-Z][\w-]*(?:\s+[\w-]+){0,4}?\s+(?
 _PRICED_AS = re.compile(r"\bThe\s+([A-Z][\w-]*(?:\s+[\w-]+){0,3}?)\s+is\s+an?\s+([\w-]+(?:\s+[\w-]+){0,3}?)\s+"
                         r"for\s+(?:the\s+)?purposes?\s+of\s+(cost[^()]*?)\s*\(p\.\s*\d+,\s*SR6\)")
 _CORE = "crb"  # `SR6` in a cross-reference: the core rulebook
+# a heading naming an item with the class it is one of: `Unique Qi Focus: Raptor Skull`
+_CLASS_HEADING = re.compile(r"(?:(?:Unique|New)\s+)?((?:[A-Z][a-z]+\s+){0,2}Focus):\s*([A-Z].+)")
 
 
 # an item a heading prices in one line of its text: `Availability 6, Cost 5,000¥`
 _PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*(\d+\s*(?:\([A-Z]\))?)\s*,\s*Cost:?\s*([\d,]+)\s*¥\s*$", re.M)
+
+
+# (owner, 2026-10-08) a replacement a section's prose prices, in figures or words: `a replacement instrument costs one
+# thousand nuyen`
+_NUMWORD = r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|hundred|thousand)"
+_REPLACEMENT_COSTS = re.compile(rf"\ba\s+replacement\s+([a-z]+(?:\s+[a-z]+)?)\s+costs\s+([\d,]+|{_NUMWORD}(?:[\s-]+(?:and\s+)?{_NUMWORD})*)\s*(?:¥|nuyen)\b", re.I)
+_UNITS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+          "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50}
+
+
+def number_words(s):
+    """`one thousand` -> 1000, `two hundred fifty` -> 250, `1,500` -> 1500; None when it isn't a number."""
+    s = s.strip().lower()
+    if re.fullmatch(r"[\d,]+", s):
+        return int(s.replace(",", ""))
+    total, cur = 0, 0
+    for w in re.split(r"[\s-]+", s):
+        if w == "and":
+            continue
+        if w in _UNITS:
+            cur += _UNITS[w]
+        elif w == "hundred":
+            cur = max(cur, 1) * 100
+        elif w == "thousand":
+            total, cur = total + max(cur, 1) * 1000, 0
+        else:
+            return None
+    return total + cur
+
+
+_RUNIN_NAME = re.compile(r"^\W{0,3}\*\*([A-Z][^*:]{1,40}?):\*\*")
+
+
+_DV_RANGE = re.compile(r"^\s*\(\s*(\d+)\s*[–-]\s*(\d+)\s*\)\s*([PS])\s*[*†‡]*\s*$")
+_SETTINGS = re.compile(r"\b([a-z]+)\s*\(\s*(\d+)\s*([PS])\s*\)\s*or\s*([a-z]+)\s*\(\s*(\d+)\s*([PS])\s*\)")
+
+
+def dv_settings(bs, cat, offset):
+    """(owner, 2026-10-08) A weapon whose DV prints a range (`(5–10)S†`) where its page's text names two settings in
+    that range (`the setting of the device—low (5S) or high (10S)`): its DV the first setting's (the default), each
+    setting a configuration of it (`Handheld (low)`, `Handheld (high)`: configOf, not priced apart)."""
+    texts = {}
+    for b in bs:
+        texts.setdefault(max(1, b.page - offset), []).append(re.sub(r"(?<=[a-z])- (?=[a-z])", "",
+                                                                    " ".join((b.text or "").replace("**", "").split())))
+    for e in list(cat.entries["weapons"]):
+        m = _DV_RANGE.match(e["attrs"].get("dv") or "")
+        if not m or e["attrs"].get("configOf"):
+            continue
+        lo, hi, kind = int(m.group(1)), int(m.group(2)), m.group(3)
+        near = " ".join(t for p in (e["page"] - 1, e["page"], e["page"] + 1) for t in texts.get(p, ()))
+        hit = next((x for x in _SETTINGS.finditer(near) if x.group(3) == x.group(6) == kind
+                    and lo <= int(x.group(2)) <= hi and lo <= int(x.group(5)) <= hi), None)
+        if not hit:
+            continue
+        e["attrs"]["dv"] = f"{hit.group(2)}{kind}"
+        e["children"] = [c for c in e["children"] if c[1].get("field") != "dv"]
+        for word, n in ((hit.group(1), hit.group(2)), (hit.group(4), hit.group(5))):
+            attrs = {k: v for k, v in e["attrs"].items() if k not in ("cost", "avail")}
+            attrs.update(dv=f"{n}{kind}", configOf=e["id"], avail="—", cost="—")
+            cat.add("weapons", f"{e['name']} ({word})", e["page"], attrs, (), "")
+
+
+def run_in_items(bs, cat, offset):
+    """(owner, 2026-10-08) A bold run-in printed between two run-ins that name rows of one group (`**Increased
+    Myelination:**` between `**Hyper-Glucagon:**` and `**Myostatin Inhibitor:**`, the rows `Genotype Enhancement
+    (Hyper-Glucagon)`, `… (Myostatin Inhibitor)`) is an item of that group the table leaves out: `Genotype Enhancement
+    (Increased Myelination)`, its neighbours' kind and category, its values missing (issues)."""
+    parts = {}  # norm(part) -> (kind, entry) for grouped rows `Group (Part)`
+    for kind in ROW_KINDS:
+        for e in cat.entries[kind]:
+            if m := re.fullmatch(r"(.+?)\s+\((.+)\)", e["name"]):
+                # (a part with its own parenthetical, `Fear Response Dampener (basic)`, under its bare name too)
+                for part in dict.fromkeys([m.group(2), re.sub(r"\s*\([^()]*\)\s*$", "", m.group(2))]):
+                    parts.setdefault(norm(part), (kind, e, m.group(1)))
+    have = {norm(e["name"]) for k in ROW_KINDS for e in cat.entries[k]}
+    # (every name the book's rows go by: their own, their search names, their parts; a run-in naming one, or heading
+    # several (`Pathogen Resistance` over its `(general)` and `(specific)` rows), is no left-out item)
+    known = have | set(parts) | {norm(a) for k in ROW_KINDS for e in cat.entries[k] for a in e.get("aliases", ())}
+    for b in bs:
+        names = [m.group(1).strip() for ln in (b.text or "").splitlines() if (m := _RUNIN_NAME.match(ln))]
+        for i in range(1, len(names) - 1):
+            a, x, c = parts.get(norm(names[i - 1])), names[i], parts.get(norm(names[i + 1]))
+            g = norm(f"{a[2]} {x}") if a else ""
+            if not a or not c or a[2] != c[2] or a[0] != c[0] or norm(x) in known \
+                    or any(k.startswith(norm(x) + " ") or k.startswith(g + " ") for k in known) \
+                    or x.isupper() and any(len(k) == len(norm(x)) and sum(p != q for p, q in zip(k, norm(x))) == 1
+                                           for k in parts):
+                continue  # (a part's typo, `NDE` for the row `NDI`: the corpus pass makes it the row's search name)
+            kind, e, group = a
+            name = f"{group} ({x})"
+            if norm(name) in have:
+                continue
+            have.add(norm(name))
+            attrs = {k: v for k, v in e["attrs"].items() if k in ("type", "category", "group")}
+            kids = [("issue", {"field": f, "code": "missing", "page": e["page"]}, f"no {f} printed: the table leaves it out")
+                    for f in ("essence", "avail", "cost") if f in e["attrs"] or f == "cost"]
+            cat.add(kind, name, e["page"], attrs, kids, "")
 
 
 def sentence_items(bs, offset):
@@ -999,6 +1205,25 @@ def sentence_items(bs, offset):
                 out.append(("gear", name, page, {"category": b.section or b.chapter or "Gear",  # (its section's)
                                                  "avail": " ".join(m.group(1).split()), "cost": m.group(2).replace(",", "")},
                             (), b.text))
+        for m in _REPLACEMENT_COSTS.finditer(text):
+            name, price = f"Replacement {m.group(1).lower()}", number_words(m.group(2))
+            if price is not None and norm(name) not in seen:
+                seen.add(norm(name))
+                out.append(("gear", name, page, {"category": "Supply", "cost": str(price)},
+                            (("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it"),),
+                            m.group(0).strip(". ")))
+        if (m := _CLASS_HEADING.fullmatch(b.name.strip())) and norm(m.group(2)) not in seen:
+            # (owner, 2026-10-08) `Unique Qi Focus: Raptor Skull`: an item of a class the core rulebook prices, priced as
+            # that class at its own Force; the bonding Karma its text prints (`(Force x 3) Karma`) its own
+            name, base = m.group(2).strip(), m.group(1).strip()
+            seen.add(norm(name))
+            ref = f"gear:{_CORE}.{slug(base)}"
+            kids = [("formula", {"field": f}, f"ref({ref}, {f}, R)") for f in ("cost", "avail")]
+            attrs = {"category": "Foci", "cost": f"As {base.lower()}", "avail": f"As {base.lower()}"}
+            if k := re.search(r"(?i)\bbond\b[^.]*?\(\s*Force\s*x\s*(\d+)\s*\)\s*Karma", text):
+                attrs["karma"] = f"Force x {k.group(1)}"
+                kids.append(("formula", {"field": "karma"}, f"R*{k.group(1)}"))
+            out.append(("gear", name, page, attrs, tuple(kids), b.text))
         for m in _PRICED_AS.finditer(text):
             name, base, fields = heads.get(norm(m.group(1)), m.group(1)), m.group(2), m.group(3)
             if norm(name) in seen:
@@ -1120,7 +1345,8 @@ def ammo_type(b):
     if any("MULTIPLIER" in h.upper() for h in b.header) or regroup.TYPES_TITLE.search(b.label or ""):
         return True  # (a row of a list titled as ammunition types: `warhead types`)
     cost = next((v for h, v in b.row.items() if h.upper() in ("COST", "PRICE")), "")
-    return bool(_MULTIPLE.match(cost or "")) and bool(_AMMO_WORDS.search(" ".join([b.name, b.label, b.section, *b.header])))
+    multiple = _MULTIPLE.match(cost or "") or re.search(r"(?i)\bx\s*\d+(?:\.\d+)?\s+for\s+[a-z]+\b.*\bmaterials?\b", cost or "")
+    return bool(multiple) and bool(_AMMO_WORDS.search(" ".join([b.name, b.label, b.section, *b.header])))
 
 
 def ammo_from_text(text):
@@ -1337,6 +1563,8 @@ def extract(regrouped, ctx=None, book=None):
     for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
         if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
             cat.add(kind, name, page, attrs, kids, text)
+    run_in_items(bs, cat, bk.PAGE_OFFSET)
+    dv_settings(bs, cat, bk.PAGE_OFFSET)
     add_ons(cat)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)

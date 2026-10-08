@@ -295,6 +295,8 @@ class Reader:
         if f := self._priced_heading(b, page, chain):
             return [f]
         kind = _kind_of(parent, HEADING_KINDS)
+        if not kind and (f := optional_rule_quality(b, page)):
+            return [f]
         labels = {k.lower(): v for k, v in b.labels.items()}
         if not kind and "game effect" in labels and re.match(r"\s*\d+\s*Karma\b", labels.get("cost") or labels.get("bonus") or "", re.I) \
                 and (name[:1].isupper() or re.match(r"[a-z]+[A-Z]{2}", name)) and not EXAMPLE.search(name) \
@@ -690,6 +692,34 @@ def step_qualities(b, page, path, owner="", prices=None, granted=None):
             elif granted is not None and name != b.name:
                 granted.add(norm(n))  # (one of several the step names: described under a heading of its own, maybe)
     return out
+
+
+# (owner, 2026-10-08) an optional rule that prices itself in Karma is a quality too
+OPTIONAL = re.compile(r"\b(?:use this rule|optional rule)\b", re.I)
+_GRADE_KARMA = re.compile(r"\bkarma cost to become or advance an? [\w-]+ grade is (\d+)\s*\+\s*(?:the\s+)?next\s+grade", re.I)
+_COST_TO = re.compile(r"\bcost to (?:become|be|gain)\b[^.]*?\bis (\d+) Karma\b", re.I)
+
+
+def optional_rule_quality(b, page):
+    """An optional rule (`Use this rule …`, `Under this optional rule …`) whose text prices taking it in Karma is also
+    a buyable quality (owner, 2026-10-08; the rule stays in the Rules pages): positive, category `Optional rule`, its
+    text the rule's. `The cost to become an aspected magician … is 15 Karma. The cost to become any other kind … is 25
+    Karma`: karma 15, karmaMax 25; `The karma cost to become or advance a transhumanist grade is 10 + next grade`:
+    karma 11 (the first grade), a karma formula `10 + R` (R the grade)."""
+    text = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(_body(b).replace("**", "").split()))
+    if not OPTIONAL.search(text) or not b.name[:1].isupper() or EXAMPLE.search(b.name):
+        return None
+    if g := _GRADE_KARMA.search(text):
+        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": str(int(g.group(1)) + 1),
+                                                         "category": "Optional rule"},
+                     [("formula", {"field": "karma"}, f"{g.group(1)} + R")], _body(b), b)
+    ks = [int(x) for x in _COST_TO.findall(text)]
+    if not ks:
+        return None
+    attrs = {"kind": "positive", "karma": str(min(ks)), "category": "Optional rule"}
+    if len(set(ks)) > 1:
+        attrs["karmaMax"] = str(max(ks))
+    return Found("qualities", b.name.strip(), page, attrs, [], _body(b), b)
 
 
 def imposed(name, page, body):

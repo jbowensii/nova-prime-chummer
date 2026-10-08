@@ -179,6 +179,21 @@ def match(cl6, ours):
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)
+    for i, c in enumerate(cl6):
+        # a record whose words are all in one of several rows another record took loosely (`Smuggling Compartment`
+        # took both rows by its name without a parenthetical): that row is this record's (`Smuggling Compartment -
+        # Shielding` = `Smuggling Compartment (General shielding)`)
+        key = toks(c["name"])
+        if found[i] or not c["page"] or len(key) < 2:
+            continue
+        for j, f in enumerate(found):
+            if not f or f[1] not in ("loose", "no-parenthetical", "alias") or len(f[0]) < 2:
+                continue
+            hits = [o for o in f[0] if near(o["page"], c["page"]) and key <= toks(o["name"])]
+            if len(hits) == 1:
+                found[i] = (hits, "contained")
+                found[j] = ([o for o in f[0] if o is not hits[0]], f[1])
+                break
     for i, c in enumerate(cl6):  # our row named within its category (group): `Implanted Shotgun` is `Shotgun` there
         if found[i] is None and pool[i] and (hits := [o for o in pool[i] if grouped(c["name"], o)]):
             found[i] = (hits, "group")

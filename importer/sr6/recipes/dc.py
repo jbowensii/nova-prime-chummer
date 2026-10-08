@@ -190,7 +190,15 @@ def _prep(bs, report):
         if MODS in ch and b.row is None:
             if b.level == 5 and _band_name(b.name):
                 b = replace(b, name=f"{mod} ({b.name})")  # a level of the modification above
-            tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(b.text)
+            first, *more = _box_runs(b.text)
+            for subject, seg in more:  # (owner, 2026-10-08) a second box after a sentence: an entry of its own
+                tabs2 = [(h, rows) for h, rows in crb._tables(seg) if h and {x.upper() for x in h} <= MOD_COLUMNS]
+                if subject and tabs2:
+                    row = {"GEAR": f"{re.sub(r'\s*\([^()]*\)\s*$', '', b.name)} ({subject})"}
+                    for h, rows in tabs2:
+                        row.update({k: v for k, v in zip(h, rows[0]) if k not in row})
+                    out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[], level=b.level + 1))
+            tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(first[1])
             tabs = [(h, rows) for h, rows in tabs if h and {x.upper() for x in h} <= MOD_COLUMNS]
             if tabs:
                 n = max(len(rows) for _, rows in tabs)
@@ -231,6 +239,34 @@ def prepare_md(md):
         elif m := re.match(r"^#{4,5}\s+(.+?)\s*$", ln):
             base = m.group(1)
     return "\n".join(lines) + "\n"
+
+
+def _box_runs(text):
+    """[(subject, text)]: the text with its first box (subject None), then each later box printed after a sentence of
+    its own, named by that sentence's subject (`General shielding on a smuggling compartment (may be taken multiple
+    times).` -> `General shielding`); a box with no such sentence stays with the run before it."""
+    segs, prose, table = [], [], []
+    for ln in (text or "").splitlines():
+        if ln.startswith("|"):
+            table.append(ln)
+            continue
+        if table:
+            segs.append((prose, table))
+            prose, table = [], []
+        prose.append(ln)
+    if table:
+        segs.append((prose, table))
+        prose = []
+    out = [[None, []]]
+    for i, (p, t) in enumerate(segs):
+        sent = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(x.strip() for x in p if x.strip()))
+        m = re.match(r"([A-Z][a-z]+(?:\s+[a-z]+){0,2}?)\s+(?:on|for|of|in|to)\b", sent) if i and len(sent) < 160 else None
+        if m:
+            out.append([m.group(1), p + t])
+        else:
+            out[-1][1] += p + t
+    out[-1][1] += prose
+    return [(subj, "\n".join(ls)) for subj, ls in out]
 
 
 def _band_name(name):

@@ -9,11 +9,12 @@ in an edits file.
 The grammar:
     EXPR   := term (('+' | '-') term)*
     term   := factor (('*' | '/') factor)*
-    factor := number | R | Q | M | B | opt.<id> | '(' EXPR ')' | '-' factor | call
+    factor := number | R | Q | M | B | H | opt.<id> | '(' EXPR ')' | '-' factor | call
     call   := tier(EXPR; lo-hi: EXPR; …; lo+: EXPR) | ref(kind:id, field[, EXPR])
             | ceil(EXPR) | floor(EXPR) | min(EXPR, EXPR) | max(EXPR, EXPR)
 R is the rating (Force, Level, Size, Grade alike), Q the count bought (the formula's unit names it), M the character's
-Magic, B the field's own printed value (the app's), opt.<id> 1 when that option is chosen. `/` rounds up unless the
+Magic, B the field's own printed value (the app's), H the same field of the item an add-on is fitted to (its host:
+the ammunition a material multiplies), opt.<id> 1 when that option is chosen. `/` rounds up unless the
 formula says round="down"; the open last band of a tier is `lo+:`. The readers below use B for the base item a price is
 worked out from (the commlink a hack goes in, the instrument a link doubles): no catalog id names it, so _formula()
 writes such a rule as an `ambiguous` issue stating it (`base + R*100`), never as a formula.
@@ -91,7 +92,7 @@ def parse(expr):
             return x
         if v == "-":
             return ("neg", factor())
-        if k == "name" and v in ("R", "Q", "M", "B"):
+        if k == "name" and v in ("R", "Q", "M", "B", "H"):
             return ("var", v)
         if k == "name" and v == "tier":
             take("(")
@@ -167,10 +168,10 @@ def valid(expr):
         return False
 
 
-def evaluate(expr, R=None, Q=None, M=None, B=None, opt=None, ref=None, round=ROUND_UP):
+def evaluate(expr, R=None, Q=None, M=None, B=None, opt=None, ref=None, round=ROUND_UP, H=None):
     """The value of a formula, or None when it needs something not given (a variable, a ref the `ref(target, field,
     rating)` callback can't resolve, a rating outside every band). `/` rounds up, or down with round='down'."""
-    env = {"R": R, "Q": Q, "M": M, "B": B}
+    env = {"R": R, "Q": Q, "M": M, "B": B, "H": H}
     opts = opt or {}
 
     def ev(n):

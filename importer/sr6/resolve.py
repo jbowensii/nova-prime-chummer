@@ -340,6 +340,37 @@ def _errata_value(field, v):
     return " ".join(v.split())
 
 
+# an FAQ's question naming an item (`H OW DOES S TOLEN G EAR WORK ? ( P . 162)`, letter-spaced capitals) and a Karma
+# statement under it (`It only ever gives a bonus of 0 Karma.`)
+_QUESTION = re.compile(r"^(?:HOW DOES|HOW DO|WHAT DOES|WHAT DO)\s+(?:THE\s+|AN?\s+)?(.+?)\s+(?:WORK|DO|MEAN)\b")
+_BONUS_KARMA = re.compile(r"\b(?:gives|grants|is worth) (?:a bonus of )?(\d+) Karma\b", re.I)
+
+
+def _unspaced(ln):
+    """`H OW DOES S TOLEN G EAR` -> `HOW DOES STOLEN GEAR` (a capital printed apart from the rest of its word)."""
+    return re.sub(r"\b([A-Z]) (?=[A-Z]{2,}\b|[A-Z]\b)", r"\1", ln)
+
+
+def _question_statements(md):
+    """[(page, subject, 'karma', value, None)]: a Karma statement under an FAQ question naming its subject."""
+    out, subj, page = [], None, None
+    for raw in (md or "").splitlines():
+        ln = _unspaced(_BOLD.sub(r"\1", raw.strip()))
+        if not ln or ln.startswith("<!--"):
+            continue
+        if (m := _QUESTION.match(ln)) and ln.upper() == ln:
+            subj = m.group(1).strip().title()
+            p = re.search(r"\(\s*P\s*\.\s*(\d+)", ln)
+            page = int(p.group(1)) if p else None
+            continue
+        if subj and ln.upper() == ln and len(ln) > 12:
+            subj = None  # (another question or heading, naming something else)
+            continue
+        if subj and (k := _BONUS_KARMA.search(ln)):
+            out.append((page, subj, "karma", k.group(1), None))
+    return out
+
+
 def errata(md):
     """The value statements of an errata's converted text: [(page or None, subject, field, value, band or None)].
     Rules and renames are left out (a person reads those)."""
@@ -380,7 +411,7 @@ def errata(md):
         if head and (m := _CHANGE_COST.search(ln)):  # `Change … the cost to N¥.` under a heading naming the item
             f = ERRATA_FIELDS[m.group(1).lower()]
             out.append((head[0], head[1], f, _errata_value(f, m.group(2)), None))
-    return _whole_statements(md) + out  # (a renumbering first: the values that follow name the new ratings)
+    return _whole_statements(md) + out + _question_statements(md)  # (a renumbering first: the values that follow name the new ratings)
 
 
 def _words(s):

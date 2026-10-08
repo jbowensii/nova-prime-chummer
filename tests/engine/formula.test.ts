@@ -35,6 +35,10 @@ describe('variables', () => {
     expect(n('100 + opt.smart-link * 50', { opt: { 'smart-link': 2 } })).toBe(200)
     expect(n('opt.x-1', { opt: { x: 5 } })).toBe(4) // a dash before a digit is a minus
   })
+  it('H: the item an add-on goes on (a material multiplying the ammunition it is loaded in)', () => {
+    expect(n('H * 5', { H: 30 })).toBe(150)
+    expect(evalFormula(f('H * 2'), {}).notes).toEqual(['not fitted to an item: worked out with 1 (its price is a multiple of the item it goes on)'])
+  })
   it('a missing variable counts as 1, with a note', () => {
     const r = evalFormula(f('R * 200'), {})
     expect(r).toMatchObject({ n: 200, notes: ['no rating given: worked out at rating 1'] })

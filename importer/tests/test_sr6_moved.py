@@ -90,3 +90,16 @@ class MoreTiersTest(unittest.TestCase):
         self.assertIn('<alias id="zz.glow-hood-version-2-zap-unit"/>', out["gear.xml"])
         self.assertIn('<alias id="zz.bright-day" kind="actions"/>', out["rules.xml"])
         self.assertEqual(n, 4)
+
+
+class SplitTest(MovedTest):
+    def test_an_item_split_in_two_or_into_its_variants(self):
+        prev = self.prev({"gear.xml": data("gear", ("zz.left-right-zorp", "Left/right zorp", ""),
+                                           ("zz.glow-bullets", "Glow Bullets", ""))})
+        new = {"gear.xml": data("gear", ("zz.left-zorp", "Left zorp", ""), ("zz.right-zorp", "Right zorp", "")),
+               "ammotypes.xml": data("ammotypes", ("zz.glow-bullets-tin", "Glow Bullets (tin)", ""),
+                                     ("zz.glow-bullets-gold", "Glow Bullets (gold)", ""))}
+        out, n = moved.carry(prev, new)
+        self.assertIn('<alias id="zz.left-right-zorp"/>', out["gear.xml"].split("zz.right-zorp")[0])
+        self.assertIn('<alias id="zz.glow-bullets" kind="gear"/>', out["ammotypes.xml"])
+        self.assertEqual(n, 2)

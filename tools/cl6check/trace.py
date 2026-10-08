@@ -556,6 +556,16 @@ def run(corpus, cl6, verdicts=None):
         if not any(lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)):
             names += [x for x in matched.get(id(c), []) if x not in names]  # its own book prints it another way
         found, ents, obs = lookup(c, names)
+        if not found and len(c["name"].split()) > 2:
+            # the record's name is a search name our entry prints, with the maker the entry's name opens with in front
+            # (`Volkswagen Krime IV+`: the Volkswagen Superkombi IV's printed `Krime IV+`)
+            maker, rest = c["name"].split(None, 1)
+            more = [a for b, e in corpus.entries(set(c["pool"]) or {c["kind"]}, [rest], home)
+                    if lineage.family(b.belongs) == home and e["name"].split()[:1] == [maker]
+                    for a in e["aliases"] if match.n1(a) == match.n1(rest)]
+            if more:
+                names = [*names, *dict.fromkeys(more)]
+                found, ents, obs = lookup(c, names)
         # (an entry of ours under the object's name is the object, even one printing no field: a mentor spirit)
         if not found:
             printed = corpus.mentions(names)

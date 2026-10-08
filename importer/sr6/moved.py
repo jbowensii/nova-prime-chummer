@@ -12,8 +12,10 @@ one match wins:
 3. the old name abbreviates the new one's words ('Laser mic' -> 'Laser microphone');
 3a. the old name is the new one plus a qualifier the new reads as a field ('Ascalon Rail Gun (Assault Cannon)' ->
    'Ascalon Rail Gun', its type now `Assault Cannon`);
-4. an old name naming several (`A and B`, `A, B`) whose every part is a new entry's name: the old id goes to the first;
-5. the new name starts with the old one's words (a name now printed whole: `Ordo` -> `Ordo Field Operative`);
+4. an old name naming several (`A and B`, `A, B`, `A/B C`) whose every part is a new entry's name: the old id goes to
+   the first;
+5. the new name starts with the old one's words (a name now printed whole: `Ordo` -> `Ordo Field Operative`); several
+   such (the old item split into its variants, `Silver Bullets` -> `(copper)`, `(silver)`, `(gold)`): the first;
 6. a row renamed: the same kind, page and printed values, a word of four letters or more shared (`Anthroform Arms and Legs (Level 1)` read under a sidebar's
    heading -> `Life Safety System (Level 1)`);
 7. a level renamed with its heading: the same kind, page and qualifier (`Ejection Seat (Version 2 (…))` ->
@@ -56,6 +58,12 @@ TIERS = (lambda o, n: o == n, lambda o, n: len(n) > len(o) and n[-len(o):] == o,
          lambda o, n: len(o) > len(n) and o[:len(n)] == n,
          lambda o, n: len(n) > len(o) and n[:len(o)] == o)  # (5. a name now printed whole: `Ordo` -> `Ordo Field Operative`)
 _SAME = ("page", "avail", "cost", "slots", "essence", "rating", "capacity", "dv", "ar")  # what a renamed row keeps
+
+
+def _slashed(name):
+    """`Sinister/dexter coprocessor` -> [`Sinister coprocessor`, `dexter coprocessor`]; [] for no one-word slash pair."""
+    m = re.fullmatch(r"(.*?)\b(\w+)/(\w+)\b(.*)", name or "")
+    return [f"{m.group(1)}{m.group(2)}{m.group(4)}", f"{m.group(1)}{m.group(3)}{m.group(4)}"] if m else []
 
 
 def _sig(el):
@@ -130,10 +138,14 @@ def carry(prev, files):
                 if hits:
                     target = hits.pop() if len(hits) == 1 else None
                     break
-            if target is None:  # (a heading naming two read as two: the first of them)
-                parts = [words(p) for n in names for p in re.split(r"\s+and\s+|\s*,\s*", n) if words(p)]
+            if target is None:  # (a heading naming two read as two: the first of them; `A/B C` -> `A C`, `B C`)
+                split = [x for n in names for x in (_slashed(n) or re.split(r"\s+and\s+|\s*,\s*", n))]
+                parts = [words(p) for p in split if words(p)]
                 found = [next((k for k, _, nws in added if p in nws), None) for p in parts]
                 target = found[0] if len(parts) > 1 and all(found) else None
+            if target is None:  # 5b. the old name split into its variants (`Silver Bullets` -> `(copper)`, …): the first
+                hits = [k for k, _, nws in added if any(len(n) > len(o) and n[:len(o)] == o for o in ows for n in nws)]
+                target = hits[0] if len(hits) > 1 else None
             if target is None and sig:  # 6. a row renamed, its printed values and page the same, a word shared
                 long = {w for o in ows for w in o if len(w) >= 4}
                 hits = {k for k, el, nws in added if k[0] == old[0] and _sig(el) == sig and long & {w for n in nws for w in n}}

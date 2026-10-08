@@ -44,6 +44,7 @@ class Block:
     group: str = ""  # the name-only row its table row is grouped under (`DocWagon contracts` over `Basic`): _row_groups
     table: str = ""  # the title of the table its row's table is a sub-table of (`magical goods table`)
     config_of: str = ""  # a configuration row's item (shapes.configuration_rows): the Alpenstock's Spear
+    unlisted: bool = False  # an item its table leaves out (its heading printed among the rows' headings): no values
 
 
 def norm(name, aliases=None):
@@ -131,6 +132,7 @@ class _Row(list):
     group = ""
     aliases = ()
     product = maker = ""  # a line's rows: the product their table titles and the maker its heading prints first
+    unlisted = False  # an item its table leaves out (a heading among its rows' headings): its cells empty
 
 
 _INDENT, _BOLD_MARK = "\u00a0", "\u2002"  # the converter's first-cell marks (layout._first_marks)
@@ -1171,6 +1173,56 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             free.remove(d)
             unpaired.remove((t, r))
             t.unpaired.remove(r)
+    # (owner, 2026-10-08) a description whose first sentence names a row of another name (`Eye-Light System`:
+    # "Eye-lights are miniaturized light emitters …", the EYEWARE row `Light emitters`) is that row: the row's
+    # values and name, the heading its other name (_emit); the row two words or more, the one it names, pages near
+    for d in [d for d in descs if not d.rows and not d.has_box()]:
+        text = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(x for x in d.body if isinstance(x, str)))
+        first = norm(re.split(r"(?<=[a-z])\.\s", text, maxsplit=1)[0])
+        hits = []
+        for t, r in unpaired:
+            ws = norm(r[0]).split() if r else []
+            # (what the heading is: `… are miniaturized light emitters`, the row right after is/are and at most two
+            # modifiers; not one it mentions, `is compatible with all space suits`)
+            row = r"\s+".join(re.escape(w[:-1] if w.endswith("s") else w) + r"s?" for w in ws)
+            if len(ws) >= 2 and abs(t.page - d.page) <= 3 and re.search(
+                    rf"\b(?:is|are)\s+(?:an?\s+|the\s+)?(?:(?!(?:with|of|for|to|in|on|all|and|or|by|from|as|that)\b)\w+\s+){{0,2}}{row}\b",
+                    first):
+                hits.append((t, r))
+        if len(hits) == 1:
+            t, r = hits[0]
+            d.rows.append((t, r))
+            unpaired.remove((t, r))
+            t.unpaired.remove(r)
+    # (owner, 2026-10-08) an item heading no row pairs, printed between two of its level that the same table's rows
+    # pair (`Frog Tongue` between `Cerebellum Booster` and `Knowledge Infusion`): an item that table leaves out, its
+    # values missing (issues), not a rule
+    order = sorted(descs, key=lambda d: d.pos)
+    row_keys = {k for t in tables for r in t.rows if r for nm in _names(r[0]) for k in keys(nm, aliases)}
+    for i, d in enumerate(order):
+        if d.rows or d.has_box() or d.level < 4 or not d.name[:1].isupper() or d.name.isupper() \
+                or re.search(r"(?i)\btables?\b|\bstats\b", d.name):
+            continue
+        prev = next((x for x in reversed(order[:i]) if x.level <= d.level), None)
+        nxt = next((x for x in order[i + 1:] if x.level <= d.level), None)
+        if not (prev and nxt and prev.level == nxt.level == d.level and prev.section == nxt.section == d.section):
+            continue
+        tabs = {id(t) for t, _ in prev.rows} & {id(t) for t, _ in nxt.rows}
+        t = next((t for t, _ in prev.rows if id(t) in tabs and id(t) not in own), None)
+        one = lambda w: w[:-1] if w.endswith("s") and not w.endswith("ss") else w  # noqa: E731
+        dw = {one(w) for w in norm(d.name).split() if len(w) > 3}
+        if t is None or any(k in row_keys for nm in _names(d.name) for k in keys(nm, aliases)) \
+                or any(dw & {one(w) for w in norm(r[0]).split()} for r in t.rows if r) \
+                or re.search(r",|\band\b|\(", d.name):
+            continue  # (a heading naming or sharing a word with a row describes it: `Move-By-Wire`, `Limb Replacement`)
+        text = norm(" ".join(x for x in d.body if isinstance(x, str)))
+        if any(isinstance(x, _Table) for x in d.body) or len(text) < 150 or re.match(r"(?:if|when|to)\b", text) or any(
+                re.search(rf"\b{re.escape(one(norm(r[0])))}s?\b", text) for r in t.rows if r and len(norm(r[0])) > 4):
+            continue  # (a table title, a one-line note, or a rule about the rows its text names: `Skillsoft Subscriptions`)
+        r = _Row([d.name] + [""] * (len(t.header) - 1))
+        r.unlisted = True
+        d.rows.append((t, r))
+        d.full.add(id(r))
     # a heading ending in "series" takes every unpaired row starting with the rest of its key
     for d in descs:
         k = keys(d.name, aliases)[0]
@@ -1305,7 +1357,7 @@ def _emit(units):
                 out.append(Block("item", name, u.chapter, u.section, t.title if t else label, u.page,
                                  list(t.header) if t else [], _row(t.header, r) if t else None, stats, u.tags,
                                  dict(u.labels), text, u.level, al, group=getattr(r, "group", ""),
-                                 table=t.parent if t else ""))
+                                 table=t.parent if t else "", unlisted=getattr(r, "unlisted", False)))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
             out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r),
                           aliases=list(getattr(r, "aliases", ())), group=getattr(r, "group", ""), table=t.parent,
@@ -1354,7 +1406,8 @@ def render(b):
     meta = {"name": b.name, "chapter": b.chapter, "section": b.section, "label": b.label, "page": b.page,
             "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {}),
             **({"group": b.group} if b.group else {}), **({"table": b.table} if b.table else {}),
-            **({"product": b.product} if b.product else {}), **({"maker": b.maker} if b.maker else {})}
+            **({"product": b.product} if b.product else {}), **({"maker": b.maker} if b.maker else {}),
+            **({"unlisted": True} if b.unlisted else {})}
     lines = [f"<!-- {b.type} {json.dumps(meta, ensure_ascii=False)} -->"]
     if b.row is not None:
         lines += _md(b.header, [[b.row.get(n, "") for n in _row(b.header, [])]])  # (a header printed twice: its 2nd cell)
@@ -1399,5 +1452,6 @@ def blocks(text):
         out.append(Block(m.group(1), meta["name"], meta["chapter"], meta["section"], meta["label"], meta["page"],
                          header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"],
                          meta.get("aliases", []), group=meta.get("group", ""), table=meta.get("table", ""),
-                         product=meta.get("product", ""), maker=meta.get("maker", "")))
+                         product=meta.get("product", ""), maker=meta.get("maker", ""),
+                         unlisted=meta.get("unlisted", False)))
     return out

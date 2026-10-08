@@ -11,7 +11,7 @@
 export interface Formula { field: string; expr: string; round?: 'up' | 'down'; unit?: string; qty?: string }
 export type IssueCode = 'missing' | 'unreadable' | 'ambiguous'
 export interface Issue { field: string; code: IssueCode; page?: number; note: string }
-export interface Vars { R?: number; Q?: number; M?: number; B?: number | null; opt?: Record<string, number> }
+export interface Vars { R?: number; Q?: number; M?: number; B?: number | null; H?: number | null; opt?: Record<string, number> }
 /** Another entry's value (ref): its number at `rating`, or null when the entry or its value isn't there. */
 export type RefLookup = (kind: string, id: string, field: string, rating: number | undefined) => number | null
 /** n: null when the formula can't be worked out (error says why). usesQ: it works out the whole line (× quantity inside). */
@@ -19,7 +19,7 @@ export interface FormulaResult { n: number | null; notes: string[]; error?: stri
 
 type Node =
   | { t: 'num'; v: number }
-  | { t: 'var'; name: 'R' | 'Q' | 'M' | 'B' }
+  | { t: 'var'; name: 'R' | 'Q' | 'M' | 'B' | 'H' }
   | { t: 'opt'; id: string }
   | { t: 'neg'; a: Node }
   | { t: 'bin'; op: '+' | '-' | '*' | '/'; a: Node; b: Node }
@@ -74,7 +74,7 @@ export function parseFormula(src: string): Node {
       i += m[0].length
       return { t: 'opt', id: m[1] }
     }
-    if (name === 'R' || name === 'Q' || name === 'M' || name === 'B') return { t: 'var', name }
+    if (name === 'R' || name === 'Q' || name === 'M' || name === 'B' || name === 'H') return { t: 'var', name }
     if (name === 'tier') {
       eat('(')
       const x = expr(), cases: { lo: number; hi: number; v: Node }[] = []
@@ -131,9 +131,10 @@ const uses = (n: Node, name: string): boolean => {
   }
 }
 
-const MISSING: Record<'R' | 'Q' | 'M' | 'B', string> = {
+const MISSING: Record<'R' | 'Q' | 'M' | 'B' | 'H', string> = {
   R: 'no rating given: worked out at rating 1', Q: 'no quantity given: worked out for 1', M: 'no Magic given: worked out at Magic 1',
   B: 'no printed value: worked out with 1',
+  H: 'not fitted to an item: worked out with 1 (its price is a multiple of the item it goes on)',
 }
 class Unpriced extends Error {}
 
@@ -142,7 +143,7 @@ export function evalFormula(f: Formula, vars: Vars, ref?: RefLookup): FormulaRes
   let tree: Node
   try { tree = parseFormula(f.expr) } catch (e) { return { n: null, notes: [], error: `can’t read the formula “${f.expr}”: ${(e as Error).message}`, usesQ: false } }
   const notes = new Set<string>()
-  const val = (k: 'R' | 'Q' | 'M' | 'B') => { const v = vars[k]; if (v == null) { notes.add(MISSING[k]); return 1 } return v }
+  const val = (k: 'R' | 'Q' | 'M' | 'B' | 'H') => { const v = vars[k]; if (v == null) { notes.add(MISSING[k]); return 1 } return v }
   const ev = (n: Node): number => {
     switch (n.t) {
       case 'num': return n.v
@@ -186,7 +187,7 @@ export function evalFormula(f: Formula, vars: Vars, ref?: RefLookup): FormulaRes
 /** A formula as people read it: "Rating × 200¥", "tier(Rating; 1-3: 2; 4-6: 4)", "… per 10 rounds". `base`: what B
  *  stands for (the printed value, a standard price), shown in its place. */
 export function formulaText(f: Formula, base?: string): string {
-  const words: Record<string, string> = { R: 'Rating', Q: 'Quantity', M: 'Magic', B: base ?? 'Printed value' }
+  const words: Record<string, string> = { R: 'Rating', Q: 'Quantity', M: 'Magic', B: base ?? 'Printed value', H: 'The item it goes on' }
   const body = f.expr.replace(/\b[RQMB]\b/g, v => words[v]).replace(/\s*\*\s*/g, ' × ').replace(/\s*\/\s*/g, ' ÷ ').replace(/\s+/g, ' ').trim()
   return `${body}${f.field === 'cost' ? '¥' : ''}${f.unit ? ` per ${f.qty ? `${f.qty} ` : ''}${f.unit}` : ''}`
 }
