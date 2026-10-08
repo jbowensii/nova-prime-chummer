@@ -429,6 +429,9 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
     own = {match.n1(n) for n in names}  # (none printed under the name itself: its qualified rows are the variants)
     vs = corpus.variants(kinds, names, home) or [(b, e) for b, e in corpus.entries(kinds, names, home)
                                                  if match.n1(e["name"]) not in own]
+    # (and the entry printing the record's own name, when Commlink6's aliases name another row too: its `Dodge Rampart`
+    # lists `Dodge Rampart LEV`)
+    vs += [(b, e) for b, e in corpus.entries(kinds, [c["name"]], home) if match.n0(e["name"]) == match.n0(c["name"])]
     vs = [(b, e) for b, e in vs if e["kind"] in kinds and not b.errata and not b.context]
     if not vs:
         return None
@@ -523,6 +526,19 @@ def run(corpus, cl6, verdicts=None):
             elif len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
                 d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
                 far |= {i for i, x in d.items() if x > min(d.values())}
+        # (an entry of the record's own kind on its page is the record; another kind's row of the name on a farther page,
+        # the core rulebook's `Heavy pistol/SMG` magazine for its `Heavy pistol` implant weapon, is another thing)
+        if str(c["page"]).isdigit() and (mine := [abs(int(e["page"]) - int(c["page"])) for _, e in ents
+                                                   if e["kind"] == c["kind"] and str(e["page"]).isdigit()]) \
+                and min(mine) <= 1:
+            other = {(e["kind"], e["id"]) for _, e in ents if e["kind"] != c["kind"] and str(e["page"]).isdigit()
+                     and abs(int(e["page"]) - int(c["page"])) > 2}  # (by kind and id: kinds share ids, `crb.shotgun`)
+            ents = [(b, e) for b, e in ents if (e["kind"], e["id"]) not in other]
+            obs = [o for o in obs if (m := re.search(r"/(\w+) id=(\S+) ", o.where)) is None or m.group(1, 2) not in other]
+            # (and a card titled with more than its name is another thing: Gun Rack's `Narcoject Hornet` dart pistol
+            # for the toxin `Narcoject`)
+            obs = [o for o in obs if o.kind != "card" or (m := re.search(r"card \[(.*)\]$", o.where)) is None
+                   or match.n0(m.group(1)) in exact]
         if far:
             ents = [(b, e) for b, e in ents if e["id"] not in far]
             obs = [o for o in obs if (m := re.search(r"\bid=(\S+) ", o.where)) is None or m.group(1) not in far]

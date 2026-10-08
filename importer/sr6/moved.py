@@ -21,6 +21,8 @@ one match wins:
 7. a level renamed with its heading: the same kind, page and qualifier (`Ejection Seat (Version 2 (…))` ->
    `Extreme Interior Security (Version 2 (…))`);
 8. re-kinded to an entry of another kind the old import had too (`Burning Down Divinity`, an action, now a rule);
+8a. merged into an entry of its kind the old import had too, its name now that one's alias (a path step read
+   twice, `Obsession: Consumed` beside `Consumed`, now one entry);
 9. on its page, the old name's words inside one new entry's (`De`, a split stat block's half -> `Saul De Haro`).
 A tier matching several new entries keeps those of the old entry's category, when that leaves one (`Armor` in the
 cyberlimb accessories and in another accessory category: two items, the second id now naming its category; a category
@@ -157,6 +159,10 @@ def carry(prev, files):
             if target is None and page:  # 9. a name now printed whole around it, on its page (`De` -> `Saul De Haro`)
                 hits = {k for k, el, nws in added if k[0] == old[0] and el.get("page") == page
                         and any(o and set(o) <= set(n) for o in ows for n in nws)}
+                target = hits.pop() if len(hits) == 1 else None
+            if target is None:  # 8a. merged into an entry the old import had too, its name now that one's alias (a
+                # path step read twice, `Obsession: Consumed` and `Consumed`, now one entry)
+                hits = {k for k, el in new.items() if k[0] == old[0] and any(words(n) in ows for n in _names(el)[1:] if words(n))}
                 target = hits.pop() if len(hits) == 1 else None
             if target is None:  # 8. re-kinded to an entry the old import had too (an action read as a rule now)
                 hits = {k for k, el in new.items() if k[0] != old[0] and any(words(n) in ows for n in _names(el) if words(n))}

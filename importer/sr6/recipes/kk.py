@@ -251,6 +251,16 @@ def _prep(bs, report):
     out, used = [], set()
     for b in items:
         sets = _sets_by_header(b.text) or _stat_sets(b.text)
+        sr6 = re.search(r"SR6 availability is (\d+)\s*\(?([LIF]?)\)?", " ".join((b.text or "").split()))
+        if not sets and sr6 and (t := next((t for t in crb._tables(b.text) if "COST" in {h.upper() for h in t[0]}
+                                             and _sr5(t[0]) and t[1]), None)):
+            # (a Fifth Edition box whose note gives the Sixth's availability, `SR6 availability is 5I`: the item, its
+            # SR5 damage left out)
+            h, r = [x.upper() for x in t[0]], t[1][0]
+            row = {"WEAPON": b.name, **{k: v for k, v in zip(h, r) if k not in _SR5_HEADS},
+                   "AVAIL": f"{sr6.group(1)}({sr6.group(2)})" if sr6.group(2) else sr6.group(1)}
+            out.append(replace(b, type="item", header=list(row), row=row, stats=[], label="grenades" if "BLAST" in h else ""))
+            continue
         if not sets:
             out.append(b)
             continue

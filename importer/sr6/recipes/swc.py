@@ -348,9 +348,10 @@ def _qualities(cat, name, text, page, block=None):
         sub = prev if _SUBNAME.match(prev) and len(prev.split()) <= 5 and prev != name else None
         qname = sub or name  # a sub-quality is a quality of its own (`Monkey Paws`)
         karma = m.group(2)
-        k = re.search(r"(\d+)\s*Karma", karma, re.I)
+        k = sections.karma_list(karma)  # (`5, 10 Karma`: the first, the highest)
         lv = re.search(r"max(?:imum)?\.?\s*(?:of\s*)?(\d+)\s*levels?", karma, re.I)
-        attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k and int(k.group(1)),
+        attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k[0] if k else None,
+                 "karmaMax": max(k) if k and max(k) > k[0] else None,
                  "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None, "maxLevel": lv and int(lv.group(1))}
         if not k and re.search(r"\bsee\s+text\b", karma, re.I):
             # `Bonus: See text`: the prices its own paragraphs print (`a bonus of 8 Karma … a bonus of 15 Karma`),

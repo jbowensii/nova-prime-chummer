@@ -58,3 +58,5 @@ Structure only, no book text. The owner's PDF (SHA-256 in `sw.py`): 170 pages, p
   parenthesis wrapping onto the text) is two entries: the second named by its version, or a heading naming both
   (`No Job Too Small, No Job Too Big`, versions `NJTS`, `NJTB`) split in two.
 - `New Metamagic: X` at level 3 is left to the sections reader (its PREFIX); deeper ones are still renamed here.
+- (accuracy round 2) A heading listing two preparations with `;` (`MagicZap Marble; MagicZap Marble Plus`, `Runflat,
+  My Hoop; On Four Bald Tires`) and a Cost line pricing two versions is the two items, each with its heading name.

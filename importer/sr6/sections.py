@@ -613,7 +613,7 @@ def quality_sets(b, page):
     return out
 
 
-_OR = r"(?:\s*(?:or|to|–|-)\s*\d+)?"  # (`4 or 8 Karma`: two prices, the first the lower)
+_OR = r"(?:\s*(?:,\s*(?:or\s+)?|or|to|–|-|/)\s*\d+)*"  # (`4 or 8 Karma`, `3,6, or 9 Karma`: the first the lowest)
 _COST = re.compile(rf"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+){_OR}\s*Karma|\bCost:\s*(\d+){_OR}\s*Karma"
                    r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b|\*\*Cost:?\*\*:?\s*(\d+)\s*points?\b",
                    re.I)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
@@ -621,6 +621,15 @@ _BONUS = re.compile(rf"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+){_OR}\s*Karma|\bBon
                     r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
 _ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
 _EFFECT = re.compile(r"\*\*Game\s+Effects?:?\*\*", re.I)
+
+
+_KARMA_LIST = re.compile(r"(-?\d+)((?:\s*(?:,\s*(?:or\s+)?|to|or|[–/-])\s*\d+)*)\s*karma", re.I)
+
+
+def karma_list(s):
+    """Every Karma price a price line prints, a list of them read as one: `3,6, or 9 Karma` -> [3, 6, 9], `5, 10 Karma`,
+    `5/8 Karma`, `4 to 12 Karma`; `Common: 12 Karma; Uncommon: 9 Karma` -> [12, 9]."""
+    return [int(n) for m in _KARMA_LIST.finditer(s or "") for n in [m.group(1), *re.findall(r"\d+", m.group(2))]]
 
 
 def quality_attrs(name, chain, text):
@@ -641,8 +650,8 @@ def quality_attrs(name, chain, text):
         return {}
     k = (bonus if kind == "negative" else cost) or cost or bonus
     karma = next((g for g in k.groups() if g), None) if k else None
-    two = re.search(r"(\d+)\s*(?:or|to|–|-)\s*(\d+)\s*Karma", k.group(0)) if k else None
-    return {"kind": kind, "karma": karma, **({"karmaMax": two.group(2)} if two and two.group(2) != karma else {})}
+    top = max((int(n) for n in re.findall(r"\d+", k.group(0))), default=0) if k else 0
+    return {"kind": kind, "karma": karma, **({"karmaMax": str(top)} if karma and top > int(karma) else {})}
 
 
 def template_headings(bs, chapters=3):
@@ -722,6 +731,9 @@ def step_qualities(b, page, path, owner="", prices=None, granted=None):
                 out.append(imposed(n.strip(), page, body))
             elif granted is not None and name != b.name:
                 granted.add(norm(n))  # (one of several the step names: described under a heading of its own, maybe)
+    for f in out:  # (the printed heading, `Obsession: Consumed`: Catalog.section names a step by it when it must)
+        if norm(f.name) != norm(b.name):
+            f.attrs["_heading"] = b.name.strip()
     return out
 
 

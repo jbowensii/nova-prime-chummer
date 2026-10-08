@@ -373,10 +373,30 @@ class _Catalog:
         same = lambda e: norm(e["name"]) == norm(f.name) and all(  # noqa: E731
             e["attrs"].get(k) == f.attrs.get(k) for k in ("type", "group") if f.attrs.get(k)) and (  # (a path's `Step 1`)
             not f.attrs.get("category") or slug(e["attrs"].get("category") or "") in ("", slug(f.attrs["category"])))
-        # (a focus kind `Ritual Spellcasting` is not the formula row of that name)
-        if any(same(e) for e in self.entries[f.kind]) or sections.reprint(f, self.entries[f.kind]):
-            return
         a = dict(f.attrs)
+        head, aliases = a.pop("_heading", None), ()
+        if head:  # a quality path's step, read under its name without the path's (`Consumed`)
+            es = self.entries[f.kind]
+            # the recipe's reading of the same heading under its printed name is this step: one entry, its name the alias
+            es[:] = [e for e in es if norm(e["name"]) != norm(head) or abs(int(e["page"]) - f.page) > 1]
+            aliases = (head,)
+            if any(norm(e["name"]) == norm(f.name) and abs(int(e["page"]) - f.page) > 1 for e in es):
+                f, aliases = replace(f, name=head), ()  # another quality of its name elsewhere: the printed heading's
+        # (a focus kind `Ritual Spellcasting` is not the formula row of that name; a path's step read already, its
+        # printed heading the alias)
+        if any(same(e) or f.kind == "qualities" and norm(f.name) in {norm(x) for x in e.get("aliases", ())}
+               and abs(int(e["page"]) - f.page) <= 1 for e in self.entries[f.kind]) \
+                or sections.reprint(f, self.entries[f.kind]):
+            return
+        have = {norm(e["name"]) for e in self.entries[f.kind]}
+        if f.kind == "qualities" and (m := re.fullmatch(r"(.*?)\b(\w+)/(\w+)\b(.*)", f.name)):
+            if all(norm(f"{m.group(1)}{x}{m.group(4)}") in have for x in m.group(2, 3)):
+                return  # (`Representation I/II`, read already as its two qualities)
+            if f.attrs.get("karmaMax") and len(ks := sections.karma_list(re.sub(r"\s+", " ", f.text or ""))[:2]) == 2:
+                for x, k in zip(m.group(2, 3), ks):  # (`Bonus: 5/8 Karma`: two qualities, each its price)
+                    self.section(replace(f, name=f"{m.group(1)}{x}{m.group(4)}",
+                                         attrs={**{k2: v for k2, v in f.attrs.items() if k2 != "karmaMax"}, "karma": str(k)}))
+                return
         if f.block is not None and f.kind in HEADERS and HEADERS[f.kind]:
             fl = self.fields(f.kind, _text_stats(f.block, HEADERS[f.kind]), f.page)
             fl.pop("prose", None)
@@ -399,7 +419,7 @@ class _Catalog:
                 return
             a.update({k: row["attrs"][k] for k in ("rating", "karma", "avail", "cost") if row["attrs"].get(k)})
         cid = a.pop("_id", None)  # (an id of its own: `Gestalt Step 1`, the printed name `Step 1` shared)
-        self.add(f.kind, f.name, f.page, a, f.children, f.text, cid=slug(cid) if cid else None)
+        self.add(f.kind, f.name, f.page, a, f.children, f.text, cid=slug(cid) if cid else None, aliases=aliases)
 
     def derived(self, f, a):
         """An item a section derives from one of the book's (sections.derived): the base item found by its name
@@ -710,8 +730,8 @@ class _Catalog:
         elif kind == "qualities":
             karma = _karma_line(f.pop("karma", ""), b.text)
             # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
-            ks = [int(n) for m in re.finditer(r"(-?\d+)(?:\s*(?:to|or|[–-])\s*(\d+))?\s*karma", karma, re.I)
-                  for n in m.groups() if n] or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
+            # (a list of them: `3,6, or 9 Karma`, `5, 10 Karma`, `5/8 Karma`)
+            ks = sections.karma_list(karma) or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
             attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
                      "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)
@@ -754,6 +774,15 @@ class _Catalog:
             f["cost"] = "0" if c.lower() == "free" else c
         attrs.update(f)
         listed = {k for k in b.labels if k.lower() in LISTS} if kind in STAT_KINDS else set()
+        if kind == "qualities" and (two := re.search(r"(\d+)\s*/\s*(\d+)\s*karma", karma, re.I)) \
+                and (m := re.fullmatch(r"(.*?)\b(\w+)/(\w+)\b(.*)", name)):
+            # (owner rule 1 on a heading: `Representation I/II`, `Bonus: 5/8 Karma`: two qualities, each its price)
+            for n, k in ((m.group(2), two.group(1)), (m.group(3), two.group(2))):
+                a = {**attrs, "karma": int(k), "karmaMax": None}
+                self.check(kind, f"{m.group(1)}{n}{m.group(4)}", a, page)
+                self.add(kind, f"{m.group(1)}{n}{m.group(4)}", page, a, children + notes,
+                         "\n".join(prose + [_text(b, listed)]))
+            return True
         self.check(kind, name, attrs, page)
         self.add(kind, name, page, attrs, children + notes, "\n".join(prose + [_text(b, listed)]), aliases=b.aliases)
         return True
@@ -845,6 +874,8 @@ class _Catalog:
             if t != "issue" or a["code"] == "ambiguous":
                 continue
             f = a["field"]
+            if re.fullmatch(r"\s*(?:[*†‡]+|see text)\s*", str(e["attrs"].get(f) or ""), re.I):
+                continue  # (a cell printing `*`, see text: its value is the entry's text, no other row's)
             r = resolve.search_book(self.index, HEADERS, kind, e, f, e.get("text") or "")
             if not r:
                 continue

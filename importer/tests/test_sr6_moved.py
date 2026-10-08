@@ -103,3 +103,13 @@ class SplitTest(MovedTest):
         self.assertIn('<alias id="zz.left-right-zorp"/>', out["gear.xml"].split("zz.right-zorp")[0])
         self.assertIn('<alias id="zz.glow-bullets" kind="gear"/>', out["ammotypes.xml"])
         self.assertEqual(n, 2)
+
+
+class MergedTest(MovedTest):
+    def test_an_entry_read_twice_now_one(self):
+        prev = self.prev({"qualities.xml": data("qualities", ("zz.zorped", "Zorped", ""),
+                                                ("zz.path-zorped", "Path: Zorped", ""))})
+        new = {"qualities.xml": data("qualities", ("zz.zorped", "Zorped", "<alias>Path: Zorped</alias>"))}
+        out, n = moved.carry(prev, new)
+        self.assertIn('<alias id="zz.path-zorped"/>', out["qualities.xml"])
+        self.assertEqual(n, 1)

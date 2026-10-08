@@ -59,3 +59,5 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
   speed interval), one-row bands joined until a price (`_sets_by_header`). Fifth Edition tables (`DAM`, `AP`, `ACC`,
   `RC`, a vehicle's single `SPEED`) are skipped. A grid of four boxes (both captions over the first two) pairs alike.
   `COST MULT.` is the ammunition list's `COST MULTIPLIER`.
+- (accuracy round 2) A Fifth Edition box whose note gives the Sixth's availability (`SR6 availability is 5I`) is the
+  item. The Krime Cleaner Grenade has its SR5 damage left out and its price, blast and the note's availability kept.

@@ -88,3 +88,6 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 - General rules this book needed (not hints): two boxes side by side split at the boxes' edge or the gutter, a sidebar
   box's continuation back to the item it interrupted, a heading's small first letter (`xGUIDE`), sentence-priced
   refills and replacement parts, a `Availability N, Cost N¥` line, abbreviations spelled out in the library (`RCC`).
+- (accuracy round 2) `Size Class N` boxes are levels of the modification heading above them, a rule heading
+  included: `Gecko Tips (Size Class 1)` … `(Size Class 4)`. Amenities' `STREET RATING | AVAILABILITY | COST` …
+  `LUXURY RATING` boxes are an entry each: `Interior Finish/Amenities (Street)` … `(Luxury)`, rated 0–5.

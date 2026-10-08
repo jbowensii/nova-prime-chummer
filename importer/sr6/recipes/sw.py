@@ -187,7 +187,9 @@ def _two_prices(b):
         text = text[lead.end():].lstrip()
     parts = [p.strip() for p in b.name.split(",")]
     initials = lambda n: "".join(w[0] for w in re.findall(r"[A-Za-z]+", n)).upper()
-    if len(parts) == 2 and [initials(p) for p in parts] == [m.group(3).upper(), m.group(6).upper()]:
+    if len(semi := [p.strip() for p in b.name.split(";")]) == 2:
+        names = semi  # (a heading listing both: `MagicZap Marble; MagicZap Marble Plus`)
+    elif len(parts) == 2 and [initials(p) for p in parts] == [m.group(3).upper(), m.group(6).upper()]:
         names = parts
     else:
         names = [b.name, f"{b.name} ({m.group(6)})"]

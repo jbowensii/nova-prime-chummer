@@ -217,3 +217,21 @@ score; every written `<kind>.xml` with its entry count; the report rows grouped 
 unknown-column, book-value, missing-value, duplicate-id); then `xsd: all valid` or each file its XSD refuses (exit 1).
 `book.md`, `regrouped.md` and `import.xml` stay in `<out>/library/sr6/book1/` for inspection;
 `python -m importer sr6 summary <out>/library/sr6/book1` prints the summary again.
+
+## Importer v5, accuracy round 2
+
+- The toxins and drugs (pp. 122–126) are priced only in the reprinted reference tables after `END_PAGE`. A back-matter
+  price table that prices two or more of the book's unpriced headings is read: regroup's `_back_prices` puts it
+  before the first of them. None of its rows can be printed as a chapter row, and none of its headings can be priced
+  in its chapter. Firing Squad's reprinted weapon tables stay out. The toxins and drugs are gear now (categories
+  `Toxin`, `Drug`); their ids are unchanged.
+- A cell printing `*` (see text) is not filled from another row (`Metagenic cosmetic alteration` got Body Shop's
+  `Cosmetic Alteration` treatment price). A row printing Essence prices only an augmentation or a weapon. An implant
+  weapon's price is its implant's row. The sensor function `Ultrasound` no longer takes the `Ultrasound sensor`
+  implant's price.
+- Qualities: every Karma price on the line (`3,6, or 9 Karma`, `5, 10 Karma`, `5/8 Karma`; sections.karma_list) gives
+  karma (the first) and karmaMax (the highest). A heading `X I/II` with `5/8 Karma` is two qualities (`Representation
+  I`, `Representation II`).
+- A quality path's step read twice is one entry. The steps reader names it without the path (`Consumed`); the printed
+  heading (`Obsession: Consumed`) becomes its alias, and moved.py tier 8a keeps the old id. A step whose name another
+  quality has elsewhere keeps its printed heading (`Obsession: Momentous Misfortune`, `Favored Weapon: Lost!`).

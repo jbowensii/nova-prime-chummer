@@ -129,3 +129,50 @@ class AccuracyRoundTest(unittest.TestCase):
              "zz|b|cost": {"family": "Commlink6-only field", "ours": "200"}}
         trace.apply_verdicts(rows, v)
         self.assertEqual([r["family"] for r in rows], ["Commlink6-only field", "not found"])
+
+
+class AccuracyRound2Test(unittest.TestCase):
+    def test_back_matter_prices_unpriced_headings(self):
+        md = "\n".join(["<!-- page 5 -->", "# COMBAT", "## Toxins", "Toxins hurt.", "#### Zorpject", "**Vector:** Injection",
+                        "Puts you to sleep.", "#### Blumgas", "**Vector:** Inhalation", "Makes you blue.",
+                        "<!-- page 9 -->", "# GEAR", "#### Zap gizmo", "A gizmo.", "| GEAR | AVAIL | COST |", "|---|---|---|",
+                        "| Zap gizmo | 2 | 30¥ |", "<!-- page 20 -->", "### TABLES", "| TOXIN | AVAILABILITY | COST |",
+                        "|---|---|---|", "| Zorpject | 4(L) | 50¥ |", "| Blumgas | 3(L) | 25¥ |",
+                        "| GEAR | AVAIL | COST |", "|---|---|---|", "| Zap gizmo | 2 | 30¥ |", "| Zap toy | 1 | 5¥ |", ""])
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS, end_page=20)
+        rows = {b.name: b.row for b in regroup.blocks(text) if b.row is not None}
+        self.assertEqual(rows["Zorpject"]["COST"], "50¥")  # (priced only in the back matter: before its heading)
+        self.assertEqual(rows["Blumgas"]["AVAILABILITY"], "3(L)")
+        self.assertNotIn("Zap toy", rows)  # (a reprint of a table the chapter prints stays out)
+
+    def test_a_dc_size_class_box_is_a_level_of_its_heading(self):
+        self.assertTrue(dc._band_name("Size Class 2"))
+
+    def test_a_see_text_cell_is_not_filled_from_another_row(self):
+        md = "\n".join(["<!-- page 9 -->", "# GEAR", "## Gizmos", "#### gizmo table", "| GEAR | AVAIL | COST |", "|---|---|---|",
+                        "| Metazorp cosmic gizmo | * | * |", "| Cosmic gizmo | 4 | 20¥ |", ""])
+        e = extract(md)["gear"]["Metazorp cosmic gizmo"]
+        self.assertEqual(e.get("cost"), "*")
+
+    def test_a_path_step_is_one_quality_named_apart_when_its_name_is_taken(self):
+        from importer.sr6.sections import Found
+        cat = crb._Catalog()
+        cat.add("qualities", "Zorped", 130, {"kind": "negative", "karma": 25})
+        cat.add("qualities", "Obsession: Blorped", 140, {"kind": "negative", "karma": 15})
+        cat.section(Found("qualities", "Blorped", 140, {"kind": "negative", "karma": "15", "_heading": "Obsession: Blorped"}))
+        cat.section(Found("qualities", "Zorped", 140, {"kind": "negative", "_heading": "Obsession: Zorped"}))
+        names = {e["name"]: e for e in cat.entries["qualities"]}
+        self.assertEqual(sorted(names), ["Blorped", "Obsession: Zorped", "Zorped"])
+        self.assertEqual(names["Blorped"]["aliases"], ["Obsession: Blorped"])
+
+    def test_a_list_of_karma_prices(self):
+        from importer.sr6 import sections
+        self.assertEqual(sections.karma_list("3,6, or 9 Karma"), [3, 6, 9])
+        self.assertEqual(sections.karma_list("5/8 Karma"), [5, 8])
+        self.assertEqual(sections.quality_attrs("Zorp Pool", [], "• **Cost:** 3,6, or 9 Karma"),
+                         {"kind": "positive", "karma": "3", "karmaMax": "9"})
+        md = "\n".join(["<!-- page 9 -->", "# QUALITIES", "## Negative Qualities", "#### Zorpation I/II",
+                        "**Bonus:** 5/8 Karma", "**Game Effect:** You zorp.", ""])
+        q = extract(md).get("qualities", {})
+        self.assertEqual({n: e.get("karma") for n, e in q.items() if n.startswith("Zorpation")},
+                         {"Zorpation I": "5", "Zorpation II": "8"})

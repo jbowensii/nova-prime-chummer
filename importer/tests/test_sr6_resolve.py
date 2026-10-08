@@ -21,7 +21,8 @@ class BookCirclesTest(unittest.TestCase):
         self.index = resolve.Index([
             block("Zorp Blade", 20, ["WEAPON", "DV", "AR"], {"WEAPON": "Zorp Blade", "DV": "3P", "AR": "7/—/—/—/—"}),
             block("Implants", 30, text="| ITEM | ESSENCE | AVAIL | COST |\n|---|---|---|---|\n"
-                                       "| Zorp Blade | 0.2 | 4(I) | 2,500¥ |\n| Glim mic | 0.1 | 2 | Capacity x 50¥ |"),
+                                       "| Zorp Blade | 0.2 | 4(I) | 2,500¥ |\n| Blink sensor | 0.3 | 4 | 9,000¥ |"),
+            block("Gadgets list", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | Capacity x 50¥ |"),
             block("Wobble Lock", 40, text="Wobble locks come in ratings 1 to 6 and keep the door shut."),
             block("Gadgets", 41, text="A buyer may fit a Wobble Lock to any door. Twin values: costs 300¥."),
         ], 1, crb._tables, shapes.RENAME)
@@ -34,6 +35,10 @@ class BookCirclesTest(unittest.TestCase):
     def test_a_shorter_printing_of_the_name(self):
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
         self.assertEqual(resolve.search_book(self.index, crb.HEADERS, "gear", e, "cost", ""), ("Capacity x 50", "table", 29))
+
+    def test_an_implant_row_prices_no_gear(self):
+        e = {"name": "Blink", "aliases": ["Blink sensor"], "page": 29, "attrs": {}}
+        self.assertIsNone(resolve.search_book(self.index, crb.HEADERS, "gear", e, "cost", ""))
 
     def test_the_text(self):
         e = {"name": "Wobble Lock", "page": 39, "attrs": {}}

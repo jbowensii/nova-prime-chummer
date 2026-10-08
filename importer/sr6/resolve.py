@@ -172,12 +172,13 @@ class Index:
                 self.paras.append((page, b.name, text))
         self._sents = None
 
-    def table(self, name, cols, field, skip_page=None):
+    def table(self, name, cols, field, skip_page=None, kind=None):
         """{value: page} of the rows naming the item with a column for the field (the entry's own row, on its page
-        with nothing in that column, gives nothing)."""
+        with nothing in that column, gives nothing); for an item no augmentation, no augmentation's row (one printing
+        Essence: the core rulebook's `Ultrasound sensor` implant for the sensor function `Ultrasound`)."""
         out = {}
         for page, row, cells in self.rows:
-            if not names_item(row, name):
+            if not names_item(row, name) or not _kind_row(kind, cells):
                 continue
             for h in cols:
                 v = cells.get(h)
@@ -196,12 +197,18 @@ class Index:
                 if len(n) > 4 and (n in ns or plural in ns or names_item(b, name) and norm(b) == norm(name))]
 
 
+def _kind_row(kind, cells):
+    """A row that can price an item of this kind: an augmentation's (printing Essence) only an augmentation or a weapon
+    (an implant weapon's price is its implant's row)."""
+    return kind in (None, "augmentations", "weapons") or not {"ESSENCE", "ESS"} & set(cells)
+
+
 def same_row(index, headers, kind, entry, field, value):
     """{field: value} of the other columns of the one row that gave `value` for `field` (a row naming the item):
     the gaps it fills too. {} when several rows gave it."""
     cols = columns(headers, kind, field)
     rows = [cells for _, row, cells in index.rows if any(names_item(row, n) for n in [entry["name"], *entry.get("aliases", ())])
-            and any(_clean(cells.get(h, ""), field) == value for h in cols)]
+            and _kind_row(kind, cells) and any(_clean(cells.get(h, ""), field) == value for h in cols)]
     if len(rows) != 1:
         return {}
     out = {}
@@ -227,7 +234,7 @@ def search_book(index, headers, kind, entry, field, own_text):
     found = {}
     cols = columns(headers, kind, field)
     for n in names:
-        for v, p in index.table(n, cols, field).items():
+        for v, p in index.table(n, cols, field, kind=kind).items():
             found.setdefault(v, p)
     if len(found) == 1:
         v, p = next(iter(found.items()))

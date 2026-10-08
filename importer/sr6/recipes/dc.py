@@ -155,6 +155,7 @@ def _prep(bs, report):
             continue
         if b.type == "section":
             desc = b if b.level == 3 else desc
+            mod = b.name if MODS in ch and b.level == 4 else mod  # (a rule heading over its level boxes: `Gecko Tips`)
             out.append(b)
             continue
         if any(c in ch for c in VEHICLE_CHAPTERS) and b.row is None and b.level == 5 \
@@ -199,6 +200,16 @@ def _prep(bs, report):
                         row.update({k: v for k, v in zip(h, rows[0]) if k not in row})
                     out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[], level=b.level + 1))
             tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(first[1])
+            # (a level's box headed by its name, `STREET RATING | AVAILABILITY | COST` … `LUXURY RATING`: an entry each)
+            levels = [(m.group(1), h, rows) for h, rows in tabs if h and rows
+                      and (m := re.fullmatch(r"([A-Z][A-Z]+) RATING", h[0].strip()))
+                      and {x.upper() for x in h[1:]} <= MOD_COLUMNS]
+            if len(levels) > 1:
+                for word, h, rows in levels:
+                    row = {"GEAR": f"{b.name} ({word.title()})", "RATING": rows[0][0],
+                           **{k: v for k, v in zip(h[1:], rows[0][1:])}}
+                    out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[]))
+                continue
             tabs = [(h, rows) for h, rows in tabs if h and {x.upper() for x in h} <= MOD_COLUMNS]
             if tabs:
                 n = max(len(rows) for _, rows in tabs)
@@ -270,8 +281,8 @@ def _box_runs(text):
 
 
 def _band_name(name):
-    """A level-5 heading naming a level of the modification above (`Rating 2`, `Version 1 (…)`)."""
-    return re.fullmatch(r"(?:Rating|Level|Version) \d+.*", name) is not None
+    """A level-5 heading naming a level of the modification above (`Rating 2`, `Version 1 (…)`, `Size Class 1`)."""
+    return re.fullmatch(r"(?:Rating|Level|Version|Size Class) \d+.*", name) is not None
 
 
 def _key(values):

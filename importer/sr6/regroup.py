@@ -9,7 +9,7 @@ import difflib
 import json
 import re
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 VERSION = "1"
 HEAD = f"<!-- regrouped v{VERSION} -->"
@@ -1446,7 +1446,8 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     reprinted tables) starts; it and the pages after it are left out. variants: a catalog's name-only rows name the
     rows under them (_variants)."""
     name_headers = {h.upper() for h in name_headers}
-    els = [e for e in _elements(md) if not end_page or e[1] < end_page]
+    els = list(_elements(md))
+    els = _back_prices([e for e in els if not end_page or e[1] < end_page], [e for e in els if end_page and e[1] >= end_page])
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []
@@ -1468,6 +1469,37 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
         _chapter(units, aliases, name_headers, report, variants and heads, set().union(*rows_in[n + 1:]), lower)
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
+
+
+def _back_prices(els, back):
+    """The back matter's price tables (`TOXIN | AVAILABILITY | COST`) that price the book's own unpriced headings: a
+    table none of whose rows the chapters print as a row, two or more of them headings there (the core rulebook prices
+    its toxins and drugs only in its reprinted reference tables), and none of those headings priced in the chapter (a
+    book's own tables reprinted: Firing Squad's). Each goes before the first heading it prices, on its
+    page, where a catalog table goes; the other back matter (the index, tables the chapters print) stays out."""
+    rows = {norm(r[0]) for e in els if e[0] == "t" for r in e[2].rows if r and r[0]}
+    heads, hs = {}, [i for i, e in enumerate(els) if e[0] == "h"]
+    for n, i in enumerate(hs):
+        if els[i][2][0] >= 4:
+            j = next((k for k in hs[n + 1:] if els[k][2][0] <= els[i][2][0]), len(els))
+            heads.setdefault(norm(els[i][2][1]), (i, j))
+
+    def priced(i, j):  # (a heading the chapter prices itself: a price table or a `¥` under it, its boxes' included)
+        return any(e[0] == "t" and any("COST" in h.upper() for h in e[2].header) or e[0] == "x" and "¥" in e[2]
+                   for e in els[i + 1:j])
+    ins = []
+    for e in back:
+        if e[0] != "t":
+            continue
+        hu = [h.upper() for h in e[2].header]
+        names = {norm(r[0]) for r in e[2].rows if r and r[0]}
+        at = sorted(heads[n] for n in names if n in heads)
+        if any("AVAIL" in h for h in hu) and hu[-1].endswith("COST") and len(at) >= 2 and not names & rows \
+                and not any(priced(i, j) for i, j in at):
+            ins.append((at[0][0], ("t", els[at[0][0]][1], replace(e[2], page=els[at[0][0]][1]))))
+    for i, t in sorted(ins, key=lambda x: -x[0]):
+        els.insert(i, t)
+    return els
 
 
 # --- the regrouped file ------------------------------------------------------------------------------------------
