@@ -181,6 +181,16 @@ nuyen) that mounts on top.
 |---|---|---|---|---|---|---|
 | Rifle | 4P | SA | 3/9/7/—/— | 12(c) | 4(L) | 900¥ |
 **Note:** Grip-brace add-on increases the Medium and Far Attack Ratings by 2. Cells cost 40¥ each.
+#### Fizz Sprayer
+A made-up sprayer that can jettison its tank and glow lamp parts (replacement tanks and lamps are available
+as spares for 20 nuyen each). It can be completely refilled for 15 nuyen. Nozzle sets are 5¥ each.
+##### fizz sprayer
+| TYPE | DV | MODE | ATTACK RATINGS | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|---|
+| Rifle | 2S | SS | 3/—/—/—/— | 6(c) | 2 | 300¥ |
+#### zorp lore
+A made-up sidebar's gadget.
+Availability 3, Cost 1,200¥
 ### Clubs
 #### Bonk Mallet
 A made-up mallet with heads.
@@ -211,6 +221,13 @@ class AddOnsTest(unittest.TestCase):
         self.assertEqual((a["supplyOf"], a["cost"], a["category"]), ("zorp-zapper", "40", "Supply"))
         self.assertIn(("alias", {}, "Cell for Zorp Zapper"), kids)
         self.assertTrue(any(c == "issue" and x["field"] == "avail" for c, x, _ in kids))
+
+    def test_refills_replacement_parts_and_a_price_line(self):
+        got = {n: (self.g[n][0]["cost"], self.g[n][0]["supplyOf"]) for n in self.g if n.startswith("Fizz Sprayer ")}
+        self.assertEqual(got, {"Fizz Sprayer refill": ("15", "fizz-sprayer"), "Fizz Sprayer nozzle set": ("5", "fizz-sprayer"),
+                               "Fizz Sprayer replacement tank": ("20", "fizz-sprayer"),
+                               "Fizz Sprayer replacement glow lamp": ("20", "fizz-sprayer")})
+        self.assertEqual((self.g["Zorp lore"][0]["avail"], self.g["Zorp lore"][0]["cost"]), ("3", "1200"))
 
     def test_accessories_and_their_effects(self):
         a, kids = self.w["Zorp Zapper steady grip-brace"]

@@ -69,6 +69,10 @@ recipe reads both.
   may wrap onto its own line); each `Pilot Rating N: N nuyen` line (the autosoft packs: `Recon Autosofts 2`). A
   trailing `PACK` is dropped from the name (`Armed GMC Bulldog`), one inside it reads `Pack` (`Hacker Pack A`). Two
   packs of one weapon (plain and silenced) keep the printed name twice; the book doesn't name the second.
+  Importer v5: the `(N nuyen)` line may carry a requirement (`(116,000 nuyen, Vehicle's Body must be at least 10)`:
+  `Rigger's Baby`, `Combat Biker`) or lose its parentheses (`139,800 nuyen`: the `Armed YMC Delfin PACK`); a
+  paragraph's wrapped line that opens with a parenthesis (`(rating 3), contacts …`) continues it (`Ultrasound
+  Contacts`, `Exquisite Fake ID`).
 
 ## Real-book check (local, nothing committed)
 

@@ -172,12 +172,13 @@ class Index:
                 self.paras.append((page, b.name, text))
         self._sents = None
 
-    def table(self, name, cols, field, skip_page=None):
+    def table(self, name, cols, field, skip_page=None, kind=None):
         """{value: page} of the rows naming the item with a column for the field (the entry's own row, on its page
-        with nothing in that column, gives nothing)."""
+        with nothing in that column, gives nothing); for an item no augmentation, no augmentation's row (one printing
+        Essence: the core rulebook's `Ultrasound sensor` implant for the sensor function `Ultrasound`)."""
         out = {}
         for page, row, cells in self.rows:
-            if not names_item(row, name):
+            if not names_item(row, name) or not _kind_row(kind, cells):
                 continue
             for h in cols:
                 v = cells.get(h)
@@ -196,12 +197,18 @@ class Index:
                 if len(n) > 4 and (n in ns or plural in ns or names_item(b, name) and norm(b) == norm(name))]
 
 
+def _kind_row(kind, cells):
+    """A row that can price an item of this kind: an augmentation's (printing Essence) only an augmentation or a weapon
+    (an implant weapon's price is its implant's row)."""
+    return kind in (None, "augmentations", "weapons") or not {"ESSENCE", "ESS"} & set(cells)
+
+
 def same_row(index, headers, kind, entry, field, value):
     """{field: value} of the other columns of the one row that gave `value` for `field` (a row naming the item):
     the gaps it fills too. {} when several rows gave it."""
     cols = columns(headers, kind, field)
     rows = [cells for _, row, cells in index.rows if any(names_item(row, n) for n in [entry["name"], *entry.get("aliases", ())])
-            and any(_clean(cells.get(h, ""), field) == value for h in cols)]
+            and _kind_row(kind, cells) and any(_clean(cells.get(h, ""), field) == value for h in cols)]
     if len(rows) != 1:
         return {}
     out = {}
@@ -227,7 +234,7 @@ def search_book(index, headers, kind, entry, field, own_text):
     found = {}
     cols = columns(headers, kind, field)
     for n in names:
-        for v, p in index.table(n, cols, field).items():
+        for v, p in index.table(n, cols, field, kind=kind).items():
             found.setdefault(v, p)
     if len(found) == 1:
         v, p = next(iter(found.items()))
@@ -292,6 +299,35 @@ _PAIR = re.compile(r"(?:adds\s+)?(\+?\d[\d,.]*(?:\s*\(?[LIF]\)?)?\s*¥?(?:\s*/\s
 _GROUP_PAGE = re.compile(r"^(.*?)\s+p\.\s*(\d+)\s*$", re.I)
 _CHANGE_COST = re.compile(r"\bchange\s+the\s+(cost|availability|price)\s+to\s+([\d,]+\s*¥?|\d+\s*\(?[LIF]?\)?)", re.I)
 _HEAD_ITEM = re.compile(r"^#+\s*p\.\s*(\d+)\s*,\s*(.+)$", re.I)
+# a renumbering: `Rather than being rating 5 and 6 cyberware as printed …, these are instead rating 6 and 7 cybereyes
+# and cyberears.` (the names the statement's last words)
+_RENUMBER = re.compile(r"\brather than being ratings? (\d+)(?:\s*(?:and|,)\s*(\d+))?\b[^.]*?,\s*(?:these|it|they) "
+                       r"(?:are|is) instead ratings? (\d+)(?:\s*(?:and|,)\s*(\d+))?\s+([^.]+)\.", re.I)
+# a rating dropped: `Autovoice and vocal expansion no longer have ratings, and their price and Availability are always
+# calculated as if they were rating 1.`
+_UNRATED = re.compile(r"(?:^|[.!?)]\s+)([^.!?)]+?)\s+no longer ha(?:s|ve) (?:a )?ratings?\b[^.]*?\bas if (?:it|they) "
+                      r"(?:was|were) rating (\d+)", re.I)
+
+
+def _names_of(s):
+    """`cybereyes and cyberears` -> ['cybereyes', 'cyberears']."""
+    return [x.strip() for x in re.split(r",\s*(?:and\s+)?|\s+and\s+", s.strip()) if x.strip()]
+
+
+def _whole_statements(md):
+    """The statements an errata prints as prose sentences, read over its joined lines: [(None, subject, '_renumber',
+    (old, new), None)] and [(None, subject, '_unrated', rating, None)]."""
+    text = " ".join(_BOLD.sub(r"\1", ln.strip()) for ln in (md or "").splitlines()
+                    if ln.strip() and not ln.strip().startswith(("<!--", "#")))
+    out = []
+    for m in _RENUMBER.finditer(text):
+        olds, news = [x for x in (m.group(1), m.group(2)) if x], [x for x in (m.group(3), m.group(4)) if x]
+        if len(olds) == len(news):
+            for subj in _names_of(m.group(5)):
+                out += [(None, subj, "_renumber", (int(o), int(n)), None) for o, n in zip(olds, news)]
+    for m in _UNRATED.finditer(text):
+        out += [(None, subj, "_unrated", int(m.group(2)), None) for subj in _names_of(m.group(1))]
+    return out
 
 
 def _subjects(s):
@@ -309,6 +345,37 @@ def _errata_value(field, v):
     if field == "cost":
         v = re.sub(r"(?<=\d),(?=\d{3})", "", v).replace("¥", "").strip()
     return " ".join(v.split())
+
+
+# an FAQ's question naming an item (`H OW DOES S TOLEN G EAR WORK ? ( P . 162)`, letter-spaced capitals) and a Karma
+# statement under it (`It only ever gives a bonus of 0 Karma.`)
+_QUESTION = re.compile(r"^(?:HOW DOES|HOW DO|WHAT DOES|WHAT DO)\s+(?:THE\s+|AN?\s+)?(.+?)\s+(?:WORK|DO|MEAN)\b")
+_BONUS_KARMA = re.compile(r"\b(?:gives|grants|is worth) (?:a bonus of )?(\d+) Karma\b", re.I)
+
+
+def _unspaced(ln):
+    """`H OW DOES S TOLEN G EAR` -> `HOW DOES STOLEN GEAR` (a capital printed apart from the rest of its word)."""
+    return re.sub(r"\b([A-Z]) (?=[A-Z]{2,}\b|[A-Z]\b)", r"\1", ln)
+
+
+def _question_statements(md):
+    """[(page, subject, 'karma', value, None)]: a Karma statement under an FAQ question naming its subject."""
+    out, subj, page = [], None, None
+    for raw in (md or "").splitlines():
+        ln = _unspaced(_BOLD.sub(r"\1", raw.strip()))
+        if not ln or ln.startswith("<!--"):
+            continue
+        if (m := _QUESTION.match(ln)) and ln.upper() == ln:
+            subj = m.group(1).strip().title()
+            p = re.search(r"\(\s*P\s*\.\s*(\d+)", ln)
+            page = int(p.group(1)) if p else None
+            continue
+        if subj and ln.upper() == ln and len(ln) > 12:
+            subj = None  # (another question or heading, naming something else)
+            continue
+        if subj and (k := _BONUS_KARMA.search(ln)):
+            out.append((page, subj, "karma", k.group(1), None))
+    return out
 
 
 def errata(md):
@@ -351,7 +418,7 @@ def errata(md):
         if head and (m := _CHANGE_COST.search(ln)):  # `Change … the cost to N¥.` under a heading naming the item
             f = ERRATA_FIELDS[m.group(1).lower()]
             out.append((head[0], head[1], f, _errata_value(f, m.group(2)), None))
-    return out
+    return _whole_statements(md) + out + _question_statements(md)  # (a renumbering first: the values that follow name the new ratings)
 
 
 def _words(s):
@@ -363,7 +430,7 @@ def errata_targets(entries, page, subject):
     the statement's page when it gives one: `Hardened` among the spin tops of p. 20). One only, else none."""
     sw = _words(subject)
     flat = norm(subject).replace(" ", "")
-    same = [e for e in entries if norm(e["name"]) == norm(subject)]
+    same = [e for e in entries if norm(subject) in {norm(n) for n in [e["name"], *e.get("aliases", ())]}]
     if not same:  # `Glo-Cam` for `GloCam (1-12)`: the words run together, a range or note after
         same = [e for e in entries if norm(re.sub(r"\s*\([^()]*\)\s*$", "", e["name"])).replace(" ", "") == flat]
     if not same:
@@ -470,8 +537,9 @@ def _formula_of(el, f):
     return next((x for x in _kids(el, "formula") if x.get("field") == f), None)
 
 
-def _apply_errata(bs, entries, changed, n):
-    """Each errata statement on its own book's entries, when the errata is newer than the printing."""
+def _errata_books(bs):
+    """(errata, the book it corrects) for each errata newer than its book's printing (a printing newer than the
+    errata carries its own values)."""
     for eb in bs:
         if eb.state != "skipped" or "errata" not in eb.why.lower():
             continue
@@ -480,28 +548,144 @@ def _apply_errata(bs, entries, changed, n):
         if not targets:
             continue
         best = max(len(_tail(b.name)) for b in targets)
-        stmts = errata(eb.md)
         for tb in [b for b in targets if len(_tail(b.name)) == best]:
-            if not eb.date or not tb.date or eb.date <= tb.date:
-                continue  # a printing newer than the errata carries its own values
-            ents = [{"name": el.findtext("name") or "", "page": int(el.get("page") or 0), "el": el, "path": path}
-                    for b, src, kind, el, path in entries if b is tb and src == tb.src and kind != "rules"]
-            for page, subj, field, value, band in stmts:
-                hit = errata_targets([e for e in ents if e["el"].get(field) is not None
-                                      or any(i.get("field") == field for i in _kids(e["el"], "issue"))], page, subj)
-                if not hit:
-                    continue
-                el, path = hit[0]["el"], hit[0]["path"]
-                old = el.get(field)
-                new = patch_band(old, band, value) if band else value
-                if new is None or new == old:
-                    continue
-                el.set(field, new)
-                for x in [x for x in _kids(el, "issue") + _kids(el, "formula") if x.get("field") == field]:
-                    el.remove(x)
-                _add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": page}, old)
-                changed.add(path)
-                n["errata"] += 1
+            if eb.date and tb.date and eb.date > tb.date:
+                yield eb, tb
+
+
+def _apply_errata(bs, entries, changed, n):
+    """Each errata statement on its own book's entries, when the errata is newer than the printing."""
+    for eb, tb in _errata_books(bs):
+        stmts = errata(eb.md)
+        ents = [{"name": el.findtext("name") or "", "page": int(el.get("page") or 0), "el": el, "path": path,
+                 "aliases": [a.text for a in _kids(el, "alias") if a.text]}
+                for b, src, kind, el, path in entries if b is tb and src == tb.src and kind != "rules"]
+        _renumber(ents, [s for s in stmts if s[2] == "_renumber"], tb, changed, n)
+        for page, subj, field, value, band in stmts:
+            if field == "_unrated":
+                from importer.sr6.categories import singular
+                for e in errata_targets(ents, page, subj) or errata_targets(ents, page, singular(subj)):
+                    _unrate(e, value, tb, changed, n)
+                continue
+            if field.startswith("_"):
+                continue
+            hit = errata_targets([e for e in ents if e["el"].get(field) is not None
+                                  or any(i.get("field") == field for i in _kids(e["el"], "issue"))], page, subj)
+            if not hit:
+                continue
+            el, path = hit[0]["el"], hit[0]["path"]
+            old = el.get(field)
+            new = patch_band(old, band, value) if band else value
+            if new is None or new == old:
+                continue
+            el.set(field, new)
+            for x in [x for x in _kids(el, "issue") + _kids(el, "formula") if x.get("field") == field]:
+                el.remove(x)
+            _add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": page}, old)
+            changed.add(path)
+            n["errata"] += 1
+
+
+def _line_page(md, title):
+    """The PDF page the line printing a title is on (the `<!-- page N -->` above it), or None."""
+    page = None
+    for ln in (md or "").splitlines():
+        if m := re.match(r"<!-- page (\d+) -->", ln.strip()):
+            page = int(m.group(1))
+        elif re.sub(r"\*\*", "", ln).strip().rstrip(":").strip() == title:
+            return page
+    return None
+
+
+def _errata_modules(bs, files, changed, n):
+    """Life modules an errata prints whole for its book (`use these errata'd entries instead of what's printed`: the
+    companion's form, general._modules): each one the book's catalog lacks is added to its lifemodules file, on the
+    errata's page, with a `found` record (how=errata). Returns the files it created."""
+    from lxml import etree
+    from importer.sr6 import regroup as rg
+    from importer.sr6.recipes import crb, general, swc
+    made = []
+    for eb, tb in _errata_books(bs):
+        mods = general._modules(list(rg.blocks(rg.regroup(eb.md)[0])))
+        if not mods:
+            continue
+        cat = crb._Catalog(tb.src.upper(), tb.src, "an errata")
+        for name, text, page in mods:
+            swc._lifemodule(cat, "adult", name, text, _line_page(eb.md, name) or page)
+        path = os.path.join(tb.custom, "imported", tb.src, "lifemodules.xml")
+        have = next((f for f in files + made if f[3] == path), None)
+        if have is None:
+            root = etree.fromstring(cat.xml("lifemodules").encode("utf8"))
+            for el in list(root):
+                root.remove(el)
+            have = (tb, tb.src, "lifemodules", path, etree.ElementTree(root))
+            made.append(have)
+        root = have[4].getroot()
+        names = {norm(el.findtext("name") or "") for el in root if isinstance(el.tag, str)}
+        for el in etree.fromstring(cat.xml("lifemodules").encode("utf8")):
+            if not isinstance(el.tag, str) or norm(el.findtext("name") or "") in names:
+                continue
+            el.set("id", f"{tb.src}.{el.get('id')}")
+            _add_kid(el, "found", {"field": "entry", "how": "errata", "source": tb.src.upper(), "page": el.get("page")})
+            el.tail = "\n"
+            root.append(el)
+            changed.add(path)
+            n["errata"] += 1
+    return made
+
+
+def _renumber(ents, stmts, tb, changed, n):
+    """An errata's renumbering (`these are instead rating 6 and 7 cybereyes`): each entry named with the old rating
+    (`Cybereyes (Rating 5)`) takes the new one in its name and its formulas' rating bands, all at once (the old
+    names first: 5 -> 6 and 6 -> 7 don't collide). Its id stays (characters keep loading it); the printed name is a
+    `found` record."""
+    todo = []
+    # (by their printed names: an entry renamed by an earlier corpus pass is found, and left, by its printed name)
+    view = [dict(e, name=f.text or "", done=True) if (f := next((f for f in _kids(e["el"], "found") if f.get("field") == "name"
+                                                                and f.get("how") == "errata"), None)) is not None
+            else dict(e, done=False) for e in ents]
+    for _, subj, _, (old, new), _ in stmts:
+        hit = errata_targets(view, None, f"{subj} Rating {old}")
+        if hit and not hit[0]["done"] and re.search(rf"\bRating\s+{old}\b", hit[0]["name"]):
+            todo.append((next(e for e in ents if e["el"] is hit[0]["el"]), old, new))
+    maps = {}
+    for e, old, new in todo:
+        maps.setdefault(id(e["el"]), {})[old] = new
+    for e, old, new in todo:
+        el, printed = e["el"], e["name"]
+        e["name"] = re.sub(rf"\bRating\s+{old}\b", f"Rating {new}", printed)
+        el.find("name").text = e["name"]
+        m = {o: x for es in maps.values() for o, x in es.items()}  # (the family's bands: tier(R; 5: …; 6: …))
+        for f in _kids(el, "formula"):
+            f.text = re.sub(r"(?<=[;(]\s)(\d+)(?=\s*:)", lambda k: str(m.get(int(k.group(1)), k.group(1))), f.text or "")
+        _add_kid(el, "found", {"field": "name", "how": "errata", "source": tb.src.upper(), "page": e["page"]}, printed)
+        changed.add(e["path"])
+        n["errata"] += 1
+
+
+def _unrate(e, rating, tb, changed, n):
+    """An errata dropping an item's rating (`no longer have ratings … as if they were rating 1`): each formula's value
+    at that rating is the field's value; the rating goes."""
+    from importer.sr6 import formula as F
+    el = e["el"]
+    done = False
+    for f in _kids(el, "formula"):
+        try:
+            v = F.evaluate(f.text or "", R=rating)
+        except Exception:  # (a formula needing more than the rating: left)
+            continue
+        if v is None:
+            continue
+        field = f.get("field")
+        _add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": e["page"]}, el.get(field))
+        el.set(field, F.fmt(v))
+        el.remove(f)
+        done = True
+    if done and el.get("rating") is not None:
+        del el.attrib["rating"]
+    if done:
+        changed.add(e["path"])
+        n["errata"] += 1
 
 
 def corpus(books, sources=None, apply_errata=True):
@@ -535,6 +719,8 @@ def corpus(books, sources=None, apply_errata=True):
     changed, n = set(), {"corpus": 0, "errata": 0, "searched": 0}
     if apply_errata:
         _apply_errata(bs, entries, changed, n)
+        made = _errata_modules(bs, files, changed, n)
+        files += made
     deck_cards = [(b, cards(b.md)) for b in bs if b.state == "skipped" and "card" in b.why.lower()]
 
     def offer(cands, ob, osrc, oel, f):
@@ -579,11 +765,94 @@ def corpus(books, sources=None, apply_errata=True):
                 _add_kid(el, "formula", dict(fx.attrib), fx.text)
             _add_kid(el, "found", {"field": f, "how": "corpus", "source": osrc, "page": page})
             n["corpus"] += 1
+    n["abbreviations"] = _spelled_out(bs, entries, changed)
+    n["run-ins"] = _run_in_names(bs, entries, changed)
     for b, src, kind, path, tree in files:
         if path in changed:
             body = etree.tostring(tree, encoding="unicode")
             xmlio.write_file(path, xmlio.HEAD + body + ("" if body.endswith("\n") else "\n"))
+    for custom in {f[0].custom for f in (made if apply_errata else [])}:
+        xmlio.update_index(custom)  # (a file an errata's entries made: listed)
     return n
+
+
+_RUNIN_LINE = re.compile(r"^\s*(?:•\s*)?\*\*([A-Z][\w’'-]*(?:[ -][\w’'-]+){0,3}):\*\*")
+_GROUPED = re.compile(r"^(.+?)\s+\(([^()]+)\)$")
+
+
+def _typo(a, b):
+    """Two all-capital names of three letters or more one letter apart (`NDE` / `NDI`)."""
+    return len(a) == len(b) >= 3 and a.isupper() and b.isupper() and sum(x != y for x, y in zip(a, b)) == 1
+
+
+def _run_in_names(bs, entries, changed):
+    """A grouped row `Group (Part)` that its book describes under a bold run-in naming it another way gets that name as
+    a search name (an `<alias>` with no id): the part with the group's head word before it (`**Endo-Mender:**` for
+    `Endosymbionts (Mender)`), or the part one letter off (`**NDE:**` for `Genotype Enhancement (NDI)`: a typo, the
+    printed row keeping its name). The run-in within four pages of the row, and naming no entry of the book.
+    Returns how many entries got one."""
+    done = 0
+    by_book = {}
+    for b, src, kind, el, path in entries:
+        if b.state == "done" and src == b.src and kind != "rules":
+            by_book.setdefault(id(b), (b, []))[1].append((el, path))
+    for b, ents in by_book.values():
+        runins, page = [], 0
+        for ln in (b.md or "").splitlines():
+            if m := re.match(r"<!-- page (\d+) -->", ln.strip()):
+                page = int(m.group(1))
+            elif m := _RUNIN_LINE.match(ln):
+                runins.append((m.group(1).strip(), page))
+        names = {norm(el.findtext("name") or "") for el, _ in ents}
+        parts = {norm(m.group(2)) for el, _ in ents if (m := _GROUPED.match(el.findtext("name") or ""))}
+        for el, path in ents:
+            m = _GROUPED.match(el.findtext("name") or "")
+            if not m or not str(el.get("page") or "").isdigit():
+                continue
+            group, part, at = m.group(1), m.group(2).strip(), int(el.get("page"))
+            head = norm(group).split()[0] if norm(group) else ""
+            hits = set()
+            for x, pg in runins:
+                if not (0 <= pg - at <= 4) or norm(x) in names or norm(x) == norm(part):
+                    continue
+                pre = re.match(rf"(?i)^(.+?)[\s-]+{re.escape(part)}$", x)
+                if pre and head.startswith(norm(pre.group(1)).replace(" ", "")) or _typo(x, part) and norm(x) not in parts:
+                    hits.add(x)
+            if len(hits) == 1 and not any((a.text or "") == next(iter(hits)) for a in _kids(el, "alias")):
+                _add_kid(el, "alias", {}, next(iter(hits)))
+                changed.add(path)
+                done += 1
+    return done
+
+
+# an abbreviation the text spells out: `rigger command consoles (RCCs)`, `Medical Evacuation (MEDEVAC)`
+_DEFINED = re.compile(r"\b((?:[A-Za-z][a-z]+[\s-]+){1,5}[A-Za-z][a-z]+)\s+\(([A-Z]{2,7})s?\)")
+
+
+def _spelled_out(bs, entries, changed):
+    """An entry named only by an abbreviation (`RCC`) that a book of the library spells out where it defines it
+    (`rigger command console (RCC)`, the words' initials the letters): that spelling a search name (an `<alias>`
+    with no id), singular. Returns how many entries got one."""
+    spelled = {}
+    for b in bs:
+        for m in _DEFINED.finditer(b.md or ""):
+            words = re.split(r"[\s-]+", m.group(1))
+            for k in range(len(words)):  # the words the letters start: the last len(abbr) words
+                tail = words[k:]
+                if len(tail) == len(m.group(2)) and "".join(w[0] for w in tail).upper() == m.group(2):
+                    one = " ".join(tail)
+                    one = one[:-1] if one.endswith("s") and not one.endswith("ss") else one
+                    spelled.setdefault(m.group(2), one[:1].upper() + one[1:].lower())
+                    break
+    done = 0
+    for b, src, kind, el, path in entries:
+        name = (el.findtext("name") or "").strip()
+        full = spelled.get(name)
+        if full and not any((a.text or "").lower() == full.lower() for a in _kids(el, "alias")):
+            _add_kid(el, "alias", {}, full)
+            changed.add(path)
+            done += 1
+    return done
 
 
 def library(library_dir, custom_dir):

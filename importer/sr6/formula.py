@@ -9,11 +9,12 @@ in an edits file.
 The grammar:
     EXPR   := term (('+' | '-') term)*
     term   := factor (('*' | '/') factor)*
-    factor := number | R | Q | M | B | opt.<id> | '(' EXPR ')' | '-' factor | call
+    factor := number | R | Q | M | B | H | opt.<id> | '(' EXPR ')' | '-' factor | call
     call   := tier(EXPR; lo-hi: EXPR; …; lo+: EXPR) | ref(kind:id, field[, EXPR])
             | ceil(EXPR) | floor(EXPR) | min(EXPR, EXPR) | max(EXPR, EXPR)
 R is the rating (Force, Level, Size, Grade alike), Q the count bought (the formula's unit names it), M the character's
-Magic, B the field's own printed value (the app's), opt.<id> 1 when that option is chosen. `/` rounds up unless the
+Magic, B the field's own printed value (the app's), H the same field of the item an add-on is fitted to (its host:
+the ammunition a material multiplies), opt.<id> 1 when that option is chosen. `/` rounds up unless the
 formula says round="down"; the open last band of a tier is `lo+:`. The readers below use B for the base item a price is
 worked out from (the commlink a hack goes in, the instrument a link doubles): no catalog id names it, so _formula()
 writes such a rule as an `ambiguous` issue stating it (`base + R*100`), never as a formula.
@@ -91,7 +92,7 @@ def parse(expr):
             return x
         if v == "-":
             return ("neg", factor())
-        if k == "name" and v in ("R", "Q", "M", "B"):
+        if k == "name" and v in ("R", "Q", "M", "B", "H"):
             return ("var", v)
         if k == "name" and v == "tier":
             take("(")
@@ -167,10 +168,10 @@ def valid(expr):
         return False
 
 
-def evaluate(expr, R=None, Q=None, M=None, B=None, opt=None, ref=None, round=ROUND_UP):
+def evaluate(expr, R=None, Q=None, M=None, B=None, opt=None, ref=None, round=ROUND_UP, H=None):
     """The value of a formula, or None when it needs something not given (a variable, a ref the `ref(target, field,
     rating)` callback can't resolve, a rating outside every band). `/` rounds up, or down with round='down'."""
-    env = {"R": R, "Q": Q, "M": M, "B": B}
+    env = {"R": R, "Q": Q, "M": M, "B": B, "H": H}
     opts = opt or {}
 
     def ev(n):
@@ -348,6 +349,8 @@ def read(text, field="cost"):
         return "B*Q", {"unit": _unit(m.group(1))}
     if field == "avail" and re.fullmatch(r"as\s+(?:the\s+)?[a-z][a-z ]*", t, re.I):
         return "B", {}  # `As focus`: the availability of the item it is made for
+    if m := re.fullmatch(rf"\(\s*(?:{_VAR_WORDS})\s*\)\s*[x*]\s*({_NUM})", t, re.I):
+        return f"R*{fmt(_n(m.group(1)))}", {}  # (`(Rating) x 500`: the rating in brackets, not another item)
     # (`Focus cost x 0.25`: a share of the price of the item it is made for)
     if m := re.fullmatch(rf"(?:\([^()]+\)\s*|[a-z][a-z ]*?\s+cost\s+)?[x*]\s*({_NUM})", t, re.I):
         return f"B*{fmt(_n(m.group(1)))}", {}
@@ -597,6 +600,11 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             continue
         if f == "cost" and v is not None and (p := plain(v, f)) is not None and (tu := text_unit(text)):
             out.append(_formula(f, f"Q*{fmt(p)}", {"unit": tu[0]}, page))  # its description prices it per unit
+            continue
+        if v is not None and re.search(r"\d,\d", _clean(v)):
+            # (a thousands group of other than three digits, `1,00¥`: a misprint, read as its digits but the user's
+            # to settle)
+            out.append(("issue", {"field": f, "code": "unreadable", "page": page}, f"printed: {_short(v)}"))
             continue
         if v is None or _DASH.fullmatch(v) or plain(v, f) is not None or band(v.strip("[] ")):
             continue  # (a range, `1–6`, is the rating or capacity the item comes in)

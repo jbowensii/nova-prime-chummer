@@ -429,6 +429,9 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
     own = {match.n1(n) for n in names}  # (none printed under the name itself: its qualified rows are the variants)
     vs = corpus.variants(kinds, names, home) or [(b, e) for b, e in corpus.entries(kinds, names, home)
                                                  if match.n1(e["name"]) not in own]
+    # (and the entry printing the record's own name, when Commlink6's aliases name another row too: its `Dodge Rampart`
+    # lists `Dodge Rampart LEV`)
+    vs += [(b, e) for b, e in corpus.entries(kinds, [c["name"]], home) if match.n0(e["name"]) == match.n0(c["name"])]
     vs = [(b, e) for b, e in vs if e["kind"] in kinds and not b.errata and not b.context]
     if not vs:
         return None
@@ -497,6 +500,8 @@ def run(corpus, cl6, verdicts=None):
     A record no name finds is matched by its stats (stat_matches): a strong match is a rename (family 'renamed by
     stats', our printed name kept, Commlink6's an alias); weak candidates go on the not-found row as `stat`."""
     rows, n = [], Counter()
+    fields.REF.clear()  # (our entries by kind and id: a derived item's ref() compares by its base's value)
+    fields.REF.update({f"{e['kind']}:{e['id']}": e["attrs"] for b in corpus.books if not b.errata for e in b.entries})
     matched = _matched_names(corpus, cl6)
 
     def lookup(c, names):
@@ -510,15 +515,30 @@ def run(corpus, cl6, verdicts=None):
         for b, e in ents:
             groups.setdefault((id(b), e["kind"], match.n1(e["name"])), []).append(e)
         far, exact = set(), {match.n0(x) for x in names}
-        rated = re.search(r"(?i)\brating\s*\d", c["name"])
+        rated = re.search(r"(?i)\brating\s*(\d+)", c["name"])
         for es in groups.values():
             # (a record named with its rating: the row printing that name, `X Rating 1`, not `X Rating 2`, which
-            # words() reads alike)
-            if rated and 0 < len(ex := {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
+            # words() reads alike; or the row printing that rating, `Cybereyes (Rating 6)` for `Cybereyes, Advanced
+            # Rating 6`)
+            if rated and 0 < len(ex := {e["id"] for e in es if re.search(rf"(?i)\brating\s*{rated.group(1)}\b", e["name"])}
+                                 or {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
                 far |= {e["id"] for e in es if e["id"] not in ex}
             elif len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
                 d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
                 far |= {i for i, x in d.items() if x > min(d.values())}
+        # (an entry of the record's own kind on its page is the record; another kind's row of the name on a farther page,
+        # the core rulebook's `Heavy pistol/SMG` magazine for its `Heavy pistol` implant weapon, is another thing)
+        if str(c["page"]).isdigit() and (mine := [abs(int(e["page"]) - int(c["page"])) for _, e in ents
+                                                   if e["kind"] == c["kind"] and str(e["page"]).isdigit()]) \
+                and min(mine) <= 1:
+            other = {(e["kind"], e["id"]) for _, e in ents if e["kind"] != c["kind"] and str(e["page"]).isdigit()
+                     and abs(int(e["page"]) - int(c["page"])) > 2}  # (by kind and id: kinds share ids, `crb.shotgun`)
+            ents = [(b, e) for b, e in ents if (e["kind"], e["id"]) not in other]
+            obs = [o for o in obs if (m := re.search(r"/(\w+) id=(\S+) ", o.where)) is None or m.group(1, 2) not in other]
+            # (and a card titled with more than its name is another thing: Gun Rack's `Narcoject Hornet` dart pistol
+            # for the toxin `Narcoject`)
+            obs = [o for o in obs if o.kind != "card" or (m := re.search(r"card \[(.*)\]$", o.where)) is None
+                   or match.n0(m.group(1)) in exact]
         if far:
             ents = [(b, e) for b, e in ents if e["id"] not in far]
             obs = [o for o in obs if (m := re.search(r"\bid=(\S+) ", o.where)) is None or m.group(1) not in far]
@@ -554,6 +574,16 @@ def run(corpus, cl6, verdicts=None):
         if not any(lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)):
             names += [x for x in matched.get(id(c), []) if x not in names]  # its own book prints it another way
         found, ents, obs = lookup(c, names)
+        if not found and len(c["name"].split()) > 2:
+            # the record's name is a search name our entry prints, with the maker the entry's name opens with in front
+            # (`Volkswagen Krime IV+`: the Volkswagen Superkombi IV's printed `Krime IV+`)
+            maker, rest = c["name"].split(None, 1)
+            more = [a for b, e in corpus.entries(set(c["pool"]) or {c["kind"]}, [rest], home)
+                    if lineage.family(b.belongs) == home and e["name"].split()[:1] == [maker]
+                    for a in e["aliases"] if match.n1(a) == match.n1(rest)]
+            if more:
+                names = [*names, *dict.fromkeys(more)]
+                found, ents, obs = lookup(c, names)
         # (an entry of ours under the object's name is the object, even one printing no field: a mentor spirit)
         if not found:
             printed = corpus.mentions(names)
@@ -595,6 +625,14 @@ def run(corpus, cl6, verdicts=None):
         if diffs and not renamed and (v := _closer_variant(corpus, c, kinds, names, done, diffs)) is not None:
             diffs = v  # the variant row of ours that agrees most (`Widget (Large)` for Commlink6's one `Widget`)
             n["compared with a variant row"] += 1
+        if any(d["field"] == "rating" for d in diffs) and c["fields"].get("rating"):
+            # (the book printing each rating as a row of its own, `Cyberkit (Rating 2)` … `(Rating 6)`: the range those
+            # rows cover is the record's one rated item)
+            lo, hi = c["fields"]["rating"]
+            got = {int(m.group(1)) for _, e in corpus.entries(kinds, names, lineage.family(c["src"]))
+                   if (m := re.search(r"(?i)\b(?:rating|level)\s*(\d+)\b", e["name"]))}
+            if got and min(got) <= lo and max(got) >= hi:
+                diffs = [d for d in diffs if d["field"] != "rating"]
         n["fields compared"] += len(done)
         n["fields equal"] += len(done) - len(diffs)
         n["records exact"] += not diffs
@@ -672,6 +710,8 @@ def apply_verdicts(rows, verdicts):
     location; a weak link no verdict confirms goes to not found (a one-digit-off value stays not found)."""
     for r in rows:
         v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}") if r["field"] else None  # (a record's: run())
+        if v and v.get("ours") is not None and str(r.get("winner")) != v["ours"]:
+            v = None  # (a verdict on the value it was checked against: ours changed since, the difference is back)
         if v:
             r["family"], r["verdict"] = v["family"], v.get("note", "")
             r["where"] = f"{v.get('note', '')} (page crop {v['crop']})" if v.get("crop") else v.get("note", "")

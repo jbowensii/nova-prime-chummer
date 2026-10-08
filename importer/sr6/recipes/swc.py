@@ -13,7 +13,7 @@ from importer.recipes.dhsa import slug
 from importer.sr6 import KINDS, resolve, sections
 from importer.sr6.recipes import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, norm, text_page
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
 SHA256 = ("348a545b057f2daaa2337636570dbc6151e8229fd1d1e30d8827664d5516e768",  # the owner's copy
@@ -68,7 +68,7 @@ def _plain(text):
 _HIDDEN = re.compile(r"^([A-Z][\w/' -]+?)\s*[\[(]\s*(\w+)\s+only\s*[\])]$")  # `Clairvoyant [ Awakened only ]`
 _ONLY = re.compile(r"\s*[\[(]\s*(\w+)\s+only\s*[\])]", re.I)
 _ITEM = re.compile(r"(?=Choose (?:one|two|three|an? \w+):|(?<!: )\+\d+ to |Resources:|Contact Points:|Contact Types:|"
-                   r"Knowledge skills?\b|One rank in|Option:)")
+                   r"Knowledge [Ss]kills?\b|One rank in|Option:)")
 
 
 def _split_hidden(name, text):
@@ -92,6 +92,7 @@ def _options(word):
     w = re.sub(r"^(?:or|and)\s+", "", norm(re.sub(r"\(.*?\)", "", word)))
     if m := re.fullmatch(r"(?:or\s+)?\+?\s*([\d,]+)\s*nuyen", word.strip()):
         return [f"nuyen:{m.group(1).replace(',', '')}"]
+    w = re.sub(r"^\d+\s+(?=[a-z])", "", w)  # (an errata's `+1 Con or +1 Influence`: each option its own bonus)
     if re.fullmatch(r"(?:your )?(?:other )?drain attribute", w):  # Willpower and the tradition's other one
         return ["log", "int", "cha"]
     if w in ATTRS or w in SKILL_IDS or w + "s" in SKILL_IDS:
@@ -152,13 +153,15 @@ def _module_grants(name, text, page, report):
             if c := _choice(it, name, page, report):
                 kids.append(("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None))
             continue
-        if m := re.match(r"Resources:\s*\+?([\d,]+)\s*nuyen", it):
+        if m := re.match(r"Resources:\s*\+?([\d,]+)(?:\s*(?:nuyen|¥))?", it):  # (an errata's `Resources: +75,000`)
             add("nuyen", int(m.group(1).replace(",", "")))
         elif m := re.match(r"Contact Points:\s*(\d+)", it):
             add("contactPoints", int(m.group(1)))
         elif m := re.match(r"Contact Types:\s*(.*)", it):
             types = [norm(t) for t in re.split(r",\s*|\s+or\s+|\s+and\s+", m.group(1).strip(" ."))]
             types = [t for t in types if t]
+            # (the last type run into the prose after the list: `Media Add a negative quality …`)
+            types = [t if t in CONTACT_TYPES or t.split()[0] not in CONTACT_TYPES else t.split()[0] for t in types]
             if types and types[0] != "any":
                 bad = [t for t in types if t not in CONTACT_TYPES]
                 for t in bad:
@@ -331,7 +334,7 @@ _KARMA = re.compile(r"^\W*(Cost|Bonus)\s*:\s*(.*?(?:Karma|see text).*)$", re.I)
 _SUBNAME = re.compile(r"^[A-Z0-9<][\w’'/<>,-]*(?:\s+(?:[A-Z0-9<][\w’'/<>,-]*|of|and|the|or|\([^)]*\)))*$")
 
 
-def _qualities(cat, name, text, page):
+def _qualities(cat, name, text, page, block=None):
     """Each `Cost: N Karma` (positive) or `Bonus: N Karma` (negative) line in the block is one quality: the block's,
     or a sub-quality named by the short title line above it (`Camouflage` under `Animal Pelage`). False: no karma line."""
     lines = [ln.replace("**", "").strip() for ln in text.splitlines()]
@@ -345,9 +348,10 @@ def _qualities(cat, name, text, page):
         sub = prev if _SUBNAME.match(prev) and len(prev.split()) <= 5 and prev != name else None
         qname = sub or name  # a sub-quality is a quality of its own (`Monkey Paws`)
         karma = m.group(2)
-        k = re.search(r"(\d+)\s*Karma", karma, re.I)
+        k = sections.karma_list(karma)  # (`5, 10 Karma`: the first, the highest)
         lv = re.search(r"max(?:imum)?\.?\s*(?:of\s*)?(\d+)\s*levels?", karma, re.I)
-        attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k and int(k.group(1)),
+        attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k[0] if k else None,
+                 "karmaMax": max(k) if k and max(k) > k[0] else None,
                  "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None, "maxLevel": lv and int(lv.group(1))}
         if not k and re.search(r"\bsee\s+text\b", karma, re.I):
             # `Bonus: See text`: the prices its own paragraphs print (`a bonus of 8 Karma … a bonus of 15 Karma`),
@@ -360,7 +364,9 @@ def _qualities(cat, name, text, page):
         if not k:
             cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": qname, "field": "karma",
                                "value": karma, "page": page})
-        cat.add("qualities", qname, page, attrs, (), _plain_text(text))
+        # (a sub-quality on its own page: its title line's, the block printed over several pages)
+        at = max(1, text_page(block, sub) - PAGE_OFFSET) if sub and block is not None else page
+        cat.add("qualities", qname, at, attrs, (), _plain_text(text))
     return found
 
 
@@ -464,7 +470,7 @@ def extract(regrouped, ctx=None):
         elif ch in QUALITY_CHAPTERS and b.type == "item" and "new critter powers" in group and b.level == 5:
             done = _critterpower(cat, b.name, text, page)
         elif ch in QUALITY_CHAPTERS and b.type == "item":
-            done = _qualities(cat, b.name, text, page)
+            done = _qualities(cat, b.name, text, page, b)
         elif ch == CONTACTS and b.type == "item":
             done = _contact(cat, b.name, text, page, _md(b))
         elif b.type == "item" and len(band := shapes.vehicle_band(b.text)) >= 6:

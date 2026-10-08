@@ -44,6 +44,8 @@ def kind(chapter, b, parent2):
         return "npcs", None
     if b.type == "item" and "cost" in labels and "qualities" in norm(b.section):
         return "qualities", "negative" if "negative" in norm(b.section) else "positive"
+    if "martial art" in chapter and "Signature of" in b.labels:
+        return "martialtechniques", None
     if "martial art" in chapter and "Signature Technique" in b.labels:
         return "martialarts", None
     return None, None
@@ -61,17 +63,23 @@ def prepare(bs):
     """The book's shapes as crb.extract reads them: a heading's word hyphenated over two lines joined, a bold label's
     too; the running head (`shadow stock`, `PAGE`, the title and page number) out of the text; an NPC's `Professional
     Rating N` line as the core rulebook's section form (its chapter the group); the martial art's `Categories` and its
-    signature technique's name (before the first full stop) as labels."""
+    signature technique's name (before the first full stop) as labels, and the technique its line defines (the rest
+    of the line) an entry of its own."""
     out = []
     for b in bs:
         b = _split_label(replace(b, name=_SPLIT.sub(r"\1-\2", b.name), text=_RUNNING.sub("", b.text).strip()))
         if b.type == "section" and b.level == 3 and (m := _PR.search(b.text)) and "| B |" in b.text:
             b = replace(b, section=f"Professional Rating {m.group(1)}: {b.chapter}")
+        tech = None
         if "Signature Technique" in b.labels:
             labels = {("Category" if k == "Categories" else k): v for k, v in b.labels.items()}
-            labels["Signature Technique"] = labels["Signature Technique"].split(".")[0].strip()
+            name, _, rest = labels["Signature Technique"].partition(".")
+            labels["Signature Technique"] = name.strip()
             b = replace(b, labels=labels)  # its full line stays in the text (the bulleted copy)
-        out.append(b)
+            if rest.strip():  # (the line defines the technique too, `Rake. Increase the Damage Value …`: an entry)
+                tech = replace(b, name=name.strip(), level=b.level + 1, text=rest.strip(),
+                               labels={"Category": labels.get("Category", ""), "Signature of": b.name})
+        out += [b] + ([tech] if tech else [])
     return out
 
 

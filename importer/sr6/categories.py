@@ -37,7 +37,7 @@ KIND_WORDS = {"weapon": "weapons", "armor": "armor", "armour": "armor", "vehicle
               "cyberdeck": "electronics",
               "cyberware": "augmentations", "bioware": "augmentations", "geneware": "augmentations",
               "nanoware": "augmentations", "implant": "augmentations", "augmentation": "augmentations",
-              "gear": "gear", "program": "programs"}
+              "gear": "gear", "program": "programs", "ammunition": "ammotypes"}
 # a title naming only the kind it lists (`vehicles` over the drones): the kind's own word
 KIND_ONLY = {"weapon": "weapons", "armor": "armor", "vehicle": "vehicles", "gear": "gear", "device": "electronics",
              "electronic": "electronics", "augmentation": "augmentations", "program": "programs"}

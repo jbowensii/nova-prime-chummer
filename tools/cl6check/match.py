@@ -144,7 +144,10 @@ def match(cl6, ours):
           lambda o: [n1(n) for n in _names(o)])
     stage("no-parenthetical", lambda c: [n2(c["name"])], lambda o: [n2(n) for n in _names(o)])
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
-    stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)])
+    # (a one-word name only near its page: `Increasing` is p. 132's `Increasing a Form`, not p. 128's
+    # `Increasing/Reducing Cargo Space`)
+    stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)],
+          lambda c, o: len(toks(c["name"])) > 1 or not c["page"] or near(o["page"], c["page"], 2))
     stage("word-order", lambda c: [toks(c["name"])], lambda o: [toks(n) for n in _names(o)])
     # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke Rocket`)
     stage("split word-order", lambda c: [toks(c["name"])],
@@ -170,9 +173,27 @@ def match(cl6, ours):
         hits = [o for o in hits if share[id(o)] == max(share.values())]  # (`Ritual Spellcasting`, not `Spellcasting`)
         # (the rows on the record's own page when some are: `Assault Cannon HEX` is p. 140's row, not p. 147's)
         hits = [o for o in hits if near(o["page"], c["page"])] or hits
+        # (a record named with a rating: the rows printing that rating when some do, words() leaving it out)
+        if rt := re.search(r"(?i)\brating\s*(\d+)", c["name"]):
+            hits = [o for o in hits if re.search(rf"(?i)\brating\s*{rt.group(1)}\b", o["name"])] or hits
         if hits and len({n2(o["name"]) for o in hits}) <= 6:
             found[i] = (hits, "contained")
             used.update(id(o) for o in hits)
+    for i, c in enumerate(cl6):
+        # a record whose words are all in one of several rows another record took loosely (`Smuggling Compartment`
+        # took both rows by its name without a parenthetical): that row is this record's (`Smuggling Compartment -
+        # Shielding` = `Smuggling Compartment (General shielding)`)
+        key = toks(c["name"])
+        if found[i] or not c["page"] or len(key) < 2:
+            continue
+        for j, f in enumerate(found):
+            if not f or f[1] not in ("loose", "no-parenthetical", "alias") or len(f[0]) < 2:
+                continue
+            hits = [o for o in f[0] if near(o["page"], c["page"]) and key <= toks(o["name"])]
+            if len(hits) == 1:
+                found[i] = (hits, "contained")
+                found[j] = ([o for o in f[0] if o is not hits[0]], f[1])
+                break
     for i, c in enumerate(cl6):  # our row named within its category (group): `Implanted Shotgun` is `Shotgun` there
         if found[i] is None and pool[i] and (hits := [o for o in pool[i] if grouped(c["name"], o)]):
             found[i] = (hits, "group")
@@ -230,8 +251,20 @@ def stat_agreement(c, o):
     return ok, bad
 
 
+def _named_words(c, o):
+    """True when two of record c's name words are in our entry o's name, or all the words after the section a
+    Commlink6 PACK's name opens with (`Upgrades-Gunports`); two adjacent words of ours count as their compound
+    (`Gun Ports`)."""
+    ws = words(o["name"])
+    mine = set(toks(o["name"])) | {a + b for a, b in zip(ws, ws[1:])}
+    tail = toks(c["name"].split("-", 1)[1]) if "-" in c["name"] else frozenset()
+    return len(toks(c["name"]) & mine) >= 2 or bool(tail) and tail <= mine and any(len(w) >= 4 for w in tail)
+
+
 def strong(c, o, ok):
-    return len(ok) >= STRONG_AGREE or len(ok) == 2 and near(o["page"], c["page"])
+    # (a record whose only stat is its price, a PACK: that price on its own page and its name's words, _named_words)
+    return len(ok) >= STRONG_AGREE or len(ok) == 2 and near(o["page"], c["page"]) \
+        or ok == ["cost"] and near(o["page"], c["page"]) and _named_words(c, o)
 
 
 def by_stats(c, cands, matched=()):

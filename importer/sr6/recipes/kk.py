@@ -33,7 +33,7 @@ CHAPTER = "krime katalog"  # its running head: the book's one chapter (prepare_m
 _CAPTION = re.compile(r"([^:]*?)\s*:\s*sr\s*([56])\b(?:\s+stats)?", re.I)
 # printed headers -> the core rulebook's (crb.HEADERS)
 RENAME = {"ATTACK": "ATTACK RATINGS", "SPEED INT": "SPEED INTERVAL", "SENS": "SENSOR", "BOD": "BODY", "ARM": "ARMOR",
-          "SEAT": "SEATS", "NAME": "ITEM", "TYPES": "ITEM"}
+          "SEAT": "SEATS", "NAME": "ITEM", "TYPES": "ITEM", "COST MULT": "COST MULTIPLIER"}
 PROSE = {"AR", "DV"}  # an ammunition's modifiers: gear has no attribute for them
 
 
@@ -63,12 +63,59 @@ def _captions(line):
     return out
 
 
+_SR5_HEADS = {"DAM", "AP", "ACC", "RC"}  # Fifth Edition columns (Sixth prints DV and attack ratings)
+_SR6_SPEED = re.compile(r"\bINT\b|SPD", re.I)  # a Sixth Edition vehicle's speed interval (`SPEED INT`, `INT.TOP SPEED`)
+
+
+def _sr5(header):
+    """A stat table in the Fifth Edition's columns: damage and AP, or a vehicle's single SPEED (no interval)."""
+    h = {x.upper() for x in header}
+    first = {x.upper().split()[0] for x in header if x.split()}  # (`DAM MOD`, `AP MOD`: an ammunition list's)
+    return bool(first & _SR5_HEADS) or "SPEED" in h and "ACCEL" in h and not any(_SR6_SPEED.search(x) for x in header)
+
+
+def _sets_by_header(text):
+    """The SR6 stat sets of a text whose two editions' boxes read as tables of their own, in whatever order the page's
+    columns put them (a 2x2 grid of boxes: both captions over the first two, the tables after): each SR6 caption's
+    subject paired, in order, with the next run of SR6 tables (Sixth Edition columns; one-row bands joined until a
+    price). None when the counts differ (_stat_sets reads it), or a table holds both halves."""
+    lines, subjects, sets, cur, i = text.splitlines(), [], [], None, 0
+    while i < len(lines):
+        ln = lines[i]
+        if ln.startswith("|") and i + 1 < len(lines) and crb._TABLE_SEP.match(lines[i + 1]):
+            j = i + 2
+            while j < len(lines) and lines[j].startswith("|") and not (j + 1 < len(lines) and crb._TABLE_SEP.match(lines[j + 1])):
+                j += 1
+            h, rows = crb._cells(ln), [crb._cells(r) for r in lines[i + 2:j]]
+            if sum(x.upper() == "COST" for x in h) > 1:
+                return None
+            if not _sr5(h):
+                if cur is not None and len(rows) == 1 and len(cur[1]) == 1:
+                    cur = (cur[0] + h, [cur[1][0] + rows[0]])
+                else:
+                    if cur is not None:
+                        sets.append(cur)
+                    cur = (h, rows)
+                if {"AVAIL", "COST"} & {x.upper() for x in h}:
+                    sets.append(cur)
+                    cur = None
+            i = j
+            continue
+        subjects += [subj for subj, ed in _captions(ln) if ed == "6"]
+        i += 1
+    if cur is not None:
+        sets.append(cur)
+    if not subjects or len(subjects) != len(sets):
+        return None
+    return [(subj, h, rows) for subj, (h, rows) in zip(subjects, sets)]
+
+
 def _stat_sets(text):
     """The text's SR6 stat sets: [(subject, header, rows)]. After a caption naming both editions the SR6 half of its
     table (the columns after the first COST) or, for two tables with one header, the second; after a caption naming
     SR6 alone, its tables (one header and row joined) until the next caption."""
     lines, out, i = text.splitlines(), [], 0
-    mode, subj, tabs = None, "", []
+    mode, subj, tabs, last5, seen = None, "", [], False, False
 
     def flush():
         if mode == "both" and tabs:
@@ -86,6 +133,12 @@ def _stat_sets(text):
                 out.append((subj, head, [row]))
             elif len(tabs) > 1 and tabs[1][0] == h:
                 out.append((subj, *tabs[1]))
+            elif (k := next((j for j, (t, _) in enumerate(tabs) if "COST" in {x.upper() for x in t}), None)) is not None \
+                    and k + 1 < len(tabs) and all(len(rows) == 1 for _, rows in tabs[k + 1:]):
+                # the two editions' boxes read as tables of their own (SR5's bands, then SR6's): the SR6 half is the
+                # tables after the SR5 half's price, its bands joined
+                six = tabs[k + 1:]
+                out.append((subj, [x for t, _ in six for x in t], [[c for _, rows in six for c in rows[0]]]))
             else:
                 out.append((subj, [], []))
         elif mode == "sr6" and tabs:
@@ -102,13 +155,17 @@ def _stat_sets(text):
             j = i + 2
             while j < len(lines) and lines[j].startswith("|") and not (j + 1 < len(lines) and crb._TABLE_SEP.match(lines[j + 1])):
                 j += 1
+            seen = True
             if mode:
                 tabs.append((crb._cells(ln), [crb._cells(r) for r in lines[i + 2:j]]))
             i = j
             continue
         if caps := _captions(ln):
-            flush()
             eds = {e for _, e in caps}
+            if eds == {"6"} and last5 and not seen:  # (the two boxes' captions on two lines, both over their tables)
+                eds = {"5", "6"}
+            flush()
+            last5, seen = eds == {"5"}, False
             mode, subj, tabs = ("both" if eds == {"5", "6"} else "sr6" if eds == {"6"} else None), caps[-1][0], []
         i += 1
     flush()
@@ -193,7 +250,17 @@ def _prep(bs, report):
     named = {norm(b.name): b for b in items if b.type == "item"}
     out, used = [], set()
     for b in items:
-        sets = _stat_sets(b.text)
+        sets = _sets_by_header(b.text) or _stat_sets(b.text)
+        sr6 = re.search(r"SR6 availability is (\d+)\s*\(?([LIF]?)\)?", " ".join((b.text or "").split()))
+        if not sets and sr6 and (t := next((t for t in crb._tables(b.text) if "COST" in {h.upper() for h in t[0]}
+                                             and _sr5(t[0]) and t[1]), None)):
+            # (a Fifth Edition box whose note gives the Sixth's availability, `SR6 availability is 5I`: the item, its
+            # SR5 damage left out)
+            h, r = [x.upper() for x in t[0]], t[1][0]
+            row = {"WEAPON": b.name, **{k: v for k, v in zip(h, r) if k not in _SR5_HEADS},
+                   "AVAIL": f"{sr6.group(1)}({sr6.group(2)})" if sr6.group(2) else sr6.group(1)}
+            out.append(replace(b, type="item", header=list(row), row=row, stats=[], label="grenades" if "BLAST" in h else ""))
+            continue
         if not sets:
             out.append(b)
             continue

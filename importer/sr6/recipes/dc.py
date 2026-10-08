@@ -155,6 +155,7 @@ def _prep(bs, report):
             continue
         if b.type == "section":
             desc = b if b.level == 3 else desc
+            mod = b.name if MODS in ch and b.level == 4 else mod  # (a rule heading over its level boxes: `Gecko Tips`)
             out.append(b)
             continue
         if any(c in ch for c in VEHICLE_CHAPTERS) and b.row is None and b.level == 5 \
@@ -182,12 +183,33 @@ def _prep(bs, report):
                            "page": max(1, b.page - PAGE_OFFSET)})
         if MODS in ch and b.type == "item" and b.level == 4:
             mod = b.name
+        elif MODS in ch and b.type == "item" and b.level == 5 and b.row is None and not _band_name(b.name) \
+                and not [h for h, _ in crb._tables(b.text) if h and {x.upper() for x in h} <= MOD_COLUMNS]:
+            mod = b.name  # an unpriced level-5 heading over its own level boxes
         if b.type == "item" and b.name[:1].islower():  # a box titled in lower case (`chop shop owner`)
             b = replace(b, name=_title(b.name))
         if MODS in ch and b.row is None:
-            if b.level == 5 and re.fullmatch(r"(?:Rating|Level|Version) \d+.*", b.name):
+            if b.level == 5 and _band_name(b.name):
                 b = replace(b, name=f"{mod} ({b.name})")  # a level of the modification above
-            tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(b.text)
+            first, *more = _box_runs(b.text)
+            for subject, seg in more:  # (owner, 2026-10-08) a second box after a sentence: an entry of its own
+                tabs2 = [(h, rows) for h, rows in crb._tables(seg) if h and {x.upper() for x in h} <= MOD_COLUMNS]
+                if subject and tabs2:
+                    row = {"GEAR": f"{re.sub(r'\s*\([^()]*\)\s*$', '', b.name)} ({subject})"}
+                    for h, rows in tabs2:
+                        row.update({k: v for k, v in zip(h, rows[0]) if k not in row})
+                    out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[], level=b.level + 1))
+            tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(first[1])
+            # (a level's box headed by its name, `STREET RATING | AVAILABILITY | COST` … `LUXURY RATING`: an entry each)
+            levels = [(m.group(1), h, rows) for h, rows in tabs if h and rows
+                      and (m := re.fullmatch(r"([A-Z][A-Z]+) RATING", h[0].strip()))
+                      and {x.upper() for x in h[1:]} <= MOD_COLUMNS]
+            if len(levels) > 1:
+                for word, h, rows in levels:
+                    row = {"GEAR": f"{b.name} ({word.title()})", "RATING": rows[0][0],
+                           **{k: v for k, v in zip(h[1:], rows[0][1:])}}
+                    out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[]))
+                continue
             tabs = [(h, rows) for h, rows in tabs if h and {x.upper() for x in h} <= MOD_COLUMNS]
             if tabs:
                 n = max(len(rows) for _, rows in tabs)
@@ -212,6 +234,55 @@ def _prep(bs, report):
         if k not in read and norm(name) not in names:  # (a box printing other values than the table is no loss)
             report.append({"kind": "missing-value", "file": "vehicles.xml", "name": name, "field": "stats", "page": page})
     return [b for b in out if id(b) not in used]
+
+
+_SIZE_HEAD = re.compile(r"^#####\s+(Mini|Small|Standard|Medium|Large|Huge)\s*$")
+
+
+def prepare_md(md):
+    """A level-5 heading naming only a size (`##### Small` under `##### Pop-Out Concealment`) named with the heading over
+    it before regroup pairs headings with catalog rows (else it takes the drone rack table's `Small` row)."""
+    lines, base = md.splitlines(), None
+    for i, ln in enumerate(lines):
+        if m := _SIZE_HEAD.match(ln):
+            if base:
+                lines[i] = f"##### {base} ({m.group(1)})"
+        elif m := re.match(r"^#{4,5}\s+(.+?)\s*$", ln):
+            base = m.group(1)
+    return "\n".join(lines) + "\n"
+
+
+def _box_runs(text):
+    """[(subject, text)]: the text with its first box (subject None), then each later box printed after a sentence of
+    its own, named by that sentence's subject (`General shielding on a smuggling compartment (may be taken multiple
+    times).` -> `General shielding`); a box with no such sentence stays with the run before it."""
+    segs, prose, table = [], [], []
+    for ln in (text or "").splitlines():
+        if ln.startswith("|"):
+            table.append(ln)
+            continue
+        if table:
+            segs.append((prose, table))
+            prose, table = [], []
+        prose.append(ln)
+    if table:
+        segs.append((prose, table))
+        prose = []
+    out = [[None, []]]
+    for i, (p, t) in enumerate(segs):
+        sent = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(x.strip() for x in p if x.strip()))
+        m = re.match(r"([A-Z][a-z]+(?:\s+[a-z]+){0,2}?)\s+(?:on|for|of|in|to)\b", sent) if i and len(sent) < 160 else None
+        if m:
+            out.append([m.group(1), p + t])
+        else:
+            out[-1][1] += p + t
+    out[-1][1] += prose
+    return [(subj, "\n".join(ls)) for subj, ls in out]
+
+
+def _band_name(name):
+    """A level-5 heading naming a level of the modification above (`Rating 2`, `Version 1 (…)`, `Size Class 1`)."""
+    return re.fullmatch(r"(?:Rating|Level|Version|Size Class) \d+.*", name) is not None
 
 
 def _key(values):
@@ -286,7 +357,7 @@ _SOFT = re.compile(r"^•\s*\*\*([^*]+)\*\*\s*(?:\(([^()]*)\))?\s*$")
 def _autosofts(bs, cat):
     """The skills sold as autosofts (Skills Available in Autosoft Format: bulleted `**Skill** (specialization)` lines,
     their ratings in the prose, `rating from one to nine`): programs of type autosoft, unpriced (the core rulebook prices
-    autosofts by rating). A skill whose own line sets its rating (Language, Knowledge) stays in the rules."""
+    autosofts by rating). A skill whose own line sets its ratings (Language 1, 3, 5; Knowledge 3) has those."""
     for b in bs:
         if norm(b.name) != "skills available in autosoft format":
             continue
@@ -301,10 +372,14 @@ def _autosofts(bs, cat):
                 ln += " " + lines[i].strip()
             i += 1
             s = _SOFT.match(ln)
-            if not s or s.group(2) and re.search(r"\brating\b", s.group(2), re.I):
+            if not s:
                 continue
-            name = f"{s.group(1).strip()} ({s.group(2).strip()})" if s.group(2) else s.group(1).strip()
-            cat.add("programs", name, max(1, b.page - PAGE_OFFSET), {"type": "autosoft", "rating": f"{lo}–{hi}" if lo and hi else None})
+            # a line setting its own ratings (`Language (Beginner: rating one, …, Expert: rating five)`, `Knowledge
+            # (always purchased as a rating 3 autosoft)`): those ratings, the parenthesis no specialization
+            own = [_WORD_NUM.get(r.lower(), r) for r in re.findall(r"\brating\s+(\w+)", s.group(2) or "", re.I)]
+            name = s.group(1).strip() if own or not s.group(2) else f"{s.group(1).strip()} ({s.group(2).strip()})"
+            rating = ", ".join(str(r) for r in own) if own else f"{lo}–{hi}" if lo and hi else None
+            cat.add("programs", name, max(1, b.page - PAGE_OFFSET), {"type": "autosoft", "rating": rating})
 
 
 def extract(regrouped, ctx=None):

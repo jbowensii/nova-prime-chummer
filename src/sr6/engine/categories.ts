@@ -26,7 +26,7 @@ export const catKey = (s: string | undefined) => normName(s ?? '').split(' ').fi
 const KIND_WORDS: Record<string, Sr6Kind> = { weapon: 'weapons', armor: 'armor', armour: 'armor', vehicle: 'vehicles', drone: 'vehicles',
   device: 'electronics', electronic: 'electronics', commlink: 'electronics', cyberdeck: 'electronics', augmentation: 'augmentations',
   implant: 'augmentations', cyberware: 'augmentations', bioware: 'augmentations', geneware: 'augmentations', nanoware: 'augmentations',
-  gear: 'gear', program: 'programs' }
+  gear: 'gear', program: 'programs', ammunition: 'ammotypes' }
 const TYPE_WORDS = new Set(['cyberware', 'bioware', 'geneware', 'nanoware'])
 
 /** The categories' records by `<kind>|<category key>`, the latest loaded last (a source's own first, see categoryOf). */

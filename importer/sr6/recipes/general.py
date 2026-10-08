@@ -12,7 +12,7 @@ from collections import Counter
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
-from importer.sr6 import sections
+from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb, swc
 from importer.sr6.recipes.fs import _md_table
 from importer.sr6.regroup import blocks, keys, norm
@@ -323,13 +323,26 @@ def _slash_names(name):
     return [left, " ".join(head[:k] + [right])]
 
 
-_MODULES = re.compile(r"(?:adult\s+)?life\s+modules?", re.I)
-_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*", re.I)
+_MODULES = re.compile(r"(?:new\s+)?(?:adult\s+|event\s+)?life\s+modules?", re.I)
+# a grant: a bold label (the companion's), or a bulleted one (an errata's: `• Contact Points: 4`)
+_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*|^\s*•\s*(?:choose \w+|contact points|resources):",
+                    re.I | re.M)
+
+
+def _unbold(s):
+    return re.sub(r"\*\*", "", s or "").strip()
+
+
+def _bare(s):
+    """A line without its bold and a trailing colon (`**Adult Life Modules:**`)."""
+    return _unbold(s).rstrip(":").strip()
 
 
 def _title_line(s):
-    return bool(s) and s[0].isupper() and len(s.split()) <= 5 and s[0] not in "•*#|>" and "," not in s \
-        and not re.search(r"[.;!?-]$", s)
+    # (an `Event:` kicker on the title's own line: `Event: You had Fifteen Minutes of Fame`)
+    words = len(re.sub(r"^Event:\s*", "", s or "").split())
+    return bool(s) and s[0].isupper() and words <= (6 if s.startswith("Event:") else 5) and s[0] not in "•*#|>" \
+        and "," not in s and not re.search(r"[.;!?-]$", s)
 
 
 def _modules(bs):
@@ -343,7 +356,7 @@ def _modules(bs):
     for b in bs:
         head = norm(b.name)
         if on and (head in (norm(b.chapter), "") or head.isdigit()):
-            lines += b.text.splitlines()
+            lines += _paged(b)
             continue
         if level is not None and b.level > level:  # a module under its own heading
             # (its labelled lines once: the text's own, else regroup's labels)
@@ -354,29 +367,42 @@ def _modules(bs):
         on, level = False, None
         if b.level and _MODULES.fullmatch(b.name.strip()):
             level = b.level
-        text = b.text.splitlines()
+        text = _paged(b)
         at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
-            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(ln.strip())), None)
+            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
         if at is not None:
             lines, page, on = lines + [""] + text[at:], page or b.page, True
-    out, cur, name = [], [], []
+    out, cur, name, at = [], [], [], 0
+    pg = lambda: getattr(lines[at], "page", 0) or page  # noqa: E731  (the module's title line's page)
     i = 0
     while i < len(lines):
-        s = lines[i].strip()
-        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)):
+        s = _unbold(lines[i])
+        if _MODULES.fullmatch(_bare(s)):  # (a second list's line, `New Event Life Modules`: no title)
+            if cur and name and any(_GRANT.search(c) for c in cur):
+                out.append((" ".join(name), "\n".join(cur), pg()))
+            name, cur, i = [], [], i + 1
+            continue
+        # (a title set in bold starts a module after lines with no grant too: an errata's `Student Athlete: Use …`)
+        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)
+                               or re.fullmatch(r"\*\*[^*]+\*\*", lines[i].strip())):
             j = i
-            while j < len(lines) and _title_line(lines[j].strip()):
+            while j < len(lines) and _title_line(_unbold(lines[j])) and not _MODULES.fullmatch(_bare(lines[j])):
                 j += 1
             if j < len(lines) and lines[j].strip() and not lines[j].lstrip().startswith(("•", "**")) and j - i <= 3:
                 if cur and any(_GRANT.search(c) for c in cur):
-                    out.append((" ".join(name), "\n".join(cur), page))
-                name, cur, i = [lines[k].strip() for k in range(i, j)], [], j
+                    out.append((" ".join(name), "\n".join(cur), pg()))
+                name, cur, at, i = [_unbold(lines[k]) for k in range(i, j)], [], i, j
                 continue
         cur.append(lines[i])
         i += 1
     if cur and name and any(_GRANT.search(c) for c in cur):
-        out.append((" ".join(name), "\n".join(cur), page))
+        out.append((" ".join(name), "\n".join(cur), pg()))
     return out + heads
+
+
+def _paged(b):
+    """Block b's text lines, each keeping the PDF page it is printed on (regroup's page breaks)."""
+    return [regroup._pline(ln, regroup.line_page(b, k)) for k, ln in enumerate((b.text or "").splitlines())]
 
 
 def _contact(b):
@@ -470,6 +496,8 @@ class Book:
                 b = replace(b, type="item")
         if b.type == "item" and b.row is None and b.stats and _PRICE & {h.upper() for h in b.stats[0]} and not _being(b):
             cells = {h: v for i, (h, v) in enumerate(b.stats[0].items()) if i or h.upper() not in _NAME_COLUMNS}
+            if b.name == b.name.lower():  # a box titled in lower case (`flash scope`): its words capitalized
+                b = replace(b, name=" ".join(w[:1].upper() + w[1:] for w in b.name.split()))
             b = replace(b, row={"ITEM": b.name, **cells}, header=["ITEM", *cells], stats=b.stats[1:], label="")
         if b.row is not None and _SHORT.keys() & set(b.row):
             b = replace(b, row={_SHORT.get(h, h): v for h, v in b.row.items()}, header=[_SHORT.get(h, h) for h in b.header])

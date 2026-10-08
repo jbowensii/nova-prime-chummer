@@ -230,6 +230,18 @@ class MatchTest(unittest.TestCase):
         mine = [entry("Q1 (ZAP Boom Gun)", page="20"), entry("Q9 (ZAP Boom Gun)", page="27")]
         self.assertEqual([o["name"] for o in match.match([c], mine)[0][1]], ["Q1 (ZAP Boom Gun)"])
 
+    def test_a_pack_paired_by_its_price_and_name(self):
+        # (a PACK's only stat is its price: that price on its page and its name after Commlink6's section, a compound
+        # of two of our words counting: `Zapports` for `Zap Ports`)
+        c = {"name": "Upgrades-Zapports", "page": "71", "kind": "packs", "pool": ("packs",), "aliases": [],
+             "fields": {"cost": {None: 4000.0}}}
+        o = entry("Zap Ports Vehicle", page="71", cost="4000")
+        o["kind"] = "packs"
+        ok, bad = match.stat_agreement(c, o)
+        self.assertEqual((ok, bad), (["cost"], []))
+        self.assertTrue(match.strong(c, o, ok))
+        self.assertFalse(match.strong(c, dict(o, name="Glow Vehicle"), ok))
+
 
 class PatternsTest(unittest.TestCase):
     def test_general_rules_are_scored_against_the_tags(self):

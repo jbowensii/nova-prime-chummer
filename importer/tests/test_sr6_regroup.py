@@ -711,3 +711,20 @@ class RowGroupsAndSubTablesTest(unittest.TestCase):
         got = {n: (self.items[n].label, self.items[n].table) for n in ("Glow widget", "Zap plan", "Zorp dust")}
         self.assertEqual(got, {"Glow widget": ("widgets", "zorp gear table"), "Zap plan": ("plans", "zorp gear table"),
                                "Zorp dust": ("supplies", "zorp gear table")})
+
+
+class SidebarAndNestedGroupsTest(unittest.TestCase):
+    """Made-up markup: a boxed sidebar interrupting an item, and a name-only row over name-only rows."""
+
+    def test_what_follows_a_sidebar_goes_back_to_the_item_it_interrupted(self):
+        md = ("#### Zorp Seal\nIt seals\n<!-- box -->\n#### Gizmo Lore\nAn aside.\n<!-- /box -->\nthe cabin.\n"
+              "##### Level 1\n| AVAIL | COST |\n|---|---|\n| 4 | 100¥ |\n#### Next Mod\nText.\n")
+        heads = [v[1] for k, _, v in regroup._elements(md) if k == "h"]
+        self.assertEqual(heads, ["Zorp Seal", "Level 1", "Gizmo Lore", "Next Mod"])
+
+    def test_a_name_only_row_over_name_only_rows_is_their_group(self):
+        rows = [["Zap Boosters", "", ""], ["Speed", "", ""], ["Rating 1", "4", "5¥"], ["Rating 2", "6", "9¥"],
+                ["Grip", "", ""], ["Rating 1", "4", "7¥"], ["Lone kit", "1", "3¥"]]
+        self.assertEqual([r[0] for r in regroup._rating_groups(rows)],
+                         ["Zap Boosters", "Zap Boosters (Speed) (Rating 1)", "Zap Boosters (Speed) (Rating 2)",
+                          "Zap Boosters (Grip) (Rating 1)", "Lone kit"])

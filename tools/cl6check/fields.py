@@ -12,7 +12,7 @@ FIELDS = ("cost", "avail", "legality", "rating", "essence", "capacity", "dv", "a
           "handling", "accel", "interval", "topSpeed", "body", "armor", "pilot", "sensor", "seats", "range",
           "spell type", "duration", "drain", "spell category", "pp cost", "per level", "activation", "fade", "karma",
           "positive", "threshold", "power type", "action", "attribute")
-PRICED = {"weapons", "armor", "augmentations", "electronics", "programs", "gear", "vehicles", "grades", "lifestyles"}
+PRICED = {"weapons", "armor", "augmentations", "electronics", "programs", "gear", "vehicles", "grades", "lifestyles", "packs"}
 SPELL_RANGE = {"LINE_OF_SIGHT": "LOS", "LINE_OF_SIGHT_AREA": "LOS(A)", "TOUCH": "T", "SELF": "S", "SELF_AREA": "S(A)"}
 SKIP = "skip"  # Commlink6 has no value: not compared
 VEHICLE = ("handling", "accel", "interval", "topSpeed", "body", "armor", "pilot", "sensor", "seats")
@@ -44,6 +44,25 @@ def ratings(c, a):
     return list(range(rr[0], rr[1] + 1)) if rr else [None]
 
 
+REF = {}  # "kind:id" -> our entry's attrs (trace.run fills it): a derived item's ref() to the item it is priced from
+
+
+def _ref(target, field, rating, depth=0):
+    """The value our entry `target` ("augmentations:bs.corrosive-spit") gives `field` at `rating`: its formula's, else its
+    plain printed number; None when unknown."""
+    from importer.sr6 import formula as F
+    a = REF.get(target)
+    if a is None or depth > 3:
+        return None
+    raw = a.get(f"formula:{field}")
+    if raw:
+        try:
+            return F.evaluate(raw.split("|")[0], R=rating or 1, ref=lambda t, f, r: _ref(t, f, r, depth + 1))
+        except F.FormulaError:
+            return None
+    return F.plain(a.get(field) or "", field)
+
+
 def formula_values(a, field, rs):
     """{rating: {values}} our stored formula (the importer's <formula field>, ours.py's `formula:<field>`) gives at
     each rating: at the top of its qty range (Commlink6 flattens a per-unit price there), or the rating as the count and every choice of its options; None when the entry has none or it needs something unknown (B, ref)."""
@@ -64,7 +83,7 @@ def formula_values(a, field, rs):
             for bits in range(2 ** len(opts)):
                 try:
                     v = F.evaluate(expr, R=1 if r is None else r, Q=q, opt={o: bits >> i & 1 for i, o in enumerate(opts)},
-                                   round=kv.get("round", "up"))
+                                   round=kv.get("round", "up"), ref=_ref)
                 except F.FormulaError:
                     return None
                 if v is not None:

@@ -65,3 +65,8 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Hack & Slash-Core Matrix Rulebook-CAT28006.pdf>" --out "%TEMP%\hs-check"
+
+## Importer v5
+
+- A heading `X (Positive Quality)` keeps its kind as a tag (`Paragon`): the sections reader makes it a quality (it was
+  read as a mentor spirit under `Paragons`).

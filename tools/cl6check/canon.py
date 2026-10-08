@@ -352,7 +352,10 @@ def canonical(rec):
     elif tag == "skill":
         f["attribute"] = a.get("attr")
     return {"book": rec["book"], "src": source_of(rec["book"], rec["file"]), "file": rec["file"], "tag": tag, "id": rec["id"], "name": rec["name"],
-            "page": rec["page"], "kind": kind, "modelled": modelled, "pool": (TAG_KINDS.get(tag, ()) if kind not in SECTION_KINDS.values() and kind != "packs" else (kind,)) if modelled else (),
+            "page": rec["page"], "kind": kind, "modelled": modelled, "pool": (TAG_KINDS.get(tag, ()) if kind not in SECTION_KINDS.values() and kind != "packs"
+                     # (an ammunition type, no fields of its own: the book may print it as ammunition sold by count, gear,
+                     # or as a row of a weapons table, `Ballista Bolt, High Explosive`)
+                     else ("ammotypes", "gear", "weapons") if kind == "ammotypes" else (kind,)) if modelled else (),
             "aliases": aliases(rec["name"], rec["variants"]), "fields": {k: x for k, x in f.items() if x},
             "families": families(el, a, rec["variants"]), "el": el,
             "cl6only": cl6_only(kind, rec["name"], a, tag)}

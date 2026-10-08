@@ -234,7 +234,10 @@ def family(src):
 
 
 def _keys(e, norm):
-    return {norm(p) for n in [e["name"], *e["aliases"]] for p in match.split_names(n)} - {""}
+    # (not a lone word cut from a longer name: `Increasing` of `Increasing/Reducing Cargo Space (CF Mod)` is another
+    # book entry's name, `Increasing (a Form)`)
+    return {norm(p) for n in [e["name"], *e["aliases"]] for p in match.split_names(n)
+            if not (n.startswith(p + "/") and len(p.split()) == 1 and len(n.split()) > 2)} - {""}
 
 
 def _cat(e):

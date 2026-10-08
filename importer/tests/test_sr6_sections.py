@@ -53,6 +53,16 @@ Walk.
 ##### Step 2: Last Mile
 Walk more.
 **Cost:** 6 Karma
+<!-- page 60 -->
+# ODD BEINGS
+## Glow Folk
+#### Glow Vanish
+##### (Ability/Critter Power)
+**Type:** Physical **Action:** Minor
+A made-up vanishing.
+#### Zap Paragon (Positive Quality)
+A made-up quality.
+• **Cost:** 7 Karma
 """
 
 PATHS = """<!-- page 76 -->
@@ -98,6 +108,7 @@ Zappers zap.
 **1,175 nuyen**
 **Big Zapper** (w/ zap sight, zap scope): **2,015**
 **nuyen**
+**Zap Pistol** (w/ zip holster, 10 zap darts): **1,050 nuyen**
 ## Gizmo PACKs
 #### Gizmo PACK A
 (10,500 nuyen)
@@ -110,6 +121,16 @@ Pilot Rating 2: 2,000 nuyen
 Glowing rating 2
 Pilot Rating 3: 4,500 nuyen
 Glowing rating 3
+**Fizz Goggles:** Handheld fizz sensor (rating
+3), goggles (rating 3 w/ fizz link): **1,325 nuyen**
+#### Glow Sub PACK
+4,800 nuyen
+A small glowing sub.
+## Zorp Upgrade PACKs
+#### Zorp's Darling
+(16,000 nuyen, Vehicle's Body
+must be at least 10)
+Zorp adaptation, glow paint.
 """
 
 
@@ -132,6 +153,11 @@ class SectionKindsTest(unittest.TestCase):
         self.assertNotIn("Use an Edge Action", a)
         self.assertFalse([n for n in a if "example" in n.lower() or n.lower() in ("minor actions", "actions")])
 
+    def test_a_kind_named_in_a_tag_line_or_after_the_name(self):
+        self.assertIn("Glow Vanish", self.kind("critterpowers"))
+        q = self.kind("qualities")["Zap Paragon"]
+        self.assertEqual((q.get("kind"), q.get("karma")), ("positive", "7"))
+
     def test_mentors_structures_and_paths(self):
         self.assertEqual(list(self.kind("mentorspirits")), ["Glow Moth"])
         self.assertEqual(sorted(self.kind("datastructures")), ["Fizz Key", "Zap Shell"])
@@ -147,9 +173,33 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual((p["Zap Pistol"].get("cost"), p["Zap Pistol"].get("category")), ("1175", "Zappers"))
         self.assertEqual([i.text for i in p["Zap Pistol"].findall("item")], ["zap sight", "10 zap darts"])
         self.assertEqual(p["Big Zapper"].get("cost"), "2015")
+        self.assertEqual(p["Zap Pistol (zip holster)"].get("cost"), "1050")  # (a second PACK of that name)
         self.assertEqual((p["Gizmo Pack A"].get("cost"), p["Gizmo Pack A"].get("essence")), ("10500", "0.5"))
         self.assertEqual(p["Gizmo Pack A"].findall("item"), [])  # (recommended skills are no contents)
         self.assertEqual((p["Glow Autosofts 2"].get("cost"), p["Glow Autosofts 3"].get("cost")), ("2000", "4500"))
+        # (a paragraph's wrapped line opening with a parenthesis; a price line without its parentheses; a requirement
+        # after the price)
+        self.assertEqual(p["Fizz Goggles"].get("cost"), "1325")
+        self.assertEqual(p["Glow Sub"].get("cost"), "4800")
+        self.assertEqual((p["Zorp's Darling"].get("cost"), p["Zorp's Darling"].get("category")),
+                         ("16000", "Zorp Upgrade PACKs"))
+
+    def test_drawbacks_and_a_quality_printed_in_its_own_shape(self):
+        md = "\n".join([
+            "<!-- page 20 -->", "# Zorps", "### The Costs",
+            "• **Metahuman Quality:** Playing a zorp requires the Zorp positive quality.",
+            "• **Wobbly Knees:** Zorps gain the Wob-", "bly Knees quality when glowing.",
+            "• **Glow Eyes:** Anyone who sees a zorp glow", "remembers them.",
+            "# FIZZCORP", "## Game Information", "### fIZZy", "You fizz.", "**Cost:** 3 Karma",
+            "**Game Effect:** You may fizz once a scene.", "### Fizz Rules", "Fizzing is a rule.", ""])
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
+        self.assertEqual({k: q["Glow Eyes"].get(k) for k in ("kind", "karma", "granted", "category")},
+                         {"kind": "negative", "karma": "0", "granted": "true", "category": "Zorp drawback"})
+        self.assertNotIn("Wobbly Knees", q)  # (an existing quality it hands out)
+        self.assertNotIn("Metahuman Quality", q)
+        self.assertEqual((q["fIZZy"]["kind"], q["fIZZy"]["karma"]), ("positive", "3"))
+        self.assertNotIn("Game Information", q)
 
     def test_vehicle_design_and_ammunition_types(self):
         md = """<!-- page 150 -->

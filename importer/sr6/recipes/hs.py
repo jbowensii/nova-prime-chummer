@@ -125,8 +125,8 @@ def prepare(bs):
             seen.add(key)
         if b.name.startswith("Complex Form: "):
             b = replace(b, name=b.name[len("Complex Form: "):])
-        if m := re.match(r"^(.+?)\s*\((?:Positive|Negative) Quality\)$", b.name):
-            b = replace(b, name=m.group(1))
+        if m := re.match(r"^(.+?)\s*\(((?:Positive|Negative) Quality)\)$", b.name):
+            b = replace(b, name=m.group(1), tags=m.group(2))  # (its kind a tag: sections.KIND_SUFFIX)
         out.append(b)
     return out
 

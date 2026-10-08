@@ -21,7 +21,8 @@ class BookCirclesTest(unittest.TestCase):
         self.index = resolve.Index([
             block("Zorp Blade", 20, ["WEAPON", "DV", "AR"], {"WEAPON": "Zorp Blade", "DV": "3P", "AR": "7/—/—/—/—"}),
             block("Implants", 30, text="| ITEM | ESSENCE | AVAIL | COST |\n|---|---|---|---|\n"
-                                       "| Zorp Blade | 0.2 | 4(I) | 2,500¥ |\n| Glim mic | 0.1 | 2 | Capacity x 50¥ |"),
+                                       "| Zorp Blade | 0.2 | 4(I) | 2,500¥ |\n| Blink sensor | 0.3 | 4 | 9,000¥ |"),
+            block("Gadgets list", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | Capacity x 50¥ |"),
             block("Wobble Lock", 40, text="Wobble locks come in ratings 1 to 6 and keep the door shut."),
             block("Gadgets", 41, text="A buyer may fit a Wobble Lock to any door. Twin values: costs 300¥."),
         ], 1, crb._tables, shapes.RENAME)
@@ -34,6 +35,10 @@ class BookCirclesTest(unittest.TestCase):
     def test_a_shorter_printing_of_the_name(self):
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
         self.assertEqual(resolve.search_book(self.index, crb.HEADERS, "gear", e, "cost", ""), ("Capacity x 50", "table", 29))
+
+    def test_an_implant_row_prices_no_gear(self):
+        e = {"name": "Blink", "aliases": ["Blink sensor"], "page": 29, "attrs": {}}
+        self.assertIsNone(resolve.search_book(self.index, crb.HEADERS, "gear", e, "cost", ""))
 
     def test_the_text(self):
         e = {"name": "Wobble Lock", "page": 39, "attrs": {}}
@@ -158,6 +163,96 @@ class CorpusTest(unittest.TestCase):
             g = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "gear.xml")).getroot()}
             self.assertEqual(g["zza.wobble"].get("avail"), "2")
             self.assertEqual((g["zza.wobble"].find("found").get("how"), g["zza.wobble"].find("found").text), ("errata", "8"))
+
+    def test_an_errata_renumbering_unrating_and_reprinting_life_modules(self):
+        md = "\n".join([
+            "# Z ORP A LPHA E RRATA",
+            "W HAT ARE ZIPLENSES ? ( P . 40)",
+            "Rather than being rating 2 and 3 cyberware as printed in Zorp Alpha, these are instead rating 3 and 4",
+            "ziplenses and zipears. Their stats are as follows:",
+            "● Rating 3 Ziplenses / Zipears: Essence 0.3, Availability 4, Cost 900¥ / 850¥",
+            "● Rating 4 Ziplenses / Zipears: Essence 0.4, Availability 5, Cost 1,200¥ / 1,100¥",
+            "H OW DO HUMMERS WORK ? ( P . 41)",
+            "Hummers no longer have ratings, and their price and Availability are always calculated as if they",
+            "were rating 1.",
+            "C AN I USE THE LIFE MODULES ? ( P . 42)",
+            "**Adult Life Modules:**",
+            "Glow Kid: Use Glower (p. 3, Zorp Beta)",
+            "<!-- page 3 -->",
+            "**Fizz Star**",
+            "You fizzed and everyone watched.",
+            "• Choose one: +1 to Agility or Charisma",
+            "• Contact Points: 4",
+            "• Contact Types: Corporate, Media",
+            "**New Event Life Modules**",
+            "Event: A Glowing Week of Fame",
+            "It was a good week.",
+            "• Resources: +5,000",
+            "• Contact Points: 2"])
+        got = resolve.errata(md)
+        self.assertIn((None, "ziplenses", "_renumber", (2, 3), None), got)
+        self.assertIn((None, "Hummers", "_unrated", 1, None), got)
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, kind="augmentations",
+                  entries=[
+                      '<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" essence="0.3" avail="9" cost="900">'
+                      '<name>Ziplenses (Rating 2)</name><formula field="cost">tier(R; 2: 900; 3: 1200)</formula></augmentation>',
+                      '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" essence="0.4" avail="12" cost="1200">'
+                      '<name>Ziplenses (Rating 3)</name></augmentation>',
+                      '<augmentation id="zza.hummer" source="ZZA" page="41" rating="1-3" avail="Rating x 2" cost="Rating x 500">'
+                      '<name>Hummer</name><formula field="cost">R*500</formula><formula field="avail">R*2</formula></augmentation>'])
+            _book(lib, "e", "skipped", why="Nothing to import: errata (applied with its book)",
+                  file="Zorp-Alpha-Errata.pdf", md=md)
+            orig = resolve.pdf_date
+            resolve.pdf_date = lambda pdf, md="": "2023-05-05" if os.sep + "e" + os.sep in pdf else ""
+            try:
+                for _ in range(2):  # (the corpus pass runs again after each import: the same result)
+                    resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")], sources={"ZZA": "2020-01"})
+            finally:
+                resolve.pdf_date = orig
+            a = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "augmentations.xml")).getroot()}
+            two, three = a["zza.ziplenses-rating-2"], a["zza.ziplenses-rating-3"]  # (ids kept: characters load them)
+            self.assertEqual((two.findtext("name"), two.get("avail")), ("Ziplenses (Rating 3)", "4"))
+            self.assertEqual((three.findtext("name"), three.get("avail"), three.get("cost")), ("Ziplenses (Rating 4)", "5", "1200"))
+            self.assertEqual(two.find("formula").text, "tier(R; 3: 900; 4: 1200)")
+            h = a["zza.hummer"]
+            self.assertEqual((h.get("cost"), h.get("avail"), h.get("rating"), h.findall("formula")), ("500", "2", None, []))
+            m = {e.findtext("name"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "lifemodules.xml")).getroot()}
+            self.assertEqual(sorted(m), ["Event: A Glowing Week of Fame", "Fizz Star"])
+            self.assertEqual((m["Fizz Star"].get("id"), m["Fizz Star"].get("page"), m["Fizz Star"].get("contactTypes")),
+                             ("zza.fizz-star", "3", "corporate media"))
+            self.assertEqual(m["Event: A Glowing Week of Fame"].get("nuyen"), "5000")
+            with open(os.path.join(custom, "imported", "index.xml"), encoding="utf8") as f:
+                self.assertIn('href="zza/lifemodules.xml"', f.read())
+
+    def test_a_grouped_row_named_by_its_run_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            md = "\n".join(["<!-- page 11 -->", "**Glo-Mender:** It mends.", "**ZQE:** Zorp quick enhancement.", "**Alpha Zap:** Zaps."])
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, md=md,
+                  kind="augmentations", entries=[
+                      '<augmentation id="zza.glowsymbionts-mender" source="ZZA" page="10" cost="10"><name>Glowsymbionts (Mender)</name></augmentation>',
+                      '<augmentation id="zza.zorp-zqi" source="ZZA" page="10" cost="20"><name>Zorp Enhancement (ZQI)</name></augmentation>',
+                      '<augmentation id="zza.zorp-alpha-zap" source="ZZA" page="10" cost="30"><name>Zorp Enhancement (Alpha Zap)</name></augmentation>'])
+            n = resolve.corpus([(os.path.join(lib, "a"), custom)], sources={"ZZA": "2020-01"})
+            a = {e.get("id"): [x.text for x in e.findall("alias")]
+                 for e in ET.parse(os.path.join(custom, "imported", "zza", "augmentations.xml")).getroot()}
+            self.assertEqual(n["run-ins"], 2)
+            self.assertEqual(a, {"zza.glowsymbionts-mender": ["Glo-Mender"], "zza.zorp-zqi": ["ZQE"], "zza.zorp-alpha-zap": []})
+
+    def test_an_abbreviation_the_library_spells_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom,
+                  md="Use glowing zap consoles (GZCs) to glow.", entries=[])
+            _book(lib, "b", "done", source="ZZB", bname="Shadowrun: Zorp Beta", custom=custom, kind="augmentations", entries=[
+                '<augmentation id="zzb.gzc" source="ZZB" page="5" category="Headware" avail="3" cost="10">'
+                '<name>GZC</name></augmentation>'])
+            n = resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "b")], sources={"ZZA": "2020-01", "ZZB": "2021-01"})
+            self.assertEqual(n["abbreviations"], 1)
+            e = ET.parse(os.path.join(custom, "imported", "zzb", "augmentations.xml")).getroot()[0]
+            self.assertEqual([a.text for a in e.findall("alias")], ["Glowing zap console"])
 
     def test_cards(self):
         md = "## zorp predator X\n#### heavy pistol\n**DV:** 3P **Mode:** SA/BF\n**Availability:** 2(L) **Cost:** 750¥\n"

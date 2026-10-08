@@ -29,7 +29,7 @@ class Sr6LayoutTest(unittest.TestCase):
         cls.text = "\n".join(cls.lines)
 
     def test_converter_version(self):
-        self.assertEqual(self.meta["converter"], "sr6-6")
+        self.assertEqual(self.meta["converter"], "sr6-7")
         self.assertEqual(_convert(sr6=False)[0]["converter"], "6")
 
     def test_headings_by_font(self):
@@ -201,3 +201,60 @@ class LigatureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _word(text, x0, top, bold=False, base=None):
+    font = "Sans-Bold" if bold else "Sans"
+    return {"text": text, "x0": x0, "x1": x0 + 6 * len(text), "top": top, "bottom": top + 7, "size": 7,
+            "base": top + 7 if base is None else base, "chars": [{"text": c, "fontname": font} for c in text]}
+
+
+class TwoBoxesSideBySideTest(unittest.TestCase):
+    """Two boxes in two text columns whose band rows line up (Double Clutch p. 130, Deadly Arts' Combat MAID), on
+    made-up words: a line is split where the boxes part, or at the gutter where the baselines differ."""
+    BOXES = [{"x0": 50, "x1": 280, "top": 100, "bottom": 300}, {"x0": 300, "x1": 530, "top": 100, "bottom": 300}]
+
+    def test_rows_in_two_boxes_split(self):
+        from importer.sr6.layout import _column_parts
+        line = [_word("3/4", 60, 150), _word("5", 120, 150), _word("2", 320, 150), _word("9", 400, 150)]
+        self.assertEqual([[w["text"] for w in p] for p in _column_parts(line, self.BOXES)], [["3/4", "5"], ["2", "9"]])
+
+    def test_one_box_row_stays_whole(self):
+        from importer.sr6.layout import _column_parts
+        line = [_word("Alpha", 60, 150), _word("Beta", 220, 150)]
+        self.assertEqual(len(_column_parts(line, self.BOXES)), 1)
+        self.assertEqual(len(_column_parts(line)), 1)
+
+    def test_no_boxes_split_at_the_gutter_by_baseline(self):
+        from importer.sr6.layout import _column_parts
+        line = [_word("AVAIL", 60, 150, True), _word("COST", 120, 150, True),
+                _word("SLOTS", 320, 152, True, base=159.5), _word("RATING", 400, 152, True, base=159.5)]
+        self.assertEqual([[w["text"] for w in p] for p in _column_parts(line, mid=250)], [["AVAIL", "COST"], ["SLOTS", "RATING"]])
+        self.assertEqual(len(_column_parts(line)), 1)  # (not across the gutter: one table's two-line header)
+
+    def test_a_header_with_values_beside_it_never_stacks(self):
+        from importer.sr6.layout import _headers
+        left = [_word("AVAIL", 60, 140, True), _word("COST", 120, 140, True)]
+        line = [_word("2", 62, 150), _word("70", 122, 150), _word("OPTIONS", 200, 150, True), _word("CAP", 260, 150, True)]
+        heads = _headers([left, line], 7)
+        self.assertEqual(sorted(" ".join(w["text"] for w in h) for h in heads), ["AVAIL COST", "OPTIONS CAP"])
+
+
+class WordsLineByLineTest(unittest.TestCase):
+    """A two-line header cell (made-up letters) next to a one-line cell centred between its lines: the word finder's
+    3 pt line tolerance chains the three and interleaves the two lines' letters; layout.words keeps them apart."""
+
+    @staticmethod
+    def _char(t, x0, top, i):
+        return {"text": t, "x0": x0, "x1": x0 + 4, "top": top, "bottom": top + 5, "doctop": top, "upright": True,
+                "size": 5, "i": i, "matrix": (5, 0, 0, 5, x0, 700 - top)}
+
+    def test_two_header_lines_stay_two_words(self):
+        from importer.sr6.layout import words
+        cs = [self._char("A", 0, 10, 0), self._char("B", 4, 10, 1), self._char("C", 50, 13, 2), self._char("D", 54, 13, 3),
+              self._char("E", 1.5, 16, 4), self._char("F", 5.5, 16, 5)]
+        kw = dict(extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
+        self.assertNotEqual(sorted(w["text"] for w in pdfplumber.utils.extract_words(cs, **kw)), ["AB", "CD", "EF"])
+        got = words(cs, **kw)
+        self.assertEqual(sorted(w["text"] for w in got), ["AB", "CD", "EF"])
+        self.assertEqual({w["text"]: w["top"] for w in got}, {"AB": 10, "CD": 13, "EF": 16})

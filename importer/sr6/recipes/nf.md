@@ -45,6 +45,17 @@ enhancements removed, Stolen Gear's new rules, the Companion versions of the lif
   the instrument's price): an `ambiguous` issue stating `base*2`. `Rating x N¥`, avail `(Rating x N)` -> `R*N`.
   (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
+## Importer v5
+
+- The errata (corpus pass, `resolve.py`) applies its prose statements too: the advanced cybereyes and cyberears
+  renumbered (`Rather than being rating 5 and 6 …, these are instead rating 6 and 7 cybereyes and cyberears`: names and
+  tier bands, ids kept), `AutoVoice` and `Vocal Expansion` unrated (`no longer have ratings … as if they were rating
+  1`: each formula's value at rating 1), and its two life modules in the companion's form (`Teen Diva`, `Event: You
+  had Fifteen Minutes of Fame`) added to `nf/lifemodules.xml`.
+- `AudioTune` keeps its heading's name `AutoVoice` as a search name (a one-word camel-case name is distinct enough).
+- Left: `Replacement instrument` (priced in words in a section's prose), the skateboards and roller skates
+  (Commlink6's names from a sentence), `Stolen Gear`'s errata Karma (prose): decisions-pending.md.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-No Future-Sourcebook-CAT27453.pdf>" --out "%TEMP%\nf-check"

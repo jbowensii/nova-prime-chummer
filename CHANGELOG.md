@@ -1,5 +1,38 @@
 # Release notes
 
+## 0.10.5 — 2026-10-08: nearly every record, nearly every value
+
+**Every SR6 book re-converts on its next re-import** (the converter is now sr6-7): use Books → **Re-import all** to
+get these. Saved runners keep working: an entry the new reading renames or merges keeps its old id as an alias.
+
+Measured against Commlink6 on a clean import of all 74 books: completeness 99.54% (missing records 178 → 20),
+accuracy 99.27% (differing fields 426 → 92); 0.10.4 was 95.93% / 96.60%. Of the 92, 90 are values Commlink6 copied
+from another row, column or book (each checked on the page): they are Commlink6's own and are not copied into our
+data. The records still missing are the core rulebook items waiting on a decision.
+
+- **Side-by-side boxes.** Two boxes printed next to each other are read apart, and text after a boxed sidebar goes
+  back to the item it interrupted (Firing Squad p. 66, Deadly Arts' Combat MAID, Krime Katalog's shotgun ammunition).
+- **Pages.** An entry found inside a longer block keeps the page it is printed on (Sixth World Companion's Dragon,
+  p. 121).
+- **Two items in one row.** A row named `A/B` printing two prices is two items, each taking its own value from every
+  slashed cell (Federated Boeing Commuter and Osprey X).
+- **Two options under one heading.** A heading naming two options with `/` is two entries (Increasing and Reducing
+  Cargo Space); `X I/II` with `5/8 Karma` is two qualities; a heading naming two preparations with two prices is two
+  items.
+- **Optional rules you can buy.** An optional rule priced in Karma (Latent Awakening, Transhumanism, Neuromorphism)
+  stays a rule and is also a quality.
+- **Ammunition add-ons.** Copper, silver and gold rounds fit any ammunition and multiply its price (×2, ×5, ×10).
+- **Headings paired with rows.** A heading whose first sentence names a table row is that row (Body Shop's Eye-Light
+  System = Light emitters); a bold run-in names its row (Endo-Mender; NDE for the table's NDI).
+- **Prices.** A back-matter price table prices the book's unpriced headings (the core rulebook's toxins and drugs are
+  gear); prices in a sentence (a replacement instrument, NanoMask); `(Rating) x 500` is a rating formula; a `*` cell
+  is never filled from another row; qualities priced `3, 6, or 9 Karma` or `5/8 Karma` carry a low and high cost.
+- **Errata.** Renumbered ratings (No Future's cybereyes and cyberears), "no longer have ratings" items, reprinted life
+  modules and "gives a bonus of N Karma" are applied.
+- **Books.** Double Clutch, Street Wyrd, Sixth World Companion (PACKs, dermal alterations), Hack & Slash (AI
+  variants), No Future, Body Shop, Tarnished Star, Bestial Nature, Astral Ways, Smooth Operations, Krime Katalog,
+  Power Plays and Lofwyr's Legions are read at or near 100%.
+
 ## 0.10.4 — 2026-10-08: Firing Squad and brands
 
 Import the books again (Books → **Re-import all**) to get these. Saved runners keep working: an entry the new

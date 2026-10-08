@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import pdfplumber
 
-from importer.convert import _BOLD, _LINE_TOLERANCE, _cluster_lines, _is_bold
+from importer.convert import _BOLD, _LINE_TOLERANCE, _cluster_lines, _find_gutter, _is_bold
 
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
 _LEVEL_REL = 0.05
@@ -184,6 +184,56 @@ def one_layer(chars):
 _LIGATURE = re.compile(r"(?<![\w'’])([A-Za-z]*(?:fi|fl|ff)|F[il]) (-$|[a-z]+\b)", re.M)
 
 
+_TOP_CHAIN = 1.5  # pt; letters whose tops (sorted) chain this close are one line for the word finder
+_TOP_APART = 10  # pt; added between two such lines, more than the word finder's line tolerance (3 pt)
+
+
+def words(chars, **kw):
+    """pdfplumber's words (return_chars=True), its lines kept apart where the letters' tops (sorted) jump more than
+    _TOP_CHAIN. Its own line tolerance (3 pt) chains a two-line header cell (`ATTRIBUTES` over `(A/S)`) through the
+    one-line cells centred between its lines, and reads both lines' letters as one word (`ATT(R AI/B SU)TES`). The
+    letters keep their stream order (two columns meeting with no gap still part where the stream jumps)."""
+    order = sorted(range(len(chars)), key=lambda k: chars[k]["top"])
+    shift, g, last = [0.0] * len(chars), 0, None
+    for k in order:
+        if last is not None and chars[k]["top"] - last > _TOP_CHAIN:
+            g += 1
+        shift[k], last = g * _TOP_APART, chars[k]["top"]
+    moved = [{**c, "top": c["top"] + d, "bottom": c["bottom"] + d, "doctop": c.get("doctop", c["top"]) + d, "_k": k}
+             for k, (c, d) in enumerate(zip(chars, shift))]
+    out = []
+    for w in pdfplumber.utils.extract_words(moved, **kw):
+        cs = [chars[c["_k"]] for c in w["chars"]]
+        out.append({**w, "chars": cs, "top": min(c["top"] for c in cs), "bottom": max(c["bottom"] for c in cs),
+                    "doctop": min(c.get("doctop", c["top"]) for c in cs)})
+    return out
+
+
+BOX_START, BOX_END = "<!-- box -->", "<!-- /box -->"
+_BOX_WIDE = 0.62  # x the page width: a sidebar box sits in one text column
+
+
+def sidebar_marks(lines, rects, tables, width, kind):
+    """Blocks (top, kind, text) bracketing each boxed sidebar of the page: a filled rect taller than a stripe, in one
+    text column, holding at least three lines with a heading among its first two and no stat table (a stat box keeps
+    its place). lines: (top, x0, x1, heading level) of the page's text lines; tables: the band tables' bboxes; kind:
+    a column's kind from its x extent."""
+    out = []
+    for r in rects:
+        if not r.get("fill") or r["bottom"] - r["top"] <= _STRIPE_MAX or r["x1"] - r["x0"] > _BOX_WIDE * width:
+            continue
+        inside = sorted(ln for ln in lines if r["x0"] - 1 <= (ln[1] + ln[2]) / 2 <= r["x1"] + 1
+                        and r["top"] - 1 <= ln[0] <= r["bottom"])
+        if len(inside) < 3 or not any(ln[3] for ln in inside[:2]):
+            continue
+        if any(r["x0"] - 1 <= t[0] and t[2] <= r["x1"] + 1 and r["top"] - 1 <= t[1] <= r["bottom"] for t in tables):
+            continue
+        k = kind(r["x0"], r["x1"])
+        if k != "band":
+            out += [(r["top"] - 0.01, k, BOX_START), (r["bottom"], k, BOX_END)]
+    return out
+
+
 def rejoin_ligatures(text):
     """Words split after a ligature joined again, when the result is a plausible word. The words of the text with
     every such split taken out are its vocabulary: the left part must not be a word of it ("off the", "stuff is"
@@ -211,7 +261,10 @@ def heading_level(line, fonts) -> int:
     if not fonts.heading or any(_word_family(w) != fonts.heading for w in line):
         return 0
     levels = [_level(w["size"], fonts) for w in line]
-    return 0 if 0 in levels else min(levels)
+    # a one- or two-letter word set smaller than the rest (the small `x` of `xGUIDE OVERRIDE`) doesn't unmake it
+    levels = [lv for w, lv in zip(line, levels) if lv or len(w["text"]) > 2 or not any(levels)
+              or w["size"] > max(v["size"] for v in line if _level(v["size"], fonts))]
+    return 0 if not levels or 0 in levels else min(levels)
 
 
 def _is_table_word(w, fonts):
@@ -267,7 +320,7 @@ def _side_by_side(words):
     return [words]
 
 
-def _headers(lines, height):
+def _headers(lines, height, boxes=()):
     """Header blocks: the bold words of lines holding >= 2 of them, or a line that is one bold word, never a line
     opening with a label (`Skills:`), each split where it repeats itself (`_side_by_side`). Lines stacked within
     _HEADER_STACK line heights and up to _STACK_PAD apart in x, but never two on one line, are one block: a
@@ -283,6 +336,10 @@ def _headers(lines, height):
         bold = [w for w in line if _is_head_bold(w)]
         if not (len(bold) >= 2 or len(line) == len(bold) == 1) or _opens_with_label(line):
             continue
+        # a bold row name with its values on the line (`**Krime Sprayer** 6P SS …`): a row, no header
+        if _is_head_bold(line[0]) and sum(not _is_head_bold(w) for w in line) >= 2 \
+                and len(_split_x(bold, _CELL_GAP)) == 1:
+            continue
         # a bold run-in of prose (a numbered list's lead-in) is no header: header cells are a few words each
         if max(len(c) for c in _split_x(bold, _CELL_GAP)) > _CELL_WORDS:
             continue
@@ -294,11 +351,18 @@ def _headers(lines, height):
             # never a group on this same line: that is a side-by-side table
             # (two whole header rows side by side, no x in common, are two tables in two text columns, a little
             # apart: only a label of a cell or two stacks beside another line)
+            # nor a header whose column already has a value on this line (a box beside it starts its rows here)
+            values = [w for w in line if not _is_head_bold(w)]
             prev = next((h for h in groups if g[0]["top"] - max(w["top"] for w in h) <= _HEADER_STACK * height
+                         and not any(min(v["x0"] for v in h) - _CELL_GAP <= _cx(w) <= max(v["x1"] for v in h) + _CELL_GAP
+                                     for w in values)
+                         and len({_box_of(w, boxes) for w in g + h} - {None}) <= 1
                          and min(w["x0"] for w in h) - _STACK_PAD < x1 and x0 < max(w["x1"] for w in h) + _STACK_PAD
                          and all(abs(g[0]["top"] - w["top"]) > _LINE_TOLERANCE for w in h)
                          and (x0 < max(w["x1"] for w in h) and min(w["x0"] for w in h) < x1
-                              or min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP))) <= 2)), None)
+                              or (n := min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP)))) == 1
+                              or n == 2 and max(x0 - max(w["x1"] for w in h), min(w["x0"] for w in h) - x1) < _COLUMN_GAP)),
+                        None)  # (a lone label stacks; two cells only near: not another column's header)
             if prev is not None:
                 prev += g
             else:
@@ -358,13 +422,49 @@ def _tabular(line):
     return any(b["x0"] - a["x1"] > 2 * _CELL_GAP for a, b in zip(line, line[1:]))
 
 
-def band_tables(words, fonts, rects=()):
+_BASE_APART = 1  # pt; one table row's cells share a baseline; two text columns' rows may sit this far apart or more
+
+
+def _box_of(w, boxes):
+    """The index of the box background (a filled rect taller than a stripe) holding the word's centre, else None."""
+    return next((i for i, b in enumerate(boxes) if b["x0"] <= _cx(w) <= b["x1"] and b["top"] <= w["top"] <= b["bottom"]),
+                None)
+
+
+def _column_parts(line, boxes=(), mid=None):
+    """A table line clustered from two text columns' rows (two boxes side by side whose bands line up, or sit a little
+    apart in height so the rows chain into one line): split at a gap wider than two cell gaps where the words on
+    either side sit in two different box backgrounds, or across the page's gutter (mid) on baselines more than
+    _BASE_APART apart. One table's row shares its box and its baseline, so it is never split (a two-line header's
+    second line beside its one-line cells sits in one column)."""
+    if not line or "base" not in line[0]:
+        return [line]
+    parts = [[line[0]]]
+    for i, w in enumerate(line[1:], 1):
+        v = parts[-1][-1]
+        gap = w["x0"] - max(u["x1"] for u in parts[-1])
+        a, b = _box_of(v, boxes), _box_of(w, boxes)
+        # (by baseline only between two runs of cells: a two-line header's lone words, a wrapped name over a row's
+        # values centred beside it, sit a few points apart too)
+        across = mid is not None and v["x1"] <= mid + GUTTER_TOL and w["x0"] >= mid - GUTTER_TOL
+        if gap > 2 * _CELL_GAP and (a is not None and b is not None and a != b or across and abs(v["base"] - w["base"]) > _BASE_APART
+                                    and len(_split_x(parts[-1], _CELL_GAP)) > 1 and len(_split_x(line[i:], _CELL_GAP)) > 1):
+            parts.append([w])
+        else:
+            parts[-1].append(w)
+    return parts
+
+
+def band_tables(words, fonts, rects=(), width=None):
     """Tables read from header bands: [(bbox, rows, words)], rows[0] the header cells, words the table's words. See
     the module docstring. rects: the page's rects; filled row-sized ones (header cells, row stripes) set the columns
     and the rows where the book draws them."""
     table = [w for w in words if _is_table_word(w, fonts)]
     other = [w for w in words if not _is_table_word(w, fonts)]
-    lines = _cluster_lines(table)
+    boxes = [r for r in rects if r.get("fill") and r["bottom"] - r["top"] > _STRIPE_MAX]
+    # the page's gutter, from its text (two boxes' rows side by side are split across it)
+    mid = _find_gutter(_cluster_lines(other), width, tol=GUTTER_TOL) if width and other else None
+    lines = [part for ln in _cluster_lines(table) for part in _column_parts(ln, boxes, mid)]
     if not lines:
         return []
     rects = [r for r in rects if r.get("fill") and 2 < r["bottom"] - r["top"] <= _STRIPE_MAX]
@@ -372,7 +472,7 @@ def band_tables(words, fonts, rects=()):
     tops = [ln[0]["top"] for ln in lines]
     # wrapped cells set vertically centred put lines half a pitch apart: the gap rule never goes under a line height
     pitch = max(statistics.median([b - a for a, b in zip(tops, tops[1:])] or [0]), height * 1.2)
-    heads = _headers(lines, height)
+    heads = _headers(lines, height, boxes)
     head_ids = {id(w) for h in heads for w in h}
     single = {id(h) for h in heads if len(_split_x(h, _CELL_GAP)) == 1}
     out, consumed = [], set()

@@ -116,3 +116,35 @@ class KkRecipeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+SPLIT_MD = """<!-- page 3 -->
+# KRIME KATALOG
+## Krime Zapper
+A made-up pistol whose two editions' boxes read as tables of their own.
+krime zapper: sr5 stats krime zapper: sr6 stats
+| ACC | DAM | AP | MODE | RC | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|---|---|
+| 4 | 7P | — | SA | — | 9(c) | 6R | 150¥ |
+| DV | MODES | ATTACK RATINGS | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|
+| 3P | SA | 7/7/—/—/— | 9(c) | 2(L) | 160¥ |
+<!-- page 4 -->
+# KRIME KATALOG
+## Krime Buzzer
+A made-up rifle whose captions print on two lines.
+krime buzzer: sr5 stats
+krime buzzer: sr6 stats
+| ACC | DAM | AP | MODE | RC | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|---|---|
+| 5 | 9P | –1 | SA | — | 20(c) | 8R | 900¥ |
+| DV | MODES | ATTACK RATINGS | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|
+| 4P | SA | 3/9/7/—/— | 20(c) | 3(L) | 950¥ |
+"""
+
+
+class SplitBoxesTest(unittest.TestCase):
+    def test_the_sr6_box_after_the_sr5_box(self):
+        w = entries(run_recipe(SPLIT_MD), "weapons")
+        self.assertEqual({n: (w[n]["dv"], w[n]["cost"]) for n in w}, {"Krime Zapper": ("3P", "160"), "Krime Buzzer": ("4P", "950")})
