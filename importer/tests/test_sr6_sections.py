@@ -184,6 +184,23 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual((p["Zorp's Darling"].get("cost"), p["Zorp's Darling"].get("category")),
                          ("16000", "Zorp Upgrade PACKs"))
 
+    def test_drawbacks_and_a_quality_printed_in_its_own_shape(self):
+        md = "\n".join([
+            "<!-- page 20 -->", "# Zorps", "### The Costs",
+            "• **Metahuman Quality:** Playing a zorp requires the Zorp positive quality.",
+            "• **Wobbly Knees:** Zorps gain the Wob-", "bly Knees quality when glowing.",
+            "• **Glow Eyes:** Anyone who sees a zorp glow", "remembers them.",
+            "# FIZZCORP", "## Game Information", "### fIZZy", "You fizz.", "**Cost:** 3 Karma",
+            "**Game Effect:** You may fizz once a scene.", "### Fizz Rules", "Fizzing is a rule.", ""])
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
+        self.assertEqual({k: q["Glow Eyes"].get(k) for k in ("kind", "karma", "granted", "category")},
+                         {"kind": "negative", "karma": "0", "granted": "true", "category": "Zorp drawback"})
+        self.assertNotIn("Wobbly Knees", q)  # (an existing quality it hands out)
+        self.assertNotIn("Metahuman Quality", q)
+        self.assertEqual((q["fIZZy"]["kind"], q["fIZZy"]["karma"]), ("positive", "3"))
+        self.assertNotIn("Game Information", q)
+
     def test_vehicle_design_and_ammunition_types(self):
         md = """<!-- page 150 -->
 # GEAR

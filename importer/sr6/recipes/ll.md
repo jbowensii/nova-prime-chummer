@@ -29,6 +29,14 @@ page number (26) for levels, so `HEADING_LEVELS` gives them. Every page opens wi
 - **Shared classifier (A5):** the drake powers (`### Basic Drake Powers`, `### Dracogenesis Powers`) are run-ins
   sections.py reads as critter powers; the recipe's LABEL_SECTIONS map is gone.
 
+## Importer v5
+
+- `### The Costs` under `# Drakes` (general, sections.py): its bold run-ins are drawbacks the drake takes, negative
+  qualities at Karma 0, granted, category `Drake drawback` (`Memorable`, `Misshapen`, `Most Wanted`, `Mightiest of
+  Slaves`); not `Metahuman Quality` (a requirement) nor `Unsteady Hands` (an existing quality it hands out).
+- The style's `Signature Technique: Rake. Increase the Damage Value …` line defines the technique: a martial technique
+  `Rake` of its own (recipe hint, prepare()).
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Lofwyr's Legions.pdf>" --out "%TEMP%\ll-check"

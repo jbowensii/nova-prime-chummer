@@ -748,6 +748,8 @@ def _is_label(level, text):
     first = re.search(r"[^\W\d_]", text)
     if _NEW_ENTRY.match(text):
         return False  # (`new quality: Pacifist (1-4)`: a heading naming its kind before the new entry's name)
+    if re.fullmatch(r"[a-z]+[A-Z]{2}\w*", text.strip()):
+        return False  # (a one-word name set with a lower-case lead: `rEVOlutionary`; not `rEVOlution Arms Raven`)
     return level > 1 and (not first or first.group().islower())
 
 

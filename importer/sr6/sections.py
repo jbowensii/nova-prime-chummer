@@ -84,6 +84,8 @@ _RUNIN = re.compile(r"^\W{0,3}\*\*(?P<name>[^*]+?)(?::\*\*|\*\*\s*:|:?\*\*\s*$)(
 
 # the lists of what a section grants (`Powers`, `Characteristics` under `Returned Soldiers`)
 GRANTED_LIST = re.compile(r"(powers|characteristics)", re.I)
+# a list of what a section costs its taker (`### The Costs` under `# Drakes`): its bold run-ins drawbacks it grants
+DRAWBACKS = re.compile(r"(?:the\s+)?(?:costs|drawbacks)", re.I)
 # `Select two powers from the list … and one characteristic from …`: (count, noun) pairs
 CHOOSE = re.compile(r"(?:\b(?:select|choose|pick|take)\s+|\band\s+)(\d+|one|two|three|four|five|six)\s+(\w+?)s?\s+from\b",
                     re.I)
@@ -243,6 +245,8 @@ class Reader:
             rk = "spellfeatures"  # a spell or ritual section introducing its keywords, each a bold run-in
         if not rk and heading and not out and (pk := _runin_kind(parent)):
             rk = pk  # the parent heading names the kind (`Core Vehicle Modifications` under `Autosofts and E-Softs`)
+        if not rk and heading and not out and DRAWBACKS.fullmatch(b.name.strip()) and chain:
+            out += self._drawbacks(b, page, _singular(chain[-1].strip()))
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
         elif not rk and not out:  # `**2 Edge: Black Thumb**`: an Edge action wherever it is printed
@@ -291,6 +295,16 @@ class Reader:
         if f := self._priced_heading(b, page, chain):
             return [f]
         kind = _kind_of(parent, HEADING_KINDS)
+        labels = {k.lower(): v for k, v in b.labels.items()}
+        if not kind and "game effect" in labels and re.match(r"\s*\d+\s*Karma\b", labels.get("cost") or labels.get("bonus") or "", re.I) \
+                and (name[:1].isupper() or re.match(r"[a-z]+[A-Z]{2}", name)) and not EXAMPLE.search(name) \
+                and b.row is None and not b.stats \
+                and not _kind_of(name, HEADING_KINDS + RUNIN_KINDS) and not any(
+                    (m := _RUNIN.match(ln)) and not FIELD_LABELS.match(m.group("name").strip())
+                    for ln in (b.text or "").splitlines()):
+            # a quality's own shape wherever it is printed (`### rEVOlutionary` under `## Game Information`: `Cost: 10
+            # Karma`, `Game Effect: …`)
+            return [f for f in [self._make("qualities", name, b, page, chain)] if f]
         if not kind and len(chain) > 1 and self.stack[-1][3] and (m := _COST_LINE.search(" ".join((b.text or "").split()))) \
                 and (pm := _COST_LINE.search(" ".join((self.stack[-1][2].text or "").split()))) \
                 and m.group(1).lower() == pm.group(1).lower():
@@ -318,6 +332,34 @@ class Reader:
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
         return [f for f in [self._make(kind, name, b, page, chain)] if f]
+
+    def _drawbacks(self, b, page, owner):
+        """The bold run-ins of a `The Costs` (`Drawbacks`) list under a section its text names (`### The Costs` under
+        `# Drakes`: "playing a drake requires …"): each a drawback that section grants, a negative quality at Karma 0
+        (the owner's rule for granted qualities), its category `<owner> drawback`. Not a requirement or an existing
+        quality it hands out (`Metahuman Quality: … requires the Drake positive quality`, `Unsteady Hands: Drakes gain
+        the Unsteady Hands quality`)."""
+        # (regroup hands a block's leading labelled lines over as labels: read with its text)
+        t = "\n".join([f"**{k}:** {v}" for k, v in b.labels.items() if f"**{k}:**" not in (b.text or "")] + [b.text or ""])
+        if not owner or not re.search(rf"\b{re.escape(owner)}s?\b", " ".join(t.split()), re.I):
+            return []
+        out, lines = [], t.splitlines()
+        for i, ln in enumerate(lines):
+            m = _RUNIN.match(ln)
+            if not m or not m.group("name")[:1].isupper():
+                continue
+            name = " ".join(m.group("name").split()).strip()
+            body = [m.group("rest").strip()]
+            for nxt in lines[i + 1:]:
+                if _RUNIN.match(nxt) or nxt.startswith(("#", "|")) or not nxt.strip():
+                    break
+                body.append(nxt.strip())
+            para = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(x for x in body if x))  # (`Un- steady`)
+            if re.search(r"\bquality\b", name, re.I) or re.search(rf"\bgains?\s+the\s+{re.escape(name)}\s+quality\b", para, re.I):
+                continue
+            out.append(Found("qualities", name, page, {"kind": "negative", "karma": "0", "granted": "true",
+                                                       "category": f"{owner} drawback"}, effects.read(para), para))
+        return out
 
     def _family_quality(self, b, page):
         """A heading right under one naming a family of qualities (`New Technomancer Qualities: Resonant Streams`)
