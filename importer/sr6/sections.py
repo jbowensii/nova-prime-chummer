@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass, field, replace
 
 from importer.sr6 import effects
-from importer.sr6.regroup import norm
+from importer.sr6.regroup import norm, text_page
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
@@ -359,7 +359,8 @@ class Reader:
             para = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(x for x in body if x))  # (`Un- steady`)
             if re.search(r"\bquality\b", name, re.I) or re.search(rf"\bgains?\s+the\s+{re.escape(name)}\s+quality\b", para, re.I):
                 continue
-            out.append(Found("qualities", name, page, {"kind": "negative", "karma": "0", "granted": "true",
+            at = max(1, text_page(b, ln.strip()[:40]) - (b.page - page))
+            out.append(Found("qualities", name, at, {"kind": "negative", "karma": "0", "granted": "true",
                                                        "category": f"{owner} drawback"}, effects.read(para), para))
         return out
 
@@ -507,7 +508,9 @@ class Reader:
                 name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
                 if not attrs:
                     continue
-            out.append(Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], para, cites=cites))
+            # (its own page: a run-in printed on a later page than its block's heading)
+            at = max(1, text_page(b, ln.strip()[:40]) - (b.page - page))
+            out.append(Found(kind, name, at, {k: v for k, v in attrs.items() if v}, [], para, cites=cites))
         return out
 
 

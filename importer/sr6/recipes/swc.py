@@ -13,7 +13,7 @@ from importer.recipes.dhsa import slug
 from importer.sr6 import KINDS, resolve, sections
 from importer.sr6.recipes import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, norm, text_page
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
 SHA256 = ("348a545b057f2daaa2337636570dbc6151e8229fd1d1e30d8827664d5516e768",  # the owner's copy
@@ -334,7 +334,7 @@ _KARMA = re.compile(r"^\W*(Cost|Bonus)\s*:\s*(.*?(?:Karma|see text).*)$", re.I)
 _SUBNAME = re.compile(r"^[A-Z0-9<][\w’'/<>,-]*(?:\s+(?:[A-Z0-9<][\w’'/<>,-]*|of|and|the|or|\([^)]*\)))*$")
 
 
-def _qualities(cat, name, text, page):
+def _qualities(cat, name, text, page, block=None):
     """Each `Cost: N Karma` (positive) or `Bonus: N Karma` (negative) line in the block is one quality: the block's,
     or a sub-quality named by the short title line above it (`Camouflage` under `Animal Pelage`). False: no karma line."""
     lines = [ln.replace("**", "").strip() for ln in text.splitlines()]
@@ -363,7 +363,9 @@ def _qualities(cat, name, text, page):
         if not k:
             cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": qname, "field": "karma",
                                "value": karma, "page": page})
-        cat.add("qualities", qname, page, attrs, (), _plain_text(text))
+        # (a sub-quality on its own page: its title line's, the block printed over several pages)
+        at = max(1, text_page(block, sub) - PAGE_OFFSET) if sub and block is not None else page
+        cat.add("qualities", qname, at, attrs, (), _plain_text(text))
     return found
 
 
@@ -467,7 +469,7 @@ def extract(regrouped, ctx=None):
         elif ch in QUALITY_CHAPTERS and b.type == "item" and "new critter powers" in group and b.level == 5:
             done = _critterpower(cat, b.name, text, page)
         elif ch in QUALITY_CHAPTERS and b.type == "item":
-            done = _qualities(cat, b.name, text, page)
+            done = _qualities(cat, b.name, text, page, b)
         elif ch == CONTACTS and b.type == "item":
             done = _contact(cat, b.name, text, page, _md(b))
         elif b.type == "item" and len(band := shapes.vehicle_band(b.text)) >= 6:

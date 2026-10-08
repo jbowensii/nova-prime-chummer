@@ -12,7 +12,7 @@ from collections import Counter
 from dataclasses import replace
 
 from importer.recipes.dhsa import slug
-from importer.sr6 import sections
+from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb, swc
 from importer.sr6.recipes.fs import _md_table
 from importer.sr6.regroup import blocks, keys, norm
@@ -356,7 +356,7 @@ def _modules(bs):
     for b in bs:
         head = norm(b.name)
         if on and (head in (norm(b.chapter), "") or head.isdigit()):
-            lines += b.text.splitlines()
+            lines += _paged(b)
             continue
         if level is not None and b.level > level:  # a module under its own heading
             # (its labelled lines once: the text's own, else regroup's labels)
@@ -367,18 +367,19 @@ def _modules(bs):
         on, level = False, None
         if b.level and _MODULES.fullmatch(b.name.strip()):
             level = b.level
-        text = b.text.splitlines()
+        text = _paged(b)
         at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
             (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
         if at is not None:
             lines, page, on = lines + [""] + text[at:], page or b.page, True
-    out, cur, name = [], [], []
+    out, cur, name, at = [], [], [], 0
+    pg = lambda: getattr(lines[at], "page", 0) or page  # noqa: E731  (the module's title line's page)
     i = 0
     while i < len(lines):
         s = _unbold(lines[i])
         if _MODULES.fullmatch(_bare(s)):  # (a second list's line, `New Event Life Modules`: no title)
             if cur and name and any(_GRANT.search(c) for c in cur):
-                out.append((" ".join(name), "\n".join(cur), page))
+                out.append((" ".join(name), "\n".join(cur), pg()))
             name, cur, i = [], [], i + 1
             continue
         # (a title set in bold starts a module after lines with no grant too: an errata's `Student Athlete: Use …`)
@@ -389,14 +390,19 @@ def _modules(bs):
                 j += 1
             if j < len(lines) and lines[j].strip() and not lines[j].lstrip().startswith(("•", "**")) and j - i <= 3:
                 if cur and any(_GRANT.search(c) for c in cur):
-                    out.append((" ".join(name), "\n".join(cur), page))
-                name, cur, i = [_unbold(lines[k]) for k in range(i, j)], [], j
+                    out.append((" ".join(name), "\n".join(cur), pg()))
+                name, cur, at, i = [_unbold(lines[k]) for k in range(i, j)], [], i, j
                 continue
         cur.append(lines[i])
         i += 1
     if cur and name and any(_GRANT.search(c) for c in cur):
-        out.append((" ".join(name), "\n".join(cur), page))
+        out.append((" ".join(name), "\n".join(cur), pg()))
     return out + heads
+
+
+def _paged(b):
+    """Block b's text lines, each keeping the PDF page it is printed on (regroup's page breaks)."""
+    return [regroup._pline(ln, regroup.line_page(b, k)) for k, ln in enumerate((b.text or "").splitlines())]
 
 
 def _contact(b):

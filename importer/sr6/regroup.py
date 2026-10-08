@@ -45,6 +45,8 @@ class Block:
     table: str = ""  # the title of the table its row's table is a sub-table of (`magical goods table`)
     config_of: str = ""  # a configuration row's item (shapes.configuration_rows): the Alpenstock's Spear
     unlisted: bool = False  # an item its table leaves out (its heading printed among the rows' headings): no values
+    # the page breaks inside its text: [[text line, PDF page]] where a later line is printed on another page
+    breaks: list = field(default_factory=list)
 
 
 def norm(name, aliases=None):
@@ -125,6 +127,34 @@ def _names(name):
 
 def _cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
+
+
+class _PLine(str):
+    """A text line that keeps the PDF page it is printed on through a unit's body (a block's page breaks: _breaks)."""
+    page = 0
+
+
+def _pline(v, page):
+    x = _PLine(v)
+    x.page = page
+    return x
+
+
+def line_page(b, i):
+    """The PDF page line i of block b's text is printed on (its page breaks; else the block's page)."""
+    page = b.page
+    for at, pg in b.breaks or ():
+        if at <= i:
+            page = pg
+    return page
+
+
+def text_page(b, needle):
+    """The PDF page of the first line of block b's text holding `needle` (else the block's page)."""
+    for i, ln in enumerate((b.text or "").splitlines()):
+        if needle in ln:
+            return line_page(b, i)
+    return b.page
 
 
 class _Row(list):
@@ -773,6 +803,8 @@ def _units(els, start, end, chapter, item_keys, aliases):
     while i < end:
         kind, page, v = els[i]
         i += 1
+        if kind == "x":
+            v = _pline(v, page)
         if kind == "h":
             level, text = v
             label = None
@@ -1309,6 +1341,21 @@ def _variants(rows, found):
     return out
 
 
+def _breaks(body, page):
+    """[[text line, PDF page]]: where _text(body)'s lines go on to another page than the one before (from `page`)."""
+    out, n, cur = [], 0, page
+    for b in body:
+        if isinstance(b, str):
+            pg = getattr(b, "page", 0)
+            if pg and pg != cur:
+                out.append([n, pg])
+                cur = pg
+            n += 1
+        elif not b.catalog:
+            n += 2 + len(b.rows)
+    return out
+
+
 def _text(body):
     out = []
     for b in body:
@@ -1334,10 +1381,10 @@ def _emit(units):
     for u in units:
         if u.merged:
             continue
-        text = _text(u.body)
+        text, breaks = _text(u.body), _breaks(u.body, u.page)
         if u.kind == "section":
             out.append(Block("section", u.name, u.chapter, u.section, "", u.page, tags=u.tags, labels=dict(u.labels),
-                             text=text, level=u.level))
+                             text=text, level=u.level, breaks=breaks))
         else:
             # a box of several one-row tables, a note under each: each row keeps its own notes (as columns: NOTE …)
             # (an item's row: named, not a being's or a vehicle's band)
@@ -1357,7 +1404,8 @@ def _emit(units):
                 out.append(Block("item", name, u.chapter, u.section, t.title if t else label, u.page,
                                  list(t.header) if t else [], _row(t.header, r) if t else None, stats, u.tags,
                                  dict(u.labels), text, u.level, al, group=getattr(r, "group", ""),
-                                 table=t.parent if t else "", unlisted=getattr(r, "unlisted", False)))
+                                 table=t.parent if t else "", unlisted=getattr(r, "unlisted", False),
+                                 breaks=breaks))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
             out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r),
                           aliases=list(getattr(r, "aliases", ())), group=getattr(r, "group", ""), table=t.parent,
@@ -1407,7 +1455,7 @@ def render(b):
             "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {}),
             **({"group": b.group} if b.group else {}), **({"table": b.table} if b.table else {}),
             **({"product": b.product} if b.product else {}), **({"maker": b.maker} if b.maker else {}),
-            **({"unlisted": True} if b.unlisted else {})}
+            **({"unlisted": True} if b.unlisted else {}), **({"breaks": b.breaks} if b.breaks else {})}
     lines = [f"<!-- {b.type} {json.dumps(meta, ensure_ascii=False)} -->"]
     if b.row is not None:
         lines += _md(b.header, [[b.row.get(n, "") for n in _row(b.header, [])]])  # (a header printed twice: its 2nd cell)
@@ -1453,5 +1501,5 @@ def blocks(text):
                          header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"],
                          meta.get("aliases", []), group=meta.get("group", ""), table=meta.get("table", ""),
                          product=meta.get("product", ""), maker=meta.get("maker", ""),
-                         unlisted=meta.get("unlisted", False)))
+                         unlisted=meta.get("unlisted", False), breaks=meta.get("breaks", [])))
     return out

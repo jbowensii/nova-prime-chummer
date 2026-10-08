@@ -69,3 +69,12 @@ class ErrataTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PageBreakTest(unittest.TestCase):
+    def test_a_line_keeps_its_page(self):
+        md = "\n".join(["<!-- page 10 -->", "# GEAR", "#### Zorp Things", "Line one.", "Line two.", "<!-- page 11 -->",
+                        "Line three.", "**Glow:** a later entry.", ""])
+        text, _ = regroup.regroup(md)
+        b = next(b for b in regroup.blocks(text) if b.name == "Zorp Things")
+        self.assertEqual((b.page, regroup.text_page(b, "Line one"), regroup.text_page(b, "**Glow:**")), (10, 10, 11))
