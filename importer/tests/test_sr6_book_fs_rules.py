@@ -169,6 +169,67 @@ class FsRecipeHintsTest(unittest.TestCase):
                          ("500", "Under Rail Mount", "800"))
 
 
+ADDON_MD = """<!-- page 10 -->
+# WEAPONS RACK
+## Ranged Weapons
+### Rifles
+#### Zorp Zapper
+A made-up rifle. Zorp sells a “steady grip-brace” for an additional 60 nuyen, and a glow scope (additional 30
+nuyen) that mounts on top.
+##### zorp zapper
+| TYPE | DV | MODE | ATTACK RATINGS | AMMO | AVAIL | COST |
+|---|---|---|---|---|---|---|
+| Rifle | 4P | SA | 3/9/7/—/— | 12(c) | 4(L) | 900¥ |
+**Note:** Grip-brace add-on increases the Medium and Far Attack Ratings by 2. Cells cost 40¥ each.
+### Clubs
+#### Bonk Mallet
+A made-up mallet with heads.
+##### Bonk Mallet
+| TYPE | DV | ATTACK RATINGS | AVAIL | COST |
+|---|---|---|---|---|
+| Short | 2P | 8/—/—/—/— | 4 | 200¥ |
+| Long | 4P | 9/—/—/—/— | 4 | 300¥ |
+| Spike head | 3P | 8/—/—/—/— | 4 | additional 90¥ |
+#### Glim Coat Sixx
+A made-up name printed with a letter three times.
+##### glim coat sixxx
+| TYPE | DV | ATTACK RATINGS | AVAIL | COST |
+|---|---|---|---|---|
+| Exotic | 1S | 5/—/—/—/— | 2 | 50¥ |
+"""
+
+
+class AddOnsTest(unittest.TestCase):
+    """Supplies and accessories an item's text prices (owner, 2026-10-08), and a letter printed three times."""
+    @classmethod
+    def setUpClass(cls):
+        cls.res = run_fs(ADDON_MD)
+        cls.w, cls.g = entries(cls.res, "weapons"), entries(cls.res, "gear")
+
+    def test_a_supply(self):
+        a, kids = self.g["Zorp Zapper cell"]
+        self.assertEqual((a["supplyOf"], a["cost"], a["category"]), ("zorp-zapper", "40", "Supply"))
+        self.assertIn(("alias", {}, "Cell for Zorp Zapper"), kids)
+        self.assertTrue(any(c == "issue" and x["field"] == "avail" for c, x, _ in kids))
+
+    def test_accessories_and_their_effects(self):
+        a, kids = self.w["Zorp Zapper steady grip-brace"]
+        self.assertEqual((a["accessoryOf"], a["cost"], a["category"]), ("zorp-zapper", "60", "Weapon accessory"))
+        self.assertEqual([x for c, x, _ in kids if c == "effect"], [{"target": "item:ar", "op": "add", "value": "0,0,2,2,0"}])
+        self.assertEqual(self.w["Zorp Zapper glow scope"][0]["cost"], "30")
+
+    def test_an_additional_price_is_an_accessory_of_its_box(self):
+        a, kids = self.w["Bonk Mallet (Spike head)"]
+        self.assertEqual((a["cost"], a["accessoryOf"]), ("90", "bonk-mallet-short bonk-mallet-long"))
+        self.assertFalse(any(c == "issue" and x["field"] == "cost" for c, x, _ in kids))
+
+    def test_a_letter_printed_three_times(self):
+        cat = crb._Catalog()
+        e = cat.add("armor", "Glimmeeer Coat", 3, {"category": "Armor"})
+        self.assertEqual((e["name"], e["aliases"]), ("Glimmeeer Coat", ["Glimmeer Coat"]))  # (never a rename)
+        self.assertEqual(cat.add("armor", "Zap Mark III", 3, {"category": "Armor"})["aliases"], [])  # (a numeral)
+
+
 class SmallRulesTest(unittest.TestCase):
     def test_prices(self):
         self.assertEqual(formula.read("75¥ (per individual zap)]"), ("Q*75", {"unit": "individual zap", "each": True}))

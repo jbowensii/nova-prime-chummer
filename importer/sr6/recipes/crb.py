@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, formula, regroup, resolve, sections, tables
+from importer.sr6 import KINDS, NS, archetypes, categories, effects, formula, regroup, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -320,6 +320,8 @@ class _Catalog:
                 self.report.append(r)
         self.pending = []
         aliases = [*aliases, *series_models(name, text)]
+        if (fixed := _TRIPLE.sub(r"\1\1", name)) != name:
+            aliases.append(fixed)  # a letter printed three times (`Actioneeer`): the spelling as a search name, never a rename
         al = [a for a in dict.fromkeys(aliases) if a and norm(a) != norm(name)]  # another name it is printed under
         e = {"id": i, "name": name, "page": page, "attrs": attrs or {},
              "children": list(children) + [("alias", {}, a) for a in al], "row": row or {}, "where": self.where,
@@ -996,6 +998,69 @@ def sentence_items(bs, offset):
     return out
 
 
+# (owner, 2026-10-08) a supply priced in an item's text: `Batteries cost 100¥ each`
+_SUPPLY = re.compile(r"(?:^|[.!?:]\s+)(?:The\s+)?([A-Z][a-z]+(?:\s+[a-z]+){0,2}?)\s+costs?\s+([\d,]+)\s*(?:¥|nuyen)\s+each\b")
+# an add-on priced in an item's text: `a proprietary laser sight (additional 50 nuyen)`, `“stabilizing arm-brace” for an
+# additional 100 nuyen`
+_ADD_ON = re.compile(r"\b(?:an?|the)\s+(?:[a-z-]+\s+){0,3}?([a-z][\w-]*(?:\s+[a-z][\w-]*){0,2})\s*\(\s*(?:an\s+)?additional\s+"
+                     r"([\d,]+)\s*(?:¥|nuyen)\s*\)"
+                     r"|[“\"]([a-z][\w-]*(?:\s+[a-z][\w-]*){0,3})[”\"]\s+for\s+an\s+additional\s+([\d,]+)\s*(?:¥|nuyen)")
+_ADDITIONAL = re.compile(r"^\s*(?:an?\s+)?additional\s+([\d,]+)\s*¥?\s*$", re.I)
+
+
+_TRIPLE = re.compile(r"([a-z])\1{2,}")  # no English word prints a letter three times (lower case: not `III`, `AAA`)
+
+
+def _flat(text):
+    return re.sub(r"(?<=[a-z])-\s+(?=[a-z])", "", " ".join((text or "").split()))  # (`sta- bilizing`)
+
+
+def add_ons(cat):
+    """Supplies and accessories an item's own text prices (owner, 2026-10-08), each linked to the item:
+    - `Batteries cost 100¥ each`: gear `<item> battery` (`Battery for <item>`), `supplyOf` the item;
+    - `a proprietary laser sight (additional 50 nuyen)`, `“stabilizing arm-brace” for an additional 100 nuyen`: an
+      accessory `<item> <add-on>`, `accessoryOf` the item, what the text states it does to the item its effects
+      (effects.accessory);
+    - a box row priced `additional 100¥` (`Tactical hammer (knife/spike)`) is an accessory of the box's other rows
+      (`Tactical hammer (short)`, `(long)`): its own price the addition.
+    Their availability the book doesn't print: an issue."""
+    hosts = [(k, e) for k in sorted(ROW_KINDS) for e in cat.entries[k] if not e["attrs"].get("supplyOf")]
+    for kind, e in hosts:
+        m = _ADDITIONAL.match(str(e["attrs"].get("cost") or ""))
+        if m and "(" in e["name"]:
+            stem = e["name"][:e["name"].index("(")].strip().lower()
+            sib = [x["id"] for x in cat.entries[kind] if x is not e and x["name"].lower().startswith(stem + " (")
+                   and re.fullmatch(r"[\d.]+", str(x["attrs"].get("cost") or ""))]
+            if sib:
+                e["attrs"].update(cost=m.group(1).replace(",", ""), accessoryOf=" ".join(sib))
+                e["children"] = [c for c in e["children"] if not (c[0] == "issue" and c[1].get("field") == "cost")]
+    seen = {norm(e["name"]) for k in ROW_KINDS for e in cat.entries[k]}
+    for kind, e in hosts:
+        text = _flat("\n".join([e.get("text") or "", *[str(v) for v in (e.get("row") or {}).values()]]))
+        page, label = e["page"], e["name"]
+        for m in _SUPPLY.finditer(text):
+            one = categories.singular(m.group(1).lower())
+            name = f"{label} {one}"
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            cat.add("gear", name, page, {"category": "Supply", "cost": m.group(2).replace(",", ""), "supplyOf": e["id"]},
+                    [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it")],
+                    m.group(0).strip(" .:"), aliases=[f"{one[:1].upper()}{one[1:]} for {label}"])
+        for m in _ADD_ON.finditer(text):
+            thing, price = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+            name = f"{label} {thing}"
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            fx = effects.accessory(text, thing)
+            cat.add(kind if kind == "weapons" else "gear", name, page,
+                    {"category": "Weapon accessory" if kind == "weapons" else "Accessory",
+                     "cost": price.replace(",", ""), "accessoryOf": e["id"]},
+                    [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it"),
+                     *fx], m.group(0).strip(" .:"))
+
+
 def ammo_type(b):
     """A row priced as a multiple of the ammunition it modifies (a COST MULTIPLIER column, or `x2` / `+100%` in an
     ammunition table): an ammunition type, not an item of its own."""
@@ -1215,6 +1280,7 @@ def extract(regrouped, ctx=None, book=None):
     for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
         if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
             cat.add(kind, name, page, attrs, kids, text)
+    add_ons(cat)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):

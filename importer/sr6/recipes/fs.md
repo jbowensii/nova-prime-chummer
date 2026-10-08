@@ -34,6 +34,9 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
 - A box of its item's own band over priced WEAPON rows (the Underbarrel Weapon Attachment Mount): each row an item
   grouped under the mount (`_hosted`).
 - The chapter's list of armor modifications reprints the MEMS section's own list: a reprinted row is no second entry.
+- Sentence-priced add-ons and supplies (crb `add_ons`, general): the Pulse's and the laser rifles' batteries, the
+  Colt Agent Special's laser sight, the M-24's arm-brace (its Near/Medium +1 an `item:ar` effect), the tactical
+  hammer's knife/spike head (an accessory of both hammers).
 - The p. 152 summary (PDF 153 on, `END_PAGE`) reprints the chapters' tables: left out, the chapters' rows are the
   entries (the Heritage Line is p. 16's).
 - Qualities (VIOLENT ENDS): level-3 headings with `Bonus: N Karma` (Phobia prints one a rarity, wrapped: karma the

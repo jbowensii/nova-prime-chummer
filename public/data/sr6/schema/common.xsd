@@ -96,6 +96,10 @@
         <xs:element name="alias" type="sr6:Alias"/>
         <!-- a cell's footnote: the note its footnote mark points to, for that field (the mark is left out of the value) -->
         <xs:element name="note" type="sr6:Note"/>
+        <!-- what the entry's prose states it does (importer/sr6/effects.py, below): a quality's, or an accessory's to the
+             item it fits (target item:<field>) -->
+        <xs:element name="effect" type="sr6:Effect"/>
+        <xs:element name="test" type="sr6:Test"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -114,6 +118,10 @@
     <!-- a configuration of another entry (its id): a shape that item takes, its own stats printed, never bought apart
          (the Dassault Alpenstock's spear configuration) -->
     <xs:attribute name="configOf" type="xs:string"/>
+    <!-- an accessory priced as an add-on to other entries (their ids: the Colt Agent Special's laser sight, a knife or
+         spike head for both tactical hammers), or a supply for one (a weapon's batteries) -->
+    <xs:attribute name="accessoryOf" type="xs:string"/>
+    <xs:attribute name="supplyOf" type="xs:string"/>
   </xs:attributeGroup>
   <!-- one category of a book's table rows (categories.xml): its name (the table's title, singular), the kind its rows
        are (of), the printed table and section titles, and how they link: an accessory category's hosts (fits) and a
@@ -276,7 +284,8 @@
   </xs:complexType>
 
   <!-- a quality's effects (importer/sr6/effects.py): what its prose states, as a path from the character to a target
-       (attr:<abbr>, skill:<id>, derived:<name>), an operator (add; edge-cost: Edge boosts and actions on tests with the
+       (attr:<abbr>, skill:<id>, derived:<name>; an accessory's item:<field> on the item it fits, `item:ar` a value a
+       band "0,1,1,0,0"), an operator (add; edge-cost: Edge boosts and actions on tests with the
        target cost that much more) and a value; confidence="low": read from a sentence that sets a condition, shown and
        never applied. A test the quality calls for: skill + attribute (threshold). A choice it grants: count picks from
        the catalog's qualities of one category (max: the most the list allows). -->
@@ -303,12 +312,8 @@
   <xs:complexType name="Quality">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="effect" type="sr6:Effect"/>
-        <xs:element name="test" type="sr6:Test"/>
-        <xs:element name="choice" type="sr6:QualityChoice"/>
-      </xs:choice>
-      <xs:group ref="sr6:tail"/>
+      <xs:element name="choice" type="sr6:QualityChoice" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:group ref="sr6:tail"/>  <!-- (its effects and tests: the tail's) -->
     </xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>
       <xs:attribute name="kind" use="required">

@@ -267,6 +267,15 @@ table a book's catalog rows come from, by the book's own words, never an item's 
   first row that print a dash for AVAIL and COST (it comes with the item), or a box row named `… configuration` /
   `… mode`, are the shapes the one item takes: an entry each with its printed stats, named `<item> (<row>
   configuration)`, `configOf` the item's id, never priced apart (the Dassault Alpenstock's spear and knife).
+- **Accessories and supplies priced in a sentence** (crb `add_ons`, owner 2026-10-08): an item's own text pricing an
+  add-on (`a proprietary laser sight (additional 50 nuyen)`, `“stabilizing arm-brace” for an additional 100 nuyen`) is
+  an accessory `<item> <add-on>`, `accessoryOf` the item's id; what the text says it does to the item is its
+  `<effect target="item:<field>">` (`increases the Near and Medium Attack Ratings by 1`: `item:ar`, `0,1,1,0,0`, one
+  value a range band). `Batteries cost 100¥ each` is a supply `<item> battery` (`Battery for <item>`), `supplyOf` the
+  item. A box row priced `additional 100¥` (`Tactical hammer (knife/spike)`) is an accessory of the box's other rows,
+  its price the addition. The book prints no availability for them: an issue.
+- **A letter printed three times** in a name (`Actioneeer`): the name stays as printed; the spelling with two is a
+  search name (not upper case: `Mark III`).
 - **A product's configurations** (`shapes.configurations`): a box titled with a maker and a product (`Cougar Weapons
   Armsman Collapsible Polearm`, the maker found by the game's corporate words: Weapons, Arms, Industries…) whose rows are
   short generic words (`Knife`, `One-hand`, `Spear`, `Pike`): each row its own item as printed, `category` the product,
