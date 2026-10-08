@@ -79,6 +79,12 @@ A made-up vial that glows.
 A made-up tradition of glowing gods.
 ### Traditions of Fizz
 A made-up tradition that fizzes.
+### Traditions of Zap
+A made-up family of traditions.
+The **Zap tradition** is made up, and so is
+the **Path of**
+**the Spark**; the **Buzz-**
+**ing** buzz.
 ## New Qualities for Awakened Characters
 ### Positive Qualities
 #### Glow Mage
@@ -144,7 +150,8 @@ class SwRecipeTest(unittest.TestCase):
         self.assertEqual((v["category"], v["cost"], v["per"]), ("Preparations", "450", "charge"))
 
     def test_traditions_and_qualities(self):
-        self.assertEqual(set(entries(self.res, "traditions")), {"Glow Tradition", "Traditions of Fizz"})
+        t = entries(self.res, "traditions")
+        self.assertEqual(set(t), {"Glow Tradition", "Traditions of Fizz", "Zap tradition", "Path of the Spark", "Buzzing"})
         q = entries(self.res, "qualities")["Glow Mage"]
         self.assertEqual((q["kind"], q["karma"]), ("positive", "4"))
         r = entries(self.res, "rules")

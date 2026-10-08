@@ -60,7 +60,12 @@ PREFIX = [("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$",
           ("actions", re.compile(r"^(?:new\s+)?(?:(?:status|response|chase)\s+)?(?:edge|major|minor)\s+action\s*:\s*(.+)$", re.I)),
           ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I)),
           ("metamagics", re.compile(r"^(?:new\s+)?metamagic\s*:\s*(.+)$", re.I)),
+          ("programs", re.compile(r"^new\s+(?:[a-z-]+\s+)?program\s*:\s*(.+)$", re.I)),  # `new hacking program: hitchhiker`
           ("qualities", re.compile(r"^new\s+(?:(?:positive|negative)\s+)?quality\s*:\s*(.+)$", re.I))]
+# a heading whose tag line names its kind (`##### Vanishing` over `(Ability/Critter Power)`)
+TAG_KINDS = [("critterpowers", re.compile(r"\bcritter\s+power\b", re.I))]
+# a heading naming its kind after the name (`##### Paragon (Positive Quality)`)
+KIND_SUFFIX = re.compile(r"^(.+?)\s*\(((?:positive|negative)\s+quality)\)$", re.I)
 # run-in labels that are a field of the block, not an entry of its kind
 FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
                           r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"
@@ -260,7 +265,20 @@ class Reader:
         for kind, rx in PREFIX:
             if m := rx.match(name):
                 self.prefixed.add((len(chain), parent))
-                return [f for f in [self._make(kind, m.group(1).strip(), b, page, chain)] if f]
+                n = m.group(1).strip()
+                f = self._make(kind, n[:1].upper() + n[1:], b, page, chain)
+                if f and kind == "programs":
+                    f.attrs["type"] = program_type(name[:m.start(1)])
+                return [f] if f else []
+        if m := KIND_SUFFIX.match(name) or KIND_SUFFIX.match(f"{name} ({b.tags})"):
+            return [f for f in [self._make("qualities", m.group(1), b, page, chain + [m.group(2)[:-1] + "ies"])] if f]
+        # (its tag line, or a parenthesized line among the first of its text: regroup leaves it there under labels)
+        tagline = b.tags or next((ln for ln in (b.text or "").splitlines()[:4] if re.fullmatch(r"\s*\([^()]+\)\s*", ln)), "")
+        for kind, rx in TAG_KINDS:
+            if rx.search(tagline) and name[:1].isupper():
+                return [f for f in [self._make(kind, name, b, page, chain)] if f]
+        if f := self._family_quality(b, page):
+            return [f]
         if f := self._bought_as_quality(b, page, chain):
             return [f]
         if f := self._granted_quality(b, page):
@@ -300,6 +318,19 @@ class Reader:
         if kind == "vehicledesign":  # a heading over several (`Heavy Duty/Lightweight`, `Comms (I, II, III)`): each
             return [self._make(kind, n, b, page, chain) for n in split_names(name)]
         return [f for f in [self._make(kind, name, b, page, chain)] if f]
+
+    def _family_quality(self, b, page):
+        """A heading right under one naming a family of qualities (`New Technomancer Qualities: Resonant Streams`)
+        whose text prices them (`Streams cost 20 Karma`): a positive quality at that price, the family its category."""
+        if not self.stack or not b.name[:1].isupper() or EXAMPLE.search(b.name):
+            return None
+        plv, pname, pb, _, _ = self.stack[-1]
+        fam = re.search(r"\bqualities\s*:\s*(.+)$", pname, re.I)
+        karma = re.search(r"\bcosts?\s+(\d+)\s+Karma\b", " ".join((pb.text or "").split()), re.I)
+        if not fam or not karma or b.level != plv + 1:
+            return None
+        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": karma.group(1),
+                                                          "category": fam.group(1).strip()}, [], _body(b), b)
 
     def _bought_as_quality(self, b, page, chain):
         """A heading under a section whose text says its entries are taken as a quality, at the price its tag prints
@@ -403,7 +434,7 @@ class Reader:
             if (new := re.match(r"(?i)new\s+([\w ]+?)\s*:", name)) and not _kind_of(
                     new.group(1) + "s", [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]):
                 continue  # `New Status: Painted` among new actions: another kind of thing
-            if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[") \
+            if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[" or re.match(r"[a-z][A-Z]", name)) \
                     or len(name) > 70 or norm(name) in seen:
                 continue
             seen.add(norm(name))
@@ -805,7 +836,7 @@ def packs(b, page, parent, chapter_has_packs):
             name = m.group(1).strip().rstrip(":")
             rest = m.group(2)[:_NUYEN.search(m.group(2)).start()] if _NUYEN.search(m.group(2)) else ""
             rest = rest.strip().rstrip(":").strip()
-            contents = re.sub(r"^\(\s*w/\s*", "", rest)
+            contents = re.sub(r"^\(\s*(?:w/\s*)?", "", rest)  # (`(w/ …)`, `(throwback, w/ …)`)
             contents = contents[:-1] if rest.startswith("(") and contents.endswith(")") else contents
             out.append(Found("packs", _pack_name(name), page, {"category": b.name, "cost": p.group(1).replace(",", "")},
                              [("item", {}, x) for x in _items(contents)], ln))
@@ -815,6 +846,21 @@ def packs(b, page, parent, chapter_has_packs):
     own = [f for f in out if f.attrs.get("category") == b.name]
     if PACK_WORD.search(b.name) and not _PACKS.search(b.name) and len(own) == 1:  # the PACK heading's own price line
         own[0].name, own[0].attrs["category"], own[0].text = _pack_name(b.name), parent or None, _body(b)
+    return _told_apart(out)
+
+
+def _told_apart(out):
+    """Packs printed under one name with other contents (two `Ares Predator VI` PACKs): the first keeps the name, a later
+    one is named by its first item the first lacks (`Ares Predator VI (concealable holster)`)."""
+    first = {}
+    for f in out:
+        items = [re.sub(r"^w/\s*", "", x).strip() for _, _, x in f.children]
+        if f.name not in first:
+            first[f.name] = items
+            continue
+        other = next((x for x in items if x and x not in first[f.name]), None)
+        if other:
+            f.name = f"{f.name} ({other})"
     return out
 
 

@@ -51,3 +51,11 @@ Structure only, no book text. The owner's PDF (SHA-256 in `kk.py`): 41 pages, it
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Krime Katalog-Gear Catalog-none.pdf>" --out "%TEMP%\kk-check"
+
+## Importer v5
+
+- The converter now reads the two editions' boxes as tables of their own (no longer one wide table): an SR6 caption's
+  subject is paired, in order, with the next run of tables in Sixth Edition columns (DV and attack ratings; a vehicle's
+  speed interval), one-row bands joined until a price (`_sets_by_header`). Fifth Edition tables (`DAM`, `AP`, `ACC`,
+  `RC`, a vehicle's single `SPEED`) are skipped. A grid of four boxes (both captions over the first two) pairs alike.
+  `COST MULT.` is the ammunition list's `COST MULTIPLIER`.

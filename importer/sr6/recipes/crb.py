@@ -499,7 +499,8 @@ class _Catalog:
         if first == "PRIORITY":
             for r in rows:
                 self.priority(header, r, page)
-        elif first == "METATYPE" and len(header) >= 9:  # the ranges table, not an adjustment chart
+        elif first == "METATYPE" and len(header) >= 9 or _variant_table(header):
+            # the ranges table, not an adjustment chart; a variant attribute table (Hack & Slash's AI variants) too
             for r in rows:
                 self.metatype(header, r, page)
         elif first == "GRADE" and any("ESS" in h.upper() for h in header):  # the implant grades table
@@ -972,6 +973,10 @@ _PRICED_AS = re.compile(r"\bThe\s+([A-Z][\w-]*(?:\s+[\w-]+){0,3}?)\s+is\s+an?\s+
 _CORE = "crb"  # `SR6` in a cross-reference: the core rulebook
 
 
+# an item a heading prices in one line of its text: `Availability 6, Cost 5,000¥`
+_PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*(\d+\s*(?:\([A-Z]\))?)\s*,\s*Cost:?\s*([\d,]+)\s*¥\s*$", re.M)
+
+
 def sentence_items(bs, offset):
     """[(kind, name, page, attrs, children, text)] of the items a book prices only in a sentence of another block's
     text (_AMMO_MULTIPLE, _PRICED_AS), each once (a description printed twice: its first)."""
@@ -985,6 +990,15 @@ def sentence_items(bs, offset):
             if norm(name) not in seen:
                 seen.add(norm(name))
                 out.append(("ammotypes", name, page, {"category": "Ammo type", "cost": f"x{m.group(2)}"}, (), m.group(0).strip(". ")))
+        if b.row is None and (m := _PRICE_LINE.search(b.text or "")):  # `Availability 6, Cost 5,000¥` under a heading
+            words = b.name.split()
+            name = " ".join(words[:-1] + [categories.singular(words[-1])]) if b.name[:1].islower() else b.name
+            name = name[:1].upper() + name[1:]
+            if norm(name) not in seen and norm(name) not in {norm(x.name) for x in bs if x.row is not None}:
+                seen.add(norm(name))
+                out.append(("gear", name, page, {"category": b.section or b.chapter or "Gear",  # (its section's)
+                                                 "avail": " ".join(m.group(1).split()), "cost": m.group(2).replace(",", "")},
+                            (), b.text))
         for m in _PRICED_AS.finditer(text):
             name, base, fields = heads.get(norm(m.group(1)), m.group(1)), m.group(2), m.group(3)
             if norm(name) in seen:
@@ -998,14 +1012,33 @@ def sentence_items(bs, offset):
     return out
 
 
-# (owner, 2026-10-08) a supply priced in an item's text: `Batteries cost 100¥ each`
-_SUPPLY = re.compile(r"(?:^|[.!?:]\s+)(?:The\s+)?([A-Z][a-z]+(?:\s+[a-z]+){0,2}?)\s+costs?\s+([\d,]+)\s*(?:¥|nuyen)\s+each\b")
+# (owner, 2026-10-08) a supply priced in an item's text: `Batteries cost 100¥ each`, `Tank refills are 200¥ each`,
+# `Replacement pitons cost 300 per set`
+_SUPPLY = re.compile(r"(?:^|[.!?:]\s+)(?:The\s+)?([A-Z][a-z]+(?:\s+[a-z]+){0,2}?)\s+(?:costs?|are|is)\s+([\d,]+)\s*"
+                     r"(?:(?:¥|nuyen)\s+each|(?:¥|nuyen)?\s*per\s+set)\b")
 # an add-on priced in an item's text: `a proprietary laser sight (additional 50 nuyen)`, `“stabilizing arm-brace” for an
 # additional 100 nuyen`
 _ADD_ON = re.compile(r"\b(?:an?|the)\s+(?:[a-z-]+\s+){0,3}?([a-z][\w-]*(?:\s+[a-z][\w-]*){0,2})\s*\(\s*(?:an\s+)?additional\s+"
                      r"([\d,]+)\s*(?:¥|nuyen)\s*\)"
                      r"|[“\"]([a-z][\w-]*(?:\s+[a-z][\w-]*){0,3})[”\"]\s+for\s+an\s+additional\s+([\d,]+)\s*(?:¥|nuyen)")
 _ADDITIONAL = re.compile(r"^\s*(?:an?\s+)?additional\s+([\d,]+)\s*¥?\s*$", re.I)
+# a refill or replacement parts priced in an item's text: `can be completely refilled for 50 nuyen`, `replacement balloons
+# and panels are available as aftermarket accessories for 100 nuyen each`
+_REFILL = re.compile(r"\brefill(?:ed)?\s+for\s+([\d,]+)\s*(?:¥|nuyen)")
+_REPLACEMENT = re.compile(r"\breplacement\s+([a-z]+)(?:\s+and\s+([a-z]+))?\s+(?:are|is)\s+available\b[^.()]*?\bfor\s+"
+                          r"([\d,]+)\s*(?:¥|nuyen)\s+each")
+# a price column naming a second thing it prices in parentheses (`COST (RECHARGE)`), and that price (`1,100¥ (200¥)`)
+_COST_OF = re.compile(r"^\s*COST\s*\(\s*([A-Za-z][A-Za-z ]*?)\s*\)\s*$", re.I)
+_SECOND_THINGS = {"RECHARGE", "REFILL"}  # such a column's second thing, once a recipe has split it off
+_SECOND_PRICE = re.compile(r"\(\s*([\d,]+)\s*¥?\s*\)\s*$")
+_NOT_MODIFIERS = {"a", "an", "the", "its", "their", "his", "her", "and", "or", "of", "for", "to", "with", "new", "replacement"}
+
+
+def _named_before(text, noun, end):
+    """A bare noun as the text first named it, with its modifier (`panels` after `balloon and solar panel components`:
+    `solar panel`), else the noun."""
+    m = re.search(rf"\b([a-z]+)\s+{re.escape(noun)}s?\b", text[:end])
+    return f"{m.group(1)} {noun}" if m and m.group(1) not in _NOT_MODIFIERS else noun
 
 
 _TRIPLE = re.compile(r"([a-z])\1{2,}")  # no English word prints a letter three times (lower case: not `III`, `AAA`)
@@ -1047,6 +1080,24 @@ def add_ons(cat):
             cat.add("gear", name, page, {"category": "Supply", "cost": m.group(2).replace(",", ""), "supplyOf": e["id"]},
                     [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it")],
                     m.group(0).strip(" .:"), aliases=[f"{one[:1].upper()}{one[1:]} for {label}"])
+        supplies = [("refill", m.group(1), m) for m in _REFILL.finditer(text)]
+        for k, v in (e.get("row") or {}).items():  # a `COST (RECHARGE)` column printing `1,100¥ (200¥)`
+            if (h := _COST_OF.match(k or "")) and (m := _SECOND_PRICE.search(str(v or ""))):
+                supplies.append((h.group(1).lower(), m.group(1), m))
+            elif k in _SECOND_THINGS and (m := re.match(r"^\s*([\d,]+)\s*¥\s*$", str(v or ""))):  # (a recipe split it)
+                supplies.append((k.lower(), m.group(1), m))
+        for m in _REPLACEMENT.finditer(text):
+            supplies += [("replacement " + _named_before(text, categories.singular(t), m.start()), m.group(3), m)
+                         for t in m.groups()[:2] if t]
+        for thing, price, m in supplies:
+            r = re.match(r"^(.*?)\s*(\(rating \d+\))$", label, re.I)
+            name = f"{r.group(1)} {thing} {r.group(2)}" if r else f"{label} {thing}"
+            if norm(name) in seen:
+                continue
+            seen.add(norm(name))
+            cat.add("gear", name, page, {"category": "Supply", "cost": price.replace(",", ""), "supplyOf": e["id"]},
+                    [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it")],
+                    m.group(0).strip(" .:"))
         for m in _ADD_ON.finditer(text):
             thing, price = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
             name = f"{label} {thing}"
@@ -1186,6 +1237,12 @@ def ware_type(keys):
     return next((t for w, t in WARE_TYPES if w in hay), "cyberware")
 
 
+def _variant_table(header):
+    """A metatype ranges table titled by variant: first header VARIANT, at least four mental attributes' columns."""
+    return bool(header) and header[0].upper() == "VARIANT" and len(
+        {h.upper() for h in header} & {"WIL", "LOG", "INT", "CHA", "EDG"}) >= 4
+
+
 def _kind(chapter, ctx, section, book=None):
     book = book or sys.modules[__name__]
     for ch, key, kind, cat in book.SECTIONS:
@@ -1222,7 +1279,7 @@ def extract(regrouped, ctx=None, book=None):
         if cat.last_meta is not None and not any(t == "trait" for t, _, _ in cat.last_meta["children"]) \
                 and (q := next((v for k, v in b.labels.items() if re.match(r"racial qualit", k, re.I)), None)):
             cat.metatype([], [f"Racial Qualities: {q}"], page)  # printed as a labelled line under the table
-        if b.row is not None and b.header and b.header[0].upper() in ("PRIORITY", "METATYPE"):
+        if b.row is not None and b.header and (b.header[0].upper() in ("PRIORITY", "METATYPE") or _variant_table(b.header)):
             cat.table(b.header, [[b.row.get(h, "") for h in b.header]], page)
             continue
         if getattr(bk, "ARCHETYPES", "archetypes") in ch and archetypes.is_archetype(b):  # sample characters

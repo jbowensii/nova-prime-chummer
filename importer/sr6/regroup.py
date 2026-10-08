@@ -5,6 +5,7 @@ pair, or pairs twice, is reported, never guessed.
 Output: a first line `<!-- regrouped v1 -->`, then blocks in reading order, each
 `<!-- item {json} -->` or `<!-- section {json} -->`, its tables (the row first when the json says "row"), its
 labelled lines, a blank line, its text, `<!-- end -->`."""
+import difflib
 import json
 import re
 import unicodedata
@@ -194,13 +195,39 @@ class _Table:
 
 
 def _elements(md):
-    """(kind, page, value): ("h", (level, text)), ("t", _Table), ("x", line)."""
+    """(kind, page, value): ("h", (level, text)), ("t", _Table), ("x", line). A boxed sidebar the converter marks
+    (`<!-- box -->` … `<!-- /box -->`) interrupts the flow: what follows it, up to the next heading at the level of
+    its first heading or above, goes back before it (the item it interrupted: a price box after a sidebar)."""
     lines, out, page, i = md.splitlines(), [], 0, 0
+    start, cont = None, None  # the open sidebar's first element; (its first, its end, its heading level) once closed
+
+    def resume():
+        nonlocal cont
+        s, e, _ = cont
+        out[s:] = out[e:] + out[s:e]
+        for n, el in enumerate(out):
+            if el[0] == "t":
+                el[2].pos = n
+        cont = None
+
     while i < len(lines):
         ln = lines[i]
         i += 1
         if not ln.strip():
             continue
+        if ln.strip() == "<!-- box -->":  # (layout.BOX_START)
+            if cont:
+                resume()
+            if start is None:
+                start = len(out)
+            continue
+        if ln.strip() == "<!-- /box -->":  # (layout.BOX_END)
+            if start is not None:
+                level = next((e[2][0] for e in out[start:] if e[0] == "h"), 9)
+                cont, start = (start, len(out), level), None
+            continue
+        if cont and (h := _HEADING.match(ln)) and len(h.group(1)) <= cont[2]:
+            resume()
         if m := _PAGE.match(ln):
             page = int(m.group(1))
         elif ln.startswith("|") and i < len(lines) and _SEP.match(lines[i]):
@@ -258,6 +285,8 @@ def _elements(md):
             out += [("x", page, n) for n in notes]
         else:
             out.append(("x", page, ln))
+    if cont:
+        resume()
     return out
 
 
@@ -701,12 +730,16 @@ def _names_class(header, first):
 
 # a line naming a box's variant over its bands: lower case, one to three words (`command car`, `battle wagon`)
 _VARIANT_LINE = re.compile(r"[a-z][a-z-]*(?: [a-z][a-z-]*){0,2}")
+# a table's title set as a plain line right over it: lower case, one to three words (`sprayers`)
+_SET_TITLE = re.compile(r"[a-z][a-z-]+(?: [a-z][a-z-]+){0,2}")
+# a line pricing the item over it (`Availability 6, Cost 5,000¥`; crb._PRICE_LINE reads it)
+_PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*\d+\s*(?:\([A-Z]\))?\s*,\s*Cost:?\s*[\d,]+\s*¥\s*$")
 
 
 _FOOTNOTE_ROW = re.compile(r"\s*[*†‡]")
 _FOOTNOTE_LINE = re.compile(r"\s*(?:\*(?!\*)|[†‡])")  # a footnote printed under a table (not a bold label: `**Note:**`)
 _FIELD_HEAD = re.compile(r"(?:Karma\s+)?(?:Bonus|Cost)|Game\s+Effects?")
-_NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Z]")
+_NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Za-z]")
 
 
 def _is_label(level, text):
@@ -753,7 +786,8 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     cur.labels.setdefault(m.group(1), m.group(2))
                     cur.box_labels = True
                     continue
-                if cur.kind == "section":
+                if cur.kind == "section" and not re.search(r"\(\s*\d+\s*(?:Edge|Karma)\s*\)\s*$", text, re.I):
+                    # (not an entry priced in its heading, `Batch Execution (1 Edge)`, first under `Edge Actions`)
                     cur.tags = "; ".join(filter(None, [cur.tags, text]))
                     continue
             if _is_label(level, text):
@@ -773,6 +807,17 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     over = text if re.search(r"(?i)\btables?$|[a-z][^s\W]s$", text.strip()) else None
                     continue
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
+                    k = i
+                    while k < end and els[k][0] == "x":
+                        k += 1
+                    if any(_PRICE_LINE.match(els[n][2]) for n in range(i, k)):
+                        # a lower-case title whose text prices it in a line (`virtual garages` … `Availability 6,
+                        # Cost 5,000¥`): a sidebar's item, not an art caption
+                        cur = _Unit("item", text, level, page, chapter, section)
+                        cur.pos = i - 1
+                        units.append(cur)
+                        mode, fresh = "text", False
+                        continue
                     if level == 4:
                         caption = text  # (an item heading set in lower case, `rEVOlution Arms Rhino, Behemoth, …`)
                     continue  # an art caption: dropped, the text flows on
@@ -789,7 +834,12 @@ def _units(els, start, end, chapter, item_keys, aliases):
                 # `Ingram White Knight Mod 1 and Mod 2`, `rhino` under the caption-cased `rEVOlution Arms Rhino, …`)
                 boxed = (k < end and els[k][0] == "x" and _LABEL.match(els[k][2])) or \
                     (j > i or els[i][0] != "t") and any(k in item_keys for k in keys(text, aliases)) or \
-                    j > i and any(set(norm(text).split()) <= set(norm(n).split()) for n in (head_name(), caption) if n)
+                    j > i and any(set(norm(text).split()) <= set(norm(n).split()) for n in (head_name(), caption) if n) or \
+                    j > i and not any(re.match(r"[^\W\d_]{2}", (r[0] if r else "")) for x in range(i, j)
+                                      for r in els[x][2].rows) \
+                    and any({"AVAIL", "AVAIL.", "COST"} & {h.upper() for h in els[x][2].header} for x in range(i, j)) \
+                    and difflib.SequenceMatcher(None, norm(text), norm(cur.name)).ratio() < 0.8  # (not `accesory rails`)
+                # (priced bands naming no row: `flash scope` over `(5–10)S | SA | … | 5,000¥`)
                 if not boxed:  # a table title: its tables join the flow, the text goes on in the same unit
                     first = i
                     while i < end and els[i][0] == "t":
@@ -816,6 +866,9 @@ def _units(els, start, end, chapter, item_keys, aliases):
         elif kind == "t":
             fresh, label = False, None
             v.section = section
+            if not v.title and i >= 2 and els[i - 2][0] == "x" and _SET_TITLE.fullmatch(els[i - 2][2].strip()) \
+                    and not _same(els[i - 2][2].strip(), cur.name):
+                v.title, v.titled = els[i - 2][2].strip(), True  # a title the converter set as a line (`sprayers`)
             # a section's tables are its text; an item's or box's tables right under its heading are its stat box, and
             # so is a later one with a header of that box (a box's next item printed after a note on the one above)
             boxed = (mode == "box" or any(s.header == v.header for s in cur.stats)) and not v.products
@@ -1014,7 +1067,7 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
         hs = [h.upper() for h in t.header]
         cost = next((i for i, h in enumerate(hs) if h.startswith("COST")), None)
         if cost is None or len(hs) < 3 or len(t.rows) < 2 or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs) \
-                or hs[0] in _PRICE_HEAD or not all(r and re.match(r"[^\W\d_]", r[0]) for r in t.rows):
+                or hs[0] in _PRICE_HEAD or not all(r and re.match(r"[^\W\d_]", r[0].lstrip(_INDENT + _BOLD_MARK + " ")) for r in t.rows):
             return False
         priced = sum(1 for r in t.rows if len(r) > cost and re.search(r"\d", r[cost])
                      and not re.match(r"\s*[x×]", r[cost]))
@@ -1050,11 +1103,14 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             cls = not t.titled and _names_class(t.header, [])  # (no title: its first header names its class)
             # a list of ammunition types titled as one (`warhead types`) in a section's text: its rows are entries,
             # priced as modifiers of the round's (`x 2 Base Cost`, `+100¥`), a nameless row a band of the one above
+            # the options a section's own box prices after its band (`weapon security system`: CAPACITY, then OPTIONS)
+            options = u.kind == "section" and (bool(t.parent) and _same(t.parent, u.name)
+                                               or bool(t.title) and _same(t.title, u.name) and not t.titled) and price_list(t)
             typed = u.kind == "section" and bool(TYPES_TITLE.search(t.title or "")) \
                 and (t.header[0] if t.header else "").upper() in NAME_COLUMNS
             if typed:
                 t.rows = _band_rows(t.header, t.rows)
-            t.catalog = is_catalog(t) or typed or u.kind == "item" and (t.titled or cls) \
+            t.catalog = is_catalog(t) or typed or options or u.kind == "item" and (t.titled or cls) \
                 and not _same(t.title, u.name) and price_list(t)
             if t.catalog and cls and not t.title:  # (products under an item heading: that heading is their title)
                 t.title = u.name if t.products and u.kind == "item" else t.header[0].lower()
@@ -1157,19 +1213,26 @@ def _rating_groups(rows, first=None):
     """A row with only its name (`Cyberears basic system`) over `Rating N` rows: those rows are `<name> (Rating N)`,
     and the name-only row goes; `Rating N` rows with no such row are `<first> (Rating N)` (first: the table's first
     header, `Fuse`). A row named in lower case (`w/helmet`) is a variant of the row above; not a model code (`m60`)."""
-    out, group = [], first
-    for r in rows:
+    out, group, outer = [], first, None
+    bare = lambda r: bool(r and r[0] and not any(r[1:]) and not _RATING_ROW.match(r[0]))
+    for i, r in enumerate(rows):
         if r and r[0][:1].islower() and not re.match(r"[a-z]+-?\d", r[0]) and out and out[-1][0]:
             out.append([f"{out[-1][0]} {r[0]}"] + list(r[1:]))
         elif r and r[0] and not any(r[1:]):
-            group = r[0]
+            # a name-only row right over another (`Cyberjack Boosters` over `Data Processing` over its `Rating N`
+            # rows): a group of groups, its name before theirs until a priced row of another shape
+            if i + 1 < len(rows) and bare(rows[i + 1]) and outer is None:
+                outer = r[0]
+                group = r[0]
+            else:
+                group = f"{outer} ({r[0]})" if outer else r[0]
             out.append(r)
         elif group and r and _RATING_ROW.match(r[0]):
-            if out and out[-1][0] == group and not any(out[-1][1:]):
+            if out and out[-1][0] and group in (out[-1][0], f"{outer} ({out[-1][0]})") and not any(out[-1][1:]):
                 out.pop()
             out.append([f"{group} ({r[0]})"] + list(r[1:]))
         else:
-            group = None
+            group, outer = None, None
             out.append(r)
     return out
 

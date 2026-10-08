@@ -159,6 +159,19 @@ class CorpusTest(unittest.TestCase):
             self.assertEqual(g["zza.wobble"].get("avail"), "2")
             self.assertEqual((g["zza.wobble"].find("found").get("how"), g["zza.wobble"].find("found").text), ("errata", "8"))
 
+    def test_an_abbreviation_the_library_spells_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom,
+                  md="Use glowing zap consoles (GZCs) to glow.", entries=[])
+            _book(lib, "b", "done", source="ZZB", bname="Shadowrun: Zorp Beta", custom=custom, kind="augmentations", entries=[
+                '<augmentation id="zzb.gzc" source="ZZB" page="5" category="Headware" avail="3" cost="10">'
+                '<name>GZC</name></augmentation>'])
+            n = resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "b")], sources={"ZZA": "2020-01", "ZZB": "2021-01"})
+            self.assertEqual(n["abbreviations"], 1)
+            e = ET.parse(os.path.join(custom, "imported", "zzb", "augmentations.xml")).getroot()[0]
+            self.assertEqual([a.text for a in e.findall("alias")], ["Glowing zap console"])
+
     def test_cards(self):
         md = "## zorp predator X\n#### heavy pistol\n**DV:** 3P **Mode:** SA/BF\n**Availability:** 2(L) **Cost:** 750¥\n"
         self.assertEqual(resolve.cards(md), {"zorp predator x": {"dv": "3P", "modes": "SA/BF", "avail": "2(L)", "cost": "750"}})

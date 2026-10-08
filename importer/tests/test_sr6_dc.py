@@ -184,10 +184,11 @@ class DcRecipeTest(unittest.TestCase):
 
     def test_autosofts(self):
         """Each skill sold as an autosoft is a program of type autosoft at the ratings the prose gives (unpriced); one
-        whose own line sets its rating stays in the rules."""
+        whose own line sets its ratings has those (its parenthesis no specialization)."""
         p = entries(self.res, "programs")
         self.assertEqual({n: (e.get("type"), e.get("rating"), e.get("cost")) for n, e in p.items()},
-                         {"Fizzing": ("autosoft", "1–6", None), "Glowing (Made-up Glow)": ("autosoft", "1–6", None)})
+                         {"Fizzing": ("autosoft", "1–6", None), "Glowing (Made-up Glow)": ("autosoft", "1–6", None),
+                          "Language": ("autosoft", "1, 5", None)})
 
     def test_qualities(self):
         q = entries(self.res, "qualities")

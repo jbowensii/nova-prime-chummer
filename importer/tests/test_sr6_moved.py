@@ -56,3 +56,37 @@ class MovedTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MoreTiersTest(unittest.TestCase):
+    """Tiers 5-8 on made-up entries: a name printed whole, a row renamed with its values kept, a level renamed with its
+    heading, an entry re-kinded to one the old import had too."""
+
+    def test_more_tiers(self):
+        d = tempfile.mkdtemp()
+        old = {"gear.xml": data("gear", ("zz.zork", "Zork", ""),
+                                ("zz.blip-lamp-level-1", "Blip Lamp (Level 1)", ""),
+                                ("zz.glow-hood-version-2-zap-unit", "Glow Hood (Version 2 (Zap Unit))", "")),
+               "actions.xml": data("actions", ("zz.bright-day", "Bright Day", ""))}
+        old["gear.xml"] = old["gear.xml"].replace('<gear id="zz.blip-lamp-level-1">',
+                                                  '<gear id="zz.blip-lamp-level-1" page="9" avail="4" cost="1000">')
+        old["gear.xml"] = old["gear.xml"].replace('<gear id="zz.glow-hood-version-2-zap-unit">',
+                                                  '<gear id="zz.glow-hood-version-2-zap-unit" page="9" avail="6">')
+        for n, x in old.items():
+            with open(os.path.join(d, n), "w", encoding="utf8") as f:
+                f.write(x)
+        prev = moved.previous(d)
+        new = {"gear.xml": data("gear", ("zz.zork-field-kit", "Zork Field Kit", ""),
+                                ("zz.dim-shade-level-1", "Dim Shade (Level 1)", ""),
+                                ("zz.zap-shield-version-2-zap-unit", "Zap Shield (Version 2 (Zap Unit))", "")),
+               "rules.xml": data("rules", ("zz.bright-day", "Bright Day", ""))}
+        new["gear.xml"] = new["gear.xml"].replace('<gear id="zz.dim-shade-level-1">',
+                                                  '<gear id="zz.dim-shade-level-1" page="9" avail="4" cost="1000">')
+        new["gear.xml"] = new["gear.xml"].replace('<gear id="zz.zap-shield-version-2-zap-unit">',
+                                                  '<gear id="zz.zap-shield-version-2-zap-unit" page="9" avail="5">')
+        out, n = moved.carry(prev, new)
+        self.assertIn('<alias id="zz.zork"/>', out["gear.xml"])
+        self.assertIn('<alias id="zz.blip-lamp-level-1"/>', out["gear.xml"])
+        self.assertIn('<alias id="zz.glow-hood-version-2-zap-unit"/>', out["gear.xml"])
+        self.assertIn('<alias id="zz.bright-day" kind="actions"/>', out["rules.xml"])
+        self.assertEqual(n, 4)

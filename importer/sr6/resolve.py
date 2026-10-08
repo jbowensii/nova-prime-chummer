@@ -579,11 +579,42 @@ def corpus(books, sources=None, apply_errata=True):
                 _add_kid(el, "formula", dict(fx.attrib), fx.text)
             _add_kid(el, "found", {"field": f, "how": "corpus", "source": osrc, "page": page})
             n["corpus"] += 1
+    n["abbreviations"] = _spelled_out(bs, entries, changed)
     for b, src, kind, path, tree in files:
         if path in changed:
             body = etree.tostring(tree, encoding="unicode")
             xmlio.write_file(path, xmlio.HEAD + body + ("" if body.endswith("\n") else "\n"))
     return n
+
+
+# an abbreviation the text spells out: `rigger command consoles (RCCs)`, `Medical Evacuation (MEDEVAC)`
+_DEFINED = re.compile(r"\b((?:[A-Za-z][a-z]+[\s-]+){1,5}[A-Za-z][a-z]+)\s+\(([A-Z]{2,7})s?\)")
+
+
+def _spelled_out(bs, entries, changed):
+    """An entry named only by an abbreviation (`RCC`) that a book of the library spells out where it defines it
+    (`rigger command console (RCC)`, the words' initials the letters): that spelling a search name (an `<alias>`
+    with no id), singular. Returns how many entries got one."""
+    spelled = {}
+    for b in bs:
+        for m in _DEFINED.finditer(b.md or ""):
+            words = re.split(r"[\s-]+", m.group(1))
+            for k in range(len(words)):  # the words the letters start: the last len(abbr) words
+                tail = words[k:]
+                if len(tail) == len(m.group(2)) and "".join(w[0] for w in tail).upper() == m.group(2):
+                    one = " ".join(tail)
+                    one = one[:-1] if one.endswith("s") and not one.endswith("ss") else one
+                    spelled.setdefault(m.group(2), one[:1].upper() + one[1:].lower())
+                    break
+    done = 0
+    for b, src, kind, el, path in entries:
+        name = (el.findtext("name") or "").strip()
+        full = spelled.get(name)
+        if full and not any((a.text or "").lower() == full.lower() for a in _kids(el, "alias")):
+            _add_kid(el, "alias", {}, full)
+            changed.add(path)
+            done += 1
+    return done
 
 
 def library(library_dir, custom_dir):

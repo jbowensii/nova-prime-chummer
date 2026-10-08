@@ -34,6 +34,7 @@ METAMAGIC_GROUPS = ("astral metaplanar studies", "practical conjuration", "apotr
                     "applied thaumaturgy")
 _LEVELS = re.compile(r"(\d+)\s+levels?\s+maximum", re.I)
 _NEW = re.compile(r"^New Metamagic:\s*(.+)$")
+_TWO = re.compile(r"^\s*([\d,]+)\s*¥?\s*(?:/\s*(\w+))?\s*\(([^()]+)\)\s*;\s*([\d,]+)\s*¥?\s*(?:/\s*(\w+))?\s*\(([^()]+)\)\s*$")
 _TAGS = re.compile(r"(?:\([^()]*\)\s*)+")
 _PER = re.compile(r"^\s*([\d,]+)\s*¥?\s*/\s*(\w+)\s*$")
 
@@ -100,6 +101,9 @@ def prepare(bs):
             *more, tags = re.findall(r"\(([^()]*)\)", b.name)
             out[-1] = replace(b, name=" ".join([prev.name] + [f"({m})" for m in more]), tags=tags, level=prev.level)
             continue
+        if "preparations" in sec and b.type == "item" and (two := _two_prices(b)):
+            out += two  # one preparation's two versions, each priced (`450¥/charge (Hose); 550¥/charge (Tsunami)`)
+            continue
         if "preparations" in sec and (m := _PER.match(b.labels.get("Cost", ""))):  # `450¥/charge`
             b = replace(b, labels={**b.labels, "Cost": f"{m.group(1)} per {m.group(2)}"})
         if b.stats and {"RANGE", "DURATION"} <= _heads(b):
@@ -117,14 +121,80 @@ def prepare(bs):
             b = replace(b, row=row, header=list(row), labels={k: v for k, v in b.labels.items() if k != "Cost"})
         if b.type == "item" and b.stats and b.name[:1].islower() or b.name.endswith(" spirits"):
             b = replace(b, name=b.name.title() if b.stats else b.name)
-        if m := _NEW.match(b.name):
-            b = replace(b, name=m.group(1))
+        if (m := _NEW.match(b.name)) and b.level > 3:
+            b = replace(b, name=m.group(1))  # (a level-3 `New Metamagic: X` is the sections reader's: PREFIX)
         if b.stats and norm(b.name).endswith(" stats"):  # `Blood Spirit Stats`
             b = replace(b, name=b.name[:-len(" stats")].strip())
+        if (runs := _run_in_traditions(b)):  # the traditions a family section prints as bold run-ins
+            out.append(b)
+            out += runs
+            continue
         if _tradition(bs, i, b):
             b = replace(b, tags="tradition")
         out.append(b)
     return out
+
+
+_RUN_IN = re.compile(r"\*\*([^*]+?)\*\*")
+_LABEL_LINE = re.compile(r"^\s*\*\*[^*]+:\*\*")
+
+
+def _run_in_traditions(b):
+    """A level-3 section over a family of traditions (`Traditions of Karma`, `Abrahamic Traditions`) printing each in
+    its prose as a bold run-in (`The **Aztec tradition** is …`, `**Path of**` + `**the Wheel**`, `**Wux-**` + `**ing**`):
+    one tradition a run-in, its text the lines up to the next; [] when the section prints none (it is then one
+    tradition itself, _tradition). A name ending in `tradition(s)` is searched without it too."""
+    if b.type != "section" or b.level != 3 or "seeing and believing" not in norm(b.chapter) \
+            or not re.search(r"\btraditions\b", b.name, re.I):
+        return []
+    lines, hits, used = b.text.splitlines(), [], set()
+    for i, ln in enumerate(lines):
+        if _LABEL_LINE.match(ln):
+            continue
+        for m in _RUN_IN.finditer(ln):
+            if (i, m.start()) in used:
+                continue
+            name = m.group(1)
+            nxt = _RUN_IN.match(lines[i + 1]) if i + 1 < len(lines) else None
+            if nxt and m.end() == len(ln.rstrip()):  # a run-in wrapped onto the next line
+                name = name[:-1] + nxt.group(1) if name.endswith("-") else f"{name} {nxt.group(1)}"
+                used.add((i + 1, 0))
+            name = name.strip(" ,.:;")
+            if name:
+                hits.append((i, name[:1].upper() + name[1:]))
+    out = []
+    for k, (i, name) in enumerate(hits):
+        end = next((j for j, _ in hits[k + 1:] if j > i), len(lines))
+        bare = re.sub(r"\s+traditions?$", "", name, flags=re.I)
+        out.append(replace(b, type="item", level=4, name=name, text="\n".join(lines[i:end]), tags="tradition",
+                           labels={}, stats=[], row=None, header=[],
+                           aliases=[a for a in dict.fromkeys([bare, re.sub(r"(?i)traditions$", "tradition", name)])
+                                    if a != name]))
+    return out
+
+
+def _two_prices(b):
+    """A preparation whose Cost prints two versions' prices, each with its version in parentheses (its last one may wrap
+    onto the text's first line): two entries, the second named by its version (`The Magic Nozzle (Tsunami)`), or a
+    heading naming both (`No Job Too Small, No Job Too Big`, versions `NJTS`, `NJTB`: their initials) split in two."""
+    cost, text = b.labels.get("Cost", ""), b.text or ""
+    lead = re.match(r"\s*(\([^()]+\))", text)
+    own = _TWO.match(cost)
+    m = own or (lead and _TWO.match(f"{cost} {lead.group(1)}"))
+    if not m:
+        return []
+    if not own:
+        text = text[lead.end():].lstrip()
+    parts = [p.strip() for p in b.name.split(",")]
+    initials = lambda n: "".join(w[0] for w in re.findall(r"[A-Za-z]+", n)).upper()
+    if len(parts) == 2 and [initials(p) for p in parts] == [m.group(3).upper(), m.group(6).upper()]:
+        names = parts
+    else:
+        names = [b.name, f"{b.name} ({m.group(6)})"]
+    rest = {k: v for k, v in b.labels.items() if k != "Cost"}
+    return [replace(b, name=n, text=text, row={"ITEM": n, "COST": f"{price} per {unit}" if unit else price}, header=["ITEM", "COST"],
+                    labels=rest)
+            for n, price, unit in ((names[0], m.group(1), m.group(2)), (names[1], m.group(4), m.group(5)))]
 
 
 def _tradition(bs, i, b):

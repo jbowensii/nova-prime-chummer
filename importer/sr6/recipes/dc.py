@@ -182,10 +182,13 @@ def _prep(bs, report):
                            "page": max(1, b.page - PAGE_OFFSET)})
         if MODS in ch and b.type == "item" and b.level == 4:
             mod = b.name
+        elif MODS in ch and b.type == "item" and b.level == 5 and b.row is None and not _band_name(b.name) \
+                and not [h for h, _ in crb._tables(b.text) if h and {x.upper() for x in h} <= MOD_COLUMNS]:
+            mod = b.name  # an unpriced level-5 heading over its own level boxes
         if b.type == "item" and b.name[:1].islower():  # a box titled in lower case (`chop shop owner`)
             b = replace(b, name=_title(b.name))
         if MODS in ch and b.row is None:
-            if b.level == 5 and re.fullmatch(r"(?:Rating|Level|Version) \d+.*", b.name):
+            if b.level == 5 and _band_name(b.name):
                 b = replace(b, name=f"{mod} ({b.name})")  # a level of the modification above
             tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(b.text)
             tabs = [(h, rows) for h, rows in tabs if h and {x.upper() for x in h} <= MOD_COLUMNS]
@@ -212,6 +215,27 @@ def _prep(bs, report):
         if k not in read and norm(name) not in names:  # (a box printing other values than the table is no loss)
             report.append({"kind": "missing-value", "file": "vehicles.xml", "name": name, "field": "stats", "page": page})
     return [b for b in out if id(b) not in used]
+
+
+_SIZE_HEAD = re.compile(r"^#####\s+(Mini|Small|Standard|Medium|Large|Huge)\s*$")
+
+
+def prepare_md(md):
+    """A level-5 heading naming only a size (`##### Small` under `##### Pop-Out Concealment`) named with the heading over
+    it before regroup pairs headings with catalog rows (else it takes the drone rack table's `Small` row)."""
+    lines, base = md.splitlines(), None
+    for i, ln in enumerate(lines):
+        if m := _SIZE_HEAD.match(ln):
+            if base:
+                lines[i] = f"##### {base} ({m.group(1)})"
+        elif m := re.match(r"^#{4,5}\s+(.+?)\s*$", ln):
+            base = m.group(1)
+    return "\n".join(lines) + "\n"
+
+
+def _band_name(name):
+    """A level-5 heading naming a level of the modification above (`Rating 2`, `Version 1 (…)`)."""
+    return re.fullmatch(r"(?:Rating|Level|Version) \d+.*", name) is not None
 
 
 def _key(values):
@@ -286,7 +310,7 @@ _SOFT = re.compile(r"^•\s*\*\*([^*]+)\*\*\s*(?:\(([^()]*)\))?\s*$")
 def _autosofts(bs, cat):
     """The skills sold as autosofts (Skills Available in Autosoft Format: bulleted `**Skill** (specialization)` lines,
     their ratings in the prose, `rating from one to nine`): programs of type autosoft, unpriced (the core rulebook prices
-    autosofts by rating). A skill whose own line sets its rating (Language, Knowledge) stays in the rules."""
+    autosofts by rating). A skill whose own line sets its ratings (Language 1, 3, 5; Knowledge 3) has those."""
     for b in bs:
         if norm(b.name) != "skills available in autosoft format":
             continue
@@ -301,10 +325,14 @@ def _autosofts(bs, cat):
                 ln += " " + lines[i].strip()
             i += 1
             s = _SOFT.match(ln)
-            if not s or s.group(2) and re.search(r"\brating\b", s.group(2), re.I):
+            if not s:
                 continue
-            name = f"{s.group(1).strip()} ({s.group(2).strip()})" if s.group(2) else s.group(1).strip()
-            cat.add("programs", name, max(1, b.page - PAGE_OFFSET), {"type": "autosoft", "rating": f"{lo}–{hi}" if lo and hi else None})
+            # a line setting its own ratings (`Language (Beginner: rating one, …, Expert: rating five)`, `Knowledge
+            # (always purchased as a rating 3 autosoft)`): those ratings, the parenthesis no specialization
+            own = [_WORD_NUM.get(r.lower(), r) for r in re.findall(r"\brating\s+(\w+)", s.group(2) or "", re.I)]
+            name = s.group(1).strip() if own or not s.group(2) else f"{s.group(1).strip()} ({s.group(2).strip()})"
+            rating = ", ".join(str(r) for r in own) if own else f"{lo}–{hi}" if lo and hi else None
+            cat.add("programs", name, max(1, b.page - PAGE_OFFSET), {"type": "autosoft", "rating": rating})
 
 
 def extract(regrouped, ctx=None):

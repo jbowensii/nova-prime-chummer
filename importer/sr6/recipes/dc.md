@@ -77,3 +77,14 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Double Clutch-Core Rigger Rulebook-CAT28004.pdf>" --out "%TEMP%\dc-check"
+
+## Importer v5
+
+- A level-5 heading naming only a size (`##### Small` … `##### Huge` under `##### Pop-Out Concealment`) is named with
+  the heading over it before regroup pairs headings with catalog rows (`prepare_md`; it took the drone rack table's
+  `Small` row). `Rating N`, `Level N`, `Version N` headings stay the modification's levels; a level-5 heading with no
+  price table of its own over them is that modification.
+- The autosoft list's `Language` (ratings 1, 3, 5) and `Knowledge` (rating 3) set their own ratings: autosofts too.
+- General rules this book needed (not hints): two boxes side by side split at the boxes' edge or the gutter, a sidebar
+  box's continuation back to the item it interrupted, a heading's small first letter (`xGUIDE`), sentence-priced
+  refills and replacement parts, a `Availability N, Cost N¥` line, abbreviations spelled out in the library (`RCC`).

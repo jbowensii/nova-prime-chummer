@@ -470,6 +470,8 @@ class Book:
                 b = replace(b, type="item")
         if b.type == "item" and b.row is None and b.stats and _PRICE & {h.upper() for h in b.stats[0]} and not _being(b):
             cells = {h: v for i, (h, v) in enumerate(b.stats[0].items()) if i or h.upper() not in _NAME_COLUMNS}
+            if b.name == b.name.lower():  # a box titled in lower case (`flash scope`): its words capitalized
+                b = replace(b, name=" ".join(w[:1].upper() + w[1:] for w in b.name.split()))
             b = replace(b, row={"ITEM": b.name, **cells}, header=["ITEM", *cells], stats=b.stats[1:], label="")
         if b.row is not None and _SHORT.keys() & set(b.row):
             b = replace(b, row={_SHORT.get(h, h): v for h, v in b.row.items()}, header=[_SHORT.get(h, h) for h in b.header])

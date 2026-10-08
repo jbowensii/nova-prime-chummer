@@ -9,13 +9,18 @@ CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebui
 # 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-6"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
+SR6_CONVERTER_VERSION = "sr6-7"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
 # split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
 # dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's faces (a table's
 # last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
 # bold among regular names (an en space): its row groups (layout._first_marks)
 # 6: two stat tables side by side in two columns stay two, running heads dropped by their repetition, a heading under
 # the other column titles the full-width table under it (feat/book-adventures, merged)
+# 7: two boxes side by side whose band rows line up (or chain a little apart in height) are split at the boxes' edge
+#    (or the gutter), and a header never stacks onto one whose column already has values on its line
+#    (layout._column_parts; Double Clutch p. 130, Firing Squad p. 65, Deadly Arts' Combat MAID); a two-line header
+#    cell's letters stay on their own lines (layout.words; Hack & Slash's cyberterminals); a
+#    heading's small first letter (`xGUIDE`) stays in the heading
 
 _LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -64,9 +69,26 @@ def _is_bold(word):
     return bool(chars) and sum(bool(_BOLD.search(c["fontname"])) for c in chars) * 2 > len(chars)
 
 
-def _line_text(line):
+def _split_bold(w):
+    """(the SR6 layout) A word whose bold letters end at a dash, the rest regular (`theurgy—especially`: a bold term
+    run into its sentence): its bold part, then the rest glued to it (no space), else [w]."""
+    cs = w.get("chars") or []
+    k = next((i for i, c in enumerate(cs) if c["text"] in "—–"), 0)
+    a, b = cs[:k], cs[k:]
+    letters = lambda part: [c for c in part if c["text"].isalnum()]
+    if not k or not letters(a) or not letters(b) or not all(_BOLD.search(c["fontname"]) for c in letters(a)) \
+            or any(_BOLD.search(c["fontname"]) for c in letters(b)):
+        return [w]
+    return [{**w, "text": "".join(c["text"] for c in a), "chars": a},
+            {**w, "text": "".join(c["text"] for c in b), "chars": b, "glue": True}]
+
+
+def _line_text(line, split=False):
     """Words joined by spaces, adjacent bold words merged into one **run**. A punctuation-only word
-    ("–") between two bold words stays inside the run."""
+    ("–") between two bold words stays inside the run. split (the SR6 layout): a word bold up to a dash is two
+    (_split_bold)."""
+    if split:
+        line = [p for w in line for p in _split_bold(w)]
     bold = [_is_bold(w) for w in line]
     bold = [b or (0 < i < len(line) - 1 and bold[i - 1] and bold[i + 1] and not any(c.isalnum() for c in line[i]["text"]))
             for i, b in enumerate(bold)]
@@ -79,7 +101,10 @@ def _line_text(line):
             out.append("**" + " ".join(run) + "**")
             run = []
         if w is not None:
-            out.append(w["text"])
+            if w.get("glue") and out:
+                out[-1] += w["text"]
+            else:
+                out.append(w["text"])
     return " ".join(out)
 
 
@@ -428,14 +453,14 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                       if not any(_inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
             # stream order (_jump); a second copy of the page's text layer dropped (layout.one_layer)
             chars = [{**c, "i": i} for i, c in enumerate(layout.one_layer(page.chars))] if sr6 else page.chars
-            all_words = pdfplumber.utils.extract_words(_even_sizes(chars), extra_attrs=["size"],
-                                                       keep_blank_chars=False, return_chars=True)
+            all_words = (layout.words if sr6 else pdfplumber.utils.extract_words)(
+                _even_sizes(chars), extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
             bands = []
             if sr6:
                 all_words = layout.furniture(page, all_words, fonts)
                 for w in all_words:
                     w["base"] = -w["chars"][0]["matrix"][5]
-                bands = layout.band_tables(all_words, fonts, page.rects)
+                bands = layout.band_tables(all_words, fonts, page.rects, page.width)
             boxes = [t.bbox for t in tables]
             # a band table's own words leave the text (not its box: a long last cell can reach past the text column)
             banded = {id(w) for _, _, used in bands for w in used}
@@ -445,17 +470,20 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             mid = _find_gutter(rows, page.width, tol=tol)
             lines = [part for row in rows for part in _split_at(row, mid, tol)] if mid else rows
 
-            blocks, geo, xs = [], [], []
+            blocks, geo, xs, spans = [], [], [], []
             for line in lines:
                 size = round(max(w["size"] for w in line), 1)
                 level = layout.heading_level(line, fonts) if sr6 else _heading_level(size, big)
                 # headings stay unmarked (their size already says it); bold only matters in body lines
-                text = ("#" * level + " " + " ".join(w["text"] for w in line)) if level else _line_text(line)
+                text = ("#" * level + " " + " ".join(w["text"] for w in line)) if level else _line_text(line, sr6)
                 x0, x1 = _line_extent(line)
                 blocks.append((min(w["top"] for w in line), _kind(x0, x1, mid, tol), text))
                 geo.append((level, max(w["bottom"] for w in line), size))
                 xs.append(x0)
+                spans.append((min(w["top"] for w in line), x0, x1, level))
             if sr6:
+                marks = layout.sidebar_marks(spans, page.rects, [bbox for bbox, _, _ in bands], page.width,
+                                             lambda a, b: _kind(a, b, mid, tol))
                 boxes = [bbox[1] for bbox, _, _ in bands if _kind(bbox[0], bbox[2], mid, tol) == "band"]
                 blocks = layout.join_headings(_box_titles(_box_margin(blocks, xs), geo, boxes), geo)
             for t in tables:
@@ -464,6 +492,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                     blocks.append((t.bbox[1], _kind(t.bbox[0], t.bbox[2], mid), "\n".join(md)))
             for bbox, rows, _ in bands:
                 blocks.append((bbox[1], _kind(bbox[0], bbox[2], mid, tol), "\n".join(_table_md(rows))))
+            if sr6:
+                blocks += marks
 
             out += _reading_order(blocks, mid)
         title = (pdf.metadata or {}).get("Title", "") or ""

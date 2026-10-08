@@ -47,3 +47,14 @@ Structure only, no book text. The owner's PDF (SHA-256 in `sw.py`): 170 pages, p
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Street Wyrd-Core Magic Rulebook-CAT28003.pdf>" --out "%TEMP%\sw-check"
+
+## Importer v5
+
+- A level-3 section over a family of traditions (`Traditions of Karma`, `Abrahamic Traditions`) prints each tradition
+  as a bold run-in in its prose (`The **Aztec tradition** is …`, `**Path of**` + `**the Wheel**`): one tradition a
+  run-in, its text the lines up to the next, `tradition(s)` left off as a search name. A section printing none stays
+  one tradition itself.
+- A preparation whose Cost prints two versions (`450¥/charge (Hose); 550¥/charge (Tsunami)`, the second's
+  parenthesis wrapping onto the text) is two entries: the second named by its version, or a heading naming both
+  (`No Job Too Small, No Job Too Big`, versions `NJTS`, `NJTB`) split in two.
+- `New Metamagic: X` at level 3 is left to the sections reader (its PREFIX); deeper ones are still renamed here.

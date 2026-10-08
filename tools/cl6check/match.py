@@ -144,7 +144,10 @@ def match(cl6, ours):
           lambda o: [n1(n) for n in _names(o)])
     stage("no-parenthetical", lambda c: [n2(c["name"])], lambda o: [n2(n) for n in _names(o)])
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
-    stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)])
+    # (a one-word name only near its page: `Increasing` is p. 132's `Increasing a Form`, not p. 128's
+    # `Increasing/Reducing Cargo Space`)
+    stage("split", lambda c: [n2(c["name"])], lambda o: [n2(p) for n in _names(o) for p in split_names(n)],
+          lambda c, o: len(toks(c["name"])) > 1 or not c["page"] or near(o["page"], c["page"], 2))
     stage("word-order", lambda c: [toks(c["name"])], lambda o: [toks(n) for n in _names(o)])
     # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke Rocket`)
     stage("split word-order", lambda c: [toks(c["name"])],
@@ -231,7 +234,9 @@ def stat_agreement(c, o):
 
 
 def strong(c, o, ok):
-    return len(ok) >= STRONG_AGREE or len(ok) == 2 and near(o["page"], c["page"])
+    # (a record whose only stat is its price, a PACK: that price on its own page and two of its name's words)
+    return len(ok) >= STRONG_AGREE or len(ok) == 2 and near(o["page"], c["page"]) \
+        or ok == ["cost"] and near(o["page"], c["page"]) and len(toks(c["name"]) & toks(o["name"])) >= 2
 
 
 def by_stats(c, cands, matched=()):

@@ -53,6 +53,16 @@ Walk.
 ##### Step 2: Last Mile
 Walk more.
 **Cost:** 6 Karma
+<!-- page 60 -->
+# ODD BEINGS
+## Glow Folk
+#### Glow Vanish
+##### (Ability/Critter Power)
+**Type:** Physical **Action:** Minor
+A made-up vanishing.
+#### Zap Paragon (Positive Quality)
+A made-up quality.
+• **Cost:** 7 Karma
 """
 
 PATHS = """<!-- page 76 -->
@@ -98,6 +108,7 @@ Zappers zap.
 **1,175 nuyen**
 **Big Zapper** (w/ zap sight, zap scope): **2,015**
 **nuyen**
+**Zap Pistol** (w/ zip holster, 10 zap darts): **1,050 nuyen**
 ## Gizmo PACKs
 #### Gizmo PACK A
 (10,500 nuyen)
@@ -132,6 +143,11 @@ class SectionKindsTest(unittest.TestCase):
         self.assertNotIn("Use an Edge Action", a)
         self.assertFalse([n for n in a if "example" in n.lower() or n.lower() in ("minor actions", "actions")])
 
+    def test_a_kind_named_in_a_tag_line_or_after_the_name(self):
+        self.assertIn("Glow Vanish", self.kind("critterpowers"))
+        q = self.kind("qualities")["Zap Paragon"]
+        self.assertEqual((q.get("kind"), q.get("karma")), ("positive", "7"))
+
     def test_mentors_structures_and_paths(self):
         self.assertEqual(list(self.kind("mentorspirits")), ["Glow Moth"])
         self.assertEqual(sorted(self.kind("datastructures")), ["Fizz Key", "Zap Shell"])
@@ -147,6 +163,7 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual((p["Zap Pistol"].get("cost"), p["Zap Pistol"].get("category")), ("1175", "Zappers"))
         self.assertEqual([i.text for i in p["Zap Pistol"].findall("item")], ["zap sight", "10 zap darts"])
         self.assertEqual(p["Big Zapper"].get("cost"), "2015")
+        self.assertEqual(p["Zap Pistol (zip holster)"].get("cost"), "1050")  # (a second PACK of that name)
         self.assertEqual((p["Gizmo Pack A"].get("cost"), p["Gizmo Pack A"].get("essence")), ("10500", "0.5"))
         self.assertEqual(p["Gizmo Pack A"].findall("item"), [])  # (recommended skills are no contents)
         self.assertEqual((p["Glow Autosofts 2"].get("cost"), p["Glow Autosofts 3"].get("cost")), ("2000", "4500"))
