@@ -613,10 +613,11 @@ def quality_sets(b, page):
     return out
 
 
-_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+)\s*Karma|\bCost:\s*(\d+)\s*Karma"
+_OR = r"(?:\s*(?:or|to|–|-)\s*\d+)?"  # (`4 or 8 Karma`: two prices, the first the lower)
+_COST = re.compile(rf"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+){_OR}\s*Karma|\bCost:\s*(\d+){_OR}\s*Karma"
                    r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b|\*\*Cost:?\*\*:?\s*(\d+)\s*points?\b",
                    re.I)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
-_BONUS = re.compile(r"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+)\s*Karma|\bBonus:\s*(\d+)\s*Karma"
+_BONUS = re.compile(rf"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+){_OR}\s*Karma|\bBonus:\s*(\d+){_OR}\s*Karma"
                     r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
 _ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
 _EFFECT = re.compile(r"\*\*Game\s+Effects?:?\*\*", re.I)
@@ -640,7 +641,8 @@ def quality_attrs(name, chain, text):
         return {}
     k = (bonus if kind == "negative" else cost) or cost or bonus
     karma = next((g for g in k.groups() if g), None) if k else None
-    return {"kind": kind, "karma": karma}
+    two = re.search(r"(\d+)\s*(?:or|to|–|-)\s*(\d+)\s*Karma", k.group(0)) if k else None
+    return {"kind": kind, "karma": karma, **({"karmaMax": two.group(2)} if two and two.group(2) != karma else {})}
 
 
 def template_headings(bs, chapters=3):

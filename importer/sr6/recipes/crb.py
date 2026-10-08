@@ -383,6 +383,11 @@ class _Catalog:
             fl.pop("_notes", None)
             a = {**fl, **a}
             self.pending = []
+        if f.kind in ("critterpowers", "adeptpowers") and not (a.get("action") or a.get("activation")) and (
+                m := re.match(r"\W*As\s+an?\s+(Major|Minor)\s+Action\b", " ".join((f.text or "").split()), re.I)):
+            # (a power stating its action in its first words: `As a Major Action, a protosapient …`)
+            a["action" if f.kind == "critterpowers" else "activation"] = m.group(1).title() + (
+                "" if f.kind == "critterpowers" else " Action")
         if f.kind == "qualities" and a.get("karma") is not None:
             a["karma"] = int(a["karma"])
         if "_base" in a:
@@ -405,9 +410,12 @@ class _Catalog:
         want = [regroup_stem(w) for w in norm(a["_base"]).split()]
         kinds = [k for k in formula.PRICED if any(a["_basekind"].lower() in (e["attrs"].get("type") or "").lower()
                                                    for e in self.entries[k])] or [f.kind]
-        base, kind = next(((e, k) for k in kinds for e in self.entries[k]
-                     if [regroup_stem(w) for w in norm(re.sub(r"\([^()]*\)", "", e["name"])).split()][:len(want)] == want
-                     and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
+        named = [(e, k) for k in kinds for e in self.entries[k]
+                 if [regroup_stem(w) for w in norm(re.sub(r"\([^()]*\)", "", e["name"])).split()][:len(want)] == want
+                 and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()]
+        # (a priced one first: `Awareness`, a group head printing no price, over its `Awareness (Basic)`)
+        base, kind = next((x for x in named if re.search(r"\d", str(x[0]["attrs"].get("cost") or ""))),
+                          named[0] if named else (None, kinds[0]))
         if base is None:  # (owner, 2026-10-08) the same words in another order and form: `webbed hands and feet`
             want_set = word_stems(a["_base"])     # is `Hand and foot webbing`
             base, kind = next(((e, k) for k in kinds for e in self.entries[k]
@@ -713,7 +721,8 @@ class _Catalog:
                 attrs["maxLevel"] = int(m.group(1))  # `Addiction (Substance, 1 to 6)`: the levels in the name's note, kept
         elif kind == "adeptpowers":
             cost = f.pop("cost", "")
-            m = re.search(r"([\d.]+)\s*PP", cost, re.I)
+            # (`0.5 PP`, and `0.5 per level` with the PP left out: the Power Points the number is)
+            m = re.search(r"([\d.]+)\s*PP", cost, re.I) or re.match(r"\s*([\d.]+)\s*(?:per\s+level\b|$)", cost, re.I)
             name, levels = self._levels(name)
             if not levels and (n := re.search(r"max(?:imum)?\.?\s+(\d+)\s+levels?", cost, re.I)):
                 levels = int(n.group(1))  # `0.25 PP per level (max 4 levels)`

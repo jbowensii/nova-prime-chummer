@@ -105,3 +105,27 @@ class UnworkedBooksTest(unittest.TestCase):
         self.assertEqual({k: q["Glow Knack"].get(k) for k in ("kind", "karma", "granted", "category")},
                          {"kind": "positive", "karma": "0", "granted": "true", "category": "Way ability"})
         self.assertIn("Fizz Focus", q)
+
+
+class AccuracyRoundTest(unittest.TestCase):
+    def test_readers(self):
+        from importer.sr6 import formula, sections
+        self.assertEqual(formula.read("(Rating) x 500")[0], "R*500")  # (not a price off another item: `(Camera) x 2`)
+        self.assertEqual(sections.quality_attrs("Zorp Rejection", ["Negative Qualities"], "• **Bonus:** 4 or 8 Karma"),
+                         {"kind": "negative", "karma": "4", "karmaMax": "8"})
+        md = "\n".join(["<!-- page 9 -->", "# MAGIC", "## Powers", "#### Zap Vanish", "(Ability/Critter Power)",
+                        "**Type:** Physical **Action:** Minor", "**Range:** Self **Duration:** Immediate", "Beings vanish.",
+                        "#### Lie Zap", "**Cost:** 0.25 PP per level", "**Activation: Passive**", "You spot liars.", ""])
+        text, _ = regroup.regroup(md)
+        labels = {b.name: b.labels for b in regroup.blocks(text)}
+        self.assertEqual(labels["Zap Vanish"], {"Type": "Physical", "Action": "Minor", "Range": "Self", "Duration": "Immediate"})
+        self.assertEqual(labels["Lie Zap"]["Activation"], "Passive")
+
+    def test_a_verdict_holds_for_the_value_it_was_checked_on(self):
+        from tools.cl6check import trace
+        rows = [{"src": "zz", "id": "a", "field": "cost", "family": "not found", "winner": "100", "where": "", "cl6": "50"},
+                {"src": "zz", "id": "b", "field": "cost", "family": "not found", "winner": "300", "where": "", "cl6": "50"}]
+        v = {"zz|a|cost": {"family": "Commlink6-only field", "ours": "100"},
+             "zz|b|cost": {"family": "Commlink6-only field", "ours": "200"}}
+        trace.apply_verdicts(rows, v)
+        self.assertEqual([r["family"] for r in rows], ["Commlink6-only field", "not found"])

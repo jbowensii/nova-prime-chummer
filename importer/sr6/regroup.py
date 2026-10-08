@@ -18,6 +18,8 @@ _PAGE = re.compile(r"<!-- page (\d+) -->$")
 _HEADING = re.compile(r"(#{1,6}) (.+)$")
 _SEP = re.compile(r"\|(?:-+\|)+$")
 _LABEL = re.compile(r"(•\s*)?\*\*([^*]+?):\*\*\s*(.*)$")
+# a field printed with its value inside the bold (`**Activation: Passive**`): the fields a power or quality prints
+_BOLD_FIELD = re.compile(r"(•\s*)?\*\*(Activation|Action|Type|Range|Duration|Cost|Bonus|Power Points):\s+([^*]+?)\*\*")
 _SENTENCE_END = re.compile(r"[.!?][)\]”’\"']*$")
 _UPPER = re.compile(r"[A-Z]")
 
@@ -934,9 +936,19 @@ def _units(els, start, end, chapter, item_keys, aliases):
             cur.body.append(v)  # a footnote under a box's band: the box goes on (its labelled lines next)
         else:
             fresh = False
+            if bm := _BOLD_FIELD.fullmatch(v.strip()):  # (`**Activation: Passive**`: a field and its value in one bold)
+                v = _pline(f"{bm.group(1) or ''}**{bm.group(2)}:** {bm.group(3).strip()}", getattr(v, "page", 0))
             m = _LABEL.match(v)
             if m:
                 key, value = m.group(2).strip(), m.group(3).strip()
+                # (two labels on one line, `**Type:** Physical **Action:** Minor`: each its own; not `; **Powers:**`,
+                # which the readers split, nor side-by-side boxes printing the same label twice)
+                first, *more = re.split(r"(?<!;)\s+\*\*([A-Z][A-Za-z ]{1,25}):\*\*\s*", value)
+                ks = [key] + [k.strip() for k in more[::2]]
+                if more and len(set(ks)) == len(ks) and not any(k in cur.labels for k in ks[1:]):
+                    value = first
+                    for k, x in zip(more[::2], more[1::2]):
+                        cur.labels.setdefault(k.strip(), x.strip())
                 if mode == "box" and key in cur.labels and not (cur.stats and key not in cur.stats[-1].notes):
                     # a label printed again under the heading: a list of entries, each with its own labelled lines
                     # (`**Name:** …` + `• **Cost:** …` twice): the rest is text

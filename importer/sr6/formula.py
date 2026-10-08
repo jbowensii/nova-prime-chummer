@@ -349,6 +349,8 @@ def read(text, field="cost"):
         return "B*Q", {"unit": _unit(m.group(1))}
     if field == "avail" and re.fullmatch(r"as\s+(?:the\s+)?[a-z][a-z ]*", t, re.I):
         return "B", {}  # `As focus`: the availability of the item it is made for
+    if m := re.fullmatch(rf"\(\s*(?:{_VAR_WORDS})\s*\)\s*[x*]\s*({_NUM})", t, re.I):
+        return f"R*{fmt(_n(m.group(1)))}", {}  # (`(Rating) x 500`: the rating in brackets, not another item)
     # (`Focus cost x 0.25`: a share of the price of the item it is made for)
     if m := re.fullmatch(rf"(?:\([^()]+\)\s*|[a-z][a-z ]*?\s+cost\s+)?[x*]\s*({_NUM})", t, re.I):
         return f"B*{fmt(_n(m.group(1)))}", {}

@@ -497,6 +497,8 @@ def run(corpus, cl6, verdicts=None):
     A record no name finds is matched by its stats (stat_matches): a strong match is a rename (family 'renamed by
     stats', our printed name kept, Commlink6's an alias); weak candidates go on the not-found row as `stat`."""
     rows, n = [], Counter()
+    fields.REF.clear()  # (our entries by kind and id: a derived item's ref() compares by its base's value)
+    fields.REF.update({f"{e['kind']}:{e['id']}": e["attrs"] for b in corpus.books if not b.errata for e in b.entries})
     matched = _matched_names(corpus, cl6)
 
     def lookup(c, names):
@@ -607,6 +609,14 @@ def run(corpus, cl6, verdicts=None):
         if diffs and not renamed and (v := _closer_variant(corpus, c, kinds, names, done, diffs)) is not None:
             diffs = v  # the variant row of ours that agrees most (`Widget (Large)` for Commlink6's one `Widget`)
             n["compared with a variant row"] += 1
+        if any(d["field"] == "rating" for d in diffs) and c["fields"].get("rating"):
+            # (the book printing each rating as a row of its own, `Cyberkit (Rating 2)` … `(Rating 6)`: the range those
+            # rows cover is the record's one rated item)
+            lo, hi = c["fields"]["rating"]
+            got = {int(m.group(1)) for _, e in corpus.entries(kinds, names, lineage.family(c["src"]))
+                   if (m := re.search(r"(?i)\b(?:rating|level)\s*(\d+)\b", e["name"]))}
+            if got and min(got) <= lo and max(got) >= hi:
+                diffs = [d for d in diffs if d["field"] != "rating"]
         n["fields compared"] += len(done)
         n["fields equal"] += len(done) - len(diffs)
         n["records exact"] += not diffs
@@ -684,6 +694,8 @@ def apply_verdicts(rows, verdicts):
     location; a weak link no verdict confirms goes to not found (a one-digit-off value stays not found)."""
     for r in rows:
         v = verdicts.get(f"{r['src']}|{r['id']}|{r['field']}") if r["field"] else None  # (a record's: run())
+        if v and v.get("ours") is not None and str(r.get("winner")) != v["ours"]:
+            v = None  # (a verdict on the value it was checked against: ours changed since, the difference is back)
         if v:
             r["family"], r["verdict"] = v["family"], v.get("note", "")
             r["where"] = f"{v.get('note', '')} (page crop {v['crop']})" if v.get("crop") else v.get("note", "")
