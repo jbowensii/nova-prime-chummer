@@ -233,10 +233,20 @@ def stat_agreement(c, o):
     return ok, bad
 
 
+def _named_words(c, o):
+    """True when two of record c's name words are in our entry o's name, or all the words after the section a
+    Commlink6 PACK's name opens with (`Upgrades-Gunports`); two adjacent words of ours count as their compound
+    (`Gun Ports`)."""
+    ws = words(o["name"])
+    mine = set(toks(o["name"])) | {a + b for a, b in zip(ws, ws[1:])}
+    tail = toks(c["name"].split("-", 1)[1]) if "-" in c["name"] else frozenset()
+    return len(toks(c["name"]) & mine) >= 2 or bool(tail) and tail <= mine and any(len(w) >= 4 for w in tail)
+
+
 def strong(c, o, ok):
-    # (a record whose only stat is its price, a PACK: that price on its own page and two of its name's words)
+    # (a record whose only stat is its price, a PACK: that price on its own page and its name's words, _named_words)
     return len(ok) >= STRONG_AGREE or len(ok) == 2 and near(o["page"], c["page"]) \
-        or ok == ["cost"] and near(o["page"], c["page"]) and len(toks(c["name"]) & toks(o["name"])) >= 2
+        or ok == ["cost"] and near(o["page"], c["page"]) and _named_words(c, o)
 
 
 def by_stats(c, cands, matched=()):

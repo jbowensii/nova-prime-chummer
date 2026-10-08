@@ -12,7 +12,7 @@ FIELDS = ("cost", "avail", "legality", "rating", "essence", "capacity", "dv", "a
           "handling", "accel", "interval", "topSpeed", "body", "armor", "pilot", "sensor", "seats", "range",
           "spell type", "duration", "drain", "spell category", "pp cost", "per level", "activation", "fade", "karma",
           "positive", "threshold", "power type", "action", "attribute")
-PRICED = {"weapons", "armor", "augmentations", "electronics", "programs", "gear", "vehicles", "grades", "lifestyles"}
+PRICED = {"weapons", "armor", "augmentations", "electronics", "programs", "gear", "vehicles", "grades", "lifestyles", "packs"}
 SPELL_RANGE = {"LINE_OF_SIGHT": "LOS", "LINE_OF_SIGHT_AREA": "LOS(A)", "TOUCH": "T", "SELF": "S", "SELF_AREA": "S(A)"}
 SKIP = "skip"  # Commlink6 has no value: not compared
 VEHICLE = ("handling", "accel", "interval", "topSpeed", "body", "armor", "pilot", "sensor", "seats")

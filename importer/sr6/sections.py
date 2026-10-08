@@ -764,7 +764,10 @@ def derived(b, page):
 
 PACK_WORD = re.compile(r"\bPACKS?\b")  # the book's own word for them, set in capitals
 _PACKS = re.compile(r"\bpacks\b", re.I)
-_PRICE_LINE = re.compile(r"^\(\s*([\d,]+)\s*nuyen\s*\)\s*$", re.I)
+# (`(116,000 nuyen, Vehicle's Body must be at least 10)`: a requirement may follow the price; `139,800 nuyen`: the
+# parentheses left out)
+_PRICE_LINE = re.compile(r"^(?:\(\s*([\d,]+)\s*nuyen\s*(?:[,;][^()]*)?\)|([\d,]+)\s*nuyen)\s*$", re.I)
+_PRICE_START = re.compile(r"^\(\s*[\d,]+\s*nuyen\b", re.I)  # a price line, maybe wrapped over two lines
 _NUYEN = re.compile(r"\*\*\s*([\d,]+)\s*(?:\*\*\s*\*\*\s*)?nuyen\s*\*\*\s*$", re.I)
 _RATING_PRICE = re.compile(r"^([A-Z][A-Za-z]*(?:\s+[A-Za-z]+)*)\s+Rating\s+(\d+)\s*:\s*([\d,]+)\s*nuyen\s*$")
 _ESSENCE = re.compile(r"\*\*\s*Essence(?:\s+Cost)?\s*:\s*\*\*\s*([\d.]+)", re.I)
@@ -799,7 +802,10 @@ def _joined(text):
     out = []
     for ln in (text or "").splitlines():
         ln = ln.strip()
-        if out and ln and not ln.startswith(("**", "#", "|", "(", "<!--")) and not _RATING_PRICE.match(ln) \
+        # (a wrapped line opening with a parenthesis continues its paragraph, `(rating 3), contacts …`; a price starts
+        # its own)
+        if out and ln and not ln.startswith(("**", "#", "|", "<!--")) and not _PRICE_START.match(ln) \
+                and not _RATING_PRICE.match(ln) \
                 and not _PRICE_LINE.match(ln) and not out[-1].endswith((".", "!", "?")) \
                 and not _PRICE_LINE.match(out[-1]) and not _RATING_PRICE.match(out[-1]):
             out[-1] = re.sub(r"(\w)-$", r"\1", out[-1]) + ("" if out[-1].endswith("-") else " ") + ln
@@ -820,7 +826,7 @@ def packs(b, page, parent, chapter_has_packs):
     out = []
     in_packs = _PACKS.search(b.name) or _PACKS.search(parent or "")
     if (m := _PRICE_LINE.match(first)) and (PACK_WORD.search(b.name) or in_packs or chapter_has_packs):
-        attrs = {"category": parent or None, "cost": m.group(1).replace(",", "")}
+        attrs = {"category": parent or None, "cost": (m.group(1) or m.group(2)).replace(",", "")}
         if e := _ESSENCE.search(label_text + "\n" + (b.text or "")):
             attrs["essence"] = e.group(1)
         items = []

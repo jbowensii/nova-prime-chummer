@@ -121,6 +121,16 @@ Pilot Rating 2: 2,000 nuyen
 Glowing rating 2
 Pilot Rating 3: 4,500 nuyen
 Glowing rating 3
+**Fizz Goggles:** Handheld fizz sensor (rating
+3), goggles (rating 3 w/ fizz link): **1,325 nuyen**
+#### Glow Sub PACK
+4,800 nuyen
+A small glowing sub.
+## Zorp Upgrade PACKs
+#### Zorp's Darling
+(16,000 nuyen, Vehicle's Body
+must be at least 10)
+Zorp adaptation, glow paint.
 """
 
 
@@ -167,6 +177,12 @@ class SectionKindsTest(unittest.TestCase):
         self.assertEqual((p["Gizmo Pack A"].get("cost"), p["Gizmo Pack A"].get("essence")), ("10500", "0.5"))
         self.assertEqual(p["Gizmo Pack A"].findall("item"), [])  # (recommended skills are no contents)
         self.assertEqual((p["Glow Autosofts 2"].get("cost"), p["Glow Autosofts 3"].get("cost")), ("2000", "4500"))
+        # (a paragraph's wrapped line opening with a parenthesis; a price line without its parentheses; a requirement
+        # after the price)
+        self.assertEqual(p["Fizz Goggles"].get("cost"), "1325")
+        self.assertEqual(p["Glow Sub"].get("cost"), "4800")
+        self.assertEqual((p["Zorp's Darling"].get("cost"), p["Zorp's Darling"].get("category")),
+                         ("16000", "Zorp Upgrade PACKs"))
 
     def test_vehicle_design_and_ammunition_types(self):
         md = """<!-- page 150 -->
