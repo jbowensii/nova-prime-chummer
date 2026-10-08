@@ -143,7 +143,7 @@ def prepare(bs):
             b = replace(b, name=b.name[:m.start()])
         elif m and "Threshold" in b.labels:
             b = replace(b, name=b.name[:m.start()], tags=m.group(1))
-        out.append(shapes.martial(b))
+        out += shapes.martial_pair(shapes.martial(b))
     return out
 
 

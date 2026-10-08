@@ -111,6 +111,9 @@
   <xs:attributeGroup name="grouped">
     <xs:attribute name="group" type="xs:string"/>
     <xs:attribute name="maker" type="xs:string"/>
+    <!-- a configuration of another entry (its id): a shape that item takes, its own stats printed, never bought apart
+         (the Dassault Alpenstock's spear configuration) -->
+    <xs:attribute name="configOf" type="xs:string"/>
   </xs:attributeGroup>
   <!-- one category of a book's table rows (categories.xml): its name (the table's title, singular), the kind its rows
        are (of), the printed table and section titles, and how they link: an accessory category's hosts (fits) and a

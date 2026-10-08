@@ -314,6 +314,61 @@ def martial(b):
     return replace(b, labels={**b.labels, **labels}, text="\n".join(t for t in (head, rest) if t.strip()))
 
 
+_DASH_CELL = re.compile(r"\s*[—–-]\s*")
+
+
+def configuration_rows(bs):
+    """An item's configurations (owner, 2026-10-07): the rows of its box under its priced first row that print no
+    price of their own (AVAIL and COST a dash: it comes with the item), or that a box names a `configuration` or `mode`
+    (`Shotgun configuration` under the Krime Thumper), are the shapes the one item takes (the Dassault Alpenstock's
+    `Spear (Blade)`, `Knife (Blade)`): each an entry of its own with its printed stats, named `<item> (<row>
+    configuration)`, its printed `Name (Type)` an alias, `configOf` the item (Block.config_of), never priced apart. regroup may
+    have paired such a row with the item's heading (its label): it goes after the item of that name."""
+    def unpriced(s):
+        return any(h.upper() == "COST" for h in s) and all(_DASH_CELL.fullmatch(v or "") for h, v in s.items()
+                                                           if h.upper() in ("AVAIL", "AVAILABILITY", "COST"))
+
+    def priced(s):
+        return any(re.search(r"\d", v or "") for h, v in s.items() if h.upper() == "COST")
+
+    def entry(item, row):
+        cells = list(row.items())
+        printed = " ".join(cells[0][1].split())
+        m = re.fullmatch(r"(.+?)\s*\(([^()]+)\)", printed)
+        n, kind = (m.group(1), m.group(2)) if m else (printed, "")
+        n = n if re.search(r"(?i)\b(?:configuration|mode)\b", n) else f"{n} configuration"
+        new = {"ITEM": f"{item.name} ({n})", **({"TYPE": kind} if kind else {}), **dict(cells[1:])}
+        # (its printed row an alias when it names more than a bare type: `Spear (Blade)`, not `Shotgun`)
+        return replace(item, name=new["ITEM"], row=new, header=list(new), stats=[], label=item.name, text="",
+                       aliases=[printed] if m else [], config_of=item.name)
+
+    out, later = [], {}
+    for b in bs:
+        if b.type == "item" and b.row is not None and b.label and b.label != b.name and unpriced(b.row) \
+                and any(x.name == b.label and x.chapter == b.chapter for x in bs):
+            later.setdefault(b.label, []).append(b.row)
+            continue
+        if b.type == "item" and len(b.stats) > 1 and priced(b.stats[0]) and any(map(unpriced, b.stats[1:])):
+            rest = [s for s in b.stats[1:] if unpriced(s)]
+            b = replace(b, stats=[s for s in b.stats if not any(s is r for r in rest)])
+            out += [b] + [entry(b, r) for r in rest]
+            continue
+        out.append(b)
+    return [x for b in out for x in [b] + ([entry(b, r) for r in later.pop(b.name, [])] if b.type == "item" else [])]
+
+
+def martial_pair(b):
+    """A style heading naming two styles (`A and B`) whose signature line names each one's technique (`T1 (B)/T2 (A)`):
+    two styles, each with its own technique, the description theirs. [b] for any other block."""
+    sig, parts = b.labels.get("Signature Technique", ""), re.split(r"\s+and\s+", b.name.strip())
+    if len(parts) != 2 or "martial art" not in norm(b.section):
+        return [b]
+    tech = {p: re.search(rf"([^/()]+?)\s*\(\s*{re.escape(p)}\s*\)", sig) for p in parts}
+    if not all(tech.values()):
+        return [b]
+    return [replace(b, name=p, labels={**b.labels, "Signature Technique": m.group(1).strip()}) for p, m in tech.items()]
+
+
 def martial_kind(b):
     """("martialarts" | "martialtechniques", None) for a martial art section's item with those lines, else None."""
     if b.type != "item" or "martial art" not in norm(b.section):

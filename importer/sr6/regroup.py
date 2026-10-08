@@ -42,6 +42,7 @@ class Block:
     maker: str = ""
     group: str = ""  # the name-only row its table row is grouped under (`DocWagon contracts` over `Basic`): _row_groups
     table: str = ""  # the title of the table its row's table is a sub-table of (`magical goods table`)
+    config_of: str = ""  # a configuration row's item (shapes.configuration_rows): the Alpenstock's Spear
 
 
 def norm(name, aliases=None):
@@ -127,6 +128,7 @@ class _Row(list):
     """A table row (its cells) with the name-only row it is grouped under, if any, and the other names it goes by."""
     group = ""
     aliases = ()
+    product = maker = ""  # a line's rows: the product their table titles and the maker its heading prints first
 
 
 _INDENT, _BOLD_MARK = "\u00a0", "\u2002"  # the converter's first-cell marks (layout._first_marks)
@@ -188,6 +190,7 @@ class _Table:
     titled: bool = False  # printed right under its own title (not the second of tables stacked under one)
     parent: str = ""  # the title of the table it is a sub-table of (`magical goods table` over `foci`, `formulae`)
     products: bool = False  # products printed side by side, named by a band line (_products): a list, not a box
+    own: bool = False  # the rows of its heading's own line or variants (_own_rows): they share the heading's text
 
 
 def _elements(md):
@@ -210,11 +213,18 @@ def _elements(md):
                 i += 1
             header, rows = _header_rest(_cells(ln), rows)
             header = [deinterleave(h) or h for h in header]
-            rows = [_repair_row(header, r) for r in rows]
+            rows = _wrapped_rows(header, [_repair_row(header, r) for r in rows])
             if (more := _text_rows(header, lines, i)) is not None:
                 header, extra, i = more
                 rows += extra
             rows = _row_groups(body, rows)
+            # a footnote the converter set as the table's last rows (`*Narrow | Burst | increases DV | by 3`), its
+            # wrapped lines too (a row of a few cells under it: `Ratings for | the long | barrel. | | …`)
+            m = next((n for n in range(len(rows) - 1, 0, -1) if rows[n] and _FOOTNOTE_ROW.match(rows[n][0])), None)
+            notes = []
+            if m is not None and len(rows) - m <= 3 and all(not all(c.strip() for c in r) for r in rows[m + 1:]):
+                notes = [" ".join(" ".join(c.strip() for c in r if c.strip()) for r in rows[m:])]
+                rows = rows[:m]
             prev = out[-1] if out else None
             title = out[-2][2][1] if prev and len(out) > 1 and out[-2][0] == "h" else ""
             heads = {k for e in out if e[0] == "h" for k in keys(e[2][1])}
@@ -228,8 +238,10 @@ def _elements(md):
             if prev and prev[0] == "t" and _stacked(prev[2], header, rows):
                 t = prev[2]  # a second header row under the first, its values under it: one table, side by side
                 t.header, t.rows = t.header + header, [a + b for a, b in zip(t.rows, rows)]
+                out += [("x", page, n) for n in notes]
                 continue
             out.append(("t", page, _Table(header, rows, page, pos=len(out), products=band)))
+            out += [("x", page, n) for n in notes]  # (its text: a footnote mark in a cell finds it)
         elif m := _HEADING.match(ln):
             level, text = len(m.group(1)), m.group(2).strip()
             prev = out[-1] if out else None
@@ -558,6 +570,29 @@ def _repair_row(header, row):
     return row
 
 
+def _wrapped_rows(header, rows):
+    """A row the converter split over two (`Machine | | SA/BF/ | | | |` over `Pistol | 2P | FA | 9/10/5/—/— | …`): the
+    first prints no price (its AVAIL and COST empty, and its DV) where the next prints them, and its other cells only
+    a value broken after a `/` (`SA/BF/`, `15/22/`): joined cell by cell (no space after a `/`)."""
+    hs = [h.upper() for h in header]
+    need = [i for i, h in enumerate(hs) if h in ("AVAIL", "AVAILABILITY", "COST", "DV")]
+    if len(need) < 2:
+        return rows
+    out, i = [], 0
+    while i < len(rows):
+        a = rows[i]
+        b = rows[i + 1] if i + 1 < len(rows) else None
+        if b and len(a) == len(b) == len(hs) and a[0].strip() and not a[0].strip().startswith("(") \
+                and all(not a[k].strip() and b[k].strip() for k in need) and any(c.strip() for c in a[1:]) \
+                and all(c.strip().endswith("/") for c in a[1:] if c.strip()):
+            out.append(_Row([(x.strip() + ("" if x.strip().endswith("/") else " ") + y.strip()).strip() for x, y in zip(a, b)]))
+            i += 2
+            continue
+        out.append(a)
+        i += 1
+    return out
+
+
 def _band_names(line, n):
     """The n band names of a band line set over a table (`regular HEX Assault Cannon`: `regular`, `HEX Assault
     Cannon`): a band starts at a capital after a word in lower case. None unless that gives n."""
@@ -649,7 +684,7 @@ class _Unit:
         return bool(self.stats) or self.box_labels
 
     def has_text(self):
-        return any(isinstance(b, str) for b in self.body)
+        return any(isinstance(b, str) and not _FOOTNOTE_LINE.match(b) for b in self.body)  # (a box's footnote isn't)
 
 
 # a first header that is a name column's own word, not a class of things (`FORMULAE`, `GRENADES`)
@@ -668,9 +703,17 @@ def _names_class(header, first):
 _VARIANT_LINE = re.compile(r"[a-z][a-z-]*(?: [a-z][a-z-]*){0,2}")
 
 
+_FOOTNOTE_ROW = re.compile(r"\s*[*†‡]")
+_FOOTNOTE_LINE = re.compile(r"\s*(?:\*(?!\*)|[†‡])")  # a footnote printed under a table (not a bold label: `**Note:**`)
+_FIELD_HEAD = re.compile(r"(?:Karma\s+)?(?:Bonus|Cost)|Game\s+Effects?")
+_NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Z]")
+
+
 def _is_label(level, text):
     """A table title, box title or art caption: its first letter is lower case (`ares predator VI`)."""
     first = re.search(r"[^\W\d_]", text)
+    if _NEW_ENTRY.match(text):
+        return False  # (`new quality: Pacifist (1-4)`: a heading naming its kind before the new entry's name)
     return level > 1 and (not first or first.group().islower())
 
 
@@ -681,6 +724,8 @@ def _units(els, start, end, chapter, item_keys, aliases):
     cur = _Unit("section", chapter, 1, els[start][1] if start < end else 0, chapter, "")
     units.append(cur)
     mode = "text"  # "box": right after a heading, taking tags, tables and labelled lines
+    caption = ""  # the last level-4 heading read as a caption (a box titled with part of it is a box: below)
+    head_name = lambda: next((u.name for u in reversed(units) if u.kind == "item"), "")  # noqa: E731
     variant = ""  # the variant line over the next table of a box
     fresh = False  # nothing taken since the item heading (a "(tags)" heading may follow)
     label = None  # (unit, key) of the labelled line still open for a wrapped value
@@ -694,6 +739,11 @@ def _units(els, start, end, chapter, item_keys, aliases):
             level, text = v
             label = None
             if level == 1:  # the chapter heading itself
+                continue
+            if cur.kind == "item" and level > cur.level and _FIELD_HEAD.fullmatch(text):
+                # a field set as a heading under the item (`##### Bonus` over `5 Karma per level`): its labelled line
+                cur.body.append(f"**{text}:**")
+                mode, fresh = "text", False
                 continue
             if fresh and level == 5:  # a tag line right under a heading: `(tags)`, `Cost: …`, or under a section any
                 if m := re.fullmatch(r"\(([^()]*)\)", text):
@@ -723,14 +773,23 @@ def _units(els, start, end, chapter, item_keys, aliases):
                     over = text if re.search(r"(?i)\btables?$|[a-z][^s\W]s$", text.strip()) else None
                     continue
                 if not nxt or not (nxt[0] == "t" or (nxt[0] == "x" and _LABEL.match(nxt[2]))):
+                    if level == 4:
+                        caption = text  # (an item heading set in lower case, `rEVOlution Arms Rhino, Behemoth, …`)
                     continue  # an art caption: dropped, the text flows on
                 # a stat box: a title an item heading has, or one-row bands followed by labelled lines
                 j = i
-                while j < end and els[j][0] == "t" and len(els[j][2].rows) == 1:
-                    j += 1
-                # (a title over a list of several rows is a table title even when an item heading has its name)
-                boxed = (j < end and els[j][0] == "x" and _LABEL.match(els[j][2])) or \
-                    (j > i or els[i][0] != "t") and any(k in item_keys for k in keys(text, aliases))
+                while j < end and els[j][0] == "t" \
+                        and len([r for r in els[j][2].rows if not _FOOTNOTE_ROW.match(r[0] if r else "")]) == 1:
+                    j += 1  # (a one-row band, its footnote set as a second row: `*Attack | Ratings are | …`)
+                k = j
+                while k < end and els[k][0] == "x" and _FOOTNOTE_LINE.match(els[k][2]):
+                    k += 1  # (a band's footnotes, then its labelled lines)
+                # (a title over a list of several rows is a table title even when an item heading has its name; a
+                # one-row band titled with part of the item heading's name is a box: `ingram white knight mod 2` under
+                # `Ingram White Knight Mod 1 and Mod 2`, `rhino` under the caption-cased `rEVOlution Arms Rhino, …`)
+                boxed = (k < end and els[k][0] == "x" and _LABEL.match(els[k][2])) or \
+                    (j > i or els[i][0] != "t") and any(k in item_keys for k in keys(text, aliases)) or \
+                    j > i and any(set(norm(text).split()) <= set(norm(n).split()) for n in (head_name(), caption) if n)
                 if not boxed:  # a table title: its tables join the flow, the text goes on in the same unit
                     first = i
                     while i < end and els[i][0] == "t":
@@ -767,6 +826,8 @@ def _units(els, start, end, chapter, item_keys, aliases):
         elif (mode == "box" and cur.kind != "section" and _VARIANT_LINE.fullmatch(v.strip()) and i < end
               and els[i][0] == "t"):
             variant = v.strip()[:1].upper() + v.strip()[1:]  # a box's variant over its bands (`command car`): their TYPE
+        elif mode == "box" and cur.stats and _FOOTNOTE_LINE.match(v):
+            cur.body.append(v)  # a footnote under a box's band: the box goes on (its labelled lines next)
         else:
             fresh = False
             m = _LABEL.match(v)
@@ -860,7 +921,60 @@ def _same(title, name):
     return bool(a and b) and (a <= b or b <= a)
 
 
-def _chapter(units, aliases, name_headers, report, variants=False, later=frozenset()):
+_LINE_WORDS = {"line", "series", "collection", "range"}  # a brand's last word naming it a product line
+# the first headers of a list naming its rows one by one (not TYPE or CLASS: a box's variants, the recipe's to read)
+_ITEM_COLUMNS = {"ITEM", "ITEMS", "NAME", "WEAPON", "WEAPONS", "GEAR", "DEVICE", "ARMOR"}
+
+
+def _own_rows(t, u, lower):
+    """The rows of a table printed in a heading's text under the heading's own name (`heritage line` under `Zoé
+    Heritage Line`, `bayonet` under `Bayonet`), a name column first (WEAPON, ITEM …) and a price on two rows at least
+    (a footnote set as a row is dropped). Rows named by generic words (two at most, no digit, each printed in lower
+    case in the book's prose: `Standard`, `Retractable`) are the heading's variants, `<heading> (<row>)`; rows named
+    otherwise, or sharing a word with the heading (`Bearded Axe`, `Tonfa`; `Inhibitor Collar` under `Inhibitor Bands`)
+    are the items of the heading's line, so a row never pairs with another description of its name: a brand's (a
+    maker printed before the title's words) named with it (`Zoé Heritage Tonfa`, below), else grouped under the
+    heading. None for any other table (a section's list: a heading above level 3, a title saying `table`)."""
+    hs = [h.upper() for h in t.header]
+    cost = next((i for i, h in enumerate(hs) if h.startswith("COST")), None)
+    if re.search(r"(?i)\btables?\b", t.title or "") or u.level < 3:
+        return None  # (`hire table` under `Hire`, `gizmos` under a chapter's `## Gizmos`: the section's list)
+    title, name = (set(norm(x).split()) for x in (t.title, u.name))
+    # (titled with the heading's own words: not `security and restraints` over `Restraints`, a list it is one row of)
+    if not t.titled or not title or not title <= name or not hs or hs[0] not in _ITEM_COLUMNS or cost is None \
+            or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs):
+        return None
+    # (a footnote or note set as a row: a mark or a label in its first cell, or a sentence there)
+    rows = [r for r in t.rows if r and re.match(r"[^\W\d_]", r[0]) and not re.search(r"[*†‡:]", r[0])
+            and len(r[0].split()) <= 6]
+    if sum(1 for r in rows if len(r) > cost and re.search(r"\d", r[cost])) < 2:
+        return None
+    head = set(norm(u.name).split())
+    generic = all(len(r[0].split()) <= 2 and not re.search(r"\d", r[0]) and not head & set(norm(r[0]).split())
+                  and all(w.lower() in lower for w in re.findall(r"[A-Za-z]+", r[0])) for r in rows)
+    # a brand: the heading prints a maker before its title's words (`Zoé` + `heritage line`: the brand `Zoé Heritage
+    # Line`). Its rows are named with it, as the editions name them (owner, 2026-10-07): `Zoé Heritage Bearded Axe`,
+    # searched also as `Heritage Bearded Axe`, `Zoé Bearded Axe` (not the bare row: the generic `Tonfa` is another
+    # item); the brand is their maker
+    hw = u.name.split()
+    k = next((i for i in range(len(hw)) if set(norm(" ".join(hw[i:])).split()) == title), 0)
+    line = hw[k:-1] if k and len(hw) - k > 1 and hw[-1].lower() in _LINE_WORDS else hw[k:]
+    out = []
+    for r in rows:
+        if generic:
+            x = _Row([f"{u.name} ({r[0]})"] + list(r[1:]))
+        elif k:
+            lead, own = " ".join(hw[:k]), " ".join(line)
+            x = _Row([f"{lead} {own} {r[0]}"] + list(r[1:]))
+            x.aliases, x.maker = (f"{own} {r[0]}", f"{lead} {r[0]}"), u.name
+        else:
+            x = _Row(list(r))
+            x.group = getattr(r, "group", "") or u.name  # (a name-only row over it stays its group)
+        out.append(x)
+    return out
+
+
+def _chapter(units, aliases, name_headers, report, variants=False, later=frozenset(), lower=frozenset()):
     _merge_boxes(units, aliases, report)
     _share_runs(units, report)
     descs = [u for u in units if u.kind == "item" and not u.merged]
@@ -911,9 +1025,28 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             t.rows = own
         return bool(own)
 
-    tables = []
+    at = {id(x): i for i, x in enumerate(units)}
+
+    def under(u):
+        """The units under u's heading (deeper headings, up to the next at its level or above)."""
+        i, out = at[id(u)] + 1, set()
+        while i < len(units) and units[i].level > u.level:
+            out.add(id(units[i]))
+            i += 1
+        return out
+
+    tables, own = [], set()
     for u in [u for u in units if not u.merged]:
         for t in [b for b in u.body if isinstance(b, _Table)]:
+            # (not a list of the items its own subheadings describe: `security devices` over `Key Lock`, `Maglock`)
+            # nor of items described anywhere, half of them (`stun cages` over `Trode Patch`, `Smart Manacles`)
+            if not u.stats and 2 * sum(1 for r in t.rows if r and found(r[0])) < len(t.rows) \
+                    and not any(id(d) in under(u) for r in t.rows if r for d in found(r[0])) \
+                    and (rows := _own_rows(t, u, lower)):
+                t.rows, t.catalog, t.own = rows, True, True  # (its rows are its own: no description takes them)
+                tables.append(t)
+                own.add(id(t))
+                continue
             cls = not t.titled and _names_class(t.header, [])  # (no title: its first header names its class)
             # a list of ammunition types titled as one (`warhead types`) in a section's text: its rows are entries,
             # priced as modifiers of the round's (`x 2 Base Cost`, `+100¥`), a nameless row a band of the one above
@@ -945,6 +1078,9 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
     # tables (the stat tables, not a list of names) choose first
     seen, unpaired, taken = set(), [], set()
     for t in sorted(tables, key=lambda t: -len(t.header)):
+        if id(t) in own:
+            t.unpaired = list(t.rows)
+            continue
         for r in t.rows:
             k = norm(r[0]) if r else ""  # duplicates are by the printed name, not its alias
             cands = [d for d in found(r[0]) if (id(d), k) not in taken] if k else []
@@ -1106,7 +1242,9 @@ def _emit(units):
                                  table=t.parent if t else ""))
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
             out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r),
-                          aliases=list(getattr(r, "aliases", ())), group=getattr(r, "group", ""), table=t.parent)
+                          aliases=list(getattr(r, "aliases", ())), group=getattr(r, "group", ""), table=t.parent,
+                          product=getattr(r, "product", ""), maker=getattr(r, "maker", ""),
+                          text=_text(u.body) if t.own else "", labels=dict(u.labels) if t.own else {})
                     for r in t.unpaired]
     return out
 
@@ -1124,6 +1262,8 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     rows_in = [{norm(r[0]) for e in els[a:b] if e[0] == "t" for r in e[2].rows if r and r[0]} for a, b in bounds]
     # every heading's keys, book-wide: a variant group ends at a row the book describes anywhere (_variants)
     heads = {k for e in els if e[0] == "h" and not _is_label(*e[2]) for nm in _names(e[2][1]) for k in keys(nm, aliases)}
+    # the words the book's prose prints in lower case (a generic word, not a name: _own_rows)
+    lower = {w for e in els if e[0] == "x" for w in re.findall(r"(?<![A-Za-z])[a-z]+(?![A-Za-z])", e[2])}
     for n, (start, end) in enumerate(bounds):
         if start == end:
             continue
@@ -1133,7 +1273,7 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
         units = _units(els, start, end, chapter, item_keys, aliases)
         if not chapter and not units[0].body and len(units) == 1:
             continue
-        _chapter(units, aliases, name_headers, report, variants and heads, set().union(*rows_in[n + 1:]))
+        _chapter(units, aliases, name_headers, report, variants and heads, set().union(*rows_in[n + 1:]), lower)
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
 
@@ -1147,7 +1287,8 @@ def _md(header, rows):
 def render(b):
     meta = {"name": b.name, "chapter": b.chapter, "section": b.section, "label": b.label, "page": b.page,
             "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {}),
-            **({"group": b.group} if b.group else {}), **({"table": b.table} if b.table else {})}
+            **({"group": b.group} if b.group else {}), **({"table": b.table} if b.table else {}),
+            **({"product": b.product} if b.product else {}), **({"maker": b.maker} if b.maker else {})}
     lines = [f"<!-- {b.type} {json.dumps(meta, ensure_ascii=False)} -->"]
     if b.row is not None:
         lines += _md(b.header, [[b.row.get(n, "") for n in _row(b.header, [])]])  # (a header printed twice: its 2nd cell)
@@ -1191,5 +1332,6 @@ def blocks(text):
                 stats += [_row(h, r) for r in rows]
         out.append(Block(m.group(1), meta["name"], meta["chapter"], meta["section"], meta["label"], meta["page"],
                          header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"],
-                         meta.get("aliases", []), group=meta.get("group", ""), table=meta.get("table", "")))
+                         meta.get("aliases", []), group=meta.get("group", ""), table=meta.get("table", ""),
+                         product=meta.get("product", ""), maker=meta.get("maker", "")))
     return out
