@@ -285,6 +285,8 @@ class Reader:
             return [f]
         if f := self._bought_as_quality(b, page, chain):
             return [f]
+        if f := self._granted_ability(b, page):
+            return [f]
         if f := self._granted_quality(b, page):
             return [f]
         if self.toxins and TOXIN_LABELS <= {k.lower() for k in b.labels} and name[:1].isupper() \
@@ -391,6 +393,30 @@ class Reader:
         if not re.search(rf"\b{re.escape(noun.group(1))}$", b.name.strip(), re.I):
             return None
         return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": karma.group(1)}, [], _body(b), b)
+
+    def _granted_ability(self, b, page):
+        """A heading under a section whose entries are bought as a quality and whose text says each gives the abilities
+        printed under it (`Adept Ways` (20 Karma): "… selecting it as a quality, which gives them the Innate Way,
+        Focused Channeling, and Spark of Brilliance abilities", the headings `Innate Talent`, `Focused Channeling`,
+        `Spark of Brilliance`): an ability every entry grants, a positive quality at Karma 0, granted, its category
+        `<entry> ability` (`Way ability`). Not an entry of the section itself (`Artisan's Way`)."""
+        if not self.stack or not b.name[:1].isupper() or EXAMPLE.search(b.name):
+            return None
+        pb = self.stack[-1][2]
+        text = " ".join((pb.text or "").split())
+        noun = re.search(r"(\w+?)s\b", pb.name)
+        if not re.fullmatch(r"\(?\d+\s*Karma\)?", (pb.tags or "").strip(), re.I) or not noun \
+                or not re.search(r"\bas\s+an?\s+(?:positive\s+)?quality\b", text, re.I) \
+                or not (m := re.search(r"\bgives?\s+(?:them|you|it)\s+the\s+([^.]+?)\s+abilit(?:y|ies)\b", text, re.I)):
+            return None
+        if re.search(rf"\b{re.escape(noun.group(1))}$", b.name.strip(), re.I):
+            return None  # (an entry of the section: `Artisan's Way`)
+        named = {norm(x) for x in re.split(r",\s*(?:and\s+)?|\s+and\s+", m.group(1))}
+        if not (norm(b.name) in named or set(norm(b.name).split()) & {w for x in named for w in x.split()}):
+            return None  # (a heading the sentence doesn't name)
+        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": "0", "granted": "true",
+                                                         "category": f"{noun.group(1).split()[-1].capitalize()} ability"},
+                     effects.read(_body(b)), _body(b), b)
 
     def _granted_quality(self, b, page):
         """A heading under a `Powers` or `Characteristics` heading whose text names the section over it (`### Powers`

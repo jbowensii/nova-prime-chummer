@@ -78,3 +78,30 @@ class PageBreakTest(unittest.TestCase):
         text, _ = regroup.regroup(md)
         b = next(b for b in regroup.blocks(text) if b.name == "Zorp Things")
         self.assertEqual((b.page, regroup.text_page(b, "Line one"), regroup.text_page(b, "**Glow:**")), (10, 10, 11))
+
+
+class UnworkedBooksTest(unittest.TestCase):
+    def test_a_row_continued_on_the_next_line(self):
+        h = ["TYPE", "MODE", "DV", "ATTACK RATINGS", "AMMO", "AVAIL", "COST"]
+        rows = regroup._wrapped_rows(h, [regroup._Row(["Zap", "SS", "As drug", "10/6/–", "1 barrel", "4L", "400¥ +"]),
+                                         regroup._Row(["Pistol", "", "", "/–/–", "", "", "drug"])])
+        self.assertEqual(rows, [["Zap Pistol", "SS", "As drug", "10/6/–/–/–", "1 barrel", "4L", "400¥ + drug"]])
+        foot = [regroup._Row(["Exotic", "6S", "SS", "10/12/8/—/—", "*", "5(L)", "6,000¥"]),
+                regroup._Row(["*See weapon", "", "description for", "ammunition rules.", "", "", ""])]
+        self.assertEqual(len(regroup._wrapped_rows(h, foot)), 2)  # (a footnote spread over the cells)
+
+    def test_an_item_a_note_prices(self):
+        t = "DV is the net hits. Glowmarket fizz spray in a 10-dose can can be purchased for 150¥ and has an availability of 6(I)."
+        self.assertEqual([m.groups() for m in crb._PURCHASED.finditer(t)], [("Glowmarket fizz spray", "150", "6(I)")])
+        self.assertEqual(list(crb._PURCHASED.finditer("Zorp eggs can be purchased for 500 nuyen x the Body.")), [])
+
+    def test_abilities_each_entry_grants(self):
+        md = "\n".join([
+            "<!-- page 70 -->", "# FORCE", "## Zorp Ways and Their Benefits", "##### (20 Karma)",
+            "Adepts follow a way by selecting it as a quality, which gives them the Glow Knack and Fizz Focus abilities.",
+            "### Glow Knack", "Once per scene, glow.", "### Fizz Focus", "Fizz instead.", "### Fizzer's Way",
+            "A way of fizzing.", ""])
+        q = extract(md)["qualities"]
+        self.assertEqual({k: q["Glow Knack"].get(k) for k in ("kind", "karma", "granted", "category")},
+                         {"kind": "positive", "karma": "0", "granted": "true", "category": "Way ability"})
+        self.assertIn("Fizz Focus", q)

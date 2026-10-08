@@ -1093,6 +1093,13 @@ _UNITS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven
           "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50}
 
 
+# an item a note prices in a sentence, with its availability: `Shadowmarket solvent spray in a 10-dose aerosol can be
+# purchased for 150¥ and has an availability of 6(I)` (not a price by a rule: `500 nuyen x the critter's Body`)
+_PURCHASED = re.compile(r"(?:^|[.!?:]\s+)([A-Z][\w-]*(?:\s+[a-z][\w-]*){0,3}?)\s+(?:in\s+an?\s+[\w-]+(?:\s+[\w-]+){0,2}\s+)?"
+                        r"can\s+be\s+(?:purchased|bought)\s+for\s+([\d,]+)\s*(?:¥|nuyen)(?!\s*x\b)"
+                        r"(?:\s+and\s+has\s+an?\s+availability\s+of\s+(\d+\s*(?:\(\s*[LI]\s*\)|[LI])?))?")
+
+
 def number_words(s):
     """`one thousand` -> 1000, `two hundred fifty` -> 250, `1,500` -> 1500; None when it isn't a number."""
     s = s.strip().lower()
@@ -1205,6 +1212,17 @@ def sentence_items(bs, offset):
                 out.append(("gear", name, page, {"category": b.section or b.chapter or "Gear",  # (its section's)
                                                  "avail": " ".join(m.group(1).split()), "cost": m.group(2).replace(",", "")},
                             (), b.text))
+        for m in _PURCHASED.finditer(re.sub(r"\*\*", "", text)):
+            name = m.group(1)[:1].upper() + m.group(1)[1:]
+            if norm(name) not in seen:
+                seen.add(norm(name))
+                attrs = {"category": b.section or "Gear", "cost": m.group(2).replace(",", "")}
+                kids = ()
+                if m.group(3):
+                    attrs["avail"] = " ".join(m.group(3).split())
+                else:
+                    kids = (("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it"),)
+                out.append(("gear", name, page, attrs, kids, m.group(0).strip(" .")))
         for m in _REPLACEMENT_COSTS.finditer(text):
             name, price = f"Replacement {m.group(1).lower()}", number_words(m.group(2))
             if price is not None and norm(name) not in seen:
@@ -1535,6 +1553,14 @@ def extract(regrouped, ctx=None, book=None):
                         if b.row is not None else
                         [norm(x) for x in (b.label, b.section, parent2, sub) if x])
             kind, kcat = _kind(ch, ctx_keys, False, bk)
+        if b.type == "item" and b.row is None and not b.stats and (b.text or "").lstrip().startswith("|"):
+            # a band printed under another title right after the heading (a side box's lower-case title between them:
+            # `Hose`, its band under `example objects for spell formula`): its band, its box's
+            first = next(iter(_tables(b.text)), ([], []))[0]
+            for k in ("spells", "critterpowers", "adeptpowers", "complexforms", "rituals"):
+                if len({h.upper() for h in first} & set(HEADERS[k])) >= 3 and (lifted := _text_stats(b, HEADERS[k])).stats:
+                    b = lifted
+                    break
         if hasattr(bk, "kind"):
             kind, kcat = bk.kind(ch, b, parent2)
         if not kind and b.row is not None and b.header and (g := tables.kind_of(b.header, b.label, b.section)) \

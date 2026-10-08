@@ -650,6 +650,20 @@ def _wrapped_rows(header, rows):
             out.append(_Row([(x.strip() + ("" if x.strip().endswith("/") else " ") + y.strip()).strip() for x, y in zip(a, b)]))
             i += 2
             continue
+        # (the converse: a row printing its prices, its cells' rest on the next line, `Dart | SS | As drug | 10/6/– |
+        # … | 400¥ +` over `Pistol | | | /–/– | | | drug`: that line prints no price, only under the row's cells, and a
+        # cell it continues breaks off at a `/`, `+`, `–` or `,`)
+        avail = [k for k in need if hs[k] in ("AVAIL", "AVAILABILITY")]
+        if b and len(a) == len(b) == len(hs) and avail and all(a[k].strip() and not b[k].strip() for k in avail) \
+                and all(a[k].strip() for k, c in enumerate(b) if c.strip()) \
+                and sum(1 for c in b if c.strip()) * 2 <= len(b) and not re.match(r"\s*[*†‡]", b[0]) \
+                and any(re.search(r"[/+,]$", a[k].strip()) or c.strip()[:1] == "/"
+                        or re.search(r"[–—-]$", a[k].strip()) and 1 < len(a[k].split("/")) < 5
+                        for k, c in enumerate(b) if c.strip()):
+            out.append(_Row([x.strip() if not y.strip() else (x.strip() + ("" if x.strip().endswith("/") or y.strip().startswith("/")
+                                                                          else " ") + y.strip()) for x, y in zip(a, b)]))
+            i += 2
+            continue
         out.append(a)
         i += 1
     return out
