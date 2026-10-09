@@ -13,7 +13,9 @@ runner's lifestyle moves onto its first SIN when it is opened.
 - **Catalog flags (SR6).** The importer reads which metamagics are for adepts or magicians and which can be taken
   again, which spells are opposed or use the target's Essence, and armor's Social. The builder offers only the
   metamagics a runner may take, Review checks them (one per initiation grade), and the sheets show the flags. Social
-  Rating (Charisma plus worn armor's Social) shows in Review, on the Gear tab and on the sheet.
+  Rating (Charisma plus worn armor's Social) shows in Review, on the Gear tab and on the sheet, and is in the Foundry
+  export. A spell is marked as using the target's Essence when its threshold or its resistance counts it. More
+  metamagics than initiation grades is an error a GM can approve.
 - **Skill bonuses.** A hand-entered bonus can add to a skill's dice pool.
 - **Foundry export.** The book export carries every kind, implant grades and the display kinds included, and each
   entry's earlier ids; Anarchy's adds its reference kinds. The runner export carries the catalog's effects, Defense

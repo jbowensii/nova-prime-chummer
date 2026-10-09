@@ -1429,6 +1429,10 @@
             "defenseRating": {
               "type": "number"
             },
+            "socialRating": {
+              "description": "Charisma plus the worn armor's Social (Firing Squad p. 50). Absent in files written before it.",
+              "type": "number"
+            },
             "composure": {
               "type": "number"
             },

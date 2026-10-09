@@ -492,7 +492,7 @@
       <xs:attribute name="duration" type="xs:string"/>
       <xs:attribute name="dv" type="xs:string"/>
       <xs:attribute name="damage" type="xs:string"/>
-      <!-- opposed: its test is opposed (every Combat spell); essence: its threshold counts the target's Essence -->
+      <!-- opposed: its test is opposed (every Combat spell); essence: its test counts the target's Essence (threshold or resistance) -->
       <xs:attribute name="opposed" type="sr6:True"/>
       <xs:attribute name="essence" type="sr6:True"/>
     </xs:extension></xs:complexContent>

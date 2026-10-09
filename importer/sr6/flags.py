@@ -10,8 +10,9 @@ Foundry export use). General readers over the printed name, its section and its 
 - a spell's **opposed**: its test is opposed (`opposed by`, `Opposed test`, `resisted by`, `vs. Willpower + …`, `vs.
   Object Resistance`), and every Combat spell (CRB p. 133: Direct ones opposed by Willpower + Intuition, Indirect ones
   rolled vs. Reaction + Willpower). `as opposed to` is no test.
-- a spell's **essence**: its test's threshold counts the target's Essence (`Sorcery + Magic (5 – Essence)`, the
-  Health spells', CRB p. 135)."""
+- a spell's **essence**: its test counts the target's Essence (owner, 2026-10-09), in the threshold (`Sorcery + Magic
+  (5 – Essence)`, the Health spells', CRB p. 135; `6 minus the target's Essence`; `a threshold equal to their Essence`)
+  or in the resistance (`Body + Essence`, hits resisted that `depend on their Essence`)."""
 import re
 
 from importer.sr6.regroup import norm
@@ -26,7 +27,11 @@ _AGAIN = re.compile(rf"\b(?:take|taken|select|selected|choose|chosen|learn|learn
 _ATTR = r"(?:Body|Agility|Reaction|Strength|Willpower|Logic|Intuition|Charisma|Edge|Magic|Resonance|Object\s+Resistance)"
 _OPPOSED = re.compile(r"(?<!as )\bopposed\b(?!\s+to\b)|\bresist(?:s|ed)?\s+(?:by|with)\b"
                       rf"|\b(?:vs\.?|versus)\s+(?:the\s+)?(?:(?:target|subject|victim)[’']?s?\s+)?{_ATTR}\b", re.I)
-_ESSENCE = re.compile(r"\d+\s*[–−-]\s*(?:the\s+)?(?:(?:target|subject)[’']?s\s+)?Essence\b", re.I)
+_WHOSE = r"(?:the\s+)?(?:(?:target|subject|victim)[’']?s\s+|their\s+|its\s+|his\s+or\s+her\s+)?"
+_ESSENCE = re.compile(rf"\d+\s*(?:[–−-]|minus)\s*{_WHOSE}Essence\b"
+                      rf"|\bthreshold\s+(?:is\s+|of\s+)?(?:equal\s+to\s+)?{_WHOSE}Essence\b"
+                      rf"|\b{_ATTR}\s*\+\s*{_WHOSE}Essence\b|\bEssence\s*\+\s*{_ATTR}\b"
+                      rf"|\bresist[^.]{{0,60}}?\bdepends?\s+on\s+{_WHOSE}Essence\b", re.I)
 
 
 def _user(word):

@@ -71,7 +71,7 @@ export interface Sr6ExportRunner {
     lifestyles: Sr6ExportLifestyle[] }[]
   karma: number; nuyen: number
   /** for reading only: the module writes none of it (Eden derives its own) */
-  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
+  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'socialRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
   background: string; notes: string
   ledger: { at: string; type: Sr6LedgerType; summary: string; karma: number; nuyen: number }[]
   npc?: Sr6ExportNpc
@@ -240,7 +240,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     lifestyle: first ? (({ uid: _, ...l }) => l)(first) : null,
     sins,
     karma: money.karma, nuyen: money.nuyen,
-    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, monitorBonus: d.monitorBonus, defenseRating: d.defenseRating,
+    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, monitorBonus: d.monitorBonus, defenseRating: d.defenseRating, socialRating: d.socialRating,
       composure: d.composure, judgeIntentions: d.judgeIntentions, memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools }) }),
     background: id.background ?? '', notes: id.notes ?? '',
     ledger: ch.ledger.filter(e => e.type !== 'void' && !voided.has(e.id)).map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e),

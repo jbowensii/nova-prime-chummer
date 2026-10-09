@@ -8,7 +8,7 @@ import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { metamagicFits, pickMaxLevel } from '../../src/sr6/engine/data'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { entryValues, exportSr6Runners } from '../../src/sr6/engine/export'
-import { validateSr6 } from '../../src/sr6/engine/rules'
+import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
 import { armorSocial } from '../../src/sr6/engine/values'
 import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/model/character'
 import { pickFlags } from '../../src/sr6/print/view'
@@ -63,6 +63,13 @@ test('Review: an adept’s metamagic on a magician, and more metamagics than ini
   expect(v.filter(x => x.code === 'magic.metamagicUser').map(x => [x.path, x.message, x.page]))
     .toEqual([['magic.m1', 'Glow Point is for adepts only, not a full magician.', 160]])
   expect(v.find(x => x.code === 'magic.metamagicCount')?.message).toBe('3 metamagics at initiation grade 2: each grade brings one.')
+  // an error (owner, 2026-10-09) that a GM's approval clears
+  const count = v.find(x => x.code === 'magic.metamagicCount')!
+  expect(count.severity).toBe('error')
+  const approved = { ...ch, build: { ...ch.build, picks: ch.build.picks.map(p => ({ ...p })) }, overrides: [{ code: count.code, path: count.path, note: 'GM granted' }] }
+  expect(validateSr6(data, cr, approved).find(x => x.code === 'magic.metamagicCount')?.approved).toBe(true)
+  expect(validateSr6(data, cr, approved).filter(x => x.severity === 'error' && !x.approved).map(x => x.code)).not.toContain('magic.metamagicCount')
+  expect(canFinalizeSr6(validateSr6(data, cr, ch))).toBe(false)
   ch.build.initiation = 3
   ch.build.magic = 'mystic-adept'  // takes both
   expect(validateSr6(data, cr, ch).map(x => x.code)).not.toEqual(expect.arrayContaining(['magic.metamagicUser']))

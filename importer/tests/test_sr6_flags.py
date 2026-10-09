@@ -75,6 +75,14 @@ class FlagsTest(unittest.TestCase):
         self.assertEqual(flags.spell("detection", "Only sights there, as opposed to sights near them."), {})
         self.assertEqual(flags.spell("health", "Roll Sorcery + Magic (5 – Essence)."), {"essence": "true"})
         self.assertEqual(flags.spell("health", "Heals a made-up box."), {})
+        # the target's Essence in the threshold or in the resistance
+        for t in ("Roll Sorcery + Magic with a threshold of 6 minus the target’s Essence.",
+                  "Roll Sorcery + Magic with a threshold equal to their Essence (round down).",
+                  "The target resists with Body + Essence.",
+                  "The hits resisted by each target depend on their Essence."):
+            self.assertEqual(flags.spell("health", t).get("essence"), "true", t)
+        # the caster losing Essence is no test of it
+        self.assertEqual(flags.spell("health", "The caster loses a point of Essence."), {})
 
     def test_the_recipe_writes_them(self):
         s = read("spells")
