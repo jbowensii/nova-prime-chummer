@@ -1,6 +1,7 @@
 // Attributes: one row per attribute the runner has (Magic for the awakened, Resonance for the emerged) with points,
 // adjustment and karma steppers, the metatype's range, the natural and augmented ratings, and a mark at the maximum.
 import { Stepper } from '../../../ui/bits'
+import { attrMax } from '../../engine/budgets'
 import { num } from '../../engine/creation'
 import { MAGIC_KINDS } from '../../engine/data'
 import { CORE_ATTRS, type Sr6Attr } from '../../model/character'
@@ -13,7 +14,7 @@ export function AttributesTab() {
   const b = ch.build, kind = MAGIC_KINDS[b.magic], meta = data.metatypes[b.metatype]
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
   const range = (a: Sr6Attr): [number, number] | undefined =>
-    a === 'mag' || a === 'res' ? d.magicMax === null ? undefined : [p.magicRating(b), d.magicMax] : meta?.ranges[a]
+    a === 'mag' || a === 'res' ? d.magicMax === null ? undefined : [p.magicRating(b), d.magicMax] : meta && [meta.ranges[a][0], attrMax(data, cr, b, a)!]
   const karmaPrice = num(cr, 'karmaAttrPerRank')
   return (
     <div className="stack">

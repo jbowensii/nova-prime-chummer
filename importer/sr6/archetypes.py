@@ -70,28 +70,53 @@ class _Index:
                 m = re.fullmatch(r"([^,]+),\s*([^,]+)", e["name"])
                 for n in [e["name"]] + ([f"{m.group(2)} {m.group(1)}"] if m else []) + _slashed(e["name"]):
                     for k in {norm(n), norm(n).replace(" ", "")}:  # (`Roto-Drone` printed `Rotodrone`)
-                        self.exact.setdefault((kind, k), e)
+                        _add(self.exact.setdefault((kind, k), []), e)
                     for k in keys(n):
-                        self.loose.setdefault((kind, k), e)
+                        _add(self.loose.setdefault((kind, k), []), e)
 
-    def find(self, kinds, name, loose=True):
-        """(kind, scoped id, catalog name, entry) of the first kind with an entry named `name` (exactly: `loose` False),
-        else None."""
+    def find(self, kinds, name, loose=True, accept=None):
+        """(kind, scoped id, catalog name, entry) of the first kind with an entry named `name` (exactly: `loose` False)
+        that `accept` (entry -> bool) takes, else None."""
         ks = keys(name) if loose else []
         for table, ks in ((self.exact, [norm(name), norm(name).replace(" ", "")]), (self.loose, ks + [k[:-2] for k in ks if k.endswith("es")])):
             for kind in kinds:
                 for k in ks:
-                    if e := table.get((kind, k)):
-                        return kind, e["id"], e["name"], e
+                    for e in table.get((kind, k), ()):
+                        if accept is None or accept(e):
+                            return kind, e["id"], e["name"], e
         return None
 
     def prefix(self, kinds, name, rating):
         """The first entry whose name starts with `name` (`Cybereyes basic system (Rating 4)` for `cybereyes`), one
         naming `rating` first."""
         n = norm(name)
-        hits = [(kind, e) for kind in kinds for (k2, key), e in self.exact.items() if k2 == kind and key.startswith(n + " ")]
+        hits = [(kind, es[0]) for kind in kinds for (k2, key), es in self.exact.items() if k2 == kind and key.startswith(n + " ")]
         hits.sort(key=lambda h: not (rating and norm(h[1]["name"]).endswith(f"rating {rating}")))
         return (hits[0][0], hits[0][1]["id"], hits[0][1]["name"], hits[0][1]) if n and hits else None
+
+
+def _add(es, e):
+    if all(x["id"] != e["id"] for x in es):  # (a name and its alternate form land on one key)
+        es.append(e)
+
+
+def _leveled(level):
+    """A quality printed at `level` (`Addiction 5`) is an entry that comes in levels up to it (CRB p.74's Addiction
+    (Substance, 1 to 6), not a quality path's one-level step of the same name)."""
+    def ok(e):
+        a = e.get("attrs", {})
+        top = a.get("maxLevel")
+        return a.get("perLevel") == "true" and (fit.value(str(top)) if top not in (None, "") else level) >= level
+    return ok
+
+
+def _rated(rating):
+    """An item printed at `rating`: not an entry whose name is another rating's (`Cybereyes (Rating 6)` for `cybereyes
+    3`; the core rulebook's `Cybereyes basic system (Rating 3)` is found by prefix)."""
+    def ok(e):
+        m = re.search(r"\(\s*rating\s*(\d+)\s*\)\s*$", e["name"], re.I)
+        return not (rating and m and int(m.group(1)) != rating)
+    return ok
 
 
 def _slashed(name):
@@ -110,6 +135,8 @@ def _named(idx, kinds, text):
     m = re.fullmatch(r"(.*?)(?:\s+(\d+))?\s*(?:\((.*)\))?", text.strip())
     name, level, note = m.group(1), m.group(2) and int(m.group(2)), m.group(3)
     hit = idx.find(kinds, text) if not level else None  # `Combat Sense 2`: the name without its level
+    want = level or (note and (lv := re.search(r"\blevel\s*(\d+)", note, re.I)) and int(lv.group(1)))
+    hit = hit or (want and idx.find(kinds, name, accept=_leveled(want)))  # (one that comes in levels first)
     hit = hit or idx.find(kinds, name) or idx.find(kinds, re.sub(r"\s*\(.*$", "", text))
     if not hit and (of := re.fullmatch(r"(.+?)\s+of\s+(.+)", name)):  # `Diffusion of Firewall`: Diffusion (Matrix Attribute)
         hit, note = idx.find(kinds, of.group(1)), of.group(2)
@@ -173,6 +200,9 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                 expertise = p.group(1)
             else:
                 spec = p.group(1) if p else part
+        # CRB p.92: an expertise is a specialization turned into one, so `(Acting +3)` is the specialization Acting, paid
+        # for, then made an expertise (a second specialization printed beside it keeps its own)
+        spec = spec or expertise
         if m.group(4):
             augmented.append(f"{hit[2]} {m.group(3)}({m.group(4)})")
         skills.append((hit[1], int(m.group(3)), spec, expertise))
@@ -380,7 +410,8 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None):
         hit, names, r = found, [], printed
     for name, rating in names:
         r = printed or rating
-        hit = (r and idx.find(kinds, f"{name} (Rating {r})")) or idx.find(kinds, name) or idx.prefix(kinds, name, r)
+        hit = ((r and idx.find(kinds, f"{name} (Rating {r})", accept=_rated(r))) or idx.find(kinds, name, accept=_rated(r))
+               or idx.prefix(kinds, name, r))
         if hit:
             break
     if not hit and len(base.split()) > 1:  # `Sony Emperor commlink`, `Honda Spirit car`; no prefix match (`Combat` axe)
@@ -400,11 +431,14 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None):
 
 # what a standard boost adds per rating or level (the engine counts only the bonuses a line carries, the catalog has none):
 # CRB p.157 (Improved Reflexes), pp.286-292 (dermal plating, bone lacing's table, wired reflexes, reaction enhancers,
-# muscle toner and augmentation). The book's printed augmented values are compared to these on Review.
+# muscle toner and augmentation) and p.288 (a cyberlimb's Physical box). The book's printed augmented values are compared
+# to these on Review.
 BOOSTS = {"improved reflexes": (("rea", 1), ("initDice", 1)), "wired reflexes": (("rea", 1), ("initDice", 1)),
           "reaction enhancers": (("rea", 1),), "muscle toner": (("agi", 1),), "muscle augmentation": (("str", 1),),
           "dermal plating": (("defense", 1),), "bone lacing plastic": (("defense", 1),),
-          "bone lacing aluminum": (("defense", 1),), "bone lacing titanium": (("defense", 2),)}
+          "bone lacing aluminum": (("defense", 1),), "bone lacing titanium": (("defense", 2),),
+          # CRB p. 288: each cyberlimb adds a Physical box; a partial one (forearm, hand, lower leg, foot) doesn't
+          **{f"{part} {kind}": (("physical", 1),) for part in ("skull", "torso", "arm", "leg") for kind in ("obvious", "synthetic")}}
 
 
 def _bonuses(name, rating):

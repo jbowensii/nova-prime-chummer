@@ -6,7 +6,7 @@ import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry
 import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
-import { DEVICE_TYPES, derive } from './derive'
+import { armorShares, DEVICE_TYPES, derive } from './derive'
 import { itemCost, price } from './price'
 
 export const EXPORT_FORMAT = 'chummer-anarchy2-export', EXPORT_VERSION = 1
@@ -174,6 +174,8 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
   const d = derive(c, ch), b = d.build, meta = c.metatypes.get(ch.identity.metatype), life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
   const partsOf = b.amps.map(a => ampParts(c, a.type, a.effects, b.skills))
   attribute(b.amps, partsOf)
+  // each amp's Armor +1 as derive counts it on the main armor (linked, capped): the amps' armor adds up to the sheet's
+  armorShares(c, b, b.mainArmor).forEach((n, i) => { partsOf[i].bonuses.armor = n })
   const names = new Map<string, string>()
   for (const e of ch.career) if (e.type === 'buy') names.set(e.item.uid, e.item.name)
   for (const it of b.items) names.set(it.uid, it.name)

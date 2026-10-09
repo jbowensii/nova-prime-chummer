@@ -6,8 +6,8 @@
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers. A prerequisite the runner lacks never
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
-import { sinName, type PickKind, type Sr6Advance, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { attrRating, priced, qualityCost, sinCost, skillRank } from './budgets'
+import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
+import { attrMax, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
@@ -132,9 +132,10 @@ export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
 
 /** Adept power points after creation: an adept's are its Magic (a point per point of Magic, CRB p. 156), a mystic
  *  adept's the ones bought (the core rulebook prints no price after creation: advance.powerPoint); less the powers taken. */
-export function careerPowerPoints(b: Sr6Build, data: Sr6Data, p: Provider): { max: number; spent: number; left: number } {
+export function careerPowerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): { max: number; spent: number; left: number } {
   const k = MAGIC_KINDS[b.magic]
-  const max = !k.powers ? 0 : k.paysPowers ? b.powerPointsBought : attrRating(b, 'mag', p)
+  // (Magic as Essence leaves it, as at creation: budgets.ts powerPoints)
+  const max = !k.powers ? 0 : k.paysPowers ? b.powerPointsBought : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
   const spent = b.picks.filter(x => x.kind === 'adeptpowers')
     .reduce((t, x) => { const v = data.powers[x.id]; return t + (v?.cost ?? 0) * (v?.perLevel ? x.level ?? 1 : 1) }, 0)
   return { max, spent, left: Math.round((max - spent) * 100) / 100 }
@@ -172,7 +173,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const cur = attrRating(b, t, p)
       // CRB pp. 167, 195: Magic or Resonance tops out at magicMax plus the initiation (submersion) grade
       const cap = t === 'mag' ? need('magicMax') + b.initiation : t === 'res' ? need('magicMax') + b.submersion
-        : data.metatypes[b.metatype]?.ranges[t as Exclude<Sr6Attr, 'mag' | 'res'>][1]
+        : attrMax(data, cr, b, t)
       if (cap !== undefined && cur >= cap) no('at-maximum')
       return { label: `${t.toUpperCase()} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaAttrPerRank') }
     }
@@ -233,7 +234,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (had && !v?.perLevel) no('already-known')
       if (had && (had.level ?? 1) >= (v?.maxLevel ?? 1)) no('at-maximum')
       if (v?.cost == null) no('book-value')
-      if (careerPowerPoints(b, data, p).left < v!.cost!) no('no-power-points')
+      if (careerPowerPoints(b, data, cr, p).left < v!.cost!) no('no-power-points')
       return { label: `Adept power: ${e.name}${v!.perLevel ? ` ${had ? (had.level ?? 1) + 1 : 1}` : ''}`, karma: 0 }
     }
     case 'martialart': {

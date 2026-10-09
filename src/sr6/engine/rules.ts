@@ -7,7 +7,7 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, attrRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
@@ -73,7 +73,7 @@ const RULES: Rule[] = [
     const m = c.data.metatypes[c.b.metatype]
     if (!m) return null
     return [...CORE_ATTRS, 'edg' as const].flatMap(k => {
-      const r = attrRating(c.b, k, c.p), max = m.ranges[k as keyof typeof m.ranges][1]
+      const r = attrRating(c.b, k, c.p), max = attrMax(c.data, c.cr, c.b, k)!
       return r > max ? [{ path: `attributes.${k}`, message: `${A(k)} ${r} is above ${m.name}’s maximum of ${max}.`, source: c.data.entry('metatypes', m.id)?.source, page: m.page }] : []
     })
   } },
@@ -85,7 +85,7 @@ const RULES: Rule[] = [
   { code: 'attr.oneAtMax', severity: 'error', tab: 'attributes', setting: ['oneAttributeAtMax'], check: c => {
     const m = c.data.metatypes[c.b.metatype]
     if (!m || !flag(c.cr, 'oneAttributeAtMax')) return null
-    const at = CORE_ATTRS.filter(k => attrRating(c.b, k, c.p) >= m.ranges[k as keyof typeof m.ranges][1])
+    const at = CORE_ATTRS.filter(k => attrRating(c.b, k, c.p) >= attrMax(c.data, c.cr, c.b, k)!)
     return at.length <= 1 ? null : { message: `Only one attribute may be at its maximum (${at.map(A).join(', ')} are).` }
   } },
   { code: 'attr.adjustTargets', severity: 'error', tab: 'attributes', setting: ['attributeBaseMax'], check: c => {
@@ -271,7 +271,7 @@ const RULES: Rule[] = [
   // SWC p. 31: karma buys contact ratings only up to Charisma: what a contact has above it must come from the points
   { code: 'contact.karmaCap', severity: 'error', tab: 'contacts', setting: c => (c.p.contactPools ? ['lifepath.contactKarma'] : []), check: c => {
     if (!c.p.contactPools || num(c.cr, 'lifepath.contactKarma') === undefined) return null
-    const cha = attrRating(c.b, 'cha', c.p)
+    const cha = augmentedRating(c.b, c.data, 'cha', c.p)
     const above = c.b.contacts.map(x => ({ x, types: x.types ?? [], need: Math.max(0, x.connection - cha) + Math.max(0, x.loyalty - cha) }))
     if (!uncovered(c.p.contactPools(c.b), above)) return null
     const names = above.filter(a => a.need).map(a => a.x.name || 'a contact').join(', ')

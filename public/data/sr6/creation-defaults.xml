@@ -16,11 +16,17 @@
   <setting key="skillCap" value="6" source="CRB" page="65"/>
   <setting key="skillCapAptitude" value="7" source="CRB" page="65"/>
   <setting key="aptitudeQuality" value="crb.aptitude-skill" source="CRB" page="70"/>
+  <setting key="exceptionalQuality" value="crb.exceptional-attribute" source="CRB" page="71"/>
   <setting key="oneSkillAtMax" value="true" source="CRB" page="65"/>
   <setting key="skillPointsSpec" value="1" source="CRB" page="65"/>
   <setting key="magicMax" value="6" source="CRB" page="167"/>
   <setting key="essence" value="6" source="CRB" page="38"/>
   <setting key="contactPointsPerCha" value="6" source="CRB" page="67"/>
+  <!-- the Sixth World Companion's expanded contact rules (SWC p. 161): karma for points past Charisma x 6 and past a
+       contact's connection + loyalty of 2 x Charisma, no rating above 8 -->
+  <setting key="contactKarma" value="1" source="SWC" page="161"/>
+  <setting key="contactPairPerCha" value="2" source="SWC" page="161"/>
+  <setting key="contactRatingMax" value="8" source="SWC" page="161"/>
   <setting key="knowledgePerLog" value="1" source="CRB" page="67"/>
   <setting key="maxAvailability" value="6" source="CRB" page="66"/>
   <setting key="maxNuyenLeft" value="5000" source="CRB" page="68"/>
@@ -66,6 +72,7 @@
   <setting key="monitorDivisor" value="2" source="CRB" page="38"/>
   <setting key="builtToughQuality" value="crb.built-tough" source="CRB" page="70"/>
   <setting key="dermalDepositsQuality" value="crb.dermal-deposits" source="CRB" page="71"/>
+  <setting key="charismaticDefenseQuality" value="pwp.charismatic-defense" source="PWP" page="85"/>
   <setting key="initiativeDice" value="1" source="CRB" page="39"/>
   <setting key="astralInitiativeDice" value="2" source="CRB" page="161"/>
   <setting key="specDice" value="2" source="CRB" page="92"/>

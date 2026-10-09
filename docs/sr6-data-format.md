@@ -542,13 +542,17 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `skillPointsExpertise` | number | all | Skill points for an expertise |
 | General | `magicMax` | number | all | Highest Magic or Resonance |
 | General | `essence` | number | all | Starting Essence |
-| General | `contactPointsPerCha` | number | all | Contact points per Charisma |
+| General | `contactPointsPerCha` | number | all | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills) |
 | General | `knowledgePerLog` | number | all | Free knowledge skills per Logic |
 | General | `maxAvailability` | number | all | Highest Availability |
 | General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
 | General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
 | General | `maxKarmaLeft` | number | optional | Most karma kept after creation (unset: no limit, and Review gives no warning) |
+| General | `contactKarma` | number | optional | Karma per contact point past the points or past a contact's pair cap (the Sixth World Companion's expanded contacts, SWC p. 161; unset: off, each rating up to Charisma) |
+| General | `contactPairPerCha` | number | optional | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
+| General | `contactRatingMax` | number | optional | Highest contact rating (with `contactKarma`; unset: Charisma) |
+| General | `exceptionalQuality` | quality id | optional | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB p. 71) |
 | Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
 | Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |
 | Karma prices | `karmaSpec` | number | all | Specialization |
@@ -631,6 +635,7 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Derived values | `specDice` | number | optional | Dice for a specialization |
 | Derived values | `expertiseDice` | number | optional | Dice for an expertise |
 | Derived values | `untrainedPenalty` | number | optional | Dice off the attribute for an untrained skill |
+| Derived values | `charismaticDefenseQuality` | quality id | optional | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
 | Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath | the metatype's karma (one per catalog metatype) |
 | Point buy | `pointBuy.startRating:<kind>` | number | point buy | starting Magic or Resonance per awakened or emerged kind |
 | Karma build | `magicKarma:<kind>` | number | karma | karma to be that kind |

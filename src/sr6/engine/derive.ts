@@ -48,7 +48,7 @@ export interface Sr6Derived {
 }
 /** `STR 5, Armor +2`: a host's own values as shown on its line, the sheets and Review. */
 export const hostText = (values: { target: string; value: number }[]) => values.map(v =>
-  v.target === 'defense' ? `Armor ${v.value >= 0 ? '+' : ''}${v.value}` : v.target === 'initDice' ? `Initiative dice +${v.value}`
+  v.target === 'defense' ? `Armor ${v.value >= 0 ? '+' : ''}${v.value}` : v.target === 'physical' ? `Physical boxes +${v.value}` : v.target === 'initDice' ? `Initiative dice +${v.value}`
     : `${v.target.toUpperCase()} ${v.value}`).join(', ')
 
 export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Sr6Derived {
@@ -62,7 +62,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const attrs = Object.fromEntries(SR6_ATTRS.map(k => {
     let natural = attrRating(b, k, p)
     if (k === special && b.magic !== 'mundane') natural = Math.max(0, natural - loss)
-    return [k, { natural, augmented: natural + augmentBonus(b, k) }]
+    return [k, { natural, augmented: natural + augmentBonus(b, data, k) }]
   })) as Sr6Derived['attrs']
   const A = (k: string) => attrs[k as Sr6Attr]?.augmented ?? 0
   const plus = (a: number, key: string) => { const v = need(key); return v === undefined ? null : a + v }
@@ -72,34 +72,38 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   // CRB p. 38: monitor = base + ceil(attribute / divisor); overflow = BOD; Built Tough adds a Physical box per level (CRB p. 70)
   const base = need('monitorBase'), div = need('monitorDivisor')
   const monitor = (a: number) => (base === undefined || !div ? null : base + Math.ceil(a / div))
-  const tough = b.qualities.filter(q => q.id === str(cr, 'builtToughQuality')).reduce((t, q) => t + q.level, 0)
+  // (and a full cyberlimb's box, CRB p. 288, as the line's bonus carries it)
+  const tough = b.qualities.filter(q => q.id === str(cr, 'builtToughQuality')).reduce((t, q) => t + q.level, 0) + augmentBonus(b, data, 'physical')
   const physical = monitor(A('bod'))
 
   // CRB p. 67: Defense Rating = BOD + the defense of worn armor, and what a ware adds (dermal plating, CRB p. 286);
   // Dermal Deposits' level of natural armor (CRB p. 71)
   const deposits = b.qualities.some(q => q.id === str(cr, 'dermalDepositsQuality')) ? 1 : 0
-  let defense = A('bod') + augmentBonus(b, 'defense') + deposits
+  // Power Plays p. 85: Charismatic Defense bases it on Charisma instead of Body
+  const dr = b.qualities.some(q => q.id === str(cr, 'charismaticDefenseQuality')) ? 'cha' : 'bod'
+  let defense = A(dr) + augmentBonus(b, data, 'defense') + deposits
   for (const x of b.purchases) if (x.kind === 'armor' && x.worn) { const e = entryOf(x, data); defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0 }
 
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
   const pools: Sr6Pool[] = []
   for (const s of b.skills) {
-    const v = data.skills[s.id], rank = skillRank(s), attr = v?.attr ?? '', dp = rank + A(attr) + augmentBonus(b, 'skill', s.id)
+    const v = data.skills[s.id], rank = skillRank(s), attr = v?.attr ?? '', dp = rank + A(attr) + augmentBonus(b, data, 'skill', s.id)
     const pool: Sr6Pool = { skill: s.id, label: v?.name ?? s.id, rank, attr, dp }
-    if (s.spec) { pool.spec = s.spec; const d = plus(dp, 'specDice'); if (d !== null) pool.specDp = d }
+    // (a specialization of the expertise's own name is the one turned into it, CRB p. 92: rolled as the expertise)
+    if (s.spec && s.spec !== s.expertise) { pool.spec = s.spec; const d = plus(dp, 'specDice'); if (d !== null) pool.specDp = d }
     if (s.expertise) { pool.expertise = s.expertise; const d = plus(dp, 'expertiseDice'); if (d !== null) pool.expertiseDp = d }
     pools.push(pool)
   }
   const penalty = need('untrainedPenalty')
   if (penalty !== undefined)
     for (const v of Object.values(data.skills)) if (v.untrained && !b.skills.some(s => s.id === v.id))
-      pools.push({ skill: v.id, label: v.name, rank: 0, attr: v.attr, dp: Math.max(0, A(v.attr) - penalty + augmentBonus(b, 'skill', v.id)) })
+      pools.push({ skill: v.id, label: v.name, rank: 0, attr: v.attr, dp: Math.max(0, A(v.attr) - penalty + augmentBonus(b, data, 'skill', v.id)) })
   pools.sort((x, y) => x.label.localeCompare(y.label))
 
   return {
     attrs, essence: budgets.essence.left, magicLoss: loss, magicMax,
     // CRB pp. 39, 67: initiative = REA + INT, plus dice
-    initiative: { base: A('rea') + A('int'), dice: capDice(plus(augmentBonus(b, 'initDice'), 'initiativeDice')) },
+    initiative: { base: A('rea') + A('int'), dice: capDice(plus(augmentBonus(b, data, 'initDice'), 'initiativeDice')) },
     // CRB p. 161 (astral combat): astral initiative = LOG + INT, plus dice
     ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: capDice(need('astralInitiativeDice') ?? null) } } : {}),
     monitors: { physical: physical === null ? null : physical + tough, stun: monitor(A('wil')), overflow: A('bod') },
@@ -121,7 +125,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     pools, karmaLeft: budgets.karma.left, nuyenLeft: budgets.nuyen.left, edge: A('edg'),
     unset: [...unset],
     hosts: b.purchases.flatMap(x => {
-      const add = hostBonus(x), targets = Object.keys(add) as (keyof typeof add)[]
+      const add = hostBonus(x, data), targets = Object.keys(add) as (keyof typeof add)[]
       if (!targets.length) return []
       const values = targets.map(t => ({ target: t, value: (t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]! }))
       const e = entryOf(x, data)

@@ -340,3 +340,17 @@ describe('export: the schema', () => {
     expect(check(h)).toBe(false)
   })
 })
+
+// The amps' Armor +1 are capped once (CRB p.61's maximum bonus), the same way for the sheet and the export: each amp
+// gets its share, a worn Equipment amp's only on the main armor, and the shares add up to derive's armor.
+test('export: each amp’s armor share adds up to the sheet’s capped armor', () => {
+  const ch = blankCharacter(), a = (uid: string, type: string, n: number, linkedItem?: string) =>
+    ({ uid, type, name: uid, effects: Array.from({ length: n }, () => ({ ref: 'armor-plus' })), ...linkedItem ? { linkedItem } : {} })
+  ch.build.items = [{ uid: 'coat', kind: 'armor', name: 'Made-up coat', armor: 2 }, { uid: 'vest', kind: 'armor', name: 'Made-up vest', armor: 1 }]
+  ch.build.mainArmor = 'coat'
+  ch.build.amps = [a('skin', 'quality', 1), a('weave', 'equipment', 1, 'vest'), a('plates', 'cyberware', 2), a('lining', 'equipment', 1, 'coat')]
+  const d = derive(cat, ch), r = exportRunners(cat, [ch], OPTS).runners![0]
+  const shares = r.amps.map(x => x.bonuses.armor)
+  expect(shares).toEqual([1, 0, 1, 0])  // made-up max 2: the always-on quality, then one of the plates; the vest isn't worn
+  expect(2 + shares.reduce((t, n) => t + n, 0)).toBe(d.armor.main)
+})

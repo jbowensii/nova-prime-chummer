@@ -398,7 +398,7 @@
   <xs:complexType name="Bonus">
     <xs:attribute name="target" use="required">
       <xs:simpleType><xs:union memberTypes="c:Attr"><xs:simpleType><xs:restriction base="xs:string">
-        <xs:enumeration value="initDice"/><xs:enumeration value="defense"/><xs:enumeration value="skill"/>
+        <xs:enumeration value="initDice"/><xs:enumeration value="defense"/><xs:enumeration value="physical"/><xs:enumeration value="skill"/>
       </xs:restriction></xs:simpleType></xs:union></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="skill" type="xs:string"/>

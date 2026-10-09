@@ -748,6 +748,7 @@ class _Catalog:
             # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
             # (a list of them: `3,6, or 9 Karma`, `5, 10 Karma`, `5/8 Karma`)
             ks = sections.karma_list(karma) or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
+            ks = ks or ([0] if re.fullmatch(r"\s*none\W*", karma, re.I) else [])  # (`Bonus: None`: In Debt, CRB p. 77)
             attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
                      "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)

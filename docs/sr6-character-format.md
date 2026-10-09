@@ -99,7 +99,9 @@ copy". Book entries are never copied here.
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
-  data). `target` is an attribute abbreviation, `initDice`, `defense` (Defense Rating) or `skill` (that skill's dice pool:
+  data; a line with none counts its catalog entry's `add` effects instead, the low-confidence ones never). `target` is an
+  attribute abbreviation, `initDice`, `defense` (Defense Rating), `physical` (Physical condition monitor boxes: a full
+  cyberlimb's, CRB p. 288) or `skill` (that skill's dice pool:
   `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
   line's rating.
 - `<sin kind="real|fake" rating? gender? placeholder?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid

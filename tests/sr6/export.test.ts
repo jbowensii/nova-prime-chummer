@@ -202,7 +202,7 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
     expect(r.attributes.rea).toEqual({ natural: 4, augmented: 5 })
     expect(r.attributes.mag.natural).toBe(5)
     expect(r).toMatchObject({ edge: 3, karma: 7, nuyen: 1234, metatype: { id: 'mus.elf', name: 'Elf' } })
-    expect(r.derived).toMatchObject({ initiative: { base: 9, dice: 3 }, monitors: { physical: 11, stun: 10, overflow: 3 }, defenseRating: 7 })  // Made-up Tough, the booster's +1
+    expect(r.derived).toMatchObject({ initiative: { base: 9, dice: 3 }, monitors: { physical: 11, stun: 10, overflow: 3 }, defenseRating: 8 })  // Made-up Tough, the booster's +1, Lucky Break's catalog +1 (its low-confidence one not)
     expect(r.derived!.socialRating).toBe(r.attributes.cha.augmented + 2)  // the worn Test Jacket's Social +2
     const booster = r.purchases.find(x => x.uid === 'c1')!
     expect(booster.values).toMatchObject({ rating: 1, cost: 1200, essence: 0.12, avail: 4, legality: 'I' })

@@ -1,5 +1,26 @@
 # Release notes
 
+## Unreleased: the runner's effects everywhere, the sample runners' errors traced
+
+**Shadowrun 6**
+- One set of effective values for creation, Review, the sheets and the Foundry export. A line's bonuses are the
+  player's or GM's own, else its catalog entry's effects (low-confidence ones are shown, never applied); a quality's
+  catalog effects count too.
+- Contact points and their rating cap count the augmented Charisma, knowledge skills the augmented Logic.
+- The Sixth World Companion's expanded contacts (SWC p. 161), on by default: Karma buys contact points past
+  Charisma × 6 and a contact's connection + loyalty past 2 × Charisma; no rating above 8.
+- Exceptional (Attribute) raises the maximum of the attribute its note names (CRB p. 71). Charismatic Defense bases
+  the Defense Rating on Charisma (Power Plays p. 85). A new bonus target, Physical monitor boxes: a full cyberlimb's
+  box (CRB p. 288).
+- The Magic Essence takes also comes off an adept's power points and the free spells and complex forms (CRB p. 66).
+- Sample runners: `(Acting +3)` is the specialization made an expertise (both kept, the specialization paid); a
+  quality printed with a level takes the entry with levels (`Addiction 5` is the core rulebook's); an item printed
+  at a rating never takes another rating's entry (`cybereyes 3`). In Debt's `Bonus: None` is 0 Karma. What Review
+  still shows on the samples is the books' own (an expertise or rank 7 at creation, a seventh quality …).
+
+**Anarchy 2.0**
+- The Foundry export gives each amp its share of the capped Armor +1, the same rule the sheet totals.
+
 ## 0.11.1 — 2026-10-09: prerequisites are errors, never blocks
 
 Whatever a runner lacks a prerequisite for can now always be taken, in creation and in career. Review shows an

@@ -137,7 +137,7 @@ test('the runner file keeps a skill bonus; one naming no skill is refused', () =
 test('the export: Mara’s skill bonus by id and name, her armor’s Social, a spell’s and a metamagic’s flags as printed', () => {
   const w = sampleWorld(), r = exportSr6Runners(w.c, w.data, w.cr, [mara(w)], SAMPLE_OPTS).runners![0]
   expect(r.purchases.find(x => x.uid === 'c1')!.bonuses).toContainEqual({ target: 'skill', id: 'mur.firearms', name: 'Firearms', value: 1 })
-  expect(r.derived?.pools.find(p => p.skill === 'mur.firearms')!.dp).toBe(4 + 5 + 1)  // rank 4, AGI 5, the booster's +1
+  expect(r.derived?.pools.find(p => p.skill === 'mur.firearms')!.dp).toBe(4 + 5 + 1 + 1)  // rank 4, AGI 5, the booster's +1, Lucky Break's catalog AGI +1 (its low-confidence +2 not)
   expect(r.purchases.find(x => x.uid === 'a1')!.values.social).toBe(2)
   expect(r.picks.find(x => x.uid === 'p1')!.attrs.opposed).toBe('true')
   expect(r.picks.find(x => x.uid === 'p5')!.attrs.user).toBe('adept')

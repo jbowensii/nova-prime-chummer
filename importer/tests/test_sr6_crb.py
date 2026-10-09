@@ -644,6 +644,24 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(archetypes._bonuses("Muscle toner", 3), '<bonus target="agi" value="1" perRating="true"/>')
         self.assertEqual(archetypes._bonuses("Bone Lacing (Titanium)", None), '<bonus target="defense" value="2"/>')
         self.assertEqual(archetypes._bonuses("Glow Gland", 2), "")
+        self.assertEqual(archetypes._bonuses("Arm (obvious)", None), '<bonus target="physical" value="1"/>')  # a full limb's box
+        self.assertEqual(archetypes._bonuses("Hand (obvious)", None), "")  # a partial one adds none
+
+    def test_sample_lookups_keep_the_printed_level_and_rating(self):
+        """A level printed with a quality finds an entry that comes in levels (not a path step of the same name); a
+        rating printed with an item never finds an entry named for another rating; a `+3` is the specialization made
+        an expertise (made-up catalogs)."""
+        q = lambda i, n, **a: {"id": i, "name": n, "attrs": a}
+        own = {"qualities": [q("craving", "Craving")]}  # a path's one-level step, exact
+        core = {"qualities": [q("crb.craving-substance-1-to-6", "Craving (Substance, 1 to 6)", perLevel="true", maxLevel="6")],
+                "augmentations": [q("nb.glow-eyes-rating-6", "Glow eyes (Rating 6)"), q("crb.glow-eyes-basic-system-rating-3", "Glow eyes basic system (Rating 3)")]}
+        idx = archetypes._Index(own, "NB", core)
+        self.assertEqual(archetypes._named(idx, ["qualities"], "Craving 4 (glitter)")[0][1], "crb.craving-substance-1-to-6")
+        self.assertEqual(archetypes._named(idx, ["qualities"], "Craving")[0][1], "nb.craving")
+        line = archetypes._purchase(idx, ["augmentations"], "glow eyes 3 (w/ flare)", 1, False, {})[0]
+        self.assertIn('id="crb.glow-eyes-basic-system-rating-3"', line)
+        line = archetypes._purchase(idx, ["augmentations"], "Glow eyes (rating 6)", 1, False, {})[0]
+        self.assertIn('id="nb.glow-eyes-rating-6"', line)
 
     def test_nothing_unmapped(self):
         self.assertEqual(self.rep("unmapped"), [])
