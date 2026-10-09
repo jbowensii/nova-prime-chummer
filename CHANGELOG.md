@@ -1,37 +1,49 @@
 # Release notes
 
-## Unreleased: Foundry (Eden and sra2) export, martial arts, SINs and lifestyles, catalog flags
+## 0.11.0 — 2026-10-09: martial arts, SINs with their lifestyles, catalog flags, Foundry export
 
-Import the books again (Books → **Re-import all**) to get the new catalog flags. Saved runners keep working; an older
-runner's lifestyle moves onto its first SIN when it is opened.
+Import the books again (Books → **Re-import all**) to get technique prerequisites, the catalog flags and Bending of
+the Reed's two versions. Saved runners keep working: an older runner's lifestyle moves onto its first SIN, or onto an
+unnamed placeholder SIN when it has none; an older Bending of the Reed becomes the Melee version.
 
-- **Martial arts (SR6).** Buy a style and learn its techniques on the Martial arts tab, in creation and in the Ledger:
-  7 Karma a style, 5 a technique, its signature technique free (Firing Squad p. 97), set in the house rules. Review
-  flags a style or technique taken twice and a technique its style doesn't teach.
-- **Technique prerequisites (SR6).** The importer reads what a technique also needs (an adept power, another
-  technique, a quality, or an augmentation) from its printed category line; the technique picker and the technique's
-  row on the Martial arts tab (next to Qualities and Magic) show it, and the runner export carries it. Review warns
-  when the runner lacks the power, technique or quality, and flags a missing augmentation (a cyberlimb, an implanted
-  firearm, …) as a problem a GM can approve. Body Shop's techniques now get their category.
-- **Techniques learned in versions (SR6).** A technique learned in one of the options it lists, up to once each, is one
-  entry per option: Bending of the Reed (Melee) and (Ranged). A runner with the old Bending of the Reed gets the Melee one.
-- **SINs and lifestyles.** A lifestyle belongs to a SIN; a runner can have several of each, and a SIN can have none.
-  Gender is optional on the runner (both games) and on each SIN.
-- **SINs in career, placeholder SINs, gender suggestions (SR6).** The Ledger buys a SIN at the creation price (a fake
-  one by its rating, a real one free, plus its licences); lifestyles bought there cost their monthly price × months,
-  and either is refused when nuyen is short. An older runner whose lifestyle had no SIN to go on gets an unnamed
-  placeholder SIN instead of a real one in its name: it costs nothing, and Review notes it until it's named (Contacts
-  tab, or the Ledger once finalized). Gender fields suggest common entries as you type.
-- **Catalog flags (SR6).** The importer reads which metamagics are for adepts or magicians and which can be taken
-  again, which spells are opposed or use the target's Essence, and armor's Social. The builder offers only the
-  metamagics a runner may take, Review checks them (one per initiation grade), and the sheets show the flags. Social
-  Rating (Charisma plus worn armor's Social) shows in Review, on the Gear tab and on the sheet, and is in the Foundry
-  export. A spell is marked as using the target's Essence when its threshold or its resistance counts it. More
-  metamagics than initiation grades is an error a GM can approve.
-- **Skill bonuses.** A hand-entered bonus can add to a skill's dice pool.
-- **Foundry export.** The book export carries every kind, implant grades and the display kinds included, and each
-  entry's earlier ids; Anarchy's adds its reference kinds. The runner export carries the catalog's effects, Defense
-  Rating and skill bonuses, the monitor bonus, contact types, gender, SINs with their lifestyles, and martial arts.
+Released with the Chummer SR6 Importer 0.3.0 and the Chummer Anarchy 2 Importer 0.8.0 Foundry modules, which read
+the new export.
+
+**Martial arts (SR6)**
+- A Martial arts tab, next to Qualities and Magic. Buy a style (7 Karma) and learn its techniques (5 Karma each; the
+  signature technique is free), in creation and in the Ledger (Firing Squad p. 97). Both prices are house-rule
+  settings. Review flags a style or technique taken twice and a technique its style doesn't teach.
+- Technique prerequisites. The importer reads what a technique also needs from its printed category line: an adept
+  power, another technique, a quality or an augmentation. The picker and the technique's row show it. Review warns
+  when an adept power, technique or quality is missing. A missing augmentation (a cyberlimb, bone lacing, an
+  implanted firearm, …) is an error a GM can approve; the technique can still be taken.
+- A technique learned in one of the options it lists, once per option, is one entry per option: Bending of the Reed
+  (Melee) and (Ranged). Body Shop's techniques now get their category.
+
+**SINs, lifestyles and gender**
+- A lifestyle belongs to a SIN. A runner can have several SINs and several lifestyles, and a SIN can have none.
+- Gender is optional on the runner (both games) and on each SIN. It's free text, with common entries suggested as
+  you type.
+- In career play the Ledger buys a SIN at its creation price (a fake SIN by its rating, a real one free, plus its
+  licences), and lifestyles at their monthly price × months. Either is refused when nuyen is short. A SIN bought in
+  career needs a name.
+- An older runner whose lifestyle has no SIN to go on gets an unnamed placeholder SIN. It costs nothing, and Review
+  notes it until it's named (Contacts tab, or the Ledger once finalized).
+
+**Catalog flags (SR6)**
+- The importer reads which metamagics are for adepts or magicians and which can be taken again, which spells are
+  opposed or use the target's Essence (in the threshold or the resistance), and armor's Social.
+- The builder offers only the metamagics a runner may take. More metamagics than initiation grades is an error a GM
+  can approve. The picker, the Magic tab and the sheets show the flags.
+- Social Rating (Charisma plus worn armor's Social) shows in Review, on the Gear tab and on the sheet.
+- A hand-entered bonus can add to a skill's dice pool.
+
+**Foundry export**
+- The book export carries every kind, implant grades and the display kinds included, and each entry's earlier ids.
+  Anarchy's adds its reference kinds (levels, packages, lifestyles, amp types and effects, attributes).
+- The runner export carries the catalog's effects, Defense Rating and skill bonuses, the monitor bonus, Social
+  Rating, contact types, gender, SINs with their lifestyles (placeholders marked), and martial arts with each
+  technique's prerequisites.
 
 ## 0.10.6 — 2026-10-09: every Commlink6 record found
 
