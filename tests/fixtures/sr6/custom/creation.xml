@@ -33,6 +33,7 @@
   <setting key="karmaMartialArt" value="8" source="CRB" page="65"/>
   <setting key="karmaTechnique" value="4" source="CRB" page="65"/>
   <setting key="advance.expertise" value="9" source="CRB" page="73"/>
+  <setting key="advance.expertiseRank" value="4" source="CRB" page="73"/>
   <setting key="advance.qualityFactor" value="3" source="CRB" page="73"/>
   <setting key="advance.buyOffFactor" value="3" source="CRB" page="73"/>
   <setting key="advance.skillMax" value="11" source="CRB" page="73"/>

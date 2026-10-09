@@ -16,7 +16,8 @@ hidden or greyed out. Budgets, caps, rating ranges, duplicates and the karma or 
 - Spells, rituals, complex forms and adept powers: the Magic tab shows every section, with a note when the runner's
   magic kind can't learn them (CRB p. 67). The Ledger learns any of them. An adept power still needs power points.
 - Specializations and expertise: these can go on a skill with no rank (CRB p. 93), and an expertise can be taken
-  without a specialization (CRB p. 69). Each is a new error.
+  without a specialization (CRB p. 69). Each is a new error. An expertise also needs a skill rank (CRB p. 69): the
+  new Advancement setting `advance.expertiseRank`, 5 by default. Below it is the new `skill.expertiseRank` error.
 - Grades: a grade an augmentation's type doesn't come in can be taken (CRB p. 283, or the catalog grade's page).
   It's the new `gear.grade` error. Only augmentations and custom lines take a grade.
 - Accessories: the picker lists other hosts' accessories, marked. Fitted, one is now the `catalog.accessoryHost`

@@ -124,6 +124,12 @@ const RULES: Rule[] = [
   // CRB p. 69: an expertise needs a specialization in its skill first
   { code: 'skill.expertiseSpec', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => s.expertise && !s.spec)
     .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise but no specialization: an expertise needs one first.`, ...CRB(69) })) },
+  // CRB p. 69: an expertise needs a skill rank of advance.expertiseRank (optional: unset, no minimum and no unset warning)
+  { code: 'skill.expertiseRank', severity: 'error', tab: 'skills', check: c => {
+    const need = num(c.cr, 'advance.expertiseRank')
+    return need === undefined ? null : c.b.skills.filter(s => s.expertise && skillRank(s) < need).map(s => ({ path: `skills.${s.id}`,
+      message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise at rank ${skillRank(s)}: an expertise needs rank ${need}.`, ...cite(c.cr, 'advance.expertiseRank') }))
+  } },
   { code: 'skill.restricted', severity: 'error', tab: 'skills', check: c => {
     // R: a skill on Magic needs an awakened kind (an aspected magician picks one); one on Resonance an emerged one
     const k = MAGIC_KINDS[c.b.magic]

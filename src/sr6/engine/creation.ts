@@ -57,6 +57,7 @@ export const CREATION_KEYS: CreationKey[] = [
   // career play (S3; the Karma prices above are the career prices too): optional, unset refuses the spend that needs it
   // (a cap: not applied; nuyen to karma: the optional rule is off)
   ...n('Advancement', [], [['advance.expertise', 'Expertise after creation'],
+    ['advance.expertiseRank', 'Lowest skill rank for an expertise (unset: none)'],
     ['advance.qualityFactor', 'A positive quality after creation costs its karma times'],
     ['advance.buyOffFactor', 'Buying off a negative quality costs its karma times'],
     ['advance.skillMax', 'Highest skill rank after creation (unset: no cap)'],

@@ -93,6 +93,23 @@ test('a specialization on an untrained skill is recorded: an error a GM may appr
     .find(x => x.code === 'skill.specUntrained')?.approved).toBe(true)
 })
 
+test('an expertise below advance.expertiseRank is recorded: an error a GM may approve; unset, no minimum', () => {
+  const { data, cr } = made(), ch = runner()
+  tinker(ch)  // rank 3; the fixture's invented minimum is 4
+  ch.build.skills[0].spec = 'Gizmos'
+  const r = ok(record(ch, { op: 'expertise', target: 'crb.tinkering', name: 'Gizmos' }, data, cr))
+  const v = validateCareer(data, cr, r).filter(x => x.code === 'skill.expertiseRank')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([['error', 'skills.crb.tinkering', 'CRB', 73,
+    'Tinkering has an expertise at rank 3: an expertise needs rank 4.']])
+  expect(validateCareer(data, cr, { ...r, overrides: [{ code: 'skill.expertiseRank', path: 'skills.crb.tinkering', note: 'GM ok' }] })
+    .find(x => x.code === 'skill.expertiseRank')?.approved).toBe(true)
+  const at4 = structuredClone(r)
+  at4.build.skills[0].points = 4
+  expect(validateCareer(data, cr, at4).map(x => x.code)).not.toContain('skill.expertiseRank')
+  cr.delete('advance.expertiseRank')
+  expect(validateCareer(data, cr, r).map(x => x.code)).not.toContain('skill.expertiseRank')
+})
+
 test('a quality costs karma × advance.qualityFactor, a buy off karma × advance.buyOffFactor; the wrong way round is refused', () => {
   const { data, cr } = made({ rules: { 'advance.qualityFactor': 4 } }), ch = runner()
   const q = (id: string, level = 1): Sr6Advance => ({ op: 'quality', line: { uid: '', id, level } })

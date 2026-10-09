@@ -188,7 +188,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return { label: `${skillName(a.target)} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaSkillPerRank') }
     }
     case 'spec': case 'expertise': {
-      // on a skill without a rank, or an expertise without a specialization: recorded (Review's skill.specUntrained, skill.expertiseSpec)
+      // on a skill without a rank, an expertise without a specialization or below advance.expertiseRank: recorded (Review's
+      // skill.specUntrained, skill.expertiseSpec, skill.expertiseRank)
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
       if (s?.[a.op]) no('already-known')
@@ -398,7 +399,7 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
   const bal = balances(ch), out: Violation[] = []
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
-  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder', 'skill.specUntrained', 'skill.expertiseSpec', 'skill.restricted',
+  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder', 'skill.specUntrained', 'skill.expertiseSpec', 'skill.expertiseRank', 'skill.restricted',
     'magic.spellsAllowed', 'magic.metamagicUser', 'martial.category', 'martial.requires', 'martial.augmentation', 'gear.grade', 'catalog.accessoryHost'])
   return [...out, ...validateSr6(data, cr, { ...ch, build: currentBuild(ch) }).filter(v => keep.has(v.code))]
 }

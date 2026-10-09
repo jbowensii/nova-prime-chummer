@@ -561,6 +561,7 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Karma prices | `karmaMartialArt` | number | optional | Martial arts style (it comes with its signature technique; unset: counts 0, Review warns, not bought after creation) |
 | Karma prices | `karmaTechnique` | number | optional | Martial arts technique (a style’s signature one is free; unset: as `karmaMartialArt`) |
 | Advancement | `advance.expertise` | number | optional | Expertise after creation |
+| Advancement | `advance.expertiseRank` | number | optional | Lowest skill rank for an expertise (unset: none; Review's `skill.expertiseRank`) |
 | Advancement | `advance.qualityFactor` | number | optional | A positive quality after creation costs its karma times |
 | Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |
 | Advancement | `advance.skillMax` | number | optional | Highest skill rank after creation (unset: no cap) |
@@ -690,6 +691,7 @@ approval (`overrides`, `{code, path}`) clears it. Career Review (`validateCareer
 | `adept.ppBudget` | `magic` | an adept kind, for adept powers (and power points left) | CRB p. 67 |
 | `skill.specUntrained` | `skills.<id>` | a rank in the skill a specialization or expertise is on | CRB p. 93 |
 | `skill.expertiseSpec` | `skills.<id>` | a specialization before an expertise | CRB p. 69 |
+| `skill.expertiseRank` | `skills.<id>` | the skill rank an expertise needs (`advance.expertiseRank`) | the setting's page (CRB p. 69) |
 | `gear.grade` | `<tab>.<line uid>` | an augmentation type the grade comes in | CRB p. 283, or the catalog grade's page |
 | `catalog.accessoryHost` | `<tab>.<host uid>` | a host the accessory's category fits | the accessory's page |
 | `lifepath.requires` | `method.<module id>` | the magic kind an adult life module is for | the module's page |
