@@ -82,7 +82,8 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
-- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
+- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
+  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
@@ -90,7 +91,9 @@ copy". Book entries are never copied here.
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
-  data). `target` is an attribute abbreviation, `initDice` or `defense` (Defense Rating); `perRating`: times the line's rating.
+  data). `target` is an attribute abbreviation, `initDice`, `defense` (Defense Rating) or `skill` (that skill's dice pool:
+  `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
+  line's rating.
 - `<sin kind="real|fake" rating?>` with its `<licence>`s.
 
 ## Career ledger

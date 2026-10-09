@@ -37,7 +37,7 @@ function full(): Sr6Character {
     { uid: 'g1', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
       snapshot: { id: 'crb.zap-gun', kind: 'weapons', name: 'Zap Gun', source: 'CRB', page: 251, attrs: { cost: '350', ar: '9/7/—/—/—' },
         parts: [{ tag: 'mode', attrs: { v: 'SS' }, text: '' }], text: '' } },
-    { uid: 'g3', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, bonuses: [{ target: 'int', value: 1 }], accessories: [] },
+    { uid: 'g3', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, bonuses: [{ target: 'int', value: 1 }, { target: 'skill', skill: 'crb.gab', value: 2, perRating: true }], accessories: [] },
     { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [], bonuses: [{ target: 'defense', value: 1 }] },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]

@@ -181,13 +181,13 @@ def _row(b, name, cells, text):
 
 
 def fix(b, parent2):
-    """Gear columns with no attribute (an ammunition's DV and attack ratings, a drug's power, armor's SOCIAL) go to
-    the text."""
-    if b.row is None or norm(b.chapter) != GEAR or _kind(b)[0] in ("weapons", "vehicles"):
+    """Gear columns with no attribute (an ammunition's DV and attack ratings, a drug's power) go to the text; armor's
+    SOCIAL is its social attribute (crb.HEADERS)."""
+    if b.row is None or norm(b.chapter) != GEAR or (k := _kind(b)[0]) in ("weapons", "vehicles"):
         return b
     labels, row = dict(b.labels), {}
     for i, (h, v) in enumerate(b.row.items()):
-        if i and h.upper() in PROSE:
+        if i and h.upper() in PROSE and not (k == "armor" and h.upper() == "SOCIAL"):
             if v and v != "—":
                 labels.setdefault(h.capitalize(), v)
         else:

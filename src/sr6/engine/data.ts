@@ -21,6 +21,18 @@ export const MAGIC_KINDS: Record<MagicKind, { spells: boolean; powers: boolean; 
   mundane: { spells: false, powers: false, paysPowers: false, resonance: false },
 }
 
+/** Who may take a metamagic (its catalog `user`): an adept's only an adept or mystic adept, a magician's only a magician
+ *  (full or aspected) or mystic adept; none set: any initiate. */
+export const metamagicFits = (kind: MagicKind, user?: string) =>
+  user === 'adept' ? MAGIC_KINDS[kind].powers : user === 'magician' ? MAGIC_KINDS[kind].spells : true
+
+/** The most levels a pick taken by level may have (a leveled adept power's maxLevel, a metamagic taken again: its
+ *  maxLevel, Infinity when none is printed); null: it is taken once. */
+export function pickMaxLevel(data: Pick<Sr6Data, 'powers' | 'metamagics'>, kind: PickKind, id: string): number | null {
+  const v = kind === 'adeptpowers' ? data.powers[id] : kind === 'metamagics' ? data.metamagics[id] : undefined
+  return v?.perLevel ? v.maxLevel ?? Infinity : null
+}
+
 /** Which picks a magic kind can have. */
 export function picksFor(kind: MagicKind): Record<PickKind, boolean> {
   const k = MAGIC_KINDS[kind]
@@ -51,6 +63,9 @@ export interface Sr6QualityChoice { category: string; count: number; max: number
 export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number
   category?: string; granted?: boolean; choices?: Sr6QualityChoice[] }
 export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
+/** user: who may take it (absent: any initiate); perLevel: taken again, each time one more initiation's metamagic, up to
+ *  maxLevel times (none printed: no limit) */
+export interface Sr6MetamagicView { id: string; name: string; user?: 'adept' | 'magician'; perLevel: boolean; maxLevel: number | null; page: number }
 export interface Sr6LifeModuleView {
   id: string; name: string; stage: 'opening' | 'adult'; requires?: string; grants: Partial<Record<Grant, number>>
   /** the contact types its contact points buy or raise (absent: any) */
@@ -66,6 +81,7 @@ export interface Sr6Data extends CreationCatalog {
   qualities: Record<string, Sr6QualityView>
   /** adept powers */
   powers: Record<string, Sr6PowerView>
+  metamagics: Record<string, Sr6MetamagicView>
   lifemodules: Record<string, Sr6LifeModuleView>
   /** the catalog's implant grades by key (alpha, omega…); a later one with the same key replaces an earlier */
   grades: Record<string, Sr6GradeView>
@@ -155,6 +171,9 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
       count: count(e, p.attrs.count, 'choice count', 1), max: p.attrs.max ? count(e, p.attrs.max, 'choice max', 1) : null })) } : {}) }]))
   const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),
     ...levels(e), page: e.page }]))
+  const metamagics = Object.fromEntries(all('metamagics').map(e => [e.id, { id: e.id, name: e.name, perLevel: e.attrs.perLevel === 'true',
+    maxLevel: e.attrs.maxLevel ? count(e, e.attrs.maxLevel, 'highest level', 1) : null, page: e.page,
+    ...(e.attrs.user === 'adept' || e.attrs.user === 'magician' ? { user: e.attrs.user as 'adept' | 'magician' } : {}) }]))
   const lifemodules = Object.fromEntries(all('lifemodules').map(e => [e.id, {
     id: e.id, name: e.name, stage: e.attrs.stage === 'opening' ? 'opening' as const : 'adult' as const,
     ...(e.attrs.requires ? { requires: e.attrs.requires } : {}),
@@ -182,6 +201,6 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   for (const map of Object.values(c.entries)) for (const e of map.values()) for (const x of e.issues ?? [])
     problems.push({ code: 'catalog.issue', severity: 'warning', path: `${e.kind}.${e.id}`, message: issueNote(e.name, x), source: e.source, page: x.page ?? e.page })
 
-  return { priorities, metatypes, skills, qualities, powers, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id),
+  return { priorities, metatypes, skills, qualities, powers, metamagics, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id),
     categories: categoryIndex(all('categories')) }
 }

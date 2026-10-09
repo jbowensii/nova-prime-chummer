@@ -18,7 +18,7 @@ const FORMAT_VERSION = 1
 const MAGIC_KINDS = Object.keys(MAGIC_KIND_LABELS) as MagicKind[]
 
 // ---- writing ----
-const bonusXml = (x: Bonus) => el('bonus', { target: x.target, value: x.value, perRating: x.perRating })
+const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating })
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
@@ -131,8 +131,11 @@ function oneOf<T extends string>(v: string | null, allowed: readonly T[], what: 
 }
 const label = (e: Element, i: number) => `${e.localName} ${i + 1}`
 
-const readBonus = (e: Element): Bonus =>
-  def({ target: oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, value: num(e, 'value', 0), perRating: yes(e, 'perRating') })
+function readBonus(e: Element): Bonus {
+  const target = oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, skill = str(e, 'skill')
+  if (target === 'skill' && !skill) throw new Error('a skill bonus names no skill')
+  return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating') })
+}
 const readBonuses = (e: Element) => { const xs = kids(e, 'bonus').map(readBonus); return xs.length ? xs : undefined }
 
 function readPurchase(e: Element, fix?: string[]): Sr6Purchase {

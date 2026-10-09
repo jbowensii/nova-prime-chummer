@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
-import { bookValue, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
+import { armorSocial, bookValue, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
 import { formulaOf, formulaText } from '../../engine/formula'
 import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
@@ -40,6 +40,9 @@ export function formulaShown(e: Sr6Entry, field: string, find?: Find): string | 
   const r = formulaRange(e, field, find), u = field === 'cost' ? '¥' : ''
   return `${formulaText(f, e.attrs[field])} (${!r ? 'unpriced' : r[0] === r[1] ? `${n(r[0])}${u}` : `${n(r[0])}–${n(r[1])}${u}`})`
 }
+
+/** An armor's Social modifier as shown (`Social +2`, `Social –4`), or nothing when it prints none. */
+export const social = (s: string | undefined) => { const v = armorSocial(s); return v === null ? undefined : `Social ${v < 0 ? '–' : '+'}${Math.abs(v)}` }
 
 /** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
 export const groupOf = (e: Sr6Entry) => (e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category)
@@ -106,7 +109,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
         items={entries.map(e => {
           const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1, undefined, undefined, data), formula = formulaShown(e, 'cost', dataFind(data))
           return { id: `${e.kind}:${e.id}`, name: entryLabel(e), group: groupOf(e),
-            meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`].filter(Boolean).join(', '),
+            meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`,
+              e.kind === 'armor' && social(e.attrs.social)].filter(Boolean).join(', '),
             label: <><span className="muted">{e.source} p.{e.page}</span> <House c={c} source={e.source} /> <IssueBadges issues={e.issues} source={e.source} /></>,
             search: `${entrySearch(e)} ${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
             price: formula ?? (p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}`) }
@@ -115,27 +119,34 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
   )
 }
 
-const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : ATTR_NAMES[t])
-const bonusText = (x: Bonus) => `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${targetName(x.target)}${x.perRating ? ' × rating' : ''}`
+const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'skill' ? 'Skill dice pool' : ATTR_NAMES[t])
+/** `+1 Agility`, `+2 Firearms dice` (a skill by its catalog name) */
+export const bonusText = (x: Bonus, data: Pick<Sr6Data, 'skills'>) => `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${
+  x.target === 'skill' ? `${data.skills[x.skill ?? '']?.name ?? x.skill ?? 'skill'} dice` : targetName(x.target)}${x.perRating ? ' × rating' : ''}`
 
-/** The player's bonuses on a line or pick (R: the catalog has no bonus data), each removable, and a dialog to add one. */
+/** The player's bonuses on a line or pick (R: the catalog has no bonus data), each removable, and a dialog to add one: to
+ *  an attribute, initiative dice, the Defense Rating or one skill's dice pool. */
 export function Bonuses({ uid, name, bonuses, rated: hasRating }: { uid: string; name: string; bonuses?: Bonus[]; rated?: boolean }) {
-  const { act } = useSr6Editor()
+  const { act, data } = useSr6Editor()
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState<Bonus['target']>('agi'), [value, setValue] = useState('1'), [per, setPer] = useState(false)
-  const list = bonuses ?? [], v = Number(value)
-  const add = () => { if (!act({ op: 'bonus', uid, bonuses: [...list, { target, value: v, ...(per ? { perRating: true as const } : {}) }] })) setOpen(false) }
+  const skills = Object.values(data.skills).sort((a, z) => a.name.localeCompare(z.name))
+  const [skill, setSkill] = useState('')
+  const list = bonuses ?? [], v = Number(value), sk = skill || skills[0]?.id
+  const add = () => { if (!act({ op: 'bonus', uid, bonuses: [...list, { target, ...(target === 'skill' ? { skill: sk } : {}), value: v, ...(per ? { perRating: true as const } : {}) }] })) setOpen(false) }
   return <span className="row bonuses">
-    {list.map((x, i) => <span key={i} className="chip">{bonusText(x)}
-      <button aria-label={`Remove ${bonusText(x)} from ${name}`} onClick={() => act({ op: 'bonus', uid, bonuses: list.filter((_, j) => j !== i) })}>×</button></span>)}
+    {list.map((x, i) => <span key={i} className="chip">{bonusText(x, data)}
+      <button aria-label={`Remove ${bonusText(x, data)} from ${name}`} onClick={() => act({ op: 'bonus', uid, bonuses: list.filter((_, j) => j !== i) })}>×</button></span>)}
     <button className="btn small quiet" aria-label={`Add a bonus to ${name}`} onClick={() => setOpen(true)}>Bonus…</button>
     <Modal open={open} onClose={() => setOpen(false)} title={`Bonus for ${name}`}
       actions={<><button className="btn" onClick={() => setOpen(false)}>Cancel</button>
-        <button className="btn primary" disabled={!Number.isFinite(v) || v === 0} onClick={add}>Add bonus</button></>}>
+        <button className="btn primary" disabled={!Number.isFinite(v) || v === 0 || (target === 'skill' && !sk)} onClick={add}>Add bonus</button></>}>
       <p className="muted">What it adds to the runner while it has it.</p>
       <div className="row">
         <label className="inline">Bonus to <select value={target} onChange={e => setTarget(e.target.value as Bonus['target'])}>
           {BONUS_TARGETS.map(t => <option key={t} value={t}>{targetName(t)}</option>)}</select></label>
+        {target === 'skill' && <label className="inline">Skill <select value={sk ?? ''} onChange={e => setSkill(e.target.value)}>
+          {skills.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
         <label className="inline">Value <input type="number" step={1} value={value} onChange={e => setValue(e.target.value)} style={{ width: '5rem' }} /></label>
         {hasRating && <label className="inline"><input type="checkbox" checked={per} onChange={e => setPer(e.target.checked)} /> × rating</label>}
       </div>

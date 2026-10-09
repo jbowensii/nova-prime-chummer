@@ -8,7 +8,7 @@ import { newId, type Violation } from '../../model/types'
 import type { PickKind, Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6LedgerEntry } from '../model/character'
 import { attrRating, priced, qualityCost, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
@@ -55,10 +55,13 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       return
     }
     case 'powerpoint': b.powerPointsBought += 1; return
-    case 'initiate':
+    case 'initiate': {
       if (MAGIC_KINDS[b.magic].resonance) b.submersion += 1; else b.initiation += 1
-      if (a.line) b.picks.push(structuredClone(a.line))
+      // a metamagic taken again goes up a level
+      const had = a.line && b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id)
+      if (had) had.level = (had.level ?? 1) + 1; else if (a.line) b.picks.push(structuredClone(a.line))
       return
+    }
     case 'purchase': b.purchases.push(structuredClone(a.line)); return
     case 'drop': b.purchases = b.purchases.filter(x => x.uid !== a.target); return
     case 'contact': {
@@ -218,8 +221,13 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (a.line) {
         if (a.line.kind !== (k.resonance ? 'echoes' : 'metamagics')) no('cannot-learn')
         const e = data.entry(a.line.kind, a.line.id) ?? no('unknown-entry')
-        if (b.picks.some(x => x.kind === a.line!.kind && x.id === a.line!.id)) no('already-known')
-        what = ` (${e.name})`
+        // an adept's metamagic only for an adept or mystic adept, a magician's for a magician or mystic adept
+        if (a.line.kind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[a.line.id]?.user)) no('cannot-learn')
+        // one taken again (its text says it can be) is one more level, each with its own initiation
+        const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id), max = pickMaxLevel(data, a.line.kind, a.line.id)
+        if (had && max === null) no('already-known')
+        if (had && (had.level ?? 1) >= max!) no('at-maximum')
+        what = ` (${e.name}${had ? ` ${(had.level ?? 1) + 1}` : ''})`
       }
       const next = b[field] + 1
       // CRB pp. 167, 195: the grade never exceeds Magic (Resonance)
@@ -278,7 +286,8 @@ export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Creat
     case 'quality': adv.line = named(adv.line, data.qualities[adv.line.id]?.name); break
     case 'pick': adv.line = named({ ...adv.line, ...(data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
       data.entry(adv.line.kind, adv.line.id)?.name); break
-    case 'initiate': if (adv.line) adv.line = named(adv.line, data.entry(adv.line.kind, adv.line.id)?.name); break
+    case 'initiate': if (adv.line) adv.line = named({ ...adv.line, ...(pickMaxLevel(data, adv.line.kind, adv.line.id) !== null ? { level: 1 } : {}) },
+      data.entry(adv.line.kind, adv.line.id)?.name); break
     case 'purchase': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
     case 'contact': adv.line = named(adv.line); break
     case 'buyoff': adv.line = b.qualities.find(q => q.uid === adv.target); break

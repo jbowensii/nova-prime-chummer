@@ -16,7 +16,7 @@ compares them without spaces, and rule section names keep them.
   heading is then no rule section.
 - Ammunition (a box named `… Ammunition`): gear, category ammo; its DV and attack ratings go to the text.
 - Catalog tables (first header ITEM, DEVICE, NAME, WEAPON: `NAME_HEADERS`): shields, armor and helmets (ITEM with
-  DEFENSE RATING; SOCIAL to the text), the trauma response system (ITEM without one: gear, armor-modifications), the
+  DEFENSE RATING; SOCIAL its social attribute), the trauma response system (ITEM without one: gear, armor-modifications), the
   shields' bash (WEAPON), badgecams, inhibitor bands and scanners (DEVICE), drugs and the injector rig (NAME; POWER to
   the text, cost per dose). A `Notes:` row is the row above's text; a name with ` Notes: ` in it is split.
 - Vehicles and drones (VEHICLES AND DRONES): a level-5 box, a class line (`(Bike)`: the category), then two one-row

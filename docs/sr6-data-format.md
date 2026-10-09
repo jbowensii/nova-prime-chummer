@@ -61,18 +61,18 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
-| armor | armor | category*, rating, defense, capacity, avail, cost | — |
+| armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
-| spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
+| spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its threshold counts the target's Essence): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
 | adeptpowers | adeptpower | cost, perLevel true, maxLevel int, activation | — |
 | complexforms | complexform | duration, fade | — |
-| metamagics | metamagic | — | — |
+| metamagics | metamagic | user adept\|magician (absent: any initiate), perLevel true (taken again), maxLevel int: see Flags | — |
 | echoes | echo | — | — |
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
 | martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | — |
@@ -170,6 +170,25 @@ Three more kinds complete the set:
   order.
 - `texts`: `<text of="<kind>" id="<entry id>">…</text>`, merged into the entry's `<text>` by (kind, id).
 - `edits`: entries of any kind above, each with `by` (the account that saved it).
+
+### Flags
+
+Read by `importer/sr6/flags.py` from an entry's printed name, the headings it sits under and its text (never an item's
+name), and used by the builder, the sheets and the Foundry export:
+
+- **metamagic `user`**: `adept` when its name carries `(Adepts Only)` (the note leaves the name and stays a search
+  alias) or it is printed under an `Adept Metamagics` heading; `magician` the same way. Absent: any initiate may take it.
+  The metamagic picker offers it only to a runner who may (an adept's to an adept or mystic adept, a magician's to a
+  full or aspected magician or mystic adept); Review flags one on any other (`magic.metamagicUser`).
+- **metamagic `perLevel`** (`maxLevel`): its text says it can be taken again (`as many times as you like`, `can be taken
+  multiple times`; `up to N times`). Taking it again raises the pick's level; each level is one initiation grade's
+  metamagic, and Review counts levels against the grade (`magic.metamagicCount`).
+- **spell `opposed`**: its test is opposed (`opposed by`, `Opposed test`, `resisted by`, `vs. Willpower + …`, `vs. Object
+  Resistance`; not `as opposed to`), and every Combat spell (Direct ones opposed by Willpower + Intuition, Indirect ones
+  rolled against Reaction + Willpower). **spell `essence`**: its threshold counts the target's Essence (`Sorcery + Magic
+  (5 – Essence)`). Shown in the picker, on the Magic tab and on the sheets.
+- **armor `social`**: its SOCIAL column (Firing Squad and later), as printed. The worn armor's add up with Charisma into
+  the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number.
 
 ## Formulas and issues
 

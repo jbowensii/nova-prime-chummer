@@ -4,6 +4,7 @@
 import { entryOf } from '../engine/budgets'
 import { balances } from '../engine/career'
 import type { PickKind, PurchaseKind, Sr6Purchase } from '../model/character'
+import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
@@ -11,6 +12,14 @@ import { entryLabel } from '../engine/categories'
 
 export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
   ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
+/** What a spell's or metamagic's catalog flags say, in words: `Opposed`, `Essence`, `Adepts only`, `Taken again`. */
+export function pickFlags(e: Sr6Entry): string[] {
+  const a = e.attrs
+  return e.kind === 'spells' ? [a.opposed === 'true' && 'Opposed', a.essence === 'true' && 'Essence threshold'].filter((x): x is string => !!x)
+    : e.kind === 'metamagics' ? [a.user && `${a.user === 'adept' ? 'Adepts' : 'Magicians'} only`, a.perLevel === 'true' && `Taken again${a.maxLevel ? ` (up to ${a.maxLevel})` : ''}`]
+      .filter((x): x is string => !!x) : []
+}
+
 export const band = (v: number | null) => (v === null ? '—' : String(v))
 export const AR_BANDS = ['Close', 'Near', 'Medium', 'Far', 'Extreme']
 /** every catalog skill by name: the runner's pools, the rest at rank 0 (no pool where it can't be rolled untrained) */

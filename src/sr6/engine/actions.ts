@@ -7,7 +7,7 @@ import { newId } from '../../model/types'
 import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
 import { num, type CreationRules } from './creation'
-import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
@@ -20,7 +20,7 @@ export type Op =
   | { op: 'expertise'; target: string; expertise: string | null }
   /** add a quality, or set the level of one taken (leveled ones only) */
   | { op: 'quality'; id: string; level?: number; karma?: number } | { op: 'quality'; remove: string }
-  /** add a spell, power, form…; a leveled power taken again goes up a level */
+  /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
   | { op: 'powerPoints'; delta: number }
@@ -177,25 +177,25 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const e = data.entry(op.kind, op.id)
       if (!e) return no('unknown-entry')
-      const power = op.kind === 'adeptpowers' ? data.powers[op.id] : undefined
+      const max = pickMaxLevel(data, op.kind, op.id)
       const had = b.picks.find(x => x.kind === op.kind && x.id === op.id)
       if (had) {
-        // a leveled power is bought per level: taking it again raises the level
-        if (!power?.perLevel) return no('duplicate')
-        if ((had.level ?? 1) >= power.maxLevel) return no('max-level')
+        // a leveled power is bought per level, a metamagic taken again is one more: taking it again raises the level
+        if (max === null) return no('duplicate')
+        if ((had.level ?? 1) >= max) return no('max-level')
         had.level = (had.level ?? 1) + 1
         return OK
       }
-      b.picks.push({ uid: newId(), kind: op.kind, id: op.id, name: e.name, ...(power?.perLevel ? { level: 1 } : {}) })
+      b.picks.push({ uid: newId(), kind: op.kind, id: op.id, name: e.name, ...(max !== null ? { level: 1 } : {}) })
       return OK
     }
     case 'powerLevel': {
       const x = b.picks.find(p => p.uid === op.uid)
       if (!x) return no('not-taken')
-      const v = x.kind === 'adeptpowers' ? data.powers[x.id] : undefined
-      if (!v?.perLevel) return no('no-levels')
+      const max = pickMaxLevel(data, x.kind, x.id)
+      if (max === null) return no('no-levels')
       if (op.level < 1) return no('below-one')
-      if (op.level > v.maxLevel) return no('max-level')
+      if (op.level > max) return no('max-level')
       x.level = op.level
       return OK
     }
@@ -260,6 +260,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'bonus': {
       const x: { bonuses?: Bonus[] } | undefined = allLines(b).find(p => p.uid === op.uid) ?? b.picks.find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
+      if (op.bonuses.some(y => y.target === 'skill' && !y.skill)) return no('no-skill')  // (a skill bonus names its skill)
       if (op.bonuses.length) x.bonuses = op.bonuses; else delete x.bonuses
       return OK
     }

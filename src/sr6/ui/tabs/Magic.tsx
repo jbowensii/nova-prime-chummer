@@ -1,11 +1,14 @@
 // Magic or Resonance (shown only for an awakened or emerged runner): a magician's tradition and drain attribute (R: S1
 // has no traditions kind), spells and rituals against the free ones, adept powers with their levels and power points (a
-// mystic adept buys its own), initiation and metamagics; a technomancer's complex forms, submersion and echoes. Every
-// pick can carry the player's bonuses.
+// mystic adept buys its own), initiation and metamagics (those the runner's kind may take; one its text lets be taken
+// again, by level); a technomancer's complex forms, submersion and echoes. A spell shows whether its test is opposed and
+// whether its threshold counts Essence. Every pick can carry the player's bonuses.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
 import { num } from '../../engine/creation'
-import { MAGIC_KINDS, picksFor } from '../../engine/data'
+import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../engine/data'
+import type { Sr6Entry } from '../../model/types'
+import { pickFlags } from '../../print/view'
 import type { PickKind, Sr6Build } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Bonuses, House } from '../Picker'
@@ -32,11 +35,12 @@ export function MagicTab() {
       {rows.length === 0 ? <p className="muted">None yet.</p> : <div className="scroll-x"><table className="data">
         <tbody>{rows.map(x => {
           const e = data.entry(kind, x.id), power = kind === 'adeptpowers' ? data.powers[x.id] : undefined, name = e?.name ?? x.name ?? x.id
+          const max = pickMaxLevel(data, kind, x.id)
           return <tr key={x.uid}>
             <td><b>{name}</b>{!e && <span className="err"> (no longer in the catalog)</span>}
-              {e && <span className="muted"> {[e.attrs.category, e.source && `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}</span>}
-              <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={!!power?.perLevel} /></div></td>
-            <td>{power?.perLevel && <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={power.maxLevel}
+              {e && <span className="muted"> {[e.attrs.category, ...pickFlags(e), e.source && `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}</span>}
+              <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={max !== null} /></div></td>
+            <td>{max !== null && <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
               onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
             <td className="num">{power && (power.cost == null ? '? PP' : `${n(power.cost * (power.perLevel ? x.level ?? 1 : 1))} PP`)}</td>
             <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'pick', remove: x.uid })}>Remove</button></td>
@@ -45,7 +49,9 @@ export function MagicTab() {
       </table></div>}
     </section>
   }
-  const taken = (kind: PickKind, id: string) => kind !== 'adeptpowers' || !data.powers[id]?.perLevel ? b.picks.some(x => x.kind === kind && x.id === id) : false
+  const taken = (kind: PickKind, id: string) => pickMaxLevel(data, kind, id) === null && b.picks.some(x => x.kind === kind && x.id === id)
+  // a metamagic for adepts only (or magicians only) is offered only to a runner who may take it
+  const offered = (e: Sr6Entry) => e.kind !== 'metamagics' || metamagicFits(b.magic, data.metamagics[e.id]?.user)
   const pick = (id: string) => { if (adding && !act({ op: 'pick', kind: adding, id })) setAdding(null) }
 
   return (
@@ -72,10 +78,10 @@ export function MagicTab() {
       <Modal open={!!adding} onClose={() => setAdding(null)} title={`Add ${PICKS.find(p => p[0] === adding)?.[2] ?? ''}`}>
         {adding && <Picker placeholder="Search" onPick={pick}
           groups={[...new Set([...c.entries[adding].values()].map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}
-          items={[...c.entries[adding].values()].sort((a, z) => a.name.localeCompare(z.name)).map(e => {
+          items={[...c.entries[adding].values()].filter(offered).sort((a, z) => a.name.localeCompare(z.name)).map(e => {
             const power = adding === 'adeptpowers' ? data.powers[e.id] : undefined
             return { id: e.id, name: e.name, group: e.attrs.category, disabled: taken(adding, e.id),
-              meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`].filter(Boolean).join(', '),
+              meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`, ...pickFlags(e)].filter(Boolean).join(', '),
               price: `${e.source} p.${e.page}`, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`, label: <House c={c} source={e.source} /> }
           })} />}
       </Modal>

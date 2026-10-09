@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
-import { MAGIC_KINDS, picksFor } from '../../engine/data'
+import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import { CORE_ATTRS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
 import type { Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
@@ -131,6 +131,8 @@ export function LedgerTab() {
             .map(q => <option key={q.uid} value={q.uid}>{data.qualities[q.id]?.name ?? q.name ?? q.id}</option>)}</select></label>}
         {op === 'initiate' && <label>{kind.resonance ? 'Echo' : 'Metamagic'} (optional)<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">None</option>{[...c.entries[initKind].values()].sort((x, y) => x.name.localeCompare(y.name))
+            // (a metamagic for adepts only, or magicians only, only for a runner who may take it)
+            .filter(e => initKind !== 'metamagics' || metamagicFits(b.magic, data.metamagics[e.id]?.user))
             .map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>}
         {op === 'drop' && <label>Item<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.purchases.map(x => <option key={x.uid} value={x.uid}>{(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}</option>)}</select></label>}

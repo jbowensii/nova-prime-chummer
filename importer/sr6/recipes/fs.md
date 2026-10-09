@@ -14,7 +14,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
   in lower case, so it reads as a caption and their weapons sit in the Ammo section: those with a TYPE or MODE are
   weapons (category revolution-arms).
 - Armor (SUIT UP): level-3 headings, each with its box (`DR SOCIAL CAPACITY AVAIL COST`; DR is the defense, SOCIAL
-  goes to the text). A box with distinct TYPE rows (Light, Medium, Heavy) is one entry a row. A box below its text can
+  its social attribute). A box with distinct TYPE rows (Light, Medium, Heavy) is one entry a row. A box below its text can
   stay in the text: taken back when it has no name column and a few rows. Style armor's level-2 section is its
   category. Vashon Island's table lands in the next section's text (`Cumulative`): it goes back to the section whose text
   names its first row, one entry a suit, its `Extras:` rows (and the label after its last row) an EXTRAS cell.

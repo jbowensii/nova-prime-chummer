@@ -43,7 +43,7 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="complexform"><xs:complexType><xs:complexContent><xs:extension base="sr6:ComplexForm">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
-        <xs:element name="metamagic"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
+        <xs:element name="metamagic"><xs:complexType><xs:complexContent><xs:extension base="sr6:Metamagic">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="echo"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
