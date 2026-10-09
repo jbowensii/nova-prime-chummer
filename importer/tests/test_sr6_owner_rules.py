@@ -176,3 +176,43 @@ class AccuracyRound2Test(unittest.TestCase):
         q = extract(md).get("qualities", {})
         self.assertEqual({n: e.get("karma") for n, e in q.items() if n.startswith("Zorpation")},
                          {"Zorpation I": "5", "Zorpation II": "8"})
+
+
+class FinalDecisionsTest(unittest.TestCase):
+    """The owner's final decisions (importer v6): items the prose states, the core rulebook's vocabularies."""
+
+    def test_prose_items(self):
+        from importer.sr6.recipes.crb import _band_tier, _skill_choices
+        md = "\n".join([
+            "<!-- page 9 -->", "# MAGIC", "## Zorpcraft", "### Zorpspelling",
+            "Zorpspelling comes in one of two forms: blue shield and unzorping.",
+            "#### Blue Shield", "Characters take a Zorpspell Major Action and roll.",
+            "#### Unzorping", "The character chooses the Zorpspell action and rolls.",
+            "#### Zorp Overdrive", "The systems can be boosted. Spend a Minor Action to zorp a system.",
+            "#### Zorp Magic", "The first use of zorp magic makes the character gain the Craving (Zorp, 1) negative "
+            "quality without any Karma.",
+            "#### Crafting with True Zorp",
+            "The artificer can imbue one additional attribute into it, selected from the list below.",
+            "**Bouncy.** The focus bounces.", "**Glowing.** The focus glows.",
+            "#### Zorp Coating", "Any piece of armor can have a zorp coating applied to it for 100 nuyen. This "
+            "coating does not use any capacity.",
+            "## Adepts", "### Adept Powers", "#### Zorp Sense", "**Cost:** 0.25 PP", "**Activation:** Passive",
+            "When this power is purchased, select a sense (sight, smell, or zorpvision). You get a bonus.", ""])
+        es = extract(md)
+        self.assertEqual({n: e.get("type") for n, e in es["actions"].items()},
+                         {"Blue Shield": "major", "Unzorping": "major", "Zorp Overdrive": "minor"})
+        self.assertEqual(sorted(es["senses"]), ["Sight", "Smell", "Zorpvision"])
+        self.assertEqual(es["adeptpowers"]["Zorp Sense"].find("choice").get("kind"), "sense")
+        q = es["qualities"]["Craving (Zorp)"]
+        self.assertEqual((q.get("kind"), q.get("karma"), q.get("granted")), ("negative", "0", "true"))
+        self.assertEqual({n: e.get("category") for n, e in es["trueelements"].items()},
+                         {"Bouncy": "True Zorp crafting", "Glowing": "True Zorp crafting"})
+        self.assertEqual(es["rules"]["Crafting with True Zorp"].find("choice").get("category"), "True Zorp crafting")
+        a = es["armor"]["Zorp Coating"]
+        self.assertEqual((a.get("category"), a.get("cost"), a.get("capacity")), ("Armor accessory", "100", "0"))
+        self.assertEqual(sorted(es["magictypes"])[:2], ["Adept", "Aspected magician"])  # (the core vocabulary)
+        self.assertEqual(_band_tier([["1–3", "Rating x 10¥"], ["4–6", "Rating x 1,000¥"]]),
+                         ("tier(R; 1-3: R*10; 4-6: R*1000)", 1, 6))
+        self.assertEqual([c[1]["kind"] for c in _skill_choices(
+            "choose one from Zorping, Blooping, or Piloting and a Specialization in the chosen skill as well as an "
+            "appropriate Knowledge Skill")], ["skill", "specialization", "knowledgeskill"])
