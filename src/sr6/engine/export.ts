@@ -58,6 +58,8 @@ export interface Sr6ExportRunner {
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
+  /** styles, each with the techniques learned under it */
+  martialArts: (Sr6ExportItem & { uid: string; techniques: (Sr6ExportItem & { uid: string })[] })[]
   purchases: Sr6ExportPurchase[]
   contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }[]
   /** deprecated (for the module's older versions): the first SIN's lifestyle that has one, as sins[].lifestyles has it */
@@ -217,6 +219,13 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
       const e = data.entry(p.kind, p.id)
       return defined({ ...(e ? item(c, e, true) : bare(p.kind, p.name ?? p.id, p.id)), uid: p.uid, pick: p.kind, level: p.level,
         bonuses: bonuses(p.bonuses, p.level ?? 1) })
+    }),
+    martialArts: b.martialArts.map(m => {
+      const line = (kind: 'martialarts' | 'martialtechniques', x: { uid: string; id: string; name?: string }) => {
+        const e = data.entry(kind, x.id)
+        return { ...(e ? item(c, e, true) : bare(kind, x.name ?? x.id, x.id)), uid: x.uid }
+      }
+      return { ...line('martialarts', m), techniques: m.techniques.map(t => line('martialtechniques', t)) }
     }),
     purchases: b.purchases.map(x => purchase(c, data, cr, x)),
     contacts: b.contacts.map(x => defined({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty,

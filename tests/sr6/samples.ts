@@ -120,6 +120,7 @@ export function mara(w: ReturnType<typeof sampleWorld>): Sr6Character {
   b.picks = [{ uid: 'p1', kind: 'spells', id: 'mus.zap-bolt' }, { uid: 'p2', kind: 'spells', id: 'mur.glimmer' },
     { uid: 'p3', kind: 'rituals', id: 'mus.test-ward' }, { uid: 'p4', kind: 'adeptpowers', id: 'mus.quick-step', level: 2, bonuses: [{ target: 'initDice', value: 1 }] },
     { uid: 'p5', kind: 'metamagics', id: 'mus.made-up-centering' }]
+  b.martialArts = [{ uid: 'm1', id: 'mus.made-up-fist', name: 'Made-up Fist', techniques: [{ uid: 'm1t1', id: 'mus.made-up-sweep', name: 'Made-up Sweep' }] }]
   b.purchases = [
     { uid: 'w1', kind: 'weapons', id: 'mus.pocket-zapper', qty: 1, accessories: [{ uid: 'w1a', kind: 'gear', id: 'mus.made-up-sight', qty: 1, accessories: [] }] },
     { uid: 'w2', kind: 'weapons', id: 'mur.odd-blade', qty: 1, note: 'Made-up engraving.', accessories: [] },

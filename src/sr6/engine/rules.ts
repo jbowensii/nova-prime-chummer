@@ -12,6 +12,7 @@ import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
+import { MARTIAL_CITE, styleName, techniqueFits, techniqueName } from './martial'
 
 interface Ctx { data: Sr6Data; cr: CreationRules; ch: Sr6Character; b: Sr6Build; p: Provider; budgets: Sr6Budgets }
 /** A broken rule: where (default: the rule's tab), what, and its citation when it isn't the setting's. */
@@ -157,6 +158,29 @@ const RULES: Rule[] = [
     return hits
   } },
 
+  // martial arts (FS p. 97): their prices (set when the runner has a style), a style once, a technique once under any
+  // style, and only of the style's categories, General or its signature
+  { code: 'martial.price', severity: 'warning', tab: 'qualities', setting: c => (c.b.martialArts.length ? ['karmaMartialArt', 'karmaTechnique'] : []), check: () => null },
+  { code: 'martial.duplicateStyle', severity: 'error', tab: 'qualities', check: c => c.b.martialArts
+    .filter((m, i, all) => all.findIndex(x => x.id === m.id) !== i)
+    .map(m => ({ path: `qualities.${m.uid}`, message: `${styleName(c.data, m)} is taken twice: a style is learned once.`, ...MARTIAL_CITE })) },
+  { code: 'martial.duplicateTechnique', severity: 'error', tab: 'qualities', check: c => {
+    const seen = new Set<string>(), hits: Hit[] = []
+    for (const m of c.b.martialArts) for (const t of m.techniques) {
+      if (seen.has(t.id)) hits.push({ path: `qualities.${m.uid}`, message: `${techniqueName(c.data, t)} is learned twice: a technique is learned once, under any style.`, ...MARTIAL_CITE })
+      seen.add(t.id)
+    }
+    return hits
+  } },
+  { code: 'martial.category', severity: 'error', tab: 'qualities', check: c => c.b.martialArts.flatMap(m => {
+    const style = c.data.entry('martialarts', m.id)
+    return m.techniques.flatMap(t => {
+      const e = c.data.entry('martialtechniques', t.id)
+      return techniqueFits(style, e) ? [] : [{ path: `qualities.${m.uid}`, ...MARTIAL_CITE,
+        message: `${e!.name} is a ${e!.attrs.category.split(';')[0].trim()} technique; ${style!.name} teaches ${style!.attrs.categories} and General ones.` }]
+    })
+  }) },
+
   { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
   { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {
@@ -288,6 +312,10 @@ const RULES: Rule[] = [
     for (const s of c.b.skills) if (!c.data.skills[s.id]) hits.push(gone(`skills.${s.id}`, s.id))
     for (const q of c.b.qualities) if (!c.data.qualities[q.id]) hits.push(gone(`qualities.${q.uid}`, q.name ?? q.id))
     for (const x of c.b.picks) if (!c.data.entry(x.kind, x.id)) hits.push(gone(`magic.${x.uid}`, x.name ?? x.id))
+    for (const m of c.b.martialArts) {
+      if (!c.data.entry('martialarts', m.id)) hits.push(gone(`qualities.${m.uid}`, m.name ?? m.id))
+      for (const t of m.techniques) if (!c.data.entry('martialtechniques', t.id)) hits.push(gone(`qualities.${m.uid}`, t.name ?? t.id))
+    }
     for (const { x, path } of lines(c.b)) if (x.id && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
     for (const s of c.b.sins) for (const l of s.lifestyles ?? [])
       if (!c.data.entry('lifestyles', l.id)) hits.push(gone(`contacts.lifestyle.${l.uid}`, l.id))

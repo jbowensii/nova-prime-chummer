@@ -47,6 +47,10 @@ export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | '
  *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */
 export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string; karma?: number }
 export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string }
+/** A martial arts style (catalog martialarts) and the techniques learned under it (martialtechniques; its signature one
+ *  free, Firing Squad p. 97). name: the catalog name when it was added. */
+export interface Sr6MartialArt { uid: string; id: string; name?: string; techniques: Sr6Technique[] }
+export interface Sr6Technique { uid: string; id: string; name?: string }
 /** types: the Sixth World Companion's contact types (lifepath's contact points go by type). */
 export interface Sr6Contact { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }
 export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' | 'government' | 'magic' | 'matrix' | 'media' | 'medical' | 'street'
@@ -78,6 +82,7 @@ export interface Sr6Build {
   knowledge: Sr6Knowledge[]
   qualities: Sr6Quality[]
   picks: Sr6Pick[]
+  martialArts: Sr6MartialArt[]
   purchases: Sr6Purchase[]
   contacts: Sr6Contact[]
   /** each with its lifestyles (an older file's single build lifestyle loads onto its first SIN: charxml.ts) */
@@ -97,6 +102,9 @@ export type Sr6Advance =
   | { op: 'quality'; line: Sr6Quality }
   | { op: 'buyoff'; target: string; line?: Sr6Quality }
   | { op: 'pick'; line: Sr6Pick }
+  /** a style (with its signature technique), or a technique learned under the style whose uid is target */
+  | { op: 'martialart'; line: Sr6MartialArt }
+  | { op: 'technique'; target: string; line: Sr6Technique }
   | { op: 'powerpoint' }
   | { op: 'initiate'; line?: Sr6Pick }
   | { op: 'purchase'; line: Sr6Purchase }
@@ -109,7 +117,7 @@ export type Sr6Advance =
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = ['attribute', 'skill', 'spec', 'expertise', 'knowledge', 'quality', 'buyoff', 'pick',
-  'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'lifestyle', 'convert', 'other']
+  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'lifestyle', 'convert', 'other']
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
 export type Sr6LedgerEntry = { id: string; at: string } & (
   | { type: 'finalize'; karma: number; nuyen: number }
@@ -154,7 +162,7 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
   cp: Object.fromEntries(CP_POOLS.map(p => [p, 0])) as Sr6Build['cp'],
   lifepath: [], metatype: '', magic: 'mundane', powerPointsBought: 0, initiation: 0, submersion: 0,
   attributes: Object.fromEntries(SR6_ATTRS.map(a => [a, { points: 0, adjust: 0, karma: 0 }])) as Sr6Build['attributes'],
-  skills: [], knowledge: [], qualities: [], picks: [], purchases: [], contacts: [], sins: [], karmaToNuyen: 0,
+  skills: [], knowledge: [], qualities: [], picks: [], martialArts: [], purchases: [], contacts: [], sins: [], karmaToNuyen: 0,
 })
 
 /** A new runner: no metatype, mundane, nothing spent. */

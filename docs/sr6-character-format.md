@@ -28,6 +28,7 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
     <knowledge uid="k1" kind="language" native="true" points="0" karma="0">…</knowledge>
     <quality uid="q1" id="crb.moonsight" level="1" free="true" name="Moonsight"/>
     <pick uid="p2" kind="adeptpowers" id="crb.quick-step" level="2"><bonus target="rea" value="1" perRating="true"/></pick>
+    <martialart uid="m1" id="crb.glow-fist" name="Glow Fist"><technique uid="m1t" id="crb.glow-jab" name="Glow Jab"/></martialart>
     <purchase uid="g1" kind="weapons" id="crb.zap-gun" qty="1">
       <purchase uid="g2" kind="gear" id="crb.zap-scope" qty="1"/>
       <snapshot><weapon id="crb.zap-gun" source="CRB" page="…" …><name>Zap Gun</name>…<text/></weapon></snapshot>
@@ -57,12 +58,12 @@ the book prints 4(6); the rules give 4(7)", the page cited); the file never corr
 
 `<migrated from to at>` (last): a catalog id the runner named that a re-import renamed, moved or re-kinded, turned into
 the new one when the runner was opened (`from` and `to` are `<kind>/<id>`; the entry's `<alias id kind>`,
-docs/sr6-data-format.md). Purchases and their accessories, picks, qualities, the lifestyles, the metatype and the ledger's
+docs/sr6-data-format.md). Purchases and their accessories, picks, martial arts and their techniques, qualities, the lifestyles, the metatype and the ledger's
 lines are turned when the new entry's kind fits the line; a line whose entry is gone with no successor keeps its id and
 its snapshot.
 
-`<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, purchases and
-accessories, lifestyles; career spends included), in the SR6 data files' own format with their text, refreshed on every
+`<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, martial arts and
+their techniques, purchases and accessories, lifestyles; career spends included), in the SR6 data files' own format with their text, refreshed on every
 change while the compendium is readable. When it no longer is (unshared or deleted), each copy stands in for its entry
 (prices, rules, sheet and exports) and Review notes "its source … is no longer available; the runner keeps its own
 copy". Book entries are never copied here.
@@ -84,6 +85,9 @@ copy". Book entries are never copied here.
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
+- `<martialart id>` (after the picks): a martial arts style (catalog `martialarts`), with a `<technique id>` (catalog
+  `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
+  free with the style). `name` on either: the catalog name when added. A file without any reads as none.
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
@@ -124,7 +128,8 @@ the entry its `event` names.
 - `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
   (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
   element), `buyoff` and `drop` (`target`: the uid of the line removed; the removed line may follow for the history),
-  `initiate` (an optional metamagic or echo `<pick>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
+  `initiate` (an optional metamagic or echo `<pick>`), `martialart` (the style with its signature `<technique>`),
+  `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
   uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
   entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`
   (the entry's `karma`: positive turns karma into nuyen, negative nuyen into karma) and `other`.

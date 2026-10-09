@@ -12,6 +12,7 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
 import { fitsHost } from './categories'
+import { learned } from './martial'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -23,6 +24,10 @@ export type Op =
   /** add a spell, power, form…; a leveled power taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
+  /** add a martial arts style (with its signature technique, a martialtechniques id: martial.ts signatureOf), or a
+   *  technique under the style whose uid is `style`; or take one away (a style goes with its techniques) */
+  | { op: 'martialart'; id: string; signature?: string } | { op: 'martialart'; remove: string }
+  | { op: 'technique'; style: string; id: string } | { op: 'technique'; style: string; remove: string }
   | { op: 'powerPoints'; delta: number }
   | { op: 'purchase'; kind: PurchaseKind; id?: string; rating?: number; qty?: number; grade?: string; custom?: { name: string; cost: number; avail: number; essence: number } }
   | { op: 'purchase'; remove: string }
@@ -198,6 +203,26 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.level < 1) return no('below-one')
       if (op.level > v.maxLevel) return no('max-level')
       x.level = op.level
+      return OK
+    }
+    case 'martialart': {
+      if ('remove' in op) return removeBy(b.martialArts, op.remove, l => { b.martialArts = l })
+      const e = data.entry('martialarts', op.id), sig = op.signature ? data.entry('martialtechniques', op.signature) : undefined
+      if (!e || (op.signature && !sig)) return no('unknown-entry')
+      if (b.martialArts.some(m => m.id === op.id)) return no('already-taken')
+      if (sig && learned(b).some(t => t.id === sig.id)) return no('already-taken')
+      b.martialArts.push({ uid: newId(), id: op.id, name: e.name, techniques: sig ? [{ uid: newId(), id: sig.id, name: sig.name }] : [] })
+      return OK
+    }
+    case 'technique': {
+      const m = b.martialArts.find(x => x.uid === op.style)
+      if (!m) return no('unknown-line')
+      if ('remove' in op) return removeBy(m.techniques, op.remove, l => { m.techniques = l })
+      const e = data.entry('martialtechniques', op.id)
+      if (!e) return no('unknown-entry')
+      // FS p. 97: each technique is learned once, under whichever style
+      if (learned(b).some(t => t.id === op.id)) return no('already-taken')
+      m.techniques.push({ uid: newId(), id: op.id, name: e.name })
       return OK
     }
     case 'powerPoints': return step(() => b.powerPointsBought, v => { b.powerPointsBought = v }, op.delta)

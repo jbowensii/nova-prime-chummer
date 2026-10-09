@@ -492,6 +492,38 @@
         }
       }
     },
+    "martialArt": {
+      "description": "A martial arts style on a runner, with the techniques learned under it (its signature one included).",
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "techniques"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "techniques": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/technique"
+          }
+        }
+      }
+    },
+    "technique": {
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        }
+      }
+    },
     "quality": {
       "$ref": "#/$defs/item",
       "unevaluatedProperties": false,
@@ -1146,6 +1178,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/pick"
+          }
+        },
+        "martialArts": {
+          "description": "Absent in files written before martial arts were added.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/martialArt"
           }
         },
         "purchases": {

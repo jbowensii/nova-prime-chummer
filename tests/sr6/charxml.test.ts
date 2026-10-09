@@ -34,6 +34,8 @@ function full(): Sr6Character {
   b.qualities = [{ uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' }, { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' }, { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11 }]
   b.picks = [{ uid: 'p1', kind: 'spells', id: 'crb.glow-ward' }, { uid: 'p2', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, name: 'Quick Step',
     bonuses: [{ target: 'rea', value: 1, perRating: true }, { target: 'initDice', value: 1 }] }]
+  b.martialArts = [{ uid: 'm1', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'm1t', id: 'crb.glow-jab', name: 'Glow Jab' }] },
+    { uid: 'm2', id: 'crb.made-up-gone', techniques: [] }]
   b.purchases = [
     { uid: 'g1', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
       snapshot: { id: 'crb.zap-gun', kind: 'weapons', name: 'Zap Gun', source: 'CRB', page: 251, attrs: { cost: '350', ar: '9/7/—/—/—' },
@@ -197,7 +199,9 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'pick', line: { uid: 'lp', kind: 'spells', id: 'crb.glow-ward', name: 'Glow Ward' } }, { op: 'powerpoint' }, { op: 'initiate' },
     { op: 'initiate', line: { uid: 'lm', kind: 'metamagics', id: 'crb.soft-echo' } }, { op: 'purchase', line: gear }, { op: 'drop', target: 'g4' },
     { op: 'drop', target: 'lg', line: gear }, { op: 'contact', line: { uid: 'lc', name: 'Mo', archetype: 'Fence', connection: 2, loyalty: 1 } },
-    { op: 'lifestyle', id: 'crb.cozy', months: 3 }, { op: 'lifestyle', id: 'crb.squat', months: 1, sin: 's2', uid: 'll' }, { op: 'convert', karma: 2 }, { op: 'convert', karma: -1 }, { op: 'other' }]
+    { op: 'lifestyle', id: 'crb.cozy', months: 3 }, { op: 'lifestyle', id: 'crb.squat', months: 1, sin: 's2', uid: 'll' }, { op: 'convert', karma: 2 }, { op: 'convert', karma: -1 }, { op: 'other' },
+    { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
+    { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } }]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [{ id: 'f', at, type: 'finalize', karma: 3, nuyen: 1250 }, { id: 'e', at, type: 'earn', karma: 9, nuyen: 3100, run: 'Made-up & run', date: '2026-10-04' },
     ...ops.map((advance, i): Sr6LedgerEntry => ({ id: `a${i}`, at, type: 'advance', advance, label: `Spend ${i}`,

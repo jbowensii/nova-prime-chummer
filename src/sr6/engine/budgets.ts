@@ -12,6 +12,7 @@ import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
+import { martialKarma } from './martial'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -165,6 +166,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('skills', 'Skill ranks bought with karma', skills, 'skills')
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
+  add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'qualities')
   const free = freeSpellSlots(b, cr, p), res = MAGIC_KINDS[b.magic].resonance
   add('spells', 'Spells and rituals past the free ones', Math.max(0, count(b, 'spells', 'rituals') - (res ? 0 : free)) * n0(cr, 'karmaSpell'), 'magic')
   add('complexForms', 'Complex forms past the free ones', Math.max(0, count(b, 'complexforms') - (res ? free : 0)) * n0(cr, 'karmaForm'), 'magic')

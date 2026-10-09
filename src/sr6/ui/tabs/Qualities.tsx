@@ -1,11 +1,12 @@
 // Qualities: the positive and negative ones taken (a leveled one with its level, a metatype trait marked free and kept),
-// a picker for each side, and the net karma line against the cap.
+// a picker for each side, and the net karma line against the cap; then the martial arts (MartialArts.tsx).
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
 import { qualityCost, qualityKarma } from '../../engine/budgets'
 import { num } from '../../engine/creation'
 import { n, useSr6Editor } from '../editor'
 import { House } from '../Picker'
+import { MartialArts } from './MartialArts'
 
 export function QualitiesTab() {
   const { ch, c, data, cr, act } = useSr6Editor()
@@ -48,6 +49,7 @@ export function QualitiesTab() {
       <h3>Negative</h3>
       {table(false)}
       <button className="btn" onClick={() => setPicking('negative')}>Add a negative quality…</button>
+      <MartialArts />
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive')).map(q => ({
           id: q.id, name: q.name, disabled: b.qualities.some(x => x.id === q.id),

@@ -161,6 +161,7 @@
       <xs:element name="knowledge" type="c:Knowledge" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="quality" type="c:Quality" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="pick" type="c:Pick" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="martialart" type="c:MartialArt" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
       <!-- an older file's one lifestyle, never written now: it loads onto the first <sin> (a runner with none gets a real SIN
@@ -264,6 +265,19 @@
     <xs:attribute name="name" type="xs:string"/>
   </xs:complexType>
 
+  <!-- a martial arts style and the techniques learned under it (Firing Squad p. 97); name: the catalog name when added -->
+  <xs:complexType name="MartialArt">
+    <xs:sequence><xs:element name="technique" type="c:Technique" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Technique">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
   <xs:complexType name="Contact">
     <xs:attribute name="uid" type="xs:string" use="required"/>
     <xs:attribute name="name" type="xs:string" use="required"/>
@@ -293,6 +307,8 @@
       <xs:element name="knowledge" type="c:Knowledge"/>
       <xs:element name="quality" type="c:Quality"/>
       <xs:element name="pick" type="c:Pick"/>
+      <xs:element name="martialart" type="c:MartialArt"/>
+      <xs:element name="technique" type="c:Technique"/>
       <xs:element name="purchase" type="c:Purchase"/>
       <xs:element name="contact" type="c:Contact"/>
     </xs:choice>
@@ -309,9 +325,9 @@
     <!-- earn: the date of the run; void: the id of the entry voided -->
     <xs:attribute name="date" type="xs:string"/>
     <xs:attribute name="event" type="xs:string"/>
-    <!-- advance: the op, its target (an attribute, a skill id, or the uid of the line bought off or dropped), name (a
-         specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under, uid: the lifestyle's
-         uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma -->
+    <!-- advance: the op, its target (an attribute, a skill id, the uid of the line bought off or dropped, or a technique's
+         style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
+         uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -319,7 +335,7 @@
         <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
-        <xs:enumeration value="other"/>
+        <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>

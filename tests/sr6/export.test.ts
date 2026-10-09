@@ -213,6 +213,9 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
       { uid: 's2', name: 'Birth Record', kind: 'real', licences: [], lifestyles: [] }])
     // deprecated, for the module's older versions: the first lifestyle, without its uid
     expect(r.lifestyle).toEqual({ id: 'mus.made-up-squat', name: 'Made-up Hideout', months: 2, cost: 450 })
+    expect(r.martialArts).toMatchObject([{ uid: 'm1', id: 'mus.made-up-fist', kind: 'martialarts', source: 'MUS', canon: true,
+      attrs: { categories: 'Striking, Grappling', signature: 'Made-up Sweep' }, description: 'An invented style.',
+      techniques: [{ uid: 'm1t1', id: 'mus.made-up-sweep', kind: 'martialtechniques', attrs: { category: 'Striking' } }] }])
   })
   test('a runner with no lifestyle and no gender: lifestyle null, no gender key', () => {
     const m = mara(sampleWorld())
