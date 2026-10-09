@@ -113,6 +113,8 @@ export const REASONS: Record<string, string> = {
   'not-latest': 'Only the newest spend can be voided: void the later ones first.',
   'not-voidable': 'That entry can’t be voided.',
   'already-voided': 'That entry is already voided.',
+  'not-signature': 'Only the style’s signature technique comes with it: learn the others one by one.',
+  'wrong-category': 'The style doesn’t teach techniques of that category (Firing Squad p. 97).',
 }
 const LABELS = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
 /** A refusal code as a sentence; `unset:<key>` names the setting and where it's set. */

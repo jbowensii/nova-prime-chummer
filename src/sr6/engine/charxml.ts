@@ -7,7 +7,7 @@ import {
   BONUS_TARGETS, CONTACT_TYPES, CORE_ATTRS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
   SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
   type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
-  type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality,
+  type Sr6MartialArt, type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
@@ -30,6 +30,8 @@ function purchaseXml(p: Sr6Purchase): string {
 const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name })
 const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
+const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
+const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
 const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
   types: c.types?.length ? c.types.join(' ') : undefined })
 
@@ -40,7 +42,7 @@ function buildXml(b: Sr6Build): string {
     ...b.lifepath.map(m => el('lifemodule', { id: m.id }, Object.entries(m.choices).map(([index, pick]) => el('choice', { index, pick })).join(''))),
     ...SR6_ATTRS.map(id => el('attribute', { id, ...b.attributes[id] })),
     ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
-    ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.purchases.map(purchaseXml),
+    ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.martialArts.map(martialXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
     ...(b.lifestyle ? [el('lifestyle', { id: b.lifestyle.id, months: b.lifestyle.months })] : []),
     ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating }, s.licences.map(l => el('licence', l)).join(''))),
@@ -60,6 +62,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'quality': return [{}, qualityXml(a.line)]
     case 'buyoff': return [{ target: a.target }, a.line ? qualityXml(a.line) : '']
     case 'pick': return [{}, pickXml(a.line)]
+    case 'martialart': return [{}, martialXml(a.line)]
+    case 'technique': return [{ target: a.target }, techniqueXml(a.line)]
     case 'initiate': return [{}, a.line ? pickXml(a.line) : '']
     case 'purchase': return [{}, purchaseXml(a.line)]
     case 'drop': return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
@@ -151,6 +155,9 @@ const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid')
   karma: num(e, 'karma'), free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
 const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
   id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
+const readTechnique = (e: Element) => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', name: str(e, 'name') })
+const readMartial = (e: Element, fix?: string[]): Sr6MartialArt => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '',
+  name: str(e, 'name'), techniques: each(kids(e, 'technique'), readTechnique, label, fix) })
 const readContact = (e: Element): Sr6Contact => {
   const types = (e.getAttribute('types') ?? '').split(/\s+/).filter(t => (CONTACT_TYPES as string[]).includes(t)) as ContactType[]
   return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '', archetype: e.getAttribute('archetype') ?? '',
@@ -181,6 +188,7 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.knowledge = each(kids(b, 'knowledge'), readKnowledge, label, fix)
   out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
   out.picks = each(kids(b, 'pick'), readPick, label, fix)
+  out.martialArts = each(kids(b, 'martialart'), e => readMartial(e, fix), label, fix)
   out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix), label, fix)
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
   const ls = kid(b, 'lifestyle')
@@ -214,6 +222,8 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'quality': return { op, line: line(e, 'quality', readQuality, true) }
     case 'buyoff': return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality) })
     case 'pick': return { op, line: line(e, 'pick', readPick, true) }
+    case 'martialart': return { op, line: line(e, 'martialart', x => readMartial(x, fix), true) }
+    case 'technique': return { op, target: req(e, 'target'), line: line(e, 'technique', readTechnique, true) }
     case 'initiate': return def({ op, line: line(e, 'pick', readPick) })
     case 'purchase': return { op, line: line(e, 'purchase', purchase, true) }
     case 'drop': return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })

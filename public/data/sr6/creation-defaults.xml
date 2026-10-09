@@ -2,6 +2,7 @@
 <!-- The standard SR6 creation settings the app ships with (creation.xsd; docs/sr6-data-format.md, Creation rules): the
      numbers only, with the printed page of the book that gives each, no book text. CRB: Shadowrun, Sixth World Core
      Rulebook (CAT28000, current printing). SWC: Sixth World Companion (CAT28005): sum-to-ten, point buy, lifepath.
+     FS: Firing Squad (CAT28002): martial arts.
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
      as a copy of the server's. Left unset (no book prints them): maxKarmaLeft, karmaToNuyenMax, skillPointsExpertise
      (no expertise at creation, CRB p. 65), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
@@ -34,6 +35,8 @@
   <setting key="karmaInitiationBase" value="10" source="CRB" page="68"/>
   <setting key="karmaInitiationPerGrade" value="1" source="CRB" page="68"/>
   <setting key="positiveQualityFactor" value="1" source="CRB" page="66"/>
+  <setting key="karmaMartialArt" value="7" source="FS" page="97"/>
+  <setting key="karmaTechnique" value="5" source="FS" page="97"/>
   <setting key="advance.expertise" value="5" source="CRB" page="68"/>
   <setting key="advance.qualityFactor" value="2" source="CRB" page="69"/>
   <setting key="advance.buyOffFactor" value="2" source="CRB" page="69"/>

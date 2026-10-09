@@ -12,10 +12,12 @@ import type { Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, type PickedItem } from '../Picker'
 import { entryLabel } from '../../engine/categories'
+import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
 
 const OPS = [['attribute', 'Raise attribute'], ['skill', 'Raise skill'], ['spec', 'Specialization'], ['expertise', 'Expertise'],
   ['knowledge', 'Knowledge or language'], ['quality', 'Buy quality'], ['buyoff', 'Buy off quality'],
-  ['pick', 'Learn spell, ritual, complex form or adept power'], ['powerpoint', 'Power point (mystic adepts)'],
+  ['pick', 'Learn spell, ritual, complex form or adept power'], ['martialart', 'Learn martial arts style'],
+  ['technique', 'Learn martial arts technique'], ['powerpoint', 'Power point (mystic adepts)'],
   ['initiate', 'Initiate or submerge'], ['purchase', 'Buy gear'], ['drop', 'Drop gear'], ['lifestyle', 'Lifestyle'], ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'], ['n2k', 'Nuyen to karma'], ['other', 'Other']] as const
 type OpKey = (typeof OPS)[number][0]
@@ -58,6 +60,11 @@ export function LedgerTab() {
       case 'quality': return e ? { op, line: { uid: '', id: e.id, level: 1 } } : null
       case 'buyoff': return f.target ? { op, target: f.target } : null
       case 'pick': return e ? { op, line: { uid: '', kind: e.kind as PickKind, id: e.id } } : null
+      case 'martialart': {
+        const sig = e && signatureOf(b, c.entries.martialtechniques.values(), e)
+        return e ? { op, line: { uid: '', id: e.id, techniques: sig ? [{ uid: '', id: sig.id }] : [] } } : null
+      }
+      case 'technique': return f.target && e ? { op, target: f.target, line: { uid: '', id: e.id } } : null
       case 'powerpoint': return { op }
       case 'initiate': return { op, ...(f.target ? { line: { uid: '', kind: initKind as PickKind, id: f.target } } : {}) }
       case 'purchase': return e ? { op, line: { uid: '', kind: e.kind as PurchaseKind, id: e.id, qty: 1, accessories: [],
@@ -123,7 +130,9 @@ export function LedgerTab() {
           <label>Kind<select value={f.kind} onChange={e => set({ kind: e.target.value })}><option value="knowledge">Knowledge</option><option value="language">Language</option></select></label>
           <label>Name<input value={f.name} onChange={e => set({ name: e.target.value })} /></label>
         </>}
-        {(op === 'quality' || op === 'pick' || op === 'purchase') && <div style={{ alignSelf: 'end' }}>
+        {op === 'technique' && <label>Style<select value={f.target} onChange={e => { set({ target: e.target.value }); setPicked(null) }}>
+          <option value="">Pick one</option>{b.martialArts.map(m => <option key={m.uid} value={m.uid}>{styleName(data, m)}</option>)}</select></label>}
+        {(op === 'quality' || op === 'pick' || op === 'purchase' || op === 'martialart' || (op === 'technique' && f.target)) && <div style={{ alignSelf: 'end' }}>
           {picked && <span>{entryLabel(picked.e)}{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
           <button className="btn small" onClick={() => setPicking(true)} disabled={op === 'pick' && !learnable.length}>{picked ? 'Change…' : 'Pick from the catalog…'}</button></div>}
         {op === 'buyoff' && <label>Quality<select value={f.target} onChange={e => set({ target: e.target.value })}>
@@ -186,9 +195,11 @@ export function LedgerTab() {
       </table></div>
 
       <CatalogPicker open={picking} onClose={() => setPicking(false)} grades={op === 'purchase'}
-        title={op === 'quality' ? 'Buy a quality' : op === 'pick' ? 'Learn' : 'Buy gear'}
-        kinds={op === 'quality' ? ['qualities'] : op === 'pick' ? learnable : PURCHASE_KINDS as Sr6Kind[]}
-        filter={op === 'quality' ? e => data.qualities[e.id]?.positive === true : undefined}
+        title={op === 'quality' ? 'Buy a quality' : op === 'pick' || op === 'martialart' || op === 'technique' ? 'Learn' : 'Buy gear'}
+        kinds={op === 'quality' ? ['qualities'] : op === 'pick' ? learnable : op === 'martialart' ? ['martialarts']
+          : op === 'technique' ? ['martialtechniques'] : PURCHASE_KINDS as Sr6Kind[]}
+        filter={op === 'quality' ? e => data.qualities[e.id]?.positive === true
+          : op === 'technique' ? e => techniqueFits(data.entry('martialarts', b.martialArts.find(m => m.uid === f.target)?.id ?? ''), e) : undefined}
         onAdd={x => { setPicked(x); return null }} />
       <Modal open={confirm} onClose={() => setConfirm(false)} title="Record this spend?"
         actions={<><button className="btn" onClick={() => setConfirm(false)}>Cancel</button><button className="btn primary" onClick={spend}>Record it</button></>}>

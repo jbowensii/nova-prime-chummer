@@ -3,7 +3,7 @@
 // Sr6Catalog.moved). On load (the editor's prepare) every line naming an id the catalog no longer has, and an alias
 // moves, is pointed at the new entry, when its kind still fits the line (a purchase stays a purchase kind, a pick a pick
 // kind); each change is recorded in `migrated`, once: the saved runner then holds the new ids.
-import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Character, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
+import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Character, type Sr6MartialArt, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
 import type { Sr6Catalog, Sr6Kind } from '../model/types'
 import { entryKey } from './load'
 
@@ -23,15 +23,19 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
   }
   const pick = <T extends Sr6Pick | undefined>(p: T): T => { const m = p && to<PickKind>(p.kind, p.id, PICK_KINDS); return m ? { ...p, ...m } : p }
   const quality = <T extends Sr6Quality | undefined>(q: T): T => { const m = q && to('qualities', q.id, ['qualities']); return m ? { ...q, id: m.id } : q }
+  const technique = <T extends { id: string }>(t: T): T => { const m = to('martialtechniques', t.id, ['martialtechniques']); return m ? { ...t, id: m.id } : t }
+  const martial = (x: Sr6MartialArt): Sr6MartialArt => { const m = to('martialarts', x.id, ['martialarts']); return { ...x, ...m ? { id: m.id } : {}, techniques: x.techniques.map(technique) } }
   const b = ch.build
   const life = b.lifestyle && to('lifestyles', b.lifestyle.id, ['lifestyles']), meta = to('metatypes', b.metatype, ['metatypes'])
   const build = { ...b, purchases: b.purchases.map(purchase), picks: b.picks.map(pick), qualities: b.qualities.map(quality),
+    martialArts: b.martialArts.map(martial),
     ...life ? { lifestyle: { ...b.lifestyle!, id: life.id } } : {}, ...meta ? { metatype: meta.id } : {} }
   const ledger = ch.ledger.map(e => {
     if (e.type !== 'advance') return e
     const a = e.advance
     const advance = a.op === 'purchase' ? { ...a, line: purchase(a.line) } : a.op === 'drop' && a.line ? { ...a, line: purchase(a.line) }
       : a.op === 'pick' ? { ...a, line: pick(a.line) } : a.op === 'initiate' && a.line ? { ...a, line: pick(a.line) }
+        : a.op === 'martialart' ? { ...a, line: martial(a.line) } : a.op === 'technique' ? { ...a, line: technique(a.line) }
         : a.op === 'quality' ? { ...a, line: quality(a.line) } : a.op === 'buyoff' && a.line ? { ...a, line: quality(a.line) } : a
     return { ...e, advance }
   })

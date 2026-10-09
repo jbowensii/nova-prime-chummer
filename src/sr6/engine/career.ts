@@ -14,6 +14,7 @@ import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
+import { isSignature, learned, techniqueFits } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
 /** Contact and Other: the amounts and label the player types. */
@@ -54,6 +55,8 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (had?.level !== undefined) had.level += 1; else if (!had) b.picks.push(structuredClone(a.line))
       return
     }
+    case 'martialart': b.martialArts.push(structuredClone(a.line)); return
+    case 'technique': b.martialArts.find(m => m.uid === a.target)?.techniques.push(structuredClone(a.line)); return
     case 'powerpoint': b.powerPointsBought += 1; return
     case 'initiate':
       if (MAGIC_KINDS[b.magic].resonance) b.submersion += 1; else b.initiation += 1
@@ -208,6 +211,26 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (careerPowerPoints(b, data, p).left < v!.cost!) no('no-power-points')
       return { label: `Adept power: ${e.name}${v!.perLevel ? ` ${had ? (had.level ?? 1) + 1 : 1}` : ''}`, karma: 0 }
     }
+    case 'martialart': {
+      // FS p. 97: a style comes with its signature technique, free; its other techniques are bought one by one
+      const e = data.entry('martialarts', a.line.id) ?? no('unknown-entry')
+      if (b.martialArts.some(m => m.id === e.id)) no('already-known')
+      for (const t of a.line.techniques) {
+        const te = data.entry('martialtechniques', t.id) ?? no('unknown-entry')
+        if (!isSignature(e, te.name)) no('not-signature')
+        if (learned(b).some(x => x.id === te.id)) no('already-known')
+      }
+      const sig = a.line.techniques.length ? ` with ${data.entry('martialtechniques', a.line.techniques[0].id)!.name}` : ''
+      return { label: `Martial art: ${e.name}${sig}`, karma: need('karmaMartialArt') }
+    }
+    case 'technique': {
+      const m = b.martialArts.find(x => x.uid === a.target) ?? no('not-taken'), style = data.entry('martialarts', m.id)
+      const e = data.entry('martialtechniques', a.line.id) ?? no('unknown-entry')
+      if (learned(b).some(x => x.id === e.id)) no('already-known')
+      if (!techniqueFits(style, e)) no('wrong-category')
+      const karma = isSignature(style, e.name) ? 0 : need('karmaTechnique')
+      return { label: `Technique: ${e.name} (${style?.name ?? m.name ?? m.id})`, karma }
+    }
     case 'powerpoint':
       if (!k.paysPowers) no('cannot-learn')
       if (b.powerPointsBought >= attrRating(b, 'mag', p)) no('at-maximum')
@@ -278,6 +301,9 @@ export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Creat
     case 'quality': adv.line = named(adv.line, data.qualities[adv.line.id]?.name); break
     case 'pick': adv.line = named({ ...adv.line, ...(data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
       data.entry(adv.line.kind, adv.line.id)?.name); break
+    case 'martialart': adv.line = { ...named(adv.line, data.entry('martialarts', adv.line.id)?.name),
+      techniques: adv.line.techniques.map(t => named(t, data.entry('martialtechniques', t.id)?.name)) }; break
+    case 'technique': adv.line = named(adv.line, data.entry('martialtechniques', adv.line.id)?.name); break
     case 'initiate': if (adv.line) adv.line = named(adv.line, data.entry(adv.line.kind, adv.line.id)?.name); break
     case 'purchase': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
     case 'contact': adv.line = named(adv.line); break

@@ -109,6 +109,14 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
 
 The rule sections stay as they were (the rules contents still list them).
 
+**Martial arts** (Firing Squad p. 97). The builder buys a style on the Qualities tab (`karmaMartialArt`); its signature
+technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique
+(`karmaTechnique`) is learned under a style, of one of its `categories` (compared without case) or `General`; career
+spends are the Ledger's `martialart` and `technique` ops at the same prices. Review flags a style taken twice
+(`martial.duplicateStyle`), a technique learned twice under any styles (`martial.duplicateTechnique`) and one outside its
+style's categories (`martial.category`), each cited to Firing Squad p. 97. A technique's other prerequisites (an adept
+power, another technique) are in its text and aren't checked.
+
 **Qualities granted and chosen** (importer v4, `sections.py`, `effects.py`). A section that lists what it grants
 (`### Powers` or `### Characteristics` under `## Returned Soldiers`, its text naming the section's noun) makes each heading under the list a quality with Karma 0, `granted`, its
 category the section's noun and the list's (`Returned Soldier power`); a power is positive, a characteristic (which
@@ -498,6 +506,8 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Karma prices | `karmaInitiationBase` | number | all | Initiation or submersion: base |
 | Karma prices | `karmaInitiationPerGrade` | number | all | Initiation or submersion: per grade |
 | Karma prices | `positiveQualityFactor` | number | optional | Positive qualities cost their karma times (unset: 1) |
+| Karma prices | `karmaMartialArt` | number | optional | Martial arts style (it comes with its signature technique; unset: counts 0, Review warns, not bought after creation) |
+| Karma prices | `karmaTechnique` | number | optional | Martial arts technique (a style’s signature one is free; unset: as `karmaMartialArt`) |
 | Advancement | `advance.expertise` | number | optional | Expertise after creation |
 | Advancement | `advance.qualityFactor` | number | optional | A positive quality after creation costs its karma times |
 | Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |

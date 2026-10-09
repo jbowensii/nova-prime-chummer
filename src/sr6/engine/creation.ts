@@ -52,6 +52,8 @@ export const CREATION_KEYS: CreationKey[] = [
     ['karmaKnowledge', 'Knowledge or language rank'], ['karmaSpell', 'Extra spell or ritual'], ['karmaForm', 'Extra complex form'],
     ['karmaInitiationBase', 'Initiation or submersion: base'], ['karmaInitiationPerGrade', 'Initiation or submersion: per grade']]),
   ...n('Karma prices', [], [['positiveQualityFactor', 'Positive qualities cost their karma times (unset: 1)']]),
+  // optional: unset, a style or technique counts 0 karma (Review warns) and can't be bought after creation
+  ...n('Karma prices', [], [['karmaMartialArt', 'Martial arts style'], ['karmaTechnique', 'Martial arts technique (a style’s signature one is free)']]),
   // career play (S3; the Karma prices above are the career prices too): optional, unset refuses the spend that needs it
   // (a cap: not applied; nuyen to karma: the optional rule is off)
   ...n('Advancement', [], [['advance.expertise', 'Expertise after creation'],

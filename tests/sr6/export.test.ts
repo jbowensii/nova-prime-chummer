@@ -207,6 +207,9 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
     expect(booster.values).toMatchObject({ rating: 1, cost: 1200, essence: 0.12, avail: 4, legality: 'I' })
     expect(booster.accessories[0].values).toMatchObject({ capacity: 1, cost: 100 })
     expect(r.lifestyle).toEqual({ id: 'mus.made-up-squat', name: 'Made-up Hideout', months: 2, cost: 450 })
+    expect(r.martialArts).toMatchObject([{ uid: 'm1', id: 'mus.made-up-fist', kind: 'martialarts', source: 'MUS', canon: true,
+      attrs: { categories: 'Striking, Grappling', signature: 'Made-up Sweep' }, description: 'An invented style.',
+      techniques: [{ uid: 'm1t1', id: 'mus.made-up-sweep', kind: 'martialtechniques', attrs: { category: 'Striking' } }] }])
   })
   test('MUS has every kind; MUX only priorities and metatypes; the compendium’s grunt has its token', () => {
     const [m, x] = files()['test-books.json'].books!
