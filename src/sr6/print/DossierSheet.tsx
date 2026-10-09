@@ -8,7 +8,7 @@ import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { allSkills, band, PICKS, runnerView } from './view'
@@ -152,7 +152,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
         </Panel>
         <Panel id="d-ids" title="IDs / lifestyles">
           <table><thead><tr><th>SIN</th><th>Rating</th><th>Licenses</th><th>Lifestyles</th></tr></thead>
-            <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{s.name || 'SIN'}{s.gender && <span className="d-small"> {s.gender}</span>}</td>
+            <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{sinName(s)}{s.gender && <span className="d-small"> {s.gender}</span>}</td>
               <td>{s.kind === 'real' ? 'real' : s.rating ?? 1}</td>
               <td>{s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</td><td>{v.lifeOf(s)}</td></tr>), 2, 4)}</tbody></table>
         </Panel>

@@ -3,7 +3,7 @@
 // <formula>, else the printed string read by rated());
 // a value the app can't read counts 0 (priced().ok false, Review warns); an unset creation setting counts 0 (Review
 // warns that it isn't set). Never NaN.
-import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Skill } from '../model/character'
+import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Sin, type Sr6Skill, sinName } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data, type Sr6QualityView } from './data'
@@ -184,6 +184,13 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }
 }
 
+/** A SIN's nuyen, at creation and in career alike: a fake one's rating × fakeSinPerRating (a real one comes with its
+ *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating. `price` reads a setting. */
+export function sinCost(sin: Sr6Sin, price: (key: string) => number): number {
+  const own = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
+  return own + (sin.licences.length ? sin.licences.reduce((t, l) => t + l.rating, 0) * price('licencePerRating') : 0)
+}
+
 const purchaseName = (x: Sr6Purchase, data: Sr6Data) => { const e = entryOf(x, data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
 
 export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
@@ -194,15 +201,12 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       priced(x, data, cr).cost, PURCHASE_TAB[x.kind])
   for (const sin of b.sins) for (const l of sin.lifestyles ?? []) {
     const e = data.entry('lifestyles', l.id)
-    add(`lifestyle:${l.uid}`, `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sin.name || 'SIN'})`,
+    add(`lifestyle:${l.uid}`, `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sinName(sin)})`,
       (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months, 'contacts')
   }
   for (const sin of b.sins) {
-    // a real SIN comes with its quality; its licences are still bought
-    const licences = sin.licences.reduce((t, l) => t + l.rating, 0) * n0(cr, 'licencePerRating')
-    const own = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * n0(cr, 'fakeSinPerRating')
-    const what = sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
-    add(`sin:${sin.uid}`, `${sin.name || 'SIN'} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, own + licences, 'contacts')
+    const what = sin.placeholder ? 'placeholder' : sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
+    add(`sin:${sin.uid}`, `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, sinCost(sin, k => n0(cr, k)), 'contacts')
   }
   const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => q.id === debt)
   const karma = toNuyen(b, cr), converted = karma * n0(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')

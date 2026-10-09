@@ -325,6 +325,54 @@ test('an older lifestyle spend (no SIN) replays on the first SIN: more months of
   expect(currentBuild(moved).sins[0].lifestyles).toEqual([{ uid: 'l1', id: 'crb.squat', months: 1 }])
 })
 
+test('a lifestyle spend is its monthly cost × months off the nuyen; short of nuyen it’s refused', () => {
+  const { data, cr } = made(), ch = runner({ nuyen: 6000 })
+  ch.build.sins = [{ uid: 's1', name: 'Jo', kind: 'real', licences: [] }]
+  const r = ok(record(ch, { op: 'lifestyle', id: 'crb.cozy', months: 2, sin: 's1' }, data, cr))
+  expect(r.ledger.at(-1)).toMatchObject({ label: 'Lifestyle: Cozy × 2 months (Jo)', nuyen: 5000 })
+  expect(balances(r).nuyen).toBe(1000)
+  expect(preview(r, { op: 'lifestyle', id: 'crb.cozy', months: 1, sin: 's1' }, data, cr)).toEqual({ ok: false, reason: 'not-enough-nuyen' })
+})
+
+test('a SIN bought in career costs what creation charges: a fake one rating × its price plus its licences, a real one free', () => {
+  const { data, cr } = made(), ch = runner({ nuyen: 5000 })   // invented prices: 1,500¥ per fake SIN rating, 300¥ per licence rating
+  const sin = (o: Partial<Extract<Sr6Advance, { op: 'sin' }>['line']> = {}): Sr6Advance =>
+    ({ op: 'sin', line: { uid: '', name: 'Jo Fake', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }], ...o } })
+  expect(preview(ch, sin(), data, cr)).toEqual({ ok: true, label: 'SIN: Jo Fake (fake, rating 2, Zapper 1)', karma: 0, nuyen: 3300 })
+  expect(preview(ch, sin({ kind: 'real', rating: undefined, licences: [] }), data, cr)).toEqual({ ok: true, label: 'SIN: Jo Fake (real)', karma: 0, nuyen: 0 })
+  expect(preview(ch, sin({ kind: 'real', rating: undefined }), data, cr)).toMatchObject({ ok: true, nuyen: 300 })
+  // refusals: no name, a rating below one, a licence above the SIN, short of nuyen, an unset price, a uid that isn't a placeholder
+  expect(preview(ch, sin({ name: ' ' }), data, cr)).toEqual({ ok: false, reason: 'needs-name' })
+  expect(preview(ch, sin({ rating: 0 }), data, cr)).toEqual({ ok: false, reason: 'below-one' })
+  expect(preview(ch, sin({ licences: [{ name: 'Zapper', rating: 3 }] }), data, cr)).toEqual({ ok: false, reason: 'licence-above-sin' })
+  expect(preview(ch, sin({ rating: 4 }), data, cr)).toEqual({ ok: false, reason: 'not-enough-nuyen' })
+  const unset = made({ unset: ['fakeSinPerRating'] })
+  expect(preview(ch, sin(), unset.data, unset.cr)).toEqual({ ok: false, reason: 'unset:fakeSinPerRating' })
+  expect(preview(ch, sin({ kind: 'real', rating: undefined, licences: [] }), unset.data, unset.cr)).toMatchObject({ ok: true, nuyen: 0 })
+  expect(preview(ch, sin({ uid: 'nope' }), data, cr)).toEqual({ ok: false, reason: 'unknown-line' })
+  // recorded: a new uid, then a lifestyle bought under it
+  const r = ok(record(ch, sin(), data, cr))
+  expect(balances(r).nuyen).toBe(1700)
+  const s = currentBuild(r).sins[0]
+  expect(s).toEqual({ uid: expect.any(String), name: 'Jo Fake', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }] })
+  expect(s.uid).not.toBe('')
+  expect(ch.build.sins).toEqual([])  // the finalized build is untouched
+  expect(preview(r, { op: 'lifestyle', id: 'crb.cozy', months: 1, sin: s.uid }, data, cr)).toEqual({ ok: false, reason: 'not-enough-nuyen' })
+})
+
+test('naming the placeholder SIN in career makes it a normal SIN with its lifestyles; Review’s note goes', () => {
+  const { data, cr } = made(), ch = runner()
+  ch.build.sins = [{ uid: 'ph', name: '', kind: 'real', licences: [], placeholder: true, lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] }]
+  expect(validateCareer(data, cr, ch).map(v => v.code)).toContain('sin.placeholder')
+  const named: Sr6Advance = { op: 'sin', line: { uid: 'ph', name: 'Jo Named', kind: 'fake', rating: 1, licences: [] } }
+  expect(preview(ch, named, data, cr)).toEqual({ ok: true, label: 'SIN: Jo Named (fake, rating 1), was the unnamed SIN', karma: 0, nuyen: 1500 })
+  const r = ok(record(ch, named, data, cr))
+  expect(currentBuild(r).sins).toEqual([{ uid: 'ph', name: 'Jo Named', kind: 'fake', rating: 1, licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] }])
+  expect(validateCareer(data, cr, r).map(v => v.code)).not.toContain('sin.placeholder')
+  // only a placeholder is named this way
+  expect(preview(r, { ...named, line: { ...named.line, name: 'Again' } }, data, cr)).toEqual({ ok: false, reason: 'unknown-line' })
+})
+
 // --- finalize and Back to draft ---
 
 test('finalize adds a finalize entry; Back to draft only with nothing live to undo; finalize again starts the balances anew', () => {

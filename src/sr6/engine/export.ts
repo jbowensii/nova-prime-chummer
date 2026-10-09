@@ -67,7 +67,8 @@ export interface Sr6ExportRunner {
   contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }[]
   /** deprecated (for the module's older versions): the first SIN's lifestyle that has one, as sins[].lifestyles has it */
   lifestyle: Omit<Sr6ExportLifestyle, 'uid'> | null
-  sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; licences: { name: string; rating: number }[]
+  /** placeholder: an unnamed stand-in holding an older file's lifestyle (name '', kind real); left out otherwise */
+  sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; placeholder?: true; licences: { name: string; rating: number }[]
     lifestyles: Sr6ExportLifestyle[] }[]
   karma: number; nuyen: number
   /** for reading only: the module writes none of it (Eden derives its own) */
@@ -202,7 +203,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
   const voided = voidedIds(ch)
-  const sins = b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender,
+  const sins = b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder,
     licences: s.licences.map(l => ({ name: l.name, rating: l.rating })),
     lifestyles: (s.lifestyles ?? []).map(l => { const e = data.entry('lifestyles', l.id)
       return defined({ uid: l.uid, id: l.id, name: e?.name ?? l.id, months: l.months, cost: num(e?.attrs.cost) }) }) }))

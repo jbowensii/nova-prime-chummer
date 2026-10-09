@@ -7,7 +7,7 @@ import {
   BONUS_TARGETS, CONTACT_TYPES, CORE_ATTRS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
   SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
   type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
-  type Sr6MartialArt, type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality,
+  type Sr6MartialArt, type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality, type Sr6Sin,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
@@ -34,6 +34,8 @@ const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique',
 const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
 const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
   types: c.types?.length ? c.types.join(' ') : undefined })
+const sinXml = (s: Sr6Sin) => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder },
+  s.licences.map(l => el('licence', l)).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''))
 
 function buildXml(b: Sr6Build): string {
   const rows = [
@@ -44,8 +46,7 @@ function buildXml(b: Sr6Build): string {
     ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
     ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.martialArts.map(martialXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
-    ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender },
-      s.licences.map(l => el('licence', l)).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''))),
+    ...b.sins.map(sinXml),
   ]
   return el('build', { method: b.method, magic: b.magic, aspectedSkill: b.aspectedSkill, tradition: b.tradition, drainAttr: b.drainAttr,
     powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen,
@@ -68,6 +69,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'purchase': return [{}, purchaseXml(a.line)]
     case 'drop': return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
     case 'contact': return [{}, contactXml(a.line)]
+    case 'sin': return [{}, sinXml(a.line)]
     case 'lifestyle': return [{ lifestyle: a.id, months: a.months, sin: a.sin, uid: a.uid }, '']
     case 'powerpoint': case 'convert': case 'other': return [{}, '']
   }
@@ -194,23 +196,25 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.martialArts = each(kids(b, 'martialart'), e => readMartial(e, fix), label, fix)
   out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix), label, fix)
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
-  out.sins = each(kids(b, 'sin'), e => {
-    const lifestyles = kids(e, 'lifestyle').map(readLifestyle)
-    return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
-      kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'), gender: str(e, 'gender'),
-      licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })),
-      lifestyles: lifestyles.length ? lifestyles : undefined })
-  }, label, fix)
+  out.sins = each(kids(b, 'sin'), readSin, label, fix)
   return out
+}
+function readSin(e: Element): Sr6Sin {
+  const lifestyles = kids(e, 'lifestyle').map(readLifestyle)
+  return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
+    kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'), gender: str(e, 'gender'),
+    licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })),
+    lifestyles: lifestyles.length ? lifestyles : undefined, placeholder: yes(e, 'placeholder') })
 }
 const readLifestyle = (e: Element) => ({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', months: num(e, 'months', 0) })
 
 /** An older file's one lifestyle (<build><lifestyle>) goes on the first SIN, and its ledger's lifestyle spends naming no
- *  SIN replay there (career.ts); a runner with either and no SIN gets a real SIN in its name (free, like every real SIN). */
+ *  SIN replay there (career.ts); a runner with either and no SIN gets an unnamed placeholder SIN (free; Review asks the
+ *  player to name it or move the lifestyle: rules.ts sin.placeholder). */
 function migrateLifestyle(ch: Sr6Character, old: Element | undefined) {
   const b = ch.build
   if (!old && !ch.ledger.some(e => e.type === 'advance' && e.advance.op === 'lifestyle' && !e.advance.sin)) return
-  if (!b.sins.length) b.sins.push({ uid: `${ch.id}-sin`, name: ch.identity.name || ch.identity.streetName, kind: 'real', licences: [] })
+  if (!b.sins.length) b.sins.push({ uid: `${ch.id}-sin`, name: '', kind: 'real', licences: [], placeholder: true })
   const sin = b.sins[0], id = old?.getAttribute('id') ?? ''
   if (old) sin.lifestyles = [{ uid: `${sin.uid}-${id}`, id, months: num(old, 'months', 0) }, ...sin.lifestyles ?? []]
 }
@@ -244,6 +248,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'purchase': return { op, line: line(e, 'purchase', purchase, true) }
     case 'drop': return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
     case 'contact': return { op, line: line(e, 'contact', readContact, true) }
+    case 'sin': return { op, line: line(e, 'sin', readSin, true) }
     case 'lifestyle': return def({ op, id: req(e, 'lifestyle'), months: num(e, 'months', 0), sin: str(e, 'sin'), uid: str(e, 'uid') })
     case 'convert': return { op, karma }
     case 'powerpoint': case 'other': return { op }

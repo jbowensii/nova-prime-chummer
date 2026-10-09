@@ -146,3 +146,9 @@ export async function inBatches<T>(items: T[], work: (x: T) => Promise<void>, st
 export interface Busy { what: string; done: number; total: number }
 export const Working = ({ busy }: { busy: Busy }) =>
   <>{busy.what}: {busy.done} of {busy.total}… <progress value={busy.done} max={busy.total || 1} aria-hidden /></>
+
+/** Suggestions for the free-text gender fields (both games' Concept tabs, each SR6 SIN): `list={GENDER_LIST}` and one
+ *  <GenderList /> on the tab. Anything else may be typed. */
+export const GENDERS = ['Female', 'Male', 'Non-binary', 'Agender', 'Genderfluid', 'Other']
+export const GENDER_LIST = 'gender-suggestions'
+export const GenderList = () => <datalist id={GENDER_LIST}>{GENDERS.map(g => <option key={g} value={g} />)}</datalist>

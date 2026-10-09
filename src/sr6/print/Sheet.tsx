@@ -13,7 +13,7 @@ import './sheet.css'
 import { entryOf, priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
 import { npcHeadline } from '../engine/npc'
 import { NpcBlock } from './NpcBlock'
@@ -158,7 +158,7 @@ export function Sr6Sheet() {
             {!b.contacts.length && <p>—</p>}
             <h2>SINs & lifestyles</h2>
             {!lifestyle && <p>No lifestyle</p>}
-            <ul>{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="s-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`})</span>
+            <ul>{b.sins.map(s => <li key={s.uid}>{sinName(s)} <span className="s-small">({sinKind(s)}{s.gender && `, ${s.gender}`})</span>
               {lifeOf(s) && <div>{lifeOf(s)}</div>}
               {s.licences.length > 0 && <div className="s-small">{s.licences.map(l => `${l.name} (${l.rating})`).join(', ')}</div>}</li>)}</ul>
           </section>

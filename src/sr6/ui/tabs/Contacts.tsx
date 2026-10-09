@@ -1,16 +1,18 @@
 // Contacts & lifestyle: contacts (name, archetype, connection, loyalty) against the contact points; SINs, real or fake
 // with a rating and an optional gender, each with its licences and its lifestyles (and their months); karma turned into nuyen.
+// A placeholder SIN (an older file's lifestyle with no SIN) shows as Unnamed SIN until named or given a kind. Once
+// finalized the tab is read only: SINs and lifestyles are bought on the Ledger tab.
 import { useState, type ReactNode } from 'react'
-import { Stepper } from '../../../ui/bits'
+import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
 import { NameField } from '../../../ui/tabs/Skills'
 import { num } from '../../engine/creation'
 import { bookValue, dataFind } from '../../engine/values'
-import { CONTACT_TYPES, type ContactType, type Sr6Sin } from '../../model/character'
-import { n, useSr6Editor } from '../editor'
+import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
+import { n, sr6EditHref, useSr6Editor } from '../editor'
 import { Suggest } from './Skills'
 
 export function ContactsTab() {
-  const { ch, c, data, cr, budgets, act } = useSr6Editor()
+  const { ch, c, data, cr, budgets, act, career } = useSr6Editor()
   const b = ch.build, cp = budgets.contactPoints
   const archetypes = [...c.entries.contacts.values()].map(e => e.name).sort()
   const lifestyles = [...c.entries.lifestyles.values()].sort((a, z) => a.name.localeCompare(z.name)).map(l => {
@@ -53,8 +55,10 @@ export function ContactsTab() {
 
       <hr className="sep" />
       <h2>SINs, licences and lifestyles</h2>
-      {!b.sins.length && <p className="muted">A lifestyle is paid under a SIN: add one first.</p>}
+      {career ? <p className="muted">Finalized: buy a SIN, a lifestyle or more months of one on the <a href={sr6EditHref(ch.id, 'ledger')}>Ledger tab</a>.</p>
+        : !b.sins.length && <p className="muted">A lifestyle is paid under a SIN: add one first.</p>}
       {b.sins.map((s, i) => <Sin key={s.uid} s={s} who={`SIN ${i + 1}`} lifestyles={lifestyles} />)}
+      <GenderList />
       <div className="row">
         <button className="btn" onClick={() => act({ op: 'sin', kind: 'fake' })}>Add a SIN</button>
         <button className="btn quiet" onClick={() => act({ op: 'sin', kind: 'real' })}>Add a real SIN</button>
@@ -76,13 +80,17 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
   return <section className="stack">
     <div className="row">
       <NameField label={`${who} name`} value={s.name} onCommit={v => act({ op: 'sin', uid: s.uid, name: v })} />
-      <span className="noncanon">{s.kind === 'real' ? 'Real SIN' : 'Fake SIN'}</span>
+      {s.placeholder ? <>
+        <span className="noncanon">{sinName(s)} (placeholder)</span>
+        <select aria-label={`${who} kind`} value="" onChange={e => e.target.value && act({ op: 'sin', uid: s.uid, kind: e.target.value as Sr6Sin['kind'] })}>
+          <option value="">Make it…</option><option value="real">a real SIN</option><option value="fake">a fake SIN</option></select>
+      </> : <span className="noncanon">{s.kind === 'real' ? 'Real SIN' : 'Fake SIN'}</span>}
       {s.kind === 'fake' && <span className="row">Rating <Stepper label={`${who} rating`} value={s.rating ?? 1} min={1} max={99}
         onChange={r => act({ op: 'sin', uid: s.uid, rating: r })} /></span>}
-      <label className="inline">Gender <input value={s.gender ?? ''} aria-label={`${who} gender`} placeholder="optional" style={{ width: '9rem' }}
+      <label className="inline">Gender <input value={s.gender ?? ''} aria-label={`${who} gender`} placeholder="optional" list={GENDER_LIST} style={{ width: '9rem' }}
         onChange={e => act({ op: 'sin', uid: s.uid, gender: e.target.value })} /></label>
       <span className="spacer" />
-      <button className="btn small quiet" aria-label={`Remove ${s.name || who}`} onClick={() => act({ op: 'sin', remove: s.uid })}>Remove</button>
+      <button className="btn small quiet" aria-label={`Remove ${sinName(s, who)}`} onClick={() => act({ op: 'sin', remove: s.uid })}>Remove</button>
     </div>
     <div className="row">
       {s.licences.map((l, i) => <span key={i} className="chip">{l.name} ({l.rating})

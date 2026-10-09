@@ -415,6 +415,17 @@ test('a GM override approves an error; canFinalizeSr6 then allows it', () => {
   expect(canFinalizeSr6(v)).toBe(true)
 })
 
+test('a placeholder SIN is a Review note on Contacts, never a block on Finalize; named, the note goes', () => {
+  const ch = runner()
+  ch.build.sins = [{ uid: 'ph', name: '', kind: 'real', licences: [], placeholder: true, lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] }]
+  const v = only(ch, 'sin.placeholder')
+  expect(v).toEqual([expect.objectContaining({ severity: 'warning', path: 'contacts.sin.ph', message: expect.stringContaining('give it a name') })])
+  expect(errors(ch)).toEqual([])
+  expect(canFinalizeSr6(check(ch))).toBe(true)
+  delete ch.build.sins[0].placeholder
+  expect(only(ch, 'sin.placeholder')).toEqual([])
+})
+
 test('Glimmerkin and karma build: nothing throws on a runner with every list filled', () => {
   const ch = runner({ method: 'karma', metatype: GLIM, magic: 'technomancer' })
   pick(ch.build, 'complexforms', 'crb.static-veil')

@@ -326,6 +326,33 @@ test('a lifestyle belongs to a SIN: added, changed and removed on it; a SIN has 
   expect(fake.gender).toBeUndefined()
 })
 
+test('a placeholder SIN is free; naming it or setting its kind makes it a normal SIN, a gender alone doesn’t', () => {
+  const { b, data, cr, act } = runner()
+  const p = makeProvider(b.method, data, cr)
+  const holder = () => ({ uid: 'ph', name: '', kind: 'real' as const, licences: [], placeholder: true as const, lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] })
+  b.sins = [holder()]
+  const lines = () => nuyenBudget(b, data, cr, p).breakdown.filter(l => l.key.startsWith('sin:') || l.key.startsWith('lifestyle:'))
+  expect(lines()).toEqual([{ key: 'lifestyle:l1', label: 'Cozy lifestyle × 1 month (Unnamed SIN)', amount: 2500, sign: 'spend', tab: 'contacts' }])
+  expect(act({ op: 'sin', uid: 'ph', gender: 'Other' })).toEqual(ok)
+  expect(b.sins[0].placeholder).toBe(true)
+  expect(act({ op: 'sin', uid: 'ph', name: 'Jo Placeholder' })).toEqual(ok)
+  expect(b.sins[0]).toEqual({ uid: 'ph', name: 'Jo Placeholder', kind: 'real', gender: 'Other', licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] })
+  // made fake: rating 1, priced as any fake SIN; back to real drops the rating
+  b.sins = [holder()]
+  expect(act({ op: 'sin', uid: 'ph', kind: 'fake' })).toEqual(ok)
+  expect(b.sins[0]).toMatchObject({ kind: 'fake', rating: 1 })
+  expect(b.sins[0].placeholder).toBeUndefined()
+  expect(lines().find(l => l.key === 'sin:ph')).toMatchObject({ label: 'SIN (fake SIN, rating 1)', amount: 1500 })
+  expect(act({ op: 'licence', sin: 'ph', name: 'Zapper', rating: 1 })).toEqual(ok)
+  expect(act({ op: 'sin', uid: 'ph', kind: 'real' })).toEqual(ok)
+  expect('rating' in b.sins[0]).toBe(false)
+  expect(act({ op: 'sin', uid: 'ph', kind: 'fake', rating: 2 })).toEqual(ok)
+  expect(b.sins[0].rating).toBe(2)
+  b.sins[0].licences = [{ name: 'Zapper', rating: 3 }]
+  expect(act({ op: 'sin', uid: 'ph', kind: 'real' })).toEqual(ok)
+  expect(act({ op: 'sin', uid: 'ph', kind: 'fake' })).toEqual(no('licence-above-sin'))
+})
+
 // life modules
 test('life modules: a mixed choice is stored by its index; a module twice only as the setting allows', () => {
   const { b, act } = runner({ method: 'lifepath', magic: 'full', over: { unset: ['lifepath.repeatModules'] } })

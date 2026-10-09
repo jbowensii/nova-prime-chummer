@@ -53,7 +53,8 @@ export type Op =
   | { op: 'bestAttr'; attr: Sr6Attr | null; extra?: Sr6Attr | null }
   /** a lifestyle on a SIN: add one (no uid; id needed), change one (uid), or remove one */
   | { op: 'lifestyle'; sin: string; uid?: string; id?: string; months?: number } | { op: 'lifestyle'; sin: string; remove: string }
-  /** add a SIN, or change one (uid); gender '' clears it */
+  /** add a SIN, or change one (uid: its kind too); gender '' clears it. Naming a placeholder SIN or setting its kind or
+   *  rating makes it a normal SIN. */
   | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number; gender?: string } | { op: 'sin'; remove: string }
   | { op: 'licence'; sin: string; name: string; rating: number } | { op: 'licence'; sin: string; remove: number }
   | { op: 'karmaToNuyen'; delta: number }
@@ -392,11 +393,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const s = b.sins.find(x => x.uid === op.uid)
       if (!s) return no('unknown-line')
-      if (op.rating !== undefined && s.kind === 'fake') {
-        if (s.licences.some(l => l.rating > op.rating!)) return no('licence-above-sin')
-        s.rating = op.rating
-      }
+      // a kind change: a fake SIN gets a rating (1 unless given), a real one has none
+      const kind = op.kind ?? s.kind, rating = kind === 'fake' ? op.rating ?? (s.kind === 'fake' ? s.rating : undefined) ?? 1 : undefined
+      if (rating !== undefined && s.licences.some(l => l.rating > rating)) return no('licence-above-sin')
+      s.kind = kind
+      if (rating === undefined) delete s.rating; else s.rating = rating
       if (op.name !== undefined) s.name = op.name
+      // named, or its kind or rating set: a placeholder is a normal SIN now
+      if (op.name !== undefined || op.kind !== undefined || op.rating !== undefined) delete s.placeholder
       if (op.gender !== undefined) { if (op.gender.trim()) s.gender = op.gender; else delete s.gender }
       return OK
     }
