@@ -10,8 +10,11 @@ runner's lifestyle moves onto its first SIN when it is opened.
   flags a style or technique taken twice and a technique its style doesn't teach.
 - **Technique prerequisites (SR6).** The importer reads what a technique also needs (an adept power, another
   technique, a quality, or an augmentation) from its printed category line; the technique picker and the technique's
-  row on the Martial arts tab (next to Qualities and Magic) show it, Review warns (never blocks) when the runner lacks
-  it, and the runner export carries it. Body Shop's techniques now get their category.
+  row on the Martial arts tab (next to Qualities and Magic) show it, and the runner export carries it. Review warns
+  when the runner lacks the power, technique or quality, and flags a missing augmentation (a cyberlimb, an implanted
+  firearm, …) as a problem a GM can approve. Body Shop's techniques now get their category.
+- **Techniques learned in versions (SR6).** A technique learned in one of the options it lists, up to once each, is one
+  entry per option: Bending of the Reed (Melee) and (Ranged). A runner with the old Bending of the Reed gets the Melee one.
 - **SINs and lifestyles.** A lifestyle belongs to a SIN; a runner can have several of each, and a SIN can have none.
   Gender is optional on the runner (both games) and on each SIN.
 - **Catalog flags (SR6).** The importer reads which metamagics are for adepts or magicians and which can be taken

@@ -90,7 +90,8 @@ copy". Book entries are never copied here.
   `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
   free with the style). `name` on either: the catalog name when added. A file without any reads as none. Edited on the
   Martial arts tab; a technique's prerequisites are the catalog's (`<requires>`, docs/sr6-data-format.md), never stored
-  here. An `<override>` of a martial arts check has the path `martial.<style uid>`.
+  here. An `<override>` of a martial arts check has the path `martial.<style uid>` (a missing augmentation's:
+  `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and

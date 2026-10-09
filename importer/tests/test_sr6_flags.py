@@ -95,13 +95,26 @@ class FlagsTest(unittest.TestCase):
                          [("requires", {"kind": "adeptpower"}, "Fizz Hands")])
         # the closing line after the last sentence, wrapped and hyphenated, several prerequisites
         self.assertEqual(r("Hum a lot. **Category:** Mobility, the user\nmust already know Zap Hop. Requires a glow\nimplant or a hum lim-\nb."),
-                         [("requires", {"kind": "technique"}, "Zap Hop"), ("requires", {"kind": "other"}, "glow implant or a hum limb")])
+                         [("requires", {"kind": "technique"}, "Zap Hop"), ("requires", {"kind": "augmentation"}, "glow implant or a hum limb")])
+        # an augmentation by its words (cyber…, implant…, …ware); the rest other
+        self.assertEqual(r("Zap. **Category:** Ranged, requires an implanted zapper."), [("requires", {"kind": "augmentation"}, "implanted zapper")])
+        self.assertEqual(r("Zap. **Category:** General, requires at least one full cyberpaw."), [("requires", {"kind": "augmentation"}, "at least one full cyberpaw")])
         self.assertEqual(r("x. **Category:** General, user must have at least 1.5 Essence in glow, user must know\none or both versions of zap hop."),
                          [("requires", {"kind": "other"}, "at least 1.5 Essence in glow"), ("requires", {"kind": "technique"}, "zap hop")])
         # a usage note, a prerequisite word outside the closing line: none
         self.assertEqual(r("This made-up move requires a Minor Action.\n**Category:** Weapon\n**Restriction:** May only be used with sticks"), [])
         self.assertEqual(flags.technique_category("Zap. **Category:** Grappling,\nrequires a hum limb."), "Grappling")
         self.assertIsNone(flags.technique_category("No closing line."))
+
+    def test_options_learned_one_at_a_time(self):
+        o = flags.options
+        self.assertEqual(o("Gain a made-up edge against near _or_ far zaps (choose which kind when learning this technique). "
+                           "This technique may be taken up to twice in order to gain both the near and the far bonus."), ["Near", "Far"])
+        self.assertEqual(o("Hum at low, mid, or high pitch (choose which pitch when taking it). It may be taken three times "
+                           "to gain all of them."), ["Low", "Mid", "High"])
+        # a choice made each time it is used, or taken again for another thing: one entry
+        self.assertEqual(o("Each time you hum, choose which of the two tunes plays. You may take this quality multiple times."), [])
+        self.assertEqual(o("Near or far zaps (choose which kind when learning this technique)."), [])
 
     def test_the_recipe_writes_them(self):
         s = read("spells")

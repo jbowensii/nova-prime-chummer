@@ -547,7 +547,7 @@
           "type": "string"
         },
         "requires": {
-          "description": "The prerequisites the technique prints (an adept power, another technique, a quality, or other: an augmentation, a bonus), name as printed; met: whether the runner has it (absent for other: not checked). Absent when it prints none, and in files written before prerequisites were read.",
+          "description": "The prerequisites the technique prints (an adept power, another technique, a quality, an augmentation, or other), name as printed; met: whether the runner has it (absent when it can't be told: other, or an augmentation printed as an amount). Absent when it prints none, and in files written before prerequisites were read.",
           "type": "array",
           "items": {
             "type": "object",
@@ -562,6 +562,7 @@
                   "adeptpower",
                   "technique",
                   "quality",
+                  "augmentation",
                   "other"
                 ]
               },

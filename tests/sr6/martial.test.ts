@@ -10,6 +10,7 @@ import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { exportSr6Runners } from '../../src/sr6/engine/export'
 import { prerequisites, signatureOf } from '../../src/sr6/engine/martial'
+import { migrateSr6Ids } from '../../src/sr6/engine/migrate'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
@@ -112,6 +113,48 @@ test('prerequisites: Review warns (never blocks) when the runner lacks a techniq
   const t = r.martialArts[0].techniques
   expect(t.find(x => x.uid === 't2')!.requires).toEqual([{ kind: 'technique', name: 'Made-up Roll', met: true }])
   expect('requires' in t.find(x => x.uid === 't1')!).toBe(false)
+})
+
+/** The fixture with a technique learned near or far (one entry each, the old id an alias of the first: importer
+ *  flags.options and moved.py), a style whose signature prints the version in lower case, and techniques needing a
+ *  version of it and an augmentation. */
+function versions() {
+  const tech = (id: string, name: string, inner = '') => `<martialtechnique id="${id}" source="CRB" page="199" category="Mobility"><name>${name}</name>${inner}<text/></martialtechnique>`
+  const c = fixtureCatalog((file, xml) => file.endsWith('martialtechniques.xml') ? xml.replace('</sr6:data>', [
+    tech('crb.glow-step-near', 'Glow Step (Near)', '<alias>Glow Step</alias><alias id="crb.glow-step"/>'),
+    tech('crb.glow-step-far', 'Glow Step (Far)', '<alias>Glow Step</alias>'),
+    tech('crb.glow-drift', 'Glow Drift', '<requires kind="technique">glow step</requires><requires kind="augmentation">at least one full torqlimb</requires>'),
+    tech('crb.glow-shell', 'Glow Shell', '<requires kind="augmentation">platings or at least 2.0 Essence in torqlimbs</requires>')].join('') + '</sr6:data>')
+    : file.endsWith('martialarts.xml') ? xml.replace('</sr6:data>', '<martialart id="crb.glow-kata" source="CRB" page="199" categories="Mobility" signature="Glow Step (near)"><name>Glow Kata</name><text/></martialart></sr6:data>')
+      : xml)
+  return { c, data: sr6Data(c), cr: fixtureCreation() }
+}
+
+test('a technique learned in versions: its old id goes to the first, a signature printing the version finds it', () => {
+  const w = versions(), ch = draft()
+  ch.build.martialArts = [{ uid: 's1', id: 'crb.glow-fist', techniques: [{ uid: 't1', id: 'crb.glow-step', name: 'Glow Step' }] }]
+  expect(migrateSr6Ids(ch, w.c).build.martialArts[0].techniques[0].id).toBe('crb.glow-step-near')
+  expect(signatureOf(draft().build, w.c.entries.martialtechniques.values(), w.c.entries.martialarts.get('crb.glow-kata')!)?.id).toBe('crb.glow-step-near')
+})
+
+test('an augmentation prerequisite: an error (a GM may approve it), met by a line’s name, label or category word', () => {
+  const w = versions(), ch = draft(), b = ch.build
+  b.martialArts = [{ uid: 's1', id: 'crb.glow-kata', techniques: [{ uid: 't1', id: 'crb.glow-drift' }, { uid: 't2', id: 'crb.glow-shell' }] }]
+  const v = codes(w, ch).filter(x => x.code !== 'martial.category')
+  expect(v.map(x => [x.code, x.severity, x.path, x.message])).toEqual([
+    ['martial.requires', 'warning', 'martial.s1', 'Glow Drift requires the glow step technique, which the runner doesn’t have.'],
+    ['martial.augmentation', 'error', 'martial.s1.t1', 'Glow Drift requires at least one full torqlimb, which the runner’s augmentations don’t include.']])
+  expect(canFinalizeSr6(v)).toBe(false)
+  ch.overrides = [{ code: 'martial.augmentation', path: 'martial.s1.t1', note: 'GM ok' }]
+  expect(codes(w, ch).find(x => x.code === 'martial.augmentation')?.approved).toBe(true)
+  // either version of the technique; the torqlimb (its label `Torqlimb: Limb (synthetic)`); an amount can't be told
+  b.martialArts[0].techniques.push({ uid: 't3', id: 'crb.glow-step-far' })
+  b.purchases.push({ uid: 'a1', kind: 'augmentations', id: 'crb.limb-synthetic', qty: 1, accessories: [] })
+  expect(codes(w, ch).filter(x => x.code !== 'martial.category')).toEqual([])
+  const shell = () => prerequisites(w.data, b, w.data.entry('martialtechniques', 'crb.glow-shell'))
+  expect(shell()).toEqual([{ kind: 'augmentation', name: 'platings or at least 2.0 Essence in torqlimbs' }])
+  b.purchases[0].accessories.push({ uid: 'a2', kind: 'augmentations', id: 'crb.plating', rating: 1, qty: 1, accessories: [] })
+  expect(shell()[0].met).toBe(true)
 })
 
 test('career: a style with its signature, a technique, refusals; replayed on the build', () => {

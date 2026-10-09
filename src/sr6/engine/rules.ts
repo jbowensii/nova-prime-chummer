@@ -184,8 +184,13 @@ const RULES: Rule[] = [
   // a technique's printed prerequisite the runner lacks (FS p. 97: "certain techniques may have additional
   // restrictions"): a warning, never blocking, as the catalog's reading of the text may miss
   { code: 'martial.requires', severity: 'warning', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
-    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false).map(p => ({ path: `martial.${m.uid}`, ...MARTIAL_CITE,
+    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind !== 'augmentation').map(p => ({ path: `martial.${m.uid}`, ...MARTIAL_CITE,
       message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner doesn’t have.` })))) },
+  // (owner, 2026-10-09) the augmentation one is an error: taken anyway, it stands until fixed or a GM approves it (one
+  // approval a technique: its path names it)
+  { code: 'martial.augmentation', severity: 'error', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
+    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind === 'augmentation').map(p => ({ path: `martial.${m.uid}.${t.uid}`, ...MARTIAL_CITE,
+      message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner’s augmentations don’t include.` })))) },
 
   { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
   { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },

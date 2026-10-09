@@ -1,7 +1,8 @@
 // Martial arts (bought with karma as qualities are, Firing Squad p. 97): the styles taken, each with the techniques learned
 // under it, a picker for a style (its signature technique comes with it) and one per style for a technique (its signature
 // first, then the ones of its categories and General). A technique's printed prerequisites (an adept power, another
-// technique, a quality, or something else) show in the picker and on its row, warned there when the runner lacks one.
+// technique, a quality, an augmentation, or something else) show in the picker and on its row, flagged there when the
+// runner lacks one (an augmentation as a problem, the others as a note: Review's martial.augmentation and martial.requires).
 import { useState } from 'react'
 import { Modal, Picker } from '../../../ui/bits'
 import { num } from '../../engine/creation'
@@ -29,7 +30,7 @@ export function MartialArtsTab() {
       <h2>Martial arts</h2>
       <p className="muted">A style{style !== undefined && ` costs ${style} karma and`} comes with its signature technique; each other technique
         {technique !== undefined && ` costs ${technique} karma and`} is one of the style’s categories or General, learned once (Firing Squad p. 97).
-        Some techniques also need an adept power, another technique or something else.</p>
+        Some techniques also need an adept power, another technique, an augmentation or something else.</p>
       {b.martialArts.length === 0 ? <p className="muted">None yet.</p> : b.martialArts.map(m => {
         const e = data.entry('martialarts', m.id)
         return <section key={m.uid} className="stack">
@@ -43,7 +44,7 @@ export function MartialArtsTab() {
             return <tr key={t.uid}>
               <td><b>{techniqueName(data, t)}</b>{!te && <span className="err"> (no longer in the catalog)</span>}
                 {te && <span className="muted"> {[te.attrs.category, `${te.source} p.${te.page}`].filter(Boolean).join(' · ')}</span>}
-                {pre.map((p, i) => <div key={i} className={p.met === false ? 'warn' : 'muted'}>
+                {pre.map((p, i) => <div key={i} className={p.met === false ? p.kind === 'augmentation' ? 'err' : 'warn' : 'muted'}>
                   {p.met === false ? '⚠ Requires ' : 'Requires '}{prerequisiteText(p)}{p.met === false && ': the runner doesn’t have it'}</div>)}</td>
               <td className="num">{karma ? `−${n(karma)}` : 'free'}</td>
               <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'technique', style: m.uid, remove: t.uid })}>Remove</button></td>

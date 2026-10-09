@@ -104,7 +104,7 @@
              sense or skill, a focus option, a fake licence's type -->
         <xs:element name="choice" type="sr6:Choice"/>
         <!-- a prerequisite the entry's text prints (a martial arts technique's, importer/sr6/flags.py requires): the
-             name as printed, its kind adeptpower, technique, quality or other -->
+             name as printed, its kind adeptpower, technique, quality, augmentation or other -->
         <xs:element name="requires" type="sr6:Requires"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
@@ -150,7 +150,7 @@
       <xs:attribute name="kind" use="required">
         <xs:simpleType><xs:restriction base="xs:string">
           <xs:enumeration value="adeptpower"/><xs:enumeration value="technique"/><xs:enumeration value="quality"/>
-          <xs:enumeration value="other"/>
+          <xs:enumeration value="augmentation"/><xs:enumeration value="other"/>
         </xs:restriction></xs:simpleType>
       </xs:attribute>
     </xs:extension></xs:simpleContent>

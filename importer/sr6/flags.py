@@ -14,11 +14,16 @@ Foundry export use). General readers over the printed name, its section and its 
   Health spells', CRB p. 135).
 - a martial arts technique's **requires** (Firing Squad p. 97: some techniques have "additional restrictions"): the
   prerequisites its closing `Category:` line (or the Restriction label shapes.martial makes of its rest) prints, each
-  a `requires` child, its kind `technique`, `adeptpower`, `quality` or `other` (an augmentation, a bonus), its text
-  the name as printed. Read: `requires X`, `[the] user must [already] know|have X`; the kind from a word after the
-  name (`the Kick Attack technique`, `X power`, `X quality`), else `know` (one knows techniques), else a word after
-  the name in the entry's own text (`has the Killing Hands power active`), else `other`. A usage note (`may only be
-  used with swords`) is no prerequisite."""
+  a `requires` child, its kind `technique`, `adeptpower`, `quality`, `augmentation` or `other`, its text the name as
+  printed. Read: `requires X`, `[the] user must [already] know|have X`; the kind from a word after the name (`the
+  Kick Attack technique`, `X power`, `X quality`), else `know` (one knows techniques), else `augmentation` when X
+  names augmentations by their words (`cyber…`, `bio…`, `implant…`, `augment…`, `…ware`: `at least one full
+  cyberlimb`, `an implanted firearm`), else a word after the name in the entry's own text (`has the Killing Hands
+  power active`), else `other`. A usage note (`may only be used with swords`) is no prerequisite.
+- an entry's **options** (owner, 2026-10-09): its text says to choose one of the options it lists when it is learned
+  (`against melee or ranged attacks (choose which category when learning this technique)`) and that it may be taken
+  as many times as there are options to gain them all (`may be taken up to twice in order to gain both`): one entry per
+  option, `<Name> (<Option>)` (crb._Catalog.add)."""
 import re
 
 from importer.sr6.regroup import norm
@@ -40,6 +45,10 @@ _CLAUSE = re.compile(rf";|\.(?!\d)|,\s*(?=(?:requires?|{_MUST}(?:know|have|posse
 _KIND_WORD = r"(technique|adept\s+power|power|quality)"
 _KINDS = {"technique": "technique", "power": "adeptpower", "adept power": "adeptpower", "quality": "quality"}
 _PRINTED = re.compile(r"^(?:the|an?|one\s+or\s+both\s+versions\s+of|either\s+version\s+of)\s+", re.I)
+_AUGMENT = re.compile(r"\b(?:cyber|bio|implant|augment)\w*|\b\w+ware\b", re.I)
+_OPTIONS = re.compile(r"((?:[\w-]+,\s+)*[\w-]+,?\s+or\s+[\w-]+)\s+[\w-]+\s*\(?\s*choose\s+which\b[^.)]*?\bwhen\s+"
+                      r"(?:learning|taking|selecting|buying|purchasing)\b", re.I)
+_ALL = re.compile(r"\b(?:taken|learned|selected|purchased|bought)\s+(?:up\s+to\s+)?(twice|\w+\s+times)\b[^.]*?\b(?:both|all)\b", re.I)
 _ESSENCE = re.compile(r"\d+\s*[–−-]\s*(?:the\s+)?(?:(?:target|subject)[’']?s\s+)?Essence\b", re.I)
 
 
@@ -113,9 +122,23 @@ def requires(text):
                 what, kind = k.group(1), _kind(k.group(2))
             elif (n.group(1) or "").lower() == "know":
                 kind = "technique"
+            elif _AUGMENT.search(what):
+                kind = "augmentation"
             elif k := re.search(rf"\b{re.escape(what)}\s+{_KIND_WORD}\b", flat, re.I):
                 kind = _kind(k.group(1))
             else:
                 kind = "other"
             out.append(("requires", {"kind": kind}, what))
     return out
+
+
+def options(text):
+    """The options an entry is learned in, one entry each (above): ["Melee", "Ranged"], else []."""
+    t = " ".join((text or "").replace("**", "").replace("_", "").replace("*", "").split())
+    m, n = _OPTIONS.search(t), _ALL.search(t)
+    if not (m and n):
+        return []
+    opts = [o for o in re.split(r",\s*(?:or\s+)?|\s+or\s+", m.group(1)) if o]
+    times = n.group(1).lower().split()[0]
+    times = 2 if times == "twice" else _NUMBERS.get(times) or (int(times) if times.isdigit() else 0)
+    return [o[:1].upper() + o[1:] for o in opts] if times == len(opts) > 1 else []
