@@ -10,6 +10,11 @@ runner's lifestyle moves onto its first SIN when it is opened.
   flags a style or technique taken twice and a technique its style doesn't teach.
 - **SINs and lifestyles.** A lifestyle belongs to a SIN; a runner can have several of each, and a SIN can have none.
   Gender is optional on the runner (both games) and on each SIN.
+- **SINs in career, placeholder SINs, gender suggestions (SR6).** The Ledger buys a SIN at the creation price (a fake
+  one by its rating, a real one free, plus its licences); lifestyles bought there cost their monthly price × months,
+  and either is refused when nuyen is short. An older runner whose lifestyle had no SIN to go on gets an unnamed
+  placeholder SIN instead of a real one in its name: it costs nothing, and Review notes it until it's named (Contacts
+  tab, or the Ledger once finalized). Gender fields suggest common entries as you type.
 - **Catalog flags (SR6).** The importer reads which metamagics are for adepts or magicians and which can be taken
   again, which spells are opposed or use the target's Essence, and armor's Social. The builder offers only the
   metamagics a runner may take, Review checks them (one per initiation grade), and the sheets show the flags. Social

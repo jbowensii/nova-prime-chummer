@@ -57,9 +57,15 @@ export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' 
 export const CONTACT_TYPES: ContactType[] = ['academic', 'corporate', 'criminal', 'engineering', 'government', 'magic', 'matrix', 'media', 'medical', 'street']
 /** A lifestyle always belongs to a SIN (the one it's paid under); id: the catalog lifestyle. */
 export interface Sr6Lifestyle { uid: string; id: string; months: number }
-/** gender: the identity's own (optional; the runner's is identity.gender). lifestyles: none, one or more. */
+/** gender: the identity's own (optional; the runner's is identity.gender). lifestyles: none, one or more. placeholder: an
+ *  unnamed stand-in (kind real, no rating, free) holding an older file's lifestyle when the runner had no SIN (charxml.ts);
+ *  naming it or setting its kind or rating makes it a normal SIN. */
 export interface Sr6Sin { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; licences: { name: string; rating: number }[]
-  lifestyles?: Sr6Lifestyle[] }
+  lifestyles?: Sr6Lifestyle[]; placeholder?: true }
+/** A SIN's name as shown: a placeholder's reads Unnamed SIN. */
+export const sinName = (s: Sr6Sin, fallback = 'SIN') => s.name || (s.placeholder ? 'Unnamed SIN' : fallback)
+/** A SIN's kind as shown: `placeholder`, `real`, or `fake, rating 3`. */
+export const sinKind = (s: Sr6Sin) => (s.placeholder ? 'placeholder' : s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`)
 /** choices: a life module's mixed choice, by its index, to the option picked (an attribute abbr, skill:<id> or nuyen:<n>). */
 export interface Sr6LifeModule { id: string; choices: Record<number, string> }
 export interface Sr6AttrSpend { points: number; adjust: number; karma: number }
@@ -110,6 +116,9 @@ export type Sr6Advance =
   | { op: 'purchase'; line: Sr6Purchase }
   | { op: 'drop'; target: string; line?: Sr6Purchase }
   | { op: 'contact'; line: Sr6Contact }
+  /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
+   *  a normal SIN (its lifestyles kept) */
+  | { op: 'sin'; line: Sr6Sin }
   /** sin, uid: the SIN it's paid under and the lifestyle's uid when new. An entry recorded before lifestyles belonged to
    *  SINs has neither: it goes to the first SIN's first lifestyle (more months of it, or another lifestyle replacing it). */
   | { op: 'lifestyle'; id: string; months: number; sin?: string; uid?: string }
@@ -117,7 +126,7 @@ export type Sr6Advance =
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = ['attribute', 'skill', 'spec', 'expertise', 'knowledge', 'quality', 'buyoff', 'pick',
-  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'lifestyle', 'convert', 'other']
+  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'sin', 'lifestyle', 'convert', 'other']
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
 export type Sr6LedgerEntry = { id: string; at: string } & (
   | { type: 'finalize'; karma: number; nuyen: number }

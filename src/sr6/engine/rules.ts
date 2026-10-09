@@ -317,6 +317,10 @@ const RULES: Rule[] = [
     (c.budgets.nuyen.left <= n0(c.cr, 'maxNuyenLeft') ? null
       : { message: `${fmt(c.budgets.nuyen.left)}¥ left; at most ${fmt(n0(c.cr, 'maxNuyenLeft'))}¥ carries over.` }) },
 
+  // an older file's lifestyle on a runner with no SIN went on an unnamed placeholder (charxml.ts): a note, not a block
+  { code: 'sin.placeholder', severity: 'warning', tab: 'contacts', check: c => c.b.sins.filter(s => s.placeholder).map(s => ({
+    path: `contacts.sin.${s.uid}`, message: 'An unnamed SIN holds the lifestyle from an older file: give it a name, kind and rating '
+      + '(once finalized: Ledger → Add or name a SIN), or move the lifestyle to a real or fake SIN and remove it.' })) },
   { code: 'catalog.missing', severity: 'error', tab: 'review', check: c => {
     const gone = (path: string, name: string): Hit => ({ path, message: `${name} is no longer in the catalog.` })
     const hits: Hit[] = []

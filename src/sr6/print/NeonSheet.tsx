@@ -7,7 +7,7 @@ import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName, type Sr6Attr } from '../model/character'
 import { n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { band, PICKS, runnerView } from './view'
@@ -75,7 +75,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
           </section>
           <section aria-labelledby="n-ids"><H id="n-ids">IDs & money</H>
             <p><b>{n(v.nuyen)}¥</b> · <b>{n(v.karma)}</b> karma</p>
-            <ul className="n-list">{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="n-small">{s.kind === 'real' ? 'real' : `fake ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`}
+            <ul className="n-list">{b.sins.map(s => <li key={s.uid}>{sinName(s)} <span className="n-small">{s.placeholder ? 'placeholder' : s.kind === 'real' ? 'real' : `fake ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`}
               {s.licences.length > 0 && `; ${s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}`}{v.lifeOf(s) && `; ${v.lifeOf(s)}`}</span></li>)}</ul>
           </section>
           <section aria-labelledby="n-lang"><H id="n-lang">Languages & knowledge</H>

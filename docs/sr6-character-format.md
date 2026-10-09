@@ -99,11 +99,13 @@ copy". Book entries are never copied here.
   data). `target` is an attribute abbreviation, `initDice`, `defense` (Defense Rating) or `skill` (that skill's dice pool:
   `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
   line's rating.
-- `<sin kind="real|fake" rating? gender?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid under it: a
-  lifestyle always belongs to a SIN, a SIN may have none, and a runner may have several of each. `gender` is that
-  identity's own (optional; the runner's is the root's `gender`).
+- `<sin kind="real|fake" rating? gender? placeholder?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid
+  under it: a lifestyle always belongs to a SIN, a SIN may have none, and a runner may have several of each. `gender` is
+  that identity's own (optional; the runner's is the root's `gender`). `placeholder="true"`: an unnamed stand-in
+  (`name=""`, `kind="real"`, no rating, free) holding an older file's lifestyle; Review warns until the player names it
+  or sets its kind or rating (which makes it a normal SIN), or moves the lifestyle to another SIN.
 - An older file's one `<lifestyle id months>` directly in `<build>` (before lifestyles belonged to SINs) loads onto the
-  first `<sin>`; a runner with no SIN gets a real SIN in its real name (else its street name) to hold it. The same
+  first `<sin>`; a runner with no SIN gets a placeholder SIN (`uid` the runner's id + `-sin`) to hold it. The same
   happens for a runner whose ledger has an older `lifestyle` spend and no SIN. The file is written the new way on its
   next save.
 
@@ -131,8 +133,10 @@ the entry its `event` names.
 - `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
   (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
   element), `buyoff` and `drop` (`target`: the uid of the line removed; the removed line may follow for the history),
-  `initiate` (an optional metamagic or echo `<pick>`), `martialart` (the style with its signature `<technique>`),
-  `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
+  `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:
+  priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
+  `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),
+  `martialart` (the style with its signature `<technique>`), `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
   uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
   entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`
   (the entry's `karma`: positive turns karma into nuyen, negative nuyen into karma) and `other`.

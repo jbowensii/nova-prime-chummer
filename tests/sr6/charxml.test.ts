@@ -161,27 +161,28 @@ test('the career runner and the NPC golden files round-trip equal, validate, and
 const SIN_LINE = '<sin uid="s1" name="Wren Doe" kind="real" gender="Made-up"><lifestyle uid="ls1" id="crb.cozy" months="1"/></sin>'
 const OLD = CAREER.replace(SIN_LINE, '<lifestyle id="crb.cozy" months="1"/>')
 
-test('an older file’s one lifestyle loads onto a new real SIN in the runner’s name when it has none, and is written the new way', async () => {
+test('an older file’s one lifestyle loads onto an unnamed placeholder SIN when it has none; the flag round-trips', async () => {
   expect(OLD).not.toBe(CAREER)
   expect(await valid(OLD)).toEqual([])  // the schema still takes the older shape
   const ch = read(OLD)
-  expect(ch.build.sins).toEqual([{ uid: 'career-wisp-1-sin', name: 'Wren Doe', kind: 'real', licences: [],
+  expect(ch.build.sins).toEqual([{ uid: 'career-wisp-1-sin', name: '', kind: 'real', licences: [], placeholder: true,
     lifestyles: [{ uid: 'career-wisp-1-sin-crb.cozy', id: 'crb.cozy', months: 1 }] }])
   expect('lifestyle' in ch.build).toBe(false)
   const xml = sr6ToXml(ch)
   expect(xml).not.toMatch(/<build[^>]*>[\s\S]*\n    <lifestyle /)
+  expect(xml).toContain('<sin uid="career-wisp-1-sin" name="" kind="real" placeholder="true">')
   expect(await valid(xml)).toEqual([])
   expect(read(xml)).toEqual(ch)
 })
 
-test('an older file’s lifestyle goes on its first SIN; one with an older ledger lifestyle spend and no SIN gets a SIN too', () => {
+test('an older file’s lifestyle goes on its first SIN; one with an older ledger lifestyle spend and no SIN gets a placeholder', () => {
   const two = OLD.replace('<lifestyle id="crb.cozy" months="1"/>',
     '<lifestyle id="crb.cozy" months="1"/>\n    <sin uid="f1" name="Jo Fake" kind="fake" rating="2"/>\n    <sin uid="r1" name="Jo Real" kind="real"/>')
   expect(read(two).build.sins.map(x => [x.uid, x.lifestyles])).toEqual([['f1', [{ uid: 'f1-crb.cozy', id: 'crb.cozy', months: 1 }]], ['r1', undefined]])
   const spend = '<entry id="l-x" at="2026-10-06T00:00:00.000Z" type="advance" karma="0" nuyen="100" op="lifestyle" lifestyle="crb.cozy" months="2" label="Lifestyle"/>'
   const noLife = CAREER.replace(SIN_LINE + '\n', '').replace('  </ledger>', `  ${spend}\n  </ledger>`)
   const ch = read(noLife)
-  expect(ch.build.sins).toEqual([{ uid: 'career-wisp-1-sin', name: 'Wren Doe', kind: 'real', licences: [] }])
+  expect(ch.build.sins).toEqual([{ uid: 'career-wisp-1-sin', name: '', kind: 'real', licences: [], placeholder: true }])
   expect(currentBuild(ch).sins[0].lifestyles).toEqual([{ uid: 'career-wisp-1-sin-crb.cozy', id: 'crb.cozy', months: 2 }])
   // a file in the new shape is left as it is
   expect(read(CAREER).build.sins).toEqual([{ uid: 's1', name: 'Wren Doe', kind: 'real', gender: 'Made-up', licences: [],
@@ -201,7 +202,8 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'drop', target: 'lg', line: gear }, { op: 'contact', line: { uid: 'lc', name: 'Mo', archetype: 'Fence', connection: 2, loyalty: 1 } },
     { op: 'lifestyle', id: 'crb.cozy', months: 3 }, { op: 'lifestyle', id: 'crb.squat', months: 1, sin: 's2', uid: 'll' }, { op: 'convert', karma: 2 }, { op: 'convert', karma: -1 }, { op: 'other' },
     { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
-    { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } }]
+    { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },
+    { op: 'sin', line: { uid: 'ls', name: 'Pat <Fake>', kind: 'fake', rating: 2, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }] } }]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [{ id: 'f', at, type: 'finalize', karma: 3, nuyen: 1250 }, { id: 'e', at, type: 'earn', karma: 9, nuyen: 3100, run: 'Made-up & run', date: '2026-10-04' },
     ...ops.map((advance, i): Sr6LedgerEntry => ({ id: `a${i}`, at, type: 'advance', advance, label: `Spend ${i}`,

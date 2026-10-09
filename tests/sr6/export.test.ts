@@ -227,6 +227,14 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
     expect(r).not.toHaveProperty('gender')
     expect(r.sins.map(s => s.lifestyles)).toEqual([[], []])
   })
+  test('a placeholder SIN goes out with placeholder: true (left out on the others), and the file validates', () => {
+    const m = mara(sampleWorld())
+    m.build.sins = [{ uid: 'ph', name: '', kind: 'real', licences: [], placeholder: true }, ...m.build.sins]
+    const w = sampleWorld(), f = exportSr6Runners(w.c, w.data, w.cr, [m], SAMPLE_OPTS)
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+    expect(f.runners![0].sins.map(s => s.placeholder)).toEqual([true, undefined, undefined])
+    expect(f.runners![0].sins[0]).toEqual({ uid: 'ph', name: '', kind: 'real', placeholder: true, licences: [], lifestyles: [] })
+  })
   test('MUS has every kind; MUX only priorities and metatypes; the compendium’s grunt has its token', () => {
     const [m, x] = files()['test-books.json'].books!
     expect(new Set(m.entries.map(e => e.kind)).size).toBe(32)  // every kind the samples have (all but attributes and the display kinds they lack)

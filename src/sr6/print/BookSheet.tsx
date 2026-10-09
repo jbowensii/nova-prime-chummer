@@ -9,7 +9,7 @@ import type { useSheetArt } from '../../print/shared'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { AR_BANDS, band, pickFlags, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
@@ -108,7 +108,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
               <F l="Primary lifestyle" v={v.lifestyle} />
               <div className="k-row"><F l="Nuyen" v={`${n(v.nuyen)}¥`} /><F l="Licenses" v={licences.join(', ')} /></div>
               <table className="k-plain"><thead><tr><th>Fake IDs / related lifestyles / funds / licenses</th></tr></thead>
-                <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{s.name || 'SIN'} <span className="k-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`})</span>
+                <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{sinName(s)} <span className="k-small">({sinKind(s)}{s.gender && `, ${s.gender}`})</span>
                   {v.lifeOf(s) && <span className="k-small"> · {v.lifeOf(s)}</span>}
                   {s.licences.length > 0 && <span className="k-small"> · {s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</span>}</td></tr>), 3, 1)}</tbody></table>
             </Box>

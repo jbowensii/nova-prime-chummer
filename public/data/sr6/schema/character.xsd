@@ -164,44 +164,15 @@
       <xs:element name="martialart" type="c:MartialArt" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
-      <!-- an older file's one lifestyle, never written now: it loads onto the first <sin> (a runner with none gets a real SIN
-           in its name) -->
+      <!-- an older file's one lifestyle, never written now: it loads onto the first <sin> (a runner with none gets a
+           placeholder SIN) -->
       <xs:element name="lifestyle" minOccurs="0">
         <xs:complexType>
           <xs:attribute name="id" type="xs:string" use="required"/>
           <xs:attribute name="months" type="c:Count" use="required"/>
         </xs:complexType>
       </xs:element>
-      <!-- a SIN with its licences and the lifestyles paid under it (a lifestyle always belongs to a SIN; a SIN may have none);
-           gender: the identity's own, optional -->
-      <xs:element name="sin" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:sequence>
-            <xs:element name="licence" minOccurs="0" maxOccurs="unbounded">
-              <xs:complexType>
-                <xs:attribute name="name" type="xs:string" use="required"/>
-                <xs:attribute name="rating" type="c:Count" use="required"/>
-              </xs:complexType>
-            </xs:element>
-            <xs:element name="lifestyle" minOccurs="0" maxOccurs="unbounded">
-              <xs:complexType>
-                <xs:attribute name="uid" type="xs:string" use="required"/>
-                <xs:attribute name="id" type="xs:string" use="required"/>
-                <xs:attribute name="months" type="c:Count" use="required"/>
-              </xs:complexType>
-            </xs:element>
-          </xs:sequence>
-          <xs:attribute name="uid" type="xs:string" use="required"/>
-          <xs:attribute name="name" type="xs:string" use="required"/>
-          <xs:attribute name="gender" type="xs:string"/>
-          <xs:attribute name="kind" use="required">
-            <xs:simpleType><xs:restriction base="xs:string">
-              <xs:enumeration value="real"/><xs:enumeration value="fake"/>
-            </xs:restriction></xs:simpleType>
-          </xs:attribute>
-          <xs:attribute name="rating" type="c:Count"/>
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="sin" type="c:Sin" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
     <xs:attribute name="method" type="c:Method" use="required"/>
     <xs:attribute name="magic" use="required">
@@ -296,6 +267,38 @@
     </xs:attribute>
   </xs:complexType>
 
+  <!-- a SIN with its licences and the lifestyles paid under it (a lifestyle always belongs to a SIN; a SIN may have none);
+       gender: the identity's own, optional. A ledger entry's (op sin) has no lifestyles. -->
+  <xs:complexType name="Sin">
+    <xs:sequence>
+      <xs:element name="licence" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="rating" type="c:Count" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="lifestyle" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="uid" type="xs:string" use="required"/>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="months" type="c:Count" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="gender" type="xs:string"/>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="real"/><xs:enumeration value="fake"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="rating" type="c:Count"/>
+    <!-- an unnamed stand-in (name "", kind real, no rating, free) holding an older file's lifestyle when the runner had no
+         SIN; naming it or setting its kind or rating makes it a normal SIN -->
+    <xs:attribute name="placeholder" type="xs:boolean"/>
+  </xs:complexType>
+
   <!-- the career ledger, append-only (src/sr6/engine/career.ts): finalize sets both balances, earn adds, an advance spends
        (negative: gained), a void undoes the entry named by event. The text is the run, note or void reason; an advance's
        one child is the line it adds (or, buyoff and drop, the line it removed), the same element as the build's. -->
@@ -311,6 +314,7 @@
       <xs:element name="technique" type="c:Technique"/>
       <xs:element name="purchase" type="c:Purchase"/>
       <xs:element name="contact" type="c:Contact"/>
+      <xs:element name="sin" type="c:Sin"/>
     </xs:choice>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="at" type="xs:string" use="required"/>
@@ -327,7 +331,8 @@
     <xs:attribute name="event" type="xs:string"/>
     <!-- advance: the op, its target (an attribute, a skill id, the uid of the line bought off or dropped, or a technique's
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
-         uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma -->
+         uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
+         sin: the <sin> bought (its uid a placeholder's: that one named) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -336,6 +341,7 @@
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
+        <xs:enumeration value="sin"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>

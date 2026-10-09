@@ -5,8 +5,8 @@
 // (the Karma prices group doubles as the career prices, plus the Advancement group); an unset price refuses its spend
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers.
 import { newId, type Violation } from '../../model/types'
-import type { PickKind, Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6LedgerEntry } from '../model/character'
-import { attrRating, priced, qualityCost, skillRank } from './budgets'
+import { sinName, type PickKind, type Sr6Advance, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
+import { attrRating, priced, qualityCost, sinCost, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
@@ -70,6 +70,12 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'contact': {
       const i = b.contacts.findIndex(x => x.uid === a.line.uid)
       if (i >= 0) b.contacts[i] = structuredClone(a.line); else b.contacts.push(structuredClone(a.line))
+      return
+    }
+    case 'sin': {
+      // a placeholder named (line.uid its uid) keeps its lifestyles
+      const i = b.sins.findIndex(x => x.uid === a.line.uid), line = structuredClone(a.line), had = b.sins[i]?.lifestyles
+      if (i >= 0) b.sins[i] = had ? { ...line, lifestyles: had } : line; else b.sins.push(line)
       return
     }
     case 'lifestyle': {
@@ -288,13 +294,25 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
+    case 'sin': {
+      // priced as creation prices it (budgets.ts sinCost), with the settings it needs set
+      const x = a.line
+      if (x.uid && !b.sins.find(s => s.uid === x.uid)?.placeholder) no('unknown-line')
+      if (!x.name.trim()) no('needs-name')
+      if (x.kind === 'fake' && !((x.rating ?? 1) >= 1)) no('below-one')
+      if (x.licences.some(l => !l.name.trim())) no('needs-name')
+      if (x.licences.some(l => !(l.rating >= 1))) no('below-one')
+      if (x.kind === 'fake' && x.licences.some(l => l.rating > (x.rating ?? 1))) no('licence-above-sin')
+      const what = [x.kind === 'real' ? 'real' : `fake, rating ${x.rating ?? 1}`, ...x.licences.map(l => `${l.name} ${l.rating}`)].join(', ')
+      return { label: `SIN: ${x.name.trim()} (${what})${x.uid ? ', was the unnamed SIN' : ''}`, nuyen: sinCost(x, need) }
+    }
     case 'lifestyle': {
       const sin = a.sin ? b.sins.find(s => s.uid === a.sin) ?? no('unknown-line') : undefined
       const e = data.entry('lifestyles', a.id) ?? no('unknown-entry')
       if (!(a.months >= 1)) no('below-one')
       const v = bookValue(e, 'cost', undefined, dataFind(data))
       if (!v.ok || v.n === null) no('book-value')
-      return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}${sin ? ` (${sin.name || 'SIN'})` : ''}`, nuyen: v.n! * a.months }
+      return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}${sin ? ` (${sinName(sin)})` : ''}`, nuyen: v.n! * a.months }
     }
     case 'convert': {
       if (!Number.isInteger(a.karma) || a.karma === 0) no('below-one')
@@ -328,6 +346,12 @@ export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Creat
     case 'contact': adv.line = named(adv.line); break
     case 'buyoff': adv.line = b.qualities.find(q => q.uid === adv.target); break
     case 'drop': adv.line = b.purchases.find(x => x.uid === adv.target); break
+    case 'sin': {
+      // stored as it'll stand: no lifestyles (a placeholder's stay on it) nor placeholder flag; a fake SIN's rating set
+      const { uid, name, kind, rating, gender, licences } = adv.line
+      adv.line = { uid: uid || newId(), name: name.trim(), kind, ...(kind === 'fake' ? { rating: rating ?? 1 } : {}), ...(gender?.trim() ? { gender } : {}), licences }
+      break
+    }
     case 'lifestyle': if (adv.sin && !adv.uid) adv.uid = newId(); break
   }
   const entry: Sr6LedgerEntry = { id: newId(), at: now, type: 'advance', advance: adv, label: pv.label, karma: pv.karma, nuyen: pv.nuyen }
@@ -367,6 +391,6 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
   const bal = balances(ch), out: Violation[] = []
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
-  const keep = new Set(['catalog.missing', 'essence.positive'])
+  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder'])
   return [...out, ...validateSr6(data, cr, { ...ch, build: currentBuild(ch) }).filter(v => keep.has(v.code))]
 }

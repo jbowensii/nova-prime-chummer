@@ -3,11 +3,11 @@
 // may be voided has Void (a reason asked) and a voided one is struck through with its reason. Every price comes from the
 // creation settings (src/sr6/engine/career.ts); a refusal reads as a sentence.
 import { useState } from 'react'
-import { Modal } from '../../../ui/bits'
+import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
-import { CORE_ATTRS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
+import { CORE_ATTRS, PURCHASE_KINDS, sinName, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
 import type { Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, type PickedItem } from '../Picker'
@@ -18,7 +18,7 @@ const OPS = [['attribute', 'Raise attribute'], ['skill', 'Raise skill'], ['spec'
   ['knowledge', 'Knowledge or language'], ['quality', 'Buy quality'], ['buyoff', 'Buy off quality'],
   ['pick', 'Learn spell, ritual, complex form or adept power'], ['martialart', 'Learn martial arts style'],
   ['technique', 'Learn martial arts technique'], ['powerpoint', 'Power point (mystic adepts)'],
-  ['initiate', 'Initiate or submerge'], ['purchase', 'Buy gear'], ['drop', 'Drop gear'], ['lifestyle', 'Lifestyle'], ['contact', 'Contact'],
+  ['initiate', 'Initiate or submerge'], ['purchase', 'Buy gear'], ['drop', 'Drop gear'], ['sin', 'SIN'], ['lifestyle', 'Lifestyle'], ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'], ['n2k', 'Nuyen to karma'], ['other', 'Other']] as const
 type OpKey = (typeof OPS)[number][0]
 const LEARN: PickKind[] = ['spells', 'rituals', 'complexforms', 'adeptpowers']
@@ -31,7 +31,9 @@ export function LedgerTab() {
   const today = new Date().toISOString().slice(0, 10)
   const [gain, setGain] = useState({ karma: '', nuyen: '', run: '', date: today })
   const [op, setOp] = useState<OpKey>('attribute')
-  const [f, setF] = useState({ target: '', name: '', kind: 'knowledge', months: '1', sin: '', karma: '', nuyen: '', label: '', archetype: '', connection: '1', loyalty: '1' })
+  const [f, setF] = useState({ target: '', name: '', kind: 'knowledge', months: '1', sin: '', karma: '', nuyen: '', label: '', archetype: '', connection: '1', loyalty: '1',
+    sinKind: 'fake', rating: '1', gender: '', licName: '', licRating: '1' })
+  const [licences, setLicences] = useState<{ name: string; rating: number }[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -39,7 +41,7 @@ export function LedgerTab() {
   const [voiding, setVoiding] = useState<Sr6LedgerEntry | null>(null)
   const [why, setWhy] = useState('')
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
-  const choose = (o: OpKey) => { setOp(o); setPicked(null); setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '' })) }
+  const choose = (o: OpKey) => { setOp(o); setPicked(null); setLicences([]); setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '' })) }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
   const skills = Object.values(data.skills).sort((x, y) => x.name.localeCompare(y.name))
@@ -72,6 +74,9 @@ export function LedgerTab() {
       case 'purchase': return e ? { op, line: { uid: '', kind: e.kind as PurchaseKind, id: e.id, qty: 1, accessories: [],
         ...(picked!.rating ? { rating: picked!.rating } : {}), ...(picked!.grade ? { grade: picked!.grade } : {}) } } : null
       case 'drop': return f.target ? { op, target: f.target } : null
+      // a new SIN, or (target) the placeholder one named
+      case 'sin': return f.name.trim() ? { op, line: { uid: f.target, name: f.name.trim(), kind: f.sinKind === 'real' ? 'real' : 'fake',
+        ...(f.sinKind === 'real' ? {} : { rating: whole(f.rating) }), ...(f.gender.trim() ? { gender: f.gender.trim() } : {}), licences } } : null
       case 'lifestyle': return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
       case 'contact': return f.name.trim() || f.target ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(),
         connection: whole(f.connection), loyalty: whole(f.loyalty) } } : null
@@ -147,10 +152,25 @@ export function LedgerTab() {
             .map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>}
         {op === 'drop' && <label>Item<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.purchases.map(x => <option key={x.uid} value={x.uid}>{(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}</option>)}</select></label>}
+        {op === 'sin' && <>
+          {b.sins.some(s => s.placeholder) && <label>Which<select value={f.target} onChange={e => set({ target: e.target.value })}>
+            <option value="">A new SIN</option>{b.sins.filter(s => s.placeholder).map(s => <option key={s.uid} value={s.uid}>Name the unnamed SIN</option>)}</select></label>}
+          <label>Name<input value={f.name} onChange={e => set({ name: e.target.value })} /></label>
+          <label>Kind<select value={f.sinKind} onChange={e => set({ sinKind: e.target.value })}><option value="fake">Fake</option><option value="real">Real</option></select></label>
+          {f.sinKind === 'fake' && <label>Rating<input type="number" min={1} step={1} value={f.rating} onChange={e => set({ rating: e.target.value })} style={{ width: '5rem' }} /></label>}
+          <label>Gender<input value={f.gender} onChange={e => set({ gender: e.target.value })} placeholder="optional" list={GENDER_LIST} style={{ width: '9rem' }} /><GenderList /></label>
+          <div className="row" style={{ alignSelf: 'end' }}>
+            {licences.map((l, i) => <span key={i} className="chip">{l.name} ({l.rating})
+              <button aria-label={`Remove licence ${l.name}`} onClick={() => setLicences(licences.filter((_, j) => j !== i))}>×</button></span>)}
+            <input value={f.licName} onChange={e => set({ licName: e.target.value })} placeholder="Licence" aria-label="New licence" />
+            <input type="number" min={1} step={1} value={f.licRating} onChange={e => set({ licRating: e.target.value })} aria-label="Licence rating" style={{ width: '4.5rem' }} />
+            <button className="btn small" disabled={!f.licName.trim()} onClick={() => { setLicences([...licences, { name: f.licName.trim(), rating: whole(f.licRating) }]); set({ licName: '', licRating: '1' }) }}>Add licence</button>
+          </div>
+        </>}
         {op === 'lifestyle' && <>
           <label>SIN<select value={sin} onChange={e => set({ sin: e.target.value })}>
             {!b.sins.length && <option value="">The runner has no SIN</option>}
-            {b.sins.map((s, i) => <option key={s.uid} value={s.uid}>{s.name || `SIN ${i + 1}`}</option>)}</select></label>
+            {b.sins.map((s, i) => <option key={s.uid} value={s.uid}>{sinName(s, `SIN ${i + 1}`)}</option>)}</select></label>
           <label>Lifestyle<select value={f.target} onChange={e => set({ target: e.target.value })}>
             <option value="">Pick one</option>{[...c.entries.lifestyles.values()].map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
           <label>Months<input type="number" min={1} step={1} value={f.months} onChange={e => set({ months: e.target.value })} style={{ width: '5rem' }} /></label>
