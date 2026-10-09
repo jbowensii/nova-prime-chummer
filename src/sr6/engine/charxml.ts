@@ -42,8 +42,8 @@ function buildXml(b: Sr6Build): string {
     ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
     ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
-    ...(b.lifestyle ? [el('lifestyle', { id: b.lifestyle.id, months: b.lifestyle.months })] : []),
-    ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating }, s.licences.map(l => el('licence', l)).join(''))),
+    ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender },
+      s.licences.map(l => el('licence', l)).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''))),
   ]
   return el('build', { method: b.method, magic: b.magic, aspectedSkill: b.aspectedSkill, tradition: b.tradition, drainAttr: b.drainAttr,
     powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen,
@@ -64,7 +64,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'purchase': return [{}, purchaseXml(a.line)]
     case 'drop': return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
     case 'contact': return [{}, contactXml(a.line)]
-    case 'lifestyle': return [{ lifestyle: a.id, months: a.months }, '']
+    case 'lifestyle': return [{ lifestyle: a.id, months: a.months, sin: a.sin, uid: a.uid }, '']
     case 'powerpoint': case 'convert': case 'other': return [{}, '']
   }
 }
@@ -101,7 +101,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
     printedXml(ch.printed), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
     ...(ch.migrated ?? []).map(m => el('migrated', m))].filter(Boolean).join('\n  ')
-  const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, metatype: ch.build.metatype,
+  const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, gender: id.gender, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
     lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen, sampleKey: ch.sampleKey })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="${SR6_CHAR_NS}"${root}>\n  ${body}\n</sr6:character>\n`
@@ -183,12 +183,25 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.picks = each(kids(b, 'pick'), readPick, label, fix)
   out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix), label, fix)
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
-  const ls = kid(b, 'lifestyle')
-  if (ls) out.lifestyle = { id: ls.getAttribute('id') ?? '', months: num(ls, 'months', 0) }
-  out.sins = each(kids(b, 'sin'), e => def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
-    kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'),
-    licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })) }), label, fix)
+  out.sins = each(kids(b, 'sin'), e => {
+    const lifestyles = kids(e, 'lifestyle').map(readLifestyle)
+    return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
+      kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'), gender: str(e, 'gender'),
+      licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })),
+      lifestyles: lifestyles.length ? lifestyles : undefined })
+  }, label, fix)
   return out
+}
+const readLifestyle = (e: Element) => ({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', months: num(e, 'months', 0) })
+
+/** An older file's one lifestyle (<build><lifestyle>) goes on the first SIN, and its ledger's lifestyle spends naming no
+ *  SIN replay there (career.ts); a runner with either and no SIN gets a real SIN in its name (free, like every real SIN). */
+function migrateLifestyle(ch: Sr6Character, old: Element | undefined) {
+  const b = ch.build
+  if (!old && !ch.ledger.some(e => e.type === 'advance' && e.advance.op === 'lifestyle' && !e.advance.sin)) return
+  if (!b.sins.length) b.sins.push({ uid: `${ch.id}-sin`, name: ch.identity.name || ch.identity.streetName, kind: 'real', licences: [] })
+  const sin = b.sins[0], id = old?.getAttribute('id') ?? ''
+  if (old) sin.lifestyles = [{ uid: `${sin.uid}-${id}`, id, months: num(old, 'months', 0) }, ...sin.lifestyles ?? []]
 }
 
 // ---- the ledger and the NPC block ----
@@ -218,7 +231,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'purchase': return { op, line: line(e, 'purchase', purchase, true) }
     case 'drop': return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
     case 'contact': return { op, line: line(e, 'contact', readContact, true) }
-    case 'lifestyle': return { op, id: req(e, 'lifestyle'), months: num(e, 'months', 0) }
+    case 'lifestyle': return def({ op, id: req(e, 'lifestyle'), months: num(e, 'months', 0), sin: str(e, 'sin'), uid: str(e, 'uid') })
     case 'convert': return { op, karma }
     case 'powerpoint': case 'other': return { op }
   }
@@ -289,7 +302,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     const printed = kid(r, 'printed')
     const ch: Sr6Character = def({
       formatVersion: 1 as const, id: r.getAttribute('id')!,
-      identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', metatype: build.metatype,
+      identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', gender: str(r, 'gender'), metatype: build.metatype,
         portrait: t('portrait'), token: t('token'), backdrop: backdrop && BACKDROPS.includes(backdrop) ? backdrop : undefined,
         background: t('background') ?? '', notes: t('notes') ?? '' }),
       build, finalizedAt: str(r, 'finalizedAt'), campaign: str(r, 'campaign'),
@@ -302,6 +315,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       migrated: kids(r, 'migrated').length ? kids(r, 'migrated').map(m => ({ from: m.getAttribute('from') ?? '', to: m.getAttribute('to') ?? '', at: m.getAttribute('at') ?? '' })) : undefined,
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),
     })
+    migrateLifestyle(ch, kid(b, 'lifestyle'))
     return def({ ok: true as const, character: ch, rev: num(r, 'rev') })
   } catch (e) {
     return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }

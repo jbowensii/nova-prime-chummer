@@ -253,6 +253,12 @@ describe('export: the schema', () => {
   const books = () => file(exportBooks(cat, [...cat.sources.keys()], [{ name: 'X', text: 'Y' }], OPTS))
   test('runners and books files are valid', () => {
     for (const f of [runners(), books()]) expect(check(f), JSON.stringify(check.errors)).toBe(true)
+    const ch = rush()
+    ch.identity.gender = 'Made-up gender'
+    const g = file(exportRunners(cat, [ch], OPTS))
+    expect(g.runners[0].gender).toBe('Made-up gender')
+    expect(runners().runners[0]).not.toHaveProperty('gender')
+    expect(check(g), JSON.stringify(check.errors)).toBe(true)
     const comp = file(exportBooks(withAlley, ['ALLEY'], [], OPTS, {}, { ALLEY: alley.npcs }))
     expect(check(comp), JSON.stringify(check.errors)).toBe(true)
   })

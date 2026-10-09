@@ -793,6 +793,10 @@
         "realName": {
           "type": "string"
         },
+        "gender": {
+          "description": "Optional, as the player wrote it.",
+          "type": "string"
+        },
         "finalized": {
           "type": "boolean"
         },
@@ -1204,7 +1208,8 @@
             "cost": {
               "type": "number"
             }
-          }
+          },
+          "description": "Deprecated (kept for the module's older versions): the first lifestyle of the first SIN that has one, as sins[].lifestyles has it without its uid; null when no SIN has one."
         },
         "sins": {
           "type": "array",
@@ -1214,7 +1219,8 @@
               "uid",
               "name",
               "kind",
-              "licences"
+              "licences",
+              "lifestyles"
             ],
             "properties": {
               "uid": {
@@ -1232,6 +1238,10 @@
               "rating": {
                 "type": "number"
               },
+              "gender": {
+                "description": "The identity's own gender, optional.",
+                "type": "string"
+              },
               "licences": {
                 "type": "array",
                 "items": {
@@ -1245,6 +1255,38 @@
                       "type": "string"
                     },
                     "rating": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "lifestyles": {
+                "description": "The lifestyles paid under this SIN (a lifestyle always belongs to a SIN; a SIN may have none).",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "uid",
+                    "id",
+                    "name",
+                    "months"
+                  ],
+                  "properties": {
+                    "uid": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "months": {
+                      "type": "number"
+                    },
+                    "cost": {
+                      "description": "Nuyen a month, as the book prints it.",
                       "type": "number"
                     }
                   }

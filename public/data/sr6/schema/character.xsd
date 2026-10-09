@@ -59,6 +59,8 @@
       <xs:attribute name="rev" type="xs:nonNegativeInteger"/>
       <xs:attribute name="streetName" type="xs:string"/>
       <xs:attribute name="name" type="xs:string"/>
+      <!-- optional, as the player writes it -->
+      <xs:attribute name="gender" type="xs:string"/>
       <!-- the build's metatype id ("" while none is picked) and method, repeated here as the summary -->
       <xs:attribute name="metatype" type="xs:string"/>
       <xs:attribute name="method" type="c:Method"/>
@@ -161,12 +163,16 @@
       <xs:element name="pick" type="c:Pick" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- an older file's one lifestyle, never written now: it loads onto the first <sin> (a runner with none gets a real SIN
+           in its name) -->
       <xs:element name="lifestyle" minOccurs="0">
         <xs:complexType>
           <xs:attribute name="id" type="xs:string" use="required"/>
           <xs:attribute name="months" type="c:Count" use="required"/>
         </xs:complexType>
       </xs:element>
+      <!-- a SIN with its licences and the lifestyles paid under it (a lifestyle always belongs to a SIN; a SIN may have none);
+           gender: the identity's own, optional -->
       <xs:element name="sin" minOccurs="0" maxOccurs="unbounded">
         <xs:complexType>
           <xs:sequence>
@@ -176,9 +182,17 @@
                 <xs:attribute name="rating" type="c:Count" use="required"/>
               </xs:complexType>
             </xs:element>
+            <xs:element name="lifestyle" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:attribute name="uid" type="xs:string" use="required"/>
+                <xs:attribute name="id" type="xs:string" use="required"/>
+                <xs:attribute name="months" type="c:Count" use="required"/>
+              </xs:complexType>
+            </xs:element>
           </xs:sequence>
           <xs:attribute name="uid" type="xs:string" use="required"/>
           <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="gender" type="xs:string"/>
           <xs:attribute name="kind" use="required">
             <xs:simpleType><xs:restriction base="xs:string">
               <xs:enumeration value="real"/><xs:enumeration value="fake"/>
@@ -296,7 +310,8 @@
     <xs:attribute name="date" type="xs:string"/>
     <xs:attribute name="event" type="xs:string"/>
     <!-- advance: the op, its target (an attribute, a skill id, or the uid of the line bought off or dropped), name (a
-         specialization or expertise), lifestyle and months; convert's karma is the entry's karma -->
+         specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under, uid: the lifestyle's
+         uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -311,6 +326,8 @@
     <xs:attribute name="name" type="xs:string"/>
     <xs:attribute name="months" type="c:Count"/>
     <xs:attribute name="lifestyle" type="xs:string"/>
+    <xs:attribute name="sin" type="xs:string"/>
+    <xs:attribute name="uid" type="xs:string"/>
     <xs:attribute name="label" type="xs:string"/>
   </xs:complexType>
 

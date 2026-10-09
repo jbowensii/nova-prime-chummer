@@ -50,6 +50,7 @@ export function BookSheet() {
           <header className="b-head">
             <h1>{street}</h1>
             {ch.identity.name && ch.identity.name !== street && <span className="b-real">{ch.identity.name}</span>}
+            {ch.identity.gender && <span className="b-real">{ch.identity.gender}</span>}
           </header>
           <div className="b-attrs" role="group" aria-label="Attributes">
             {ATTRS.map(a => <div key={a}><span>{c.attributes.get(a)?.name}</span><b>{b.attributes[a]}</b></div>)}

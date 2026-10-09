@@ -296,16 +296,33 @@ test('a contact and Other take the typed amounts; a lifestyle is its cost × mon
   expect(preview(ch, { op: 'lifestyle', id: 'crb.cozy', months: 2 }, data, cr)).toEqual({ ok: true, label: 'Lifestyle: Cozy × 2 months', karma: 0, nuyen: 5000 })
 })
 
-test('a lifestyle spend adds its months to the lifestyle the runner has; another lifestyle replaces it', () => {
+test('a lifestyle spend names its SIN: more months of one it has add to it, another is added beside it', () => {
   const squat = { id: 'crb.squat', kind: 'lifestyles' as const, name: 'Squat', source: 'CRB', page: 1, attrs: { cost: '100' }, parts: [], text: '' }
   const { data, cr } = made({ data: d => { const old = d.entry; d.entry = (k, id) => (id === squat.id ? squat : old(k, id)) } })
   const ch = runner({ nuyen: 20000 })
-  ch.build.lifestyle = { id: 'crb.cozy', months: 3 }
+  ch.build.sins = [{ uid: 's1', name: 'Jo', kind: 'fake', rating: 1, licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 3 }] },
+    { uid: 's2', name: 'Me', kind: 'real', licences: [] }]
+  expect(preview(ch, { op: 'lifestyle', id: 'crb.cozy', months: 1, sin: 'nope' }, data, cr)).toEqual({ ok: false, reason: 'unknown-line' })
+  const more = ok(record(ch, { op: 'lifestyle', id: 'crb.cozy', months: 2, sin: 's1' }, data, cr))
+  expect(more.ledger.at(-1)).toMatchObject({ label: 'Lifestyle: Cozy × 2 months (Jo)' })
+  expect(currentBuild(more).sins[0].lifestyles).toEqual([{ uid: 'l1', id: 'crb.cozy', months: 5 }])
+  expect(ch.build.sins[0].lifestyles).toEqual([{ uid: 'l1', id: 'crb.cozy', months: 3 }])  // the finalized build is untouched
+  const other = ok(record(more, { op: 'lifestyle', id: squat.id, months: 1, sin: 's2' }, data, cr))
+  const uid = (other.ledger.at(-1) as { advance: { uid?: string } }).advance.uid
+  expect(uid).toBeTruthy()
+  expect(currentBuild(other).sins[1].lifestyles).toEqual([{ uid, id: 'crb.squat', months: 1 }])
+  expect(currentBuild(other).sins[0].lifestyles).toHaveLength(1)
+})
+
+test('an older lifestyle spend (no SIN) replays on the first SIN: more months of its lifestyle, or another replacing it', () => {
+  const squat = { id: 'crb.squat', kind: 'lifestyles' as const, name: 'Squat', source: 'CRB', page: 1, attrs: { cost: '100' }, parts: [], text: '' }
+  const { data, cr } = made({ data: d => { const old = d.entry; d.entry = (k, id) => (id === squat.id ? squat : old(k, id)) } })
+  const ch = runner({ nuyen: 20000 })
+  ch.build.sins = [{ uid: 's1', name: 'Jo', kind: 'real', licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 3 }] }]
   const more = ok(record(ch, { op: 'lifestyle', id: 'crb.cozy', months: 2 }, data, cr))
-  expect(currentBuild(more).lifestyle).toEqual({ id: 'crb.cozy', months: 5 })
-  expect(ch.build.lifestyle).toEqual({ id: 'crb.cozy', months: 3 })  // the finalized build is untouched
+  expect(currentBuild(more).sins[0].lifestyles).toEqual([{ uid: 'l1', id: 'crb.cozy', months: 5 }])
   const moved = ok(record(more, { op: 'lifestyle', id: squat.id, months: 1 }, data, cr))
-  expect(currentBuild(moved).lifestyle).toEqual({ id: 'crb.squat', months: 1 })
+  expect(currentBuild(moved).sins[0].lifestyles).toEqual([{ uid: 'l1', id: 'crb.squat', months: 1 }])
 })
 
 // --- finalize and Back to draft ---

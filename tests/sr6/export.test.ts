@@ -206,7 +206,22 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
     const booster = r.purchases.find(x => x.uid === 'c1')!
     expect(booster.values).toMatchObject({ rating: 1, cost: 1200, essence: 0.12, avail: 4, legality: 'I' })
     expect(booster.accessories[0].values).toMatchObject({ capacity: 1, cost: 100 })
+    expect(r.gender).toBe('Made-up gender')
+    expect(r.sins).toEqual([
+      { uid: 's1', name: 'Mara Testcase', kind: 'fake', rating: 3, gender: 'Made-up cover gender', licences: [{ name: 'Made-up Permit', rating: 3 }],
+        lifestyles: [{ uid: 'ls1', id: 'mus.made-up-squat', name: 'Made-up Hideout', months: 2, cost: 450 }] },
+      { uid: 's2', name: 'Birth Record', kind: 'real', licences: [], lifestyles: [] }])
+    // deprecated, for the module's older versions: the first lifestyle, without its uid
     expect(r.lifestyle).toEqual({ id: 'mus.made-up-squat', name: 'Made-up Hideout', months: 2, cost: 450 })
+  })
+  test('a runner with no lifestyle and no gender: lifestyle null, no gender key', () => {
+    const m = mara(sampleWorld())
+    delete m.identity.gender
+    m.build.sins = m.build.sins.map(s => ({ ...s, lifestyles: undefined }))
+    const w = sampleWorld(), r = exportSr6Runners(w.c, w.data, w.cr, [m], SAMPLE_OPTS).runners![0]
+    expect(r.lifestyle).toBeNull()
+    expect(r).not.toHaveProperty('gender')
+    expect(r.sins.map(s => s.lifestyles)).toEqual([[], []])
   })
   test('MUS has every kind; MUX only priorities and metatypes; the compendium’s grunt has its token', () => {
     const [m, x] = files()['test-books.json'].books!

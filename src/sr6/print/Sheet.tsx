@@ -30,7 +30,7 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
 export function Sr6Sheet() {
   const ctx = useSr6Editor(), { ch, data, cr, d } = ctx
   const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic], style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, karma, nuyen, host } = runnerView(ctx)
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}{host(x) && ` (${host(x)})`}</div>
   const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
   const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
@@ -62,7 +62,7 @@ export function Sr6Sheet() {
         <div className="s-top">
           <header className="s-head">
             <div><div className="s-label">Street name</div><h1>{name}</h1>
-              <div className="s-role">{[data.metatypes[b.metatype]?.name, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic]].filter(Boolean).join(', ')}</div>
+              <div className="s-role">{[data.metatypes[b.metatype]?.name, ch.identity.gender, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic]].filter(Boolean).join(', ')}</div>
               {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
             <span className="brand" role="img" aria-label="Chummer Shadowrun 6">Chummer <b>Shadowrun</b> 6</span>
           </header>
@@ -155,9 +155,10 @@ export function Sr6Sheet() {
             <ul>{b.contacts.map(x => <li key={x.uid}>{x.name || 'Contact'}{x.archetype && `, ${x.archetype}`}
               <span className="s-small"> connection {x.connection}, loyalty {x.loyalty}</span></li>)}</ul>
             {!b.contacts.length && <p>—</p>}
-            <h2>Lifestyle & SINs</h2>
-            <p>{lifestyle ? `${lifestyle.name} × ${b.lifestyle!.months} month${b.lifestyle!.months === 1 ? '' : 's'}` : '—'}</p>
-            <ul>{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="s-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`})</span>
+            <h2>SINs & lifestyles</h2>
+            {!lifestyle && <p>No lifestyle</p>}
+            <ul>{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="s-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`})</span>
+              {lifeOf(s) && <div>{lifeOf(s)}</div>}
               {s.licences.length > 0 && <div className="s-small">{s.licences.map(l => `${l.name} (${l.rating})`).join(', ')}</div>}</li>)}</ul>
           </section>
         </div>

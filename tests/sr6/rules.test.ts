@@ -419,8 +419,7 @@ test('Glimmerkin and karma build: nothing throws on a runner with every list fil
   const ch = runner({ method: 'karma', metatype: GLIM, magic: 'technomancer' })
   pick(ch.build, 'complexforms', 'crb.static-veil')
   buy(ch.build, 'gear', undefined, { name: 'Lucky charm', cost: 5 })
-  ch.build.lifestyle = { id: 'crb.cozy', months: 1 }
-  ch.build.sins.push({ uid: 's', name: 'Jo', kind: 'fake', rating: 1, licences: [] })
+  ch.build.sins.push({ uid: 's', name: 'Jo', kind: 'fake', rating: 1, licences: [], lifestyles: [{ uid: 'l', id: 'crb.cozy', months: 1 }] })
   expect(() => check(ch)).not.toThrow()
   expect(codes(ch)).toContain('nuyen.overspent') // the karma build has no nuyen but what karma buys
 })

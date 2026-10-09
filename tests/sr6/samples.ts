@@ -131,11 +131,12 @@ export function mara(w: ReturnType<typeof sampleWorld>): Sr6Character {
     { uid: 'x1', kind: 'gear', name: 'Lucky Coin', cost: 5, qty: 1, accessories: [] },
   ]
   b.contacts = [{ uid: 'k1', name: 'Fake Fixer', archetype: 'Fixer', connection: 4, loyalty: 2, types: ['street'] }]
-  b.lifestyle = { id: 'mus.made-up-squat', months: 2 }
-  b.sins = [{ uid: 's1', name: 'Mara Testcase', kind: 'fake', rating: 3, licences: [{ name: 'Made-up Permit', rating: 3 }] },
+  // two SINs: the fake one with her lifestyle and its own gender, the real one with none
+  b.sins = [{ uid: 's1', name: 'Mara Testcase', kind: 'fake', rating: 3, gender: 'Made-up cover gender', licences: [{ name: 'Made-up Permit', rating: 3 }],
+    lifestyles: [{ uid: 'ls1', id: 'mus.made-up-squat', months: 2 }] },
     { uid: 's2', name: 'Birth Record', kind: 'real', licences: [] }]
   return { formatVersion: 1, id: 'run-mara-1', build: b, overrides: [], updatedAt: '2026-10-03T20:00:00.000Z', finalizedAt: '2026-10-01T10:00:00.000Z',
-    identity: { name: 'Mara Testcase', streetName: 'Made-Up Mara', metatype: 'mus.elf', portrait: PNG,
+    identity: { name: 'Mara Testcase', streetName: 'Made-Up Mara', gender: 'Made-up gender', metatype: 'mus.elf', portrait: PNG,
       background: 'An invented runner for the tests.\n\nShe exists only here.', notes: 'Made-up notes & <stuff>.' },
     ledger: [{ id: 'l1', at: '2026-10-01T10:00:00.000Z', type: 'finalize', karma: 7, nuyen: 1234 },
       { id: 'l2', at: '2026-10-02T10:00:00.000Z', type: 'note', text: 'Made-up debrief.' }] }

@@ -32,7 +32,7 @@ export function Sheet() {
         <div className="s-top">
         <header className="s-head">
           <div><div className="s-label">Street name</div><h1>{name}</h1>
-            <div className="s-role">{c.metatypes.get(ch.identity.metatype)?.name}{ch.narrative.keywords[2] ? `, ${ch.narrative.keywords[2]}` : ''}</div>
+            <div className="s-role">{c.metatypes.get(ch.identity.metatype)?.name}{ch.identity.gender ? `, ${ch.identity.gender}` : ''}{ch.narrative.keywords[2] ? `, ${ch.narrative.keywords[2]}` : ''}</div>
             {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
           <span className="brand" role="img" aria-label="Chummer Anarchy 2.0">Chummer <b>Anarchy</b> 2.0</span>
         </header>

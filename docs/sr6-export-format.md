@@ -49,6 +49,7 @@ is closed (no other keys).
 |---|---|
 | `id`, `updatedAt`, `exportedAt` | the runner's id, last change, this export's time |
 | `streetName`, `realName` | identity |
+| `gender` | optional: the runner's gender as the player wrote it (left out when not set) |
 | `finalized` | true once the runner is finalized (career play) |
 | `metatype` | `{ id, name }`; an NPC may have none (`""`) |
 | `magic` | `{ kind, tradition?, drainAttr?, aspectedSkill?, initiation, submersion }`; `kind` `full`, `aspected`, `mystic-adept`, `adept`, `technomancer` or `mundane` |
@@ -61,8 +62,8 @@ is closed (no other keys).
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
 | `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles |
 | `contacts` | `[{ uid, name, archetype, connection, loyalty, types? }]`; `types`: the Sixth World Companion's contact types, when set |
-| `lifestyle` | `{ id, name, months, cost? }` or `null`; `cost` is the lifestyle's price per month |
-| `sins` | `[{ uid, name, kind, rating?, licences: [{ name, rating }] }]`; `kind` `real` or `fake` |
+| `lifestyle` | **deprecated**, kept for the module's older versions: the first lifestyle of the first SIN that has one, `{ id, name, months, cost? }`, or `null`. Read `sins[].lifestyles` |
+| `sins` | `[{ uid, name, kind, rating?, gender?, licences: [{ name, rating }], lifestyles: [{ uid, id, name, months, cost? }] }]`; `kind` `real` or `fake`; `gender`: that identity's own; `lifestyles`: the ones paid under this SIN (a lifestyle always belongs to a SIN, a SIN may have none); `cost` is the lifestyle's price per month. For Eden: a `sin` item per SIN and a `lifestyle` item per lifestyle with `system.sin` naming its SIN |
 | `karma`, `nuyen` | a finalized runner's balances (the ledger); a draft's: what the build budgets leave |
 | `derived` | a runner only (an NPC has none): `{ initiative, astralInit?, monitors, monitorBonus, defenseRating, composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. For reading, except `monitorBonus` `{ physical, stun }`: the boxes the monitors have beyond base + attribute / divisor (Built Tough's), which the importer writes as the system's monitor modifiers; the system derives the rest itself |
 | `background`, `notes` | free text |

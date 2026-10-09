@@ -188,9 +188,10 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   for (const x of b.purchases)
     add(`purchase:${x.uid}`, `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
       priced(x, data, cr).cost, PURCHASE_TAB[x.kind])
-  if (b.lifestyle) {
-    const e = data.entry('lifestyles', b.lifestyle.id), m = b.lifestyle.months
-    add('lifestyle', `${e?.name ?? b.lifestyle.id} lifestyle × ${s(m, 'month')}`, (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * m, 'contacts')
+  for (const sin of b.sins) for (const l of sin.lifestyles ?? []) {
+    const e = data.entry('lifestyles', l.id)
+    add(`lifestyle:${l.uid}`, `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sin.name || 'SIN'})`,
+      (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months, 'contacts')
   }
   for (const sin of b.sins) {
     // a real SIN comes with its quality; its licences are still bought

@@ -29,7 +29,7 @@ export function LedgerTab() {
   const today = new Date().toISOString().slice(0, 10)
   const [gain, setGain] = useState({ karma: '', nuyen: '', run: '', date: today })
   const [op, setOp] = useState<OpKey>('attribute')
-  const [f, setF] = useState({ target: '', name: '', kind: 'knowledge', months: '1', karma: '', nuyen: '', label: '', archetype: '', connection: '1', loyalty: '1' })
+  const [f, setF] = useState({ target: '', name: '', kind: 'knowledge', months: '1', sin: '', karma: '', nuyen: '', label: '', archetype: '', connection: '1', loyalty: '1' })
   const [picked, setPicked] = useState<PickedItem | null>(null)
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -47,6 +47,8 @@ export function LedgerTab() {
   const initKind: Sr6Kind = kind.resonance ? 'echoes' : 'metamagics'
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
+  // a lifestyle is paid under a SIN: the first unless another is picked
+  const sin = b.sins.some(s => s.uid === f.sin) ? f.sin : b.sins[0]?.uid ?? ''
   /** what the form says to buy, or null while it's incomplete */
   const advance = (): Sr6Advance | null => {
     const e = picked?.e
@@ -63,7 +65,7 @@ export function LedgerTab() {
       case 'purchase': return e ? { op, line: { uid: '', kind: e.kind as PurchaseKind, id: e.id, qty: 1, accessories: [],
         ...(picked!.rating ? { rating: picked!.rating } : {}), ...(picked!.grade ? { grade: picked!.grade } : {}) } } : null
       case 'drop': return f.target ? { op, target: f.target } : null
-      case 'lifestyle': return f.target ? { op, id: f.target, months: whole(f.months) } : null
+      case 'lifestyle': return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
       case 'contact': return f.name.trim() || f.target ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(),
         connection: whole(f.connection), loyalty: whole(f.loyalty) } } : null
       case 'k2n': return whole(f.karma) > 0 ? { op: 'convert', karma: whole(f.karma) } : null
@@ -135,6 +137,9 @@ export function LedgerTab() {
         {op === 'drop' && <label>Item<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.purchases.map(x => <option key={x.uid} value={x.uid}>{(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}</option>)}</select></label>}
         {op === 'lifestyle' && <>
+          <label>SIN<select value={sin} onChange={e => set({ sin: e.target.value })}>
+            {!b.sins.length && <option value="">The runner has no SIN</option>}
+            {b.sins.map((s, i) => <option key={s.uid} value={s.uid}>{s.name || `SIN ${i + 1}`}</option>)}</select></label>
           <label>Lifestyle<select value={f.target} onChange={e => set({ target: e.target.value })}>
             <option value="">Pick one</option>{[...c.entries.lifestyles.values()].map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
           <label>Months<input type="number" min={1} step={1} value={f.months} onChange={e => set({ months: e.target.value })} style={{ width: '5rem' }} /></label>

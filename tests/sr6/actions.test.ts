@@ -302,11 +302,28 @@ test('contacts and knowledge are added, changed and removed by uid', () => {
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 1 })).toEqual(no('native'))
   expect(act({ op: 'knowledge', remove: b.knowledge[1].uid })).toEqual(ok)
   expect(b.knowledge.map(k => [k.name, k.karma])).toEqual([['Sewer Maps', 2]])
-  expect(act({ op: 'lifestyle', id: 'crb.cozy', months: 2 })).toEqual(ok)
-  expect(b.lifestyle).toEqual({ id: 'crb.cozy', months: 2 })
-  expect(act({ op: 'lifestyle', id: 'crb.cozy', months: 0 })).toEqual(no('below-one'))
-  expect(act({ op: 'lifestyle', id: null })).toEqual(ok)
-  expect(b.lifestyle).toBeUndefined()
+})
+
+test('a lifestyle belongs to a SIN: added, changed and removed on it; a SIN has an optional gender', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'lifestyle', sin: 'nope', id: 'crb.cozy' })).toEqual(no('unknown-line'))
+  expect(act({ op: 'sin', name: 'Jo Blue', kind: 'fake', gender: 'Nonbinary' })).toEqual(ok)
+  expect(act({ op: 'sin', name: 'Real Me', kind: 'real' })).toEqual(ok)
+  const [fake, real] = b.sins
+  expect(fake.gender).toBe('Nonbinary')
+  expect(act({ op: 'lifestyle', sin: fake.uid, id: 'crb.cozy', months: 2 })).toEqual(ok)
+  expect(act({ op: 'lifestyle', sin: fake.uid, id: 'crb.nope' })).toEqual(no('unknown-entry'))
+  expect(act({ op: 'lifestyle', sin: fake.uid })).toEqual(no('unknown-entry'))
+  const l = fake.lifestyles![0]
+  expect(l).toMatchObject({ id: 'crb.cozy', months: 2 })
+  expect(act({ op: 'lifestyle', sin: fake.uid, uid: l.uid, months: 0 })).toEqual(no('below-one'))
+  expect(act({ op: 'lifestyle', sin: fake.uid, uid: l.uid, months: 5 })).toEqual(ok)
+  expect(fake.lifestyles).toEqual([{ uid: l.uid, id: 'crb.cozy', months: 5 }])
+  expect(real.lifestyles).toBeUndefined()  // a SIN may have none
+  expect(act({ op: 'lifestyle', sin: fake.uid, remove: l.uid })).toEqual(ok)
+  expect(fake.lifestyles).toBeUndefined()
+  expect(act({ op: 'sin', uid: fake.uid, gender: '' })).toEqual(ok)
+  expect(fake.gender).toBeUndefined()
 })
 
 // life modules

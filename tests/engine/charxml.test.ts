@@ -34,6 +34,18 @@ test('a runner’s portrait backdrop survives the round trip; none or unknown is
   }
 })
 
+test('a runner’s optional gender survives the round trip; none writes none', () => {
+  const xml = (a: string) => `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner"${a} updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
+  const r = xmlToCharacter(xml(' gender="Made-up &amp; more"'))
+  expect(r.ok && r.character.identity.gender).toBe('Made-up & more')
+  const back = r.ok ? characterToXml(r.character) : ''
+  expect(back).toContain(' gender="Made-up &amp; more"')
+  expect(xmlToCharacter(back)).toEqual(r)
+  const none = xmlToCharacter(xml(''))
+  expect(none.ok && 'gender' in none.character.identity).toBe(false)
+  expect(none.ok && characterToXml(none.character)).not.toContain('gender=')
+})
+
 const NPC_XML = (npc: string, meta = 'elf') => `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="${meta}" level="runner" updatedAt="x">${npc}<build><attributes str="9" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
 
 test('an NPC’s npc block survives the round trip as the root’s first child; none is a runner', async () => {

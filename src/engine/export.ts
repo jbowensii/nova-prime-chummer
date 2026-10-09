@@ -26,7 +26,7 @@ export interface ExportItem { uid: string; catalogId?: string; kind: string; nam
   weapon?: { dv: string; dvText: string; ranges: Record<'melee' | 'short' | 'medium' | 'long', Range>; specialist: boolean; ammo: string[] }
   armor?: { value: number; over?: string } }
 export interface ExportRunner {
-  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; finalized: boolean
+  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; gender?: string; finalized: boolean
   metatype: { id: string; name: string; ranges: Record<AttrId, [number, number]>; edge: number }
   level: { id: string; name: string }; lifestyle: { id: string; name: string; perRun: number }
   /** token: the round token picture, null: none (use the portrait) */
@@ -179,7 +179,7 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
   const dv = new Map(d.weapons.map(w => [w.uid, { dv: w.dv, ammo: w.ammo ?? [] }]))
   return {
     id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: ch.identity.streetName, realName: ch.identity.name,
-    finalized: !!ch.finalizedAt,
+    ...(ch.identity.gender ? { gender: ch.identity.gender } : {}), finalized: !!ch.finalizedAt,
     metatype: { id: ch.identity.metatype, name: meta?.name ?? (ch.identity.metatype || NO_META[ch.npc?.kind ?? ''] || ''), ranges: meta?.ranges ?? {} as never, edge: d.edge },
     level: { id: ch.level, name: c.levels.get(ch.level)?.name ?? ch.level },
     lifestyle: { id: ch.identity.lifestyle ?? 'low', name: life?.name ?? '', perRun: life?.perRun ?? 0 },

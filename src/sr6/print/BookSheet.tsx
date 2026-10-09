@@ -74,7 +74,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
               {ch.identity.portrait && <img className={`k-portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
               <F l="Name/primary alias" v={<>{v.name}{ch.identity.name && ch.identity.name !== v.name && <span className="k-small"> ({ch.identity.name})</span>}</>} />
               <div className="k-row"><F l="Metatype" v={data.metatypes[b.metatype]?.name} /><F l="Ethnicity" /></div>
-              <div className="k-row"><F l="Age" /><F l="Sex" /><F l="Height" /><F l="Weight" /></div>
+              <div className="k-row"><F l="Age" /><F l="Gender" v={ch.identity.gender} /><F l="Height" /><F l="Weight" /></div>
               <div className="k-row"><F l="Reputation" /><F l="Heat" /></div>
               <div className="k-row"><F l="Karma" v={n(v.karma)} /><F l="Total karma" /><F l="Misc" v={b.magic !== 'mundane' ? MAGIC_KIND_LABELS[b.magic] : undefined} /></div>
             </Box>
@@ -105,10 +105,11 @@ export function BookSheet({ art }: { art: SheetArt }) {
               <p className="k-know"><b>Knowledge</b> {v.know.map(x => x.name).join(', ') || '—'}</p>
             </Box>
             <Box id="k-ids" title="IDs / lifestyles / currency" side="l">
-              <F l="Primary lifestyle" v={v.lifestyle ? `${v.lifestyle.name} × ${b.lifestyle!.months} month${b.lifestyle!.months === 1 ? '' : 's'}` : undefined} />
+              <F l="Primary lifestyle" v={v.lifestyle} />
               <div className="k-row"><F l="Nuyen" v={`${n(v.nuyen)}¥`} /><F l="Licenses" v={licences.join(', ')} /></div>
               <table className="k-plain"><thead><tr><th>Fake IDs / related lifestyles / funds / licenses</th></tr></thead>
-                <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{s.name || 'SIN'} <span className="k-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`})</span>
+                <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{s.name || 'SIN'} <span className="k-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`})</span>
+                  {v.lifeOf(s) && <span className="k-small"> · {v.lifeOf(s)}</span>}
                   {s.licences.length > 0 && <span className="k-small"> · {s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</span>}</td></tr>), 3, 1)}</tbody></table>
             </Box>
           </div>
