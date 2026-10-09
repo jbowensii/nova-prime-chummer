@@ -73,7 +73,7 @@ test('a specialization costs karmaSpec; an expertise costs advance.expertise, re
   expect(preview(ch, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' }, data, cr)).toEqual({ ok: true, label: 'Tinkering: Gizmos', karma: 7, nuyen: 0 })
   const bare = ok(record(ch, { op: 'expertise', target: 'crb.tinkering', name: 'Gizmos' }, data, cr))
   const v = validateCareer(data, cr, bare).filter(x => x.code === 'skill.expertiseSpec')
-  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([['error', 'skills.crb.tinkering', 'CRB', 69,
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([['error', 'skills.crb.tinkering', 'CRB', 68,
     'Tinkering has an expertise but no specialization: an expertise needs one first.']])
   expect(validateCareer(data, cr, { ...bare, overrides: [{ code: 'skill.expertiseSpec', path: 'skills.crb.tinkering', note: 'GM ok' }] })
     .find(x => x.code === 'skill.expertiseSpec')?.approved).toBe(true)

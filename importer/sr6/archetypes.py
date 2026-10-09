@@ -206,6 +206,9 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         if m.group(4):
             augmented.append(f"{hit[2]} {m.group(3)}({m.group(4)})")
         skills.append((hit[1], int(m.group(3)), spec, expertise))
+    # an expertise is bought with the customization karma at its advancement price (owner, 2026-10-09: CRB p.66's
+    # step four buys advancement at p.68's prices; budgets.ts skillSpend)
+    need["karma"] += setting("advance.expertise") * sum(1 for *_, ex in skills if ex)
     free = attrs.get("log", 1)  # Logic's knowledge points (CRB p.67) go first; a skill or language past them is karma's
     for k in split(labels.get("knowledge skills", "")):
         lines.append(f'<knowledge uid="k{next(uid)}" kind="knowledge" {_rank(free)}>{_x(k)}</knowledge>')

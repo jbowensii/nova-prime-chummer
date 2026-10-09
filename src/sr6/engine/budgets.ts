@@ -204,12 +204,15 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     for (let i = 0; i < ranks; i++) cost += (to - i) * perRank
     add(`attr:${k}`, `${k.toUpperCase()} ${to - ranks} → ${to} (${s(ranks, 'rank')} by karma)`, cost, 'attributes')
   }
-  let skills = skillSpend(b, cr, p.skillPoints(b)).karma * n0(cr, 'karmaSpec')
+  const spend = skillSpend(b, cr, p.skillPoints(b))
+  let skills = spend.karma * n0(cr, 'karmaSpec')
   for (const sk of b.skills) {
     const top = skillRank(sk)
     for (let i = 0; i < sk.karma; i++) skills += (top - i) * n0(cr, 'karmaSkillPerRank')
   }
   add('skills', 'Skill ranks bought with karma', skills, 'skills')
+  // (owner, 2026-10-09) CRB p. 66, step four: the customization karma buys advancement at p. 68's prices, an expertise too
+  add('expertise', `${s(spend.expertise, 'expertise')} bought with karma`, spend.expertise * n0(cr, 'advance.expertise'), 'skills')
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
@@ -294,21 +297,24 @@ export function knowledgePoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p
   return p.knowledgePoints?.(b) ?? pool(augmentedRating(b, data, 'log', p) * n0(cr, 'knowledgePerLog'), knowledgeSpend(b))
 }
 
-/** Skill points spent, and how many specializations and expertises karma buys: the ranks take their points; a
- *  specialization (or an expertise, at its own price) on a skill with skill points takes the points still left, and one
- *  they don't cover is bought with karma (CRB p.66: a specialization costs a skill rank; p.69: or 5 karma), as is one on
- *  a skill with only karma ranks. An unset price counts 0 (an expertise then is Review's skill.expertise error). */
-export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number): { points: number; karma: number } {
-  let points = b.skills.reduce((t, sk) => t + sk.points, 0), karma = 0
+/** Skill points spent, and how many specializations (karma) and expertises (expertise) karma buys: the ranks take their
+ *  points; a specialization on a skill with skill points takes the points still left, and one they don't cover is bought
+ *  with karma (CRB p.66: a specialization costs a skill rank; p.68: or 5 karma), as is one on a skill with only karma
+ *  ranks. An expertise is bought with the customization karma at its advancement price (owner, 2026-10-09: CRB p. 65's
+ *  "you cannot acquire an expertise" is the priority skill points'; step four, p. 66, buys advancement at p. 68's
+ *  prices), unless the table gives it skill points (skillPointsExpertise), which it then takes as a specialization does. */
+export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number): { points: number; karma: number; expertise: number } {
+  let points = b.skills.reduce((t, sk) => t + sk.points, 0), karma = 0, expertise = 0
   const take = (on: boolean, cost: number) => {
-    if (on && (cost === 0 || points + cost <= pool)) points += cost
-    else karma++
+    if (on && (cost === 0 || points + cost <= pool)) { points += cost; return true }
+    return false
   }
+  const expPoints = num(cr, 'skillPointsExpertise')
   for (const sk of b.skills) {
-    if (sk.spec) take(sk.points > 0, n0(cr, 'skillPointsSpec'))
-    if (sk.expertise) take(sk.points > 0, n0(cr, 'skillPointsExpertise'))
+    if (sk.spec && !take(sk.points > 0, n0(cr, 'skillPointsSpec'))) karma++
+    if (sk.expertise && (expPoints === undefined || !take(sk.points > 0, expPoints))) expertise++
   }
-  return { points, karma }
+  return { points, karma, expertise }
 }
 
 /** Every budget, as the editor's budget panel shows them. */

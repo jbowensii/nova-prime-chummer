@@ -139,7 +139,7 @@ test('skills: the cap, karma ranks counting toward it; with the aptitude quality
   expect(only(ch, 'skill.cap')).toHaveLength(1)
 })
 
-test('skills: only one at the highest rank when the table says so; no expertise at creation unless it is priced', () => {
+test('skills: only one at the highest rank when the table says so; an expertise at creation is no error by itself', () => {
   const ch = runner()
   ch.build.skills.push({ id: 'crb.gab', points: 5, karma: 0 }, { id: 'crb.tinkering', points: 5, karma: 0 })
   expect(codes(ch)).not.toContain('skill.oneAtMax')  // the fixture's oneSkillAtMax is false
@@ -149,7 +149,7 @@ test('skills: only one at the highest rank when the table says so; no expertise 
   ch.build.skills[0].spec = 'Haggling'
   ch.build.skills[0].expertise = 'Bargains'
   expect(codes(ch)).not.toContain('skill.expertise')
-  expect(only(ch, 'skill.expertise', { unset: ['skillPointsExpertise'] })).toMatchObject([{ path: 'skills.crb.gab' }])
+  expect(codes(ch, { unset: ['skillPointsExpertise'] })).not.toContain('skill.expertise')  // bought with karma instead
 })
 
 test('skills: overspent skill points are flagged', () => {

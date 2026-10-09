@@ -25,7 +25,7 @@ export function SkillsTab() {
   const [kname, setKname] = useState(''), [kkind, setKkind] = useState<Sr6Knowledge['kind']>('knowledge')
   const skills = Object.values(data.skills).sort((a, z) => a.name.localeCompare(z.name))
   const groups = SR6_ATTRS.map(a => [a, skills.filter(s => s.attr === a)] as const).filter(([, l]) => l.length)
-  const cap = num(cr, 'skillCap'), spec = num(cr, 'skillPointsSpec'), exp = num(cr, 'skillPointsExpertise')
+  const cap = num(cr, 'skillCap'), spec = num(cr, 'skillPointsSpec'), exp = num(cr, 'skillPointsExpertise'), expKarma = num(cr, 'advance.expertise')
   const addKnowledge = () => { const name = kname.trim(); if (name && !act({ op: 'knowledge', name, kind: kkind })) setKname('') }
 
   return (
@@ -35,6 +35,7 @@ export function SkillsTab() {
         Skill points: <b className={budgets.skillPoints.left < 0 ? 'err' : ''}>{n(budgets.skillPoints.left)} left</b> of {n(budgets.skillPoints.max)}.
         {cap !== undefined && ` The highest rank at creation is ${cap}.`}
         {spec !== undefined && ` A specialization takes ${spec} skill points`}{exp !== undefined && `, an expertise ${exp}`}{spec !== undefined && '.'}
+        {exp === undefined && expKarma !== undefined && ` An expertise costs ${expKarma} karma (it needs the specialization and a rank of ${num(cr, 'advance.expertiseRank') ?? 1} or more).`}
       </p>
       <div className="scroll-x"><table className="data sr6-skills">
         <thead><tr><th>Skill</th><th>Points</th><th>Karma</th><th className="num">Rank</th><th className="num">Dice</th><th>Specialization</th><th>Expertise</th></tr></thead>

@@ -92,3 +92,12 @@ test('an expertise of its specialization’s name rolls as the expertise only', 
   expect([pool.spec, pool.expertise]).toEqual([undefined, 'Fast Talk'])
   expect(validateSr6(w.data, w.cr, w.ch).map(v => v.code)).not.toContain('skill.expertiseSpec')
 })
+
+test('an expertise at creation is bought with the customization karma at its advancement price, unless the table gives it skill points', () => {
+  const b = runner()
+  b.skills.push({ id: 'crb.gab', points: 2, karma: 0, spec: 'Fast Talk', expertise: 'Fast Talk' })  // 2 + 3 + 5 points fit
+  const priced = world(b, { unset: ['skillPointsExpertise'], rules: { 'advance.expertise': 7 } }).budgets
+  expect(priced.karma.breakdown).toContainEqual(expect.objectContaining({ key: 'expertise', label: '1 expertise bought with karma', amount: 7 }))
+  const points = world(b, { rules: { 'advance.expertise': 7 } }).budgets  // the fixture gives an expertise skill points
+  expect(points.karma.breakdown?.some(l => l.key === 'expertise')).toBe(false)
+})

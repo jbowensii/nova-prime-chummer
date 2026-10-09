@@ -40,8 +40,8 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'exceptionalQuality', label: 'Exceptional (Attribute) quality: +1 to the maximum of the attribute its note names (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'oneSkillAtMax', label: 'Only one skill at the highest rank', type: 'bool', group: 'General', methods: [] },
   ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization']]),
-  // optional: unset, no expertise at creation (the core rulebook allows none)
-  ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: no expertise at creation)']]),
+  // optional: unset, an expertise at creation is bought with the customization karma (advance.expertise)
+  ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: bought with karma at the advancement price)']]),
   ...n('General', 'all', [['magicMax', 'Highest Magic or Resonance'], ['essence', 'Starting Essence'], ['contactPointsPerCha', 'Contact points per Charisma'],
     ['knowledgePerLog', 'Free knowledge skills per Logic'], ['maxAvailability', 'Highest Availability'],
     ['maxNuyenLeft', 'Most nuyen kept after creation'],

@@ -539,17 +539,17 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `skillCapAptitude` | number | all | Highest skill rank with the aptitude quality |
 | General | `aptitudeQuality` | quality id | all | Aptitude quality |
 | General | `skillPointsSpec` | number | all | Skill points for a specialization |
-| General | `skillPointsExpertise` | number | all | Skill points for an expertise |
+| General | `skillPointsExpertise` | number | optional | Skill points for an expertise (unset: bought with karma at `advance.expertise`) |
 | General | `magicMax` | number | all | Highest Magic or Resonance |
 | General | `essence` | number | all | Starting Essence |
-| General | `contactPointsPerCha` | number | all | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills) |
+| General | `contactPointsPerCha` | number | all | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills the augmented Logic: owner, 2026-10-09) |
 | General | `knowledgePerLog` | number | all | Free knowledge skills per Logic |
 | General | `maxAvailability` | number | all | Highest Availability |
 | General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
 | General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
 | General | `maxKarmaLeft` | number | optional | Most karma kept after creation (unset: no limit, and Review gives no warning) |
-| General | `contactKarma` | number | optional | Karma per contact point past the points or past a contact's pair cap (the Sixth World Companion's expanded contacts, SWC p. 161; unset: off, each rating up to Charisma) |
+| General | `contactKarma` | number | optional | Karma per contact point past the points or past a contact's pair cap (the Sixth World Companion's expanded contacts, SWC p. 161, shipped on: owner, 2026-10-09; unset: off, each rating up to Charisma) |
 | General | `contactPairPerCha` | number | optional | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
 | General | `contactRatingMax` | number | optional | Highest contact rating (with `contactKarma`; unset: Charisma) |
 | General | `exceptionalQuality` | quality id | optional | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB p. 71) |
@@ -695,8 +695,13 @@ approval (`overrides`, `{code, path}`) clears it. Career Review (`validateCareer
 | `magic.spellsAllowed` | `magic.<uid>` | a magic kind that learns the spell, ritual, complex form or echo | CRB p. 67 |
 | `adept.ppBudget` | `magic` | an adept kind, for adept powers (and power points left) | CRB p. 67 |
 | `skill.specUntrained` | `skills.<id>` | a rank in the skill a specialization or expertise is on | CRB p. 93 |
-| `skill.expertiseSpec` | `skills.<id>` | a specialization before an expertise | CRB p. 69 |
-| `skill.expertiseRank` | `skills.<id>` | the skill rank an expertise needs (`advance.expertiseRank`) | the setting's page (CRB p. 69) |
+| `skill.expertiseSpec` | `skills.<id>` | a specialization before an expertise | CRB p. 68 |
+| `skill.expertiseRank` | `skills.<id>` | the skill rank an expertise needs (`advance.expertiseRank`) | the setting's page (CRB p. 68) |
+
+An expertise at creation is no error by itself (owner, 2026-10-09): CRB p. 65's "you cannot acquire an expertise" is about the
+priority skill points; step four (CRB p. 66) spends the customization karma on advancement at p. 68's prices, so an expertise
+costs `advance.expertise` karma (5) at creation too, unless `skillPointsExpertise` gives it skill points. Its prerequisites
+are the two errors above.
 | `gear.grade` | `<tab>.<line uid>` | an augmentation type the grade comes in | CRB p. 283, or the catalog grade's page |
 | `catalog.accessoryHost` | `<tab>.<host uid>` | a host the accessory's category fits | the accessory's page |
 | `lifepath.requires` | `method.<module id>` | the magic kind an adult life module is for | the module's page |

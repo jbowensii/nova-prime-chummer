@@ -70,11 +70,13 @@ test('a specialization costs skill points; an expertise its own; karma ranks are
   const b = runner()
   b.skills.push({ id: 'crb.gab', points: 3, karma: 0, spec: 'Haggling' }, { id: 'crb.tinkering', points: 2, karma: 2, expertise: 'Clockwork' })
   const { skillPoints, karma } = budgets(b)
-  // 5 ranks and the specialization's 3 fit the 11; the expertise's 5 don't, so it's bought with karma (7)
+  // 5 ranks and the specialization's 3 fit the 11; the expertise's 5 don't, so it's bought with karma at its advancement
+  // price (advance.expertise 9)
   expect(skillPoints).toEqual({ max: 11, spent: 3 + 3 + 2, left: 3 })
   expect(skillRank(b.skills[1])).toBe(4)
-  expect(karma.spent).toBe((4 + 3) * 3 + 7)
-  expect(karma.breakdown).toContainEqual({ key: 'skills', label: 'Skill ranks bought with karma', amount: 28, sign: 'spend', tab: 'skills' })
+  expect(karma.spent).toBe((4 + 3) * 3 + 9)
+  expect(karma.breakdown).toContainEqual({ key: 'skills', label: 'Skill ranks bought with karma', amount: 21, sign: 'spend', tab: 'skills' })
+  expect(karma.breakdown).toContainEqual({ key: 'expertise', label: '1 expertise bought with karma', amount: 9, sign: 'spend', tab: 'skills' })
 })
 
 test('a specialization the skill points left over can’t cover is bought with karma, never overspending the points', () => {

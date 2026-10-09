@@ -114,17 +114,15 @@ const RULES: Rule[] = [
     const at = c.b.skills.filter(s => skillRank(s) >= cap).map(s => c.data.skills[s.id]?.name ?? s.id)
     return at.length <= 1 ? null : { message: `Only one skill may be at the highest rank, ${cap} (${at.join(', ')} are).`, ...cite(c.cr, 'oneSkillAtMax') }
   } },
-  { code: 'skill.expertise', severity: 'error', tab: 'skills', check: c =>
-    // CRB p. 65: no expertise at creation, unless the table gives an expertise its skill points
-    (num(c.cr, 'skillPointsExpertise') !== undefined ? null : c.b.skills.filter(s => s.expertise)
-      .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise: none can be taken at creation.` }))) },
+  // (owner, 2026-10-09) an expertise may be bought at creation with the customization karma (CRB p. 66, step four, at
+  // p. 68's price: budgets.ts skillSpend): no blanket error; its prerequisites are the two below
   // CRB p. 93: a specialization (or an expertise) is attached to a skill the runner has a rank in
   { code: 'skill.specUntrained', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => skillRank(s) < 1 && (s.spec || s.expertise))
     .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has ${s.spec ? 'a specialization' : 'an expertise'} but no rank.`, ...CRB(93) })) },
-  // CRB p. 69: an expertise needs a specialization in its skill first
+  // CRB p. 68: an expertise needs a specialization in its area first (p. 92: the specialization is turned into it)
   { code: 'skill.expertiseSpec', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => s.expertise && !s.spec)
-    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise but no specialization: an expertise needs one first.`, ...CRB(69) })) },
-  // CRB p. 69: an expertise needs a skill rank of advance.expertiseRank (optional: unset, no minimum and no unset warning)
+    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise but no specialization: an expertise needs one first.`, ...CRB(68) })) },
+  // CRB p. 68: an expertise needs a skill rank of advance.expertiseRank (optional: unset, no minimum and no unset warning)
   { code: 'skill.expertiseRank', severity: 'error', tab: 'skills', check: c => {
     const need = num(c.cr, 'advance.expertiseRank')
     return need === undefined ? null : c.b.skills.filter(s => s.expertise && skillRank(s) < need).map(s => ({ path: `skills.${s.id}`,

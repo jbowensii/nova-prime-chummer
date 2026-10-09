@@ -5,7 +5,8 @@
      FS: Firing Squad (CAT28002): martial arts.
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
      as a copy of the server's. Left unset (no book prints them): maxKarmaLeft, karmaToNuyenMax, skillPointsExpertise
-     (no expertise at creation, CRB p. 65), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
+     (an expertise at creation is bought with the customization karma at advance.expertise: CRB p. 66, step four, at p. 68's
+     prices; owner, 2026-10-09), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
      advance.nuyenToKarmaRate, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
 <sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">
   <setting key="startingKarma" value="50" source="CRB" page="66"/>
@@ -44,7 +45,7 @@
   <setting key="karmaMartialArt" value="7" source="FS" page="97"/>
   <setting key="karmaTechnique" value="5" source="FS" page="97"/>
   <setting key="advance.expertise" value="5" source="CRB" page="68"/>
-  <setting key="advance.expertiseRank" value="5" source="CRB" page="69"/>
+  <setting key="advance.expertiseRank" value="5" source="CRB" page="68"/>
   <setting key="advance.qualityFactor" value="2" source="CRB" page="69"/>
   <setting key="advance.buyOffFactor" value="2" source="CRB" page="69"/>
   <setting key="advance.skillMax" value="9" source="CRB" page="65"/>
