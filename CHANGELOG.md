@@ -1,5 +1,24 @@
 # Release notes
 
+## Unreleased: Foundry (Eden and sra2) export, martial arts, SINs and lifestyles, catalog flags
+
+Import the books again (Books → **Re-import all**) to get the new catalog flags. Saved runners keep working; an older
+runner's lifestyle moves onto its first SIN when it is opened.
+
+- **Martial arts (SR6).** Buy a style and learn its techniques on the Qualities tab, in creation and in the Ledger:
+  7 Karma a style, 5 a technique, its signature technique free (Firing Squad p. 97), set in the house rules. Review
+  flags a style or technique taken twice and a technique its style doesn't teach.
+- **SINs and lifestyles.** A lifestyle belongs to a SIN; a runner can have several of each, and a SIN can have none.
+  Gender is optional on the runner (both games) and on each SIN.
+- **Catalog flags (SR6).** The importer reads which metamagics are for adepts or magicians and which can be taken
+  again, which spells are opposed or use the target's Essence, and armor's Social. The builder offers only the
+  metamagics a runner may take, Review checks them (one per initiation grade), and the sheets show the flags. Social
+  Rating (Charisma plus worn armor's Social) shows in Review, on the Gear tab and on the sheet.
+- **Skill bonuses.** A hand-entered bonus can add to a skill's dice pool.
+- **Foundry export.** The book export carries every kind, implant grades and the display kinds included, and each
+  entry's earlier ids; Anarchy's adds its reference kinds. The runner export carries the catalog's effects, Defense
+  Rating and skill bonuses, the monitor bonus, contact types, gender, SINs with their lifestyles, and martial arts.
+
 ## 0.10.6 — 2026-10-09: every Commlink6 record found
 
 Import the books again (Books → **Re-import all**) to get these. Saved runners keep working.
