@@ -1,7 +1,7 @@
 // Augmentation grades (src/sr6/engine/grades.ts): the creation settings' grades, else the catalog's (the made-up
 // fixture: Rustyware, Clunkware for cyberware only, Dreamware with no cost), by key.
 import { expect, test } from 'vitest'
-import { apply, gradeFactor, gradeKey, gradeName, gradesFor, priced, type Op } from '../../src/sr6/engine'
+import { apply, gradeFactor, gradeKey, gradeName, gradesFor, priced, validateSr6, type Op } from '../../src/sr6/engine'
 import { blankSr6 } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
 
@@ -27,7 +27,7 @@ test('a setting replaces the catalog’s factor; the catalog fills what the sett
   expect(gradeFactor(cr, data, 'nope', 'essence')).toBeUndefined()
 })
 
-test('a catalog grade prices a line and is refused where it doesn’t apply', () => {
+test('a catalog grade prices a line; where it doesn’t apply it is taken, an error cited to the grade', () => {
   const { data, cr } = made()
   const ch = blankSr6('priority', 'r1', '2026-10-05T00:00:00Z')
   ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
@@ -35,7 +35,12 @@ test('a catalog grade prices a line and is refused where it doesn’t apply', ()
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'rusty' })).toEqual({ ok: true })
   // Glow Eyes rating 2: 1,000¥, Essence 0.2, Availability 3
   expect(priced(ch.build.purchases[0], data, cr)).toMatchObject({ cost: 400, essence: 0.24, avail: 2 })
-  expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.spring-tendons', rating: 1, grade: 'clunk' })).toEqual({ ok: false, reason: 'no-grade' })
+  expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.spring-tendons', rating: 1, grade: 'clunk' })).toEqual({ ok: true })
+  const v = validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page])).toEqual([['error', `augmentations.${ch.build.purchases[1].uid}`,
+    data.entry('grades', data.grades.clunk.id)!.source, data.grades.clunk.page]])
+  ch.overrides = [{ code: 'gear.grade', path: v[0].path, note: 'GM ok' }]
+  expect(validateSr6(data, cr, ch).find(x => x.code === 'gear.grade')?.approved).toBe(true)
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 1, grade: 'dream' })).toEqual({ ok: false, reason: 'unknown-grade' })
 })
 

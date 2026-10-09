@@ -116,3 +116,13 @@ test('an armor add-on stacked on other armor is noted (CRB p.148); a shield is n
   ch.build.items[1].name = 'Made-up riot shield'
   expect(count(ch, 'armor.stack')).toBe(0)
 })
+
+test('a spell without Sorcery and a complex form without the Emerged amp are prerequisite errors a GM may approve', () => {
+  const ch = base()
+  ch.build.items = [{ uid: 's', kind: 'spell', name: 'Made-up Bolt' }, { uid: 'f', kind: 'complex-form', name: 'Made-up Loop' }]
+  const v = validate(cat, ch).filter(x => x.code === 'spell.noSorcery' || x.code === 'complexForm.noEmerged')
+  expect(v.map(x => [x.code, x.severity, x.source, x.page])).toEqual([['complexForm.noEmerged', 'error', 'CG', 9], ['spell.noSorcery', 'error', 'CRB', 58]])
+  expect(canFinalize(v)).toBe(false)
+  ch.overrides = v.map(x => ({ code: x.code, path: x.path, note: 'GM ok' }))
+  expect(canFinalize(validate(cat, ch).filter(x => x.code === 'spell.noSorcery' || x.code === 'complexForm.noEmerged'))).toBe(true)
+})

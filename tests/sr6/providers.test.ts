@@ -199,13 +199,13 @@ test('lifepath: available modules are the adult ones, marked when taken', () => 
   expect(av.map(m => m.name)).toEqual([...av.map(m => m.name)].sort((x, y) => x.localeCompare(y)))
 })
 
-test('lifepath: hides awakened-only modules from a mundane or an emerged runner', () => {
-  const p = setup('lifepath'), ids = (magic: MagicKind) => p.available!(build('lifepath', { magic })).map(m => m.id)
-  expect(ids('mundane')).not.toContain('crb.glow-apprentice')
-  expect(ids('technomancer')).not.toContain('crb.glow-apprentice')
-  expect(ids('full')).toContain('crb.glow-apprentice')
-  expect(ids('adept')).toContain('crb.glow-apprentice')
-  expect(ids('mundane')).toHaveLength(8)
+test('lifepath: offers awakened-only modules to a mundane or an emerged runner too, marked', () => {
+  const p = setup('lifepath'), ids = (magic: MagicKind) => p.available!(build('lifepath', { magic })).filter(m => !m.fits).map(m => m.id)
+  expect(ids('mundane')).toContain('crb.glow-apprentice')
+  expect(ids('technomancer')).toContain('crb.glow-apprentice')
+  expect(ids('full')).not.toContain('crb.glow-apprentice')
+  expect(ids('adept')).not.toContain('crb.glow-apprentice')
+  expect(p.available!(build('lifepath', { magic: 'mundane' })).filter(m => m.fits)).toHaveLength(8)
 })
 
 test('lifepath: a mixed choice counts only once picked, in the pool it lands in', () => {

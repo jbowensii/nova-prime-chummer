@@ -82,7 +82,8 @@ export function SkillsTab() {
                 <td className="num">{main?.rr || ''}</td>
                 <td className="num hide-sm">{r < 8 ? fmt(skillCost(c.pricing, r, r + 1)) : ''}</td>
               </tr>,
-              (e?.specs.length || r > 0) ? (
+              // a specialization on a skill at rating 0 too (Review's spec.noSkill error)
+              (
                 <tr key={`${sk.id}-specs`} className="sub">
                   <td colSpan={6}>
                     <div className="row">
@@ -104,7 +105,7 @@ export function SkillsTab() {
                     </div>
                   </td>
                 </tr>
-              ) : null,
+              ),
             ]
           })}
         </tbody>

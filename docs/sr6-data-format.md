@@ -114,7 +114,9 @@ technique, the `martialtechniques` entry whose name is the style's `signature`, 
 (`karmaTechnique`) is learned under a style, of one of its `categories` (compared without case) or `General`; career
 spends are the Ledger's `martialart` and `technique` ops at the same prices. Review flags a style taken twice
 (`martial.duplicateStyle`), a technique learned twice under any styles (`martial.duplicateTechnique`) and one outside its
-style's categories (`martial.category`), each cited to Firing Squad p. 97.
+style's categories (`martial.category`, path `martial.<style uid>.<technique uid>`), each cited to Firing Squad p. 97.
+The technique pickers (the tab's and the Ledger's) list every technique, the style's own first; one it doesn't teach is
+marked, and taken it is that error (0.11.1: before, the pickers hid it and the Ledger refused it).
 
 **Technique prerequisites** (`importer/sr6/flags.py` `requires`). A technique's closing `Category:` line (a label line,
 or run on after its last sentence and wrapped) and the Restriction label `shapes.martial` makes of what follows its `;`
@@ -126,9 +128,9 @@ name (`the Kick Attack technique`: `technique`; `X power`, `X adept power`: `ade
 technique's own text names it (`has the Killing Hands power active`), else `other`. A usage note (`may only be used
 with swords`) is none. A technique printed under a section heading (Body Shop's `Cyberware Martial Arts Techniques`)
 takes its category from the same closing line, without the prerequisites after it. The builder shows them in the
-technique picker and on the technique's row. Review's `martial.requires` warns (a warning: it never blocks Finalize),
-cited to Firing Squad p. 97, when the runner lacks an `adeptpower` (among its picks), a `technique` (learned under any
-style) or a `quality`; a name matches as printed or with a note after it (`bending of the reed` is met by either
+technique picker and on the technique's row. Review's `martial.requires` is an error (0.11.1: a warning before; path
+`martial.<style uid>.<technique uid>`, one GM approval a technique), cited to Firing Squad p. 97, when the runner lacks
+an `adeptpower` (among its picks), a `technique` (learned under any style) or a `quality`; a name matches as printed or with a note after it (`bending of the reed` is met by either
 `Bending of the Reed (Melee)` or `(Ranged)`), without case. A missing `augmentation` is an error,
 `martial.augmentation` (path `martial.<style uid>.<technique uid>`): the technique may still be taken, and a GM may
 approve it. Each alternative it prints (`bone lacing, bone density, or a full cyberlimb`) is met by one of the runner's
@@ -151,8 +153,9 @@ category the section's noun and the list's (`Returned Soldier power`); a power i
 costs nothing) a drawback, negative. A heading printing its price in Karma (`Returned Soldier (12 Karma)`) is a positive
 quality at that price, and the choices its text offers from those lists ("Select two powers … and one characteristic
 …") are its `<choice kind="quality" category count max>` (max: the most the list allows, "no more than three"). The
-builder lists a granted quality with "granted only" and warns (`quality.granted`) when the runner has no quality
-offering its list, or more of the list than its choices allow; choosing from a list is not automated yet.
+builder lists a granted quality with "granted only". Review's `quality.granted` is an error when the runner has no
+quality offering its list (a prerequisite it lacks; 0.11.1: a warning before), and `quality.grantedCount` warns when it
+has more of the list than its choices allow; choosing from a list is not automated yet.
 
 A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
 named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
@@ -214,8 +217,9 @@ name), and used by the builder, the sheets and the Foundry export:
 
 - **metamagic `user`**: `adept` when its name carries `(Adepts Only)` (the note leaves the name and stays a search
   alias) or it is printed under an `Adept Metamagics` heading; `magician` the same way. Absent: any initiate may take it.
-  The metamagic picker offers it only to a runner who may (an adept's to an adept or mystic adept, a magician's to a
-  full or aspected magician or mystic adept); Review flags one on any other (`magic.metamagicUser`).
+  The metamagic pickers (the Magic tab's and the Ledger's initiation) offer every metamagic, one the runner may not
+  take marked (an adept's is for an adept or mystic adept, a magician's for a full or aspected magician or mystic
+  adept); taken, it is an error, `magic.metamagicUser` (0.11.1: before, the pickers hid it and the Ledger refused it).
 - **metamagic `perLevel`** (`maxLevel`): its text says it can be taken again (`as many times as you like`, `can be taken
   multiple times`; `up to N times`). Taking it again raises the pick's level; each level is one initiation grade's
   metamagic, and Review counts levels against the grade (`magic.metamagicCount`).
@@ -347,9 +351,10 @@ table a book's catalog rows come from, by the book's own words, never an item's 
   no category, a title naming only the kind (`vehicles` over `Microdrones`: the section's category is taken), a title
   split across lines, mixed rows (a table of two kinds), an accessory table with no host.
 
-The app (`src/sr6/engine/categories.ts`): an accessory goes only on a host of a category its record `fits` (the
-accessory action refuses another, `wrong-host`); the accessory picker lists only those; Review warns about an
-accessory on the wrong host (`catalog.accessoryHost`, cited to the accessory's page), and it is a problem (an error)
+The app (`src/sr6/engine/categories.ts`): an accessory belongs on a host of a category its record `fits`; the accessory
+picker lists every accessory naming hosts, another host's marked ("for Eyeware, not this"), and fits it anyway: Review's
+error `catalog.accessoryHost` (cited to the accessory's page; 0.11.1: a warning before, and the action refused it,
+`wrong-host`). It is also a problem (an error)
 when the accessories' bracketed capacity (`[2]`, `[Rating]`) adds up to more than the host's capacity at its rating
 (`catalog.capacity`). An accessory of a category with no record (an import before categories) is offered as before, by
 its category's word. **An accessory's bonuses are its host's**, never the runner's: a Strength bonus on a cyberlimb's
@@ -668,3 +673,30 @@ A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by 
   kinds, its NPCs none. It never replaces anything: a compendium whose source id is already a book's is skipped (Game
   data lists why), and so is one entry whose id another source's entry of that kind already holds. Load book NPCs
   never copies a compendium's NPCs.
+
+### Prerequisites (0.11.1)
+
+A prerequisite the runner lacks never stops a pick (owner, 2026-10-09). The editor and the Ledger take it, the pickers
+list it (marked, never hidden or disabled), and Review raises an error cited to the page that prints the rule; a GM's
+approval (`overrides`, `{code, path}`) clears it. Career Review (`validateCareer`) shows these errors too.
+
+| Code | Path | What the runner lacks | Cited |
+| --- | --- | --- | --- |
+| `martial.requires` | `martial.<style>.<technique>` | a technique's adept power, technique or quality | FS p. 97 |
+| `martial.augmentation` | `martial.<style>.<technique>` | a technique's augmentation | FS p. 97 |
+| `martial.category` | `martial.<style>.<technique>` | a style that teaches the technique's category | FS p. 97 |
+| `magic.metamagicUser` | `magic.<uid>` | the magic kind a metamagic is for | the metamagic's page |
+| `magic.spellsAllowed` | `magic.<uid>` | a magic kind that learns the spell, ritual, complex form or echo | CRB p. 67 |
+| `adept.ppBudget` | `magic` | an adept kind, for adept powers (and power points left) | CRB p. 67 |
+| `skill.specUntrained` | `skills.<id>` | a rank in the skill a specialization or expertise is on | CRB p. 93 |
+| `skill.expertiseSpec` | `skills.<id>` | a specialization before an expertise | CRB p. 69 |
+| `gear.grade` | `<tab>.<line uid>` | an augmentation type the grade comes in | CRB p. 283, or the catalog grade's page |
+| `catalog.accessoryHost` | `<tab>.<host uid>` | a host the accessory's category fits | the accessory's page |
+| `lifepath.requires` | `method.<module id>` | the magic kind an adult life module is for | the module's page |
+| `quality.granted` | `qualities.<uid>` | a quality offering a granted-only quality's list | the quality's page |
+
+Still refused, as structural: a grade on anything but an augmentation or a custom line (`no-grade`), a grade whose
+factors aren't set (`unknown-grade`), a life module that isn't an adult one (`not-available`), power points bought by
+any kind but a mystic adept and initiation or submersion by a runner with no Magic or Resonance (`cannot-learn`,
+`mundane-cannot-initiate`, `not-awakened`, `not-emerged`), and raising Magic or Resonance a runner doesn't have
+(`unknown-attribute`). An adept power in career still needs the power points to pay for it (`no-power-points`).

@@ -56,7 +56,8 @@ export function GearTab() {
     <div className="stack">
       <h2>Gear & spells</h2>
       <p className="muted">Named gear with extra features, like an Ares Predator with a smartgun, is an Equipment Shadow Amp: add it on the Shadow Amps tab and it brings its base item along.</p>
-      {SECTIONS.filter(([kind]) => kind !== 'complex-form' || d.emerged || b.items.some(i => i.kind === kind)).map(([kind, title, hint]) => {
+      {/* complex forms too without the Emerged amp: Review's complexForm.noEmerged */}
+      {SECTIONS.map(([kind, title, hint]) => {
         const items = b.items.filter(i => i.kind === kind)
         return (
           <section key={kind} className="stack">

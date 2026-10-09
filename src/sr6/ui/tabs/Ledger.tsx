@@ -1,13 +1,14 @@
 // Ledger (career): the Anarchy Ledger tab's layout with two currencies. The balances; Record earnings; Spend (pick what,
 // see its price and the balances after, Record, confirm); a note; the history with running balances, where an entry that
 // may be voided has Void (a reason asked) and a voided one is struck through with its reason. Every price comes from the
-// creation settings (src/sr6/engine/career.ts); a refusal reads as a sentence.
+// creation settings (src/sr6/engine/career.ts); a refusal reads as a sentence. What the runner lacks a prerequisite for
+// is offered too, marked: recorded, Review flags it.
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
-import { CORE_ATTRS, PURCHASE_KINDS, sinName, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, PURCHASE_KINDS, sinName, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
 import type { Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, type PickedItem } from '../Picker'
@@ -46,8 +47,8 @@ export function LedgerTab() {
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
   const skills = Object.values(data.skills).sort((x, y) => x.name.localeCompare(y.name))
   const rank = (id: string) => { const s = b.skills.find(x => x.id === id); return s ? s.points + s.karma : 0 }
-  const trained = b.skills.filter(s => s.points + s.karma > 0)
-  const learnable = LEARN.filter(k => picksFor(b.magic)[k])
+  const kindName = MAGIC_KIND_LABELS[b.magic].toLowerCase(), an = (w: string) => (/^[aeiou]/.test(w) ? 'an' : 'a')
+  const styleOf = (uid: string) => data.entry('martialarts', b.martialArts.find(m => m.uid === uid)?.id ?? '')
   const initKind: Sr6Kind = kind.resonance ? 'echoes' : 'metamagics'
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
@@ -129,7 +130,7 @@ export function LedgerTab() {
           <option value="">Pick one</option>{skills.map(s => <option key={s.id} value={s.id}>{s.name} ({rank(s.id) || '—'})</option>)}</select></label>}
         {(op === 'spec' || op === 'expertise') && <>
           <label>Skill<select value={f.target} onChange={e => set({ target: e.target.value })}>
-            <option value="">Pick one</option>{trained.map(s => <option key={s.id} value={s.id}>{data.skills[s.id]?.name ?? s.id} ({s.points + s.karma})</option>)}</select></label>
+            <option value="">Pick one</option>{skills.map(s => <option key={s.id} value={s.id}>{s.name} ({rank(s.id) || '—'})</option>)}</select></label>
           <label>{op === 'spec' ? 'Specialization' : 'Expertise'}<input list="sr6-ledger-specs" value={f.name} onChange={e => set({ name: e.target.value })} /></label>
           <datalist id="sr6-ledger-specs">{(data.skills[f.target]?.specs ?? []).map(x => <option key={x} value={x} />)}</datalist>
         </>}
@@ -141,15 +142,15 @@ export function LedgerTab() {
           <option value="">Pick one</option>{b.martialArts.map(m => <option key={m.uid} value={m.uid}>{styleName(data, m)}</option>)}</select></label>}
         {(op === 'quality' || op === 'pick' || op === 'purchase' || op === 'martialart' || (op === 'technique' && f.target)) && <div style={{ alignSelf: 'end' }}>
           {picked && <span>{entryLabel(picked.e)}{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
-          <button className="btn small" onClick={() => setPicking(true)} disabled={op === 'pick' && !learnable.length}>{picked ? 'Change…' : 'Pick from the catalog…'}</button></div>}
+          <button className="btn small" onClick={() => setPicking(true)}>{picked ? 'Change…' : 'Pick from the catalog…'}</button></div>}
         {op === 'buyoff' && <label>Quality<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.qualities.filter(q => !q.free && data.qualities[q.id]?.positive === false)
             .map(q => <option key={q.uid} value={q.uid}>{data.qualities[q.id]?.name ?? q.name ?? q.id}</option>)}</select></label>}
         {op === 'initiate' && <label>{kind.resonance ? 'Echo' : 'Metamagic'} (optional)<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">None</option>{[...c.entries[initKind].values()].sort((x, y) => x.name.localeCompare(y.name))
-            // (a metamagic for adepts only, or magicians only, only for a runner who may take it)
-            .filter(e => initKind !== 'metamagics' || metamagicFits(b.magic, data.metamagics[e.id]?.user))
-            .map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>}
+            // (a metamagic for adepts only, or magicians only, marked for a runner who may not take it)
+            .map(e => <option key={e.id} value={e.id}>{e.name}{initKind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[e.id]?.user)
+              ? ` (not for ${an(kindName)} ${kindName})` : ''}</option>)}</select></label>}
         {op === 'drop' && <label>Item<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.purchases.map(x => <option key={x.uid} value={x.uid}>{(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}</option>)}</select></label>}
         {op === 'sin' && <>
@@ -223,10 +224,11 @@ export function LedgerTab() {
 
       <CatalogPicker open={picking} onClose={() => setPicking(false)} grades={op === 'purchase'}
         title={op === 'quality' ? 'Buy a quality' : op === 'pick' || op === 'martialart' || op === 'technique' ? 'Learn' : 'Buy gear'}
-        kinds={op === 'quality' ? ['qualities'] : op === 'pick' ? learnable : op === 'martialart' ? ['martialarts']
+        kinds={op === 'quality' ? ['qualities'] : op === 'pick' ? LEARN : op === 'martialart' ? ['martialarts']
           : op === 'technique' ? ['martialtechniques'] : PURCHASE_KINDS as Sr6Kind[]}
-        filter={op === 'quality' ? e => data.qualities[e.id]?.positive === true
-          : op === 'technique' ? e => techniqueFits(data.entry('martialarts', b.martialArts.find(m => m.uid === f.target)?.id ?? ''), e) : undefined}
+        filter={op === 'quality' ? e => data.qualities[e.id]?.positive === true : undefined}
+        note={op === 'pick' ? e => (picksFor(b.magic)[e.kind as PickKind] ? undefined : `not for ${an(kindName)} ${kindName}`)
+          : op === 'technique' ? e => (techniqueFits(styleOf(f.target), e) ? undefined : 'not taught by this style') : undefined}
         onAdd={x => { setPicked(x); return null }} />
       <Modal open={confirm} onClose={() => setConfirm(false)} title="Record this spend?"
         actions={<><button className="btn" onClick={() => setConfirm(false)}>Cancel</button><button className="btn primary" onClick={spend}>Record it</button></>}>

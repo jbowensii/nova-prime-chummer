@@ -1,7 +1,8 @@
 // Magic or Resonance (shown only for an awakened or emerged runner): a magician's tradition and drain attribute (R: S1
 // has no traditions kind), spells and rituals against the free ones, adept powers with their levels and power points (a
-// mystic adept buys its own), initiation and metamagics (those the runner's kind may take; one its text lets be taken
-// again, by level); a technomancer's complex forms, submersion and echoes. A spell shows whether its test is opposed and
+// mystic adept buys its own), initiation and metamagics (one its text lets be taken again, by level); a technomancer's
+// complex forms, submersion and echoes. What the runner's kind can't learn is offered too, marked (Review's errors
+// magic.spellsAllowed, adept.ppBudget, magic.metamagicUser). A spell shows whether its test is opposed and
 // whether its threshold counts Essence. Every pick can carry the player's bonuses.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
@@ -9,11 +10,12 @@ import { num } from '../../engine/creation'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../engine/data'
 import type { Sr6Entry } from '../../model/types'
 import { pickFlags } from '../../print/view'
-import type { PickKind, Sr6Build } from '../../model/character'
+import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Bonuses, House } from '../Picker'
 import { Suggest } from './Skills'
 
+const article = (w: string) => (/^[aeiou]/i.test(w) ? 'An' : 'A')
 const PICKS: [PickKind, string, string][] = [['spells', 'Spells', 'a spell'], ['rituals', 'Rituals', 'a ritual'], ['adeptpowers', 'Adept powers', 'an adept power'],
   ['metamagics', 'Metamagics', 'a metamagic'], ['complexforms', 'Complex forms', 'a complex form'], ['echoes', 'Echoes', 'an echo']]
 
@@ -30,7 +32,9 @@ export function MagicTab() {
   const section = ([kind, title, one]: (typeof PICKS)[number]) => {
     const rows = b.picks.filter(x => x.kind === kind)
     return <section key={kind} className="stack">
-      <div className="row"><h3 style={{ margin: 0 }}>{title}</h3><span className="spacer" />
+      <div className="row"><h3 style={{ margin: 0 }}>{title}</h3>
+        {!allowed[kind] && <span className="muted">{article(MAGIC_KIND_LABELS[b.magic])} {MAGIC_KIND_LABELS[b.magic].toLowerCase()} can’t learn these (CRB p. 67)</span>}
+        <span className="spacer" />
         <button className="btn small" onClick={() => setAdding(kind)}>Add {one}…</button></div>
       {rows.length === 0 ? <p className="muted">None yet.</p> : <div className="scroll-x"><table className="data">
         <tbody>{rows.map(x => {
@@ -50,8 +54,8 @@ export function MagicTab() {
     </section>
   }
   const taken = (kind: PickKind, id: string) => pickMaxLevel(data, kind, id) === null && b.picks.some(x => x.kind === kind && x.id === id)
-  // a metamagic for adepts only (or magicians only) is offered only to a runner who may take it
-  const offered = (e: Sr6Entry) => e.kind !== 'metamagics' || metamagicFits(b.magic, data.metamagics[e.id]?.user)
+  // a metamagic for adepts only (or magicians only) is marked for a runner who may not take it
+  const unfit = (e: Sr6Entry) => e.kind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[e.id]?.user)
   const pick = (id: string) => { if (adding && !act({ op: 'pick', kind: adding, id })) setAdding(null) }
 
   return (
@@ -74,14 +78,15 @@ export function MagicTab() {
         <span className="muted">at most {pp.cap}; each one lowers the free spells</span></p>}
       {(k.spells || k.powers) && grade('initiation', 'Initiation grade')}
       {k.resonance && grade('submersion', 'Submersion grade')}
-      {PICKS.filter(([kind]) => allowed[kind] || b.picks.some(x => x.kind === kind)).map(section)}
+      {PICKS.map(section)}
       <Modal open={!!adding} onClose={() => setAdding(null)} title={`Add ${PICKS.find(p => p[0] === adding)?.[2] ?? ''}`}>
         {adding && <Picker placeholder="Search" onPick={pick}
           groups={[...new Set([...c.entries[adding].values()].map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}
-          items={[...c.entries[adding].values()].filter(offered).sort((a, z) => a.name.localeCompare(z.name)).map(e => {
+          items={[...c.entries[adding].values()].sort((a, z) => a.name.localeCompare(z.name)).map(e => {
             const power = adding === 'adeptpowers' ? data.powers[e.id] : undefined
             return { id: e.id, name: e.name, group: e.attrs.category, disabled: taken(adding, e.id),
-              meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`, ...pickFlags(e)].filter(Boolean).join(', '),
+              meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`, ...pickFlags(e),
+                unfit(e) && `not for ${article(MAGIC_KIND_LABELS[b.magic]).toLowerCase()} ${MAGIC_KIND_LABELS[b.magic].toLowerCase()}`].filter(Boolean).join(', '),
               price: `${e.source} p.${e.page}`, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`, label: <House c={c} source={e.source} /> }
           })} />}
       </Modal>
