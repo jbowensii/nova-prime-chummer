@@ -548,8 +548,10 @@ Riggers can use some programs. See the **Programs** section (p. 40) for more det
 
     def test_a_heading_named_as_one_of_its_sections_forms_is_an_action(self):
         got = {n: t for n, t, _ in self.kind("actions")}
-        self.assertEqual({n: got.get(n) for n in ("Glow Guard", "Unglowing")}, {"Glow Guard": "major", "Unglowing": None})
-        self.assertNotIn("Glow Trick", got)  # (an action word, but no form of its section)
+        # (owner, 2026-10-08: a form naming no action type takes its sibling's; a heading opening `Spend a Minor Action
+        # to …` is an action too, by the core recipe's rule)
+        self.assertEqual({n: got.get(n) for n in ("Glow Guard", "Unglowing", "Glow Trick")},
+                         {"Glow Guard": "major", "Unglowing": "major", "Glow Trick": "minor"})
 
     def test_a_list_pointing_to_its_entries_page_reprints_them(self):
         got = self.kind("programs")

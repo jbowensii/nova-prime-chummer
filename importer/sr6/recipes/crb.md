@@ -235,3 +235,27 @@ unknown-column, book-value, missing-value, duplicate-id); then `xsd: all valid` 
 - A quality path's step read twice is one entry. The steps reader names it without the path (`Consumed`); the printed
   heading (`Obsession: Consumed`) becomes its alias, and moved.py tier 8a keeps the old id. A step whose name another
   quality has elsewhere keeps its printed heading (`Obsession: Momentous Misfortune`, `Favored Weapon: Lost!`).
+
+## Importer v6 (the owner's final decisions, 2026-10-08)
+
+- `stated_items` reads the items the prose states, one general rule each, every one kept as a rule too:
+  - actions: the headings a section names as its forms (`comes in one of two forms: boosted defense and dispelling`)
+    that spend an action, its type the one their text names (Boosted Defense, Dispelling: Major). A heading whose first
+    or second sentence is `Spend a Major/Minor Action to …` is also an action. In the corpus that fires on Augmentation
+    Overdrive (Minor, all four printings) and Smooth Operations' Zanshin (Minor, anytime).
+  - `select a sense (sight, hearing, touch, taste, or smell)`: each sense an entry (kind senses), and the power
+    (Improved Sense) offers a sense choice.
+  - A sense, a licence or a magic type the core rulebook prints are fixed vocabularies. Magic types: Full magician,
+    Aspected magician, Mundane, Adept, Mystic adept, Technomancer (pp. 65–66). Licence types (p. 273): the four the
+    Fake License text names and the four the sample runners' fake SINs carry. Fake License offers one, or `other (L)
+    item` written in.
+  - A section's unpriced item headings that its rating-band price table prices (`Explosive Packages`, RATING | COST
+    bands) are rated, with the tier formula as their cost and availability as an issue. They are named with the
+    section's noun when the heading lacks it (`Plastic Explosives`, alias `Plastic`). A heading whose first sentence's
+    subject isn't one (the detonator cap) stays a rule.
+  - `Any piece of armor can have a … applied to it for 100 nuyen` is an accessory of that host: the Seattle edition's
+    Water-Repellent Coating, category `Armor accessory`, capacity 0 (it `does not use any capacity`).
+  - `a … magazine (30¥ per spare)` in an item's text is its supply: `Ares Predator VI spare magazine`.
+- categories: a table whose first column is headed by a class (`GRENADES`), not a column word, groups its bare-part
+  rows under the class (`Grenade: Gas`). Each row is also searched as the prose composes it (`Gas grenade`, `Smoke
+  grenade`). Product names (`Honda Spirit`) and rows naming the class keep their own name.

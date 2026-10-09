@@ -254,7 +254,7 @@ def build(cat, texts, row_kinds):
             name = human(e, t, voc.seen)
             c = cats.setdefault((kind, key(name)), {"name": name, "table": t.get("parent") or t["title"], "section": t["section"],
                                                      "page": e["page"], "confidence": conf, "why": why if conf == "low" else None,
-                                                     "entries": []})
+                                                     "entries": [], "head": (t.get("header") or [""])[0]})
             c["entries"].append(e)
             e["attrs"]["category"] = c["name"]
     # the book's names (every kind, the rule sections too): a part named like something else is ambiguous
@@ -281,10 +281,20 @@ def build(cat, texts, row_kinds):
                 p = core_of(e["name"]).lower()
                 if not made[id(e)] and " " not in p:
                     made[id(e)] = [s + p for s in sorted(stems)]
+        # (owner, 2026-10-08) a first column headed by a class (`GRENADES`), not a column word (WEAPON, ITEM, TYPE, GEAR):
+        # its rows are parts of that class, shown `Grenade: Gas`, searched as the prose composes them (`gas grenade`)
+        cls = singular(c["head"].lower()) if re.fullmatch(r"[A-Z]+S", c["head"] or "") else ""
+        cls = cls if cls and key(cls) == key(c["name"]) else ""
         for e in es:
             core = norm(core_of(e["name"]))
             others = {core} if seen[core] - {(kind, ckey)} else set()
             conf, m = bare_part(e["name"], c["name"], voc, others, hs is not None, cohesion, parts, mk, made[id(e)])
+            # (a bare part only: not a product's own name, `Honda Spirit`, nor one naming the class, `Cybereyes Rating 5`)
+            bare = not re.search(r"\s[A-Z0-9]", core_of(e["name"])) and key(cls) not in key(e["name"])
+            if cls and bare:
+                conf = 1.0
+                m = [f"{p.strip().lower()} {cls}" for p in core_of(e["name"]).split("/")
+                     if p.strip() and (p.strip().split()[-1].lower(), cls) in voc.pairs]
             if e.get("product"):
                 conf, m = 1.0, []  # a configuration (`Spear`) is named by its product
             elif c["confidence"] == "low":

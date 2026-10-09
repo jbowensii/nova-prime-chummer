@@ -100,6 +100,9 @@
              item it fits (target item:<field>) -->
         <xs:element name="effect" type="sr6:Effect"/>
         <xs:element name="test" type="sr6:Test"/>
+        <!-- a choice the entry offers (sr6:Choice): a quality's granted picks, a life module's mixed points, a power's
+             sense or skill, a focus option, a fake licence's type -->
+        <xs:element name="choice" type="sr6:Choice"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -302,18 +305,28 @@
     <xs:attribute name="attr" type="xs:string" use="required"/>
     <xs:attribute name="threshold" type="xs:nonNegativeInteger"/>
   </xs:complexType>
-  <xs:complexType name="QualityChoice">
+  <!-- a choice: kind quality (count picks from the catalog's qualities of `category`, max the most the list allows);
+       mixed (a life module's: `points` to one of `options`, tokens an attribute bod … res, skill:<id> or nuyen:<n>);
+       skill (one of `from`, names separated by "; ", or any), specialization (in the chosen skill, or in `category`),
+       knowledgeskill; sense, trueelement, licencetype (one entry of that kind, of `category` when given). free: the
+       label of a value the player may write instead (`other (L) item`). -->
+  <xs:complexType name="Choice">
     <xs:attribute name="kind" use="required"><xs:simpleType><xs:restriction base="xs:string">
-      <xs:enumeration value="quality"/></xs:restriction></xs:simpleType></xs:attribute>
-    <xs:attribute name="category" type="xs:string" use="required"/>
-    <xs:attribute name="count" type="xs:positiveInteger" use="required"/>
+      <xs:enumeration value="quality"/><xs:enumeration value="mixed"/><xs:enumeration value="skill"/>
+      <xs:enumeration value="specialization"/><xs:enumeration value="knowledgeskill"/><xs:enumeration value="sense"/>
+      <xs:enumeration value="trueelement"/><xs:enumeration value="licencetype"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="category" type="xs:string"/>
+    <xs:attribute name="count" type="xs:positiveInteger"/>
     <xs:attribute name="max" type="xs:positiveInteger"/>
+    <xs:attribute name="points" type="xs:positiveInteger"/>
+    <xs:attribute name="options" type="sr6:ChoiceOptions"/>
+    <xs:attribute name="from" type="xs:string"/>
+    <xs:attribute name="free" type="xs:string"/>
   </xs:complexType>
   <xs:complexType name="Quality">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
-      <xs:element name="choice" type="sr6:QualityChoice" minOccurs="0" maxOccurs="unbounded"/>
-      <xs:group ref="sr6:tail"/>  <!-- (its effects and tests: the tail's) -->
+      <xs:group ref="sr6:tail"/>  <!-- (its choices, effects and tests: the tail's) -->
     </xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>
       <xs:attribute name="kind" use="required">
@@ -620,15 +633,6 @@
   <xs:complexType name="LifeModule">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
-      <xs:element name="choice" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:attribute name="kind" use="required">
-            <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="mixed"/></xs:restriction></xs:simpleType>
-          </xs:attribute>
-          <xs:attribute name="points" type="xs:positiveInteger"/>
-          <xs:attribute name="options" type="sr6:ChoiceOptions" use="required"/>
-        </xs:complexType>
-      </xs:element>
       <xs:group ref="sr6:tail"/>
     </xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>

@@ -44,3 +44,8 @@ out: `RULE_PARTS`, `RULE_BOOK_CHAPTERS`).
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<Shadowrun 6e-Astral Ways-Setting Book-CAT28101.pdf>" --out "%TEMP%\aw-check"
+
+- (v6) A true element heading whose text offers one attribute `selected from the list below` (`Sandcasting with True
+  Earth`, `Crafting with True Air`, `Forged in True Fire`, `Quenched in True Water`): the box's bold run-ins are true
+  element focus options (kind trueelements, category `True Earth sandcasting` …, their text, no price), and the
+  heading's rule offers one (`<choice kind="trueelement" category="…" count="1"/>`).

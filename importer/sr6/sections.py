@@ -322,6 +322,12 @@ class Reader:
             f = self._make("actions", name, b, page, chain) if ACTION_WORD.search(b.text or "") else None
             if f and "type" not in f.attrs and (t := re.search(r"\b(major|minor)\s+action\b", b.text or "", re.I)):
                 f.attrs["type"] = t.group(1).lower()
+            # (owner, 2026-10-08) a form whose text names no action type takes its sibling form's (Dispelling: Major)
+            sib = self.__dict__.setdefault("_form_type", {})
+            if f and "type" in f.attrs:
+                sib[id(self.stack[-1][2])] = f.attrs["type"]
+            elif f and id(self.stack[-1][2]) in sib:
+                f.attrs["type"] = sib[id(self.stack[-1][2])]
             return [f] if f else []
         if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
             kind = "actions"

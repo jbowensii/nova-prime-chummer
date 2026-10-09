@@ -60,3 +60,8 @@ Structure only, no book text. The owner's PDF (SHA-256 in `sw.py`): 170 pages, p
 - `New Metamagic: X` at level 3 is left to the sections reader (its PREFIX); deeper ones are still renamed here.
 - (accuracy round 2) A heading listing two preparations with `;` (`MagicZap Marble; MagicZap Marble Plus`, `Runflat,
   My Hoop; On Four Bald Tires`) and a Cost line pricing two versions is the two items, each with its heading name.
+- (v6) `gain the Addiction (Blood Magic, 1) negative quality` (death magic) makes the granted quality Addiction (Blood
+  Magic): negative, 0 Karma, its level uncapped. A spirit's power list naming a power with its definition in brackets,
+  defined nowhere else, makes it a critter power with that text and its choices: `Skill (choose one from Biotech, …
+  and a Specialization … as well as an appropriate Knowledge Skill)`, and `Skill Specialization (choose any Close
+  Combat skill specialization)`.

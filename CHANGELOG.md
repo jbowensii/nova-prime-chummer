@@ -1,5 +1,30 @@
 # Release notes
 
+## 0.10.6 — 2026-10-09: every Commlink6 record found
+
+Import the books again (Books → **Re-import all**) to get these. Saved runners keep working.
+
+Measured against Commlink6 on all 74 books: completeness 100% (4,335 of 4,335 records), accuracy 99.98% (2 of
+12,544 fields differ: the MGL-24's misprinted availability, which an override fixes). Values Commlink6 copied from
+another row, column or book are its own and are never copied into our data.
+
+- **Choices on any entry.** A skill, specialization, knowledge skill, sense, true element or licence type can be
+  chosen on any entry that asks for one, not only on qualities.
+- **Senses.** "Select a sense (sight, hearing, touch, taste, or smell)" makes the five senses, and Improved Sense
+  asks for one.
+- **Magic types and licence types** are built-in lists; Fake License asks for a licence type or a named (L) item.
+- **Granted qualities from rules.** A rule saying a character gains "the X (Y, N) quality" makes that quality:
+  Addiction (Blood Magic), granted at 0 Karma with no level cap (Street Wyrd p. 157).
+- **Critter powers defined in a power list.** Skill and Skill Specialization (Street Wyrd pp. 55–56) with their
+  choices.
+- **Focus options.** The true element tables (Astral Ways) are options a focus can take: True Earth sandcasting,
+  True Air crafting, True Fire forged, True Water quenched.
+- **Actions.** Counterspelling's two forms (Boosted Defense, Dispelling) and a rule opening "Spend a Minor Action
+  to …" (Augmentation Overdrive, Zanshin) are actions as well as rules.
+- **Grenades and explosives.** A table whose first column names a class shows its rows under it (Grenade: Gas);
+  Conventional, Plastic and Foam Explosives are rated 1–20 and priced by the explosive packages table.
+- **Sentence prices.** Water-Repellent Coating is an armor accessory (100¥).
+
 ## 0.10.5 — 2026-10-08: nearly every record, nearly every value
 
 **Every SR6 book re-converts on its next re-import** (the converter is now sr6-7): use Books → **Re-import all** to
