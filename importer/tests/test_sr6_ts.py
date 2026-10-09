@@ -140,6 +140,7 @@ class TsRecipeTest(unittest.TestCase):
     def test_armor(self):
         a = entries(self.res, "armor")
         self.assertEqual((a["Vest Light"]["defense"], a["Patrol Cap"]["category"]), ("3", "Armor"))
+        self.assertEqual((a["Vest Light"]["social"], a["Patrol Cap"]["social"]), ("–1", "—"))  # its SOCIAL column
         self.assertIn("made-up cap note", self.texts[("armor", "patrol-cap")])  # a Notes row: the row above's
         self.assertIn("made-up note", self.texts[("armor", "vest-light")])
 

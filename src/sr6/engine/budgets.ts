@@ -47,20 +47,22 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
   return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0) + (p.startBonus?.(b, k) ?? 0)
 }
 
-const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number) =>
-  (bonuses ?? []).filter(x => x.target === k).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
-/** What the player's entered bonuses add to the runner's `k` (R: the catalog carries no bonus data): picks by level,
- *  purchases by rating times quantity. An accessory's bonuses are its host item's, never the runner's (hostBonus). */
-export function augmentBonus(b: Sr6Build, k: Bonus['target']): number {
-  let total = b.picks.reduce((s, x) => s + bonusOf(x.bonuses, k, x.level ?? 1), 0)
-  for (const x of b.purchases) total += bonusOf(x.bonuses, k, x.rating ?? 1) * x.qty
+const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string) =>
+  (bonuses ?? []).filter(x => x.target === k && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+/** What the player's entered bonuses add to the runner's `k` (R: the catalog carries no bonus data), for `skill` the one
+ *  skill's dice pool (`skill`: its id): picks by level, purchases by rating times quantity. An accessory's bonuses are its
+ *  host item's, never the runner's (hostBonus). */
+export function augmentBonus(b: Sr6Build, k: Bonus['target'], skill?: string): number {
+  let total = b.picks.reduce((s, x) => s + bonusOf(x.bonuses, k, x.level ?? 1, skill), 0)
+  for (const x of b.purchases) total += bonusOf(x.bonuses, k, x.rating ?? 1, skill) * x.qty
   return total
 }
 /** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
- *  target -> total, only the targets they touch. */
-export function hostBonus(x: Sr6Purchase): Partial<Record<Bonus['target'], number>> {
-  const out: Partial<Record<Bonus['target'], number>> = {}
-  for (const a of x.accessories) for (const t of new Set((a.bonuses ?? []).map(y => y.target))) out[t] = (out[t] ?? 0) + bonusOf(a.bonuses, t, a.rating ?? 1)
+ *  target -> total, only the targets they touch (not a skill's pool: a runner's, never an item's). */
+export function hostBonus(x: Sr6Purchase): Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> {
+  const out: Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> = {}
+  for (const a of x.accessories) for (const t of new Set((a.bonuses ?? []).map(y => y.target)))
+    if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(a.bonuses, t, a.rating ?? 1)
   return out
 }
 export const augmentedRating = (b: Sr6Build, k: Sr6Attr, p: Provider) => attrRating(b, k, p) + augmentBonus(b, k)

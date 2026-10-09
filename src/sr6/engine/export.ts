@@ -13,7 +13,7 @@ import { deriveSr6, type Sr6Derived } from './derive'
 import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { catalogFind } from './load'
-import { attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
+import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export', SR6_EXPORT_VERSION = 1
@@ -22,13 +22,16 @@ export interface Sr6ExportOpts { descriptions: boolean; now: string; appVersion:
 export interface Sr6Values {
   rating?: number; cost?: number; avail?: number; legality?: 'L' | 'I' | 'F'; essence?: number; capacity?: number
   dv?: number; stun?: boolean; ar?: (number | null)[]; modes?: string[]; ammo?: number; defense?: number
+  /** an armor's Social modifier (its printed `+2`, `–4`) */
+  social?: number
   karma?: number; powerCost?: number; drain?: number; fade?: number; threshold?: number
   vehicle?: { handling?: [number, number]; accel?: [number, number]; interval?: [number, number]; topSpeed?: number
     body?: number; armor?: number; pilot?: number; sensor?: number; seats?: number }
 }
-/** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); an accessory's bonuses are its
- *  host's, never the runner's */
-export interface Sr6ExportBonus { target: Sr6Attr | 'initDice' | 'defense'; value: number }
+/** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
+ *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
+ *  runner's */
+export type Sr6ExportBonus = { target: Sr6Attr | 'initDice' | 'defense'; value: number } | { target: 'skill'; id: string; name: string; value: number }
 /** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
  *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
 export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
@@ -99,6 +102,7 @@ export function entryValues(e: Sr6Entry, rating?: number, find?: Find): Sr6Value
   const val = (f: string) => bookValue(e, f, r, find).n ?? undefined
   const v: Sr6Values = defined({ rating: r, cost: e.kind === 'adeptpowers' ? undefined : val('cost'), avail: val('avail'),
     legality: legality(a.avail), essence: val('essence'), capacity: num(a.capacity?.replace(/^\s*\[(.*)\]\s*$/, '$1'), r), defense: num(a.defense, r),
+    social: e.kind === 'armor' ? armorSocial(a.social, r) ?? undefined : undefined,
     karma: num(a.karma, r), powerCost: e.kind === 'adeptpowers' ? num(a.cost, r) : undefined, drain: e.kind === 'spells' ? num(a.dv, r) : undefined,
     // a ritual's threshold of `Force` is the ritual's own Force, not the rating the item is bought at
     fade: num(a.fade, r), threshold: /[a-z]/i.test(a.threshold ?? '') ? undefined : num(a.threshold, r) })
@@ -165,9 +169,12 @@ function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6Ex
 const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
   ({ ...(id ? { id } : {}), kind, name, canon: false, attrs: {}, parts: [], values: {} })
 
-// every target, Defense Rating included (derived.defenseRating counts it too)
-const bonuses = (bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
-  (bs ?? []).map(b => ({ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }))
+// every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
+const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
+  (bs ?? []).map(b => {
+    const value = b.value * (b.perRating ? rating : 1) * times
+    return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value } : { target: b.target, value }
+  })
 
 /** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating
  *  (they are its host's, not the runner's: derived.attributes leaves them out). */
@@ -180,7 +187,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
   return defined({ ...base, uid: x.uid, values, qty: x.qty, grade: x.grade, worn: !!x.worn, note: x.note,
-    bonuses: bonuses(x.bonuses, x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, a, false)) })
+    bonuses: bonuses(data, x.bonuses, x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, a, false)) })
 }
 
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt
@@ -218,7 +225,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     picks: b.picks.map(p => {
       const e = data.entry(p.kind, p.id)
       return defined({ ...(e ? item(c, e, true) : bare(p.kind, p.name ?? p.id, p.id)), uid: p.uid, pick: p.kind, level: p.level,
-        bonuses: bonuses(p.bonuses, p.level ?? 1) })
+        bonuses: bonuses(data, p.bonuses, p.level ?? 1) })
     }),
     martialArts: b.martialArts.map(m => {
       const line = (kind: 'martialarts' | 'martialtechniques', x: { uid: string; id: string; name?: string }) => {

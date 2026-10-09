@@ -399,6 +399,8 @@ A gift of humming.
         names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
         self.assertEqual((names("critterpowers"), names("metamagics"), names("sprites")),
                          (["Glow Shift"], ["Fizz Way", "Hum Gift"], ["Wobble Sprite"]))
+        users = {e.findtext("name"): e.get("user") for e in ET.fromstring(files["metamagics.xml"])}
+        self.assertEqual(users, {"Fizz Way": "adept", "Hum Gift": None})  # (`Adept Metamagics`: flags.metamagic)
 
     def test_runins_under_a_parent_naming_the_kind_and_edge_actions_anywhere(self):
         """A heading's run-ins are its parent's kind when the parent names one (and the heading is no entry); a

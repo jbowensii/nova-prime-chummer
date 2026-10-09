@@ -79,6 +79,7 @@ export const REASONS: Record<string, string> = {
   'not-taken': 'The runner doesn’t have that.',
   'free-trait': 'A metatype trait can’t be removed.',
   'no-levels': 'That has no levels.',
+  'no-skill': 'Pick the skill the bonus is for.',
   'max-level': 'That’s already at its highest level.',
   'karma-range': 'That karma is outside the quality’s range.',
   duplicate: 'The runner already has that power, and it has no levels.',

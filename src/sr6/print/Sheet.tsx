@@ -21,7 +21,7 @@ import { BookSheet } from './BookSheet'
 import { NeonSheet } from './NeonSheet'
 import { HexSheet } from './HexSheet'
 import { DossierSheet } from './DossierSheet'
-import { band, PICKS, runnerView } from './view'
+import { band, pickFlags, PICKS, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 const boxes = (k: number | null, cls = '') => k === null ? <span className="s-small">— (a setting isn’t set)</span>
@@ -100,7 +100,7 @@ export function Sr6Sheet() {
             <p className="s-small">Edge points {d.attrs.edg.augmented}</p>
             <div className="s-boxes sr6-edge" aria-hidden="true">{Array.from({ length: d.attrs.edg.augmented }, (_, i) => <span key={i} />)}</div>
             <table className="sr6-derived-t"><tbody>
-              {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating],
+              {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating], ['Social Rating', d.socialRating],
                 ['Composure', d.composure], ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry],
                 ['Drain', d.drain], ['Fading', d.fading]] as [string, string | number | undefined][])
                 .filter(([, v]) => v !== undefined).map(([l, v]) => <tr key={l}><td>{l}</td><td><b>{v}</b></td></tr>)}
@@ -124,9 +124,9 @@ export function Sr6Sheet() {
         </section>
         {lines('armor').length > 0 && <section>
           <h2>Armor</h2>
-          <table><thead><tr><th>Armor</th><th>Defense</th><th>Worn</th></tr></thead>
+          <table><thead><tr><th>Armor</th><th>Defense</th><th>Social</th><th>Worn</th></tr></thead>
             <tbody>{lines('armor').map(x => <tr key={x.uid}><td><b>{nameOf(x)}</b>{acc(x)}</td><td>{entryOf(x, data)?.attrs.defense ?? ''}</td>
-              <td>{x.worn ? 'Worn' : ''}</td></tr>)}</tbody></table>
+              <td>{entryOf(x, data)?.attrs.social ?? ''}</td><td>{x.worn ? 'Worn' : ''}</td></tr>)}</tbody></table>
         </section>}
         {lines('augmentations').length > 0 && <section>
           <h2>Augmentations</h2>
@@ -141,7 +141,8 @@ export function Sr6Sheet() {
             b.submersion > 0 && `Submersion grade ${b.submersion}`].filter(Boolean).join(' · ')}</p>
           <table className="sr6-picks"><tbody>
             {PICKS.flatMap(([kind, label]) => b.picks.filter(x => x.kind === kind).map(x => <tr key={x.uid}>
-              <td><b>{(e => (e ? entryLabel(e) : x.name ?? x.id))(data.entry(kind, x.id))}</b>{x.level !== undefined && ` ${x.level}`}</td><td>{label.replace(/s$/, '')}</td></tr>))}
+              <td><b>{(e => (e ? entryLabel(e) : x.name ?? x.id))(data.entry(kind, x.id))}</b>{x.level !== undefined && ` ${x.level}`}</td>
+              <td>{[label.replace(/s$/, ''), ...(e => (e ? pickFlags(e) : []))(data.entry(kind, x.id))].join(' · ')}</td></tr>))}
           </tbody></table>
         </section>}
         <div className="s-cols">

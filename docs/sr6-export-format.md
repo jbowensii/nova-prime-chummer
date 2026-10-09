@@ -86,7 +86,7 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `name` | as printed (a custom line: the player's) |
 | `label` | how Chummer shows it, when that differs from the printed name: its category first (`Cyberlimb: Arm (synthetic)`). The category itself is `attrs.category` (and `attrs.group` when the name needs it), a product's maker `attrs.maker`. An importer whose item has no category field may use `label` as the item's name |
 | `canon` | the source is canon; a custom line or a GM compendium's entry: `false` |
-| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`); an augmentation's `type` is `cyberware` or `bioware` (geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type in `ware`) |
+| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`); an augmentation's `type` is `cyberware` or `bioware` (geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type in `ware`). The flags the builder uses: a spell's `opposed` `"true"` (its test is opposed; every Combat spell) and `essence` `"true"` (its threshold counts the target's Essence, `5 – Essence`); a metamagic's `user` `"adept"` or `"magician"` (who may take it; absent: any initiate, a mystic adept either), `perLevel` `"true"` (it can be taken again, one initiation's metamagic each time; the pick's `level` counts them) and `maxLevel` (the most times, when printed); an armor's `social` |
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |
@@ -96,7 +96,9 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
-`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute, `initDice` or `defense`, the Defense Rating), evaluated: × the
+`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute, `initDice` or `defense`, the Defense Rating), or
+`{ target: "skill", id, name, value }` for a skill's dice pool (`id` the catalog skill's id, `name` its name, which a reader
+keying its skills by name, as Eden does, finds it by; `derived.pools` counts it), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
 accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
 them out.
@@ -112,6 +114,7 @@ for a dash).
 | `cost` | `cost` at the rating (`rated`); a purchase: `priced`. Not on adept powers |
 | `avail`, `legality` | `avail` at the rating, and its letter `L`, `I` or `F` |
 | `essence`, `capacity`, `defense`, `threshold`, `karma`, `fade` | the attribute of that name at the rating (`capacity` `"[1]"` reads as 1) |
+| `social` | an armor's `social` (its printed Social modifier, `"+2"`, `"–4"`; an en dash is a minus): what it adds to the wearer's Social Rating (Charisma + the worn armor's) |
 | `powerCost` | an adept power's `cost` (per level when it's leveled) |
 | `drain` | a spell's `dv` |
 | `dv`, `stun` | a weapon's `dv`: `"3P"` → 3, false; `"4S(e)"` → 4, true |

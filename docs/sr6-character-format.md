@@ -84,7 +84,8 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
-- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
+- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
+  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic).
 - `<martialart id>` (after the picks): a martial arts style (catalog `martialarts`), with a `<technique id>` (catalog
   `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
   free with the style). `name` on either: the catalog name when added. A file without any reads as none.
@@ -95,7 +96,9 @@ copy". Book entries are never copied here.
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
-  data). `target` is an attribute abbreviation, `initDice` or `defense` (Defense Rating); `perRating`: times the line's rating.
+  data). `target` is an attribute abbreviation, `initDice`, `defense` (Defense Rating) or `skill` (that skill's dice pool:
+  `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
+  line's rating.
 - `<sin kind="real|fake" rating? gender?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid under it: a
   lifestyle always belongs to a SIN, a SIN may have none, and a runner may have several of each. `gender` is that
   identity's own (optional; the runner's is the root's `gender`).

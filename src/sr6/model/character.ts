@@ -26,9 +26,9 @@ export type CpPool = 'attribute' | 'skill' | 'adjustment' | 'resources' | 'power
 export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resources', 'powerPoints', 'spells', 'complexForms']
 
 /** What a ware, power or item adds, entered by the player (R: the catalog carries no bonus data): an attribute, initiative
- *  dice or Defense Rating (dermal plating). perRating: × the line's rating. */
-export interface Bonus { target: Sr6Attr | 'initDice' | 'defense'; value: number; perRating?: true }
-export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense']
+ *  dice, Defense Rating (dermal plating) or a skill's dice pool (skill: its catalog id). perRating: × the line's rating. */
+export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'skill'; skill?: string; value: number; perRating?: true }
+export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'skill']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']

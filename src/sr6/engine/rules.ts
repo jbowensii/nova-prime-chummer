@@ -7,7 +7,7 @@ import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, attrRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
@@ -208,6 +208,17 @@ const RULES: Rule[] = [
     const allowed = { ...picksFor(c.b.magic), adeptpowers: true }
     return c.b.picks.filter(x => !allowed[x.kind])
       .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.` }))
+  } },
+  // CRB p. 167: some metamagics are for adepts only (the catalog's user: an adept or mystic adept; a magician's, a
+  // magician or mystic adept)
+  { code: 'magic.metamagicUser', severity: 'error', tab: 'magic', check: c =>
+    c.b.picks.filter(x => x.kind === 'metamagics' && !metamagicFits(c.b.magic, c.data.metamagics[x.id]?.user)).map(x => ({
+      path: `magic.${x.uid}`, message: `${pickName(c, x)} is for ${c.data.metamagics[x.id]!.user === 'adept' ? 'adepts' : 'magicians'} only, not ${article(kindLabel(c.b)).toLowerCase()} ${kindLabel(c.b)}.`,
+      ...entryCite(c.data.entry('metamagics', x.id)) })) },
+  // CRB p. 167: each initiation grade brings one metamagic (one taken again, a level each)
+  { code: 'magic.metamagicCount', severity: 'error', tab: 'magic', check: c => {
+    const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? 1), 0)
+    return n > c.b.initiation ? { message: `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.` } : null
   } },
   { code: 'adept.ppBudget', severity: 'error', tab: 'magic', check: c => {
     if (!MAGIC_KINDS[c.b.magic].powers)

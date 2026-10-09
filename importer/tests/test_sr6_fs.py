@@ -171,6 +171,9 @@ class FsRecipeTest(unittest.TestCase):
         self.assertEqual({k: a["Puff Jacket"][k] for k in ("category", "defense", "capacity", "cost")},
                          {"category": "Armor", "defense": "+3", "capacity": "6", "cost": "900"})
         self.assertEqual((a["Layer Suit (Light)"]["defense"], a["Layer Suit (Heavy)"]["cost"]), ("+4", "9000"))
+        # its SOCIAL column: the social attribute, as printed
+        self.assertEqual((a["Puff Jacket"]["social"], a["Layer Suit (Heavy)"]["social"], a["Card House (Jack of Dice)"]["social"]),
+                         ("–1", "–4", "+2"))
         self.assertEqual((a["Pocket Patch"]["category"], a["Glow Lining"]["capacity"]), ("Armor modifications", "[2]"))
         # a suit table printed in the next section's text: back to the section naming its rows, its Extras rows folded
         self.assertEqual((a["Card House (Jack of Dice)"]["cost"], a["Card House (Queen of Cups)"]["defense"]), ("1000", "+4"))

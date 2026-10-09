@@ -213,6 +213,10 @@
         "defense": {
           "type": "number"
         },
+        "social": {
+          "description": "An armor's Social modifier: what it adds to the wearer's Social Rating (Charisma + the armor worn's).",
+          "type": "number"
+        },
         "karma": {
           "type": "number"
         },
@@ -279,7 +283,7 @@
       }
     },
     "bonus": {
-      "description": "Evaluated: × rating when perRating, × qty. defense: Defense Rating. An accessory's bonuses are its host's, never the runner's.",
+      "description": "Evaluated: × rating when perRating, × qty. defense: Defense Rating. skill: that skill's dice pool, by its catalog id and name. An accessory's bonuses are its host's, never the runner's.",
       "type": "object",
       "required": [
         "target",
@@ -300,12 +304,32 @@
             "mag",
             "res",
             "initDice",
-            "defense"
+            "defense",
+            "skill"
           ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
         },
         "value": {
           "type": "number"
         }
+      },
+      "if": {
+        "properties": {
+          "target": {
+            "const": "skill"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "id",
+          "name"
+        ]
       }
     },
     "part": {

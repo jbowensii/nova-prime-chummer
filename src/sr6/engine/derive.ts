@@ -7,12 +7,13 @@ import { allBudgets, attrRating, augmentBonus, entryOf, hostBonus, ratingOf, ski
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { makeProvider } from './providers'
-import { attackRatings, rated } from './values'
+import { armorSocial, attackRatings, rated } from './values'
 import { entryLabel } from './categories'
 
 export interface Sr6Pool {
   skill: string; label: string; rank: number; attr: string
-  /** rank + the augmented attribute (an untrained skill: the attribute less untrainedPenalty) */
+  /** rank + the augmented attribute + the entered skill bonuses (an untrained skill: the attribute less untrainedPenalty,
+   *  plus its bonuses) */
   dp: number
   spec?: string; expertise?: string
   /** dp with the specialization / expertise (absent when its setting isn't set) */
@@ -32,6 +33,8 @@ export interface Sr6Derived {
   /** the boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes) */
   monitorBonus: { physical: number; stun: number }
   defenseRating: number
+  /** Charisma + the Social modifiers of the armor worn (Firing Squad p. 50) */
+  socialRating: number
   attackRatings: { unarmed: number; weapons: { uid: string; name: string; bands: (number | null)[] }[] }
   composure: number; judgeIntentions: number; memory: number; liftCarry: number
   drain?: number; fading?: number
@@ -81,7 +84,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
   const pools: Sr6Pool[] = []
   for (const s of b.skills) {
-    const v = data.skills[s.id], rank = skillRank(s), attr = v?.attr ?? '', dp = rank + A(attr)
+    const v = data.skills[s.id], rank = skillRank(s), attr = v?.attr ?? '', dp = rank + A(attr) + augmentBonus(b, 'skill', s.id)
     const pool: Sr6Pool = { skill: s.id, label: v?.name ?? s.id, rank, attr, dp }
     if (s.spec) { pool.spec = s.spec; const d = plus(dp, 'specDice'); if (d !== null) pool.specDp = d }
     if (s.expertise) { pool.expertise = s.expertise; const d = plus(dp, 'expertiseDice'); if (d !== null) pool.expertiseDp = d }
@@ -90,7 +93,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const penalty = need('untrainedPenalty')
   if (penalty !== undefined)
     for (const v of Object.values(data.skills)) if (v.untrained && !b.skills.some(s => s.id === v.id))
-      pools.push({ skill: v.id, label: v.name, rank: 0, attr: v.attr, dp: Math.max(0, A(v.attr) - penalty) })
+      pools.push({ skill: v.id, label: v.name, rank: 0, attr: v.attr, dp: Math.max(0, A(v.attr) - penalty + augmentBonus(b, 'skill', v.id)) })
   pools.sort((x, y) => x.label.localeCompare(y.label))
 
   return {
@@ -102,6 +105,9 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     monitors: { physical: physical === null ? null : physical + tough, stun: monitor(A('wil')), overflow: A('bod') },
     monitorBonus: { physical: tough, stun: 0 },
     defenseRating: defense,
+    // Firing Squad p. 50, Smooth Operations p. 127: Social Rating = CHA + the Social modifiers of the armor worn
+    socialRating: A('cha') + b.purchases.filter(x => x.kind === 'armor' && x.worn)
+      .reduce((t, x) => t + [x, ...x.accessories].reduce((u, y) => u + (armorSocial(entryOf(y, data)?.attrs.social, ratingOf(y, entryOf(y, data))) ?? 0), 0), 0),
     // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
     attackRatings: { unarmed: A('rea') + A('str'), weapons: b.purchases.filter(x => x.kind === 'weapons').map(x => {
       const e = entryOf(x, data)
