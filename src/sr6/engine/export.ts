@@ -15,6 +15,7 @@ import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { catalogFind } from './load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
+import { prerequisites, type Prerequisite } from './martial'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export', SR6_EXPORT_VERSION = 1
 export interface Sr6ExportOpts { descriptions: boolean; now: string; appVersion: string }
@@ -62,7 +63,7 @@ export interface Sr6ExportRunner {
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
   /** styles, each with the techniques learned under it */
-  martialArts: (Sr6ExportItem & { uid: string; techniques: (Sr6ExportItem & { uid: string })[] })[]
+  martialArts: (Sr6ExportItem & { uid: string; techniques: (Sr6ExportItem & { uid: string; requires?: Prerequisite[] })[] })[]
   purchases: Sr6ExportPurchase[]
   contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }[]
   /** deprecated (for the module's older versions): the first SIN's lifestyle that has one, as sins[].lifestyles has it */
@@ -233,7 +234,10 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         const e = data.entry(kind, x.id)
         return { ...(e ? item(c, e, true) : bare(kind, x.name ?? x.id, x.id)), uid: x.uid }
       }
-      return { ...line('martialarts', m), techniques: m.techniques.map(t => line('martialtechniques', t)) }
+      return { ...line('martialarts', m), techniques: m.techniques.map(t => {
+        const requires = prerequisites(data, b, data.entry('martialtechniques', t.id)) // (absent when it prints none)
+        return { ...line('martialtechniques', t), ...(requires.length ? { requires } : {}) }
+      }) }
     }),
     purchases: b.purchases.map(x => purchase(c, data, cr, x)),
     contacts: b.contacts.map(x => defined({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty,

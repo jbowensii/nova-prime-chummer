@@ -12,7 +12,7 @@ import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
-import { MARTIAL_CITE, styleName, techniqueFits, techniqueName } from './martial'
+import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from './martial'
 
 interface Ctx { data: Sr6Data; cr: CreationRules; ch: Sr6Character; b: Sr6Build; p: Provider; budgets: Sr6Budgets }
 /** A broken rule: where (default: the rule's tab), what, and its citation when it isn't the setting's. */
@@ -160,26 +160,37 @@ const RULES: Rule[] = [
 
   // martial arts (FS p. 97): their prices (set when the runner has a style), a style once, a technique once under any
   // style, and only of the style's categories, General or its signature
-  { code: 'martial.price', severity: 'warning', tab: 'qualities', setting: c => (c.b.martialArts.length ? ['karmaMartialArt', 'karmaTechnique'] : []), check: () => null },
-  { code: 'martial.duplicateStyle', severity: 'error', tab: 'qualities', check: c => c.b.martialArts
+  { code: 'martial.price', severity: 'warning', tab: 'martial', setting: c => (c.b.martialArts.length ? ['karmaMartialArt', 'karmaTechnique'] : []), check: () => null },
+  { code: 'martial.duplicateStyle', severity: 'error', tab: 'martial', check: c => c.b.martialArts
     .filter((m, i, all) => all.findIndex(x => x.id === m.id) !== i)
-    .map(m => ({ path: `qualities.${m.uid}`, message: `${styleName(c.data, m)} is taken twice: a style is learned once.`, ...MARTIAL_CITE })) },
-  { code: 'martial.duplicateTechnique', severity: 'error', tab: 'qualities', check: c => {
+    .map(m => ({ path: `martial.${m.uid}`, message: `${styleName(c.data, m)} is taken twice: a style is learned once.`, ...MARTIAL_CITE })) },
+  { code: 'martial.duplicateTechnique', severity: 'error', tab: 'martial', check: c => {
     const seen = new Set<string>(), hits: Hit[] = []
     for (const m of c.b.martialArts) for (const t of m.techniques) {
-      if (seen.has(t.id)) hits.push({ path: `qualities.${m.uid}`, message: `${techniqueName(c.data, t)} is learned twice: a technique is learned once, under any style.`, ...MARTIAL_CITE })
+      if (seen.has(t.id)) hits.push({ path: `martial.${m.uid}`, message: `${techniqueName(c.data, t)} is learned twice: a technique is learned once, under any style.`, ...MARTIAL_CITE })
       seen.add(t.id)
     }
     return hits
   } },
-  { code: 'martial.category', severity: 'error', tab: 'qualities', check: c => c.b.martialArts.flatMap(m => {
+  { code: 'martial.category', severity: 'error', tab: 'martial', check: c => c.b.martialArts.flatMap(m => {
     const style = c.data.entry('martialarts', m.id)
     return m.techniques.flatMap(t => {
       const e = c.data.entry('martialtechniques', t.id)
-      return techniqueFits(style, e) ? [] : [{ path: `qualities.${m.uid}`, ...MARTIAL_CITE,
+      return techniqueFits(style, e) ? [] : [{ path: `martial.${m.uid}`, ...MARTIAL_CITE,
         message: `${e!.name} is a ${e!.attrs.category.split(';')[0].trim()} technique; ${style!.name} teaches ${style!.attrs.categories} and General ones.` }]
     })
   }) },
+
+  // a technique's printed prerequisite the runner lacks (FS p. 97: "certain techniques may have additional
+  // restrictions"): a warning, never blocking, as the catalog's reading of the text may miss
+  { code: 'martial.requires', severity: 'warning', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
+    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind !== 'augmentation').map(p => ({ path: `martial.${m.uid}`, ...MARTIAL_CITE,
+      message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner doesn’t have.` })))) },
+  // (owner, 2026-10-09) the augmentation one is an error: taken anyway, it stands until fixed or a GM approves it (one
+  // approval a technique: its path names it)
+  { code: 'martial.augmentation', severity: 'error', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
+    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind === 'augmentation').map(p => ({ path: `martial.${m.uid}.${t.uid}`, ...MARTIAL_CITE,
+      message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner’s augmentations don’t include.` })))) },
 
   { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
   { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
@@ -328,8 +339,8 @@ const RULES: Rule[] = [
     for (const q of c.b.qualities) if (!c.data.qualities[q.id]) hits.push(gone(`qualities.${q.uid}`, q.name ?? q.id))
     for (const x of c.b.picks) if (!c.data.entry(x.kind, x.id)) hits.push(gone(`magic.${x.uid}`, x.name ?? x.id))
     for (const m of c.b.martialArts) {
-      if (!c.data.entry('martialarts', m.id)) hits.push(gone(`qualities.${m.uid}`, m.name ?? m.id))
-      for (const t of m.techniques) if (!c.data.entry('martialtechniques', t.id)) hits.push(gone(`qualities.${m.uid}`, t.name ?? t.id))
+      if (!c.data.entry('martialarts', m.id)) hits.push(gone(`martial.${m.uid}`, m.name ?? m.id))
+      for (const t of m.techniques) if (!c.data.entry('martialtechniques', t.id)) hits.push(gone(`martial.${m.uid}`, t.name ?? t.id))
     }
     for (const { x, path } of lines(c.b)) if (x.id && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
     for (const s of c.b.sins) for (const l of s.lifestyles ?? [])

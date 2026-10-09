@@ -101,6 +101,14 @@ used with glowing **Catego-**
 #### Glow Kick
 Kick glowingly. **Catego-**
 **ry:** Striking
+#### Glow Leap
+Leap and kick glowingly. **Category:** Striking; requires the Glow Kick technique
+#### Glow Step
+Gain a made-up edge against near _or_ far zaps (choose which kind when learning this technique). This technique may
+be taken up to twice in order to gain both the near and the far bonus. **Category:** Mobility
+#### Hum Palm
+If the adept has the Hum Touch power active, the palm hums. **Category:** Striking; requires
+Hum Touch
 <!-- page 120 -->
 # VIOLENT ENDS
 ## Game Information
@@ -204,6 +212,18 @@ class FsRecipeTest(unittest.TestCase):
         self.assertEqual((t["Glow Jab"]["category"], t["Glow Kick"]["category"]), ("Striking", "Striking"))
         texts = {(x.get("of"), x.get("id")): x.text for x in ET.fromstring(self.res.texts)}
         self.assertIn("Similar Styles:** Made Boxing", texts[("martialarts", "glow-fist")])
+        # the prerequisites its category line prints: the kind from its word, else from the technique's own text
+        req = {e.findtext("name"): [(r.get("kind"), r.text) for r in e.iter("requires")]
+               for e in ET.fromstring(self.res.files["martialtechniques.xml"])}
+        self.assertEqual((req["Glow Leap"], req["Hum Palm"], req["Glow Jab"]),
+                         ([("technique", "Glow Kick")], [("adeptpower", "Hum Touch")], []))
+        self.assertEqual(t["Glow Leap"]["category"], "Striking")
+        # learned near or far, up to twice: an entry each, the printed heading their search name
+        mt = {e.findtext("name"): e for e in ET.fromstring(self.res.files["martialtechniques.xml"])}
+        self.assertEqual([(n, mt[n].get("id"), mt[n].get("category"), [a.text for a in mt[n].iter("alias")])
+                          for n in mt if n.startswith("Glow Step")],
+                         [("Glow Step (Near)", "glow-step-near", "Mobility", ["Glow Step"]),
+                          ("Glow Step (Far)", "glow-step-far", "Mobility", ["Glow Step"])])
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

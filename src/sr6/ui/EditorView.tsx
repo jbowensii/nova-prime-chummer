@@ -37,6 +37,7 @@ import { ContactsTab } from './tabs/Contacts'
 import { GearTab } from './tabs/Gear'
 import { LedgerTab } from './tabs/Ledger'
 import { MagicTab } from './tabs/Magic'
+import { MartialArtsTab } from './tabs/MartialArts'
 import { MethodTab } from './tabs/Method'
 import { QualitiesTab } from './tabs/Qualities'
 import { ReviewTab } from './tabs/Review'
@@ -48,7 +49,7 @@ import { Sr6Sheet } from '../print/Sheet'
 /** Every tab; Magic only shows for an awakened or emerged runner, titled Resonance for a technomancer, and Ledger only in
  *  career (sr6Tabs). */
 export const SR6_TABS: [string, string][] = [['concept', 'Concept'], ['method', 'Creation method'], ['attributes', 'Attributes'],
-  ['skills', 'Skills'], ['qualities', 'Qualities'], ['magic', 'Magic'], ['augmentations', 'Augmentations'], ['gear', 'Gear'],
+  ['skills', 'Skills'], ['qualities', 'Qualities'], ['martial', 'Martial arts'], ['magic', 'Magic'], ['augmentations', 'Augmentations'], ['gear', 'Gear'],
   ['vehicles', 'Vehicles'], ['contacts', 'Contacts & lifestyle'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
 export const sr6Tabs = (magic: MagicKind, career = false): [string, string][] => SR6_TABS
   .filter(([k]) => (k !== 'magic' || magic !== 'mundane') && (k !== 'ledger' || career))
@@ -163,6 +164,7 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
           {shown === 'attributes' && <AttributesTab />}
           {shown === 'skills' && <SkillsTab />}
           {shown === 'qualities' && <QualitiesTab />}
+          {shown === 'martial' && <MartialArtsTab />}
           {shown === 'magic' && <MagicTab />}
           {shown === 'augmentations' && <AugmentationsTab />}
           {shown === 'gear' && <GearTab />}

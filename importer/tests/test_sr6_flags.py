@@ -43,6 +43,14 @@ A made-up stance.
 Gain a made-up spark. You can take this as many times as you like.
 #### Fizz Shield
 A made-up shield.
+<!-- page 140 -->
+# STREET MOVES
+## Made-Up Martial Arts Techniques
+#### Zap Elbow
+A made-up elbow, hummed. **Category:** Striking, the user must already
+know Glow Jab. Requires a hum limb.
+#### Zap Knee
+A made-up knee. **Category:** Grappling
 """
 
 
@@ -84,6 +92,38 @@ class FlagsTest(unittest.TestCase):
         # the caster losing Essence is no test of it
         self.assertEqual(flags.spell("health", "The caster loses a point of Essence."), {})
 
+    def test_technique_prerequisites(self):
+        r = flags.requires
+        # a Restriction label line (shapes.martial): the kind word after the name, or `know`
+        self.assertEqual(r("**Category:** Striking\n**Restriction:** Requires the Zap Hop technique\nHop."),
+                         [("requires", {"kind": "technique"}, "Zap Hop")])
+        self.assertEqual(r("**Restriction:** Requires the Glow Sense quality"), [("requires", {"kind": "quality"}, "Glow Sense")])
+        # no kind word: the entry's own text names it with one (`the Fizz Hands power`), else other
+        self.assertEqual(r("If the adept has the Fizz Hands power active, fizz.\n**Restriction:** Requires Fizz Hands"),
+                         [("requires", {"kind": "adeptpower"}, "Fizz Hands")])
+        # the closing line after the last sentence, wrapped and hyphenated, several prerequisites
+        self.assertEqual(r("Hum a lot. **Category:** Mobility, the user\nmust already know Zap Hop. Requires a glow\nimplant or a hum lim-\nb."),
+                         [("requires", {"kind": "technique"}, "Zap Hop"), ("requires", {"kind": "augmentation"}, "glow implant or a hum limb")])
+        # an augmentation by its words (cyber…, implant…, …ware); the rest other
+        self.assertEqual(r("Zap. **Category:** Ranged, requires an implanted zapper."), [("requires", {"kind": "augmentation"}, "implanted zapper")])
+        self.assertEqual(r("Zap. **Category:** General, requires at least one full cyberpaw."), [("requires", {"kind": "augmentation"}, "at least one full cyberpaw")])
+        self.assertEqual(r("x. **Category:** General, user must have at least 1.5 Essence in glow, user must know\none or both versions of zap hop."),
+                         [("requires", {"kind": "other"}, "at least 1.5 Essence in glow"), ("requires", {"kind": "technique"}, "zap hop")])
+        # a usage note, a prerequisite word outside the closing line: none
+        self.assertEqual(r("This made-up move requires a Minor Action.\n**Category:** Weapon\n**Restriction:** May only be used with sticks"), [])
+        self.assertEqual(flags.technique_category("Zap. **Category:** Grappling,\nrequires a hum limb."), "Grappling")
+        self.assertIsNone(flags.technique_category("No closing line."))
+
+    def test_options_learned_one_at_a_time(self):
+        o = flags.options
+        self.assertEqual(o("Gain a made-up edge against near _or_ far zaps (choose which kind when learning this technique). "
+                           "This technique may be taken up to twice in order to gain both the near and the far bonus."), ["Near", "Far"])
+        self.assertEqual(o("Hum at low, mid, or high pitch (choose which pitch when taking it). It may be taken three times "
+                           "to gain all of them."), ["Low", "Mid", "High"])
+        # a choice made each time it is used, or taken again for another thing: one entry
+        self.assertEqual(o("Each time you hum, choose which of the two tunes plays. You may take this quality multiple times."), [])
+        self.assertEqual(o("Near or far zaps (choose which kind when learning this technique)."), [])
+
     def test_the_recipe_writes_them(self):
         s = read("spells")
         self.assertEqual({n: (e.get("opposed"), e.get("essence")) for n, e in s.items()},
@@ -93,6 +133,11 @@ class FlagsTest(unittest.TestCase):
         self.assertEqual({n: (e.get("id"), e.get("user"), e.get("perLevel")) for n, e in m.items()},
                          {"Glow Stance": ("glow-stance", "adept", None), "Spark Point": ("spark-point", "adept", "true"),
                           "Fizz Shield": ("fizz-shield", None, None)})
+        # a technique a section heading lists: its closing line's category and prerequisites
+        t = read("martialtechniques")
+        self.assertEqual({n: (e.get("category"), [(r.get("kind"), r.text) for r in e.iter("requires")]) for n, e in t.items()},
+                         {"Zap Elbow": ("Striking", [("technique", "Glow Jab"), ("other", "hum limb")]),
+                          "Zap Knee": ("Grappling", [])})
         # the printed name stays a search name
         self.assertEqual([a.text for a in m["Glow Stance"].iter("alias")], ["Glow Stance (Adepts Only)"])
 
