@@ -2,7 +2,8 @@
 // build (or the runner) in place: the editor works on a copy. The character-level setters (method, letters, metatype,
 // magic kind) take the runner so identity.metatype stays build.metatype; apply() takes the build and answers
 // { ok: false, reason } without changing anything when the step isn't allowed. Rule numbers come from the catalog and
-// the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest).
+// the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest). A prerequisite
+// the runner lacks never refuses a step (owner, 2026-10-09): it is taken, and Review's error stands until a GM approves it.
 import { newId } from '../../model/types'
 import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
@@ -11,7 +12,6 @@ import { MAGIC_KINDS, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
-import { fitsHost } from './categories'
 import { learned } from './martial'
 
 export type Op =
@@ -149,10 +149,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'spec': case 'expertise': {
-      const s = b.skills.find(x => x.id === op.target)
-      if (!s || s.points + s.karma < 1) return no('skill-untrained')
+      // on a skill without a rank, or an expertise without a specialization: taken (Review's skill.specUntrained, skill.expertiseSpec)
       const v = op.op === 'spec' ? op.spec : op.expertise
+      let s = b.skills.find(x => x.id === op.target)
+      if (!s) {
+        if (!data.skills[op.target]) return no('unknown-entry')
+        if (!v) return OK
+        b.skills.push(s = { id: op.target, points: 0, karma: 0 })
+      }
       if (v) s[op.op] = v; else delete s[op.op]
+      // a line left with no rank, specialization nor expertise goes
+      if (!s.points && !s.karma && !s.spec && !s.expertise) b.skills = b.skills.filter(x => x !== s)
       return OK
     }
     case 'quality': {
@@ -257,9 +264,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         host.accessories = host.accessories.filter(a => a.uid !== op.remove)
         return OK
       }
-      // an accessory whose category names its hosts goes only on one of them (categories.ts); one naming none, anywhere
-      const acc = data.entry(op.kind, op.id), he = host.id ? data.entry(host.kind, host.id) : undefined
-      if (acc && he && fitsHost(data.categories, acc, he) === false) return no('wrong-host')
+      // an accessory whose category names other hosts goes on anyway (Review's catalog.accessoryHost)
       const line = newLine({ kind: op.kind, id: op.id, rating: op.rating }, data, cr)
       if ('reason' in line) return line
       host.accessories.push(line)
@@ -348,6 +353,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         pk.choices[op.choice] = op.pick
         return OK
       }
+      // (an adult module the runner's magic kind doesn't fit is taken: Review's lifepath.requires)
       const avail = (makeProvider(b.method, data, cr).available?.(b) ?? []).find(m => m.id === op.id)
       if (!avail) return no('not-available')
       if (avail.taken && !avail.again) return no('already-taken')
@@ -442,7 +448,8 @@ function removeBy<T extends { uid: string }>(list: T[], uid: string, set: (l: T[
 }
 
 /** A new purchase line from the catalog (or the player's custom numbers), checked: entry known, rating in its range,
- *  a grade whose Essence factor is set, a quantity of at least 1. */
+ *  a grade whose Essence factor is set on an augmentation (one its type doesn't take: Review's gear.grade), a quantity
+ *  of at least 1. */
 function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: number; grade?: string; custom?: { name: string; cost: number; avail: number; essence: number } },
   data: Sr6Data, cr: CreationRules): Sr6Purchase | { ok: false; reason: string } {
   const qty = op.qty ?? 1
@@ -457,6 +464,7 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   if (!e) return { ok: false, reason: 'unknown-entry' }
   const range = ratingRange(e.attrs.rating)
   if (op.rating !== undefined && range.length && !range.includes(op.rating)) return { ok: false, reason: 'rating-range' }
-  if (op.grade && gradeProblem(cr, data, op.grade, e)) return { ok: false, reason: 'no-grade' }
+  const gp = op.grade && gradeProblem(cr, data, op.grade, e)
+  if (gp) return { ok: false, reason: gp }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
 }

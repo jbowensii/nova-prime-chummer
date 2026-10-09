@@ -53,10 +53,10 @@ test('catalog amps reproduce their printed rating (the made-up books have no dis
   expect(bad.map(t => t.id)).toEqual([])
 })
 
-test('legalEffects enforces type, max, requires, excludes', () => {
+test('legalEffects enforces type, max, excludes; a missing required effect is allowed, marked', () => {
   const find = (a: AmpEntry, id: string) => legalEffects(cat, a).find(e => e.effect.id === id)
   expect(find(amp('cyberware'), 'awk-sorcery')).toBeUndefined()
-  expect(find(amp('cyberware'), 'init-2')!.allowed).toBe(false)
+  expect(find(amp('cyberware'), 'init-2')).toMatchObject({ allowed: true, reason: expect.stringMatching(/^requires /) })
   expect(find(amp('cyberware', ['init-1']), 'init-2')!.allowed).toBe(true)
   expect(find(amp('cyberware', ['vr-cold']), 'vr-cold')!.allowed).toBe(false) // max 1
   expect(find(amp('awakened', ['awk-astral-perception']), 'awk-astral-projection')!.allowed).toBe(false)

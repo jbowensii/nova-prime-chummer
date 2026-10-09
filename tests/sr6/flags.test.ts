@@ -3,7 +3,7 @@
 // and the Foundry export. Made-up fixture entries only (tests/fixtures/sr6/custom: Glow Point, Hum Craft, Mend Glow).
 import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
-import { currentBuild, preview, record } from '../../src/sr6/engine/career'
+import { currentBuild, preview, record, validateCareer } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { metamagicFits, pickMaxLevel } from '../../src/sr6/engine/data'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
@@ -76,11 +76,16 @@ test('Review: an adept’s metamagic on a magician, and more metamagics than ini
   expect(validateSr6(data, cr, ch).map(x => x.code)).not.toContain('magic.metamagicCount')
 })
 
-test('career: initiating with a metamagic the runner may not take is refused; one taken again is a level', () => {
+test('career: a metamagic the runner may not take is recorded, an error a GM may approve; one taken again is a level', () => {
   const { data, cr } = made(), line = (id: string) => ({ op: 'initiate' as const, line: { uid: '', kind: 'metamagics' as const, id } })
   const mage = runner('full', true)
   mage.build.attributes.mag.points = 5
-  expect(preview(mage, line('crb.glow-point'), data, cr)).toEqual({ ok: false, reason: 'cannot-learn' })
+  const rm = record(mage, line('crb.glow-point'), data, cr)
+  if (!rm.ok) throw new Error(rm.reason)
+  const vm = validateCareer(data, cr, rm.ch).filter(x => x.code === 'magic.metamagicUser')
+  expect(vm.map(x => [x.severity, x.page, x.message])).toEqual([['error', 160, 'Glow Point is for adepts only, not a full magician.']])
+  expect(validateCareer(data, cr, { ...rm.ch, overrides: [{ code: vm[0].code, path: vm[0].path, note: 'GM ok' }] })
+    .find(x => x.code === 'magic.metamagicUser')?.approved).toBe(true)
   expect(preview(mage, line('crb.hum-craft'), data, cr)).toMatchObject({ ok: true })
   const adept = runner('adept', true)
   adept.build.attributes.mag.points = 5

@@ -2,6 +2,8 @@
 // Each violation cites the creation setting it rests on (its source and page) or the catalog entry it's about; its path's
 // first segment is the editor tab (attributes.bod, skills.<id>, qualities.<uid>, gear.<uid>…). A rule whose setting is
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
+// A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
+// and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
@@ -11,6 +13,7 @@ import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
+import { gradeKnown, gradeName, gradesFor } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from './martial'
 
@@ -34,6 +37,7 @@ const n0 = (cr: CreationRules, key: string) => num(cr, key) ?? 0
 const over = (budget: { left: number }, what: string, unit = ''): Hit | null =>
   budget.left >= 0 ? null : { message: `${what} overspent by ${fmt(-budget.left)}${unit}.` }
 const entryCite = (e?: { source: string; page: number }) => (e ? { source: e.source, page: e.page } : {})
+const CRB = (page: number) => ({ source: 'CRB', page })
 const metaName = (c: Ctx) => c.data.metatypes[c.b.metatype]?.name ?? c.b.metatype
 /** every purchase and accessory, with the path of the line it sits on */
 function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string }> {
@@ -114,6 +118,18 @@ const RULES: Rule[] = [
     // CRB p. 65: no expertise at creation, unless the table gives an expertise its skill points
     (num(c.cr, 'skillPointsExpertise') !== undefined ? null : c.b.skills.filter(s => s.expertise)
       .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise: none can be taken at creation.` }))) },
+  // CRB p. 93: a specialization (or an expertise) is attached to a skill the runner has a rank in
+  { code: 'skill.specUntrained', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => skillRank(s) < 1 && (s.spec || s.expertise))
+    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has ${s.spec ? 'a specialization' : 'an expertise'} but no rank.`, ...CRB(93) })) },
+  // CRB p. 69: an expertise needs a specialization in its skill first
+  { code: 'skill.expertiseSpec', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => s.expertise && !s.spec)
+    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise but no specialization: an expertise needs one first.`, ...CRB(69) })) },
+  // CRB p. 69: an expertise needs a skill rank of advance.expertiseRank (optional: unset, no minimum and no unset warning)
+  { code: 'skill.expertiseRank', severity: 'error', tab: 'skills', check: c => {
+    const need = num(c.cr, 'advance.expertiseRank')
+    return need === undefined ? null : c.b.skills.filter(s => s.expertise && skillRank(s) < need).map(s => ({ path: `skills.${s.id}`,
+      message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise at rank ${skillRank(s)}: an expertise needs rank ${need}.`, ...cite(c.cr, 'advance.expertiseRank') }))
+  } },
   { code: 'skill.restricted', severity: 'error', tab: 'skills', check: c => {
     // R: a skill on Magic needs an awakened kind (an aspected magician picks one); one on Resonance an emerged one
     const k = MAGIC_KINDS[c.b.magic]
@@ -142,21 +158,11 @@ const RULES: Rule[] = [
       ...entryCite(c.data.entry('qualities', q.id)) }] : []
   }) },
 
-  // a quality granted only (a Returned Soldier power): taken, a quality the runner has must offer its list, and no more
-  // of the list than that quality's choices allow (the list's max, else the choice's count)
-  { code: 'quality.granted', severity: 'warning', tab: 'qualities', check: c => {
-    const offers = c.b.qualities.flatMap(q => c.data.qualities[q.id]?.choices ?? [])
-    const hits: Hit[] = [], taken: Record<string, number> = {}
-    for (const q of c.b.qualities) {
-      const v = c.data.qualities[q.id]
-      if (!v?.granted || !v.category) continue
-      taken[v.category] = (taken[v.category] ?? 0) + 1
-      const room = offers.filter(o => o.category === v.category).reduce((t, o) => t + (o.max ?? o.count), 0)
-      if (!room) hits.push({ path: `qualities.${q.uid}`, message: `${v.name} is granted only, by a quality offering a ${v.category}; the runner has none.`, ...entryCite(c.data.entry('qualities', q.id)) })
-      else if (taken[v.category] > room) hits.push({ path: `qualities.${q.uid}`, message: `More than ${room} ${v.category} qualities taken.`, ...entryCite(c.data.entry('qualities', q.id)) })
-    }
-    return hits
-  } },
+  // a quality granted only (a Returned Soldier power): taken, a quality the runner has must offer its list (a
+  // prerequisite: an error), and no more of the list than that quality's choices allow (the list's max, else the
+  // choice's count: a warning)
+  { code: 'quality.granted', severity: 'error', tab: 'qualities', check: c => granted(c).filter(h => h.none) },
+  { code: 'quality.grantedCount', severity: 'warning', tab: 'qualities', check: c => granted(c).filter(h => !h.none) },
 
   // martial arts (FS p. 97): their prices (set when the runner has a style), a style once, a technique once under any
   // style, and only of the style's categories, General or its signature
@@ -176,18 +182,17 @@ const RULES: Rule[] = [
     const style = c.data.entry('martialarts', m.id)
     return m.techniques.flatMap(t => {
       const e = c.data.entry('martialtechniques', t.id)
-      return techniqueFits(style, e) ? [] : [{ path: `martial.${m.uid}`, ...MARTIAL_CITE,
+      return techniqueFits(style, e) ? [] : [{ path: `martial.${m.uid}.${t.uid}`, ...MARTIAL_CITE,
         message: `${e!.name} is a ${e!.attrs.category.split(';')[0].trim()} technique; ${style!.name} teaches ${style!.attrs.categories} and General ones.` }]
     })
   }) },
 
   // a technique's printed prerequisite the runner lacks (FS p. 97: "certain techniques may have additional
-  // restrictions"): a warning, never blocking, as the catalog's reading of the text may miss
-  { code: 'martial.requires', severity: 'warning', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
-    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind !== 'augmentation').map(p => ({ path: `martial.${m.uid}`, ...MARTIAL_CITE,
+  // restrictions"), an adept power, technique or quality; the augmentation one below. Errors (owner, 2026-10-09): taken
+  // anyway, each stands until met or a GM approves it (one approval a technique: its path names it)
+  { code: 'martial.requires', severity: 'error', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
+    prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind !== 'augmentation').map(p => ({ path: `martial.${m.uid}.${t.uid}`, ...MARTIAL_CITE,
       message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner doesn’t have.` })))) },
-  // (owner, 2026-10-09) the augmentation one is an error: taken anyway, it stands until fixed or a GM approves it (one
-  // approval a technique: its path names it)
   { code: 'martial.augmentation', severity: 'error', tab: 'martial', check: c => c.b.martialArts.flatMap(m => m.techniques.flatMap(t =>
     prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind === 'augmentation').map(p => ({ path: `martial.${m.uid}.${t.uid}`, ...MARTIAL_CITE,
       message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner’s augmentations don’t include.` })))) },
@@ -211,14 +216,27 @@ const RULES: Rule[] = [
     }
     return hits
   } },
+  // CRB p. 283: grades are for cyberware and bioware (a catalog grade may name its own types: Body Shop's exoware)
+  { code: 'gear.grade', severity: 'error', tab: 'augmentations', check: c => {
+    const hits: Hit[] = []
+    for (const { x, path } of lines(c.b)) {
+      const e = entryOf(x, c.data), g = x.grade
+      if (!g || !e || !gradeKnown(c.cr, c.data, g) || gradesFor(c.cr, c.data, e).includes(g)) continue
+      const ge = c.data.grades[g] && c.data.entry('grades', c.data.grades[g].id)
+      hits.push({ path, message: `${nameOf(c, x)} (${e.attrs.type || e.kind}) doesn’t come in ${gradeName(c.data, g)}.`, ...(ge ? entryCite(ge) : CRB(283)) })
+    }
+    return hits
+  } },
   { code: 'essence.positive', severity: 'error', tab: 'augmentations', setting: ['essence'], check: c =>
     (c.budgets.essence.left > 0 ? null : { message: `Essence must stay above 0 (it is ${c.budgets.essence.left}).` }) },
 
+  // CRB p. 67: what each magic kind learns (spells and rituals a magician, adept powers an adept, both a mystic adept,
+  // complex forms a technomancer)
   { code: 'magic.spellsAllowed', severity: 'error', tab: 'magic', check: c => {
     // adept powers are adept.ppBudget's
     const allowed = { ...picksFor(c.b.magic), adeptpowers: true }
     return c.b.picks.filter(x => !allowed[x.kind])
-      .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.` }))
+      .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.`, ...CRB(67) }))
   } },
   // CRB p. 167: some metamagics are for adepts only (the catalog's user: an adept or mystic adept; a magician's, a
   // magician or mystic adept)
@@ -233,7 +251,7 @@ const RULES: Rule[] = [
   } },
   { code: 'adept.ppBudget', severity: 'error', tab: 'magic', check: c => {
     if (!MAGIC_KINDS[c.b.magic].powers)
-      return c.b.picks.some(x => x.kind === 'adeptpowers') ? { message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have adept powers.` } : null
+      return c.b.picks.some(x => x.kind === 'adeptpowers') ? { message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have adept powers.`, ...CRB(67) } : null
     return over(c.budgets.powerPoints, 'Power points')
   } },
   { code: 'adept.ppCap', severity: 'error', tab: 'magic', check: c => {
@@ -318,6 +336,11 @@ const RULES: Rule[] = [
       ? [{ path: `method.${pk.id}`, message: `${m.name}: pick where its choice goes.`, ...entryCite(c.data.entry('lifemodules', pk.id)) }] : []
   })) },
 
+  // an adult module printed for an awakened, emerged, adept or magician runner (`( Awakened only )`), taken by another
+  { code: 'lifepath.requires', severity: 'error', tab: 'method', check: c => (c.p.available?.(c.b) ?? []).filter(m => m.taken && !m.fits).map(m => ({
+    path: `method.${m.id}`, message: `${m.name} is for ${article(m.requires!).toLowerCase()} ${m.requires} runner, not ${article(kindLabel(c.b)).toLowerCase()} ${kindLabel(c.b)}.`,
+    ...entryCite(c.data.entry('lifemodules', m.id)) })) },
+
   // optional: unset, no limit (and no unset warning)
   { code: 'leftover.karma', severity: 'warning', tab: 'review', check: c => {
     const most = num(c.cr, 'maxKarmaLeft')
@@ -366,8 +389,9 @@ const RULES: Rule[] = [
     }
     return hits
   } },
-  // an accessory whose category is for another kind of host (categories.ts: a cyberlimb's armor on a weapon)
-  { code: 'catalog.accessoryHost', severity: 'warning', tab: 'gear', check: c => c.b.purchases.flatMap(x => {
+  // an accessory whose category is for another kind of host (categories.ts: a cyberlimb's armor on a weapon): fitted
+  // anyway, a prerequisite it lacks
+  { code: 'catalog.accessoryHost', severity: 'error', tab: 'gear', check: c => c.b.purchases.flatMap(x => {
     const he = entryOf(x, c.data)
     return he ? x.accessories.flatMap(a => {
       const e = entryOf(a, c.data)
@@ -407,6 +431,22 @@ function printedHits(c: Ctx): Hit[] {
   if (d.initiative.dice !== null) say('review', 'Initiative', pr.values.init, `${init} + ${d.initiative.dice}D6`)
   if (d.monitors.physical !== null && d.monitors.stun !== null) say('review', 'Condition monitors', pr.values.cm, `${d.monitors.physical}/${d.monitors.stun}`)
   say('gear', 'Defense Rating', pr.values.dr, String(d.defenseRating))
+  return hits
+}
+
+/** quality.granted's hits: a granted-only quality with no quality offering its list (none), or more of a list than its
+ *  offers allow. */
+function granted(c: Ctx): (Hit & { none: boolean })[] {
+  const offers = c.b.qualities.flatMap(q => c.data.qualities[q.id]?.choices ?? [])
+  const hits: (Hit & { none: boolean })[] = [], taken: Record<string, number> = {}
+  for (const q of c.b.qualities) {
+    const v = c.data.qualities[q.id]
+    if (!v?.granted || !v.category) continue
+    taken[v.category] = (taken[v.category] ?? 0) + 1
+    const room = offers.filter(o => o.category === v.category).reduce((t, o) => t + (o.max ?? o.count), 0)
+    if (!room) hits.push({ none: true, path: `qualities.${q.uid}`, message: `${v.name} is granted only, by a quality offering a ${v.category}; the runner has none.`, ...entryCite(c.data.entry('qualities', q.id)) })
+    else if (taken[v.category] > room) hits.push({ none: false, path: `qualities.${q.uid}`, message: `More than ${room} ${v.category} qualities taken.`, ...entryCite(c.data.entry('qualities', q.id)) })
+  }
   return hits
 }
 

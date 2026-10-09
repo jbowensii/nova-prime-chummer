@@ -67,19 +67,47 @@ test('a skill costs karmaSkillPerRank × the new rank, refused at advance.skillM
   expect(balances(r).karma).toBe(97)
 })
 
-test('a specialization costs karmaSpec; an expertise needs one, then costs advance.expertise', () => {
+test('a specialization costs karmaSpec; an expertise costs advance.expertise, recorded without one (an error a GM may approve)', () => {
   const { data, cr } = made(), ch = runner()
   tinker(ch)
   expect(preview(ch, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' }, data, cr)).toEqual({ ok: true, label: 'Tinkering: Gizmos', karma: 7, nuyen: 0 })
-  expect(preview(ch, { op: 'expertise', target: 'crb.tinkering', name: 'Gizmos' }, data, cr)).toEqual({ ok: false, reason: 'needs-specialization' })
+  const bare = ok(record(ch, { op: 'expertise', target: 'crb.tinkering', name: 'Gizmos' }, data, cr))
+  const v = validateCareer(data, cr, bare).filter(x => x.code === 'skill.expertiseSpec')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([['error', 'skills.crb.tinkering', 'CRB', 69,
+    'Tinkering has an expertise but no specialization: an expertise needs one first.']])
+  expect(validateCareer(data, cr, { ...bare, overrides: [{ code: 'skill.expertiseSpec', path: 'skills.crb.tinkering', note: 'GM ok' }] })
+    .find(x => x.code === 'skill.expertiseSpec')?.approved).toBe(true)
   const s = ok(record(ch, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' }, data, cr))
   expect(preview(s, { op: 'spec', target: 'crb.tinkering', name: 'Widgets' }, data, cr)).toEqual({ ok: false, reason: 'already-known' })
   expect(preview(s, { op: 'expertise', target: 'crb.tinkering', name: 'Gizmos' }, data, cr)).toMatchObject({ ok: true, karma: 9 })
 })
 
-test('a specialization on an untrained skill is refused', () => {
+test('a specialization on an untrained skill is recorded: an error a GM may approve', () => {
   const { data, cr } = made(), ch = runner()
-  expect(preview(ch, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' }, data, cr)).toEqual({ ok: false, reason: 'skill-untrained' })
+  expect(preview(ch, { op: 'spec', target: 'crb.nope', name: 'Gizmos' }, data, cr)).toEqual({ ok: false, reason: 'unknown-entry' })
+  const r = ok(record(ch, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' }, data, cr))
+  expect(currentBuild(r).skills).toEqual([{ id: 'crb.tinkering', points: 0, karma: 0, spec: 'Gizmos' }])
+  const v = validateCareer(data, cr, r).filter(x => x.code === 'skill.specUntrained')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([['error', 'skills.crb.tinkering', 'CRB', 93, 'Tinkering has a specialization but no rank.']])
+  expect(validateCareer(data, cr, { ...r, overrides: [{ code: 'skill.specUntrained', path: 'skills.crb.tinkering', note: 'GM ok' }] })
+    .find(x => x.code === 'skill.specUntrained')?.approved).toBe(true)
+})
+
+test('an expertise below advance.expertiseRank is recorded: an error a GM may approve; unset, no minimum', () => {
+  const { data, cr } = made(), ch = runner()
+  tinker(ch)  // rank 3; the fixture's invented minimum is 4
+  ch.build.skills[0].spec = 'Gizmos'
+  const r = ok(record(ch, { op: 'expertise', target: 'crb.tinkering', name: 'Gizmos' }, data, cr))
+  const v = validateCareer(data, cr, r).filter(x => x.code === 'skill.expertiseRank')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([['error', 'skills.crb.tinkering', 'CRB', 73,
+    'Tinkering has an expertise at rank 3: an expertise needs rank 4.']])
+  expect(validateCareer(data, cr, { ...r, overrides: [{ code: 'skill.expertiseRank', path: 'skills.crb.tinkering', note: 'GM ok' }] })
+    .find(x => x.code === 'skill.expertiseRank')?.approved).toBe(true)
+  const at4 = structuredClone(r)
+  at4.build.skills[0].points = 4
+  expect(validateCareer(data, cr, at4).map(x => x.code)).not.toContain('skill.expertiseRank')
+  cr.delete('advance.expertiseRank')
+  expect(validateCareer(data, cr, r).map(x => x.code)).not.toContain('skill.expertiseRank')
 })
 
 test('a quality costs karma × advance.qualityFactor, a buy off karma × advance.buyOffFactor; the wrong way round is refused', () => {
@@ -128,11 +156,17 @@ test('a technomancer submerges', () => {
   expect(preview(ch, { op: 'initiate', line: { uid: '', kind: 'metamagics', id: 'crb.soft-echo' } }, data, cr)).toEqual({ ok: false, reason: 'cannot-learn' })
 })
 
-test('only spellcasters learn spells; a technomancer learns complex forms', () => {
+test('spellcasters learn spells (anyone else: recorded, an error a GM may approve); a technomancer learns complex forms', () => {
   const { data, cr } = made()
   const spell: Sr6Advance = { op: 'pick', line: { uid: '', kind: 'spells', id: 'crb.glow-ward' } }
   expect(preview(runner({ magic: 'full' }), spell, data, cr)).toEqual({ ok: true, label: 'Spell: Glow Ward', karma: 7, nuyen: 0 })
-  expect(preview(runner(), spell, data, cr)).toEqual({ ok: false, reason: 'cannot-learn' })
+  const r = ok(record(runner(), spell, data, cr))
+  const v = validateCareer(data, cr, r).filter(x => x.code === 'magic.spellsAllowed')
+  expect(v.map(x => [x.severity, x.source, x.page, x.message])).toEqual([['error', 'CRB', 67, 'A mundane can’t have Glow Ward.']])
+  expect(validateCareer(data, cr, { ...r, overrides: [{ code: 'magic.spellsAllowed', path: v[0].path, note: 'GM ok' }] })
+    .find(x => x.code === 'magic.spellsAllowed')?.approved).toBe(true)
+  // an adept power still needs power points (a budget, not a prerequisite)
+  expect(preview(runner(), { op: 'pick', line: { uid: '', kind: 'adeptpowers', id: 'crb.quick-step' } }, data, cr)).toEqual({ ok: false, reason: 'no-power-points' })
   expect(preview(runner({ magic: 'technomancer' }), { op: 'pick', line: { uid: '', kind: 'complexforms', id: 'crb.static-veil' } }, data, cr))
     .toMatchObject({ ok: true, karma: 7 })
 })

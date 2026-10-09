@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
 import { karmaBudget } from '../../src/sr6/engine/budgets'
-import { currentBuild, preview, record } from '../../src/sr6/engine/career'
+import { currentBuild, preview, record, validateCareer } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { exportSr6Runners } from '../../src/sr6/engine/export'
@@ -79,7 +79,7 @@ test('Review: a style twice, a technique twice, a technique outside the style’
     { uid: 's2', id: 'crb.glow-fist', techniques: [{ uid: 't3', id: 'crb.made-up-stare' }, { uid: 't4', id: 'crb.made-up-cut' }] }]
   const v = codes(w, ch)
   expect(v.map(x => [x.code, x.path, x.source, x.page])).toEqual([['martial.duplicateStyle', 'martial.s2', 'FS', 97],
-    ['martial.duplicateTechnique', 'martial.s2', 'FS', 97], ['martial.category', 'martial.s2', 'FS', 97]])
+    ['martial.duplicateTechnique', 'martial.s2', 'FS', 97], ['martial.category', 'martial.s2.t4', 'FS', 97]])
   expect(v[2].message).toBe('Made-up Cut is a Weapon technique; Glow Fist teaches Mobility, Striking and General ones.')
   // the blade's own signature (a Weapon technique) fits it; a gone style or technique is catalog.missing, not a category error
   ch.build.martialArts = [{ uid: 's3', id: 'crb.made-up-blade', techniques: [{ uid: 't5', id: 'crb.made-up-cut' }, { uid: 't6', id: 'crb.made-up-stare' }] },
@@ -92,15 +92,23 @@ test('Review: a style twice, a technique twice, a technique outside the style’
     .toContain('Martial arts technique (a style’s signature one is free) isn’t set: Table setup → Creation rules.')
 })
 
-test('prerequisites: Review warns (never blocks) when the runner lacks a technique’s adept power, technique or quality', () => {
+test('prerequisites: a technique taken without its adept power, technique or quality is an error a GM may approve', () => {
   const w = world(), ch = draft(), b = ch.build
-  b.martialArts = [{ uid: 's1', id: 'crb.glow-fist', techniques: [{ uid: 't1', id: 'crb.glow-jab' }, { uid: 't2', id: 'crb.made-up-leap' }, { uid: 't3', id: 'crb.made-up-palm' }] }]
+  // the editor takes it anyway
+  b.martialArts = [{ uid: 's1', id: 'crb.glow-fist', techniques: [{ uid: 't1', id: 'crb.glow-jab' }] }]
+  must(apply(b, { op: 'technique', style: 's1', id: 'crb.made-up-leap' }, w.data, w.cr))
+  b.martialArts[0].techniques[1].uid = 't2'
+  b.martialArts[0].techniques.push({ uid: 't3', id: 'crb.made-up-palm' })
   const v = codes(w, ch)
   expect(v.map(x => [x.code, x.severity, x.path, x.source, x.page, x.message])).toEqual([
-    ['martial.requires', 'warning', 'martial.s1', 'FS', 97, 'Made-up Leap requires the Made-up Roll technique, which the runner doesn’t have.'],
-    ['martial.requires', 'warning', 'martial.s1', 'FS', 97, 'Made-up Palm requires the Quick Step adept power, which the runner doesn’t have.'],
-    ['martial.requires', 'warning', 'martial.s1', 'FS', 97, 'Made-up Palm requires the Lucky Streak quality, which the runner doesn’t have.']])
-  expect(canFinalizeSr6(validateSr6(w.data, w.cr, ch).filter(x => x.code === 'martial.requires'))).toBe(true)
+    ['martial.requires', 'error', 'martial.s1.t2', 'FS', 97, 'Made-up Leap requires the Made-up Roll technique, which the runner doesn’t have.'],
+    ['martial.requires', 'error', 'martial.s1.t3', 'FS', 97, 'Made-up Palm requires the Quick Step adept power, which the runner doesn’t have.'],
+    ['martial.requires', 'error', 'martial.s1.t3', 'FS', 97, 'Made-up Palm requires the Lucky Streak quality, which the runner doesn’t have.']])
+  expect(canFinalizeSr6(v)).toBe(false)
+  // one approval a technique
+  ch.overrides = [{ code: 'martial.requires', path: 'martial.s1.t3', note: 'GM ok' }]
+  expect(codes(w, ch).map(x => !!x.approved)).toEqual([false, true, true])
+  ch.overrides = []
   // learned (under any style), picked and taken: met; other is shown, never checked
   b.martialArts[0].techniques.push({ uid: 't4', id: 'crb.made-up-roll' })
   b.picks.push({ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step', level: 1 })
@@ -142,7 +150,7 @@ test('an augmentation prerequisite: an error (a GM may approve it), met by a lin
   b.martialArts = [{ uid: 's1', id: 'crb.glow-kata', techniques: [{ uid: 't1', id: 'crb.glow-drift' }, { uid: 't2', id: 'crb.glow-shell' }] }]
   const v = codes(w, ch).filter(x => x.code !== 'martial.category')
   expect(v.map(x => [x.code, x.severity, x.path, x.message])).toEqual([
-    ['martial.requires', 'warning', 'martial.s1', 'Glow Drift requires the glow step technique, which the runner doesn’t have.'],
+    ['martial.requires', 'error', 'martial.s1.t1', 'Glow Drift requires the glow step technique, which the runner doesn’t have.'],
     ['martial.augmentation', 'error', 'martial.s1.t1', 'Glow Drift requires at least one full torqlimb, which the runner’s augmentations don’t include.']])
   expect(canFinalizeSr6(v)).toBe(false)
   ch.overrides = [{ code: 'martial.augmentation', path: 'martial.s1.t1', note: 'GM ok' }]
@@ -173,7 +181,13 @@ test('career: a style with its signature, a technique, refusals; replayed on the
   expect(preview(r1.ch, style, w.data, w.cr)).toEqual({ ok: false, reason: 'already-known' })
   const roll = { op: 'technique' as const, target: uid, line: { uid: '', id: 'crb.made-up-roll' } }
   expect(preview(r1.ch, roll, w.data, w.cr)).toEqual({ ok: true, label: 'Technique: Made-up Roll (Glow Fist)', karma: 4, nuyen: 0 })
-  expect(preview(r1.ch, { ...roll, line: { uid: '', id: 'crb.made-up-cut' } }, w.data, w.cr)).toEqual({ ok: false, reason: 'wrong-category' })
+  // a technique the style doesn't teach is recorded: Review's martial.category, an error a GM may approve
+  const cut = record(r1.ch, { ...roll, line: { uid: '', id: 'crb.made-up-cut' } }, w.data, w.cr, undefined, NOW)
+  if (!cut.ok) throw new Error(cut.reason)
+  const cv = validateCareer(w.data, w.cr, cut.ch).filter(x => x.code === 'martial.category')
+  expect(cv.map(x => [x.severity, x.source, x.page])).toEqual([['error', 'FS', 97]])
+  expect(validateCareer(w.data, w.cr, { ...cut.ch, overrides: [{ code: cv[0].code, path: cv[0].path, note: 'GM ok' }] })
+    .find(x => x.code === 'martial.category')?.approved).toBe(true)
   expect(preview(r1.ch, { ...roll, line: { uid: '', id: 'crb.glow-jab' } }, w.data, w.cr)).toEqual({ ok: false, reason: 'already-known' })
   expect(preview(r1.ch, { ...roll, target: 'nope' }, w.data, w.cr)).toEqual({ ok: false, reason: 'not-taken' })
   const r2 = record(r1.ch, roll, w.data, w.cr, undefined, NOW)

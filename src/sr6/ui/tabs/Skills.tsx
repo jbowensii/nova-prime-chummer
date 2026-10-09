@@ -1,5 +1,6 @@
 // Skills: the catalog's active skills grouped by attribute, each with points and karma steppers, its dice pool, a
-// specialization and an expertise (the catalog's or the player's own words); then knowledge skills and languages.
+// specialization and an expertise (the catalog's or the player's own words; on a skill without a rank too, Review's
+// skill.specUntrained); then knowledge skills and languages.
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
 import { NameField } from '../../../ui/tabs/Skills'
@@ -48,10 +49,10 @@ export function SkillsTab() {
                 onChange={to => act({ op: 'skill', target: sk.id, pool: k, delta: to - (s?.[k] ?? 0) })} /></td>)}
               <td className="num">{rank || ''}</td>
               <td className="num">{pool ? pool.dp : ''}</td>
-              <td>{rank > 0 && <Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
-                onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} />}</td>
-              <td>{rank > 0 && <Suggest label={`${sk.name} expertise`} value={s?.expertise ?? ''} options={sk.specs}
-                onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })} />}</td>
+              <td><Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
+                onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></td>
+              <td><Suggest label={`${sk.name} expertise`} value={s?.expertise ?? ''} options={sk.specs}
+                onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })} /></td>
             </tr>
           })}
         </tbody>)}

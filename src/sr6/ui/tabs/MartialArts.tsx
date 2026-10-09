@@ -1,8 +1,9 @@
 // Martial arts (bought with karma as qualities are, Firing Squad p. 97): the styles taken, each with the techniques learned
 // under it, a picker for a style (its signature technique comes with it) and one per style for a technique (its signature
-// first, then the ones of its categories and General). A technique's printed prerequisites (an adept power, another
-// technique, a quality, an augmentation, or something else) show in the picker and on its row, flagged there when the
-// runner lacks one (an augmentation as a problem, the others as a note: Review's martial.augmentation and martial.requires).
+// first, then the ones of its categories and General, then the rest, marked: the style doesn't teach them, Review's
+// martial.category). A technique's printed prerequisites (an adept power, another technique, a quality, an augmentation,
+// or something else) show in the picker and on its row, flagged there when the runner lacks one (Review's errors
+// martial.requires and martial.augmentation): a technique is never refused for one.
 import { useState } from 'react'
 import { Modal, Picker } from '../../../ui/bits'
 import { num } from '../../engine/creation'
@@ -19,8 +20,8 @@ export function MartialArtsTab() {
   const styles = [...c.entries.martialarts.values()].sort((a, z) => a.name.localeCompare(z.name))
   const techniques = [...c.entries.martialtechniques.values()].sort((a, z) => a.name.localeCompare(z.name))
   const under = b.martialArts.find(m => m.uid === picking), underEntry = under && data.entry('martialarts', under.id)
-  const offer = under ? techniques.filter(e => techniqueFits(underEntry, e))
-    .sort((a, z) => Number(isSignature(underEntry, z.name)) - Number(isSignature(underEntry, a.name))) : []
+  const rank = (e: Sr6Entry) => (isSignature(underEntry, e.name) ? 0 : techniqueFits(underEntry, e) ? 1 : 2)
+  const offer = under ? [...techniques].sort((a, z) => rank(a) - rank(z)) : []
   const where = (e: Sr6Entry) => <House c={c} source={e.source} />
   const close = (err: string | null) => { if (!err) setPicking(null) }
   const needs = (e: Sr6Entry) => prerequisites(data, b, e).map(prerequisiteText).join('; ')
@@ -44,7 +45,7 @@ export function MartialArtsTab() {
             return <tr key={t.uid}>
               <td><b>{techniqueName(data, t)}</b>{!te && <span className="err"> (no longer in the catalog)</span>}
                 {te && <span className="muted"> {[te.attrs.category, `${te.source} p.${te.page}`].filter(Boolean).join(' · ')}</span>}
-                {pre.map((p, i) => <div key={i} className={p.met === false ? p.kind === 'augmentation' ? 'err' : 'warn' : 'muted'}>
+                {pre.map((p, i) => <div key={i} className={p.met === false ? 'err' : 'muted'}>
                   {p.met === false ? '⚠ Requires ' : 'Requires '}{prerequisiteText(p)}{p.met === false && ': the runner doesn’t have it'}</div>)}</td>
               <td className="num">{karma ? `−${n(karma)}` : 'free'}</td>
               <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'technique', style: m.uid, remove: t.uid })}>Remove</button></td>
@@ -65,7 +66,8 @@ export function MartialArtsTab() {
         {under && <Picker placeholder="Search techniques" onPick={id => close(act({ op: 'technique', style: under.uid, id }))}
           groups={[...new Set(offer.map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}
           items={offer.map(e => ({ id: e.id, name: e.name, group: e.attrs.category, disabled: learned(b).some(t => t.id === e.id),
-              meta: [e.attrs.category, isSignature(underEntry, e.name) && 'signature: free', needs(e) && `requires ${needs(e)}`].filter(Boolean).join(' · '),
+              meta: [e.attrs.category, isSignature(underEntry, e.name) && 'signature: free', !techniqueFits(underEntry, e) && 'not taught by this style',
+                needs(e) && `requires ${needs(e)}`].filter(Boolean).join(' · '),
               price: `${e.source} p.${e.page}`, label: where(e) }))} />}
       </Modal>
     </div>

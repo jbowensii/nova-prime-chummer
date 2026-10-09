@@ -193,11 +193,18 @@ test('qualities: one granted only needs a quality offering its list, and no more
     d.qualities['crb.wanderer'] = { ...q, id: 'crb.wanderer', name: 'Wanderer', karma: 9, choices: [{ category: 'Wanderer power', count: 1, max: null }] }
   }
   quality(ch.build, 'crb.made-up-power')
-  expect(only(ch, 'quality.granted', { data })).toMatchObject([{ severity: 'warning' }])
+  // with no quality offering it: a missing prerequisite, an error a GM may approve
+  const v = only(ch, 'quality.granted', { data })
+  expect(v).toMatchObject([{ severity: 'error', message: 'Made-Up Power is granted only, by a quality offering a Wanderer power; the runner has none.' }])
+  ch.overrides = [{ code: 'quality.granted', path: v[0].path, note: 'GM ok' }]
+  expect(only(ch, 'quality.granted', { data })[0].approved).toBe(true)
+  ch.overrides = []
   quality(ch.build, 'crb.wanderer')
   expect(only(ch, 'quality.granted', { data })).toEqual([])
   quality(ch.build, 'crb.other-power')
-  expect(only(ch, 'quality.granted', { data })).toHaveLength(1)
+  // more of the list than the choices allow: a warning
+  expect(only(ch, 'quality.granted', { data })).toEqual([])
+  expect(only(ch, 'quality.grantedCount', { data })).toMatchObject([{ severity: 'warning' }])
 })
 
 // karma, nuyen, gear

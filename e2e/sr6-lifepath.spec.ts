@@ -64,7 +64,8 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
     await expect(page.getByRole('button', { name: `Add ${m}` })).toHaveCount(0)  // no second doubled module
   }
   await expect(page.getByRole('heading', { name: 'Adult modules: 7 of 7' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Add Glow Study' })).toHaveCount(0)  // awakened only
+  // awakened only: offered to this mundane runner too, marked (taken, it is a Review error)
+  await expect(work.locator('tr', { hasText: 'Glow Study' })).toContainText('(for awakened runners)')
   const dock = work.locator('.row', { hasText: 'Dock Hand' })
   await expect(dock).toHaveCount(2)
   await dock.nth(0).getByLabel('Choice 1 (1)').selectOption('bod')

@@ -80,21 +80,26 @@ export function ampChangeCost(c: Catalog, before: AmpEntry, after: AmpEntry, ctx
   return 0
 }
 
-/** Why an effect can't be added to an amp right now (undefined = allowed). */
+/** Why an effect can't be added to an amp right now (undefined = allowed): a cap, or an effect it can't be combined with.
+ *  One whose required effect the amp lacks may be added (Review's amp.requires error): effectNeeds names it. */
 export function effectBlocked(c: Catalog, amp: AmpEntry, eff: AmpEffect): string | undefined {
   if (!eff.types.includes(amp.type)) return `not available for ${c.ampTypes.get(amp.type)?.name ?? amp.type}`
   const count = amp.effects.filter(e => e.ref === eff.id).length
   if (eff.max != null && count >= eff.max) return `max ${eff.max} per amp`
   if (eff.id === 'init-realm' && count >= initLevels(amp)) return 'one per initiative level held'
   if (eff.id === 'firewall-plus' && amp.type === 'cyberdeck' && 1 + count >= FIREWALL_MAX) return `Firewall ${FIREWALL_MAX} at most`
-  if (eff.requires && !amp.effects.some(e => e.ref === eff.requires)) return `requires ${c.ampEffects.get(eff.requires)?.name ?? eff.requires}`
   if (eff.excludes && amp.effects.some(e => e.ref === eff.excludes)) return `not with ${c.ampEffects.get(eff.excludes)?.name ?? eff.excludes}`
   return undefined
 }
 
+/** The effect an effect requires and the amp lacks, as the picker marks it. */
+export const effectNeeds = (c: Catalog, amp: AmpEntry, eff: AmpEffect): string | undefined =>
+  eff.requires && !amp.effects.some(e => e.ref === eff.requires) ? `requires ${c.ampEffects.get(eff.requires)?.name ?? eff.requires}` : undefined
+
+/** The effects an amp's type may take; reason: why one is blocked, else what it still needs (allowed). */
 export function legalEffects(c: Catalog, amp: AmpEntry): { effect: AmpEffect; allowed: boolean; reason?: string }[] {
   return [...c.ampEffects.values()].filter(e => e.types.includes(amp.type))
-    .map(effect => { const reason = effectBlocked(c, amp, effect); return { effect, allowed: !reason, reason } })
+    .map(effect => { const reason = effectBlocked(c, amp, effect); return { effect, allowed: !reason, reason: reason ?? effectNeeds(c, amp, effect) } })
 }
 
 /** A catalog amp as a character entry; equipment amps also bring their base item, linked. */

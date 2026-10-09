@@ -41,22 +41,23 @@ test('an accessory fits its host category exactly, or its kind by the kind’s w
     .toEqual([6, 3, 2])
 })
 
-test('the accessory action refuses another host’s accessory; Review flags a misfit and a host over capacity', () => {
+test('another host’s accessory is fitted, an error a GM may approve; Review flags a host over capacity', () => {
   const { b, data, cr, ch, act } = setup()
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })).toEqual({ ok: true })
   const limb = b.purchases[0]
-  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({ ok: false, reason: 'wrong-host' })
   expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({ ok: true })
   expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({ ok: true })
   const codes = () => validateSr6(data, cr, ch).filter(v => v.code.startsWith('catalog.') && v.code !== 'catalog.formula')
   expect(codes()).toEqual([]) // 3 + 3 of 6
-  // a runner file holding a misfit (saved before the check, or edited by hand), and a third plate
-  limb.accessories.push({ ...limb.accessories[0], uid: 'x1', kind: 'augmentations', id: 'crb.glare-filter', rating: undefined })
+  // the eyeware's glare filter on the limb: fitted (it takes 2 more capacity)
+  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({ ok: true })
   const v = codes()
   expect(v.map(x => x.code).sort()).toEqual(['catalog.accessoryHost', 'catalog.capacity'])
-  expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({ severity: 'warning', source: 'CRB', page: 283,
+  expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({ severity: 'error', source: 'CRB', page: 283, path: `augmentations.${limb.uid}`,
     message: 'Eyeware accessory: Glare filter is for Eyeware, not Torqlimb: Limb (synthetic).' })
   expect(v.find(x => x.code === 'catalog.capacity')!.message).toBe('Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.')
+  ch.overrides = [{ code: 'catalog.accessoryHost', path: `augmentations.${limb.uid}`, note: 'GM ok' }]
+  expect(codes().find(x => x.code === 'catalog.accessoryHost')?.approved).toBe(true)
 })
 
 test('an accessory’s bonuses are its host’s: the limb’s own STR and armor change, the runner’s attributes don’t', () => {

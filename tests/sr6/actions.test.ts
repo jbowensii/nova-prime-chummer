@@ -4,6 +4,7 @@ import { expect, test } from 'vitest'
 import { apply, reconcile, setMagic, setMetatype, setMethod, setPriority, type Op } from '../../src/sr6/engine/actions'
 import { nuyenBudget, priced } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
+import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made, STONE } from './fixture'
 
@@ -153,9 +154,18 @@ test('a spend below zero is refused and changes nothing', () => {
   expect(b.attributes.agi.karma + b.skills.length + b.cp.skill).toBe(0)
 })
 
-test('skills: points and karma ranks, a spec and expertise need a rank and go with it', () => {
-  const { b, act } = runner()
-  expect(act({ op: 'spec', target: 'crb.gab', spec: 'Haggling' })).toEqual(no('skill-untrained'))
+test('skills: points and karma ranks, a spec and expertise (taken without a rank too) go with the rank', () => {
+  const { ch, b, data, cr, act } = runner()
+  // without a rank: taken, an error a GM may approve
+  expect(act({ op: 'spec', target: 'crb.gab', spec: 'Haggling' })).toEqual(ok)
+  expect(b.skills).toEqual([{ id: 'crb.gab', points: 0, karma: 0, spec: 'Haggling' }])
+  const v = validateSr6(data, cr, ch).filter(x => x.code === 'skill.specUntrained')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page])).toEqual([['error', 'skills.crb.gab', 'CRB', 93]])
+  ch.overrides = [{ code: 'skill.specUntrained', path: 'skills.crb.gab', note: 'GM ok' }]
+  expect(validateSr6(data, cr, ch).find(x => x.code === 'skill.specUntrained')?.approved).toBe(true)
+  expect(act({ op: 'spec', target: 'crb.gab', spec: null })).toEqual(ok)
+  expect(b.skills).toEqual([])
+  expect(act({ op: 'spec', target: 'crb.nope', spec: 'Haggling' })).toEqual(no('unknown-entry'))
   expect(act({ op: 'skill', target: 'crb.gab', pool: 'karma', delta: 1 })).toEqual(ok)
   expect(act({ op: 'spec', target: 'crb.gab', spec: 'Haggling' })).toEqual(ok)
   expect(act({ op: 'expertise', target: 'crb.gab', expertise: 'Fibbing' })).toEqual(ok)
@@ -255,13 +265,19 @@ test('a line’s rating and grade change in place; out of range, an unset grade 
   expect(b.purchases[0]).toMatchObject({ rating: 3 })
 })
 
-test('only cyberware and bioware come in grades: geneware, nanoware, symbionts and transgenics are refused one', () => {
+test('only cyberware and bioware come in grades: one on geneware is taken, an error a GM may approve; gear is refused one', () => {
   const genes = { id: 'crb.glow-genes', kind: 'augmentations' as const, name: 'Glow Genes', source: 'CRB', page: 1,
     attrs: { type: 'geneware', category: 'made-up', essence: '0.1', cost: '900' }, parts: [], text: '' }
-  const { b, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : old(k, id)) } } })
-  expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id, grade: 'alpha' })).toEqual(no('no-grade'))
+  const { ch, b, data, cr, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : old(k, id)) } } })
+  expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id, grade: 'alpha' })).toEqual(ok)
   expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id })).toEqual(ok)
-  expect(act({ op: 'rate', uid: b.purchases[0].uid, grade: 'alpha' })).toEqual(no('no-grade'))
+  expect(act({ op: 'rate', uid: b.purchases[1].uid, grade: 'alpha' })).toEqual(ok)
+  const v = validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade')
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([0, 1].map(i =>
+    ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, 'Glow Genes (geneware) doesn’t come in Alpha.']))
+  ch.overrides = [{ code: 'gear.grade', path: v[0].path, note: 'GM ok' }]
+  expect(validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade').map(x => !!x.approved)).toEqual([true, false])
+  expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, grade: 'alpha' })).toEqual(no('no-grade'))
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.spring-tendons', rating: 1, grade: 'alpha' })).toEqual(ok)
 })
 
@@ -365,8 +381,14 @@ test('life modules: a mixed choice is stored by its index; a module twice only a
   expect(act({ op: 'lifemodule', id: 'crb.hatchling-days' })).toEqual(no('not-available'))
   expect(act({ op: 'lifemodule', remove: 'crb.glow-apprentice' })).toEqual(ok)
   expect(b.lifepath).toEqual([])
-  // a mundane can't take a module that requires an awakened runner; outside lifepath nothing is taken
-  expect(runner({ method: 'lifepath' }).act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('not-available'))
+  // a mundane takes a module that requires an awakened runner: an error a GM may approve; outside lifepath nothing is taken
+  const mundane = runner({ method: 'lifepath' })
+  expect(mundane.act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(ok)
+  const v = validateSr6(mundane.data, mundane.cr, mundane.ch).filter(x => x.code === 'lifepath.requires')
+  expect(v.map(x => [x.severity, x.path, x.message])).toEqual([['error', 'method.crb.glow-apprentice', 'Glow Apprentice is for an awakened runner, not a mundane.']])
+  expect(v[0].page).toBeGreaterThan(0)
+  mundane.ch.overrides = [{ code: 'lifepath.requires', path: 'method.crb.glow-apprentice', note: 'GM ok' }]
+  expect(validateSr6(mundane.data, mundane.cr, mundane.ch).find(x => x.code === 'lifepath.requires')?.approved).toBe(true)
   expect(runner().act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(no('not-lifepath'))
 })
 

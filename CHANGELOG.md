@@ -1,5 +1,41 @@
 # Release notes
 
+## 0.11.1 — 2026-10-09: prerequisites are errors, never blocks
+
+Whatever a runner lacks a prerequisite for can now always be taken, in creation and in career. Review shows an
+error, cited to the page that prints the rule, until the runner meets it or a GM approves it. Pickers list these
+choices with a note ("not taught by this style", "for Eyeware, not this", "not for an adept"). They are never
+hidden or greyed out. Budgets, caps, rating ranges, duplicates and the karma or nuyen a spend needs work as before.
+
+**Shadowrun 6**
+- Martial arts: a technique missing its adept power, technique or quality is now an error, like a missing
+  augmentation (Firing Squad p. 97). A technique the style doesn't teach can be taken, from the tab and the Ledger.
+  Both errors are approved per technique.
+- Metamagics: the Magic tab and the Ledger list every metamagic. An adept's on a magician, or a magician's on an
+  adept, is the `magic.metamagicUser` error.
+- Spells, rituals, complex forms and adept powers: the Magic tab shows every section, with a note when the runner's
+  magic kind can't learn them (CRB p. 67). The Ledger learns any of them. An adept power still needs power points.
+- Specializations and expertise: these can go on a skill with no rank (CRB p. 93), and an expertise can be taken
+  without a specialization (CRB p. 69). Each is a new error. An expertise also needs a skill rank (CRB p. 69): the
+  new Advancement setting `advance.expertiseRank`, 5 by default. Below it is the new `skill.expertiseRank` error.
+- Grades: a grade an augmentation's type doesn't come in can be taken (CRB p. 283, or the catalog grade's page).
+  It's the new `gear.grade` error. Only augmentations and custom lines take a grade.
+- Accessories: the picker lists other hosts' accessories, marked. Fitted, one is now the `catalog.accessoryHost`
+  error instead of a refusal.
+- Lifepath: modules for an awakened, emerged, adept or magician runner are offered to every runner, marked. Taken
+  by another, one is the new `lifepath.requires` error, cited to the module's page.
+- A granted-only quality with no quality offering it is now an error (`quality.granted`). Taking more of a list
+  than its choices allow is still a warning (`quality.grantedCount`).
+- Career Review also shows these errors for spends recorded since Finalize, as well as a Magic or Resonance skill
+  the runner's kind can't use.
+
+**Shadowrun Anarchy 2.0**
+- A spell without the Sorcery option on the Awakened amp (CRB p. 58) is an error, as is a complex form without the
+  Emerged amp (CG p. 9). The Gear tab always shows its Complex forms section.
+- An amp effect whose required effect the amp lacks can be added, marked "requires …". Review's `amp.requires`
+  error stays. An effect it can't be combined with is still blocked.
+- A specialization can be added to a skill at rating 0, which is the `spec.noSkill` error (CRB p. 52).
+
 ## 0.11.0 — 2026-10-09: martial arts, SINs with their lifestyles, catalog flags, Foundry export
 
 Import the books again (Books → **Re-import all**) to get technique prerequisites, the catalog flags and Bending of

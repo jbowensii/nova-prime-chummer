@@ -139,7 +139,8 @@ function LifeModules() {
     })}
     {free.length > 0 && <div className="scroll-x"><table className="data">
       <thead><tr><th>Module</th><th>Gives</th><th /></tr></thead>
-      <tbody>{free.map(m => <tr key={m.id}><td>{m.name}</td><td className="muted">{grants(m)}{m.choices.length ? `, plus ${m.choices.length} choice` : ''}</td>
+      {/* a module for another magic kind may still be taken: Review's lifepath.requires */}
+      <tbody>{free.map(m => <tr key={m.id}><td>{m.name}{!m.fits && <span className="err"> (for {m.requires} runners)</span>}</td><td className="muted">{grants(m)}{m.choices.length ? `, plus ${m.choices.length} choice` : ''}</td>
         <td><button className="btn small" aria-label={`Add ${m.name}`} onClick={() => act({ op: 'lifemodule', id: m.id })}>{m.taken ? 'Add again' : 'Add'}</button></td></tr>)}</tbody>
     </table></div>}
   </section>

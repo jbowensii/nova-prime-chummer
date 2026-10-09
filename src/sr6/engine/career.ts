@@ -3,18 +3,19 @@
 // live advance since the last Finalize replayed on it, so undo is a void entry that replay skips (only the newest live
 // advance may be voided, so no later entry ever sits on something gone). Every price, cap and rate is a creation setting
 // (the Karma prices group doubles as the career prices, plus the Advancement group); an unset price refuses its spend
-// naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers.
+// naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers. A prerequisite the runner lacks never
+// refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
 import { sinName, type PickKind, type Sr6Advance, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
 import { attrRating, priced, qualityCost, sinCost, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
-import { isSignature, learned, techniqueFits } from './martial'
+import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
 /** Contact and Other: the amounts and label the player types. */
@@ -41,7 +42,11 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (s) s.karma += 1; else b.skills.push({ id: a.target, points: 0, karma: 1 })
       return
     }
-    case 'spec': case 'expertise': { const s = b.skills.find(x => x.id === a.target); if (s) s[a.op] = a.name; return }
+    case 'spec': case 'expertise': {
+      const s = b.skills.find(x => x.id === a.target)
+      if (s) s[a.op] = a.name; else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
+      return
+    }
     case 'knowledge': b.knowledge.push(structuredClone(a.line)); return
     case 'quality': {
       const had = b.qualities.find(q => q.id === a.line.id && !q.free)
@@ -183,10 +188,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return { label: `${skillName(a.target)} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaSkillPerRank') }
     }
     case 'spec': case 'expertise': {
+      // on a skill without a rank, an expertise without a specialization or below advance.expertiseRank: recorded (Review's
+      // skill.specUntrained, skill.expertiseSpec, skill.expertiseRank)
       const s = b.skills.find(x => x.id === a.target)
-      if (!s || skillRank(s) < 1) no('skill-untrained')
-      if (a.op === 'expertise' && !s!.spec) no('needs-specialization')
-      if (s![a.op]) no('already-known')
+      if (!s && !data.skills[a.target]) no('unknown-entry')
+      if (s?.[a.op]) no('already-known')
       if (!a.name.trim()) no('needs-name')
       return a.op === 'spec' ? { label: `${skillName(a.target)}: ${a.name}`, karma: need('karmaSpec') }
         : { label: `${skillName(a.target)} expertise: ${a.name}`, karma: need('advance.expertise') }
@@ -215,7 +221,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'pick': {
       const { kind, id } = a.line
-      if (!PICK_LABEL[kind] || !picksFor(b.magic)[kind]) no('cannot-learn')
+      // (one the runner's magic kind can't learn is recorded: Review's magic.spellsAllowed; an adept power needs power points)
+      if (!PICK_LABEL[kind]) no('cannot-learn')
       const e = data.entry(kind, id) ?? no('unknown-entry')
       const had = b.picks.find(x => x.kind === kind && x.id === id)
       if (kind !== 'adeptpowers') {
@@ -245,7 +252,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const m = b.martialArts.find(x => x.uid === a.target) ?? no('not-taken'), style = data.entry('martialarts', m.id)
       const e = data.entry('martialtechniques', a.line.id) ?? no('unknown-entry')
       if (learned(b).some(x => x.id === e.id)) no('already-known')
-      if (!techniqueFits(style, e)) no('wrong-category')
+      // (one the style doesn't teach is recorded: Review's martial.category)
       const karma = isSignature(style, e.name) ? 0 : need('karmaTechnique')
       return { label: `Technique: ${e.name} (${style?.name ?? m.name ?? m.id})`, karma }
     }
@@ -259,8 +266,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (a.line) {
         if (a.line.kind !== (k.resonance ? 'echoes' : 'metamagics')) no('cannot-learn')
         const e = data.entry(a.line.kind, a.line.id) ?? no('unknown-entry')
-        // an adept's metamagic only for an adept or mystic adept, a magician's for a magician or mystic adept
-        if (a.line.kind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[a.line.id]?.user)) no('cannot-learn')
+        // (an adept's metamagic on a magician, or a magician's on an adept, is recorded: Review's magic.metamagicUser)
         // one taken again (its text says it can be) is one more level, each with its own initiation
         const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id), max = pickMaxLevel(data, a.line.kind, a.line.id)
         if (had && max === null) no('already-known')
@@ -279,6 +285,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const e = x.id ? data.entry(x.kind, x.id) ?? no('unknown-entry') : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
+      // (a grade the augmentation's type doesn't take is recorded: Review's gear.grade)
       const gp = x.grade ? gradeProblem(cr, data, x.grade, e) : null
       if (gp) no(gp)
       // R: a cost the app can't read isn't guessed; the GM can buy it as a custom line
@@ -386,11 +393,13 @@ export function canDraft(ch: Sr6Character): boolean {
   return !sinceFinalize(ch).some(e => (e.type === 'earn' || e.type === 'advance') && !voided.has(e.id))
 }
 
-/** Review in career: a balance below 0 (after a void), and S2's catalog and Essence checks on the current build. */
+/** Review in career: a balance below 0 (after a void), and S2's catalog, Essence and prerequisite checks on the current
+ *  build (what a spend may record though the runner lacks it). */
 export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Violation[] {
   const bal = balances(ch), out: Violation[] = []
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
-  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder'])
+  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder', 'skill.specUntrained', 'skill.expertiseSpec', 'skill.expertiseRank', 'skill.restricted',
+    'magic.spellsAllowed', 'magic.metamagicUser', 'martial.category', 'martial.requires', 'martial.augmentation', 'gear.grade', 'catalog.accessoryHost'])
   return [...out, ...validateSr6(data, cr, { ...ch, build: currentBuild(ch) }).filter(v => keep.has(v.code))]
 }

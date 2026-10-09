@@ -89,7 +89,7 @@ test('every key has a label of its own (Game data’s input names), a known type
 
 test('the Advancement group (career prices and caps) follows Karma prices; every key is optional', async () => {
   const adv = CREATION_KEYS.filter(k => k.group === 'Advancement')
-  expect(adv.map(k => k.key)).toEqual(['advance.expertise', 'advance.qualityFactor', 'advance.buyOffFactor', 'advance.skillMax',
+  expect(adv.map(k => k.key)).toEqual(['advance.expertise', 'advance.expertiseRank', 'advance.qualityFactor', 'advance.buyOffFactor', 'advance.skillMax',
     'advance.powerPoint', 'advance.karmaToNuyenRate', 'advance.nuyenToKarmaRate'])
   expect(CREATION_GROUPS.indexOf('Advancement')).toBe(CREATION_GROUPS.indexOf('Karma prices') + 1)
   for (const k of adv) expect(k.methods, k.key).toEqual([])

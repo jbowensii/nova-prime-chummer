@@ -11,8 +11,8 @@ import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
-import { gradeFactor, gradeName, gradesFor, type GradeFactor } from '../engine/grades'
-import { categoryOf, entryLabel, entrySearch, fitsHost } from '../engine/categories'
+import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
+import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
 import { ATTR_NAMES, n, useSr6Editor } from './editor'
 
 
@@ -66,14 +66,20 @@ export function LineName({ x }: { x: Sr6Purchase }) {
 
 export interface PickedItem { e: Sr6Entry; rating?: number; grade?: string }
 
-/** The catalog picker in a dialog. onAdd answers null when added (the dialog closes) or the refusal. */
-export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onAdd }: {
+/** A grade as a select shows it: one the entry's type doesn't take marked (Review's gear.grade). */
+const gradeLabel = (data: Sr6Data, cr: CreationRules, g: string, e: Sr6Entry) =>
+  `${gradeName(data, g)}${gradesFor(cr, data, e).includes(g) ? '' : ` (not for ${e.attrs.type || 'this item'})`}`
+
+/** The catalog picker in a dialog. onAdd answers null when added (the dialog closes) or the refusal. `note` marks an
+ *  entry the runner lacks a prerequisite for (it may still be picked: Review flags it). */
+export function CatalogPicker({ title, open, onClose, kinds, filter, grades, note, onAdd }: {
   title: string; open: boolean; onClose: () => void; kinds: Sr6Kind[]; filter?: (e: Sr6Entry) => boolean; grades?: boolean
-  onAdd: (p: PickedItem) => string | null
+  note?: (e: Sr6Entry) => string | undefined; onAdd: (p: PickedItem) => string | null
 }) {
   const { c, cr, data } = useSr6Editor()
   const [chosen, setChosen] = useState<PickedItem | null>(null)
-  // grades for cyberware and bioware only; geneware, nanoware, symbionts and transgenics are bought as printed
+  // grades for cyberware and bioware; geneware, nanoware, symbionts and transgenics are bought as printed (a grade on
+  // one is offered marked, Review's gear.grade); the picker's grade step opens for an entry whose type takes one
   const offered = (e: Sr6Entry) => (grades ? gradesFor(cr, data, e) : [])
   const entries = kinds.flatMap(k => [...c.entries[k].values()]).filter(e => !filter || filter(e)).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
   const close = () => { setChosen(null); onClose() }
@@ -98,9 +104,10 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
           {range.length > 1 && <label className="inline">Rating
             <select value={chosen.rating} onChange={e => setChosen({ ...chosen, rating: Number(e.target.value) })}>
               {range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>}
-          {offered(chosen.e).length > 0 && <label className="inline">Grade
-            <select value={chosen.grade} onChange={e => setChosen({ ...chosen, grade: e.target.value })}>
-              {offered(chosen.e).map(g => <option key={g} value={g}>{gradeName(data, g)}</option>)}</select></label>}
+          {grades && gradeOptions(cr, data, chosen.e).length > 0 && <label className="inline">Grade
+            <select value={chosen.grade ?? ''} onChange={e => setChosen({ ...chosen, grade: e.target.value || undefined })}>
+              <option value="">None</option>
+              {gradeOptions(cr, data, chosen.e).map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, chosen.e)}</option>)}</select></label>}
         </div>
         {price && <p>Cost <b title={formulaShown(chosen.e, 'cost', dataFind(data))}>{price.cost || '—'}</b> · Availability <b title={formulaShown(chosen.e, 'avail', dataFind(data))}>{price.avail || '—'}</b>{price.essence && <> · Essence <b>{price.essence}</b></>}</p>}
         <IssueBadges issues={chosen.e.issues} source={chosen.e.source} />
@@ -110,7 +117,7 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, onA
           const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1, undefined, undefined, data), formula = formulaShown(e, 'cost', dataFind(data))
           return { id: `${e.kind}:${e.id}`, name: entryLabel(e), group: groupOf(e),
             meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`,
-              e.kind === 'armor' && social(e.attrs.social)].filter(Boolean).join(', '),
+              e.kind === 'armor' && social(e.attrs.social), note?.(e)].filter(Boolean).join(', '),
             label: <><span className="muted">{e.source} p.{e.page}</span> <House c={c} source={e.source} /> <IssueBadges issues={e.issues} source={e.source} /></>,
             search: `${entrySearch(e)} ${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
             price: formula ?? (p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}`) }
@@ -154,33 +161,35 @@ export function Bonuses({ uid, name, bonuses, rated: hasRating }: { uid: string;
   </span>
 }
 
-/** The accessories fitted to a line, each removable, and the picker to fit another: the accessories whose category fits
- *  the line's (categories.ts fitsHost); one whose category names no host, by `filter`. */
+/** The accessories fitted to a line, each removable, and the picker to fit another: every accessory whose category names
+ *  hosts (one naming others marked: it may still be fitted, Review's catalog.accessoryHost); one whose category names no
+ *  host, by `filter`. */
 export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; name: string; kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }) {
   const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
   const he = entryOf(host, data)
-  // an accessory category naming its hosts decides; a line taking any gear (a vehicle's) takes no other host's accessory;
-  // else an entry with no category record (an import before categories) by `filter`
-  const fits = (e: Sr6Entry) => (he ? fitsHost(data.categories, e, he) : null)
-    ?? (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
+  // an accessory category naming its hosts is offered (marked unless it fits); a line taking any gear (a vehicle's)
+  // takes no other host's accessory; else an entry with no category record (an import before categories) by `filter`
+  const fits = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) !== null)
+    || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
+  const wrong = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) === false ? `for ${hostsOf(data.categories, e).join(' or ')}, not this` : undefined)
   return <span className="row">
     {host.accessories.map(a => {
       const e = entryOf(a, data), own = e ? entryLabel(e) : a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
-      const range = ratingRange(e?.attrs.rating), grades = e ? gradesFor(cr, data, e) : []
+      const range = ratingRange(e?.attrs.rating), grades = e ? gradeOptions(cr, data, e) : []
       // its rating and grade change in place, as a line's do
       return <span key={a.uid} className="chip">{range.length > 1 ? own : label}
         {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
           onChange={ev => act({ op: 'rate', uid: a.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select>}
         {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
           onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
-          <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeName(data, g)}</option>)}</select>}
+          <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, e!)}</option>)}</select>}
         <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>×</button>
         {/* what it does to its host (a cyberlimb's Strength), never to the runner */}
         <Bonuses uid={a.uid} name={`${own} on ${name}`} bonuses={a.bonuses} rated={!!a.rating} /></span>
     })}
     <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} onClick={() => setOpen(true)}>Accessory…</button>
-    <CatalogPicker title={`Add an accessory to ${name}`} open={open} onClose={() => setOpen(false)} kinds={kinds} filter={fits}
+    <CatalogPicker title={`Add an accessory to ${name}`} open={open} onClose={() => setOpen(false)} kinds={kinds} filter={fits} note={wrong}
       onAdd={p => act({ op: 'accessory', host: host.uid, kind: p.e.kind as PurchaseKind, id: p.e.id, rating: p.rating })} />
   </span>
 }
@@ -194,7 +203,7 @@ export const ACCESSORY_KINDS: PurchaseKind[] = ['gear', 'weapons', 'augmentation
 /** A line's rating and grade, changed in place where the entry comes in ratings or grades are offered. */
 function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades?: boolean }) {
   const { data, cr, act } = useSr6Editor()
-  const e = entryOf(x, data), range = ratingRange(e?.attrs.rating), offered = grades && e ? gradesFor(cr, data, e) : []
+  const e = entryOf(x, data), range = ratingRange(e?.attrs.rating), offered = grades && e ? gradeOptions(cr, data, e) : []
   if (range.length < 2 && !offered.length) return (x.rating || x.grade)
     ? <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && gradeName(data, x.grade)].filter(Boolean).join(' · ')}</div> : null
   return <div className="row muted">
@@ -204,7 +213,7 @@ function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades
     {offered.length > 0 ? <label className="inline">Grade <select aria-label={`${name} grade`} value={x.grade ?? ''}
       onChange={ev => act({ op: 'rate', uid: x.uid, grade: ev.target.value || null })}>
       {!x.grade && <option value="">None</option>}
-      {[...offered, ...(x.grade && !offered.includes(x.grade) ? [x.grade] : [])].map(g => <option key={g} value={g}>{gradeName(data, g)}</option>)}</select></label>
+      {[...offered, ...(x.grade && !offered.includes(x.grade) ? [x.grade] : [])].map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, e!)}</option>)}</select></label>
       : x.grade && gradeName(data, x.grade)}
   </div>
 }

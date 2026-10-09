@@ -1,4 +1,5 @@
-// Rule checks. Every violation cites the book; errors block Finalize unless a GM approves them.
+// Rule checks. Every violation cites the book; errors block Finalize unless a GM approves them. A prerequisite the runner
+// lacks is always an error (owner, 2026-10-09): the editor lets it be taken, and it stands until met or approved.
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
@@ -150,8 +151,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck') && !emerged) add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck (or the Emerged amp).', 54)
   if (rating('tasking') > 0 && !emerged) add('skill.requiresEmerged', 'error', 'skills.tasking', 'Tasking needs the Emerged amp.', 8, 'CG')
   if (emerged && b.amps.some(a => a.type === 'awakened')) add('amp.emergedAwakened', 'error', 'amps', 'A character cannot be both Awakened and Emerged.', 8, 'CG')
-  if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'warning', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
-  if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'warning', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
+  if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'error', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
+  if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'error', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
   const natives = b.knowledge.filter(k => k.native && k.kind === 'language')
   if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free; ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)

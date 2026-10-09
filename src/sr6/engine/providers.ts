@@ -38,8 +38,9 @@ export interface Provider {
   contactPools?(b: Sr6Build): { types?: string[]; points: number }[]
   /** lifepath's knowledge points (from the modules, not Logic) */
   knowledgePoints?(b: Sr6Build): Pool
-  /** lifepath's adult modules this runner may take, taken ones marked; again: taken once and may be taken a second time */
-  available?(b: Sr6Build): (Sr6LifeModuleView & { taken: boolean; again: boolean })[]
+  /** lifepath's adult modules, taken ones marked; again: taken once and may be taken a second time; fits: the runner's
+   *  magic kind is the one the module requires (one that isn't may still be taken: Review's lifepath.requires) */
+  available?(b: Sr6Build): (Sr6LifeModuleView & { taken: boolean; again: boolean; fits: boolean })[]
 }
 
 const KINDS = Object.keys(MAGIC_KINDS) as MagicKind[]
@@ -213,8 +214,8 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     available: b => {
       const times = (id: string) => b.lifepath.filter(m => m.id === id).length
       const twice = new Set(b.lifepath.map(m => m.id).filter(id => times(id) > 1)).size
-      return Object.values(data.lifemodules).filter(m => m.stage === 'adult' && allows(b.magic, m.requires))
-        .map(m => ({ ...m, taken: times(m.id) > 0, again: times(m.id) === 1 && twice < n('lifepath.repeatModules') })).sort(byName)
+      return Object.values(data.lifemodules).filter(m => m.stage === 'adult')
+        .map(m => ({ ...m, taken: times(m.id) > 0, again: times(m.id) === 1 && twice < n('lifepath.repeatModules'), fits: allows(b.magic, m.requires) })).sort(byName)
     },
   }
 }

@@ -33,8 +33,17 @@ export function gradesFor(cr: CreationRules, data: Sr6Data, e?: Sr6Entry): strin
 /** A grade as shown: the catalog's name, else the key with a capital. */
 export const gradeName = (data: Sr6Data, g: string) => data.grades[g]?.name ?? g[0].toUpperCase() + g.slice(1)
 
-/** Why a grade can't go on a line (null when it can): unknown, or not for this entry's type. */
+/** Why a grade can't go on a line at all (null when it can): unknown (its factors unset), or the line no augmentation
+ *  (a custom line may take any). A grade an augmentation's type doesn't take may go on it: Review's gear.grade. */
 export function gradeProblem(cr: CreationRules, data: Sr6Data, g: string, e?: Sr6Entry): 'unknown-grade' | 'no-grade' | null {
   if (!gradeKnown(cr, data, g)) return 'unknown-grade'
-  return gradesFor(cr, data, e).includes(g) ? null : 'no-grade'
+  return !e || e.kind === 'augmentations' ? null : 'no-grade'
+}
+
+/** The grades a picker offers an entry: an augmentation every grade that can be bought, those its type takes first (the
+ *  others marked: gear.grade); anything else none. */
+export function gradeOptions(cr: CreationRules, data: Sr6Data, e?: Sr6Entry): string[] {
+  if (e && e.kind !== 'augmentations') return []
+  const fit = gradesFor(cr, data, e)
+  return [...fit, ...gradesFor(cr, data).filter(g => !fit.includes(g))]
 }
