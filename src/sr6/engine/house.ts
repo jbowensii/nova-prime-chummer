@@ -20,14 +20,14 @@ export function forSr6Campaign(c: Sr6Catalog, campaign: string | undefined): Sr6
 }
 
 /** Every catalog line the runner has (as it stands, its career spends included): qualities, magic picks, purchases and
- *  their accessories, its lifestyle. */
+ *  their accessories, its SINs' lifestyles. */
 function lines(ch: Sr6Character): [Sr6Kind, string][] {
   const b = currentBuild(ch), out: [Sr6Kind, string][] = []
   const buy = (x: Sr6Purchase) => { if (x.id) out.push([x.kind, x.id]); x.accessories.forEach(buy) }
   for (const q of b.qualities) out.push(['qualities', q.id])
   for (const p of b.picks) out.push([p.kind, p.id])
   b.purchases.forEach(buy)
-  if (b.lifestyle) out.push(['lifestyles', b.lifestyle.id])
+  for (const s of b.sins) for (const l of s.lifestyles ?? []) out.push(['lifestyles', l.id])
   return out
 }
 

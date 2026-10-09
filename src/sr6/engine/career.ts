@@ -66,8 +66,17 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (i >= 0) b.contacts[i] = structuredClone(a.line); else b.contacts.push(structuredClone(a.line))
       return
     }
-    // more months of the lifestyle the runner has add to it; another lifestyle replaces it
-    case 'lifestyle': b.lifestyle = { id: a.id, months: a.months + (b.lifestyle?.id === a.id ? b.lifestyle.months : 0) }; return
+    case 'lifestyle': {
+      // more months of a lifestyle the SIN has add to it, another is added; an entry from before lifestyles belonged to
+      // SINs (no sin) is the first SIN's one lifestyle: more months of it, or another replacing it
+      const sin = a.sin ? b.sins.find(s => s.uid === a.sin) : b.sins[0]
+      if (!sin) return  // charxml.ts gives an older runner with a lifestyle a SIN
+      const ls = sin.lifestyles ??= [], had = a.sin ? ls.find(l => l.id === a.id) : ls[0]
+      if (had?.id === a.id) had.months += a.months
+      else if (had) Object.assign(had, { id: a.id, months: a.months })
+      else ls.push({ uid: a.uid ?? `${sin.uid}-${a.id}`, id: a.id, months: a.months })
+      return
+    }
     case 'convert': case 'other': return
   }
 }
@@ -249,11 +258,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
     case 'lifestyle': {
+      const sin = a.sin ? b.sins.find(s => s.uid === a.sin) ?? no('unknown-line') : undefined
       const e = data.entry('lifestyles', a.id) ?? no('unknown-entry')
       if (!(a.months >= 1)) no('below-one')
       const v = bookValue(e, 'cost', undefined, dataFind(data))
       if (!v.ok || v.n === null) no('book-value')
-      return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}`, nuyen: v.n! * a.months }
+      return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}${sin ? ` (${sin.name || 'SIN'})` : ''}`, nuyen: v.n! * a.months }
     }
     case 'convert': {
       if (!Number.isInteger(a.karma) || a.karma === 0) no('below-one')
@@ -283,6 +293,7 @@ export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Creat
     case 'contact': adv.line = named(adv.line); break
     case 'buyoff': adv.line = b.qualities.find(q => q.uid === adv.target); break
     case 'drop': adv.line = b.purchases.find(x => x.uid === adv.target); break
+    case 'lifestyle': if (adv.sin && !adv.uid) adv.uid = newId(); break
   }
   const entry: Sr6LedgerEntry = { id: newId(), at: now, type: 'advance', advance: adv, label: pv.label, karma: pv.karma, nuyen: pv.nuyen }
   return { ok: true, ch: { ...ch, ledger: [...ch.ledger, entry] } }

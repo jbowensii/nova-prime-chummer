@@ -134,6 +134,8 @@ export interface Character { formatVersion: 1; id: string;
   identity: { name: string; streetName: string; metatype: string; portrait?: string;
     /** the round token picture (Foundry etc.); absent: the portrait serves as the token */
     token?: string; backdrop?: Backdrop; lifestyle?: string;
+    /** optional, as the player writes it (both games) */
+    gender?: string;
     background: string; notes: string };
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] };
   level: string; package: string; build: Build; finalizedAt?: string;

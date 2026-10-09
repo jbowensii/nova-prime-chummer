@@ -52,6 +52,8 @@
       <xs:attribute name="rev" type="xs:nonNegativeInteger"/>
       <xs:attribute name="streetName" type="xs:string"/>
       <xs:attribute name="name" type="xs:string"/>
+      <!-- optional, as the player writes it -->
+      <xs:attribute name="gender" type="xs:string"/>
       <xs:attribute name="metatype" type="xs:string" use="required"/>
       <xs:attribute name="level" type="xs:string" use="required"/>
       <xs:attribute name="package" type="xs:string"/>

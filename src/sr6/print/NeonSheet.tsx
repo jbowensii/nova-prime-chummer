@@ -37,7 +37,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
     ['Drain', d.drain], ['Fading', d.fading]] as [string, ReactNode][]).filter(([, x]) => x !== undefined)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="n-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
   const picks = b.picks.length > 0 && PICKS.map(([kind, label]) => [label, b.picks.filter(x => x.kind === kind)] as const).filter(([, xs]) => xs.length)
-  const role = [data.metatypes[b.metatype]?.name, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic], k.spells && b.tradition].filter(Boolean).join(' · ')
+  const role = [data.metatypes[b.metatype]?.name, ch.identity.gender, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic], k.spells && b.tradition].filter(Boolean).join(' · ')
 
   return (
     <article className="sr6-neon" style={art.vars}>
@@ -75,9 +75,8 @@ export function NeonSheet({ art }: { art: SheetArt }) {
           </section>
           <section aria-labelledby="n-ids"><H id="n-ids">IDs & money</H>
             <p><b>{n(v.nuyen)}¥</b> · <b>{n(v.karma)}</b> karma</p>
-            <p>{v.lifestyle ? `${v.lifestyle.name} × ${b.lifestyle!.months} mo.` : 'No lifestyle'}</p>
-            <ul className="n-list">{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="n-small">{s.kind === 'real' ? 'real' : `fake ${s.rating ?? 1}`}
-              {s.licences.length > 0 && `; ${s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}`}</span></li>)}</ul>
+            <ul className="n-list">{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="n-small">{s.kind === 'real' ? 'real' : `fake ${s.rating ?? 1}`}{s.gender && `, ${s.gender}`}
+              {s.licences.length > 0 && `; ${s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}`}{v.lifeOf(s) && `; ${v.lifeOf(s)}`}</span></li>)}</ul>
           </section>
           <section aria-labelledby="n-lang"><H id="n-lang">Languages & knowledge</H>
             <p>{[...v.langs.map(x => x.native ? `${x.name} (N)` : `${x.name} ${x.points + x.karma}`), ...v.know.map(x => x.name)].join(', ') || '—'}</p>

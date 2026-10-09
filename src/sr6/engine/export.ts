@@ -47,8 +47,9 @@ export interface Sr6ExportPurchase extends Sr6ExportItem { uid: string; qty: num
   bonuses: Sr6ExportBonus[]; accessories: Sr6ExportPurchase[] }
 export interface Sr6ExportNpc { kind: Exclude<Sr6NpcKind, 'contact'>; rating?: number; group?: string; from?: Sr6Npc['from']
   stats: ReturnType<typeof npcValues>; lines: Sr6Npc['lines']; pools: ReturnType<typeof npcPools> }
+export interface Sr6ExportLifestyle { uid: string; id: string; name: string; months: number; cost?: number }
 export interface Sr6ExportRunner {
-  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; finalized: boolean
+  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; gender?: string; finalized: boolean
   metatype: { id: string; name: string }
   magic: { kind: MagicKind; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'; aspectedSkill?: string; initiation: number; submersion: number }
   portrait: string | null; token: string | null
@@ -59,8 +60,10 @@ export interface Sr6ExportRunner {
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
   purchases: Sr6ExportPurchase[]
   contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }[]
-  lifestyle: { id: string; name: string; months: number; cost?: number } | null
-  sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; licences: { name: string; rating: number }[] }[]
+  /** deprecated (for the module's older versions): the first SIN's lifestyle that has one, as sins[].lifestyles has it */
+  lifestyle: Omit<Sr6ExportLifestyle, 'uid'> | null
+  sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; licences: { name: string; rating: number }[]
+    lifestyles: Sr6ExportLifestyle[] }[]
   karma: number; nuyen: number
   /** for reading only: the module writes none of it (Eden derives its own) */
   derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
@@ -189,9 +192,15 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
   const c = withSr6House(all, ch.house).c, data = c === all ? allData : sr6Data(c)
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
-  const voided = voidedIds(ch), lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)
+  const voided = voidedIds(ch)
+  const sins = b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender,
+    licences: s.licences.map(l => ({ name: l.name, rating: l.rating })),
+    lifestyles: (s.lifestyles ?? []).map(l => { const e = data.entry('lifestyles', l.id)
+      return defined({ uid: l.uid, id: l.id, name: e?.name ?? l.id, months: l.months, cost: num(e?.attrs.cost) }) }) }))
+  const first = sins.flatMap(s => s.lifestyles)[0]
   return {
-    id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: id.streetName, realName: id.name, finalized: !!ch.finalizedAt,
+    id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: id.streetName, realName: id.name, ...(id.gender ? { gender: id.gender } : {}),
+    finalized: !!ch.finalizedAt,
     metatype: { id: b.metatype, name: data.metatypes[b.metatype]?.name ?? '' },
     magic: defined({ kind: b.magic, tradition: b.tradition, drainAttr: b.drainAttr, aspectedSkill: b.aspectedSkill, initiation: b.initiation, submersion: b.submersion }),
     portrait: id.portrait ?? null, token: id.token ?? null,
@@ -212,8 +221,8 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     purchases: b.purchases.map(x => purchase(c, data, cr, x)),
     contacts: b.contacts.map(x => defined({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty,
       types: x.types?.length ? [...x.types] : undefined })),
-    lifestyle: b.lifestyle ? defined({ id: b.lifestyle.id, name: lifestyle?.name ?? b.lifestyle.id, months: b.lifestyle.months, cost: num(lifestyle?.attrs.cost) }) : null,
-    sins: b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, licences: s.licences.map(l => ({ name: l.name, rating: l.rating })) })),
+    lifestyle: first ? (({ uid: _, ...l }) => l)(first) : null,
+    sins,
     karma: money.karma, nuyen: money.nuyen,
     ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, monitorBonus: d.monitorBonus, defenseRating: d.defenseRating,
       composure: d.composure, judgeIntentions: d.judgeIntentions, memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools }) }),

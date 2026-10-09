@@ -51,7 +51,11 @@ export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: numb
 export interface Sr6Contact { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }
 export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' | 'government' | 'magic' | 'matrix' | 'media' | 'medical' | 'street'
 export const CONTACT_TYPES: ContactType[] = ['academic', 'corporate', 'criminal', 'engineering', 'government', 'magic', 'matrix', 'media', 'medical', 'street']
-export interface Sr6Sin { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; licences: { name: string; rating: number }[] }
+/** A lifestyle always belongs to a SIN (the one it's paid under); id: the catalog lifestyle. */
+export interface Sr6Lifestyle { uid: string; id: string; months: number }
+/** gender: the identity's own (optional; the runner's is identity.gender). lifestyles: none, one or more. */
+export interface Sr6Sin { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; licences: { name: string; rating: number }[]
+  lifestyles?: Sr6Lifestyle[] }
 /** choices: a life module's mixed choice, by its index, to the option picked (an attribute abbr, skill:<id> or nuyen:<n>). */
 export interface Sr6LifeModule { id: string; choices: Record<number, string> }
 export interface Sr6AttrSpend { points: number; adjust: number; karma: number }
@@ -76,7 +80,7 @@ export interface Sr6Build {
   picks: Sr6Pick[]
   purchases: Sr6Purchase[]
   contacts: Sr6Contact[]
-  lifestyle?: { id: string; months: number }
+  /** each with its lifestyles (an older file's single build lifestyle loads onto its first SIN: charxml.ts) */
   sins: Sr6Sin[]
   karmaToNuyen: number
 }
@@ -98,7 +102,9 @@ export type Sr6Advance =
   | { op: 'purchase'; line: Sr6Purchase }
   | { op: 'drop'; target: string; line?: Sr6Purchase }
   | { op: 'contact'; line: Sr6Contact }
-  | { op: 'lifestyle'; id: string; months: number }
+  /** sin, uid: the SIN it's paid under and the lifestyle's uid when new. An entry recorded before lifestyles belonged to
+   *  SINs has neither: it goes to the first SIN's first lifestyle (more months of it, or another lifestyle replacing it). */
+  | { op: 'lifestyle'; id: string; months: number; sin?: string; uid?: string }
   | { op: 'convert'; karma: number }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']

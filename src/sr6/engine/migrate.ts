@@ -3,7 +3,7 @@
 // Sr6Catalog.moved). On load (the editor's prepare) every line naming an id the catalog no longer has, and an alias
 // moves, is pointed at the new entry, when its kind still fits the line (a purchase stays a purchase kind, a pick a pick
 // kind); each change is recorded in `migrated`, once: the saved runner then holds the new ids.
-import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Character, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
+import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Character, type Sr6Lifestyle, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
 import type { Sr6Catalog, Sr6Kind } from '../model/types'
 import { entryKey } from './load'
 
@@ -24,9 +24,11 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
   const pick = <T extends Sr6Pick | undefined>(p: T): T => { const m = p && to<PickKind>(p.kind, p.id, PICK_KINDS); return m ? { ...p, ...m } : p }
   const quality = <T extends Sr6Quality | undefined>(q: T): T => { const m = q && to('qualities', q.id, ['qualities']); return m ? { ...q, id: m.id } : q }
   const b = ch.build
-  const life = b.lifestyle && to('lifestyles', b.lifestyle.id, ['lifestyles']), meta = to('metatypes', b.metatype, ['metatypes'])
+  const lifestyle = (l: Sr6Lifestyle): Sr6Lifestyle => { const m = to('lifestyles', l.id, ['lifestyles']); return m ? { ...l, id: m.id } : l }
+  const meta = to('metatypes', b.metatype, ['metatypes'])
+  const sins = b.sins.map(s => (s.lifestyles ? { ...s, lifestyles: s.lifestyles.map(lifestyle) } : s))
   const build = { ...b, purchases: b.purchases.map(purchase), picks: b.picks.map(pick), qualities: b.qualities.map(quality),
-    ...life ? { lifestyle: { ...b.lifestyle!, id: life.id } } : {}, ...meta ? { metatype: meta.id } : {} }
+    sins, ...meta ? { metatype: meta.id } : {} }
   const ledger = ch.ledger.map(e => {
     if (e.type !== 'advance') return e
     const a = e.advance

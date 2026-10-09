@@ -40,6 +40,7 @@ finalized runner (before that, what is left of the build budget).
 |---|---|
 | `id`, `updatedAt`, `exportedAt` | the runner's id, last change, this export's time |
 | `streetName`, `realName` | identity |
+| `gender` | optional: the runner's gender as the player wrote it (left out when not set) |
 | `finalized` | true once the build is finalized and career play has begun |
 | `metatype` | `{ id, name, ranges, edge }`: attribute ranges `[min, max]` per attribute, and the edge. A critter or spirit may have none: `id` `""`, `name` "Critter" or "Spirit" |
 | `level` | `{ id, name }` of the build level |

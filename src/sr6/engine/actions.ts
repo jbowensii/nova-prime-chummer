@@ -46,9 +46,10 @@ export type Op =
   | { op: 'lifemodule'; id: string; choice: number; pick: string; at?: number }
   /** lifepath's best attribute (null: none) and the one that takes what its maximum leaves over */
   | { op: 'bestAttr'; attr: Sr6Attr | null; extra?: Sr6Attr | null }
-  | { op: 'lifestyle'; id: string | null; months?: number }
-  /** add a SIN, or change one (uid) */
-  | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number } | { op: 'sin'; remove: string }
+  /** a lifestyle on a SIN: add one (no uid; id needed), change one (uid), or remove one */
+  | { op: 'lifestyle'; sin: string; uid?: string; id?: string; months?: number } | { op: 'lifestyle'; sin: string; remove: string }
+  /** add a SIN, or change one (uid); gender '' clears it */
+  | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number; gender?: string } | { op: 'sin'; remove: string }
   | { op: 'licence'; sin: string; name: string; rating: number } | { op: 'licence'; sin: string; remove: number }
   | { op: 'karmaToNuyen'; delta: number }
   | { op: 'initiation'; delta: number }
@@ -337,11 +338,21 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'lifestyle': {
-      if (op.id === null) { delete b.lifestyle; return OK }
-      if (!data.entry('lifestyles', op.id)) return no('unknown-entry')
-      const months = op.months ?? 1
-      if (months < 1) return no('below-one')
-      b.lifestyle = { id: op.id, months }
+      const s = b.sins.find(x => x.uid === op.sin)
+      if (!s) return no('unknown-line')
+      const ls = s.lifestyles ?? []
+      if ('remove' in op) return removeBy(ls, op.remove, l => { if (l.length) s.lifestyles = l; else delete s.lifestyles })
+      if (op.id !== undefined && !data.entry('lifestyles', op.id)) return no('unknown-entry')
+      if (op.months !== undefined && op.months < 1) return no('below-one')
+      if (!op.uid) {
+        if (op.id === undefined) return no('unknown-entry')
+        s.lifestyles = [...ls, { uid: newId(), id: op.id, months: op.months ?? 1 }]
+        return OK
+      }
+      const l = ls.find(x => x.uid === op.uid)
+      if (!l) return no('unknown-line')
+      if (op.id !== undefined) l.id = op.id
+      if (op.months !== undefined) l.months = op.months
       return OK
     }
     case 'sin': {
@@ -349,7 +360,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.rating !== undefined && op.rating < 1) return no('below-one')
       if (!op.uid) {
         const kind = op.kind ?? 'fake'
-        b.sins.push({ uid: newId(), name: op.name ?? '', kind, ...(kind === 'fake' ? { rating: op.rating ?? 1 } : {}), licences: [] })
+        b.sins.push({ uid: newId(), name: op.name ?? '', kind, ...(kind === 'fake' ? { rating: op.rating ?? 1 } : {}),
+          ...(op.gender?.trim() ? { gender: op.gender } : {}), licences: [] })
         return OK
       }
       const s = b.sins.find(x => x.uid === op.uid)
@@ -359,6 +371,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         s.rating = op.rating
       }
       if (op.name !== undefined) s.name = op.name
+      if (op.gender !== undefined) { if (op.gender.trim()) s.gender = op.gender; else delete s.gender }
       return OK
     }
     case 'licence': {

@@ -289,7 +289,8 @@ const RULES: Rule[] = [
     for (const q of c.b.qualities) if (!c.data.qualities[q.id]) hits.push(gone(`qualities.${q.uid}`, q.name ?? q.id))
     for (const x of c.b.picks) if (!c.data.entry(x.kind, x.id)) hits.push(gone(`magic.${x.uid}`, x.name ?? x.id))
     for (const { x, path } of lines(c.b)) if (x.id && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
-    if (c.b.lifestyle && !c.data.entry('lifestyles', c.b.lifestyle.id)) hits.push(gone('contacts.lifestyle', c.b.lifestyle.id))
+    for (const s of c.b.sins) for (const l of s.lifestyles ?? [])
+      if (!c.data.entry('lifestyles', l.id)) hits.push(gone(`contacts.lifestyle.${l.uid}`, l.id))
     for (const pk of c.b.lifepath) if (!c.data.lifemodules[pk.id]) hits.push(gone(`method.${pk.id}`, pk.id))
     return hits
   } },

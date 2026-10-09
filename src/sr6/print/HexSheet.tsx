@@ -45,7 +45,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
       <section aria-labelledby="x-personal"><Title id="x-personal">Personal data</Title>
         <div className="x-two">
           <F l="Name" v={<>{v.name}{ch.identity.name && ch.identity.name !== v.name && <span className="x-small"> ({ch.identity.name})</span>}</>} />
-          <F l="Metatype" v={data.metatypes[b.metatype]?.name} />
+          <F l="Metatype" v={[data.metatypes[b.metatype]?.name, ch.identity.gender].filter(Boolean).join(', ') || undefined} />
           <F l="Description" v={ch.identity.background.split('\n')[0]} />
           <F l="Archetype" v={b.magic !== 'mundane' ? [MAGIC_KIND_LABELS[b.magic], k.spells && b.tradition].filter(Boolean).join(', ') : undefined} />
         </div>
