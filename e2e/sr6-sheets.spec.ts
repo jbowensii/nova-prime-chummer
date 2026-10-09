@@ -226,7 +226,7 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   await expect(dos).toBeVisible()
   await expect(hex).toHaveCount(0)
   for (const h of ['Personal data', 'Edge / Nuyen', 'Portrait', 'Attributes', 'Qualities', 'Condition monitor', 'Skills', 'Weapons', 'Armor',
-    'Augmentations', 'Contacts', 'Gear', 'IDs / lifestyle', 'Magic', 'Vehicles & drones', 'Notes'])
+    'Augmentations', 'Contacts', 'Gear', 'IDs / lifestyles', 'Magic', 'Vehicles & drones', 'Notes'])
     await expect(dos.getByRole('heading', { name: h, exact: true })).toBeVisible()
   expect(await dos.getByRole('heading', { name: 'Personal data' }).evaluate(e => { const cs = getComputedStyle(e); return [cs.backgroundColor, cs.color, cs.textTransform] }))
     .toEqual(['rgb(168, 0, 106)', 'rgb(255, 255, 255)', 'uppercase'])
