@@ -1,6 +1,8 @@
 # Release notes
 
-## Unreleased: the runner's effects everywhere, the sample runners' errors traced
+## 0.11.2 — 2026-10-09: the runner's effects everywhere, the sample runners' errors traced
+
+Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.
 
 **Shadowrun 6**
 - One set of effective values for creation, Review, the sheets and the Foundry export. A line's bonuses are the
