@@ -39,6 +39,13 @@ Every file has the same root, and one file holds one kind:
   Formulas and issues below): `<formula field="cost">R * 200</formula>` says how a field is worked out, the printed
   attribute staying as printed; `<issue field="avail" code="missing" page="91">note</issue>` marks a field the book
   prints nothing for, or one the importer couldn't read.
+- **Choices** (optional children of any entry, `<choice kind="…"/>`): what the player picks when the entry is taken.
+  `kind` is one of: `quality` (count picks from the qualities of `category`, max the most), `mixed` (a life module's
+  `points` to one of `options`), `skill` (one of `from`, names separated by `; `), `specialization` (in the chosen
+  skill, or in `category`), `knowledgeskill`, and `sense`, `trueelement`, `licencetype` (one entry of that kind, of
+  `category` when given). `free` labels a value the player may write instead (`other (L) item`). The importer writes
+  them for a power's `select a sense (sight, hearing, …)`, for a bracketed power definition (`Skill (choose one from
+  …)`), for a heading's `selected from the list below` options, and for Fake License's licence type.
 - **Cross-references are names** for now: metatype traits, critter powers, NPC gear and weapons are lists as printed.
 - **No prose in the catalog files.** Descriptions, game effects and rule text go only to the source's texts file.
 
@@ -52,7 +59,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (kind* quality, category*, count* int, max int)×n: see Qualities granted and chosen |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, rating, defense, capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |

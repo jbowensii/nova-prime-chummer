@@ -363,7 +363,8 @@ class _Catalog:
         if self._table is None or self._table[0] != k:
             self._table = (k, len(self.tables))
             self.tables[len(self.tables)] = {"title": k[0], "section": k[1], "page": page, "product": b.product,
-                                             "parent": b.table}  # (a sub-table's: its table's title)
+                                             "parent": b.table,  # (a sub-table's: its table's title)
+                                             "header": list(b.header or [])}
         return self._table[1]
 
     def section(self, f):
@@ -1304,6 +1305,7 @@ _SUPPLY = re.compile(r"(?:^|[.!?:]\s+)(?:The\s+)?([A-Z][a-z]+(?:\s+[a-z]+){0,2}?
 _ADD_ON = re.compile(r"\b(?:an?|the)\s+(?:[a-z-]+\s+){0,3}?([a-z][\w-]*(?:\s+[a-z][\w-]*){0,2})\s*\(\s*(?:an\s+)?additional\s+"
                      r"([\d,]+)\s*(?:¥|nuyen)\s*\)"
                      r"|[“\"]([a-z][\w-]*(?:\s+[a-z][\w-]*){0,3})[”\"]\s+for\s+an\s+additional\s+([\d,]+)\s*(?:¥|nuyen)")
+_PER_SPARE = re.compile(r"\b([a-z]+)\s*\(\s*([\d,]+)\s*(?:¥|nuyen)\s+per\s+spare\s*\)")
 _ADDITIONAL = re.compile(r"^\s*(?:an?\s+)?additional\s+([\d,]+)\s*¥?\s*$", re.I)
 # a refill or replacement parts priced in an item's text: `can be completely refilled for 50 nuyen`, `replacement balloons
 # and panels are available as aftermarket accessories for 100 nuyen each`
@@ -1369,6 +1371,8 @@ def add_ons(cat):
                 supplies.append((h.group(1).lower(), m.group(1), m))
             elif k in _SECOND_THINGS and (m := re.match(r"^\s*([\d,]+)\s*¥\s*$", str(v or ""))):  # (a recipe split it)
                 supplies.append((k.lower(), m.group(1), m))
+        # (owner, 2026-10-08) `a single specially designed magazine (30¥ per spare)`: its spare magazine
+        supplies += [("spare " + m.group(1), m.group(2), m) for m in _PER_SPARE.finditer(text)]
         for m in _REPLACEMENT.finditer(text):
             supplies += [("replacement " + _named_before(text, categories.singular(t), m.start()), m.group(3), m)
                          for t in m.groups()[:2] if t]
@@ -1393,6 +1397,179 @@ def add_ons(cat):
                      "cost": price.replace(",", ""), "accessoryOf": e["id"]},
                     [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it"),
                      *fx], m.group(0).strip(" .:"))
+
+
+# --- the owner's final decisions (importer v6, 2026-10-08) ------------------------------------------------------------
+
+# (owner, CRB example 5) the magic types: a fixed vocabulary, like the attributes (core rulebook pp. 65-66)
+MAGIC_TYPES = (("Full magician", 65), ("Aspected magician", 65), ("Mundane", 65), ("Adept", 66), ("Mystic adept", 66),
+               ("Technomancer", 66))
+# (owner, CRB example 6) the licence types Fake License's choice offers: the four its text prints (p. 273) and the common
+# ones the sample characters' fake SINs carry; any other Licensed (L) item is written in
+LICENCE_TYPES = ("Hunting license", "Firearm license", "Concealed carry license", "Spellcasting license",
+                 "Cyberware license", "Cyberdeck license", "Rigger remote console license", "Driver's license")
+_SPEND = re.compile(r"^Spend an? (Major|Minor) Action to\b")
+_CHOOSE_SENSE = re.compile(r"\b(?:select|choose|pick)\s+an?\s+sense\s*\(([^()]+)\)", re.I)
+_GAINS = re.compile(r"\bgains?\s+the\s+([A-Z][\w'-]*(?:\s+[A-Z][\w'-]*)*)\s*\(([^(),]+),\s*(\d+)\)\s+(positive|negative)\s+quality\b")
+_LIST_BELOW = re.compile(r"\bselected\s+from\s+the\s+(?:list|table)\s+below\b", re.I)
+_RUN_IN = re.compile(r"^\*\*([A-Z][^*]{1,40}?)\.\*\*\s*(.*)$")
+_ANY_HOST = re.compile(r"\bAny\s+(?:piece\s+of\s+)?([a-z]+)\s+can\s+have\s+an?\s+[^.]*?\bfor\s+([\d,]+)\s*(?:¥|nuyen)")
+_LIST_SPLIT = re.compile(r"\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+")
+
+
+def _first_sentences(text, n=2):
+    return re.split(r"(?<=[.!?])\s+", _flat(re.sub(r"\*\*", "", text or "")))[:n]
+
+
+def _items(value):
+    """A label's list (`Accident, Astral Form, Skill (choose one from A, B, or C …)`) split at its top-level commas."""
+    out, depth, cur = [], 0, ""
+    for ch in value:
+        depth += (ch in "([") - (ch in ")]")
+        if ch == "," and depth == 0:
+            out.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return [x for x in out + [cur.strip()] if x]
+
+
+def _skill_choices(defn):
+    """The choices a power's bracketed definition offers: `choose one from Biotech, …, or Piloting and a Specialization
+    in the chosen skill as well as an appropriate Knowledge Skill`; `choose any Close Combat skill specialization`."""
+    if m := re.search(r"\bchoose\s+any\s+(.+?)\s+skill\s+specialization\b", defn, re.I):
+        return [("choice", {"kind": "specialization", "category": m.group(1), "count": "1"}, None)]
+    kids = []
+    if m := re.search(r"\bchoose\s+one\s+(?:from|of)\s+(.+?)(?=\s+and\s+an?\s+specialization\b|\s+as\s+well\s+as\b|$)",
+                      defn, re.I):
+        opts = [x for x in _LIST_SPLIT.split(m.group(1)) if x]
+        kids.append(("choice", {"kind": "skill", "count": "1", "from": "; ".join(opts)}, None))
+    if kids and re.search(r"\bspecialization\b", defn, re.I):
+        kids.append(("choice", {"kind": "specialization", "count": "1"}, None))
+    if re.search(r"\bknowledge\s+skill\b", defn, re.I):
+        kids.append(("choice", {"kind": "knowledgeskill", "count": "1"}, None))
+    return kids
+
+
+def _band_tier(rows):
+    """`tier(R; 1-3: R*10; …)` from a RATING | COST band table's rows (`1–3`, `Rating x 10¥`), or None."""
+    parts = []
+    for r in rows:
+        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", r[0] or "")
+        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", r[1] or "", re.I) if len(r) > 1 else None
+        if not b or not c:
+            return None
+        parts.append((int(b.group(1)), int(b.group(2)), f"{b.group(1)}-{b.group(2)}: R*{c.group(1).replace(',', '')}"))
+    return (f"tier(R; {'; '.join(p for _, _, p in parts)})", parts[0][0], parts[-1][1]) if parts else None
+
+
+def stated_items(bs, cat, offset, core=False):
+    """The items the books state in prose, by the owner's general rules (2026-10-08):
+    - an action: a heading whose first or second sentence is `Spend a Major/Minor Action to …` (Augmentation
+      Overdrive), kept as a rule too (a section's forms are actions by sections.py);
+    - a sense the text lets the player choose (`select a sense (sight, hearing, touch, taste, or smell)`): each sense an
+      entry, the choice the item's;
+    - a rule saying a character gains `the X (Y, N) negative quality`: X (Y), granted, 0 Karma, its level not capped;
+    - a power named in a power list with its definition in brackets (`Skill (choose one from …)`) and no entry of its
+      own: a critter power, the brackets its text and its choices;
+    - a heading whose text ends `selected from the list below` and the bold run-ins of the box after it: options of
+      that kind (true element focus options, category `True Earth sandcasting`), the heading's rule offering one;
+    - `Any piece of armor can have a … applied to it for 100 nuyen`: an accessory of that host (category `Armor
+      accessory`), its availability an issue;
+    - a section's unpriced item headings its rating-band price table prices (`Explosive Packages`): rated, the tier
+      formula their cost, their availability an issue (Conventional, Plastic and Foam Explosives);
+    - the core rulebook's magic types and licence types (fixed vocabularies), Fake License choosing one."""
+    names = {k: {norm(e["name"]) for e in es} for k, es in cat.entries.items()}
+
+    def add(kind, name, page, attrs, kids=(), text="", cid=None, aliases=()):
+        if norm(name) in names[kind] and not cid:
+            return None
+        names[kind].add(norm(name))
+        return cat.add(kind, name, page, attrs, list(kids), text, cid=cid, aliases=aliases)
+
+    def entry(kind, name):
+        return next((e for e in cat.entries[kind] if norm(e["name"]) == norm(name)), None)
+
+    for i, b in enumerate(bs):
+        page = max(1, b.page - offset)
+        text = _flat(re.sub(r"\*\*", "", b.text or ""))
+        if b.row is None and not b.stats and (b.level or 0) >= 3 and (s := next(
+                (s for s in _first_sentences(b.text) if _SPEND.match(s)), None)):
+            bare = re.sub(r"\s*\((?:I|A)\)\s*$", "", b.name).strip()
+            t = re.search(r"\((I|A)\)\s*$", b.name)  # (its timing: `Zanshin (A)`, anytime)
+            if not {norm(bare), norm(b.name)} & names["actions"]:
+                add("actions", bare[:1].upper() + bare[1:], page,
+                    {"type": _SPEND.match(s).group(1).lower(), "category": b.section or b.chapter,
+                     **({"timing": {"I": "initiative", "A": "anytime"}[t.group(1)]} if t else {})}, (), b.text)
+        for m in _GAINS.finditer(text):
+            add("qualities", f"{m.group(1)} ({m.group(2).strip()})", page,
+                {"kind": m.group(4), "karma": 0, "granted": "true", "category": m.group(1)}, (), m.group(0))
+        for label in ("Powers", "Optional Powers"):
+            for it in _items(b.labels.get(label, "")):
+                if (p := re.fullmatch(r"([A-Z][\w'-]*(?:\s+[A-Z][\w'-]*)*)\s*[(\[]\s*(choose\b.+?)\s*[)\]]", it)) \
+                        and norm(p.group(1)) not in names["critterpowers"] | names["adeptpowers"]:
+                    add("critterpowers", p.group(1), page, {}, _skill_choices(p.group(2)), p.group(2))
+        if _LIST_BELOW.search(text) and i + 1 < len(bs) \
+                and (h := re.fullmatch(r"(\w+?)\s+(?:with|in)\s+(True\s+\w+)", b.name.strip())):
+            # (its box printed under it: in its own text after that sentence, else the next block's)
+            body = (b.text or "").splitlines()
+            body = body[next((k for k, ln in enumerate(body) if re.search(r"\bbelow\.", ln)), len(body)):]
+            if not any(_RUN_IN.match(ln.strip()) for ln in body):
+                body = (bs[i + 1].text or "").splitlines()
+            starts = [k for k, ln in enumerate(body) if _RUN_IN.match(ln.strip())]
+            if len(starts) >= 2:
+                category = f"{h.group(2)} {h.group(1).lower()}"  # (`Sandcasting with True Earth`: True Earth sandcasting)
+                for k, end in zip(starts, starts[1:] + [len(body)]):
+                    m = _RUN_IN.match(body[k].strip())
+                    para = [m.group(2)] + [ln for ln in body[k + 1:end] if not ln.startswith("<!--")]
+                    add("trueelements", m.group(1), page, {"category": category}, (), _flat("\n".join(para)),
+                        cid=slug(f"{category} {m.group(1)}"))
+                if e := entry("rules", b.name):
+                    e["children"].append(("choice", {"kind": "trueelement", "category": category, "count": "1"}, None))
+        if b.type == "item" and b.row is None and (m := _ANY_HOST.search(text)):
+            free = re.search(r"\bdoes\s+not\s+use\s+any\s+capacity\b", text)
+            add("armor" if m.group(1) == "armor" else "gear", b.name, page,
+                {"category": f"{m.group(1).capitalize()} accessory", "cost": m.group(2).replace(",", ""),
+                 **({"capacity": "0"} if free else {})},
+                [("issue", {"field": "avail", "code": "missing", "page": page}, "not printed: a sentence prices it")], b.text)
+        if b.type == "section" and b.level == 3 and b.name.split() and b.name.split()[-1][:1].isupper():
+            sec = [d for d in bs[i + 1:i + 40] if d.section == b.section and d.chapter == b.chapter]
+            # (the band table: its rows printed as one-row boxes, or as a table in the text)
+            band = next(((d, t) for d in sec
+                         for h, rows in ([(list(d.stats[0]), [list(x.values()) for x in d.stats])] if d.stats else [])
+                         + _tables(d.text)
+                         if [x.upper() for x in h] == ["RATING", "COST"] and (t := _band_tier(rows))), None)
+            if band:
+                (tb, (tier, lo, hi)), noun = band, b.name.split()[-1]
+                stem = noun.lower().rstrip("s")
+                for d in sec:
+                    if d is tb or d.row is not None or d.stats or d.type != "item":
+                        continue
+                    first = _first_sentences(d.text, 1)
+                    subject = re.split(r"\s(?:is|are)\s", first[0])[0] if first else ""
+                    if stem not in subject.lower() and stem not in d.name.lower():
+                        continue  # (a detonator cap is used with them, it is none of them)
+                    name = d.name if stem in d.name.lower() else f"{d.name} {noun}"
+                    dp = max(1, d.page - offset)
+                    add("weapons", name, dp, {"category": categories.singular(tb.name) or "Explosive", "rating": f"{lo}–{hi}",
+                                              "cost": f"By rating ({tb.name})"},
+                        [("formula", {"field": "cost"}, tier),
+                         ("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")],
+                        d.text, aliases=[d.name] if name != d.name else ())
+        for m in _CHOOSE_SENSE.finditer(text):
+            for s in _LIST_SPLIT.split(m.group(1)):
+                if s.strip():
+                    add("senses", s.strip()[:1].upper() + s.strip()[1:], page, {}, (), m.group(0))
+            owner = next((e for k in cat.entries if k != "rules" for e in cat.entries[k] if norm(e["name"]) == norm(b.name)), None)
+            if owner is not None:
+                owner["children"].append(("choice", {"kind": "sense", "count": "1"}, None))
+    if core and any(es for k, es in cat.entries.items() if k not in ("magictypes", "licencetypes")):
+        for n, p in MAGIC_TYPES:
+            add("magictypes", n, p, {})
+        for n in LICENCE_TYPES:
+            add("licencetypes", n, 273, {})
+        if fake := entry("gear", "Fake license"):
+            fake["children"].append(("choice", {"kind": "licencetype", "count": "1", "free": "other (L) item"}, None))
 
 
 def ammo_type(b):
@@ -1632,6 +1809,7 @@ def extract(regrouped, ctx=None, book=None):
     run_in_items(bs, cat, bk.PAGE_OFFSET)
     dv_settings(bs, cat, bk.PAGE_OFFSET)
     add_ons(cat)
+    stated_items(bs, cat, bk.PAGE_OFFSET, core=bk is sys.modules[__name__])
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):
