@@ -244,6 +244,12 @@ describe('SR6 export: what Eden takes besides the numbers', () => {
     expect(x.derived?.monitors.physical).toBe(11)
     expect(x.contacts[0].types).toEqual(['street'])
   })
+  test('an entry’s earlier ids (aliases), the kind only when it was another', () => {
+    const x = r()
+    expect(x.purchases.find(p => p.uid === 'g2')!.aliases).toEqual([{ id: 'mus.glitter-line' }])
+    expect(x.purchases.find(p => p.uid === 'w1')!.accessories[0].aliases).toEqual([{ id: 'mus.old-sight', kind: 'weapons' }])
+    expect(x.purchases.find(p => p.uid === 'w1')).not.toHaveProperty('aliases')
+  })
   test('a book entry carries its effects too, and the file validates', () => {
     const f = exportSr6Books(w.c, w.data, ['MUS'], SAMPLE_OPTS)
     expect(f.books![0].entries.find(e => e.id === 'mus.made-up-sight')!.effects).toEqual([{ target: 'item:ar', op: 'add', value: '0,1,1,0,0' }])

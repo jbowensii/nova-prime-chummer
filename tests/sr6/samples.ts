@@ -90,6 +90,9 @@ export function sampleWorld() {
   for (const [id, name, canon] of [['MUS', 'Made-Up Streets', true], ['MUX', 'Made-Up Extras', false], ['MUR', 'Made-Up Runners', true]] as const)
     c.sources.set(id, { id, name, publisher: 'Nobody', canon, origin: 'imported' })
   for (const e of ENTRIES) c.entries[e.kind].set(e.id, e)
+  // ids two entries had in an earlier import (the catalog's <alias>): one of the same kind, one filed as another kind
+  c.moved.set('gear/mus.glitter-line', { kind: 'gear', id: 'mus.rope' })
+  c.moved.set('weapons/mus.old-sight', { kind: 'gear', id: 'mus.made-up-sight' })
   const data = sr6Data(c), cr = fixtureCreation()
   for (const [key, value] of Object.entries({ essence: 6, initiativeDice: 1, astralInitiativeDice: 2, 'grade:used:cost': 1.2, 'grade:used:essence': 1.2, 'grade:used:avail': 0, builtToughQuality: 'mur.made-up-tough' }))
     cr.set(key, { key, value })

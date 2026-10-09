@@ -413,6 +413,25 @@
               }
             }
           }
+        },
+        "aliases": {
+          "description": "The ids the entry had in earlier imports (the catalog's <alias id kind>): kind only when it was another kind.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "$ref": "#/$defs/kind"
+              }
+            }
+          }
         }
       }
     },

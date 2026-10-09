@@ -90,6 +90,7 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `description` | the entry's text (see Descriptions), absent when empty |
 | `effects` | what the entry's printed text says it does (the catalog's `<effect>`, `docs/sr6-data-format.md`): `[{ target, op, value, low? }]`; `target` `attr:<abbr>`, `skill:<id>`, `derived:<name>` (defense, initiative, composure, judge-intentions, memory, social) or `item:<field>` (an accessory's effect on its host: `item:ar`, five comma-separated bands); `op` `add` or `edge-cost`; `low` true when read from a sentence that sets a condition (shown, never applied). Absent when none |
 | `tests` | a test the entry's text calls for: `[{ skill, attr, threshold? }]` (`skill:<id>`, `attr:<abbr>`). Absent when none |
+| `aliases` | the ids the entry had in earlier imports (the catalog's `<alias id kind>`, `docs/sr6-data-format.md`): `[{ id, kind? }]`, `kind` only when it was another kind. A reader that keyed something by an old id finds it again. Absent when none |
 
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).

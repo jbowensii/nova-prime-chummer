@@ -39,7 +39,10 @@ export interface Sr6ExportTest { skill: string; attr: string; threshold?: number
  *  only when that differs (attrs.category and attrs.group hold the category) */
 export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name: string; label?: string; source?: string; page?: number; canon: boolean
   attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string
-  effects?: Sr6ExportEffect[]; tests?: Sr6ExportTest[] }
+  effects?: Sr6ExportEffect[]; tests?: Sr6ExportTest[]
+  /** the ids the entry had in earlier imports (the catalog's <alias id kind>, Sr6Catalog.moved): kind only when it was
+   *  another kind. A reader that keyed things by the old id finds them again. */
+  aliases?: { id: string; kind?: Sr6Kind }[] }
 export interface Sr6ExportPurchase extends Sr6ExportItem { uid: string; qty: number; grade?: string; worn: boolean; note?: string
   bonuses: Sr6ExportBonus[]; accessories: Sr6ExportPurchase[] }
 export interface Sr6ExportNpc { kind: Exclude<Sr6NpcKind, 'contact'>; rating?: number; group?: string; from?: Sr6Npc['from']
@@ -130,9 +133,26 @@ function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests'> {
   return { ...(effects.length ? { effects } : {}), ...(tests.length ? { tests } : {}) }
 }
 
+/** old id -> entry, turned round: entry key -> the ids it had before (cached per catalog) */
+const movedTo = new WeakMap<Sr6Catalog['moved'], Map<string, { kind: Sr6Kind; id: string }[]>>()
+function aliasesOf(c: Sr6Catalog, e: Sr6Entry): Pick<Sr6ExportItem, 'aliases'> {
+  if (!c.moved?.size) return {}
+  let m = movedTo.get(c.moved)
+  if (!m) {
+    m = new Map()
+    for (const [from, to] of c.moved) {
+      const i = from.indexOf('/'), key = `${to.kind}/${to.id}`
+      m.set(key, [...m.get(key) ?? [], { kind: from.slice(0, i) as Sr6Kind, id: from.slice(i + 1) }])
+    }
+    movedTo.set(c.moved, m)
+  }
+  const old = m.get(`${e.kind}/${e.id}`)
+  return old?.length ? { aliases: old.map(a => (a.kind === e.kind ? { id: a.id } : { id: a.id, kind: a.kind })) } : {}
+}
+
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
-  return { ...effectsOf(e), id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
+  return { ...effectsOf(e), ...aliasesOf(c, e), id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
     attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating, catalogFind(c)),
     ...(text && e.text ? { description: e.text } : {}) }
 }
