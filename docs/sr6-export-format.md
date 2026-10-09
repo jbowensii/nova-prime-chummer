@@ -96,7 +96,9 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
-`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute, `initDice` or `defense`, the Defense Rating), or
+`bonuses` are the line's bonuses as the engine counts them (the player's entered ones, else its catalog entry's `add`
+effects) `[{ target, value }]` (`target` an attribute, `initDice`, `defense`, the Defense Rating, or `physical`, Physical
+monitor boxes), or
 `{ target: "skill", id, name, value }` for a skill's dice pool (`id` the catalog skill's id, `name` its name, which a reader
 keying its skills by name, as Eden does, finds it by; `derived.pools` counts it), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an

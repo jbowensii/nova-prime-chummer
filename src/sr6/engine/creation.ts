@@ -37,16 +37,20 @@ export const CREATION_KEYS: CreationKey[] = [
   ...n('General', [], [['attributeBaseMax', 'Adjustment points go on attributes whose metatype maximum is above']]),
   ...n('General', 'all', [['skillCap', 'Highest skill rank'], ['skillCapAptitude', 'Highest skill rank with the aptitude quality']]),
   { key: 'aptitudeQuality', label: 'Aptitude quality', type: 'quality', group: 'General', methods: 'all' },
+  { key: 'exceptionalQuality', label: 'Exceptional (Attribute) quality: +1 to the maximum of the attribute its note names (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'oneSkillAtMax', label: 'Only one skill at the highest rank', type: 'bool', group: 'General', methods: [] },
   ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization']]),
-  // optional: unset, no expertise at creation (the core rulebook allows none)
-  ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: no expertise at creation)']]),
+  // optional: unset, an expertise at creation is bought with the customization karma (advance.expertise)
+  ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: bought with karma at the advancement price)']]),
   ...n('General', 'all', [['magicMax', 'Highest Magic or Resonance'], ['essence', 'Starting Essence'], ['contactPointsPerCha', 'Contact points per Charisma'],
     ['knowledgePerLog', 'Free knowledge skills per Logic'], ['maxAvailability', 'Highest Availability'],
     ['maxNuyenLeft', 'Most nuyen kept after creation'],
     ['freeSpellsPerMagic', 'Free spells per Magic'], ['freeFormsPerResonance', 'Free complex forms per Resonance']]),
   // optional (the core rulebook prints no number): unset, no limit
   ...n('General', [], [['maxKarmaLeft', 'Most karma kept after creation (unset: no limit)']]),
+  // optional, the Sixth World Companion's expanded contact rules (unset contactKarma: off, each rating up to Charisma)
+  ...n('General', [], [['contactKarma', 'Karma per contact point past the points or past a contact’s pair cap (unset: not offered)'],
+    ['contactPairPerCha', 'A contact’s connection + loyalty up to Charisma times'], ['contactRatingMax', 'Highest contact rating (unset: Charisma)']]),
   ...n('Karma prices', 'all', [['karmaAttrPerRank', 'Attribute: karma per rank, times the new rating'],
     ['karmaSkillPerRank', 'Skill: karma per rank, times the new rank'], ['karmaSpec', 'Specialization'],
     ['karmaKnowledge', 'Knowledge or language rank'], ['karmaSpell', 'Extra spell or ritual'], ['karmaForm', 'Extra complex form'],
@@ -96,6 +100,7 @@ export const CREATION_KEYS: CreationKey[] = [
     ['untrainedPenalty', 'Dice off the attribute for an untrained skill']]),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
   { key: 'dermalDepositsQuality', label: 'Dermal Deposits quality: +1 Defense Rating (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
+  { key: 'charismaticDefenseQuality', label: 'Charismatic Defense quality: Defense Rating from Charisma, not Body (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
 ]
 function cap(s: string) { return s[0].toUpperCase() + s.slice(1) }
 

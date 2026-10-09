@@ -1,5 +1,31 @@
 # Release notes
 
+## 0.11.2 — 2026-10-09: the runner's effects everywhere, the sample runners' errors traced
+
+Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.
+
+**Shadowrun 6**
+- One set of effective values for creation, Review, the sheets and the Foundry export. A line's bonuses are the
+  player's or GM's own, else its catalog entry's effects (low-confidence ones are shown, never applied); a quality's
+  catalog effects count too.
+- An expertise can be taken at creation (owner's decision): it costs 5 Karma of the customization Karma, at the
+  advancement price (CRB pp. 66, 68). Review shows an error only when it lacks its specialization or a skill rank of 5.
+  The old "none can be taken at creation" error is gone; a skill above 6 without Aptitude is still one.
+- Contact points and their rating cap count the augmented Charisma, knowledge skills the augmented Logic.
+- The Sixth World Companion's expanded contacts (SWC p. 161), on by default: Karma buys contact points past
+  Charisma × 6 and a contact's connection + loyalty past 2 × Charisma; no rating above 8.
+- Exceptional (Attribute) raises the maximum of the attribute its note names (CRB p. 71). Charismatic Defense bases
+  the Defense Rating on Charisma (Power Plays p. 85). A new bonus target, Physical monitor boxes: a full cyberlimb's
+  box (CRB p. 288).
+- The Magic Essence takes also comes off an adept's power points and the free spells and complex forms (CRB p. 66).
+- Sample runners: `(Acting +3)` is the specialization made an expertise (both kept, the specialization paid); a
+  quality printed with a level takes the entry with levels (`Addiction 5` is the core rulebook's); an item printed
+  at a rating never takes another rating's entry (`cybereyes 3`). In Debt's `Bonus: None` is 0 Karma. What Review
+  still shows on the samples is the books' own (rank 7 without Aptitude, a seventh quality …).
+
+**Anarchy 2.0**
+- The Foundry export gives each amp its share of the capped Armor +1, the same rule the sheet totals.
+
 ## 0.11.1 — 2026-10-09: prerequisites are errors, never blocks
 
 Whatever a runner lacks a prerequisite for can now always be taken, in creation and in career. Review shows an

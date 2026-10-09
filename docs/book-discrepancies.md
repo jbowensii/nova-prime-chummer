@@ -49,12 +49,19 @@ with its skill's attribute.
 The same rule for Shadowrun 6's samples (the core rulebook's archetypes, Smooth
 Operations' faces): the runner is what the stat block prints. The importer
 reads each item the way it's printed (a variant, a cyberlimb's kind, a grade)
-and gives a standard boost (wired reflexes, muscle toner, dermal plating …)
-the bonus the rules give it; it keeps the printed attributes, Essence,
+and gives a standard boost (wired reflexes, muscle toner, dermal plating, a
+full cyberlimb's Physical box …) the bonus the rules give it. A skill printed
+`(Acting +3)` has the specialization Acting turned into an expertise (CRB p.
+92): both are written; the specialization is paid for, and the expertise with the
+customization karma at its advancement price (CRB pp. 66, 68; owner, 2026-10-09). A quality printed
+with a level is an entry that comes in levels (`Addiction 5` is the core
+rulebook's Addiction, not a quality path's one-level step of that name), and an
+item printed at a rating is never an entry named for another rating
+(`cybereyes 3` is the core rulebook's basic system at Rating 3). It keeps the printed attributes, Essence,
 initiative, condition monitors and Defense Rating in `<printed>`. Review
 compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the
-cap, an expertise at creation, a seventh quality, a rating the item doesn't
+cap, an expertise without its rank, a seventh quality, a rating the item doesn't
 come in and the like show as on any runner. Nothing in the file corrects the
 book. Not modelled, so not compared: a skill raised by a ware (reflex
 recorder) and a cyberlimb's own attributes. The book prints no priorities:

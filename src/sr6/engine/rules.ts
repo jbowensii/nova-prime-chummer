@@ -7,7 +7,7 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, attrRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
@@ -73,7 +73,7 @@ const RULES: Rule[] = [
     const m = c.data.metatypes[c.b.metatype]
     if (!m) return null
     return [...CORE_ATTRS, 'edg' as const].flatMap(k => {
-      const r = attrRating(c.b, k, c.p), max = m.ranges[k as keyof typeof m.ranges][1]
+      const r = attrRating(c.b, k, c.p), max = attrMax(c.data, c.cr, c.b, k)!
       return r > max ? [{ path: `attributes.${k}`, message: `${A(k)} ${r} is above ${m.name}’s maximum of ${max}.`, source: c.data.entry('metatypes', m.id)?.source, page: m.page }] : []
     })
   } },
@@ -85,7 +85,7 @@ const RULES: Rule[] = [
   { code: 'attr.oneAtMax', severity: 'error', tab: 'attributes', setting: ['oneAttributeAtMax'], check: c => {
     const m = c.data.metatypes[c.b.metatype]
     if (!m || !flag(c.cr, 'oneAttributeAtMax')) return null
-    const at = CORE_ATTRS.filter(k => attrRating(c.b, k, c.p) >= m.ranges[k as keyof typeof m.ranges][1])
+    const at = CORE_ATTRS.filter(k => attrRating(c.b, k, c.p) >= attrMax(c.data, c.cr, c.b, k)!)
     return at.length <= 1 ? null : { message: `Only one attribute may be at its maximum (${at.map(A).join(', ')} are).` }
   } },
   { code: 'attr.adjustTargets', severity: 'error', tab: 'attributes', setting: ['attributeBaseMax'], check: c => {
@@ -114,17 +114,15 @@ const RULES: Rule[] = [
     const at = c.b.skills.filter(s => skillRank(s) >= cap).map(s => c.data.skills[s.id]?.name ?? s.id)
     return at.length <= 1 ? null : { message: `Only one skill may be at the highest rank, ${cap} (${at.join(', ')} are).`, ...cite(c.cr, 'oneSkillAtMax') }
   } },
-  { code: 'skill.expertise', severity: 'error', tab: 'skills', check: c =>
-    // CRB p. 65: no expertise at creation, unless the table gives an expertise its skill points
-    (num(c.cr, 'skillPointsExpertise') !== undefined ? null : c.b.skills.filter(s => s.expertise)
-      .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise: none can be taken at creation.` }))) },
+  // (owner, 2026-10-09) an expertise may be bought at creation with the customization karma (CRB p. 66, step four, at
+  // p. 68's price: budgets.ts skillSpend): no blanket error; its prerequisites are the two below
   // CRB p. 93: a specialization (or an expertise) is attached to a skill the runner has a rank in
   { code: 'skill.specUntrained', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => skillRank(s) < 1 && (s.spec || s.expertise))
     .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has ${s.spec ? 'a specialization' : 'an expertise'} but no rank.`, ...CRB(93) })) },
-  // CRB p. 69: an expertise needs a specialization in its skill first
+  // CRB p. 68: an expertise needs a specialization in its area first (p. 92: the specialization is turned into it)
   { code: 'skill.expertiseSpec', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => s.expertise && !s.spec)
-    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise but no specialization: an expertise needs one first.`, ...CRB(69) })) },
-  // CRB p. 69: an expertise needs a skill rank of advance.expertiseRank (optional: unset, no minimum and no unset warning)
+    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has an expertise but no specialization: an expertise needs one first.`, ...CRB(68) })) },
+  // CRB p. 68: an expertise needs a skill rank of advance.expertiseRank (optional: unset, no minimum and no unset warning)
   { code: 'skill.expertiseRank', severity: 'error', tab: 'skills', check: c => {
     const need = num(c.cr, 'advance.expertiseRank')
     return need === undefined ? null : c.b.skills.filter(s => s.expertise && skillRank(s) < need).map(s => ({ path: `skills.${s.id}`,
@@ -271,7 +269,7 @@ const RULES: Rule[] = [
   // SWC p. 31: karma buys contact ratings only up to Charisma: what a contact has above it must come from the points
   { code: 'contact.karmaCap', severity: 'error', tab: 'contacts', setting: c => (c.p.contactPools ? ['lifepath.contactKarma'] : []), check: c => {
     if (!c.p.contactPools || num(c.cr, 'lifepath.contactKarma') === undefined) return null
-    const cha = attrRating(c.b, 'cha', c.p)
+    const cha = augmentedRating(c.b, c.data, 'cha', c.p)
     const above = c.b.contacts.map(x => ({ x, types: x.types ?? [], need: Math.max(0, x.connection - cha) + Math.max(0, x.loyalty - cha) }))
     if (!uncovered(c.p.contactPools(c.b), above)) return null
     const names = above.filter(a => a.need).map(a => a.x.name || 'a contact').join(', ')

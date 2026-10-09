@@ -442,12 +442,12 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   const work = page.locator('main.work'), dlg = page.getByRole('dialog')
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(work.getByRole('heading', { name: 'Review' })).toBeVisible()
-  // three problems, each message a link to its tab: nuyen overspent (Gear), a contact above the cap and alpha Glow Eyes
-  // above the Availability cap (Augmentations)
+  // two problems, each message a link to its tab: nuyen overspent (Gear) and alpha Glow Eyes above the Availability cap
+  // (Augmentations); the contact above Charisma is bought with karma (the Sixth World Companion's expanded contacts)
   const eyes = work.locator('.viol', { hasText: 'Glow Eyes' })
   await expect(eyes).toContainText('Problem')
   await expect(eyes).toContainText('CRB p.63')
-  await expect(work.locator('.viol .sev.err')).toHaveCount(3)
+  await expect(work.locator('.viol .sev.err')).toHaveCount(2)
   await expect(page.getByRole('button', { name: 'Finalize runner' })).toBeDisabled()
   await work.getByRole('link', { name: /^Nuyen overspent by 3,437¥/ }).click()
   await expect(page).toHaveURL(/\/gear$/)
@@ -456,7 +456,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(page).toHaveURL(/\/augmentations$/)
   await tabs.filter({ hasText: 'Review' }).click()
   // fixed on Contacts & lifestyle: Cozy for one month, one more karma into nuyen, the contact's connection back to 1
-  await work.getByRole('link', { name: 'Fixer Fred’s connection or loyalty is above 1.' }).click()
+  await tabs.filter({ hasText: 'Contacts' }).click()
   await expect(page).toHaveURL(/\/contacts$/)
   await work.getByRole('button', { name: 'Lower SIN 1 lifestyle 1 months' }).click()
   await work.getByRole('button', { name: 'Raise Karma turned into nuyen' }).click()

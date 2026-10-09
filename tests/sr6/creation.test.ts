@@ -33,7 +33,7 @@ test('the fixture sets every key (grades: standard and alpha only; no initiative
   expect(keys).toContain('metatypeKarma:crb.stonefolk')
   expect(keys).toContain('magicKarma:mystic-adept')
   expect(keys).not.toContain('magicKarma:mundane')
-  for (const k of keys) expect(rules.has(k), k).toBe(!/^grade:(beta|delta|used):/.test(k) && !['advance.nuyenToKarmaRate', 'initiativeDiceMax'].includes(k))
+  for (const k of keys) expect(rules.has(k), k).toBe(!/^grade:(beta|delta|used):/.test(k) && !['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 'contactPairPerCha', 'contactRatingMax'].includes(k))
   expect(num(rules, 'startingKarma')).toBe(40)
   expect(num(rules, 'grade:alpha:essence')).toBe(0.7)
   expect(flag(rules, 'oneAttributeAtMax')).toBe(true)

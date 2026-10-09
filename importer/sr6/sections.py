@@ -630,6 +630,7 @@ _COST = re.compile(rf"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+){_OR}\s*Karma|\bCost:
                    re.I)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
 _BONUS = re.compile(rf"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+){_OR}\s*Karma|\bBonus:\s*(\d+){_OR}\s*Karma"
                     r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
+_NONE = re.compile(r"\*\*(?:Karma\s+)?(?:Cost|Bonus):?\*\*:?\s*None\b|\b(?:Cost|Bonus):\s*None\b", re.I)
 _ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
 _EFFECT = re.compile(r"\*\*Game\s+Effects?:?\*\*", re.I)
 
@@ -661,7 +662,9 @@ def quality_attrs(name, chain, text):
         return {}
     k = (bonus if kind == "negative" else cost) or cost or bonus
     karma = next((g for g in k.groups() if g), None) if k else None
-    top = max((int(n) for n in re.findall(r"\d+", k.group(0))), default=0) if k else 0
+    if karma is None and _NONE.search(text or ""):
+        karma = "0"  # (`Bonus: None`: In Debt, CRB p. 77, gives no Karma)
+    top =max((int(n) for n in re.findall(r"\d+", k.group(0))), default=0) if k else 0
     return {"kind": kind, "karma": karma, **({"karmaMax": str(top)} if karma and top > int(karma) else {})}
 
 

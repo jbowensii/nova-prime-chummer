@@ -106,6 +106,8 @@
   <setting key="monitorDivisor" value="3" source="CRB" page="76"/>
   <setting key="builtToughQuality" value="crb.made-up-brawn" source="CRB" page="70"/>
   <setting key="dermalDepositsQuality" value="crb.made-up-hide" source="CRB" page="71"/>
+  <setting key="charismaticDefenseQuality" value="crb.made-up-charm" source="CRB" page="72"/>
+  <setting key="exceptionalQuality" value="crb.made-up-prodigy" source="CRB" page="62"/>
   <setting key="initiativeDice" value="2" source="CRB" page="77"/>
   <setting key="astralInitiativeDice" value="3" source="CRB" page="77"/>
   <setting key="specDice" value="4" source="CRB" page="78"/>

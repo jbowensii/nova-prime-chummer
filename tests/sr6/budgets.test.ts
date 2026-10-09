@@ -39,17 +39,17 @@ test('a natural rating is 1 plus points, adjustment and karma; Magic starts at t
 })
 
 test('a power bonus shows as augmented and not natural; a rated ware bonus scales by rating; no bonus leaves it alone', () => {
-  const b = runner({ magic: 'adept' }), { p } = budgets(b)
+  const b = runner({ magic: 'adept' }), { p, data } = budgets(b)
   const natural = attrRating(b, 'rea', p)
   pick(b, 'adeptpowers', 'crb.quick-step', { level: 3, bonuses: [{ target: 'rea', value: 1, perRating: true }] })
-  expect(augmentBonus(b, 'rea')).toBe(3)
-  expect(augmentedRating(b, 'rea', p)).toBe(natural + 3)
+  expect(augmentBonus(b, data, 'rea')).toBe(3)
+  expect(augmentedRating(b, data, 'rea', p)).toBe(natural + 3)
   expect(attrRating(b, 'rea', p)).toBe(natural)
   buy(b, 'augmentations', 'crb.spring-tendons', { rating: 2, bonuses: [{ target: 'agi', value: 1, perRating: true }] })
   buy(b, 'gear', undefined, { name: 'Lucky charm', qty: 2, bonuses: [{ target: 'initDice', value: 1 }] })
-  expect(augmentBonus(b, 'agi')).toBe(2)
-  expect(augmentBonus(b, 'initDice')).toBe(2)
-  expect(augmentBonus(b, 'cha')).toBe(0)
+  expect(augmentBonus(b, data, 'agi')).toBe(2)
+  expect(augmentBonus(b, data, 'initDice')).toBe(2)
+  expect(augmentBonus(b, data, 'cha')).toBe(0)
 })
 
 // karma
@@ -70,11 +70,13 @@ test('a specialization costs skill points; an expertise its own; karma ranks are
   const b = runner()
   b.skills.push({ id: 'crb.gab', points: 3, karma: 0, spec: 'Haggling' }, { id: 'crb.tinkering', points: 2, karma: 2, expertise: 'Clockwork' })
   const { skillPoints, karma } = budgets(b)
-  // 5 ranks and the specialization's 3 fit the 11; the expertise's 5 don't, so it's bought with karma (7)
+  // 5 ranks and the specialization's 3 fit the 11; the expertise's 5 don't, so it's bought with karma at its advancement
+  // price (advance.expertise 9)
   expect(skillPoints).toEqual({ max: 11, spent: 3 + 3 + 2, left: 3 })
   expect(skillRank(b.skills[1])).toBe(4)
-  expect(karma.spent).toBe((4 + 3) * 3 + 7)
-  expect(karma.breakdown).toContainEqual({ key: 'skills', label: 'Skill ranks bought with karma', amount: 28, sign: 'spend', tab: 'skills' })
+  expect(karma.spent).toBe((4 + 3) * 3 + 9)
+  expect(karma.breakdown).toContainEqual({ key: 'skills', label: 'Skill ranks bought with karma', amount: 21, sign: 'spend', tab: 'skills' })
+  expect(karma.breakdown).toContainEqual({ key: 'expertise', label: '1 expertise bought with karma', amount: 9, sign: 'spend', tab: 'skills' })
 })
 
 test('a specialization the skill points left over can’t cover is bought with karma, never overspending the points', () => {

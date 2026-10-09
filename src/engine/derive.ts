@@ -101,6 +101,26 @@ const boxes = (effects: { ref: string }[]) => ({ light: 2 + (effects.some(e => e
 /** An effect's most a character gets from all amps together (Armor +1, DV +1: p.61 "can't exceed the maximum bonus"). */
 export const capped = (c: Catalog, ref: string, n: number) => Math.min(n, c.ampEffects.get(ref)?.max ?? Infinity)
 const t3 = (x: number): Thresholds => [x, x + 3, x + 6]
+const sum = (xs: number[]) => xs.reduce((t, x) => t + x, 0)
+/** Each count's share of a bonus that stacks only to the effect's max (CRB p.61), the first ones first: what derive totals
+ *  and the export gives each amp, so the two add up the same. */
+export function shares(c: Catalog, ref: string, counts: number[]): number[] {
+  let left = c.ampEffects.get(ref)?.max ?? Infinity
+  return counts.map(n => { const s = Math.max(0, Math.min(n, left)); left -= s; return s })
+}
+/** The armor worn as `uid` and the armor it is worn over (up to four deep). */
+function wornChain(b: Build, uid?: string) {
+  const out: Build['items'] = []
+  for (let it = b.items.find(i => i.uid === uid); it && out.length < 4 && !out.includes(it); it = it.over ? b.items.find(i => i.uid === it!.over) : undefined) out.push(it)
+  return out
+}
+/** Each amp's Armor +1 on the armor worn as `uid` (none: unarmored): an Equipment amp's when it is linked to an item of
+ *  that armor, any other amp's (orthoskin, mystic armor…) always; together no more than the effect's max. */
+export function armorShares(c: Catalog, b: Build, uid?: string): number[] {
+  const chain = new Set(wornChain(b, uid).map(i => i.uid))
+  return shares(c, 'armor-plus', b.amps.map(a => a.type !== 'equipment' || (a.linkedItem && chain.has(a.linkedItem))
+    ? a.effects.filter(e => e.ref === 'armor-plus').length : 0))
+}
 
 /** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles the base Speed only (the chassis' flying
  *  speed when it has one); Speed upgrades add after that. */
@@ -134,18 +154,8 @@ export function derive(c: Catalog, ch: Character): Derived {
 
   const essence = 6 - b.amps.reduce((s, a) => s + ampEssence(c, a), 0)
 
-  // Armor: an item's own rating plus the armor an add-on is worn over; Armor +1 from equipment amps linked to those
-  // items, and on any other amp (orthoskin, mystic armor...) always on, all together no more than the effect's max.
-  const alwaysOn = picks.filter(p => p.e.ref === 'armor-plus' && p.amp.type !== 'equipment').length
-  const worn = (uid?: string) => {
-    let base = 0, plus = alwaysOn
-    for (let it = b.items.find(i => i.uid === uid), depth = 0; it && depth < 4; it = b.items.find(i => i.uid === it!.over), depth++) {
-      base += it.armor ?? 0
-      plus += b.amps.filter(a => a.type === 'equipment' && a.linkedItem === it!.uid).reduce((s, a) => s + a.effects.filter(e => e.ref === 'armor-plus').length, 0)
-      if (!it.over) break
-    }
-    return base + capped(c, 'armor-plus', plus)
-  }
+  // Armor: an item's own rating plus the armor an add-on is worn over, and each amp's share of Armor +1 (armorShares)
+  const worn = (uid?: string) => wornChain(b, uid).reduce((t, it) => t + (it.armor ?? 0), 0) + sum(armorShares(c, b, uid))
   // mental protection from Astral/Mystic Armor, biofeedback filters, code shells...: always on
   const mentalProtection = picks.filter(p => p.e.ref === 'mental-armor').length
   const armor = { none: worn(), main: worn(b.mainArmor), alt: worn(b.altArmor) }
