@@ -107,6 +107,15 @@ describe('export: books', () => {
     expect(test.amps.every(a => a.source === 'TEST' && typeof a.page === 'number' && a.rating >= 0)).toBe(true)
     expect(testc.amps.some(a => a.id === 'test.rush')).toBe(false)
   })
+  test('reference: the kinds with no Foundry document, by book, with their printed stats', () => {
+    const all = Object.fromEntries([...cat.sources.keys()].map(id => [id, exportBooks(cat, [id], [], OPTS).books![0].reference ?? []]))
+    const refs = Object.values(all).flat()
+    expect(refs.length).toBeGreaterThan(0)
+    for (const r of refs) expect(Object.keys(r).sort()).toEqual(expect.arrayContaining(['id', 'kind', 'name', 'page', 'source', 'stats']))
+    for (const [id, list] of Object.entries(all)) expect(list.every(r => r.source === id)).toBe(true)
+    const lvl = [...cat.levels.values()][0]
+    if (lvl) expect(all[lvl.source].find(r => r.kind === 'levels' && r.id === lvl.id)?.stats).toMatchObject({ nuyen: lvl.nuyen, skillCap: lvl.skillCap })
+  })
   test('descriptions only when asked; table rules pass through', () => {
     const on = exportBooks(cat, ['TEST'], [{ name: 'Made-up rule', text: 'Invented.' }], OPTS)
     const off = exportBooks(cat, ['TEST'], [], { ...OPTS, descriptions: false })

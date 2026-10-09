@@ -96,7 +96,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 
 ## Book
 
-`{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes`, `characters` and `npcs`.
+`{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes`, `reference`, `characters` and `npcs`.
 
 - `source`: `{ id, name, publisher, canon }`, and `compendium: true` (optional) when the "book" is a GM's compendium rather than a book: its own source id, `publisher` the owner's name, `canon` false, descriptions always included (the GM's own text), and its NPCs in `npcs`. Absent on books.
 - `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`.
@@ -106,6 +106,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 - `vehicles`: `id`, `source`, `page`, `name`, `pilot`, `body`, `handling`, `speed`, `armor`, `mount`, optionally `flyingSpeed` (the chassis' flying speed, when it has one).
 - `skills`: every skill whose source is this book (core skills belong to the core book): `id`, `source`, `page`, `name`, `attr`, optionally `alt`, and `specs: [{ id, name, attr }]`.
 - `metatypes` (optional): `{ id, source, page, canon, name, edge, ranges, racialQuality }` for each metatype whose source is this book; `ranges` as on a runner's metatype.
+- `reference` (optional): the kinds the Foundry system has no document for, so the compendiums hold everything: `[{ kind, id, source, page, name, stats, description? }]`, `kind` `levels`, `packages`, `lifestyles`, `ampTypes`, `ampEffects` or `attributes`, `stats` the entry's printed numbers and words (`{ nuyen: 0, skillCap: 6 }`), `description` with descriptions on (a lifestyle's text). The module makes a reference journal per kind, a page per entry.
 - `characters` (optional): the book's own sample (pregen) characters, each exactly as a runner in a runners file (see Runner), descriptions per the file's `descriptions`. Only the imported book's samples (`custom/imported/samples.xml` rows whose `source` is this book, matched case-insensitively); the server's example sets are not books and never appear. Absent when the book has none.
 - `npcs` (optional): the book's NPCs, critters and spirits, each as a runner with its `npc` block. Absent when the book has none.
 - `specs`: this book's specializations on another book's skill: `{ skill, id, name, attr, page? }`.
