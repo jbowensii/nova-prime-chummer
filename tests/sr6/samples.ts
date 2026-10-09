@@ -65,6 +65,10 @@ const ENTRIES: Sr6Entry[] = [
   mus('lifestyles', 'made-up-squat', 'Made-up Hideout', { cost: '450' }),
   mus('contacts', 'fake-fixer', 'Fake Fixer', { connection: '4', loyalty: '2', archetype: 'Fixer' }),
   mus('lifemodules', 'made-up-childhood', 'Made-up Childhood', { stage: 'opening' }),
+  // kinds the system has no document for: reference journals in the module
+  mus('grades', 'made-up-grade', 'Made-up Grade', { essence: '0.9', cost: '1.5', avail: '1' }),
+  mus('actions', 'made-up-shove', 'Made-up Shove', { type: 'Major', category: 'Combat' }, {}, 'An invented action.'),
+  mus('mentorspirits', 'made-up-crow', 'Made-up Crow', { category: 'Mentor spirit' }),
   mus('rules', 'rule-intro', 'Made-up Basics', { chapter: 'Made-up Rules', level: '1' }, {}, 'Invented rules text.'),
   mus('rules', 'rule-detail', 'Made-up Detail', { chapter: 'Made-up Rules', level: '2', parent: 'mus.rule-intro' }),
   en('MUX', 'priorities', 'mux.prio-b', 'B', { letter: 'B' }),

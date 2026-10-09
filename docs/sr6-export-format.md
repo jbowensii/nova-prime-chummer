@@ -10,8 +10,8 @@ the same file. The producer is `src/sr6/engine/export.ts`.
 Two kinds, told apart by `kind`:
 
 - `runners`: one or more runners or NPCs as they stand (a finalized runner with its career spends replayed).
-- `books`: the ticked books' entries of every kind but the implant grades (Foundry has no item for them; a purchase
-  carries its grade's key), as the app sees them (catalog edits applied), or one GM compendium.
+- `books`: the ticked books' entries of every kind (`SR6_KINDS`: the implant grades and the kinds only listed as printed
+  included, so the compendiums hold everything), as the app sees them (catalog edits applied), or one GM compendium.
 
 Files are named `runners-YYYY-MM-DD.sr6foundry.json`, `books-YYYY-MM-DD.sr6foundry.json` and
 `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json` (the local date of the export). The importer goes by `format` and `kind`,

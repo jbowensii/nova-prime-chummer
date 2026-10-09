@@ -60,7 +60,7 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
 }
 
 /** The kinds read from the books' own sections and tables (actions, packs, …): listed in Game data as printed, with no
- *  rules of their own yet (the owner decides how each is used), and left out of the Foundry export. */
+ *  rules of their own yet (the owner decides how each is used); the Foundry book export carries them (reference journals). */
 export const DISPLAY_KINDS: ReadonlySet<Sr6Kind> = new Set<Sr6Kind>(['actions', 'packs', 'vehicledesign', 'ammotypes',
   'mentorspirits', 'datastructures', 'qualitypaths', 'spellfeatures', 'contacttypes', 'qualitysets', 'licencetypes',
   'magictypes', 'ruleoptions', 'senses', 'trueelements', 'categories'])

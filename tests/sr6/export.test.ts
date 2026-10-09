@@ -210,7 +210,7 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
   })
   test('MUS has every kind; MUX only priorities and metatypes; the compendium’s grunt has its token', () => {
     const [m, x] = files()['test-books.json'].books!
-    expect(new Set(m.entries.map(e => e.kind)).size).toBe(29)  // every exported kind but attributes
+    expect(new Set(m.entries.map(e => e.kind)).size).toBe(32)  // every kind the samples have (all but attributes and the display kinds they lack)
     expect(x.entries.map(e => e.kind)).toEqual(['priorities', 'metatypes'])
     const comp = files()['test-compendium.json'].books![0]
     expect(comp.source).toEqual({ id: 'STREET', name: 'Street Kit', publisher: 'Gil Made-up', canon: false, compendium: true })
