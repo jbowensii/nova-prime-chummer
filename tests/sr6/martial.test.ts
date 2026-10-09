@@ -9,23 +9,27 @@ import { currentBuild, preview, record } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { exportSr6Runners } from '../../src/sr6/engine/export'
-import { signatureOf } from '../../src/sr6/engine/martial'
+import { prerequisites, signatureOf } from '../../src/sr6/engine/martial'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { validateSr6 } from '../../src/sr6/engine/rules'
+import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
 import type { Sr6Entry, Sr6Kind } from '../../src/sr6/model/types'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
 
 const NOW = '2026-10-09T10:00:00.000Z'
-const en = (kind: Sr6Kind, id: string, name: string, attrs: Record<string, string>): Sr6Entry =>
-  ({ id, kind, name, source: 'CRB', page: 198, attrs, parts: [], text: '' })
+const en = (kind: Sr6Kind, id: string, name: string, attrs: Record<string, string>, needs: [string, string][] = []): Sr6Entry =>
+  ({ id, kind, name, source: 'CRB', page: 198, attrs, parts: needs.map(([k, text]) => ({ tag: 'requires', attrs: { kind: k }, text })), text: '' })
 /** The fixture (Glow Fist: Mobility, Striking, signature Glow Jab) plus made-up techniques of other categories. */
 function world() {
   const c = fixtureCatalog()
   for (const e of [en('martialtechniques', 'crb.made-up-roll', 'Made-up Roll', { category: 'Mobility' }),
     en('martialtechniques', 'crb.made-up-stare', 'Made-up Stare', { category: 'General' }),
     en('martialtechniques', 'crb.made-up-cut', 'Made-up Cut', { category: 'Weapon; may only be used with made-up blades' }),
-    en('martialarts', 'crb.made-up-blade', 'Made-up Blade', { categories: 'Weapon', signature: 'Made-up Cut' })]) c.entries[e.kind].set(e.id, e)
+    en('martialarts', 'crb.made-up-blade', 'Made-up Blade', { categories: 'Weapon', signature: 'Made-up Cut' }),
+    // printed prerequisites (the catalog's <requires kind>): another technique, the fixture's adept power and quality, other
+    en('martialtechniques', 'crb.made-up-leap', 'Made-up Leap', { category: 'Mobility' }, [['technique', 'Made-up Roll']]),
+    en('martialtechniques', 'crb.made-up-palm', 'Made-up Palm', { category: 'General' },
+      [['adeptpower', 'Quick Step'], ['quality', 'Lucky Streak'], ['other', 'a made-up implant']])]) c.entries[e.kind].set(e.id, e)
   return { c, data: sr6Data(c), cr: fixtureCreation() }
 }
 function draft() {
@@ -63,7 +67,7 @@ test('karma: a style at karmaMartialArt, each technique at karmaTechnique, the s
   b.martialArts = [{ uid: 's1', id: 'crb.glow-fist', techniques: [{ uid: 't1', id: 'crb.glow-jab' }, { uid: 't2', id: 'crb.made-up-roll' }] },
     { uid: 's2', id: 'crb.made-up-blade', techniques: [{ uid: 't3', id: 'crb.made-up-stare' }] }]
   const line = karmaBudget(b, w.data, w.cr, makeProvider('karma', w.data, w.cr)).breakdown!.find(l => l.key === 'martialArts')
-  expect(line).toMatchObject({ amount: 8 + 4 + 8 + 4, sign: 'spend', tab: 'qualities' })
+  expect(line).toMatchObject({ amount: 8 + 4 + 8 + 4, sign: 'spend', tab: 'martial' })
   w.cr.delete('karmaMartialArt'); w.cr.delete('karmaTechnique')
   expect(karmaBudget(b, w.data, w.cr, makeProvider('karma', w.data, w.cr)).breakdown!.some(l => l.key === 'martialArts')).toBe(false)
 })
@@ -73,8 +77,8 @@ test('Review: a style twice, a technique twice, a technique outside the style’
   ch.build.martialArts = [{ uid: 's1', id: 'crb.glow-fist', techniques: [{ uid: 't1', id: 'crb.glow-jab' }, { uid: 't2', id: 'crb.made-up-stare' }] },
     { uid: 's2', id: 'crb.glow-fist', techniques: [{ uid: 't3', id: 'crb.made-up-stare' }, { uid: 't4', id: 'crb.made-up-cut' }] }]
   const v = codes(w, ch)
-  expect(v.map(x => [x.code, x.path, x.source, x.page])).toEqual([['martial.duplicateStyle', 'qualities.s2', 'FS', 97],
-    ['martial.duplicateTechnique', 'qualities.s2', 'FS', 97], ['martial.category', 'qualities.s2', 'FS', 97]])
+  expect(v.map(x => [x.code, x.path, x.source, x.page])).toEqual([['martial.duplicateStyle', 'martial.s2', 'FS', 97],
+    ['martial.duplicateTechnique', 'martial.s2', 'FS', 97], ['martial.category', 'martial.s2', 'FS', 97]])
   expect(v[2].message).toBe('Made-up Cut is a Weapon technique; Glow Fist teaches Mobility, Striking and General ones.')
   // the blade's own signature (a Weapon technique) fits it; a gone style or technique is catalog.missing, not a category error
   ch.build.martialArts = [{ uid: 's3', id: 'crb.made-up-blade', techniques: [{ uid: 't5', id: 'crb.made-up-cut' }, { uid: 't6', id: 'crb.made-up-stare' }] },
@@ -85,6 +89,29 @@ test('Review: a style twice, a technique twice, a technique outside the style’
   w.cr.delete('karmaTechnique')
   expect(validateSr6(w.data, w.cr, ch).filter(x => x.code === 'setting.unset').map(x => x.message))
     .toContain('Martial arts technique (a style’s signature one is free) isn’t set: Table setup → Creation rules.')
+})
+
+test('prerequisites: Review warns (never blocks) when the runner lacks a technique’s adept power, technique or quality', () => {
+  const w = world(), ch = draft(), b = ch.build
+  b.martialArts = [{ uid: 's1', id: 'crb.glow-fist', techniques: [{ uid: 't1', id: 'crb.glow-jab' }, { uid: 't2', id: 'crb.made-up-leap' }, { uid: 't3', id: 'crb.made-up-palm' }] }]
+  const v = codes(w, ch)
+  expect(v.map(x => [x.code, x.severity, x.path, x.source, x.page, x.message])).toEqual([
+    ['martial.requires', 'warning', 'martial.s1', 'FS', 97, 'Made-up Leap requires the Made-up Roll technique, which the runner doesn’t have.'],
+    ['martial.requires', 'warning', 'martial.s1', 'FS', 97, 'Made-up Palm requires the Quick Step adept power, which the runner doesn’t have.'],
+    ['martial.requires', 'warning', 'martial.s1', 'FS', 97, 'Made-up Palm requires the Lucky Streak quality, which the runner doesn’t have.']])
+  expect(canFinalizeSr6(validateSr6(w.data, w.cr, ch).filter(x => x.code === 'martial.requires'))).toBe(true)
+  // learned (under any style), picked and taken: met; other is shown, never checked
+  b.martialArts[0].techniques.push({ uid: 't4', id: 'crb.made-up-roll' })
+  b.picks.push({ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step', level: 1 })
+  b.qualities.push({ uid: 'q1', id: 'crb.lucky-streak', level: 1 })
+  expect(codes(w, ch)).toEqual([])
+  expect(prerequisites(w.data, b, w.data.entry('martialtechniques', 'crb.made-up-palm'))).toEqual([{ kind: 'adeptpower', name: 'Quick Step', met: true },
+    { kind: 'quality', name: 'Lucky Streak', met: true }, { kind: 'other', name: 'a made-up implant' }])
+  // the export's technique carries them; one printing none has no field
+  const r = exportSr6Runners(w.c, w.data, w.cr, [ch], { descriptions: false, now: NOW, appVersion: '0' }).runners![0]
+  const t = r.martialArts[0].techniques
+  expect(t.find(x => x.uid === 't2')!.requires).toEqual([{ kind: 'technique', name: 'Made-up Roll', met: true }])
+  expect('requires' in t.find(x => x.uid === 't1')!).toBe(false)
 })
 
 test('career: a style with its signature, a technique, refusals; replayed on the build', () => {

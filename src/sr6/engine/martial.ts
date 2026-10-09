@@ -39,3 +39,22 @@ export const techniqueKarma = (data: Sr6Data, cr: CreationRules, m: Sr6MartialAr
 /** The karma the runner's styles and techniques cost (an unset price counts 0). */
 export const martialKarma = (b: Sr6Build, data: Sr6Data, cr: CreationRules) => b.martialArts.reduce((sum, m) =>
   sum + (num(cr, 'karmaMartialArt') ?? 0) + m.techniques.reduce((s, t) => s + techniqueKarma(data, cr, m, t), 0), 0)
+
+/** A technique's printed prerequisite (the catalog's <requires kind> child, importer/sr6/flags.py) and whether the
+ *  runner has it: an adept power among its picks, a technique among those it learned, a quality among its qualities;
+ *  `met` undefined for kind other (an augmentation, a bonus: not checked). */
+export interface Prerequisite { kind: 'adeptpower' | 'technique' | 'quality' | 'other'; name: string; met?: boolean }
+/** A name the runner's line has: the same, or that one with a note (`Bending of the Reed (Melee)`). */
+const names = (need: string, have: (string | undefined)[]) => have.some(h => norm(h) === norm(need) || norm(h).startsWith(`${norm(need)} (`))
+export function prerequisites(data: Sr6Data, b: Sr6Build, t: Sr6Entry | undefined): Prerequisite[] {
+  return (t?.parts ?? []).filter(p => p.tag === 'requires').map(p => {
+    const kind = (['adeptpower', 'technique', 'quality'].includes(p.attrs.kind) ? p.attrs.kind : 'other') as Prerequisite['kind'], name = p.text.trim()
+    const have = kind === 'adeptpower' ? b.picks.filter(x => x.kind === 'adeptpowers').map(x => data.entry('adeptpowers', x.id)?.name ?? x.name)
+      : kind === 'technique' ? learned(b).filter(x => x.id !== t!.id).map(x => techniqueName(data, x))
+        : kind === 'quality' ? b.qualities.map(q => data.qualities[q.id]?.name ?? q.name) : undefined
+    return { kind, name, ...(have ? { met: names(name, have) } : {}) }
+  })
+}
+/** A prerequisite as a phrase: `the Kick Attack technique`, `the Killing Hands adept power`, `at least one cyberlimb`. */
+export const prerequisiteText = (p: Prerequisite) =>
+  p.kind === 'other' ? p.name : `the ${p.name} ${p.kind === 'adeptpower' ? 'adept power' : p.kind}`

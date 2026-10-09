@@ -192,11 +192,14 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await page.getByRole('button', { name: 'Add a negative quality…' }).click()
   await page.getByRole('dialog').getByText('Butterfingers').click()
   await expect(page.getByText('Net:')).toContainText('Positive: −8 karma · Negative: +8 karma · Net: +0 karma')
-  // martial arts: a style comes with its signature technique, free (Firing Squad p. 97)
+  await shoot(page, 'editor-qualities')
+
+  // Martial arts (a tab of its own): a style comes with its signature technique, free (Firing Squad p. 97)
+  await tabs.filter({ hasText: 'Martial arts' }).click()
   await page.getByRole('button', { name: 'Add a martial arts style…' }).click()
   await page.getByRole('dialog').getByText('Glow Fist').click()
   await expect(page.locator('tr', { hasText: 'Glow Jab' })).toContainText('free')
-  await shoot(page, 'editor-qualities')
+  await shoot(page, 'editor-martial')
   await page.locator('.row', { hasText: 'Glow Fist' }).getByRole('button', { name: 'Remove' }).click()
   await expect(page.locator('tr', { hasText: 'Glow Jab' })).toHaveCount(0)
 

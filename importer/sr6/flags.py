@@ -11,7 +11,14 @@ Foundry export use). General readers over the printed name, its section and its 
   Object Resistance`), and every Combat spell (CRB p. 133: Direct ones opposed by Willpower + Intuition, Indirect ones
   rolled vs. Reaction + Willpower). `as opposed to` is no test.
 - a spell's **essence**: its test's threshold counts the target's Essence (`Sorcery + Magic (5 – Essence)`, the
-  Health spells', CRB p. 135)."""
+  Health spells', CRB p. 135).
+- a martial arts technique's **requires** (Firing Squad p. 97: some techniques have "additional restrictions"): the
+  prerequisites its closing `Category:` line (or the Restriction label shapes.martial makes of its rest) prints, each
+  a `requires` child, its kind `technique`, `adeptpower`, `quality` or `other` (an augmentation, a bonus), its text
+  the name as printed. Read: `requires X`, `[the] user must [already] know|have X`; the kind from a word after the
+  name (`the Kick Attack technique`, `X power`, `X quality`), else `know` (one knows techniques), else a word after
+  the name in the entry's own text (`has the Killing Hands power active`), else `other`. A usage note (`may only be
+  used with swords`) is no prerequisite."""
 import re
 
 from importer.sr6.regroup import norm
@@ -26,6 +33,13 @@ _AGAIN = re.compile(rf"\b(?:take|taken|select|selected|choose|chosen|learn|learn
 _ATTR = r"(?:Body|Agility|Reaction|Strength|Willpower|Logic|Intuition|Charisma|Edge|Magic|Resonance|Object\s+Resistance)"
 _OPPOSED = re.compile(r"(?<!as )\bopposed\b(?!\s+to\b)|\bresist(?:s|ed)?\s+(?:by|with)\b"
                       rf"|\b(?:vs\.?|versus)\s+(?:the\s+)?(?:(?:target|subject|victim)[’']?s?\s+)?{_ATTR}\b", re.I)
+_CLOSING = re.compile(r"(?:\*\*|_)?\b(Category|Restriction)\b(?:\*\*|_)?\s*:\s*", re.I)
+_MUST = r"(?:the\s+)?(?:user|character|practitioner)\s+must\s+(?:already\s+)?"
+_NEED = re.compile(rf"^(?:requires?|{_MUST}(know|have|possess))\s+(.+)$", re.I)
+_CLAUSE = re.compile(rf";|\.(?!\d)|,\s*(?=(?:requires?|{_MUST}(?:know|have|possess))\b)", re.I)
+_KIND_WORD = r"(technique|adept\s+power|power|quality)"
+_KINDS = {"technique": "technique", "power": "adeptpower", "adept power": "adeptpower", "quality": "quality"}
+_PRINTED = re.compile(r"^(?:the|an?|one\s+or\s+both\s+versions\s+of|either\s+version\s+of)\s+", re.I)
 _ESSENCE = re.compile(r"\d+\s*[–−-]\s*(?:the\s+)?(?:(?:target|subject)[’']?s\s+)?Essence\b", re.I)
 
 
@@ -59,4 +73,49 @@ def spell(category, text=""):
         out["opposed"] = "true"
     if _ESSENCE.search(t):
         out["essence"] = "true"
+    return out
+
+
+def _kind(word):
+    return _KINDS[" ".join(word.lower().split())]
+
+
+def _closing(text):
+    """(label, value) for each `Category:` / `Restriction:` label of the text: a label line's value is its line; one
+    after the last sentence (`… firing mode. **Category:** Ranged, requires …`) runs to the paragraph's end, its
+    wrapped lines joined."""
+    t = re.sub(r"(?<=[a-z])-\n(?=[a-z])", "", text or "")
+    out = []
+    for m in _CLOSING.finditer(t):
+        own_line = not t[t.rfind("\n", 0, m.start()) + 1:m.start()].strip(" •")
+        rest = t[m.end():]
+        rest = rest.split("\n")[0] if own_line else re.split(r"\n\s*\n|\n(?=\*\*[^*\n]+:\*\*)", rest)[0]
+        out.append((m.group(1).title(), " ".join(rest.replace("**", "").replace("_", " ").split())))
+    return out
+
+
+def technique_category(text):
+    """A technique's category as its closing `Category:` line prints it, without what follows it (`Grappling, requires
+    …`: `Grappling`); None when it prints none."""
+    return next((_CLAUSE.split(v)[0].strip(" ,.") or None for k, v in _closing(text) if k == "Category"), None)
+
+
+def requires(text):
+    """[("requires", {"kind": kind}, name)]: a martial arts technique's printed prerequisites (above)."""
+    flat = " ".join((text or "").replace("**", "").split())
+    out = []
+    for _, value in _closing(text):
+        for clause in _CLAUSE.split(value):
+            if not (n := _NEED.match(clause.strip(" ,"))):
+                continue
+            what = _PRINTED.sub("", n.group(2).strip(" ,"))
+            if k := re.match(rf"^(.+?)\s+{_KIND_WORD}$", what, re.I):
+                what, kind = k.group(1), _kind(k.group(2))
+            elif (n.group(1) or "").lower() == "know":
+                kind = "technique"
+            elif k := re.search(rf"\b{re.escape(what)}\s+{_KIND_WORD}\b", flat, re.I):
+                kind = _kind(k.group(1))
+            else:
+                kind = "other"
+            out.append(("requires", {"kind": kind}, what))
     return out

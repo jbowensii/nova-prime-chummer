@@ -484,6 +484,8 @@ class Reader:
                 name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
+        if kind == "martialtechniques":  # its closing `Category:` line, inline after its last sentence
+            attrs = {"category": flags.technique_category(text)}
         if kind == "metamagics":  # who may take it (`Adept Metamagics`, `(Adepts Only)`); the note leaves the name, so
             # the recipe's own reading of the heading is this one (crb._Catalog.add reads the rest from its text)
             name, attrs = flags.metamagic(name, "", [*chain, b.tags])

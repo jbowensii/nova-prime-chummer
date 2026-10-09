@@ -75,7 +75,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metamagics | metamagic | user adept\|magician (absent: any initiate), perLevel true (taken again), maxLevel int: see Flags | — |
 | echoes | echo | — | — |
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
-| martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | — |
+| martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | `<requires kind>` (adeptpower, technique, quality, other: its prerequisites, below) |
 | traditions | tradition | — | — |
 | critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
@@ -109,13 +109,25 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
 
 The rule sections stay as they were (the rules contents still list them).
 
-**Martial arts** (Firing Squad p. 97). The builder buys a style on the Qualities tab (`karmaMartialArt`); its signature
+**Martial arts** (Firing Squad p. 97). The builder buys a style on its Martial arts tab (`karmaMartialArt`); its signature
 technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique
 (`karmaTechnique`) is learned under a style, of one of its `categories` (compared without case) or `General`; career
 spends are the Ledger's `martialart` and `technique` ops at the same prices. Review flags a style taken twice
 (`martial.duplicateStyle`), a technique learned twice under any styles (`martial.duplicateTechnique`) and one outside its
-style's categories (`martial.category`), each cited to Firing Squad p. 97. A technique's other prerequisites (an adept
-power, another technique) are in its text and aren't checked.
+style's categories (`martial.category`), each cited to Firing Squad p. 97.
+
+**Technique prerequisites** (`importer/sr6/flags.py` `requires`). A technique's closing `Category:` line (a label line,
+or run on after its last sentence and wrapped) and the Restriction label `shapes.martial` makes of what follows its `;`
+print what else it needs: each `requires X` and `[the] user must [already] know|have X` clause is a `<requires
+kind="…">X</requires>` child, X as printed (`Kick Attack`, `at least one full cyberlimb`). Its kind is the word after the
+name (`the Kick Attack technique`: `technique`; `X power`, `X adept power`: `adeptpower`; `X quality`: `quality`), else
+`technique` after `know`, else the word after the name where the technique's own text names it (`has the Killing Hands
+power active`), else `other` (an augmentation, a bonus). A usage note (`may only be used with swords`) is none. A
+technique printed under a section heading (Body Shop's `Cyberware Martial Arts Techniques`) takes its category from the
+same closing line, without the prerequisites after it. The builder shows them in the technique picker and on the
+technique's row; Review's `martial.requires` warns (a warning: it never blocks Finalize), cited to Firing Squad p. 97,
+when the runner lacks an `adeptpower` (among its picks), a `technique` (learned under any style) or a `quality`; a name
+matches as printed or with a note after it (`Bending of the Reed (Melee)`), without case. `other` is shown, never checked.
 
 **Qualities granted and chosen** (importer v4, `sections.py`, `effects.py`). A section that lists what it grants
 (`### Powers` or `### Characteristics` under `## Returned Soldiers`, its text naming the section's noun) makes each heading under the list a quality with Karma 0, `granted`, its

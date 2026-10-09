@@ -5,9 +5,13 @@
 Import the books again (Books → **Re-import all**) to get the new catalog flags. Saved runners keep working; an older
 runner's lifestyle moves onto its first SIN when it is opened.
 
-- **Martial arts (SR6).** Buy a style and learn its techniques on the Qualities tab, in creation and in the Ledger:
+- **Martial arts (SR6).** Buy a style and learn its techniques on the Martial arts tab, in creation and in the Ledger:
   7 Karma a style, 5 a technique, its signature technique free (Firing Squad p. 97), set in the house rules. Review
   flags a style or technique taken twice and a technique its style doesn't teach.
+- **Technique prerequisites (SR6).** The importer reads what a technique also needs (an adept power, another
+  technique, a quality, or an augmentation) from its printed category line; the technique picker and the technique's
+  row on the Martial arts tab (next to Qualities and Magic) show it, Review warns (never blocks) when the runner lacks
+  it, and the runner export carries it. Body Shop's techniques now get their category.
 - **SINs and lifestyles.** A lifestyle belongs to a SIN; a runner can have several of each, and a SIN can have none.
   Gender is optional on the runner (both games) and on each SIN.
 - **Catalog flags (SR6).** The importer reads which metamagics are for adepts or magicians and which can be taken

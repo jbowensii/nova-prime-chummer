@@ -60,7 +60,7 @@ is closed (no other keys).
 | `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |
 | `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
-| `martialArts` | martial arts styles: items (kind `martialarts`; `attrs.categories`, `attrs.signature` as printed) plus `{ uid, techniques }`; `techniques`: the ones learned under the style (its signature one included), items (kind `martialtechniques`; `attrs.category`) plus `{ uid }`. Absent in files written before martial arts were added |
+| `martialArts` | martial arts styles: items (kind `martialarts`; `attrs.categories`, `attrs.signature` as printed) plus `{ uid, techniques }`; `techniques`: the ones learned under the style (its signature one included), items (kind `martialtechniques`; `attrs.category`) plus `{ uid, requires? }`; `requires`: the technique's printed prerequisites `[{ kind, name, met? }]`, `kind` `adeptpower`, `technique`, `quality` or `other`, `met` whether the runner has it (absent for `other`: not checked), absent when it prints none (and in older files). Absent in files written before martial arts were added |
 | `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles |
 | `contacts` | `[{ uid, name, archetype, connection, loyalty, types? }]`; `types`: the Sixth World Companion's contact types, when set |
 | `lifestyle` | **deprecated**, kept for the module's older versions: the first lifestyle of the first SIN that has one, `{ id, name, months, cost? }`, or `null`. Read `sins[].lifestyles` |

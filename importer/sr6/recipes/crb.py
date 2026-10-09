@@ -324,6 +324,8 @@ class _Catalog:
             attrs, aliases = {**(attrs or {}), **more}, (*aliases, printed)
         elif kind == "spells":  # an opposed test, a threshold counting Essence (flags.py)
             attrs = {**(attrs or {}), **flags.spell((attrs or {}).get("category"), text)}
+        elif kind == "martialtechniques":  # the prerequisites its closing line prints (flags.py)
+            children = [*children, *flags.requires(text)]
         base = cid or slug(name) or KINDS[kind]
         i, n = base, 2
         if kind == "rules" and i in self.ids[kind] and parent:
