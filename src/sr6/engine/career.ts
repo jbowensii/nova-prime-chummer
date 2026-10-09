@@ -5,15 +5,16 @@
 // (the Karma prices group doubles as the career prices, plus the Advancement group); an unset price refuses its spend
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers.
 import { newId, type Violation } from '../../model/types'
-import type { PickKind, Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6LedgerEntry } from '../model/character'
-import { attrRating, priced, qualityCost, skillRank } from './budgets'
+import { sinName, type PickKind, type Sr6Advance, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
+import { attrRating, priced, qualityCost, sinCost, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
+import { isSignature, learned, techniqueFits } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
 /** Contact and Other: the amounts and label the player types. */
@@ -54,11 +55,16 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (had?.level !== undefined) had.level += 1; else if (!had) b.picks.push(structuredClone(a.line))
       return
     }
+    case 'martialart': b.martialArts.push(structuredClone(a.line)); return
+    case 'technique': b.martialArts.find(m => m.uid === a.target)?.techniques.push(structuredClone(a.line)); return
     case 'powerpoint': b.powerPointsBought += 1; return
-    case 'initiate':
+    case 'initiate': {
       if (MAGIC_KINDS[b.magic].resonance) b.submersion += 1; else b.initiation += 1
-      if (a.line) b.picks.push(structuredClone(a.line))
+      // a metamagic taken again goes up a level
+      const had = a.line && b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id)
+      if (had) had.level = (had.level ?? 1) + 1; else if (a.line) b.picks.push(structuredClone(a.line))
       return
+    }
     case 'purchase': b.purchases.push(structuredClone(a.line)); return
     case 'drop': b.purchases = b.purchases.filter(x => x.uid !== a.target); return
     case 'contact': {
@@ -66,8 +72,23 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (i >= 0) b.contacts[i] = structuredClone(a.line); else b.contacts.push(structuredClone(a.line))
       return
     }
-    // more months of the lifestyle the runner has add to it; another lifestyle replaces it
-    case 'lifestyle': b.lifestyle = { id: a.id, months: a.months + (b.lifestyle?.id === a.id ? b.lifestyle.months : 0) }; return
+    case 'sin': {
+      // a placeholder named (line.uid its uid) keeps its lifestyles
+      const i = b.sins.findIndex(x => x.uid === a.line.uid), line = structuredClone(a.line), had = b.sins[i]?.lifestyles
+      if (i >= 0) b.sins[i] = had ? { ...line, lifestyles: had } : line; else b.sins.push(line)
+      return
+    }
+    case 'lifestyle': {
+      // more months of a lifestyle the SIN has add to it, another is added; an entry from before lifestyles belonged to
+      // SINs (no sin) is the first SIN's one lifestyle: more months of it, or another replacing it
+      const sin = a.sin ? b.sins.find(s => s.uid === a.sin) : b.sins[0]
+      if (!sin) return  // charxml.ts gives an older runner with a lifestyle a SIN
+      const ls = sin.lifestyles ??= [], had = a.sin ? ls.find(l => l.id === a.id) : ls[0]
+      if (had?.id === a.id) had.months += a.months
+      else if (had) Object.assign(had, { id: a.id, months: a.months })
+      else ls.push({ uid: a.uid ?? `${sin.uid}-${a.id}`, id: a.id, months: a.months })
+      return
+    }
     case 'convert': case 'other': return
   }
 }
@@ -208,6 +229,26 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (careerPowerPoints(b, data, p).left < v!.cost!) no('no-power-points')
       return { label: `Adept power: ${e.name}${v!.perLevel ? ` ${had ? (had.level ?? 1) + 1 : 1}` : ''}`, karma: 0 }
     }
+    case 'martialart': {
+      // FS p. 97: a style comes with its signature technique, free; its other techniques are bought one by one
+      const e = data.entry('martialarts', a.line.id) ?? no('unknown-entry')
+      if (b.martialArts.some(m => m.id === e.id)) no('already-known')
+      for (const t of a.line.techniques) {
+        const te = data.entry('martialtechniques', t.id) ?? no('unknown-entry')
+        if (!isSignature(e, te.name)) no('not-signature')
+        if (learned(b).some(x => x.id === te.id)) no('already-known')
+      }
+      const sig = a.line.techniques.length ? ` with ${data.entry('martialtechniques', a.line.techniques[0].id)!.name}` : ''
+      return { label: `Martial art: ${e.name}${sig}`, karma: need('karmaMartialArt') }
+    }
+    case 'technique': {
+      const m = b.martialArts.find(x => x.uid === a.target) ?? no('not-taken'), style = data.entry('martialarts', m.id)
+      const e = data.entry('martialtechniques', a.line.id) ?? no('unknown-entry')
+      if (learned(b).some(x => x.id === e.id)) no('already-known')
+      if (!techniqueFits(style, e)) no('wrong-category')
+      const karma = isSignature(style, e.name) ? 0 : need('karmaTechnique')
+      return { label: `Technique: ${e.name} (${style?.name ?? m.name ?? m.id})`, karma }
+    }
     case 'powerpoint':
       if (!k.paysPowers) no('cannot-learn')
       if (b.powerPointsBought >= attrRating(b, 'mag', p)) no('at-maximum')
@@ -218,8 +259,13 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (a.line) {
         if (a.line.kind !== (k.resonance ? 'echoes' : 'metamagics')) no('cannot-learn')
         const e = data.entry(a.line.kind, a.line.id) ?? no('unknown-entry')
-        if (b.picks.some(x => x.kind === a.line!.kind && x.id === a.line!.id)) no('already-known')
-        what = ` (${e.name})`
+        // an adept's metamagic only for an adept or mystic adept, a magician's for a magician or mystic adept
+        if (a.line.kind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[a.line.id]?.user)) no('cannot-learn')
+        // one taken again (its text says it can be) is one more level, each with its own initiation
+        const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id), max = pickMaxLevel(data, a.line.kind, a.line.id)
+        if (had && max === null) no('already-known')
+        if (had && (had.level ?? 1) >= max!) no('at-maximum')
+        what = ` (${e.name}${had ? ` ${(had.level ?? 1) + 1}` : ''})`
       }
       const next = b[field] + 1
       // CRB pp. 167, 195: the grade never exceeds Magic (Resonance)
@@ -248,12 +294,25 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
+    case 'sin': {
+      // priced as creation prices it (budgets.ts sinCost), with the settings it needs set
+      const x = a.line
+      if (x.uid && !b.sins.find(s => s.uid === x.uid)?.placeholder) no('unknown-line')
+      if (!x.name.trim()) no('needs-name')
+      if (x.kind === 'fake' && !((x.rating ?? 1) >= 1)) no('below-one')
+      if (x.licences.some(l => !l.name.trim())) no('needs-name')
+      if (x.licences.some(l => !(l.rating >= 1))) no('below-one')
+      if (x.kind === 'fake' && x.licences.some(l => l.rating > (x.rating ?? 1))) no('licence-above-sin')
+      const what = [x.kind === 'real' ? 'real' : `fake, rating ${x.rating ?? 1}`, ...x.licences.map(l => `${l.name} ${l.rating}`)].join(', ')
+      return { label: `SIN: ${x.name.trim()} (${what})${x.uid ? ', was the unnamed SIN' : ''}`, nuyen: sinCost(x, need) }
+    }
     case 'lifestyle': {
+      const sin = a.sin ? b.sins.find(s => s.uid === a.sin) ?? no('unknown-line') : undefined
       const e = data.entry('lifestyles', a.id) ?? no('unknown-entry')
       if (!(a.months >= 1)) no('below-one')
       const v = bookValue(e, 'cost', undefined, dataFind(data))
       if (!v.ok || v.n === null) no('book-value')
-      return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}`, nuyen: v.n! * a.months }
+      return { label: `Lifestyle: ${e.name} × ${a.months} month${a.months === 1 ? '' : 's'}${sin ? ` (${sinName(sin)})` : ''}`, nuyen: v.n! * a.months }
     }
     case 'convert': {
       if (!Number.isInteger(a.karma) || a.karma === 0) no('below-one')
@@ -278,11 +337,22 @@ export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Creat
     case 'quality': adv.line = named(adv.line, data.qualities[adv.line.id]?.name); break
     case 'pick': adv.line = named({ ...adv.line, ...(data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
       data.entry(adv.line.kind, adv.line.id)?.name); break
-    case 'initiate': if (adv.line) adv.line = named(adv.line, data.entry(adv.line.kind, adv.line.id)?.name); break
+    case 'martialart': adv.line = { ...named(adv.line, data.entry('martialarts', adv.line.id)?.name),
+      techniques: adv.line.techniques.map(t => named(t, data.entry('martialtechniques', t.id)?.name)) }; break
+    case 'technique': adv.line = named(adv.line, data.entry('martialtechniques', adv.line.id)?.name); break
+    case 'initiate': if (adv.line) adv.line = named({ ...adv.line, ...(pickMaxLevel(data, adv.line.kind, adv.line.id) !== null ? { level: 1 } : {}) },
+      data.entry(adv.line.kind, adv.line.id)?.name); break
     case 'purchase': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
     case 'contact': adv.line = named(adv.line); break
     case 'buyoff': adv.line = b.qualities.find(q => q.uid === adv.target); break
     case 'drop': adv.line = b.purchases.find(x => x.uid === adv.target); break
+    case 'sin': {
+      // stored as it'll stand: no lifestyles (a placeholder's stay on it) nor placeholder flag; a fake SIN's rating set
+      const { uid, name, kind, rating, gender, licences } = adv.line
+      adv.line = { uid: uid || newId(), name: name.trim(), kind, ...(kind === 'fake' ? { rating: rating ?? 1 } : {}), ...(gender?.trim() ? { gender } : {}), licences }
+      break
+    }
+    case 'lifestyle': if (adv.sin && !adv.uid) adv.uid = newId(); break
   }
   const entry: Sr6LedgerEntry = { id: newId(), at: now, type: 'advance', advance: adv, label: pv.label, karma: pv.karma, nuyen: pv.nuyen }
   return { ok: true, ch: { ...ch, ledger: [...ch.ledger, entry] } }
@@ -321,6 +391,6 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
   const bal = balances(ch), out: Violation[] = []
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
-  const keep = new Set(['catalog.missing', 'essence.positive'])
+  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder'])
   return [...out, ...validateSr6(data, cr, { ...ch, build: currentBuild(ch) }).filter(v => keep.has(v.code))]
 }

@@ -8,7 +8,7 @@
   <xs:element name="data">
     <xs:complexType>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="metamagic" type="sr6:Entry"/>
+        <xs:element name="metamagic" type="sr6:Metamagic"/>
         <xs:element name="remove" type="sr6:Remove"/>
       </xs:choice>
       <xs:attribute name="kind" use="required">

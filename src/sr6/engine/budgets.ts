@@ -3,7 +3,7 @@
 // <formula>, else the printed string read by rated());
 // a value the app can't read counts 0 (priced().ok false, Review warns); an unset creation setting counts 0 (Review
 // warns that it isn't set). Never NaN.
-import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Skill } from '../model/character'
+import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Sin, type Sr6Skill, sinName } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data, type Sr6QualityView } from './data'
@@ -12,6 +12,7 @@ import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
+import { martialKarma } from './martial'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -46,20 +47,22 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
   return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0) + (p.startBonus?.(b, k) ?? 0)
 }
 
-const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number) =>
-  (bonuses ?? []).filter(x => x.target === k).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
-/** What the player's entered bonuses add to the runner's `k` (R: the catalog carries no bonus data): picks by level,
- *  purchases by rating times quantity. An accessory's bonuses are its host item's, never the runner's (hostBonus). */
-export function augmentBonus(b: Sr6Build, k: Bonus['target']): number {
-  let total = b.picks.reduce((s, x) => s + bonusOf(x.bonuses, k, x.level ?? 1), 0)
-  for (const x of b.purchases) total += bonusOf(x.bonuses, k, x.rating ?? 1) * x.qty
+const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string) =>
+  (bonuses ?? []).filter(x => x.target === k && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+/** What the player's entered bonuses add to the runner's `k` (R: the catalog carries no bonus data), for `skill` the one
+ *  skill's dice pool (`skill`: its id): picks by level, purchases by rating times quantity. An accessory's bonuses are its
+ *  host item's, never the runner's (hostBonus). */
+export function augmentBonus(b: Sr6Build, k: Bonus['target'], skill?: string): number {
+  let total = b.picks.reduce((s, x) => s + bonusOf(x.bonuses, k, x.level ?? 1, skill), 0)
+  for (const x of b.purchases) total += bonusOf(x.bonuses, k, x.rating ?? 1, skill) * x.qty
   return total
 }
 /** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
- *  target -> total, only the targets they touch. */
-export function hostBonus(x: Sr6Purchase): Partial<Record<Bonus['target'], number>> {
-  const out: Partial<Record<Bonus['target'], number>> = {}
-  for (const a of x.accessories) for (const t of new Set((a.bonuses ?? []).map(y => y.target))) out[t] = (out[t] ?? 0) + bonusOf(a.bonuses, t, a.rating ?? 1)
+ *  target -> total, only the targets they touch (not a skill's pool: a runner's, never an item's). */
+export function hostBonus(x: Sr6Purchase): Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> {
+  const out: Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> = {}
+  for (const a of x.accessories) for (const t of new Set((a.bonuses ?? []).map(y => y.target)))
+    if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(a.bonuses, t, a.rating ?? 1)
   return out
 }
 export const augmentedRating = (b: Sr6Build, k: Sr6Attr, p: Provider) => attrRating(b, k, p) + augmentBonus(b, k)
@@ -165,6 +168,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('skills', 'Skill ranks bought with karma', skills, 'skills')
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
+  add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
   const free = freeSpellSlots(b, cr, p), res = MAGIC_KINDS[b.magic].resonance
   add('spells', 'Spells and rituals past the free ones', Math.max(0, count(b, 'spells', 'rituals') - (res ? 0 : free)) * n0(cr, 'karmaSpell'), 'magic')
   add('complexForms', 'Complex forms past the free ones', Math.max(0, count(b, 'complexforms') - (res ? free : 0)) * n0(cr, 'karmaForm'), 'magic')
@@ -180,6 +184,13 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }
 }
 
+/** A SIN's nuyen, at creation and in career alike: a fake one's rating × fakeSinPerRating (a real one comes with its
+ *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating. `price` reads a setting. */
+export function sinCost(sin: Sr6Sin, price: (key: string) => number): number {
+  const own = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
+  return own + (sin.licences.length ? sin.licences.reduce((t, l) => t + l.rating, 0) * price('licencePerRating') : 0)
+}
+
 const purchaseName = (x: Sr6Purchase, data: Sr6Data) => { const e = entryOf(x, data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
 
 export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
@@ -188,16 +199,14 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   for (const x of b.purchases)
     add(`purchase:${x.uid}`, `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
       priced(x, data, cr).cost, PURCHASE_TAB[x.kind])
-  if (b.lifestyle) {
-    const e = data.entry('lifestyles', b.lifestyle.id), m = b.lifestyle.months
-    add('lifestyle', `${e?.name ?? b.lifestyle.id} lifestyle × ${s(m, 'month')}`, (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * m, 'contacts')
+  for (const sin of b.sins) for (const l of sin.lifestyles ?? []) {
+    const e = data.entry('lifestyles', l.id)
+    add(`lifestyle:${l.uid}`, `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sinName(sin)})`,
+      (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months, 'contacts')
   }
   for (const sin of b.sins) {
-    // a real SIN comes with its quality; its licences are still bought
-    const licences = sin.licences.reduce((t, l) => t + l.rating, 0) * n0(cr, 'licencePerRating')
-    const own = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * n0(cr, 'fakeSinPerRating')
-    const what = sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
-    add(`sin:${sin.uid}`, `${sin.name || 'SIN'} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, own + licences, 'contacts')
+    const what = sin.placeholder ? 'placeholder' : sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
+    add(`sin:${sin.uid}`, `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, sinCost(sin, k => n0(cr, k)), 'contacts')
   }
   const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => q.id === debt)
   const karma = toNuyen(b, cr), converted = karma * n0(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')

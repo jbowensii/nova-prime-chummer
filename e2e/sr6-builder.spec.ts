@@ -150,7 +150,7 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
   // a mundane runner has no Magic tab
-  await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Augmentations', 'Gear', 'Vehicles',
+  await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Martial arts', 'Augmentations', 'Gear', 'Vehicles',
     'Contacts & lifestyle', /^Review\d*$/, 'Print'])
   await expect(page.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
   const budgets = page.getByRole('complementary', { name: 'Budgets' })
@@ -193,6 +193,15 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await page.getByRole('dialog').getByText('Butterfingers').click()
   await expect(page.getByText('Net:')).toContainText('Positive: −8 karma · Negative: +8 karma · Net: +0 karma')
   await shoot(page, 'editor-qualities')
+
+  // Martial arts (a tab of its own): a style comes with its signature technique, free (Firing Squad p. 97)
+  await tabs.filter({ hasText: 'Martial arts' }).click()
+  await page.getByRole('button', { name: 'Add a martial arts style…' }).click()
+  await page.getByRole('dialog').getByText('Glow Fist').click()
+  await expect(page.locator('tr', { hasText: 'Glow Jab' })).toContainText('free')
+  await shoot(page, 'editor-martial')
+  await page.locator('.row', { hasText: 'Glow Fist' }).getByRole('button', { name: 'Remove' }).click()
+  await expect(page.locator('tr', { hasText: 'Glow Jab' })).toHaveCount(0)
 
   // Attributes: points, adjustment and karma
   await tabs.filter({ hasText: 'Attributes' }).click()
@@ -247,7 +256,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
   const work = page.locator('main.work'), budgets = page.getByRole('complementary', { name: 'Budgets' })
   const dlg = page.getByRole('dialog')
-  await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Magic', 'Augmentations', 'Gear', 'Vehicles',
+  await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Martial arts', 'Magic', 'Augmentations', 'Gear', 'Vehicles',
     'Contacts & lifestyle', /^Review\d*$/, 'Print'])
 
   // a technomancer's tab is Resonance: complex forms, echoes, submersion
@@ -399,11 +408,12 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await work.getByLabel('Contact 1 archetype').press('Enter')
   await work.getByRole('button', { name: 'Raise Contact 1 connection' }).click()
   await expect(work.getByText('Contact points:')).toContainText('0 left of 3')
-  await work.getByLabel('Lifestyle', { exact: true }).selectOption('crb.cozy')
-  await work.getByRole('button', { name: 'Raise Lifestyle months' }).click()
   await work.getByRole('button', { name: 'Add a SIN' }).click()
   await work.getByLabel('SIN 1 name').fill('Zelda Smith')
   await work.getByLabel('SIN 1 name').press('Enter')
+  // a lifestyle belongs to a SIN
+  await work.getByLabel('Add a lifestyle to SIN 1').selectOption('crb.cozy')
+  await work.getByRole('button', { name: 'Raise SIN 1 lifestyle 1 months' }).click()
   await work.getByRole('button', { name: 'Raise SIN 1 rating' }).click()
   await work.getByLabel('SIN 1 new licence').fill('Zap Gun licence')
   await work.getByLabel('SIN 1 licence rating').fill('3')
@@ -448,7 +458,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   // fixed on Contacts & lifestyle: Cozy for one month, one more karma into nuyen, the contact's connection back to 1
   await work.getByRole('link', { name: 'Fixer Fred’s connection or loyalty is above 1.' }).click()
   await expect(page).toHaveURL(/\/contacts$/)
-  await work.getByRole('button', { name: 'Lower Lifestyle months' }).click()
+  await work.getByRole('button', { name: 'Lower SIN 1 lifestyle 1 months' }).click()
   await work.getByRole('button', { name: 'Raise Karma turned into nuyen' }).click()
   await work.getByRole('button', { name: 'Lower Contact 1 connection' }).click()
   await tabs.filter({ hasText: 'Review' }).click()

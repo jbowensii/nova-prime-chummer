@@ -61,21 +61,21 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target* `attr:<abbr>`\|`skill:<id>`\|`derived:<name>`, op* add\|edge-cost, value*, confidence `low`)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
-| armor | armor | category*, rating, defense, capacity, avail, cost | — |
+| armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
-| spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage | — |
+| spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
 | adeptpowers | adeptpower | cost, perLevel true, maxLevel int, activation | — |
 | complexforms | complexform | duration, fade | — |
-| metamagics | metamagic | — | — |
+| metamagics | metamagic | user adept\|magician (absent: any initiate), perLevel true (taken again), maxLevel int: see Flags | — |
 | echoes | echo | — | — |
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
-| martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | — |
+| martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | `<requires kind>` (adeptpower, technique, quality, augmentation, other: its prerequisites, below) |
 | traditions | tradition | — | — |
 | critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
@@ -108,6 +108,42 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
   its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
 
 The rule sections stay as they were (the rules contents still list them).
+
+**Martial arts** (Firing Squad p. 97). The builder buys a style on its Martial arts tab (`karmaMartialArt`); its signature
+technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique
+(`karmaTechnique`) is learned under a style, of one of its `categories` (compared without case) or `General`; career
+spends are the Ledger's `martialart` and `technique` ops at the same prices. Review flags a style taken twice
+(`martial.duplicateStyle`), a technique learned twice under any styles (`martial.duplicateTechnique`) and one outside its
+style's categories (`martial.category`), each cited to Firing Squad p. 97.
+
+**Technique prerequisites** (`importer/sr6/flags.py` `requires`). A technique's closing `Category:` line (a label line,
+or run on after its last sentence and wrapped) and the Restriction label `shapes.martial` makes of what follows its `;`
+print what else it needs: each `requires X` and `[the] user must [already] know|have X` clause is a `<requires
+kind="…">X</requires>` child, X as printed (`Kick Attack`, `at least one full cyberlimb`). Its kind is the word after the
+name (`the Kick Attack technique`: `technique`; `X power`, `X adept power`: `adeptpower`; `X quality`: `quality`), else
+`technique` after `know`, else `augmentation` when X names augmentations by their words (`cyber…`, `bio…`, `implant…`,
+`augment…`, `…ware`: `at least one full cyberlimb`, `an implanted firearm`), else the word after the name where the
+technique's own text names it (`has the Killing Hands power active`), else `other`. A usage note (`may only be used
+with swords`) is none. A technique printed under a section heading (Body Shop's `Cyberware Martial Arts Techniques`)
+takes its category from the same closing line, without the prerequisites after it. The builder shows them in the
+technique picker and on the technique's row. Review's `martial.requires` warns (a warning: it never blocks Finalize),
+cited to Firing Squad p. 97, when the runner lacks an `adeptpower` (among its picks), a `technique` (learned under any
+style) or a `quality`; a name matches as printed or with a note after it (`bending of the reed` is met by either
+`Bending of the Reed (Melee)` or `(Ranged)`), without case. A missing `augmentation` is an error,
+`martial.augmentation` (path `martial.<style uid>.<technique uid>`): the technique may still be taken, and a GM may
+approve it. Each alternative it prints (`bone lacing, bone density, or a full cyberlimb`) is met by one of the runner's
+augmentations (accessories included) whose name, label (`Cyberlimb: Arm (synthetic)`), category (`cyber-implant
+weapons`) or search names hold one of its words, stemmed (quantifiers such as `at least one`, `full`, `intact` aside);
+an alternative printing an amount (`+1 Reaction bonus from augmentations`, `2.0 Essence spent on …`) can't be told, so
+when no alternative is met and one can't be told, nothing is flagged. `other` is shown, never checked.
+
+**Options learned one at a time** (`importer/sr6/flags.py` `options`, any kind). An entry whose text says to choose one
+of the options it lists when it is learned (`against melee or ranged attacks (choose which category when learning this
+technique)`) and that it may be taken as many times as there are options to gain them all (`may be taken up to twice in
+order to gain both`) is one entry per option, `<Name> (<Option>)` (`Bending of the Reed (Melee)`, `(Ranged)`), each
+with the printed heading as a search name (`<alias>`); a re-import gives the old id to the first (moved.py's split
+tier), so a saved runner's old technique becomes that one. A name printing the version in other case (`Bending of the
+Reed (melee)` in a stat block or a style's signature) is the same entry.
 
 **Qualities granted and chosen** (importer v4, `sections.py`, `effects.py`). A section that lists what it grants
 (`### Powers` or `### Characteristics` under `## Returned Soldiers`, its text naming the section's noun) makes each heading under the list a quality with Karma 0, `granted`, its
@@ -170,6 +206,25 @@ Three more kinds complete the set:
   order.
 - `texts`: `<text of="<kind>" id="<entry id>">…</text>`, merged into the entry's `<text>` by (kind, id).
 - `edits`: entries of any kind above, each with `by` (the account that saved it).
+
+### Flags
+
+Read by `importer/sr6/flags.py` from an entry's printed name, the headings it sits under and its text (never an item's
+name), and used by the builder, the sheets and the Foundry export:
+
+- **metamagic `user`**: `adept` when its name carries `(Adepts Only)` (the note leaves the name and stays a search
+  alias) or it is printed under an `Adept Metamagics` heading; `magician` the same way. Absent: any initiate may take it.
+  The metamagic picker offers it only to a runner who may (an adept's to an adept or mystic adept, a magician's to a
+  full or aspected magician or mystic adept); Review flags one on any other (`magic.metamagicUser`).
+- **metamagic `perLevel`** (`maxLevel`): its text says it can be taken again (`as many times as you like`, `can be taken
+  multiple times`; `up to N times`). Taking it again raises the pick's level; each level is one initiation grade's
+  metamagic, and Review counts levels against the grade (`magic.metamagicCount`).
+- **spell `opposed`**: its test is opposed (`opposed by`, `Opposed test`, `resisted by`, `vs. Willpower + …`, `vs. Object
+  Resistance`; not `as opposed to`), and every Combat spell (Direct ones opposed by Willpower + Intuition, Indirect ones
+  rolled against Reaction + Willpower). **spell `essence`**: its test counts the target's Essence, in its threshold
+  (`Sorcery + Magic (5 – Essence)`, `6 minus the target's Essence`) or its resistance (`Body + Essence`). Shown in the picker, on the Magic tab and on the sheets.
+- **armor `social`**: its SOCIAL column (Firing Squad and later), as printed. The worn armor's add up with Charisma into
+  the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number.
 
 ## Formulas and issues
 
@@ -498,6 +553,8 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Karma prices | `karmaInitiationBase` | number | all | Initiation or submersion: base |
 | Karma prices | `karmaInitiationPerGrade` | number | all | Initiation or submersion: per grade |
 | Karma prices | `positiveQualityFactor` | number | optional | Positive qualities cost their karma times (unset: 1) |
+| Karma prices | `karmaMartialArt` | number | optional | Martial arts style (it comes with its signature technique; unset: counts 0, Review warns, not bought after creation) |
+| Karma prices | `karmaTechnique` | number | optional | Martial arts technique (a style’s signature one is free; unset: as `karmaMartialArt`) |
 | Advancement | `advance.expertise` | number | optional | Expertise after creation |
 | Advancement | `advance.qualityFactor` | number | optional | A positive quality after creation costs its karma times |
 | Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |

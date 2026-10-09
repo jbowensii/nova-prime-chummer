@@ -7,11 +7,12 @@ import { newId } from '../../model/types'
 import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
 import { num, type CreationRules } from './creation'
-import { MAGIC_KINDS, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
 import { fitsHost } from './categories'
+import { learned } from './martial'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -20,9 +21,13 @@ export type Op =
   | { op: 'expertise'; target: string; expertise: string | null }
   /** add a quality, or set the level of one taken (leveled ones only) */
   | { op: 'quality'; id: string; level?: number; karma?: number } | { op: 'quality'; remove: string }
-  /** add a spell, power, form…; a leveled power taken again goes up a level */
+  /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
+  /** add a martial arts style (with its signature technique, a martialtechniques id: martial.ts signatureOf), or a
+   *  technique under the style whose uid is `style`; or take one away (a style goes with its techniques) */
+  | { op: 'martialart'; id: string; signature?: string } | { op: 'martialart'; remove: string }
+  | { op: 'technique'; style: string; id: string } | { op: 'technique'; style: string; remove: string }
   | { op: 'powerPoints'; delta: number }
   | { op: 'purchase'; kind: PurchaseKind; id?: string; rating?: number; qty?: number; grade?: string; custom?: { name: string; cost: number; avail: number; essence: number } }
   | { op: 'purchase'; remove: string }
@@ -46,9 +51,11 @@ export type Op =
   | { op: 'lifemodule'; id: string; choice: number; pick: string; at?: number }
   /** lifepath's best attribute (null: none) and the one that takes what its maximum leaves over */
   | { op: 'bestAttr'; attr: Sr6Attr | null; extra?: Sr6Attr | null }
-  | { op: 'lifestyle'; id: string | null; months?: number }
-  /** add a SIN, or change one (uid) */
-  | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number } | { op: 'sin'; remove: string }
+  /** a lifestyle on a SIN: add one (no uid; id needed), change one (uid), or remove one */
+  | { op: 'lifestyle'; sin: string; uid?: string; id?: string; months?: number } | { op: 'lifestyle'; sin: string; remove: string }
+  /** add a SIN, or change one (uid: its kind too); gender '' clears it. Naming a placeholder SIN or setting its kind or
+   *  rating makes it a normal SIN. */
+  | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number; gender?: string } | { op: 'sin'; remove: string }
   | { op: 'licence'; sin: string; name: string; rating: number } | { op: 'licence'; sin: string; remove: number }
   | { op: 'karmaToNuyen'; delta: number }
   | { op: 'initiation'; delta: number }
@@ -177,26 +184,46 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const e = data.entry(op.kind, op.id)
       if (!e) return no('unknown-entry')
-      const power = op.kind === 'adeptpowers' ? data.powers[op.id] : undefined
+      const max = pickMaxLevel(data, op.kind, op.id)
       const had = b.picks.find(x => x.kind === op.kind && x.id === op.id)
       if (had) {
-        // a leveled power is bought per level: taking it again raises the level
-        if (!power?.perLevel) return no('duplicate')
-        if ((had.level ?? 1) >= power.maxLevel) return no('max-level')
+        // a leveled power is bought per level, a metamagic taken again is one more: taking it again raises the level
+        if (max === null) return no('duplicate')
+        if ((had.level ?? 1) >= max) return no('max-level')
         had.level = (had.level ?? 1) + 1
         return OK
       }
-      b.picks.push({ uid: newId(), kind: op.kind, id: op.id, name: e.name, ...(power?.perLevel ? { level: 1 } : {}) })
+      b.picks.push({ uid: newId(), kind: op.kind, id: op.id, name: e.name, ...(max !== null ? { level: 1 } : {}) })
       return OK
     }
     case 'powerLevel': {
       const x = b.picks.find(p => p.uid === op.uid)
       if (!x) return no('not-taken')
-      const v = x.kind === 'adeptpowers' ? data.powers[x.id] : undefined
-      if (!v?.perLevel) return no('no-levels')
+      const max = pickMaxLevel(data, x.kind, x.id)
+      if (max === null) return no('no-levels')
       if (op.level < 1) return no('below-one')
-      if (op.level > v.maxLevel) return no('max-level')
+      if (op.level > max) return no('max-level')
       x.level = op.level
+      return OK
+    }
+    case 'martialart': {
+      if ('remove' in op) return removeBy(b.martialArts, op.remove, l => { b.martialArts = l })
+      const e = data.entry('martialarts', op.id), sig = op.signature ? data.entry('martialtechniques', op.signature) : undefined
+      if (!e || (op.signature && !sig)) return no('unknown-entry')
+      if (b.martialArts.some(m => m.id === op.id)) return no('already-taken')
+      if (sig && learned(b).some(t => t.id === sig.id)) return no('already-taken')
+      b.martialArts.push({ uid: newId(), id: op.id, name: e.name, techniques: sig ? [{ uid: newId(), id: sig.id, name: sig.name }] : [] })
+      return OK
+    }
+    case 'technique': {
+      const m = b.martialArts.find(x => x.uid === op.style)
+      if (!m) return no('unknown-line')
+      if ('remove' in op) return removeBy(m.techniques, op.remove, l => { m.techniques = l })
+      const e = data.entry('martialtechniques', op.id)
+      if (!e) return no('unknown-entry')
+      // FS p. 97: each technique is learned once, under whichever style
+      if (learned(b).some(t => t.id === op.id)) return no('already-taken')
+      m.techniques.push({ uid: newId(), id: op.id, name: e.name })
       return OK
     }
     case 'powerPoints': return step(() => b.powerPointsBought, v => { b.powerPointsBought = v }, op.delta)
@@ -260,6 +287,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'bonus': {
       const x: { bonuses?: Bonus[] } | undefined = allLines(b).find(p => p.uid === op.uid) ?? b.picks.find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
+      if (op.bonuses.some(y => y.target === 'skill' && !y.skill)) return no('no-skill')  // (a skill bonus names its skill)
       if (op.bonuses.length) x.bonuses = op.bonuses; else delete x.bonuses
       return OK
     }
@@ -337,11 +365,21 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'lifestyle': {
-      if (op.id === null) { delete b.lifestyle; return OK }
-      if (!data.entry('lifestyles', op.id)) return no('unknown-entry')
-      const months = op.months ?? 1
-      if (months < 1) return no('below-one')
-      b.lifestyle = { id: op.id, months }
+      const s = b.sins.find(x => x.uid === op.sin)
+      if (!s) return no('unknown-line')
+      const ls = s.lifestyles ?? []
+      if ('remove' in op) return removeBy(ls, op.remove, l => { if (l.length) s.lifestyles = l; else delete s.lifestyles })
+      if (op.id !== undefined && !data.entry('lifestyles', op.id)) return no('unknown-entry')
+      if (op.months !== undefined && op.months < 1) return no('below-one')
+      if (!op.uid) {
+        if (op.id === undefined) return no('unknown-entry')
+        s.lifestyles = [...ls, { uid: newId(), id: op.id, months: op.months ?? 1 }]
+        return OK
+      }
+      const l = ls.find(x => x.uid === op.uid)
+      if (!l) return no('unknown-line')
+      if (op.id !== undefined) l.id = op.id
+      if (op.months !== undefined) l.months = op.months
       return OK
     }
     case 'sin': {
@@ -349,16 +387,21 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.rating !== undefined && op.rating < 1) return no('below-one')
       if (!op.uid) {
         const kind = op.kind ?? 'fake'
-        b.sins.push({ uid: newId(), name: op.name ?? '', kind, ...(kind === 'fake' ? { rating: op.rating ?? 1 } : {}), licences: [] })
+        b.sins.push({ uid: newId(), name: op.name ?? '', kind, ...(kind === 'fake' ? { rating: op.rating ?? 1 } : {}),
+          ...(op.gender?.trim() ? { gender: op.gender } : {}), licences: [] })
         return OK
       }
       const s = b.sins.find(x => x.uid === op.uid)
       if (!s) return no('unknown-line')
-      if (op.rating !== undefined && s.kind === 'fake') {
-        if (s.licences.some(l => l.rating > op.rating!)) return no('licence-above-sin')
-        s.rating = op.rating
-      }
+      // a kind change: a fake SIN gets a rating (1 unless given), a real one has none
+      const kind = op.kind ?? s.kind, rating = kind === 'fake' ? op.rating ?? (s.kind === 'fake' ? s.rating : undefined) ?? 1 : undefined
+      if (rating !== undefined && s.licences.some(l => l.rating > rating)) return no('licence-above-sin')
+      s.kind = kind
+      if (rating === undefined) delete s.rating; else s.rating = rating
       if (op.name !== undefined) s.name = op.name
+      // named, or its kind or rating set: a placeholder is a normal SIN now
+      if (op.name !== undefined || op.kind !== undefined || op.rating !== undefined) delete s.placeholder
+      if (op.gender !== undefined) { if (op.gender.trim()) s.gender = op.gender; else delete s.gender }
       return OK
     }
     case 'licence': {

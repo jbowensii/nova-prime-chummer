@@ -103,6 +103,9 @@
         <!-- a choice the entry offers (sr6:Choice): a quality's granted picks, a life module's mixed points, a power's
              sense or skill, a focus option, a fake licence's type -->
         <xs:element name="choice" type="sr6:Choice"/>
+        <!-- a prerequisite the entry's text prints (a martial arts technique's, importer/sr6/flags.py requires): the
+             name as printed, its kind adeptpower, technique, quality, augmentation or other -->
+        <xs:element name="requires" type="sr6:Requires"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -141,6 +144,16 @@
       <xs:attribute name="fits" type="xs:string"/>
       <xs:attribute name="accessories" type="xs:string"/>
     </xs:extension></xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Requires">
+    <xs:simpleContent><xs:extension base="xs:string">
+      <xs:attribute name="kind" use="required">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="adeptpower"/><xs:enumeration value="technique"/><xs:enumeration value="quality"/>
+          <xs:enumeration value="augmentation"/><xs:enumeration value="other"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
+    </xs:extension></xs:simpleContent>
   </xs:complexType>
   <xs:complexType name="Alias">
     <xs:simpleContent><xs:extension base="xs:string">
@@ -373,6 +386,8 @@
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="defense" type="xs:string"/>
+      <!-- its SOCIAL column as printed (`+2`, `–4`, `—`): what it adds to the wearer's Social Rating (Firing Squad) -->
+      <xs:attribute name="social" type="xs:string"/>
       <xs:attribute name="capacity" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
@@ -490,6 +505,9 @@
       <xs:attribute name="duration" type="xs:string"/>
       <xs:attribute name="dv" type="xs:string"/>
       <xs:attribute name="damage" type="xs:string"/>
+      <!-- opposed: its test is opposed (every Combat spell); essence: its test counts the target's Essence (threshold or resistance) -->
+      <xs:attribute name="opposed" type="sr6:True"/>
+      <xs:attribute name="essence" type="sr6:True"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -506,6 +524,18 @@
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
       <xs:attribute name="activation" type="xs:string"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
+  <!-- user: only an adept (or mystic adept) may take it, or only a magician (or mystic adept); absent: any initiate.
+       perLevel: it can be taken again (each time one more initiation's metamagic), up to maxLevel times -->
+  <xs:complexType name="Metamagic">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="user">
+        <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="adept"/><xs:enumeration value="magician"/></xs:restriction></xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="perLevel" type="sr6:True"/>
+      <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

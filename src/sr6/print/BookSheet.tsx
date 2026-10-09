@@ -9,9 +9,9 @@ import type { useSheetArt } from '../../print/shared'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
-import { AR_BANDS, band, runnerView } from './view'
+import { AR_BANDS, band, pickFlags, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 export type SheetArt = Pick<ReturnType<typeof useSheetArt>, 'layer' | 'vars'>
@@ -74,7 +74,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
               {ch.identity.portrait && <img className={`k-portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
               <F l="Name/primary alias" v={<>{v.name}{ch.identity.name && ch.identity.name !== v.name && <span className="k-small"> ({ch.identity.name})</span>}</>} />
               <div className="k-row"><F l="Metatype" v={data.metatypes[b.metatype]?.name} /><F l="Ethnicity" /></div>
-              <div className="k-row"><F l="Age" /><F l="Sex" /><F l="Height" /><F l="Weight" /></div>
+              <div className="k-row"><F l="Age" /><F l="Gender" v={ch.identity.gender} /><F l="Height" /><F l="Weight" /></div>
               <div className="k-row"><F l="Reputation" /><F l="Heat" /></div>
               <div className="k-row"><F l="Karma" v={n(v.karma)} /><F l="Total karma" /><F l="Misc" v={b.magic !== 'mundane' ? MAGIC_KIND_LABELS[b.magic] : undefined} /></div>
             </Box>
@@ -105,10 +105,11 @@ export function BookSheet({ art }: { art: SheetArt }) {
               <p className="k-know"><b>Knowledge</b> {v.know.map(x => x.name).join(', ') || '—'}</p>
             </Box>
             <Box id="k-ids" title="IDs / lifestyles / currency" side="l">
-              <F l="Primary lifestyle" v={v.lifestyle ? `${v.lifestyle.name} × ${b.lifestyle!.months} month${b.lifestyle!.months === 1 ? '' : 's'}` : undefined} />
+              <F l="Primary lifestyle" v={v.lifestyle} />
               <div className="k-row"><F l="Nuyen" v={`${n(v.nuyen)}¥`} /><F l="Licenses" v={licences.join(', ')} /></div>
               <table className="k-plain"><thead><tr><th>Fake IDs / related lifestyles / funds / licenses</th></tr></thead>
-                <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{s.name || 'SIN'} <span className="k-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`})</span>
+                <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{sinName(s)} <span className="k-small">({sinKind(s)}{s.gender && `, ${s.gender}`})</span>
+                  {v.lifeOf(s) && <span className="k-small"> · {v.lifeOf(s)}</span>}
                   {s.licences.length > 0 && <span className="k-small"> · {s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</span>}</td></tr>), 3, 1)}</tbody></table>
             </Box>
           </div>
@@ -192,14 +193,14 @@ export function BookSheet({ art }: { art: SheetArt }) {
             <Box id="k-spells" title="Spells / preparations / rituals / complex forms" side="r">
               <table className="k-spells"><thead><tr><th>S/P/R/CF</th><th>Type/target</th><th>Range</th><th>Duration</th><th>Drain</th></tr></thead>
                 <tbody>{pad(picks(['spells', 'rituals', 'complexforms']).map(x => { const e = data.entry(x.kind, x.id), a = e?.attrs ?? {}
-                  return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}</td><td>{[a.category, a.type, a.keywords].filter(Boolean).join(', ')}</td>
+                  return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}</td><td>{[a.category, a.type, a.keywords, ...(e ? pickFlags(e) : [])].filter(Boolean).join(', ')}</td>
                     <td>{a.range}</td><td>{a.duration}</td><td>{a.dv ?? a.fade ?? a.threshold}</td></tr> }), 5, 5)}</tbody></table>
             </Box>
             <Box id="k-powers" title="Adept powers or other abilities" side="r">
               <table><thead><tr><th>Name</th><th>Level</th><th>Notes</th></tr></thead>
                 <tbody>{pad(picks(['adeptpowers', 'metamagics', 'echoes']).map(x => { const e = data.entry(x.kind, x.id), pw = data.powers[x.id]
                   return <tr key={x.uid}><td>{e ? entryLabel(e) : x.name ?? x.id}</td><td>{x.level}</td>
-                    <td className="k-small">{x.kind === 'adeptpowers' ? pw?.cost != null && `${pw.cost} PP${pw.perLevel ? ' a level' : ''}` : x.kind === 'metamagics' ? 'Metamagic' : 'Echo'}</td></tr> }), 4, 3)}</tbody></table>
+                    <td className="k-small">{x.kind === 'adeptpowers' ? pw?.cost != null && `${pw.cost} PP${pw.perLevel ? ' a level' : ''}` : x.kind === 'metamagics' ? ['Metamagic', ...(e ? pickFlags(e) : [])].join(', ') : 'Echo'}</td></tr> }), 4, 3)}</tbody></table>
             </Box>
           </div>
         </div>

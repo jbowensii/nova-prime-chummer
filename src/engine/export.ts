@@ -26,7 +26,7 @@ export interface ExportItem { uid: string; catalogId?: string; kind: string; nam
   weapon?: { dv: string; dvText: string; ranges: Record<'melee' | 'short' | 'medium' | 'long', Range>; specialist: boolean; ammo: string[] }
   armor?: { value: number; over?: string } }
 export interface ExportRunner {
-  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; finalized: boolean
+  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; gender?: string; finalized: boolean
   metatype: { id: string; name: string; ranges: Record<AttrId, [number, number]>; edge: number }
   level: { id: string; name: string }; lifestyle: { id: string; name: string; perRun: number }
   /** token: the round token picture, null: none (use the portrait) */
@@ -61,6 +61,7 @@ export interface ExportBook {
     flyingSpeed?: number; armor: number; mount: string }[]
   skills: { id: string; source: string; page: number; name: string; attr: string; alt?: string; specs: { id: string; name: string; attr: string }[] }[]
   specs: { skill: string; id: string; name: string; attr: string; page?: number }[]
+  reference?: ExportReference[]
   metatypes?: { id: string; source: string; page: number; canon: boolean; name: string; edge: number; ranges: Record<AttrId, [number, number]>; racialQuality: string }[]
   /** The book's own sample characters, each as a runner. */
   characters?: ExportRunner[]
@@ -179,7 +180,7 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
   const dv = new Map(d.weapons.map(w => [w.uid, { dv: w.dv, ammo: w.ammo ?? [] }]))
   return {
     id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: ch.identity.streetName, realName: ch.identity.name,
-    finalized: !!ch.finalizedAt,
+    ...(ch.identity.gender ? { gender: ch.identity.gender } : {}), finalized: !!ch.finalizedAt,
     metatype: { id: ch.identity.metatype, name: meta?.name ?? (ch.identity.metatype || NO_META[ch.npc?.kind ?? ''] || ''), ranges: meta?.ranges ?? {} as never, edge: d.edge },
     level: { id: ch.level, name: c.levels.get(ch.level)?.name ?? ch.level },
     lifestyle: { id: ch.identity.lifestyle ?? 'low', name: life?.name ?? '', perRun: life?.perRun ?? 0 },
@@ -212,6 +213,11 @@ export const exportRunners = (c: Catalog, chs: Character[], o: ExportOpts): Expo
 
 /** The ticked books (or a GM's compendium: its source, marked `compendium`) as the app sees them (edits and house rules applied), with the table rules switched on, and each
  *  book's sample characters (`characters`, by source id) and NPCs (`npcs`, by source id) as runners. */
+/** A reference entry (a kind with no Foundry document): its id, source, page, name, printed stats and, with descriptions, text. */
+export interface ExportReference { kind: 'levels' | 'packages' | 'lifestyles' | 'ampTypes' | 'ampEffects' | 'attributes'; id: string; source: string
+  page: number; name: string; stats: Record<string, string | number>; description?: string }
+const ref = (kind: ExportReference['kind'], e: { id: string; source: string; page: number; name: string }, stats: ExportReference['stats'],
+  description?: string): ExportReference => ({ kind, id: e.id, source: e.source, page: e.page, name: e.name, stats, ...description ? { description } : {} })
 export function exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts,
   characters: Record<string, Character[]> = {}, npcs: Record<string, Character[]> = {}): ExportFile {
   const books: ExportBook[] = sources.flatMap(id => {
@@ -244,6 +250,21 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
       rules: mine(c.rules).map(r => ({ id: r.id, source: r.source, page: r.page, sheet: r.sheet, sheetName: sheetDisplayName(r.sheet),
         section: r.section.trim() || sheetDisplayName(r.sheet), title: r.title,
         ...o.descriptions && r.text ? { text: r.text } : {} })),
+      // the kinds the Foundry system has no document for (owner, 2026-10-09: the compendiums hold everything): its stats as
+      // printed, for a reference journal per kind
+      reference: [
+        ...mine(c.levels).map(l => ref('levels', l, { nuyen: l.nuyen, attrAtMax: l.attrAtMax, skillCap: l.skillCap, rrAttr: l.rrAttr, rrSkill: l.rrSkill, rrSpec: l.rrSpec })),
+        ...mine(c.packages).map(p => ref('packages', p, { level: p.level, archetype: p.archetype, attrPoints: p.attrPoints, attrAtMax: p.attrAtMax,
+          skillPoints: p.skillPoints, skillsAtSix: p.skillsAtSix, ampPoints: p.ampPoints, armor: p.armor, standardWeapons: p.standardWeapons,
+          specialistWeapons: p.specialistWeapons, equipment: p.equipment, spells: p.spells })),
+        ...mine(c.lifestyles).map(l => ref('lifestyles', l, { perRun: l.perRun }, o.descriptions ? l.text : undefined)),
+        ...mine(c.ampTypes).map(t => ref('ampTypes', t, { base: t.base, ...t.baseAfterFirst != null ? { baseAfterFirst: t.baseAfterFirst } : {},
+          essence: t.essence, ...t.requires ? { requires: t.requires } : {} })),
+        ...mine(c.ampEffects).map(f => ref('ampEffects', f, { category: f.category, rating: f.rating, types: f.types.join(', '),
+          ...f.max != null ? { max: f.max } : {}, ...f.requires ? { requires: f.requires } : {}, ...f.excludes ? { excludes: f.excludes } : {},
+          ...f.param ? { param: f.param } : {}, ...f.gmApproval ? { gmApproval: 'yes' } : {}, ...f.essence != null ? { essence: f.essence } : {} })),
+        ...mine(c.attributes).map(a => ref('attributes', a, { abbr: a.abbr })),
+      ],
       ...characters[id]?.length ? { characters: characters[id].map(ch => exportRunner(c, ch, o)) } : {},
       ...npcs[id]?.length ? { npcs: npcs[id].map(ch => exportRunner(c, ch, o)) } : {},
     }]

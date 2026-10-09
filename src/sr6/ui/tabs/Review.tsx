@@ -64,7 +64,7 @@ export function ReviewTab() {
         .map(a => [ATTR_NAMES[a], d.attrs[a].augmented !== d.attrs[a].natural ? `${d.attrs[a].natural} (${d.attrs[a].augmented})` : d.attrs[a].natural] as [string, string | number]),
         ['Essence', d.essence], ['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)],
         ['Physical monitor', d.monitors.physical], ['Stun monitor', d.monitors.stun], ['Overflow', d.monitors.overflow],
-        ['Defense Rating', d.defenseRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
+        ['Defense Rating', d.defenseRating], ['Social Rating', d.socialRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
         ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
         ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`],
         // an item's own values from its accessories (a cyberlimb's Strength): the item's, not the runner's

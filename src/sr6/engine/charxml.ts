@@ -7,7 +7,7 @@ import {
   BONUS_TARGETS, CONTACT_TYPES, CORE_ATTRS, CP_POOLS, MAGIC_KIND_LABELS, PICK_KINDS, PRIORITY_COLUMNS, PURCHASE_KINDS, SR6_ADVANCE_OPS, SR6_ATTRS, SR6_LEDGER_TYPES,
   SR6_METHODS, SR6_NPC_KINDS, SR6_NPC_PARTS, blankBuild,
   type Bonus, type ContactType, type MagicKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6Contact, type Sr6Knowledge, type Sr6LedgerEntry,
-  type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality,
+  type Sr6MartialArt, type Sr6Npc, type Sr6Pick, type Sr6Printed, type Sr6Purchase, type Sr6Quality, type Sr6Sin,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
@@ -18,7 +18,7 @@ const FORMAT_VERSION = 1
 const MAGIC_KINDS = Object.keys(MAGIC_KIND_LABELS) as MagicKind[]
 
 // ---- writing ----
-const bonusXml = (x: Bonus) => el('bonus', { target: x.target, value: x.value, perRating: x.perRating })
+const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating })
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
@@ -30,8 +30,12 @@ function purchaseXml(p: Sr6Purchase): string {
 const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name })
 const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
+const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
+const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
 const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
   types: c.types?.length ? c.types.join(' ') : undefined })
+const sinXml = (s: Sr6Sin) => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder },
+  s.licences.map(l => el('licence', l)).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''))
 
 function buildXml(b: Sr6Build): string {
   const rows = [
@@ -40,10 +44,9 @@ function buildXml(b: Sr6Build): string {
     ...b.lifepath.map(m => el('lifemodule', { id: m.id }, Object.entries(m.choices).map(([index, pick]) => el('choice', { index, pick })).join(''))),
     ...SR6_ATTRS.map(id => el('attribute', { id, ...b.attributes[id] })),
     ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
-    ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.purchases.map(purchaseXml),
+    ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.martialArts.map(martialXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
-    ...(b.lifestyle ? [el('lifestyle', { id: b.lifestyle.id, months: b.lifestyle.months })] : []),
-    ...b.sins.map(s => el('sin', { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating }, s.licences.map(l => el('licence', l)).join(''))),
+    ...b.sins.map(sinXml),
   ]
   return el('build', { method: b.method, magic: b.magic, aspectedSkill: b.aspectedSkill, tradition: b.tradition, drainAttr: b.drainAttr,
     powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen,
@@ -60,11 +63,14 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'quality': return [{}, qualityXml(a.line)]
     case 'buyoff': return [{ target: a.target }, a.line ? qualityXml(a.line) : '']
     case 'pick': return [{}, pickXml(a.line)]
+    case 'martialart': return [{}, martialXml(a.line)]
+    case 'technique': return [{ target: a.target }, techniqueXml(a.line)]
     case 'initiate': return [{}, a.line ? pickXml(a.line) : '']
     case 'purchase': return [{}, purchaseXml(a.line)]
     case 'drop': return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
     case 'contact': return [{}, contactXml(a.line)]
-    case 'lifestyle': return [{ lifestyle: a.id, months: a.months }, '']
+    case 'sin': return [{}, sinXml(a.line)]
+    case 'lifestyle': return [{ lifestyle: a.id, months: a.months, sin: a.sin, uid: a.uid }, '']
     case 'powerpoint': case 'convert': case 'other': return [{}, '']
   }
 }
@@ -101,7 +107,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
     printedXml(ch.printed), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
     ...(ch.migrated ?? []).map(m => el('migrated', m))].filter(Boolean).join('\n  ')
-  const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, metatype: ch.build.metatype,
+  const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, gender: id.gender, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
     lastExportedAt: ch.lastExportedAt, finalKarma: ch.final?.karma, finalNuyen: ch.final?.nuyen, sampleKey: ch.sampleKey })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="${SR6_CHAR_NS}"${root}>\n  ${body}\n</sr6:character>\n`
@@ -131,8 +137,11 @@ function oneOf<T extends string>(v: string | null, allowed: readonly T[], what: 
 }
 const label = (e: Element, i: number) => `${e.localName} ${i + 1}`
 
-const readBonus = (e: Element): Bonus =>
-  def({ target: oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, value: num(e, 'value', 0), perRating: yes(e, 'perRating') })
+function readBonus(e: Element): Bonus {
+  const target = oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, skill = str(e, 'skill')
+  if (target === 'skill' && !skill) throw new Error('a skill bonus names no skill')
+  return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating') })
+}
 const readBonuses = (e: Element) => { const xs = kids(e, 'bonus').map(readBonus); return xs.length ? xs : undefined }
 
 function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
@@ -151,6 +160,9 @@ const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid')
   karma: num(e, 'karma'), free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
 const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
   id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
+const readTechnique = (e: Element) => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', name: str(e, 'name') })
+const readMartial = (e: Element, fix?: string[]): Sr6MartialArt => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '',
+  name: str(e, 'name'), techniques: each(kids(e, 'technique'), readTechnique, label, fix) })
 const readContact = (e: Element): Sr6Contact => {
   const types = (e.getAttribute('types') ?? '').split(/\s+/).filter(t => (CONTACT_TYPES as string[]).includes(t)) as ContactType[]
   return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '', archetype: e.getAttribute('archetype') ?? '',
@@ -181,14 +193,30 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.knowledge = each(kids(b, 'knowledge'), readKnowledge, label, fix)
   out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
   out.picks = each(kids(b, 'pick'), readPick, label, fix)
+  out.martialArts = each(kids(b, 'martialart'), e => readMartial(e, fix), label, fix)
   out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix), label, fix)
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
-  const ls = kid(b, 'lifestyle')
-  if (ls) out.lifestyle = { id: ls.getAttribute('id') ?? '', months: num(ls, 'months', 0) }
-  out.sins = each(kids(b, 'sin'), e => def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
-    kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'),
-    licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })) }), label, fix)
+  out.sins = each(kids(b, 'sin'), readSin, label, fix)
   return out
+}
+function readSin(e: Element): Sr6Sin {
+  const lifestyles = kids(e, 'lifestyle').map(readLifestyle)
+  return def({ uid: e.getAttribute('uid') ?? '', name: e.getAttribute('name') ?? '',
+    kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!, rating: num(e, 'rating'), gender: str(e, 'gender'),
+    licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })),
+    lifestyles: lifestyles.length ? lifestyles : undefined, placeholder: yes(e, 'placeholder') })
+}
+const readLifestyle = (e: Element) => ({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', months: num(e, 'months', 0) })
+
+/** An older file's one lifestyle (<build><lifestyle>) goes on the first SIN, and its ledger's lifestyle spends naming no
+ *  SIN replay there (career.ts); a runner with either and no SIN gets an unnamed placeholder SIN (free; Review asks the
+ *  player to name it or move the lifestyle: rules.ts sin.placeholder). */
+function migrateLifestyle(ch: Sr6Character, old: Element | undefined) {
+  const b = ch.build
+  if (!old && !ch.ledger.some(e => e.type === 'advance' && e.advance.op === 'lifestyle' && !e.advance.sin)) return
+  if (!b.sins.length) b.sins.push({ uid: `${ch.id}-sin`, name: '', kind: 'real', licences: [], placeholder: true })
+  const sin = b.sins[0], id = old?.getAttribute('id') ?? ''
+  if (old) sin.lifestyles = [{ uid: `${sin.uid}-${id}`, id, months: num(old, 'months', 0) }, ...sin.lifestyles ?? []]
 }
 
 // ---- the ledger and the NPC block ----
@@ -214,11 +242,14 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'quality': return { op, line: line(e, 'quality', readQuality, true) }
     case 'buyoff': return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality) })
     case 'pick': return { op, line: line(e, 'pick', readPick, true) }
+    case 'martialart': return { op, line: line(e, 'martialart', x => readMartial(x, fix), true) }
+    case 'technique': return { op, target: req(e, 'target'), line: line(e, 'technique', readTechnique, true) }
     case 'initiate': return def({ op, line: line(e, 'pick', readPick) })
     case 'purchase': return { op, line: line(e, 'purchase', purchase, true) }
     case 'drop': return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
     case 'contact': return { op, line: line(e, 'contact', readContact, true) }
-    case 'lifestyle': return { op, id: req(e, 'lifestyle'), months: num(e, 'months', 0) }
+    case 'sin': return { op, line: line(e, 'sin', readSin, true) }
+    case 'lifestyle': return def({ op, id: req(e, 'lifestyle'), months: num(e, 'months', 0), sin: str(e, 'sin'), uid: str(e, 'uid') })
     case 'convert': return { op, karma }
     case 'powerpoint': case 'other': return { op }
   }
@@ -289,7 +320,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     const printed = kid(r, 'printed')
     const ch: Sr6Character = def({
       formatVersion: 1 as const, id: r.getAttribute('id')!,
-      identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', metatype: build.metatype,
+      identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', gender: str(r, 'gender'), metatype: build.metatype,
         portrait: t('portrait'), token: t('token'), backdrop: backdrop && BACKDROPS.includes(backdrop) ? backdrop : undefined,
         background: t('background') ?? '', notes: t('notes') ?? '' }),
       build, finalizedAt: str(r, 'finalizedAt'), campaign: str(r, 'campaign'),
@@ -302,6 +333,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       migrated: kids(r, 'migrated').length ? kids(r, 'migrated').map(m => ({ from: m.getAttribute('from') ?? '', to: m.getAttribute('to') ?? '', at: m.getAttribute('at') ?? '' })) : undefined,
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),
     })
+    migrateLifestyle(ch, kid(b, 'lifestyle'))
     return def({ ok: true as const, character: ch, rev: num(r, 'rev') })
   } catch (e) {
     return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }

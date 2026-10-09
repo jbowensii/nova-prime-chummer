@@ -9,7 +9,7 @@ is built from this data; the format itself is ours and stays stable.
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="…"
-    streetName="Slick" name="Jan Novak" metatype="dwarf" level="runner" package="free"
+    streetName="Slick" name="Jan Novak" gender="…" metatype="dwarf" level="runner" package="free"
     lifestyle="low" backdrop="grid" finalizedAt="…" finalRemaining="0" updatedAt="…">
   <portrait>data:image/jpeg;base64,…</portrait>
   <background>…</background>
@@ -50,7 +50,7 @@ is built from this data; the format itself is ours and stays stable.
 ```
 
 - **The summary lives on the root element** (names, metatype, level, `rev`),
-  so a tool can list runners without parsing the whole file.
+  so a tool can list runners without parsing the whole file. `gender` is optional, as the player writes it.
 - **`rev`** is the server's revision counter. A save sends the revision it
   started from (the `If-Match` header). The server refuses a stale save with
   409, and the app then offers overwrite, save as a new file, or reload.

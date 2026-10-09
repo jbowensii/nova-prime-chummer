@@ -8,7 +8,7 @@ import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { allSkills, band, PICKS, runnerView } from './view'
@@ -64,7 +64,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
           <Panel id="d-personal" title="Personal data">
             <dl className="d-pairs">
               {([['Alias', v.name], ['Name', ch.identity.name], ['Metatype', data.metatypes[b.metatype]?.name],
-                ['Magic/Resonance', mr ? `${MAGIC_KIND_LABELS[b.magic]} ${A(mr)}` : 'Mundane'], ['Sex', ''], ['Height', ''], ['Weight', ''], ['Age', ''],
+                ['Magic/Resonance', mr ? `${MAGIC_KIND_LABELS[b.magic]} ${A(mr)}` : 'Mundane'], ['Gender', ch.identity.gender ?? ''], ['Height', ''], ['Weight', ''], ['Age', ''],
                 ['Heat', ''], ['Reputation', ''], ['Karma', n(v.karma)], ['Total Karma', ''], ['Essence', n(d.essence)]] as [string, ReactNode][])
                 .map(([l, x]) => <div key={l}><dt>{l}</dt><dd>{x}</dd></div>)}
             </dl>
@@ -150,11 +150,11 @@ export function DossierSheet({ art }: { art: SheetArt }) {
           <table><thead><tr><th>Item</th><th>Rating</th><th>Qty</th></tr></thead>
             <tbody>{pad(v.gear.map(x => <tr key={x.uid}><td>{nameOf(x)}{acc(x)}{x.note && <span className="d-small"> {x.note}</span>}</td><td>{x.rating}</td><td>{x.qty}</td></tr>), 4, 3)}</tbody></table>
         </Panel>
-        <Panel id="d-ids" title="IDs / lifestyle">
-          <table><thead><tr><th>SIN</th><th>Rating</th><th>Licenses</th></tr></thead>
-            <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{s.name || 'SIN'}</td><td>{s.kind === 'real' ? 'real' : s.rating ?? 1}</td>
-              <td>{s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</td></tr>), 2, 3)}</tbody></table>
-          <p><b>Lifestyle</b> {v.lifestyle ? `${v.lifestyle.name} × ${b.lifestyle!.months} month${b.lifestyle!.months === 1 ? '' : 's'}` : '—'}</p>
+        <Panel id="d-ids" title="IDs / lifestyles">
+          <table><thead><tr><th>SIN</th><th>Rating</th><th>Licenses</th><th>Lifestyles</th></tr></thead>
+            <tbody>{pad(b.sins.map(s => <tr key={s.uid}><td>{sinName(s)}{s.gender && <span className="d-small"> {s.gender}</span>}</td>
+              <td>{s.kind === 'real' ? 'real' : s.rating ?? 1}</td>
+              <td>{s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</td><td>{v.lifeOf(s)}</td></tr>), 2, 4)}</tbody></table>
         </Panel>
       </div>
 

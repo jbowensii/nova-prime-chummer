@@ -2,8 +2,8 @@
 // runners, NPCs, books and GM compendiums as JSON for the Foundry importer module (jbowensii/chummer-sr6-foundry). Every number is the
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
-import type { Bonus, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
-import { augFamily, DISPLAY_KINDS, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
+import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
@@ -13,8 +13,9 @@ import { deriveSr6, type Sr6Derived } from './derive'
 import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { catalogFind } from './load'
-import { attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
+import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
+import { prerequisites, type Prerequisite } from './martial'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export', SR6_EXPORT_VERSION = 1
 export interface Sr6ExportOpts { descriptions: boolean; now: string; appVersion: string }
@@ -22,23 +23,37 @@ export interface Sr6ExportOpts { descriptions: boolean; now: string; appVersion:
 export interface Sr6Values {
   rating?: number; cost?: number; avail?: number; legality?: 'L' | 'I' | 'F'; essence?: number; capacity?: number
   dv?: number; stun?: boolean; ar?: (number | null)[]; modes?: string[]; ammo?: number; defense?: number
+  /** an armor's Social modifier (its printed `+2`, `–4`) */
+  social?: number
   karma?: number; powerCost?: number; drain?: number; fade?: number; threshold?: number
   vehicle?: { handling?: [number, number]; accel?: [number, number]; interval?: [number, number]; topSpeed?: number
     body?: number; armor?: number; pilot?: number; sensor?: number; seats?: number }
 }
-/** evaluated: × rating when perRating, × qty */
-export interface Sr6ExportBonus { target: Sr6Attr | 'initDice'; value: number }
+/** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
+ *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
+ *  runner's */
+export type Sr6ExportBonus = { target: Sr6Attr | 'initDice' | 'defense'; value: number } | { target: 'skill'; id: string; name: string; value: number }
+/** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
+ *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
+export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
+/** A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold) */
+export interface Sr6ExportTest { skill: string; attr: string; threshold?: number }
 /** A thing on a runner or in a book: the catalog entry as printed (attrs, parts) plus Chummer's values. */
 /** name: as printed; label: how Chummer shows it, its category first when its name needs it (`Cyberlimb: Arm (synthetic)`),
  *  only when that differs (attrs.category and attrs.group hold the category) */
 export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name: string; label?: string; source?: string; page?: number; canon: boolean
-  attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string }
+  attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string
+  effects?: Sr6ExportEffect[]; tests?: Sr6ExportTest[]
+  /** the ids the entry had in earlier imports (the catalog's <alias id kind>, Sr6Catalog.moved): kind only when it was
+   *  another kind. A reader that keyed things by the old id finds them again. */
+  aliases?: { id: string; kind?: Sr6Kind }[] }
 export interface Sr6ExportPurchase extends Sr6ExportItem { uid: string; qty: number; grade?: string; worn: boolean; note?: string
   bonuses: Sr6ExportBonus[]; accessories: Sr6ExportPurchase[] }
 export interface Sr6ExportNpc { kind: Exclude<Sr6NpcKind, 'contact'>; rating?: number; group?: string; from?: Sr6Npc['from']
   stats: ReturnType<typeof npcValues>; lines: Sr6Npc['lines']; pools: ReturnType<typeof npcPools> }
+export interface Sr6ExportLifestyle { uid: string; id: string; name: string; months: number; cost?: number }
 export interface Sr6ExportRunner {
-  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; finalized: boolean
+  id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; gender?: string; finalized: boolean
   metatype: { id: string; name: string }
   magic: { kind: MagicKind; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'; aspectedSkill?: string; initiation: number; submersion: number }
   portrait: string | null; token: string | null
@@ -47,13 +62,18 @@ export interface Sr6ExportRunner {
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
+  /** styles, each with the techniques learned under it */
+  martialArts: (Sr6ExportItem & { uid: string; techniques: (Sr6ExportItem & { uid: string; requires?: Prerequisite[] })[] })[]
   purchases: Sr6ExportPurchase[]
-  contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number }[]
-  lifestyle: { id: string; name: string; months: number; cost?: number } | null
-  sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; licences: { name: string; rating: number }[] }[]
+  contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }[]
+  /** deprecated (for the module's older versions): the first SIN's lifestyle that has one, as sins[].lifestyles has it */
+  lifestyle: Omit<Sr6ExportLifestyle, 'uid'> | null
+  /** placeholder: an unnamed stand-in holding an older file's lifestyle (name '', kind real); left out otherwise */
+  sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; placeholder?: true; licences: { name: string; rating: number }[]
+    lifestyles: Sr6ExportLifestyle[] }[]
   karma: number; nuyen: number
   /** for reading only: the module writes none of it (Eden derives its own) */
-  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'defenseRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
+  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'socialRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
   background: string; notes: string
   ledger: { at: string; type: Sr6LedgerType; summary: string; karma: number; nuyen: number }[]
   npc?: Sr6ExportNpc
@@ -84,6 +104,7 @@ export function entryValues(e: Sr6Entry, rating?: number, find?: Find): Sr6Value
   const val = (f: string) => bookValue(e, f, r, find).n ?? undefined
   const v: Sr6Values = defined({ rating: r, cost: e.kind === 'adeptpowers' ? undefined : val('cost'), avail: val('avail'),
     legality: legality(a.avail), essence: val('essence'), capacity: num(a.capacity?.replace(/^\s*\[(.*)\]\s*$/, '$1'), r), defense: num(a.defense, r),
+    social: e.kind === 'armor' ? armorSocial(a.social, r) ?? undefined : undefined,
     karma: num(a.karma, r), powerCost: e.kind === 'adeptpowers' ? num(a.cost, r) : undefined, drain: e.kind === 'spells' ? num(a.dv, r) : undefined,
     // a ritual's threshold of `Force` is the ritual's own Force, not the rating the item is bought at
     fade: num(a.fade, r), threshold: /[a-z]/i.test(a.threshold ?? '') ? undefined : num(a.threshold, r) })
@@ -112,9 +133,37 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
   return a
 }
 
+/** The catalog's <effect> and <test> parts of an entry, when it has any. */
+function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests'> {
+  const effects = e.parts.filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && (p.attrs.op === 'add' || p.attrs.op === 'edge-cost'))
+    .map(p => ({ target: p.attrs.target, op: p.attrs.op as Sr6ExportEffect['op'], value: p.attrs.value, ...(p.attrs.confidence === 'low' ? { low: true as const } : {}) }))
+  const tests = e.parts.filter(p => p.tag === 'test' && p.attrs.skill && p.attrs.attr).map(p => {
+    const t = Number(p.attrs.threshold)
+    return { skill: p.attrs.skill, attr: p.attrs.attr, ...(p.attrs.threshold && Number.isInteger(t) ? { threshold: t } : {}) }
+  })
+  return { ...(effects.length ? { effects } : {}), ...(tests.length ? { tests } : {}) }
+}
+
+/** old id -> entry, turned round: entry key -> the ids it had before (cached per catalog) */
+const movedTo = new WeakMap<Sr6Catalog['moved'], Map<string, { kind: Sr6Kind; id: string }[]>>()
+function aliasesOf(c: Sr6Catalog, e: Sr6Entry): Pick<Sr6ExportItem, 'aliases'> {
+  if (!c.moved?.size) return {}
+  let m = movedTo.get(c.moved)
+  if (!m) {
+    m = new Map()
+    for (const [from, to] of c.moved) {
+      const i = from.indexOf('/'), key = `${to.kind}/${to.id}`
+      m.set(key, [...m.get(key) ?? [], { kind: from.slice(0, i) as Sr6Kind, id: from.slice(i + 1) }])
+    }
+    movedTo.set(c.moved, m)
+  }
+  const old = m.get(`${e.kind}/${e.id}`)
+  return old?.length ? { aliases: old.map(a => (a.kind === e.kind ? { id: a.id } : { id: a.id, kind: a.kind })) } : {}
+}
+
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
-  return { id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
+  return { ...effectsOf(e), ...aliasesOf(c, e), id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
     attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating, catalogFind(c)),
     ...(text && e.text ? { description: e.text } : {}) }
 }
@@ -122,9 +171,12 @@ function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6Ex
 const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
   ({ ...(id ? { id } : {}), kind, name, canon: false, attrs: {}, parts: [], values: {} })
 
-// a Defense Rating bonus is in derived.defenseRating, not here (the export's targets are attributes and initDice)
-const bonuses = (bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
-  (bs ?? []).flatMap(b => (b.target === 'defense' ? [] : [{ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }]))
+// every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
+const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
+  (bs ?? []).map(b => {
+    const value = b.value * (b.perRating ? rating : 1) * times
+    return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value } : { target: b.target, value }
+  })
 
 /** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating
  *  (they are its host's, not the runner's: derived.attributes leaves them out). */
@@ -137,7 +189,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
   return defined({ ...base, uid: x.uid, values, qty: x.qty, grade: x.grade, worn: !!x.worn, note: x.note,
-    bonuses: bonuses(x.bonuses, x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, a, false)) })
+    bonuses: bonuses(data, x.bonuses, x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, a, false)) })
 }
 
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt
@@ -151,9 +203,15 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
   const c = withSr6House(all, ch.house).c, data = c === all ? allData : sr6Data(c)
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
-  const voided = voidedIds(ch), lifestyle = b.lifestyle && data.entry('lifestyles', b.lifestyle.id)
+  const voided = voidedIds(ch)
+  const sins = b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder,
+    licences: s.licences.map(l => ({ name: l.name, rating: l.rating })),
+    lifestyles: (s.lifestyles ?? []).map(l => { const e = data.entry('lifestyles', l.id)
+      return defined({ uid: l.uid, id: l.id, name: e?.name ?? l.id, months: l.months, cost: num(e?.attrs.cost) }) }) }))
+  const first = sins.flatMap(s => s.lifestyles)[0]
   return {
-    id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: id.streetName, realName: id.name, finalized: !!ch.finalizedAt,
+    id: ch.id, updatedAt: ch.updatedAt, exportedAt: o.now, streetName: id.streetName, realName: id.name, ...(id.gender ? { gender: id.gender } : {}),
+    finalized: !!ch.finalizedAt,
     metatype: { id: b.metatype, name: data.metatypes[b.metatype]?.name ?? '' },
     magic: defined({ kind: b.magic, tradition: b.tradition, drainAttr: b.drainAttr, aspectedSkill: b.aspectedSkill, initiation: b.initiation, submersion: b.submersion }),
     portrait: id.portrait ?? null, token: id.token ?? null,
@@ -169,14 +227,25 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     picks: b.picks.map(p => {
       const e = data.entry(p.kind, p.id)
       return defined({ ...(e ? item(c, e, true) : bare(p.kind, p.name ?? p.id, p.id)), uid: p.uid, pick: p.kind, level: p.level,
-        bonuses: bonuses(p.bonuses, p.level ?? 1) })
+        bonuses: bonuses(data, p.bonuses, p.level ?? 1) })
+    }),
+    martialArts: b.martialArts.map(m => {
+      const line = (kind: 'martialarts' | 'martialtechniques', x: { uid: string; id: string; name?: string }) => {
+        const e = data.entry(kind, x.id)
+        return { ...(e ? item(c, e, true) : bare(kind, x.name ?? x.id, x.id)), uid: x.uid }
+      }
+      return { ...line('martialarts', m), techniques: m.techniques.map(t => {
+        const requires = prerequisites(data, b, data.entry('martialtechniques', t.id)) // (absent when it prints none)
+        return { ...line('martialtechniques', t), ...(requires.length ? { requires } : {}) }
+      }) }
     }),
     purchases: b.purchases.map(x => purchase(c, data, cr, x)),
-    contacts: b.contacts.map(x => ({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty })),
-    lifestyle: b.lifestyle ? defined({ id: b.lifestyle.id, name: lifestyle?.name ?? b.lifestyle.id, months: b.lifestyle.months, cost: num(lifestyle?.attrs.cost) }) : null,
-    sins: b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, licences: s.licences.map(l => ({ name: l.name, rating: l.rating })) })),
+    contacts: b.contacts.map(x => defined({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty,
+      types: x.types?.length ? [...x.types] : undefined })),
+    lifestyle: first ? (({ uid: _, ...l }) => l)(first) : null,
+    sins,
     karma: money.karma, nuyen: money.nuyen,
-    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, defenseRating: d.defenseRating,
+    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, monitorBonus: d.monitorBonus, defenseRating: d.defenseRating, socialRating: d.socialRating,
       composure: d.composure, judgeIntentions: d.judgeIntentions, memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools }) }),
     background: id.background ?? '', notes: id.notes ?? '',
     ledger: ch.ledger.filter(e => e.type !== 'void' && !voided.has(e.id)).map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e),
@@ -204,9 +273,9 @@ const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] =
 /** A books file: each ticked source still in the catalog (unknown ids skipped), with its entries of every kind in
  *  SR6_KINDS order, then catalog order, as the app sees them (edits applied); their text only when `descriptions`. */
 export function exportSr6Books(c: Sr6Catalog, data: Sr6Data, sources: string[], o: Sr6ExportOpts): Sr6ExportFile {
-  // not the implant grades: Foundry has no item for them (a purchase carries its grade's key); nor the kinds only listed
-  // as printed (DISPLAY_KINDS)
-  const kinds = (Object.keys(SR6_KINDS) as Sr6Kind[]).filter(k => k !== 'grades' && !DISPLAY_KINDS.has(k))
+  // every kind (owner, 2026-10-09: the compendiums hold everything): a kind the system has no document for, the implant
+  // grades and the kinds only listed as printed included, becomes a reference journal there
+  const kinds = Object.keys(SR6_KINDS) as Sr6Kind[]
   return { ...envelope('books', o), books: sources.flatMap(id => {
     const s = c.sources.get(id)
     if (!s) return []

@@ -10,8 +10,8 @@ the same file. The producer is `src/sr6/engine/export.ts`.
 Two kinds, told apart by `kind`:
 
 - `runners`: one or more runners or NPCs as they stand (a finalized runner with its career spends replayed).
-- `books`: the ticked books' entries of every kind but the implant grades (Foundry has no item for them; a purchase
-  carries its grade's key), as the app sees them (catalog edits applied), or one GM compendium.
+- `books`: the ticked books' entries of every kind (`SR6_KINDS`: the implant grades and the kinds only listed as printed
+  included, so the compendiums hold everything), as the app sees them (catalog edits applied), or one GM compendium.
 
 Files are named `runners-YYYY-MM-DD.sr6foundry.json`, `books-YYYY-MM-DD.sr6foundry.json` and
 `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json` (the local date of the export). The importer goes by `format` and `kind`,
@@ -49,6 +49,7 @@ is closed (no other keys).
 |---|---|
 | `id`, `updatedAt`, `exportedAt` | the runner's id, last change, this export's time |
 | `streetName`, `realName` | identity |
+| `gender` | optional: the runner's gender as the player wrote it (left out when not set) |
 | `finalized` | true once the runner is finalized (career play) |
 | `metatype` | `{ id, name }`; an NPC may have none (`""`) |
 | `magic` | `{ kind, tradition?, drainAttr?, aspectedSkill?, initiation, submersion }`; `kind` `full`, `aspected`, `mystic-adept`, `adept`, `technomancer` or `mundane` |
@@ -59,12 +60,13 @@ is closed (no other keys).
 | `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |
 | `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
+| `martialArts` | martial arts styles: items (kind `martialarts`; `attrs.categories`, `attrs.signature` as printed) plus `{ uid, techniques }`; `techniques`: the ones learned under the style (its signature one included), items (kind `martialtechniques`; `attrs.category`) plus `{ uid, requires? }`; `requires`: the technique's printed prerequisites `[{ kind, name, met? }]`, `kind` `adeptpower`, `technique`, `quality`, `augmentation` or `other`, `met` whether the runner has it (absent when it can't be told: `other`, or an augmentation printed as an amount), absent when it prints none (and in older files). Absent in files written before martial arts were added |
 | `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles |
-| `contacts` | `[{ uid, name, archetype, connection, loyalty }]` |
-| `lifestyle` | `{ id, name, months, cost? }` or `null`; `cost` is the lifestyle's price per month |
-| `sins` | `[{ uid, name, kind, rating?, licences: [{ name, rating }] }]`; `kind` `real` or `fake` |
+| `contacts` | `[{ uid, name, archetype, connection, loyalty, types? }]`; `types`: the Sixth World Companion's contact types, when set |
+| `lifestyle` | **deprecated**, kept for the module's older versions: the first lifestyle of the first SIN that has one, `{ id, name, months, cost? }`, or `null`. Read `sins[].lifestyles` |
+| `sins` | `[{ uid, name, kind, rating?, gender?, placeholder?, licences: [{ name, rating }], lifestyles: [{ uid, id, name, months, cost? }] }]`; `kind` `real` or `fake`; `gender`: that identity's own; `placeholder: true` (left out otherwise): an unnamed stand-in (`name` empty, `kind` real, free) holding an older file's lifestyle when the runner had no SIN, shown as Unnamed SIN; `lifestyles`: the ones paid under this SIN (a lifestyle always belongs to a SIN, a SIN may have none); `cost` is the lifestyle's price per month. For Eden: a `sin` item per SIN and a `lifestyle` item per lifestyle with `system.sin` naming its SIN |
 | `karma`, `nuyen` | a finalized runner's balances (the ledger); a draft's: what the build budgets leave |
-| `derived` | a runner only (an NPC has none), for reading: `{ initiative, astralInit?, monitors, defenseRating, composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. The importer writes none of it: the system derives its own |
+| `derived` | a runner only (an NPC has none): `{ initiative, astralInit?, monitors, monitorBonus, defenseRating, socialRating (Charisma plus the worn armor's Social), composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. For reading, except `monitorBonus` `{ physical, stun }`: the boxes the monitors have beyond base + attribute / divisor (Built Tough's), which the importer writes as the system's monitor modifiers; the system derives the rest itself |
 | `background`, `notes` | free text |
 | `ledger` | `[{ at, type, summary, karma, nuyen }]`: the live entries with the Ledger tab's label (`Creation finished`, `Earned: <run> (<date>)`, the spend's label, the note); a voided entry and its void are left out |
 | `npc` | an NPC only: the NPC block (below) |
@@ -84,14 +86,19 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `name` | as printed (a custom line: the player's) |
 | `label` | how Chummer shows it, when that differs from the printed name: its category first (`Cyberlimb: Arm (synthetic)`). The category itself is `attrs.category` (and `attrs.group` when the name needs it), a product's maker `attrs.maker`. An importer whose item has no category field may use `label` as the item's name |
 | `canon` | the source is canon; a custom line or a GM compendium's entry: `false` |
-| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`); an augmentation's `type` is `cyberware` or `bioware` (geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type in `ware`) |
+| `attrs` | every attribute of the entry as printed (strings: `"Rating × 500"`, `"5(L)"`, `"9/7/—/—/—"`); an augmentation's `type` is `cyberware` or `bioware` (geneware, symbionts and transgenics go as bioware, nanoware as cyberware, the printed type in `ware`). The flags the builder uses: a spell's `opposed` `"true"` (its test is opposed; every Combat spell) and `essence` `"true"` (its test counts the target's Essence, in its threshold, `5 – Essence`, or its resistance, `Body + Essence`); a metamagic's `user` `"adept"` or `"magician"` (who may take it; absent: any initiate, a mystic adept either), `perLevel` `"true"` (it can be taken again, one initiation's metamagic each time; the pick's `level` counts them) and `maxLevel` (the most times, when printed); an armor's `social` |
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |
+| `effects` | what the entry's printed text says it does (the catalog's `<effect>`, `docs/sr6-data-format.md`): `[{ target, op, value, low? }]`; `target` `attr:<abbr>`, `skill:<id>`, `derived:<name>` (defense, initiative, composure, judge-intentions, memory, social) or `item:<field>` (an accessory's effect on its host: `item:ar`, five comma-separated bands); `op` `add` or `edge-cost`; `low` true when read from a sentence that sets a condition (shown, never applied). Absent when none |
+| `tests` | a test the entry's text calls for: `[{ skill, attr, threshold? }]` (`skill:<id>`, `attr:<abbr>`). Absent when none |
+| `aliases` | the ids the entry had in earlier imports (the catalog's `<alias id kind>`, `docs/sr6-data-format.md`): `[{ id, kind? }]`, `kind` only when it was another kind. A reader that keyed something by an old id finds it again. Absent when none |
 
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
-`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute or `initDice`), evaluated: × the
+`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute, `initDice` or `defense`, the Defense Rating), or
+`{ target: "skill", id, name, value }` for a skill's dice pool (`id` the catalog skill's id, `name` its name, which a reader
+keying its skills by name, as Eden does, finds it by; `derived.pools` counts it), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
 accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
 them out.
@@ -107,6 +114,7 @@ for a dash).
 | `cost` | `cost` at the rating (`rated`); a purchase: `priced`. Not on adept powers |
 | `avail`, `legality` | `avail` at the rating, and its letter `L`, `I` or `F` |
 | `essence`, `capacity`, `defense`, `threshold`, `karma`, `fade` | the attribute of that name at the rating (`capacity` `"[1]"` reads as 1) |
+| `social` | an armor's `social` (its printed Social modifier, `"+2"`, `"–4"`; an en dash is a minus): what it adds to the wearer's Social Rating (Charisma + the worn armor's) |
 | `powerCost` | an adept power's `cost` (per level when it's leveled) |
 | `drain` | a spell's `dv` |
 | `dv`, `stun` | a weapon's `dv`: `"3P"` → 3, false; `"4S(e)"` → 4, true |

@@ -267,17 +267,17 @@ test('nuyen: an empty breakdown with nothing bought', () => {
 test('nuyen: gear per line, lifestyle times months, a fake SIN and licences by rating, a real SIN free', () => {
   const b = runner({ letters: 'CABDE' })
   buy(b, 'weapons', 'crb.zap-gun')
-  b.lifestyle = { id: 'crb.cozy', months: 2 }
-  b.sins.push({ uid: 's1', name: 'Jo Nobody', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }] },
-    { uid: 's2', name: 'Me', kind: 'real', licences: [{ name: 'Driving', rating: 2 }] })
+  b.sins.push({ uid: 's1', name: 'Jo Nobody', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 2 }] },
+    { uid: 's2', name: 'Me', kind: 'real', licences: [{ name: 'Driving', rating: 2 }], lifestyles: [{ uid: 'l2', id: 'crb.cozy', months: 1 }] })
   const { nuyen } = budgets(b)
   expect(nuyen.breakdown).toEqual([
     { key: `purchase:${b.purchases[0].uid}`, label: 'Zap Gun', amount: 290, sign: 'spend', tab: 'gear' },
-    { key: 'lifestyle', label: 'Cozy lifestyle × 2 months', amount: 5000, sign: 'spend', tab: 'contacts' },
+    { key: 'lifestyle:l1', label: 'Cozy lifestyle × 2 months (Jo Nobody)', amount: 5000, sign: 'spend', tab: 'contacts' },
+    { key: 'lifestyle:l2', label: 'Cozy lifestyle × 1 month (Me)', amount: 2500, sign: 'spend', tab: 'contacts' },
     { key: 'sin:s1', label: 'Jo Nobody (fake SIN, rating 2) · 1 licence', amount: 3000 + 300, sign: 'spend', tab: 'contacts' },
     { key: 'sin:s2', label: 'Me (real SIN) · 1 licence', amount: 600, sign: 'spend', tab: 'contacts' },
   ])
-  expect(nuyen.spent).toBe(290 + 5000 + 3300 + 600)
+  expect(nuyen.spent).toBe(290 + 5000 + 2500 + 3300 + 600)
   expect(nuyen.left).toBe(8200 - nuyen.spent)
 })
 

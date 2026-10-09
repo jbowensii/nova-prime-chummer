@@ -54,6 +54,18 @@ class MovedTest(unittest.TestCase):
         self.assertEqual(n, 0)
 
 
+    def test_an_entry_split_into_its_options(self):
+        # (flags.options: one entry per option, the printed heading a search name) the old id goes to the first
+        prev = self.prev({"martialtechniques.xml": data("martialtechniques", ("zz.glow-step", "Glow Step", ""))})
+        new = {"martialtechniques.xml": data("martialtechniques",
+                                             ("zz.glow-step-melee", "Glow Step (Melee)", "<alias>Glow Step</alias>"),
+                                             ("zz.glow-step-ranged", "Glow Step (Ranged)", "<alias>Glow Step</alias>"))}
+        out, n = moved.carry(prev, new)
+        self.assertEqual(n, 1)
+        self.assertIn('<name>Glow Step (Melee)</name><alias>Glow Step</alias><alias id="zz.glow-step"/>', out["martialtechniques.xml"])
+        self.assertEqual(out["martialtechniques.xml"].count('alias id='), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
 

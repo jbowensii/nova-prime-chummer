@@ -32,7 +32,7 @@
     <knowledge uid="k2" kind="knowledge" points="2" karma="0">Arcade lore</knowledge>
     <purchase uid="g1" kind="armor" id="crb.padded-vest" qty="1" worn="true"/>
     <contact uid="c1" name="Fixer Fred" archetype="Fixer" connection="3" loyalty="2"/>
-    <lifestyle id="crb.cozy" months="1"/>
+    <sin uid="s1" name="Wren Doe" kind="real" gender="Made-up"><lifestyle uid="ls1" id="crb.cozy" months="1"/></sin>
   </build>
   <ledger>
     <entry id="l-1" at="2026-10-03T12:00:00.000Z" type="finalize" karma="31" nuyen="4350"/>

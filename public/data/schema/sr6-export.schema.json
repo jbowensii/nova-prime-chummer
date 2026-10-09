@@ -118,6 +118,7 @@
         "weapons",
         "armor",
         "augmentations",
+        "grades",
         "electronics",
         "programs",
         "gear",
@@ -139,6 +140,22 @@
         "lifestyles",
         "contacts",
         "lifemodules",
+        "actions",
+        "packs",
+        "vehicledesign",
+        "ammotypes",
+        "mentorspirits",
+        "datastructures",
+        "qualitypaths",
+        "spellfeatures",
+        "contacttypes",
+        "qualitysets",
+        "licencetypes",
+        "magictypes",
+        "ruleoptions",
+        "senses",
+        "trueelements",
+        "categories",
         "rules"
       ]
     },
@@ -194,6 +211,10 @@
           "type": "number"
         },
         "defense": {
+          "type": "number"
+        },
+        "social": {
+          "description": "An armor's Social modifier: what it adds to the wearer's Social Rating (Charisma + the armor worn's).",
           "type": "number"
         },
         "karma": {
@@ -262,7 +283,7 @@
       }
     },
     "bonus": {
-      "description": "Evaluated: × rating when perRating, × qty.",
+      "description": "Evaluated: × rating when perRating, × qty. defense: Defense Rating. skill: that skill's dice pool, by its catalog id and name. An accessory's bonuses are its host's, never the runner's.",
       "type": "object",
       "required": [
         "target",
@@ -282,12 +303,33 @@
             "edg",
             "mag",
             "res",
-            "initDice"
+            "initDice",
+            "defense",
+            "skill"
           ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
         },
         "value": {
           "type": "number"
         }
+      },
+      "if": {
+        "properties": {
+          "target": {
+            "const": "skill"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "id",
+          "name"
+        ]
       }
     },
     "part": {
@@ -359,6 +401,78 @@
         },
         "description": {
           "type": "string"
+        },
+        "effects": {
+          "description": "What the entry's printed text says it does (the catalog's <effect>): target attr:<abbr>, skill:<id>, derived:<name> or item:<field>; op add or edge-cost; value as printed (item:ar: five comma-separated bands); low: read from a sentence that sets a condition (shown, never applied).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target",
+              "op",
+              "value"
+            ],
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "op": {
+                "enum": [
+                  "add",
+                  "edge-cost"
+                ]
+              },
+              "value": {
+                "type": "string"
+              },
+              "low": {
+                "const": true
+              }
+            }
+          }
+        },
+        "tests": {
+          "description": "A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "skill",
+              "attr"
+            ],
+            "properties": {
+              "skill": {
+                "type": "string"
+              },
+              "attr": {
+                "type": "string"
+              },
+              "threshold": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "aliases": {
+          "description": "The ids the entry had in earlier imports (the catalog's <alias id kind>): kind only when it was another kind.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "$ref": "#/$defs/kind"
+              }
+            }
+          }
         }
       }
     },
@@ -398,6 +512,67 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/purchase"
+          }
+        }
+      }
+    },
+    "martialArt": {
+      "description": "A martial arts style on a runner, with the techniques learned under it (its signature one included).",
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "techniques"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "techniques": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/technique"
+          }
+        }
+      }
+    },
+    "technique": {
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "requires": {
+          "description": "The prerequisites the technique prints (an adept power, another technique, a quality, an augmentation, or other), name as printed; met: whether the runner has it (absent when it can't be told: other, or an augmentation printed as an amount). Absent when it prints none, and in files written before prerequisites were read.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "name"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "adeptpower",
+                  "technique",
+                  "quality",
+                  "augmentation",
+                  "other"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "met": {
+                "type": "boolean"
+              }
+            }
           }
         }
       }
@@ -718,6 +893,10 @@
           "type": "string"
         },
         "realName": {
+          "type": "string"
+        },
+        "gender": {
+          "description": "Optional, as the player wrote it.",
           "type": "string"
         },
         "finalized": {
@@ -1054,6 +1233,13 @@
             "$ref": "#/$defs/pick"
           }
         },
+        "martialArts": {
+          "description": "Absent in files written before martial arts were added.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/martialArt"
+          }
+        },
         "purchases": {
           "type": "array",
           "items": {
@@ -1086,6 +1272,24 @@
               },
               "loyalty": {
                 "type": "number"
+              },
+              "types": {
+                "description": "The Sixth World Companion's contact types, when set.",
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "academic",
+                    "corporate",
+                    "criminal",
+                    "engineering",
+                    "government",
+                    "magic",
+                    "matrix",
+                    "media",
+                    "medical",
+                    "street"
+                  ]
+                }
               }
             }
           }
@@ -1113,7 +1317,8 @@
             "cost": {
               "type": "number"
             }
-          }
+          },
+          "description": "Deprecated (kept for the module's older versions): the first lifestyle of the first SIN that has one, as sins[].lifestyles has it without its uid; null when no SIN has one."
         },
         "sins": {
           "type": "array",
@@ -1123,7 +1328,8 @@
               "uid",
               "name",
               "kind",
-              "licences"
+              "licences",
+              "lifestyles"
             ],
             "properties": {
               "uid": {
@@ -1140,6 +1346,14 @@
               },
               "rating": {
                 "type": "number"
+              },
+              "gender": {
+                "description": "The identity's own gender, optional.",
+                "type": "string"
+              },
+              "placeholder": {
+                "description": "An unnamed stand-in (name empty, kind real, free) holding an older file's lifestyle when the runner had no SIN; left out otherwise.",
+                "const": true
               },
               "licences": {
                 "type": "array",
@@ -1158,6 +1372,38 @@
                     }
                   }
                 }
+              },
+              "lifestyles": {
+                "description": "The lifestyles paid under this SIN (a lifestyle always belongs to a SIN; a SIN may have none).",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "uid",
+                    "id",
+                    "name",
+                    "months"
+                  ],
+                  "properties": {
+                    "uid": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "months": {
+                      "type": "number"
+                    },
+                    "cost": {
+                      "description": "Nuyen a month, as the book prints it.",
+                      "type": "number"
+                    }
+                  }
+                }
               }
             }
           }
@@ -1169,7 +1415,7 @@
           "type": "number"
         },
         "derived": {
-          "description": "For reading only: the module writes none of it (Eden derives its own). Left out for an NPC.",
+          "description": "For reading, except monitorBonus (Eden derives the rest itself). Left out for an NPC.",
           "type": "object",
           "required": [
             "initiative",
@@ -1216,6 +1462,10 @@
             "defenseRating": {
               "type": "number"
             },
+            "socialRating": {
+              "description": "Charisma plus the worn armor's Social (Firing Squad p. 50). Absent in files written before it.",
+              "type": "number"
+            },
             "composure": {
               "type": "number"
             },
@@ -1238,6 +1488,22 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/pool"
+              }
+            },
+            "monitorBonus": {
+              "description": "The boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes): what the module writes as Eden's physical.mod and stun.mod.",
+              "type": "object",
+              "required": [
+                "physical",
+                "stun"
+              ],
+              "properties": {
+                "physical": {
+                  "type": "number"
+                },
+                "stun": {
+                  "type": "number"
+                }
               }
             }
           }

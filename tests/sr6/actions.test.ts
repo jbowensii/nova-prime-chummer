@@ -302,11 +302,55 @@ test('contacts and knowledge are added, changed and removed by uid', () => {
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 1 })).toEqual(no('native'))
   expect(act({ op: 'knowledge', remove: b.knowledge[1].uid })).toEqual(ok)
   expect(b.knowledge.map(k => [k.name, k.karma])).toEqual([['Sewer Maps', 2]])
-  expect(act({ op: 'lifestyle', id: 'crb.cozy', months: 2 })).toEqual(ok)
-  expect(b.lifestyle).toEqual({ id: 'crb.cozy', months: 2 })
-  expect(act({ op: 'lifestyle', id: 'crb.cozy', months: 0 })).toEqual(no('below-one'))
-  expect(act({ op: 'lifestyle', id: null })).toEqual(ok)
-  expect(b.lifestyle).toBeUndefined()
+})
+
+test('a lifestyle belongs to a SIN: added, changed and removed on it; a SIN has an optional gender', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'lifestyle', sin: 'nope', id: 'crb.cozy' })).toEqual(no('unknown-line'))
+  expect(act({ op: 'sin', name: 'Jo Blue', kind: 'fake', gender: 'Nonbinary' })).toEqual(ok)
+  expect(act({ op: 'sin', name: 'Real Me', kind: 'real' })).toEqual(ok)
+  const [fake, real] = b.sins
+  expect(fake.gender).toBe('Nonbinary')
+  expect(act({ op: 'lifestyle', sin: fake.uid, id: 'crb.cozy', months: 2 })).toEqual(ok)
+  expect(act({ op: 'lifestyle', sin: fake.uid, id: 'crb.nope' })).toEqual(no('unknown-entry'))
+  expect(act({ op: 'lifestyle', sin: fake.uid })).toEqual(no('unknown-entry'))
+  const l = fake.lifestyles![0]
+  expect(l).toMatchObject({ id: 'crb.cozy', months: 2 })
+  expect(act({ op: 'lifestyle', sin: fake.uid, uid: l.uid, months: 0 })).toEqual(no('below-one'))
+  expect(act({ op: 'lifestyle', sin: fake.uid, uid: l.uid, months: 5 })).toEqual(ok)
+  expect(fake.lifestyles).toEqual([{ uid: l.uid, id: 'crb.cozy', months: 5 }])
+  expect(real.lifestyles).toBeUndefined()  // a SIN may have none
+  expect(act({ op: 'lifestyle', sin: fake.uid, remove: l.uid })).toEqual(ok)
+  expect(fake.lifestyles).toBeUndefined()
+  expect(act({ op: 'sin', uid: fake.uid, gender: '' })).toEqual(ok)
+  expect(fake.gender).toBeUndefined()
+})
+
+test('a placeholder SIN is free; naming it or setting its kind makes it a normal SIN, a gender alone doesn’t', () => {
+  const { b, data, cr, act } = runner()
+  const p = makeProvider(b.method, data, cr)
+  const holder = () => ({ uid: 'ph', name: '', kind: 'real' as const, licences: [], placeholder: true as const, lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] })
+  b.sins = [holder()]
+  const lines = () => nuyenBudget(b, data, cr, p).breakdown.filter(l => l.key.startsWith('sin:') || l.key.startsWith('lifestyle:'))
+  expect(lines()).toEqual([{ key: 'lifestyle:l1', label: 'Cozy lifestyle × 1 month (Unnamed SIN)', amount: 2500, sign: 'spend', tab: 'contacts' }])
+  expect(act({ op: 'sin', uid: 'ph', gender: 'Other' })).toEqual(ok)
+  expect(b.sins[0].placeholder).toBe(true)
+  expect(act({ op: 'sin', uid: 'ph', name: 'Jo Placeholder' })).toEqual(ok)
+  expect(b.sins[0]).toEqual({ uid: 'ph', name: 'Jo Placeholder', kind: 'real', gender: 'Other', licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] })
+  // made fake: rating 1, priced as any fake SIN; back to real drops the rating
+  b.sins = [holder()]
+  expect(act({ op: 'sin', uid: 'ph', kind: 'fake' })).toEqual(ok)
+  expect(b.sins[0]).toMatchObject({ kind: 'fake', rating: 1 })
+  expect(b.sins[0].placeholder).toBeUndefined()
+  expect(lines().find(l => l.key === 'sin:ph')).toMatchObject({ label: 'SIN (fake SIN, rating 1)', amount: 1500 })
+  expect(act({ op: 'licence', sin: 'ph', name: 'Zapper', rating: 1 })).toEqual(ok)
+  expect(act({ op: 'sin', uid: 'ph', kind: 'real' })).toEqual(ok)
+  expect('rating' in b.sins[0]).toBe(false)
+  expect(act({ op: 'sin', uid: 'ph', kind: 'fake', rating: 2 })).toEqual(ok)
+  expect(b.sins[0].rating).toBe(2)
+  b.sins[0].licences = [{ name: 'Zapper', rating: 3 }]
+  expect(act({ op: 'sin', uid: 'ph', kind: 'real' })).toEqual(ok)
+  expect(act({ op: 'sin', uid: 'ph', kind: 'fake' })).toEqual(no('licence-above-sin'))
 })
 
 // life modules

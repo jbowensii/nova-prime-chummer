@@ -26,7 +26,7 @@
         <xs:element name="ritual" type="sr6:Ritual"/>
         <xs:element name="adeptpower" type="sr6:AdeptPower"/>
         <xs:element name="complexform" type="sr6:ComplexForm"/>
-        <xs:element name="metamagic" type="sr6:Entry"/>
+        <xs:element name="metamagic" type="sr6:Metamagic"/>
         <xs:element name="echo" type="sr6:Entry"/>
         <xs:element name="martialart" type="sr6:MartialArt"/>
         <xs:element name="martialtechnique" type="sr6:MartialTechnique"/>

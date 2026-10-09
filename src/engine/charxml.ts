@@ -82,7 +82,7 @@ export function characterToXml(ch: Character, rev?: number): string {
     ch.career.length ? `<career>${ch.career.map(eventXml).join('')}</career>` : '',
     ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
   ].join('\n  ')
-  const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: ch.identity.streetName, name: ch.identity.name,
+  const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: ch.identity.streetName, name: ch.identity.name, gender: ch.identity.gender,
     metatype: ch.identity.metatype, level: ch.level, package: ch.package, lifestyle: ch.identity.lifestyle, backdrop: ch.identity.backdrop,
     finalizedAt: ch.finalizedAt, finalRemaining: ch.finalRemaining, carry: ch.carry, allowNonCanon: ch.allowNonCanon === false ? 'false' : undefined,
     origin: ch.origin, sampleKey: ch.sampleKey, campaign: ch.campaign, updatedAt: ch.updatedAt, lastExportedAt: ch.lastExportedAt })
@@ -253,6 +253,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     if (kid(r, 'portrait')) ch.identity.portrait = t(kid(r, 'portrait'))
     if (kid(r, 'token')) ch.identity.token = t(kid(r, 'token'))
     if (s(r, 'lifestyle') !== undefined) ch.identity.lifestyle = s(r, 'lifestyle')
+    if (s(r, 'gender') !== undefined) ch.identity.gender = s(r, 'gender')
     if (s(r, 'backdrop') !== undefined) ch.identity.backdrop = s(r, 'backdrop') as Character['identity']['backdrop'] // checked by migrate()
     if (s(r, 'finalizedAt') !== undefined) ch.finalizedAt = s(r, 'finalizedAt')
     if (n(r, 'finalRemaining') !== undefined) ch.finalRemaining = n(r, 'finalRemaining')

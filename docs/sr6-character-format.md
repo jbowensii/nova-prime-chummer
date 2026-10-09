@@ -11,7 +11,7 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="…" rev="4" streetName="Sparky"
-    name="Pat Doe" metatype="crb.glimmerkin" method="priority" backdrop="neon" finalizedAt="…" campaign="…"
+    name="Pat Doe" gender="…" metatype="crb.glimmerkin" method="priority" backdrop="neon" finalizedAt="…" campaign="…"
     updatedAt="…" lastExportedAt="…" finalKarma="3" finalNuyen="1250">
   <portrait>data:image/png;base64,…</portrait>
   <token>data:image/png;base64,…</token>
@@ -28,14 +28,16 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
     <knowledge uid="k1" kind="language" native="true" points="0" karma="0">…</knowledge>
     <quality uid="q1" id="crb.moonsight" level="1" free="true" name="Moonsight"/>
     <pick uid="p2" kind="adeptpowers" id="crb.quick-step" level="2"><bonus target="rea" value="1" perRating="true"/></pick>
+    <martialart uid="m1" id="crb.glow-fist" name="Glow Fist"><technique uid="m1t" id="crb.glow-jab" name="Glow Jab"/></martialart>
     <purchase uid="g1" kind="weapons" id="crb.zap-gun" qty="1">
       <purchase uid="g2" kind="gear" id="crb.zap-scope" qty="1"/>
       <snapshot><weapon id="crb.zap-gun" source="CRB" page="…" …><name>Zap Gun</name>…<text/></weapon></snapshot>
     </purchase>
     <purchase uid="g5" kind="gear" name="Lucky coin" cost="7.5" avail="1" essence="0.1" qty="3" note="…"/>
     <contact uid="c1" name="Gil" archetype="Fixer" connection="3" loyalty="2"/>
-    <lifestyle id="crb.cozy" months="2"/>
-    <sin uid="s1" name="Pat Roe" kind="fake" rating="3"><licence name="Zap Gun" rating="2"/></sin>
+    <sin uid="s1" name="Pat Roe" kind="fake" rating="3" gender="…"><licence name="Zap Gun" rating="2"/>
+      <lifestyle uid="l1" id="crb.cozy" months="2"/></sin>
+    <sin uid="s2" name="Pat Doe" kind="real"/>
   </build>
   <house><quality id="street.lucky-socks" source="STREET" page="1" kind="positive" karma="7"><name>Lucky Socks</name><text>…</text></quality></house>
   <override code="skill.cap" path="skills.crb.gab">GM ok</override>
@@ -56,12 +58,12 @@ the book prints 4(6); the rules give 4(7)", the page cited); the file never corr
 
 `<migrated from to at>` (last): a catalog id the runner named that a re-import renamed, moved or re-kinded, turned into
 the new one when the runner was opened (`from` and `to` are `<kind>/<id>`; the entry's `<alias id kind>`,
-docs/sr6-data-format.md). Purchases and their accessories, picks, qualities, the lifestyle, the metatype and the ledger's
+docs/sr6-data-format.md). Purchases and their accessories, picks, martial arts and their techniques, qualities, the lifestyles, the metatype and the ledger's
 lines are turned when the new entry's kind fits the line; a line whose entry is gone with no successor keeps its id and
 its snapshot.
 
-`<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, purchases and
-accessories, lifestyle; career spends included), in the SR6 data files' own format with their text, refreshed on every
+`<house>` (after the ledger): copies of the GM compendium entries the runner uses (its qualities, picks, martial arts and
+their techniques, purchases and accessories, lifestyles; career spends included), in the SR6 data files' own format with their text, refreshed on every
 change while the compendium is readable. When it no longer is (unshared or deleted), each copy stands in for its entry
 (prices, rules, sheet and exports) and Review notes "its source … is no longer available; the runner keeps its own
 copy". Book entries are never copied here.
@@ -82,7 +84,14 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
-- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers.
+- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
+  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic).
+- `<martialart id>` (after the picks): a martial arts style (catalog `martialarts`), with a `<technique id>` (catalog
+  `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
+  free with the style). `name` on either: the catalog name when added. A file without any reads as none. Edited on the
+  Martial arts tab; a technique's prerequisites are the catalog's (`<requires>`, docs/sr6-data-format.md), never stored
+  here. An `<override>` of a martial arts check has the path `martial.<style uid>` (a missing augmentation's:
+  `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
@@ -90,8 +99,18 @@ copy". Book entries are never copied here.
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
-  data). `target` is an attribute abbreviation, `initDice` or `defense` (Defense Rating); `perRating`: times the line's rating.
-- `<sin kind="real|fake" rating?>` with its `<licence>`s.
+  data). `target` is an attribute abbreviation, `initDice`, `defense` (Defense Rating) or `skill` (that skill's dice pool:
+  `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
+  line's rating.
+- `<sin kind="real|fake" rating? gender? placeholder?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid
+  under it: a lifestyle always belongs to a SIN, a SIN may have none, and a runner may have several of each. `gender` is
+  that identity's own (optional; the runner's is the root's `gender`). `placeholder="true"`: an unnamed stand-in
+  (`name=""`, `kind="real"`, no rating, free) holding an older file's lifestyle; Review warns until the player names it
+  or sets its kind or rating (which makes it a normal SIN), or moves the lifestyle to another SIN.
+- An older file's one `<lifestyle id months>` directly in `<build>` (before lifestyles belonged to SINs) loads onto the
+  first `<sin>`; a runner with no SIN gets a placeholder SIN (`uid` the runner's id + `-sin`) to hold it. The same
+  happens for a runner whose ledger has an older `lifestyle` spend and no SIN. The file is written the new way on its
+  next save.
 
 ## Career ledger
 
@@ -117,7 +136,12 @@ the entry its `event` names.
 - `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
   (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
   element), `buyoff` and `drop` (`target`: the uid of the line removed; the removed line may follow for the history),
-  `initiate` (an optional metamagic or echo `<pick>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`), `convert`
+  `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:
+  priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
+  `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),
+  `martialart` (the style with its signature `<technique>`), `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
+  uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
+  entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`
   (the entry's `karma`: positive turns karma into nuyen, negative nuyen into karma) and `other`.
 
 ## NPCs

@@ -26,9 +26,9 @@ export type CpPool = 'attribute' | 'skill' | 'adjustment' | 'resources' | 'power
 export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resources', 'powerPoints', 'spells', 'complexForms']
 
 /** What a ware, power or item adds, entered by the player (R: the catalog carries no bonus data): an attribute, initiative
- *  dice or Defense Rating (dermal plating). perRating: × the line's rating. */
-export interface Bonus { target: Sr6Attr | 'initDice' | 'defense'; value: number; perRating?: true }
-export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense']
+ *  dice, Defense Rating (dermal plating) or a skill's dice pool (skill: its catalog id). perRating: × the line's rating. */
+export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'skill'; skill?: string; value: number; perRating?: true }
+export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'skill']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']
@@ -47,11 +47,25 @@ export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | '
  *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */
 export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string; karma?: number }
 export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string }
+/** A martial arts style (catalog martialarts) and the techniques learned under it (martialtechniques; its signature one
+ *  free, Firing Squad p. 97). name: the catalog name when it was added. */
+export interface Sr6MartialArt { uid: string; id: string; name?: string; techniques: Sr6Technique[] }
+export interface Sr6Technique { uid: string; id: string; name?: string }
 /** types: the Sixth World Companion's contact types (lifepath's contact points go by type). */
 export interface Sr6Contact { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }
 export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' | 'government' | 'magic' | 'matrix' | 'media' | 'medical' | 'street'
 export const CONTACT_TYPES: ContactType[] = ['academic', 'corporate', 'criminal', 'engineering', 'government', 'magic', 'matrix', 'media', 'medical', 'street']
-export interface Sr6Sin { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; licences: { name: string; rating: number }[] }
+/** A lifestyle always belongs to a SIN (the one it's paid under); id: the catalog lifestyle. */
+export interface Sr6Lifestyle { uid: string; id: string; months: number }
+/** gender: the identity's own (optional; the runner's is identity.gender). lifestyles: none, one or more. placeholder: an
+ *  unnamed stand-in (kind real, no rating, free) holding an older file's lifestyle when the runner had no SIN (charxml.ts);
+ *  naming it or setting its kind or rating makes it a normal SIN. */
+export interface Sr6Sin { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; gender?: string; licences: { name: string; rating: number }[]
+  lifestyles?: Sr6Lifestyle[]; placeholder?: true }
+/** A SIN's name as shown: a placeholder's reads Unnamed SIN. */
+export const sinName = (s: Sr6Sin, fallback = 'SIN') => s.name || (s.placeholder ? 'Unnamed SIN' : fallback)
+/** A SIN's kind as shown: `placeholder`, `real`, or `fake, rating 3`. */
+export const sinKind = (s: Sr6Sin) => (s.placeholder ? 'placeholder' : s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`)
 /** choices: a life module's mixed choice, by its index, to the option picked (an attribute abbr, skill:<id> or nuyen:<n>). */
 export interface Sr6LifeModule { id: string; choices: Record<number, string> }
 export interface Sr6AttrSpend { points: number; adjust: number; karma: number }
@@ -74,9 +88,10 @@ export interface Sr6Build {
   knowledge: Sr6Knowledge[]
   qualities: Sr6Quality[]
   picks: Sr6Pick[]
+  martialArts: Sr6MartialArt[]
   purchases: Sr6Purchase[]
   contacts: Sr6Contact[]
-  lifestyle?: { id: string; months: number }
+  /** each with its lifestyles (an older file's single build lifestyle loads onto its first SIN: charxml.ts) */
   sins: Sr6Sin[]
   karmaToNuyen: number
 }
@@ -93,17 +108,25 @@ export type Sr6Advance =
   | { op: 'quality'; line: Sr6Quality }
   | { op: 'buyoff'; target: string; line?: Sr6Quality }
   | { op: 'pick'; line: Sr6Pick }
+  /** a style (with its signature technique), or a technique learned under the style whose uid is target */
+  | { op: 'martialart'; line: Sr6MartialArt }
+  | { op: 'technique'; target: string; line: Sr6Technique }
   | { op: 'powerpoint' }
   | { op: 'initiate'; line?: Sr6Pick }
   | { op: 'purchase'; line: Sr6Purchase }
   | { op: 'drop'; target: string; line?: Sr6Purchase }
   | { op: 'contact'; line: Sr6Contact }
-  | { op: 'lifestyle'; id: string; months: number }
+  /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
+   *  a normal SIN (its lifestyles kept) */
+  | { op: 'sin'; line: Sr6Sin }
+  /** sin, uid: the SIN it's paid under and the lifestyle's uid when new. An entry recorded before lifestyles belonged to
+   *  SINs has neither: it goes to the first SIN's first lifestyle (more months of it, or another lifestyle replacing it). */
+  | { op: 'lifestyle'; id: string; months: number; sin?: string; uid?: string }
   | { op: 'convert'; karma: number }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = ['attribute', 'skill', 'spec', 'expertise', 'knowledge', 'quality', 'buyoff', 'pick',
-  'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'lifestyle', 'convert', 'other']
+  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'sin', 'lifestyle', 'convert', 'other']
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
 export type Sr6LedgerEntry = { id: string; at: string } & (
   | { type: 'finalize'; karma: number; nuyen: number }
@@ -148,7 +171,7 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
   cp: Object.fromEntries(CP_POOLS.map(p => [p, 0])) as Sr6Build['cp'],
   lifepath: [], metatype: '', magic: 'mundane', powerPointsBought: 0, initiation: 0, submersion: 0,
   attributes: Object.fromEntries(SR6_ATTRS.map(a => [a, { points: 0, adjust: 0, karma: 0 }])) as Sr6Build['attributes'],
-  skills: [], knowledge: [], qualities: [], picks: [], purchases: [], contacts: [], sins: [], karmaToNuyen: 0,
+  skills: [], knowledge: [], qualities: [], picks: [], martialArts: [], purchases: [], contacts: [], sins: [], karmaToNuyen: 0,
 })
 
 /** A new runner: no metatype, mundane, nothing spent. */

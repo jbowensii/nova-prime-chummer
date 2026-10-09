@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { xmlToCharacter } from '../../src/engine/charxml'
+import { currentBuild } from '../../src/sr6/engine/career'
 import { SR6_CHAR_NS, sr6Codec, sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { blankSr6, SR6_ADVANCE_OPS, type Sr6Advance, type Sr6Character, type Sr6LedgerEntry } from '../../src/sr6/model/character'
 
@@ -16,13 +17,13 @@ const valid = async (xml: string) =>
 function full(): Sr6Character {
   const ch = blankSr6('priority', 'r-1', '2026-10-03T10:00:00.000Z')
   const b = ch.build
-  ch.identity = { name: 'Pat Doe', streetName: 'Sparky', metatype: 'crb.glimmerkin', portrait: 'data:image/png;base64,iVBORw0KGgo=',
+  ch.identity = { name: 'Pat Doe', streetName: 'Sparky', gender: 'Made-up gender', metatype: 'crb.glimmerkin', portrait: 'data:image/png;base64,iVBORw0KGgo=',
     token: 'data:image/png;base64,AAAA', backdrop: 'neon', background: 'Grew up\nin a vending machine.', notes: 'Owes Gil & co.' }
   Object.assign(ch, { finalizedAt: '2026-10-03T11:00:00.000Z', final: { karma: 3, nuyen: 1250 }, campaign: '0123456789ab',
     lastExportedAt: '2026-10-03T12:00:00.000Z', overrides: [{ code: 'skill.cap', path: 'skills.crb.gab', note: 'GM ok' }],
     printed: { source: 'CRB', page: 81, values: { rea: '4(6)', init: '9(11) + 3D6', cm: '10/10' } } })
   Object.assign(b, { metatype: 'crb.glimmerkin', magic: 'aspected', aspectedSkill: 'crb.hexing', tradition: 'Street hoodoo', drainAttr: 'cha',
-    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, lifestyle: { id: 'crb.cozy', months: 2 }, bestAttr: 'str', bestExtra: 'agi' })
+    powerPointsBought: 1, initiation: 1, submersion: 0, karmaToNuyen: 3, bestAttr: 'str', bestExtra: 'agi' })
   b.priorities = { metatype: 'D', attributes: 'A', magic: 'B', skills: 'C', resources: null }
   b.cp.attribute = 5; b.cp.spells = 1
   b.lifepath = [{ id: 'crb.glow-apprentice', choices: { 0: 'skill:crb.hexing' } }, { id: 'crb.wage-drone', choices: {} },
@@ -33,17 +34,20 @@ function full(): Sr6Character {
   b.qualities = [{ uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' }, { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' }, { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11 }]
   b.picks = [{ uid: 'p1', kind: 'spells', id: 'crb.glow-ward' }, { uid: 'p2', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, name: 'Quick Step',
     bonuses: [{ target: 'rea', value: 1, perRating: true }, { target: 'initDice', value: 1 }] }]
+  b.martialArts = [{ uid: 'm1', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'm1t', id: 'crb.glow-jab', name: 'Glow Jab' }] },
+    { uid: 'm2', id: 'crb.made-up-gone', techniques: [] }]
   b.purchases = [
     { uid: 'g1', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
       snapshot: { id: 'crb.zap-gun', kind: 'weapons', name: 'Zap Gun', source: 'CRB', page: 251, attrs: { cost: '350', ar: '9/7/—/—/—' },
         parts: [{ tag: 'mode', attrs: { v: 'SS' }, text: '' }], text: '' } },
-    { uid: 'g3', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, bonuses: [{ target: 'int', value: 1 }], accessories: [] },
+    { uid: 'g3', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, bonuses: [{ target: 'int', value: 1 }, { target: 'skill', skill: 'crb.gab', value: 2, perRating: true }], accessories: [] },
     { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [], bonuses: [{ target: 'defense', value: 1 }] },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
   b.contacts = [{ uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2, types: ['street', 'criminal'] },
     { uid: 'c2', name: 'Moe', archetype: 'Fence', connection: 1, loyalty: 1 }]
-  b.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Zap Gun', rating: 2 }] }, { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] }]
+  b.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }],
+    lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 2 }, { uid: 'l2', id: 'crb.squat', months: 1 }] }, { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] }]
   return ch
 }
 
@@ -153,6 +157,38 @@ test('the career runner and the NPC golden files round-trip equal, validate, and
   expect(GRUNT).toMatch(/<sr6:character [^>]*>\s*<npc /) // first child: the server's NPC check
 })
 
+// an older file: one <lifestyle> in <build>, before lifestyles belonged to SINs
+const SIN_LINE = '<sin uid="s1" name="Wren Doe" kind="real" gender="Made-up"><lifestyle uid="ls1" id="crb.cozy" months="1"/></sin>'
+const OLD = CAREER.replace(SIN_LINE, '<lifestyle id="crb.cozy" months="1"/>')
+
+test('an older file’s one lifestyle loads onto an unnamed placeholder SIN when it has none; the flag round-trips', async () => {
+  expect(OLD).not.toBe(CAREER)
+  expect(await valid(OLD)).toEqual([])  // the schema still takes the older shape
+  const ch = read(OLD)
+  expect(ch.build.sins).toEqual([{ uid: 'career-wisp-1-sin', name: '', kind: 'real', licences: [], placeholder: true,
+    lifestyles: [{ uid: 'career-wisp-1-sin-crb.cozy', id: 'crb.cozy', months: 1 }] }])
+  expect('lifestyle' in ch.build).toBe(false)
+  const xml = sr6ToXml(ch)
+  expect(xml).not.toMatch(/<build[^>]*>[\s\S]*\n    <lifestyle /)
+  expect(xml).toContain('<sin uid="career-wisp-1-sin" name="" kind="real" placeholder="true">')
+  expect(await valid(xml)).toEqual([])
+  expect(read(xml)).toEqual(ch)
+})
+
+test('an older file’s lifestyle goes on its first SIN; one with an older ledger lifestyle spend and no SIN gets a placeholder', () => {
+  const two = OLD.replace('<lifestyle id="crb.cozy" months="1"/>',
+    '<lifestyle id="crb.cozy" months="1"/>\n    <sin uid="f1" name="Jo Fake" kind="fake" rating="2"/>\n    <sin uid="r1" name="Jo Real" kind="real"/>')
+  expect(read(two).build.sins.map(x => [x.uid, x.lifestyles])).toEqual([['f1', [{ uid: 'f1-crb.cozy', id: 'crb.cozy', months: 1 }]], ['r1', undefined]])
+  const spend = '<entry id="l-x" at="2026-10-06T00:00:00.000Z" type="advance" karma="0" nuyen="100" op="lifestyle" lifestyle="crb.cozy" months="2" label="Lifestyle"/>'
+  const noLife = CAREER.replace(SIN_LINE + '\n', '').replace('  </ledger>', `  ${spend}\n  </ledger>`)
+  const ch = read(noLife)
+  expect(ch.build.sins).toEqual([{ uid: 'career-wisp-1-sin', name: '', kind: 'real', licences: [], placeholder: true }])
+  expect(currentBuild(ch).sins[0].lifestyles).toEqual([{ uid: 'career-wisp-1-sin-crb.cozy', id: 'crb.cozy', months: 2 }])
+  // a file in the new shape is left as it is
+  expect(read(CAREER).build.sins).toEqual([{ uid: 's1', name: 'Wren Doe', kind: 'real', gender: 'Made-up', licences: [],
+    lifestyles: [{ uid: 'ls1', id: 'crb.cozy', months: 1 }] }])
+})
+
 test('every advance op and entry type round-trips and validates', async () => {
   const ch = full(), at = '2026-10-04T00:00:00.000Z'
   const q = { uid: 'lq', id: 'crb.lucky-streak', level: 1, name: 'Lucky Streak' }
@@ -164,12 +200,15 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'pick', line: { uid: 'lp', kind: 'spells', id: 'crb.glow-ward', name: 'Glow Ward' } }, { op: 'powerpoint' }, { op: 'initiate' },
     { op: 'initiate', line: { uid: 'lm', kind: 'metamagics', id: 'crb.soft-echo' } }, { op: 'purchase', line: gear }, { op: 'drop', target: 'g4' },
     { op: 'drop', target: 'lg', line: gear }, { op: 'contact', line: { uid: 'lc', name: 'Mo', archetype: 'Fence', connection: 2, loyalty: 1 } },
-    { op: 'lifestyle', id: 'crb.cozy', months: 3 }, { op: 'convert', karma: 2 }, { op: 'convert', karma: -1 }, { op: 'other' }]
+    { op: 'lifestyle', id: 'crb.cozy', months: 3 }, { op: 'lifestyle', id: 'crb.squat', months: 1, sin: 's2', uid: 'll' }, { op: 'convert', karma: 2 }, { op: 'convert', karma: -1 }, { op: 'other' },
+    { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
+    { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },
+    { op: 'sin', line: { uid: 'ls', name: 'Pat <Fake>', kind: 'fake', rating: 2, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }] } }]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [{ id: 'f', at, type: 'finalize', karma: 3, nuyen: 1250 }, { id: 'e', at, type: 'earn', karma: 9, nuyen: 3100, run: 'Made-up & run', date: '2026-10-04' },
     ...ops.map((advance, i): Sr6LedgerEntry => ({ id: `a${i}`, at, type: 'advance', advance, label: `Spend ${i}`,
       karma: advance.op === 'convert' ? advance.karma : i, nuyen: advance.op === 'convert' ? -advance.karma * 1100 : 0 })),
-    { id: 'n', at, type: 'note', text: 'A <note>' }, { id: 'v', at, type: 'void', eventId: 'a19', reason: 'Oops' }]
+    { id: 'n', at, type: 'note', text: 'A <note>' }, { id: 'v', at, type: 'void', eventId: 'a20', reason: 'Oops' }]
   const xml = sr6ToXml(ch)
   expect(await valid(xml)).toEqual([])
   expect(read(xml)).toEqual(ch)

@@ -46,6 +46,13 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
   return i === tokens.length && Number.isFinite(n) ? { n, ok: true } : { n: null, ok: false }
 }
 
+/** An armor's Social modifier as printed (`+2`, `–4`, `Rating`, a dash) at `rating`: a number, else null (none printed, or
+ *  a value the app can't read). The book prints minus as an en dash. */
+export function armorSocial(s: string | undefined, rating = 1): number | null {
+  const m = s?.match(/^\s*([-–−]?)\s*(.*)$/), v = m ? rated(m[2], rating).n : null
+  return v === null ? null : m![1] ? -v : v
+}
+
 /** A spirit's or sprite's stat at its Force or Level: numbers, the letter (or `Rating`), `+ - × x * /` and parentheses,
  *  × and / before + and -; division rounds up (as the book's condition monitors do, CRB p. 38); a trailing `+ ND6`
  *  comes back as `dice`; an en dash is a minus and square brackets are parentheses. A dash or nothing is no value;

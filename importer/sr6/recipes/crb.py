@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.recipes.dhsa import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, effects, formula, regroup, resolve, sections, tables
+from importer.sr6 import KINDS, NS, archetypes, categories, effects, flags, formula, regroup, resolve, sections, tables
 from importer.sr6.recipes import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -132,7 +132,7 @@ HEADERS = {
     "weapons": {"DV": "dv", "MODES": "modes", "MODE": "modes", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "AR": "ar",
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
                 "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
-    "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "",
+    "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "social",
               "TYPE": "", "EXTRAS": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
@@ -316,8 +316,23 @@ class _Catalog:
         self.idcat = {k: {} for k in KINDS}  # id -> its entry's category: a name another category repeats
         self.idgrp = {k: {} for k in KINDS}  # id -> its entry's group (a name another group of the category repeats)
 
-    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=(), cid=None):
+    def add(self, kind, name, page, attrs=None, children=(), text="", parent=None, row=None, aliases=(), cid=None, split=True):
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
+        context = (attrs or {}).pop("_context", ())  # (the headings it is printed under: flags.metamagic)
+        if kind == "metamagics":  # who may take it, and whether again (flags.py); `(Adepts Only)` leaves the name
+            printed, (name, more) = name, flags.metamagic(name, text, context)
+            attrs, aliases = {**(attrs or {}), **more}, (*aliases, printed)
+        elif kind == "spells":  # an opposed test, a threshold counting Essence (flags.py)
+            attrs = {**(attrs or {}), **flags.spell((attrs or {}).get("category"), text)}
+        elif kind == "martialtechniques":  # the prerequisites its closing line prints (flags.py)
+            children = [*children, *flags.requires(text)]
+        if split and not cid and (opts := flags.options(text)):  # learned in one of the options it lists: an entry each
+            first = None
+            for o in opts:
+                e = self.add(kind, f"{name} ({o})", page, dict(attrs or {}), children, text, parent, row, (*aliases, name), split=False)
+                e["split_of"] = name  # (sections.py's reading of the printed heading is these: section())
+                first = first or e
+            return first
         base = cid or slug(name) or KINDS[kind]
         i, n = base, 2
         if kind == "rules" and i in self.ids[kind] and parent:
@@ -385,7 +400,7 @@ class _Catalog:
                 f, aliases = replace(f, name=head), ()  # another quality of its name elsewhere: the printed heading's
         # (a focus kind `Ritual Spellcasting` is not the formula row of that name; a path's step read already, its
         # printed heading the alias)
-        if any(same(e) or f.kind == "qualities" and norm(f.name) in {norm(x) for x in e.get("aliases", ())}
+        if any(same(e) or norm(f.name) == norm(e.get("split_of") or "") or f.kind == "qualities" and norm(f.name) in {norm(x) for x in e.get("aliases", ())}
                and abs(int(e["page"]) - f.page) <= 1 for e in self.entries[f.kind]) \
                 or sections.reprint(f, self.entries[f.kind]):
             return
@@ -784,6 +799,8 @@ class _Catalog:
                 self.add(kind, f"{m.group(1)}{n}{m.group(4)}", page, a, children + notes,
                          "\n".join(prose + [_text(b, listed)]))
             return True
+        if kind == "metamagics":
+            attrs["_context"] = [*ctx, b.section, b.tags]  # (`Adept Metamagics`, `(Adepts Only)`: flags.metamagic)
         self.check(kind, name, attrs, page)
         self.add(kind, name, page, attrs, children + notes, "\n".join(prose + [_text(b, listed)]), aliases=b.aliases)
         return True

@@ -1,9 +1,10 @@
 // What every SR6 printed sheet (Sheet.tsx: Printer-friendly and Full color; BookSheet.tsx; NeonSheet.tsx; HexSheet.tsx;
 // DossierSheet.tsx) reads off the runner: its name, purchase lines by kind, names and ratings, weapons split ranged/melee,
-// every skill, languages and knowledge, gear, lifestyle and the karma and nuyen left (career: the ledger's balances).
+// every skill, languages and knowledge, gear, each SIN's lifestyles and the karma and nuyen left (career: the ledger's balances).
 import { entryOf } from '../engine/budgets'
 import { balances } from '../engine/career'
-import type { PickKind, PurchaseKind, Sr6Purchase } from '../model/character'
+import type { PickKind, PurchaseKind, Sr6Lifestyle, Sr6Purchase, Sr6Sin } from '../model/character'
+import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
@@ -11,6 +12,14 @@ import { entryLabel } from '../engine/categories'
 
 export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
   ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
+/** What a spell's or metamagic's catalog flags say, in words: `Opposed`, `Essence`, `Adepts only`, `Taken again`. */
+export function pickFlags(e: Sr6Entry): string[] {
+  const a = e.attrs
+  return e.kind === 'spells' ? [a.opposed === 'true' && 'Opposed', a.essence === 'true' && 'Essence threshold'].filter((x): x is string => !!x)
+    : e.kind === 'metamagics' ? [a.user && `${a.user === 'adept' ? 'Adepts' : 'Magicians'} only`, a.perLevel === 'true' && `Taken again${a.maxLevel ? ` (up to ${a.maxLevel})` : ''}`]
+      .filter((x): x is string => !!x) : []
+}
+
 export const band = (v: number | null) => (v === null ? '—' : String(v))
 export const AR_BANDS = ['Close', 'Near', 'Medium', 'Far', 'Extreme']
 /** every catalog skill by name: the runner's pools, the rest at rank 0 (no pool where it can't be rolled untrained) */
@@ -26,6 +35,8 @@ export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' |
   // a weapon with modes or ammo shoots; the rest (blades, clubs, unarmed extras) are melee
   const ranged = (x: Sr6Purchase) => { const a = attrsOf(x); return !!(a.modes || a.ammo) }
   const { karma, nuyen } = career ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
+  const life = (l: Sr6Lifestyle) => `${data.entry('lifestyles', l.id)?.name ?? l.id} × ${l.months} month${l.months === 1 ? '' : 's'}`
+  const first = b.sins.flatMap(s => s.lifestyles ?? [])[0]
   return {
     name: ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner'),
     lines, nameOf, attrsOf,
@@ -36,7 +47,10 @@ export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' |
     rangedWeapons: lines('weapons').filter(ranged), meleeWeapons: lines('weapons').filter(x => !ranged(x)),
     know: b.knowledge.filter(x => x.kind === 'knowledge'), langs: b.knowledge.filter(x => x.kind === 'language'),
     gear: [...lines('electronics'), ...lines('programs'), ...lines('gear'), ...lines('ammotypes')],
-    lifestyle: b.lifestyle && data.entry('lifestyles', b.lifestyle.id),
+    /** a SIN's lifestyles, `Cozy × 2 months, Squat × 1 month` ('' when none) */
+    lifeOf: (s: Sr6Sin) => (s.lifestyles ?? []).map(life).join(', '),
+    /** the primary lifestyle: the first SIN's first one (of the SINs that have any) */
+    lifestyle: first && life(first),
     karma, nuyen,
   }
 }

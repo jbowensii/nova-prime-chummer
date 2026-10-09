@@ -13,7 +13,7 @@ import './sheet.css'
 import { entryOf, priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, type Sr6Attr } from '../model/character'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
 import { npcHeadline } from '../engine/npc'
 import { NpcBlock } from './NpcBlock'
@@ -21,7 +21,7 @@ import { BookSheet } from './BookSheet'
 import { NeonSheet } from './NeonSheet'
 import { HexSheet } from './HexSheet'
 import { DossierSheet } from './DossierSheet'
-import { band, PICKS, runnerView } from './view'
+import { band, pickFlags, PICKS, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 const boxes = (k: number | null, cls = '') => k === null ? <span className="s-small">— (a setting isn’t set)</span>
@@ -30,7 +30,7 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
 export function Sr6Sheet() {
   const ctx = useSr6Editor(), { ch, data, cr, d } = ctx
   const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic], style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, karma, nuyen, host } = runnerView(ctx)
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}{host(x) && ` (${host(x)})`}</div>
   const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
   const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
@@ -62,7 +62,7 @@ export function Sr6Sheet() {
         <div className="s-top">
           <header className="s-head">
             <div><div className="s-label">Street name</div><h1>{name}</h1>
-              <div className="s-role">{[data.metatypes[b.metatype]?.name, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic]].filter(Boolean).join(', ')}</div>
+              <div className="s-role">{[data.metatypes[b.metatype]?.name, ch.identity.gender, b.magic !== 'mundane' && MAGIC_KIND_LABELS[b.magic]].filter(Boolean).join(', ')}</div>
               {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}</div>
             <span className="brand" role="img" aria-label="Chummer Shadowrun 6">Chummer <b>Shadowrun</b> 6</span>
           </header>
@@ -100,7 +100,7 @@ export function Sr6Sheet() {
             <p className="s-small">Edge points {d.attrs.edg.augmented}</p>
             <div className="s-boxes sr6-edge" aria-hidden="true">{Array.from({ length: d.attrs.edg.augmented }, (_, i) => <span key={i} />)}</div>
             <table className="sr6-derived-t"><tbody>
-              {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating],
+              {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating], ['Social Rating', d.socialRating],
                 ['Composure', d.composure], ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry],
                 ['Drain', d.drain], ['Fading', d.fading]] as [string, string | number | undefined][])
                 .filter(([, v]) => v !== undefined).map(([l, v]) => <tr key={l}><td>{l}</td><td><b>{v}</b></td></tr>)}
@@ -124,9 +124,9 @@ export function Sr6Sheet() {
         </section>
         {lines('armor').length > 0 && <section>
           <h2>Armor</h2>
-          <table><thead><tr><th>Armor</th><th>Defense</th><th>Worn</th></tr></thead>
+          <table><thead><tr><th>Armor</th><th>Defense</th><th>Social</th><th>Worn</th></tr></thead>
             <tbody>{lines('armor').map(x => <tr key={x.uid}><td><b>{nameOf(x)}</b>{acc(x)}</td><td>{entryOf(x, data)?.attrs.defense ?? ''}</td>
-              <td>{x.worn ? 'Worn' : ''}</td></tr>)}</tbody></table>
+              <td>{entryOf(x, data)?.attrs.social ?? ''}</td><td>{x.worn ? 'Worn' : ''}</td></tr>)}</tbody></table>
         </section>}
         {lines('augmentations').length > 0 && <section>
           <h2>Augmentations</h2>
@@ -141,7 +141,8 @@ export function Sr6Sheet() {
             b.submersion > 0 && `Submersion grade ${b.submersion}`].filter(Boolean).join(' · ')}</p>
           <table className="sr6-picks"><tbody>
             {PICKS.flatMap(([kind, label]) => b.picks.filter(x => x.kind === kind).map(x => <tr key={x.uid}>
-              <td><b>{(e => (e ? entryLabel(e) : x.name ?? x.id))(data.entry(kind, x.id))}</b>{x.level !== undefined && ` ${x.level}`}</td><td>{label.replace(/s$/, '')}</td></tr>))}
+              <td><b>{(e => (e ? entryLabel(e) : x.name ?? x.id))(data.entry(kind, x.id))}</b>{x.level !== undefined && ` ${x.level}`}</td>
+              <td>{[label.replace(/s$/, ''), ...(e => (e ? pickFlags(e) : []))(data.entry(kind, x.id))].join(' · ')}</td></tr>))}
           </tbody></table>
         </section>}
         <div className="s-cols">
@@ -155,9 +156,10 @@ export function Sr6Sheet() {
             <ul>{b.contacts.map(x => <li key={x.uid}>{x.name || 'Contact'}{x.archetype && `, ${x.archetype}`}
               <span className="s-small"> connection {x.connection}, loyalty {x.loyalty}</span></li>)}</ul>
             {!b.contacts.length && <p>—</p>}
-            <h2>Lifestyle & SINs</h2>
-            <p>{lifestyle ? `${lifestyle.name} × ${b.lifestyle!.months} month${b.lifestyle!.months === 1 ? '' : 's'}` : '—'}</p>
-            <ul>{b.sins.map(s => <li key={s.uid}>{s.name || 'SIN'} <span className="s-small">({s.kind === 'real' ? 'real' : `fake, rating ${s.rating ?? 1}`})</span>
+            <h2>SINs & lifestyles</h2>
+            {!lifestyle && <p>No lifestyle</p>}
+            <ul>{b.sins.map(s => <li key={s.uid}>{sinName(s)} <span className="s-small">({sinKind(s)}{s.gender && `, ${s.gender}`})</span>
+              {lifeOf(s) && <div>{lifeOf(s)}</div>}
               {s.licences.length > 0 && <div className="s-small">{s.licences.map(l => `${l.name} (${l.rating})`).join(', ')}</div>}</li>)}</ul>
           </section>
         </div>

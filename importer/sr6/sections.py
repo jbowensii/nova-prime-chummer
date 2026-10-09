@@ -20,7 +20,7 @@ under it)."""
 import re
 from dataclasses import dataclass, field, replace
 
-from importer.sr6 import effects
+from importer.sr6 import effects, flags
 from importer.sr6.regroup import norm, text_page
 
 # kind -> the words of a parent heading whose child headings are its entries
@@ -484,6 +484,11 @@ class Reader:
                 name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
+        if kind == "martialtechniques":  # its closing `Category:` line, inline after its last sentence
+            attrs = {"category": flags.technique_category(text)}
+        if kind == "metamagics":  # who may take it (`Adept Metamagics`, `(Adepts Only)`); the note leaves the name, so
+            # the recipe's own reading of the heading is this one (crb._Catalog.add reads the rest from its text)
+            name, attrs = flags.metamagic(name, "", [*chain, b.tags])
         return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b), b)
 
     def _runins(self, b, page, kind, chain, only=None):
