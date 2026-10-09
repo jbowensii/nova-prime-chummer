@@ -2,7 +2,7 @@
 // invented books (MUS, every kind; MUX, only what Eden doesn't use; MUR, the runner's other things), a finalized mystic
 // adept, a grunt and a GM compendium. tests/sr6/export.test.ts exports them; WRITE_SR6_SAMPLES=<dir> writes the files.
 import { blankBuild, type Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Compendium, Sr6Entry, Sr6Kind } from '../../src/sr6/model/types'
+import type { Sr6Compendium, Sr6Entry, Sr6Kind, Sr6Part } from '../../src/sr6/model/types'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { npcFromEntry } from '../../src/sr6/engine/npc'
@@ -18,6 +18,10 @@ const en = (source: string, kind: Sr6Kind, id: string, name: string, attrs: Reco
   ({ id, kind, name, source, page: 10, attrs, parts: Object.entries(parts).map(([tag, t]) => ({ tag, attrs: {}, text: t })), text })
 const mus = (kind: Sr6Kind, id: string, name: string, attrs?: Record<string, string>, parts?: Record<string, string>, text?: string) =>
   en('MUS', kind, `mus.${id}`, name, attrs, parts, text)
+/** a catalog <effect> (low: read from a conditional sentence) and a <test> */
+const fx = (target: string, value: string, low = false): Sr6Part => ({ tag: 'effect', attrs: { target, op: 'add', value, ...(low ? { confidence: 'low' } : {}) }, text: '' })
+const test = (skill: string, attr: string, threshold: string): Sr6Part => ({ tag: 'test', attrs: { skill, attr, threshold }, text: '' })
+const withParts = (e: Sr6Entry, ...parts: Sr6Part[]): Sr6Entry => ({ ...e, parts: [...e.parts, ...parts] })
 const mur = (kind: Sr6Kind, id: string, name: string, attrs?: Record<string, string>) => en('MUR', kind, `mur.${id}`, name, attrs)
 
 const GANGER = mus('npcs', 'ganger', 'Made-up Ganger', { rating: '3', group: 'Made-up Crew', bod: '4', agi: '3', rea: '3', str: '4', wil: '2',
@@ -28,12 +32,17 @@ const ENTRIES: Sr6Entry[] = [
   mus('priorities', 'prio-a', 'A', { letter: 'A' }, { resources: '' }),
   mus('metatypes', 'elf', 'Elf'),
   mus('skills', 'basket-weaving', 'Underwater Basket Weaving', { attr: 'log', untrained: 'false' }),
-  mus('qualities', 'lucky-break', 'Lucky Break', { kind: 'positive', karma: '4' }, {}, 'Made-up luck.'),
+  withParts(mus('qualities', 'lucky-break', 'Lucky Break', { kind: 'positive', karma: '4' }, {}, 'Made-up luck.'),
+    fx('attr:agi', '1'), fx('skill:firearms', '2', true), fx('derived:defense', '1'), test('skill:perception', 'attr:int', '3')),
   mus('weapons', 'pocket-zapper', 'Pocket Zapper', { category: 'Pocket Tasers', dv: '3S(e)', ar: '9/7/—/—/—', modes: 'SA', ammo: '4(m)', avail: '2(L)', cost: '150' }, {}, 'A made-up zapper.'),
   mus('weapons', 'glitter-cannon', 'Glitter Cannon', { category: 'Glitter cannons', dv: '—', cost: 'ask your fixer' }),
   mus('armor', 'test-jacket', 'Test Jacket', { category: 'Body armor', defense: '3', cost: '500' }),
   mus('augmentations', 'reflex-booster', 'Made-up Reflex Booster', { type: 'cyberware', category: 'Bodyware', rating: '1-3', essence: 'Rating × 0.1', avail: '4(I)', cost: 'Rating × 1000' }),
   mus('electronics', 'test-link', 'Test Link', { category: 'Commlinks', rating: '3', array: '1/1', avail: '2', cost: '700' }),
+  mus('electronics', 'test-deck', 'Test Deck', { category: 'Cyberdecks', rating: '2', array: '5 4', programs: '2', avail: '4', cost: '5000' }),
+  mus('programs', 'made-up-hack', 'Made-up Hack', { type: 'hacking', avail: '2', cost: '250' }),
+  withParts(mus('gear', 'made-up-sight', 'Made-up Sight', { category: 'Weapon accessories', accessoryOf: 'mus.pocket-zapper', avail: '2', cost: '200' }),
+    fx('item:ar', '0,1,1,0,0')),
   mus('gear', 'rope', 'Glitter Rope', { category: 'Survival gear', cost: '50' }),
   mus('vehicles', 'test-drone', 'Test Drone', { category: 'Small drones (air)', handling: '3', topSpeed: '60', body: '2', cost: '3000' }),
   mus('spells', 'zap-bolt', 'Zap Bolt', { category: 'combat', tags: 'Direct', range: 'LOS', type: 'M', duration: 'I', dv: '3', damage: 'P' }),
@@ -60,6 +69,7 @@ const ENTRIES: Sr6Entry[] = [
   mur('skills', 'close-combat', 'Close Combat', { attr: 'agi', untrained: 'true' }),
   mur('skills', 'sorcery', 'Sorcery', { attr: 'mag', untrained: 'false' }),
   mur('qualities', 'night-eyes', 'Night Eyes', { kind: 'positive', karma: '0' }),
+  mur('qualities', 'made-up-tough', 'Made-up Tough', { kind: 'positive', karma: '4', perLevel: 'true', maxLevel: '3' }),
   mur('qualities', 'made-up-debt', 'Made-up Debt', { kind: 'negative', karma: '2', perLevel: 'true', maxLevel: '3' }),
   mur('spells', 'glimmer', 'Glimmer', { category: 'illusion', range: 'LOS(A)', type: 'P', duration: 'S' }),
   mur('weapons', 'odd-blade', 'Odd Blade', { category: 'Blades', dv: 'STR+?', ar: '6/—/—/—/—', avail: '1', cost: '80' }),
@@ -76,7 +86,7 @@ export function sampleWorld() {
     c.sources.set(id, { id, name, publisher: 'Nobody', canon, origin: 'imported' })
   for (const e of ENTRIES) c.entries[e.kind].set(e.id, e)
   const data = sr6Data(c), cr = fixtureCreation()
-  for (const [key, value] of Object.entries({ essence: 6, initiativeDice: 1, astralInitiativeDice: 2, 'grade:used:cost': 1.2, 'grade:used:essence': 1.2, 'grade:used:avail': 0 }))
+  for (const [key, value] of Object.entries({ essence: 6, initiativeDice: 1, astralInitiativeDice: 2, 'grade:used:cost': 1.2, 'grade:used:essence': 1.2, 'grade:used:avail': 0, builtToughQuality: 'mur.made-up-tough' }))
     cr.set(key, { key, value })
   return { c, data, cr }
 }
@@ -94,24 +104,25 @@ export function mara(w: ReturnType<typeof sampleWorld>): Sr6Character {
     { uid: 'kn2', name: 'Testlandic', kind: 'language', native: true, points: 0, karma: 0 },
     { uid: 'kn3', name: 'Fakespeak', kind: 'language', points: 1, karma: 0 }]
   b.qualities = [{ uid: 'q1', id: 'mus.lucky-break', level: 1 }, { uid: 'q2', id: 'mur.night-eyes', level: 1, free: true },
-    { uid: 'q3', id: 'mur.made-up-debt', level: 2, note: 'Owes a made-up fixer.' }]
+    { uid: 'q3', id: 'mur.made-up-debt', level: 2, note: 'Owes a made-up fixer.' }, { uid: 'q4', id: 'mur.made-up-tough', level: 1 }]
   b.picks = [{ uid: 'p1', kind: 'spells', id: 'mus.zap-bolt' }, { uid: 'p2', kind: 'spells', id: 'mur.glimmer' },
     { uid: 'p3', kind: 'rituals', id: 'mus.test-ward' }, { uid: 'p4', kind: 'adeptpowers', id: 'mus.quick-step', level: 2, bonuses: [{ target: 'initDice', value: 1 }] },
     { uid: 'p5', kind: 'metamagics', id: 'mus.made-up-centering' }]
   b.purchases = [
-    { uid: 'w1', kind: 'weapons', id: 'mus.pocket-zapper', qty: 1, accessories: [] },
+    { uid: 'w1', kind: 'weapons', id: 'mus.pocket-zapper', qty: 1, accessories: [{ uid: 'w1a', kind: 'gear', id: 'mus.made-up-sight', qty: 1, accessories: [] }] },
     { uid: 'w2', kind: 'weapons', id: 'mur.odd-blade', qty: 1, note: 'Made-up engraving.', accessories: [] },
     { uid: 'a1', kind: 'armor', id: 'mus.test-jacket', qty: 1, worn: true, accessories: [] },
     { uid: 'c1', kind: 'augmentations', id: 'mus.reflex-booster', rating: 1, grade: 'used', qty: 1,
-      bonuses: [{ target: 'rea', value: 1 }, { target: 'initDice', value: 1 }],
+      bonuses: [{ target: 'rea', value: 1 }, { target: 'initDice', value: 1 }, { target: 'defense', value: 1 }],
       accessories: [{ uid: 'c1a', kind: 'augmentations', id: 'mur.booster-port', qty: 1, accessories: [] }] },
     { uid: 'e1', kind: 'electronics', id: 'mus.test-link', qty: 1, accessories: [] },
+    { uid: 'e2', kind: 'electronics', id: 'mus.test-deck', qty: 1, accessories: [{ uid: 'e2a', kind: 'programs', id: 'mus.made-up-hack', qty: 1, accessories: [] }] },
     { uid: 'g1', kind: 'gear', id: 'mur.power-focus', rating: 2, qty: 1, worn: true, accessories: [] },
     { uid: 'g2', kind: 'gear', id: 'mus.rope', qty: 3, accessories: [] },
     { uid: 'v1', kind: 'vehicles', id: 'mur.test-bike', qty: 1, accessories: [] },
     { uid: 'x1', kind: 'gear', name: 'Lucky Coin', cost: 5, qty: 1, accessories: [] },
   ]
-  b.contacts = [{ uid: 'k1', name: 'Fake Fixer', archetype: 'Fixer', connection: 4, loyalty: 2 }]
+  b.contacts = [{ uid: 'k1', name: 'Fake Fixer', archetype: 'Fixer', connection: 4, loyalty: 2, types: ['street'] }]
   b.lifestyle = { id: 'mus.made-up-squat', months: 2 }
   b.sins = [{ uid: 's1', name: 'Mara Testcase', kind: 'fake', rating: 3, licences: [{ name: 'Made-up Permit', rating: 3 }] },
     { uid: 's2', name: 'Birth Record', kind: 'real', licences: [] }]

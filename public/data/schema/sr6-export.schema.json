@@ -262,7 +262,7 @@
       }
     },
     "bonus": {
-      "description": "Evaluated: × rating when perRating, × qty.",
+      "description": "Evaluated: × rating when perRating, × qty. defense: Defense Rating. An accessory's bonuses are its host's, never the runner's.",
       "type": "object",
       "required": [
         "target",
@@ -282,7 +282,8 @@
             "edg",
             "mag",
             "res",
-            "initDice"
+            "initDice",
+            "defense"
           ]
         },
         "value": {
@@ -359,6 +360,59 @@
         },
         "description": {
           "type": "string"
+        },
+        "effects": {
+          "description": "What the entry's printed text says it does (the catalog's <effect>): target attr:<abbr>, skill:<id>, derived:<name> or item:<field>; op add or edge-cost; value as printed (item:ar: five comma-separated bands); low: read from a sentence that sets a condition (shown, never applied).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target",
+              "op",
+              "value"
+            ],
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "op": {
+                "enum": [
+                  "add",
+                  "edge-cost"
+                ]
+              },
+              "value": {
+                "type": "string"
+              },
+              "low": {
+                "const": true
+              }
+            }
+          }
+        },
+        "tests": {
+          "description": "A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "skill",
+              "attr"
+            ],
+            "properties": {
+              "skill": {
+                "type": "string"
+              },
+              "attr": {
+                "type": "string"
+              },
+              "threshold": {
+                "type": "integer"
+              }
+            }
+          }
         }
       }
     },
@@ -1086,6 +1140,24 @@
               },
               "loyalty": {
                 "type": "number"
+              },
+              "types": {
+                "description": "The Sixth World Companion's contact types, when set.",
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "academic",
+                    "corporate",
+                    "criminal",
+                    "engineering",
+                    "government",
+                    "magic",
+                    "matrix",
+                    "media",
+                    "medical",
+                    "street"
+                  ]
+                }
               }
             }
           }
@@ -1169,7 +1241,7 @@
           "type": "number"
         },
         "derived": {
-          "description": "For reading only: the module writes none of it (Eden derives its own). Left out for an NPC.",
+          "description": "For reading, except monitorBonus (Eden derives the rest itself). Left out for an NPC.",
           "type": "object",
           "required": [
             "initiative",
@@ -1238,6 +1310,22 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/pool"
+              }
+            },
+            "monitorBonus": {
+              "description": "The boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes): what the module writes as Eden's physical.mod and stun.mod.",
+              "type": "object",
+              "required": [
+                "physical",
+                "stun"
+              ],
+              "properties": {
+                "physical": {
+                  "type": "number"
+                },
+                "stun": {
+                  "type": "number"
+                }
               }
             }
           }

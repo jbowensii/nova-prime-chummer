@@ -202,7 +202,7 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
     expect(r.attributes.rea).toEqual({ natural: 4, augmented: 5 })
     expect(r.attributes.mag.natural).toBe(5)
     expect(r).toMatchObject({ edge: 3, karma: 7, nuyen: 1234, metatype: { id: 'mus.elf', name: 'Elf' } })
-    expect(r.derived).toMatchObject({ initiative: { base: 9, dice: 3 }, monitors: { physical: 10, stun: 10, overflow: 3 }, defenseRating: 6 })
+    expect(r.derived).toMatchObject({ initiative: { base: 9, dice: 3 }, monitors: { physical: 11, stun: 10, overflow: 3 }, defenseRating: 7 })  // Made-up Tough, the booster's +1
     const booster = r.purchases.find(x => x.uid === 'c1')!
     expect(booster.values).toMatchObject({ rating: 1, cost: 1200, essence: 0.12, avail: 4, legality: 'I' })
     expect(booster.accessories[0].values).toMatchObject({ capacity: 1, cost: 100 })
@@ -210,7 +210,7 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
   })
   test('MUS has every kind; MUX only priorities and metatypes; the compendium’s grunt has its token', () => {
     const [m, x] = files()['test-books.json'].books!
-    expect(new Set(m.entries.map(e => e.kind)).size).toBe(25)  // every kind but attributes
+    expect(new Set(m.entries.map(e => e.kind)).size).toBe(26)  // every exported kind but attributes
     expect(x.entries.map(e => e.kind)).toEqual(['priorities', 'metatypes'])
     const comp = files()['test-compendium.json'].books![0]
     expect(comp.source).toEqual({ id: 'STREET', name: 'Street Kit', publisher: 'Gil Made-up', canon: false, compendium: true })
@@ -218,6 +218,36 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
   })
   test.runIf(process.env.WRITE_SR6_SAMPLES)('writes the module samples', () => {
     for (const [name, f] of Object.entries(files())) writeFileSync(join(process.env.WRITE_SR6_SAMPLES!, name), JSON.stringify(f, null, 1) + '\n')
+  })
+})
+
+describe('SR6 export: what Eden takes besides the numbers', () => {
+  const w = sampleWorld(), r = () => exportSr6Runners(w.c, w.data, w.cr, [mara(w)], SAMPLE_OPTS).runners![0]
+  test('a quality’s printed effects and tests; a conditional one marked low', () => {
+    const q = r().qualities.find(x => x.id === 'mus.lucky-break')!
+    expect(q.effects).toEqual([{ target: 'attr:agi', op: 'add', value: '1' }, { target: 'skill:firearms', op: 'add', value: '2', low: true },
+      { target: 'derived:defense', op: 'add', value: '1' }])
+    expect(q.tests).toEqual([{ skill: 'skill:perception', attr: 'attr:int', threshold: 3 }])
+    expect(r().qualities.find(x => x.id === 'mur.night-eyes')).not.toHaveProperty('effects')
+  })
+  test('an accessory’s effect on its host, under the host', () => {
+    const sight = r().purchases.find(x => x.uid === 'w1')!.accessories[0]
+    expect(sight).toMatchObject({ id: 'mus.made-up-sight', attrs: { accessoryOf: 'mus.pocket-zapper' },
+      effects: [{ target: 'item:ar', op: 'add', value: '0,1,1,0,0' }] })
+  })
+  test('a Defense Rating bonus goes out with the others', () => {
+    expect(r().purchases.find(x => x.uid === 'c1')!.bonuses).toContainEqual({ target: 'defense', value: 1 })
+  })
+  test('the monitor bonus (Built Tough’s boxes) and a contact’s types', () => {
+    const x = r()
+    expect(x.derived?.monitorBonus).toEqual({ physical: 1, stun: 0 })
+    expect(x.derived?.monitors.physical).toBe(11)
+    expect(x.contacts[0].types).toEqual(['street'])
+  })
+  test('a book entry carries its effects too, and the file validates', () => {
+    const f = exportSr6Books(w.c, w.data, ['MUS'], SAMPLE_OPTS)
+    expect(f.books![0].entries.find(e => e.id === 'mus.made-up-sight')!.effects).toEqual([{ target: 'item:ar', op: 'add', value: '0,1,1,0,0' }])
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
 })
 

@@ -29,6 +29,8 @@ export interface Sr6Derived {
   /** magicians and mystic adepts */
   astralInit?: { base: number; dice: number | null }
   monitors: { physical: number | null; stun: number | null; overflow: number }
+  /** the boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes) */
+  monitorBonus: { physical: number; stun: number }
   defenseRating: number
   attackRatings: { unarmed: number; weapons: { uid: string; name: string; bands: (number | null)[] }[] }
   composure: number; judgeIntentions: number; memory: number; liftCarry: number
@@ -98,6 +100,7 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     // CRB p. 161 (astral combat): astral initiative = LOG + INT, plus dice
     ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: capDice(need('astralInitiativeDice') ?? null) } } : {}),
     monitors: { physical: physical === null ? null : physical + tough, stun: monitor(A('wil')), overflow: A('bod') },
+    monitorBonus: { physical: tough, stun: 0 },
     defenseRating: defense,
     // CRB p. 67: unarmed Attack Rating = REA + STR; a weapon's from its catalog line
     attackRatings: { unarmed: A('rea') + A('str'), weapons: b.purchases.filter(x => x.kind === 'weapons').map(x => {

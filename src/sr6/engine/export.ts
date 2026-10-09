@@ -2,7 +2,7 @@
 // runners, NPCs, books and GM compendiums as JSON for the Foundry importer module (jbowensii/chummer-sr6-foundry). Every number is the
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
-import type { Bonus, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
+import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
 import { augFamily, DISPLAY_KINDS, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
@@ -26,13 +26,20 @@ export interface Sr6Values {
   vehicle?: { handling?: [number, number]; accel?: [number, number]; interval?: [number, number]; topSpeed?: number
     body?: number; armor?: number; pilot?: number; sensor?: number; seats?: number }
 }
-/** evaluated: × rating when perRating, × qty */
-export interface Sr6ExportBonus { target: Sr6Attr | 'initDice'; value: number }
+/** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); an accessory's bonuses are its
+ *  host's, never the runner's */
+export interface Sr6ExportBonus { target: Sr6Attr | 'initDice' | 'defense'; value: number }
+/** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
+ *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
+export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
+/** A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold) */
+export interface Sr6ExportTest { skill: string; attr: string; threshold?: number }
 /** A thing on a runner or in a book: the catalog entry as printed (attrs, parts) plus Chummer's values. */
 /** name: as printed; label: how Chummer shows it, its category first when its name needs it (`Cyberlimb: Arm (synthetic)`),
  *  only when that differs (attrs.category and attrs.group hold the category) */
 export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name: string; label?: string; source?: string; page?: number; canon: boolean
-  attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string }
+  attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string
+  effects?: Sr6ExportEffect[]; tests?: Sr6ExportTest[] }
 export interface Sr6ExportPurchase extends Sr6ExportItem { uid: string; qty: number; grade?: string; worn: boolean; note?: string
   bonuses: Sr6ExportBonus[]; accessories: Sr6ExportPurchase[] }
 export interface Sr6ExportNpc { kind: Exclude<Sr6NpcKind, 'contact'>; rating?: number; group?: string; from?: Sr6Npc['from']
@@ -48,12 +55,12 @@ export interface Sr6ExportRunner {
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
   purchases: Sr6ExportPurchase[]
-  contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number }[]
+  contacts: { uid: string; name: string; archetype: string; connection: number; loyalty: number; types?: ContactType[] }[]
   lifestyle: { id: string; name: string; months: number; cost?: number } | null
   sins: { uid: string; name: string; kind: 'real' | 'fake'; rating?: number; licences: { name: string; rating: number }[] }[]
   karma: number; nuyen: number
   /** for reading only: the module writes none of it (Eden derives its own) */
-  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'defenseRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
+  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
   background: string; notes: string
   ledger: { at: string; type: Sr6LedgerType; summary: string; karma: number; nuyen: number }[]
   npc?: Sr6ExportNpc
@@ -112,9 +119,20 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
   return a
 }
 
+/** The catalog's <effect> and <test> parts of an entry, when it has any. */
+function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests'> {
+  const effects = e.parts.filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && (p.attrs.op === 'add' || p.attrs.op === 'edge-cost'))
+    .map(p => ({ target: p.attrs.target, op: p.attrs.op as Sr6ExportEffect['op'], value: p.attrs.value, ...(p.attrs.confidence === 'low' ? { low: true as const } : {}) }))
+  const tests = e.parts.filter(p => p.tag === 'test' && p.attrs.skill && p.attrs.attr).map(p => {
+    const t = Number(p.attrs.threshold)
+    return { skill: p.attrs.skill, attr: p.attrs.attr, ...(p.attrs.threshold && Number.isInteger(t) ? { threshold: t } : {}) }
+  })
+  return { ...(effects.length ? { effects } : {}), ...(tests.length ? { tests } : {}) }
+}
+
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
-  return { id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
+  return { ...effectsOf(e), id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
     attrs: exportAttrs(e), parts: e.parts.map(p => ({ tag: p.tag, text: p.text })), values: entryValues(e, rating, catalogFind(c)),
     ...(text && e.text ? { description: e.text } : {}) }
 }
@@ -122,9 +140,9 @@ function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6Ex
 const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
   ({ ...(id ? { id } : {}), kind, name, canon: false, attrs: {}, parts: [], values: {} })
 
-// a Defense Rating bonus is in derived.defenseRating, not here (the export's targets are attributes and initDice)
+// every target, Defense Rating included (derived.defenseRating counts it too)
 const bonuses = (bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
-  (bs ?? []).flatMap(b => (b.target === 'defense' ? [] : [{ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }]))
+  (bs ?? []).map(b => ({ target: b.target, value: b.value * (b.perRating ? rating : 1) * times }))
 
 /** As augmentBonus counts it: a line's bonuses × its rating (perRating) × its quantity; an accessory's by its own rating
  *  (they are its host's, not the runner's: derived.attributes leaves them out). */
@@ -172,11 +190,12 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         bonuses: bonuses(p.bonuses, p.level ?? 1) })
     }),
     purchases: b.purchases.map(x => purchase(c, data, cr, x)),
-    contacts: b.contacts.map(x => ({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty })),
+    contacts: b.contacts.map(x => defined({ uid: x.uid, name: x.name, archetype: x.archetype, connection: x.connection, loyalty: x.loyalty,
+      types: x.types?.length ? [...x.types] : undefined })),
     lifestyle: b.lifestyle ? defined({ id: b.lifestyle.id, name: lifestyle?.name ?? b.lifestyle.id, months: b.lifestyle.months, cost: num(lifestyle?.attrs.cost) }) : null,
     sins: b.sins.map(s => defined({ uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, licences: s.licences.map(l => ({ name: l.name, rating: l.rating })) })),
     karma: money.karma, nuyen: money.nuyen,
-    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, defenseRating: d.defenseRating,
+    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, monitorBonus: d.monitorBonus, defenseRating: d.defenseRating,
       composure: d.composure, judgeIntentions: d.judgeIntentions, memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools }) }),
     background: id.background ?? '', notes: id.notes ?? '',
     ledger: ch.ledger.filter(e => e.type !== 'void' && !voided.has(e.id)).map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e),

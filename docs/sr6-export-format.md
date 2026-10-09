@@ -60,11 +60,11 @@ is closed (no other keys).
 | `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
 | `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles |
-| `contacts` | `[{ uid, name, archetype, connection, loyalty }]` |
+| `contacts` | `[{ uid, name, archetype, connection, loyalty, types? }]`; `types`: the Sixth World Companion's contact types, when set |
 | `lifestyle` | `{ id, name, months, cost? }` or `null`; `cost` is the lifestyle's price per month |
 | `sins` | `[{ uid, name, kind, rating?, licences: [{ name, rating }] }]`; `kind` `real` or `fake` |
 | `karma`, `nuyen` | a finalized runner's balances (the ledger); a draft's: what the build budgets leave |
-| `derived` | a runner only (an NPC has none), for reading: `{ initiative, astralInit?, monitors, defenseRating, composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. The importer writes none of it: the system derives its own |
+| `derived` | a runner only (an NPC has none): `{ initiative, astralInit?, monitors, monitorBonus, defenseRating, composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. For reading, except `monitorBonus` `{ physical, stun }`: the boxes the monitors have beyond base + attribute / divisor (Built Tough's), which the importer writes as the system's monitor modifiers; the system derives the rest itself |
 | `background`, `notes` | free text |
 | `ledger` | `[{ at, type, summary, karma, nuyen }]`: the live entries with the Ledger tab's label (`Creation finished`, `Earned: <run> (<date>)`, the spend's label, the note); a voided entry and its void are left out |
 | `npc` | an NPC only: the NPC block (below) |
@@ -88,10 +88,12 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |
+| `effects` | what the entry's printed text says it does (the catalog's `<effect>`, `docs/sr6-data-format.md`): `[{ target, op, value, low? }]`; `target` `attr:<abbr>`, `skill:<id>`, `derived:<name>` (defense, initiative, composure, judge-intentions, memory, social) or `item:<field>` (an accessory's effect on its host: `item:ar`, five comma-separated bands); `op` `add` or `edge-cost`; `low` true when read from a sentence that sets a condition (shown, never applied). Absent when none |
+| `tests` | a test the entry's text calls for: `[{ skill, attr, threshold? }]` (`skill:<id>`, `attr:<abbr>`). Absent when none |
 
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
-`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute or `initDice`), evaluated: × the
+`bonuses` are the player's entered bonuses `[{ target, value }]` (`target` an attribute, `initDice` or `defense`, the Defense Rating), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
 accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
 them out.
