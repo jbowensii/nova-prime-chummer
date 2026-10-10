@@ -57,7 +57,17 @@ customization karma at its advancement price (CRB pp. 66, 68; owner, 2026-10-09)
 with a level is an entry that comes in levels (`Addiction 5` is the core
 rulebook's Addiction, not a quality path's one-level step of that name), and an
 item printed at a rating is never an entry named for another rating
-(`cybereyes 3` is the core rulebook's basic system at Rating 3). It keeps the printed attributes, Essence,
+(`cybereyes 3` is the core rulebook's basic system at Rating 3). A level
+printed on a quality that has none (`Magic Resistance 2`: CRB p. 72 prints one
+flat cost) is a misprint: the quality is taken once and Review notes it. A
+printed rank above the creation cap on a skill a line's bonus adds dice to is
+read as the natural rank plus that bonus (`Con 7` with a voice modulator at
+rating 3 is Con 4; the modulator's dice stay on its line for the tests they
+hold on, shown and not added). Where a book rule explains the printed numbers,
+the runner gets that option as its own creation rule, marked assumed (the book
+doesn't say): the prime runner's 100 Karma (CRB p. 64), the first printing's
+cap on illegal gear only (CRB p. 66). A value the book misprints is corrected by
+the owner's override file (`<samplefix>`), never by the importer. It keeps the printed attributes, Essence,
 initiative, condition monitors and Defense Rating in `<printed>`. Review
 compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the

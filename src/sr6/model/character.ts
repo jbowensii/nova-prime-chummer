@@ -1,6 +1,8 @@
 // The Shadowrun 6 runner model (docs/sr6-character-format.md, public/data/sr6/schema/character.xsd): one runner = one
 // <sr6:character> file, read and written by src/sr6/engine/charxml.ts. The build holds what the player spent; budgets,
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
+import type { RunnerRule } from '../engine/creation'
+import type { SampleCorrection } from '../engine/samplefix'
 import { newId, type Character, type Override } from '../../model/types'
 import type { Sr6Entry, Sr6Kind } from './types'
 
@@ -28,7 +30,9 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
 /** What a ware, power or item adds, entered by the player (or read from its catalog entry's effects, budgets.ts
  *  lineBonuses): an attribute, initiative dice, Defense Rating (dermal plating), Physical condition monitor boxes (a
  *  cyberlimb's, CRB p. 288) or a skill's dice pool (skill: its catalog id). perRating: × the line's rating. */
-export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'skill'; skill?: string; value: number; perRating?: true }
+export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'skill'; skill?: string; value: number; perRating?: true
+  /** only on some tests (`sound-based Con tests, wireless`): shown with the pool, never added to it (owner rule D3) */
+  when?: string }
 export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'skill']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
@@ -162,6 +166,10 @@ export interface Sr6Character {
   finalizedAt?: string; final?: { karma: number; nuyen: number }; campaign?: string
   ledger: Sr6LedgerEntry[]; npc?: Sr6Npc; sampleKey?: string; house?: Sr6Entry[]; printed?: Sr6Printed
   overrides: Override[]; updatedAt: string; lastExportedAt?: string
+  /** the runner's own choices of the optional creation rules (src/sr6/engine/creation.ts runnerRules); none: the table's */
+  rules?: RunnerRule[]
+  /** (never stored) its book sample's printed lines as the owner's override file corrects them (engine/samplefix.ts) */
+  corrections?: SampleCorrection[]
   /** catalog ids turned into the ones a re-import gave the entries (src/sr6/engine/migrate.ts): `<kind>/<id>` each */
   migrated?: { from: string; to: string; at: string }[]
 }

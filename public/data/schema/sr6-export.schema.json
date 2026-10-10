@@ -317,6 +317,10 @@
         },
         "value": {
           "type": "number"
+        },
+        "when": {
+          "description": "Only on some tests (a voice modulator's sound-based Con tests, wireless): never in derived's pools.",
+          "type": "string"
         }
       },
       "if": {
@@ -1553,6 +1557,39 @@
         },
         "npc": {
           "$ref": "#/$defs/npc"
+        },
+        "rules": {
+          "description": "The creation rules it is built with that aren't the server's: its campaign's own and its own choices (value '' for one it turned off).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "value",
+              "from"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "from": {
+                "enum": [
+                  "campaign",
+                  "runner"
+                ]
+              },
+              "assumed": {
+                "const": true
+              },
+              "lockedBy": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },

@@ -61,7 +61,9 @@ export interface Sr6SkillView { id: string; name: string; attr: string; untraine
 /** granted: never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
 export interface Sr6QualityChoice { category: string; count: number; max: number | null }
 export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number
-  category?: string; granted?: boolean; choices?: Sr6QualityChoice[] }
+  category?: string; granted?: boolean; choices?: Sr6QualityChoice[]
+  /** not one of the six qualities a runner may take at creation (its text says so) */
+  uncounted?: boolean }
 export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
 /** user: who may take it (absent: any initiate); perLevel: taken again, each time one more initiation's metamagic, up to
  *  maxLevel times (none printed: no limit) */
@@ -167,6 +169,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.attrs.group ? `${e.attrs.group}: ${e.name}` : e.name, positive: e.attrs.kind !== 'negative',
     karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page,
     ...(e.attrs.category ? { category: e.attrs.category } : {}), ...(e.attrs.granted === 'true' ? { granted: true } : {}),
+    ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
     ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',
       count: count(e, p.attrs.count, 'choice count', 1), max: p.attrs.max ? count(e, p.attrs.max, 'choice max', 1) : null })) } : {}) }]))
   const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),

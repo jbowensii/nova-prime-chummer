@@ -49,7 +49,7 @@ export function SkillsTab() {
               {(['points', 'karma'] as const).map(k => <td key={k}><Stepper label={`${sk.name} ${k}`} value={s?.[k] ?? 0} min={0} max={99}
                 onChange={to => act({ op: 'skill', target: sk.id, pool: k, delta: to - (s?.[k] ?? 0) })} /></td>)}
               <td className="num">{rank || ''}</td>
-              <td className="num">{pool ? pool.dp : ''}</td>
+              <td className="num">{pool ? pool.dp : ''}{pool?.conditional?.map((x, i) => <div key={i} className="muted small">+{x.value} {x.from}: {x.when}</div>)}</td>
               <td><Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
                 onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></td>
               <td><Suggest label={`${sk.name} expertise`} value={s?.expertise ?? ''} options={sk.specs}

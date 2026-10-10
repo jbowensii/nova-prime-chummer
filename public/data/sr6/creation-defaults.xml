@@ -4,7 +4,7 @@
      Rulebook (CAT28000, current printing). SWC: Sixth World Companion (CAT28005): sum-to-ten, point buy, lifepath.
      FS: Firing Squad (CAT28002): martial arts.
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
-     as a copy of the server's. Left unset (no book prints them): maxKarmaLeft, karmaToNuyenMax, skillPointsExpertise
+     as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, skillPointsExpertise
      (an expertise at creation is bought with the customization karma at advance.expertise: CRB p. 66, step four, at p. 68's
      prices; owner, 2026-10-09), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
      advance.nuyenToKarmaRate, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
@@ -18,6 +18,8 @@
   <setting key="skillCapAptitude" value="7" source="CRB" page="65"/>
   <setting key="aptitudeQuality" value="crb.aptitude-skill" source="CRB" page="70"/>
   <setting key="exceptionalQuality" value="crb.exceptional-attribute" source="CRB" page="71"/>
+  <setting key="manyTalentsQuality" value="swc.many-talents" source="SWC" page="134"/>
+  <setting key="manySkillsQuality" value="swc.many-skills" source="SWC" page="134"/>
   <setting key="oneSkillAtMax" value="true" source="CRB" page="65"/>
   <setting key="skillPointsSpec" value="1" source="CRB" page="65"/>
   <setting key="magicMax" value="6" source="CRB" page="167"/>
@@ -30,6 +32,9 @@
   <setting key="contactRatingMax" value="8" source="SWC" page="161"/>
   <setting key="knowledgePerLog" value="1" source="CRB" page="67"/>
   <setting key="maxAvailability" value="6" source="CRB" page="66"/>
+  <!-- availabilityCapIllegalOnly is left unset: the first printing (2019) caps only illegal gear, the Seattle, Berlin and
+       Hong Kong printings (2021-2025) every item; the latest printing wins -->
+  <setting key="maxKarmaLeft" value="5" source="CRB" page="66"/>
   <setting key="maxNuyenLeft" value="5000" source="CRB" page="68"/>
   <setting key="freeSpellsPerMagic" value="2" source="CRB" page="65"/>
   <setting key="freeFormsPerResonance" value="2" source="CRB" page="66"/>

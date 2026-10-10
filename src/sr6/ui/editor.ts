@@ -6,7 +6,7 @@ import type { Override, Violation } from '../../model/types'
 import { apply, type Op } from '../engine/actions'
 import type { Sr6Budgets } from '../engine/budgets'
 import type { Preview, Typed } from '../engine/career'
-import { CREATION_KEYS, type CreationRules } from '../engine/creation'
+import { CREATION_KEYS, type CreationRules, type RuleLock } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived } from '../engine/derive'
 import type { Provider } from '../engine/providers'
@@ -15,6 +15,8 @@ import type { Sr6Catalog } from '../model/types'
 
 export interface Sr6Ctx {
   c: Sr6Catalog; data: Sr6Data; cr: CreationRules; ch: Sr6Character
+  /** the table's rules (the server's or its campaign's) without the runner's own choices, and its campaign's locks */
+  table: CreationRules; locks: RuleLock[]
   p: Provider; budgets: Sr6Budgets; v: Violation[]; d: Sr6Derived
   /** someone else's runner, or a finalized one (every tab but Concept, Review and Ledger) */
   ro: boolean

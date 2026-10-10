@@ -12,14 +12,19 @@ import type { Sr6Data as Sr6DataView } from '../engine/data'
 import { catalogFind, entryKey, SR6_NS, sr6EntryXml } from '../engine/load'
 import { OverrideFiles } from '../../ui/OverrideFiles'
 import type { Find } from '../engine/values'
-import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
+import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6SampleFix } from '../model/types'
 import { Sr6EditEntry } from './EditEntry'
 import { Sr6ExportBooksPanel } from './Foundry'
 import { formulaShown, groupOf as pickerGroup } from './Picker'
 import { entryLabel, entrySearch } from '../engine/categories'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
-const TAGS = Object.fromEntries(KINDS.map(k => [SR6_KINDS[k].tag, k]))
+// (samplefix: a book sample runner's printed line corrected, engine/samplefix.ts: the override file carries them too)
+const TAGS = { ...Object.fromEntries(KINDS.map(k => [SR6_KINDS[k].tag, k])), samplefix: 'samplefixes' }
+const attrX = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+/** A sample fix as the edits layer writes it (for Import edits' comparison). */
+const fixXml = (f: Sr6SampleFix) => `<samplefix id="${attrX(f.id)}" source="${attrX(f.source)}" page="${f.page}"><name>${attrX(f.name)}</name>${f.corrects.map(k =>
+  `<correct item="${attrX(k.item)}" field="${k.field}" from="${attrX(k.from)}" to="${attrX(k.to)}"${k.note ? ` note="${attrX(k.note)}"` : ''}/>`).join('')}</samplefix>`
 /** "category zappers · dv 3P · cost Rating × 50": an entry's printed values, then its formulas with their values over its
  *  ratings ("cost = Rating × 50¥ (50–200¥)") */
 const details = (e: Sr6Entry, find: Find) => [...Object.entries(e.attrs).map(([k, v]) => `${k} ${v}`),
@@ -80,7 +85,9 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
           Restore book version drops one.</p>
         <OverrideFiles reload={reload} g={{ dir: 'custom/sr6/edits/', api: 'sr6/edits', ns: SR6_NS, prefix: 'sr6', file: 'sr6-edits',
           books: books.filter(b => !c.sources.get(b.id)?.compendium), tags: TAGS, descTag: () => 'text', strip: ['issue'],
-          current: (kind, id) => { const e = c.entries[kind as Sr6Kind]?.get(id); return e && { xml: sr6EntryXml(e), edited: !!e.edited, text: e.text } } }} />
+          current: (kind, id) => {
+            if (kind === 'samplefixes') { const f = c.sampleFixes?.get(id); return f && { xml: fixXml(f), edited: true, text: f.text } }
+            const e = c.entries[kind as Sr6Kind]?.get(id); return e && { xml: sr6EntryXml(e), edited: !!e.edited, text: e.text } } }} />
         {edits.length === 0 ? <p className="muted">No edits yet.</p> : (
           <div className="scroll-x"><table className="data sr6-edits"><thead><tr><th>Entry</th><th>Kind</th><th>Status</th><th /></tr></thead>
             <tbody>{edits.map(e => {

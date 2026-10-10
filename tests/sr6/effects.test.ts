@@ -101,3 +101,37 @@ test('an expertise at creation is bought with the customization karma at its adv
   const points = world(b, { rules: { 'advance.expertise': 7 } }).budgets  // the fixture gives an expertise skill points
   expect(points.karma.breakdown?.some(l => l.key === 'expertise')).toBe(false)
 })
+
+test('Many Talents and Many Skills allow a second attribute and skill at the maximum (SWC p. 134)', () => {
+  const b = runner(), { data, cr } = world(b)
+  b.attributes.agi.points = attrMax(data, cr, b, 'agi')! - 1
+  b.attributes.cha.points = attrMax(data, cr, b, 'cha')! - 1
+  const cap = cr.get('skillCap')!.value as number
+  b.skills.push({ id: 'crb.gab', points: cap, karma: 0 }, { id: 'crb.tinkering', points: cap, karma: 0 })
+  const rules = { oneSkillAtMax: true }, codes = () => { const w = world(b, { rules }); return validateSr6(w.data, w.cr, w.ch).map(v => v.code) }
+  expect(codes()).toEqual(expect.arrayContaining(['attr.oneAtMax', 'skill.oneAtMax']))
+  b.qualities.push({ uid: 'm1', id: 'crb.made-up-polymath', level: 1 }, { uid: 'm2', id: 'crb.made-up-dabbler', level: 1 })
+  expect(codes()).not.toContain('attr.oneAtMax')
+  expect(codes()).not.toContain('skill.oneAtMax')
+})
+
+test('the Availability cap on illegal gear only, as the core rulebook’s first printing has it', () => {
+  const b = runner(), cap = (made().cr.get('maxAvailability')!.value as number)
+  b.purchases.push({ uid: 'v1', kind: 'gear', name: 'Legal bauble', avail: cap + 2, qty: 1, accessories: [] })
+  const v = (rules = {}) => { const w = world(b, { rules }); return validateSr6(w.data, w.cr, w.ch).filter(x => x.code === 'gear.availCap') }
+  expect(v()).toHaveLength(1)
+  expect(v({ availabilityCapIllegalOnly: true })).toHaveLength(0)  // a custom item prints no legality: legal
+  b.purchases.push({ uid: 'v2', kind: 'augmentations', id: 'crb.glow-eyes', rating: 1, qty: 1, accessories: [] })
+  const w = world(b, { rules: { availabilityCapIllegalOnly: true } })
+  w.data.entry('augmentations', 'crb.glow-eyes')!.attrs.avail = `${cap + 1}(I)`
+  expect(validateSr6(w.data, w.cr, w.ch).filter(x => x.code === 'gear.availCap').map(x => x.path)).toEqual(['augmentations.v2'])
+})
+
+test('a quality whose text says it is outside the six-quality limit isn’t counted', () => {
+  const b = runner(), { data, cr } = world(b), most = cr.get('qualityMaxCount')!.value as number
+  for (let i = 0; i <= most; i++) b.qualities.push({ uid: `u${i}`, id: i ? 'crb.butterfingers' : 'crb.lucky-streak', level: 1 })
+  const codes = (d = data) => validateSr6(d, cr, { ...blankSr6(b.method, 't'), build: b }).map(v => v.code)
+  expect(codes()).toContain('quality.maxCount')
+  data.qualities['crb.lucky-streak'].uncounted = true
+  expect(codes()).not.toContain('quality.maxCount')
+})

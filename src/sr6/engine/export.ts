@@ -10,6 +10,7 @@ import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
 import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
+import { withSampleFixes } from './samplefix'
 import { withSr6House } from './house'
 import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
 import { catalogFind } from './load'
@@ -32,7 +33,7 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
  *  runner's */
-export type Sr6ExportBonus = { target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }
+export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string }
 /** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
  *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
 export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
@@ -77,6 +78,17 @@ export interface Sr6ExportRunner {
   background: string; notes: string
   ledger: { at: string; type: Sr6LedgerType; summary: string; karma: number; nuyen: number }[]
   npc?: Sr6ExportNpc
+  /** the creation rules it is built with that aren't the server's: its campaign's own, and its own choices (value ''
+   *  for one it turned off; assumed: a book sample's, from its numbers; lockedBy: a campaign GM's lock) */
+  rules?: Sr6ExportRule[]
+}
+export interface Sr6ExportRule { key: string; value: string; from: 'campaign' | 'runner'; assumed?: true; lockedBy?: string }
+/** The rules a runner's export lists (Sr6ExportRunner.rules): every setting not the server's, and the runner's own offs. */
+export function exportRules(cr: CreationRules, ch: Pick<Sr6Character, 'rules'>): Sr6ExportRule[] {
+  const out: Sr6ExportRule[] = [...cr.values()].filter(x => x.from === 'campaign' || x.from === 'runner')
+    .map(x => defined({ key: x.key, value: String(x.value), from: x.from as 'campaign' | 'runner', assumed: x.assumed, lockedBy: x.lockedBy }))
+  for (const r of ch.rules ?? []) if (!r.value.trim() && !cr.has(r.key)) out.push(defined({ key: r.key, value: '', from: 'runner' as const, assumed: r.assumed }))
+  return out
 }
 export interface Sr6ExportFile { format: typeof SR6_EXPORT_FORMAT; version: typeof SR6_EXPORT_VERSION; kind: 'runners' | 'books'
   exportedAt: string; app: { name: string; version: string }; descriptions: boolean
@@ -175,7 +187,8 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).map(b => {
     const value = b.value * (b.perRating ? rating : 1) * times
-    return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value } : { target: b.target, value }
+    const when = b.when ? { when: b.when } : {}  // (some tests only: never in derived's pools)
+    return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when } : { target: b.target, value, ...when }
   })
 
 /** As augmentBonus counts it: a line’s bonuses (lineBonuses: entered, else its entry’s effects) × its rating (perRating) × its quantity; an accessory's by its own rating
@@ -199,7 +212,8 @@ export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc => defined({
   from: npc.from, stats: npcValues(npc), lines: npc.lines.map(l => ({ ...l })), pools: npcPools(npc, data) })
 
 /** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/engine/house.ts). */
-export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, ch: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
+export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, printedCh: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
+  const ch = withSampleFixes(all, printedCh).ch // (a book sample's lines as the owner's override file corrects them)
   const c = withSr6House(all, ch.house).c, data = c === all ? allData : sr6Data(c)
   const b = currentBuild(ch), d = deriveSr6(data, cr, { ...ch, build: b }), id = ch.identity
   const money = ch.finalizedAt ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
@@ -251,6 +265,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     ledger: ch.ledger.filter(e => e.type !== 'void' && !voided.has(e.id)).map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e),
       karma: 'karma' in e ? e.karma : 0, nuyen: 'nuyen' in e ? e.nuyen : 0 })),
     ...(ch.npc ? { npc: exportNpc(ch.npc, data) } : {}),
+    ...(exportRules(cr, ch).length ? { rules: exportRules(cr, ch) } : {}),
   }
 }
 

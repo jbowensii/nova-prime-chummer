@@ -18,7 +18,7 @@ const FORMAT_VERSION = 1
 const MAGIC_KINDS = Object.keys(MAGIC_KIND_LABELS) as MagicKind[]
 
 // ---- writing ----
-const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating })
+const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating, when: x.when })
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
@@ -98,6 +98,8 @@ function npcXml(n?: Sr6Npc): string {
     Object.entries(n.stats).map(([key, value]) => el('stat', { key, value })).join('') + n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join(''))
 }
 
+const rulesXml = (rs?: Sr6Character['rules']) => (rs?.length ? el('rules', {}, rs.map(r => el('setting', { key: r.key, value: r.value,
+  assumed: r.assumed, source: r.source, page: r.page })).join('')) : '')
 const printedXml = (p?: Sr6Printed) => (p ? el('printed', { source: p.source, page: p.page },
   Object.entries(p.values).map(([key, value]) => el('value', { key, value })).join('')) : '')
 
@@ -105,7 +107,7 @@ const printedXml = (p?: Sr6Printed) => (p ? el('printed', { source: p.source, pa
 export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
   const body = [npcXml(ch.npc), text('portrait', id.portrait) + text('token', id.token), text('background', id.background), text('notes', id.notes),
-    printedXml(ch.printed), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
+    printedXml(ch.printed), rulesXml(ch.rules), buildXml(ch.build), ledgerXml(ch.ledger), houseXml(ch.house), ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
     ...(ch.migrated ?? []).map(m => el('migrated', m))].filter(Boolean).join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: id.streetName, name: id.name, gender: id.gender, metatype: ch.build.metatype,
     method: ch.build.method, backdrop: id.backdrop, finalizedAt: ch.finalizedAt, campaign: ch.campaign, updatedAt: ch.updatedAt,
@@ -140,7 +142,7 @@ const label = (e: Element, i: number) => `${e.localName} ${i + 1}`
 function readBonus(e: Element): Bonus {
   const target = oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, skill = str(e, 'skill')
   if (target === 'skill' && !skill) throw new Error('a skill bonus names no skill')
-  return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating') })
+  return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating'), when: str(e, 'when') })
 }
 const readBonuses = (e: Element) => { const xs = kids(e, 'bonus').map(readBonus); return xs.length ? xs : undefined }
 
@@ -317,7 +319,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     const t = (name: string) => kid(r, name)?.textContent ?? undefined
     const backdrop = str(r, 'backdrop') as Backdrop | undefined
     const fk = num(r, 'finalKarma'), fn = num(r, 'finalNuyen'), npc = kid(r, 'npc'), ledger = kid(r, 'ledger'), house = kid(r, 'house')
-    const printed = kid(r, 'printed')
+    const printed = kid(r, 'printed'), rules = kid(r, 'rules')
     const ch: Sr6Character = def({
       formatVersion: 1 as const, id: r.getAttribute('id')!,
       identity: def({ name: str(r, 'name') ?? '', streetName: str(r, 'streetName') ?? '', gender: str(r, 'gender'), metatype: build.metatype,
@@ -329,6 +331,8 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       npc: npc ? readNpc(npc, fix) : undefined, sampleKey: str(r, 'sampleKey'), house: house?.children.length ? readHouse(house, fix) : undefined,
       printed: printed ? { source: str(printed, 'source') ?? '', page: num(printed, 'page', 0),
         values: Object.fromEntries(kids(printed, 'value').map(v => [v.getAttribute('key') ?? '', v.getAttribute('value') ?? ''])) } : undefined,
+      rules: rules && kids(rules, 'setting').length ? kids(rules, 'setting').map(x => def({ key: x.getAttribute('key') ?? '', value: x.getAttribute('value') ?? '',
+        assumed: x.getAttribute('assumed') === 'true' ? true as const : undefined, source: str(x, 'source'), page: num(x, 'page') })) : undefined,
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: o.textContent ?? '' })),
       migrated: kids(r, 'migrated').length ? kids(r, 'migrated').map(m => ({ from: m.getAttribute('from') ?? '', to: m.getAttribute('to') ?? '', at: m.getAttribute('at') ?? '' })) : undefined,
       updatedAt: str(r, 'updatedAt') ?? new Date().toISOString(), lastExportedAt: str(r, 'lastExportedAt'),

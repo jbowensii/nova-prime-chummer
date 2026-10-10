@@ -145,6 +145,25 @@ test('a campaign uses the server’s settings until its GM sets its own; players
   expect(readFileSync(join(custom, 'sr6', 'campaigns.xml'), 'utf8')).not.toContain('<creation')
 })
 
+test('a campaign’s GM locks creation settings for its runners: kept with who locked each, players read them, nobody else changes them', async () => {
+  const id = await campaign('eve', 'Locked Table')
+  expect((await json('eve', 'POST', `/api/sr6/campaigns/${id}/members`, { user: 'pat' })).status).toBe(200)
+  expect((await (await json('eve', 'GET', `/api/sr6/campaigns/${id}`)).json()).locks).toEqual([])
+  const r = await (await json('eve', 'PUT', `/api/sr6/campaigns/${id}`, { locks: ['startingKarma', 'contactKarma'] })).json()
+  expect(r.locks).toEqual([{ key: 'startingKarma', by: 'eve', byName: 'Eve' }, { key: 'contactKarma', by: 'eve', byName: 'Eve' }])
+  // the admin adds one: the ones there keep who locked them
+  const r2 = await (await json('admin', 'PUT', `/api/sr6/campaigns/${id}`, { locks: ['startingKarma', 'maxKarmaLeft'] })).json()
+  expect(r2.locks.map((l: { key: string; by: string }) => [l.key, l.by])).toEqual([['startingKarma', 'eve'], ['maxKarmaLeft', 'admin']])
+  expect((await (await json('pat', 'GET', `/api/sr6/campaigns/${id}`)).json()).locks).toHaveLength(2)
+  expect((await json('pat', 'PUT', `/api/sr6/campaigns/${id}`, { locks: [] })).status).toBe(403)
+  for (const bad of ['startingKarma', [3], ['bad key']]) expect((await json('eve', 'PUT', `/api/sr6/campaigns/${id}`, { locks: bad })).status, JSON.stringify(bad)).toBe(400)
+  const xml = readFileSync(join(custom, 'sr6', 'campaigns.xml'), 'utf8')
+  expect(xml).toContain('<lock key="maxKarmaLeft" by="admin"/>')
+  const xsd = readFileSync('public/data/schema/campaigns.xsd', 'utf8')
+  expect((await validateXML({ xml: { fileName: 'campaigns.xml', contents: xml }, schema: { fileName: 'campaigns.xsd', contents: xsd } })).errors).toEqual([])
+  expect((await (await json('eve', 'PUT', `/api/sr6/campaigns/${id}`, { locks: [] })).json()).locks).toEqual([])
+})
+
 test('Anarchy campaigns have no creation settings', async () => {
   const id = await campaign('eve', 'Anarchy Table', '')
   const r = await json('eve', 'PUT', `/api/campaigns/${id}`, { creation: OWN })

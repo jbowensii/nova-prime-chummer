@@ -45,6 +45,8 @@
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="metamagic"><xs:complexType><xs:complexContent><xs:extension base="sr6:Metamagic">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
+        <xs:element name="samplefix"><xs:complexType><xs:complexContent><xs:extension base="sr6:SampleFix">
+          <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="echo"><xs:complexType><xs:complexContent><xs:extension base="sr6:Entry">
           <xs:attributeGroup ref="sr6:by"/></xs:extension></xs:complexContent></xs:complexType></xs:element>
         <xs:element name="martialart"><xs:complexType><xs:complexContent><xs:extension base="sr6:MartialArt">

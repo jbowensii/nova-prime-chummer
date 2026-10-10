@@ -324,6 +324,8 @@ class _Catalog:
             attrs, aliases = {**(attrs or {}), **more}, (*aliases, printed)
         elif kind == "spells":  # an opposed test, a threshold counting Essence (flags.py)
             attrs = {**(attrs or {}), **flags.spell((attrs or {}).get("category"), text)}
+        elif kind == "qualities":  # one the six-quality limit doesn't count (flags.py)
+            attrs = {**(attrs or {}), **flags.uncounted(text)}
         elif kind == "martialtechniques":  # the prerequisites its closing line prints (flags.py)
             children = [*children, *flags.requires(text)]
         if split and not cid and (opts := flags.options(text)):  # learned in one of the options it lists: an entry each

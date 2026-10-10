@@ -182,4 +182,4 @@ def fit(need, priorities, cs):
         s10 = best((ls for ls in itertools.product("ABCDE", repeat=5) if sum(value[L] for L in ls) <= target), "sumtoten")
         if s10 and (got is None or s10[0][:2] < got[0][:2]):
             got = s10
-    return got and got[1]
+    return got and {**got[1], "over": got[0][1]}  # (over: the Karma still past the starting Karma)

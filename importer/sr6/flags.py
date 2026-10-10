@@ -147,3 +147,13 @@ def options(text):
     times = n.group(1).lower().split()[0]
     times = 2 if times == "twice" else _NUMBERS.get(times) or (int(times) if times.isdigit() else 0)
     return [o[:1].upper() + o[1:] for o in opts] if times == len(opts) > 1 else []
+
+
+_UNCOUNTED = re.compile(r"\bdoes\s+not\s+count\s+to(?:ward)?s?\s+(?:the|your)\s+(?:maximum\s+of\s+|limit\s+of\s+)?six\b", re.I)
+
+
+def uncounted(text):
+    """{"uncounted": "true"} for a quality whose text says it isn't one of the six a runner may take at creation
+    (`This quality does not count toward the six total qualities limitation at character generation`), else {}."""
+    one = re.sub(r"(?<=[a-z])-\s+(?=[a-z])", "", " ".join((text or "").replace("**", "").split()))  # (`to- ward`)
+    return {"uncounted": "true"} if _UNCOUNTED.search(one) else {}

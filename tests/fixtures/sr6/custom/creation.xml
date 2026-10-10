@@ -108,6 +108,9 @@
   <setting key="dermalDepositsQuality" value="crb.made-up-hide" source="CRB" page="71"/>
   <setting key="charismaticDefenseQuality" value="crb.made-up-charm" source="CRB" page="72"/>
   <setting key="exceptionalQuality" value="crb.made-up-prodigy" source="CRB" page="62"/>
+  <setting key="manyTalentsQuality" value="crb.made-up-polymath" source="CRB" page="62"/>
+  <setting key="manySkillsQuality" value="crb.made-up-dabbler" source="CRB" page="62"/>
+  <setting key="availabilityCapIllegalOnly" value="false" source="CRB" page="63"/>
   <setting key="initiativeDice" value="2" source="CRB" page="77"/>
   <setting key="astralInitiativeDice" value="3" source="CRB" page="77"/>
   <setting key="specDice" value="4" source="CRB" page="78"/>

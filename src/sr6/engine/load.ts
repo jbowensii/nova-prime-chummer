@@ -69,7 +69,7 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
     if (perr) { c.errors.push({ file: f.file, message: `XML parse error: ${perr.textContent?.trim().split('\n')[0]}` }); continue }
     const root = doc.documentElement, kind = root.getAttribute('kind') ?? ''
     if (root.localName !== 'data' || root.namespaceURI !== SR6_NS) { c.errors.push({ file: f.file, message: 'not an SR6 data file' }); continue }
-    const els = [...root.children]
+    let els = [...root.children]
     if (kind === 'compendium') {
       const r = readSr6Compendium(f.xml)
       if (!r.ok) { c.errors.push({ file: f.file, message: r.error }); continue }
@@ -96,6 +96,17 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
           if (e) e.text = el.textContent ?? ''
         }
       } else if (kind === 'edits') {
+        // a book sample runner's printed lines corrected: not a catalog entry (src/sr6/engine/samplefix.ts)
+        for (const el of els.filter(x => x.localName === 'samplefix')) {
+          const a = (n: string) => el.getAttribute(n) ?? ''
+          c.sampleFixes ??= new Map()
+          c.sampleFixes.set(a('id'), { id: a('id'), source: a('source'), page: Number(a('page')) || 0, by: el.getAttribute('by') ?? undefined,
+            name: [...el.children].find(k => k.localName === 'name')?.textContent ?? '', text: [...el.children].find(k => k.localName === 'text')?.textContent ?? '',
+            corrects: [...el.children].filter(k => k.localName === 'correct').map(k => ({ item: k.getAttribute('item') ?? '',
+              field: (k.getAttribute('field') ?? 'rating') as 'rating', from: k.getAttribute('from') ?? '', to: k.getAttribute('to') ?? '',
+              ...(k.getAttribute('note') ? { note: k.getAttribute('note')! } : {}) })) })
+        }
+        els = els.filter(x => x.localName !== 'samplefix')
         const edits = els.map(el => {
           const k = KIND_OF_TAG.get(el.localName)
           if (!k) throw new Error(`<${el.localName}> isn’t an SR6 entry`)

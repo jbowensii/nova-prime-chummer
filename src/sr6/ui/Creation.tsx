@@ -5,7 +5,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
-import { CREATION_GROUPS, expandKeys, readSettingsFile, rulesFrom, type CreationRow, type CreationRules } from '../engine/creation'
+import { CREATION_GROUPS, CREATION_KEYS, expandKeys, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
+import type { Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 
 /** std: the shipped standard settings (loadCreation), which rules are overlaid on. */
@@ -19,18 +20,21 @@ const norm = (v: string) => { const t = v.trim(); return t && Number.isFinite(Nu
 const isStd = (r: Row, d?: Row) => d ? norm(r.value) === norm(d.value) && r.source.trim() === d.source && r.page.trim() === d.page : !r.value.trim()
 const rowOf = (s: CreationRow): Row => ({ value: s.value, source: s.source ?? '', page: s.page ? String(s.page) : '' })
 
-/** The rules a runner in campaign `id` is built with, fetched each time the editor opens it: undefined while they load,
- *  null for the server's (no campaign, a campaign without its own settings, or one this account can't read). */
-export function useCampaignRules(id: string | undefined): CreationRules | null | undefined {
-  const [got, setGot] = useState<{ id?: string; rules: CreationRules | null }>({ rules: null })
+/** The campaign a runner is in (its settings and locks), fetched each time the editor opens it: undefined while it
+ *  loads, null for none (or one this account can't read). */
+export function useRunnerCampaign(id: string | undefined): Campaign | null | undefined {
+  const [got, setGot] = useState<{ id?: string; camp: Campaign | null }>({ camp: null })
   useEffect(() => {
-    if (id) void send(`sr6/campaigns/${id}`, undefined, 'GET').then(r => r.json())
-      .then((c: Campaign) => campaignRules(c), () => null).then(rules => setGot({ id, rules }))
+    if (id) void send(`sr6/campaigns/${id}`, undefined, 'GET').then(r => r.json()).then((c: Campaign) => c, () => null).then(camp => setGot({ id, camp }))
   }, [id])
-  return !id ? null : got.id === id ? got.rules : undefined
+  return !id ? null : got.id === id ? got.camp : undefined
 }
-/** A campaign's settings as its list entry has them (Runners.tsx: one rules map per runner). */
-export const campaignRules = (c: Campaign | undefined) => c?.creation ? rulesFrom(c.creation).rules : null
+/** A campaign's settings as its list entry has them. */
+export const campaignRules = (c: Campaign | null | undefined) => c?.creation ? rulesFrom(c.creation).rules : null
+/** The rules a runner is built and checked with everywhere (editor, Your runners, the export): the server's or its
+ *  campaign's own, with the runner's own choices over them except where its campaign locked them (runnerRules). */
+export const rulesForRunner = (server: CreationRules, camp: Campaign | null | undefined, ch: Pick<Sr6Character, 'rules'>): CreationRules =>
+  runnerRules(campaignRules(camp) ?? server, ch.rules, (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })), camp?.creation ? 'campaign' : 'server')
 
 /** The form. `onSave` gets the whole list; without it the form is read only. Load settings file puts a local creation.xml's
  *  values in the form for review (readSettingsFile); only Save sends them. */
@@ -163,6 +167,35 @@ export function CampaignCreation({ c, cr, camp, onSaved }: { c: Sr6Catalog; cr: 
       </CreationForm>}
       <div role="status" aria-live="polite">{msg && <p className="ok">{msg}</p>}</div>
       {err && <p className="err" role="alert">{err}</p>}
+      <CampaignLocks camp={camp} manages={manages} onSaved={onSaved} />
     </section>
   )
+}
+
+/** The optional rules a campaign's GM (or the admin) locks for its runners: a locked one can't be chosen on a runner's
+ *  Creation method tab (runnerRules leaves the runner's choice out). Players read the list. */
+export function CampaignLocks({ camp, manages, onSaved }: { camp: Campaign; manages: boolean; onSaved: (camp: Campaign) => void }) {
+  const [draft, setDraft] = useState(() => new Set((camp.locks ?? []).map(l => l.key)))
+  useEffect(() => setDraft(new Set((camp.locks ?? []).map(l => l.key))), [camp])
+  const [msg, setMsg] = useState(''), [err, setErr] = useState('')
+  const by = new Map((camp.locks ?? []).map(l => [l.key, l.byName ?? l.by]))
+  const label = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
+  const save = async () => {
+    setMsg(''); setErr('')
+    try { onSaved(await (await send(`sr6/campaigns/${camp.id}`, { locks: [...draft] }, 'PUT')).json()); setMsg('Locks saved.') }
+    catch (e) { setErr((e as Error).message) }
+  }
+  return <div className="stack">
+    <h3>Locked for this campaign’s runners</h3>
+    <p className="muted">A runner may choose these optional rules for itself on its Creation method tab, unless the campaign locks them.</p>
+    <div className="runner-locks">{RUNNER_RULE_KEYS.map(({ key }) => <div key={key} className="row">
+      {manages ? <label className="check"><input type="checkbox" checked={draft.has(key)} aria-label={`Lock ${label.get(key) ?? key}`}
+        onChange={e => { setMsg(''); setDraft(d => { const n = new Set(d); if (e.target.checked) n.add(key); else n.delete(key); return n }) }} />{label.get(key) ?? key}</label>
+        : <span>{label.get(key) ?? key}{by.has(key) ? '' : ': the runner’s choice'}</span>}
+      {by.has(key) && <span className="muted">locked by {by.get(key)}</span>}
+    </div>)}</div>
+    {manages && <p><button type="button" className="btn" onClick={() => void save()}>Save locks</button></p>}
+    <div role="status" aria-live="polite">{msg && <p className="ok">{msg}</p>}</div>
+    {err && <p className="err" role="alert">{err}</p>}
+  </div>
 }

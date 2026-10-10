@@ -1,5 +1,33 @@
 # Release notes
 
+## 0.11.3 — 2026-10-09: per-runner creation rules, optional rules the sample runners pointed to
+
+Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.
+
+**Shadowrun 6**
+- Per-runner creation rules, as Commlink6 has them: the Creation method tab lists the optional rules (the prime runner's
+  Karma, the expanded contacts, the Availability cap and its illegal-only reading, the Karma and nuyen kept, an
+  expertise's skill points, the quality count), each from the server, the campaign or the runner's own choice. A
+  campaign's GM (or the admin) can lock any of them on the campaign's page; its runners keep the table's value, shown
+  as locked with who locked it. Building, budgets, Review, the sheets, career play and the Foundry export (a `rules`
+  list) all read the runner's rules. A runner without its own choices works as before.
+- Book samples: where a book rule explains the printed numbers, the sample gets that option as its own rule, marked
+  "assumed from the book's numbers (the book doesn't say)" in Review: the prime runner's 100 Karma for the overspends,
+  the first printing's illegal-only Availability cap for a legal item past it.
+- A level printed on a quality that has none (`Magic Resistance 2`) is read as the quality once, with a note.
+- A printed skill rank above the cap is read as the natural rank plus a line's dice (`Con 7` with a voice modulator 3:
+  Con 4), with a note; a bonus that holds on some tests only (a voice modulator's sound-based Con tests, wireless;
+  tailored pheromones' Con and Influence tests in conversation range) shows with its pool and is never added.
+- A book sample's misprinted line can be corrected through the override file (`<samplefix>` in the edits layer): the
+  runner keeps the book's value, the app reads the corrected one, Review notes it instead of the error.
+- Many Talents and Many Skills (Sixth World Companion p. 134): two attributes at their maximum, two skills at the
+  highest rank, for a runner with the quality.
+- A quality whose text says it isn't one of the six at creation (Lofwyr's Legions' Drake, Latent Drake) is read as
+  such and left out of the count.
+- The table may cap only illegal gear's Availability at creation, as the core rulebook's first printing does (p. 66);
+  the later printings cap every item, so it ships off.
+- At most 5 Karma left after creation, as the City Editions print (Hong Kong p. 66): a warning above it.
+
 ## 0.11.2 — 2026-10-09: the runner's effects everywhere, the sample runners' errors traced
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

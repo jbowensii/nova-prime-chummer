@@ -39,6 +39,15 @@
                   </xs:sequence>
                 </xs:complexType>
               </xs:element>
+              <!-- SR6: a creation setting the campaign's runners can't choose for themselves; by: who locked it -->
+              <xs:element name="lock" minOccurs="0" maxOccurs="500">
+                <xs:complexType>
+                  <xs:attribute name="key" use="required">
+                    <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[A-Za-z0-9.:_\-]{1,80}"/></xs:restriction></xs:simpleType>
+                  </xs:attribute>
+                  <xs:attribute name="by" type="ca2:Username" use="required"/>
+                </xs:complexType>
+              </xs:element>
             </xs:sequence>
             <xs:attribute name="id" use="required">
               <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[0-9a-f]{12}"/></xs:restriction></xs:simpleType>

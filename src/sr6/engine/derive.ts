@@ -3,7 +3,7 @@
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
 import { SR6_ATTRS, type Sr6Attr, type Sr6Character } from '../model/character'
-import { allBudgets, attrRating, augmentBonus, entryOf, hostBonus, ratingOf, skillRank } from './budgets'
+import { allBudgets, attrRating, augmentBonus, conditionalBonuses, entryOf, hostBonus, ratingOf, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { makeProvider } from './providers'
@@ -16,6 +16,8 @@ export interface Sr6Pool {
    *  plus its bonuses) */
   dp: number
   spec?: string; expertise?: string
+  /** dice that hold on some tests only (a voice modulator's sound-based Con tests): shown, never in dp */
+  conditional?: { value: number; when: string; from: string }[]
   /** dp with the specialization / expertise (absent when its setting isn't set) */
   specDp?: number; expertiseDp?: number
 }
@@ -89,6 +91,8 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   for (const s of b.skills) {
     const v = data.skills[s.id], rank = skillRank(s), attr = v?.attr ?? '', dp = rank + A(attr) + augmentBonus(b, data, 'skill', s.id)
     const pool: Sr6Pool = { skill: s.id, label: v?.name ?? s.id, rank, attr, dp }
+    const cond = conditionalBonuses(b, data, s.id)
+    if (cond.length) pool.conditional = cond
     // (a specialization of the expertise's own name is the one turned into it, CRB p. 92: rolled as the expertise)
     if (s.spec && s.spec !== s.expertise) { pool.spec = s.spec; const d = plus(dp, 'specDice'); if (d !== null) pool.specDp = d }
     if (s.expertise) { pool.expertise = s.expertise; const d = plus(dp, 'expertiseDice'); if (d !== null) pool.expertiseDp = d }
