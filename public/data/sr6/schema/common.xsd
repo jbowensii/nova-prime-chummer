@@ -450,6 +450,8 @@
       <xs:attribute name="essence" type="sr6:Decimal"/>
       <xs:attribute name="cost" type="sr6:Decimal"/>
       <xs:attribute name="avail" type="sr6:Decimal"/>
+      <!-- the grade a later book redefines as this one (Body Shop's omega: the core rulebook's used), its key -->
+      <xs:attribute name="replaces" type="xs:string"/>
       <xs:attribute name="types">
         <xs:simpleType><xs:list><xs:simpleType><xs:restriction base="xs:string">
           <xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/><xs:enumeration value="geneware"/>

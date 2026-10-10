@@ -46,6 +46,9 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'manySkillsQuality', label: 'Many Skills quality: two skills at the highest rank (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'availabilityCapIllegalOnly', label: 'The Availability cap holds only illegal gear (the core rulebook’s first printing)', type: 'bool', group: 'General', methods: [] },
   { key: 'oneSkillAtMax', label: 'Only one skill at the highest rank', type: 'bool', group: 'General', methods: [] },
+  // (CRB pp. 285–286's tables print an enhancement's Essence and its Capacity; the books' samples print a host's Essence
+  // alone: off, the owner to rule)
+  { key: 'capacityAccessoryEssence', label: 'An accessory fitted into a host’s Capacity costs its own Essence too', type: 'bool', group: 'Augmentation grades', methods: [] },
   // optional (CRB p. 66's list of what the customization Karma buys doesn't name them; Commlink6: an option, off)
   { key: 'karmaSpellsAtCreation', label: 'Extra spells, rituals and complex forms bought with the customization Karma', type: 'bool', group: 'General', methods: [] },
   ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization']]),

@@ -7,13 +7,13 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, extraMagic, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
-import { gradeKnown, gradeName, gradesFor } from './grades'
+import { gradeFits, gradeKnown, gradeName } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from './martial'
 
@@ -40,11 +40,12 @@ const entryCite = (e?: { source: string; page: number }) => (e ? { source: e.sou
 const CRB = (page: number) => ({ source: 'CRB', page })
 const metaName = (c: Ctx) => c.data.metatypes[c.b.metatype]?.name ?? c.b.metatype
 /** every purchase and accessory, with the path of the line it sits on */
-function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string }> {
+function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string; host?: Sr6Purchase; own?: Sr6Purchase }> {
   for (const x of b.purchases) {
     const path = `${PURCHASE_TAB[x.kind]}.${x.uid}`
     yield { x, path }
-    for (const a of x.accessories) yield { x: a, path }
+    // (an implant's add-on has its grade, CRB p. 282; own: the accessory as the file has it)
+    for (const a of x.accessories) yield { x: fitted(x, a), path, host: x, own: a }
   }
 }
 /** 1 when the runner has the quality a setting names (Many Talents, Many Skills: Sixth World Companion p. 134), else 0. */
@@ -221,11 +222,23 @@ const RULES: Rule[] = [
     return hits
   } },
   // CRB p. 283: grades are for cyberware and bioware (a catalog grade may name its own types: Body Shop's exoware)
+  // CRB p. 282: "All accessories and add-ons must be of the same grade as the implant to which they are added": an
+  // add-on the file gives another grade is read at its implant's, and noted
+  { code: 'gear.accessoryGrade', severity: 'warning', tab: 'augmentations', check: c => {
+    const hits: Hit[] = []
+    for (const { x, path, host, own } of lines(c.b)) {
+      if (!host || !own || own.grade === x.grade || host.kind !== 'augmentations') continue
+      const g = (k?: string) => (k ? gradeName(c.data, k) : 'standard')
+      hits.push({ path, message: `${nameOf(c, own)} on ${nameOf(c, host)}: an add-on has its implant’s grade, so it’s ${g(x.grade)}, not the file’s ${g(own.grade)}.`, ...CRB(282) })
+    }
+    return hits
+  } },
   { code: 'gear.grade', severity: 'error', tab: 'augmentations', check: c => {
     const hits: Hit[] = []
-    for (const { x, path } of lines(c.b)) {
+    for (const { x, path, host } of lines(c.b)) {
       const e = entryOf(x, c.data), g = x.grade
-      if (!g || !e || !gradeKnown(c.cr, c.data, g) || gradesFor(c.cr, c.data, e).includes(g)) continue
+      // (an add-on's grade is its implant's, whatever it is: gear.accessoryGrade)
+      if (host || !g || !e || !gradeKnown(c.cr, c.data, g) || gradeFits(c.cr, c.data, e, g)) continue
       const ge = c.data.grades[g] && c.data.entry('grades', c.data.grades[g].id)
       hits.push({ path, message: `${nameOf(c, x)} (${e.attrs.type || e.kind}) doesn’t come in ${gradeName(c.data, g)}.`, ...(ge ? entryCite(ge) : CRB(283)) })
     }

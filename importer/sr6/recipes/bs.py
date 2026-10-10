@@ -173,6 +173,7 @@ _WORDS = {"five": 5, "ten": 10, "fifteen": 15, "twenty": 20, "twenty-five": 25, 
 _G_ESS = re.compile(rf"x\s*{_NUM}\s*essence|{_NUM}\s*essence\s+multiplier|adds\s+([\w-]+)\s+percent\s+to\s+the\s+base\s+essence", re.I)
 _G_COST = re.compile(rf"x\s*{_NUM}\s*nuyen|nuyen\s+cost\s+is\s+multiplied\s+by\s+{_NUM}", re.I)
 _G_AVAIL = re.compile(r"([–−+-])\s*(\d+)\s+availability", re.I)
+_G_REDEFINED = re.compile(r"\bthe\s+(\w+)\s+grade\W+is\s+redefined\s+here\s+as\s+(\w+)(?:[\s-]+grade)?", re.I)
 _G_ONLY = re.compile(r"can\s+only\s+be\s+applied\s+to\s+(cyberware|bioware)", re.I)
 
 
@@ -181,11 +182,16 @@ def _grades(bs, cat):
     Essence and cost multipliers and Availability modifier read from the prose (`x1.1 Essence cost, x 0.5 nuyen cost,
     and the –1 Availability`, `adds ten percent to the base Essence cost`, `0.4 Essence multiplier`), the types one
     can only be applied to. A grade whose Essence factor doesn't read is reported (missing-value); one with no cost
-    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too."""
-    on = False
+    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too. A grade the section's text says another
+    is redefined as (`the used grade—is redefined here as omega grade`) is that grade's `replaces` (the later book wins:
+    the app offers it instead)."""
+    on, redefined = False, {}
     for b in bs:
         if b.type == "section" and b.level <= 2:
             on = norm(b.name) == "new and revised implant grades"
+            if on:
+                t = " ".join(re.sub(r"-\n(?=[a-z])", "", b.text).split())
+                redefined = {norm(m.group(2)): m.group(1).lower() for m in _G_REDEFINED.finditer(t)}
             continue
         if not on or b.type != "section" or b.level != 3:
             continue
@@ -205,7 +211,7 @@ def _grades(bs, cat):
         if a := _G_AVAIL.search(t):
             cells["AVAIL"] = a.group(1) + a.group(2)
         only = _G_ONLY.search(t)
-        cat.grade(b.name, cells, page, only and only.group(1).lower())
+        cat.grade(b.name, cells, page, only and only.group(1).lower(), replaces=redefined.get(norm(re.sub(r"\s+grade$", "", b.name, flags=re.I))))
 
 
 def extract(regrouped, ctx=None):

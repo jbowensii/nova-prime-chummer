@@ -27,6 +27,15 @@ Import the SR6 books again (Books → **Re-import all**) so the sample runners a
   link) takes nothing. Review's capacity error shows when they take more than the host has (the Smooth Operations
   Networker's cyberears: 10 of 8). An accessory fitted into a host's Capacity costs no Essence of its own, as the books'
   samples print it.
+- An implant's accessories and add-ons always have its grade (CRB p. 282): their cost × the grade's cost factor, their
+  Availability plus its modifier, any Essence they cost × its Essence factor; changing the implant's grade changes
+  them, an add-on can't be given one of its own, and a file that gives one another grade is read at the implant's with
+  a Review note.
+- A grade a later book redefines gives way to the new one: with Body Shop imported, its omega grade is offered instead
+  of the core rulebook's used grade (a line already used still prices and checks as before).
+- Whether an accessory fitted into a host's Capacity costs Essence of its own is a creation setting,
+  `capacityAccessoryEssence` (Table setup → Creation rules, Augmentation grades), off as before (CRB pp. 285–286 print
+  both; the books' samples print the host's Essence alone), so it can be turned on without a new release.
 - Extra spells, rituals and complex forms bought with the customization Karma at creation are an optional rule, off
   (CRB p. 66's list of what that Karma buys doesn't name them; Commlink6 has it as an option, off): a Review error past
   the free ones while it's off, for the priority and Sum-to-Ten methods. A runner can turn it on in its Creation rules;

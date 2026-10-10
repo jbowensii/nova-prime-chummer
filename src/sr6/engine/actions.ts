@@ -267,7 +267,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // an accessory whose category names other hosts goes on anyway (Review's catalog.accessoryHost)
       const line = newLine({ kind: op.kind, id: op.id, rating: op.rating }, data, cr)
       if ('reason' in line) return line
-      host.accessories.push(line)
+      host.accessories.push(line)  // (no grade of its own: on an implant it has the implant's, budgets.ts fitted)
       return OK
     }
     case 'wear': {
@@ -285,8 +285,13 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const gp = op.grade ? gradeProblem(cr, data, op.grade, x.id ? data.entry(x.kind, x.id) : undefined) : null
       if (gp) return no(gp)
+      // an implant's add-on has its grade (CRB p. 282): never one of its own
+      const host = b.purchases.find(h => h.kind === 'augmentations' && h.accessories.includes(x))
+      if (host && op.grade !== undefined) return no('grade-follows-host')
       if (op.rating !== undefined) x.rating = op.rating
       if (op.grade) x.grade = op.grade; else if (op.grade === null) delete x.grade
+      // its add-ons follow it (a grade a file gave one is dropped: they have the implant's)
+      if (op.grade !== undefined && x.kind === 'augmentations') for (const a of x.accessories) delete a.grade
       return OK
     }
     case 'bonus': {

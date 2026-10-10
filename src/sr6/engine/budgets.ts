@@ -5,7 +5,7 @@
 // warns that it isn't set). Never NaN.
 import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Sin, type Sr6Skill, sinName } from '../model/character'
 import type { Sr6Entry } from '../model/types'
-import { num, str, type CreationRules } from './creation'
+import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, normName, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
@@ -124,6 +124,14 @@ export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => 
 /** The rating a purchase is priced at: its own, else the lowest its entry comes in, else 1. */
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1
 
+/** An accessory as its host carries it: on an augmentation it has the host's grade, whatever the file says ("All
+ *  accessories and add-ons must be of the same grade as the implant to which they are added", CRB p. 282). */
+export function fitted(host: Sr6Purchase, a: Sr6Purchase): Sr6Purchase {
+  if (host.kind !== 'augmentations' || a.grade === host.grade) return a
+  const { grade: _, ...rest } = a
+  return host.grade ? { ...rest, grade: host.grade } : rest
+}
+
 /** A purchase line's cost (× qty, accessories added), Availability (its own; accessories are checked one by one) and
  *  Essence (× qty, accessories added but those taking the host's Capacity), at its rating, quantity and grade: an entry's <formula> when it has one
  *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
@@ -153,11 +161,13 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules, host?: 
   if (!perLine.has('cost')) cost *= x.qty
   if (!perLine.has('essence')) essence *= x.qty
   const own = { cost, avail, essence }
-  for (const a of x.accessories) {
+  for (const a of x.accessories.map(a => fitted(x, a))) {
     const pa = priced(a, data, cr, own), ae = entryOf(a, data)
-    // one fitted into the host's Capacity (`[2]`) costs no Essence of its own: the book's samples print the host's alone
-    // (Smooth Operations p. 99's cybereyes 3 with five enhancements: Essence 4.54)
-    cost += pa.cost; essence += capacityUsed(ae, ratingOf(a, ae)) > 0 ? 0 : pa.essence; ok &&= pa.ok
+    // one fitted into the host's Capacity (`[2]`) costs no Essence of its own unless capacityAccessoryEssence (the
+    // owner hasn't ruled: CRB pp. 285–286's tables print both; the book's samples print the host's alone, Smooth
+    // Operations p. 99's cybereyes 3 with five enhancements: Essence 4.54)
+    const ess = capacityUsed(ae, ratingOf(a, ae)) > 0 && !flag(cr, 'capacityAccessoryEssence') ? 0 : pa.essence
+    cost += pa.cost; essence += ess; ok &&= pa.ok
   }
   return { cost, avail, essence: round2(essence), ok, unpriced, notes }
 }

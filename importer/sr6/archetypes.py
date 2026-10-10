@@ -535,7 +535,8 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
             if not got or norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
                 continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
             ga = got[3].get("attrs", {})
-            cost += (fit.value(ga.get("cost"), ar or 1) or 0) * qty
+            # (an implant's add-on has its grade, CRB p. 282: its cost at the implant's grade factor, budgets.ts fitted)
+            cost += (fit.value(ga.get("cost"), ar or 1) or 0) * qty * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
             fitted.append(f'<purchase uid="g{n}a{i + 1}" kind="{got[0]}" id={quoteattr(got[1])} name={quoteattr(got[2])}{_a("rating", ar)} qty="1"/>')
     return _closed(f'<purchase uid="g{n}" kind="{hit[0]}" id={quoteattr(hit[1])} name={quoteattr(hit[2])}{_a("rating", r)} '
                    f'qty="{qty}"{_a("grade", grade and grade.group(1).lower())}{_a("note", note)}',

@@ -592,7 +592,7 @@ class _Catalog:
             for r in rows:
                 self.grade(r[0], {h: c for h, c in zip(header[1:], r[1:])}, page)
 
-    def grade(self, name, cells, page, types=None):
+    def grade(self, name, cells, page, types=None, replaces=None):
         """An implant grade (`Alphaware | x0.8 | x1.2 | +1`): its Essence and cost multipliers and Availability
         modifier as numbers (`x`, `+` dropped, `–` as `-`); a cell that isn't one is reported, the grade kept."""
         attrs = {}
@@ -607,7 +607,7 @@ class _Catalog:
             else:
                 self.report.append({"kind": "book-value", "file": "grades.xml", "name": name, "field": a, "value": cell,
                                     "page": page})
-        self.add("grades", name, page, {**attrs, "types": types})
+        self.add("grades", name, page, {**attrs, "types": types, "replaces": replaces})
 
     def priority(self, header, row, page):
         letter = (row[0] if row else "").strip()

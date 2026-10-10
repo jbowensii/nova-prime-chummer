@@ -176,7 +176,8 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
   return <span className="row">
     {host.accessories.map(a => {
       const e = entryOf(a, data), own = e ? entryLabel(e) : a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
-      const range = ratingRange(e?.attrs.rating), grades = e ? gradeOptions(cr, data, e) : []
+      // on an implant an add-on has its grade (CRB p. 282): shown, never chosen
+      const range = ratingRange(e?.attrs.rating), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
       // its rating and grade change in place, as a line's do
       return <span key={a.uid} className="chip">{range.length > 1 ? own : label}
         {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
@@ -184,6 +185,7 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
         {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
           onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
           <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, e!)}</option>)}</select>}
+        {implant && host.grade && <span className="muted" title="An add-on has its implant’s grade (core rulebook p. 282)"> {gradeName(data, host.grade)}</span>}
         <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>×</button>
         {/* what it does to its host (a cyberlimb's Strength), never to the runner */}
         <Bonuses uid={a.uid} name={`${own} on ${name}`} bonuses={a.bonuses} rated={!!a.rating} /></span>
