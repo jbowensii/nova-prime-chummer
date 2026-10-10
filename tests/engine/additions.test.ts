@@ -42,12 +42,14 @@ test('technomancer (a book adds Tasking and Emerged; made-up base 6): Emerged co
   expect(ampRating(cat, ch.build.amps[0], first) * cat.pricing.ampPoint).toBe(36000)
   expect(itemCost(cat.pricing, ch.build.items[0])).toBe(7250) // the book’s <prices> over the core's 6,500
   const d = derive(cat, ch)
-  expect(d).toMatchObject({ emerged: true, firewall: 4, attack: 3 })
+  // hot-sim VR as if with a DNI (CG p.8): no DNI needed for Cracking
+  expect(d).toMatchObject({ emerged: true, firewall: 4, attack: 3, vr: 'hot' })
   expect(d.thresholds.matrix).toEqual([4, 7, 10])
   expect(d.pools.find(p => p.spec === 'tasking.compiling')!.dp).toBe(3 + 2 + 3) // the made-up spec uses CHA
   const c = codes(ch)
   expect(c).not.toContain('skill.requiresEmerged')
   expect(c).not.toContain('skill.requiresDeck')
+  expect(c).not.toContain('skill.requiresDni')
   ch.build.amps.push(amp('a', 'awakened', ['awk-sorcery']))
   expect(codes(ch)).toContain('amp.emergedAwakened')
   ch.build.amps = []

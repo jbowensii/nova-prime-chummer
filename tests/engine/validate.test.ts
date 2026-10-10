@@ -32,6 +32,10 @@ test.each<[string, (ch: Character) => void]>([
   ['adept.requiresAwakened', ch => { ch.build.amps = [amp('p', 'adept', [])] }],
   ['skill.requiresAwakened', ch => { ch.build.skills = [{ id: 'sorcery', rating: 1, specs: [] }] }],
   ['skill.requiresDeck', ch => { ch.build.skills = [{ id: 'cracking', rating: 1, specs: [] }] }],
+  // a deck but no DNI (CRB p.212)
+  ['skill.requiresDni', ch => { ch.build.skills = [{ id: 'cracking', rating: 1, specs: [] }]; ch.build.amps = [amp('d', 'cyberdeck', [])] }],
+  // an RCC without VR access from cyberware (CRB p.62)
+  ['rig.requiresVr', ch => { ch.build.amps = [amp('r', 'cyberware', [{ ref: 'rcc', value: 2 }])] }],
   ['essence.dead', ch => { ch.build.amps = [1, 2, 3, 4, 5, 6].map(i => amp(`c${i}`, 'cyberware', [])) }],
   ['vehicle.armor', ch => { ch.build.amps = [amp('v', 'vehicle', [{ ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }], { vehicle: 'small-drone' })] }], // made-up body 2
   ['ref.unknown', ch => { ch.build.items = [{ uid: 'x', catalogId: 'no-such-thing', kind: 'gear', name: 'Ghost' }] }],

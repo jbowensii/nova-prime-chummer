@@ -511,13 +511,17 @@ def sheet_amps(sheets, rows, rules):
 
 
 # The book's optional rules, the seeds of the app's Table rules (a GM switches them on): id, name, page. Names and pages
-# are facts; each description goes to the private texts. `where` finds it: ("box", title, first line) for a box, or
-# ("prose", pattern) for a paragraph of body text.
+# are facts; each description goes to the private texts. `where` finds it: ("box", title, first line) for a box,
+# ("title", title) for a box by its title alone, or ("prose", pattern) for a paragraph of body text.
 OPTIONAL = (
     ("optional-extended-social-tests", "Extended social tests", 139, ("box", "OPTIONAL RULES:", "EXTENDED SOCIAL TESTS")),
     ("optional-vehicle-damage-for-all", "Vehicle and drone damage for characters, critters and devices", 68,
      ("prose", re.compile(r"\boptionally\b.*\brules for vehi"))),
     ("optional-planning-pool", "Planning pool or personal Edge", 80, ("box", "PLANNING POOL", "OR PERSONAL EDGE?")),
+    # the box's two variations, which a table plays together or not at all here
+    ("optional-darker-and-more-lethal", "Darker and more lethal (worsening wound effects, longer natural healing)", 69,
+     ("title", "DARKER AND MORE LETHAL")),
+    ("optional-alternative-risk", "Alternative risk rules", 72, ("title", "ALTERNATIVE RISK RULES")),
 )
 
 
@@ -546,9 +550,10 @@ def optional_rules(md):
     """[(id, name, page, text)]: the optional rules; the page the book prints when it's found (else the known page) and
     its description ("" when not found)."""
     found = {(t, b[0].strip()): (p, _join(b[1:])) for p, t, b in boxes(md) if b}
+    titled = {t: (p, _join(b)) for p, t, b in boxes(md) if b}
     out = []
     for oid, name, page, where in OPTIONAL:
-        hit = found.get(where[1:]) if where[0] == "box" else _paragraph(md, where[1])
+        hit = found.get(where[1:]) if where[0] == "box" else titled.get(where[1]) if where[0] == "title" else _paragraph(md, where[1])
         out.append((oid, name, *(hit or (page, ""))))
     return out
 

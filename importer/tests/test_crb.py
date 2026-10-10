@@ -648,6 +648,10 @@ To avoid made-up trouble, a table follows.
 | EXTENDED SOCIAL TESTS |
 | Invented social duels go on for a while�<br>Each side marks made-up social damage� |
 Prose after the box.
+<!-- page 74 -->
+| ALTERNATIVE RISK RULES |
+|---|
+| Made-up special dice replace the risky ones�<br>Nobody glitches in this invented way� |
 """
 
 
@@ -664,6 +668,9 @@ class OptionalRulesTest(unittest.TestCase):
             ("optional-extended-social-tests", "optional", "CRB", "139", "Extended social tests"),
             ("optional-vehicle-damage-for-all", "optional", "CRB", "68", "Vehicle and drone damage for characters, critters and devices"),
             ("optional-planning-pool", "optional", "CRB", "80", "Planning pool or personal Edge"),  # not found: the known page
+            ("optional-darker-and-more-lethal", "optional", "CRB", "69",
+             "Darker and more lethal (worsening wound effects, longer natural healing)"),  # not found: the known page
+            ("optional-alternative-risk", "optional", "CRB", "72", "Alternative risk rules"),
         ])
         for r in self.rules:
             self.assertEqual(r.find("text").text or "", "")
@@ -673,14 +680,16 @@ class OptionalRulesTest(unittest.TestCase):
             "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",
             "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "
                                                "It makes them sturdier in an invented way.",
+            "optional-alternative-risk": "Made-up special dice replace the risky ones. Nobody glitches in this invented way.",
         })
 
 
 @unittest.skipUnless(BOOK.exists(), "owner's converted CRB book not present")
 class OptionalRulesBookTest(unittest.TestCase):
-    def test_all_three_found(self):
+    def test_all_found(self):
         rules = crb.optional_rules(BOOK.read_text(encoding="utf8"))
         self.assertEqual([(r[0], r[2]) for r in rules], [("optional-extended-social-tests", 139),
-                                                         ("optional-vehicle-damage-for-all", 68), ("optional-planning-pool", 80)])
+                                                         ("optional-vehicle-damage-for-all", 68), ("optional-planning-pool", 80),
+                                                         ("optional-darker-and-more-lethal", 69), ("optional-alternative-risk", 72)])
         for r in rules:
             self.assertGreater(len(r[3]), 100, r[0])
