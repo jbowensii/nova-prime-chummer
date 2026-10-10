@@ -270,7 +270,8 @@ def core_entry(table, raw, source, page, seen):
     rows = lambda k: [x for x in raw.get(k) if isinstance(x, dict)] if isinstance(raw.get(k), list) else []  # noqa: E731
     inner = "" if table == "pricing" else f"<name>{escape(_text(raw.get('name')) or '')}</name>"
     if table == "metatypes":
-        inner += f"<racialQuality>{escape(_text(raw.get('racialQuality')) or '')}</racialQuality>" + "".join(
+        from importer.recipes.crb_core import racial_effects  # what the racial quality does, as the recipe reads it
+        inner += f"<racialQuality>{escape(_text(raw.get('racialQuality')) or '')}</racialQuality>" + racial_effects(_text(raw.get('racialQuality')) or '') + "".join(
             "<range" + xmlio._attrs({k: _text(r.get(k)) for k in ("attr", "min", "max")}) + "/>" for r in rows("ranges"))
     if table == "skills":
         inner += "".join(_el("spec", {"id": _id(s.get("id")), "attr": _text(s.get("attr"))}, escape(_text(s.get("name")) or ""))

@@ -9,6 +9,7 @@ import { EditButton } from '../EditEntry'
 import { editHref, useEditor } from '../editor'
 import { anarchyCard, AnarchyRef } from '../AnarchyRef'
 import { NameField } from './Skills'
+import { ItemEffects } from '../EffectHow'
 
 // prices from the core data (pricing.xml)
 const SECTIONS: [ItemKind, string, (p: Pricing) => string][] = [
@@ -109,6 +110,8 @@ export function GearTab() {
                             {(i.kind === 'spell' || i.kind === 'complex-form') && cat?.category}
                             {amp && ` Shadow Amp: ${amp.name}`}
                           </div>
+                          <ItemEffects c={c} catalog={cat?.effects} entered={i.effects}
+                            onChange={fx => update(x => { x.build.items.find(y => y.uid === i.uid)!.effects = fx })} />
                         </td>
                         {kind === 'armor' && <td>
                           <select value={b.mainArmor === i.uid ? 'main' : b.altArmor === i.uid ? 'alt' : ''} aria-label={`Wear ${i.name}`}

@@ -6,25 +6,37 @@ import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry
 import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
-import { armorShares, DEVICE_TYPES, derive } from './derive'
+import { armorShares, DEVICE_TYPES, derive, type PoolNote } from './derive'
+import { applies, own, type EffectState, type EffectSwitch } from './effects'
+import { ruleText } from './amps'
 import { itemCost, price } from './price'
 
 export const EXPORT_FORMAT = 'chummer-anarchy2-export', EXPORT_VERSION = 1
 export type Range = 'ok' | 'disadvantage' | 'none'
 export interface ExportOpts { descriptions: boolean; now: string; appVersion: string }
-export interface ExportEffect { id: string; name: string; category: string; param?: string; value?: number; note?: string }
+/** line: the effect as the sheet says it; applied false: shown, not counted (low confidence, or only `when`); switch,
+ *  when, from: src/engine/effects.ts */
+export interface ExportEffect extends EffectState { id: string; name: string; category: string; param?: string; value?: number; note?: string
+  line: string; applied: boolean }
 /** skill: on a spec line, the skill that owns the spec, when known */
 export interface ExportRR { on: 'attribute' | 'skill' | 'spec'; id: string; name: string; value: number; skill?: string }
+/** sra2's feat fields (bonusLightDamage …, sustainedSpellCount, summonedSpiritCount, riggerConsoleCount,
+ *  hasVehicleControlWiring as 0/1), from the effects that count */
 export interface ExportBonuses { light: number; serious: number; physicalThreshold: number; mentalThreshold: number;
-  matrixThreshold: number; armor: number; anarchy: number; initiative: number }
+  matrixThreshold: number; armor: number; anarchy: number; initiative: number
+  sustainedSpells?: number; sustainedForms?: number; summonedSpirits?: number; riggerConsoles?: number; vehicleControlRig?: number }
 export interface ExportAmp { uid: string; catalogId?: string; source?: string; page?: number; canon: boolean; type: string;
   typeName: string; name: string; rating: number; essence: number; effects: ExportEffect[]; rr: ExportRR[];
-  bonuses: ExportBonuses; item?: string; vehicle?: string; description?: string }
+  bonuses: ExportBonuses; item?: string; vehicle?: string; description?: string
+  /** every counted effect turned on the same way (a drug's dose: activated): sra2's feat `active` is the player's to set */
+  switch?: EffectSwitch }
 export interface ExportItem { uid: string; catalogId?: string; kind: string; name: string; source?: string; page?: number;
   /** the catalog item's category (spells: combat, detection, health, illusion, manipulation), as book items carry it */
   category?: string; canon: boolean; price: number; starting?: string; note?: string; description?: string
   weapon?: { dv: string; dvText: string; ranges: Record<'melee' | 'short' | 'medium' | 'long', Range>; specialist: boolean; ammo: string[] }
-  armor?: { value: number; over?: string } }
+  armor?: { value: number; over?: string }
+  /** what it does (the player's own, else the catalog item's) */
+  effects?: ExportEffect[] }
 export interface ExportRunner {
   id: string; updatedAt: string; exportedAt: string; streetName: string; realName: string; gender?: string; finalized: boolean
   metatype: { id: string; name: string; ranges: Record<AttrId, [number, number]>; edge: number }
@@ -39,7 +51,11 @@ export interface ExportRunner {
   monitor: { light: number; serious: number; incap: number }
   thresholds: Record<string, number[]>; armor: { main: number; alt: number }
   initiative: { level: number; realm?: string; source: string } | null
-  pools: { skill: string; spec?: string; label: string; attr: string; dp: number; rr: number }[]
+  pools: { skill: string; spec?: string; label: string; attr: string; dp: number; rr: number; notes?: PoolNote[] }[]
+  /** what the runner's effects do beyond the numbers: sustained spells and forms, extra spirits, social and Matrix armor,
+   *  wound modifiers ignored, forced Risk, VR, rigging (src/engine/derive.ts) */
+  effects: { sustain: { free: number; max: number; formsFree: number; formsMax: number }; extraSpirits: number; socialArmor: number
+    matrixArmor: number; ignoreWounds?: string; forcedRisk: boolean; vr?: 'cold' | 'hot'; rcc: number; vcr: boolean }
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] }; background: string; notes: string
   nuyen: { balance: number }; ledger: { at: string; type: string; summary: string; amount: number }[]
   /** an NPC's block (absent: a runner) */
@@ -54,15 +70,15 @@ export interface ExportBook {
   amps: { id: string; source: string; page: number; canon: boolean; type: string; typeName: string; name: string; rating: number;
     essence: number; printedRating?: number; mod: boolean; effects: ExportEffect[]; rr: ExportRR[]; bonuses: ExportBonuses
     item?: { kind: string; specialist: boolean; armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range> }
-    vehicle?: string; description?: string }[]
+    vehicle?: string; description?: string; switch?: EffectSwitch }[]
   items: { id: string; source: string; page: number; canon: boolean; kind: string; name: string; category?: string; specialist: boolean
-    armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range>; description?: string }[]
+    armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range>; description?: string; effects?: ExportEffect[] }[]
   vehicles: { id: string; source: string; page: number; name: string; pilot: number; body: number; handling: number; speed: number
     flyingSpeed?: number; armor: number; mount: string }[]
   skills: { id: string; source: string; page: number; name: string; attr: string; alt?: string; specs: { id: string; name: string; attr: string }[] }[]
   specs: { skill: string; id: string; name: string; attr: string; page?: number }[]
   reference?: ExportReference[]
-  metatypes?: { id: string; source: string; page: number; canon: boolean; name: string; edge: number; ranges: Record<AttrId, [number, number]>; racialQuality: string }[]
+  metatypes?: { id: string; source: string; page: number; canon: boolean; name: string; edge: number; ranges: Record<AttrId, [number, number]>; racialQuality: string; effects?: ExportEffect[] }[]
   /** The book's own sample characters, each as a runner. */
   characters?: ExportRunner[]
   /** The book's NPCs, critters and spirits, each as a runner with its `npc` block. */
@@ -88,12 +104,24 @@ function specName(c: Catalog, id: string) {
 }
 /** An amp's effects by name, its Risk Reduction lines and its fixed bonuses, as the amp alone gives them (a book amp's
  *  values). exportRunner then attributes the capped ones across a runner's amps. skills: the runner's, to place a custom spec. */
-export function ampParts(c: Catalog, type: string, effects: EffectPick[], skills: Build['skills'] = []) {
-  const eff: ExportEffect[] = effects.map(e => {
-    const a = c.ampEffects.get(e.ref)
-    return { id: e.ref, name: a?.name ?? e.ref, category: a?.category ?? '', ...e.param ? { param: e.param } : {},
-      ...e.value != null ? { value: e.value } : {}, ...e.note ? { note: e.note } : {} }
-  })
+/** Effects as the file lists them: name and category from the Amp effect table (or the narrative effect kinds), the
+ *  sheet's text, how each is turned on and whether it counts. */
+export const exportEffects = (c: Catalog, effects: EffectPick[]): ExportEffect[] => effects.map(e => {
+  const a = c.ampEffects.get(e.ref)
+  return { id: e.ref, name: a?.name ?? e.ref, category: a?.category ?? '', ...e.param ? { param: e.param } : {},
+    ...e.value != null ? { value: e.value } : {}, ...e.note ? { note: e.note } : {},
+    ...e.switch ? { switch: e.switch } : {}, ...e.when ? { when: e.when } : {}, ...e.confidence ? { confidence: e.confidence } : {},
+    ...e.from ? { from: e.from } : {}, line: ruleText(c, e) ?? a?.name ?? e.ref, applied: applies(e) }
+})
+/** The switch every counted effect of an amp shares, if one does (a drug's dose: activated). */
+const sharedSwitch = (effects: EffectPick[]): EffectSwitch | undefined => {
+  const on = effects.filter(applies), s = on[0]?.switch
+  return s && s !== 'conditional' && on.every(e => e.switch === s) ? s : undefined
+}
+export function ampParts(c: Catalog, type: string, all: EffectPick[], skills: Build['skills'] = []) {
+  const eff = exportEffects(c, all)
+  // the numbers count only the effects that apply (effects.ts applies), as derive counts them
+  const effects = all.filter(applies)
   const rr = new Map<string, ExportRR>()
   for (const e of effects) {
     const on = e.ref === 'rr-attr' ? 'attribute' : e.ref === 'rr-skill' ? 'skill' : e.ref === 'rr-spec' ? 'spec' : null
@@ -106,11 +134,15 @@ export function ampParts(c: Catalog, type: string, effects: EffectPick[], skills
   }
   const device = DEVICE_TYPES.includes(type) // a deck's or vehicle's boxes are its own (CRB p.62)
   const init = count(effects, 'init-3') ? 3 : count(effects, 'init-2') ? 2 : count(effects, 'init-1') ? 1 : 0
+  const total = (ref: string) => effects.filter(e => e.ref === ref).reduce((t, e) => t + (e.value ?? 1), 0)
   const bonuses: ExportBonuses = { light: device ? 0 : Math.min(1, count(effects, 'wound-light')),
     serious: device ? 0 : Math.min(1, count(effects, 'wound-serious')), physicalThreshold: 0,
-    mentalThreshold: count(effects, 'mental-armor'), matrixThreshold: count(effects, 'firewall-plus'),
-    armor: count(effects, 'armor-plus'), anarchy: 0, initiative: init }
-  return { effects: eff, rr: [...rr.values()], bonuses }
+    mentalThreshold: count(effects, 'mental-armor'), matrixThreshold: count(effects, 'firewall-plus') + total('matrix-armor'),
+    armor: count(effects, 'armor-plus'), anarchy: 0, initiative: init,
+    ...Object.fromEntries(([['sustainedSpells', 'sustain-spell'], ['sustainedForms', 'sustain-form'], ['summonedSpirits', 'summon-spirit'],
+      ['riggerConsoles', 'rcc'], ['vehicleControlRig', 'vcr']] as const).map(([k, ref]) => [k, k === 'vehicleControlRig' ? Math.min(1, count(effects, ref)) : total(ref)]).filter(([, n]) => n)) }
+  const sw = sharedSwitch(all)
+  return { effects: eff, rr: [...rr.values()], bonuses, ...sw ? { switch: sw } : {} }
 }
 
 /** derive's own rules for the capped bonuses, per amp so they add up to the sheet: a wound box and the initiative level
@@ -144,6 +176,7 @@ function exportItem(c: Catalog, it: ItemEntry, dv: Map<string, { dv: string; amm
     ...it.kind === 'weapon' ? { weapon: { dv: dv.get(it.uid)?.dv ?? it.dv ?? cat?.dv ?? '', dvText: it.dv ?? cat?.dv ?? '',
       ranges: parseRanges(it.ranges ?? cat?.ranges), specialist: !!(it.specialist ?? cat?.specialist), ammo: dv.get(it.uid)?.ammo ?? [] } } : {},
     ...it.kind === 'armor' ? { armor: { value: it.armor ?? cat?.armor ?? 0, ...it.over ? { over: it.over } : {} } } : {},
+    ...(fx => fx.length ? { effects: exportEffects(c, fx) } : {})(own(it.effects, cat?.effects)),
     ...o.descriptions && text ? { description: text } : {} }
 }
 
@@ -198,7 +231,9 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
       speed: v.speed, armor: v.armor, mount: v.mount, flying: v.flying, thresholds: v.thresholds, monitor: v.monitor })),
     monitor: d.monitor, thresholds: { ...d.thresholds } as Record<string, number[]>, armor: { main: d.armor.main, alt: d.armor.alt },
     initiative: d.initiative ?? null,
-    pools: d.pools.map(p => ({ skill: p.skill, ...p.spec ? { spec: p.spec } : {}, label: p.label, attr: p.attr, dp: p.dp, rr: p.rr })),
+    pools: d.pools.map(p => ({ skill: p.skill, ...p.spec ? { spec: p.spec } : {}, label: p.label, attr: p.attr, dp: p.dp, rr: p.rr, ...p.notes ? { notes: p.notes } : {} })),
+    effects: { sustain: d.sustain, extraSpirits: d.extraSpirits, socialArmor: d.socialArmor, matrixArmor: d.matrixArmor,
+      ...d.ignoreWounds ? { ignoreWounds: d.ignoreWounds } : {}, forcedRisk: d.forcedRisk, ...d.vr ? { vr: d.vr } : {}, rcc: d.rcc, vcr: d.vcr },
     narrative: { keywords: ch.narrative.keywords, dispositions: ch.narrative.dispositions, cues: ch.narrative.cues },
     background: ch.identity.background, notes: ch.identity.notes,
     nuyen: { balance: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining },
@@ -239,7 +274,8 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
       }),
       items: mine(c.items).map(i => ({ id: i.id, source: i.source, page: i.page, canon: s.canon, kind: i.kind, name: i.name,
         ...i.category ? { category: i.category } : {}, specialist: !!i.specialist, ...i.armor != null ? { armor: i.armor } : {},
-        ...i.dv ? { dv: i.dv } : {}, ...i.ranges ? { ranges: parseRanges(i.ranges) } : {}, ...o.descriptions && i.text ? { description: i.text } : {} })),
+        ...i.dv ? { dv: i.dv } : {}, ...i.ranges ? { ranges: parseRanges(i.ranges) } : {}, ...i.effects?.length ? { effects: exportEffects(c, i.effects) } : {},
+        ...o.descriptions && i.text ? { description: i.text } : {} })),
       vehicles: mine(c.vehicles).map(v => ({ id: v.id, source: v.source, page: v.page, name: v.name, pilot: v.pilot, body: v.body,
         handling: v.handling, speed: v.speed, ...v.flyingSpeed != null ? { flyingSpeed: v.flyingSpeed } : {}, armor: v.armor, mount: v.mount })),
       skills: mine(c.skills).map(k => ({ id: k.id, source: k.source, page: k.page, name: k.name, attr: k.attr, ...k.alt ? { alt: k.alt } : {},
@@ -248,7 +284,7 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
       specs: [...c.skills.values()].filter(k => k.source !== id).flatMap(k => k.specs.filter(p => p.source === id)
         .map(p => ({ skill: k.id, id: p.id, name: p.name, attr: p.attr, ...p.page ? { page: p.page } : {} }))),
       metatypes: mine(c.metatypes).map(m => ({ id: m.id, source: m.source, page: m.page, canon: s.canon, name: m.name, edge: m.edge,
-        ranges: m.ranges, racialQuality: m.racialQuality })),
+        ranges: m.ranges, racialQuality: m.racialQuality, ...m.effects?.length ? { effects: exportEffects(c, m.effects) } : {} })),
       rules: mine(c.rules).map(r => ({ id: r.id, source: r.source, page: r.page, sheet: r.sheet, sheetName: sheetDisplayName(r.sheet),
         section: r.section.trim() || sheetDisplayName(r.sheet), title: r.title,
         ...o.descriptions && r.text ? { text: r.text } : {} })),

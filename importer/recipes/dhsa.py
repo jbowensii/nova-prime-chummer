@@ -15,9 +15,9 @@ DHSA's text and numbers; the CRB recipe imports the canon ones). Descriptions go
 import functools
 import re
 import xml.etree.ElementTree as ET
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, unescape
 
-from importer import core_dir, core_file, custom_dir, mechanics_roots
+from importer import core_dir, core_file, custom_dir, effects as rules_fx, mechanics_roots
 from importer.recipes import Result
 
 ID, NAME, PUBLISHER, CANON = "DHSA", "Shadow Amps Expanded List v3.4b", "Daegann (Holostreets)", False
@@ -232,6 +232,55 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:60]
 
 
+def parts(s):
+    """Top-level parts of "A (x), B and C (y and z)": split at ",", " and ", " or " outside parentheses."""
+    out, cur, depth, k = [], "", 0, 0
+    while k < len(s):
+        depth += (s[k] == "(") - (s[k] == ")" and depth > 0)
+        sep = re.match(r",?\s+(?:and|or)\s+|,\s*", s[k:]) if depth == 0 else None
+        if sep:
+            out.append(cur)
+            cur, k = "", k + sep.end()
+            continue
+        cur += s[k]
+        k += 1
+    return [c.strip() for c in out + [cur] if c.strip()]
+
+
+# effects that a clause's condition (`when …`) keeps from counting: the rest carry theirs in their param (a custom spec,
+# an initiative realm)
+WHEN_REFS = {"dv-plus", "armor-plus", "mental-armor", "wound-light", "wound-serious", "firewall-plus", "attack-plus"}
+
+
+def stated(fx, clause, entry=""):
+    """`fx` read from `clause` with how the clause turns them on (importer/effects.py state): a dose's Duration makes them
+    activated; a condition holds back the effects that have no param for it (WHEN_REFS)."""
+    st = rules_fx.state(clause, entry)
+    out = []
+    for f in fx:
+        if len(f) > 4:
+            out.append(f)
+            continue
+        own = {k: v for k, v in st.items() if k == "switch" and v == "activated"
+               or (k in ("when", "switch") and f[0] in WHEN_REFS and "when" in st)}
+        out.append((*f, own) if own else f)
+    return out
+
+
+def fx_xml(fx):
+    """<effect>s for (ref, param, value, note[, state]) tuples."""
+    return "".join(f'<effect ref="{f[0]}"{attr("param", f[1])}{attr("value", f[2])}{attr("note", f[3])}'
+                   + "".join(attr(k, v) for k, v in (f[4] if len(f) > 4 else {}).items()) + "/>" for f in fx)
+
+
+# spec names too common to name a Test alone ("a social Test" is any social Test, not Perception (social))
+GENERIC_SPECS = {"social", "physical", "astral", "matrix", "defense", "animals", "engineering", "magic", "media"}
+
+
+def _clean_test(s):
+    return re.sub(r"\s+", " ", re.sub(r"^(?:all|any|every|most|some|the|their|a|an|on)\s+|\s+tests?$", "", s.strip(), flags=re.I)).strip(" .,;:-")
+
+
 # "of your choice" and the like: the player picks the spec when buying the Amp
 WILDCARD = re.compile(r"choice|choose|chosen|of your|to be determined|depending|any specialization", re.I)
 
@@ -240,6 +289,40 @@ class Mapper:
     def __init__(self, specs):
         self.specs = specs
         self.unresolved = []
+        # the readings added with the narrative effect kinds (DV+1 unspaced, VR initiative, ranges set…): off for an
+        # amp whose printed rating they'd overshoot (read_amp)
+        self.extended = True
+
+    def tests(self, phrase):
+        """Test ids a phrase names ("Close Combat and Athletics (ranged defense)", "Charisma- and Willpower-based",
+        "Survival (first aid) + Logic", "Intimidation"): skill, spec or attribute ids, "" for every Test. A phrase with a
+        part that names none of them is one Test of its own words, custom:<phrase> (as an RR spec the skills don't have)."""
+        p = re.sub(r"\s*\+\s*(?:strength|agility|willpower|logic|charisma)\b", "", phrase, flags=re.I)
+        p = re.sub(r"(strength|agility|willpower|logic|charisma)and\b", r"\1 and", p, flags=re.I)  # "Strengthand" (a joined line)
+        p = re.sub(r"-\s+and\b", " and", re.sub(r"-?\s*\b(?:based|related)\b", "", p, flags=re.I)).strip()
+        out = []
+        for part in parts(p):
+            m = re.fullmatch(r"(.+?)(?:\s*\((.*)\))?", part)
+            name = re.sub(r"^(?:(?:all|any|every|most|some|the|their|a|an|on|other)(?:\s+|$))+", "", m.group(1).strip().lower()).strip(" -")
+            name = re.sub(r"\s+tests?$", "", name)
+            spec = m.group(2)
+            if name in ("", "test", "tests", "all", "actions", "all actions", "action"):
+                out.append("")
+            elif name in ATTRS:
+                out.append(ATTRS[name])
+            elif name in SKILLS:
+                out.append((self.spec(SKILLS[name], spec) if spec else SKILLS[name]) or None)
+            else:  # a spec named alone ("Intimidation"), when its name is its own (not "social", "physical")
+                own = [v for (sk, n), v in self.specs.items() if n == name]
+                out.append(own[0] if len(own) == 1 and name not in GENERIC_SPECS else None)
+        if None in out:
+            words = _clean_test(phrase)
+            return ["custom:" + words[:1].upper() + words[1:60]] if words else [""]
+        return out
+
+    def rules(self, clause, entry=""):
+        """The narrative effect kinds `clause` states (importer/effects.py), tests read by tests()."""
+        return rules_fx.rules(clause, self.tests, entry)
 
     def spec(self, skill, text):
         t = re.sub(r"\s*tests?$", "", text.lower().strip().rstrip("."))
@@ -256,6 +339,8 @@ class Mapper:
     def effects(self, line):
         """(ref, param, value, note) tuples for one effect line, or None if it can't be mapped."""
         l = re.sub(r"Ranged W\.?(?=\s|\()", "Ranged Weapons", line.strip())
+        if self.extended:  # "RR 1 on all Perception (Social) Tests", "a RR 1 on most of their Influence Tests": the Test named
+            l = re.sub(r"\b(RR\s*\d\s+on)\s+(?:all|most\s+of\s+their|any)\s+", r"\1 ", l, flags=re.I)
         l = l.replace("(Pist.)", "(pistols)").replace("Dés", "Dis")
         low = l.lower()
         m = re.search(r"RR\s*(\d)\s*(?:on )?(?:tests )?associated with a specialization|RR\s*(\d)\s*\(chosen [a-z ]*skill\)|RR\s*(\d)\s*on skill tests \(skill chosen", l, re.I)
@@ -336,7 +421,163 @@ class Mapper:
             return [("init-2", None, None, None)] + realm
         if re.search(r"^\+2 edges? (points? )?per action scene", low):
             return [("init-3", None, None, None)]
+        return self.more(l, low)
+
+    def more(self, l, low):
+        """The rated readings added with the narrative effect kinds (extended), else None."""
+        if not self.extended:
+            return None
+        m = re.search(r"\bdv ?\+ ?(\d)\b", low)
+        if m and not re.search(r"\bdv \d", low):
+            return [("dv-plus", None, None, None)] * int(m.group(1))
+        realm = "astral" if "astral" in low else "vr" if re.search(r"\bvr\b|matrix|jump", low) else None
+        m = re.search(r"^\+(\d) edges? (?:points? )?per (?:vr |astral |action |matrix )*scene", low)
+        if m:  # a level per printed bonus (CRB p.61), each limited to the realm it names
+            lv = 3 if m.group(1) == "2" else 2 if re.search(r"\+1 action per (?:vr |astral |action )*narration", low) else 1
+            return [(f"init-{k}", None, None, None) for k in range(1, lv + 1)] + [("init-realm", realm, None, None)] * (lv if realm else 0)
+        if re.search(r"^\+1 action per (?:vr |astral |matrix )+narration", low):
+            return [("init-2", None, None, None), ("init-realm", realm, None, None)]
+        if re.fullmatch(r"(?:dni and |direct neural interface,? )?cold-?sim(?: vr)?(?: \(.*\))?\.?", low.strip()):  # VR access alone
+            return [("vr-cold", None, None, None)]
+        if re.search(r"\b(?:one|1|an) additional light (?:damage|wound) box", low):
+            return [("wound-light", None, None, None)]
+        if re.search(r"(?:^|\s)\+1 mental armor|\bmental armor \+1", low):
+            return [("mental-armor", None, None, None)]
+        m = re.search(r"\bvehicle armor by \+(\d)", low)
+        if m:
+            return [("vehicle-armor", None, None, None)] * int(m.group(1))
+        if re.search(r"\branges? of a weapon[^.]*from \W?disadvantage\W? to \W?ok", low):
+            return [("range-improve", "a range from Dis to OK (chosen)", None, None)]
+        if re.search(r"immune to normal weapons|immunity to normal weapons", low):
+            return [("weapon-focus", None, None, None)]
+        if re.search(r"\+1 max(?:imum)? sustained spell", low):
+            return [("sustain-spell", None, None, None)]
+        if re.search(r"compile a second sprite|(?:one|an) additional (?:summoned )?spirit", low):
+            return [("summon-spirit", None, None, None)]
+        m = re.search(r"\bto\s*\"?\[?\s*((?:ok|dis|-)\s*(?:/\s*(?:ok|dis|-)\s*){3})", low) if "range" in low else None
+        if m:  # a range set or increased: the bands as printed
+            return [("range-improve", re.sub(r"\s+", "", m.group(1)).replace("ok", "OK").replace("dis", "Dis"), None, None)]
         return None
+
+
+def one_init(fx):
+    """Each initiative level once, and no more realm limits than levels (two lines may print the same level: "+2 Edge
+    per VR scene" then "+1 action per VR narration")."""
+    seen, out = set(), []
+    for f in fx:
+        if re.fullmatch(r"init-[123]", f[0]):
+            if f[0] in seen:
+                continue
+            seen.add(f[0])
+        out.append(f)
+    extra = sum(f[0] == "init-realm" for f in out) - len(seen)
+    for _ in range(max(0, extra)):
+        out.remove(next(f for f in reversed(out) if f[0] == "init-realm"))
+    return out
+
+
+def read_amp(mapper, read, rating):
+    """read() -> (fx, narrative, computed rating), with the Mapper's extended readings; read again without them when they'd
+    overshoot the printed rating (the book's rating is canon: that clause then stays narrative)."""
+    out = read()
+    if out[2] > rating:
+        mapper.extended = False
+        try:
+            out = read()
+        finally:
+            mapper.extended = True
+    return out
+
+
+# an item's armor as a spell grants it: "Increases the Armor Rating applicable to physical / magical / both … attacks"
+_ITEM_ARMOR = re.compile(r"\barmor rating applicable to (?:(both) |)(physical|magical)?", re.I)
+# "identical to the Initiative Enhancement Amps": the amp effect group it names, every level (the level is by hits)
+_INIT_REF = re.compile(r"\b(?:identical to|same as)\s+the\s+(?:initiative enhancement|increase initiative)\s+amps\b", re.I)
+
+
+def sentences(text):
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z•–-])|\s+[•–]\s+", text or "") if s.strip()]
+
+
+def item_effects(mapper, text, sustained=False):
+    """An item's effects (a spell, complex form or plain gear) read from its text sentence by sentence: the rated readings
+    (RR, Armor, initiative by reference) and the narrative effect kinds. A sustained spell's or form's are
+    switch="sustained"; a value that depends on hits is low confidence."""
+    fx = []
+    for s in sentences(text):
+        st = rules_fx.state(s, text)
+        if sustained and "when" not in st:
+            st = {**st, "switch": "sustained"}
+        bullet = re.match(r"\W*\d+\s+(?:net\s+)?(?:hits?|successes)\s*:\s*", s)  # "• 3 hits: +1 Edge per action scene": by hits
+        if bullet:
+            s, st = s[bullet.end():], {**st, "confidence": "low"}
+        rated = mapper.effects(re.sub(r"\bRR (\d) (?:for|to)\b", r"RR \1 on", s)) if re.search(r"\bRR \d|^\+\d|cold-?sim|hot-?sim", s, re.I) else None
+        m = _ITEM_ARMOR.search(s)
+        if m:
+            rated = [("armor-plus", None, None, None)] * (m.group(1) is not None or m.group(2) != "magical") \
+                + [("mental-armor", None, None, None)] * (m.group(1) is not None or m.group(2) == "magical")
+        if _INIT_REF.search(s):
+            rated = [("init-1", None, None, None), ("init-2", None, None, None), ("init-3", None, None, None)]
+            st = {**st, "confidence": "low"}
+        fx += [(*f[:4], st) for f in rated or []]
+        for f in mapper.rules(s, text):
+            fx.append((*f[:4], {**f[4], "switch": "sustained"} if sustained and "when" not in f[4] else f[4]))
+    seen, out = set(), []
+    for f in fx:
+        k = (f[0], f[1] or "", f[2])
+        if k not in seen:
+            seen.add(k)
+            out.append(f)
+    return out
+
+
+# an effect given by reference: "like an elf", "acts exactly the same way as a mana bolt", "treat this ability as a Detect
+# Magic spell" name another entry (or a metatype) whose effects this one has
+REFERENCE = re.compile(r"\b(?:identical to|(?:exactly )?the same (?:way )?as|as per|(?P<like>like)|treat (?:this|it) (?:ability )?as)\s+"
+                       r"(?:an?\s+|the\s+)?(?P<name>[A-Za-z][\w' -]{2,40}?)(?=\s*(?:[.,;:(]|$|\s+(?:spell|amp|quality|casted|with)\b))", re.I)
+_EFFECT = re.compile(r"<effect [^>]*/>")
+_NO_REF = ("narrative", "negative")
+
+
+def _key(name):
+    return re.sub(r"[^a-z0-9]+", "", re.sub(r"^(?:spell|cf|gear)-", "", name.lower()))
+
+
+def link_references(lines, texts, source, others=()):
+    """Effects given by reference, in place: an entry line of `lines` (an <amp> or <item> of this book) whose text
+    (`texts`, by id) names another entry of `lines` or of `others` ([(id, name, effects XML)], the core metatypes) gets
+    that entry's effects (their narrative ones aside), each with from="<its id>" (this book's ids scoped by `source`).
+    A name that finds nothing, or finds an entry without effects, adds nothing."""
+    pre = source.lower() + "."
+    index, plain = {}, {_key(name) for _, name, _ in others}  # "like" names a metatype ("like an elf"), never an entry
+    for i, line in enumerate(lines):
+        m = re.match(r'\s*<(?:amp|item) id="([^"]+)"[^>]*><name>([^<]*)</name>', line)
+        if m:
+            index.setdefault(_key(m.group(2)), (pre + m.group(1), "".join(_EFFECT.findall(line)), i))
+    for oid, name, fx in others:
+        index.setdefault(_key(name), (oid, fx, None))
+    for i, line in enumerate(lines):
+        m = re.match(r'\s*<(?:amp|item) id="([^"]+)"', line)
+        text = texts.get(m.group(1), "") if m else ""
+        ref = REFERENCE.search(text)
+        hit = index.get(_key(ref.group("name"))) if ref and (not ref.group("like") or _key(ref.group("name")) in plain) else None
+        if not hit or hit[2] == i:
+            continue
+        add = "".join(e.replace("/>", f' from="{hit[0]}"/>') for e in _EFFECT.findall(hit[1])
+                      if re.search(r'ref="([^"]+)"', e).group(1) not in _NO_REF and " from=" not in e and e not in line)
+        if add:
+            at = line.find("<narrative>") if "<narrative>" in line else line.find("<text>")
+            lines[i] = line[:at] + add + line[at:]
+
+
+def core_metatypes():
+    """[(id, name, effects XML)] of the core metatypes in use, for link_references ("like an elf")."""
+    try:
+        root = ET.parse(core_file("metatypes.xml")).getroot()
+    except Exception:  # no core yet
+        return []
+    return [(m.get("id"), m.findtext("name") or "", fx_xml(Mapper({}).rules(m.findtext("racialQuality") or "")))
+            for m in root if m.tag == "metatype"]
 
 
 def clean_name(name):
@@ -418,19 +659,25 @@ def extract(md, ctx=None):
                        "computed": computed, "effects": " // ".join(r["effects"])[:160]})
 
     def amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle=None, mod=False):
-        fx_xml = "".join(f'<effect ref="{f[0]}"{attr("param", f[1])}{attr("value", f[2])}{attr("note", f[3])}/>' for f in fx)
         amps.append(f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""} source="{ID}" page="{page}">'
-                    f'<name>{escape(name)}</name>{item}{fx_xml}<narrative>{private("amps", aid, " ".join(narrative))}</narrative></amp>')
+                    f'<name>{escape(name)}</name>{item}{fx_xml(fx)}<narrative>{private("amps", aid, " ".join(narrative))}</narrative></amp>')
 
     def map_lines(lines):
-        fx, narrative = [], []
+        """(effects, narrative lines): a line's rated effects (with how it turns them on), else the line stays narrative and
+        adds the narrative effect kinds it states (rating 0)."""
+        fx, narrative, kinds, entry = [], [], [], " ".join(lines)
         for line in lines:
             if line.strip() in ("", "-") or line.lower().startswith("choose"):
                 narrative.append(line)
                 continue
-            mapped = mapper.effects(re.sub(r"^(Smartgun|Dismountable|Gyro mount|Head-seeker): ", "", line.lstrip("- ")))
-            (narrative.append(line) if mapped is None else fx.extend(mapped))
-        return fx, narrative
+            clean = re.sub(r"^(Smartgun|Dismountable|Gyro mount|Head-seeker): ", "", line.lstrip("- "))
+            mapped = mapper.effects(clean)
+            if mapped is None:
+                narrative.append(line)
+                kinds += mapper.rules(clean, entry)
+            else:
+                fx.extend(stated(mapped, clean, entry))
+        return fx + kinds, narrative
 
     # ---- spells: an empty-type row is a sibling spell sharing the previous row's rules (Confusion/Blind/Stink)
     spell_rows, prev = [], None
@@ -451,7 +698,7 @@ def extract(md, ctx=None):
         text = f'{base["type"]}. Threshold/target: {base["cost"]}. ' + " ".join(base["effects"])
         sid = uid("spell-" + slug(name))
         spells.append(f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{ID}" page="{r["page"]}">'
-                      f'<name>{escape(name)}</name><text>{private("items", sid, text[:300])}</text></item>')
+                      f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(base["effects"]), "S" in base["type"]))}<text>{private("items", sid, text[:300])}</text></item>')
 
     # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules): type = duration, cost = threshold
     for r in rs:
@@ -461,7 +708,7 @@ def extract(md, ctx=None):
         cid = uid("cf-" + slug(name))
         text = f"{dur}. Threshold: {r['cost']}. " + " ".join(r["effects"])
         forms.append(f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="{ID}" page="{r["page"]}">'
-                     f'<name>{escape(name)}</name><text>{private("items", cid, text[:300])}</text></item>')
+                     f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(r["effects"]), "S" in dur))}<text>{private("items", cid, text[:300])}</text></item>')
 
     # ---- contacts: rated templates (CONTACTS section)
     contact_rows = [r for r in rs if r["section"] == "CONTACTS" and printed(r["type"]) is not None]
@@ -493,21 +740,25 @@ def extract(md, ctx=None):
                 target = "bioware"
             if not target:
                 continue
-            fx, narrative = [], []
             grade = next((v for k, v in GRADE_NAMES.items() if k in low), None)
             if grade:
-                fx, narrative = [(grade, None, None, None)], effects_lines
                 ess = re.search(r"(?:reduced|increases) from ([\d.]+) to ([\d.]+)", " ".join(effects_lines))
                 if ess:  # the grade itself, an effect added to the core ones: it changes the amp's Essence cost
                     note = ", social Disadvantage" if "Disadvantage" in " ".join(effects_lines) else ""
                     grades.append({"id": grade, "rating": rating, "types": target, "page": page, "essence": float(ess[2]) - float(ess[1]),
                                    "name": f"{name} (Essence {ess[1]} → {ess[2]}{note})"})
-            elif sec == "RIGGERS – VEHICLE MODS":
-                ref = next((v for k, v in VEHICLE_MOD_NAMES if k in low), None)
-                fx, narrative = ([(ref, None, None, None)] * (rating if ref in ("pilot-plus", "speed-plus", "handling-plus", "vehicle-armor") else 1), effects_lines) if ref else map_lines(effects_lines)
-            else:
-                fx, narrative = map_lines(effects_lines)
-            computed = reconcile(fx, narrative, 0, rating, negative_ok=rating < 0, ratings={grade: rating} if grade else None)
+
+            def read_mod():
+                ref = next((v for k, v in VEHICLE_MOD_NAMES if k in low), None) if sec == "RIGGERS – VEHICLE MODS" else None
+                if grade:
+                    fx, narrative = [(grade, None, None, None)], effects_lines
+                elif ref:
+                    fx, narrative = [(ref, None, None, None)] * (rating if ref in ("pilot-plus", "speed-plus", "handling-plus", "vehicle-armor") else 1), effects_lines
+                else:
+                    fx, narrative = map_lines(effects_lines)
+                    fx = one_init(fx)
+                return fx, narrative, reconcile(fx, narrative, 0, rating, negative_ok=rating < 0, ratings={grade: rating} if grade else None)
+            fx, narrative, computed = read_amp(mapper, read_mod, rating)
             aid = uid("mod-" + slug(name))
             if computed != rating:
                 mismatch(aid, page, f"mod ({target})", rating, computed, r)
@@ -521,7 +772,7 @@ def extract(md, ctx=None):
             if sec in EQUIPMENT_SECTIONS and r["type"].startswith("Equipment") and sec not in ("ARMORY – WEAPONS", "ARMORY – ARMORS"):
                 gid = uid("gear-" + slug(name))
                 gear.append(f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{ID}" page="{page}">'
-                            f'<name>{escape(name)}</name><text>{private("items", gid, " ".join(effects_lines)[:240])}</text></item>')
+                            f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(effects_lines)))}<text>{private("items", gid, " ".join(effects_lines)[:240])}</text></item>')
             continue
 
         atype = SECTION_TYPE.get(sec, "equipment")
@@ -569,20 +820,29 @@ def extract(md, ctx=None):
                     effects_lines = [e for e in effects_lines if e.strip().lower() != "flying"]
         if atype == "cyberdeck" and deck:
             vfx = [("firewall-plus", None, None, None)] * (int(deck.group(1)) - 1) + [("attack-plus", None, None, None)] * int(deck.group(2))
-        fx, narrative = map_lines(effects_lines)
-        fx = vfx + fx
-        refs = [f[0] for f in fx]
-        for lvl, pre in (("init-3", "init-2"), ("init-2", "init-1"), ("vr-hot", "vr-cold")):
-            if lvl in refs and pre not in refs:
-                fx.insert(0, (pre, None, None, None))
-                refs.insert(0, pre)
-        if any(l.lower().startswith("choose two rr") for l in effects_lines):  # mentor spirits / adept ways
-            fx = [f for f in fx if f[0] != "rr-spec"] + [("rr-spec", "", None, "choose from the list")] * 2
-        computed = reconcile(fx, narrative, core()["base"][atype], rating)
+        def read():
+            fx, narrative = map_lines(effects_lines)
+            fx = vfx + fx
+            refs = [f[0] for f in fx]
+            for lvl, pre in (("init-3", "init-2"), ("init-2", "init-1"), ("vr-hot", "vr-cold")):
+                if lvl in refs and pre not in refs:
+                    fx.insert(0, (pre, None, None, None))
+                    refs.insert(0, pre)
+            if any(l.lower().startswith("choose two rr") for l in effects_lines):  # mentor spirits / adept ways
+                fx = [f for f in fx if f[0] != "rr-spec"] + [("rr-spec", "", None, "choose from the list")] * 2
+            fx = one_init(fx)
+            return fx, narrative, reconcile(fx, narrative, core()["base"][atype], rating)
+        fx, narrative, computed = read_amp(mapper, read, rating)
         aid = uid(slug(name))
         if computed != rating:
             mismatch(aid, page, atype, rating, computed, r)
         amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle)
+
+    text_of = {m.group(1): unescape(m.group(2)) for t in texts for m in [re.search(r'id="([^"]+)">(.*)</text>', t)] if m}
+    entries = amps + spells + forms + gear
+    link_references(entries, text_of, ID, core_metatypes())
+    amps, spells, forms, gear = (entries[:len(amps)], entries[len(amps):len(amps) + len(spells)],
+                                 entries[len(amps) + len(spells):len(amps) + len(spells) + len(forms)], entries[len(amps) + len(spells) + len(forms):])
 
     # DHSA's specs, added to the shipped skills (the loader appends an imported skill's specs to the base one)
     added = {}

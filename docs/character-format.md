@@ -25,10 +25,12 @@ is built from this data; the format itself is ours and stays stable.
     <amp uid="amp-3" type="adept" name="Silver tongue" catalogId="…" linkedItem="…" vehicle="…">
       <narrative>…</narrative>
       <effect ref="rr-spec" param="influence.impersonation"/>
+      <effect ref="edge-advantage" param="influence" switch="conditional" when="when flashing the badge"/>
       <snapshot><amp id="…" type="adept" …>…</amp></snapshot>
       <chassis><vehicle id="street.scooter" …>…</vehicle></chassis>   (a compendium vehicle only)
     </amp>
     <item uid="it-coat" kind="armor" name="Lined coat" catalogId="light-armor" armor="3">
+      <effect ref="social-armor" value="1"/>                         (the player's own: they replace the catalog item's)
       <snapshot><item id="light-armor" kind="armor" …>…</item></snapshot>
     </item>
     <item uid="start-fake-sin" kind="gear" name="Fake SIN" starting="fake-sin" note="…"/>
@@ -60,6 +62,10 @@ is built from this data; the format itself is ours and stays stable.
   prints if the entry is later removed from the data. On a book sample's own amp (no `catalogId`, 0.5.6) it is the
   amp as printed: its type, name, `printedRating`, `source` and `page`. Where the rules rate the amp otherwise, Review
   notes it ("the book prints rating 9; the rules give 11"); the file keeps the book's number.
+- **`<effect>`** on an amp is a pick (an Amp effect, or a narrative effect kind at rating 0: data-format.md); on an item,
+  the player's or GM's own effects, which replace the catalog item's. Either may say how it is turned on and whether it
+  counts: `switch`, `when`, `confidence="low"` (shown, not counted) and `from` (data-format.md, How an effect is turned
+  on). The Amp Builder and the Gear tab set them ("Counts").
 - **`<chassis>`** (a vehicle amp whose chassis is a GM compendium's): a copy of that `<vehicle>` (`vehicles.xsd`), so
   the vehicle keeps its stats when the compendium is unshared or deleted. A snapshot or chassis whose source the catalog
   no longer has (or a compendium's entry that is gone) stands in for it, and Review notes "its source … is no longer

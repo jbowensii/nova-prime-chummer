@@ -90,8 +90,9 @@ All caps apply during creation only.
 
 ### metatypes
 
-`<metatype id edge><name/><racialQuality/><range attr min max/> ×5</metatype>`.
-`attr` is one of `str agi wil log cha`.
+`<metatype id edge><name/><racialQuality/><effect/>*<range attr min max/> ×5</metatype>`.
+`attr` is one of `str agi wil log cha`. An `<effect>` says what the racial quality does (Low-light vision:
+`no-disadvantage`), read by the importer; it is the runner's.
 
 ### attributes
 
@@ -161,6 +162,45 @@ prices complex forms at its `spell` price, dropping the Conversion Guide's.
 - `essence` changes the amp's Essence cost (implant grades: delta −0.5,
   omega +0.5, cultivated bioware −0.25).
 
+#### The narrative effect kinds
+
+Every catalog also has the narrative effect kinds (CRB p.59, `src/engine/rule-effects.json`; the loader adds each one a
+data file doesn't define itself): what a narrative effect does, machine-readable, at rating 0. The book prices narrative
+effects with the amp's base rating and its "Additional narrative effect"s, which stay; a kind only says what one does.
+`tools/validate-data.mjs` knows them too.
+
+| id | param | what it does |
+|---|---|---|
+| `advantage` | Test | Advantage on that Test |
+| `edge-advantage` | Test | Advantage on that Test for 1 Edge |
+| `disadvantage` | Test | Disadvantage on that Test (a drawback) |
+| `no-disadvantage` | text | negates a Disadvantage (a vision: "Low-light vision") |
+| `inflict-disadvantage` | text | imposes a Disadvantage on someone else |
+| `edge-effect` | text | an automatic effect for 1 Edge |
+| `edge-gain` | text | gains 1 Edge (and when) |
+| `allow-test` | text | allows a Test otherwise impossible |
+| `ignore-wounds` | text | ignores wound modifiers (`light`, `serious`, or none: all) |
+| `social-armor` | value | social armor: Willpower + it is the social damage threshold (CRB p.139) |
+| `matrix-armor` | value | Matrix armor: added to the Matrix threshold |
+| `min-risk-dice` | value | that many risk dice at least on attack Tests |
+| `forced-risk` | | must take a High or Extreme Risk |
+| `sustain-form` | | one more sustained complex form |
+| `essence-implant` | | the last Essence point counts double (one more implant before death) |
+| `essence-magic` | | magic ignores the first point of Essence lost |
+| `self-wound` | text | causes the character a wound (`light`, `serious`) |
+| `immunity` | text | immune to what it names |
+
+A Test param is a skill, spec or attribute id, `custom:<words>`, or none (every Test). The Test kinds mark a dice pool,
+never its dice (CRB p.63: no circumstance changes the pool).
+
+#### How an effect is turned on
+
+Every `<effect>` (amps, items, metatypes, a runner's amps and items) may say how it is turned on and whether it counts
+(`src/engine/effects.ts`, shared with Shadowrun 6): `switch` (`wireless`, `activated`, `sustained`, `conditional`; absent:
+always on), `when` (it holds only then: shown, not counted), `confidence="low"` (read from a sentence the importer isn't
+sure of, a value that depends on hits: shown, not counted) and `from` (the catalog id of the entry it is given by: "like an
+elf", "acts the same way as a mana bolt"). A switchable effect counts (it is assumed on) and says how it is turned on.
+
 ### packages
 
 `<package id level archetype attrPoints attrAtMax skillPoints skillsAtSix ampPoints armor standardWeapons specialistWeapons equipment spells><name/></package>`
@@ -175,7 +215,7 @@ These are the base chassis for vehicle amps.
 
 ### items (gear, weapons, armor, spells, complex forms)
 
-`<item id kind specialist? armor? dv? ranges? category?><name/><text/></item>`
+`<item id kind specialist? armor? dv? ranges? category?><name/><effect/>*<text/></item>`
 
 - `kind` is `gear|weapon|armor|spell|complex-form`.
 - `dv` may be Strength-based (`STR+2`); the app works out the number.
@@ -183,10 +223,14 @@ These are the base chassis for vehicle amps.
   and heavier weapons (priced at `weaponSpecialist`).
 - `armor` is the armor rating (priced per point).
 - Optional `<formula>` and `<issue>` children, before `<text>` (Formulas and issues, below).
+- `<effect ref param? value? note? switch? when? confidence? from?/>`: what it does, read from its text by the importer
+  (a drug's Disadvantage, a spell's Advantage, gear's vision). A runner's item may carry its own (they replace these).
+  A spell's or complex form's are what it does to its subject or target: listed, never the caster's own unless the player
+  enters them on the runner's item.
 
 ### amps
 
-`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note?/>*<formula/>*<issue/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? switch? when? confidence? from?/>*<formula/>*<issue/>*<narrative/></amp>`
 
 - `<item>` (equipment amps only) is the base item bought with the amp, priced
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
@@ -196,8 +240,13 @@ These are the base chassis for vehicle amps.
   the book's printed rating (see `docs/book-discrepancies.md`). Never on a sample runner's amp (0.5.6).
 
 - `type` is an amptype id.
-- Each `effect ref` is an ampeffect id, and `param` fills its parameter (a
-  skill id, spec id, attribute id, realm, or free text).
+- Each `effect ref` is an ampeffect id (or a narrative effect kind), and `param` fills its parameter (a
+  skill id, spec id, attribute id, realm, Test, or free text).
+- The importer reads an amp's clauses as general rules (`importer/recipes/dhsa.py` Mapper, `importer/effects.py`): a
+  clause a rated effect reads becomes that effect, with its `switch` (a dose's `Duration:` makes it `activated`) and, for
+  a bonus without a param of its own, its `when`; a rated reading that would push the amp past its printed rating is
+  dropped (the clause stays narrative: the printed rating is canon); every other clause stays narrative and adds the
+  narrative effect kinds it states.
 - `vehicle` names the chassis for vehicle amps.
 - `mod="true"` marks an add-on (ammo, accessory, vehicle or deck mod,
   implant grade). It has no base rating: the Amp Builder appends its

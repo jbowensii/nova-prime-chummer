@@ -3,6 +3,7 @@
 // Summary fields sit on the root element so a server can list files without parsing them.
 import type { AmpEntry, AmpTemplate, CareerEvent, Change, Character, EffectPick, Item, ItemEntry, Npc, VehicleBase } from '../model/types'
 import { ATTRS } from '../model/types'
+import { effectStateAttrs, readEffectState } from './effects'
 import { toAmp, toItem, toVehicle } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
 
@@ -27,12 +28,12 @@ export const el = (name: string, a: Record<string, unknown>, children = '') => (
 export const text = (name: string, s: string | undefined) => (s ? `<${name}>${esc(s)}</${name}>` : '')
 
 // ---- catalog snapshots, written in the data files' own format ----
-const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note })
+export const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note, ...effectStateAttrs(e) })
 const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, printedRating: t.printedRating, vehicle: t.vehicle, mod: t.mod || undefined, source: t.source, page: t.page },
   text('name', t.name) + (t.item ? el('item', { kind: t.item.kind, specialist: t.item.specialist || undefined, armor: t.item.armor, dv: t.item.dv, ranges: t.item.ranges }) : '')
   + t.effects.map(effectXml).join('') + `<narrative>${esc(t.narrative)}</narrative>`)
 const catalogItemXml = (i: Item) => el('item', { id: i.id, kind: i.kind, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, source: i.source, page: i.page },
-  text('name', i.name) + `<text>${esc(i.text)}</text>`)
+  text('name', i.name) + (i.effects ?? []).map(effectXml).join('') + `<text>${esc(i.text)}</text>`)
 const chassisXml = (v: VehicleBase) => el('vehicle', { id: v.id, pilot: v.pilot, body: v.body, handling: v.handling, speed: v.speed,
   flyingSpeed: v.flyingSpeed, armor: v.armor, mount: v.mount, source: v.source, page: v.page }, text('name', v.name))
 
@@ -40,7 +41,7 @@ const ampXml = (a: AmpEntry) => el('amp', { uid: a.uid, type: a.type, name: a.na
   text('narrative', a.narrative) + a.effects.map(effectXml).join('') + (a.snapshot ? `<snapshot>${templateXml(a.snapshot)}</snapshot>` : '')
   + (a.chassis ? `<chassis>${chassisXml(a.chassis)}</chassis>` : ''))
 const itemXml = (i: ItemEntry) => el('item', { uid: i.uid, kind: i.kind, name: i.name, catalogId: i.catalogId, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, price: i.price, starting: i.starting, note: i.note, over: i.over },
-  i.snapshot ? `<snapshot>${catalogItemXml(i.snapshot)}</snapshot>` : '')
+  (i.effects ?? []).map(effectXml).join('') + (i.snapshot ? `<snapshot>${catalogItemXml(i.snapshot)}</snapshot>` : ''))
 
 const pricesXml = (p?: Record<string, number>) => Object.entries(p ?? {}).map(([key, value]) => el('price', { key, value })).join('')
 const readPrices = (e: Element) => kids(e, 'price').length ? Object.fromEntries(kids(e, 'price').map(p => [p.getAttribute('key') ?? '', Number(p.getAttribute('value') ?? 0)])) : undefined
@@ -101,7 +102,7 @@ function readEffect(e: Element): EffectPick {
   if (s(e, 'param') !== undefined) out.param = s(e, 'param')
   if (n(e, 'value') !== undefined) out.value = n(e, 'value')
   if (s(e, 'note') !== undefined) out.note = s(e, 'note')
-  return out
+  return { ...out, ...readEffectState(k => e.getAttribute(k)) }
 }
 function readAmp(e: Element): AmpEntry {
   const a: AmpEntry = { uid: e.getAttribute('uid')!, type: e.getAttribute('type')!, name: e.getAttribute('name') ?? '',
@@ -121,6 +122,7 @@ function readItem(e: Element): ItemEntry {
   for (const k of ['armor', 'price'] as const) if (n(e, k) !== undefined) i[k] = n(e, k)
   for (const k of ['dv', 'ranges', 'note', 'over'] as const) if (s(e, k) !== undefined) i[k] = s(e, k)
   if (s(e, 'starting') !== undefined) i.starting = s(e, 'starting') as ItemEntry['starting']
+  if (kids(e, 'effect').length) i.effects = kids(e, 'effect').map(readEffect)
   const snap = kid(e, 'snapshot')
   if (snap?.firstElementChild) i.snapshot = toItem(snap.firstElementChild)
   return i

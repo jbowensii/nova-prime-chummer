@@ -6,7 +6,7 @@
     <range attr="str" min="1" max="5"/><range attr="agi" min="1" max="5"/><range attr="wil" min="1" max="5"/><range attr="log" min="1" max="5"/><range attr="cha" min="1" max="5"/>
   </metatype>
   <metatype id="elf" edge="2" source="CRB" page="9">
-    <name>Sylph</name><racialQuality>Starlight eyes</racialQuality>
+    <name>Sylph</name><racialQuality>Low-light vision</racialQuality><effect ref="no-disadvantage" param="Low-light vision"/>
     <range attr="str" min="1" max="3"/><range attr="agi" min="2" max="6"/><range attr="wil" min="1" max="5"/><range attr="log" min="1" max="5"/><range attr="cha" min="2" max="7"/>
   </metatype>
   <metatype id="dwarf" edge="2" source="CRB" page="9">

@@ -1,7 +1,7 @@
 // "Book style" printed sheet (Settings → Printed sheet): one page laid out like the rulebook's example character sheet.
 // Grunge paper on the left, a yellow paint-swish panel on the right, all drawn in CSS/SVG; free fonts only.
 import '@fontsource/caveat/700.css'
-import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating, effectLines, poolMarks, ruleHelp } from '../engine'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'
 import { NpcBlock } from '../ui/NpcBlock'
@@ -56,7 +56,7 @@ export function BookSheet() {
             {ATTRS.map(a => <div key={a}><span>{c.attributes.get(a)?.name}</span><b>{b.attributes[a]}</b></div>)}
             {ch.npc?.tier !== 'regular' && <div><span>Edge</span><b>{d.edge}</b></div>}
           </div>
-          <p className="b-essence">Essence: <b>{d.essence}</b></p>
+          <p className="b-essence">Essence: <b>{d.essence}</b>{effectLines(d).map((x, i) => <span key={i} className="b-effect">{i ? '; ' : ' · '}{x}</span>)}</p>
 
           <NpcBlock c={c} ch={ch} d={d} />
 
@@ -69,7 +69,7 @@ export function BookSheet() {
                   const under = !!p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) // as Sheet.tsx: indented, no rating
                   return <tr key={i} className={under ? 'b-spec' : undefined}>
                     <td>{p.spec ? `${p.label.replace(/^.*\(|\)$/g, '')} +2` : under && !d.pools[i - 1].spec ? `(with ${p.attr.toUpperCase()})` : p.label}</td>
-                    <td>{under ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td><td><Dots n={p.rr} /></td>
+                    <td>{under ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b>{poolMarks(p).map((m, j) => <span key={j} className="b-adv" title={m.title}> {m.mark}</span>)}</td><td><Dots n={p.rr} /></td>
                   </tr>
                 })}
               </tbody>
@@ -131,7 +131,8 @@ export function BookSheet() {
                   {b.mainArmor && <tr><td>Main ({item(b.mainArmor)?.name} {d.armor.main})</td>{d.thresholds.physicalMain.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                   {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {d.armor.alt})</td>{d.thresholds.physicalAlt.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                   <tr><td>Mental{d.mentalProtection ? ` (armor ${d.mentalProtection})` : ''}</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                  {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall})</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                  {d.thresholds.social && <tr><td>Social (armor {d.socialArmor})</td>{d.thresholds.social.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                  {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}{d.matrixArmor ? `, armor ${d.matrixArmor}` : ''})</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                 </tbody>
               </table>
             </section>

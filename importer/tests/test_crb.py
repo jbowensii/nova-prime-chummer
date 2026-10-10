@@ -279,7 +279,7 @@ class PregensTest(unittest.TestCase):
             "Rusty Sedan": (["vehicle-armor"], "sedan"),
             "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
             "Old Pal, fixer": (["rr-spec:network.street"], None),
-            "Jolt": (["dv-plus", "rr-skill:close-combat"], None),  # its printed limitation isn't made a Negative effect
+            "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage"], None),  # its printed limitation: a Disadvantage, not a Negative effect
         })
         # the printed ratings, on the snapshots
         self.assertEqual([(a.get("printedRating"), a.get("source"), a.get("page")) for a in self.xml["crb.test-rigger.xml"].iter("snapshot")
@@ -376,7 +376,7 @@ class AmpsTest(unittest.TestCase):
 
     def test_effects_reproduce_the_printed_rating(self):
         self.assertEqual({i: self.fx(i) for i in self.amps}, {
-            "zoom-goggles": ["rr-spec:perception.physical", "rr-spec:stealth.physical-sneaking", "narrative"],
+            "zoom-goggles": ["rr-spec:perception.physical", "rr-spec:stealth.physical-sneaking", "no-disadvantage:Night vision", "narrative"],
             "zapper-x-taser": ["dv-plus", "range-improve:OK/Dis/-/- -> OK/OK/Dis/-", "rr-spec:ranged-weapons.pistols"],
             "buzz-blade": ["narrative"],
             "padded-vest": ["rr-spec:influence.etiquette"],

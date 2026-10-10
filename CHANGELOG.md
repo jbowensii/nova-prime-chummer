@@ -1,5 +1,45 @@
 # Release notes
 
+## Unreleased
+
+Import the Anarchy books again (Books → **Re-import all**) so their entries carry the new effects.
+
+**Shadowrun Anarchy 2.0: machine-readable effects**
+- What a narrative effect does is now an effect of its own kind (CRB p.59), at rating 0 so every book rating stays as
+  printed: Advantage on a Test (or for 1 Edge), Disadvantage on a Test, no Disadvantage (a vision), a Disadvantage
+  inflicted on someone else, an automatic effect for 1 Edge, gaining Edge, a Test it allows, ignoring wound modifiers,
+  social armor, Matrix armor, a risk dice minimum, a forced High or Extreme Risk, an extra sustained complex form, the
+  last Essence point counting double, magic spared the first Essence point lost, a wound it causes, and an immunity.
+  Every catalog has them (the Amp Builder offers them); a data file may define its own.
+- Every effect says how it is turned on (`switch`: wireless, activated, sustained, conditional; none: always on), when it
+  holds (`when`), whether the importer is sure of it (`confidence="low"`) and the entry it is given by (`from`): the same
+  rule as Shadowrun 6 (one shared module). A low-confidence effect, or one that holds only `when`, is shown and not
+  counted; a switchable one counts. A player's or GM's own effects override the book's: the Amp Builder and the Gear tab
+  have "How it is turned on" and "Counts" for each.
+- Items (spells, complex forms, plain gear) and metatypes (the racial quality) carry effects too: a drug's Disadvantage,
+  a spell's Advantage or armor (by hits: shown), Low-light vision. A spell's or complex form's are what it does to its
+  subject or target, so they're listed, never the caster's own unless entered on the runner's item.
+- The importer reads them as general rules from every clause (importer/effects.py): Advantage and Disadvantage on the
+  Tests a clause names (skills, specializations, attribute-based Tests), a dose's `Duration:` (activated), a condition
+  (`when …`, `while in VR`, `once the effects fade away`), a value by hits (low confidence), and effects given by
+  reference (`like an elf`, `acts exactly the same way as …`, `identical to the Initiative Enhancement Amps`). It also
+  reads `DV+1`, `+1 Edge point per VR scene`, `+1 action per VR narration`, a range set or increased, `+1 Mental armor`,
+  `vehicle armor by +N`, `RR 1 on all …` and an extra Light damage box; a reading that would push an amp past its
+  printed rating stays narrative.
+- Effect coverage (entries whose book text states a modifier, with every one read into an effect): 482 of 704 (68%)
+  before, 684 (97%) now.
+- Derived values, sheets and Review: a dice pool lists the Advantages and Disadvantages on its Test (Adv., Adv. for 1
+  Edge, Dis.; never dice); social damage thresholds (Willpower + social armor); Matrix armor on the Matrix thresholds;
+  sustained spells and complex forms (1 without a Disadvantage, 2 at most, CRB p.178, plus each extra); extra summoned
+  spirits; wound modifiers ignored; a forced Risk; VR, rigger command console drones and a vehicle control rig;
+  Essence's death and magic thresholds moved by the qualities that move them. Review lists what the runner's effects do.
+- Foundry export: each effect's line, `applied`, `switch`, `when`, `confidence` and `from`; an amp's shared switch; sra2's
+  feat counts (`sustainedSpells`, `sustainedForms`, `summonedSpirits`, `riggerConsoles`, `vehicleControlRig`); Matrix
+  armor in `matrixThreshold`; items' and metatypes' effects; a pool's notes, the runner's effects block and its social
+  thresholds. `rr` and `bonuses` count only the effects that apply. sra2 has no Foundry Active Effects.
+- No book sample runner's numbers change; each gains the effects its lines and racial quality state (Low-light or
+  Thermographic vision, a decker's Advantage on Cybercombat, a drug's ignored wound modifiers and forced Risk).
+
 ## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

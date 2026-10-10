@@ -9,6 +9,7 @@ import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, normName, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
+import { applies, own } from '../../engine/effects'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
@@ -49,7 +50,7 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
 
 // (a bonus `when` some tests only is shown with its pool, never added: conditionalBonuses)
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string) =>
-  (bonuses ?? []).filter(x => x.target === k && !x.when && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+  (bonuses ?? []).filter(x => x.target === k && applies(x) && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
 /** The bonuses to skill `skill`'s dice pool that hold on some tests only (`when`), each with its line's name, value at its
  *  rating and condition: shown with the pool (derive.ts), never added to it. */
 export function conditionalBonuses(b: Sr6Build, data: Sr6Data, skill: string): { value: number; when: string; from: string }[] {
@@ -82,7 +83,7 @@ export function entryBonuses(data: Sr6Data, e?: Sr6Entry): Bonus[] {
 /** The bonuses a line gives (the one place creation, Review, the sheets and the export read them): the player's or GM's
  *  own entered ones when it has any (they override, owner decision D3), else its catalog entry's effects. */
 export const lineBonuses = (data: Sr6Data, entered: Bonus[] | undefined, e?: Sr6Entry): Bonus[] =>
-  entered?.length ? entered : entryBonuses(data, e)
+  own(entered, entryBonuses(data, e))
 /** What the runner's picks, purchases and qualities add to its `k`, for `skill` the one skill's dice pool (`skill`: its
  *  id) (lineBonuses): picks and qualities by level, purchases by rating times quantity. An accessory's bonuses are its
  *  host item's, never the runner's (hostBonus). */

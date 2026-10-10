@@ -68,6 +68,25 @@
     </xs:sequence>
   </xs:group>
 
+  <!-- An effect (amps, items, metatypes): an Amp effect id or a narrative effect kind (src/engine/amps.ts RULE_EFFECTS),
+       its param (a skill, spec, attribute, realm or Test id, or text), its value (points, drones, a drawback's size) -->
+  <xs:complexType name="Effect">
+    <xs:attribute name="ref" type="ca2:Id" use="required"/>
+    <xs:attribute name="param" type="xs:string"/>
+    <xs:attribute name="value" type="xs:positiveInteger"/>
+    <xs:attribute name="note" type="xs:string"/>
+    <!-- how it is turned on (none: always on) and whether it counts: src/engine/effects.ts. when: only then (shown, not
+         counted); confidence low: shown, not counted; from: the catalog id of the entry it is given by -->
+    <xs:attribute name="switch">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/><xs:enumeration value="conditional"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="when" type="xs:string"/>
+    <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="from" type="xs:string"/>
+  </xs:complexType>
+
   <!-- entry types of amps.xsd, items.xsd and rules.xsd (also the edits layer, edits.xsd, and compendium.xsd) -->
   <xs:complexType name="Amp">
     <xs:sequence>
@@ -86,14 +105,7 @@
           <xs:attribute name="ranges" type="xs:string"/>
         </xs:complexType>
       </xs:element>
-      <xs:element name="effect" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:attribute name="ref" type="ca2:Id" use="required"/>
-          <xs:attribute name="param" type="xs:string"/>
-          <xs:attribute name="value" type="xs:positiveInteger"/>
-          <xs:attribute name="note" type="xs:string"/>
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="effect" type="ca2:Effect" minOccurs="0" maxOccurs="unbounded"/>
       <xs:group ref="ca2:extras"/>
       <xs:element name="narrative" type="xs:string"/>
     </xs:sequence>
@@ -106,6 +118,8 @@
   <xs:complexType name="Item">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
+      <!-- what it does, read from its text by the importer (a spell's Advantage, a drug's Disadvantage) -->
+      <xs:element name="effect" type="ca2:Effect" minOccurs="0" maxOccurs="unbounded"/>
       <xs:group ref="ca2:extras"/>
       <xs:element name="text" type="xs:string"/>
     </xs:sequence>

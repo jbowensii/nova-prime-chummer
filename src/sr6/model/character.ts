@@ -3,6 +3,7 @@
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
 import type { RunnerRule } from '../engine/creation'
 import type { SampleCorrection } from '../engine/samplefix'
+import { EFFECT_SWITCHES, type EffectSwitch } from '../../engine/effects'
 import { newId, type Character, type Override } from '../../model/types'
 import type { Sr6Entry, Sr6Kind } from './types'
 
@@ -37,8 +38,9 @@ export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' |
    *  activated (released at will), a sustained one, or one holding on some tests only. A book prints a switchable bonus in
    *  brackets, `4(5)` (owner, 2026-10-10). */
   switch?: BonusSwitch }
-export type BonusSwitch = 'wireless' | 'activated' | 'sustained' | 'conditional'
-export const BONUS_SWITCHES: BonusSwitch[] = ['wireless', 'activated', 'sustained', 'conditional']
+/** the switch both games' effects share (src/engine/effects.ts) */
+export type BonusSwitch = EffectSwitch
+export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
 export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'skill']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'

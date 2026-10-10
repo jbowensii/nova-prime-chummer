@@ -17,7 +17,7 @@ BOOL = ("true", "false", "1", "0")
 ATTRS = {"amp": {"type", "printedRating", "vehicle", "mod"}, "item": {"kind", "specialist", "armor", "dv", "ranges", "category"},
          "rule": {"sheet", "section", "effects"}}
 REQUIRED = {"amp": "type", "item": "kind", "rule": "sheet"}
-CHILDREN = {"amp": re.compile(r"name (item )?(effect )*narrative "), "item": re.compile("name text "), "rule": re.compile("title text ")}
+CHILDREN = {"amp": re.compile(r"name (item )?(effect )*narrative "), "item": re.compile(r"name (effect )*text "), "rule": re.compile("title text ")}
 ITEM_KINDS = ("gear", "weapon", "armor", "spell", "complex-form")
 USERNAME = re.compile(r"[a-z0-9][a-z0-9._\-]{1,31}")  # server/auth.mjs USERNAME
 MAX_BODY = 1024 * 1024  # one entry and its description; the server caps the request body too
@@ -88,7 +88,7 @@ def _shape(entry):
     if tag == "rule":
         notes += [f'effects "{e}" isn’t an id' for e in a.get("effects", "").split() if not ID.fullmatch(e)]
     if not CHILDREN[tag].fullmatch("".join(c.tag + " " for c in entry)):
-        want = {"amp": "<name>, <item>?, <effect>…, <narrative>", "item": "<name>, <text>", "rule": "<title>, <text>"}[tag]
+        want = {"amp": "<name>, <item>?, <effect>…, <narrative>", "item": "<name>, <effect>…, <text>", "rule": "<title>, <text>"}[tag]
         notes.append(f"its elements must be {want} in that order")
     if (entry.text or "").strip() or any((c.tail or "").strip() for c in entry):
         notes.append(f"text outside the elements of <{tag}>")
@@ -105,7 +105,7 @@ def _shape(entry):
             if k.get("kind") not in ("gear", "weapon", "armor"):
                 notes.append("<item> kind must be gear, weapon or armor")
         elif c.tag == "effect":
-            notes += [f'unknown attribute "{x}" on <effect>' for x in c.attrib if x not in ("ref", "param", "value", "note")]
+            notes += [f'unknown attribute "{x}" on <effect>' for x in c.attrib if x not in ("ref", "param", "value", "note", "switch", "when", "confidence", "from")]
             if not ID.fullmatch(c.get("ref") or ""):
                 notes.append("an <effect> has no ref id")
             if c.get("value") and not POS.fullmatch(c.get("value")):

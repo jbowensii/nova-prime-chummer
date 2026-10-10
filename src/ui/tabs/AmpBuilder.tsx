@@ -2,7 +2,8 @@
 // catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
 // A string catalog is the save button's label (a compendium's).
 import { useState } from 'react'
-import { ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampRating, applies, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
+import { EffectHow, TestSelect } from '../EffectHow'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
 import { fmt, signed } from '../bits'
@@ -53,6 +54,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
         </select>)
       case 'value': return <input type="number" min={1} max={5} value={e.value ?? 1} onChange={x => setFx(i, { value: Math.max(1, Math.min(5, Number(x.target.value))) })} aria-label="Points" style={{ width: '4rem' }} />
       case 'text': return <input value={e.param ?? ''} onChange={x => setFx(i, { param: x.target.value })} placeholder="Describe it" aria-label="Description" />
+      case 'test': return <TestSelect c={c} build={build} value={e.param} onChange={param => setFx(i, { param })} />
       default: return e.note ? <span className="muted">{e.note}</span> : null
     }
   }
@@ -91,8 +93,8 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
           return (
             <div className="fx" key={i}>
               <span title={ruleHelp(c, e.ref)} className={ruleHelp(c, e.ref) ? 'has-help' : undefined}>{def?.name ?? e.ref} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}</span>
-              <span className="row">{paramInput(e, i)}{rccValue(e, i)}<button className="btn small quiet" onClick={() => set({ effects: amp.effects.filter((_, j) => j !== i) })} aria-label={`Remove ${def?.name}`}>Remove</button></span>
-              <span className="r">{signed(effectRating(c, e)).replace('¥', '')}</span>
+              <span className="row">{paramInput(e, i)}{rccValue(e, i)}<EffectHow e={e} onChange={patch => setFx(i, patch)} /><button className="btn small quiet" onClick={() => set({ effects: amp.effects.filter((_, j) => j !== i) })} aria-label={`Remove ${def?.name}`}>Remove</button></span>
+              <span className={`r${applies(e) ? '' : ' muted'}`}>{signed(effectRating(c, e)).replace('¥', '')}</span>
             </div>
           )
         })}
