@@ -86,8 +86,8 @@ Import the books of both games again (Books → **Re-import all**) so every entr
   Resonance (tasking)` as Tasking); the rest are suggested for the edits layer.
 - An effect the book states but its printed rating doesn't pay for (Novacoke's RR on Perception (Social), Smashing
   Blow's DV) is added `unpriced`: it applies, the rating and price stay as printed, and the import report lists it.
-- A bonus limited to a specialization is added to its pool when the runner has the specialization, else shown beside the
-  skill ("RR (spec.)").
+- A bonus limited to a specialization is added to its pool when the runner has the specialization, else its Risk Reduction counts in
+  the skill's bracketed total, marked "RR (spec.)" with a note naming the specialization (owner, 2026-10-10).
 - Effect coverage (entries whose book text states a modifier, with every one read into an effect): 482 of 704 (68%)
   before, 684 (97%) now.
 - Derived values, sheets and Review: a dice pool lists the Advantages and Disadvantages on its Test (Adv., Adv. for 1

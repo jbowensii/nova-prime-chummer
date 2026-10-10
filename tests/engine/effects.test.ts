@@ -107,13 +107,16 @@ describe('derive', () => {
     expect(rrNotes(d, d.pools[i])).toEqual([expect.stringMatching(/\(activated\)$/)])  // (the RR bracket named on hover)
     expect(derive(cat, runner([amp('q', 'quality', [{ ref: 'rr-attr', param: 'wil' }])])).switched).toBeUndefined()
   })
-  test('a bonus limited to a specialization: in its pool when the runner has it, else beside the skill', () => {
+  test('a bonus limited to a specialization: in its pool when the runner has it, else in the skill’s bracket', () => {
     const d = derive(cat, runner([amp('eye', 'cyberware', [{ ref: 'rr-spec', param: 'perception.physical' }, { ref: 'rr-spec', param: 'perception.social' },
       { ref: 'advantage', param: 'perception.social' }])]))
     expect(d.pools.find(p => p.spec === 'perception.physical' && p.attr === 'wil')?.rr).toBe(1)
     const skill = d.pools.find(p => p.skill === 'perception' && !p.spec && p.attr === 'wil')!
     expect(skill.rr).toBe(0)
-    expect(skill.notes?.map(n => [n.ref, n.how])).toEqual([['advantage', 'without the specialization'], ['rr-spec', 'without the specialization']])
+    expect(skill.notes?.map(n => [n.ref, n.how])).toEqual([['advantage', 'without the specialization'], ['rr-spec', 'without the specialization: in brackets']])
+    // (the specialization's RR in the skill's bracket, named on hover)
+    expect(d.switched?.pools[d.pools.indexOf(skill)].rr).toBe(skill.rr + 1)
+    expect(rrNotes(d, skill)).toEqual([expect.stringMatching(/^RR 1 on .*in brackets\)$/)])
     expect(poolMarks(skill).map(m => m.mark)).toEqual(['Adv', 'RR (spec.)'])
   })
   test('an effect unpriced by the rating applies at rating 0', () => {

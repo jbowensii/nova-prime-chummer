@@ -208,8 +208,9 @@ own while sustained (in brackets), a target's stays on the spell. A sentence tha
 opening with a pronoun is about whom the one before was (owner, 2026-10-10). `unpriced="true"` marks an effect the book states but its
 printed rating doesn't pay for: it applies, at rating 0 (the import report lists each, `kind="effect-unpriced"`).
 
-A bonus limited to a specialization is added to that specialization's pool when the runner has it, else shown beside
-its skill. A Test named by what it does ("Tests involving speed", "social Tests", "climb a metal structure") is every
+A bonus limited to a specialization is added to that specialization's pool when the runner has it, else its Risk
+Reduction counts in the skill's bracketed total, with a note naming the specialization (an Advantage or Disadvantage on
+it is noted on the skill). A Test named by what it does ("Tests involving speed", "social Tests", "climb a metal structure") is every
 skill it uses (`importer/recipes/dhsa.py` ACTIVITIES).
 
 ### packages

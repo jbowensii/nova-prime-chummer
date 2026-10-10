@@ -25,8 +25,9 @@ export interface VehicleStats { uid: string; name: string; chassis: string; pilo
 /** notes: the Advantages and Disadvantages the runner's effects give on this Test (CRB p.59, 65), each with where it comes
  *  from and when it holds: shown with the pool, never dice (the book's pools never change, p.63) */
 export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number; notes?: PoolNote[] }
-/** ref rr-spec: Risk Reduction limited to a specialization the runner doesn't have, shown beside its skill (added to the
- *  specialization's pool when it has it); an Advantage or Disadvantage on such a specialization likewise */
+/** ref rr-spec: Risk Reduction limited to a specialization the runner doesn't have: in the skill's bracketed total, this
+ *  note naming the specialization (added to the specialization's pool when it has it; owner, 2026-10-10); an Advantage or
+ *  Disadvantage on such a specialization is noted likewise */
 export interface PoolNote { ref: 'advantage' | 'edge-advantage' | 'disadvantage' | 'rr-spec'; text: string; from: string; how?: string }
 /** One effect the runner has, from an amp, an item or the metatype's racial quality: `text` as the sheet says it, `how`
  *  it is turned on and whether it counts (effects.ts effectHow), `applied` false for one shown but not counted. */
@@ -42,9 +43,10 @@ export const poolMarks = (p: Pool) => (p.notes ?? []).map(n => ({
   title: `${n.text}: ${n.from}${n.how ? ` (${n.how})` : ''}` }))
 /** The bracketed effects behind a pool's Risk Reduction (`RR 1 (2)`), one line each with what turns it on or when it
  *  holds: the hover card's note (owner decision 2026-10-10). */
-export const rrNotes = (d: Pick<Derived, 'effects'>, p: Pick<Pool, 'attr' | 'skill'>) => d.effects
+export const rrNotes = (d: Pick<Derived, 'effects'>, p: Pick<Pool, 'attr' | 'skill' | 'notes'>) => [...d.effects
   .filter(e => e.bracket && (e.ref === 'rr-attr' && e.param === p.attr || e.ref === 'rr-skill' && e.param === p.skill))
-  .map(e => `${e.text}: ${e.from}${e.how ? ` (${e.how})` : ''}`)
+  .map(e => `${e.text}: ${e.from}${e.how ? ` (${e.how})` : ''}`),
+  ...(p.notes ?? []).filter(n => n.ref === 'rr-spec').map(n => `${n.text}: ${n.from}${n.how ? ` (${n.how})` : ''}`)]
 /** What the runner's effects do beyond the numbers, one line each, for the sheets and Review: sustained spells and
  *  complex forms, extra spirits, wound modifiers ignored, forced Risk, VR, rigging, and the effects of its items and
  *  racial quality (its amps' own are listed with each amp). */
@@ -231,7 +233,9 @@ export function weaponDV(dv: string, str: number, plus = 0): string {
 /** The runner's derived values without its switchable and conditional effects, and (`switched`) with them on. */
 export function derive(c: Catalog, ch: Character): Derived {
   const d = deriveAt(c, ch, false)
-  return effectSources(c, d.build, ch.identity.metatype).some(p => counts(p.e, true) && inBracket(p.e)) ? { ...d, switched: deriveAt(c, ch, true) } : d
+  // (and a specialization's Risk Reduction the runner lacks the specialization for: in the skill's bracket)
+  return effectSources(c, d.build, ch.identity.metatype).some(p => counts(p.e, true) && inBracket(p.e)) || d.pools.some(p => p.notes?.some(n => n.ref === 'rr-spec'))
+    ? { ...d, switched: deriveAt(c, ch, true) } : d
 }
 
 function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
@@ -271,7 +275,7 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
   // none (every Test)
   // (one on every Test that holds only sometimes is listed with the effects, not on each pool)
   const testFx = sources.filter(p => (p.e.ref === 'advantage' || p.e.ref === 'edge-advantage' || p.e.ref === 'disadvantage') && (p.e.param || !p.e.when))
-  // a bonus limited to a specialization the runner doesn't have is shown beside its skill (owner, 2026-10-10)
+  // a bonus limited to a specialization the runner doesn't have: in the skill's bracketed total, noted (owner, 2026-10-10)
   const mySpecs = new Set(b.skills.flatMap(s => s.specs))
   const lacking = (param?: string) => !!param && param.includes('.') && !mySpecs.has(param) && c.skills.has(param.split('.')[0])
   const specRR = new Map<string, { n: number; from: string[] }>()
@@ -289,7 +293,7 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
     if (!x.spec) {
       notes.push(...testFx.filter(p => lacking(p.e.param) && p.e.param!.split('.')[0] === x.skill).map(p => noteOf(p, 'without the specialization')))
       for (const [spec, r] of specRR) if (spec.split('.')[0] === x.skill)
-        notes.push({ ref: 'rr-spec', text: `RR ${r.n} on ${testName(c, spec)} Tests`, from: r.from.join(', '), how: 'without the specialization' })
+        notes.push({ ref: 'rr-spec', text: `RR ${r.n} on ${testName(c, spec)} Tests`, from: r.from.join(', '), how: 'without the specialization: in brackets' })
     }
     pools.push(notes.length ? { ...x, notes } : x)
   }
@@ -299,7 +303,8 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
     const skRR = rrSkill.get(s.id) ?? 0
     if (s.rating > 0) {
       for (const a of [sk.attr, ...(sk.alt ? [sk.alt] : [])])
-        pool({ skill: s.id, label: sk.name, rating: s.rating, attr: a, dp: s.rating + attr(a), rr: Math.min(RR_CAP, skRR + rrAttr[a]) })
+        pool({ skill: s.id, label: sk.name, rating: s.rating, attr: a, dp: s.rating + attr(a),
+          rr: Math.min(RR_CAP, skRR + rrAttr[a] + (on ? [...specRR].filter(([sp]) => sp.split('.')[0] === s.id).reduce((t, [, r]) => t + r.n, 0) : 0)) })
     }
     // Where every spec uses the skill's attribute and the skill has an alternative
     // (Conjuring: Logic for mages, Charisma for shamans), specs get a row for both.
