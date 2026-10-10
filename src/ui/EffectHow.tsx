@@ -14,8 +14,8 @@ export function EffectHow({ e, onChange }: { e: EffectState; onChange: (patch: E
     {e.affects && <select value={e.affects} aria-label="Who it affects" onChange={x => onChange({ affects: x.target.value as EffectState['affects'] })}>
       <option value="caster">Affects the caster</option><option value="target">Affects target(s)</option>
     </select>}
-    <label className="check" title={e.when ? `Only when ${e.when}` : e.confidence === 'low' ? 'The importer wasn’t sure of it' : undefined}>
-      <input type="checkbox" checked={applies(e)} onChange={x => onChange(x.target.checked ? { confidence: undefined, when: undefined } : { confidence: 'low' })} />Counts
+    <label className="check" title={e.confidence === 'low' ? 'The importer wasn’t sure of it' : e.when ? `In brackets: only when ${e.when}` : undefined}>
+      <input type="checkbox" checked={applies(e)} onChange={x => onChange(x.target.checked ? { confidence: undefined } : { confidence: 'low' })} />Counts
     </label>
   </>
 }

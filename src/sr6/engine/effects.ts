@@ -10,8 +10,7 @@ import { counts, type EffectState } from '../../engine/effects'
  *  (the shared rule, src/engine/effects.ts counts); the bracketed total (`on`) adds the switchable ones and, in SR6, the
  *  ones holding on some tests only (`when`: `Con 6 (9)`, replacing "shown beside, not added"). Never a low-confidence
  *  one, nor a spell's effect on its target (it counts on the character it is cast on). */
-export const sr6Counts = (e: EffectState, on = false) =>
-  e.affects !== 'target' && (on ? e.confidence !== 'low' : counts(e, false) && !e.switch)
+export const sr6Counts = (e: EffectState, on = false) => counts(e, on)
 
 /** The book's lists of which skills a test type covers (a vocabulary, as importer/sr6/effects.py TEST_TYPES): Social
  *  tests influence or con someone (CRB p. 97), Matrix tests are Matrix actions (CRB p. 179), magical tests the magic
@@ -153,7 +152,7 @@ export function effectText(p: Sr6Part): string {
   const skill = (a.target ?? '').startsWith('skill:') && a.target !== 'skill:choice'
   const t = a.target === 'test:other' && a.when ? `tests for ${a.when}` : `${targetText(a.target ?? '')}${a.spec ? ` (${a.spec})` : ''}${skill ? (a.op === 'add' || a.op === 'set' ? ' dice' : ' tests') : ''}`
   const v = a.value ?? ''
-  const when = a.when && a.target !== 'test:other' ? ` (${a.when})` : ''
+  const when = [a.when && a.target !== 'test:other' ? a.when : '', a.affects === 'caster' ? 'affects the caster' : ''].filter(Boolean).join(', ')
   const how = `${a.affects === 'target' ? 'on the target: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
   const text = a.op === 'set' ? `${t} ${valueText(v)}`
     : a.op === 'edge' ? `${signed(v)} Edge on ${t}`
@@ -163,7 +162,7 @@ export function effectText(p: Sr6Part): string {
             : a.op === 'wild-die' ? `a wild die on ${t}` : a.op === 'hits' ? `${signed(v)} hits on ${t}`
               : a.op === 'threshold' ? `threshold ${signed(v)} on ${t}`
                 : `${signed(v)} ${t}`
-  return `${how}${text}${when}`
+  return `${how}${text}${when ? ` (${when})` : ''}`
 }
 
 /** How an effect is used: applied (always on, read with confidence: in the total shown first), conditional (switched

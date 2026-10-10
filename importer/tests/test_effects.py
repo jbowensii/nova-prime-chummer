@@ -128,6 +128,8 @@ class ItemsAndReferencesTest(unittest.TestCase):
         got = dhsa.item_effects(m, "The subject gains an Advantage on Perception (physical) Tests. In case of success, the caster suffers no "
                                    "Disadvantage from glare.", sustained=True, spell=True)
         self.assertEqual([(f[0], f[4].get("affects")) for f in got], [("advantage", "target"), ("no-disadvantage", "caster")])
+        got = dhsa.item_effects(m, "Gain an Advantage on Perception (physical) Tests.", sustained=True, spell=True)
+        self.assertEqual([f[4].get("affects") for f in got], ["caster"])  # (no one named: the caster, owner 2026-10-10)
 
     def test_references(self):
         lines = ['  <amp id="cat-sight" type="quality"><name>Cat sight</name><narrative></narrative></amp>',

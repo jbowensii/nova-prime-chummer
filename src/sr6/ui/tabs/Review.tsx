@@ -11,10 +11,10 @@ import { canFinalizeSr6 } from '../../engine/rules'
 import { sr6Tabs } from '../EditorView'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
-import { attrShown, br } from '../../print/view'
+import { attrShown, br, effectNotes } from '../../print/view'
 
 export function ReviewTab() {
-  const { ch, c, v, d, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
+  const { ch, c, v, d, data, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
   const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
@@ -76,6 +76,12 @@ export function ReviewTab() {
         // an item's own values from its accessories (a cyberlimb's Strength): the item's, not the runner's
         ...d.hosts.map(h => [h.name, h.text] as [string, string])])}
       {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Table setup → Creation rules).</p>}
+      {/* (owner decision 2026-10-10: every switchable, conditional and caster or target effect named, as Anarchy's Review does) */}
+      {(fx => fx.length > 0 && <>
+        <h3 id="review-effects">What its effects do</h3>
+        <p className="muted">The numbers above hold the always-on effects; the ones in brackets add the switchable and conditional ones.</p>
+        <ul aria-labelledby="review-effects">{fx.map((x, i) => <li key={i}><b>{x.from}:</b> {x.text}</li>)}</ul>
+      </>)(effectNotes(ch.build, data))}
 
       {err && <p className="banner err" role="alert">{err}</p>}
       {!ro && <><hr className="sep" />

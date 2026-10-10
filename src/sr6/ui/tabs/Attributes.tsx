@@ -1,7 +1,8 @@
 // Attributes: one row per attribute the runner has (Magic for the awakened, Resonance for the emerged) with points,
 // adjustment and karma steppers, the metatype's range, the natural and augmented ratings, and a mark at the maximum.
 import { Stepper } from '../../../ui/bits'
-import { attrMax } from '../../engine/budgets'
+import { attrMax, bracketNotes, notesText } from '../../engine/budgets'
+import { br } from '../../print/view'
 import { num } from '../../engine/creation'
 import { MAGIC_KINDS } from '../../engine/data'
 import { CORE_ATTRS, type Sr6Attr } from '../../model/character'
@@ -35,7 +36,8 @@ export function AttributesTab() {
             {POOLS.map(([k, l]) => <td key={k}><Stepper label={`${ATTR_NAMES[a]} ${l.toLowerCase()}`} value={s[k]} min={0} max={top ? s[k] : 99}
               onChange={to => act({ op: 'attribute', target: a, pool: k, delta: to - s[k] })} /></td>)}
             <td className="num">{natural}{top && <span className="muted"> max</span>}</td>
-            <td className="num">{augmented !== natural ? augmented : ''}</td>
+            {/* (owner decision 2026-10-10: the switchable and conditional bonuses in brackets, each named on hover) */}
+            <td className="num" title={notesText(bracketNotes(b, data, a)) || undefined}>{augmented !== natural || d.on.attrs[a].augmented !== augmented ? br(augmented, d.on.attrs[a].augmented) : ''}</td>
           </tr>
         })}</tbody>
       </table></div>

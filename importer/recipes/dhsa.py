@@ -563,10 +563,10 @@ _TARGET = re.compile(r"\b(?:the\s+subject|subject['’]s|the\s+target|targets?\b
 
 
 def affects(sentence):
-    """`caster` when a spell's sentence is about the one casting it (first named), else `target` (its subject or targets,
-    and a sentence that names no one: a spell works on its subject)."""
+    """`target` when a spell's sentence names its subject or targets first, else `caster` (it names the caster first, or
+    no one: owner decision 2026-10-10, both games)."""
     c, t = _CASTER.search(sentence), _TARGET.search(sentence)
-    return "caster" if c and (not t or c.start() < t.start()) else "target"
+    return "target" if t and (not c or t.start() < c.start()) else "caster"
 
 
 def item_effects(mapper, text, sustained=False, spell=False):
@@ -574,7 +574,7 @@ def item_effects(mapper, text, sustained=False, spell=False):
     (RR, Armor, initiative by reference) and the narrative effect kinds. A sustained spell's or form's are
     switch="sustained"; a value that depends on hits is low confidence. A spell's or complex form's (`spell`) say who they
     affect (affects): the caster counts them while sustained, a target's stay on the spell."""
-    fx, last = [], "target"
+    fx, last = [], "caster"
     for s in sentences(text):
         st = rules_fx.state(s, text)
         if sustained and "when" not in st:

@@ -63,8 +63,8 @@ export function ReviewTab() {
           {d.effects.filter(e => e.type !== 'item' && e.type !== 'metatype').map((e, i) => <li key={i} className={e.applied ? undefined : 'muted'}>
             {e.text} <span className="muted">({e.from}{e.how ? `, ${e.how}` : ''})</span></li>)}
         </ul>
-        <p className="muted small">An effect read from a sentence the importer isn’t sure of, or one that holds only sometimes, is listed but not counted;
-          change it in the Amp Builder (or on the Gear tab for an item) to count it.</p>
+        <p className="muted small">A switchable effect, or one that holds only sometimes, counts in the bracketed totals, `1 (2)`; one read from a
+          sentence the importer isn’t sure of is listed but not counted: change it in the Amp Builder (or on the Gear tab for an item) to count it.</p>
       </section>}
 
       {err && <p className="banner err" role="alert">{err}</p>}

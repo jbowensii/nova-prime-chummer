@@ -6,7 +6,7 @@ import type { Sr6Build } from '../../src/sr6/model/character'
 import { blankSr6 } from '../../src/sr6/model/character'
 import type { Sr6Data } from '../../src/sr6/engine/data'
 import type { Sr6Part } from '../../src/sr6/model/types'
-import { attrMax, augmentBonus, conditionalBonuses } from '../../src/sr6/engine/budgets'
+import { attrMax, augmentBonus, bracketNotes, conditionalBonuses, notesText } from '../../src/sr6/engine/budgets'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { effectBonuses, effectText, effectValue, testSkills } from '../../src/sr6/engine/effects'
 import { effectNotes } from '../../src/sr6/print/view'
@@ -126,4 +126,17 @@ test('switchable and conditional effects count in the bracketed total; a special
   const specDice = Number(cr.get('specDice')?.value)
   expect(gab(d).specDp).toBe(gab(d).dp + specDice + 2)
   expect(gab(d.on).dp).toBe(gab(d).dp + 3)  // (its specialization's bonus is in the specialization's pool, not the skill's)
+})
+
+test('each bracketed bonus is named: its switch or condition, and a spell’s caster', () => {
+  const { data } = made({ data: d => {
+    give(d, 'crb.knack', fx('attr:agi', 'add', '2', { switch: 'wireless' }), fx('attr:agi', 'add', '1', { when: 'in darkness' }), fx('attr:agi', 'add', '1'))
+    d.entry('spells', 'crb.glow-ward')!.parts.push(fx('attr:agi', 'add', '1', { switch: 'sustained', affects: 'caster' }))
+  } })
+  const b = runner()
+  b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
+  b.picks.push({ uid: 'p', kind: 'spells', id: 'crb.glow-ward' })
+  expect(notesText(bracketNotes(b, data, 'agi')).split('\n').sort()).toEqual(['+1 Glow Ward (sustained, affects the caster)', '+1 Knack (in darkness)', '+2 Knack (wireless)'])
+  expect(effectText(fx('attr:agi', 'add', '1', { switch: 'sustained', affects: 'caster' }))).toBe('sustained: +1 Agility (affects the caster)')
+  expect(effectNotes(b, data).map(x => x.text)).toContain('+1 Agility (in darkness)')
 })

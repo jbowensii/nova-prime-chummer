@@ -174,8 +174,9 @@ export function DossierSheet({ art }: { art: SheetArt }) {
             <td>{a.topSpeed}</td><td>{a.body}</td><td>{a.armor}</td><td>{a.pilot}</td><td>{a.sensor}</td></tr> })}</tbody></table>
       </Panel>}
 
-      {(ch.identity.background || ch.identity.notes) && <Panel id="d-notes" title="Notes">
-        {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}</Panel>}
+      {(ch.identity.background || ch.identity.notes || v.effectNotes.length > 0) && <Panel id="d-notes" title="Notes">
+        {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}
+        {v.effectNotes.length > 0 && <ul className="d-small">{v.effectNotes.map((x, i) => <li key={i}><b>{x.from}:</b> {x.text}</li>)}</ul>}</Panel>}
 
       <footer className="d-foot">{date}, created with Chummer</footer>
     </article>

@@ -2,7 +2,7 @@
 // effect kinds, what derive counts and shows, the character file and the export. Made-up data only.
 import { describe, expect, test } from 'vitest'
 import {
-  ampParts, ampRating, applies, bracketed, buildCatalog, characterToXml, derive, effectHow, effectLines, exportRunner, own, poolMarks,
+  ampParts, ampRating, applies, bracketed, counts, rrNotes, buildCatalog, characterToXml, derive, effectHow, effectLines, exportRunner, own, poolMarks,
   readEffectState, ruleText, xmlToCharacter,
 } from '../../src/engine'
 import { blankCharacter } from '../../src/engine/file'
@@ -22,11 +22,16 @@ function runner(amps: AmpEntry[], items: Character['build']['items'] = [], metat
 }
 
 describe('the shared state (both games)', () => {
-  test('low confidence and `when` are shown, never counted; a switch alone counts', () => {
+  test('low confidence is shown, never counted; switchable and conditional ones count in the bracket; a target’s never', () => {
     expect(applies({})).toBe(true)
     expect(applies({ switch: 'activated' })).toBe(true)
     expect(applies({ confidence: 'low' })).toBe(false)
-    expect(applies({ when: 'at dusk', switch: 'conditional' })).toBe(false)
+    expect(applies({ when: 'at dusk', switch: 'conditional' })).toBe(true)
+    expect([counts({}), counts({}, true)]).toEqual([true, true])
+    expect([counts({ switch: 'wireless' }), counts({ switch: 'wireless' }, true)]).toEqual([false, true])
+    expect([counts({ when: 'at dusk' }), counts({ when: 'at dusk' }, true)]).toEqual([false, true])
+    expect([counts({ confidence: 'low' }, true), counts({ affects: 'target' }, true), counts({ affects: 'caster', switch: 'sustained' }, true)]).toEqual([false, false, true])
+    expect(effectHow({ affects: 'caster', switch: 'sustained' })).toBe('sustained, affects the caster')
   })
   test('a line’s own effects override its catalog entry’s', () => {
     expect(own([{ ref: 'a' }], [{ ref: 'b' }])).toEqual([{ ref: 'a' }])
@@ -81,13 +86,15 @@ describe('derive', () => {
     expect(d.pools.some(p => p.notes)).toBe(false)
     expect(d.effects.map(e => e.text)).toEqual(['Advantage on all Tests'])
   })
-  test('a low-confidence or `when` effect is shown, not counted', () => {
+  test('a low-confidence effect is shown, not counted; a `when` one counts in the bracket, with its note', () => {
     const base = derive(cat, runner([]))
     const d = derive(cat, runner([amp('m', 'adept', [{ ref: 'armor-plus', confidence: 'low' }, { ref: 'dv-plus', when: 'at dusk' }, { ref: 'wound-light', confidence: 'low' }])]))
     expect(d.armor.none).toBe(base.armor.none)
     expect(d.weapons[0].dv).toBe(base.weapons[0].dv)
+    expect(d.switched?.weapons[0].dv).not.toBe(base.weapons[0].dv)
     expect(d.monitor).toEqual(base.monitor)
-    expect(d.effects.filter(e => !e.applied).map(e => e.ref)).toEqual(['armor-plus', 'dv-plus', 'wound-light'])
+    expect(d.effects.filter(e => !e.applied).map(e => e.ref)).toEqual(['armor-plus', 'wound-light'])
+    expect(d.effects.find(e => e.ref === 'dv-plus')?.how).toBe('at dusk')
   })
   test('a switchable effect counts in the bracketed total only: `0 (1)`', () => {
     const d = derive(cat, runner([amp('dose', 'equipment', [{ ref: 'rr-attr', param: 'wil', switch: 'activated' }, { ref: 'ignore-wounds', switch: 'activated' }])]))
@@ -97,6 +104,7 @@ describe('derive', () => {
     expect(bracketed(d.pools[i].rr, d.switched?.pools[i].rr)).toBe('0 (1)')
     expect(d.effects.map(e => [e.ref, e.how])).toEqual([['rr-attr', 'activated'], ['ignore-wounds', 'activated']])
     expect(effectLines(d)).toContain('Ignores wound modifiers (switched on)')
+    expect(rrNotes(d, d.pools[i])).toEqual([expect.stringMatching(/\(activated\)$/)])  // (the RR bracket named on hover)
     expect(derive(cat, runner([amp('q', 'quality', [{ ref: 'rr-attr', param: 'wil' }])])).switched).toBeUndefined()
   })
   test('a bonus limited to a specialization: in its pool when the runner has it, else beside the skill', () => {
@@ -149,7 +157,7 @@ describe('derive', () => {
     const mine = derive(c, runner([], [{ ...gear, effects: [{ ref: 'no-disadvantage', param: 'Dusk sight', confidence: 'low' }] },
       { ...spell, effects: [{ ref: 'advantage', param: 'influence', switch: 'sustained', affects: 'caster' }] }]))
     expect(mine.effects.map(e => [e.text, e.applied])).toEqual([['No Disadvantage: Dusk sight', false], ['Advantage on Influence Tests', true]])
-    expect(mine.pools.find(p => p.skill === 'influence')?.notes?.[0]).toMatchObject({ ref: 'advantage', how: 'sustained' })
+    expect(mine.pools.find(p => p.skill === 'influence')?.notes?.[0]).toMatchObject({ ref: 'advantage', how: 'sustained, affects the caster' })
   })
   test('the racial quality’s effects are the runner’s', () => {
     const d = derive(cat, runner([], [], 'elf'))
@@ -174,7 +182,7 @@ describe('the character file and the export', () => {
     expect(p.rr).toEqual([])
     expect(p.bonuses.sustainedSpells).toBe(1)
     expect(p.effects.map(e => [e.id, e.applied, e.switch ?? '', e.from ?? ''])).toEqual([
-      ['advantage', false, 'conditional', 'x.other'], ['rr-attr', false, '', ''], ['sustain-spell', true, 'activated', '']])
+      ['advantage', true, 'conditional', 'x.other'], ['rr-attr', false, '', ''], ['sustain-spell', true, 'activated', '']])
     expect(p.effects[0].line).toMatch(/^Advantage on /)
     expect(ampParts(cat, 'equipment', [{ ref: 'rr-attr', param: 'agi', switch: 'activated' }]).switch).toBe('activated')
   })

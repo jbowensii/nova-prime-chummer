@@ -337,6 +337,7 @@ def read(text, kind=None, name=None):
     """[(tag, attrs, None)]: the effects, tests and links the text states, in the order printed, each once."""
     out = []
     edge_actions = bool(re.search(r"\bedge cost\b", text or "", re.I))
+    last_who = "caster"
     for s in sentences(text):
         label = ""
         if m := re.match(r"^[•*\s]*([A-Z][\w ]{1,30}):\s+(.*)$", s):
@@ -356,10 +357,14 @@ def read(text, kind=None, name=None):
             sw = "sustained"  # (a spell's, ritual's or complex form's: while it is cast and lasts)
         if label.casefold() in ("effect", "effects") and kind == "gear" and not sw:
             sw = "activated"  # (a drug's or toxin's `Effect:` line: while it acts)
-        others = _OTHERS.search(s) and not (kind in ("spells", "rituals", "complexforms") and re.match(r"\W*(?:the )?(?:targets?|subjects?)", s, re.I))
+        others = _OTHERS.search(s) and not (kind in ("spells", "rituals", "complexforms") and re.match(r"\W*(?:the )?(?:targets?|subjects?)\b", s, re.I))
         if others or re.search(r"\b(?:it|this|the \w+) has an? (?:initiative|body|armor|pilot|sensor|device rating)\b", s, re.I) or re.search(r"\b(?:required|needed) to (?:reload|ready|fire|operate|set up)\b", s, re.I):
             continue  # (what others suffer against the entry, or what it costs to use: not the entry's effect)
-        who = _affects(s) if kind in ("spells", "rituals", "complexforms") else None
+        if kind in ("spells", "rituals", "complexforms"):  # (a sentence opening with a pronoun is about whom the one before was)
+            who = last_who if re.match(r"\W*(?:they|them|it|he|she|this|these|their|its)\b", s, re.I) else _affects(s)
+            last_who = who
+        else:
+            who = None
         for x in _rules(s, kind, sw, when, edge_actions, label):
             if x[0] == "effect":
                 if who:
@@ -387,17 +392,15 @@ def read(text, kind=None, name=None):
 
 
 _TARGET_WORDS = re.compile(r"\b(?:the |a |each |any |one )?(?:voluntary )?(?:targets?|subjects?|recipients?|affected|device|object|vehicle|drone|"
-                           r"ally|allies|individual|person|creature|item)\b|\b(?:them|they)\b", re.I)
+                           r"ally|allies|individual|person|creature|item)\b", re.I)
 _CASTER_WORDS = re.compile(r"\b(?:the (?:caster|spellcaster|magician|technomancer|shaman)|you|your)\b", re.I)
 
 
 def _affects(s):
-    """Whom a spell's or complex form's sentence says it affects (owner decision 2026-10-10): `target` when it names the
-    target, subject, device …; `caster` when it names only the caster (`you gain`); target when it names neither (a
-    spell acts on its target)."""
-    if _TARGET_WORDS.search(s):
-        return "target"
-    return "caster" if _CASTER_WORDS.search(s) else "target"
+    """Whom a spell's or complex form's sentence says it affects (owner decisions 2026-10-10): `target` when it names the
+    target, subject, device … before the caster; else `caster` (it names the caster, `you gain`, or no one)."""
+    t, c = _TARGET_WORDS.search(s), _CASTER_WORDS.search(s)
+    return "target" if t and (not c or t.start() < c.start()) else "caster"
 
 
 def _activity(phrase):

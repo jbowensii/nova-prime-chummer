@@ -63,17 +63,24 @@ function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, t
   for (const x of b.purchases) { const e = entryOf(x, data); f(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
   for (const q of b.qualities) { const e = data.entry('qualities', q.id); f(entryBonuses(data, e), 1, q.level, e?.name ?? q.name ?? q.id) }
 }
-/** The bonuses to skill `skill`'s dice pool that only the bracketed total holds (switchable, some tests only, or a
- *  specialization the runner hasn't), each with its line's name, value at its rating and when it holds: why the pool's
- *  bracket differs (derive.ts). */
-export function conditionalBonuses(b: Sr6Build, data: Sr6Data, skill: string, spec?: string): { value: number; when: string; from: string }[] {
+/** The bonuses to `target` (for `skill` the one skill's dice pool) that only the bracketed total holds (switchable, some
+ *  tests only, or a specialization the runner hasn't), each with its line's name, value at its rating and its note (its
+ *  switch, condition or specialization, and `affects the caster`): why the bracket differs (owner decision 2026-10-10:
+ *  the hover card, Review and the sheet name it). */
+export function bracketNotes(b: Sr6Build, data: Sr6Data, target: Bonus['target'], skill?: string, spec?: string): { value: number; when: string; from: string }[] {
   const out: { value: number; when: string; from: string }[] = []
   eachLine(b, data, (bs, rating, times, from) => {
-    for (const x of bs) if (x.target === 'skill' && x.skill === skill && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
-      out.push({ value: x.value * (x.perRating ? rating : 1) * times, when: [x.spec, x.when, x.switch !== 'conditional' && x.switch].filter(Boolean).join(', '), from })
+    for (const x of bs) if (x.target === target && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
+      out.push({ value: x.value * (x.perRating ? rating : 1) * times, from,
+        when: [x.spec, x.when, x.switch !== 'conditional' && x.switch, x.affects === 'caster' && 'affects the caster'].filter(Boolean).join(', ') })
   })
   return out
 }
+/** bracketNotes of a skill's pool. */
+export const conditionalBonuses = (b: Sr6Build, data: Sr6Data, skill: string, spec?: string) => bracketNotes(b, data, 'skill', skill, spec)
+/** The notes as one line each (a hover card's title): `+2 Muscle toner (wireless)`. */
+export const notesText = (xs: { value: number; when: string; from: string }[]) =>
+  xs.map(x => `${x.value >= 0 ? '+' : ''}${x.value} ${x.from}${x.when ? ` (${x.when})` : ''}`).join('\n')
 /** What the bonuses limited to specialization `spec` add to skill `skill`'s pool for it (on: the switchable ones too). */
 export function specBonus(b: Sr6Build, data: Sr6Data, skill: string, spec: string, on = false): number {
   let total = 0

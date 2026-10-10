@@ -205,8 +205,9 @@ export function BookSheet({ art }: { art: SheetArt }) {
             </Box>
           </div>
         </div>
-        {(ch.identity.background || ch.identity.notes) && <section className="k-box k-wide" aria-labelledby="k-notes"><h2 id="k-notes">Notes</h2>
-          {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}</section>}
+        {(ch.identity.background || ch.identity.notes || v.effectNotes.length > 0) && <section className="k-box k-wide" aria-labelledby="k-notes"><h2 id="k-notes">Notes</h2>
+          {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}
+          {v.effectNotes.length > 0 && <ul className="k-small">{v.effectNotes.map((x, i) => <li key={i}><b>{x.from}:</b> {x.text}</li>)}</ul>}</section>}
       </div>
     </article>
   )

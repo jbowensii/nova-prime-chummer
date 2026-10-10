@@ -139,6 +139,8 @@ class DecisionsTest(unittest.TestCase):
         self.assertEqual((a["target"], a["value"], a["switch"], a["affects"]), ("attr:agi", "hits", "sustained", "target"))
         a = effects.read("You gain +2 Defense Rating.", "spells")[0][1]
         self.assertEqual((a["affects"], a["switch"]), ("caster", "sustained"))
+        got = effects.read("Gain +1 Logic. The target gains +2 Charisma. They also gain +1 Willpower.", "spells")
+        self.assertEqual([x[1]["affects"] for x in got], ["caster", "target", "target"])  # (no one named: the caster)
 
     def test_new_phrasings(self):
         self.assertEqual(sorted(fx("Strength and Agility are increased by 2.")), [("attr:agi", "add", "2", None, None), ("attr:str", "add", "2", None, None)])

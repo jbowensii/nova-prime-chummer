@@ -2,7 +2,7 @@
 import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, KnowledgeEntry } from '../model/types'
 import { ATTRS } from '../model/types'
 import { ampEssence, FIREWALL_MAX, isRuleEffect, ruleText, testName } from './amps'
-import { applies, counts, effectHow, isSwitchable, own } from './effects'
+import { applies, counts, effectHow, inBracket, own } from './effects'
 import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
 
@@ -30,7 +30,9 @@ export interface Pool { skill: string; spec?: string; label: string; rating: num
 export interface PoolNote { ref: 'advantage' | 'edge-advantage' | 'disadvantage' | 'rr-spec'; text: string; from: string; how?: string }
 /** One effect the runner has, from an amp, an item or the metatype's racial quality: `text` as the sheet says it, `how`
  *  it is turned on and whether it counts (effects.ts effectHow), `applied` false for one shown but not counted. */
-export interface DerivedEffect { ref: string; text: string; from: string; fromId?: string; how: string; applied: boolean; rule: boolean
+export interface DerivedEffect { ref: string; param?: string; text: string; from: string; fromId?: string; how: string; applied: boolean; rule: boolean
+  /** counted only in the bracketed total (switchable or conditional) */
+  bracket?: true
   /** where it comes from: an amp's type, `item` or `metatype` */
   type: string }
 /** A pool's Advantages and Disadvantages as the sheets mark them: `Adv`, `Adv (1 Edge)`, `Dis`, each with where it comes
@@ -38,6 +40,11 @@ export interface DerivedEffect { ref: string; text: string; from: string; fromId
 export const poolMarks = (p: Pool) => (p.notes ?? []).map(n => ({
   mark: n.ref === 'advantage' ? 'Adv' : n.ref === 'edge-advantage' ? 'Adv (1 Edge)' : n.ref === 'rr-spec' ? 'RR (spec.)' : 'Dis',
   title: `${n.text}: ${n.from}${n.how ? ` (${n.how})` : ''}` }))
+/** The bracketed effects behind a pool's Risk Reduction (`RR 1 (2)`), one line each with what turns it on or when it
+ *  holds: the hover card's note (owner decision 2026-10-10). */
+export const rrNotes = (d: Pick<Derived, 'effects'>, p: Pick<Pool, 'attr' | 'skill'>) => d.effects
+  .filter(e => e.bracket && (e.ref === 'rr-attr' && e.param === p.attr || e.ref === 'rr-skill' && e.param === p.skill))
+  .map(e => `${e.text}: ${e.from}${e.how ? ` (${e.how})` : ''}`)
 /** What the runner's effects do beyond the numbers, one line each, for the sheets and Review: sustained spells and
  *  complex forms, extra spirits, wound modifiers ignored, forced Risk, VR, rigging, and the effects of its items and
  *  racial quality (its amps' own are listed with each amp). */
@@ -155,7 +162,7 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
 }
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)
-/** An amp's effects that count (effects.ts counts): low-confidence and `when` ones never, switchable ones only `on`. */
+/** An amp's effects that count (effects.ts counts): low-confidence ones never, switchable and conditional ones only `on`. */
 export const onFx = (a: Pick<AmpEntry, 'effects'>, on = false) => a.effects.filter(e => counts(e, on))
 /** Where an effect comes from: an amp (its type), an item (`item`) or the metatype's racial quality (`metatype`). */
 export interface EffectSource { e: EffectPick; type: string; name: string; uid?: string; id?: string; amp?: AmpEntry }
@@ -221,10 +228,10 @@ export function weaponDV(dv: string, str: number, plus = 0): string {
   return k ? `${Number(k[1]) + plus}${k[2]}` : dv
 }
 
-/** The runner's derived values without its switchable effects, and (`switched`) with them on. */
+/** The runner's derived values without its switchable and conditional effects, and (`switched`) with them on. */
 export function derive(c: Catalog, ch: Character): Derived {
   const d = deriveAt(c, ch, false)
-  return effectSources(c, d.build, ch.identity.metatype).some(p => applies(p.e) && isSwitchable(p.e)) ? { ...d, switched: deriveAt(c, ch, true) } : d
+  return effectSources(c, d.build, ch.identity.metatype).some(p => counts(p.e, true) && inBracket(p.e)) ? { ...d, switched: deriveAt(c, ch, true) } : d
 }
 
 function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
@@ -232,7 +239,7 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
   const meta = c.metatypes.get(ch.identity.metatype)
   const attr = (a: AttrId) => b.attributes[a] ?? 0
   const sources = effectSources(c, b, ch.identity.metatype)
-  // the effects that count (effects.ts counts: the switchable ones only `on`)
+  // the effects that count (effects.ts counts: the switchable and conditional ones only `on`)
   const picks = sources.filter(p => counts(p.e, on))
   const has = (ref: string) => picks.some(p => p.e.ref === ref)
   const count = (ref: string) => picks.filter(p => p.e.ref === ref).length
@@ -380,8 +387,9 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
     vehicles,
     emerged,
     // the narrative effect kinds, and every effect that is switchable, given by reference or not counted
-    effects: sources.filter(p => isRuleEffect(p.e.ref) || !applies(p.e) || p.e.switch || p.e.from).map(p => ({
-      ref: p.e.ref, text: ruleText(c, p.e) ?? effectName(c, p.e), from: p.name, ...p.e.from ? { fromId: p.e.from } : {},
+    effects: sources.filter(p => isRuleEffect(p.e.ref) || !applies(p.e) || inBracket(p.e) || p.e.from).map(p => ({
+      ref: p.e.ref, ...p.e.param ? { param: p.e.param } : {}, ...counts(p.e, true) && inBracket(p.e) ? { bracket: true as const } : {},
+      text: ruleText(c, p.e) ?? effectName(c, p.e), from: p.name, ...p.e.from ? { fromId: p.e.from } : {},
       how: effectHow(p.e), applied: applies(p.e), rule: isRuleEffect(p.e.ref), type: p.type })),
     sustain: { free: 1 + spells, max: 2 + 2 * spells, formsFree: 1 + forms, formsMax: 2 + 2 * forms },
     extraSpirits: count('summon-spirit'),
