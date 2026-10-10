@@ -13,7 +13,7 @@ from pathlib import Path
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
 from importer.sr6 import NS, effects, moved, regroup, resolve
-from importer.sr6.recipes import RECIPES, identify, skipped
+from importer.sr6.recipes import RECIPES, identify, printing, skipped
 
 
 def sr6_root():
@@ -75,8 +75,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         src = res.source["id"]
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
-        # several printings of the book: the newest is the one loaded, the others listed as superseded
-        mine = _printing(meta["sha256"])
+        # several printings of the book: the one published last is loaded, the others listed as superseded
+        mine = printing(meta["sha256"])
         others = [(p, d, st) for p, d, st in _same_source(book_dir, src) if p and mine]
         newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
         older = [] if newer else [(p, d, st) for p, d, st in others if st in ("done", "superseded") and p < mine]
@@ -151,15 +151,6 @@ def _pdf_title(pdf):
         return ""
 
 
-def _printing(sha):
-    """(rank, label) of a known printing (a recipe's PRINTINGS, oldest first: the higher rank the newer), or None."""
-    for r in RECIPES:
-        p = getattr(r, "PRINTINGS", {})
-        if sha in p:
-            return list(p).index(sha), p[sha]
-    return None
-
-
 def _same_source(book_dir, src):
     """The library's other books imported as `src`: [(printing or None, dir, state)]."""
     library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
@@ -168,7 +159,7 @@ def _same_source(book_dir, src):
         d = os.path.join(library, b)
         imp = xmlio.read_import(d) if b != me and os.path.isdir(d) else None
         if imp is not None and (imp.get("source") or "").lower() == src.lower():
-            out.append((_printing(imp.get("sha256")), d, xmlio.read_state(d)))
+            out.append((printing(imp.get("sha256")), d, xmlio.read_state(d)))
     return out
 
 

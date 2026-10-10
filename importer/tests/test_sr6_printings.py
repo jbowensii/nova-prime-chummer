@@ -16,8 +16,9 @@ from importer.tests.test_sr6_crb import BOOK_MD
 from importer.tests.test_sr6_crb_city import CITY, CITY_MD, SHA as CITY_SHA
 
 OLD, MID, NEW = b"%PDF- old", b"%PDF- mid", b"%PDF- new"
-PRINTINGS = {hashlib.sha256(b).hexdigest(): label for b, label in
-             ((OLD, "Old Printing"), (MID, "Middle Printing"), (NEW, "New Printing"))}  # oldest first
+# (listed out of order: a printing ranks by the month it was published, not by its place in the list)
+PRINTINGS = {hashlib.sha256(b).hexdigest(): (month, label) for b, month, label in
+             ((NEW, "2099-01", "New Printing"), (OLD, "2090-06", "Old Printing"), (MID, "2095-11", "Middle Printing"))}
 
 
 def _sha(b):
@@ -194,9 +195,10 @@ class PrintingsTest(unittest.TestCase):
 
 
 class SkippedTest(unittest.TestCase):
-    def test_the_core_rulebook_printings_are_in_order(self):
-        cats = [label.split("(")[1].split(",")[0].rstrip(")") for label in crb.PRINTINGS.values()]
-        self.assertEqual(cats, ["CAT28000", "CAT28000B", "CAT28000S", "CAT28000H"])  # oldest first
+    def test_the_core_rulebook_printings_rank_by_date(self):
+        ranked = [label.split("(")[1].split(",")[0] for _, label in sorted(crb.PRINTINGS.values())]
+        self.assertEqual(ranked, ["CAT28000", "CAT28000S", "CAT28000B", "CAT28000H"])  # 2019, Seattle 2021, Berlin 2023, Hong Kong 2025
+        self.assertTrue(all(len(month) == 7 and month[4] == "-" for month, _ in crb.PRINTINGS.values()))
         self.assertEqual(set(crb.PRINTINGS), set(crb.SHA256))
 
     def test_known_files_with_nothing_to_import(self):
