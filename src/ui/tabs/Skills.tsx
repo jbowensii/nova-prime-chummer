@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { knowledgeList, poolMarks, skillCost, type KnowledgeRow } from '../../engine'
+import { bracketed, knowledgeList, poolMarks, skillCost, type KnowledgeRow } from '../../engine'
 import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Stepper } from '../bits'
@@ -80,7 +80,7 @@ export function SkillsTab() {
                 <td><Stepper label={sk.name} value={r} min={0} max={8} onChange={to => setRating(sk.id, to)} /></td>
                 <td>{sk.attr.toUpperCase()}{sk.alt && <span className="muted">/{sk.alt.toUpperCase()}</span>}</td>
                 <td className="num">{base.map(p => p.dp).join(' / ')}{main && poolMarks(main).map((m, j) => <span key={j} className="muted small" title={m.title}> {m.mark}</span>)}</td>
-                <td className="num">{main?.rr || ''}</td>
+                <td className="num">{main && (s => s !== undefined && s !== main.rr ? bracketed(main.rr, s) : main.rr || '')(d.switched?.pools[d.pools.indexOf(main)]?.rr)}</td>
                 <td className="num hide-sm">{r < 8 ? fmt(skillCost(c.pricing, r, r + 1)) : ''}</td>
               </tr>,
               // a specialization on a skill at rating 0 too (Review's spec.noSkill error)

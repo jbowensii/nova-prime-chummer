@@ -65,7 +65,7 @@ export function isSinner(a: AmpEntry, c?: Catalog): boolean {
 
 export function effectRating(c: Catalog, pick: EffectPick): number {
   const eff = c.ampEffects.get(pick.ref)
-  if (!eff) return 0
+  if (!eff || pick.unpriced) return 0
   if (pick.ref === 'negative') return -(pick.value ?? 1)
   if (pick.ref === 'rcc') return eff.rating * (pick.value ?? 1)
   return eff.rating

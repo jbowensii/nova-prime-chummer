@@ -199,7 +199,15 @@ Every `<effect>` (amps, items, metatypes, a runner's amps and items) may say how
 (`src/engine/effects.ts`, shared with Shadowrun 6): `switch` (`wireless`, `activated`, `sustained`, `conditional`; absent:
 always on), `when` (it holds only then: shown, not counted), `confidence="low"` (read from a sentence the importer isn't
 sure of, a value that depends on hits: shown, not counted) and `from` (the catalog id of the entry it is given by: "like an
-elf", "acts the same way as a mana bolt"). A switchable effect counts (it is assumed on) and says how it is turned on.
+elf", "acts the same way as a mana bolt"). A switchable one (wireless, activated, sustained) counts only switched on: a
+total is printed as the books print it, without it and in brackets with it, `RR 1 (2)` (owner, 2026-10-10).
+`affects` (`caster` or `target`) says whom a spell's or complex form's effect is on: the caster counts its own while
+sustained (in brackets), a target's stays on the spell. `unpriced="true"` marks an effect the book states but its
+printed rating doesn't pay for: it applies, at rating 0 (the import report lists each, `kind="effect-unpriced"`).
+
+A bonus limited to a specialization is added to that specialization's pool when the runner has it, else shown beside
+its skill. A Test named by what it does ("Tests involving speed", "social Tests", "climb a metal structure") is every
+skill it uses (`importer/recipes/dhsa.py` ACTIVITIES).
 
 ### packages
 
@@ -223,14 +231,14 @@ These are the base chassis for vehicle amps.
   and heavier weapons (priced at `weaponSpecialist`).
 - `armor` is the armor rating (priced per point).
 - Optional `<formula>` and `<issue>` children, before `<text>` (Formulas and issues, below).
-- `<effect ref param? value? note? switch? when? confidence? from?/>`: what it does, read from its text by the importer
-  (a drug's Disadvantage, a spell's Advantage, gear's vision). A runner's item may carry its own (they replace these).
-  A spell's or complex form's are what it does to its subject or target: listed, never the caster's own unless the player
-  enters them on the runner's item.
+- `<effect ref param? value? note? unpriced? switch? when? confidence? from? affects?/>`: what it does, read from its text
+  by the importer (a drug's Disadvantage, a spell's Advantage, gear's vision). A runner's item may carry its own (they
+  replace these). A spell's or complex form's say whom they affect (`affects`, read from the sentence: the caster, else
+  its subject or targets).
 
 ### amps
 
-`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? switch? when? confidence? from?/>*<formula/>*<issue/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? unpriced? switch? when? confidence? from? affects?/>*<formula/>*<issue/>*<narrative/></amp>`
 
 - `<item>` (equipment amps only) is the base item bought with the amp, priced
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
@@ -244,9 +252,11 @@ These are the base chassis for vehicle amps.
   skill id, spec id, attribute id, realm, Test, or free text).
 - The importer reads an amp's clauses as general rules (`importer/recipes/dhsa.py` Mapper, `importer/effects.py`): a
   clause a rated effect reads becomes that effect, with its `switch` (a dose's `Duration:` makes it `activated`) and, for
-  a bonus without a param of its own, its `when`; a rated reading that would push the amp past its printed rating is
-  dropped (the clause stays narrative: the printed rating is canon); every other clause stays narrative and adds the
-  narrative effect kinds it states.
+  a bonus without a param of its own, its `when`; a rated reading that would push the amp past its printed rating (or
+  take a drawback the plain reading doesn't) is added `unpriced` and the amp priced as read without it (the printed
+  rating is canon); every other clause stays narrative and adds the narrative effect kinds it states. A misprinted
+  doubled parenthesis is read as one, and a parenthesis that names a skill (`RR 1 Resonance (tasking)`) as that skill;
+  misprints with no clean reading are suggested for the edits layer instead.
 - `vehicle` names the chassis for vehicle amps.
 - `mod="true"` marks an add-on (ammo, accessory, vehicle or deck mod,
   implant grade). It has no base rating: the Amp Builder appends its

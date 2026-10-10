@@ -197,7 +197,7 @@ def extract(md, ctx=None):
         category = "sustained" if f["type"] == "S" else "instant"
         text = f'{f["type"]}. {f["text"]}'.strip()
         items.append(f'  <item id="{fid}" kind="complex-form" category="{category}" source="{ID}" page="{f["page"]}">'
-                     f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S"))}<text></text></item>')
+                     f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S", spell=True))}<text></text></item>')
         texts.append(f'  <text of="items" id="{fid}">{escape(text)}</text>')
 
     rule_entries, rule_ids = [], set()

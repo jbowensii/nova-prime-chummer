@@ -80,7 +80,9 @@ export interface Catalog {
 // ---- character ----
 /** An effect: an Amp effect table id (rated), or one of the narrative effect kinds (RULE_EFFECTS, rating 0: what a
  *  narrative effect does), with how it is turned on and whether it counts (src/engine/effects.ts). */
-export interface EffectPick extends EffectState { ref: string; param?: string; value?: number; note?: string }
+export interface EffectPick extends EffectState { ref: string; param?: string; value?: number; note?: string
+  /** an effect the book states but its printed rating doesn't pay for (owner, 2026-10-10): it applies, at rating 0 */
+  unpriced?: true }
 /** specs: spec ids ("stealth.physical-sneaking") or "custom:Name" */
 export interface SkillEntry { id: string; rating: number; specs: string[] }
 /** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free, like every SINner: house rule).

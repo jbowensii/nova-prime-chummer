@@ -85,6 +85,9 @@
     <xs:attribute name="when" type="xs:string"/>
     <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="from" type="xs:string"/>
+    <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="caster"/><xs:enumeration value="target"/></xs:restriction></xs:simpleType></xs:attribute>
+    <!-- a book effect its printed rating doesn't pay for: it applies, at rating 0 -->
+    <xs:attribute name="unpriced" type="xs:boolean"/>
   </xs:complexType>
 
   <!-- entry types of amps.xsd, items.xsd and rules.xsd (also the edits layer, edits.xsd, and compendium.xsd) -->

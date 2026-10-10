@@ -1,7 +1,7 @@
 // What both printed sheets (Sheet.tsx, BookSheet.tsx) take from the runner: amp effect lines, the lists, the Risk table,
 // and the sheet's own background art (switches, strength, the per-runner image pick) with its tools.
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { effectHow, knowledgeList, ruleText } from '../engine'
+import { bracketed, effectHow, knowledgeList, ruleText } from '../engine'
 import type { Derived } from '../engine/derive'
 import type { AmpEntry, Build, Catalog } from '../model/types'
 import { artSrc, useArtId, useArtIds } from '../ui/Background'
@@ -14,7 +14,7 @@ export const RISK = [['1 die', '2 dice', '4 dice', '6+ dice'], ['3 dice', '5 dic
 
 type Effect = AmpEntry['effects'][number]
 function effectText(c: Catalog, e: Effect, n = 1) {
-  const how = effectHow(e)
+  const how = [effectHow(e), e.unpriced ? 'unpriced by the rating' : ''].filter(Boolean).join(', ')
   return `${ruleText(c, e) ?? amountText(c, e.ref, e.param, e.value, n)}${how ? ` (${how})` : ''}`
 }
 function amountText(c: Catalog, ref: string, param?: string, value?: number, n = 1) {
@@ -24,6 +24,16 @@ function amountText(c: Catalog, ref: string, param?: string, value?: number, n =
   if (ref === 'rr-spec' || ref === 'rr-skill' || ref === 'rr-attr') return `RR ${n} on ${who ?? '(to choose)'} Tests`
   if (ref === 'negative') return `Drawback (−${value ?? 1})`
   return `${def?.name ?? ref}${param && ref !== 'narrative' ? `: ${param}` : ''}`
+}
+
+/** A thresholds row's cells, each as the books print a switchable bonus: `6 (7)` (derive's `switched`). */
+export const cells = (off: number[], on?: number[]) => off.map((x, i) => <td key={i}>{bracketed(x, on?.[i])}</td>)
+/** A pool's Risk Reduction, `1 (2)` when switching effects on raises it; none: blank. */
+export const rrText = (off: number, on?: number) => (on !== undefined && on !== off ? bracketed(off, on) : off || '')
+/** The wound boxes switching effects on adds, as a line ("+1 light box switched on"), else nothing. */
+export function switchedBoxes(d: Derived) {
+  const l = (d.switched?.monitor.light ?? d.monitor.light) - d.monitor.light, s = (d.switched?.monitor.serious ?? d.monitor.serious) - d.monitor.serious
+  return [l > 0 && `+${l} light`, s > 0 && `+${s} serious`].filter(Boolean).join(', ') + (l > 0 || s > 0 ? ' box switched on' : '')
 }
 
 /** An amp's effect lines, the same ones counted once with "×n" (RR lines say their total instead). */

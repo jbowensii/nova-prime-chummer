@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 from importer import core_file, mechanics_roots
-from importer.recipes.dhsa import DHSA_SPECS, Mapper
+from importer.recipes.dhsa import DHSA_SPECS, Mapper, stated
 
 ATTRS = ("str", "agi", "wil", "log", "cha")
 ANCHORS = ("KEYWORDS", "SKILLS", "WEAPONS", "ARMOR", "WOUNDS", "DISPOSITIONS", "CUES", "SPELLS", "COMPLEX FORMS",
@@ -494,7 +494,8 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
                 e = _line_effects(seg, atype, mapper)  # on a runner, an effect the type can't take is kept: Review flags it
                 if e and catalog:
                     e = [f for f in e if atype in rules["effects"].get(f[0], {}).get("types", [])] or None
-                (unmapped.append(seg) if e is None else got.extend(e))
+                # how the line turns them on (a dose's Duration: activated): the sheet's bracketed total (owner, 2026-10-10)
+                (unmapped.append(seg) if e is None else got.extend(stated(e, seg, "; ".join(lines))))
             fx += got
             if unmapped:
                 loose.append(ln if not got else " – ".join(unmapped))
@@ -776,7 +777,7 @@ def character_xml(ch):
     an amp's snapshot is the printed amp: its type, name, printed rating, source and page
     (tests/engine/pregen-sample.test.ts holds both writers to the same file)."""
     b = ch["build"]
-    fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note", "switch", "when", "confidence", "from")})
+    fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note", "unpriced", "switch", "when", "confidence", "from", "affects")})
     snap = lambda t: "<snapshot>" + _el("amp", {k: t.get(k) for k in ("id", "type", "printedRating", "vehicle", "source", "page")},
                                         _text("name", t["name"]) + "<narrative></narrative>") + "</snapshot>"
     amp = lambda a: _el("amp", {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},

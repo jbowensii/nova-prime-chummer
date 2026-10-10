@@ -1,5 +1,5 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
-import { ampCtx, ampEssence, ampRating, effectLines, poolMarks, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating, bracketed, effectLines, poolMarks, ruleHelp } from '../engine'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'
@@ -7,7 +7,7 @@ import { NpcBlock } from '../ui/NpcBlock'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { HeaderBars } from '../ui/nav'
 import { IconButton, IconLink } from '../ui/icons'
-import { ampLines, lists, RISK, SheetType, useSheetArt } from './shared'
+import { ampLines, cells, lists, RISK, rrText, SheetType, switchedBoxes, useSheetArt } from './shared'
 import './sheet.css'
 
 export function Sheet() {
@@ -53,7 +53,7 @@ export function Sheet() {
                 {d.pools.map((p, i) => (
                   <tr key={i} className={p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) ? 'spec' : ''}>
                     <td>{p.spec ? `(${p.label.replace(/^.*\(|\)$/g, '')} +2)` : i > 0 && d.pools[i - 1].skill === p.skill && !d.pools[i - 1].spec ? `(with ${p.attr.toUpperCase()})` : p.label}</td>
-                    <td>{p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td><td>{p.rr || ''}</td>
+                    <td>{p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td><td>{rrText(p.rr, d.switched?.pools[i]?.rr)}</td>
                     <td className="s-small">{poolMarks(p).map((m, j) => <span key={j} title={m.title}>{j ? ', ' : ''}{m.mark}</span>)}</td>
                   </tr>
                 ))}
@@ -80,15 +80,16 @@ export function Sheet() {
               {Array.from({ length: d.monitor.serious }, (_, i) => <span key={`s${i}`} className="s" title="Serious" />)}
               <span className="i" title="Incapacitated" />
             </div>
+            {switchedBoxes(d) && <p className="s-small">{switchedBoxes(d)}</p>}
             <table>
               <thead><tr><th>Thresholds</th><th>Light</th><th>Serious</th><th>Incap.</th></tr></thead>
               <tbody>
-                <tr><td>No armor</td>{d.thresholds.physicalNone.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                {b.mainArmor && <tr><td>Main armor ({item(b.mainArmor)?.name} {d.armor.main})</td>{d.thresholds.physicalMain.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {d.armor.alt})</td>{d.thresholds.physicalAlt.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                <tr><td>Mental{d.mentalProtection ? ` (armor ${d.mentalProtection})` : ''}</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                {d.thresholds.social && <tr><td>Social (armor {d.socialArmor})</td>{d.thresholds.social.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}{d.matrixArmor ? `, armor ${d.matrixArmor}` : ''}){d.deckMonitor && (d.deckMonitor.light > 2 || d.deckMonitor.serious > 1) && <span className="s-small"> deck boxes {d.deckMonitor.light} light, {d.deckMonitor.serious} serious</span>}</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                <tr><td>No armor</td>{cells(d.thresholds.physicalNone, d.switched?.thresholds.physicalNone)}</tr>
+                {b.mainArmor && <tr><td>Main armor ({item(b.mainArmor)?.name} {bracketed(d.armor.main, d.switched?.armor.main)})</td>{cells(d.thresholds.physicalMain, d.switched?.thresholds.physicalMain)}</tr>}
+                {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {bracketed(d.armor.alt, d.switched?.armor.alt)})</td>{cells(d.thresholds.physicalAlt, d.switched?.thresholds.physicalAlt)}</tr>}
+                <tr><td>Mental{d.mentalProtection || d.switched?.mentalProtection ? ` (armor ${bracketed(d.mentalProtection, d.switched?.mentalProtection)})` : ''}</td>{cells(d.thresholds.mental, d.switched?.thresholds.mental)}</tr>
+                {d.thresholds.social && <tr><td>Social (armor {d.socialArmor})</td>{cells(d.thresholds.social, d.switched?.thresholds.social)}</tr>}
+                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}{d.matrixArmor ? `, armor ${d.matrixArmor}` : ''}){d.deckMonitor && (d.deckMonitor.light > 2 || d.deckMonitor.serious > 1) && <span className="s-small"> deck boxes {d.deckMonitor.light} light, {d.deckMonitor.serious} serious</span>}</td>{cells(d.thresholds.matrix, d.switched?.thresholds.matrix)}</tr>}
               </tbody>
             </table>
 
@@ -102,7 +103,7 @@ export function Sheet() {
             <h2>Essence {d.essence}</h2>
             <p className="s-small">Cancelled hits on magic Tests: {d.essenceEffects.magicHitsCancelled}. On healing: {d.essenceEffects.healingHitsCancelled}.
               {d.essenceEffects.socialDisadvantage && ' Disadvantage on most social Tests.'}</p>
-            {d.initiative && <p className="s-small">Initiative enhancement {d.initiative.level}{d.initiative.realm ? ` (${d.initiative.realm} only)` : ''}: {d.initiative.source}.</p>}
+            {(d.initiative ?? d.switched?.initiative) && (i => <p className="s-small">Initiative enhancement {bracketed(d.initiative?.level ?? '–', d.switched?.initiative?.level)}{i.realm ? ` (${i.realm} only)` : ''}: {i.source}.</p>)((d.initiative ?? d.switched?.initiative)!)}
             {effectLines(d).map((x, i) => <p key={i} className="s-small s-effect">{x}.</p>)}
           </section>
         </div>
@@ -145,7 +146,7 @@ export function Sheet() {
               <thead><tr><th>Weapon</th><th>DV</th><th>Ranges</th></tr></thead>
               <tbody>{d.weapons.map(w => <tr key={w.uid}>
                 <td><b>{w.name}</b>{w.specialist && <span className="s-small"> (specialist)</span>}{w.note && <div className="s-small">{w.note}</div>}</td>
-                <td><b>{w.dv}</b>{w.ammo && <div className="s-small">by ammo: {w.ammo.join(', ')}</div>}</td><td>{w.ranges}</td></tr>)}</tbody>
+                <td><b>{bracketed(w.dv, d.switched?.weapons.find(x => x.uid === w.uid)?.dv)}</b>{w.ammo && <div className="s-small">by ammo: {w.ammo.join(', ')}</div>}</td><td>{w.ranges}</td></tr>)}</tbody>
             </table>
             {spells.length > 0 && <>
               <h2>{spells.every(x => x.kind === 'spell') ? 'Spells' : spells.every(x => x.kind === 'complex-form') ? 'Complex forms' : 'Spells & complex forms'}</h2>

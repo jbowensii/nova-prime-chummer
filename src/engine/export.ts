@@ -6,7 +6,7 @@ import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry
 import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
-import { armorShares, DEVICE_TYPES, derive, type PoolNote } from './derive'
+import { armorShares, DEVICE_TYPES, derive, type Derived, type DerivedEffect, type PoolNote } from './derive'
 import { applies, own, type EffectState, type EffectSwitch } from './effects'
 import { ruleText } from './amps'
 import { itemCost, price } from './price'
@@ -17,7 +17,9 @@ export interface ExportOpts { descriptions: boolean; now: string; appVersion: st
 /** line: the effect as the sheet says it; applied false: shown, not counted (low confidence, or only `when`); switch,
  *  when, from: src/engine/effects.ts */
 export interface ExportEffect extends EffectState { id: string; name: string; category: string; param?: string; value?: number; note?: string
-  line: string; applied: boolean }
+  line: string; applied: boolean
+  /** the book states it, its printed rating doesn't pay for it: it applies, at rating 0 */
+  unpriced?: true }
 /** skill: on a spec line, the skill that owns the spec, when known */
 export interface ExportRR { on: 'attribute' | 'skill' | 'spec'; id: string; name: string; value: number; skill?: string }
 /** sra2's feat fields (bonusLightDamage …, sustainedSpellCount, summonedSpiritCount, riggerConsoleCount,
@@ -54,13 +56,24 @@ export interface ExportRunner {
   pools: { skill: string; spec?: string; label: string; attr: string; dp: number; rr: number; notes?: PoolNote[] }[]
   /** what the runner's effects do beyond the numbers: sustained spells and forms, extra spirits, social and Matrix armor,
    *  wound modifiers ignored, forced Risk, VR, rigging (src/engine/derive.ts) */
-  effects: { sustain: { free: number; max: number; formsFree: number; formsMax: number }; extraSpirits: number; socialArmor: number
-    matrixArmor: number; ignoreWounds?: string; forcedRisk: boolean; vr?: 'cold' | 'hot'; rcc: number; vcr: boolean }
+  effects: ExportRunnerEffects
+  /** the same totals with the switchable effects (wireless, activated, sustained) switched on, when the runner has any:
+   *  the sheets print them in brackets, `1 (2)`; pools in the same order as `pools` */
+  switched?: { monitor: ExportRunner['monitor']; thresholds: Record<string, number[]>; armor: { main: number; alt: number }
+    initiative: ExportRunner['initiative']; pools: { rr: number; notes?: PoolNote[] }[]; weapons: { uid: string; dv: string }[]
+    effects: ExportRunnerEffects }
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] }; background: string; notes: string
   nuyen: { balance: number }; ledger: { at: string; type: string; summary: string; amount: number }[]
   /** an NPC's block (absent: a runner) */
   npc?: Npc
 }
+/** list: every effect the runner has that is a narrative effect kind, switchable, given by reference or not counted, from
+ *  its amps, items and racial quality (derive.ts DerivedEffect: type is the amp's type, `item` or `metatype`) */
+export interface ExportRunnerEffects { sustain: { free: number; max: number; formsFree: number; formsMax: number }; extraSpirits: number
+  socialArmor: number; matrixArmor: number; ignoreWounds?: string; forcedRisk: boolean; vr?: 'cold' | 'hot'; rcc: number; vcr: boolean
+  list: DerivedEffect[] }
+const runnerEffects = (d: Derived): ExportRunnerEffects => ({ sustain: d.sustain, extraSpirits: d.extraSpirits, socialArmor: d.socialArmor,
+  matrixArmor: d.matrixArmor, ...d.ignoreWounds ? { ignoreWounds: d.ignoreWounds } : {}, forcedRisk: d.forcedRisk, ...d.vr ? { vr: d.vr } : {}, rcc: d.rcc, vcr: d.vcr, list: d.effects })
 export interface ExportFile { format: typeof EXPORT_FORMAT; version: typeof EXPORT_VERSION; kind: 'runners' | 'books'
   exportedAt: string; app: { name: string; version: string }; descriptions: boolean
   runners?: ExportRunner[]; books?: ExportBook[]; tableRules?: { name: string; text: string }[] }
@@ -111,7 +124,7 @@ export const exportEffects = (c: Catalog, effects: EffectPick[]): ExportEffect[]
   return { id: e.ref, name: a?.name ?? e.ref, category: a?.category ?? '', ...e.param ? { param: e.param } : {},
     ...e.value != null ? { value: e.value } : {}, ...e.note ? { note: e.note } : {},
     ...e.switch ? { switch: e.switch } : {}, ...e.when ? { when: e.when } : {}, ...e.confidence ? { confidence: e.confidence } : {},
-    ...e.from ? { from: e.from } : {}, line: ruleText(c, e) ?? a?.name ?? e.ref, applied: applies(e) }
+    ...e.from ? { from: e.from } : {}, ...e.affects ? { affects: e.affects } : {}, ...e.unpriced ? { unpriced: true as const } : {}, line: ruleText(c, e) ?? a?.name ?? e.ref, applied: applies(e) }
 })
 /** The switch every counted effect of an amp shares, if one does (a drug's dose: activated). */
 const sharedSwitch = (effects: EffectPick[]): EffectSwitch | undefined => {
@@ -232,8 +245,10 @@ export function exportRunner(c: Catalog, ch: Character, o: ExportOpts): ExportRu
     monitor: d.monitor, thresholds: { ...d.thresholds } as Record<string, number[]>, armor: { main: d.armor.main, alt: d.armor.alt },
     initiative: d.initiative ?? null,
     pools: d.pools.map(p => ({ skill: p.skill, ...p.spec ? { spec: p.spec } : {}, label: p.label, attr: p.attr, dp: p.dp, rr: p.rr, ...p.notes ? { notes: p.notes } : {} })),
-    effects: { sustain: d.sustain, extraSpirits: d.extraSpirits, socialArmor: d.socialArmor, matrixArmor: d.matrixArmor,
-      ...d.ignoreWounds ? { ignoreWounds: d.ignoreWounds } : {}, forcedRisk: d.forcedRisk, ...d.vr ? { vr: d.vr } : {}, rcc: d.rcc, vcr: d.vcr },
+    effects: runnerEffects(d),
+    ...(s => s ? { switched: { monitor: s.monitor, thresholds: { ...s.thresholds } as Record<string, number[]>, armor: { main: s.armor.main, alt: s.armor.alt },
+      initiative: s.initiative ?? null, pools: s.pools.map(p => ({ rr: p.rr, ...p.notes ? { notes: p.notes } : {} })),
+      weapons: s.weapons.map(w => ({ uid: w.uid, dv: w.dv })), effects: runnerEffects(s) } } : {})(d.switched),
     narrative: { keywords: ch.narrative.keywords, dispositions: ch.narrative.dispositions, cues: ch.narrative.cues },
     background: ch.identity.background, notes: ch.identity.notes,
     nuyen: { balance: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining },

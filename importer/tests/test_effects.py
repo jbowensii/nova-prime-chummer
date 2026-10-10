@@ -1,6 +1,7 @@
 """Anarchy's effects read as general rules (importer/effects.py, the Mapper's tests() and extended readings, item effects,
 references): made-up sentences in the books' phrasing."""
 import unittest
+from unittest import mock
 
 from importer import effects as fx
 from importer.recipes import dhsa
@@ -25,7 +26,8 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(kinds("Disadvantage on Charisma- and Willpower-based Tests."),
                          [("disadvantage", "cha", None, {}), ("disadvantage", "wil", None, {})])
         self.assertEqual(kinds("Disadvantage on all their other Tests."), [("disadvantage", "", None, {})])
-        self.assertEqual(kinds("Disadvantage on a social Test."), [("disadvantage", "custom:Social", None, {})])  # not Perception (social)
+        # not Perception (social): a Test named by its type is every skill it uses
+        self.assertEqual(kinds("Disadvantage on a social Test."), [("disadvantage", "influence", None, {}), ("disadvantage", "network", None, {})])
         self.assertEqual(kinds("Imposes a Disadvantage on anyone sniffing the glitter.")[0][0], "inflict-disadvantage")
 
     def test_negated_disadvantage_and_visions(self):
@@ -64,7 +66,9 @@ class MapperTest(unittest.TestCase):
         self.m = dhsa.Mapper(SPECS)
 
     def test_tests(self):
-        self.assertEqual(self.m.tests("Survival (first aid) + Logic"), ["custom:Survival (first aid) + Logic"])  # no such spec here
+        self.assertEqual(self.m.tests("Survival (first aid) + Logic"), ["survival"])  # no such spec here: the activity's skill
+        self.assertEqual(self.m.tests("any Test involving speed"), ["piloting", "athletics"])
+        self.assertEqual(self.m.tests("solving made-up riddles"), ["custom:Solving made-up riddles"])
         self.assertEqual(self.m.tests("Perception (physical)"), ["perception.physical"])
         self.assertEqual(self.m.tests("Strengthand Agility"), ["str", "agi"])
         self.assertEqual(self.m.tests("Willpower- based"), ["wil"])
@@ -79,6 +83,8 @@ class MapperTest(unittest.TestCase):
         self.assertEqual(e("+1 Mental armor"), [("mental-armor", None, None, None)])
         self.assertEqual(e("DNI and Cold-sim"), [("vr-cold", None, None, None)])
         self.assertEqual([f[0] for f in e("RR 1 on all Perception (Physical) Tests")], ["rr-spec"])
+        self.assertEqual(e("RR 1 Resonance (tasking)"), [("rr-skill", "tasking", None, None)])  # misprints read cleanly
+        self.assertEqual(e("RR 1 Perception (Physical))"), [("rr-spec", "perception.physical", None, None)])
         self.m.extended = False
         self.assertIsNone(e("DV+1 on unarmed attacks"))
 
@@ -91,6 +97,16 @@ class MapperTest(unittest.TestCase):
         self.assertEqual(dhsa.read_amp(self.m, read, 1)[2], 1)  # the extended reading overshot: read again without it
         self.assertEqual(calls, [True, False])
         self.assertTrue(self.m.extended)
+
+    def test_unpriced_effects_apply_without_changing_the_rating(self):
+        def read():
+            fx = [("rr-attr", "agi", None, None)] + ([("rr-spec", "perception.physical", None, None)] if self.m.extended else [])
+            return fx, [], 12 if self.m.extended else 10
+        with mock.patch.object(dhsa, "effect_rating", lambda ref: {"rr-attr": 10, "rr-spec": 2}.get(ref, 0)):
+            fx, _, rating = dhsa.read_amp(self.m, read, 10)
+        self.assertEqual(rating, 10)
+        self.assertEqual(fx, [("rr-attr", "agi", None, None), ("rr-spec", "perception.physical", None, None, {"unpriced": "true"})])
+        self.assertEqual(dhsa.unpriced_rows("made-up-drug", 3, fx)[0]["effects"], "rr-spec:perception.physical")
 
     def test_one_init(self):
         f = lambda r, p=None: (r, p, None, None)  # noqa: E731
@@ -106,6 +122,12 @@ class ItemsAndReferencesTest(unittest.TestCase):
         got = dhsa.item_effects(m, "The effect is identical to the Initiative Enhancement Amps. • 3 hits: +1 Edge per action scene.")
         self.assertEqual(sorted({f[0] for f in got}), ["init-1", "init-2", "init-3"])
         self.assertTrue(all(f[4].get("confidence") == "low" for f in got))
+
+    def test_who_a_spell_affects(self):
+        m = dhsa.Mapper(SPECS)
+        got = dhsa.item_effects(m, "The subject gains an Advantage on Perception (physical) Tests. In case of success, the caster suffers no "
+                                   "Disadvantage from glare.", sustained=True, spell=True)
+        self.assertEqual([(f[0], f[4].get("affects")) for f in got], [("advantage", "target"), ("no-disadvantage", "caster")])
 
     def test_references(self):
         lines = ['  <amp id="cat-sight" type="quality"><name>Cat sight</name><narrative></narrative></amp>',
