@@ -30,7 +30,7 @@ const boxes = (k: number | null, cls = '') => k === null ? <span className="s-sm
 export function Sr6Sheet() {
   const ctx = useSr6Editor(), { ch, data, cr, d } = ctx
   const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic], style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host } = runnerView(ctx)
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host, effectNotes } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}{host(x) && ` (${host(x)})`}</div>
   const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
   const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
@@ -163,6 +163,10 @@ export function Sr6Sheet() {
               {s.licences.length > 0 && <div className="s-small">{s.licences.map(l => `${l.name} (${l.rating})`).join(', ')}</div>}</li>)}</ul>
           </section>
         </div>
+        {effectNotes.length > 0 && <section>
+          <h2>Effects</h2>
+          <ul className="s-small">{effectNotes.map((x, i) => <li key={i}><b>{x.from}:</b> {x.text}</li>)}</ul>
+        </section>}
         {lines('vehicles').length > 0 && <section>
           <h2>Vehicles & drones</h2>
           <table><thead><tr><th>Vehicle</th><th>Handling</th><th>Body</th><th>Armor</th><th>Pilot</th><th>Sensor</th></tr></thead>

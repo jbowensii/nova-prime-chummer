@@ -8,35 +8,15 @@ import { EntryHover, type CardEffect } from '../../ui/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'
 import { catalogFind } from '../engine/load'
 import type { Find } from '../engine/values'
-import { SR6_ATTRS, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../model/character'
+import type { Sr6Character, Sr6Purchase } from '../model/character'
+import { effectState, effectText } from '../engine/effects'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
-import { ATTR_NAMES, useSr6Editor } from './editor'
+import { useSr6Editor } from './editor'
 import { formulaShown } from './Picker'
 
-const DERIVED: Record<string, string> = { defense: 'Defense Rating', initiative: 'Initiative', composure: 'Composure', 'judge-intentions': 'Judge Intentions',
-  memory: 'Memory', social: 'Social Rating' }
-const cap = (s: string) => s.replace(/(^|[ -])\w/g, m => m.toUpperCase()).replace(/-/g, ' ')
-/** `attr:agi` -> Agility, `skill:close-combat` -> Close Combat dice, `derived:defense` -> Defense Rating, `item:ar` ->
- *  its Attack Ratings */
-function targetName(t: string): string {
-  const [k, v = ''] = t.split(':')
-  if (k === 'attr' && (SR6_ATTRS as string[]).includes(v)) return ATTR_NAMES[v as Sr6Attr]
-  if (k === 'skill') return `${cap(v)} dice`
-  if (k === 'pool') return `${ATTR_NAMES[v as Sr6Attr] ?? v} tests' dice`
-  if (k === 'derived') return DERIVED[v] ?? cap(v)
-  if (k === 'item') return v === 'ar' ? 'its Attack Ratings (close to extreme)' : `its ${v}`
-  return t
-}
-
-/** What an entry's <effect> parts do, as the hover card and Game data show them. */
+/** What an entry's <effect> and <link> parts do (effects.ts effectText), as the hover card and Game data show them. */
 export function effectsOf(e: Sr6Entry): CardEffect[] {
-  return e.parts.filter(p => p.tag === 'effect').map(({ attrs: a }) => {
-    const v = a.value === 'R' ? 'rating' : a.value, sign = /^[-–]/.test(v) ? '' : '+'
-    const text = a.op === 'edge-cost' ? `Edge boosts and actions cost ${v.replace(/^[-–]/, '')} less on ${targetName(a.target).replace(/ dice$/, '')} tests`
-      : `${sign}${v} ${targetName(a.target)}`
-    const how = a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''
-    return { text: `${how}${text}`, state: a.confidence === 'low' ? (a.switch && a.switch !== 'conditional' ? 'conditional' : 'low') : 'applied' }
-  })
+  return e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(p => ({ text: effectText(p), state: effectState(p) }))
 }
 
 /** "category zappers · dv 3P · cost Rating × 50": an entry's printed values, then its formulas with their values over its

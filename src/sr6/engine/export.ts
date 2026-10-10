@@ -33,10 +33,14 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
  *  runner's */
-export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string; switch?: Bonus['switch'] }
-/** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
- *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
-export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
+export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string; switch?: Bonus['switch'] }
+/** What the entry's printed text and tables say it does (the catalog's <effect>, importer/sr6/effects.py; the targets,
+ *  operations and values docs/sr6-data-format.md "Effects" lists): low: read from a sentence that sets a condition (shown,
+ *  never applied); switch: how it is turned on; when: the condition's words. A reader applies the `add` ones it has a
+ *  field for (Eden: an Active Effect) and shows the rest. */
+export interface Sr6ExportEffect { target: string; op: string; value: string; low?: true; switch?: string; when?: string }
+/** Another entry this one grants (`grants`) or works as (`as`): the reader uses that entry's effects */
+export interface Sr6ExportLink { rel: 'grants' | 'as'; name: string; kind?: string; id?: string; level?: number; when?: string }
 /** A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold) */
 export interface Sr6ExportTest { skill: string; attr: string; threshold?: number }
 /** A thing on a runner or in a book: the catalog entry as printed (attrs, parts) plus Chummer's values. */
@@ -44,7 +48,7 @@ export interface Sr6ExportTest { skill: string; attr: string; threshold?: number
  *  only when that differs (attrs.category and attrs.group hold the category) */
 export interface Sr6ExportItem { uid?: string; id?: string; kind: Sr6Kind; name: string; label?: string; source?: string; page?: number; canon: boolean
   attrs: Record<string, string>; parts: { tag: string; text: string }[]; values: Sr6Values; description?: string
-  effects?: Sr6ExportEffect[]; tests?: Sr6ExportTest[]
+  effects?: Sr6ExportEffect[]; tests?: Sr6ExportTest[]; links?: Sr6ExportLink[]
   /** the ids the entry had in earlier imports (the catalog's <alias id kind>, Sr6Catalog.moved): kind only when it was
    *  another kind. A reader that keyed things by the old id finds them again. */
   aliases?: { id: string; kind?: Sr6Kind }[] }
@@ -146,14 +150,18 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
 }
 
 /** The catalog's <effect> and <test> parts of an entry, when it has any. */
-function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests'> {
-  const effects = e.parts.filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && (p.attrs.op === 'add' || p.attrs.op === 'edge-cost'))
-    .map(p => ({ target: p.attrs.target, op: p.attrs.op as Sr6ExportEffect['op'], value: p.attrs.value, ...(p.attrs.confidence === 'low' ? { low: true as const } : {}) }))
+function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests' | 'links'> {
+  const effects = e.parts.filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && p.attrs.op)
+    .map(p => ({ target: p.attrs.target, op: p.attrs.op, value: p.attrs.value, ...(p.attrs.confidence === 'low' ? { low: true as const } : {}),
+      ...(p.attrs.switch ? { switch: p.attrs.switch } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}) }))
+  const links = e.parts.filter(p => p.tag === 'link' && p.attrs.name && (p.attrs.rel === 'grants' || p.attrs.rel === 'as'))
+    .map(p => ({ rel: p.attrs.rel as Sr6ExportLink['rel'], name: p.attrs.name, ...(p.attrs.kind ? { kind: p.attrs.kind } : {}),
+      ...(p.attrs.ref ? { id: p.attrs.ref } : {}), ...(Number(p.attrs.level) > 0 ? { level: Number(p.attrs.level) } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}) }))
   const tests = e.parts.filter(p => p.tag === 'test' && p.attrs.skill && p.attrs.attr).map(p => {
     const t = Number(p.attrs.threshold)
     return { skill: p.attrs.skill, attr: p.attrs.attr, ...(p.attrs.threshold && Number.isInteger(t) ? { threshold: t } : {}) }
   })
-  return { ...(effects.length ? { effects } : {}), ...(tests.length ? { tests } : {}) }
+  return { ...(effects.length ? { effects } : {}), ...(tests.length ? { tests } : {}), ...(links.length ? { links } : {}) }
 }
 
 /** old id -> entry, turned round: entry key -> the ids it had before (cached per catalog) */

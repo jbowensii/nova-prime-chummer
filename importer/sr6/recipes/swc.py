@@ -339,13 +339,23 @@ def _qualities(cat, name, text, page, block=None):
     or a sub-quality named by the short title line above it (`Camouflage` under `Animal Pelage`). False: no karma line."""
     lines = [ln.replace("**", "").strip() for ln in text.splitlines()]
     found = False
+
+    def sub_at(i):  # the sub-quality title line over karma line i (`Thorns` over `Cost: 5 Karma`), its index, else None
+        j = next((j for j in range(i - 1, -1, -1) if lines[j] and lines[j] != "•"), None)
+        p = lines[j] if j is not None else ""
+        return j if _SUBNAME.match(p) and len(p.split()) <= 5 and p != name else None
+    karma_at = [i for i, ln in enumerate(lines) if _KARMA.match(ln)]
     for i, ln in enumerate(lines):
         m = _KARMA.match(ln)
         if not m:
             continue
         found = True
-        prev = next((p for p in reversed(lines[:i]) if p and p != "•"), "")
-        sub = prev if _SUBNAME.match(prev) and len(prev.split()) <= 5 and prev != name else None
+        j = sub_at(i)
+        sub = lines[j] if j is not None else None
+        own = text
+        if sub:  # a sub-quality's own lines: from its title to the next sub-quality's title (not its neighbours')
+            nxt = next((k for k in karma_at if k > i and sub_at(k) is not None), None)
+            own = "\n".join(lines[j:sub_at(nxt) if nxt is not None else len(lines)])
         qname = sub or name  # a sub-quality is a quality of its own (`Monkey Paws`)
         karma = m.group(2)
         k = sections.karma_list(karma)  # (`5, 10 Karma`: the first, the highest)
@@ -366,7 +376,7 @@ def _qualities(cat, name, text, page, block=None):
                                "value": karma, "page": page})
         # (a sub-quality on its own page: its title line's, the block printed over several pages)
         at = max(1, text_page(block, sub) - PAGE_OFFSET) if sub and block is not None else page
-        cat.add("qualities", qname, at, attrs, (), _plain_text(text))
+        cat.add("qualities", qname, at, attrs, (), _plain_text(own))
     return found
 
 

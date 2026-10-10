@@ -14,7 +14,7 @@ ILLEGAL = re.compile("[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE0
 # are ids of that set get scoped. <effect ref>, amp type and amp vehicle point at base ampeffects, amptypes
 # and vehicles (chassis): never scoped, even when a book entry has the same id (DHSA's "Small drone" amp).
 # rule parent: SR6's rule tree; configOf, accessoryOf, supplyOf: an SR6 entry's links to other entries
-SCOPED = {("*", "id"), ("*", "linkedItem"), ("*", "configOf"), ("*", "accessoryOf"), ("*", "supplyOf"), ("package", "level"),
+SCOPED = {("*", "id"), ("*", "linkedItem"), ("*", "configOf"), ("*", "accessoryOf"), ("*", "supplyOf"), ("package", "level"), ("link", "ref"),
           ("rule", "parent")}
 # a book's <skill> names the base skill its specs are added to (the loader appends them), and the amp types and
 # effects a book adds (the CG's Emerged, DHSA's grades) are named by amps and the engine as they are: never scoped

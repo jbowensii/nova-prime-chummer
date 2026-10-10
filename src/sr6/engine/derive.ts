@@ -2,8 +2,8 @@
 // Intentions, Memory, lift/carry, drain/fading, essence and its magic loss): formulas in code, every constant they use a
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
-import { SR6_ATTRS, type Sr6Attr, type Sr6Character } from '../model/character'
-import { allBudgets, attrRating, augmentBonus, conditionalBonuses, entryOf, hostBonus, ratingOf, skillRank } from './budgets'
+import { SR6_ATTRS, type Bonus, type Sr6Attr, type Sr6Character } from '../model/character'
+import { allBudgets, attrRating, augmentBonus, conditionalBonuses, entryBonuses, entryOf, hostBonus, ratingOf, skillRank } from './budgets'
 import { num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { makeProvider } from './providers'
@@ -51,6 +51,7 @@ export interface Sr6Derived {
 /** `STR 5, Armor +2`: a host's own values as shown on its line, the sheets and Review. */
 export const hostText = (values: { target: string; value: number }[]) => values.map(v =>
   v.target === 'defense' ? `Armor ${v.value >= 0 ? '+' : ''}${v.value}` : v.target === 'physical' ? `Physical boxes +${v.value}` : v.target === 'initDice' ? `Initiative dice +${v.value}`
+    : v.target === 'stun' ? `Stun boxes +${v.value}` : v.target === 'overflow' ? `Overflow boxes +${v.value}`
     : `${v.target.toUpperCase()} ${v.value}`).join(', ')
 
 export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Sr6Derived {
@@ -75,12 +76,16 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
   const base = need('monitorBase'), div = need('monitorDivisor')
   const monitor = (a: number) => (base === undefined || !div ? null : base + Math.ceil(a / div))
   // (and a full cyberlimb's box, CRB p. 288, as the line's bonus carries it)
-  const tough = b.qualities.filter(q => q.id === str(cr, 'builtToughQuality')).reduce((t, q) => t + q.level, 0) + augmentBonus(b, data, 'physical')
+  // (the quality the settings name counts here unless its own effects add the box: never twice)
+  const own = (id: string | undefined, t: Bonus['target']) => !!id && entryBonuses(data, data.entry('qualities', id)).some(x => x.target === t)
+  const toughId = str(cr, 'builtToughQuality'), depositsId = str(cr, 'dermalDepositsQuality')
+  const tough = (own(toughId, 'physical') ? 0 : b.qualities.filter(q => q.id === toughId).reduce((t, q) => t + q.level, 0)) + augmentBonus(b, data, 'physical')
   const physical = monitor(A('bod'))
+  const stunBase = monitor(A('wil')), stunPlus = augmentBonus(b, data, 'stun')
 
   // CRB p. 67: Defense Rating = BOD + the defense of worn armor, and what a ware adds (dermal plating, CRB p. 286);
   // Dermal Deposits' level of natural armor (CRB p. 71)
-  const deposits = b.qualities.some(q => q.id === str(cr, 'dermalDepositsQuality')) ? 1 : 0
+  const deposits = !own(depositsId, 'defense') && b.qualities.some(q => q.id === depositsId) ? 1 : 0
   // Power Plays p. 85: Charismatic Defense bases it on Charisma instead of Body
   const dr = b.qualities.some(q => q.id === str(cr, 'charismaticDefenseQuality')) ? 'cha' : 'bod'
   let defense = A(dr) + augmentBonus(b, data, 'defense') + deposits
@@ -110,8 +115,9 @@ export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): S
     initiative: { base: A('rea') + A('int'), dice: capDice(plus(augmentBonus(b, data, 'initDice'), 'initiativeDice')) },
     // CRB p. 161 (astral combat): astral initiative = LOG + INT, plus dice
     ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: capDice(need('astralInitiativeDice') ?? null) } } : {}),
-    monitors: { physical: physical === null ? null : physical + tough, stun: monitor(A('wil')), overflow: A('bod') },
-    monitorBonus: { physical: tough, stun: 0 },
+    monitors: { physical: physical === null ? null : physical + tough, stun: stunBase === null ? null : stunBase + stunPlus,
+      overflow: A('bod') + augmentBonus(b, data, 'overflow') },
+    monitorBonus: { physical: tough, stun: stunPlus },
     defenseRating: defense,
     // Firing Squad p. 50, Smooth Operations p. 127: Social Rating = CHA + the Social modifiers of the armor worn
     socialRating: A('cha') + b.purchases.filter(x => x.kind === 'armor' && x.worn)

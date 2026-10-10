@@ -306,6 +306,8 @@
             "initDice",
             "defense",
             "physical",
+            "stun",
+            "overflow",
             "skill"
           ]
         },
@@ -408,7 +410,7 @@
           "type": "string"
         },
         "effects": {
-          "description": "What the entry's printed text says it does (the catalog's <effect>): target attr:<abbr>, skill:<id>, derived:<name> or item:<field>; op add or edge-cost; value as printed (item:ar: five comma-separated bands); low: read from a sentence that sets a condition (shown, never applied).",
+          "description": "What the entry's printed text and tables say it does (the catalog's <effect>, docs/sr6-data-format.md Effects): target attr:<abbr>, attr-max:<abbr>, skill:<id>, test:<type>, derived:<name>, matrix:<name>, item:<field>, action:<name>, lifestyle:<name> or resource:<name>; op add, set, edge, edge-cost, edge-cost-set, no-edge, no-edge-gain, wild-die or hits; value as printed (a number, R or R*N per rating, item:ar five comma-separated bands); low: read from a sentence that sets a condition (shown, never applied); switch: how it is turned on; when: the condition's words.",
           "type": "array",
           "items": {
             "type": "object",
@@ -425,7 +427,14 @@
               "op": {
                 "enum": [
                   "add",
-                  "edge-cost"
+                  "set",
+                  "edge",
+                  "edge-cost",
+                  "edge-cost-set",
+                  "no-edge",
+                  "no-edge-gain",
+                  "wild-die",
+                  "hits"
                 ]
               },
               "value": {
@@ -433,6 +442,52 @@
               },
               "low": {
                 "const": true
+              },
+              "switch": {
+                "enum": [
+                  "wireless",
+                  "activated",
+                  "sustained",
+                  "conditional"
+                ]
+              },
+              "when": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "links": {
+          "description": "Another entry this one grants (rel grants) or works as (rel as), by its printed name (and kind and id when the book tells): a reader uses that entry's effects.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rel",
+              "name"
+            ],
+            "properties": {
+              "rel": {
+                "enum": [
+                  "grants",
+                  "as"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "level": {
+                "type": "integer"
+              },
+              "when": {
+                "type": "string"
               }
             }
           }

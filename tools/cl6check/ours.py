@@ -196,7 +196,11 @@ def _inline_refs(entries):
 def _texts(path):
     if not os.path.exists(path):
         return {}
-    return {t.get("id"): t.text or "" for t in ET.parse(path).getroot() if t.get("id")}
+    out = {}
+    for t in ET.parse(path).getroot():  # a rule of the same id (`Uneducated`, a weakness citing the quality) never
+        if t.get("id") and (t.get("of") != "rules" or t.get("id") not in out):  # replaces the entry's own text
+            out[t.get("id")] = t.text or ""
+    return out
 
 
 def _book_dirs(root):

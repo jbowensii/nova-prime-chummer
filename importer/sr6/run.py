@@ -12,7 +12,7 @@ from pathlib import Path
 
 from importer import __main__ as anarchy, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import NS, moved, regroup, resolve
+from importer.sr6 import NS, effects, moved, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, skipped
 
 
@@ -60,8 +60,11 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
                                        variants=getattr(recipe, "VARIANT_ROWS", False))
         xmlio.write_file(os.path.join(book_dir, "regrouped.md"), text)
         res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
+        res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
         if hasattr(recipe, "extra"):  # the further sources the book holds (a City Edition's city chapter)
             res.extra = recipe.extra(md, meta["sha256"])
+            for x in res.extra:
+                x.files, x.texts = effects.apply(x.files, x.texts, text)
         for r in report:  # regroup reports PDF pages; the import report prints the book's
             if isinstance(r.get("page"), int):
                 r["page"] = max(1, r["page"] - recipe.PAGE_OFFSET)

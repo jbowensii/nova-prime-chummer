@@ -6,13 +6,14 @@
 import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Sin, type Sr6Skill, sinName } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import { flag, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, normName, type Sr6Data, type Sr6QualityView } from './data'
+import { MAGIC_KINDS, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
+import { effectBonuses, maxEffects } from './effects'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -61,24 +62,10 @@ export function conditionalBonuses(b: Sr6Build, data: Sr6Data, skill: string): {
   for (const x of b.purchases) { const e = entryOf(x, data); take(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
   return out
 }
-const EFFECT_TARGET: Record<string, Bonus['target']> = { 'derived:defense': 'defense' }
-/** A catalog entry's effects as bonuses (importer/sr6/effects.py: `+N to X` read from its prose): an `add` effect on an
- *  attribute, the Defense Rating or a skill's dice pool. A low-confidence one (its sentence sets a condition) is shown,
- *  never applied (owner decision D3). */
-export function entryBonuses(data: Sr6Data, e?: Sr6Entry): Bonus[] {
-  const out: Bonus[] = []
-  for (const x of e?.parts ?? []) {
-    const value = Number(x.attrs.value), t = x.attrs.target ?? ''
-    if (x.tag !== 'effect' || x.attrs.op !== 'add' || x.attrs.confidence === 'low' || !Number.isFinite(value)) continue
-    if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value })
-    else if (EFFECT_TARGET[t]) out.push({ target: EFFECT_TARGET[t], value })
-    else if (t.startsWith('skill:')) {
-      const sk = Object.values(data.skills).find(v => normName(v.name) === t.slice(6).replace(/-/g, ' '))
-      if (sk) out.push({ target: 'skill', skill: sk.id, value })
-    }
-  }
-  return out
-}
+/** A catalog entry's effects as bonuses (effects.ts effectBonuses: what importer/sr6/effects.py reads from the book's
+ *  text and tables, with the entries it grants or works as). A low-confidence one is shown, never applied (owner decision
+ *  D3). */
+export const entryBonuses = (data: Sr6Data, e?: Sr6Entry): Bonus[] => effectBonuses(data, e)
 /** The bonuses a line gives (the one place creation, Review, the sheets and the export read them): the player's or GM's
  *  own entered ones when it has any (they override, owner decision D3), else its catalog entry's effects. */
 export const lineBonuses = (data: Sr6Data, entered: Bonus[] | undefined, e?: Sr6Entry): Bonus[] =>
@@ -107,15 +94,22 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data): Partial<Record<Exclude
 export const augmentedRating = (b: Sr6Build, data: Sr6Data, k: Sr6Attr, p: Provider) => attrRating(b, k, p) + augmentBonus(b, data, k)
 const ATTR_WORDS: Record<string, Sr6Attr> = { body: 'bod', agility: 'agi', reaction: 'rea', strength: 'str', willpower: 'wil',
   logic: 'log', intuition: 'int', charisma: 'cha', edge: 'edg' }
-/** An attribute's creation and career maximum: the metatype's, plus 1 for each Exceptional (Attribute) quality whose note
- *  names it (CRB p. 71: `That attribute's maximum (but not current) rank increases by 1`; exceptionalQuality). The one
+/** An attribute's creation and career maximum: the metatype's (or the one a quality's effects set), plus what a
+ *  quality's effects add, plus 1 for each Exceptional (Attribute) quality whose note names it (CRB p. 71: `That attribute's maximum (but not current) rank increases by 1`; exceptionalQuality). The one
  *  figure Review's caps, the editor's steppers and the Ledger read. undefined: no metatype (or Magic, Resonance). */
 export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Attr): number | undefined {
   const m = data.metatypes[b.metatype]
   if (!m || !(k in m.ranges)) return undefined
   const id = str(cr, 'exceptionalQuality')
   const named = (note?: string) => (note ?? '').toLowerCase().split(/[^a-z]+/).some(w => ATTR_WORDS[w] === k || w === k)
-  return m.ranges[k as keyof typeof m.ranges][1] + (id ? b.qualities.filter(q => q.id === id && named(q.note)).length : 0)
+  // a quality's own maxima (an infected type's table, Shiva Arms' `maximum Body and Strength by one point`, effects.ts)
+  let max = m.ranges[k as keyof typeof m.ranges][1]
+  for (const q of b.qualities) {
+    const x = maxEffects(data.entry('qualities', q.id))[k]
+    if (x?.set !== undefined) max = x.set
+    if (x?.add) max += x.add * (x.perRating ? q.level : 1)
+  }
+  return max + (id ? b.qualities.filter(q => q.id === id && named(q.note)).length : 0)
 }
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
 
