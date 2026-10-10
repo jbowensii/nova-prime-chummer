@@ -4,7 +4,7 @@
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
-import { entryOf, fitted, lineBonuses, priced, skillRank } from './budgets'
+import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
@@ -225,7 +225,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
   return defined({ ...base, uid: x.uid, values, qty: x.qty, grade: x.grade, worn: !!x.worn, note: x.note,
-    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)) })
+    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)) })
 }
 
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt

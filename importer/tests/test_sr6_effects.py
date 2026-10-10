@@ -1,6 +1,7 @@
 """The SR6 effects reader (importer/sr6/effects.py): general phrasings over made-up text, a table's modifier columns, the
 import's pass over every entry, and the description fixes it relies on (regroup's part headings and page-break
 continuations). All invented."""
+import re
 import unittest
 
 from importer.sr6 import effects, regroup
@@ -111,6 +112,24 @@ class ApplyTest(unittest.TestCase):
         self.assertIn("This boost provides a +1 increase to Reaction.", txt)
         self.assertIn('<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:dv" op="add" value="-1"/>', out["ammotypes.xml"])
         self.assertEqual(out["rules.xml"], files["rules.xml"])  # rules hold no effects
+
+    def test_one_row_a_rating_carries_its_rating_when_it_counts_per_rating(self):
+        row = '  <augmentation id="{i}" source="X" page="1"{a}><name>{n}</name></augmentation>\n'
+        rows = [("zap-wires-1", "", "Zap Wires 1"), ("zap-wires-3", "", "Zap Wires 3"), ("zap-jack-2", "", "Zap Jack (Rating 2)"),
+                ("zap-lone-5", "", "Zap Lone 5"), ("zap-ranged-2", ' rating="1-4"', "Zap Ranged 2"), ("fizz-70", "", "Fizz 70"),
+                ("fizz-75", "", "Fizz 75")]
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n' + "".join(row.format(i=i, a=a, n=n) for i, a, n in rows)
+                 + "</sr6:data>\n"}
+        per = "Each rating point gives +1 Reaction."
+        texts = '<sr6:data kind="texts">\n' + "".join(f'  <text of="augmentations" id="{i}">{per if not i.startswith("fizz") else "Shiny."}</text>\n'
+                                                      for i, _, _ in rows) + "</sr6:data>\n"
+        out = {m.group(1): m.group(0) for m in re.finditer(r'<augmentation id="([^"]+)"[^>]*>', effects.apply(files, texts, "")[0]["augmentations.xml"])}
+        self.assertIn(' rating="1"', out["zap-wires-1"])
+        self.assertIn(' rating="3"', out["zap-wires-3"])  # (R is this row's 3, not 1)
+        self.assertIn(' rating="2"', out["zap-jack-2"])
+        self.assertNotIn("rating=", out["zap-lone-5"])  # (a bare number with no sibling: a model number, not a rating)
+        self.assertIn(' rating="1-4"', out["zap-ranged-2"])  # (its own range stays)
+        self.assertNotIn("rating=", out["fizz-70"])  # (siblings, but nothing counts per rating)
 
     def test_a_shared_description_is_split_by_name(self):
         t = ("Turbo engines go fast. Increase Acceleration by 3. Economy engines save money. Decrease Acceleration by 2.")

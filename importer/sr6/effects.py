@@ -1062,6 +1062,28 @@ def section_effects(intro, text, name, kind, section=""):
     return out
 
 
+# a rating the book prints in the entry's name, one row a rating (`Wired Reflexes 3`, `Cyberjack (Rating 2)`,
+# `Telescoping modification (Level 1)`)
+_NAME_RATING = re.compile(r"(?:^|\s)(?:(?P<word>\(\s*(?:rating|level)\s+)|(?P<base>(?<=\s)))(\d{1,2})(?(word)\)|)\s*$", re.I)
+_USES_R = re.compile(r'<effect [^>]*\bvalue="[^"]*\bR\b|<formula\b[^>]*>[^<]*\bR\b')
+
+
+def split_rating(name, attrs, kids, siblings=()):
+    """` rating="N"` for an entry the book splits into one row a rating, its name ending in the rating (`Cyberjack
+    (Rating 2)`; a bare number, `Wired Reflexes 3`, only beside a sibling of the same name and another number), when it
+    prints no rating range of its own and its effects or formulas count per rating (`R`): R is that row's rating, never
+    1; '' otherwise."""
+    m = _NAME_RATING.search(name or "")
+    if not m or re.search(r'\srating="', attrs) or not _USES_R.search(kids) or int(m.group(3)) < 1:
+        return ""
+    if not m.group("word"):
+        base = name[:m.start()].strip().casefold()
+        if not any(n != name and (o := _NAME_RATING.search(n)) and not o.group("word")
+                   and n[:o.start()].strip().casefold() == base for n in siblings):
+            return ""
+    return f' rating="{m.group(3)}"'
+
+
 def apply(files, texts_xml, regrouped=""):
     """(files, texts): the catalog files (`{name: xml}`, crb._Catalog.xml's one entry a line) with each entry's effects,
     tests and links as its text and the book's tables state them (read(), table(), links()), in place of the ones read
@@ -1175,6 +1197,7 @@ def apply(files, texts_xml, regrouped=""):
             new = "".join(dict.fromkeys(kept + re.findall(r"<[^>]+/>", new)))
             cut = kids.find("<text>")
             kids = kids + new if cut < 0 else kids[:cut] + new + kids[cut:]
+            attrs += split_rating(nm, attrs, kids, names.get(kind, ()))
             lines.append(f'{ind}<{tag} id="{eid}"{attrs}><name>{name}</name>{kids}</{tag}>\n')
         out[fname] = "".join(lines)
     if added and texts_xml:
