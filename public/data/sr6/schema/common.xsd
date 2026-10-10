@@ -313,11 +313,11 @@
     <xs:attribute name="target" type="xs:string" use="required"/>
     <!-- add (+N/-N); set (the value replaces it: an attribute maximum); edge (N bonus Edge on those tests); edge-cost
          (Edge boosts and actions on them cost N more, -N less); edge-cost-set (an Edge action's new cost); no-edge (no
-         Edge may be spent on them); no-edge-gain (none gained); wild-die (one die a wild die) -->
+         Edge may be spent on them); no-edge-gain (none gained); wild-die (one die a wild die); hits (N extra hits) -->
     <xs:attribute name="op" use="required"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="add"/><xs:enumeration value="set"/><xs:enumeration value="edge"/>
       <xs:enumeration value="edge-cost"/><xs:enumeration value="edge-cost-set"/><xs:enumeration value="no-edge"/>
-      <xs:enumeration value="no-edge-gain"/><xs:enumeration value="wild-die"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="no-edge-gain"/><xs:enumeration value="wild-die"/><xs:enumeration value="hits"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="value" type="xs:string" use="required"/>
     <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>

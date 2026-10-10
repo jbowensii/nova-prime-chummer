@@ -1,5 +1,35 @@
 # Release notes
 
+## Unreleased
+
+Import the SR6 books again (Books → **Re-import all**) so every entry gets its effects.
+
+**Shadowrun 6**
+- Effects for every entry: the importer now reads what each quality, adept power, piece of ware, gear, weapon,
+  armor, ammunition, accessory, vehicle mod, spell, critter power, metamagic, echo, program, focus and mentor spirit
+  does from its description and the book's tables (before, only a few granted qualities and add-ons had any).
+  Attributes, attribute maxima (an infected type's table), Defense Rating, initiative and Matrix initiative dice,
+  Physical, Stun and Overflow boxes, skill pools, Matrix attributes, item stats (Attack Rating per band, Damage
+  Value, Handling, Speed …), lifestyle points.
+- Test types: a bonus on "Social tests", "tests using Charisma", "Matrix tests", damage, drain or toxin resistance
+  is stored as that test type and shown on every pool it covers, from the book's own lists of which skills belong to
+  each (owner decision 2026-10-10).
+- New kinds of effect for rules that aren't a plus or minus: bonus Edge on some tests, an Edge boost or action costing
+  less (or more), no Edge spent or gained, a wild die, extra hits, an Edge action's new cost, an extra Minor or Major
+  Action, Hardened Armor, the Overwatch Score. The hover card shows them; the printed sheet lists them under Effects.
+- An entry that grants another ("both forms gain the Built Tough quality", "1 free level of Rapid Healing") or works as
+  another ("the same result as a Personalized Grip") links to it, and the app uses that entry's effects, so a later
+  correction follows (owner decision 2026-10-10).
+- Every effect says how it's turned on (always, wireless, activated, sustained, on some tests) and how sure the reading
+  is; a reading from a sentence that sets a condition is shown, never applied. A player's own bonuses still override.
+- Vehicle design options keep their Design Point cost (`dp`, `2 x Armor Rating`) as a cost, for a designer later.
+- Descriptions the effects rely on: one cut at a page break with a table between its halves gets its rest back
+  (Cyberjack Boosters, Light emitters); a mentor spirit's Advantages and Disadvantages stay with it; the Companion's
+  metagenic qualities each have their own text instead of the whole list's; a variant row gets the paragraph the book
+  prints for it under its parent (Genotype Enhancement (NeoElastian)).
+- The Foundry export carries every effect (with how it's turned on and its condition) and every link; the condition
+  monitors take Stun and Overflow bonuses.
+
 ## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

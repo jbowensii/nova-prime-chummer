@@ -96,7 +96,7 @@ const ATTR_WORDS: Record<string, string> = { bod: 'Body', agi: 'Agility', rea: '
   int: 'Intuition', cha: 'Charisma', edg: 'Edge', mag: 'Magic', res: 'Resonance', ess: 'Essence', choice: 'a chosen attribute' }
 const DERIVED_WORDS: Record<string, string> = { defense: 'Defense Rating', 'defense-astral': 'astral Defense Rating', social: 'Social Rating',
   initiative: 'Initiative', 'initiative-dice': 'Initiative Dice', 'matrix-initiative': 'Matrix Initiative', 'matrix-initiative-dice': 'Matrix Initiative Dice',
-  'physical-monitor': 'Physical boxes', 'stun-monitor': 'Stun boxes', overflow: 'Damage Overflow boxes', composure: 'Composure',
+  'physical-monitor': 'Physical boxes', 'stun-monitor': 'Stun boxes', 'matrix-monitor': 'Matrix boxes', overflow: 'Damage Overflow boxes', composure: 'Composure',
   'judge-intentions': 'Judge Intentions', memory: 'Memory', lift: 'Lift/Carry', movement: 'movement', 'minor-actions': 'Minor Actions',
   'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction' }
 const ITEM_WORDS: Record<string, string> = { ar: 'Attack Rating', dv: 'Damage Value', 'speed-interval': 'Speed Interval', 'top-speed': 'Top Speed' }

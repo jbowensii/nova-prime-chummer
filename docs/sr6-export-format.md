@@ -90,15 +90,16 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |
-| `effects` | what the entry's printed text says it does (the catalog's `<effect>`, `docs/sr6-data-format.md`): `[{ target, op, value, low? }]`; `target` `attr:<abbr>`, `skill:<id>`, `derived:<name>` (defense, initiative, composure, judge-intentions, memory, social) or `item:<field>` (an accessory's effect on its host: `item:ar`, five comma-separated bands); `op` `add` or `edge-cost`; `low` true when read from a sentence that sets a condition (shown, never applied). Absent when none |
+| `effects` | what the entry's printed text and tables say it does (the catalog's `<effect>`, `docs/sr6-data-format.md` Effects): `[{ target, op, value, low?, switch?, when? }]`; `target` `attr:<abbr>`, `attr-max:<abbr>`, `skill:<id>`, `test:<type>`, `derived:<name>`, `matrix:<name>`, `item:<field>` (on an add-on: the item it fits; `item:ar` five comma-separated bands), `action:<name>`, `lifestyle:<name>` or `resource:<name>`; `op` `add`, `set`, `edge`, `edge-cost`, `edge-cost-set`, `no-edge`, `no-edge-gain`, `wild-die` or `hits`; `value` a number, `R`/`R*N` per rating or level, or a formula; `low` true when read from a sentence that sets a condition (shown, never applied); `switch` how it is turned on; `when` the condition's words. A reader applies the `add`s it has a field for and shows the rest. Absent when none |
+| `links` | another entry this one grants (`rel` `grants`) or works as (`as`): `[{ rel, name, kind?, id?, level?, when? }]`; a reader uses that entry's effects. Absent when none |
 | `tests` | a test the entry's text calls for: `[{ skill, attr, threshold? }]` (`skill:<id>`, `attr:<abbr>`). Absent when none |
 | `aliases` | the ids the entry had in earlier imports (the catalog's `<alias id kind>`, `docs/sr6-data-format.md`): `[{ id, kind? }]`, `kind` only when it was another kind. A reader that keyed something by an old id finds it again. Absent when none |
 
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
 `bonuses` are the line's bonuses as the engine counts them (the player's entered ones, else its catalog entry's `add`
-effects) `[{ target, value }]` (`target` an attribute, `initDice`, `defense`, the Defense Rating, or `physical`, Physical
-monitor boxes), or
+effects, with the effects of the entries it links to) `[{ target, value }]` (`target` an attribute, `initDice`,
+`defense`, the Defense Rating, `physical` or `stun`, condition monitor boxes, or `overflow`, Damage Overflow boxes), or
 `{ target: "skill", id, name, value }` for a skill's dice pool (`id` the catalog skill's id, `name` its name, which a reader
 keying its skills by name, as Eden does, finds it by; `derived.pools` counts it), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
