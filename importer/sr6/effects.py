@@ -634,7 +634,8 @@ def _rules(s, kind, sw, when, edge_actions, label):
         if re.match(r"\s?\d+\s?d6", low[m.start("v"):]):
             continue
         t = re.split(r"\b(?:up to|allowed|provided|as long as)\b|\s(?:and\s+)?[+-]\s?\d+\s+(?:to|on)\b", m.group("t"))[0]  # (`+1 to DV and +2 to AR`: each its own)
-        bonus(targets(" ".join(t.split()[:10]), kind)[:6], _val(m.group("v"), low))
+        # (`+2 to dice pools and +1 Edge when making Influence tests`: the tests named after the next bonus)
+        bonus(targets(" ".join(t.split()[:10]), kind)[:6] or targets(low[m.end():], kind)[:6], _val(m.group("v"), low))
     for m in re.finditer(r"(?<![\w/])(?P<v>[+-]\s?\d+)\s+(?:points? of |to the |to your |to )?(?P<t>(?:[a-z]+ ){0,3}[a-z]+)", low):
         if re.match(r"(?:points? of |bonus )?edge\b", m.group("t")):
             continue  # (`+1 Edge on …`: Edge on tests)
