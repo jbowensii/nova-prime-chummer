@@ -5,18 +5,18 @@ import { useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { NonCanon } from '../../ui/bits'
 import { CatalogBrowser } from '../../ui/CatalogBrowser'
-import { EditedMark, STATE_TEXT } from '../../ui/EditEntry'
+import { STATE_TEXT } from '../../ui/EditEntry'
 import { PageHeader } from '../../ui/nav'
 import { useRepo } from '../../ui/repo'
 import type { Sr6Data as Sr6DataView } from '../engine/data'
 import { catalogFind, entryKey, SR6_NS, sr6EntryXml } from '../engine/load'
 import { OverrideFiles } from '../../ui/OverrideFiles'
-import type { Find } from '../engine/values'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6SampleFix } from '../model/types'
 import { Sr6EditEntry } from './EditEntry'
 import { Sr6ExportBooksPanel } from './Foundry'
-import { formulaShown, groupOf as pickerGroup } from './Picker'
-import { entryLabel, entrySearch } from '../engine/categories'
+import { groupOf as pickerGroup } from './Picker'
+import { entryLabel } from '../engine/categories'
+import { sr6Row } from './EntryRef'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
 // (samplefix: a book sample runner's printed line corrected, engine/samplefix.ts: the override file carries them too)
@@ -25,11 +25,6 @@ const attrX = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').re
 /** A sample fix as the edits layer writes it (for Import edits' comparison). */
 const fixXml = (f: Sr6SampleFix) => `<samplefix id="${attrX(f.id)}" source="${attrX(f.source)}" page="${f.page}"><name>${attrX(f.name)}</name>${f.corrects.map(k =>
   `<correct item="${attrX(k.item)}" field="${k.field}" from="${attrX(k.from)}" to="${attrX(k.to)}"${k.note ? ` note="${attrX(k.note)}"` : ''}/>`).join('')}</samplefix>`
-/** "category zappers · dv 3P · cost Rating × 50": an entry's printed values, then its formulas with their values over its
- *  ratings ("cost = Rating × 50¥ (50–200¥)") */
-const details = (e: Sr6Entry, find: Find) => [...Object.entries(e.attrs).map(([k, v]) => `${k} ${v}`),
-  ...(e.formulas ?? []).map(f => `${f.field} = ${formulaShown(e, f.field, find)}`),
-  ...(e.notes ?? []).map(x => `${x.field} note: ${x.text}`), ...(e.aliases?.length ? [`also ${e.aliases.join(', ')}`] : [])].join(' · ')
 /** an entry's sub-category inside its kind: its category (weapons by type, spells, gear by book section…), else these */
 const GROUP: Partial<Record<Sr6Kind, (e: Sr6Entry) => string | undefined>> = {
   augmentations: pickerGroup, // cyberware, bioware, geneware…, then body area or table
@@ -54,9 +49,7 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
 
   const find = catalogFind(c)
   const kinds = KINDS.map(k => ({ id: k, label: SR6_KINDS[k].label, rows: [...c.entries[k].values()].map(e => ({
-    key: e.id, name: entryLabel(e), search: entrySearch(e), source: e.source, page: e.page, group: groupOf(e), details: details(e, find), text: e.text, action: editButton(e), issues: e.issues,
-    marks: <>{e.edited && <EditedMark />}{compOf(e) && <span className="noncanon">House</span>}</>,
-  })) }))
+    ...sr6Row(c, e, find), group: groupOf(e), action: editButton(e) })) }))
   const books = [...c.sources.values()].filter(s => perSource(s.id)).map(s => ({ id: s.id, name: s.compendium ? `${s.name} (House)` : s.name }))
 
   return (

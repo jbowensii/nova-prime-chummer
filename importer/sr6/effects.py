@@ -9,7 +9,9 @@ Vocabulary only (the game's attribute, skill and derived-value words), never an 
 - `<Skill> + <Attribute> (N) test` -> <test skill attr threshold>: a test the entry calls for, not a modifier
 
 An effect read from a sentence that sets a condition (`when`, `while`, `if`, `at will`, `with a Minor Action` …) is
-`confidence="low"`: shown, never applied (owner decision D3). A target the vocabulary doesn't know is no effect."""
+`confidence="low"`: shown, never applied (owner decision D3), and carries how it is turned on (`switch`: wireless,
+activated, sustained, else conditional); one without a condition is always on. A target the vocabulary doesn't know is
+no effect."""
 import re
 
 ATTRIBUTES = {"body": "bod", "agility": "agi", "reaction": "rea", "strength": "str", "willpower": "wil", "logic": "log",
@@ -20,6 +22,8 @@ SKILLS = ("astral", "athletics", "biotech", "close combat", "con", "conjuring", 
           "engineering", "exotic weapons", "firearms", "influence", "outdoors", "perception", "piloting", "sorcery",
           "stealth", "tasking")
 _CONDITION = re.compile(r"\b(?:when|whenever|while|if|unless|at will|only|as long as|(?:minor|major) action)\b", re.I)
+_SWITCH = (("wireless", re.compile(r"\bwireless\b", re.I)), ("sustained", re.compile(r"\bsustain(?:s|ed|ing)?\b", re.I)),
+           ("activated", re.compile(r"\b(?:at will|activat\w*|(?:minor|major) action|turn(?:s|ed)? (?:on|off))\b", re.I)))
 _POSS = r"(?:(?:their|your|its|his|her|the(?:\s+character['’]s)?)\s+)?"
 _NUM = r"(\d+)"
 
@@ -57,16 +61,18 @@ def read(text):
     """[(tag, attrs, None)]: the effects and tests the text states, in the order printed, each once."""
     out = []
     for s in sentences(text):
-        low = bool(_CONDITION.search(s))
+        low = bool(_CONDITION.search(s) or any(rx.search(s) for _, rx in _SWITCH))
+        cond = {"confidence": "low", "switch": next((k for k, rx in _SWITCH if rx.search(s)), "conditional")} if low else {}
         for op, rx in RULES:
             for m in rx.finditer(s):
                 a, b = m.groups()
                 n, words = (a, b) if a.isdigit() else (b, a)
                 t = _target(words)
+                if t == "attr:edg" and rx is not RULES[0][1]:
+                    continue  # `+1 Edge on … tests`: a bonus Edge point on those tests, not the Edge attribute
                 if t:
                     value = f"-{n}" if op == "edge-cost" else n
-                    out.append(("effect", {"target": t, "op": op, "value": value,
-                                           **({"confidence": "low"} if low else {})}, None))
+                    out.append(("effect", {"target": t, "op": op, "value": value, **cond}, None))
         for m in _TEST.finditer(s):
             out.append(("test", {"skill": _target(m.group(1)), "attr": _target(m.group(2)), "threshold": m.group(3)}, None))
     seen, uniq = set(), []

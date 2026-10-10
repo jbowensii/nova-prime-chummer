@@ -1,7 +1,7 @@
 // Augmentation grades (src/sr6/engine/grades.ts): the creation settings' grades, else the catalog's (the made-up
 // fixture: Rustyware, Clunkware for cyberware only, Dreamware with no cost), by key.
 import { expect, test } from 'vitest'
-import { apply, gradeFactor, gradeKey, gradeName, gradesFor, priced, validateSr6, type Op } from '../../src/sr6/engine'
+import { apply, gradeFactor, gradeFits, gradeKey, gradeName, gradesFor, priced, validateSr6, type Op } from '../../src/sr6/engine'
 import { blankSr6 } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
 
@@ -55,4 +55,43 @@ test('programs and autosofts are bought at a rating and priced by their formula;
   expect(ch.build.purchases.map(x => [x.kind, x.rating, x.qty])).toEqual([['programs', 4, 2]])
   expect(priced(ch.build.purchases[0], data, cr)).toMatchObject({ cost: 400, avail: 4, ok: true })
   expect(act({ op: 'purchase', kind: 'programs', id: soft.id, rating: 7 })).toEqual({ ok: false, reason: 'rating-range' })
+})
+
+test('a grade a later book redefines gives way to the new one; a line already in it still fits', () => {
+  const { data, cr } = made({ data: d => { d.grades.rusty.replaces = 'clunk' } })
+  expect(gradesFor(cr, data, cyber())).toEqual(['standard', 'alpha', 'rusty'])  // Clunkware gone, Rustyware offered
+  expect(gradeFits(cr, data, cyber(), 'clunk')).toBe(true)
+  expect(gradeFits(cr, data, cyber(), 'dream')).toBe(false)
+})
+
+test('an implant’s add-ons have its grade (CRB p. 282): priced at it, changed with it, never their own', () => {
+  const ch = blankSr6('priority', 'r1', '2026-10-05T00:00:00Z')
+  ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  const run = (rules: Record<string, boolean> = {}) => {
+    const { data, cr } = made({ rules })
+    return { data, cr, act: (op: Op) => apply(ch.build, op, data, cr) }
+  }
+  const { data, cr, act } = run()
+  expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic', grade: 'alpha' })).toEqual({ ok: true })
+  const limb = ch.build.purchases[0]
+  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({ ok: true })
+  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({ ok: true })
+  // alpha ×1.5 cost, ×0.7 Essence: the limb 9,000 → 13,500, its plating 3,000 → 4,500, the filter 800 → 1,200; the
+  // add-ons in its Capacity cost no Essence (capacityAccessoryEssence off)
+  expect(priced(limb, data, cr)).toMatchObject({ cost: 19200, essence: 0.7 })
+  const on = run({ capacityAccessoryEssence: true })  // (the setting on: the filter's 0.1 × 0.7 too)
+  expect(priced(limb, on.data, on.cr).essence).toBe(0.77)
+  const plating = limb.accessories[0]
+  expect(act({ op: 'rate', uid: plating.uid, grade: 'rusty' })).toEqual({ ok: false, reason: 'grade-follows-host' })
+  // a file giving one another grade: read at the implant's, noted
+  plating.grade = 'rusty'
+  expect(priced(limb, data, cr).cost).toBe(19200)
+  const note = validateSr6(data, cr, ch).find(x => x.code === 'gear.accessoryGrade')!
+  expect(note).toMatchObject({ severity: 'warning', source: 'CRB', page: 282, path: `augmentations.${limb.uid}` })
+  expect(note.message).toMatch(/Plating .* so it’s Alpha, not the file’s Rustyware\.$/)
+  // the implant's grade changed: its add-ons with it, the file's own grade dropped
+  expect(act({ op: 'rate', uid: limb.uid, grade: null })).toEqual({ ok: true })
+  expect(plating.grade).toBeUndefined()
+  expect(priced(limb, data, cr)).toMatchObject({ cost: 9000 + 3000 + 800, essence: 1 })
+  expect(validateSr6(data, cr, ch).some(x => x.code === 'gear.accessoryGrade')).toBe(false)
 })

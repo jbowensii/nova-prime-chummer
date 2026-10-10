@@ -206,7 +206,7 @@ describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
     expect(r.derived!.socialRating).toBe(r.attributes.cha.augmented + 2)  // the worn Test Jacket's Social +2
     const booster = r.purchases.find(x => x.uid === 'c1')!
     expect(booster.values).toMatchObject({ rating: 1, cost: 1200, essence: 0.12, avail: 4, legality: 'I' })
-    expect(booster.accessories[0].values).toMatchObject({ capacity: 1, cost: 100 })
+    expect(booster.accessories[0].values).toMatchObject({ capacity: 1, cost: 120 })  // the alpha implant's grade: 100 × 1.2 (CRB p. 282)
     expect(r.gender).toBe('Made-up gender')
     expect(r.sins).toEqual([
       { uid: 's1', name: 'Mara Testcase', kind: 'fake', rating: 3, gender: 'Made-up cover gender', licences: [{ name: 'Made-up Permit', rating: 3 }],

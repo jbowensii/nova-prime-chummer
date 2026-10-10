@@ -75,7 +75,9 @@ export interface Sr6LifeModuleView {
   choices: { kind: 'mixed'; points: number; options: string[] }[]; page: number
 }
 /** A catalog grade (kind grades) by its key (src/sr6/engine/grades.ts): factors null when the book prints none. */
-export interface Sr6GradeView { id: string; key: string; name: string; essence: number | null; cost: number | null; avail: number | null; types?: string[]; page: number }
+export interface Sr6GradeView { id: string; key: string; name: string; essence: number | null; cost: number | null; avail: number | null; types?: string[]; page: number
+  /** the grade a later book redefines as this one (Body Shop's omega: used): offered instead of it */
+  replaces?: string }
 export interface Sr6Data extends CreationCatalog {
   priorities: Partial<Record<Letter, Sr6PriorityRow>>
   metatypes: Record<string, Sr6MetatypeView>
@@ -197,7 +199,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     const key = gradeKey(e.name)
     return [key, { id: e.id, key, name: e.name, essence: decimal(e, e.attrs.essence, 'Essence factor'), cost: decimal(e, e.attrs.cost, 'cost factor'),
       avail: decimal(e, e.attrs.avail, 'Availability modifier'), page: e.page,
-      ...(e.attrs.types ? { types: e.attrs.types.split(/\s+/).filter(Boolean) } : {}) }]
+      ...(e.attrs.types ? { types: e.attrs.types.split(/\s+/).filter(Boolean) } : {}), ...(e.attrs.replaces ? { replaces: e.attrs.replaces } : {}) }]
   }))
 
   // an entry the book leaves a value out of (or the importer couldn't read): Review notes it on the runners that use it

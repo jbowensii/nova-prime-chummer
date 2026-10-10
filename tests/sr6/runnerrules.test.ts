@@ -82,7 +82,7 @@ test('a level printed on a quality without levels is a note, not the level error
   expect(v.find(x => x.message.includes('Knack 2'))).toMatchObject({ code: 'sample.printed', severity: 'warning', path: 'qualities.q1' })
 })
 
-test('a bonus that holds on some tests only is shown with its pool, never added; a printed rank read with it is noted', async () => {
+test('a bonus that holds on some tests only is shown with its pool, never added', async () => {
   const { data, cr } = made(), ch = runner()
   const { deriveSr6 } = await import('../../src/sr6/engine/derive')
   ch.build.skills.push({ id: 'crb.gab', points: 4, karma: 0 })
@@ -92,8 +92,22 @@ test('a bonus that holds on some tests only is shown with its pool, never added;
   const pool = deriveSr6(data, cr, ch).pools.find(p => p.skill === 'crb.gab')!
   expect(pool.dp).toBe(plain)
   expect(pool.conditional).toEqual([{ value: 3, when: 'sound-based tests', from: 'Made-up voice box' }])
-  ch.printed = { source: 'NB', page: 9, values: { 'rank:crb.gab': '7|made-up voice box 3' } }
-  expect(validateSr6(data, cr, ch).find(v => v.message.startsWith('The book prints'))?.message).toMatch(/prints .* 7; read as .* 4 \+ made-up voice box 3\./)
   const back = xmlToSr6(sr6ToXml(ch))
   expect(back.ok && back.character.build.purchases[0].bonuses?.[0].when).toBe('sound-based tests')
+})
+
+test('an always-on bonus folded into a printed number is noted, and the printed number compares with it in', () => {
+  const { data, cr } = made(), ch = runner()
+  ch.build.skills.push({ id: 'crb.gab', points: 3, karma: 0 })
+  ch.build.purchases.push({ uid: 'm1', kind: 'gear', name: 'Made-up toner', rating: 2, qty: 1, accessories: [],
+    bonuses: [{ target: 'agi', value: 1, perRating: true }, { target: 'rea', value: 1, switch: 'activated' }] })
+  const agi = ch.build.attributes.agi.points + 1, rea = ch.build.attributes.rea.points + 1
+  ch.printed = { source: 'NB', page: 9, values: { agi: String(agi + 2), rea: `${rea}(${rea + 1})`, 'natural:agi': `${agi + 2}|made-up toner 2`,
+    'natural:skill:crb.gab': '4|made-up recorder 1' } }
+  const v = validateSr6(data, cr, ch).filter(x => x.code === 'sample.printed').map(x => x.message)
+  expect(v).toContain(`The book prints AGI ${agi + 2}, an always-on bonus included: AGI ${agi} + made-up toner 2.`)
+  expect(v.find(m => /Gab 4, an always-on bonus included: Gab 3 \+ made-up recorder 1\./.test(m))).toBeTruthy()
+  expect(v.some(m => /^(AGI|REA): the book prints/.test(m))).toBe(false)  // AGI 5 with the toner in; REA's switch in brackets
+  const back = xmlToSr6(sr6ToXml(ch))
+  expect(back.ok && back.character.build.purchases[0].bonuses?.[1].switch).toBe('activated')
 })

@@ -592,7 +592,7 @@ class _Catalog:
             for r in rows:
                 self.grade(r[0], {h: c for h, c in zip(header[1:], r[1:])}, page)
 
-    def grade(self, name, cells, page, types=None):
+    def grade(self, name, cells, page, types=None, replaces=None):
         """An implant grade (`Alphaware | x0.8 | x1.2 | +1`): its Essence and cost multipliers and Availability
         modifier as numbers (`x`, `+` dropped, `–` as `-`); a cell that isn't one is reported, the grade kept."""
         attrs = {}
@@ -607,7 +607,7 @@ class _Catalog:
             else:
                 self.report.append({"kind": "book-value", "file": "grades.xml", "name": name, "field": a, "value": cell,
                                     "page": page})
-        self.add("grades", name, page, {**attrs, "types": types})
+        self.add("grades", name, page, {**attrs, "types": types, "replaces": replaces})
 
     def priority(self, header, row, page):
         letter = (row[0] if row else "").strip()
@@ -1867,13 +1867,20 @@ def _core(ctx, own=None):
     found = (ctx or {}).get("custom_dir") and os.path.isdir(base)
     books = sorted(os.listdir(base), key=lambda b: (b != ID.lower(), b)) if found else []
     out = {}
-    for d in (os.path.join(base, b) for b in books if b != (own or "").lower() and os.path.isdir(os.path.join(base, b))):
+    for b in books:
+        d = os.path.join(base, b)
+        if b == (own or "").lower() or not os.path.isdir(d):
+            continue
+        # its entries' text (custom/sr6/texts/<book>.xml): what a host says it has (cybereyes' image link)
+        tf = os.path.join(os.path.dirname(base), "texts", f"{b}.xml")
+        texts = {(t.get("of"), t.get("id")): t.text or "" for t in ET.parse(tf).getroot()} if os.path.isfile(tf) else {}
         for f in sorted(os.listdir(d)):
             if f.endswith(".xml"):
                 root = ET.parse(os.path.join(d, f)).getroot()
                 out.setdefault(root.get("kind"), []).extend(
                     {"id": e.get("id"), "name": e.findtext("name") or "", "attrs": dict(e.attrib),
-                     "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")]} for e in root)
+                     "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")],
+                     "text": texts.get((root.get("kind"), e.get("id")), "")} for e in root)
     return out
 
 

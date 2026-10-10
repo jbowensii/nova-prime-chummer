@@ -6,6 +6,7 @@ import { apply } from '../../src/sr6/engine/actions'
 import { capacityOf, capacityUsed, entryLabel, entrySearch, fitsHost } from '../../src/sr6/engine/categories'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
+import { priced } from '../../src/sr6/engine/budgets'
 import { blankSr6 } from '../../src/sr6/model/character'
 import { buildOf, made, STONE } from './fixture'
 
@@ -56,6 +57,8 @@ test('another host’s accessory is fitted, an error a GM may approve; Review fl
   expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({ severity: 'error', source: 'CRB', page: 283, path: `augmentations.${limb.uid}`,
     message: 'Eyeware accessory: Glare filter is for Eyeware, not Torqlimb: Limb (synthetic).' })
   expect(v.find(x => x.code === 'catalog.capacity')!.message).toBe('Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.')
+  // fitted into the host's capacity, an accessory costs no Essence of its own (the glare filter's 0.1: the limb's 1 alone)
+  expect(priced(limb, data, cr).essence).toBe(1)
   ch.overrides = [{ code: 'catalog.accessoryHost', path: `augmentations.${limb.uid}`, note: 'GM ok' }]
   expect(codes().find(x => x.code === 'catalog.accessoryHost')?.approved).toBe(true)
 })

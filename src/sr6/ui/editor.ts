@@ -85,6 +85,7 @@ export const REASONS: Record<string, string> = {
   'karma-range': 'That karma is outside the quality’s range.',
   duplicate: 'The runner already has that power, and it has no levels.',
   'rating-range': 'That rating is outside the item’s range.',
+  'grade-follows-host': 'An add-on has its implant’s grade (core rulebook p. 282): change the implant’s grade instead.',
   'own-line': 'Each of these is its own line: add another one instead.',
   'not-fitted': 'That accessory isn’t fitted to it.',
   native: 'A native language is free: it has no ranks to buy.',

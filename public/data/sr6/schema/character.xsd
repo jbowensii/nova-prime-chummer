@@ -424,6 +424,11 @@
     <xs:attribute name="perRating" type="xs:boolean"/>
     <!-- only on some tests (a voice modulator's sound-based Con tests, wireless): shown with the pool, never added -->
     <xs:attribute name="when" type="xs:string"/>
+    <!-- how it is turned on; none: always on (a stat block folds it into the printed number, a switchable one shows in
+         brackets) -->
+    <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/>
+      <xs:enumeration value="conditional"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
 
   <!-- a bought thing; no id: a custom item at the player's cost, avail and essence. Children: its bonuses, the

@@ -4,7 +4,7 @@
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
-import { entryOf, lineBonuses, priced, skillRank } from './budgets'
+import { entryOf, fitted, lineBonuses, priced, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
@@ -33,7 +33,7 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
  *  runner's */
-export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string }
+export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string; switch?: Bonus['switch'] }
 /** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
  *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
 export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
@@ -187,7 +187,7 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).map(b => {
     const value = b.value * (b.perRating ? rating : 1) * times
-    const when = b.when ? { when: b.when } : {}  // (some tests only: never in derived's pools)
+    const when = { ...(b.when ? { when: b.when } : {}), ...(b.switch ? { switch: b.switch } : {}) }  // (when: some tests only, never in derived's pools)
     return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when } : { target: b.target, value, ...when }
   })
 
@@ -202,7 +202,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
   return defined({ ...base, uid: x.uid, values, qty: x.qty, grade: x.grade, worn: !!x.worn, note: x.note,
-    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, a, false)) })
+    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)) })
 }
 
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt

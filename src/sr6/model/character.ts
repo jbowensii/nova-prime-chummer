@@ -32,7 +32,13 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
  *  cyberlimb's, CRB p. 288) or a skill's dice pool (skill: its catalog id). perRating: × the line's rating. */
 export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'skill'; skill?: string; value: number; perRating?: true
   /** only on some tests (`sound-based Con tests, wireless`): shown with the pool, never added to it (owner rule D3) */
-  when?: string }
+  when?: string
+  /** how it is turned on (none: always on, folded into a stat block's printed number): a wireless bonus, ware or a power
+   *  activated (released at will), a sustained one, or one holding on some tests only. A book prints a switchable bonus in
+   *  brackets, `4(5)` (owner, 2026-10-10). */
+  switch?: BonusSwitch }
+export type BonusSwitch = 'wireless' | 'activated' | 'sustained' | 'conditional'
+export const BONUS_SWITCHES: BonusSwitch[] = ['wireless', 'activated', 'sustained', 'conditional']
 export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'skill']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'

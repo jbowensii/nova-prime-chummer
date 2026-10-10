@@ -150,9 +150,12 @@ def _boxes(bs):
             continue
         if b.level in (3, 4) and not b.stats and b.row is None and b.text.strip():
             several = b if _SEVERAL.search(b.name) else None
-        if b.type == "item" and b.label == b.name and b.row is None and b.stats and prev is not None \
+        if b.type == "item" and (b.label == b.name or not b.label and not b.text.strip() and norm(b.name) == norm(prev.name if prev else ""))\
+                and b.row is None and b.stats and prev is not None \
                 and prev.chapter == b.chapter and not prev.stats and prev.row is None and prev.text.strip() \
                 and _words(b.name) <= _words(prev.name):
+            # (a box titled as its heading, `Securetech SkinShield` under `### Securetech SkinShield`: one item, the
+            # heading's description its text, no rule section of its own)
             out[-1] = replace(b, name=prev.name, level=prev.level, tags=prev.tags or b.tags, labels={**prev.labels, **b.labels},
                               text="\n\n".join(t for t in (prev.text.strip(), b.text.strip()) if t))
             continue
@@ -178,8 +181,11 @@ def _strays(bs):
         for h, rows in crb._tables(b.text):
             if h[0].upper() != "TYPE" or "DR" not in {x.upper() for x in h} or not rows:
                 continue
+            names = lambda t: re.search(rf"\b{re.escape(norm(rows[0][0]))}\b", norm(t))  # noqa: E731
+            if names(b.text.replace(_md_table(h, rows), "")):
+                continue  # its own text names its rows (`Rapid Transit … comes in Basic, Elite …`): its own table
             j = next((j for j in range(i - 1, -1, -1) if bs[j].chapter == b.chapter and bs[j].level == 3
-                      and not bs[j].stats and norm(rows[0][0]) in norm(bs[j].text)), None)
+                      and not bs[j].stats and names(bs[j].text)), None)
             if j is None:
                 continue
             stats, labels = [], dict(b.labels)

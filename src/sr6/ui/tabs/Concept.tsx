@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { GENDER_LIST, GenderList } from '../../../ui/bits'
 import { BACKDROP_NAMES, Face, PortraitEditor } from '../../../ui/Portrait'
 import { sr6EditHref, useSr6Editor } from '../editor'
+import { Sr6Ref } from '../EntryRef'
 
 export function ConceptTab() {
   const { ch, data, update } = useSr6Editor()
@@ -19,7 +20,7 @@ export function ConceptTab() {
         <label>Gender<input value={ch.identity.gender ?? ''} placeholder="optional" list={GENDER_LIST}
           onChange={e => update(d => { if (e.target.value.trim()) d.identity.gender = e.target.value; else delete d.identity.gender })} /><GenderList /></label>
       </div>
-      {!ch.npc && <p>Metatype: <b>{meta?.name ?? (ch.build.metatype || 'none yet')}</b>. <a href={sr6EditHref(ch.id, 'method')}>Pick it on Creation method</a>.</p>}
+      {!ch.npc && <p>Metatype: <Sr6Ref kind="metatypes" id={ch.build.metatype || undefined}><b>{meta?.name ?? (ch.build.metatype || 'none yet')}</b></Sr6Ref>. <a href={sr6EditHref(ch.id, 'method')}>Pick it on Creation method</a>.</p>}
       <div className="portrait-row">
         <Face ch={ch} />
         <div className="stack">

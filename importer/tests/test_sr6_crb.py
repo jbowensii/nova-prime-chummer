@@ -642,12 +642,21 @@ class CrbRecipeTest(unittest.TestCase):
     def test_standard_boosts_as_bonuses(self):
         """A sample's standard boost carries what it adds (the engine counts only a line's bonuses): per rating or level
         when the line has one, else at the level its name ends with; anything else carries none."""
-        self.assertEqual(archetypes._bonuses("Wired Reflexes 2", None), '<bonus target="rea" value="2"/><bonus target="initDice" value="2"/>')
+        self.assertEqual(archetypes._bonuses("Wired Reflexes 2", None),  # turned on by a trigger: switchable
+                         '<bonus target="rea" value="2" switch="activated"/><bonus target="initDice" value="2" switch="activated"/>')
         self.assertEqual(archetypes._bonuses("Muscle toner", 3), '<bonus target="agi" value="1" perRating="true"/>')
         self.assertEqual(archetypes._bonuses("Bone Lacing (Titanium)", None), '<bonus target="defense" value="2"/>')
         self.assertEqual(archetypes._bonuses("Glow Gland", 2), "")
         self.assertEqual(archetypes._bonuses("Arm (obvious)", None), '<bonus target="physical" value="1"/>')  # a full limb's box
         self.assertEqual(archetypes._bonuses("Hand (obvious)", None), "")  # a partial one adds none
+        # a reflex recorder: +1 to the rating of the skill printed with it, one line per skill (made-up skills)
+        skill_of = {"zapping": "x.zapping", "lurking": "x.lurking"}.get
+        self.assertEqual(list(archetypes._per_skill(["reflex recorder (Zapping & Lurking)", "goggles (rating 2, w/ zoom)"],
+                                                    lambda n: skill_of(n.lower()))),
+                         ["reflex recorder (Zapping)", "reflex recorder (Lurking)", "goggles (rating 2, w/ zoom)"])
+        self.assertEqual(archetypes._bonuses("Reflex recorder (Skill)", None, lambda n: skill_of(n.lower()), chosen="Lurking"),
+                         '<bonus target="skill" skill="x.lurking" value="1"/>')
+        self.assertEqual(archetypes._bonuses("Reflex recorder (Skill)", None, lambda n: skill_of(n.lower())), "")  # none named
 
     def test_a_quality_outside_the_six(self):
         """A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text)."""
@@ -669,20 +678,81 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual([(x.get("id"), x.get("level")) for x in g.iter("quality")], [("nb.stubborn-shell", "1"), ("nb.lucky", "2")])
         self.assertEqual({v.get("key"): v.get("value") for v in g.find("printed")}, {"level:nb.stubborn-shell": "Stubborn Shell 2"})
 
-    def test_a_rank_above_the_cap_read_as_the_natural_rank_and_a_lines_dice(self):
-        """`Con 7` with a voice modulator at rating 3, the skill cap 6: Con 4, the modulator's dice kept on its line for the
-        tests they hold on (`when`), the printed rank kept for Review's note; with nothing adding dice the rank stays
-        (made-up catalog and settings)."""
+    def test_a_rank_printed_without_brackets_is_the_natural_rank(self):
+        """`Con 7` with a voice modulator at rating 3, the skill cap 6: Con 7 as printed (an error on the runner, not read
+        away); the modulator's dice stay on its line for the tests they hold on (`when`), nothing noted (made-up catalog
+        and settings)."""
         from types import SimpleNamespace
         entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
-                   "skills": [{"id": "con", "name": "Con", "attrs": {"attr": "cha"}}, {"id": "gab", "name": "Gab", "attrs": {"attr": "cha"}}],
+                   "skills": [{"id": "con", "name": "Con", "attrs": {"attr": "cha"}}],
                    "augmentations": [{"id": "voice-modulator", "name": "Voice modulator", "attrs": {"rating": "1–3", "cost": "Rating x 10"}}]}
-        b = SimpleNamespace(label="metatype: Glim", stats=[], labels={"Active Skills": "Con 7, Gab 7", "Augmentations": "Voice modulator (rating 3)"})
+        b = SimpleNamespace(label="metatype: Glim", stats=[], labels={"Active Skills": "Con 7", "Augmentations": "Voice modulator (rating 3)"})
         _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={"skillCap": 6.0})
         g = ET.fromstring(xml)
-        self.assertEqual([(x.get("id"), int(x.get("points")) + int(x.get("karma"))) for x in g.iter("skill")], [("nb.con", 4), ("nb.gab", 7)])
+        self.assertEqual([(x.get("id"), int(x.get("points")) + int(x.get("karma"))) for x in g.iter("skill")], [("nb.con", 7)])
         self.assertEqual([(x.get("skill"), x.get("value"), x.get("perRating"), bool(x.get("when"))) for x in g.iter("bonus")], [("nb.con", "1", "true", True)])
-        self.assertEqual({v.get("key"): v.get("value") for v in g.find("printed")}, {"rank:nb.con": "7|voice modulator 3"})
+        self.assertFalse(any((v.get("key") or "").startswith("rank:") for v in g.iter("value")))
+
+    def test_a_near_name_finds_one_entry(self):
+        """A maker before the name, a garment word swapped, an initialism, a variant in parentheses: the one entry left;
+        two words shared at least, else none (made-up catalog)."""
+        e = lambda i, n: {"id": i, "name": n, "attrs": {}}  # noqa: E731
+        idx = archetypes._Index({"armor": [e("zl", "Zig Line (Plain)"), e("zd", "Zig Line (Deluxe)"), e("ft", "Fop of Tarn Coats (Blue Moon Coat)"),
+                                           e("fg", "Fop of Tarn Gloves"), e("gs", "Glimmer Shield"), e("pj", "Puff jacket")]}, "nb")
+        near = lambda n, p=(): (h := idx.near(["armor"], n, p)) and h[1]  # noqa: E731
+        self.assertEqual([near("QX Zig Line", ["sticky", "deluxe"]), near("Fop o.T. Blue Moon Cape"), near("Acme Glimmer Shield")],
+                         ["nb.zd", "nb.ft", "nb.gs"])
+        self.assertEqual(near("Gloves"), "nb.fg")  # one word: the entry's last
+        self.assertEqual([near("QX Zig Line"), near("Puff vest"), near("Line")], [None, None, None])
+
+    def test_what_is_fitted_to_a_host_with_capacity(self):
+        """`Zing ears (rating 2; w/ hum filter 2, buzz link, fizz)`: each one found is the host's accessory at its
+        rating and adds its cost; one the host's text says it has (a buzz link) and one not in the catalog are left to the
+        note (made-up catalog)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "augmentations": [{"id": "zing-ears", "name": "Zing ears", "attrs": {"capacity": "Rating x 4", "rating": "1–3", "cost": "Rating x 100"},
+                                      "text": "Zing ears come with a buzz link."},
+                                     {"id": "hum-filter", "name": "Hum filter", "attrs": {"capacity": "[Rating]", "rating": "1–6", "cost": "Rating x 10"}},
+                                     {"id": "buzz-link", "name": "Buzz link", "attrs": {"capacity": "[1]", "cost": "50"}}]}
+        b = SimpleNamespace(label="metatype: Glim", stats=[], labels={"Augmentations": "Zing ears (rating 2; w/ hum filter 2, buzz link, fizz)"})
+        _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={})
+        host = next(x for x in ET.fromstring(xml).iter("purchase") if x.get("id") == "nb.zing-ears")
+        self.assertEqual([(a.get("id"), a.get("rating")) for a in host.findall("purchase")], [("nb.hum-filter", "2")])
+
+    def test_the_armor_worn_is_the_highest_defense_rating(self):
+        """Two armors printed: the higher Defense Rating is worn, the other carried (made-up catalog)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "armor": [{"id": "thin", "name": "Thin Wrap", "attrs": {"defense": "+2", "cost": "10"}},
+                             {"id": "thick", "name": "Thick Coat", "attrs": {"defense": "+4", "cost": "10"}}]}
+        b = SimpleNamespace(label="metatype: Glim", stats=[], labels={"Gear": "Thin Wrap, Thick Coat"})
+        _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={})
+        self.assertEqual({x.get("id"): x.get("worn") for x in ET.fromstring(xml).iter("purchase")}, {"nb.thin": None, "nb.thick": "true"})
+
+    def test_an_always_on_bonus_is_folded_into_the_printed_number(self):
+        """(owner, 2026-10-10) `Zap 4` with a reflex recorder (always on): natural Zap 3, noted; `Lurk 4(5)` with one: the
+        brackets hold it, natural 4; `A 5` with muscle toner 2: natural 3; `R 3(4)` with wired reflexes 1 (switchable):
+        natural 3; `Gab 7` with a voice modulator (wireless, conditional): 7 (made-up catalog and skills)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "skills": [{"id": n.lower(), "name": n, "attrs": {"attr": "agi"}} for n in ("Zap", "Lurk", "Gab")],
+                   "augmentations": [{"id": "reflex-recorder", "name": "Reflex recorder (Skill)", "attrs": {"cost": "10"}},
+                                     {"id": "muscle-toner", "name": "Muscle toner", "attrs": {"rating": "1–4", "cost": "Rating x 10"}},
+                                     {"id": "wired-reflexes", "name": "Wired reflexes", "attrs": {"rating": "1–3", "cost": "Rating x 10"}},
+                                     {"id": "voice-modulator", "name": "Voice modulator", "attrs": {"rating": "1–3", "cost": "Rating x 10"}}]}
+        b = SimpleNamespace(label="metatype: Glim", stats=[{"A": "5", "R": "3(4)"}], labels={
+            "Active Skills": "Zap 4, Lurk 4(5), Gab 7",
+            "Augmentations": "reflex recorder (Zap & Lurk), muscle toner 2, wired reflexes 1, voice modulator (rating 3)"})
+        _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={"skillCap": 6.0})
+        g = ET.fromstring(xml)
+        self.assertEqual({x.get("id"): int(x.get("points")) + int(x.get("karma")) for x in g.iter("skill")},
+                         {"nb.zap": 3, "nb.lurk": 4, "nb.gab": 7})
+        printed = {v.get("key"): v.get("value") for v in g.find("printed")}
+        self.assertEqual((printed["natural:skill:nb.zap"], printed["natural:agi"]), ("4|reflex recorder (skill) 1", "5|muscle toner 2"))
+        self.assertNotIn("natural:skill:nb.lurk", printed)
+        self.assertNotIn("natural:rea", printed)
+        self.assertNotIn("natural:skill:nb.gab", printed)
 
     def test_sample_lookups_keep_the_printed_level_and_rating(self):
         """A level printed with a quality finds an entry that comes in levels (not a path step of the same name); a

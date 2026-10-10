@@ -27,7 +27,7 @@ const ITEM_KINDS: [ItemKind, string][] = [['weapon', 'Weapons'], ['armor', 'Armo
 const vals = (xs: [string, unknown][]) => xs.filter(([, v]) => v != null && v !== '' && v !== false).map(([k, v]) => v === true ? k : `${k} ${v}`).join(' · ')
 
 /** Every browsable kind of the catalog, each entry with its sub-category (amps by type, weapons by category…) and values. */
-function browseKinds(c: Catalog): BrowseKind[] {
+export function browseKinds(c: Catalog): BrowseKind[] {
   const row = (e: Ref & { name: string }, more: Partial<BrowseRow>): BrowseRow => ({ key: e.id, name: e.name, source: e.source, page: e.page, ...more })
   const edited = (e: { edited?: boolean }) => e.edited ? <EditedMark /> : undefined
   // a formula with its value (the standard price is B for an item's cost; Anarchy items have no ratings)

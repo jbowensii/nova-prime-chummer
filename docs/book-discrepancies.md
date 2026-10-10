@@ -60,10 +60,12 @@ item printed at a rating is never an entry named for another rating
 (`cybereyes 3` is the core rulebook's basic system at Rating 3). A level
 printed on a quality that has none (`Magic Resistance 2`: CRB p. 72 prints one
 flat cost) is a misprint: the quality is taken once and Review notes it. A
-printed rank above the creation cap on a skill a line's bonus adds dice to is
-read as the natural rank plus that bonus (`Con 7` with a voice modulator at
-rating 3 is Con 4; the modulator's dice stay on its line for the tests they
-hold on, shown and not added). Where a book rule explains the printed numbers,
+switchable bonus (wireless, activated, sustained) is printed in brackets, `4(6)`,
+the value with it on; an always-on one (a reflex recorder, muscle toner, a passive
+adept power) is folded into the printed number, so the natural value is the
+printed less it, unless the brackets already hold it (owner, 2026-10-10). A rank
+printed without brackets is never read down by a switchable bonus (`Con 7` with a
+voice modulator stays 7). Where a book rule explains the printed numbers,
 the runner gets that option as its own creation rule, marked assumed (the book
 doesn't say): the prime runner's 100 Karma (CRB p. 64), the first printing's
 cap on illegal gear only (CRB p. 66). A value the book misprints is corrected by
@@ -73,8 +75,10 @@ compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the
 cap, an expertise without its rank, a seventh quality, a rating the item doesn't
 come in and the like show as on any runner. Nothing in the file corrects the
-book. Not modelled, so not compared: a skill raised by a ware (reflex
-recorder) and a cyberlimb's own attributes. The book prints no priorities:
+book. A reflex recorder adds 1 to the rating of the skill printed with it (CRB
+p. 293), one recorder per skill (`reflex recorder (Close Combat & Firearms)` is
+two). Not compared: a cyberlimb's own
+attributes. The book prints no priorities:
 the importer picks the letters that overspend least for the printed build
 (Magic and Edge on adjustment points, what a pool can't hold bought with
 karma, a specialization the skill points left over can't cover bought with

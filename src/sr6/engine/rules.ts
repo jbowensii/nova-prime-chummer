@@ -7,13 +7,13 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
-import { gradeKnown, gradeName, gradesFor } from './grades'
+import { gradeFits, gradeKnown, gradeName } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from './martial'
 
@@ -40,11 +40,12 @@ const entryCite = (e?: { source: string; page: number }) => (e ? { source: e.sou
 const CRB = (page: number) => ({ source: 'CRB', page })
 const metaName = (c: Ctx) => c.data.metatypes[c.b.metatype]?.name ?? c.b.metatype
 /** every purchase and accessory, with the path of the line it sits on */
-function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string }> {
+function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string; host?: Sr6Purchase; own?: Sr6Purchase }> {
   for (const x of b.purchases) {
     const path = `${PURCHASE_TAB[x.kind]}.${x.uid}`
     yield { x, path }
-    for (const a of x.accessories) yield { x: a, path }
+    // (an implant's add-on has its grade, CRB p. 282; own: the accessory as the file has it)
+    for (const a of x.accessories) yield { x: fitted(x, a), path, host: x, own: a }
   }
 }
 /** 1 when the runner has the quality a setting names (Many Talents, Many Skills: Sixth World Companion p. 134), else 0. */
@@ -221,11 +222,23 @@ const RULES: Rule[] = [
     return hits
   } },
   // CRB p. 283: grades are for cyberware and bioware (a catalog grade may name its own types: Body Shop's exoware)
+  // CRB p. 282: "All accessories and add-ons must be of the same grade as the implant to which they are added": an
+  // add-on the file gives another grade is read at its implant's, and noted
+  { code: 'gear.accessoryGrade', severity: 'warning', tab: 'augmentations', check: c => {
+    const hits: Hit[] = []
+    for (const { x, path, host, own } of lines(c.b)) {
+      if (!host || !own || own.grade === x.grade || host.kind !== 'augmentations') continue
+      const g = (k?: string) => (k ? gradeName(c.data, k) : 'standard')
+      hits.push({ path, message: `${nameOf(c, own)} on ${nameOf(c, host)}: an add-on has its implant’s grade, so it’s ${g(x.grade)}, not the file’s ${g(own.grade)}.`, ...CRB(282) })
+    }
+    return hits
+  } },
   { code: 'gear.grade', severity: 'error', tab: 'augmentations', check: c => {
     const hits: Hit[] = []
-    for (const { x, path } of lines(c.b)) {
+    for (const { x, path, host } of lines(c.b)) {
       const e = entryOf(x, c.data), g = x.grade
-      if (!g || !e || !gradeKnown(c.cr, c.data, g) || gradesFor(c.cr, c.data, e).includes(g)) continue
+      // (an add-on's grade is its implant's, whatever it is: gear.accessoryGrade)
+      if (host || !g || !e || !gradeKnown(c.cr, c.data, g) || gradeFits(c.cr, c.data, e, g)) continue
       const ge = c.data.grades[g] && c.data.entry('grades', c.data.grades[g].id)
       hits.push({ path, message: `${nameOf(c, x)} (${e.attrs.type || e.kind}) doesn’t come in ${gradeName(c.data, g)}.`, ...(ge ? entryCite(ge) : CRB(283)) })
     }
@@ -241,6 +254,14 @@ const RULES: Rule[] = [
     const allowed = { ...picksFor(c.b.magic), adeptpowers: true }
     return c.b.picks.filter(x => !allowed[x.kind])
       .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.`, ...CRB(67) }))
+  } },
+  // CRB p. 66: the customization Karma buys attributes, skills, qualities and nuyen; spells, rituals and complex forms
+  // past the free ones only with the optional rule (karmaSpellsAtCreation, off as Commlink6 has it). Lifepath, point
+  // buy and the Karma build buy them by their own rules (SWC pp. 30–32).
+  { code: 'magic.karmaAtCreation', severity: 'error', tab: 'magic', check: c => {
+    if (!usesLetters(c.p) || flag(c.cr, 'karmaSpellsAtCreation')) return null
+    const { spells, forms } = extraMagic(c.b, c.data, c.cr, c.p), n = spells + forms
+    return n ? { message: `${n} ${spells ? 'spell' : 'complex form'}${n === 1 ? '' : 's'} past the free ones: buying them with the customization Karma is an optional rule, off.`, ...CRB(66) } : null
   } },
   // CRB p. 167: some metamagics are for adepts only (the catalog's user: an adept or mystic adept; a magician's, a
   // magician or mystic adept)
@@ -428,18 +449,28 @@ function printedHits(c: Ctx): Hit[] {
       hits.push({ path, message: `${what}: the book prints ${book}; the rules give ${rules}.`, source: pr.source, page: pr.page })
   }
   const pair = (natural: number, augmented: number) => (augmented === natural ? `${natural}` : `${natural}(${augmented})`)
-  for (const k of SR6_ATTRS) say(`attributes.${k}`, A(k), pr.values[k], pair(d.attrs[k].natural, d.attrs[k].augmented))
+  // the number a book prints: the natural value with its always-on bonuses folded in (`natural:<attr>` below, owner
+  // 2026-10-10), the brackets the value with the switchable ones on
+  const folded = (k: Sr6Attr) => (pr.values[`natural:${k}`]?.split('|')[1] ?? '').split(' + ').reduce((t, x) => t + (Number(x.match(/(-?\d+)$/)?.[1]) || 0), 0)
+  const shown = (k: Sr6Attr) => d.attrs[k].natural + folded(k)
+  for (const k of SR6_ATTRS) say(`attributes.${k}`, A(k), pr.values[k], pair(shown(k), d.attrs[k].augmented))
   if (Number(pr.values.ess) !== d.essence) say('augmentations', 'Essence', pr.values.ess, String(d.essence))
   // (a book printing one initiative number, `11 + 1D6`, prints the augmented one)
-  const init = pr.values.init?.includes('(') ? pair(d.attrs.rea.natural + d.attrs.int.natural, d.initiative.base) : `${d.initiative.base}`
+  const init = pr.values.init?.includes('(') ? pair(shown('rea') + shown('int'), d.initiative.base) : `${d.initiative.base}`
   if (d.initiative.dice !== null) say('review', 'Initiative', pr.values.init, `${init} + ${d.initiative.dice}D6`)
   if (d.monitors.physical !== null && d.monitors.stun !== null) say('review', 'Condition monitors', pr.values.cm, `${d.monitors.physical}/${d.monitors.stun}`)
   say('gear', 'Defense Rating', pr.values.dr, String(d.defenseRating))
-  // a printed rank above the cap read as the natural rank plus a line's dice (owner, 2026-10-09: `Con 7` with a voice
-  // modulator 3 is Con 4), value `<printed>|<what adds, as printed>`: noted here
-  for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('rank:')) {
-    const id = k.slice(5), s = c.b.skills.find(x => x.id === id), name = c.data.skills[id]?.name ?? id, [rank, plus] = v.split('|')
-    if (s) hits.push({ path: `skills.${id}`, source: pr.source, page: pr.page, message: `The book prints ${name} ${rank}; read as ${name} ${skillRank(s)} + ${plus}.` })
+  // an always-on bonus folded into the printed number (owner, 2026-10-10: a switchable one is printed in brackets), value
+  // `<printed>|<what adds, as printed>`: the natural value is the printed less it, noted here
+  for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('natural:')) {
+    const key = k.slice(8), [printedAs, plus] = v.split('|')
+    if (key.startsWith('skill:')) {
+      const id = key.slice(6), s = c.b.skills.find(x => x.id === id), name = c.data.skills[id]?.name ?? id
+      if (s) hits.push({ path: `skills.${id}`, source: pr.source, page: pr.page, message: `The book prints ${name} ${printedAs}, an always-on bonus included: ${name} ${skillRank(s)} + ${plus}.` })
+    } else if ((SR6_ATTRS as string[]).includes(key)) {
+      const a = key as Sr6Attr
+      hits.push({ path: `attributes.${a}`, source: pr.source, page: pr.page, message: `The book prints ${a.toUpperCase()} ${printedAs}, an always-on bonus included: ${a.toUpperCase()} ${d.attrs[a].natural} + ${plus}.` })
+    }
   }
   // a level printed on a quality that has none (`Magic Resistance 2`): taken without it (owner, 2026-10-09), noted here
   for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('level:')) {

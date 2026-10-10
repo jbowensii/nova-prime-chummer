@@ -23,7 +23,7 @@ Essence, made up.
 <!-- page 30 -->
 # CHROME LIFE
 ## New and Revised Implant Grades
-Made-up grades.
+Made-up grades; one of them—the shabby grade—is redefined here as rusty grade.
 ### Rusty Grade
 A rusty grade keeps the same x1.3 Es-
 sence cost, x 0.4 nuyen cost, and the –2 Availability.
@@ -166,6 +166,7 @@ class BsRecipeTest(unittest.TestCase):
                           "Dreamware": ("0.3", None, None, None)})
         self.assertIn(("missing-value", "Vagueware"), [(r["kind"], r["name"]) for r in self.res.report])
         self.assertIn("Clunkware", entries(self.res, "rules"))  # the sections stay rules too
+        self.assertEqual(g["Rusty Grade"].get("replaces"), "shabby")  # a grade the book redefines as this one
 
     def test_qualities_critters_and_rules(self):
         q = entries(self.res, "qualities")

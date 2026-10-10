@@ -24,10 +24,20 @@ export function gradeKnown(cr: CreationRules, data: Sr6Data, g: string): boolean
   return !!c && c.essence !== null && c.cost !== null
 }
 
-/** The grades a catalog entry (none: a custom line) can take, the standard five first, then the catalog's. */
+/** The grades a catalog entry (none: a custom line) can take, the standard five first, then the catalog's; a grade a later
+ *  book redefines (the core rulebook's used, Body Shop's omega) gives way to the new one. */
 export function gradesFor(cr: CreationRules, data: Sr6Data, e?: Sr6Entry): string[] {
-  const all = [...new Set([...STANDARD_GRADES, ...Object.keys(data.grades)])].filter(g => gradeKnown(cr, data, g))
+  const known = [...new Set([...STANDARD_GRADES, ...Object.keys(data.grades)])].filter(g => gradeKnown(cr, data, g))
+  const gone = new Set(known.map(g => data.grades[g]?.replaces).filter((g): g is string => !!g))
+  const all = known.filter(g => !gone.has(g))
   return e ? all.filter(g => (data.grades[g]?.types ?? GRADED_TYPES).includes(e.attrs.type ?? '')) : all
+}
+
+/** Whether entry `e` comes in grade `g`: one offered, or one a later book redefined as an offered one (a used line once
+ *  Body Shop's omega replaces it). */
+export function gradeFits(cr: CreationRules, data: Sr6Data, e: Sr6Entry, g: string): boolean {
+  const offered = gradesFor(cr, data, e)
+  return offered.includes(g) || offered.some(o => data.grades[o]?.replaces === g)
 }
 
 /** A grade as shown: the catalog's name, else the key with a capital. */

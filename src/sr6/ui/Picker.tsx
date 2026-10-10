@@ -9,11 +9,12 @@ import { armorSocial, bookValue, dataFind, formulaRange, legality, ratingRange, 
 import { formulaOf, formulaText } from '../../engine/formula'
 import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
-import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
+import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
 import { ATTR_NAMES, n, useSr6Editor } from './editor'
+import { Sr6Ref, sr6Row } from './EntryRef'
 
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
@@ -57,7 +58,7 @@ export function House({ c, source }: { c: Sr6Catalog; source: string }) {
 export function LineName({ x }: { x: Sr6Purchase }) {
   const { data } = useSr6Editor()
   const e = entryOf(x, data)
-  return <><b>{e ? entryLabel(e) : x.name ?? 'Custom item'}</b>
+  return <><Sr6Ref kind={x.kind} id={e?.id}><b>{e ? entryLabel(e) : x.name ?? 'Custom item'}</b></Sr6Ref>
     {x.id && !data.entry(x.kind, x.id) && <span className="err"> (no longer in the catalog)</span>}
     {e && <span className="muted"> {e.source} p.{e.page}</span>}
     {!x.id && <> <span className="noncanon">Custom</span></>}
@@ -115,7 +116,7 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
         groups={[...new Set(entries.map(e => groupOf(e) ?? ''))].filter(Boolean).sort()}
         items={entries.map(e => {
           const r = ratingRange(e.attrs.rating), p = priceAt(e, r[0] ?? 1, undefined, undefined, data), formula = formulaShown(e, 'cost', dataFind(data))
-          return { id: `${e.kind}:${e.id}`, name: entryLabel(e), group: groupOf(e),
+          return { id: `${e.kind}:${e.id}`, name: entryLabel(e), group: groupOf(e), card: () => sr6Row(c, e), cardKind: SR6_KINDS[e.kind].label,
             meta: [e.attrs.type, e.attrs.category, r.length > 1 && `rating ${r[0]}–${r[r.length - 1]}`, p.essence && `Essence ${p.essence}`,
               e.kind === 'armor' && social(e.attrs.social), note?.(e)].filter(Boolean).join(', '),
             label: <><span className="muted">{e.source} p.{e.page}</span> <House c={c} source={e.source} /> <IssueBadges issues={e.issues} source={e.source} /></>,
@@ -176,14 +177,16 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
   return <span className="row">
     {host.accessories.map(a => {
       const e = entryOf(a, data), own = e ? entryLabel(e) : a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
-      const range = ratingRange(e?.attrs.rating), grades = e ? gradeOptions(cr, data, e) : []
+      // on an implant an add-on has its grade (CRB p. 282): shown, never chosen
+      const range = ratingRange(e?.attrs.rating), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
       // its rating and grade change in place, as a line's do
-      return <span key={a.uid} className="chip">{range.length > 1 ? own : label}
+      return <span key={a.uid} className="chip"><Sr6Ref kind={a.kind} id={e?.id}>{range.length > 1 ? own : label}</Sr6Ref>
         {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
           onChange={ev => act({ op: 'rate', uid: a.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select>}
         {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
           onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
           <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, e!)}</option>)}</select>}
+        {implant && host.grade && <span className="muted" title="An add-on has its implant’s grade (core rulebook p. 282)"> {gradeName(data, host.grade)}</span>}
         <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>×</button>
         {/* what it does to its host (a cyberlimb's Strength), never to the runner */}
         <Bonuses uid={a.uid} name={`${own} on ${name}`} bonuses={a.bonuses} rated={!!a.rating} /></span>

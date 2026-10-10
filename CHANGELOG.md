@@ -1,5 +1,57 @@
 # Release notes
 
+## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
+
+Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.
+
+**Shadowrun 6**
+- How a book's stat block prints a bonus (owner, 2026-10-10): brackets, `4(6)`, show a bonus that can be switched on or
+  off (wireless, activated, sustained) with it on; an always-on one (a reflex recorder, muscle toner, a passive adept
+  power) is folded into the printed number. A sample's natural value is the printed number less its always-on bonuses,
+  unless the brackets already hold them all; Review notes each such reading. Every bonus and catalog effect now says
+  how it is turned on (`switch`: wireless, activated, sustained or conditional; none is always on).
+- The earlier reading of a rank above the cap as the natural rank plus a switchable bonus's dice (`Con 7` with a voice
+  modulator) is gone: a rank printed without brackets is the natural one, so `Con 7` is rank 7 and the error stays.
+- A book sample's reflex recorder adds 1 to the skill printed with it (core rulebook p. 293); one printed for two skills
+  (`reflex recorder (Close Combat & Firearms)`) is one recorder per skill, each priced and with its Essence. Improved
+  Ability adds its level to the skill printed with it.
+- `+1 Edge on … tests` in an entry's text is a bonus Edge point on those tests, never the Edge attribute.
+- Firing Squad's clothing: a stat box titled as its heading (Securetech SkinShield, Armanté Suit/Dress, the Mortimer of
+  London greatcoats) is one armor entry with its description, no rule entry beside it; a TYPE table in an item's own
+  text (Rapid Transit's Basic … Diamond) is that item's variants.
+- A sample's gear printed with a maker before the name (`Ares Securetech SkinShield`), a garment word swapped (`Mortimer
+  o.L. Crimson Sky Dress`), an initialism (`o.L.`) or a variant in parentheses (`(… diamond)`) finds the one catalog
+  entry it names. The armor worn is the one with the highest Defense Rating.
+- What a sample prints fitted to a host with Capacity (`Cyberears (rating 3; w/ audio enhancement, select sound filter
+  3, …)`) is the host's accessories, priced; one the host's text says it has (cyberears' sound link, cybereyes' image
+  link) takes nothing. Review's capacity error shows when they take more than the host has (the Smooth Operations
+  Networker's cyberears: 10 of 8). An accessory fitted into a host's Capacity costs no Essence of its own, as the books'
+  samples print it.
+- An implant's accessories and add-ons always have its grade (CRB p. 282): their cost × the grade's cost factor, their
+  Availability plus its modifier, any Essence they cost × its Essence factor; changing the implant's grade changes
+  them, an add-on can't be given one of its own, and a file that gives one another grade is read at the implant's with
+  a Review note.
+- A grade a later book redefines gives way to the new one: with Body Shop imported, its omega grade is offered instead
+  of the core rulebook's used grade (a line already used still prices and checks as before).
+- Whether an accessory fitted into a host's Capacity costs Essence of its own is a creation setting,
+  `capacityAccessoryEssence` (Table setup → Creation rules, Augmentation grades), off as before (CRB pp. 285–286 print
+  both; the books' samples print the host's Essence alone), so it can be turned on without a new release.
+- Extra spells, rituals and complex forms bought with the customization Karma at creation are an optional rule, off
+  (CRB p. 66's list of what that Karma buys doesn't name them; Commlink6 has it as an option, off): a Review error past
+  the free ones while it's off, for the priority and Sum-to-Ten methods. A runner can turn it on in its Creation rules;
+  the book samples that need it get it as an assumed rule.
+**Both games**
+- Wherever the creation and editor screens name a catalog entry, hovering it, giving it focus (Tab) or tapping it shows
+  the entry's card, as Game data shows it: its values, formulas with their values, effects (Shadowrun 6: applied, or
+  shown only when switchable, conditional or read with low confidence), source and page, issues, an Edited or House
+  mark, and its description; Escape, a tap elsewhere or moving away closes it. Shadowrun 6: qualities, skills and their
+  specialization and expertise boxes, every purchase line and its accessories, spells, powers, complex forms and the
+  other picks, martial arts styles and techniques, contact archetypes, lifestyles, the metatype and life modules, the
+  Review lines that name an entry and the metatype's Karma line; every catalog picker's items. Anarchy: amps, items,
+  skills and specializations, the metatype, package guide and lifestyle, the Review lines that name an entry; the amp
+  and item pickers. Meant for checking a book's numbers where they're used.
+- Game data's rows list an SR6 entry's effects too.
+
 ## 0.11.3 — 2026-10-09: per-runner creation rules, optional rules the sample runners pointed to
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

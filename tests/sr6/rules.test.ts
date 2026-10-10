@@ -441,3 +441,18 @@ test('Glimmerkin and karma build: nothing throws on a runner with every list fil
   expect(() => check(ch)).not.toThrow()
   expect(codes(ch)).toContain('nuyen.overspent') // the karma build has no nuyen but what karma buys
 })
+
+test('spells past the free ones at creation: an error while the optional rule is off (CRB p. 66), none with it on', () => {
+  const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
+  ch.build = buildOf('priority', { letters: 'CBADA', metatype: GLIM, magic: 'full' })  // magic A: full 4, 12 free spells
+  for (let i = 0; i < 13; i++) ch.build.picks.push({ uid: `s${i}`, kind: 'spells', id: 'crb.glow-ward' })
+  const hit = (rules: Record<string, boolean>, unset: string[] = []) => {
+    const { data, cr } = made({ rules, unset })
+    return validateSr6(data, cr, ch).find(v => v.code === 'magic.karmaAtCreation')
+  }
+  expect(hit({}, ['karmaSpellsAtCreation'])).toMatchObject({ severity: 'error', source: 'CRB', page: 66,
+    message: '1 spell past the free ones: buying them with the customization Karma is an optional rule, off.' })
+  expect(hit({ karmaSpellsAtCreation: true })).toBeUndefined()
+  ch.build.picks.pop()
+  expect(hit({}, ['karmaSpellsAtCreation'])).toBeUndefined()  // within the free ones
+})

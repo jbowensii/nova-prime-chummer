@@ -2,6 +2,7 @@ import { ATTRS, type Npc } from '../../model/types'
 import { GENDER_LIST, GenderList, NPC_KINDS, NPC_TIERS } from '../bits'
 import { useState } from 'react'
 import { useEditor } from '../editor'
+import { AnarchyRef } from '../AnarchyRef'
 import { BACKDROP_NAMES, Face, PortraitEditor } from '../Portrait'
 
 const HINTS = {
@@ -58,10 +59,10 @@ export function ConceptTab() {
         <label>Gender<input value={ch.identity.gender ?? ''} placeholder="optional" list={GENDER_LIST}
           onChange={e => update(d => { if (e.target.value.trim()) d.identity.gender = e.target.value; else delete d.identity.gender })} /><GenderList /></label>
         <label>Metatype
-          <select value={ch.identity.metatype} disabled={career} onChange={e => edit(d => { d.identity.metatype = e.target.value })}>
+          <AnarchyRef kind="metatypes" id={ch.identity.metatype || undefined} tabbable={false}><select value={ch.identity.metatype} disabled={career} onChange={e => edit(d => { d.identity.metatype = e.target.value })}>
             {(noMeta || !ch.identity.metatype) && <option value="">— none ({npc?.kind === 'spirit' ? 'spirit' : 'critter'}) —</option>}
             {[...c.metatypes.values()].map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+          </select></AnarchyRef>
         </label>
         {!npc && <><label>Level of play
           <select value={ch.level} disabled={career} onChange={e => edit(d => { d.level = e.target.value; d.package = 'free' })}>
@@ -69,15 +70,15 @@ export function ConceptTab() {
           </select>
         </label>
         <label>Package guide
-          <select value={ch.package} disabled={career} onChange={e => edit(d => { d.package = e.target.value })}>
+          <AnarchyRef kind="packages" id={ch.package} tabbable={false}><select value={ch.package} disabled={career} onChange={e => edit(d => { d.package = e.target.value })}>
             <option value="free">Free allocation</option>
             {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          </select></AnarchyRef>
         </label></>}
         <label>Lifestyle
-          <select value={ch.identity.lifestyle ?? 'low'} onChange={e => update(d => { d.identity.lifestyle = e.target.value })}>
+          <AnarchyRef kind="lifestyles" id={ch.identity.lifestyle ?? 'low'} tabbable={false}><select value={ch.identity.lifestyle ?? 'low'} onChange={e => update(d => { d.identity.lifestyle = e.target.value })}>
             {[...c.lifestyles.values()].map(l => <option key={l.id} value={l.id}>{l.name}{l.perRun ? ` (${l.perRun > 0 ? '+' : '−'}${Math.abs(l.perRun).toLocaleString('en-US')}¥ per run)` : ''}</option>)}
-          </select>
+          </select></AnarchyRef>
         </label>
       </div>
       <div className="portrait-row">

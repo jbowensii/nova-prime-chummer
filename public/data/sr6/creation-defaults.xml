@@ -34,6 +34,8 @@
   <setting key="maxAvailability" value="6" source="CRB" page="66"/>
   <!-- availabilityCapIllegalOnly is left unset: the first printing (2019) caps only illegal gear, the Seattle, Berlin and
        Hong Kong printings (2021-2025) every item; the latest printing wins -->
+  <!-- karmaSpellsAtCreation is left unset (off): CRB p. 66's list of what the customization Karma buys names no spells,
+       rituals or complex forms (Commlink6 has it as an option, off) -->
   <setting key="maxKarmaLeft" value="5" source="CRB" page="66"/>
   <setting key="maxNuyenLeft" value="5000" source="CRB" page="68"/>
   <setting key="freeSpellsPerMagic" value="2" source="CRB" page="65"/>
@@ -59,6 +61,9 @@
   <setting key="inDebtQuality" value="crb.in-debt" source="CRB" page="77"/>
   <setting key="fakeSinPerRating" value="2500" source="CRB" page="273"/>
   <setting key="licencePerRating" value="200" source="CRB" page="273"/>
+  <!-- an accessory fitted into a host's Capacity (`[2]`) costs no Essence of its own: CRB pp. 285-286's tables print both
+       its Essence and its Capacity; the books' samples print the host's Essence alone (Smooth Operations p. 99) -->
+  <setting key="capacityAccessoryEssence" value="false" source="CRB" page="285"/>
   <setting key="grade:standard:essence" value="1" source="CRB" page="282"/>
   <setting key="grade:standard:cost" value="1" source="CRB" page="282"/>
   <setting key="grade:standard:avail" value="0" source="CRB" page="282"/>
