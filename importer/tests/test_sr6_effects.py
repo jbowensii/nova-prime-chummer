@@ -67,6 +67,9 @@ class ReadTest(unittest.TestCase):
 
     def test_maxima(self):
         self.assertEqual(fx("That attribute's maximum (but not current) rank increases by 1."), [("attr-max:choice", "add", "1", None, None)])
+        # (the maximum, never the attribute too)
+        self.assertEqual(fx("The zapper's attribute maximum (but not current rank) for the chosen attribute increases by 1."),
+                         [("attr-max:choice", "add", "1", None, None)])
         self.assertEqual(fx("Their physical attribute maximums are reduced by 1."),
                          [(f"attr-max:{a}", "add", "-1", None, None) for a in ("bod", "agi", "rea", "str")])
 

@@ -134,23 +134,52 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Re
  *  knowledge skills are counted from. */
 export const augmentedRating = (b: Sr6Build, data: Sr6Data, k: Sr6Attr, p: Provider) => attrRating(b, k, p) + augmentBonus(b, data, k)
 const ATTR_WORDS: Record<string, Sr6Attr> = { body: 'bod', agility: 'agi', reaction: 'rea', strength: 'str', willpower: 'wil',
-  logic: 'log', intuition: 'int', charisma: 'cha', edge: 'edg' }
+  logic: 'log', intuition: 'int', charisma: 'cha', edge: 'edg', magic: 'mag', resonance: 'res' }
+/** The attribute a quality's note names (`Agility`, `AGI`): the choice of an Exceptional or Impaired (Attribute). */
+export function noteAttr(note?: string): Sr6Attr | undefined {
+  for (const w of (note ?? '').toLowerCase().split(/[^a-z]+/)) {
+    const k = ATTR_WORDS[w] ?? ((SR6_ATTRS as string[]).includes(w) ? w as Sr6Attr : undefined)
+    if (k) return k
+  }
+  return undefined
+}
+/** The skill a quality's note names (`Close Combat`): the catalog skill whose name the note holds, the longest. */
+export function noteSkill(data: Sr6Data, note?: string): string | undefined {
+  const n = ` ${normName(note ?? '')} `
+  return Object.values(data.skills).filter(s => n.includes(` ${normName(s.name)} `)).sort((a, b) => b.name.length - a.name.length)[0]?.id
+}
+/** A quality whose name holds the choice it needs (`Exceptional (Attribute)`, `Aptitude (Skill)`, CRB Hong Kong pp. 70–77:
+ *  "select a skill", "select a Physical or Mental attribute"): what its note must name. */
+export function qualityChoice(name: string | undefined): 'attribute' | 'skill' | undefined {
+  const m = /\((attribute|skill)\)\s*$/i.exec(name ?? '')
+  return m ? m[1].toLowerCase() as 'attribute' | 'skill' : undefined
+}
 /** An attribute's creation and career maximum: the metatype's (or the one a quality's effects set), plus what a
- *  quality's effects add, plus 1 for each Exceptional (Attribute) quality whose note names it (CRB p. 71: `That attribute's maximum (but not current) rank increases by 1`; exceptionalQuality). The one
- *  figure Review's caps, the editor's steppers and the Ledger read. undefined: no metatype (or Magic, Resonance). */
+ *  quality's effects add, a chosen attribute's (`attr-max:choice`) on the attribute its note names (Exceptional +1, CRB
+ *  Hong Kong p. 71; Impaired -1 a level, p. 76), never lowered below attributeMaxFloor (Impaired: "to a minimum of 2");
+ *  plus 1 for each exceptionalQuality whose note names it when that quality carries no such effect. The one figure
+ *  Review's caps, the editor's steppers and the Ledger read. undefined: no metatype (or Magic, Resonance). */
 export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Attr): number | undefined {
   const m = data.metatypes[b.metatype]
   if (!m || !(k in m.ranges)) return undefined
   const id = str(cr, 'exceptionalQuality')
-  const named = (note?: string) => (note ?? '').toLowerCase().split(/[^a-z]+/).some(w => ATTR_WORDS[w] === k || w === k)
   // a quality's own maxima (an infected type's table, Shiva Arms' `maximum Body and Strength by one point`, effects.ts)
-  let max = m.ranges[k as keyof typeof m.ranges][1]
+  let max = m.ranges[k as keyof typeof m.ranges][1], lowered = false
   for (const q of b.qualities) {
-    const x = maxEffects(data.entry('qualities', q.id))[k]
+    const fx = maxEffects(data.entry('qualities', q.id)), x = fx[k], c = noteAttr(q.note) === k ? fx.choice : undefined
     if (x?.set !== undefined) max = x.set
-    if (x?.add) max += x.add * (x.perRating ? q.level : 1)
+    for (const y of [x, c]) if (y?.add) { max += y.add * (y.perRating ? q.level : 1); lowered ||= y.add < 0 }
   }
-  return max + (id ? b.qualities.filter(q => q.id === id && named(q.note)).length : 0)
+  const own = (q: Sr6Quality) => maxEffects(data.entry('qualities', q.id)).choice !== undefined
+  max += id ? b.qualities.filter(q => q.id === id && !own(q) && noteAttr(q.note) === k).length : 0
+  const floor = num(cr, 'attributeMaxFloor')
+  return lowered && floor !== undefined ? Math.max(floor, max) : max
+}
+/** The skills the aptitude qualities name (CRB Hong Kong p. 70: "for the selected skill"): null without one; a quality
+ *  whose note names no skill adds none (Review's quality.choice asks for it). */
+export function aptitudeSkills(data: Sr6Data, cr: CreationRules, b: Sr6Build): string[] | null {
+  const id = str(cr, 'aptitudeQuality'), qs = b.qualities.filter(q => q.id === id)
+  return id && qs.length ? qs.map(q => noteSkill(data, q.note)).filter((x): x is string => !!x) : null
 }
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
 
@@ -327,8 +356,16 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   return { ...pool(p.nuyen(b) + converted, spent), breakdown }
 }
 
+/** The Essence factor Sensitive System puts on a line (CRB Hong Kong p. 78: doubled for cyberware, bioware and nanoware,
+ *  not geneware; sensitiveSystemQuality, sensitiveSystemEssence): 1 without it. */
+export function sensitiveFactor(b: Sr6Build, data: Sr6Data, cr: CreationRules, x: Sr6Purchase): number {
+  const id = str(cr, 'sensitiveSystemQuality'), f = num(cr, 'sensitiveSystemEssence')
+  if (!id || f === undefined || !b.qualities.some(q => q.id === id)) return 1
+  return /^(cyberware|bioware|nanoware)/i.test(entryOf(x, data)?.attrs.type ?? '') ? f : 1
+}
+
 export function essenceBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules): Sr6Budgets['essence'] {
-  const spent = round2(b.purchases.reduce((t, x) => t + priced(x, data, cr).essence, 0))
+  const spent = round2(b.purchases.reduce((t, x) => t + priced(x, data, cr).essence * sensitiveFactor(b, data, cr, x), 0))
   return { ...pool(n0(cr, 'essence'), spent), left: round2(n0(cr, 'essence') - spent), magicLoss: Math.ceil(spent - 1e-9) }
 }
 

@@ -17,6 +17,14 @@
   Kong p. 63; the Sixth World Companion's street-level (B C C D E, sum-to-eight, 80 points, 6 life modules, no illegal
   gear but cyberdecks) and elite (A B B C D, sum-to-twelve, 120 points, 10 modules, no Availability cap), pp. 14–15,
   each with its numbers as settings. More than one on at once is noted in Review.
+- Qualities naming their choice (`Exceptional (Attribute)`, `Aptitude (Skill)`, `Impaired (Attribute)`, `Incompetent
+  (Skill)`) take the attribute or skill from their note, which the Qualities tab now edits; one naming nothing is a
+  Review problem, and one may be taken again for another choice. Exceptional raises that maximum, once per attribute
+  (CRB Hong Kong p. 71); Impaired lowers it a level at a time, never below 2 (p. 76); Aptitude raises the selected
+  skill's caps only, 7 at creation and 10 in career (p. 70); Incompetent forbids ranks in its skill, and isn't for a
+  Magic or Resonance skill the runner can't use (pp. 76–77); Sensitive System doubles cyberware, bioware and nanoware
+  Essence and can't be had with Magic or Resonance (p. 78). The importer no longer reads Exceptional's maximum as a
+  raise of the attribute too.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

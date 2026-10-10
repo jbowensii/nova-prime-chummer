@@ -372,7 +372,12 @@ def read(text, kind=None, name=None):
             last_who = who
         else:
             who = None
-        for x in _rules(s, kind, sw, when, edge_actions, label):
+        got = _rules(s, kind, sw, when, edge_actions, label)
+        # (`That attribute's maximum (but not current) rank increases by 1`: the maximum, not the attribute; Exceptional
+        # (Attribute), CRB Hong Kong p. 71)
+        maxed = {x[1]["target"][9:] for x in got if x[0] == "effect" and x[1]["target"].startswith("attr-max:")}
+        got = [x for x in got if not (x[0] == "effect" and x[1]["target"].startswith("attr:") and x[1]["target"][5:] in maxed)]
+        for x in got:
             if x[0] == "effect":
                 if who:
                     x[1]["affects"] = who

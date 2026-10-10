@@ -13,14 +13,17 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
 import { learned } from './martial'
+import { qualityChoice } from './budgets'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
   | { op: 'skill'; target: string; pool: 'points' | 'karma'; delta: number }
   | { op: 'spec'; target: string; spec: string | null }
   | { op: 'expertise'; target: string; expertise: string | null }
-  /** add a quality, or set the level of one taken (leveled ones only) */
-  | { op: 'quality'; id: string; level?: number; karma?: number } | { op: 'quality'; remove: string }
+  /** add a quality, or set the level, karma or note (the attribute or skill it is for) of one taken (`uid`: that line;
+   *  else the quality's line). A quality that names its choice (`Exceptional (Attribute)`) may be taken again, for
+   *  another one. */
+  | { op: 'quality'; id: string; uid?: string; level?: number; karma?: number; note?: string } | { op: 'quality'; remove: string }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
@@ -172,14 +175,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const v = data.qualities[op.id]
       if (!v) return no('unknown-entry')
-      const taken = b.qualities.find(x => x.id === op.id && !x.free)
-      if (taken && op.level === undefined && op.karma === undefined) return no('already-taken')
+      const taken = op.uid ? b.qualities.find(x => x.uid === op.uid && x.id === op.id) : b.qualities.find(x => x.id === op.id && !x.free)
+      if (op.uid && !taken) return no('not-taken')
+      if (op.note !== undefined && taken) { const t = op.note.trim().slice(0, 200); if (t) taken.note = t; else delete taken.note }
+      // (a quality naming its choice is taken again for another: CRB Hong Kong p. 71, "once per attribute")
+      const again = !op.uid && !!qualityChoice(v.name) && op.level === undefined && op.karma === undefined && op.note === undefined
+      if (taken && !again && op.level === undefined && op.karma === undefined) return op.note !== undefined ? OK : no('already-taken')
       const level = op.level ?? taken?.level ?? 1
       if (level !== 1 && !v.perLevel) return no('no-levels')
       if (level < 1) return no('below-one')
       if (level > v.maxLevel && v.perLevel) return no('max-level')
       if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax))) return no('karma-range')
-      if (taken) { taken.level = level; if (op.karma !== undefined) taken.karma = op.karma }
+      if (taken && !again) { taken.level = level; if (op.karma !== undefined) taken.karma = op.karma }
       else b.qualities.push({ uid: newId(), id: op.id, level, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
       return OK
     }

@@ -17,7 +17,11 @@
   <setting key="skillCap" value="6" source="CRB" page="65"/>
   <setting key="skillCapAptitude" value="7" source="CRB" page="65"/>
   <setting key="aptitudeQuality" value="crb.aptitude-skill" source="CRB" page="70"/>
-  <setting key="exceptionalQuality" value="crb.exceptional-attribute" source="CRB" page="71"/>
+  <setting key="exceptionalQuality" value="crb.exceptional-attribute" source="CRB-HK" page="71"/>
+  <setting key="incompetentQuality" value="crb.incompetent-skill" source="CRB-HK" page="76"/>
+  <setting key="sensitiveSystemQuality" value="crb.sensitive-system" source="CRB-HK" page="78"/>
+  <setting key="sensitiveSystemEssence" value="2" source="CRB-HK" page="78"/>
+  <setting key="attributeMaxFloor" value="2" source="CRB-HK" page="76"/>
   <setting key="manyTalentsQuality" value="swc.many-talents" source="SWC" page="134"/>
   <setting key="manySkillsQuality" value="swc.many-skills" source="SWC" page="134"/>
   <setting key="oneSkillAtMax" value="true" source="CRB" page="65"/>

@@ -7,8 +7,8 @@
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
 import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { attrMax, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
-import { num, str, type CreationRules } from './creation'
+import { aptitudeSkills, attrMax, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
+import { num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
@@ -181,10 +181,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
       const cur = s ? skillRank(s) : 0, cap = num(cr, 'advance.skillMax')
-      // CRB p. 65: the aptitude quality lets one skill go as far above the cap as it does at creation
-      const apt = str(cr, 'aptitudeQuality'), up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0)
-      const aptitude = !!apt && up > 0 && b.qualities.some(q => q.id === apt)
-        && !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!)
+      // CRB Hong Kong p. 70: the aptitude quality lets the selected skill go as far above the cap as it does at creation
+      // (10 instead of 9); one whose note names no skill, any one skill
+      const up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0), named = aptitudeSkills(data, cr, b)
+      const aptitude = !!named && up > 0 && (named.length ? named.includes(a.target)
+        : !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!))
       if (cap !== undefined && cur >= cap + (aptitude ? up : 0)) no('at-maximum')
       return { label: `${skillName(a.target)} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaSkillPerRank') }
     }

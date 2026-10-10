@@ -7,7 +7,7 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, aptitudeSkills, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
@@ -107,13 +107,29 @@ const RULES: Rule[] = [
 
   { code: 'skill.overspent', severity: 'error', tab: 'skills', check: c => over(c.budgets.skillPoints, 'Skill points') },
   { code: 'skill.cap', severity: 'error', tab: 'skills', setting: ['skillCap'], check: c => {
-    const capBase = n0(c.cr, 'skillCap'), apt = str(c.cr, 'aptitudeQuality'), aptCap = num(c.cr, 'skillCapAptitude')
-    const aptitude = !!apt && aptCap !== undefined && c.b.qualities.some(q => q.id === apt)
-    const cap = aptitude ? aptCap! : capBase
+    // CRB Hong Kong p. 70: Aptitude raises the starting maximum of the selected skill (the one its note names); one
+    // whose note names none lets any one skill go higher (quality.choice asks for the skill)
+    const capBase = n0(c.cr, 'skillCap'), aptCap = num(c.cr, 'skillCapAptitude'), named = aptitudeSkills(c.data, c.cr, c.b)
+    const aptitude = !!named && aptCap !== undefined, anyOne = aptitude && named!.length < c.b.qualities.filter(q => q.id === str(c.cr, 'aptitudeQuality')).length
+    const cap = (id: string) => (aptitude && (anyOne || named!.includes(id)) ? aptCap! : capBase)
     const name = (id: string) => c.data.skills[id]?.name ?? id
-    const hits: Hit[] = c.b.skills.filter(s => skillRank(s) > cap)
-      .map(s => ({ path: `skills.${s.id}`, message: `${name(s.id)} rank ${skillRank(s)} is above the cap of ${cap}.` }))
-    if (aptitude && c.b.skills.filter(s => skillRank(s) > capBase).length > 1) hits.push({ message: `Only one skill may be above ${capBase}.` })
+    const hits: Hit[] = c.b.skills.filter(s => skillRank(s) > cap(s.id))
+      .map(s => ({ path: `skills.${s.id}`, message: `${name(s.id)} rank ${skillRank(s)} is above the cap of ${cap(s.id)}.` }))
+    const above = c.b.skills.filter(s => skillRank(s) > capBase && !named?.includes(s.id))
+    if (aptitude && anyOne && above.length > 1) hits.push({ message: `Only one skill may be above ${capBase}.` })
+    return hits
+  } },
+  // CRB Hong Kong pp. 76–77: no ranks in the skill an Incompetent quality names; not for a Magic skill without Magic,
+  // nor Tasking without Resonance; that skill selected once
+  { code: 'skill.incompetent', severity: 'error', tab: 'skills', setting: c => (c.b.qualities.some(q => q.id === str(c.cr, 'incompetentQuality')) ? ['incompetentQuality'] : []), check: c => {
+    const id = str(c.cr, 'incompetentQuality'), k = MAGIC_KINDS[c.b.magic], hits: Hit[] = []
+    for (const q of c.b.qualities.filter(x => x.id === id)) {
+      const sk = noteSkill(c.data, q.note), v = sk ? c.data.skills[sk] : undefined, s = c.b.skills.find(x => x.id === sk)
+      if (!v) continue
+      if (s && skillRank(s) > 0) hits.push({ path: `skills.${v.id}`, message: `${v.name} has ${skillRank(s)} rank${skillRank(s) === 1 ? '' : 's'}: the runner is Incompetent in it.` })
+      if ((v.attr === 'mag' && !(k.spells || k.powers)) || (v.attr === 'res' && !k.resonance))
+        hits.push({ path: `qualities.${q.uid}`, message: `Incompetent in ${v.name}: not for a skill the runner has no ${v.attr === 'res' ? 'Resonance' : 'Magic'} to use.` })
+    }
     return hits
   } },
   { code: 'skill.oneAtMax', severity: 'error', tab: 'skills', check: c => {
@@ -159,6 +175,29 @@ const RULES: Rule[] = [
     // (a quality whose text says it doesn't count toward the six: Lofwyr's Legions p. 16's drake qualities)
     const count = c.b.qualities.filter(q => !q.free && !c.data.qualities[q.id]?.uncounted).length, cap = n0(c.cr, 'qualityMaxCount')
     return count <= cap ? null : { message: `${count} paid qualities; the most is ${cap}.` }
+  } },
+  // CRB Hong Kong pp. 70–77: a quality naming its choice (`Aptitude (Skill)`, `Exceptional (Attribute)`) is for the skill or
+  // attribute selected: its note names it
+  { code: 'quality.choice', severity: 'error', tab: 'qualities', check: c => c.b.qualities.flatMap(q => {
+    const v = c.data.qualities[q.id], want = qualityChoice(v?.name)
+    if (!v || !want || (want === 'attribute' ? noteAttr(q.note) : noteSkill(c.data, q.note))) return []
+    return [{ path: `qualities.${q.uid}`, message: `${v.name}: name the ${want} it is for in its note.`, ...entryCite(c.data.entry('qualities', q.id)) }]
+  }) },
+  // CRB Hong Kong p. 71: Exceptional once per attribute; p. 77: Incompetent's skill selected once
+  { code: 'quality.choiceTwice', severity: 'error', tab: 'qualities', check: c => (['exceptionalQuality', 'incompetentQuality'] as const).flatMap(key => {
+    const id = str(c.cr, key), seen = new Set<string>(), hits: Hit[] = []
+    for (const q of c.b.qualities.filter(x => x.id === id)) {
+      const choice = key === 'exceptionalQuality' ? noteAttr(q.note) : noteSkill(c.data, q.note)
+      if (!choice) continue
+      if (seen.has(choice)) hits.push({ path: `qualities.${q.uid}`, message: `${c.data.qualities[id!]?.name ?? id} is taken twice for ${key === 'exceptionalQuality' ? choice.toUpperCase() : c.data.skills[choice]?.name ?? choice}: once each.`, ...cite(c.cr, key) })
+      seen.add(choice)
+    }
+    return hits
+  }) },
+  // CRB Hong Kong p. 78: Sensitive System can't be had with a Magic or Resonance rating
+  { code: 'quality.sensitiveSystem', severity: 'error', tab: 'qualities', check: c => {
+    const id = str(c.cr, 'sensitiveSystemQuality'), q = c.b.qualities.find(x => x.id === id)
+    return q && c.b.magic !== 'mundane' ? { path: `qualities.${q.uid}`, message: `${c.data.qualities[id!]?.name ?? 'Sensitive System'}: not with a ${MAGIC_KINDS[c.b.magic].resonance ? 'Resonance' : 'Magic'} rating.`, ...cite(c.cr, 'sensitiveSystemQuality') } : null
   } },
   { code: 'quality.level', severity: 'error', tab: 'qualities', check: c => c.b.qualities.flatMap(q => {
     const v = c.data.qualities[q.id], max = v?.perLevel ? v.maxLevel : 1
