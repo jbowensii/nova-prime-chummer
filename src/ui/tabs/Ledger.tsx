@@ -1,6 +1,9 @@
-import { useState } from 'react'
+// Ledger (Anarchy career): record earnings and notes; the history with its running balance. What a line names (an
+// attribute, a skill or specialization, an amp, an item) shows its card on hover, focus or tap (AnarchyRef.tsx).
+import { Fragment, useState, type ReactNode } from 'react'
 import { changeText, ledgerRunning, makeEarn, makeNote, voidEvent } from '../../engine'
-import type { CareerEvent } from '../../model/types'
+import type { AttrId, CareerEvent, Change } from '../../model/types'
+import { AnarchyAttrRef, AnarchyRef } from '../AnarchyRef'
 import { fmt } from '../bits'
 import { useEditor } from '../editor'
 
@@ -22,20 +25,32 @@ export function LedgerTab() {
     const label = `${run.trim() || 'Run'}${adj ? ` (${life!.name} lifestyle ${adj > 0 ? '+' : '−'}${fmt(Math.abs(adj))})` : ''}`
     if (await record(makeEarn(n, label, date), `Earned ${fmt(n)}${run.trim() ? ` from ${run.trim()}` : ''}${adj ? `: ${fmt(pay)} pay, ${adj > 0 ? '+' : '−'}${fmt(Math.abs(adj))} for ${life!.name} lifestyle` : ''}`)) { setAmount(''); setRun('') }
   }
-  const describe = (e: CareerEvent): string => {
+  const item = (catalogId: string | undefined, name: ReactNode) => { const k = catalogId ? c.items.get(catalogId)?.kind : undefined
+    return k ? <AnarchyRef kind={k} id={catalogId}>{name}</AnarchyRef> : name }
+  // one change line with the card of what it names (diffBuild's keys: attr:, skill:, spec:<skill>:, amp:<uid>, item:<uid>)
+  const change = (x: Change) => {
+    const [k, id] = x.key.split(':'), text = changeText(x)
+    if (k === 'attr') return <AnarchyAttrRef attr={id as AttrId}>{text}</AnarchyAttrRef>
+    if (k === 'skill' || k === 'spec') return <AnarchyRef kind="skills" id={id}>{text}</AnarchyRef>
+    if (k === 'amp') return <AnarchyRef kind="amps" id={ch.build.amps.find(a => a.uid === id)?.catalogId}>{text}</AnarchyRef>
+    if (k === 'item') return item(ch.build.items.find(i => i.uid === id)?.catalogId, text)
+    return text
+  }
+  const describe = (e: CareerEvent): ReactNode => {
     switch (e.type) {
       case 'earn': return `Earned: ${e.run} (${e.date})`
       case 'finalize': return `Creation finished · ${fmt(e.remaining)} left`
-      case 'change': return e.changes.map(changeText).join('; ')
+      case 'change': return e.changes.map((x, i) => <Fragment key={i}>{i > 0 && '; '}{change(x)}</Fragment>)
       case 'advance': {
         const [k, id] = e.path.split('.')
-        return `${k === 'attributes' ? c.attributes.get(id as never)?.name : c.skills.get(id)?.name ?? id} ${e.from} → ${e.to}`
+        return k === 'attributes' ? <AnarchyAttrRef attr={id as AttrId}>{c.attributes.get(id as AttrId)?.name} {e.from} → {e.to}</AnarchyAttrRef>
+          : <AnarchyRef kind="skills" id={id}>{c.skills.get(id)?.name ?? id} {e.from} → {e.to}</AnarchyRef>
       }
-      case 'buy': return `Bought ${e.item.name}`
+      case 'buy': return <>Bought {item(e.item.catalogId, e.item.name)}</>
       case 'sell': return `Sold ${ch.career.map(x => x.type === 'buy' && x.item.uid === e.itemUid ? x.item.name : '').find(Boolean) ?? 'an item'}`
-      case 'amp-add': return `New amp: ${e.amp.name}`
-      case 'amp-modify': return `Improved ${e.after.name}`
-      case 'spec-add': return `Specialization: ${c.skills.get(e.skill)?.name} (${c.skills.get(e.skill)?.specs.find(s => s.id === e.spec)?.name ?? e.spec.replace(/^custom:/, '')})`
+      case 'amp-add': return <>New amp: <AnarchyRef kind="amps" id={e.amp.catalogId}>{e.amp.name}</AnarchyRef></>
+      case 'amp-modify': return <>Improved <AnarchyRef kind="amps" id={e.after.catalogId}>{e.after.name}</AnarchyRef></>
+      case 'spec-add': return <AnarchyRef kind="skills" id={e.skill}>Specialization: {c.skills.get(e.skill)?.name} ({c.skills.get(e.skill)?.specs.find(s => s.id === e.spec)?.name ?? e.spec.replace(/^custom:/, '')})</AnarchyRef>
       case 'knowledge-add': return `${e.kind === 'language' ? 'Language' : 'Knowledge'}${e.from ? (e.cost ? ', now paid' : ', free slot') : ''}: ${e.name}`
       case 'note': return e.text
       case 'void': return `Voided: ${e.reason}`

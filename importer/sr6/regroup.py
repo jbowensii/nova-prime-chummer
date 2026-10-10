@@ -801,9 +801,10 @@ def _is_label(level, text):
     return level > 1 and (not first or first.group().islower())
 
 
-def _units(els, start, end, chapter, item_keys, aliases):
+def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
     """The chapter's units in reading order. item_keys: the norm keys of its item headings (a lower-case title
-    with one of them is a stat box)."""
+    with one of them is a stat box). templates: the part headings its entries each print (`Advantages`), read as
+    part of the entry over them."""
     units, section, over = [], "", None
     cur = _Unit("section", chapter, 1, els[start][1] if start < end else 0, chapter, "")
     units.append(cur)
@@ -826,8 +827,9 @@ def _units(els, start, end, chapter, item_keys, aliases):
             label = None
             if level == 1:  # the chapter heading itself
                 continue
-            if cur.kind == "item" and level > cur.level and _FIELD_HEAD.fullmatch(text):
-                # a field set as a heading under the item (`##### Bonus` over `5 Karma per level`): its labelled line
+            if cur.kind == "item" and level > cur.level and (_FIELD_HEAD.fullmatch(text) or norm(text) in templates and not fresh):
+                # a field set as a heading under the item (`##### Bonus` over `5 Karma per level`), or a part heading
+                # every entry of the section prints (`##### Advantages` under each mentor spirit): its labelled line
                 cur.body.append(f"**{text}:**")
                 mode, fresh = "text", False
                 continue
@@ -1463,12 +1465,51 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
         chapter = els[start][2][1] if els[start][0] == "h" and els[start][2][0] == 1 else ""
         item_keys = {k for _, _, (lv, tx) in (e for e in els[start:end] if e[0] == "h")
                      if lv >= 4 and not _is_label(lv, tx) for nm in _names(tx) for k in keys(nm, aliases)}
-        units = _units(els, start, end, chapter, item_keys, aliases)
+        units = _units(els, start, end, chapter, item_keys, aliases, _templates(els[start:end]))
+        _continuations(units)
         if not chapter and not units[0].body and len(units) == 1:
             continue
         _chapter(units, aliases, name_headers, report, variants and heads, set().union(*rows_in[n + 1:]), lower)
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
+
+
+def _templates(els):
+    """The part headings a chapter's entries each print under their own heading (`##### Advantages`,
+    `##### Disadvantages` under every mentor spirit): a heading of level 5 or deeper printed three times or more, each
+    time right under a heading one level up."""
+    count, last = {}, {}
+    for e in els:
+        if e[0] != "h":
+            continue
+        lv, tx = e[2]
+        if lv >= 5 and last.get(lv - 1) and not _is_label(lv, tx):
+            count[norm(tx)] = count.get(norm(tx), 0) + 1
+        last = {k: v for k, v in last.items() if k < lv}
+        last[lv] = tx
+    return frozenset(k for k, n in count.items() if n >= 3 and k)
+
+
+def _continuations(units):
+    """A description cut off at a page break where the next page opens with a table under its own title: the
+    converter sets the title and the table first, so the description's rest (a line starting in lower case) and its
+    labelled lines land under the table's title. They go back to the unit whose text broke off mid-sentence."""
+    prev = None
+    for u in units:
+        texts = [b for b in u.body if isinstance(b, str) and b.strip()]
+        tables = [b for b in u.body if not isinstance(b, str)] + list(u.stats)
+        if prev is not None and texts and tables and texts[0].lstrip()[:1].islower():
+            tail = [b for b in prev.body if isinstance(b, str) and b.strip()][-1:]
+            if tail and not _SENTENCE_END.search(tail[0].strip()):
+                prev.body += [b for b in u.body if isinstance(b, str)]
+                u.body = [b for b in u.body if not isinstance(b, str)]
+                if u.box_labels:
+                    for k, v in u.labels.items():
+                        prev.labels.setdefault(k, v)
+                    u.labels, u.box_labels = {}, False
+                continue
+        if u.has_text():
+            prev = u
 
 
 def _back_prices(els, back):

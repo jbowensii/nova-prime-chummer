@@ -215,6 +215,11 @@ class SwcRecipeTest(unittest.TestCase):
                          {"Lucky Charm": ("positive", "5"), "Spiky Hair": ("positive", "3"), "Long Nose": ("positive", "4"),
                           "Clumsy Oaf": ("negative", "7")})
         self.assertEqual((q["Long Nose"].get("perLevel"), q["Long Nose"].get("maxLevel")), ("true", "3"))
+        # a sub-quality's description is its own lines, not its neighbours' (the block's)
+        texts = {t.get("id"): t.text or "" for t in ET.fromstring(self.res.texts) if t.get("of") == "qualities"}
+        spiky = next(v for k, v in texts.items() if k.endswith("spiky-hair"))
+        self.assertIn("Hair that is made up.", spiky)
+        self.assertNotIn("Long Nose", spiky)
 
     def test_critter_power_contact_and_rules(self):
         cp = entries(self.res, "critterpowers")["Glow Burst"].attrib

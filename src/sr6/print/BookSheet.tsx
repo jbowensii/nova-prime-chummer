@@ -11,7 +11,7 @@ import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
-import { AR_BANDS, band, pickFlags, runnerView } from './view'
+import { AR_BANDS, attrShown, band, br, pickFlags, poolOn, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 export type SheetArt = Pick<ReturnType<typeof useSheetArt>, 'layer' | 'vars'>
@@ -44,8 +44,9 @@ export function BookSheet({ art }: { art: SheetArt }) {
   const ctx = useSr6Editor(), { ch, data, cr, d } = ctx
   const b = ch.build, k = MAGIC_KINDS[b.magic]
   const v = runnerView(ctx), { lines, nameOf, attrsOf } = v
-  const attr = (a: Sr6Attr) => { const x = d.attrs[a]; return <>{x.natural}{x.augmented !== x.natural && <i> ({x.augmented})</i>}</> }
-  const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const attr = (a: Sr6Attr) => <>{attrShown(d, a)}</>
+  const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
   const trained = d.pools.filter(p => p.rank > 0), half = Math.ceil(trained.length / 2)
   const armor = lines('armor'), worn = armor.find(x => x.worn) ?? armor[0]
   const ranged = v.rangedWeapons[0], melee = v.meleeWeapons[0]
@@ -54,9 +55,9 @@ export function BookSheet({ art }: { art: SheetArt }) {
   const skillTable = (rows: typeof trained, key: string) => <table key={key} className="k-skills">
     <thead><tr><th>Skill</th><th>Rnk</th><th>Att</th><th>Pool</th></tr></thead>
     <tbody>{pad(rows.map(p => <tr key={p.skill}><td>{p.label}
-      {p.spec && <div className="k-small">{p.spec}{p.specDp !== undefined && ` ${p.specDp}`}</div>}
-      {p.expertise && <div className="k-small">{p.expertise} (expertise){p.expertiseDp !== undefined && ` ${p.expertiseDp}`}</div>}</td>
-      <td>{p.rank}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td></tr>), 8, 4)}</tbody></table>
+      {p.spec && <div className="k-small">{p.spec}{p.specDp !== undefined && ` ${br(p.specDp, poolOn(d, p.skill)?.specDp)}`}</div>}
+      {p.expertise && <div className="k-small">{p.expertise} (expertise){p.expertiseDp !== undefined && ` ${br(p.expertiseDp, poolOn(d, p.skill)?.expertiseDp)}`}</div>}</td>
+      <td>{p.rank}</td><td>{p.attr.toUpperCase()}</td><td><b>{br(p.dp, poolOn(d, p.skill)?.dp)}</b></td></tr>), 8, 4)}</tbody></table>
   const picks = (kinds: string[]) => b.picks.filter(x => kinds.includes(x.kind))
   const head = <header className="k-head">
     <span className="k-brand" role="img" aria-label="Chummer Shadowrun 6">Chummer <b>Shadowrun</b> 6</span>
@@ -88,15 +89,15 @@ export function BookSheet({ art }: { art: SheetArt }) {
               <div>
                 <F l="Essence" v={n(d.essence)} />
                 <F l="Magic/Resonance" v={k.resonance ? attr('res') : b.magic !== 'mundane' ? attr('mag') : undefined} />
-                <F l="Initiative" v={init(d.initiative)} hi />
+                <F l="Initiative" v={init(d.initiative, d.on.initiative)} hi />
                 <F l="Matrix initiative" hi />
                 <F l="Astral initiative" v={init(d.astralInit)} hi />
-                <F l="Composure" v={d.composure} />
+                <F l="Composure" v={br(d.composure, d.on.composure)} />
                 <F l="Judge intentions" v={d.judgeIntentions} />
                 <F l="Memory" v={d.memory} />
                 <F l="Lift/carry" v={d.liftCarry} />
                 <F l="Movement" />
-                <F l="Defense rating" v={d.defenseRating} />
+                <F l="Defense rating" v={br(d.defenseRating, d.on.defenseRating)} />
               </div>
             </Box>
             <Box id="k-skills" title="Skills" side="l" className="k-long">
@@ -204,8 +205,9 @@ export function BookSheet({ art }: { art: SheetArt }) {
             </Box>
           </div>
         </div>
-        {(ch.identity.background || ch.identity.notes) && <section className="k-box k-wide" aria-labelledby="k-notes"><h2 id="k-notes">Notes</h2>
-          {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}</section>}
+        {(ch.identity.background || ch.identity.notes || v.effectNotes.length > 0) && <section className="k-box k-wide" aria-labelledby="k-notes"><h2 id="k-notes">Notes</h2>
+          {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}
+          {v.effectNotes.length > 0 && <ul className="k-small">{v.effectNotes.map((x, i) => <li key={i}><b>{x.from}:</b> {x.text}</li>)}</ul>}</section>}
       </div>
     </article>
   )

@@ -8,35 +8,17 @@ import { EntryHover, type CardEffect } from '../../ui/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'
 import { catalogFind } from '../engine/load'
 import type { Find } from '../engine/values'
-import { SR6_ATTRS, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../model/character'
+import { type Sr6Advance, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../model/character'
+import { effectState, effectText } from '../engine/effects'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
-import { ATTR_NAMES, useSr6Editor } from './editor'
+import { ATTR_NAMES, useSr6Editor, type Sr6Ctx } from './editor'
+import { attrMax, bonusSources, bracketNotes } from '../engine/budgets'
+import { br } from '../print/view'
 import { formulaShown } from './Picker'
 
-const DERIVED: Record<string, string> = { defense: 'Defense Rating', initiative: 'Initiative', composure: 'Composure', 'judge-intentions': 'Judge Intentions',
-  memory: 'Memory', social: 'Social Rating' }
-const cap = (s: string) => s.replace(/(^|[ -])\w/g, m => m.toUpperCase()).replace(/-/g, ' ')
-/** `attr:agi` -> Agility, `skill:close-combat` -> Close Combat dice, `derived:defense` -> Defense Rating, `item:ar` ->
- *  its Attack Ratings */
-function targetName(t: string): string {
-  const [k, v = ''] = t.split(':')
-  if (k === 'attr' && (SR6_ATTRS as string[]).includes(v)) return ATTR_NAMES[v as Sr6Attr]
-  if (k === 'skill') return `${cap(v)} dice`
-  if (k === 'pool') return `${ATTR_NAMES[v as Sr6Attr] ?? v} tests' dice`
-  if (k === 'derived') return DERIVED[v] ?? cap(v)
-  if (k === 'item') return v === 'ar' ? 'its Attack Ratings (close to extreme)' : `its ${v}`
-  return t
-}
-
-/** What an entry's <effect> parts do, as the hover card and Game data show them. */
+/** What an entry's <effect> and <link> parts do (effects.ts effectText), as the hover card and Game data show them. */
 export function effectsOf(e: Sr6Entry): CardEffect[] {
-  return e.parts.filter(p => p.tag === 'effect').map(({ attrs: a }) => {
-    const v = a.value === 'R' ? 'rating' : a.value, sign = /^[-–]/.test(v) ? '' : '+'
-    const text = a.op === 'edge-cost' ? `Edge boosts and actions cost ${v.replace(/^[-–]/, '')} less on ${targetName(a.target).replace(/ dice$/, '')} tests`
-      : `${sign}${v} ${targetName(a.target)}`
-    const how = a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''
-    return { text: `${how}${text}`, state: a.confidence === 'low' ? (a.switch && a.switch !== 'conditional' ? 'conditional' : 'low') : 'applied' }
-  })
+  return e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(p => ({ text: effectText(p), state: effectState(p) }))
 }
 
 /** "category zappers · dv 3P · cost Rating × 50": an entry's printed values, then its formulas with their values over its
@@ -77,4 +59,60 @@ export function entryOfPath(ch: Sr6Character, path: string): { kind: Sr6Kind; id
 export function cardOf(c: Sr6Catalog, kind: Sr6Kind, id: string): { card?: () => BrowseRow; cardKind?: string } {
   const e = c.entries[kind]?.get(id)
   return e ? { card: () => sr6Row(c, e), cardKind: SR6_KINDS[kind].label } : {}
+}
+
+/** An attribute's range on the runner: Magic or Resonance from its magic rating to the cap less the Essence loss (none
+ *  while the cap isn't set); the others the metatype's minimum to its maximum (attrMax: with Exceptional Attribute). */
+export function attrRange({ data, cr, ch, p, d }: Pick<Sr6Ctx, 'data' | 'cr' | 'ch' | 'p' | 'd'>, a: Sr6Attr): [number, number] | undefined {
+  const b = ch.build, meta = data.metatypes[b.metatype]
+  return a === 'mag' || a === 'res' ? d.magicMax === null ? undefined : [p.magicRating(b), d.magicMax] : meta && [meta.ranges[a][0], attrMax(data, cr, b, a)!]
+}
+
+/** An attribute's card: its catalog entry (description, source and page) with the runner's natural and augmented
+ *  ratings (the switchable and conditional bonuses in brackets), its maximum and what raises it: the lines the total
+ *  counts (bonusSources, what augmentBonus adds up), then the bracketed ones with their notes (bracketNotes: switch,
+ *  condition, whom a spell affects; owner decision 2026-10-10). */
+export function sr6AttrRow(ctx: Pick<Sr6Ctx, 'c' | 'data' | 'cr' | 'ch' | 'p' | 'd'>, a: Sr6Attr): BrowseRow {
+  const e = [...ctx.c.entries.attributes.values()].find(x => x.attrs.abbr?.toLowerCase() === a)
+  const { natural, augmented } = ctx.d.attrs[a], r = attrRange(ctx, a)
+  const raised = [...bonusSources(ctx.ch.build, ctx.data, a).map(x => ({ text: `${x.value > 0 ? '+' : ''}${x.value} from ${x.from}`, state: 'applied' as const })),
+    ...bracketNotes(ctx.ch.build, ctx.data, a).map(x => ({ text: `${x.value > 0 ? '+' : ''}${x.value} from ${x.from}${x.when ? ` (${x.when})` : ''}`, state: 'conditional' as const }))]
+  const values = [`natural ${natural}`, `augmented ${br(augmented, ctx.d.on.attrs[a].augmented)}`, r ? `max ${r[1]}` : 'no max set', ...(a === 'mag' || a === 'res') && ctx.d.magicLoss ? [`${ctx.d.magicLoss} lost to Essence`] : []].join(' · ')
+  return { key: a, name: ATTR_NAMES[a], source: e?.source ?? '', page: e?.page ?? 0, details: values, effects: raised, text: e?.text || undefined,
+    issues: e?.issues, marks: e?.edited ? <EditedMark /> : undefined }
+}
+
+/** `children` naming one of the runner's attributes, with its card on hover, focus or tap. */
+export function Sr6AttrRef({ attr, children, tabbable }: { attr: Sr6Attr; children: ReactNode; tabbable?: boolean }) {
+  const ctx = useSr6Editor()
+  return <EntryHover row={() => sr6AttrRow(ctx, attr)} kind="Attribute" tabbable={tabbable}>{children}</EntryHover>
+}
+
+/** What a ledger spend names (src/sr6/ui/tabs/Ledger.tsx): an attribute, or a catalog entry (a skill, quality, pick,
+ *  style or technique, the gear bought or dropped, a lifestyle), else nothing. */
+export function advanceTarget(ch: Sr6Character, a: Sr6Advance): { attr: Sr6Attr } | { kind: Sr6Kind; id: string } | undefined {
+  const b = ch.build
+  const lines = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...lines(x.accessories)])
+  const of = (kind: Sr6Kind | undefined, id: string | undefined) => (kind && id ? { kind, id } : undefined)
+  switch (a.op) {
+    case 'attribute': return { attr: a.target }
+    case 'skill': case 'spec': case 'expertise': return of('skills', a.target)
+    case 'quality': return of('qualities', a.line.id)
+    case 'buyoff': return of('qualities', a.line?.id ?? b.qualities.find(q => q.uid === a.target)?.id)
+    case 'pick': return of(a.line.kind, a.line.id)
+    case 'initiate': return of(a.line?.kind, a.line?.id)
+    case 'martialart': return of('martialarts', a.line.id)
+    case 'technique': return of('martialtechniques', a.line.id)
+    case 'purchase': return of(a.line.kind, a.line.id)
+    case 'drop': { const x = a.line ?? lines(b.purchases).find(y => y.uid === a.target); return of(x?.kind, x?.id) }
+    case 'lifestyle': return of('lifestyles', a.id)
+    default: return undefined
+  }
+}
+
+/** `children` naming what a ledger spend buys, with its card (an attribute's or the entry's); plain when it names none. */
+export function Sr6AdvanceRef({ advance, children }: { advance: Sr6Advance; children: ReactNode }) {
+  const { ch } = useSr6Editor()
+  const t = advanceTarget(ch, advance)
+  return !t ? <>{children}</> : 'attr' in t ? <Sr6AttrRef attr={t.attr}>{children}</Sr6AttrRef> : <Sr6Ref kind={t.kind} id={t.id}>{children}</Sr6Ref>
 }

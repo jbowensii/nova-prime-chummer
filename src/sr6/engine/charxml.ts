@@ -18,7 +18,7 @@ const FORMAT_VERSION = 1
 const MAGIC_KINDS = Object.keys(MAGIC_KIND_LABELS) as MagicKind[]
 
 // ---- writing ----
-const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating, when: x.when, switch: x.switch })
+const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating, when: x.when, spec: x.spec, switch: x.switch, affects: x.affects })
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
@@ -143,7 +143,8 @@ function readBonus(e: Element): Bonus {
   const target = oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, skill = str(e, 'skill')
   if (target === 'skill' && !skill) throw new Error('a skill bonus names no skill')
   return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating'), when: str(e, 'when'),
-    switch: (BONUS_SWITCHES as string[]).includes(str(e, 'switch') ?? '') ? str(e, 'switch') as BonusSwitch : undefined })
+    spec: str(e, 'spec'), switch: (BONUS_SWITCHES as string[]).includes(str(e, 'switch') ?? '') ? str(e, 'switch') as BonusSwitch : undefined,
+    affects: str(e, 'affects') === 'caster' || str(e, 'affects') === 'target' ? str(e, 'affects') as Bonus['affects'] : undefined })
 }
 const readBonuses = (e: Element) => { const xs = kids(e, 'bonus').map(readBonus); return xs.length ? xs : undefined }
 

@@ -216,6 +216,9 @@ Hulls.
 Comms.
 #### Scrap Frame (x0.5 BP)
 Cheap.
+#### Glow Plate
+Shiny plates.
+**Cost:** 2 Design Points x Armor Rating
 ## Ammunition
 #### zap ammo types
 | TYPES | AR | DV | COST MULTIPLIER |
@@ -230,6 +233,7 @@ Fizz rounds fizz.
         self.assertEqual((d["Zoom Frame"]["category"], d["Zoom Frame"]["bp"]), ("frame type", "3"))
         self.assertTrue({"Heavy Hull", "Light Hull", "Glow Comms I", "Glow Comms II"} <= set(d))
         self.assertEqual(d["Scrap Frame"]["bp"], "x0.5")
+        self.assertEqual(d["Glow Plate"]["dp"], "2 x Armor Rating")  # its Design Point cost: a cost field, no effect
         a = {e.findtext("name"): e.attrib for e in ET.fromstring(res.files["ammotypes.xml"])}
         self.assertEqual({k: a["Fizz Rounds"][k] for k in ("ar", "dv", "cost")}, {"ar": "+1", "dv": "-1", "cost": "x2"})
 

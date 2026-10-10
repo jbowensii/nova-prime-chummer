@@ -10,7 +10,7 @@ import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName, type Sr6Attr } from '../model/character'
 import { n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
-import { band, PICKS, runnerView } from './view'
+import { attrShown, band, br, PICKS, poolOn, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 const H = ({ id, children }: { id: string; children: ReactNode }) => <h2 id={id}>{children}</h2>
@@ -30,10 +30,11 @@ export function NeonSheet({ art }: { art: SheetArt }) {
   const v = runnerView(ctx), { lines, nameOf, attrsOf } = v
   const trained = d.pools.filter(p => p.rank > 0), untrained = d.pools.filter(p => !p.rank)
   const best = [...trained].sort((x, y) => y.dp - x.dp || x.label.localeCompare(y.label)).slice(0, 6)
-  const init = (i?: { base: number; dice: number | null }) => i && `${i.base}+${i.dice ?? '?'}D6`
-  const attr = (a: Sr6Attr) => { const x = d.attrs[a]; return <div key={a}><span>{a.toUpperCase()}</span><b>{x.augmented}</b>{x.augmented !== x.natural && <small>{x.natural}</small>}</div> }
-  const keys = ([['Initiative', init(d.initiative)], ['Astral init.', init(d.astralInit)], ['Defense', d.defenseRating], ['Unarmed AR', d.attackRatings.unarmed],
-    ['Essence', n(d.essence)], ['Composure', d.composure], ['Judge int.', d.judgeIntentions], ['Memory', d.memory], ['Lift/carry', d.liftCarry],
+  const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base}+${i.dice ?? '?'}D6`
+  const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
+  const attr = (a: Sr6Attr) => { const x = d.attrs[a]; return <div key={a}><span>{a.toUpperCase()}</span><b>{attrShown(d, a)}</b>{x.augmented !== x.natural && <small>{x.natural}</small>}</div> }
+  const keys = ([['Initiative', init(d.initiative, d.on.initiative)], ['Astral init.', init(d.astralInit, d.on.astralInit)], ['Defense', br(d.defenseRating, d.on.defenseRating)], ['Unarmed AR', d.attackRatings.unarmed],
+    ['Essence', n(d.essence)], ['Composure', br(d.composure, d.on.composure)], ['Judge int.', br(d.judgeIntentions, d.on.judgeIntentions)], ['Memory', br(d.memory, d.on.memory)], ['Lift/carry', br(d.liftCarry, d.on.liftCarry)],
     ['Drain', d.drain], ['Fading', d.fading]] as [string, ReactNode][]).filter(([, x]) => x !== undefined)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="n-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
   const picks = b.picks.length > 0 && PICKS.map(([kind, label]) => [label, b.picks.filter(x => x.kind === kind)] as const).filter(([, xs]) => xs.length)
@@ -85,15 +86,15 @@ export function NeonSheet({ art }: { art: SheetArt }) {
 
         <main className="n-main">
           <section aria-labelledby="n-best"><H id="n-best">Dice pools</H>
-            <div className="n-best">{best.map(p => <div key={p.skill}><b>{p.dp}</b><span>{p.label}</span></div>)}
+            <div className="n-best">{best.map(p => <div key={p.skill}><b>{br(p.dp, poolOn(d, p.skill)?.dp)}</b><span>{p.label}</span></div>)}
               {!best.length && <p>—</p>}</div>
           </section>
           <section aria-labelledby="n-skills"><H id="n-skills">Skills</H>
             <table className="n-skills"><thead><tr><th>Skill</th><th>Rnk+Att</th><th>Pool</th></tr></thead>
-              <tbody>{trained.map(p => <tr key={p.skill}><td>{p.label}{p.spec && <span className="n-small"> {p.spec}{p.specDp !== undefined && ` ${p.specDp}`}</span>}
-                {p.expertise && <span className="n-small"> {p.expertise}*{p.expertiseDp !== undefined && ` ${p.expertiseDp}`}</span>}</td>
-                <td>{p.rank}+{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td></tr>)}</tbody></table>
-            {untrained.length > 0 && <p className="n-small n-untrained"><b>Untrained</b> {untrained.map(p => `${p.label} ${p.dp}`).join(' · ')}</p>}
+              <tbody>{trained.map(p => <tr key={p.skill}><td>{p.label}{p.spec && <span className="n-small"> {p.spec}{p.specDp !== undefined && ` ${br(p.specDp, poolOn(d, p.skill)?.specDp)}`}</span>}
+                {p.expertise && <span className="n-small"> {p.expertise}*{p.expertiseDp !== undefined && ` ${br(p.expertiseDp, poolOn(d, p.skill)?.expertiseDp)}`}</span>}</td>
+                <td>{p.rank}+{p.attr.toUpperCase()}</td><td><b>{br(p.dp, poolOn(d, p.skill)?.dp)}</b></td></tr>)}</tbody></table>
+            {untrained.length > 0 && <p className="n-small n-untrained"><b>Untrained</b> {untrained.map(p => `${p.label} ${br(p.dp, poolOn(d, p.skill)?.dp)}`).join(' · ')}</p>}
           </section>
           <section aria-labelledby="n-weapons"><H id="n-weapons">Weapons</H>
             <table className="n-weapons"><thead><tr><th>Weapon</th><th>DV</th><th>Mode</th><th title="Attack Ratings: close / near / medium / far / extreme">AR</th><th>Ammo</th></tr></thead>

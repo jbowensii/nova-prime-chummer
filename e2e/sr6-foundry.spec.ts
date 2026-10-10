@@ -112,6 +112,8 @@ test('NPCs & Critters: a grunt’s row downloads its NPC block; the header dialo
 
 test('Game data: the GM downloads book data, with or without descriptions', async ({ page }) => {
   await signIn(page, '/#/sr6/data', 'gil')
+  // folded on Game data: the header's link opens it
+  await page.locator('.menubar .tools').getByRole('link', { name: 'Export book data for Foundry' }).click()
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   await expect(panel.getByRole('checkbox', { name: /Include book descriptions/ })).toBeChecked()
   await expect(panel).toContainText('For your own Foundry only. Don’t share this file.')
@@ -153,6 +155,8 @@ test('Pat: no book panel on Game data; he downloads his own runner', async ({ pa
   await signIn(page, '/#/sr6/data', 'pat')
   await expect(page.getByRole('heading', { name: 'Game data', level: 1 })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Export book data for Foundry' })).toHaveCount(0)
+  await expect(page.locator('#foundry-export')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Export book data for Foundry' })).toHaveCount(0)
   await putRunner(page, 'pat-one', 'Pat One')
   await page.goto('/#/sr6')
   await expect(page.getByRole('link', { name: 'Pat One' })).toBeVisible()

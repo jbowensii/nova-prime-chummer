@@ -1,7 +1,7 @@
 // Review of an AI import (library/<id>/review.xml): accept, edit or drop each proposed entry, then name the
 // book (source id, title, canon) and add the accepted ones. Every decision is saved back to review.xml at once.
 import { useEffect, useState } from 'react'
-import { blankCharacter } from '../engine'
+import { blankCharacter, toPick } from '../engine'
 import { ATTRS, type AmpEntry, type AttrId, type Catalog } from '../model/types'
 import { Modal } from './bits'
 import { api, BooksHeader, PROVIDER_NAMES, type Book } from './Books'
@@ -74,8 +74,7 @@ function setText(el: Element, tag: string, value: string, before?: Element | nul
 
 /** The amp in a proposal as the Amp Builder edits it. */
 const toAmp = (el: Element): AmpEntry => ({ uid: 'review', type: el.getAttribute('type') ?? '', name: text(el, 'name'), narrative: text(el, 'narrative'),
-  vehicle: el.getAttribute('vehicle') ?? undefined, effects: [...el.getElementsByTagName('effect')].map(e => ({ ref: e.getAttribute('ref')!,
-    param: e.getAttribute('param') ?? undefined, value: e.getAttribute('value') ? Number(e.getAttribute('value')) : undefined, note: e.getAttribute('note') ?? undefined })) })
+  vehicle: el.getAttribute('vehicle') ?? undefined, effects: [...el.getElementsByTagName('effect')].map(toPick) })
 
 /** Write the Amp Builder's result back into the proposal's <amp>: name, effects, narrative, chassis. */
 function fromAmp(el: Element, a: AmpEntry) {

@@ -4,15 +4,17 @@
 // a value the app can't read counts 0 (priced().ok false, Review warns); an unset creation setting counts 0 (Review
 // warns that it isn't set). Never NaN.
 import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Sin, type Sr6Skill, sinName } from '../model/character'
-import type { Sr6Entry } from '../model/types'
+import type { Sr6Entry, Sr6Kind } from '../model/types'
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, normName, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
+import { own } from '../../engine/effects'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
+import { effectBonuses, maxEffects, sr6Counts as counts } from './effects'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -47,58 +49,84 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
   return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0) + (p.startBonus?.(b, k) ?? 0)
 }
 
-// (a bonus `when` some tests only is shown with its pool, never added: conditionalBonuses)
-const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string) =>
-  (bonuses ?? []).filter(x => x.target === k && !x.when && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
-/** The bonuses to skill `skill`'s dice pool that hold on some tests only (`when`), each with its line's name, value at its
- *  rating and condition: shown with the pool (derive.ts), never added to it. */
-export function conditionalBonuses(b: Sr6Build, data: Sr6Data, skill: string): { value: number; when: string; from: string }[] {
+// (owner decision 2026-10-10: the total shown first holds the always-on bonuses, `on` (the bracketed total) the switchable
+// and conditional ones too; a skill bonus limited to a specialization counts in that specialization's pool (specBonus),
+// and in the skill's bracketed total for a specialization the runner hasn't)
+const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string, on = false, spec?: string) =>
+  (bonuses ?? []).filter(x => x.target === k && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
+    .reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+// (`Etiquette or Negotiation`: either)
+const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
+/** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
+function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
+  for (const x of b.picks) f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
+  for (const x of b.purchases) { const e = entryOf(x, data); f(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
+  for (const q of b.qualities) { const e = data.entry('qualities', q.id); f(entryBonuses(data, e), 1, q.level, e?.name ?? q.name ?? q.id) }
+}
+/** The bonuses to `target` (for `skill` the one skill's dice pool) that only the bracketed total holds (switchable, some
+ *  tests only, or a specialization the runner hasn't), each with its line's name, value at its rating and its note (its
+ *  switch, condition or specialization, and `affects the caster`): why the bracket differs (owner decision 2026-10-10:
+ *  the hover card, Review and the sheet name it). */
+export function bracketNotes(b: Sr6Build, data: Sr6Data, target: Bonus['target'], skill?: string, spec?: string): { value: number; when: string; from: string }[] {
   const out: { value: number; when: string; from: string }[] = []
-  const take = (bs: Bonus[], rating: number, times: number, from: string) => {
-    for (const x of bs) if (x.when && x.target === 'skill' && x.skill === skill) out.push({ value: x.value * (x.perRating ? rating : 1) * times, when: x.when, from })
-  }
-  for (const x of b.picks) take(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
-  for (const x of b.purchases) { const e = entryOf(x, data); take(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
+  eachLine(b, data, (bs, rating, times, from) => {
+    for (const x of bs) if (x.target === target && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
+      out.push({ value: x.value * (x.perRating ? rating : 1) * times, from,
+        when: [x.spec, x.when, x.switch !== 'conditional' && x.switch, x.affects === 'caster' && 'affects the caster'].filter(Boolean).join(', ') })
+  })
   return out
 }
-const EFFECT_TARGET: Record<string, Bonus['target']> = { 'derived:defense': 'defense' }
-/** A catalog entry's effects as bonuses (importer/sr6/effects.py: `+N to X` read from its prose): an `add` effect on an
- *  attribute, the Defense Rating or a skill's dice pool. A low-confidence one (its sentence sets a condition) is shown,
- *  never applied (owner decision D3). */
-export function entryBonuses(data: Sr6Data, e?: Sr6Entry): Bonus[] {
-  const out: Bonus[] = []
-  for (const x of e?.parts ?? []) {
-    const value = Number(x.attrs.value), t = x.attrs.target ?? ''
-    if (x.tag !== 'effect' || x.attrs.op !== 'add' || x.attrs.confidence === 'low' || !Number.isFinite(value)) continue
-    if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value })
-    else if (EFFECT_TARGET[t]) out.push({ target: EFFECT_TARGET[t], value })
-    else if (t.startsWith('skill:')) {
-      const sk = Object.values(data.skills).find(v => normName(v.name) === t.slice(6).replace(/-/g, ' '))
-      if (sk) out.push({ target: 'skill', skill: sk.id, value })
-    }
-  }
-  return out
+/** bracketNotes of a skill's pool. */
+export const conditionalBonuses = (b: Sr6Build, data: Sr6Data, skill: string, spec?: string) => bracketNotes(b, data, 'skill', skill, spec)
+/** The notes as one line each (a hover card's title): `+2 Muscle toner (wireless)`. */
+export const notesText = (xs: { value: number; when: string; from: string }[]) =>
+  xs.map(x => `${x.value >= 0 ? '+' : ''}${x.value} ${x.from}${x.when ? ` (${x.when})` : ''}`).join('\n')
+/** What the bonuses limited to specialization `spec` add to skill `skill`'s pool for it (on: the switchable ones too). */
+export function specBonus(b: Sr6Build, data: Sr6Data, skill: string, spec: string, on = false): number {
+  let total = 0
+  eachLine(b, data, (bs, rating, times) => {
+    for (const x of bs) if (x.target === 'skill' && x.skill === skill && sameSpec(x.spec, spec) && counts({ ...x, spec: undefined } as Bonus, on))
+      total += x.value * (x.perRating ? rating : 1) * times
+  })
+  return total
 }
+/** A catalog entry's effects as bonuses (effects.ts effectBonuses: what importer/sr6/effects.py reads from the book's
+ *  text and tables, with the entries it grants or works as). A low-confidence one is shown, never applied (owner decision
+ *  D3). */
+export const entryBonuses = (data: Sr6Data, e?: Sr6Entry): Bonus[] => effectBonuses(data, e)
 /** The bonuses a line gives (the one place creation, Review, the sheets and the export read them): the player's or GM's
  *  own entered ones when it has any (they override, owner decision D3), else its catalog entry's effects. */
 export const lineBonuses = (data: Sr6Data, entered: Bonus[] | undefined, e?: Sr6Entry): Bonus[] =>
-  entered?.length ? entered : entryBonuses(data, e)
+  own(entered, entryBonuses(data, e))
 /** What the runner's picks, purchases and qualities add to its `k`, for `skill` the one skill's dice pool (`skill`: its
- *  id) (lineBonuses): picks and qualities by level, purchases by rating times quantity. An accessory's bonuses are its
- *  host item's, never the runner's (hostBonus). */
-export function augmentBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], skill?: string): number {
-  let total = b.picks.reduce((s, x) => s + bonusOf(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), k, x.level ?? 1, skill), 0)
-  for (const x of b.purchases) total += bonusOf(lineBonuses(data, x.bonuses, entryOf(x, data)), k, x.rating ?? 1, skill) * x.qty
-  for (const q of b.qualities) total += bonusOf(entryBonuses(data, data.entry('qualities', q.id)), k, 1, skill) * q.level
+ *  id) (lineBonuses): picks and qualities by level, purchases by rating times quantity. on: the bracketed total's (the
+ *  switchable and conditional bonuses too; spec: the specialization the runner has, whose bonuses specBonus counts). An
+ *  accessory's bonuses are its host item's, never the runner's (hostBonus). */
+export function augmentBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], skill?: string, on = false, spec?: string): number {
+  let total = 0
+  eachLine(b, data, (bs, rating, times) => { total += bonusOf(bs, k, rating, skill, on, spec) * times })
   return total
+}
+/** augmentBonus line by line: each pick, purchase or quality that adds to `k` in the total shown first, with its name and
+ *  what it adds (the attribute card lists them; their sum is augmentBonus, so the two never disagree; the bracketed ones
+ *  are bracketNotes). */
+export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], skill?: string): { from: string; kind?: Sr6Kind; id?: string; value: number }[] {
+  const out: { from: string; kind?: Sr6Kind; id?: string; value: number }[] = []
+  const add = (value: number, e: Sr6Entry | undefined, kind: Sr6Kind, id: string | undefined, name?: string) => {
+    if (value) out.push({ from: e ? entryLabel(e) : name ?? id ?? 'Custom item', kind, id, value })
+  }
+  for (const x of b.picks) { const e = data.entry(x.kind, x.id); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.level ?? 1, skill), e, x.kind, x.id, x.name) }
+  for (const x of b.purchases) { const e = entryOf(x, data); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.rating ?? 1, skill) * x.qty, e, x.kind, x.id, x.name) }
+  for (const q of b.qualities) { const e = data.entry('qualities', q.id); add(bonusOf(entryBonuses(data, e), k, 1, skill) * q.level, e, 'qualities', q.id, q.name) }
+  return out
 }
 /** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
  *  target -> total, only the targets they touch (not a skill's pool: a runner's, never an item's). */
-export function hostBonus(x: Sr6Purchase, data: Sr6Data): Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> {
+export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> {
   const out: Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> = {}
   for (const a of x.accessories) {
     const bs = lineBonuses(data, a.bonuses, entryOf(a, data))
-    for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, a.rating ?? 1)
+    for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, a.rating ?? 1, undefined, on)
   }
   return out
 }
@@ -107,15 +135,22 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data): Partial<Record<Exclude
 export const augmentedRating = (b: Sr6Build, data: Sr6Data, k: Sr6Attr, p: Provider) => attrRating(b, k, p) + augmentBonus(b, data, k)
 const ATTR_WORDS: Record<string, Sr6Attr> = { body: 'bod', agility: 'agi', reaction: 'rea', strength: 'str', willpower: 'wil',
   logic: 'log', intuition: 'int', charisma: 'cha', edge: 'edg' }
-/** An attribute's creation and career maximum: the metatype's, plus 1 for each Exceptional (Attribute) quality whose note
- *  names it (CRB p. 71: `That attribute's maximum (but not current) rank increases by 1`; exceptionalQuality). The one
+/** An attribute's creation and career maximum: the metatype's (or the one a quality's effects set), plus what a
+ *  quality's effects add, plus 1 for each Exceptional (Attribute) quality whose note names it (CRB p. 71: `That attribute's maximum (but not current) rank increases by 1`; exceptionalQuality). The one
  *  figure Review's caps, the editor's steppers and the Ledger read. undefined: no metatype (or Magic, Resonance). */
 export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Attr): number | undefined {
   const m = data.metatypes[b.metatype]
   if (!m || !(k in m.ranges)) return undefined
   const id = str(cr, 'exceptionalQuality')
   const named = (note?: string) => (note ?? '').toLowerCase().split(/[^a-z]+/).some(w => ATTR_WORDS[w] === k || w === k)
-  return m.ranges[k as keyof typeof m.ranges][1] + (id ? b.qualities.filter(q => q.id === id && named(q.note)).length : 0)
+  // a quality's own maxima (an infected type's table, Shiva Arms' `maximum Body and Strength by one point`, effects.ts)
+  let max = m.ranges[k as keyof typeof m.ranges][1]
+  for (const q of b.qualities) {
+    const x = maxEffects(data.entry('qualities', q.id))[k]
+    if (x?.set !== undefined) max = x.set
+    if (x?.add) max += x.add * (x.perRating ? q.level : 1)
+  }
+  return max + (id ? b.qualities.filter(q => q.id === id && named(q.note)).length : 0)
 }
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
 

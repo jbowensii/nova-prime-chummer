@@ -484,6 +484,11 @@ class Reader:
                 name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
+            # its Design Point cost as printed (`Cost: 2 Design Points x Armor Rating`): a cost, not an effect (owner
+            # decision 2026-10-10; a vehicle designer reads it later)
+            if m := re.search(r"Cost:\**\s*(\+?\s*\d+(?:\.\d+)?)\s*Design Points?((?:\s*(?:x|×|per)\s*[A-Za-z][\w ]*?)?)"
+                              r"\s*(?:\.|$|\n|\()", _body(b), re.I):
+                attrs["dp"] = (m.group(1).replace(" ", "") + m.group(2).rstrip()).strip()
         if kind == "martialtechniques":  # its closing `Category:` line, inline after its last sentence
             attrs = {"category": flags.technique_category(text)}
         if kind == "metamagics":  # who may take it (`Adept Metamagics`, `(Adepts Only)`); the note leaves the name, so

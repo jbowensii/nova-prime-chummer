@@ -1,8 +1,9 @@
 // XML element -> typed catalog record. One function per data kind (docs/data-format.md).
 import type {
-  AmpEffect, AmpTemplate, AmpType, AttrId, Attribute, EffectParam, Item, ItemKind, Level, Lifestyle, LoadError,
+  AmpEffect, AmpTemplate, AmpType, AttrId, Attribute, EffectParam, EffectPick, Item, ItemKind, Level, Lifestyle, LoadError,
   Metatype, Package, Pricing, Ref, Rule, Skill, Source, TemplateItem, VehicleBase,
 } from '../model/types'
+import { readEffectState } from './effects'
 import { readFormulasAndIssues } from './formula'
 
 const str = (el: Element, n: string) => el.getAttribute(n) ?? undefined
@@ -15,6 +16,10 @@ const extras = (el: Element) => {
   const { formulas, issues } = readFormulasAndIssues(el)
   return { ...formulas.length ? { formulas } : {}, ...issues.length ? { issues } : {} }
 }
+/** An <effect ref> (amps, items, metatypes): the effect, its param and value, and how it is turned on (effects.ts). */
+export const toPick = (e: Element): EffectPick => ({ ref: e.getAttribute('ref')!, param: str(e, 'param'), value: num(e, 'value'),
+  note: str(e, 'note'), ...bool(e, 'unpriced') ? { unpriced: true as const } : {}, ...readEffectState(n => e.getAttribute(n)) })
+const picks = (el: Element) => [...el.getElementsByTagName('effect')].map(toPick)
 const ref = (el: Element): Ref => ({ id: el.getAttribute('id')!, source: el.getAttribute('source')!, page: req(el, 'page') })
 
 export const toLevel = (el: Element): Level => ({ ...ref(el), name: child(el, 'name'), nuyen: req(el, 'nuyen'),
@@ -24,7 +29,8 @@ export const toLevel = (el: Element): Level => ({ ...ref(el), name: child(el, 'n
 export const toMetatype = (el: Element): Metatype => {
   const ranges = {} as Metatype['ranges']
   for (const r of el.getElementsByTagName('range')) ranges[r.getAttribute('attr') as AttrId] = [req(r, 'min'), req(r, 'max')]
-  return { ...ref(el), name: child(el, 'name'), edge: req(el, 'edge'), ranges, racialQuality: child(el, 'racialQuality') }
+  const effects = picks(el)
+  return { ...ref(el), name: child(el, 'name'), edge: req(el, 'edge'), ranges, racialQuality: child(el, 'racialQuality'), ...effects.length ? { effects } : {} }
 }
 
 export const toAttribute = (el: Element): Attribute => ({ ...ref(el), name: child(el, 'name'), abbr: el.getAttribute('abbr')! })
@@ -71,8 +77,7 @@ export const toAmp = (el: Element): AmpTemplate => {
   const item: TemplateItem | undefined = it && { kind: it.getAttribute('kind') as TemplateItem['kind'],
     specialist: bool(it, 'specialist') || undefined, armor: num(it, 'armor'), dv: str(it, 'dv'), ranges: str(it, 'ranges') }
   return { ...ref(el), name: child(el, 'name'), type: el.getAttribute('type')!, item, mod: bool(el, 'mod') || undefined,
-    effects: [...el.getElementsByTagName('effect')].map(e => ({ ref: e.getAttribute('ref')!, param: str(e, 'param'),
-      value: num(e, 'value'), note: str(e, 'note') })),
+    effects: picks(el),
     narrative: child(el, 'narrative'), printedRating: num(el, 'printedRating'), vehicle: str(el, 'vehicle'), ...extras(el) }
 }
 
@@ -88,9 +93,12 @@ export const toPackage = (el: Element): Package => ({ ...ref(el), name: child(el
 
 export const toLifestyle = (el: Element): Lifestyle => ({ ...ref(el), name: child(el, 'name'), perRun: req(el, 'perRun'), text: child(el, 'text') })
 
-export const toItem = (el: Element): Item => ({ ...ref(el), name: child(el, 'name'), kind: el.getAttribute('kind') as ItemKind,
-  specialist: bool(el, 'specialist') || undefined, armor: num(el, 'armor'), dv: str(el, 'dv'), ranges: str(el, 'ranges'),
-  category: str(el, 'category'), text: child(el, 'text'), ...extras(el) })
+export const toItem = (el: Element): Item => {
+  const effects = picks(el)
+  return { ...ref(el), name: child(el, 'name'), kind: el.getAttribute('kind') as ItemKind,
+    specialist: bool(el, 'specialist') || undefined, armor: num(el, 'armor'), dv: str(el, 'dv'), ranges: str(el, 'ranges'),
+    category: str(el, 'category'), text: child(el, 'text'), ...effects.length ? { effects } : {}, ...extras(el) }
+}
 
 export interface ParsedFile { kind: string; entries: Element[]; removals: string[]; error?: LoadError }
 

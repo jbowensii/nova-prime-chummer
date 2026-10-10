@@ -37,7 +37,7 @@ test('several runners download together from the runner list', async ({ page }) 
 })
 
 test('the GM downloads ticked books, with or without descriptions', async ({ page }) => {
-  await page.goto('/#/data')
+  await page.goto('/#/data/foundry') // (folded on Game data: its address, as its header link, opens it)
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   await expect(panel.getByRole('checkbox', { name: /Include book descriptions/ })).toBeChecked()
   await expect(panel).toContainText('For your own Foundry only. Don’t share this file.')
@@ -59,7 +59,7 @@ test('the GM downloads ticked books, with or without descriptions', async ({ pag
 
 test('book data doesn’t go out without the table rules when they can’t be loaded', async ({ page }) => {
   await page.route('**/custom/table-rules.xml', r => r.fulfill({ status: 500, body: 'boom' }))
-  await page.goto('/#/data')
+  await page.goto('/#/data/foundry') // (folded on Game data: its address, as its header link, opens it)
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   let downloaded = false
   page.on('download', () => { downloaded = true })
@@ -69,7 +69,7 @@ test('book data doesn’t go out without the table rules when they can’t be lo
 })
 
 test('a book’s own sample characters go out under that book', async ({ page }) => {
-  await page.goto('/#/data')
+  await page.goto('/#/data/foundry') // (folded on Game data: its address, as its header link, opens it)
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   await panel.getByRole('button', { name: 'None' }).click()
   await panel.getByRole('checkbox', { name: /^PREGENS\b/ }).check()
@@ -84,7 +84,7 @@ test('a book’s own sample characters go out under that book', async ({ page })
 })
 
 test('a book’s NPCs go out under that book', async ({ page }) => {
-  await page.goto('/#/data')
+  await page.goto('/#/data/foundry') // (folded on Game data: its address, as its header link, opens it)
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   await panel.getByRole('button', { name: 'None' }).click()
   await panel.getByRole('checkbox', { name: /^TESTC\b/ }).check()
@@ -100,7 +100,7 @@ test('a book’s NPCs go out under that book', async ({ page }) => {
 
 test('a sample that can’t be read is left out and named; the book data still downloads', async ({ page }) => {
   await page.route('**/custom/imported/pregens/samples/*.xml', r => r.fulfill({ status: 404, body: '' }))
-  await page.goto('/#/data')
+  await page.goto('/#/data/foundry') // (folded on Game data: its address, as its header link, opens it)
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   await panel.getByRole('button', { name: 'None' }).click()
   await panel.getByRole('checkbox', { name: /^PREGENS\b/ }).check()

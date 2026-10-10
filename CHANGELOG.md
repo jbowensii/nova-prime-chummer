@@ -1,5 +1,147 @@
 # Release notes
 
+## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
+
+**Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers
+take from its text and tables, and the sample runners are read with them. **The Foundry modules have matching
+updates** (the Shadowrun 6 importer's effects v2 and the Anarchy module): install them with this release, so the
+effects, links and bracketed totals in the export reach Foundry.
+
+**Both games**
+- One rule for every effect (src/engine/effects.ts, owner decisions 2026-10-10): the total shown first holds the
+  always-on effects; switchable ones (wireless, activated, sustained) and conditional ones (in darkness, while in the
+  Matrix) count in brackets, `Con 6 (9)`, `RR 1 (2)`, as a book's stat block prints them; a low-confidence one is shown,
+  never counted; a spell's or complex form's effect on its target(s) never counts on the caster, and a sentence naming
+  neither is the caster's. Each bracketed, caster or target effect has a note naming its switch, condition or whom it
+  affects: on the attribute's card and a pool's hover, in Review's "What its effects do" and on the printed sheet.
+- Game data is one page layout for both games (src/ui/GameData.tsx). The catalog comes first: the kinds down the left with
+  their counts, the chosen kind's categories as chips across the top (Shadowrun 6: its category field, augmentations
+  by type then body area), its entries with their values, Description and Edit. The **Book** list, the search across
+  everything and **Needs attention** filter it. The sources and the Foundry export are folded under it until opened (the
+  Sources heading gives the number of books), so a long book list no longer pushes the rest down; then the catalog
+  edits, Problems and what each game adds (Anarchy: the loaded files; Shadowrun 6: where the creation rules are). Every
+  Shadowrun 6 feature stays: the Edit buttons and compendium links, the override files, issues, effects, search and
+  Needs attention.
+- Game data opens on each game's main kind, Amps in Anarchy and Qualities in Shadowrun 6 (the list keeps its order),
+  then on the kind last looked at, remembered per game in this browser. A private window or blocked storage just
+  opens on the main kind.
+- **Export book data for Foundry** has its icon in the header's right-hand group, beside the game switch, Settings
+  and the account. It unfolds the export and scrolls to it, and its address (`#/data/foundry`,
+  `#/sr6/data/foundry`) opens the page with it unfolded. Only for those who may export: the admin and editors (GMs in
+  Shadowrun 6).
+- An attribute shows its card on hover, focus (Tab) or tap, as an entry's card does: its natural and augmented
+  ratings, its maximum, what raises it, and the rule's source and page. Shadowrun 6 adds the attribute's description
+  (from the book's private texts) and lists each pick, line of gear or quality adding to it (the same lines its
+  augmented rating adds up), and Magic or Resonance lost to Essence. Anarchy has no augmented attributes, so the two
+  match, and its data has no attribute descriptions; its card lists the amps giving Risk Reduction on the attribute's
+  tests.
+- The career Ledger names entries with their cards too. Shadowrun 6: the entry picked to spend on, the price line
+  (the attribute, skill, quality, power, gear or lifestyle being bought) and each history line. Anarchy: each history
+  line's attribute, skill, specialization, amp or item. An SR6 NPC's Stat block names its catalog entry with its card.
+- The attribute card lists what the total counts, then the switchable and conditional bonuses (or Risk Reduction) in
+  brackets with their notes.
+
+**Shadowrun 6**
+- Effects for every entry: the importer now reads what each quality, adept power, piece of ware, gear, weapon,
+  armor, ammunition, accessory, vehicle mod, spell, critter power, metamagic, echo, program, focus and mentor spirit
+  does from its description and the book's tables (before, only a few granted qualities and add-ons had any).
+  Attributes, attribute maxima (an infected type's table), Defense Rating, initiative and Matrix initiative dice,
+  Physical, Stun and Overflow boxes, skill pools, Matrix attributes, item stats (Attack Rating per band, Damage
+  Value, Handling, Speed …), lifestyle points.
+- Test types: a bonus on "Social tests", "tests using Charisma", "Matrix tests", damage, drain or toxin resistance
+  is stored as that test type and shown on every pool it covers, from the book's own lists of which skills belong to
+  each (owner decision 2026-10-10).
+- New kinds of effect for rules that aren't a plus or minus: bonus Edge on some tests, an Edge boost or action costing
+  less (or more), no Edge spent or gained, a wild die, extra hits, an Edge action's new cost, an extra Minor or Major
+  Action, Hardened Armor, the Overwatch Score. The hover card shows them; the printed sheet lists them under Effects.
+- An entry that grants another ("both forms gain the Built Tough quality", "1 free level of Rapid Healing") or works as
+  another ("the same result as a Personalized Grip") links to it, and the app uses that entry's effects, so a later
+  correction follows (owner decision 2026-10-10).
+- Every effect says how it's turned on (always, wireless, activated, sustained, on some tests: the condition's words)
+  and how sure the reading is. A player's own bonuses still override.
+- Totals as the books print them (owner decision 2026-10-10): the number shown first holds the always-on effects, and
+  the switchable and conditional ones are added in brackets, `Con 6 (9)`, `Agility 5 (7)`, on every sheet, Review and
+  the Skills tab. Attributes now show that way too (with their always-on bonuses, the switchable ones in brackets).
+- A bonus limited to a specialization (`+2 dice on climbing tests`) is added to that specialization's pool when the
+  runner has it, else to the skill's bracketed total.
+- Tests the book names by activity are stored as that activity's skill (grappling: Close Combat; escaping bonds,
+  balance: Athletics; haggling: Influence …), from the core rulebook's skill descriptions, with the specialization when
+  the activity is one.
+- A spell's or complex form's effect says whom it affects: the caster (counted while sustained, in brackets) or its
+  target(s) (stored on the spell, never counted on the caster); a sentence naming neither is the caster's, in both
+  games (owner decision 2026-10-10). A spell's bonus per net hit is shown, not applied.
+- Conditional effects ("while in the Matrix", "in darkness") count in the bracketed total like switchable ones, in both
+  games, and every bracketed, caster or target effect has a note naming its switch, condition or whom it affects: on
+  hover over an attribute or pool (Attributes and Skills tabs), in Review's new "What its effects do" list and under
+  the sheets' Effects or Notes.
+- An item whose description the book prints under a rule named for it (`Move-By-Wire (Rating 1-2)`, `Stealthlink
+  Upgrade`, `ProCams and SmartCams`) reads that text.
+- A statement a section makes of all its items applies to each (`Each cyberlimb adds one box to the Physical Condition
+  Monitor`: arms, legs, skull and torso; partial limbs are excepted). A variant priced from its base item (Body Shop's
+  transgenics: `Transgenic gills`) works as that bioware and uses its effects.
+- More phrasings read: several attributes raised together, Edge costs (`the cost of Edge actions … are increased by
+  one`, `Edge Boosts cost 1 less in cybercombat`), bonus Edge added to a pool, an action named by the test it is (`Edit
+  File`), Power Points, an artificial skill at the hardwire's rating, `the Magic attribute at 3`, a threshold lowered
+  (`subtracts its rating from the threshold of Toxin Resistance tests`), dice equal to a quality's level, a reduction
+  by the item's rating. What others' tests against you do (`Hearing tests to listen for your passage`) is not the
+  entry's. A variant printed under a bold label (`Endosymbionts (Halcyon)`) reads only its own paragraph.
+- Vehicle design options keep their Design Point cost (`dp`, `2 x Armor Rating`) as a cost, for a designer later.
+- Descriptions the effects rely on: one cut at a page break with a table between its halves gets its rest back
+  (Cyberjack Boosters, Light emitters); a mentor spirit's Advantages and Disadvantages stay with it; the Companion's
+  metagenic qualities each have their own text instead of the whole list's; a variant row gets the paragraph the book
+  prints for it under its parent (Genotype Enhancement (NeoElastian)).
+- The Foundry export carries every effect (with how it's turned on, its condition, its specialization and whom it
+  affects) and every link, and both totals: `derived` (always-on) and `derivedOn` (switchable ones on), an attribute's
+  `switched`; the condition monitors take Stun and Overflow bonuses.
+
+**Shadowrun Anarchy 2.0: machine-readable effects**
+- What a narrative effect does is now an effect of its own kind (CRB p.59), at rating 0 so every book rating stays as
+  printed: Advantage on a Test (or for 1 Edge), Disadvantage on a Test, no Disadvantage (a vision), a Disadvantage
+  inflicted on someone else, an automatic effect for 1 Edge, gaining Edge, a Test it allows, ignoring wound modifiers,
+  social armor, Matrix armor, a risk dice minimum, a forced High or Extreme Risk, an extra sustained complex form, the
+  last Essence point counting double, magic spared the first Essence point lost, a wound it causes, and an immunity.
+  Every catalog has them (the Amp Builder offers them); a data file may define its own.
+- Every effect says how it is turned on (`switch`: wireless, activated, sustained, conditional; none: always on), when it
+  holds (`when`), whether the importer is sure of it (`confidence="low"`) and the entry it is given by (`from`): the same
+  rule as Shadowrun 6 (one shared module). A low-confidence effect is shown and not counted. A switchable one
+  (wireless, activated, sustained: a drug's dose, a sustained spell) or one that holds only sometimes (`when`: in
+  darkness) counts only in the bracketed total: a total is printed as the books print it, without them and in brackets
+  with them, `RR 1 (2)`, on the sheets, the Skills tab, the receipt and in the export, each named in a note (the hover
+  on a pool's Risk Reduction, Review's What its effects do, the sheet) (owner, 2026-10-10). A player's or GM's own effects override the book's: the Amp Builder
+  and the Gear tab have "How it is turned on" and "Counts" for each.
+- Items (spells, complex forms, plain gear) and metatypes (the racial quality) carry effects too: a drug's Disadvantage,
+  a spell's Advantage or armor (by hits: shown), Low-light vision. A spell's or complex form's say whom each affects,
+  read from its sentence (`affects`: the caster, else its subject or targets): the caster's count on the caster while
+  sustained (in brackets); a target's stay on the spell, marked "affects target(s)".
+- The importer reads them as general rules from every clause (importer/effects.py): Advantage and Disadvantage on the
+  Tests a clause names (skills, specializations, attribute-based Tests), a dose's `Duration:` (activated), a condition
+  (`when …`, `while in VR`, `once the effects fade away`), a value by hits (low confidence), and effects given by
+  reference (`like an elf`, `acts exactly the same way as …`, `identical to the Initiative Enhancement Amps`). It also
+  reads `DV+1`, `+1 Edge point per VR scene`, `+1 action per VR narration`, a range set or increased, `+1 Mental armor`,
+  `vehicle armor by +N`, `RR 1 on all …` and an extra Light damage box. A Test named by what it does (`Tests involving
+  speed`, `social Tests`) is every skill it uses. Misprints with a clean reading are read (a doubled parenthesis; `RR 1
+  Resonance (tasking)` as Tasking); the rest are suggested for the edits layer.
+- An effect the book states but its printed rating doesn't pay for (Novacoke's RR on Perception (Social), Smashing
+  Blow's DV) is added `unpriced`: it applies, the rating and price stay as printed, and the import report lists it.
+- A bonus limited to a specialization is added to its pool when the runner has the specialization, else its Risk Reduction counts in
+  the skill's bracketed total, marked "RR (spec.)" with a note naming the specialization (owner, 2026-10-10).
+- Effect coverage (entries whose book text states a modifier, with every one read into an effect): 482 of 704 (68%)
+  before, 684 (97%) now.
+- Derived values, sheets and Review: a dice pool lists the Advantages and Disadvantages on its Test (Adv., Adv. for 1
+  Edge, Dis.; never dice); social damage thresholds (Willpower + social armor); Matrix armor on the Matrix thresholds;
+  sustained spells and complex forms (1 without a Disadvantage, 2 at most, CRB p.178, plus each extra); extra summoned
+  spirits; wound modifiers ignored; a forced Risk; VR, rigger command console drones and a vehicle control rig;
+  Essence's death and magic thresholds moved by the qualities that move them. Review lists what the runner's effects do.
+- Foundry export: each effect's line, `applied`, `switch`, `when`, `confidence` and `from`; an amp's shared switch; sra2's
+  feat counts (`sustainedSpells`, `sustainedForms`, `summonedSpirits`, `riggerConsoles`, `vehicleControlRig`); Matrix
+  armor in `matrixThreshold`; items' and metatypes' effects; a pool's notes, the runner's effects block and its social
+  thresholds; `switched`, the totals with the switchable effects on; `unpriced` and `affects`. `rr` and `bonuses` count
+  the effects that apply. sra2 has no Foundry Active Effects (the Foundry importer's feat/effects reads all of this).
+- Book sample runners: Drakk's and Neon Ivy's drugs (Jazz, Kamikaze, Bliss…) are activated, so their Risk Reduction and
+  initiative now print in brackets; every other number is unchanged. Each gains the effects its lines and racial quality
+  state (Low-light or Thermographic vision, a decker's Advantage on Cybercombat, a drug's ignored wound modifiers and
+  forced Risk) and the RR its amps give on specializations it lacks, in the skill's bracket.
+
 ## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

@@ -8,7 +8,7 @@ import { MAGIC_KINDS } from '../engine/data'
 import { MAGIC_KIND_LABELS } from '../model/character'
 import { useSr6Editor } from '../ui/editor'
 import type { SheetArt } from './BookSheet'
-import { allSkills, band, runnerView } from './view'
+import { allSkills, band, br, poolOn, runnerView } from './view'
 
 /** a pointy-topped hexagon with a value (and a small line under it) inside */
 function Hex({ v, sub, className }: { v?: ReactNode; sub?: ReactNode; className?: string }) {
@@ -30,7 +30,8 @@ export function HexSheet({ art }: { art: SheetArt }) {
   const ctx = useSr6Editor(), { ch, data, d } = ctx
   const b = ch.build, k = MAGIC_KINDS[b.magic]
   const v = runnerView(ctx), { lines, nameOf, attrsOf } = v
-  const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
   const skills = allSkills(d, data), rows = Math.max(6, Math.ceil(skills.length / 3))
   const mr = k.resonance ? d.attrs.res : b.magic !== 'mundane' ? d.attrs.mag : undefined
   const attrs: [string, { natural: number; augmented: number } | undefined][] = [['BOD', d.attrs.bod], ['AGI', d.attrs.agi], ['REA', d.attrs.rea],
@@ -55,18 +56,18 @@ export function HexSheet({ art }: { art: SheetArt }) {
         <div className="x-attrs">{attrs.map(([l, x]) => <div key={l}><span>{l}</span>
           <Hex v={x?.natural} sub={x && x.augmented !== x.natural ? `(${x.augmented})` : undefined} /></div>)}</div>
         <div className="x-three">
-          <div><F l="Initiative" v={init(d.initiative)} /><F l="Matrix Initiative" /><F l="Astral Initiative" v={init(d.astralInit)} /></div>
-          <div><F l="Composure" v={d.composure} /><F l="Judge Intentions" v={d.judgeIntentions} /><F l="Memory" v={d.memory} /></div>
-          <div><F l="Lift/Carry" v={d.liftCarry} /><F l="Movement" /><F l="Defense Rating" v={d.defenseRating} /></div>
+          <div><F l="Initiative" v={init(d.initiative, d.on.initiative)} /><F l="Matrix Initiative" /><F l="Astral Initiative" v={init(d.astralInit, d.on.astralInit)} /></div>
+          <div><F l="Composure" v={br(d.composure, d.on.composure)} /><F l="Judge Intentions" v={br(d.judgeIntentions, d.on.judgeIntentions)} /><F l="Memory" v={br(d.memory, d.on.memory)} /></div>
+          <div><F l="Lift/Carry" v={br(d.liftCarry, d.on.liftCarry)} /><F l="Movement" /><F l="Defense Rating" v={br(d.defenseRating, d.on.defenseRating)} /></div>
         </div>
       </section>
 
       <section aria-labelledby="x-skills"><Title id="x-skills">Skills</Title>
         <ul className="x-skills" style={{ gridTemplateRows: `repeat(${rows}, auto)` }}>
           {skills.map(p => <li key={p.skill}><span>{p.label} ({p.attr.toUpperCase()})
-            {p.spec && <span className="x-small"> {p.spec}{p.specDp !== undefined && ` ${p.specDp}`}</span>}
-            {p.expertise && <span className="x-small"> {p.expertise}*{p.expertiseDp !== undefined && ` ${p.expertiseDp}`}</span>}</span>
-            <i>[<b>{p.rank}</b>]</i><i className="x-pool">[<b>{p.dp ?? '—'}</b>]</i></li>)}
+            {p.spec && <span className="x-small"> {p.spec}{p.specDp !== undefined && ` ${br(p.specDp, poolOn(d, p.skill)?.specDp)}`}</span>}
+            {p.expertise && <span className="x-small"> {p.expertise}*{p.expertiseDp !== undefined && ` ${br(p.expertiseDp, poolOn(d, p.skill)?.expertiseDp)}`}</span>}</span>
+            <i>[<b>{p.rank}</b>]</i><i className="x-pool">[<b>{br(p.dp, poolOn(d, p.skill)?.dp) ?? '—'}</b>]</i></li>)}
           {blanks(skills.length, rows * 3, i => <li key={`b${i}`} aria-hidden="true"><span /><i>[<b /> ]</i><i className="x-pool">[<b /> ]</i></li>)}
         </ul>
       </section>

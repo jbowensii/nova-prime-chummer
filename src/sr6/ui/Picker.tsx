@@ -127,7 +127,7 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
   )
 }
 
-const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'physical' ? 'Physical monitor boxes' : t === 'skill' ? 'Skill dice pool' : ATTR_NAMES[t])
+const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'physical' ? 'Physical monitor boxes' : t === 'stun' ? 'Stun monitor boxes' : t === 'overflow' ? 'Damage Overflow boxes' : t === 'skill' ? 'Skill dice pool' : ATTR_NAMES[t])
 /** `+1 Agility`, `+2 Firearms dice` (a skill by its catalog name) */
 export const bonusText = (x: Bonus, data: Pick<Sr6Data, 'skills'>) => `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${
   x.target === 'skill' ? `${data.skills[x.skill ?? '']?.name ?? x.skill ?? 'skill'} dice` : targetName(x.target)}${x.perRating ? ' × rating' : ''}`

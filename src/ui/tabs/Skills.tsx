@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { knowledgeList, skillCost, type KnowledgeRow } from '../../engine'
+import { bracketed, knowledgeList, poolMarks, rrNotes, skillCost, type KnowledgeRow } from '../../engine'
 import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Stepper } from '../bits'
@@ -79,8 +79,8 @@ export function SkillsTab() {
                 <td><AnarchyRef kind="skills" id={sk.id}><b>{sk.name}</b></AnarchyRef>{sk.requires && <span className="muted"> ({sk.requires === 'awakened' ? 'Awakened' : 'cyberdeck'})</span>}</td>
                 <td><Stepper label={sk.name} value={r} min={0} max={8} onChange={to => setRating(sk.id, to)} /></td>
                 <td>{sk.attr.toUpperCase()}{sk.alt && <span className="muted">/{sk.alt.toUpperCase()}</span>}</td>
-                <td className="num">{base.map(p => p.dp).join(' / ')}</td>
-                <td className="num">{main?.rr || ''}</td>
+                <td className="num">{base.map(p => p.dp).join(' / ')}{main && poolMarks(main).map((m, j) => <span key={j} className="muted small" title={m.title}> {m.mark}</span>)}</td>
+                <td className="num" title={main ? rrNotes(d, main).join('\n') || undefined : undefined}>{main && (s => s !== undefined && s !== main.rr ? bracketed(main.rr, s) : main.rr || '')(d.switched?.pools[d.pools.indexOf(main)]?.rr)}</td>
                 <td className="num hide-sm">{r < 8 ? fmt(skillCost(c.pricing, r, r + 1)) : ''}</td>
               </tr>,
               // a specialization on a skill at rating 0 too (Review's spec.noSkill error)
@@ -94,7 +94,7 @@ export function SkillsTab() {
                         return (
                           <span key={sp} className={`chip${custom ? ' custom' : ''}`}>
                             {/* (a specialization's card: its skill's, which lists the book's specializations) */}
-                            <AnarchyRef kind="skills" id={custom ? undefined : sk.id}>{sk.specs.find(s => s.id === sp)?.name ?? sp.slice(7)}</AnarchyRef> {pool && <span className="muted">{pool.dp}{pool.rr ? ` RR${pool.rr}` : ''}</span>}
+                            <AnarchyRef kind="skills" id={custom ? undefined : sk.id}>{sk.specs.find(s => s.id === sp)?.name ?? sp.slice(7)}</AnarchyRef> {pool && <span className="muted">{pool.dp}{pool.rr ? ` RR${pool.rr}` : ''}{poolMarks(pool).map(m => ` ${m.mark}`).join('')}</span>}
                             <button aria-label={`Remove ${sp}`} onClick={() => removeSpec(sk.id, sp)}>×</button>
                           </span>
                         )

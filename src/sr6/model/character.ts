@@ -3,6 +3,7 @@
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
 import type { RunnerRule } from '../engine/creation'
 import type { SampleCorrection } from '../engine/samplefix'
+import { EFFECT_SWITCHES, type EffectSwitch } from '../../engine/effects'
 import { newId, type Character, type Override } from '../../model/types'
 import type { Sr6Entry, Sr6Kind } from './types'
 
@@ -28,18 +29,25 @@ export type CpPool = 'attribute' | 'skill' | 'adjustment' | 'resources' | 'power
 export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resources', 'powerPoints', 'spells', 'complexForms']
 
 /** What a ware, power or item adds, entered by the player (or read from its catalog entry's effects, budgets.ts
- *  lineBonuses): an attribute, initiative dice, Defense Rating (dermal plating), Physical condition monitor boxes (a
- *  cyberlimb's, CRB p. 288) or a skill's dice pool (skill: its catalog id). perRating: × the line's rating. */
-export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'skill'; skill?: string; value: number; perRating?: true
-  /** only on some tests (`sound-based Con tests, wireless`): shown with the pool, never added to it (owner rule D3) */
+ *  lineBonuses): an attribute, initiative dice, Defense Rating (dermal plating), Physical or Stun condition monitor boxes
+ *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes or a skill's dice pool (skill: its catalog id). perRating: × the
+ *  line's rating. */
+export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill'; skill?: string; value: number; perRating?: true
+  /** only on some tests or situations (`sound-based Con tests`): in the bracketed total (owner decision 2026-10-10) */
   when?: string
+  /** only on the tests of a specialization (`Climbing`): added to that specialization's pool when the runner has it, else
+   *  in the skill's bracketed total (owner decision 2026-10-10) */
+  spec?: string
+  /** a spell's or complex form's: on its caster (while sustained) or its target(s) (never counted on the caster) */
+  affects?: 'caster' | 'target'
   /** how it is turned on (none: always on, folded into a stat block's printed number): a wireless bonus, ware or a power
-   *  activated (released at will), a sustained one, or one holding on some tests only. A book prints a switchable bonus in
-   *  brackets, `4(5)` (owner, 2026-10-10). */
+   *  activated (released at will), a sustained one, or one holding on some tests only: counted in the bracketed total, as
+   *  a book prints a switchable bonus in brackets, `4(5)` (owner, 2026-10-10). */
   switch?: BonusSwitch }
-export type BonusSwitch = 'wireless' | 'activated' | 'sustained' | 'conditional'
-export const BONUS_SWITCHES: BonusSwitch[] = ['wireless', 'activated', 'sustained', 'conditional']
-export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'skill']
+/** the switch both games' effects share (src/engine/effects.ts) */
+export type BonusSwitch = EffectSwitch
+export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
+export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'stun', 'overflow', 'skill']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']

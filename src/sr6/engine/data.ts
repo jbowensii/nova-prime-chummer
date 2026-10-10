@@ -91,6 +91,8 @@ export interface Sr6Data extends CreationCatalog {
   grades: Record<string, Sr6GradeView>
   /** any catalog entry, for what has no typed view (gear, spells…) */
   entry(kind: Sr6Kind, id: string): Sr6Entry | undefined
+  /** an entry by its printed name (normName), in `kind` or else any kind (an effect's link, effects.ts) */
+  named?(name: string, kind?: Sr6Kind): Sr6Entry | undefined
   /** the categories' records (categories.ts categoryIndex): an accessory category's hosts */
   categories: Map<string, Sr6Entry[]>
   /** names that didn't resolve (data.unresolved), numbers that didn't read (data.bookValue) and the entries' issues
@@ -206,6 +208,18 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   for (const map of Object.values(c.entries)) for (const e of map.values()) for (const x of e.issues ?? [])
     problems.push({ code: 'catalog.issue', severity: 'warning', path: `${e.kind}.${e.id}`, message: issueNote(e.name, x), source: e.source, page: x.page ?? e.page })
 
-  return { priorities, metatypes, skills, qualities, powers, metamagics, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id),
+  let nameIndex: Map<string, Sr6Entry> | undefined
+  const named = (name: string, kind?: Sr6Kind) => {
+    if (!nameIndex) {
+      nameIndex = new Map()
+      for (const [k, map] of Object.entries(c.entries)) for (const e of map.values()) {
+        const n = normName(e.name)
+        if (!nameIndex.has(`${k}/${n}`)) nameIndex.set(`${k}/${n}`, e)
+        if (!nameIndex.has(`/${n}`)) nameIndex.set(`/${n}`, e)
+      }
+    }
+    return nameIndex.get(`${kind ?? ''}/${normName(name)}`) ?? (kind ? undefined : nameIndex.get(`/${normName(name)}`))
+  }
+  return { priorities, metatypes, skills, qualities, powers, metamagics, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id), named,
     categories: categoryIndex(all('categories')) }
 }

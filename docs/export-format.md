@@ -58,7 +58,9 @@ finalized runner (before that, what is left of the build budget).
 | `thresholds` | `{ physicalNone, physicalMain, physicalAlt, mental, matrix? }`, see below |
 | `armor` | `{ main, alt }`: the armor rating with the main and the alternative armor worn (authoritative, see Risk Reduction and bonuses) |
 | `initiative` | `{ level, realm?, source }`, or `null` |
-| `pools` | `[{ skill, spec?, label, attr, dp, rr }]`: dice pool and Risk Reduction per skill |
+| `pools` | `[{ skill, spec?, label, attr, dp, rr, notes? }]`: dice pool and Risk Reduction per skill (always-on effects); `notes` the Advantages and Disadvantages the runner's effects give on that Test, `[{ ref, text, from, how? }]` (`ref` `advantage`, `edge-advantage` or `disadvantage`, never dice; `rr-spec`: Risk Reduction limited to a specialization the runner doesn't have, beside its skill) |
+| `switched` | optional, when the runner has switchable effects (wireless, activated, sustained): the same totals with them on, `{ monitor, thresholds, armor, initiative, pools: [{ rr, notes? }], weapons: [{ uid, dv }], effects }`, pools in the order of `pools`. The sheets print these in brackets, `RR 1 (2)`; every other total is without them |
+| `effects` | what the runner's effects do beyond the numbers: `{ sustain: { free, max, formsFree, formsMax }, extraSpirits, socialArmor, matrixArmor, ignoreWounds?, forcedRisk, vr?, rcc, vcr, list }`; `list` every narrative effect kind and every switchable, by-reference or uncounted effect, `[{ ref, text, from, fromId?, how, applied, rule, type }]` (`type` the amp's type, `item` or `metatype`) |
 | `narrative` | `{ keywords, dispositions, cues }` |
 | `background`, `notes` | free text |
 | `nuyen` | `{ balance }` |
@@ -70,7 +72,14 @@ finalized runner (before that, what is left of the build budget).
 `uid`, `type`, `typeName`, `name`, `canon`, `rating`, `essence`, `effects`, `rr`, `bonuses`; optionally `catalogId`,
 `source`, `page` (when the amp comes from a book), `item` (the uid of the linked item) and `vehicle` (the chassis catalog id), `description`.
 
-- `effects`: `[{ id, name, category, param?, value?, note? }]`, the picks as made. `value` is a number.
+- `effects`: `[{ id, name, category, param?, value?, note?, line, applied, unpriced?, switch?, when?, confidence?, from?, affects? }]`, the picks as made.
+  `value` is a number; `line` the effect as the sheet says it; `applied` false for one shown but not counted (low
+  confidence); a switchable or `when` one counts in `switched`'s totals only; `switch`, `when`, `confidence`, `from` as in the data files (data-format.md, How an effect
+  is turned on); `unpriced` an effect the printed rating doesn't pay for (it applies, at rating 0); `affects` a spell's or
+  complex form's: `caster` or `target`. `rr` and `bonuses` count the applied ones as the amp gives them switched on: an
+  amp whose effects are switchable says so with `switch`.
+- `switch` (optional): every counted effect is turned on that way (a drug's dose: `activated`); sra2's feat `active` is the
+  player's to set.
 - `rr` and `bonuses` are described under Risk Reduction and bonuses. On a runner, `bonuses` are attributed so that they add up to the sheet (see there).
 
 ### Vehicles
@@ -84,7 +93,8 @@ damage thresholds and `monitor` its own wound boxes; the rigger's `monitor` does
 ### Thresholds
 
 `thresholds` has the keys `physicalNone` (no armor worn), `physicalMain` (main armor), `physicalAlt` (alternative armor) and
-`mental` (all required), and `matrix` (only when the runner has a firewall: a cyberdeck or an emerged technomancer). Each is an
+`mental` (all required), `matrix` (only when the runner has a firewall: a cyberdeck or an emerged technomancer; Matrix armor
+added) and `social` (only with social armor: Willpower + social armor, CRB p.139). Each is an
 array of 3 integers: the thresholds for a light, a serious and an incapacitating hit.
 
 ### Items
@@ -94,6 +104,7 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 
 - `weapon`: `{ dv, dvText, ranges, specialist, ammo }`. `dv` is the derived damage value, `dvText` what the item prints.
 - `armor`: `{ value, over? }`.
+- `effects` (optional): what it does, as on amps: the runner's own when it has any, else the catalog item's.
 
 ## Book
 
@@ -103,10 +114,10 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 - `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`.
   A book amp's `rating` is computed as a non-first quality (`isFirstQuality` false), and a negative rating is clamped to 0.
   `printedRating`, when present, is what the book printed.
-- `items`: `id`, `source`, `page`, `canon`, `kind`, `name`, `specialist`, and optionally `category`, `armor`, `dv`, `ranges`, `description`.
+- `items`: `id`, `source`, `page`, `canon`, `kind`, `name`, `specialist`, and optionally `category`, `armor`, `dv`, `ranges`, `effects` (as on amps), `description`.
 - `vehicles`: `id`, `source`, `page`, `name`, `pilot`, `body`, `handling`, `speed`, `armor`, `mount`, optionally `flyingSpeed` (the chassis' flying speed, when it has one).
 - `skills`: every skill whose source is this book (core skills belong to the core book): `id`, `source`, `page`, `name`, `attr`, optionally `alt`, and `specs: [{ id, name, attr }]`.
-- `metatypes` (optional): `{ id, source, page, canon, name, edge, ranges, racialQuality }` for each metatype whose source is this book; `ranges` as on a runner's metatype.
+- `metatypes` (optional): `{ id, source, page, canon, name, edge, ranges, racialQuality, effects? }` for each metatype whose source is this book; `ranges` as on a runner's metatype.
 - `reference` (optional): the kinds the Foundry system has no document for, so the compendiums hold everything: `[{ kind, id, source, page, name, stats, description? }]`, `kind` `levels`, `packages`, `lifestyles`, `ampTypes`, `ampEffects` or `attributes`, `stats` the entry's printed numbers and words (`{ nuyen: 0, skillCap: 6 }`), `description` with descriptions on (a lifestyle's text). The module makes a reference journal per kind, a page per entry.
 - `characters` (optional): the book's own sample (pregen) characters, each exactly as a runner in a runners file (see Runner), descriptions per the file's `descriptions`. Only the imported book's samples (`custom/imported/samples.xml` rows whose `source` is this book, matched case-insensitively); the server's example sets are not books and never appear. Absent when the book has none.
 - `npcs` (optional): the book's NPCs, critters and spirits, each as a runner with its `npc` block. Absent when the book has none.
@@ -139,6 +150,10 @@ across all amps, so on a runner's amps:
 | `armor` | `armor-plus`, one per pick; uncapped raw counts |
 | `anarchy` | always 0 |
 | `initiative` | the highest of `init-1`, `init-2`, `init-3` picked (1, 2 or 3); on a runner, only the amp that gives the runner's `initiative` (the highest level, the first such amp on a tie) carries it, the others 0 |
+| `sustainedSpells`, `sustainedForms`, `summonedSpirits` | optional: `sustain-spell`, `sustain-form`, `summon-spirit`, one per pick (sra2's `sustainedSpellCount`, `sustainedComplexFormCount`, `summonedSpiritCount`) |
+| `riggerConsoles`, `vehicleControlRig` | optional: the drones `rcc` controls, and 1 for `vcr` (sra2's `riggerConsoleCount`, `hasVehicleControlWiring`) |
+
+`matrixThreshold` adds `matrix-armor`'s value. sra2 has no Foundry Active Effects: its feats carry these fields.
 
 The runner's `armor` totals and `thresholds` are authoritative: an amp's `armor` is a raw count, uncapped, and the sheet caps Armor +1
 across all amps and applies it by worn armor, so an importer takes armor from the totals, not by summing amps. A book amp has no

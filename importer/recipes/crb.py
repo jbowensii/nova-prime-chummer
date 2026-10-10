@@ -40,7 +40,8 @@ from xml.sax.saxutils import escape
 from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
-    SKILLS, ATTRS, Mapper, attr, core, dv_num, load_skills, reconcile, slug, specialist, weapon_base)
+    SKILLS, ATTRS, Mapper, attr, core, dv_num, fx_xml, item_effects, load_skills, parts as _parts, read_amp, reconcile, slug,
+    specialist, stated, unpriced_rows, weapon_base)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8", "Catalyst Game Labs", True
 SHA256 = ("4ae357ad00d8c9ad660a5595e9c100f1c9e7a105875f92bffc33111efc707a95",)  # the owner's v1.8 PDF
@@ -200,21 +201,6 @@ def clauses(text):
     return [c.strip() for c in out + [cur] if c.strip()]
 
 
-def _parts(s):
-    """Top-level parts of "A (x), B and C (y and z)": split at ",", " and ", " or " outside parentheses."""
-    out, cur, depth, k = [], "", 0, 0
-    while k < len(s):
-        depth += (s[k] == "(") - (s[k] == ")" and depth > 0)
-        sep = re.match(r",?\s+(?:and|or)\s+|,\s*", s[k:]) if depth == 0 else None
-        if sep:
-            out.append(cur)
-            cur, k = "", k + sep.end()
-            continue
-        cur += s[k]
-        k += 1
-    return [c.strip() for c in out + [cur] if c.strip()]
-
-
 def mapper_lines(clause):
     """A CRB clause in the phrasing the DHSA Mapper reads: "RR N Skill (spec)", one per skill and spec."""
     c = re.sub(r"\bRR on\b", "RR 1 on", clause)
@@ -238,15 +224,17 @@ def mapper_lines(clause):
 
 
 def map_clauses(mapper, cls):
-    """(effects, narrative clauses): a clause maps only if every Mapper line it becomes maps."""
-    fx, narrative = [], []
+    """(effects, narrative clauses): a clause maps only if every Mapper line it becomes maps (with how the clause turns
+    them on); one that doesn't stays narrative and adds the narrative effect kinds it states (rating 0)."""
+    fx, narrative, kinds, entry = [], [], [], "; ".join(cls)
     for c in cls:
         got = [mapper.effects(l) for l in mapper_lines(c)]
         if all(g is not None for g in got):
-            fx += [f for g in got for f in g]
+            fx += stated([f for g in got for f in g], c, entry)
         else:
             narrative.append(c)
-    return fx, narrative
+            kinds += mapper.rules(c, entry)
+    return fx + kinds, narrative
 
 
 def _cost(paren):
@@ -302,17 +290,20 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
             vfx.append(("flying", None, None, None))
         cls = [c for c in clauses(text) if c.lower() != "flying"]
     choose = re.search(r"\(choose (\d) out of", text)
-    if choose:  # mentor spirits: RR 1 on two of the listed skills/specs
-        fx, narrative = [("rr-spec", "", None, "choose from the list")] * int(choose.group(1)), [text]
-    else:
-        fx, narrative = map_clauses(mapper, clauses(text) if cls is None else cls)
-    fx = vfx + fx
-    refs = [f[0] for f in fx]
-    for lvl, pre in (("init-3", "init-2"), ("init-2", "init-1"), ("vr-hot", "vr-cold")):
-        if lvl in refs and pre not in refs:
-            fx.insert(0, (pre, None, None, None))
-            refs.insert(0, pre)
-    computed = reconcile(fx, narrative, core()["base"][atype], rating)
+
+    def read():
+        if choose:  # mentor spirits: RR 1 on two of the listed skills/specs
+            fx, narrative = [("rr-spec", "", None, "choose from the list")] * int(choose.group(1)), [text]
+        else:
+            fx, narrative = map_clauses(mapper, clauses(text) if cls is None else cls)
+        fx = vfx + fx
+        refs = [f[0] for f in fx]
+        for lvl, pre in (("init-3", "init-2"), ("init-2", "init-1"), ("vr-hot", "vr-cold")):
+            if lvl in refs and pre not in refs:
+                fx.insert(0, (pre, None, None, None))
+                refs.insert(0, pre)
+        return fx, narrative, reconcile(fx, narrative, core()["base"][atype], rating)
+    fx, narrative, computed = read_amp(mapper, read, rating)
     return {"id": slug(name), "name": name, "type": atype, "rating": rating, "page": page, "item": item,
             "vehicle": vehicle, "mod": False, "text": text.strip(" ,;"), "computed": computed, "fx": fx}
 
@@ -329,11 +320,14 @@ def amps_and_gear(md, mapper):
                 continue
             mod, a = re.search(r"Amp Rating ([+-]\d+)", paren), AMP.search(paren)
             if mod and "CYBERDECK" in title:  # deck programs and components: add-ons to a cyberdeck Amp
-                fx, narrative = map_clauses(mapper, clauses(rest))
                 rating = int(mod.group(1))
+
+                def read(rest=rest, rating=rating):
+                    fx, narrative = map_clauses(mapper, clauses(rest))
+                    return fx, narrative, reconcile(fx, narrative, 0, rating, negative_ok=rating < 0)
+                fx, _, computed = read_amp(mapper, read, rating)
                 amps.append({"id": "mod-" + slug(name), "name": name, "type": "cyberdeck", "rating": rating, "page": page,
-                             "item": "", "vehicle": None, "mod": True, "text": rest, "fx": fx,
-                             "computed": reconcile(fx, narrative, 0, rating, negative_ok=rating < 0)})
+                             "item": "", "vehicle": None, "mod": True, "text": rest, "fx": fx, "computed": computed})
                 continue
             if not a or a.group("kind").lower() not in KIND:
                 continue
@@ -601,11 +595,14 @@ def _pdf(path):
 def _extract(md, report, spells_only=False, pdf=None):
     spells, amps, gear, texts, ids = [], [], [], [], set()
     spell_list = spell_rows(md)
+    mapper = Mapper({} if spells_only else load_skills(dhsa_specs=False)[1])
     for page, fam, names, text in spell_list:
+        # what a spell does (its Advantage, armor, initiative): sustained ones are marked so ("(enhancement, S)")
+        fx = fx_xml(item_effects(mapper, re.sub(r"\((?:[\w ]+,\s*)?[SIP]\)", " ", text), bool(re.search(r"[(,]\s*S\)", text)), spell=True))
         for name in names:
             sid = "spell-" + slug(name)
             spells.append(f'  <item id="{sid}" kind="spell" category="{fam}" source="{ID}" page="{page}">'
-                          f'<name>{escape(name)}</name><text></text></item>')
+                          f'<name>{escape(name)}</name>{fx}<text></text></item>')
             texts.append(f'  <text of="items" id="{sid}">{escape(text)}</text>')
 
     def uid(base):
@@ -616,7 +613,6 @@ def _extract(md, report, spells_only=False, pdf=None):
         ids.add(s)
         return s
 
-    mapper = Mapper({} if spells_only else load_skills(dhsa_specs=False)[1])
     rows, items, samples, sample_rows, npcs = [], [], [], [], []
     if not spells_only:
         rows, items = amps_and_gear(md, mapper)
@@ -634,7 +630,8 @@ def _extract(md, report, spells_only=False, pdf=None):
         if r["computed"] != r["rating"]:
             report.append({"kind": "rating-mismatch", "id": aid, "page": r["page"], "type": r["type"],
                            "printed": r["rating"], "computed": r["computed"]})
-        fx = "".join(f'<effect ref="{f[0]}"{attr("param", f[1])}{attr("value", f[2])}{attr("note", f[3])}/>' for f in r["fx"])
+        fx = fx_xml(r["fx"])
+        report.extend(unpriced_rows(aid, r["page"], r["fx"]))
         amps.append(f'  <amp id="{aid}" type="{r["type"]}" printedRating="{r["rating"]}"{attr("vehicle", r["vehicle"])}'
                     f'{attr("mod", "true" if r["mod"] else "")} source="{ID}" page="{r["page"]}"><name>{escape(r["name"])}</name>'
                     f'{r["item"]}{fx}<narrative></narrative></amp>')
@@ -643,7 +640,7 @@ def _extract(md, report, spells_only=False, pdf=None):
     for g in items:
         gid = uid("gear-" + slug(g["name"]))
         gear.append(f'  <item id="{gid}" kind="gear" category="{escape(g["category"])}" source="{ID}" page="{g["page"]}">'
-                    f'<name>{escape(g["name"])}</name><text></text></item>')
+                    f'<name>{escape(g["name"])}</name>{fx_xml(item_effects(mapper, g["text"]))}<text></text></item>')
         if g["text"]:
             texts.append(f'  <text of="items" id="{gid}">{escape(g["text"])}</text>')
     rules = []

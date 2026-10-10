@@ -11,7 +11,7 @@ import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName } from '../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
-import { allSkills, band, PICKS, runnerView } from './view'
+import { allSkills, attrShown, band, br, PICKS, poolOn, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 function Panel({ id, title, className = '', children }: { id: string; title: string; className?: string; children: ReactNode }) {
@@ -33,23 +33,24 @@ export function DossierSheet({ art }: { art: SheetArt }) {
   const skills = allSkills(d, data), half = Math.ceil(skills.length / 2)
   const mr = k.resonance ? 'res' as const : b.magic !== 'mundane' ? 'mag' as const : undefined
   const dice = d.initiative.dice
-  const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
   const quals = b.qualities.map(q => ({ q, x: data.qualities[q.id] }))
   const qual = ({ q, x }: (typeof quals)[number]) => <tr key={q.uid}><td>{x?.name ?? q.name ?? q.id}{x?.perLevel && ` ${q.level}`}
     {(q.free || q.note) && <span className="d-small"> {[q.free && 'metatype', q.note].filter(Boolean).join(', ')}</span>}</td></tr>
   const pos = quals.filter(x => !x.x || x.x.positive), neg = quals.filter(x => x.x && !x.x.positive)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <span className="d-small"> + {x.accessories.map(nameOf).join(', ')}{v.host(x) && ` (${v.host(x)})`}</span>
-  const attrRows: [string, ReactNode, ReactNode][] = [...CORE_ATTRS, 'edg' as const, ...(mr ? [mr] : [])].map(a => [ATTR_NAMES[a], d.attrs[a].natural, <b>{d.attrs[a].augmented}</b>])
+  const attrRows: [string, ReactNode, ReactNode][] = [...CORE_ATTRS, 'edg' as const, ...(mr ? [mr] : [])].map(a => [ATTR_NAMES[a], d.attrs[a].natural, <b>{attrShown(d, a)}</b>])
   // CRB: a Minor Action, plus one per initiative die
   const derived: [string, ReactNode, ReactNode][] = [['Minor Actions', dice === null ? '' : 1 + dice, <b>{dice === null ? '' : 1 + dice}</b>],
-    ['Initiative', d.initiative.base, <b>{init(d.initiative)}</b>], ['Initiative (Matrix)', '', ''],
-    ['Initiative (Astral)', d.astralInit?.base, <b>{init(d.astralInit)}</b>], ['Composure', d.composure, <b>{d.composure}</b>],
+    ['Initiative', d.initiative.base, <b>{init(d.initiative, d.on.initiative)}</b>], ['Initiative (Matrix)', '', ''],
+    ['Initiative (Astral)', d.astralInit?.base, <b>{init(d.astralInit, d.on.astralInit)}</b>], ['Composure', d.composure, <b>{br(d.composure, d.on.composure)}</b>],
     ['Judge Intentions', d.judgeIntentions, <b>{d.judgeIntentions}</b>], ['Memory', d.memory, <b>{d.memory}</b>], ['Lift/Carry', d.liftCarry, <b>{d.liftCarry}</b>]]
   const skillTable = (rows: typeof skills, key: string) => <table key={key} className="d-skills">
     <thead><tr><th>Skill</th><th>Attr.</th><th>Rtg</th><th>Pool</th><th>Notes</th></tr></thead>
-    <tbody>{pad(rows.map(p => <tr key={p.skill}><td>{p.label}</td><td>{p.attr.toUpperCase()}</td><td>{p.rank}</td><td><b>{p.dp ?? '—'}</b></td>
-      <td className="d-small">{[p.spec && `${p.spec}${p.specDp !== undefined ? ` ${p.specDp}` : ''}`,
-        p.expertise && `${p.expertise}*${p.expertiseDp !== undefined ? ` ${p.expertiseDp}` : ''}`].filter(Boolean).join(', ')}</td></tr>), 10, 5)}</tbody></table>
+    <tbody>{pad(rows.map(p => <tr key={p.skill}><td>{p.label}</td><td>{p.attr.toUpperCase()}</td><td>{p.rank}</td><td><b>{br(p.dp, poolOn(d, p.skill)?.dp) ?? '—'}</b></td>
+      <td className="d-small">{[p.spec && `${p.spec}${p.specDp !== undefined ? ` ${br(p.specDp, poolOn(d, p.skill)?.specDp)}` : ''}`,
+        p.expertise && `${p.expertise}*${p.expertiseDp !== undefined ? ` ${br(p.expertiseDp, poolOn(d, p.skill)?.expertiseDp)}` : ''}`].filter(Boolean).join(', ')}</td></tr>), 10, 5)}</tbody></table>
   const picks = PICKS.map(([kind, label]) => [label, b.picks.filter(x => x.kind === kind)] as const).filter(([, xs]) => xs.length)
   const date = new Date().toLocaleDateString()
 
@@ -128,7 +129,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
           <table><thead><tr><th>Armor</th><th>Rating</th><th>Notes</th></tr></thead>
             <tbody><tr><td>Body</td><td>{A('bod')}</td><td /></tr>
               {pad(lines('armor').map(x => <tr key={x.uid}><td>{nameOf(x)}{acc(x)}</td><td>{attrsOf(x).defense}</td><td>{[x.worn ? 'Worn' : 'Not worn', x.note].filter(Boolean).join(', ')}</td></tr>), 4, 3)}
-              <tr className="d-total"><th scope="row">Defensive rating</th><td>{d.defenseRating}</td><td /></tr></tbody></table>
+              <tr className="d-total"><th scope="row">Defensive rating</th><td>{br(d.defenseRating, d.on.defenseRating)}</td><td /></tr></tbody></table>
         </Panel>
       </div>
 
@@ -173,8 +174,9 @@ export function DossierSheet({ art }: { art: SheetArt }) {
             <td>{a.topSpeed}</td><td>{a.body}</td><td>{a.armor}</td><td>{a.pilot}</td><td>{a.sensor}</td></tr> })}</tbody></table>
       </Panel>}
 
-      {(ch.identity.background || ch.identity.notes) && <Panel id="d-notes" title="Notes">
-        {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}</Panel>}
+      {(ch.identity.background || ch.identity.notes || v.effectNotes.length > 0) && <Panel id="d-notes" title="Notes">
+        {ch.identity.background && <p>{ch.identity.background}</p>}{ch.identity.notes && <p>{ch.identity.notes}</p>}
+        {v.effectNotes.length > 0 && <ul className="d-small">{v.effectNotes.map((x, i) => <li key={i}><b>{x.from}:</b> {x.text}</li>)}</ul>}</Panel>}
 
       <footer className="d-foot">{date}, created with Chummer</footer>
     </article>

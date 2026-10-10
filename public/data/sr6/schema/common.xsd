@@ -102,6 +102,7 @@
              item it fits (target item:<field>) -->
         <xs:element name="effect" type="sr6:Effect"/>
         <xs:element name="test" type="sr6:Test"/>
+        <xs:element name="link" type="sr6:Link"/>
         <!-- a choice the entry offers (sr6:Choice): a quality's granted picks, a life module's mixed points, a power's
              sense or skill, a focus option, a fake licence's type -->
         <xs:element name="choice" type="sr6:Choice"/>
@@ -301,24 +302,58 @@
     <xs:attribute name="untrained" type="sr6:Bool" use="required"/>
   </xs:complexType>
 
-  <!-- a quality's effects (importer/sr6/effects.py): what its prose states, as a path from the character to a target
-       (attr:<abbr>, skill:<id>, derived:<name>; an accessory's item:<field> on the item it fits, `item:ar` a value a
-       band "0,1,1,0,0"), an operator (add; edge-cost: Edge boosts and actions on tests with the
-       target cost that much more) and a value; confidence="low": read from a sentence that sets a condition, shown and
-       never applied. A test the quality calls for: skill + attribute (threshold). A choice it grants: count picks from
-       the catalog's qualities of one category (max: the most the list allows). -->
+  <!-- an entry's effects (importer/sr6/effects.py, docs/sr6-data-format.md "Effects"): what its prose or the book's
+       tables state, as a target (attr:<abbr>, attr-max:<abbr>, skill:<id>, test:<type>, derived:<name>, matrix:<name>,
+       item:<field> (on an add-on: the item it fits; `item:ar` a value a band "0,1,1,0,0"), action:<name>,
+       resource:<name>), an operation and a value (a number; R: x the line's rating or level; R*N; or a formula over
+       attributes, shown only). confidence="low": read from a sentence that sets a condition, shown and never applied;
+       switch: how it is turned on; when: the condition's words (`magician`, `climbing`, `in VR`). A test the entry
+       calls for: skill + attribute (threshold). -->
   <xs:complexType name="Effect">
     <xs:attribute name="target" type="xs:string" use="required"/>
+    <!-- add (+N/-N); set (the value replaces it: an attribute maximum); edge (N bonus Edge on those tests); edge-cost
+         (Edge boosts and actions on them cost N more, -N less); edge-cost-set (an Edge action's new cost); no-edge (no
+         Edge may be spent on them); no-edge-gain (none gained); wild-die (one die a wild die); hits (N extra hits);
+         threshold (the tests' threshold moves by N: a toxin extractor's -R) -->
     <xs:attribute name="op" use="required"><xs:simpleType><xs:restriction base="xs:string">
-      <xs:enumeration value="add"/><xs:enumeration value="edge-cost"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="add"/><xs:enumeration value="set"/><xs:enumeration value="edge"/>
+      <xs:enumeration value="edge-cost"/><xs:enumeration value="edge-cost-set"/><xs:enumeration value="no-edge"/>
+      <xs:enumeration value="no-edge-gain"/><xs:enumeration value="wild-die"/><xs:enumeration value="hits"/>
+      <xs:enumeration value="threshold"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="value" type="xs:string" use="required"/>
+    <!-- low: read from a sentence the importer isn't sure of (a condition with no words, a formula per point of
+         something): shown, never applied -->
     <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
-    <!-- how it is turned on (none: always on): a wireless bonus, activated (at will, an action), sustained, or on some
-         tests only -->
+    <!-- how it is turned on (none: always on, in the total shown first): a wireless bonus, activated (at will, an
+         action, overdrive), sustained, or on some tests or situations only; a switchable one counts in the bracketed
+         total, `6 (9)` (owner decision 2026-10-10) -->
     <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/>
       <xs:enumeration value="conditional"/></xs:restriction></xs:simpleType></xs:attribute>
+    <!-- the condition's words (`while in the Matrix`) or a test the book names by activity (`escaping bonds`) -->
+    <xs:attribute name="when" type="xs:string"/>
+    <!-- the specialization a skill effect is limited to (`Climbing`): added to that specialization's pool when the
+         runner has it, else to the skill's bracketed total (owner decision 2026-10-10) -->
+    <xs:attribute name="spec" type="xs:string"/>
+    <!-- a spell's, ritual's or complex form's: whom it affects (owner decision 2026-10-10); caster: counted on the
+         caster while sustained; target: never on the caster -->
+    <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="caster"/><xs:enumeration value="target"/></xs:restriction></xs:simpleType></xs:attribute>
+  </xs:complexType>
+  <!-- another entry this one grants (rel grants: `gain the Built Tough quality`, `1 free level of Rapid Healing`, at
+       `level`) or works as (rel as: `the same result as a Personalized Grip`): the app uses that entry's effects, so a
+       later correction follows (owner decision 2026-10-10). name as printed; kind and ref (its id) when the book tells;
+       when: a mentor spirit's role. A variant priced from its base item (`Transgenic gills`, "than the base item") works
+       as that item. -->
+  <xs:complexType name="Link">
+    <xs:attribute name="rel" use="required"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="grants"/><xs:enumeration value="as"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="kind" type="sr6:Kind"/>
+    <xs:attribute name="ref" type="sr6:Id"/>
+    <xs:attribute name="level" type="xs:positiveInteger"/>
+    <xs:attribute name="when" type="xs:string"/>
   </xs:complexType>
   <xs:complexType name="Test">
     <xs:attribute name="skill" type="xs:string" use="required"/>
@@ -768,6 +803,8 @@
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string"/>
       <xs:attribute name="bp" type="xs:string"/>
+      <!-- its cost in Design Points as printed (`2 x Armor Rating`, `+5 x Grade`): a cost field, not an effect -->
+      <xs:attribute name="dp" type="xs:string"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="slots" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>

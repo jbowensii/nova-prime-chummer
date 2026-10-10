@@ -1,7 +1,7 @@
 // The fixer's receipt: every nuyen spent, the balance, and the numbers you need at the table.
 import { AnarchyRef } from './AnarchyRef'
 import { useEffect, useRef, useState } from 'react'
-import { activeEvents, itemCost, packageGuide, sinceFinalize, voidedIds } from '../engine'
+import { activeEvents, bracketed, itemCost, packageGuide, sinceFinalize, voidedIds } from '../engine'
 import type { Character, Pricing } from '../model/types'
 import { fmt, Line } from './bits'
 import { useEditor } from './editor'
@@ -78,9 +78,9 @@ export function Receipt() {
           {d.essenceEffects.magicHitsCancelled > 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>
             Cancels {d.essenceEffects.magicHitsCancelled} hit on magic Tests{d.essenceEffects.healingHitsCancelled ? `, ${d.essenceEffects.healingHitsCancelled} on healing` : ''}
           </div>}
-          {d.initiative && <Line label="Initiative" amount={`${d.initiative.level}${d.initiative.realm ? ` (${d.initiative.realm})` : ''}`} />}
+          {(d.initiative ?? d.switched?.initiative) && <Line label="Initiative" amount={`${bracketed(d.initiative?.level ?? '–', d.switched?.initiative?.level)}${(d.initiative ?? d.switched?.initiative)!.realm ? ` (${(d.initiative ?? d.switched?.initiative)!.realm})` : ''}`} />}
           {d.firewall != null && <Line label={d.emerged ? 'Living persona FW / Att' : 'Firewall / Attack'} amount={`${d.firewall} / ${d.attack}`} />}
-          {d.mentalProtection > 0 && <Line label="Mental armor" amount={d.mentalProtection} />}
+          {(d.mentalProtection > 0 || !!d.switched?.mentalProtection) && <Line label="Mental armor" amount={bracketed(d.mentalProtection, d.switched?.mentalProtection)} />}
         </div>
 
         <div className="block">

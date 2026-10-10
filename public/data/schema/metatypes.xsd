@@ -21,6 +21,8 @@
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
       <xs:element name="racialQuality" type="xs:string"/>
+      <!-- what the racial quality does (Low-light vision: no Disadvantage in the dark) -->
+      <xs:element name="effect" type="ca2:Effect" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="range" minOccurs="5" maxOccurs="5">
         <xs:complexType>
           <xs:attribute name="attr" type="ca2:Attr" use="required"/>

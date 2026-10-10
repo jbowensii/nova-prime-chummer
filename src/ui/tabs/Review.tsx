@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { activeEvents, canFinalize, finalize, reopen } from '../../engine'
+import { activeEvents, canFinalize, effectLines, finalize, reopen } from '../../engine'
 import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
 import { editHref, useEditor } from '../editor'
@@ -55,6 +55,17 @@ export function ReviewTab() {
           )
         })}
       </div>
+
+      {(d.effects.length > 0 || effectLines(d).length > 0) && <section aria-labelledby="review-effects">
+        <h3 id="review-effects">What its effects do</h3>
+        <ul className="effects">
+          {effectLines(d).map((x, i) => <li key={`l${i}`}>{x}</li>)}
+          {d.effects.filter(e => e.type !== 'item' && e.type !== 'metatype').map((e, i) => <li key={i} className={e.applied ? undefined : 'muted'}>
+            {e.text} <span className="muted">({e.from}{e.how ? `, ${e.how}` : ''})</span></li>)}
+        </ul>
+        <p className="muted small">A switchable effect, or one that holds only sometimes, counts in the bracketed totals, `1 (2)`; one read from a
+          sentence the importer isn’t sure of is listed but not counted: change it in the Amp Builder (or on the Gear tab for an item) to count it.</p>
+      </section>}
 
       {err && <p className="banner err" role="alert">{err}</p>}
       {!ch.npc && !ro && <><hr className="sep" />
