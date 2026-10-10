@@ -7,7 +7,7 @@
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
 import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { aptitudeSkills, attrMax, manySpecs, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
+import { aptitudeSkills, attrMax, manySpecs, powerCost, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
 import { flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
@@ -136,9 +136,11 @@ export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
 export function careerPowerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): { max: number; spent: number; left: number } {
   const k = MAGIC_KINDS[b.magic]
   // (Magic as Essence leaves it, as at creation: budgets.ts powerPoints)
-  const max = !k.powers ? 0 : k.paysPowers ? b.powerPointsBought : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
-  const spent = b.picks.filter(x => x.kind === 'adeptpowers')
-    .reduce((t, x) => { const v = data.powers[x.id]; return t + (v?.cost ?? 0) * (v?.perLevel ? x.level ?? 1 : 1) }, 0)
+  // (the Sixth World Companion's Alternate Mystic Adept, p. 148: half a point for each point of Magic raised)
+  const alt = k.paysPowers && !!flag(cr, 'alternateMysticAdept')
+  const max = !k.powers ? 0 : alt ? (b.powerPointsBought + Math.max(0, attrRating(b, 'mag', p) - p.magicRating(b))) / 2
+    : k.paysPowers ? b.powerPointsBought : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
+  const spent = b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => t + powerCost(data, x), 0)
   return { max, spent, left: Math.round((max - spent) * 100) / 100 }
 }
 
@@ -328,7 +330,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'convert': {
       if (!Number.isInteger(a.karma) || a.karma === 0) no('below-one')
-      if (a.karma > 0) { const n = a.karma * need('advance.karmaToNuyenRate'); return { label: `${a.karma} karma to ${fmt(n)}¥`, karma: a.karma, nuyen: -n } }
+      // the Sixth World Companion's Working for the Man and for the People (p. 153): optional, each its own switch
+      if (a.karma > 0) {
+        if (!flag(cr, 'workingForTheMan')) no('optional-rule-off')
+        const n = a.karma * need('advance.karmaToNuyenRate'); return { label: `${a.karma} karma to ${fmt(n)}¥`, karma: a.karma, nuyen: -n }
+      }
+      if (!flag(cr, 'workingForThePeople')) no('optional-rule-off')
       const rate = num(cr, 'advance.nuyenToKarmaRate') ?? no('optional-rule-off'), n = -a.karma * rate
       return { label: `${fmt(n)}¥ to ${-a.karma} karma`, karma: a.karma, nuyen: n }
     }

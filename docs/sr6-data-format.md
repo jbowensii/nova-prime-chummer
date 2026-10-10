@@ -707,8 +707,8 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |
 | Advancement | `advance.skillMax` | number | optional | Highest skill rank after creation (unset: no cap) |
 | Advancement | `advance.powerPoint` | number | optional | Karma per power point (mystic adepts) |
-| Advancement | `advance.karmaToNuyenRate` | number | optional | Nuyen per karma after creation (unset: not offered) |
-| Advancement | `advance.nuyenToKarmaRate` | number | optional | Nuyen per karma, nuyen to karma (optional rule; unset: off) |
+| Advancement | `advance.karmaToNuyenRate` | number | optional | Nuyen per karma after creation, with `workingForTheMan` on (the Sixth World Companion's Working for the Man, p. 153: 2,000) |
+| Advancement | `advance.nuyenToKarmaRate` | number | optional | Nuyen per karma, nuyen to karma, with `workingForThePeople` on (Working for the People, SWC p. 153: 2,000) |
 | Nuyen | `karmaToNuyenRate` | number | all | Nuyen per karma |
 | Nuyen | `karmaToNuyenRateInDebt` | number | all | Nuyen per karma with the in-debt quality |
 | Nuyen | `inDebtQuality` | quality id | all | In-debt quality |
@@ -784,6 +784,9 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Optional rules | `stackingAdvantage` | true/false | optional | The Sixth World Companion's Stacking Advantage (SWC p. 144, off): a lead of twice `arDrEdgeGap` gains 2 Edge, never more |
 | Optional rules | `strengthInCloseCombat` | true/false | optional | Rolling Strength instead of Agility in Close Combat (SWC p. 150, off): Close Combat's pool uses Strength, and Agility goes into the melee and unarmed Attack Ratings in Strength's place |
 | Optional rules | `highStrengthDamage` | true/false | optional | High Strength Adds to Damage (SWC p. 150, off): +1 to the unarmed and melee Damage Values from Strength `strengthDamageStep1` (7), +2 from `strengthDamageStep2` (10) |
+| Optional rules | `alternateMysticAdept` | true/false | optional | Alternate Mystic Adept (SWC p. 148, off): half a power point for each point of Magic given to powers and for each point of Magic raised past the priority's, at creation and after; Conjuring and Enchanting are errors |
+| Optional rules | `twentyQuestions`, `twentyQuestionsKarma` | true/false, number | optional | Twenty Questions (SWC p. 25, off): the karma (3) added to the starting karma |
+| Optional rules | `workingForTheMan`, `workingForThePeople` | true/false | optional | Working for the Man / for the People (SWC p. 153, off): karma to nuyen, nuyen to karma after creation, at the Advancement rates |
 | Optional rules | `expandedSpecializations` | true/false | optional | Expanded Specializations (SWC p. 153, off): any number of specializations a skill (`<skill specs>`), still one expertise; off, only Exotic Weapons takes several (CRB Hong Kong p. 95), and Review's `skill.oneSpec` flags the others |
 | Optional rules | `unrestrictedSkillRanks` | true/false | optional | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
 | Optional rules | `suprathyroidStacks` | true/false | optional | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |

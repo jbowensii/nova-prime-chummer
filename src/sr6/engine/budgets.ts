@@ -384,7 +384,11 @@ export function essenceBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules): Sr
 export function powerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Sr6Budgets['powerPoints'] {
   // (Magic as Essence leaves it: a point of Magic lost is a power point lost, CRB pp. 38, 156)
   const k = MAGIC_KINDS[b.magic], rating = Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
-  const max = !k.powers ? 0 : b.method === 'pointbuy' ? b.cp.powerPoints : k.paysPowers ? b.powerPointsBought : rating
+  // (the Sixth World Companion's Alternate Mystic Adept, p. 148: half a point a point of Magic, and half a point for each
+  // point of Magic raised past the priority's)
+  const alt = k.paysPowers && !!flag(cr, 'alternateMysticAdept')
+  const bought = alt ? (b.powerPointsBought + Math.max(0, attrRating(b, 'mag', p) - p.magicRating(b))) / 2 : b.powerPointsBought
+  const max = !k.powers ? 0 : b.method === 'pointbuy' ? b.cp.powerPoints : k.paysPowers ? bought : rating
   const spent = round2(b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => t + powerCost(data, x), 0))
   return { max, spent, left: round2(max - spent), cap: rating }
 }

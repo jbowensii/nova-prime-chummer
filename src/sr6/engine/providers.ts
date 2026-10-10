@@ -74,7 +74,8 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
   /** every kind legal, at the rating `rating` gives it */
   const everyKind = (rating: (k: MagicKind) => number) => KINDS.map(kind => ({ kind, rating: rating(kind) }))
   // CRB Hong Kong p. 63: a prime runner has twice the customization Karma (levelPrime)
-  const base = { id: method, startingKarma: () => n('startingKarma') * (flag(cr, 'levelPrime') ? 2 : 1) }
+  // (the Sixth World Companion's Twenty Questions, p. 25: a karma bonus at character generation)
+  const base = { id: method, startingKarma: () => n('startingKarma') * (flag(cr, 'levelPrime') ? 2 : 1) + (flag(cr, 'twentyQuestions') ? n('twentyQuestionsKarma') : 0) }
 
   if (method === 'priority' || method === 'sumtoten') {
     // CRB Hong Kong p. 63: a street-level runner gets the values of the row below the one chosen, E staying E (levelStreet)

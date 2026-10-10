@@ -47,6 +47,9 @@
 - A quality whose price line lists its prices (Bilko Contacts' and Import/Export's `7 or 12`, `10 or 14 Karma`, Seattle
   pp. 327–328; `3, 6 or 9 Karma`) is bought at one of them, chosen from a list, never a value between; a range (`2 to
   20 Karma`) keeps its stepper. The importer writes the listed prices as `karmaSteps`.
+- More of the Sixth World Companion's optional rules, switches, off: Alternate Mystic Adept (p. 148), Twenty Questions'
+  3 Karma at creation (p. 25), and Working for the Man and for the People (p. 153: 2,000¥ a Karma each way after
+  creation, now each with its switch and its rate shipped).
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

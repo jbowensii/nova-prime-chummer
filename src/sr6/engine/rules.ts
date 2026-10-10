@@ -132,6 +132,10 @@ const RULES: Rule[] = [
     return [...skillRank(s) > 0 && !s.spec && !s.specs?.length ? [{ path: `skills.${s.id}`, message: `${v.name} has ranks but no specialization: it is used only with the weapons it has one for.`, ...entryCite(c.data.entry('skills', s.id)) }] : [],
       ...s.expertise ? [{ path: `skills.${s.id}`, message: `${v.name} takes no expertise.`, ...entryCite(c.data.entry('skills', s.id)) }] : []]
   }) },
+  // the Sixth World Companion's Alternate Mystic Adept (p. 148): no conjuring or enchanting
+  { code: 'magic.alternateMysticAdept', severity: 'error', tab: 'skills', check: c => (!flag(c.cr, 'alternateMysticAdept') || c.b.magic !== 'mystic-adept' ? []
+    : c.b.skills.filter(s => skillRank(s) > 0 && ['conjuring', 'enchanting'].includes(normName(c.data.skills[s.id]?.name ?? '')))
+      .map(s => ({ path: `skills.${s.id}`, message: `An alternate mystic adept has no ${c.data.skills[s.id]!.name}.`, ...cite(c.cr, 'alternateMysticAdept') }))) },
   // CRB Hong Kong p. 93: Astral is for full and aspected magicians, and adepts and mystic adepts with Astral Perception
   { code: 'skill.astral', severity: 'error', tab: 'skills', check: c => {
     const s = c.b.skills.find(x => normName(c.data.skills[x.id]?.name ?? '') === 'astral' && skillRank(x) > 0), k = MAGIC_KINDS[c.b.magic]

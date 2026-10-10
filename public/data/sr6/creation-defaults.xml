@@ -6,8 +6,7 @@
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
      as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, skillPointsExpertise
      (an expertise at creation is bought with the customization karma at advance.expertise: CRB p. 66, step four, at p. 68's
-     prices; owner, 2026-10-09), advance.powerPoint, advance.karmaToNuyenRate,
-     advance.nuyenToKarmaRate, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
+     prices; owner, 2026-10-09), advance.powerPoint, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
 <sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">
   <setting key="startingKarma" value="50" source="CRB" page="66"/>
   <setting key="qualityNetBonusCap" value="20" source="CRB" page="66"/>
@@ -134,6 +133,13 @@
   <setting key="highStrengthDamage" value="false" source="SWC" page="150"/>
   <setting key="suprathyroidStacks" value="false" source="SWC" page="149"/>
   <setting key="expandedSpecializations" value="false" source="SWC" page="153"/>
+  <setting key="alternateMysticAdept" value="false" source="SWC" page="148"/>
+  <setting key="twentyQuestions" value="false" source="SWC" page="25"/>
+  <setting key="twentyQuestionsKarma" value="3" source="SWC" page="25"/>
+  <setting key="workingForTheMan" value="false" source="SWC" page="153"/>
+  <setting key="workingForThePeople" value="false" source="SWC" page="153"/>
+  <setting key="advance.karmaToNuyenRate" value="2000" source="SWC" page="153"/>
+  <setting key="advance.nuyenToKarmaRate" value="2000" source="SWC" page="153"/>
   <setting key="unrestrictedSkillRanks" value="false" source="SWC" page="153"/>
   <setting key="strengthDamageStep1" value="7" source="SWC" page="150"/>
   <setting key="strengthDamageStep2" value="10" source="SWC" page="150"/>
