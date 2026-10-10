@@ -17,7 +17,7 @@ const attrs = (o: Record<string, string | number | boolean | undefined>) =>
   Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
 
 export type EntryKind = 'amps' | 'items' | 'rules'
-const effectEl = (f: EffectPick) => `<effect${attrs({ ref: f.ref, param: f.param, value: f.value, note: f.note, ...effectStateAttrs(f) })}/>`
+const effectEl = (f: EffectPick) => `<effect${attrs({ ref: f.ref, param: f.param, value: f.value, note: f.note, unpriced: f.unpriced, ...effectStateAttrs(f) })}/>`
 /** One entry in the data format. Its text (amp narrative, item or rule text) is written only with `withText`: the
  *  edits layer sends descriptions apart, in <description>; a compendium keeps the GM's own text in the entry. */
 export function entryXml(kind: EntryKind, e: AmpTemplate | Item | Rule, withText = false): string {

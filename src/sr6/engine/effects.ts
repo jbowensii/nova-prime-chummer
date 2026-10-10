@@ -4,6 +4,14 @@
 import { BONUS_SWITCHES, SR6_ATTRS, type Bonus, type Sr6Attr } from '../model/character'
 import type { Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
 import { normName, type Sr6Data } from './data'
+import { counts, type EffectState } from '../../engine/effects'
+
+/** Whether a bonus counts in SR6's totals (owner decisions 2026-10-10): the total shown first holds the always-on ones
+ *  (the shared rule, src/engine/effects.ts counts); the bracketed total (`on`) adds the switchable ones and, in SR6, the
+ *  ones holding on some tests only (`when`: `Con 6 (9)`, replacing "shown beside, not added"). Never a low-confidence
+ *  one, nor a spell's effect on its target (it counts on the character it is cast on). */
+export const sr6Counts = (e: EffectState, on = false) =>
+  e.affects !== 'target' && (on ? e.confidence !== 'low' : counts(e, false) && !e.switch)
 
 /** The book's lists of which skills a test type covers (a vocabulary, as importer/sr6/effects.py TEST_TYPES): Social
  *  tests influence or con someone (CRB p. 97), Matrix tests are Matrix actions (CRB p. 179), magical tests the magic

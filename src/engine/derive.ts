@@ -1,8 +1,8 @@
 // Derived values shown on the sheet (CRB p.52, 60, 61, 67-68, 77).
 import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, KnowledgeEntry } from '../model/types'
 import { ATTRS } from '../model/types'
-import { ampEssence, FIREWALL_MAX, isRuleEffect, ruleText } from './amps'
-import { applies, effectHow, own } from './effects'
+import { ampEssence, FIREWALL_MAX, isRuleEffect, ruleText, testName } from './amps'
+import { applies, counts, effectHow, isSwitchable, own } from './effects'
 import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
 
@@ -25,7 +25,9 @@ export interface VehicleStats { uid: string; name: string; chassis: string; pilo
 /** notes: the Advantages and Disadvantages the runner's effects give on this Test (CRB p.59, 65), each with where it comes
  *  from and when it holds: shown with the pool, never dice (the book's pools never change, p.63) */
 export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number; notes?: PoolNote[] }
-export interface PoolNote { ref: 'advantage' | 'edge-advantage' | 'disadvantage'; text: string; from: string; how?: string }
+/** ref rr-spec: Risk Reduction limited to a specialization the runner doesn't have, shown beside its skill (added to the
+ *  specialization's pool when it has it); an Advantage or Disadvantage on such a specialization likewise */
+export interface PoolNote { ref: 'advantage' | 'edge-advantage' | 'disadvantage' | 'rr-spec'; text: string; from: string; how?: string }
 /** One effect the runner has, from an amp, an item or the metatype's racial quality: `text` as the sheet says it, `how`
  *  it is turned on and whether it counts (effects.ts effectHow), `applied` false for one shown but not counted. */
 export interface DerivedEffect { ref: string; text: string; from: string; fromId?: string; how: string; applied: boolean; rule: boolean
@@ -34,7 +36,7 @@ export interface DerivedEffect { ref: string; text: string; from: string; fromId
 /** A pool's Advantages and Disadvantages as the sheets mark them: `Adv`, `Adv (1 Edge)`, `Dis`, each with where it comes
  *  from and when it holds. */
 export const poolMarks = (p: Pool) => (p.notes ?? []).map(n => ({
-  mark: n.ref === 'advantage' ? 'Adv' : n.ref === 'edge-advantage' ? 'Adv (1 Edge)' : 'Dis',
+  mark: n.ref === 'advantage' ? 'Adv' : n.ref === 'edge-advantage' ? 'Adv (1 Edge)' : n.ref === 'rr-spec' ? 'RR (spec.)' : 'Dis',
   title: `${n.text}: ${n.from}${n.how ? ` (${n.how})` : ''}` }))
 /** What the runner's effects do beyond the numbers, one line each, for the sheets and Review: sustained spells and
  *  complex forms, extra spirits, wound modifiers ignored, forced Risk, VR, rigging, and the effects of its items and
@@ -51,6 +53,8 @@ export function effectLines(d: Derived): string[] {
   if (d.rcc) out.push(`Rigger command console: ${d.rcc} drone${d.rcc > 1 ? 's' : ''}`)
   if (d.vcr) out.push('Vehicle control rig')
   for (const e of d.effects) if (e.type === 'item' || e.type === 'metatype') out.push(`${e.text} (${e.from}${e.how ? `, ${e.how}` : ''})`)
+  // what switching the switchable effects on adds (a drug's ignored wound modifiers, a sustained spell's slot)
+  if (d.switched) for (const x of effectLines(d.switched)) if (!out.includes(x)) out.push(`${x} (switched on)`)
   return out
 }
 export interface Derived {
@@ -98,6 +102,9 @@ export interface Derived {
   vr?: 'cold' | 'hot'
   rcc: number
   vcr: boolean
+  /** the same values with the switchable effects (wireless, activated, sustained) switched on, when there are any: the
+   *  sheets print a total as the books do, `1 (2)` (effects.ts bracketed); pools are in the same order */
+  switched?: Derived
 }
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
@@ -148,20 +155,19 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
 }
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)
-/** An amp's effects that count (effects.ts applies): low-confidence and `when` ones are shown, never added. */
-export const onFx = (a: Pick<AmpEntry, 'effects'>) => a.effects.filter(applies)
+/** An amp's effects that count (effects.ts counts): low-confidence and `when` ones never, switchable ones only `on`. */
+export const onFx = (a: Pick<AmpEntry, 'effects'>, on = false) => a.effects.filter(e => counts(e, on))
 /** Where an effect comes from: an amp (its type), an item (`item`) or the metatype's racial quality (`metatype`). */
 export interface EffectSource { e: EffectPick; type: string; name: string; uid?: string; id?: string; amp?: AmpEntry }
 /** Every effect a runner has, counted or not: its amps' (as picked), its items' (the player's own, else the catalog
- *  item's: effects.ts own; a spell's or complex form's only as the player enters them: the book's are what it does to
- *  its subject or target when cast) and its metatype's. */
+ *  item's: effects.ts own; a spell's or complex form's on its caster only, sustained: one that affects its target(s)
+ *  stays on the spell) and its metatype's. */
 export function effectSources(c: Catalog, b: Build, metatype?: string): EffectSource[] {
   const meta = metatype ? c.metatypes.get(metatype) : undefined
   return [
     ...b.amps.flatMap(a => a.effects.map(e => ({ e, type: a.type, name: a.name, uid: a.uid, id: a.catalogId, amp: a }))),
-    ...b.items.flatMap(i => own(i.effects, i.kind === 'spell' || i.kind === 'complex-form' ? []
-      : (i.catalogId ? c.items.get(i.catalogId) : undefined)?.effects ?? i.snapshot?.effects)
-      .map(e => ({ e, type: 'item', name: i.name, uid: i.uid, id: i.catalogId }))),
+    ...b.items.flatMap(i => own(i.effects, (i.catalogId ? c.items.get(i.catalogId) : undefined)?.effects ?? i.snapshot?.effects)
+      .filter(e => e.affects !== 'target').map(e => ({ e, type: 'item', name: i.name, uid: i.uid, id: i.catalogId }))),
     ...(meta?.effects ?? []).map(e => ({ e, type: 'metatype', name: `${meta!.name} (${meta!.racialQuality || 'racial quality'})`, id: meta!.id })),
   ]
 }
@@ -186,25 +192,25 @@ function wornChain(b: Build, uid?: string) {
 }
 /** Each amp's Armor +1 on the armor worn as `uid` (none: unarmored): an Equipment amp's when it is linked to an item of
  *  that armor, any other amp's (orthoskin, mystic armor…) always; together no more than the effect's max. */
-export function armorShares(c: Catalog, b: Build, uid?: string): number[] {
+export function armorShares(c: Catalog, b: Build, uid?: string, on = false): number[] {
   const chain = new Set(wornChain(b, uid).map(i => i.uid))
   return shares(c, 'armor-plus', b.amps.map(a => a.type !== 'equipment' || (a.linkedItem && chain.has(a.linkedItem))
-    ? onFx(a).filter(e => e.ref === 'armor-plus').length : 0))
+    ? onFx(a, on).filter(e => e.ref === 'armor-plus').length : 0))
 }
 
 /** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles the base Speed only (the chassis' flying
  *  speed when it has one); Speed upgrades add after that. */
-export function vehicleStats(c: Catalog, a: AmpEntry): VehicleStats | undefined {
+export function vehicleStats(c: Catalog, a: AmpEntry, on = false): VehicleStats | undefined {
   const ch = a.vehicle ? c.vehicles.get(a.vehicle) ?? a.chassis : undefined
   if (!ch) return undefined
-  const n = (ref: string) => onFx(a).filter(e => e.ref === ref).length
+  const n = (ref: string) => onFx(a, on).filter(e => e.ref === ref).length
   const flying = n('flying') > 0
   const fixed = n('fixed') > 0
   const speed = fixed ? 0 : (flying ? ch.flyingSpeed ?? Math.max(1, ch.speed * 2) : ch.speed) + n('speed-plus')
   const armor = ch.armor + n('vehicle-armor')
   return { uid: a.uid, name: a.name, chassis: ch.name, pilot: ch.pilot + n('pilot-plus'), body: ch.body, handling: ch.handling + n('handling-plus'),
     speed, flying, armor, count: 1 + n('extra-drone'), mount: ch.mount,
-    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor], monitor: boxes(onFx(a)) }
+    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor], monitor: boxes(onFx(a, on)) }
 }
 
 /** "STR+1", "S+2", "STR", "5", "12 (anti-vehicle 16)" -> damage value with this Strength. */
@@ -215,13 +221,19 @@ export function weaponDV(dv: string, str: number, plus = 0): string {
   return k ? `${Number(k[1]) + plus}${k[2]}` : dv
 }
 
+/** The runner's derived values without its switchable effects, and (`switched`) with them on. */
 export function derive(c: Catalog, ch: Character): Derived {
+  const d = deriveAt(c, ch, false)
+  return effectSources(c, d.build, ch.identity.metatype).some(p => applies(p.e) && isSwitchable(p.e)) ? { ...d, switched: deriveAt(c, ch, true) } : d
+}
+
+function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
   const b = ch.finalizedAt ? currentBuild(ch) : ch.build
   const meta = c.metatypes.get(ch.identity.metatype)
   const attr = (a: AttrId) => b.attributes[a] ?? 0
   const sources = effectSources(c, b, ch.identity.metatype)
-  // the effects that count (effects.ts applies)
-  const picks = sources.filter(p => applies(p.e))
+  // the effects that count (effects.ts counts: the switchable ones only `on`)
+  const picks = sources.filter(p => counts(p.e, on))
   const has = (ref: string) => picks.some(p => p.e.ref === ref)
   const count = (ref: string) => picks.filter(p => p.e.ref === ref).length
   const total = (ref: string) => picks.filter(p => p.e.ref === ref).reduce((t, p) => t + (p.e.value ?? 1), 0)
@@ -232,7 +244,7 @@ export function derive(c: Catalog, ch: Character): Derived {
   const extraEssence = Math.min(1, count('essence-implant')), magicSpared = Math.min(1, count('essence-magic'))
 
   // Armor: an item's own rating plus the armor an add-on is worn over, and each amp's share of Armor +1 (armorShares)
-  const worn = (uid?: string) => wornChain(b, uid).reduce((t, it) => t + (it.armor ?? 0), 0) + sum(armorShares(c, b, uid))
+  const worn = (uid?: string) => wornChain(b, uid).reduce((t, it) => t + (it.armor ?? 0), 0) + sum(armorShares(c, b, uid, on))
   // mental protection from Astral/Mystic Armor, biofeedback filters, code shells...: always on
   const mentalProtection = count('mental-armor')
   const armor = { none: worn(), main: worn(b.mainArmor), alt: worn(b.altArmor) }
@@ -252,10 +264,26 @@ export function derive(c: Catalog, ch: Character): Derived {
   // none (every Test)
   // (one on every Test that holds only sometimes is listed with the effects, not on each pool)
   const testFx = sources.filter(p => (p.e.ref === 'advantage' || p.e.ref === 'edge-advantage' || p.e.ref === 'disadvantage') && (p.e.param || !p.e.when))
+  // a bonus limited to a specialization the runner doesn't have is shown beside its skill (owner, 2026-10-10)
+  const mySpecs = new Set(b.skills.flatMap(s => s.specs))
+  const lacking = (param?: string) => !!param && param.includes('.') && !mySpecs.has(param) && c.skills.has(param.split('.')[0])
+  const specRR = new Map<string, { n: number; from: string[] }>()
+  for (const p of picks) if (p.e.ref === 'rr-spec' && lacking(p.e.param)) {
+    const x = specRR.get(p.e.param!) ?? { n: 0, from: [] }
+    specRR.set(p.e.param!, { n: x.n + 1, from: [...new Set([...x.from, p.name])] })
+  }
+  const noteOf = (p: EffectSource, how?: string): PoolNote => {
+    const h = [effectHow(p.e), how].filter(Boolean).join(', ')
+    return { ref: p.e.ref as PoolNote['ref'], text: ruleText(c, p.e)!, from: p.name, ...h ? { how: h } : {} }
+  }
   const pools: Pool[] = []
   const pool = (x: Pool) => {
-    const notes = testFx.filter(p => !p.e.param || p.e.param === x.skill || p.e.param === x.spec || p.e.param === x.attr)
-      .map(p => ({ ref: p.e.ref as PoolNote['ref'], text: ruleText(c, p.e)!, from: p.name, ...effectHow(p.e) ? { how: effectHow(p.e) } : {} }))
+    const notes = testFx.filter(p => !p.e.param || p.e.param === x.skill || p.e.param === x.spec || p.e.param === x.attr).map(p => noteOf(p))
+    if (!x.spec) {
+      notes.push(...testFx.filter(p => lacking(p.e.param) && p.e.param!.split('.')[0] === x.skill).map(p => noteOf(p, 'without the specialization')))
+      for (const [spec, r] of specRR) if (spec.split('.')[0] === x.skill)
+        notes.push({ ref: 'rr-spec', text: `RR ${r.n} on ${testName(c, spec)} Tests`, from: r.from.join(', '), how: 'without the specialization' })
+    }
     pools.push(notes.length ? { ...x, notes } : x)
   }
   for (const s of b.skills) {
@@ -282,7 +310,7 @@ export function derive(c: Catalog, ch: Character): Derived {
   // Initiative: best single source; enhancements from different sources don't stack.
   let initiative: Derived['initiative']
   for (const a of b.amps) {
-    const fx = onFx(a), refs = fx.map(e => e.ref)
+    const fx = onFx(a, on), refs = fx.map(e => e.ref)
     const level = refs.includes('init-3') ? 3 : refs.includes('init-2') ? 2 : refs.includes('init-1') ? 1 : 0
     if (level && (!initiative || level > initiative.level))
       initiative = { level, realm: fx.find(e => e.ref === 'init-realm')?.param, source: a.name }
@@ -290,7 +318,7 @@ export function derive(c: Catalog, ch: Character): Derived {
 
   const emerged = b.amps.some(a => a.type === 'emerged')
   const deck = b.amps.find(a => a.type === 'cyberdeck')
-  const deckFx = deck ? onFx(deck) : []
+  const deckFx = deck ? onFx(deck, on) : []
   const firewall = emerged ? attr('wil') : deck ? Math.min(FIREWALL_MAX, 1 + deckFx.filter(e => e.ref === 'firewall-plus').length) : undefined
   const attack = emerged ? attr('cha') : deck ? deckFx.filter(e => e.ref === 'attack-plus').length : undefined
 
@@ -302,7 +330,7 @@ export function derive(c: Catalog, ch: Character): Derived {
   for (const it of b.items.filter(i => i.kind === 'weapon')) {
     const cat = (it.catalogId ? c.items.get(it.catalogId) : undefined) ?? it.snapshot
     const amp = b.amps.find(a => a.type === 'equipment' && a.linkedItem === it.uid)
-    const fx = amp ? onFx(amp) : []
+    const fx = amp ? onFx(amp, on) : []
     const plus = it.dv ? 0 : capped(c, 'dv-plus', fx.filter(e => e.ref === 'dv-plus').length)
     const range = fx.find(e => e.ref === 'range-improve')?.param
     const minRisk = fx.find(e => e.ref === 'min-risk-dice')
@@ -312,7 +340,7 @@ export function derive(c: Catalog, ch: Character): Derived {
     const ammo = ammoDVs([cat?.text, amp?.narrative, it.note].filter(Boolean).join('\n'))
     if (ammo.length) weapons[weapons.length - 1].ammo = ammo
   }
-  const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a)).filter((x): x is VehicleStats => !!x)
+  const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a, on)).filter((x): x is VehicleStats => !!x)
 
   const knowledge = knowledgeRows(c, b, ch.narrative.keywords)
   // sustained spells (CRB p.178): 1 without a Disadvantage, 2 at most, each extra one adding to both; complex forms alike

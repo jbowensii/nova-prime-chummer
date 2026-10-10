@@ -1,14 +1,14 @@
 // "Book style" printed sheet (Settings → Printed sheet): one page laid out like the rulebook's example character sheet.
 // Grunge paper on the left, a yellow paint-swish panel on the right, all drawn in CSS/SVG; free fonts only.
 import '@fontsource/caveat/700.css'
-import { ampCtx, ampEssence, ampRating, effectLines, poolMarks, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating, bracketed, effectLines, poolMarks, ruleHelp } from '../engine'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'
 import { NpcBlock } from '../ui/NpcBlock'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { HeaderBars } from '../ui/nav'
 import { IconButton, IconLink } from '../ui/icons'
-import { ampLines, lists, RISK, SheetType, useSheetArt } from './shared'
+import { ampLines, cells, lists, RISK, SheetType, switchedBoxes, useSheetArt } from './shared'
 import './sheet.css'
 import './book-sheet.css'
 
@@ -69,7 +69,7 @@ export function BookSheet() {
                   const under = !!p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) // as Sheet.tsx: indented, no rating
                   return <tr key={i} className={under ? 'b-spec' : undefined}>
                     <td>{p.spec ? `${p.label.replace(/^.*\(|\)$/g, '')} +2` : under && !d.pools[i - 1].spec ? `(with ${p.attr.toUpperCase()})` : p.label}</td>
-                    <td>{under ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b>{poolMarks(p).map((m, j) => <span key={j} className="b-adv" title={m.title}> {m.mark}</span>)}</td><td><Dots n={p.rr} /></td>
+                    <td>{under ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b>{poolMarks(p).map((m, j) => <span key={j} className="b-adv" title={m.title}> {m.mark}</span>)}</td><td><Dots n={p.rr} />{d.switched && d.switched.pools[i]?.rr !== p.rr && ` (${d.switched.pools[i]?.rr})`}</td>
                   </tr>
                 })}
               </tbody>
@@ -105,7 +105,7 @@ export function BookSheet() {
               <tbody>
                 {d.weapons.map(w => <tr key={w.uid}>
                   <td><b>{w.name}</b> {[category(w.uid), w.specialist && 'specialist', w.note, w.ammo && `by ammo: ${w.ammo.join(', ')}`].filter(Boolean).join(', ')}</td>
-                  <td><b>DV {w.dv}</b></td><td>{ranges(w.ranges)}</td><td>Weapon</td></tr>)}
+                  <td><b>DV {bracketed(w.dv, d.switched?.weapons.find(x => x.uid === w.uid)?.dv)}</b></td><td>{ranges(w.ranges)}</td><td>Weapon</td></tr>)}
                 {spells.map(x => { const cat = c.items.get(x.catalogId ?? '') ?? x.snapshot; return <tr key={x.uid}>
                   <td><b>{x.name}</b> {cat?.category?.toLowerCase()}</td><td /><td /><td>{x.kind === 'spell' ? 'Spell' : 'Complex form'}</td></tr> })}
               </tbody>
@@ -123,16 +123,16 @@ export function BookSheet() {
                   <span>{Array.from({ length: d.monitor.light }, (_, i) => <i key={i} />)}</span>
                   <span>{Array.from({ length: d.monitor.serious }, (_, i) => <i key={i} className="s" />)}</span>
                   <span><i className="i" /></span>
-                </div></div>
+                </div>{switchedBoxes(d) && <span className="b-switched">{switchedBoxes(d)}</span>}</div>
               <table>
                 <thead><tr><th scope="col">Thresholds</th><th scope="col">Light</th><th scope="col">Serious</th><th scope="col">Incap.</th></tr></thead>
                 <tbody>
-                  <tr><td>No armor</td>{d.thresholds.physicalNone.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                  {b.mainArmor && <tr><td>Main ({item(b.mainArmor)?.name} {d.armor.main})</td>{d.thresholds.physicalMain.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                  {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {d.armor.alt})</td>{d.thresholds.physicalAlt.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                  <tr><td>Mental{d.mentalProtection ? ` (armor ${d.mentalProtection})` : ''}</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                  {d.thresholds.social && <tr><td>Social (armor {d.socialArmor})</td>{d.thresholds.social.map((x, i) => <td key={i}>{x}</td>)}</tr>}
-                  {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}{d.matrixArmor ? `, armor ${d.matrixArmor}` : ''})</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                  <tr><td>No armor</td>{cells(d.thresholds.physicalNone, d.switched?.thresholds.physicalNone)}</tr>
+                  {b.mainArmor && <tr><td>Main ({item(b.mainArmor)?.name} {bracketed(d.armor.main, d.switched?.armor.main)})</td>{cells(d.thresholds.physicalMain, d.switched?.thresholds.physicalMain)}</tr>}
+                  {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {bracketed(d.armor.alt, d.switched?.armor.alt)})</td>{cells(d.thresholds.physicalAlt, d.switched?.thresholds.physicalAlt)}</tr>}
+                  <tr><td>Mental{d.mentalProtection || d.switched?.mentalProtection ? ` (armor ${bracketed(d.mentalProtection, d.switched?.mentalProtection)})` : ''}</td>{cells(d.thresholds.mental, d.switched?.thresholds.mental)}</tr>
+                  {d.thresholds.social && <tr><td>Social (armor {d.socialArmor})</td>{cells(d.thresholds.social, d.switched?.thresholds.social)}</tr>}
+                  {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}{d.matrixArmor ? `, armor ${d.matrixArmor}` : ''})</td>{cells(d.thresholds.matrix, d.switched?.thresholds.matrix)}</tr>}
                 </tbody>
               </table>
             </section>

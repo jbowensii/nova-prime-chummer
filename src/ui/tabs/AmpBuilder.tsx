@@ -92,7 +92,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
           const def = c.ampEffects.get(e.ref)
           return (
             <div className="fx" key={i}>
-              <span title={ruleHelp(c, e.ref)} className={ruleHelp(c, e.ref) ? 'has-help' : undefined}>{def?.name ?? e.ref} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}</span>
+              <span title={ruleHelp(c, e.ref)} className={ruleHelp(c, e.ref) ? 'has-help' : undefined}>{def?.name ?? e.ref} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}{e.unpriced && <span className="muted">(unpriced by the rating)</span>}</span>
               <span className="row">{paramInput(e, i)}{rccValue(e, i)}<EffectHow e={e} onChange={patch => setFx(i, patch)} /><button className="btn small quiet" onClick={() => set({ effects: amp.effects.filter((_, j) => j !== i) })} aria-label={`Remove ${def?.name}`}>Remove</button></span>
               <span className={`r${applies(e) ? '' : ' muted'}`}>{signed(effectRating(c, e)).replace('¥', '')}</span>
             </div>

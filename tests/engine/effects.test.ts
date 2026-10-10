@@ -2,7 +2,7 @@
 // effect kinds, what derive counts and shows, the character file and the export. Made-up data only.
 import { describe, expect, test } from 'vitest'
 import {
-  ampParts, ampRating, applies, buildCatalog, characterToXml, derive, effectHow, effectLines, exportRunner, own, poolMarks,
+  ampParts, ampRating, applies, bracketed, buildCatalog, characterToXml, derive, effectHow, effectLines, exportRunner, own, poolMarks,
   readEffectState, ruleText, xmlToCharacter,
 } from '../../src/engine'
 import { blankCharacter } from '../../src/engine/file'
@@ -89,10 +89,30 @@ describe('derive', () => {
     expect(d.monitor).toEqual(base.monitor)
     expect(d.effects.filter(e => !e.applied).map(e => e.ref)).toEqual(['armor-plus', 'dv-plus', 'wound-light'])
   })
-  test('a switchable effect counts (assumed on) and says how it is turned on', () => {
-    const d = derive(cat, runner([amp('dose', 'equipment', [{ ref: 'rr-attr', param: 'wil', switch: 'activated' }])]))
-    expect(d.rrAttr.wil).toBe(1)
-    expect(d.effects.map(e => [e.ref, e.how])).toEqual([['rr-attr', 'activated']])
+  test('a switchable effect counts in the bracketed total only: `0 (1)`', () => {
+    const d = derive(cat, runner([amp('dose', 'equipment', [{ ref: 'rr-attr', param: 'wil', switch: 'activated' }, { ref: 'ignore-wounds', switch: 'activated' }])]))
+    expect(d.rrAttr.wil).toBe(0)
+    expect(d.switched?.rrAttr.wil).toBe(1)
+    const i = d.pools.findIndex(p => p.attr === 'wil' && !p.spec)
+    expect(bracketed(d.pools[i].rr, d.switched?.pools[i].rr)).toBe('0 (1)')
+    expect(d.effects.map(e => [e.ref, e.how])).toEqual([['rr-attr', 'activated'], ['ignore-wounds', 'activated']])
+    expect(effectLines(d)).toContain('Ignores wound modifiers (switched on)')
+    expect(derive(cat, runner([amp('q', 'quality', [{ ref: 'rr-attr', param: 'wil' }])])).switched).toBeUndefined()
+  })
+  test('a bonus limited to a specialization: in its pool when the runner has it, else beside the skill', () => {
+    const d = derive(cat, runner([amp('eye', 'cyberware', [{ ref: 'rr-spec', param: 'perception.physical' }, { ref: 'rr-spec', param: 'perception.social' },
+      { ref: 'advantage', param: 'perception.social' }])]))
+    expect(d.pools.find(p => p.spec === 'perception.physical' && p.attr === 'wil')?.rr).toBe(1)
+    const skill = d.pools.find(p => p.skill === 'perception' && !p.spec && p.attr === 'wil')!
+    expect(skill.rr).toBe(0)
+    expect(skill.notes?.map(n => [n.ref, n.how])).toEqual([['advantage', 'without the specialization'], ['rr-spec', 'without the specialization']])
+    expect(poolMarks(skill).map(m => m.mark)).toEqual(['Adv', 'RR (spec.)'])
+  })
+  test('an effect unpriced by the rating applies at rating 0', () => {
+    const a = amp('drug', 'equipment', [{ ref: 'rr-attr', param: 'wil' }])
+    const b = { ...a, effects: [...a.effects, { ref: 'rr-spec', param: 'perception.physical', unpriced: true as const }] }
+    expect(ampRating(cat, b, { isFirstQuality: false })).toBe(ampRating(cat, a, { isFirstQuality: false }))
+    expect(derive(cat, runner([b])).pools.find(p => p.spec === 'perception.physical' && p.attr === 'wil')?.rr).toBe(2)
   })
   test('social and Matrix armor, wound modifiers, forced Risk, sustained spells, spirits, VR and rigging', () => {
     const d = derive(cat, runner([amp('jet', 'quality', [{ ref: 'social-armor', value: 2 }, { ref: 'ignore-wounds', param: 'light' }, { ref: 'forced-risk' },
@@ -115,17 +135,19 @@ describe('derive', () => {
     expect(derive(cat, runner(ware(1))).essenceEffects.magicHitsCancelled).toBe(1)
     expect(tough(1).magicHitsCancelled).toBe(0)
   })
-  test('items: gear’s catalog effects count, a spell’s only as entered; the player’s own replace the catalog’s', () => {
+  test('items: gear’s effects count; a spell’s on its caster while sustained, on its target(s) never; the player’s own replace the catalog’s', () => {
     const c = buildCatalog([...catFiles, { file: 'custom/imported/x/gear.xml', overlay: true, xml: `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="gear" version="1">
       <item id="x.goggles" kind="gear" source="TEST" page="1"><name>Made-up goggles</name><effect ref="no-disadvantage" param="Dusk sight"/><text></text></item>
-      <item id="x.glow" kind="spell" source="TEST" page="1"><name>Made-up glow</name><effect ref="advantage" param="influence" switch="sustained"/><text></text></item></ca2:data>` }])
+      <item id="x.glow" kind="spell" source="TEST" page="1"><name>Made-up glow</name><effect ref="advantage" param="influence" switch="sustained" affects="target"/>
+        <effect ref="rr-attr" param="wil" switch="sustained" affects="caster"/><text></text></item></ca2:data>` }])
     const gear = { uid: 'g', kind: 'gear' as const, name: 'Made-up goggles', catalogId: 'x.goggles' }
     const spell = { uid: 's', kind: 'spell' as const, name: 'Made-up glow', catalogId: 'x.glow' }
     const d = derive(c, runner([], [gear, spell]))
-    expect(d.effects.map(e => [e.text, e.type])).toEqual([['No Disadvantage: Dusk sight', 'item']])
-    expect(d.pools.some(p => p.notes)).toBe(false)
+    expect(d.effects.map(e => [e.text, e.type])).toEqual([['No Disadvantage: Dusk sight', 'item'], ['Luck with one Attribute: wil', 'item']])
+    expect(d.pools.some(p => p.notes)).toBe(false) // the target's Advantage stays on the spell
+    expect([d.rrAttr.wil, d.switched?.rrAttr.wil]).toEqual([0, 1]) // the caster's, while sustained: in brackets
     const mine = derive(c, runner([], [{ ...gear, effects: [{ ref: 'no-disadvantage', param: 'Dusk sight', confidence: 'low' }] },
-      { ...spell, effects: [{ ref: 'advantage', param: 'influence', switch: 'sustained' }] }]))
+      { ...spell, effects: [{ ref: 'advantage', param: 'influence', switch: 'sustained', affects: 'caster' }] }]))
     expect(mine.effects.map(e => [e.text, e.applied])).toEqual([['No Disadvantage: Dusk sight', false], ['Advantage on Influence Tests', true]])
     expect(mine.pools.find(p => p.skill === 'influence')?.notes?.[0]).toMatchObject({ ref: 'advantage', how: 'sustained' })
   })
@@ -158,8 +180,10 @@ describe('the character file and the export', () => {
   })
   test('the runner carries its pools’ notes, its effects block and its items’ effects', () => {
     const r = exportRunner(cat, ch, { descriptions: false, now: '2026-10-10T00:00:00.000Z', appVersion: 'test' })
-    expect(r.effects).toMatchObject({ socialArmor: 1, sustain: { free: 2, max: 4 } })
+    expect(r.effects).toMatchObject({ socialArmor: 1 })
     expect(r.thresholds.social).toEqual([4, 7, 10])
     expect(r.items.find(i => i.uid === 'g')?.effects?.[0]).toMatchObject({ id: 'social-armor', value: 1, applied: true })
+    expect(r.effects.sustain).toMatchObject({ free: 1 })
+    expect(r.switched?.effects.sustain).toMatchObject({ free: 2 }) // the activated sustain-spell, switched on
   })
 })

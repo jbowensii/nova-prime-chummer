@@ -40,18 +40,26 @@ Import the books of both games again (Books → **Re-import all**) so every entr
 - Every effect says how it is turned on (`switch`: wireless, activated, sustained, conditional; none: always on), when it
   holds (`when`), whether the importer is sure of it (`confidence="low"`) and the entry it is given by (`from`): the same
   rule as Shadowrun 6 (one shared module). A low-confidence effect, or one that holds only `when`, is shown and not
-  counted; a switchable one counts. A player's or GM's own effects override the book's: the Amp Builder and the Gear tab
-  have "How it is turned on" and "Counts" for each.
+  counted. A switchable one (wireless, activated, sustained: a drug's dose, a sustained spell) counts only switched on: a
+  total is printed as the books print it, without it and in brackets with it, `RR 1 (2)`, on the sheets, the Skills tab,
+  the receipt and in the export (owner, 2026-10-10). A player's or GM's own effects override the book's: the Amp Builder
+  and the Gear tab have "How it is turned on" and "Counts" for each.
 - Items (spells, complex forms, plain gear) and metatypes (the racial quality) carry effects too: a drug's Disadvantage,
-  a spell's Advantage or armor (by hits: shown), Low-light vision. A spell's or complex form's are what it does to its
-  subject or target, so they're listed, never the caster's own unless entered on the runner's item.
+  a spell's Advantage or armor (by hits: shown), Low-light vision. A spell's or complex form's say whom each affects,
+  read from its sentence (`affects`: the caster, else its subject or targets): the caster's count on the caster while
+  sustained (in brackets); a target's stay on the spell, marked "affects target(s)".
 - The importer reads them as general rules from every clause (importer/effects.py): Advantage and Disadvantage on the
   Tests a clause names (skills, specializations, attribute-based Tests), a dose's `Duration:` (activated), a condition
   (`when …`, `while in VR`, `once the effects fade away`), a value by hits (low confidence), and effects given by
   reference (`like an elf`, `acts exactly the same way as …`, `identical to the Initiative Enhancement Amps`). It also
   reads `DV+1`, `+1 Edge point per VR scene`, `+1 action per VR narration`, a range set or increased, `+1 Mental armor`,
-  `vehicle armor by +N`, `RR 1 on all …` and an extra Light damage box; a reading that would push an amp past its
-  printed rating stays narrative.
+  `vehicle armor by +N`, `RR 1 on all …` and an extra Light damage box. A Test named by what it does (`Tests involving
+  speed`, `social Tests`) is every skill it uses. Misprints with a clean reading are read (a doubled parenthesis; `RR 1
+  Resonance (tasking)` as Tasking); the rest are suggested for the edits layer.
+- An effect the book states but its printed rating doesn't pay for (Novacoke's RR on Perception (Social), Smashing
+  Blow's DV) is added `unpriced`: it applies, the rating and price stay as printed, and the import report lists it.
+- A bonus limited to a specialization is added to its pool when the runner has the specialization, else shown beside the
+  skill ("RR (spec.)").
 - Effect coverage (entries whose book text states a modifier, with every one read into an effect): 482 of 704 (68%)
   before, 684 (97%) now.
 - Derived values, sheets and Review: a dice pool lists the Advantages and Disadvantages on its Test (Adv., Adv. for 1
@@ -62,9 +70,12 @@ Import the books of both games again (Books → **Re-import all**) so every entr
 - Foundry export: each effect's line, `applied`, `switch`, `when`, `confidence` and `from`; an amp's shared switch; sra2's
   feat counts (`sustainedSpells`, `sustainedForms`, `summonedSpirits`, `riggerConsoles`, `vehicleControlRig`); Matrix
   armor in `matrixThreshold`; items' and metatypes' effects; a pool's notes, the runner's effects block and its social
-  thresholds. `rr` and `bonuses` count only the effects that apply. sra2 has no Foundry Active Effects.
-- No book sample runner's numbers change; each gains the effects its lines and racial quality state (Low-light or
-  Thermographic vision, a decker's Advantage on Cybercombat, a drug's ignored wound modifiers and forced Risk).
+  thresholds; `switched`, the totals with the switchable effects on; `unpriced` and `affects`. `rr` and `bonuses` count
+  the effects that apply. sra2 has no Foundry Active Effects (the Foundry importer's feat/effects reads all of this).
+- Book sample runners: Drakk's and Neon Ivy's drugs (Jazz, Kamikaze, Bliss…) are activated, so their Risk Reduction and
+  initiative now print in brackets; every other number is unchanged. Each gains the effects its lines and racial quality
+  state (Low-light or Thermographic vision, a decker's Advantage on Cybercombat, a drug's ignored wound modifiers and
+  forced Risk) and the RR its amps give on specializations it lacks, beside the skill.
 
 ## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 

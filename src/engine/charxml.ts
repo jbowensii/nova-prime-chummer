@@ -28,7 +28,7 @@ export const el = (name: string, a: Record<string, unknown>, children = '') => (
 export const text = (name: string, s: string | undefined) => (s ? `<${name}>${esc(s)}</${name}>` : '')
 
 // ---- catalog snapshots, written in the data files' own format ----
-export const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note, ...effectStateAttrs(e) })
+export const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note, unpriced: e.unpriced, ...effectStateAttrs(e) })
 const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, printedRating: t.printedRating, vehicle: t.vehicle, mod: t.mod || undefined, source: t.source, page: t.page },
   text('name', t.name) + (t.item ? el('item', { kind: t.item.kind, specialist: t.item.specialist || undefined, armor: t.item.armor, dv: t.item.dv, ranges: t.item.ranges }) : '')
   + t.effects.map(effectXml).join('') + `<narrative>${esc(t.narrative)}</narrative>`)
@@ -102,6 +102,7 @@ function readEffect(e: Element): EffectPick {
   if (s(e, 'param') !== undefined) out.param = s(e, 'param')
   if (n(e, 'value') !== undefined) out.value = n(e, 'value')
   if (s(e, 'note') !== undefined) out.note = s(e, 'note')
+  if (e.getAttribute('unpriced') === 'true') out.unpriced = true
   return { ...out, ...readEffectState(k => e.getAttribute(k)) }
 }
 function readAmp(e: Element): AmpEntry {

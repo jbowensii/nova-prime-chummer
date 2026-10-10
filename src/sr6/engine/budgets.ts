@@ -9,12 +9,12 @@ import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, normName, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
-import { counts, own } from '../../engine/effects'
+import { own } from '../../engine/effects'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
-import { effectBonuses, maxEffects } from './effects'
+import { effectBonuses, maxEffects, sr6Counts as counts } from './effects'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }

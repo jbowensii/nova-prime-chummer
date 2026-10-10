@@ -58,8 +58,9 @@ finalized runner (before that, what is left of the build budget).
 | `thresholds` | `{ physicalNone, physicalMain, physicalAlt, mental, matrix? }`, see below |
 | `armor` | `{ main, alt }`: the armor rating with the main and the alternative armor worn (authoritative, see Risk Reduction and bonuses) |
 | `initiative` | `{ level, realm?, source }`, or `null` |
-| `pools` | `[{ skill, spec?, label, attr, dp, rr, notes? }]`: dice pool and Risk Reduction per skill; `notes` the Advantages and Disadvantages the runner's effects give on that Test, `[{ ref, text, from, how? }]` (`ref` `advantage`, `edge-advantage` or `disadvantage`; never dice) |
-| `effects` | what the runner's effects do beyond the numbers: `{ sustain: { free, max, formsFree, formsMax }, extraSpirits, socialArmor, matrixArmor, ignoreWounds?, forcedRisk, vr?, rcc, vcr }` |
+| `pools` | `[{ skill, spec?, label, attr, dp, rr, notes? }]`: dice pool and Risk Reduction per skill (always-on effects); `notes` the Advantages and Disadvantages the runner's effects give on that Test, `[{ ref, text, from, how? }]` (`ref` `advantage`, `edge-advantage` or `disadvantage`, never dice; `rr-spec`: Risk Reduction limited to a specialization the runner doesn't have, beside its skill) |
+| `switched` | optional, when the runner has switchable effects (wireless, activated, sustained): the same totals with them on, `{ monitor, thresholds, armor, initiative, pools: [{ rr, notes? }], weapons: [{ uid, dv }], effects }`, pools in the order of `pools`. The sheets print these in brackets, `RR 1 (2)`; every other total is without them |
+| `effects` | what the runner's effects do beyond the numbers: `{ sustain: { free, max, formsFree, formsMax }, extraSpirits, socialArmor, matrixArmor, ignoreWounds?, forcedRisk, vr?, rcc, vcr, list }`; `list` every narrative effect kind and every switchable, by-reference or uncounted effect, `[{ ref, text, from, fromId?, how, applied, rule, type }]` (`type` the amp's type, `item` or `metatype`) |
 | `narrative` | `{ keywords, dispositions, cues }` |
 | `background`, `notes` | free text |
 | `nuyen` | `{ balance }` |
@@ -71,10 +72,12 @@ finalized runner (before that, what is left of the build budget).
 `uid`, `type`, `typeName`, `name`, `canon`, `rating`, `essence`, `effects`, `rr`, `bonuses`; optionally `catalogId`,
 `source`, `page` (when the amp comes from a book), `item` (the uid of the linked item) and `vehicle` (the chassis catalog id), `description`.
 
-- `effects`: `[{ id, name, category, param?, value?, note?, line, applied, switch?, when?, confidence?, from? }]`, the picks as made.
+- `effects`: `[{ id, name, category, param?, value?, note?, line, applied, unpriced?, switch?, when?, confidence?, from?, affects? }]`, the picks as made.
   `value` is a number; `line` the effect as the sheet says it; `applied` false for one shown but not counted (low
   confidence, or only `when`); `switch`, `when`, `confidence`, `from` as in the data files (data-format.md, How an effect
-  is turned on). `rr` and `bonuses` count only the applied ones.
+  is turned on); `unpriced` an effect the printed rating doesn't pay for (it applies, at rating 0); `affects` a spell's or
+  complex form's: `caster` or `target`. `rr` and `bonuses` count the applied ones as the amp gives them switched on: an
+  amp whose effects are switchable says so with `switch`.
 - `switch` (optional): every counted effect is turned on that way (a drug's dose: `activated`); sra2's feat `active` is the
   player's to set.
 - `rr` and `bonuses` are described under Risk Reduction and bonuses. On a runner, `bonuses` are attributed so that they add up to the sheet (see there).

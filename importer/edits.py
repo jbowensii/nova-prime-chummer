@@ -105,7 +105,7 @@ def _shape(entry):
             if k.get("kind") not in ("gear", "weapon", "armor"):
                 notes.append("<item> kind must be gear, weapon or armor")
         elif c.tag == "effect":
-            notes += [f'unknown attribute "{x}" on <effect>' for x in c.attrib if x not in ("ref", "param", "value", "note", "switch", "when", "confidence", "from")]
+            notes += [f'unknown attribute "{x}" on <effect>' for x in c.attrib if x not in ("ref", "param", "value", "note", "unpriced", "switch", "when", "confidence", "from", "affects")]
             if not ID.fullmatch(c.get("ref") or ""):
                 notes.append("an <effect> has no ref id")
             if c.get("value") and not POS.fullmatch(c.get("value")):

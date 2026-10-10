@@ -53,7 +53,7 @@ _ALLOWS = re.compile(r"^(?:it\s+|this\s+)?allows?\b\s*(?:(?:you|the\s+(?:user|ca
 _ESS_IMPLANT = re.compile(r"\blast\s+point\s+of\s+essence\s+counts\s+double\b", re.I)
 _ESS_MAGIC = re.compile(r"\bignore\s+the\s+loss\s+of\s+one\s+essence\s+point\b", re.I)
 
-_COND = re.compile(r"\b(?:when(?:ever)?|while|if|unless|as long as|during the (?:following|next)|at night|in darkness|once the effects fade away|"
+_COND = re.compile(r"\b(?:when(?:ever)?|while|if|unless|as long as|involving|related to|during the (?:following|next)|at night|in darkness|once the effects fade away|"
                    r"once the effects dissipate|against\s+(?:targets?|vehicles|unarmored|unarmoured)|when using)\b", re.I)
 _HITS = re.compile(r"\b(?:per\s+\d+\s+(?:net\s+)?hits?|net\s+hits|\d+\s+hits?:|every\s+\d+\s+hits|for every \w+ successes)", re.I)
 _DURATION = re.compile(r"\bDuration\s*:", re.I)

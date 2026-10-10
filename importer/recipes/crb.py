@@ -41,7 +41,7 @@ from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
     SKILLS, ATTRS, Mapper, attr, core, dv_num, fx_xml, item_effects, load_skills, parts as _parts, read_amp, reconcile, slug,
-    specialist, stated, weapon_base)
+    specialist, stated, unpriced_rows, weapon_base)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8", "Catalyst Game Labs", True
 SHA256 = ("4ae357ad00d8c9ad660a5595e9c100f1c9e7a105875f92bffc33111efc707a95",)  # the owner's v1.8 PDF
@@ -598,7 +598,7 @@ def _extract(md, report, spells_only=False, pdf=None):
     mapper = Mapper({} if spells_only else load_skills(dhsa_specs=False)[1])
     for page, fam, names, text in spell_list:
         # what a spell does (its Advantage, armor, initiative): sustained ones are marked so ("(enhancement, S)")
-        fx = fx_xml(item_effects(mapper, re.sub(r"\((?:[\w ]+,\s*)?[SIP]\)", " ", text), bool(re.search(r"[(,]\s*S\)", text))))
+        fx = fx_xml(item_effects(mapper, re.sub(r"\((?:[\w ]+,\s*)?[SIP]\)", " ", text), bool(re.search(r"[(,]\s*S\)", text)), spell=True))
         for name in names:
             sid = "spell-" + slug(name)
             spells.append(f'  <item id="{sid}" kind="spell" category="{fam}" source="{ID}" page="{page}">'
@@ -631,6 +631,7 @@ def _extract(md, report, spells_only=False, pdf=None):
             report.append({"kind": "rating-mismatch", "id": aid, "page": r["page"], "type": r["type"],
                            "printed": r["rating"], "computed": r["computed"]})
         fx = fx_xml(r["fx"])
+        report.extend(unpriced_rows(aid, r["page"], r["fx"]))
         amps.append(f'  <amp id="{aid}" type="{r["type"]}" printedRating="{r["rating"]}"{attr("vehicle", r["vehicle"])}'
                     f'{attr("mod", "true" if r["mod"] else "")} source="{ID}" page="{r["page"]}"><name>{escape(r["name"])}</name>'
                     f'{r["item"]}{fx}<narrative></narrative></amp>')

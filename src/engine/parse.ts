@@ -18,7 +18,7 @@ const extras = (el: Element) => {
 }
 /** An <effect ref> (amps, items, metatypes): the effect, its param and value, and how it is turned on (effects.ts). */
 export const toPick = (e: Element): EffectPick => ({ ref: e.getAttribute('ref')!, param: str(e, 'param'), value: num(e, 'value'),
-  note: str(e, 'note'), ...readEffectState(n => e.getAttribute(n)) })
+  note: str(e, 'note'), ...bool(e, 'unpriced') ? { unpriced: true as const } : {}, ...readEffectState(n => e.getAttribute(n)) })
 const picks = (el: Element) => [...el.getElementsByTagName('effect')].map(toPick)
 const ref = (el: Element): Ref => ({ id: el.getAttribute('id')!, source: el.getAttribute('source')!, page: req(el, 'page') })
 

@@ -273,6 +273,36 @@ def fx_xml(fx):
                    + "".join(attr(k, v) for k, v in (f[4] if len(f) > 4 else {}).items()) + "/>" for f in fx)
 
 
+# Tests named by activity or type -> the skills they use (CRB's skill chapter, pp.53-57: what each skill covers), every one
+ACTIVITIES = [
+    (r"social|persua|convinc|negotiat|bluff|lie\b|lying|seduc|intimidat|etiquette|impersonat|charm|interrogat", ("influence",)),
+    (r"social|contacts?|favou?rs?|connections?|acquir|gather(?:ing)? information|rumou?r", ("network",)),
+    (r"matrix|hack|cyber|program|device|electronic|commlink|computer|data\b|files?\b", ("cracking", "electronics")),
+    (r"magic|spell|sorcer|ritual|counterspell|mana\b", ("sorcery",)),
+    (r"magic|summon|banish|spirit", ("conjuring",)),
+    (r"resonance|complex form|sprite|thread", ("tasking",)),
+    (r"melee|close combat|hand-to-hand|unarmed|brawl|grappl|blade|fist|punch|kick", ("close-combat",)),
+    (r"shoot|shot|firearm|gun|ranged attack|throw|aim", ("ranged-weapons",)),
+    (r"combat|attack|fight", ("close-combat", "ranged-weapons")),
+    (r"driv|pilot|vehicle|drone|chase|race|steer|speed|outrun|outpace", ("piloting",)),
+    (r"speed|outrun|outpace|run\b|running|sprint|climb|jump|swim|parkour|acrobat|escap|dodg|balance|bonds", ("athletics",)),
+    (r"sneak|hid(?:e|ing)|stealth|infiltrat|palm|pickpocket|lockpick|maglock|shadow(?:ing)?|tail(?:ing)?", ("stealth",)),
+    (r"perceiv|perception|notic|spot|search|listen|observ|look|see\b|seeing|sens(?:e|ing)|detect|analy[sz]|clue|pattern|read(?:ing)? lips", ("perception",)),
+    (r"heal|first aid|medic|stabili[sz]|wound|navigat|track|wilderness|surviv|composure|fear|animal", ("survival",)),
+    (r"repair|fix|build|craft|engineer|demolition|explosive|mechanic|tinker", ("engineering",)),
+]
+
+
+def activity_skills(words):
+    """The skill ids a Test named by what it does uses ("Tests involving speed", "social Tests", "climb a metal
+    structure"): every skill whose activities the words name, else []."""
+    out = []
+    for rx, skills in ACTIVITIES:
+        if re.search(rf"\b(?:{rx})", words, re.I):
+            out += [s for s in skills if s not in out]
+    return out
+
+
 # spec names too common to name a Test alone ("a social Test" is any social Test, not Perception (social))
 GENERIC_SPECS = {"social", "physical", "astral", "matrix", "defense", "animals", "engineering", "magic", "media"}
 
@@ -315,8 +345,11 @@ class Mapper:
             else:  # a spec named alone ("Intimidation"), when its name is its own (not "social", "physical")
                 own = [v for (sk, n), v in self.specs.items() if n == name]
                 out.append(own[0] if len(own) == 1 and name not in GENERIC_SPECS else None)
-        if None in out:
+        if None in out:  # Tests named by what they do: every skill the activity uses (as SR6's test types)
             words = _clean_test(phrase)
+            act = activity_skills(words)
+            if act:
+                return act
             return ["custom:" + words[:1].upper() + words[1:60]] if words else [""]
         return out
 
@@ -339,6 +372,8 @@ class Mapper:
     def effects(self, line):
         """(ref, param, value, note) tuples for one effect line, or None if it can't be mapped."""
         l = re.sub(r"Ranged W\.?(?=\s|\()", "Ranged Weapons", line.strip())
+        if self.extended:  # a misprinted doubled parenthesis: "RR 1 Ranged Weapons (Pistols))"
+            l = re.sub(r"\){2,}", ")", l)
         if self.extended:  # "RR 1 on all Perception (Social) Tests", "a RR 1 on most of their Influence Tests": the Test named
             l = re.sub(r"\b(RR\s*\d\s+on)\s+(?:all|most\s+of\s+their|any)\s+", r"\1 ", l, flags=re.I)
         l = l.replace("(Pist.)", "(pistols)").replace("Dés", "Dis")
@@ -363,6 +398,9 @@ class Mapper:
                 out += [("rr-attr", ATTRS[target], None, None)] * n
                 continue
             skill = SKILLS.get(target)
+            if not skill and self.extended and spec and spec.strip().lower() in SKILLS:
+                # a misprint (owner's principle): "RR 1 Resonance (tasking)" names its skill in the parenthesis
+                skill, spec = SKILLS[spec.strip().lower()], None
             if not skill:
                 return None
             if spec is None:
@@ -477,16 +515,35 @@ def one_init(fx):
 
 
 def read_amp(mapper, read, rating):
-    """read() -> (fx, narrative, computed rating), with the Mapper's extended readings; read again without them when they'd
-    overshoot the printed rating (the book's rating is canon: that clause then stays narrative)."""
+    """read() -> (fx, narrative, computed rating), with the Mapper's extended readings. When they price the amp as the book
+    does (the narrative effects they replace balanced the printed rating), that reading stands. When they'd overshoot the
+    printed rating (canon), or take a drawback the plain reading doesn't, the amp is priced as read without them and what
+    they read beyond that is added unpriced: the effects apply, at rating 0 (owner, 2026-10-10; `unpriced_rows` lists
+    them for the import report)."""
     out = read()
-    if out[2] > rating:
-        mapper.extended = False
-        try:
-            out = read()
-        finally:
-            mapper.extended = True
-    return out
+    mapper.extended = False
+    try:
+        base = read()
+    finally:
+        mapper.extended = True
+    negatives = lambda fx: sum(f[2] or 1 for f in fx if f[0] == "negative")  # noqa: E731
+    if out[2] <= rating and negatives(out[0]) <= negatives(base[0]):
+        return out
+    left = [f[:3] for f in base[0]]
+    extra = []
+    for f in out[0]:
+        if f[:3] in left:
+            left.remove(f[:3])
+        elif f[0] not in ("narrative", "negative") and effect_rating(f[0]):
+            extra.append((*f[:4], {**(f[4] if len(f) > 4 else {}), "unpriced": "true"}))
+    return base[0] + extra, base[1], base[2]
+
+
+def unpriced_rows(aid, page, fx):
+    """Import report rows for an amp's unpriced effects (read_amp)."""
+    got = [f[0] + (f":{f[1]}" if f[1] else "") for f in fx if len(f) > 4 and f[4].get("unpriced")]
+    return [{"kind": "effect-unpriced", "id": aid, "page": page, "effects": " ".join(got),
+             "problem": "the book states it; its printed rating doesn't pay for it: applied at rating 0"}] if got else []
 
 
 # an item's armor as a spell grants it: "Increases the Armor Rating applicable to physical / magical / both … attacks"
@@ -499,15 +556,33 @@ def sentences(text):
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z•–-])|\s+[•–]\s+", text or "") if s.strip()]
 
 
-def item_effects(mapper, text, sustained=False):
+# who a spell's or complex form's sentence is about: the one casting or threading it, or its subject or target(s)
+_CASTER = re.compile(r"\b(?:the|its)\s+(?:caster|magician|mage|wizard|shaman|technomancer|user)\b|\bcaster['’]s\b", re.I)
+_TARGET = re.compile(r"\b(?:the\s+subject|subject['’]s|the\s+target|targets?\b|targeted|target['’]s|any\s+(?:target|character)|victims?|"
+                     r"the\s+(?:persona|device|vehicle|drone|icon))\b", re.I)
+
+
+def affects(sentence):
+    """`caster` when a spell's sentence is about the one casting it (first named), else `target` (its subject or targets,
+    and a sentence that names no one: a spell works on its subject)."""
+    c, t = _CASTER.search(sentence), _TARGET.search(sentence)
+    return "caster" if c and (not t or c.start() < t.start()) else "target"
+
+
+def item_effects(mapper, text, sustained=False, spell=False):
     """An item's effects (a spell, complex form or plain gear) read from its text sentence by sentence: the rated readings
     (RR, Armor, initiative by reference) and the narrative effect kinds. A sustained spell's or form's are
-    switch="sustained"; a value that depends on hits is low confidence."""
-    fx = []
+    switch="sustained"; a value that depends on hits is low confidence. A spell's or complex form's (`spell`) say who they
+    affect (affects): the caster counts them while sustained, a target's stay on the spell."""
+    fx, last = [], "target"
     for s in sentences(text):
         st = rules_fx.state(s, text)
         if sustained and "when" not in st:
             st = {**st, "switch": "sustained"}
+        # a sentence that starts with a pronoun ("They suffer …") is about whom the one before was
+        last = last if re.match(r"(?:they|it|he|she|this|these|the latter)\b", s, re.I) else affects(s)
+        who = {"affects": last} if spell else {}
+        st = {**st, **who}
         bullet = re.match(r"\W*\d+\s+(?:net\s+)?(?:hits?|successes)\s*:\s*", s)  # "• 3 hits: +1 Edge per action scene": by hits
         if bullet:
             s, st = s[bullet.end():], {**st, "confidence": "low"}
@@ -521,7 +596,7 @@ def item_effects(mapper, text, sustained=False):
             st = {**st, "confidence": "low"}
         fx += [(*f[:4], st) for f in rated or []]
         for f in mapper.rules(s, text):
-            fx.append((*f[:4], {**f[4], "switch": "sustained"} if sustained and "when" not in f[4] else f[4]))
+            fx.append((*f[:4], {**f[4], **({"switch": "sustained"} if sustained and "when" not in f[4] else {}), **who}))
     seen, out = set(), []
     for f in fx:
         k = (f[0], f[1] or "", f[2])
@@ -698,7 +773,7 @@ def extract(md, ctx=None):
         text = f'{base["type"]}. Threshold/target: {base["cost"]}. ' + " ".join(base["effects"])
         sid = uid("spell-" + slug(name))
         spells.append(f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{ID}" page="{r["page"]}">'
-                      f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(base["effects"]), "S" in base["type"]))}<text>{private("items", sid, text[:300])}</text></item>')
+                      f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(base["effects"]), "S" in base["type"], spell=True))}<text>{private("items", sid, text[:300])}</text></item>')
 
     # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules): type = duration, cost = threshold
     for r in rs:
@@ -708,7 +783,7 @@ def extract(md, ctx=None):
         cid = uid("cf-" + slug(name))
         text = f"{dur}. Threshold: {r['cost']}. " + " ".join(r["effects"])
         forms.append(f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="{ID}" page="{r["page"]}">'
-                     f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(r["effects"]), "S" in dur))}<text>{private("items", cid, text[:300])}</text></item>')
+                     f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(r["effects"]), "S" in dur, spell=True))}<text>{private("items", cid, text[:300])}</text></item>')
 
     # ---- contacts: rated templates (CONTACTS section)
     contact_rows = [r for r in rs if r["section"] == "CONTACTS" and printed(r["type"]) is not None]
@@ -763,6 +838,7 @@ def extract(md, ctx=None):
             if computed != rating:
                 mismatch(aid, page, f"mod ({target})", rating, computed, r)
             amp_xml(aid, target, rating, page, name, "", fx, narrative, mod=True)
+            report.extend(unpriced_rows(aid, page, fx))
             continue
 
         if sec not in SECTION_TYPE and sec not in EQUIPMENT_SECTIONS:
@@ -837,6 +913,7 @@ def extract(md, ctx=None):
         if computed != rating:
             mismatch(aid, page, atype, rating, computed, r)
         amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle)
+        report.extend(unpriced_rows(aid, page, fx))
 
     text_of = {m.group(1): unescape(m.group(2)) for t in texts for m in [re.search(r'id="([^"]+)">(.*)</text>', t)] if m}
     entries = amps + spells + forms + gear
