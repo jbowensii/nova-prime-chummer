@@ -193,3 +193,19 @@ test('the same switch twice during a slow save ends as the last click; a failed 
   await expect(haggles).toBeChecked() // the failed save changed nothing
   await expect(streets).toBeChecked()
 })
+
+test('a runner plays the table’s optional rules unless it sets its own (Review tab)', async ({ page }) => {
+  await signIn(page, 'pat') // Long haggles is on at the table (the test before)
+  await page.getByRole('button', { name: 'New runner' }).click()
+  await page.getByRole('button', { name: 'Create runner' }).click()
+  await page.getByLabel('Street name').fill('Haggler')
+  await page.getByRole('link', { name: 'Review' }).click()
+  const own = page.getByRole('region', { name: 'Optional rules' })
+  const pick = own.getByLabel('Long haggles for this runner')
+  await expect(pick).toHaveValue('')
+  await expect(pick.locator('option').first()).toHaveText('As the table: on')
+  const state = own.getByText(/^(not )?in play$/)
+  await expect(state).toHaveText('in play')
+  await pick.selectOption('off')
+  await expect(state).toHaveText('not in play')
+})

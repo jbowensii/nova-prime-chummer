@@ -98,3 +98,15 @@ test('NPCs get no free starting gear; runners do', () => {
   const runner = xmlToCharacter(NPC_XML(''))
   expect(runner.ok && runner.character.build.items.map(i => i.starting)).toEqual(expect.arrayContaining(['commlink', 'fake-sin']))
 })
+
+test('a runner’s own switches for the optional rules survive the round trip and validate', async () => {
+  const xml = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build><optionalRule id="optional-a" on="true"/><optionalRule id="optional-b" on="false"/></ca2:character>'
+  const r = xmlToCharacter(xml)
+  expect(r.ok && r.character.optionalRules).toEqual({ 'optional-a': true, 'optional-b': false })
+  const back = r.ok ? characterToXml(r.character) : ''
+  expect(xmlToCharacter(back)).toMatchObject({ ok: true, character: { optionalRules: { 'optional-a': true, 'optional-b': false } } })
+  const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
+  expect((await validateXML({ xml: { fileName: 'o.xml', contents: back }, schema: { fileName: 'character.xsd', contents: xsd } })).errors).toEqual([])
+  const none = xmlToCharacter(xml.replace(/<optionalRule[^>]*\/>/g, ''))
+  expect(none.ok && 'optionalRules' in none.character).toBe(false)
+})

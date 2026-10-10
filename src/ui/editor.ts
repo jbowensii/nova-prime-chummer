@@ -2,7 +2,7 @@
 // Edits mutate a draft (with undo); once finalized, each build change is also logged in the ledger (engine/career.ts logChange).
 import { createContext, useContext } from 'react'
 import type { CareerEvent, Catalog, Character, Override, Violation } from '../model/types'
-import type { Derived, PriceBreakdown } from '../engine'
+import type { Derived, PriceBreakdown, TableFlags } from '../engine'
 
 export interface ConfirmSpec { title: string; lines: [string, string][]; cost: number; balanceAfter: number }
 
@@ -16,6 +16,8 @@ export interface EditorCtx {
   career: boolean
   /** someone else's runner: read only (a GM may still approve its rule problems) */
   ro?: boolean
+  /** the table's switches (Table setup), once loaded: the optional rules the GM switched on */
+  table?: TableFlags
   /** a build edit (undoable; logged in the ledger once finalized) */
   edit: (fn: (draft: Character) => void) => void
   /** any other edit: identity, narrative, overrides, layout (undoable) */

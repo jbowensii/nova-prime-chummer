@@ -44,9 +44,11 @@ const APP_RULES = [
     text: 'Not a core rule: every runner already has a fake SIN. A player gives their runner a real SIN by adding the SINner quality on the Shadow Amps tab; a free Real SIN entry comes with it on the Gear tab. House rule: a SINner is always free and never counts as the first Quality. When off, a runner’s Review tab flags a real SIN.' },
 ] as const
 
-/** The switches as the rule checks read them. */
-export const tableFlags = (saved: TableRule[]) =>
-  Object.fromEntries(APP_RULES.map(a => [a.flag, saved.find(r => r.id === a.id)?.on ?? true])) as unknown as TableFlags
+/** The switches as the rule checks read them: the app's own, and the books' optional rules switched on. */
+export const tableFlags = (saved: TableRule[]) => ({
+  ...Object.fromEntries(APP_RULES.map(a => [a.flag, saved.find(r => r.id === a.id)?.on ?? true])),
+  optional: saved.filter(r => r.on && r.name === undefined && !APP_RULES.some(a => a.id === r.id)).map(r => r.id),
+}) as unknown as TableFlags
 
 /** The rules switched on, as the export writes them (the app's own switches aren't rules). */
 export const tableRulesForExport = (c: Catalog, saved: TableRule[]) => saved.filter(r => r.on && !APP_RULES.some(a => a.id === r.id))

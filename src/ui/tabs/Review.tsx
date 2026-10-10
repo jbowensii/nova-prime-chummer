@@ -1,10 +1,36 @@
 import { useState } from 'react'
-import { activeEvents, canFinalize, effectLines, finalize, reopen } from '../../engine'
+import { activeEvents, canFinalize, effectLines, finalize, optionOn, reopen } from '../../engine'
 import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
 import { editHref, useEditor } from '../editor'
 import { NpcBlock } from '../NpcBlock'
 import { AnarchyRef, entryOfPath } from '../AnarchyRef'
+import { seeds } from '../TableRules'
+import { SourceLabel } from '../SourceLabel'
+
+/** The books' optional rules for this runner: the table's choice (Table setup) unless the runner sets its own. */
+function OptionalRules() {
+  const { c, ch, ro, table, update } = useEditor()
+  const rules = seeds(c)
+  if (!rules.length || ch.npc) return null
+  const set = (id: string, v: string) => update(d => {
+    const own = { ...d.optionalRules }
+    if (v === '') delete own[id]; else own[id] = v === 'on'
+    if (Object.keys(own).length) d.optionalRules = own; else delete d.optionalRules
+  })
+  return <section aria-labelledby="review-optional">
+    <h3 id="review-optional">Optional rules</h3>
+    <p className="muted small">The books’ optional rules play as your GM set them on Table setup, unless this runner sets its own.</p>
+    <ul className="effects">{rules.map(r => {
+      const own = ch.optionalRules?.[r.id], tableOn = table?.optional?.includes(r.id) ?? false
+      return <li key={r.id}><label>{r.title} <SourceLabel c={c} source={r.source} page={r.page} id={r.id} />{' '}
+        <select value={own === undefined ? '' : own ? 'on' : 'off'} disabled={ro} onChange={e => set(r.id, e.target.value)}
+          aria-label={`${r.title} for this runner`}>
+          <option value="">As the table: {tableOn ? 'on' : 'off'}</option><option value="on">On</option><option value="off">Off</option>
+        </select></label> <span className="muted">{optionOn(r.id, ch, table) ? 'in play' : 'not in play'}</span></li>
+    })}</ul>
+  </section>
+}
 
 const tabFor = (path: string) => {
   const head = path.split('.')[0]
@@ -66,6 +92,8 @@ export function ReviewTab() {
         <p className="muted small">A switchable effect, or one that holds only sometimes, counts in the bracketed totals, `1 (2)`; one read from a
           sentence the importer isn’t sure of is listed but not counted: change it in the Amp Builder (or on the Gear tab for an item) to count it.</p>
       </section>}
+
+      <OptionalRules />
 
       {err && <p className="banner err" role="alert">{err}</p>}
       {!ch.npc && !ro && <><hr className="sep" />

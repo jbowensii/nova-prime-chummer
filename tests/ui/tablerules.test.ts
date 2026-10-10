@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { loadTableRules } from '../../src/ui/TableRules'
+import { loadTableRules, tableFlags } from '../../src/ui/TableRules'
 
 const reply = (body: string, type: string, status = 200) => vi.stubGlobal('fetch', vi.fn(async () => new Response(body, { status, headers: { 'content-type': type } })))
 afterEach(() => vi.unstubAllGlobals())
@@ -19,4 +19,9 @@ test('strict still throws on a server error, a network failure and a wrong XML d
   await expect(loadTableRules({ strict: true })).rejects.toThrow(/network/)
   reply('<other/>', 'text/xml')
   await expect(loadTableRules({ strict: true })).rejects.toThrow(/table rules document/)
+})
+test('the switches: the app’s own on unless off; the books’ optional rules switched on, not house rules', () => {
+  expect(tableFlags([])).toEqual({ nonCanon: true, realSin: true, optional: [] })
+  expect(tableFlags([{ id: 'ca2.real-sin', on: false }, { id: 'optional-a', on: true }, { id: 'optional-b', on: false },
+    { id: 'house', on: true, name: 'House', text: '' }])).toEqual({ nonCanon: true, realSin: false, optional: ['optional-a'] })
 })

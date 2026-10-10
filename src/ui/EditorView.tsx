@@ -52,7 +52,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
 
   const [table, setTable] = useState<TableFlags>()
   useEffect(() => { void loadTableRules().then(r => setTable(tableFlags(r))) }, [])
-  const calc = useMemo(() => ch && ({ d: derive(c, ch), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
+  const calc = useMemo(() => ch && ({ d: derive(c, ch, table), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
 
   const back = npcRoute ? <a href={ch?.npc ? homeHref(ch) : '#/npcs'}>Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
   if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
@@ -69,7 +69,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
 
   const ro = owner !== null
   const ctx: EditorCtx = {
-    c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career, ro,
+    c, ch, d: calc.d, v: calc.v, p: calc.p, balance: calc.bal, career, ro, table,
     edit: fn => { if (!ro) commit(mutate(fn), true) },
     update: fn => { if (!ro) commit(mutate(fn), true) },
     record: (ev, summary) => ro ? Promise.resolve(false) : new Promise<boolean>(resolve => {

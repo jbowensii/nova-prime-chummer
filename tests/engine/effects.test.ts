@@ -126,9 +126,12 @@ describe('derive', () => {
     expect(derive(cat, runner([b])).pools.find(p => p.spec === 'perception.physical' && p.attr === 'wil')?.rr).toBe(2)
   })
   test('social and Matrix armor, wound modifiers, forced Risk, sustained spells, spirits, VR and rigging', () => {
-    const d = derive(cat, runner([amp('jet', 'quality', [{ ref: 'social-armor', value: 2 }, { ref: 'ignore-wounds', param: 'light' }, { ref: 'forced-risk' },
+    const ch = runner([amp('jet', 'quality', [{ ref: 'social-armor', value: 2 }, { ref: 'ignore-wounds', param: 'light' }, { ref: 'forced-risk' },
       { ref: 'sustain-spell' }, { ref: 'summon-spirit' }, { ref: 'vr-cold' }, { ref: 'vr-hot' }, { ref: 'rcc', value: 2 }, { ref: 'vcr' }]),
-    amp('deck', 'cyberdeck', [{ ref: 'matrix-armor', value: 1 }])]))
+    amp('deck', 'cyberdeck', [{ ref: 'matrix-armor', value: 1 }])])
+    // social thresholds only with the optional extended social Tests (CRB p.139) in play, here the runner's own switch
+    expect(derive(cat, ch).thresholds.social).toBeUndefined()
+    const d = derive(cat, { ...ch, optionalRules: { 'optional-extended-social-tests': true } })
     expect(d.thresholds.social).toEqual([5, 8, 11]) // Resolve 3 + 2
     expect(d.thresholds.matrix).toEqual([2, 5, 8]) // Firewall 1 + Matrix armor 1
     expect([d.socialArmor, d.matrixArmor, d.ignoreWounds, d.forcedRisk, d.extraSpirits, d.vr, d.rcc, d.vcr]).toEqual([2, 1, 'light', true, 1, 'hot', 2, true])
@@ -190,7 +193,7 @@ describe('the character file and the export', () => {
     expect(ampParts(cat, 'equipment', [{ ref: 'rr-attr', param: 'agi', switch: 'activated' }]).switch).toBe('activated')
   })
   test('the runner carries its pools’ notes, its effects block and its items’ effects', () => {
-    const r = exportRunner(cat, ch, { descriptions: false, now: '2026-10-10T00:00:00.000Z', appVersion: 'test' })
+    const r = exportRunner(cat, { ...ch, optionalRules: { 'optional-extended-social-tests': true } }, { descriptions: false, now: '2026-10-10T00:00:00.000Z', appVersion: 'test' })
     expect(r.effects).toMatchObject({ socialArmor: 1 })
     expect(r.thresholds.social).toEqual([4, 7, 10])
     expect(r.items.find(i => i.uid === 'g')?.effects?.[0]).toMatchObject({ id: 'social-armor', value: 1, applied: true })

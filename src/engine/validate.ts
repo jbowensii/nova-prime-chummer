@@ -10,8 +10,9 @@ import { catalogItem, itemPrice, price, slotLapse } from './price'
 import { issueNote, type Issue } from './formula'
 import { hasNoMetatype } from './npc'
 
-/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. */
-export interface TableFlags { nonCanon: boolean; realSin: boolean }
+/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
+ *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn). */
+export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[] }
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []
@@ -149,6 +150,11 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   if (rating('conjuring') > 0 && !allRefs.has('awk-conjuring')) add('skill.requiresAwakened', 'error', 'skills.conjuring', 'Conjuring needs the Awakened amp with Conjuring.', 54)
   const emerged = b.amps.some(a => a.type === 'emerged')
   if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck') && !emerged) add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck (or the Emerged amp).', 54)
+  // a DNI: VR access from cyberware (a datajack or cyberjack, p.155); the Emerged connect as if they had one (CG p.8)
+  const dni = emerged || allRefs.has('vr-cold') || allRefs.has('vr-hot')
+  if (rating('cracking') > 0 && !dni) add('skill.requiresDni', 'error', 'skills.cracking', 'Cracking needs a direct neural interface (cyberware with cold- or hot-sim VR).', 212)
+  for (const [ref, what] of [['rcc', 'A rigger command console'], ['vcr', 'A vehicle control rig']] as const)
+    if (allRefs.has(ref) && !dni) add('rig.requiresVr', 'error', 'amps', `${what} needs VR access from cyberware (cold- or hot-sim VR).`, 62)
   if (rating('tasking') > 0 && !emerged) add('skill.requiresEmerged', 'error', 'skills.tasking', 'Tasking needs the Emerged amp.', 8, 'CG')
   if (emerged && b.amps.some(a => a.type === 'awakened')) add('amp.emergedAwakened', 'error', 'amps', 'A character cannot be both Awakened and Emerged.', 8, 'CG')
   if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'error', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
@@ -164,7 +170,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   // Risk Reduction caps at creation: the total on one Test (Attribute + Skill + specialization RR, stacked) against the
   // level's limit for that kind of Test (owner's reading of CRB p.85 "including from stacking")
-  const d = derive(c, { ...ch, build: b, finalizedAt: undefined })
+  const d = derive(c, { ...ch, build: b, finalizedAt: undefined }, table)
   const cap = (total: number, limit: number, path: string, test: string, parts: [string, number][]) => {
     if (limited && level && total > limit)
       add('rr.cap', 'error', path, `RR ${total} on ${test} Tests (${parts.filter(([, n]) => n).map(([w, n]) => `${w} ${n}`).join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`, 85)

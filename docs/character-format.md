@@ -131,6 +131,10 @@ is built from this data; the format itself is ours and stays stable.
   Rules page decides since 0.5.7) marked a runner as canon only: the
   Review tab flags each non-canon amp, item or specialization. Missing means
   non-canon content is allowed.
+- **`<optionalRule id="…" on="true|false"/>`** (after the `<override>`s, any number): the runner's own switch for a
+  book's optional rule, by its rules id (the core rulebook's import seeds them into Table rules: `optional-vehicle-damage-for-all`,
+  CRB p.68; `optional-extended-social-tests`, p.139; …). It wins over the GM's Table setup; with none, the table's
+  switch holds, off unless the GM switched it on. Set on the Review tab.
 - **`origin`** on a sample runner names the source it was built from
   (`CRB`, `PREGENS`), so the library can badge non-canon samples.
 - **`sampleKey`** on a runner loaded with "Load example characters" names the example character it copies: its name

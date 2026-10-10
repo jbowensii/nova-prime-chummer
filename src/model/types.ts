@@ -152,6 +152,9 @@ export interface Character { formatVersion: 1; id: string;
   level: string; package: string; build: Build; finalizedAt?: string;
   /** false: non-canon catalog content is flagged (undefined = allowed) */
   allowNonCanon?: boolean;
+  /** the runner's own switch for a book's optional rule, by its rules id (engine/derive.ts optionOn): it wins over the
+   *  table's; absent: the table's (off unless the GM switched it on) */
+  optionalRules?: Record<string, boolean>;
   /** source id of a sample character (sources.xml), e.g. CRB or PREGENS */
   origin?: string;
   /** which example character this runner is a copy of: "<name slug>|canon" or "<name slug>|noncanon" (src/ui/samples.ts);
