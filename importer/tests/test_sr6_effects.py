@@ -131,6 +131,24 @@ class ApplyTest(unittest.TestCase):
         self.assertIn(' rating="1-4"', out["zap-ranged-2"])  # (its own range stays)
         self.assertNotIn("rating=", out["fizz-70"])  # (siblings, but nothing counts per rating)
 
+    def test_rated_add_ons_a_choice_of_attributes_a_threshold_and_a_stat_by_name(self):
+        self.assertEqual(fx("Zaplimbs can be used to add to either Agility, Armor, or Strength of the user."),
+                         [("attr:choice", "add", "R", None, "agility or strength")])
+        got = [a for t, a, _ in effects.read("When making jumping tests (Athletics + Strength) subtract the zap springs rating "
+                                             "from the threshold, with a minimum modified threshold of 1.", "augmentations") if t == "effect"]
+        self.assertEqual([(a["target"], a["op"], a["value"], a.get("spec")) for a in got], [("skill:athletics", "threshold", "-R", "Jumping")])
+        rated = '<formula field="cost">R*5000</formula>'
+        rows = [("armor", "Zaplimb accessory", "Armor", rated), ("strength", "Zaplimb accessory", "Strength", rated),
+                ("plain-armor", "Zaplimb accessory", "Armor", ""), ("gear-armor", "Gear", "Armor", rated)]
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n' + "".join(
+            f'  <augmentation id="{i}" source="X" page="1" category="{c}"><name>{n}</name>{k}</augmentation>\n' for i, c, n, k in rows)
+            + "</sr6:data>\n"}
+        out = {m.group(1): m.group(0) for m in re.finditer(r'<augmentation id="([^"]+)".*', effects.apply(files, "", "")[0]["augmentations.xml"])}
+        self.assertIn('<effect target="derived:defense" op="add" value="R"/>', out["armor"])  # (a cyberlimb's Armor: Defense Rating)
+        self.assertIn('<effect target="attr:str" op="add" value="R"/>', out["strength"])
+        self.assertNotIn("<effect", out["plain-armor"])  # (not rated)
+        self.assertNotIn("<effect", out["gear-armor"])  # (not an add-on)
+
     def test_a_shared_description_is_split_by_name(self):
         t = ("Turbo engines go fast. Increase Acceleration by 3. Economy engines save money. Decrease Acceleration by 2.")
         self.assertEqual(effects._own_part(t, "Economy Engines", ["Turbo", "Economy Engines"]), "Economy engines save money. Decrease Acceleration by 2.")

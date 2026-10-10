@@ -109,6 +109,9 @@ ITEM = {"attack ratings": "ar", "attack rating": "ar", "ar": "ar", "damage value
         "acceleration": "acceleration", "speed interval": "speed-interval", "top speed": "top-speed",
         "size class": "size", "seat": "seats", "seats": "seats", "pilot rating": "pilot", "pilot": "pilot",
         "sensor rating": "sensor", "sensor": "sensor", "body value": "body", "armor value": "armor"}
+# an add-on's name as the stat of its host it raises, where the name isn't a target word itself (a cyberlimb's Armor is
+# its Defense Rating: `Increases to Armor increase your Defense Ratings`, CRB p. 289)
+ADDON_STATS = {"armor": "derived:defense"}
 VEHICLE_KINDS = {"vehicles", "vehicledesign"}
 ITEM_KINDS = {"weapons", "armor", "gear", "electronics", "augmentations", "vehicles", "vehicledesign", "ammotypes", "programs"}
 NUMBERS = {"zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7",
@@ -753,11 +756,22 @@ def _rules(s, kind, sw, when, edge_actions, label):
         for t, spec in ts:
             if t.startswith(("item:", "derived:", "attr:", "matrix:")):
                 found.append((t, "-" + _val(m.group("v"), low).lstrip("-"), spec, None))
-    for m in re.finditer(r"\b(?:subtracts?|reduces?|lowers?|decreases?) (?:its rating|(?P<v>\d+|one|two|three)) from the thresholds? of (?:all |any )?(?P<t>[^.;]*)|"
+    for m in re.finditer(r"\b(?:subtracts?|reduces?|lowers?|decreases?) (?:its rating|the [a-z' -]{2,40}? rating|(?P<v>\d+|one|two|three)) from the thresholds?"
+                         r"(?: of (?:all |any )?(?P<t>[^.;]*))?|"
                          r"\b(?:reduces?|lowers?|decreases?) the thresholds? (?:of|for) (?:all |any )?(?P<t2>[^.;]*?) by (?:its rating|(?P<v2>\d+|one|two|three))", low):
         v = _val(m.group("v") or m.group("v2"), low) if (m.group("v") or m.group("v2")) else "R"
-        for t, _ in targets(m.group("t") or m.group("t2") or "", kind):
-            out.append(_fx(t, "threshold", "-" + v.lstrip("-"), sw, when))
+        # (`When making jumping tests … subtract the hydraulic jacks rating from the threshold`: the tests named before)
+        before = re.search(r"\b(?:when|while) (?:making|rolling|attempting) (?P<t>[^.;(]*?\btests?)\b", low[:m.start()])
+        t = m.group("t") or m.group("t2") or (before.group("t") if before else "")
+        for t, spec in targets(t, kind):
+            out.append(_fx(t, "threshold", "-" + v.lstrip("-"), sw, None if before and when and before.group("t") in when else when,
+                           _spec(t, spec)))
+    for m in re.finditer(r"\b(?:can|may) (?:be used to )?(?:add|raise|increase) (?:to )?either (?:the )?(?P<t>[a-z]+(?:, [a-z]+)*,? or [a-z]+)\b", low):
+        # (`Cyberlimbs can be used to add to either Agility, Armor, or Strength`: no amount, the item's rating; the one
+        # the player picks of the attributes named)
+        attrs = [ATTRIBUTES[w] for w in re.findall(r"[a-z]+", m.group("t")) if w in ATTRIBUTES]
+        if len(attrs) > 1:
+            out.append(_fx("attr:choice", "add", "R", sw, " or ".join(k for k, a in ATTRIBUTES.items() if a in attrs)))
     for m in re.finditer(r"\b(?:decrease|reduce|lower)s?\s+(?:the |its |your )?(?P<t>[a-z ]{2,40}?)(?: of the (?:vehicle|drone|weapon|item))?\s+by\s+(?:the |its )?(?:[a-z-]+'s )?(?:rating|level)\b", low):
         for t, spec in targets(m.group("t"), kind):
             if t.startswith(("item:", "derived:", "attr:", "matrix:")):
@@ -1191,6 +1205,11 @@ def apply(files, texts_xml, regrouped=""):
                 w = row[1] if len(tab) > 1 and len(header) > 1 and header[1].strip().upper() == "BASE" else None
                 for t, a, _ in table(header, row, kind):
                     found.append((t, {**a, **({"when": w} if w else {})}, None))
+            if kind in ITEM_KINDS and not any(t == "effect" for t, _, _ in found) and re.search(r"accessor", _unesc(attrs), re.I) \
+                    and re.search(r"<formula\b[^>]*>[^<]*\bR\b", kids):
+                # (a rated add-on named for the stat it raises, a cyberlimb's `Armor`: its rating to that stat)
+                ts = targets(nm.casefold(), kind) or ([(ADDON_STATS[_key(nm)], None)] if _key(nm) in ADDON_STATS else [])
+                found += [_fx(t, "add", "R", spec=sp) for t, sp in ts[:1]]
             kept = _KEEP.findall(kids)
             kids = _DROP.sub("", kids)
             new = "".join(f"<{t}{''.join(f' {k}={quoteattr(str(v))}' for k, v in a.items())}/>" for t, a, _ in found)

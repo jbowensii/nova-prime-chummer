@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
-import { armorSocial, bookValue, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
+import { armorSocial, bookValue, chosenRating, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
 import { formulaOf, formulaText } from '../../engine/formula'
 import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
@@ -66,6 +66,8 @@ export function LineName({ x }: { x: Sr6Purchase }) {
 }
 
 export interface PickedItem { e: Sr6Entry; rating?: number; grade?: string }
+// (the stepper's top for a rating the player picks: the book's rules bound it elsewhere, chosenRating)
+const MAX_CHOSEN = 99
 
 /** A grade as a select shows it: one the entry's type doesn't take marked (Review's gear.grade). */
 const gradeLabel = (data: Sr6Data, cr: CreationRules, g: string, e: Sr6Entry) =>
@@ -88,12 +90,12 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
   const pick = (key: string) => {
     const e = entries.find(x => `${x.kind}:${x.id}` === key)
     if (!e) return
-    const range = ratingRange(e.attrs.rating)
+    const range = ratingRange(e.attrs.rating), free = chosenRating(e)
     const gs = offered(e)
-    if (range.length > 1 || gs.length) setChosen({ e, rating: range.length > 1 ? range[0] : undefined, grade: gs[0] })
+    if (range.length > 1 || free || gs.length) setChosen({ e, rating: range.length > 1 || free ? range[0] ?? 1 : undefined, grade: gs[0] })
     else add({ e })
   }
-  const range = chosen ? ratingRange(chosen.e.attrs.rating) : []
+  const range = chosen ? ratingRange(chosen.e.attrs.rating) : [], free = chosen && chosenRating(chosen.e)
   const price = chosen && priceAt(chosen.e, chosen.rating ?? range[0] ?? 1, cr, chosen.grade, data)
   return (
     <Modal open={open} onClose={close} title={title}
@@ -105,6 +107,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
           {range.length > 1 && <label className="inline">Rating
             <select value={chosen.rating} onChange={e => setChosen({ ...chosen, rating: Number(e.target.value) })}>
               {range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>}
+          {free && <label className="inline">{free} <Stepper label={free} value={chosen.rating ?? 1} min={1} max={MAX_CHOSEN}
+            onChange={v => setChosen({ ...chosen, rating: v })} /></label>}
           {grades && gradeOptions(cr, data, chosen.e).length > 0 && <label className="inline">Grade
             <select value={chosen.grade ?? ''} onChange={e => setChosen({ ...chosen, grade: e.target.value || undefined })}>
               <option value="">None</option>
@@ -179,10 +183,13 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
       const e = entryOf(a, data), own = e ? entryLabel(e) : a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
       // on an implant an add-on has its grade (CRB p. 282): shown, never chosen
       const range = ratingRange(e?.attrs.rating), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
+      const free = chosenRating(e)
       // its rating and grade change in place, as a line's do
-      return <span key={a.uid} className="chip"><Sr6Ref kind={a.kind} id={e?.id}>{range.length > 1 ? own : label}</Sr6Ref>
+      return <span key={a.uid} className="chip"><Sr6Ref kind={a.kind} id={e?.id}>{range.length > 1 || free ? own : label}</Sr6Ref>
         {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
           onChange={ev => act({ op: 'rate', uid: a.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select>}
+        {free && <Stepper label={`${own} on ${name}: ${free.toLowerCase()}`} value={a.rating ?? 1} min={1} max={MAX_CHOSEN}
+          onChange={v => act({ op: 'rate', uid: a.uid, rating: v })} />}
         {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
           onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
           <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, e!)}</option>)}</select>}
@@ -207,11 +214,14 @@ export const ACCESSORY_KINDS: PurchaseKind[] = ['gear', 'weapons', 'augmentation
 function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades?: boolean }) {
   const { data, cr, act } = useSr6Editor()
   const e = entryOf(x, data), range = ratingRange(e?.attrs.rating), offered = grades && e ? gradeOptions(cr, data, e) : []
-  if (range.length < 2 && !offered.length) return (x.rating || x.grade)
+  const free = chosenRating(e)
+  if (range.length < 2 && !free && !offered.length) return (x.rating || x.grade)
     ? <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && gradeName(data, x.grade)].filter(Boolean).join(' · ')}</div> : null
   return <div className="row muted">
     {range.length > 1 ? <label className="inline">Rating <select aria-label={`${name} rating`} value={x.rating ?? range[0]}
       onChange={ev => act({ op: 'rate', uid: x.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>
+      : free ? <label className="inline">{free} <Stepper label={`${name} ${free.toLowerCase()}`} value={x.rating ?? 1} min={1} max={MAX_CHOSEN}
+        onChange={v => act({ op: 'rate', uid: x.uid, rating: v })} /></label>
       : x.rating && `Rating ${x.rating}`}
     {offered.length > 0 ? <label className="inline">Grade <select aria-label={`${name} grade`} value={x.grade ?? ''}
       onChange={ev => act({ op: 'rate', uid: x.uid, grade: ev.target.value || null })}>
