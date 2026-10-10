@@ -223,12 +223,18 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         lines.append(f'<knowledge uid="k{next(uid)}" kind="language"{_a("native", native and "true")} {ranks}>{_x(lang)}</knowledge>')
     # the metatype's own qualities (CRB p.64) are free whether or not the block marks them "(… trait)"
     traits = {norm(t or "") for tag, _, t in meta[3].get("children", []) if tag == "trait"} if meta else set()
+    flat = []  # (quality id, as printed) of a level printed on a quality without levels
     for q in split(labels.get("qualities", "")):
         hit, level, note = _named(idx, ["qualities"], q)
         if not hit:
             miss("Qualities", q)
             continue
-        free = (note and re.search(r"\btrait\b", note, re.I)) or norm(f"{hit[2]} {level or ''}") in traits
+        if level and level > 1 and hit[3].get("attrs", {}).get("perLevel") != "true":
+            # (owner, 2026-10-09) a level printed on a quality that has none (`Magic Resistance 2`: CRB p.72 prints one
+            # flat cost): a misprint the books repeat; taken without it, the printed level kept for Review's note
+            flat.append((hit[1], f"{hit[2]} {level}"))
+            level = None
+        free =(note and re.search(r"\btrait\b", note, re.I)) or norm(f"{hit[2]} {level or ''}") in traits
         qa = hit[3].get("attrs", {})  # its karma (budgets.ts qualityCost): × level when per level; a ranged one's own
         took = _allergy(hit[2], note, num(qa.get("karmaMax"))) if qa.get("karmaMax") else None
         cost = 0 if free else took or abs(num(qa.get("karma"))) * ((level or 1) if qa.get("perLevel") == "true" else 1)
@@ -251,7 +257,8 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
             lines.append(_closed(f'<pick uid="p{next(uid)}" kind="{kind}" id={quoteattr(hit[1])}{_a("level", level)} name={quoteattr(hit[2])}',
                                  _bonuses(hit[2], level), "pick"))
 
-    sins, worn = [], False
+    sins, worn, legal_over, dice = [], False, [], []  # dice: (skill id, dice, item) a line's bonus adds to a skill's tests
+    skill_of = lambda n: (h := idx.find(["skills"], n)) and h[1]  # noqa: E731
     for label, kinds in PURCHASES.items():
         for item in split(labels.get(label, "")):
             if m := re.match(r"(?:(\d+)\s*x\s+)?fake\s+sin\b\s*(?:\((.*)\))?", item, re.I):
@@ -260,7 +267,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                 for _ in range(int(m.group(1) or 1)):
                     sins.append((int(r.group(1)) if r else None, split(lic.group(1)) if lic else []))
                 continue
-            line, worn, cost = _purchase(idx, kinds, item, next(uid), worn, cs)
+            line, worn, cost = _purchase(idx, kinds, item, next(uid), worn, cs, legal_over=legal_over, dice=dice, skill_of=skill_of)
             need["nuyen"] += cost
             if line:
                 lines.append(line)
@@ -268,7 +275,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                 miss(label.title(), item)
     for m in re.finditer(r"\s*([^\[\]]+?)\s*\[([^\[\]]*)(?:\]|$)", labels.get("weapons", "")):
         item = f"{m.group(1)} [{m.group(2)}]"
-        line, worn, cost = _purchase(idx, ["weapons"], m.group(1), next(uid), worn, cs, note=item)
+        line, worn, cost = _purchase(idx, ["weapons"], m.group(1), next(uid), worn, cs, note=item, legal_over=legal_over, dice=dice, skill_of=skill_of)
         need["nuyen"] += cost
         if line:
             lines.append(line)
@@ -296,6 +303,18 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         lines.append(f'<sin uid="s{i}" name={quoteattr(f"Fake SIN {i}")} kind="fake"{_a("rating", rating)}>{kids}</sin>'
                      if kids else f'<sin uid="s{i}" name={quoteattr(f"Fake SIN {i}")} kind="fake"{_a("rating", rating)}/>')
 
+    # (owner, 2026-10-09, reading 2) a printed rank above the creation cap, on a skill a line's bonus adds dice to (a voice
+    # modulator's to sound-based Con): the printed rank includes that bonus; the natural rank is the printed less it when
+    # that lands within the cap. The line keeps its bonus (on the tests it holds for); Review notes the reading.
+    aptitude = cs.get("aptitudeQuality")
+    cap = setting("skillCapAptitude") if aptitude and any(f'id="{aptitude}"' in x or f"id='{aptitude}'" in x for x in lines) else setting("skillCap")
+    read_as = {}
+    for i, (sid_, rank, sp, ex) in enumerate(skills):
+        plus = [(n, v) for k, v, n in dice if k == sid_]
+        bonus = sum(v for _, v in plus)
+        if cap and rank > cap and plus and 1 <= rank - bonus <= cap:
+            skills[i] = (sid_, rank - bonus, sp, ex)
+            read_as[f"rank:{sid_}"] = f"{rank}|" + " + ".join(f"{n.lower()} {v}" for n, v in plus)
     printed = [f"{k}: {v}" for k, v in b.labels.items() if k.lower() in PRINTED]
     if band.get("ess"):
         printed.append(f"Essence: {band['ess']}")
@@ -327,6 +346,20 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
             elif tag == "resources":
                 r["nuyen"] = num(ca["nuyen"])
     got = fit.fit(need, rows, cs) if meta and rows and cs else None
+    # the options a book rule gives that the printed numbers need (owner, 2026-10-09), written as the runner's own rules,
+    # marked assumed (the book doesn't say): the prime runner's doubled customization Karma (CRB p.64) when no priority
+    # assignment holds the build within the standard Karma; the first printing's cap on illegal gear only (CRB p.66) when
+    # a legal item is past the Availability cap. Nothing a book rule doesn't explain.
+    assumed = []
+    if got and got.get("over", 0) > 0 and isinstance(cs.get("startingKarma"), float):
+        prime = {**cs, "startingKarma": cs["startingKarma"] * 2}
+        better = fit.fit(need, rows, prime)
+        if better and better["over"] < got["over"]:
+            got = better
+            assumed.append(("startingKarma", f"{prime['startingKarma']:g}", "CRB", 64))
+    if legal_over:
+        assumed.append(("availabilityCapIllegalOnly", "true", "CRB", 66))
+    rules = "".join(f'<setting key="{k}" value="{v}" assumed="true" source="{so}" page="{pg}"/>' for k, v, so, pg in assumed)
     method = got["method"] if got else "priority"
     if got:
         head = [f'<priority column="{c}" letter="{L}"/>' for c, L in got["letters"].items()]
@@ -353,6 +386,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
              or (iid and f"{iid.group(1)} + {iid.group(2)}D6"),
              "cm": labels.get("condition monitors (p/s)") or labels.get("condition monitor") or row.get("CM"),
              "dr": labels.get("defense rating") or row.get("DR")}
+    shown.update({f"level:{i}": as_printed for i, as_printed in flat}, **read_as)
     shown = "".join(f'<value key="{k}" value={quoteattr(_s(v))}/>' for k, v in shown.items() if v and _s(v))
 
     root = {"formatVersion": 1, "id": sid, "streetName": name, "metatype": meta[1] if meta else "", "method": method,
@@ -360,7 +394,8 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     xml = (HEAD + f'<sr6:character xmlns:sr6="{CHAR_NS}"' + "".join(_a(k, v) for k, v in root.items()) + ">\n"
            f"  <background>{_x(f'{name} archetype. {src} p.{page}.')}</background>\n"
            f"  <notes>{_x(chr(10).join(notes))}</notes>\n"
-           + (f'  <printed source={quoteattr(src)} page="{page}">{shown}</printed>\n' if shown else "") +
+           + (f'  <printed source={quoteattr(src)} page="{page}">{shown}</printed>\n' if shown else "")
+           + (f"  <rules>{rules}</rules>\n" if rules else "") +
            f'  <build method="{method}" magic="{magic}"{_a("karmaToNuyen", got and got["karmaToNuyen"])}>\n    '
            + "\n    ".join(head + lines) + "\n  </build>\n</sr6:character>\n")
     return sid, xml, report
@@ -391,7 +426,7 @@ def _rank(free):
 _LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(obvious|synthetic)\b", re.I)
 
 
-def _purchase(idx, kinds, item, n, worn, cs, note=None):
+def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, dice=None, skill_of=None):
     """A gear line -> (purchase XML or None when the catalog lacks it, worn, its cost at its rating, grade and quantity
     (budgets.ts priced), 0 when it can't be read): `3 x …` the quantity, `(rating N …)` or a trailing number the rating;
     the printed text in its note when it says more than the name."""
@@ -427,9 +462,14 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None):
     ha = hit[3].get("attrs", {})
     low = re.match(r"\s*(\d*)", ha.get("rating") or "").group(1)  # unrated: the lowest it comes in (budgets.ts ratingOf)
     cost = (fit.value(ha.get("cost"), r or int(low or 1)) or 0) * qty * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
+    if legal_over is not None:  # a legal item above the Availability cap (the core rulebook's first printing caps only illegal gear)
+        avail = (fit.value(ha.get("avail"), r or int(low or 1)) or 0) + (cs.get(f"grade:{grade.group(1).lower()}:avail", 0) if grade else 0)
+        top = cs.get("maxAvailability")
+        if isinstance(top, float) and avail > top and not re.search(r"I\)?\s*$", ha.get("avail") or ""):
+            legal_over.append(hit[2])
     return _closed(f'<purchase uid="g{n}" kind="{hit[0]}" id={quoteattr(hit[1])} name={quoteattr(hit[2])}{_a("rating", r)} '
                    f'qty="{qty}"{_a("grade", grade and grade.group(1).lower())}{_a("worn", wear and "true")}{_a("note", note)}',
-                   _bonuses(hit[2], r), "purchase"), worn or wear, cost
+                   _bonuses(hit[2], r, skill_of, dice), "purchase"), worn or wear, cost
 
 
 # what a standard boost adds per rating or level (the engine counts only the bonuses a line carries, the catalog has none):
@@ -441,16 +481,32 @@ BOOSTS = {"improved reflexes": (("rea", 1), ("initDice", 1)), "wired reflexes": 
           "dermal plating": (("defense", 1),), "bone lacing plastic": (("defense", 1),),
           "bone lacing aluminum": (("defense", 1),), "bone lacing titanium": (("defense", 2),),
           # CRB p. 288: each cyberlimb adds a Physical box; a partial one (forearm, hand, lower leg, foot) doesn't
-          **{f"{part} {kind}": (("physical", 1),) for part in ("skull", "torso", "arm", "leg") for kind in ("obvious", "synthetic")}}
+          **{f"{part} {kind}": (("physical", 1),) for part in ("skull", "torso", "arm", "leg") for kind in ("obvious", "synthetic")},
+          # dice on some tests only (shown with the pool, never added): CRB p.286 a voice modulator's wireless bonus, its
+          # rating on sound-based Con tests; p.287 tailored pheromones, their rating to Charisma on Con and Influence tests
+          # while the target can smell them
+          "voice modulator": (("skill:con", 1, "sound-based Con tests, with its wireless bonus"),),
+          "tailored pheromones": (("skill:con", 1, "Con tests within conversation range (Charisma + rating)"),
+                                  ("skill:influence", 1, "Influence tests within conversation range (Charisma + rating)"))}
 
 
-def _bonuses(name, rating):
+def _bonuses(name, rating, skill_of=None, dice=None):
     """The <bonus> lines of a catalog entry named `name` bought at `rating` (or level): per rating, or at the level its
-    name ends with (`Wired Reflexes 2`); none for anything else."""
+    name ends with (`Wired Reflexes 2`); none for anything else. A skill's (`skill:con`) needs `skill_of` (a skill's name
+    -> its id, None: left out); one that holds on some tests only carries `when`. `dice`: each skill bonus is added to it
+    as (skill id, dice, name)."""
     m = re.fullmatch(r"(.*?)(?:\s+(\d+))?", norm(name))
-    per = BOOSTS.get(m.group(1), ())
-    return "".join(f'<bonus target="{t}" value="{v}" perRating="true"/>' if rating else
-                   f'<bonus target="{t}" value="{v * int(m.group(2) or 1)}"/>' for t, v in per)
+    out = []
+    for t, v, *when in BOOSTS.get(m.group(1), ()):
+        total = v * (rating or int(m.group(2) or 1))
+        skill = skill_of(t[6:]) if t.startswith("skill:") and skill_of else None
+        if t.startswith("skill:") and not skill:
+            continue
+        if skill and dice is not None:
+            dice.append((skill, total, name))
+        head = f'<bonus target="skill" skill={quoteattr(skill)}' if skill else f'<bonus target="{t}"'
+        out.append(head + (f' value="{v}" perRating="true"' if rating else f' value="{total}"') + _a("when", when[0] if when else None) + "/>")
+    return "".join(out)
 
 
 def _closed(head, kids, tag):

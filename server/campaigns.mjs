@@ -9,7 +9,10 @@
 //   GET    /api/campaigns/:id                   -> campaign (its GMs, members, and the admin)
 //   PUT    /api/campaigns/:id                   GM/admin: any of { name, note, archived } -> campaign; SR6 also { creation }:
 //                                               the campaign's own creation settings ([{ key, value, source?, page? }],
-//                                               creation.xsd's rules) or null (the server's default again)
+//                                               creation.xsd's rules) or null (the server's default again), and { locks }:
+//                                               the creation settings its runners can't choose for themselves ([key], each
+//                                               kept with who locked it first; a new one: the caller). Its view has locks:
+//                                               [{ key, by, byName }]
 //   DELETE /api/campaigns/:id                   GM/admin: -> 204; 409 while runners are in it
 //   POST   /api/campaigns/:id/members           GM/admin: { user } -> campaign
 //   DELETE /api/campaigns/:id/members/:user     GM/admin: -> campaign; that player's runners leave it (they stay theirs)
@@ -81,14 +84,16 @@ export function parseCampaigns(xml) {
     const tag = rootTag(m, 'campaign'), users = el => [...m.matchAll(new RegExp(`<${el}\\b[^>]*>`, 'g'))].map(([t]) => attr(t, 'user'))
     return { id: attr(tag, 'id'), name: attr(tag, 'name') ?? '', created: attr(tag, 'created') ?? iso(), archived: attr(tag, 'archived') === 'true',
       note: unesc(m.match(/<note>([\s\S]*?)<\/note>/)?.[1] ?? ''), gms: users('gm'), members: users('member'),
-      creation: (x => x ? readSettings(x[0]) : null)(m.match(/<creation\b[^>]*?(?:\/>|>[\s\S]*?<\/creation>)/)) }
+      creation: (x => x ? readSettings(x[0]) : null)(m.match(/<creation\b[^>]*?(?:\/>|>[\s\S]*?<\/creation>)/)),
+      locks: [...m.matchAll(/<lock\b[^>]*>/g)].map(([t]) => ({ key: attr(t, 'key'), by: attr(t, 'by') })).filter(l => l.key && l.by) }
   }).filter(c => CAMPAIGN_ID.test(c.id ?? ''))
 }
 const campaignsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campaigns (campaigns.xsd). Written by the server. -->\n'
   + `<ca2:campaigns xmlns:ca2="${NS}" version="1">\n${list.map(c => `  <campaign id="${esc(c.id)}" name="${esc(c.name)}" created="${esc(c.created)}"${
     c.archived ? ' archived="true"' : ''}>\n${c.note ? `    <note>${esc(c.note)}</note>\n` : ''}${
     c.gms.map(u => `    <gm user="${esc(u)}"/>\n`).join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}${
-    c.creation ? `    <creation>\n${c.creation.map(s => `      ${settingXml(s)}\n`).join('')}    </creation>\n` : ''}  </campaign>\n`).join('')}</ca2:campaigns>\n`
+    c.creation ? `    <creation>\n${c.creation.map(s => `      ${settingXml(s)}\n`).join('')}    </creation>\n` : ''}${
+    (c.locks ?? []).map(l => `    <lock key="${esc(l.key)}" by="${esc(l.by)}"/>\n`).join('')}  </campaign>\n`).join('')}</ca2:campaigns>\n`
 
 /** `lock`: the runners' write lock (server.mjs), which account changes hold too; `auth`: server/auth.mjs's api;
  *  `runnersOf(username)` -> [{ file, id, rev, xml }]; `writeRunner(username, file, xml)` writes one atomically;
@@ -130,7 +135,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
         return { key, mine, ownerName: auth.nameOf(r.owner), streetName: a('streetName') || 'Unnamed runner', level: a('level'), package: a('package'),
           ...roster && !mine ? {} : { id: a('id') }, ...roster ? {} : { owner: r.owner, file: r.file } }
       }),
-      ...creation ? { creation: c.creation ?? null } : {},
+      ...creation ? { creation: c.creation ?? null, locks: (c.locks ?? []).map(l => ({ key: l.key, by: l.by, byName: auth.nameOf(l.by) })) } : {},
       ...roster ? {} : { npcs: (await npcs(c)).map(r => {
         const t = charTag(r.xml, tag), a = n => attr(t, n) ?? ''
         return { id: a('id'), name: a('streetName') || a('name') || 'Unnamed NPC', owner: r.owner, ownerName: auth.nameOf(r.owner) }
@@ -144,7 +149,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
     if (!auth.usernames().includes(n)) throw fail(404, 'no such account')
     return n
   }
-  const fields = (b, c = {}) => {
+  const fields = (b, c = {}, me = null) => {
     const out = {}
     if (!c.id || 'name' in b) {
       out.name = oneLine(b.name)
@@ -155,6 +160,13 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       if (out.note.length > MAX_NOTE) throw fail(400, `a note is ${MAX_NOTE} characters at most`)
     }
     if (creation && c.id && 'creation' in b) out.creation = b.creation === null ? null : creationSettings(b.creation)
+    if (creation && c.id && 'locks' in b) { // each kept with who locked it first; a new one: the caller
+      const keys = b.locks
+      if (!Array.isArray(keys) || keys.length > 500 || keys.some(k => typeof k !== 'string' || !/^[A-Za-z0-9.:_-]{1,80}$/.test(k)))
+        throw fail(400, 'locks is a list of creation setting keys')
+      const had = new Map((c.locks ?? []).map(l => [l.key, l.by]))
+      out.locks = [...new Set(keys)].map(key => ({ key, by: had.get(key) ?? me.username }))
+    }
     if (c.id && 'archived' in b) {
       if (typeof b.archived !== 'boolean') throw fail(400, 'archived is true or false')
       out.archived = b.archived
@@ -243,7 +255,7 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
         return done(false)
       }
       if (!manages(c, me)) throw fail(403, 'only its GMs and the admin can change a campaign')
-      if (!part && req.method === 'PUT') { Object.assign(c, fields(b, c)); return done() }
+      if (!part && req.method === 'PUT') { Object.assign(c, fields(b, c, me)); return done() }
       if (!part) { // DELETE
         if ((await runners(c)).length) throw fail(409, 'this campaign still has runners: they leave it first')
         list.splice(list.indexOf(c), 1)

@@ -37,7 +37,7 @@
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
 //   /api/sr6/books, /api/sr6/books/:id[/report|/reimport], /api/sr6/edits[/:kind/:id]   the same for the Shadowrun 6 area
-//                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS, existing entries only);
+//                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS and samplefixes, existing entries only);
 //                                     no AI, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
 //   PUT    /api/sr6/creation          admin: { settings: [{ key, value, source?, page? }] } -> 204; replaces
@@ -196,7 +196,8 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   // each game's books and catalog (server/games.mjs): Anarchy's at the top of library/ and custom/, SR6's in their sr6/
   // folders, run as `python -m importer sr6 …`. One job queue for both.
   const AREAS = { ca2: { library: libraryDir, custom: customDir, pre: [], kinds: EDIT_KINDS },
-    sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: SR6_KINDS } }
+    // (samplefixes: a book sample runner's printed line corrected, importer/sr6/edits.py)
+    sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: { ...SR6_KINDS, samplefixes: 'samplefix' } } }
   const bookDir = (id, game = 'ca2') => {
     if (!BOOK_ID.test(id)) throw fail(400, 'bad book id')
     return join(AREAS[game].library, id)

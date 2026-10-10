@@ -47,8 +47,20 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
   return base + a.points + a.adjust + a.karma + (p.attributeBonus?.(b, k) ?? 0) + (p.startBonus?.(b, k) ?? 0)
 }
 
+// (a bonus `when` some tests only is shown with its pool, never added: conditionalBonuses)
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string) =>
-  (bonuses ?? []).filter(x => x.target === k && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+  (bonuses ?? []).filter(x => x.target === k && !x.when && (k !== 'skill' || x.skill === skill)).reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+/** The bonuses to skill `skill`'s dice pool that hold on some tests only (`when`), each with its line's name, value at its
+ *  rating and condition: shown with the pool (derive.ts), never added to it. */
+export function conditionalBonuses(b: Sr6Build, data: Sr6Data, skill: string): { value: number; when: string; from: string }[] {
+  const out: { value: number; when: string; from: string }[] = []
+  const take = (bs: Bonus[], rating: number, times: number, from: string) => {
+    for (const x of bs) if (x.when && x.target === 'skill' && x.skill === skill) out.push({ value: x.value * (x.perRating ? rating : 1) * times, when: x.when, from })
+  }
+  for (const x of b.picks) take(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
+  for (const x of b.purchases) { const e = entryOf(x, data); take(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
+  return out
+}
 const EFFECT_TARGET: Record<string, Bonus['target']> = { 'derived:defense': 'defense' }
 /** A catalog entry's effects as bonuses (importer/sr6/effects.py: `+N to X` read from its prose): an `add` effect on an
  *  attribute, the Defense Rating or a skill's dice pool. A low-confidence one (its sentence sets a condition) is shown,

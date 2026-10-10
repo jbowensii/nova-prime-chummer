@@ -435,6 +435,18 @@ function printedHits(c: Ctx): Hit[] {
   if (d.initiative.dice !== null) say('review', 'Initiative', pr.values.init, `${init} + ${d.initiative.dice}D6`)
   if (d.monitors.physical !== null && d.monitors.stun !== null) say('review', 'Condition monitors', pr.values.cm, `${d.monitors.physical}/${d.monitors.stun}`)
   say('gear', 'Defense Rating', pr.values.dr, String(d.defenseRating))
+  // a printed rank above the cap read as the natural rank plus a line's dice (owner, 2026-10-09: `Con 7` with a voice
+  // modulator 3 is Con 4), value `<printed>|<what adds, as printed>`: noted here
+  for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('rank:')) {
+    const id = k.slice(5), s = c.b.skills.find(x => x.id === id), name = c.data.skills[id]?.name ?? id, [rank, plus] = v.split('|')
+    if (s) hits.push({ path: `skills.${id}`, source: pr.source, page: pr.page, message: `The book prints ${name} ${rank}; read as ${name} ${skillRank(s)} + ${plus}.` })
+  }
+  // a level printed on a quality that has none (`Magic Resistance 2`): taken without it (owner, 2026-10-09), noted here
+  for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('level:')) {
+    const id = k.slice(6), e = c.data.entry('qualities', id), q = c.b.qualities.find(x => x.id === id)
+    if (e) hits.push({ path: q ? `qualities.${q.uid}` : 'qualities', source: e.source, page: e.page,
+      message: `The book prints ${v}; ${entryLabel(e)} has no levels (${e.source} p.${e.page}), so it’s taken once.` })
+  }
   return hits
 }
 
@@ -454,6 +466,8 @@ function granted(c: Ctx): (Hit & { none: boolean })[] {
   return hits
 }
 
+/** The kind of the purchase line `uid` (augmentations when it's gone). */
+const PURCHASE_KIND_OF = (ch: Sr6Character, uid: string) => ch.build.purchases.find(x => x.uid === uid)?.kind ?? 'augmentations'
 const nameOf = (c: Ctx, x: Sr6Purchase) => { const e = entryOf(x, c.data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
 
 /** Every broken creation rule on `ch`, the catalog's own problems, and a warning per unset setting a rule needed; approved
@@ -463,9 +477,12 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
   const c: Ctx = { data, cr, ch, b, p, budgets: allBudgets(b, data, cr, p) }
   const labels = new Map(expandKeys(data).map(k => [k.key, k.label]))
   const out: Violation[] = [], unset = new Set<string>()
+  // a setting the runner turned off itself (Creation method tab) is no table setting left unset
+  const off = new Set((ch.rules ?? []).filter(r => !r.value.trim()).map(r => r.key))
   for (const r of RULES) {
     const keys = typeof r.setting === 'function' ? r.setting(c) : r.setting ?? []
-    const missing = keys.filter(k => !cr.has(k))
+    const missing = keys.filter(k => !cr.has(k) && !off.has(k))
+    if (keys.some(k => off.has(k) && !cr.has(k))) continue
     if (missing.length) {
       for (const k of missing) if (!unset.has(k)) {
         unset.add(k)
@@ -479,11 +496,31 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
       out.push({ code: r.code, severity: r.severity, path: h.path ?? r.tab, message: h.message, ...at })
     }
   }
+  out.push(...runnerRuleNotes(cr, ch, labels))
+  // a printed line the owner's override file corrects (engine/samplefix.ts): a note, not the error the book's value gave
+  for (const k of ch.corrections ?? []) {
+    const e = c.data.entry(PURCHASE_KIND_OF(ch, k.path), k.item)
+    out.push({ code: 'sample.corrected', severity: 'warning', path: `${PURCHASE_TAB[PURCHASE_KIND_OF(ch, k.path)]}.${k.path}`, source: k.source, page: k.page,
+      message: `${e ? entryLabel(e) : k.item}: the book prints ${k.field} ${k.from}; corrected to ${k.to} by an override${k.note ? ` (${k.note})` : ''}.` })
+  }
   // the catalog's own problems (data.ts), only for entries this runner uses (and the priority table): not every book's
   const used = JSON.stringify(ch.build)
   out.push(...data.problems.filter(v => v.path.startsWith('priorities.') || used.includes(`"${v.path.slice(v.path.indexOf('.') + 1)}"`)))
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
   return out.map(v => (approved.has(`${v.code}|${v.path}`) ? { ...v, approved: true } : v))
+}
+
+/** Notes on the runner's own rules (creation.ts runnerRules): one a book sample was given because its numbers need it
+ *  (assumed: the book doesn't say), and one its campaign locked, so the runner's choice is set aside. Never errors. */
+function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string, string>): Violation[] {
+  const name = (k: string) => labels.get(k) ?? k, out: Violation[] = []
+  for (const r of ch.rules ?? []) {
+    const s = cr.get(r.key)
+    if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })
+    else if (r.assumed) out.push({ code: 'rules.assumed', severity: 'warning', path: 'method', ...(r.source ? { source: r.source } : {}), ...(r.page ? { page: r.page } : {}),
+      message: `${name(r.key)}: ${r.value.trim() === '' || r.value === 'false' ? 'off' : r.value === 'true' ? 'on' : r.value}; assumed from the book’s numbers (the book doesn’t say).` })
+  }
+  return out
 }
 
 /** No error left that a GM hasn't approved (Anarchy's rule). */

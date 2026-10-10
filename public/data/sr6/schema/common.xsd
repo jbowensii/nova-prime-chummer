@@ -63,6 +63,8 @@
       <xs:enumeration value="trueelements"/>
       <xs:enumeration value="categories"/>
       <xs:enumeration value="rules"/>
+      <!-- (a texts file's of= only: a book sample runner's correction in the edits layer, its description) -->
+      <xs:enumeration value="samplefixes"/>
     </xs:restriction>
   </xs:simpleType>
 
@@ -336,6 +338,29 @@
     <xs:attribute name="from" type="xs:string"/>
     <xs:attribute name="free" type="xs:string"/>
   </xs:complexType>
+  <!-- a correction of a book sample runner's printed line (the edits layer only: the owner's override file), id: the
+       sample's id (crb.face), source and page: its stat block's. Each <correct> sets one field of the line whose catalog
+       item it names, while the runner's line still has the printed value (from); note: why (an owner's correction).
+       The runner file keeps the book's value; the app reads the corrected one and Review notes it. -->
+  <xs:complexType name="SampleFix">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="correct" maxOccurs="50">
+        <xs:complexType>
+          <xs:attribute name="item" type="xs:string" use="required"/>
+          <xs:attribute name="field" use="required">
+            <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="rating"/><xs:enumeration value="qty"/><xs:enumeration value="grade"/></xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="from" type="xs:string" use="required"/>
+          <xs:attribute name="to" type="xs:string" use="required"/>
+          <xs:attribute name="note" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="text" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attributeGroup ref="sr6:ref"/>
+  </xs:complexType>
+
   <xs:complexType name="Quality">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>

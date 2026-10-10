@@ -98,11 +98,13 @@ test('a book sample runner (the importer’s, tests/fixtures/sr6/sample-glow-run
   expect(r.ok).toBe(true)
   if (!r.ok) return
   const b = r.ch.build
-  // none of B–D prints attribute points, so no priority assignment fits: Sum-to-Ten's repeated A does
+  // none of B–D prints attribute points, so no priority assignment fits: Sum-to-Ten's repeated A does, with the prime
+  // runner's doubled Karma assumed (the book doesn't say)
   expect([r.ch.identity.streetName, b.metatype, b.magic, b.method]).toEqual(['Glow Runner', 'crb.glimmerkin', 'adept', 'sumtoten'])
   expect(b.attributes.agi).toEqual({ points: 4, adjust: 0, karma: 0 })
-  expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 2, karma: 1, spec: 'Gizmos' }])
-  expect(b.priorities).toEqual({ metatype: 'E', attributes: 'A', magic: 'A', skills: 'E', resources: 'E' })
+  expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 0, karma: 3, spec: 'Gizmos' }])
+  expect(b.priorities).toEqual({ metatype: 'E', attributes: 'A', magic: 'A', skills: 'D', resources: 'D' })
+  expect(r.ch.rules).toEqual([{ key: 'startingKarma', value: '100', assumed: true, source: 'CRB', page: 64 }])
   expect(b.purchases.map(x => x.id)).toEqual(['crb.padded-vest', 'crb.gizmo-kit', 'crb.glow-gland', 'crb.tail-obvious', 'crb.zoom-bike', 'crb.zap-gun'])
   expect(r.ch.printed).toMatchObject({ source: 'CRB', page: 81, values: { agi: '5(6)', init: '8 + 2D6', dr: '5' } })
   expect(b.sins).toHaveLength(2)

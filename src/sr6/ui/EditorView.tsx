@@ -25,7 +25,8 @@ import { MAGIC_KINDS } from '../engine/data'
 import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
-import { useCampaignRules } from './Creation'
+import { rulesForRunner, useRunnerCampaign } from './Creation'
+import { withSampleFixes } from '../engine/samplefix'
 import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
 import { downloadSr6Runners } from './Foundry'
@@ -66,7 +67,11 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const [refusal, setRefusal] = useState<string | null>(null)
   const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
-  const campRules = useCampaignRules(npc ? undefined : ch?.campaign), cr = campRules ?? serverRules
+  // the runner's rules: the server's or its campaign's, with its own choices over them where the campaign doesn't lock them
+  const camp = useRunnerCampaign(npc ? undefined : ch?.campaign)
+  const cr = useMemo(() => (ch && camp !== undefined ? rulesForRunner(serverRules, camp, ch) : serverRules), [serverRules, camp, ch?.rules]) // eslint-disable-line react-hooks/exhaustive-deps
+  const table = useMemo(() => rulesForRunner(serverRules, camp, {}), [serverRules, camp])
+  const locks = useMemo(() => (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })), [camp])
   const me = useMe()
   // a player's catalog holds the compendiums shared with every SR6 campaign they play in: this runner sees its own
   // campaign's (c, the pickers' catalog); its copies of compendium entries no longer there stand in for them (data)
@@ -77,14 +82,15 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
   const calc = useMemo(() => {
     if (!ch) return undefined
     // career: every tab, budget and derived value reads the runner as it stands; update and replace act on the stored one
-    const view = ch.finalizedAt ? { ...ch, build: currentBuild(ch) } : ch
+    // (a book sample's printed lines as the owner's override file corrects them: engine/samplefix.ts)
+    const view = withSampleFixes(c, ch.finalizedAt ? { ...ch, build: currentBuild(ch) } : ch).ch
     const p = makeProvider(view.build.method, data, cr)
     return { view, p, budgets: allBudgets(view.build, data, cr, p), d: deriveSr6(data, cr, view),
-      v: [...ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, ch), ...houseNotes(c, kept.gone)] }
+      v: [...ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, withSampleFixes(c, ch).ch), ...houseNotes(c, kept.gone)] }
   }, [ch, data, cr, c, kept.gone])
 
   const back = npc ? <a href={sr6NpcsHref(ch?.npc)}>Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
-  if (!loaded || campRules === undefined) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
+  if (!loaded || camp === undefined) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
   if (loadError) return <main className="lib"><h1>Couldn’t open this {noun}</h1><p className="err">{loadError}</p>
     <p>{back}{npc ? '.' : ', where you can download its file or try to repair it.'}</p></main>
   if (!ch || !calc) return <main className="lib"><h1>{npc ? 'NPC' : 'Runner'} not found</h1><p>It may have been deleted on the server. {back}</p></main>
@@ -103,7 +109,7 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
     return null
   }
   const ctx: Sr6Ctx = {
-    c, data, cr, ch: view, ...derived, ro, career, npc,
+    c, data, cr, ch: view, table, locks, ...derived, ro, career, npc,
     edit: fn => { if (!ro) { const n = structuredClone(ch); fn(n.build); commit(n) } },
     update: fn => { if (!ro) { const n = structuredClone(ch); fn(n); commit(n) } },
     replace: next => { if (!ro) commit(next) },

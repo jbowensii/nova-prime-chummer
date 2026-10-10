@@ -492,12 +492,29 @@ clash. Attribute `abbr` and skill `attr` values are never scoped.
 **Edits.** An edit is a full entry of its kind with `by`. It replaces the loaded entry with the same id and survives
 re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means the book's text.
 
+**Sample corrections.** The edits layer also holds `<samplefix id="<sample id>" source page>` entries (kind
+`samplefixes`, `samplefixes.xsd`): a book sample runner's printed line corrected, the owner's way to set right a value the
+book misprints without touching the importer. Each `<correct item field from to note?>` sets `rating`, `qty` or `grade`
+of the runner's line buying catalog item `item`, while that line still prints `from`. The runner file keeps the book's
+value; the app reads the corrected one everywhere (editor, Your runners, the export: `src/sr6/engine/samplefix.ts`) and
+Review notes "Earbuds: the book prints rating 4; corrected to 3 by an override" in place of the error. `source` and `page`
+must be the sample's printed ones. Export my edits and Import edits carry them like any edit.
+
 ## Creation rules
 
 The creation rules are the numbers the books print only in their text: starting karma, caps, exchange rates,
 point-buy prices, lifepath counts, augmentation grades. A creation rules file (`<sr6:creation
 xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds them as `<setting key value source? page?/>`
 (500 at most, each key once).
+
+**Layers.** A runner is built and checked with the server's settings (Table setup), or its campaign's own, with the
+runner's own choices of the optional rules over them (its Creation method tab; `Sr6Character.rules`, `creation.ts
+RUNNER_RULE_KEYS` and `runnerRules`): the prime runner's Karma, the expanded contacts, the Availability cap and its
+illegal-only reading, the Karma and nuyen kept, an expertise's skill points, the quality count. A campaign's GM (or the
+admin) can lock any of them on the campaign's page (`campaigns.xml <lock key by/>`): its runners then keep the table's
+value, shown as locked with who locked it, and Review notes a choice set aside. Every place reads a runner's rules through
+`runnerRules` (the editor, the budgets, Review, the sheets, career play, the Foundry export, which lists the rules that
+aren't the server's in `rules`). A runner without its own choices has the table's, as before.
 
 **The standard settings ship with the app**: `public/data/sr6/creation-defaults.xml` holds the core rulebook's numbers
 (source `CRB`) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its

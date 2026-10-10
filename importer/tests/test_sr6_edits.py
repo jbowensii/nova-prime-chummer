@@ -49,6 +49,27 @@ class Sr6EditsTest(unittest.TestCase):
         edits.set_entry(d, "weapons", "crb.zap-gun", edit(GUN.format(cost="280").replace('cost="280"', 'cost="280" by="mallory"')), by="kim")
         self.assertEqual([(e.get("cost"), e.get("by")) for e in read(d, "edits.xml")], [("280", "kim")])
 
+    def test_a_sample_runners_printed_line_corrected(self):
+        """A <samplefix> corrects an imported sample runner's line (the owner's override file): stored with by, checked
+        against the sample's printed page, refused for a sample that isn't imported (made-up sample)."""
+        d = custom()
+        os.makedirs(os.path.join(d, "imported", "crb", "samples"))
+        with open(os.path.join(d, "imported", "crb", "samples", "crb.tester.xml"), "w", encoding="utf8") as f:
+            f.write('<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="crb.tester">'
+                    '<printed source="CRB" page="9"><value key="dr" value="5"/></printed><build method="priority" magic="mundane"/></sr6:character>')
+        with open(os.path.join(d, "imported", "samples.xml"), "w", encoding="utf8") as f:
+            f.write('<samples><sample source="CRB" name="Tester" href="crb/samples/crb.tester.xml"/></samples>')
+        fix = ('<samplefix id="crb.tester" source="CRB" page="{page}"><name>Tester</name>'
+               '<correct item="crb.glow-eyes" field="rating" from="4" to="3" note="owner&apos;s correction"/><text/></samplefix>')
+        edits.set_entry(d, "samplefixes", "crb.tester", edit(fix.format(page="9"), "Owner&apos;s correction."), by="kim")
+        self.assertEqual([(e.tag, e.get("id"), e.get("by"), e.find("correct").get("to")) for e in read(d, "edits.xml")], [("samplefix", "crb.tester", "kim", "3")])
+        self.assertEqual(validate(os.path.join(d, "edits")), [])
+        with self.assertRaisesRegex(edits.EditError, "page"):
+            edits.set_entry(d, "samplefixes", "crb.tester", edit(fix.format(page="10")))
+        with self.assertRaisesRegex(edits.EditError, "sample runner"):
+            edits.set_entry(d, "samplefixes", "crb.nobody", edit(fix.format(page="9").replace("crb.tester", "crb.nobody")))
+        self.assertTrue(edits.remove_entry(d, "samplefixes", "crb.tester"))
+
     def test_refusals_say_why(self):
         d = custom()
         cases = [

@@ -720,6 +720,52 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
   await pat.close()
 })
 
+test('a runner’s own creation rules: Pat picks a prime runner’s Karma on the Creation method tab; Gil locks it for his campaign', async ({ page, browser }) => {
+  const origin = base.replace(/\/$/, '')
+  await signIn(page, '/#/sr6', 'gil')
+  const camp = await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Locked Table' }, headers: { Origin: origin } })).json() as { id: string }
+  expect((await page.request.post(`/api/sr6/campaigns/${camp.id}/members`, { data: { user: 'pat' }, headers: { Origin: origin } })).ok()).toBe(true)
+  const pat = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
+  await signIn(pat, '/#/sr6', 'pat')
+  await pat.getByRole('button', { name: 'New runner' }).click()
+  await pat.getByRole('dialog', { name: 'New runner' }).getByLabel('Street name').fill('Prime Kid')
+  await pat.getByRole('button', { name: 'Create runner' }).click()
+  await expect(pat).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
+  const kid = pat.url(), kidId = kid.split('/c/')[1].split('/')[0]
+  await savedOnServer(pat, /streetName="Prime Kid"/)
+  expect((await pat.request.post(`/api/sr6/campaigns/${camp.id}/runners`, { data: { id: kidId }, headers: { Origin: origin } })).ok()).toBe(true)
+  await pat.goto(kid.replace(/concept$/, 'method'))
+  await pat.reload()
+  const rules = pat.locator('section[aria-labelledby="runner-rules"]'), karma = pat.locator('.sr6-budgets .budget', { hasText: 'Karma' }).first()
+  const row = rules.locator('tr', { hasText: 'Starting karma' })
+  await expect(row).toContainText('Server (Table setup)')
+  await expect(karma).toContainText('left of 40')
+  await row.getByLabel('Starting karma: choice').selectOption('own')
+  await row.getByLabel('Starting karma', { exact: true }).fill('80')
+  await expect(row).toContainText('This runner')
+  await expect(karma).toContainText('left of 80')
+  await shoot(pat, 'runner-rules')
+  await savedOnServer(pat, /<setting key="startingKarma" value="80"\/>/)
+
+  // Gil locks Starting karma for the campaign: Pat's choice is set aside, shown as locked, and Review says why
+  await page.goto(`/#/sr6/campaigns/${camp.id}`)
+  await page.getByLabel('Lock Starting karma').check()
+  await page.getByRole('button', { name: 'Save locks' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Locks saved.' })).toBeVisible()
+  await expect(page.locator('.runner-locks .row', { hasText: 'Starting karma' }).first()).toContainText('locked by Gil Editor')
+  await shoot(page, 'campaign-locks')
+  await pat.reload()
+  await expect(row).toContainText('Locked by Gil Editor')
+  await expect(row.getByLabel('Starting karma: choice')).toHaveCount(0)
+  await expect(karma).toContainText('left of 40')
+  await pat.goto(kid.replace(/concept$/, 'review'))
+  await expect(pat.locator('main.work')).toContainText('your choice is set aside; the campaign’s GM Gil Editor locked it.')
+  // a player can't lock
+  expect((await pat.request.put(`/api/sr6/campaigns/${camp.id}`, { data: { locks: [] }, headers: { Origin: origin } })).status()).toBe(403)
+  expect((await pat.request.delete(`/api/sr6/campaigns/${camp.id}/runners/${kidId}`, { headers: { Origin: origin } })).ok()).toBe(true)
+  await pat.close()
+})
+
 test('the legacy server: the SR6 runners page says who is in the way', async ({ page }) => {
   await page.route('**/api/sr6/characters', r => r.fulfill({ status: 409, json: { error: 'rename the account sr6 first' } }))
   await signIn(page, '/#/sr6', 'pat')

@@ -582,18 +582,20 @@ class CrbRecipeTest(unittest.TestCase):
         b = g.find("build")
         self.assertEqual((g.get("id"), g.get("streetName"), g.get("metatype"), b.get("magic")), ("crb.glow-runner", "Glow Runner", "crb.glimmerkin", "adept"))
         # the priorities fitted (importer/sr6/fit.py): this book's rows hold the adept only at A and Glimmerkin at A and E;
-        # B to D print nothing, so no priority assignment holds it within the karma, and Sum-to-Ten's letters (which may
-        # repeat) do better: attributes at A as well as magic, the skill on E's points and karma, the nuyen with karma
+        # B to D print nothing, so no priority assignment holds it within the karma; Sum-to-Ten's letters (which may
+        # repeat) do better, attributes at A as well as magic, and still overspend, so the prime runner's doubled Karma
+        # (CRB p.64) is assumed: the skill and the nuyen with karma (D's rows print nothing)
         self.assertEqual((g.get("method"), b.get("method")), ("sumtoten", "sumtoten"))
         self.assertEqual([(x.get("column"), x.get("letter")) for x in b.iter("priority")],
-                         [("metatype", "E"), ("attributes", "A"), ("magic", "A"), ("skills", "E"), ("resources", "E")])
+                         [("metatype", "E"), ("attributes", "A"), ("magic", "A"), ("skills", "D"), ("resources", "D")])
+        self.assertEqual([(x.get("key"), x.get("value"), x.get("assumed"), x.get("page")) for x in g.find("rules")], [("startingKarma", "100", "true", "64")])
         self.assertEqual({a.get("id"): (a.get("points"), a.get("adjust"), a.get("karma")) for a in b.iter("attribute")}, {
             "bod": ("2", "0", "0"), "agi": ("4", "0", "0"), "rea": ("3", "0", "0"), "str": ("1", "0", "0"), "wil": ("2", "0", "0"),
             "log": ("1", "0", "0"), "int": ("3", "0", "0"), "cha": ("2", "0", "0"), "edg": ("0", "1", "2"), "mag": ("0", "0", "0"),
             "res": ("0", "0", "0")})  # Magic 5: the priority's; Edge's 3 ranks past 1: the 1 adjustment point, then karma
         self.assertEqual([(x.get("id"), x.get("points"), x.get("karma"), x.get("spec")) for x in b.iter("skill")],
-                         [("crb.tinkering", "2", "1", "Gizmos")])
-        self.assertEqual(b.get("karmaToNuyen"), "14")
+                         [("crb.tinkering", "0", "3", "Gizmos")])
+        self.assertEqual(b.get("karmaToNuyen"), "19")
         self.assertIn("Priorities fitted to the printed stat block", g.findtext("notes"))
         self.assertIn("built with Sum-to-Ten", g.findtext("notes"))
         self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],
@@ -653,6 +655,34 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(flags.uncounted("Note: This quality does not count to- ward the six total qualities limitation."), {"uncounted": "true"})
         self.assertEqual(flags.uncounted("This does not count toward your maximum of six qualities at creation."), {"uncounted": "true"})
         self.assertEqual(flags.uncounted("The limit of six qualities at character creation still applies."), {})
+
+    def test_a_level_printed_on_a_quality_without_levels(self):
+        """`Stubborn Shell 2` on a quality with one flat cost: taken once, the printed level kept for Review's note; a
+        quality with levels keeps its printed level (made-up catalog)."""
+        from types import SimpleNamespace
+        q = lambda i, n, **a: {"id": i, "name": n, "attrs": {"kind": "positive", "karma": "8", **a}}
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "qualities": [q("stubborn-shell", "Stubborn Shell"), q("lucky", "Lucky", perLevel="true", maxLevel="3")]}
+        b = SimpleNamespace(label="metatype: Glim", labels={"Qualities": "Stubborn Shell 2, Lucky 2"}, stats=[])
+        _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={})
+        g = ET.fromstring(xml)
+        self.assertEqual([(x.get("id"), x.get("level")) for x in g.iter("quality")], [("nb.stubborn-shell", "1"), ("nb.lucky", "2")])
+        self.assertEqual({v.get("key"): v.get("value") for v in g.find("printed")}, {"level:nb.stubborn-shell": "Stubborn Shell 2"})
+
+    def test_a_rank_above_the_cap_read_as_the_natural_rank_and_a_lines_dice(self):
+        """`Con 7` with a voice modulator at rating 3, the skill cap 6: Con 4, the modulator's dice kept on its line for the
+        tests they hold on (`when`), the printed rank kept for Review's note; with nothing adding dice the rank stays
+        (made-up catalog and settings)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "skills": [{"id": "con", "name": "Con", "attrs": {"attr": "cha"}}, {"id": "gab", "name": "Gab", "attrs": {"attr": "cha"}}],
+                   "augmentations": [{"id": "voice-modulator", "name": "Voice modulator", "attrs": {"rating": "1–3", "cost": "Rating x 10"}}]}
+        b = SimpleNamespace(label="metatype: Glim", stats=[], labels={"Active Skills": "Con 7, Gab 7", "Augmentations": "Voice modulator (rating 3)"})
+        _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={"skillCap": 6.0})
+        g = ET.fromstring(xml)
+        self.assertEqual([(x.get("id"), int(x.get("points")) + int(x.get("karma"))) for x in g.iter("skill")], [("nb.con", 4), ("nb.gab", 7)])
+        self.assertEqual([(x.get("skill"), x.get("value"), x.get("perRating"), bool(x.get("when"))) for x in g.iter("bonus")], [("nb.con", "1", "true", True)])
+        self.assertEqual({v.get("key"): v.get("value") for v in g.find("printed")}, {"rank:nb.con": "7|voice modulator 3"})
 
     def test_sample_lookups_keep_the_printed_level_and_rating(self):
         """A level printed with a quality finds an entry that comes in levels (not a path step of the same name); a

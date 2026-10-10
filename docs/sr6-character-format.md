@@ -55,6 +55,14 @@ see NPCs below.
 `source` and `page`. `key` is an attribute abbreviation (`5(7)`: natural and augmented), `ess`, `init` (`8(10) + 3D6`),
 `cm` (`11/10`, Physical/Stun) or `dr`. Review compares each with what the rules give and warns where they differ ("REA:
 the book prints 4(6); the rules give 4(7)", the page cited); the file never corrects them. A copy keeps them.
+`level:<quality id>` keeps a level printed on a quality that has none (`Magic Resistance 2`): the quality is taken once,
+and Review notes "The book prints Magic Resistance 2; Magic Resistance has no levels (CRB p.72)", never an error.
+
+`<rules>` (after `<printed>`): the runner's own choices of the optional creation rules, over the table's (the server's or
+its campaign's own): `<setting key value assumed? source? page?/>`, `value=""` turning a setting off. A setting its
+campaign's GM locked keeps the table's value (Review notes the choice is set aside). `assumed`: a book sample's, taken
+from its numbers where a book rule explains them (the prime runner's 100 Karma, CRB p. 64); Review notes it ("assumed from
+the book's numbers (the book doesn't say)"). None: the table's rules, as before.
 
 `<migrated from to at>` (last): a catalog id the runner named that a re-import renamed, moved or re-kinded, turned into
 the new one when the runner was opened (`from` and `to` are `<kind>/<id>`; the entry's `<alias id kind>`,

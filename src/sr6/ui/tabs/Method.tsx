@@ -1,6 +1,7 @@
 // Creation method: the method (one whose settings aren't set can't be picked and says what's missing), then what the
 // method asks for: the priority letters (sum to ten: their running total against the target), point buy's character
-// points, lifepath's modules, the karma build's pool; then the metatype and magic kind the method allows.
+// points, lifepath's modules, the karma build's pool; then the metatype and magic kind the method allows; then the runner's
+// own creation rules (RunnerRules).
 import { CORE_ATTRS, CP_POOLS, LETTERS, MAGIC_KIND_LABELS, PRIORITY_COLUMNS, SR6_METHOD_LABELS, SR6_METHODS, type CpPool, type Letter, type MagicKind, type PriorityColumn, type Sr6Method } from '../../model/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/actions'
 import { num } from '../../engine/creation'
@@ -8,6 +9,7 @@ import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data
 import { Stepper } from '../../../ui/bits'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { RunnerRules } from '../RunnerRules'
 import type { Sr6Attr } from '../../model/character'
 
 const COLUMN_LABELS: Record<PriorityColumn, string> = { metatype: 'Metatype', attributes: 'Attributes', magic: 'Magic or Resonance', skills: 'Skills', resources: 'Resources' }
@@ -67,6 +69,7 @@ export function MethodTab() {
           <option value="">Pick one</option>
           {magicSkills.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select></label>}
+      <RunnerRules />
     </div>
   )
 }

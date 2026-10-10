@@ -17,7 +17,9 @@ export interface CampaignRunner { key: string; mine: boolean; ownerName: string;
 export interface Campaign { id: string; name: string; note: string; archived: boolean; created: string; you: 'gm' | 'admin' | 'member'
   gms: Person[]; members: Person[]; runners: CampaignRunner[]
   npcs?: { id: string; name: string; owner: string; ownerName: string }[] // the NPCs shared with it: the GM's and the admin's view only
-  creation?: { key: string; value: string; source?: string; page?: number }[] | null } // SR6: its own creation settings (null: the server's)
+  creation?: { key: string; value: string; source?: string; page?: number }[] | null // SR6: its own creation settings (null: the server's)
+  /** SR6: the creation settings its runners can't choose for themselves, with who locked each */
+  locks?: { key: string; by: string; byName?: string }[] }
 
 /** `game`'s campaign API paths (for send) and page links. */
 export function campaignLinks(game: Game = 'ca2') {

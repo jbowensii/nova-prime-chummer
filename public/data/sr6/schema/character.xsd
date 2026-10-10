@@ -32,6 +32,24 @@
             <xs:attribute name="page" type="xs:positiveInteger" use="required"/>
           </xs:complexType>
         </xs:element>
+        <!-- the runner's own choices of the optional creation rules, over the table's (src/sr6/engine/creation.ts
+             runnerRules): value "" turns a setting off; assumed: a book sample's, taken from its numbers (the book doesn't
+             say). None: the table's rules, as before. -->
+        <xs:element name="rules" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="setting" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:attribute name="key" type="xs:string" use="required"/>
+                  <xs:attribute name="value" type="xs:string" use="required"/>
+                  <xs:attribute name="assumed" type="xs:boolean"/>
+                  <xs:attribute name="source" type="xs:string"/>
+                  <xs:attribute name="page" type="xs:positiveInteger"/>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
         <xs:element name="build" type="c:Build"/>
         <xs:element name="ledger" type="c:Ledger" minOccurs="0"/>
         <!-- copies of the GM compendium entries the runner uses (common.xsd entry elements, each with its <text>), so it keeps
@@ -404,6 +422,8 @@
     <xs:attribute name="skill" type="xs:string"/>
     <xs:attribute name="value" type="xs:integer" use="required"/>
     <xs:attribute name="perRating" type="xs:boolean"/>
+    <!-- only on some tests (a voice modulator's sound-based Con tests, wireless): shown with the pool, never added -->
+    <xs:attribute name="when" type="xs:string"/>
   </xs:complexType>
 
   <!-- a bought thing; no id: a custom item at the player's cost, avail and essence. Children: its bonuses, the

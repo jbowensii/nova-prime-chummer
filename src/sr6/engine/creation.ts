@@ -8,7 +8,11 @@ import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
 export type CreationValue = number | boolean | string
-export interface CreationSetting { key: string; value: CreationValue; source?: string; page?: number }
+/** from: the layer it comes from (runnerRules; unset: the server's); lockedBy: the campaign GM who locked it for its runners;
+ *  assumed: a sample runner's, taken from its book's numbers (the book doesn't say). */
+export interface CreationSetting { key: string; value: CreationValue; source?: string; page?: number
+  from?: RuleLayer; lockedBy?: string; assumed?: true }
+export type RuleLayer = 'server' | 'campaign' | 'runner'
 export type CreationRules = Map<string, CreationSetting>
 export type CreationType = 'number' | 'bool' | 'quality'
 /** methods: the creation methods that need the setting set ('all': every one; []: optional). */
@@ -223,4 +227,41 @@ async function fetchCreation(url: string): Promise<{ rules: CreationRules; error
 export async function loadCreation(base = './'): Promise<{ rules: CreationRules; errors: string[]; std: CreationRules }> {
   const [std, own] = await Promise.all([fetchCreation(base + DEFAULTS_PATH), fetchCreation(`${base}custom/sr6/creation.xml`)])
   return { rules: new Map([...std.rules, ...own.rules]), errors: [...std.errors, ...own.errors], std: std.rules }
+}
+
+/** A runner's own choice of a creation setting (Sr6Character.rules): `value` as stored ('' turns the setting off);
+ *  assumed: a sample runner's, from its book's numbers (the book doesn't say). */
+export interface RunnerRule { key: string; value: string; assumed?: true; source?: string; page?: number }
+/** A setting a campaign's GM (or the admin) locked: its runners can't choose their own. */
+export interface RuleLock { key: string; by: string }
+
+/** The OPTIONAL rules a runner may choose for itself on its Creation method tab (owner, 2026-10-09, as Commlink6 does):
+ *  each with the book option it stands for. Any other setting stays the table's. */
+export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
+  { key: 'startingKarma', about: 'Prime runner: 100 (CRB p. 64); street level spends less' },
+  { key: 'contactKarma', about: 'The Sixth World Companion’s expanded contacts (SWC p. 161): off turns them off' },
+  { key: 'contactPairPerCha', about: 'Expanded contacts: a contact’s pair cap' },
+  { key: 'contactRatingMax', about: 'Expanded contacts: the hard cap' },
+  { key: 'maxAvailability', about: 'Elite runners (SWC p. 15): off lifts the cap' },
+  { key: 'availabilityCapIllegalOnly', about: 'The core rulebook’s first printing (p. 66)' },
+  { key: 'maxKarmaLeft', about: 'The City Editions (CRB Hong Kong p. 66)' },
+  { key: 'maxNuyenLeft', about: 'CRB p. 68' },
+  { key: 'skillPointsExpertise', about: 'An expertise with skill points instead of the customization Karma' },
+  { key: 'qualityMaxCount', about: 'CRB p. 66' },
+]
+
+/** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with
+ *  the runner's own choices over them, except where its campaign locked the setting. Each setting says where it comes from
+ *  (and who locked it). The one function every place reads a runner's rules through: editor, budgets, Review, sheets,
+ *  career, export. */
+export function runnerRules(base: CreationRules, own: RunnerRule[] = [], locks: RuleLock[] = [], layer: RuleLayer = 'server'): CreationRules {
+  const lockedBy = new Map(locks.map(l => [l.key, l.by]))
+  const out: CreationRules = new Map([...base].map(([k, s]) => [k, { ...s, from: s.from ?? layer, ...(lockedBy.has(k) ? { lockedBy: lockedBy.get(k) } : {}) }]))
+  for (const r of own) {
+    if (lockedBy.has(r.key) || !keyType(r.key)) continue
+    if (r.value.trim() === '') { out.delete(r.key); continue }
+    const got = rulesFrom([r]).rules.get(r.key)
+    if (got) out.set(r.key, { ...got, from: 'runner', ...(r.assumed ? { assumed: true as const } : {}) })
+  }
+  return out
 }

@@ -116,4 +116,10 @@ export interface Sr6Catalog {
   moved: Map<string, { kind: Sr6Kind; id: string }>
   files: { file: string; kind: string; entries: number }[]
   errors: { file: string; message: string }[]
+  /** corrections of book sample runners' printed lines (the edits layer's <samplefix>), by sample id */
+  sampleFixes?: Map<string, Sr6SampleFix>
 }
+/** A book sample runner's printed lines corrected (the owner's override file, edits.xsd <samplefix>): each `correct` sets
+ *  `field` of the line buying catalog item `item` from `from` to `to`, while the runner's line still has `from`. */
+export interface Sr6SampleFix { id: string; source: string; page: number; name: string; by?: string; text: string
+  corrects: { item: string; field: 'rating' | 'qty' | 'grade'; from: string; to: string; note?: string }[] }
