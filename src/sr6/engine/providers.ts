@@ -2,8 +2,8 @@
 // adjustment and nuyen budgets, legal metatypes and magic kinds come from. Table values come from the catalog
 // (Sr6Data: priority rows, life modules), prose numbers from the creation rules (num(cr, …)); an unset setting counts 0
 // for its pool (rules.ts warns about it), nothing is guessed here.
-import { SR6_ATTRS, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Method } from '../model/character'
-import { num, type CreationRules } from './creation'
+import { LETTERS, SR6_ATTRS, type Letter, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Method } from '../model/character'
+import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from './data'
 
 export interface Pool { max: number; spent: number; left: number }
@@ -73,19 +73,25 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     Object.values(data.metatypes).map(m => ({ id: m.id, name: m.name, adjustmentPoints })).sort(byName)
   /** every kind legal, at the rating `rating` gives it */
   const everyKind = (rating: (k: MagicKind) => number) => KINDS.map(kind => ({ kind, rating: rating(kind) }))
-  const base = { id: method, startingKarma: () => n('startingKarma') }
+  // CRB Hong Kong p. 63: a prime runner has twice the customization Karma (levelPrime)
+  const base = { id: method, startingKarma: () => n('startingKarma') * (flag(cr, 'levelPrime') ? 2 : 1) }
 
   if (method === 'priority' || method === 'sumtoten') {
-    const row = (b: Sr6Build, col: keyof Sr6Build['priorities']) => { const l = b.priorities[col]; return l ? data.priorities[l] : undefined }
-    const letterPoints = (b: Sr6Build, m?: Sr6MetatypeView) => { const l = b.priorities.metatype; return l && m?.priority ? m.priority[l] : undefined }
+    // CRB Hong Kong p. 63: a street-level runner gets the values of the row below the one chosen, E staying E (levelStreet)
+    const at = (l: Letter) => (flag(cr, 'levelStreet') ? LETTERS[Math.min(LETTERS.indexOf(l) + 1, LETTERS.length - 1)] : l)
+    const row = (b: Sr6Build, col: keyof Sr6Build['priorities']) => { const l = b.priorities[col]; return l ? data.priorities[at(l)] : undefined }
+    const letterPoints = (b: Sr6Build, m?: Sr6MetatypeView) => { const l = b.priorities.metatype; return l && m?.priority ? m.priority[at(l)] : undefined }
+    // the letters the runner takes (priorityLetters, a level of play's: the Sixth World Companion's street-level B C C D E)
+    const want = (str(cr, 'priorityLetters') ?? LETTERS.join('')).split('').sort().join('')
     const magicRow = (b: Sr6Build) => row(b, 'magic')?.magic ?? {}
     return {
       ...base,
       lettersValid: method === 'priority'
-        ? p => { const ls = Object.values(p).filter(Boolean); return ls.length === 5 && new Set(ls).size === 5 }
+        ? p => { const ls = Object.values(p).filter(Boolean); return ls.length === 5 && ls.sort().join('') === want }
         : p => {
+          // (sum to ten takes any letters the level allows: street-level's no A)
           const target = num(cr, 'sumToTenTarget')
-          const vals = Object.values(p).map(l => (l ? num(cr, `letterValue:${l}`) : undefined))
+          const vals = Object.values(p).map(l => (l && want.includes(l) ? num(cr, `letterValue:${l}`) : undefined))
           return target !== undefined && !vals.includes(undefined) && vals.reduce<number>((s, v) => s + v!, 0) <= target
         },
       attributePoints: b => row(b, 'attributes')?.attributes ?? 0,

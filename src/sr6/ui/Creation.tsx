@@ -89,6 +89,8 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
                 <td>{k.label}</td>
                 <td>{k.type === 'number'
                   ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} onChange={e => v(e.target.value)} />
+                  : k.type === 'letters' ? <input aria-label={k.label} value={r.value} placeholder={d?.value ?? 'ABCDE'} maxLength={5} size={6}
+                    onChange={e => v(e.target.value.toUpperCase())} />
                   : <select aria-label={k.label} value={r.value} onChange={e => v(e.target.value)}>
                     <option value="">Not set</option>
                     {k.type === 'bool' ? <><option value="true">Yes</option><option value="false">No</option></>

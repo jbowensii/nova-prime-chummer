@@ -57,9 +57,14 @@ const RULES: Rule[] = [
     check: c => (!usesLetters(c.p) || Object.values(c.b.priorities).every(Boolean) ? null : { message: 'Give each of the five priorities a letter.' }) },
   { code: 'prio.lettersValid', severity: 'error', tab: 'method',
     setting: c => (c.p.id === 'sumtoten' ? ['sumToTenTarget', ...LETTERS.map(l => `letterValue:${l}`)] : []),
-    check: c => (c.p.lettersValid(c.b.priorities) ? null : { message: c.p.id === 'sumtoten'
-      ? `The priority letters’ values add up to more than ${n0(c.cr, 'sumToTenTarget')}, or a priority has no letter.`
-      : 'Each letter A–E goes to exactly one priority.' }) },
+    check: c => {
+      if (c.p.lettersValid(c.b.priorities)) return null
+      // (a level of play's letters: the Sixth World Companion's street-level B C C D E, elite A B B C D, pp. 14–15)
+      const want = str(c.cr, 'priorityLetters'), at = want ? cite(c.cr, 'priorityLetters') : {}
+      return { ...at, message: c.p.id === 'sumtoten'
+        ? `The priority letters’ values add up to more than ${n0(c.cr, 'sumToTenTarget')}, or a priority has no letter${want ? ` or one of ${[...new Set(want)].join(', ')}` : ''}.`
+        : want ? `The five priorities take the letters ${want.split('').join(', ')}, one each.` : 'Each letter A–E goes to exactly one priority.' }
+    } },
   { code: 'prio.metatypeAllowed', severity: 'error', tab: 'method', check: c => {
     if (!c.b.metatype) return { message: 'Pick a metatype.' }
     if (c.p.legalMetatypes(c.b).some(m => m.id === c.b.metatype)) return null
@@ -203,12 +208,26 @@ const RULES: Rule[] = [
   { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
   { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {
+    // the Sixth World Companion's elite level (p. 15, levelSwcElite): no availability restrictions
+    if (flag(c.cr, 'levelSwcElite')) return null
     // CRB first printing p. 66 (optional, availabilityCapIllegalOnly): the cap holds only illegal gear (Availability `(I)`)
     const cap = n0(c.cr, 'maxAvailability'), hits: Hit[] = [], illegalOnly = flag(c.cr, 'availabilityCapIllegalOnly')
     for (const { x, path } of lines(c.b)) {
       const { avail } = priced({ ...x, accessories: [] }, c.data, c.cr)
       if (illegalOnly && !/\(?\s*I\s*\)?\s*$/.test(entryOf(x, c.data)?.attrs.avail ?? '')) continue
       if (avail > cap) hits.push({ path, message: `${nameOf(c, x)}’s Availability ${avail} is above ${cap}.` })
+    }
+    return hits
+  } },
+  // the Sixth World Companion's street level (p. 14, levelSwcStreet): no illegal items (Availability `(I)`), but a
+  // cyberdeck, always illegal unless an authority provides it
+  { code: 'gear.illegal', severity: 'error', tab: 'gear', check: c => {
+    if (!flag(c.cr, 'levelSwcStreet')) return null
+    const hits: Hit[] = []
+    for (const { x, path } of lines(c.b)) {
+      const e = entryOf(x, c.data)
+      if (e && /\(?\s*I\s*\)?\s*$/.test(e.attrs.avail ?? '') && !/cyberdeck/i.test(e.attrs.category ?? ''))
+        hits.push({ path, message: `${nameOf(c, x)} is illegal: a street-level runner can’t have it.`, ...cite(c.cr, 'levelSwcStreet') })
     }
     return hits
   } },
@@ -546,6 +565,9 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
  *  (assumed: the book doesn't say), and one its campaign locked, so the runner's choice is set aside. Never errors. */
 function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string, string>): Violation[] {
   const name = (k: string) => labels.get(k) ?? k, out: Violation[] = []
+  // (two levels of play at once: each replaces the other's numbers)
+  const levels = ['levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite'].filter(k => flag(cr, k))
+  if (levels.length > 1) out.push({ code: 'rules.levels', severity: 'warning', path: 'method', message: `${levels.map(name).join('; ')}: more than one level of play is on.` })
   for (const r of ch.rules ?? []) {
     const s = cr.get(r.key)
     if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })

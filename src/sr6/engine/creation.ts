@@ -14,7 +14,7 @@ export interface CreationSetting { key: string; value: CreationValue; source?: s
   from?: RuleLayer; lockedBy?: string; assumed?: true }
 export type RuleLayer = 'server' | 'campaign' | 'runner'
 export type CreationRules = Map<string, CreationSetting>
-export type CreationType = 'number' | 'bool' | 'quality'
+export type CreationType = 'number' | 'bool' | 'quality' | 'letters'
 /** methods: the creation methods that need the setting set ('all': every one; []: optional). */
 export interface CreationKey { key: string; label: string; type: CreationType; group: string; methods: Sr6Method[] | 'all' }
 /** What expandKeys and missingFor read from the catalog (src/sr6/engine/data.ts's Sr6Data has this shape). */
@@ -25,7 +25,7 @@ export interface CreationCatalog {
 }
 
 /** The groups, in the order the creation rules form shows them. */
-export const CREATION_GROUPS = ['General', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values', 'Optional rules']
+export const CREATION_GROUPS = ['General', 'Levels of play', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values', 'Optional rules']
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 const AWAKENED = (Object.keys(MAGIC_KIND_LABELS) as MagicKind[]).filter(k => k !== 'mundane')
 
@@ -118,6 +118,20 @@ export const CREATION_KEYS: CreationKey[] = [
     ['moveWalk', 'Metres for a Move'], ['moveSprint', 'Metres for a Sprint'], ['moveSprintPerHit', 'Sprint: metres more per hit'],
     ['unarmedDV', 'Unarmed Damage Value (Stun)'],
     ['arDrEdgeGap', 'Attack Rating against Defense Rating: the lead that gains a point of Edge']]),
+  // levels of play (each off: the standard level). The core rulebook's (CRB Hong Kong p. 63) and the Sixth World
+  // Companion's (pp. 14–15), whose numbers replace sumToTenTarget, pointBuy.total, lifepath.moduleCount and
+  // priorityLetters while one is on (levelRules)
+  { key: 'levelStreet', label: 'Street level: each priority gives the values of the row below (E stays E)', type: 'bool', group: 'Levels of play', methods: [] },
+  { key: 'levelPrime', label: 'Prime runner: twice the customization karma', type: 'bool', group: 'Levels of play', methods: [] },
+  { key: 'levelSwcStreet', label: 'Street-level (Sixth World Companion): the letters, targets and module count below; no illegal gear but cyberdecks', type: 'bool', group: 'Levels of play', methods: [] },
+  ...n('Levels of play', [], [['swcStreet.sumToTen', 'Street-level: the letters’ values add up to at most'], ['swcStreet.pointBuy', 'Street-level: character points'],
+    ['swcStreet.modules', 'Street-level: adult life modules']]),
+  { key: 'swcStreet.letters', label: 'Street-level: the priority letters', type: 'letters', group: 'Levels of play', methods: [] },
+  { key: 'levelSwcElite', label: 'Elite (Sixth World Companion): the letters, targets and module count below; no Availability cap', type: 'bool', group: 'Levels of play', methods: [] },
+  ...n('Levels of play', [], [['swcElite.sumToTen', 'Elite: the letters’ values add up to at most'], ['swcElite.pointBuy', 'Elite: character points'],
+    ['swcElite.modules', 'Elite: adult life modules']]),
+  { key: 'swcElite.letters', label: 'Elite: the priority letters', type: 'letters', group: 'Levels of play', methods: [] },
+  { key: 'priorityLetters', label: 'The priority letters a runner takes, one a column (unset: A, B, C, D and E once each)', type: 'letters', group: 'Levels of play', methods: [] },
   { key: 'meleeArStrength', label: 'Strength adds to a melee weapon’s Attack Rating', type: 'bool', group: 'Derived values', methods: [] },
   // the books' optional rules (each off unless the table turns it on; their pages in RUNNER_RULE_KEYS and the defaults)
   { key: 'stackingAdvantage', label: 'Stacking Advantage: a lead of twice the gap gains 2 Edge', type: 'bool', group: 'Optional rules', methods: [] },
@@ -158,6 +172,7 @@ function typed(type: CreationType, raw: string): CreationValue | undefined {
   const s = raw.trim()
   if (type === 'bool') return s === 'true' ? true : s === 'false' ? false : undefined
   if (type === 'quality') return s || undefined
+  if (type === 'letters') return /^[A-E]{5}$/.test(s.toUpperCase()) ? s.toUpperCase() : undefined
   return s && Number.isFinite(Number(s)) ? Number(s) : undefined
 }
 
@@ -172,7 +187,7 @@ export function rulesFrom(rows: CreationRow[]): { rules: CreationRules; errors: 
     const type = keyType(key)
     if (!type) { errors.push(`“${key}” isn’t a creation setting.`); continue }
     const value = typed(type, raw)
-    if (value === undefined) { errors.push(`${key}: “${raw}” isn’t ${type === 'bool' ? 'true or false' : type === 'number' ? 'a number' : 'a quality id'}.`); continue }
+    if (value === undefined) { errors.push(`${key}: “${raw}” isn’t ${type === 'bool' ? 'true or false' : type === 'number' ? 'a number' : type === 'letters' ? 'five priority letters (ABCDE)' : 'a quality id'}.`); continue }
     const page = Number(p) || undefined
     rules.set(key, { key, value, ...(source ? { source } : {}), ...(page ? { page } : {}) })
   }
@@ -191,6 +206,25 @@ export function parseCreation(xml: string): { rules: CreationRules; errors: stri
 export const num = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'number' ? v : undefined }
 export const flag = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'boolean' ? v : undefined }
 export const str = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'string' ? v : undefined }
+
+/** The levels of play that replace other settings' values while on (the Sixth World Companion's Alternate Power Levels,
+ *  pp. 14–15): the level's key, then [the setting it replaces, the level's own setting holding the value]. */
+export const LEVELS: [string, [string, string][]][] = [
+  ['levelSwcStreet', [['sumToTenTarget', 'swcStreet.sumToTen'], ['pointBuy.total', 'swcStreet.pointBuy'], ['lifepath.moduleCount', 'swcStreet.modules'], ['priorityLetters', 'swcStreet.letters']]],
+  ['levelSwcElite', [['sumToTenTarget', 'swcElite.sumToTen'], ['pointBuy.total', 'swcElite.pointBuy'], ['lifepath.moduleCount', 'swcElite.modules'], ['priorityLetters', 'swcElite.letters']]],
+]
+/** The rules with a level of play that is on put in place: its own values (with its source and page) instead of the
+ *  settings they replace (a value the level leaves unset keeps the setting's). Two levels on: the later one's. */
+export function levelRules(cr: CreationRules): CreationRules {
+  const on = LEVELS.filter(([k]) => flag(cr, k))
+  if (!on.length) return cr
+  const out: CreationRules = new Map(cr)
+  for (const [, pairs] of on) for (const [key, from] of pairs) {
+    const v = cr.get(from)
+    if (v) out.set(key, { ...v, key })
+  }
+  return out
+}
 export const cite = (cr: CreationRules, key: string): { source?: string; page?: number } => {
   const s = cr.get(key)
   return { ...(s?.source ? { source: s.source } : {}), ...(s?.page ? { page: s.page } : {}) }
@@ -268,6 +302,12 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   { key: 'maxNuyenLeft', about: 'CRB p. 68' },
   { key: 'skillPointsExpertise', about: 'An expertise with skill points instead of the customization Karma' },
   { key: 'qualityMaxCount', about: 'CRB p. 66' },
+  // levels of play (off: the standard level)
+  { key: 'levelStreet', about: 'Low-level street runners: the values of the row below the priority chosen (CRB Hong Kong p. 63), off' },
+  { key: 'levelPrime', about: 'Prime runner: customization Karma doubled, 50 to 100 (CRB Hong Kong p. 63), off' },
+  { key: 'levelSwcStreet', about: 'Street-level: B, C, C, D, E; sum-to-eight, no A; 80 points; 6 modules; no illegal items but cyberdecks (Sixth World Companion pp. 14–15), off' },
+  { key: 'levelSwcElite', about: 'Elite: A, B, B, C, D; sum-to-twelve; 120 points; 10 modules; no availability restrictions (Sixth World Companion p. 15), off' },
+  { key: 'priorityLetters', about: 'A, B, C, D and E once each (CRB Hong Kong p. 63); a level of play sets its own' },
   // the core rulebook's rules (CRB Hong Kong, the latest printing), each a number a table may change
   { key: 'initiativeDiceMax', about: 'Never more than 5D6 Initiative Dice (CRB Hong Kong p. 39); off: no cap' },
   { key: 'overflowPerBody', about: 'Dead at (Body × 2) boxes of Overflow (CRB Hong Kong p. 121)' },
@@ -303,5 +343,5 @@ export function runnerRules(base: CreationRules, own: RunnerRule[] = [], locks: 
     const got = rulesFrom([r]).rules.get(r.key)
     if (got) out.set(r.key, { ...got, from: 'runner', ...(r.assumed ? { assumed: true as const } : {}) })
   }
-  return out
+  return levelRules(out)
 }

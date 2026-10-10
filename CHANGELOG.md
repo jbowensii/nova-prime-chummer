@@ -12,6 +12,11 @@
   hit (pp. 42, 44); unarmed damage 2S, Physical with Dermal Deposits or bone lacing and density (pp. 71, 94, 286, 291);
   a spellcaster's Attack Rating, Magic + the tradition's attribute (p. 132); a melee weapon's Attack Rating with
   Strength (p. 39; a whip's with Reaction, p. 250); each weapon's skill and dice pool on the Gear tab and the sheet.
+- Levels of play, off by default (Table setup → Creation rules → Levels of play, or a runner's own): the core rulebook's
+  street level (each priority gives the row below's values) and prime runner (twice the customization Karma), CRB Hong
+  Kong p. 63; the Sixth World Companion's street-level (B C C D E, sum-to-eight, 80 points, 6 life modules, no illegal
+  gear but cyberdecks) and elite (A B B C D, sum-to-twelve, 120 points, 10 modules, no Availability cap), pp. 14–15,
+  each with its numbers as settings. More than one on at once is noted in Review.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

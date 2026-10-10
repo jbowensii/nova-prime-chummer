@@ -667,6 +667,12 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `manySkillsQuality` | quality id | optional | Many Skills: two skills at the highest rank (SWC p. 134) |
 | General | `availabilityCapIllegalOnly` | bool | optional | The Availability cap holds only illegal gear (CRB first printing, 2019, p. 66; the later printings cap every item, so it ships unset) |
 | General | `exceptionalQuality` | quality id | optional | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB p. 71) |
+| Levels of play | `priorityLetters` | letters | optional | The five priority letters the columns take, one each (CRB Hong Kong p. 63: `ABCDE`); sum to ten takes only letters among them. A level of play sets its own |
+| Levels of play | `levelStreet` | true/false | optional | Street level (CRB Hong Kong p. 63, off): each priority gives the values of the row below (E stays E): points, nuyen, metatypes and magic kinds |
+| Levels of play | `levelPrime` | true/false | optional | Prime runner (CRB Hong Kong p. 63, off): twice `startingKarma` |
+| Levels of play | `levelSwcStreet` | true/false | optional | The Sixth World Companion's street-level (SWC pp. 14–15, off): while on, `swcStreet.letters` (B C C D E), `.sumToTen` (8), `.pointBuy` (80) and `.modules` (6) replace `priorityLetters`, `sumToTenTarget`, `pointBuy.total` and `lifepath.moduleCount` (`levelRules`, through `runnerRules`), and an illegal item but a cyberdeck is an error (`gear.illegal`) |
+| Levels of play | `levelSwcElite` | true/false | optional | The Sixth World Companion's elite (SWC p. 15, off): `swcElite.letters` (A B B C D), `.sumToTen` (12), `.pointBuy` (120), `.modules` (10) likewise, and no Availability cap. The book's letters add up to 13 while it says sum-to-twelve: both ship as printed |
+| Levels of play | `swcStreet.*`, `swcElite.*` | number, letters | optional | The two levels' own values (above) |
 | Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
 | Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |
 | Karma prices | `karmaSpec` | number | all | Specialization |

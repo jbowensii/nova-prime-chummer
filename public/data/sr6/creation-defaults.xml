@@ -103,6 +103,22 @@
   <setting key="unarmedDV" value="2" source="CRB-HK" page="94"/>
   <setting key="arDrEdgeGap" value="4" source="CRB-HK" page="45"/>
   <setting key="meleeArStrength" value="true" source="CRB-HK" page="39"/>
+  <!-- levels of play (off: the standard level): the core rulebook's street level and prime runner (Hong Kong p. 63), and
+       the Sixth World Companion's Alternate Power Levels with their own numbers (pp. 14-15; its elite letters A B B C D
+       add up to 13 while it says sum-to-twelve: both as printed) -->
+  <setting key="priorityLetters" value="ABCDE" source="CRB-HK" page="63"/>
+  <setting key="levelStreet" value="false" source="CRB-HK" page="63"/>
+  <setting key="levelPrime" value="false" source="CRB-HK" page="63"/>
+  <setting key="levelSwcStreet" value="false" source="SWC" page="14"/>
+  <setting key="swcStreet.letters" value="BCCDE" source="SWC" page="14"/>
+  <setting key="swcStreet.sumToTen" value="8" source="SWC" page="15"/>
+  <setting key="swcStreet.pointBuy" value="80" source="SWC" page="15"/>
+  <setting key="swcStreet.modules" value="6" source="SWC" page="15"/>
+  <setting key="levelSwcElite" value="false" source="SWC" page="15"/>
+  <setting key="swcElite.letters" value="ABBCD" source="SWC" page="15"/>
+  <setting key="swcElite.sumToTen" value="12" source="SWC" page="15"/>
+  <setting key="swcElite.pointBuy" value="120" source="SWC" page="15"/>
+  <setting key="swcElite.modules" value="10" source="SWC" page="15"/>
   <!-- optional rules (off: a table turns them on): the Sixth World Companion's Ways to Play -->
   <setting key="stackingAdvantage" value="false" source="SWC" page="144"/>
   <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>

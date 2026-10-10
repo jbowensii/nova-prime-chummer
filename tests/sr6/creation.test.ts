@@ -29,7 +29,9 @@ const without = (key: string) => XML.replace(new RegExp(`\\s*<setting key="${key
 /** the settings the fixture leaves unset (each test sets its own) */
 const UNSET = ['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 'contactPairPerCha', 'contactRatingMax',
   'attributeAugmentMax', 'skillAugmentMax', 'monitorMinimum', 'matrixColdDice', 'matrixHotDice', 'moveWalk', 'moveSprint', 'moveSprintPerHit',
-  'unarmedDV', 'arDrEdgeGap', 'meleeArStrength', 'stackingAdvantage', 'strengthInCloseCombat', 'highStrengthDamage', 'strengthDamageStep1', 'strengthDamageStep2']
+  'unarmedDV', 'arDrEdgeGap', 'meleeArStrength', 'stackingAdvantage', 'strengthInCloseCombat', 'highStrengthDamage', 'strengthDamageStep1', 'strengthDamageStep2',
+  'levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite', 'priorityLetters', 'swcStreet.sumToTen', 'swcStreet.pointBuy', 'swcStreet.modules', 'swcStreet.letters',
+  'swcElite.sumToTen', 'swcElite.pointBuy', 'swcElite.modules', 'swcElite.letters']
 test('the fixture sets every key (grades: standard and alpha only; no initiative dice cap), typed, with its source and page', async () => {
   const { rules, errors } = parseCreation(XML)
   expect(errors).toEqual([])
@@ -86,7 +88,7 @@ test('every key has a label of its own (Game data’s input names), a known type
   for (const k of all) expect(CREATION_GROUPS).toContain(k.group)
   for (const k of CREATION_KEYS) {
     expect(k.label, k.key).toBeTruthy()
-    expect(['number', 'bool', 'quality']).toContain(k.type)
+    expect(['number', 'bool', 'quality', 'letters']).toContain(k.type)
     expect(k.key).toMatch(/^[A-Za-z0-9.:_-]{1,80}$/)
   }
 })

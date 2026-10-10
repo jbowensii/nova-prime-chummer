@@ -57,6 +57,7 @@ function Control({ k, label, eff, table, mine, set }: { k: string; label: string
     <select aria-label={`${label}: choice`} value={mode} onChange={e => set(e.target.value === 'table' ? undefined : e.target.value === 'off' ? '' : String(eff?.value ?? base?.value ?? 0))}>
       <option value="table">The table’s: {shown(base)}</option><option value="own">This runner’s</option><option value="off">Off</option>
     </select>
-    {mode === 'own' && <input type="number" step="any" aria-label={label} value={mine} onChange={e => set(e.target.value)} />}
+    {mode === 'own' && (type === 'letters' ? <input aria-label={label} value={mine} maxLength={5} size={6} onChange={e => set(e.target.value.toUpperCase())} />
+      : <input type="number" step="any" aria-label={label} value={mine} onChange={e => set(e.target.value)} />)}
   </span>
 }
