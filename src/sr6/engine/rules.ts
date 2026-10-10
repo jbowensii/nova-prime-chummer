@@ -337,6 +337,27 @@ const RULES: Rule[] = [
       return c.b.picks.some(x => x.kind === 'adeptpowers') ? { message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have adept powers.`, ...CRB(67) } : null
     return over(c.budgets.powerPoints, 'Power points')
   } },
+  // CRB Hong Kong pp. 157–158: a power naming its choice (`Improved Ability (Skill)`) is for the skill or attribute its
+  // note names
+  { code: 'magic.choice', severity: 'error', tab: 'magic', check: c => c.b.picks.flatMap(x => {
+    const e = c.data.entry(x.kind, x.id), want = qualityChoice(e?.name)
+    if (!e || !want || (want === 'attribute' ? noteAttr(x.note) : noteSkill(c.data, x.note))) return []
+    return [{ path: `magic.${x.uid}`, message: `${e.name}: name the ${want} it is for in its note.`, ...entryCite(e) }]
+  }) },
+  // CRB Hong Kong p. 157: Improved Ability needs a rank in its skill, and the boosted skill is at most 1.5 times the
+  // original (rounded up) or the augmented maximum (+4), whichever is lower (improvedAbilityPower, improvedAbilityFactor)
+  { code: 'adept.improvedAbility', severity: 'error', tab: 'magic', setting: c => (c.b.picks.some(x => x.id === str(c.cr, 'improvedAbilityPower')) ? ['improvedAbilityFactor'] : []), check: c => {
+    const id = str(c.cr, 'improvedAbilityPower'), f = num(c.cr, 'improvedAbilityFactor'), aug = num(c.cr, 'skillAugmentMax'), hits: Hit[] = []
+    for (const x of c.b.picks.filter(p => p.id === id)) {
+      const sk = noteSkill(c.data, x.note), v = sk ? c.data.skills[sk] : undefined
+      if (!v || f === undefined) continue
+      const r = skillRank(c.b.skills.find(s => s.id === sk) ?? { points: 0, karma: 0 }), level = x.level ?? 1
+      const most = Math.min(Math.ceil(r * f), r + (aug ?? Infinity))
+      if (r < 1) hits.push({ path: `magic.${x.uid}`, message: `${pickName(c, x)} for ${v.name}: it needs a rank in ${v.name}.`, ...cite(c.cr, 'improvedAbilityPower') })
+      else if (r + level > most) hits.push({ path: `magic.${x.uid}`, message: `${pickName(c, x)} ${level} raises ${v.name} ${r} to ${r + level}; at most ${most}.`, ...cite(c.cr, 'improvedAbilityPower') })
+    }
+    return hits
+  } },
   { code: 'adept.ppCap', severity: 'error', tab: 'magic', check: c => {
     const cap = c.budgets.powerPoints.cap
     return !MAGIC_KINDS[c.b.magic].paysPowers || c.b.method === 'pointbuy' || c.b.powerPointsBought <= cap ? null

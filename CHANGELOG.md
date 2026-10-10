@@ -25,6 +25,11 @@
   Magic or Resonance skill the runner can't use (pp. 76–77); Sensitive System doubles cyberware, bioware and nanoware
   Essence and can't be had with Magic or Resonance (p. 78). The importer no longer reads Exceptional's maximum as a
   raise of the attribute too.
+- Improved Ability (CRB Hong Kong p. 157): the skill it is for is its note (the Magic tab edits it), it may be bought
+  again for another skill, it costs 1.0 power points a level for a combat skill and 0.5 for any other, its levels add to
+  that skill's pool, and Review asks for a rank in the skill and a boosted skill at most 1.5 times the rank (rounded up)
+  or +4. The importer reads the two prices (`cost`, `costCombat`). A pick now keeps a note (the runner file's `<pick
+  note>`), and a power's or quality's `skill:choice` and `attr:choice` effects go on what its note names.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

@@ -93,7 +93,10 @@ copy". Book entries are never copied here.
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
-  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic).
+  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic);
+  `note`: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: `Firearms`), which its
+  `skill:choice` or `attr:choice` effects and its price take (CRB Hong Kong p. 157). A `<quality note>` likewise names an
+  `(Attribute)` or `(Skill)` quality's choice.
 - `<martialart id>` (after the picks): a martial arts style (catalog `martialarts`), with a `<technique id>` (catalog
   `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
   free with the style). `name` on either: the catalog name when added. A file without any reads as none. Edited on the
@@ -109,7 +112,8 @@ copy". Book entries are never copied here.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
   data; a line with none counts its catalog entry's `add` effects instead, the low-confidence ones never). `target` is an
   attribute abbreviation, `initDice`, `defense` (Defense Rating), `physical` (Physical condition monitor boxes: a full
-  cyberlimb's, CRB p. 288) or `skill` (that skill's dice pool:
+  cyberlimb's, CRB p. 288), `stun`, `overflow`, `unarmedAR`, `unarmedDV` (the unarmed Attack Rating and Damage Value),
+  `movement` (metres), `matrixInitDice` (VR initiative dice) or `skill` (that skill's dice pool:
   `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
   line's rating.
 - `<sin kind="real|fake" rating? gender? placeholder?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid

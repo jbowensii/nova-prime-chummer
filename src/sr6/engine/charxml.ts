@@ -29,7 +29,7 @@ function purchaseXml(p: Sr6Purchase): string {
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name })
-const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
+const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note }, bonusesXml(p.bonuses))
 const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
 const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
 const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
@@ -163,7 +163,7 @@ const readKnowledge = (e: Element): Sr6Knowledge => def({ uid: e.getAttribute('u
 const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1),
   karma: num(e, 'karma'), free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
 const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
-  id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
+  id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name'), note: str(e, 'note') })
 const readTechnique = (e: Element) => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', name: str(e, 'name') })
 const readMartial = (e: Element, fix?: string[]): Sr6MartialArt => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '',
   name: str(e, 'name'), techniques: each(kids(e, 'technique'), readTechnique, label, fix) })

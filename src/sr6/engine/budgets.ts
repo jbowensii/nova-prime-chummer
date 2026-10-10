@@ -14,7 +14,7 @@ import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
-import { effectBonuses, maxEffects, sr6Counts as counts } from './effects'
+import { effectBonuses, maxEffects, sr6Counts as counts, TEST_TYPES } from './effects'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -59,10 +59,12 @@ const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: numbe
 const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
 function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
-  for (const x of b.picks) f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
+  for (const x of b.picks) f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
   for (const x of b.purchases) { const e = entryOf(x, data); f(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
-  for (const q of b.qualities) { const e = data.entry('qualities', q.id); f(entryBonuses(data, e), 1, q.level, e?.name ?? q.name ?? q.id) }
+  for (const q of b.qualities) { const e = data.entry('qualities', q.id); f(entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level, e?.name ?? q.name ?? q.id) }
 }
+/** The skill and attribute a pick's or quality's note names: its `skill:choice` and `attr:choice` effects' target. */
+const choiceOf = (data: Sr6Data, note?: string) => (note ? { skill: noteSkill(data, note), attr: noteAttr(note) } : {})
 /** The bonuses to `target` (for `skill` the one skill's dice pool) that only the bracketed total holds (switchable, some
  *  tests only, or a specialization the runner hasn't), each with its line's name, value at its rating and its note (its
  *  switch, condition or specialization, and `affects the caster`): why the bracket differs (owner decision 2026-10-10:
@@ -93,11 +95,11 @@ export function specBonus(b: Sr6Build, data: Sr6Data, skill: string, spec: strin
 /** A catalog entry's effects as bonuses (effects.ts effectBonuses: what importer/sr6/effects.py reads from the book's
  *  text and tables, with the entries it grants or works as). A low-confidence one is shown, never applied (owner decision
  *  D3). */
-export const entryBonuses = (data: Sr6Data, e?: Sr6Entry): Bonus[] => effectBonuses(data, e)
+export const entryBonuses = (data: Sr6Data, e?: Sr6Entry, choice?: { skill?: string; attr?: Sr6Attr }): Bonus[] => effectBonuses(data, e, 0, choice)
 /** The bonuses a line gives (the one place creation, Review, the sheets and the export read them): the player's or GM's
  *  own entered ones when it has any (they override, owner decision D3), else its catalog entry's effects. */
-export const lineBonuses = (data: Sr6Data, entered: Bonus[] | undefined, e?: Sr6Entry): Bonus[] =>
-  own(entered, entryBonuses(data, e))
+export const lineBonuses = (data: Sr6Data, entered: Bonus[] | undefined, e?: Sr6Entry, choice?: { skill?: string; attr?: Sr6Attr }): Bonus[] =>
+  own(entered, entryBonuses(data, e, choice))
 /** What the runner's picks, purchases and qualities add to its `k`, for `skill` the one skill's dice pool (`skill`: its
  *  id) (lineBonuses): picks and qualities by level, purchases by rating times quantity. on: the bracketed total's (the
  *  switchable and conditional bonuses too; spec: the specialization the runner has, whose bonuses specBonus counts). An
@@ -115,9 +117,9 @@ export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
   const add = (value: number, e: Sr6Entry | undefined, kind: Sr6Kind, id: string | undefined, name?: string) => {
     if (value) out.push({ from: e ? entryLabel(e) : name ?? id ?? 'Custom item', kind, id, value })
   }
-  for (const x of b.picks) { const e = data.entry(x.kind, x.id); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.level ?? 1, skill), e, x.kind, x.id, x.name) }
+  for (const x of b.picks) { const e = data.entry(x.kind, x.id); add(bonusOf(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), k, x.level ?? 1, skill), e, x.kind, x.id, x.name) }
   for (const x of b.purchases) { const e = entryOf(x, data); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.rating ?? 1, skill) * x.qty, e, x.kind, x.id, x.name) }
-  for (const q of b.qualities) { const e = data.entry('qualities', q.id); add(bonusOf(entryBonuses(data, e), k, 1, skill) * q.level, e, 'qualities', q.id, q.name) }
+  for (const q of b.qualities) { const e = data.entry('qualities', q.id); add(bonusOf(entryBonuses(data, e, choiceOf(data, q.note)), k, 1, skill) * q.level, e, 'qualities', q.id, q.name) }
   return out
 }
 /** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
@@ -376,11 +378,17 @@ export function powerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   // (Magic as Essence leaves it: a point of Magic lost is a power point lost, CRB pp. 38, 156)
   const k = MAGIC_KINDS[b.magic], rating = Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
   const max = !k.powers ? 0 : b.method === 'pointbuy' ? b.cp.powerPoints : k.paysPowers ? b.powerPointsBought : rating
-  const spent = round2(b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => {
-    const v = data.powers[x.id]
-    return t + (v?.cost ?? 0) * (v?.perLevel ? x.level ?? 1 : 1)
-  }, 0))
+  const spent = round2(b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => t + powerCost(data, x), 0))
   return { max, spent, left: round2(max - spent), cap: rating }
+}
+
+/** A power's power points at its level: Improved Ability's combat price when the skill its note names is a combat skill
+ *  (CRB Hong Kong p. 157: 1.0 a level, other skills 0.5; the combat skills Close Combat, Exotic Weapons and Firearms,
+ *  p. 95). */
+export function powerCost(data: Sr6Data, x: Pick<Sr6Build['picks'][number], 'id' | 'level' | 'note'>): number {
+  const v = data.powers[x.id], sk = x.note ? noteSkill(data, x.note) : undefined
+  const combat = !!sk && TEST_TYPES.combat.includes(normName(data.skills[sk]?.name ?? ''))
+  return ((combat && v?.costCombat != null ? v.costCombat : v?.cost) ?? 0) * (v?.perLevel ? x.level ?? 1 : 1)
 }
 
 /** Charisma × contactPointsPerCha points for connection and loyalty, each up to Charisma (CRB p. 67). With contactKarma

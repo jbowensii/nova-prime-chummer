@@ -340,6 +340,14 @@ _TGT_END = r"(?=[.;:]|\s(?:but|and (?:gain|receive|add|increase|the|you|it|a|an)
 _PHRASE = r"((?:[^.;:](?!\s(?:but|which|until|unless)\b))+?)" + _TGT_END
 
 
+def split_cost(cost):
+    """An adept power's two prices (`Combat skill: 1.0 PP per level; other skills 0.5 PP per level`, Improved Ability, CRB
+    Hong Kong p. 157): {"cost": the other skills', "costCombat": the combat skill's}; {} for one price."""
+    c = re.search(r"\bcombat skills?\s*:?\s*([\d.]+)\s*(?:PP|power\s+points?)", cost or "", re.I)
+    o = re.search(r"\bother skills?\s*:?\s*([\d.]+)\s*(?:PP|power\s+points?)", cost or "", re.I)
+    return {"cost": o.group(1), "costCombat": c.group(1)} if c and o else {}
+
+
 def read(text, kind=None, name=None):
     """[(tag, attrs, None)]: the effects, tests and links the text states, in the order printed, each once."""
     out = []
@@ -621,7 +629,7 @@ def _rules(s, kind, sw, when, edge_actions, label):
     # unarmed damage made Physical (Dermal Deposits, bone lacing and bone density: CRB Hong Kong pp. 71, 286, 291)
     if (m := re.search(r"\bunarmed (?:combat |melee )?(?:damage|attacks?)\b[^.;]{0,40}?\bphysical\b", low)) and not _negated(low, m.start()) \
             and not re.search(r"\b(?:not|never|n't)\b", m.group(0)):
-        out.append(_fx("derived:unarmed-damage", "set", "P", sw, when))
+        out.append(_fx("derived:unarmed-damage", "set", "P"))  # (always: the sentence's condition is another clause's)
     for m in re.finditer(r"(?:(?:ar|attack ratings?)[^.;]{0,40}?|^|: ?)(?P<l>(?:[+-]?\d+|-)(?:/(?:[+-]?\d+|-)){4})(?!\d)", low):
         vals = m.group("l").split("/")
         if any(v.startswith(("+", "-")) and v != "-" for v in vals):  # (a modifier per range band: `+2/–/–1/–2/–3`)

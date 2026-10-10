@@ -473,6 +473,8 @@ class Reader:
             cost = next((v for k, v in b.labels.items() if k.lower() == "cost"), "")
             if m := re.match(r"\s*([\d.]+)\s*(?:PP|power\s+points?)\b(\s*per\s+level)?", cost, re.I):
                 attrs = {"cost": m.group(1), "perLevel": "true" if m.group(2) else None}
+            elif split := effects.split_cost(cost):
+                attrs = {**split, "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None}
         if kind == "qualities":
             attrs = quality_attrs(name, chain, _body(b))
             if not attrs:

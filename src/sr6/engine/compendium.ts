@@ -26,7 +26,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage', 'opposed', 'essence'] },
   rituals: { fields: ['keywords', 'threshold'] },
-  adeptpowers: { fields: ['cost', 'perLevel', 'maxLevel', 'activation'] },
+  adeptpowers: { fields: ['cost', 'costCombat', 'perLevel', 'maxLevel', 'activation'] },
   complexforms: { fields: ['duration', 'fade'] },
   metamagics: { fields: ['user', 'perLevel', 'maxLevel'] },
   echoes: { fields: [] },

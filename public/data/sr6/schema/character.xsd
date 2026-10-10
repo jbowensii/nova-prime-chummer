@@ -252,6 +252,8 @@
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="level" type="xs:positiveInteger"/>
     <xs:attribute name="name" type="xs:string"/>
+    <!-- the skill or attribute a power naming its choice is for (Improved Ability (Skill): Firearms) -->
+    <xs:attribute name="note" type="xs:string"/>
   </xs:complexType>
 
   <!-- a martial arts style and the techniques learned under it (Firing Squad p. 97); name: the catalog name when added -->

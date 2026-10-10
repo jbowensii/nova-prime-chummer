@@ -64,7 +64,8 @@ export interface Sr6QualityView { id: string; name: string; positive: boolean; k
   category?: string; granted?: boolean; choices?: Sr6QualityChoice[]
   /** not one of the six qualities a runner may take at creation (its text says so) */
   uncounted?: boolean }
-export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
+/** costCombat: its cost when the skill it is for is a combat skill (Improved Ability, CRB Hong Kong p. 157) */
+export interface Sr6PowerView { id: string; name: string; cost: number | null; costCombat?: number | null; perLevel: boolean; maxLevel: number; page: number }
 /** user: who may take it (absent: any initiate); perLevel: taken again, each time one more initiation's metamagic, up to
  *  maxLevel times (none printed: no limit) */
 export interface Sr6MetamagicView { id: string; name: string; user?: 'adept' | 'magician'; perLevel: boolean; maxLevel: number | null; page: number }
@@ -177,7 +178,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',
       count: count(e, p.attrs.count, 'choice count', 1), max: p.attrs.max ? count(e, p.attrs.max, 'choice max', 1) : null })) } : {}) }]))
   const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),
-    ...levels(e), page: e.page }]))
+    ...(e.attrs.costCombat ? { costCombat: bookNum(e, e.attrs.costCombat, 'costCombat') } : {}), ...levels(e), page: e.page }]))
   const metamagics = Object.fromEntries(all('metamagics').map(e => [e.id, { id: e.id, name: e.name, perLevel: e.attrs.perLevel === 'true',
     maxLevel: e.attrs.maxLevel ? count(e, e.attrs.maxLevel, 'highest level', 1) : null, page: e.page,
     ...(e.attrs.user === 'adept' || e.attrs.user === 'magician' ? { user: e.attrs.user as 'adept' | 'magician' } : {}) }]))

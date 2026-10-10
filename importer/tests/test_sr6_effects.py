@@ -22,6 +22,11 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(fx("Effect: -1 Reaction, +2 Logic", "gear"),  # a drug's effect line: while it acts
                          [("attr:rea", "add", "-1", "activated", None), ("attr:log", "add", "2", "activated", None)])
 
+    def test_a_powers_two_prices(self):
+        self.assertEqual(effects.split_cost("Combat skill: 0.75 PP per level; other skills 0.25 PP per level"),
+                         {"cost": "0.25", "costCombat": "0.75"})
+        self.assertEqual(effects.split_cost("0.5 PP per level"), {})
+
     def test_unarmed_damage_made_physical(self):
         for text in ("It changes your unarmed combat damage to Physical.", "Your unarmed combat damage becomes Physical.",
                      "Your Unarmed Melee attacks inflict Physical damage."):

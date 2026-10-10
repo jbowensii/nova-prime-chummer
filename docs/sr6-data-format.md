@@ -70,7 +70,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
-| adeptpowers | adeptpower | cost, perLevel true, maxLevel int, activation | — |
+| adeptpowers | adeptpower | cost, costCombat (the price for a combat skill, the power's `Combat skill: 1.0 PP per level; other skills 0.5 PP per level`: cost then the other skills'), perLevel true, maxLevel int, activation | — |
 | complexforms | complexform | duration, fade | — |
 | metamagics | metamagic | user adept\|magician (absent: any initiate), perLevel true (taken again), maxLevel int: see Flags | — |
 | echoes | echo | — | — |
@@ -670,6 +670,8 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `incompetentQuality` | quality id | optional | Incompetent (Skill) (CRB Hong Kong pp. 76–77): no ranks in the skill its note names, not a Magic skill without Magic nor Tasking without Resonance (`skill.incompetent`), that skill once (`quality.choiceTwice`) |
 | General | `sensitiveSystemQuality` | quality id | optional | Sensitive System (CRB Hong Kong p. 78): an error with a Magic or Resonance rating (`quality.sensitiveSystem`); cyberware, bioware and nanoware Essence times `sensitiveSystemEssence` (2) |
 | General | `sensitiveSystemEssence` | number | optional | Sensitive System's Essence factor (CRB Hong Kong p. 78: doubled) |
+| General | `improvedAbilityPower` | quality id | optional | The Improved Ability adept power (an adept power's id; CRB Hong Kong p. 157): it needs a rank in the skill its note names, and the boosted skill is at most `improvedAbilityFactor` times the rank, rounded up, or the rank + `skillAugmentMax`, whichever is lower (`adept.improvedAbility`) |
+| General | `improvedAbilityFactor` | number | optional | Improved Ability's most: 1.5 times the original rank (CRB Hong Kong p. 157) |
 | General | `attributeMaxFloor` | number | optional | The lowest a quality's effect lowers an attribute's maximum to (Impaired: "to a minimum of 2", CRB Hong Kong p. 76; unset: no floor) |
 | Levels of play | `priorityLetters` | letters | optional | The five priority letters the columns take, one each (CRB Hong Kong p. 63: `ABCDE`); sum to ten takes only letters among them. A level of play sets its own |
 | Levels of play | `levelStreet` | true/false | optional | Street level (CRB Hong Kong p. 63, off): each priority gives the values of the row below (E stays E): points, nuyen, metatypes and magic kinds |

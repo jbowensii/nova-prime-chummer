@@ -591,6 +591,9 @@
   <xs:complexType name="AdeptPower">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- the cost when the skill it is for is a combat skill (Improved Ability: `Combat skill: 1.0 PP per level; other
+           skills 0.5 PP per level`, CRB Hong Kong p. 157); cost is the other skills' -->
+      <xs:attribute name="costCombat" type="xs:string"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
       <xs:attribute name="activation" type="xs:string"/>

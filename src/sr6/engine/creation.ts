@@ -44,6 +44,8 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'exceptionalQuality', label: 'Exceptional (Attribute) quality: +1 to the maximum of the attribute its note names, once per attribute (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'incompetentQuality', label: 'Incompetent (Skill) quality: no ranks in the skill its note names (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'sensitiveSystemQuality', label: 'Sensitive System quality: no Magic or Resonance; ware Essence times the factor below (unset: none)', type: 'quality', group: 'General', methods: [] },
+  { key: 'improvedAbilityPower', label: 'Improved Ability adept power: its skill boosted at most to the factor below (unset: none)', type: 'quality', group: 'General', methods: [] },
+  ...n('General', [], [['improvedAbilityFactor', 'Improved Ability: the boosted skill at most its rank times (rounded up)']]),
   ...n('General', [], [['sensitiveSystemEssence', 'Sensitive System: cyberware, bioware and nanoware Essence times'],
     ['attributeMaxFloor', 'Lowest a quality lowers an attribute’s maximum to (Impaired; unset: no floor)']]),
   { key: 'manyTalentsQuality', label: 'Many Talents quality: two attributes at their maximum (unset: none)', type: 'quality', group: 'General', methods: [] },
@@ -311,6 +313,8 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   { key: 'sensitiveSystemQuality', about: 'No Magic or Resonance; ware Essence doubled (CRB Hong Kong p. 78)' },
   { key: 'sensitiveSystemEssence', about: 'Essence costs doubled for cyberware, bioware and nanoware, not geneware (CRB Hong Kong p. 78)' },
   { key: 'attributeMaxFloor', about: 'Impaired lowers a maximum to a minimum of 2 (CRB Hong Kong p. 76)' },
+  { key: 'improvedAbilityPower', about: 'A rank in the skill; combat skill 1.0 PP a level, other skills 0.5 (CRB Hong Kong p. 157)' },
+  { key: 'improvedAbilityFactor', about: 'At most 1.5 times the original rank, rounded up, or the augmented maximum (CRB Hong Kong p. 157)' },
   // levels of play (off: the standard level)
   { key: 'levelStreet', about: 'Low-level street runners: the values of the row below the priority chosen (CRB Hong Kong p. 63), off' },
   { key: 'levelPrime', about: 'Prime runner: customization Karma doubled, 50 to 100 (CRB Hong Kong p. 63), off' },

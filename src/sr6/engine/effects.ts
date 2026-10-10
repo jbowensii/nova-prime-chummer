@@ -64,11 +64,15 @@ export function linkedEntries(data: Sr6Data, e: Sr6Entry | undefined): { part: S
  *  entries it grants or works as. Each keeps how it is turned on, its condition, its specialization and whom it affects:
  *  the always-on ones count in the total shown first, the switchable and conditional ones in the bracketed total (owner
  *  decision 2026-10-10). A low-confidence one is shown, never applied (owner decision D3). */
-export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0): Bonus[] {
+export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0, choice: { skill?: string; attr?: Sr6Attr } = {}): Bonus[] {
   const out: Bonus[] = []
   const skillId = (name: string) => Object.values(data.skills).find(v => normName(v.name) === name.replace(/-/g, ' '))?.id
+  // (a power's or quality's chosen skill or attribute, its note's: `skill:choice` on Improved Ability's skill; never an
+  // `attr:choice` read beside an `attr-max:choice`, the maximum's)
+  const maxed = (e?.parts ?? []).some(x => x.tag === 'effect' && x.attrs.target === 'attr-max:choice')
   for (const x of e?.parts ?? []) {
-    const t = x.attrs.target ?? '', v = effectValue(x.attrs.value), a = x.attrs
+    const a = x.attrs, t = a.target === 'skill:choice' && choice.skill ? `skill:${choice.skill}`
+      : a.target === 'attr:choice' && choice.attr && !maxed ? `attr:${choice.attr}` : a.target ?? '', v = effectValue(a.value)
     if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v) continue
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? a.switch as Bonus['switch'] : undefined
     const state = { ...v.perRating ? { perRating: true as const } : {}, ...a.when ? { when: a.when } : {}, ...sw ? { switch: sw } : {},
@@ -77,7 +81,7 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0)
     else if (DERIVED_BONUS[t] && !(e?.kind === 'armor' && t === 'derived:defense'))  // (armor: its defense field, derive.ts)
       out.push({ target: DERIVED_BONUS[t], value: v.value, ...state })
     else if (t.startsWith('skill:')) {
-      const sk = skillId(t.slice(6))
+      const sk = choice.skill && t === `skill:${choice.skill}` ? choice.skill : skillId(t.slice(6))
       if (sk) out.push({ target: 'skill', skill: sk, value: v.value, ...state, ...a.spec ? { spec: a.spec } : {} })
     } else if (t.startsWith('test:'))
       for (const sk of testSkills(data, t.slice(5))) out.push({ target: 'skill', skill: sk, value: v.value, ...state })

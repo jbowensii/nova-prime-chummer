@@ -66,7 +66,8 @@ export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | '
 /** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes).
  *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */
 export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string; karma?: number }
-export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string }
+/** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
+export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string; note?: string }
 /** A martial arts style (catalog martialarts) and the techniques learned under it (martialtechniques; its signature one
  *  free, Firing Squad p. 97). name: the catalog name when it was added. */
 export interface Sr6MartialArt { uid: string; id: string; name?: string; techniques: Sr6Technique[] }

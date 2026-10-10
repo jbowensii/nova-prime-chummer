@@ -27,6 +27,8 @@ export type Op =
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
+  /** a pick's note: the skill or attribute a power naming its choice is for ('' clears it) */
+  | { op: 'pickNote'; uid: string; note: string }
   /** add a martial arts style (with its signature technique, a martialtechniques id: martial.ts signatureOf), or a
    *  technique under the style whose uid is `style`; or take one away (a style goes with its techniques) */
   | { op: 'martialart'; id: string; signature?: string } | { op: 'martialart'; remove: string }
@@ -199,7 +201,9 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const e = data.entry(op.kind, op.id)
       if (!e) return no('unknown-entry')
       const max = pickMaxLevel(data, op.kind, op.id)
-      const had = b.picks.find(x => x.kind === op.kind && x.id === op.id)
+      // (a power naming its choice is bought again for another: Improved Ability "can be purchased for multiple skills",
+      // CRB Hong Kong p. 157)
+      const had = !qualityChoice(e.name) && b.picks.find(x => x.kind === op.kind && x.id === op.id)
       if (had) {
         // a leveled power is bought per level, a metamagic taken again is one more: taking it again raises the level
         if (max === null) return no('duplicate')
@@ -208,6 +212,13 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         return OK
       }
       b.picks.push({ uid: newId(), kind: op.kind, id: op.id, name: e.name, ...(max !== null ? { level: 1 } : {}) })
+      return OK
+    }
+    case 'pickNote': {
+      const x = b.picks.find(p => p.uid === op.uid)
+      if (!x) return no('not-taken')
+      const t = op.note.trim().slice(0, 200)
+      if (t) x.note = t; else delete x.note
       return OK
     }
     case 'powerLevel': {

@@ -32,7 +32,7 @@ const UNSET = ['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 
   'unarmedDV', 'arDrEdgeGap', 'meleeArStrength', 'stackingAdvantage', 'strengthInCloseCombat', 'highStrengthDamage', 'strengthDamageStep1', 'strengthDamageStep2',
   'levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite', 'priorityLetters', 'swcStreet.sumToTen', 'swcStreet.pointBuy', 'swcStreet.modules', 'swcStreet.letters',
   'swcElite.sumToTen', 'swcElite.pointBuy', 'swcElite.modules', 'swcElite.letters',
-  'incompetentQuality', 'sensitiveSystemQuality', 'sensitiveSystemEssence', 'attributeMaxFloor']
+  'incompetentQuality', 'sensitiveSystemQuality', 'sensitiveSystemEssence', 'attributeMaxFloor', 'improvedAbilityPower', 'improvedAbilityFactor']
 test('the fixture sets every key (grades: standard and alpha only; no initiative dice cap), typed, with its source and page', async () => {
   const { rules, errors } = parseCreation(XML)
   expect(errors).toEqual([])
