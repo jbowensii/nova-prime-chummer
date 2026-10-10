@@ -1,6 +1,8 @@
 # Release notes
 
-## Unreleased: per-runner creation rules, optional rules the sample runners pointed to
+## 0.11.3 — 2026-10-09: per-runner creation rules, optional rules the sample runners pointed to
+
+Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.
 
 **Shadowrun 6**
 - Per-runner creation rules, as Commlink6 has them: the Creation method tab lists the optional rules (the prime runner's
