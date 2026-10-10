@@ -4,7 +4,7 @@
 // a value the app can't read counts 0 (priced().ok false, Review warns); an unset creation setting counts 0 (Review
 // warns that it isn't set). Never NaN.
 import { MAGIC_KIND_LABELS, SR6_ATTRS, type Bonus, type PurchaseKind, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Quality, type Sr6Sin, type Sr6Skill, sinName } from '../model/character'
-import type { Sr6Entry } from '../model/types'
+import type { Sr6Entry, Sr6Kind } from '../model/types'
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, normName, type Sr6Data, type Sr6QualityView } from './data'
 import { gradeFactor, type GradeFactor } from './grades'
@@ -106,6 +106,19 @@ export function augmentBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
   let total = 0
   eachLine(b, data, (bs, rating, times) => { total += bonusOf(bs, k, rating, skill, on, spec) * times })
   return total
+}
+/** augmentBonus line by line: each pick, purchase or quality that adds to `k` in the total shown first, with its name and
+ *  what it adds (the attribute card lists them; their sum is augmentBonus, so the two never disagree; the bracketed ones
+ *  are bracketNotes). */
+export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], skill?: string): { from: string; kind?: Sr6Kind; id?: string; value: number }[] {
+  const out: { from: string; kind?: Sr6Kind; id?: string; value: number }[] = []
+  const add = (value: number, e: Sr6Entry | undefined, kind: Sr6Kind, id: string | undefined, name?: string) => {
+    if (value) out.push({ from: e ? entryLabel(e) : name ?? id ?? 'Custom item', kind, id, value })
+  }
+  for (const x of b.picks) { const e = data.entry(x.kind, x.id); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.level ?? 1, skill), e, x.kind, x.id, x.name) }
+  for (const x of b.purchases) { const e = entryOf(x, data); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.rating ?? 1, skill) * x.qty, e, x.kind, x.id, x.name) }
+  for (const q of b.qualities) { const e = data.entry('qualities', q.id); add(bonusOf(entryBonuses(data, e), k, 1, skill) * q.level, e, 'qualities', q.id, q.name) }
+  return out
 }
 /** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
  *  target -> total, only the targets they touch (not a skill's pool: a runner's, never an item's). */

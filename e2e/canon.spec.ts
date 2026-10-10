@@ -48,6 +48,8 @@ test('rules reference: search the quick-reference sheets', async ({ page }) => {
 
 test('game data lists each source and whether it is canon', async ({ page }) => {
   await page.goto('/#/data')
+  // folded under the catalog: its heading opens it
+  await page.locator('details.fold summary', { hasText: 'Sources' }).click()
   const table = page.locator('table', { hasText: 'Publisher' })
   await expect(table.locator('tr', { hasText: 'CRB' })).toContainText('Canon')
   await expect(table.locator('tr', { hasText: 'DHSA' }).locator('.noncanon')).toBeVisible()

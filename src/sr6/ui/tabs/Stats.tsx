@@ -7,6 +7,7 @@ import { NPC_KINDS, NPC_STATS, npcParts, npcValues } from '../../engine/npc'
 import type { Sr6Npc } from '../../model/character'
 import { NpcBlock } from '../../print/NpcBlock'
 import { useSr6Editor } from '../editor'
+import { Sr6Ref } from '../EntryRef'
 
 export function StatsTab() {
   const { ch, data, update } = useSr6Editor()
@@ -30,7 +31,7 @@ export function StatsTab() {
   return (
     <div className="stack">
       <h2>Stat block</h2>
-      <p className="muted">{k.label}. {from ? <>Made from <b>{from.name}</b> ({from.source} p.{from.page}).</> : 'Blank.'}
+      <p className="muted">{k.label}. {from ? <>Made from <Sr6Ref kind={from.kind} id={from.id}><b>{from.name}</b></Sr6Ref> ({from.source} p.{from.page}).</> : 'Blank.'}
         {' '}The values are a copy: change them here. {k.rating?.letter && `A stat with ${k.rating.letter} in it is worked out at the ${k.rating.label}.`}</p>
       <div className="row">
         {k.rating && <label className="inline">{k.rating.label}

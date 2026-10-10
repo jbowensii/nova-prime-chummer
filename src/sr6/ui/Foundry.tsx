@@ -36,8 +36,7 @@ export function Sr6ExportBooksPanel({ c, data }: { c: Sr6Catalog; data: Sr6Data 
     catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
   }
   return (
-    <section aria-labelledby="sr6-foundry-books" className="stack">
-      <h2 id="sr6-foundry-books">Export book data for Foundry</h2>
+    <section aria-label="Export book data for Foundry" className="stack">{/* (its heading is the fold's, src/ui/GameData.tsx) */}
       <p className="muted">For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden). The books go out as this app sees them, with your
         corrections. Compendiums export from their own page.</p>
       <div className="row">

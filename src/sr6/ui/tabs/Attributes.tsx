@@ -1,21 +1,21 @@
 // Attributes: one row per attribute the runner has (Magic for the awakened, Resonance for the emerged) with points,
-// adjustment and karma steppers, the metatype's range, the natural and augmented ratings, and a mark at the maximum.
+// adjustment and karma steppers, the metatype's range, the natural and augmented ratings, and a mark at the maximum. An
+// attribute's name shows its card on hover, focus or tap (EntryRef.tsx Sr6AttrRef: what raises it, its max, the rule).
 import { Stepper } from '../../../ui/bits'
-import { attrMax, bracketNotes, notesText } from '../../engine/budgets'
 import { br } from '../../print/view'
 import { num } from '../../engine/creation'
 import { MAGIC_KINDS } from '../../engine/data'
 import { CORE_ATTRS, type Sr6Attr } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { attrRange, Sr6AttrRef } from '../EntryRef'
 
 const POOLS = [['points', 'Points'], ['adjust', 'Adjustment'], ['karma', 'Karma']] as const
 
 export function AttributesTab() {
-  const { ch, data, cr, p, d, budgets, act } = useSr6Editor()
+  const ctx = useSr6Editor(), { ch, data, d, budgets, act, cr } = ctx
   const b = ch.build, kind = MAGIC_KINDS[b.magic], meta = data.metatypes[b.metatype]
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
-  const range = (a: Sr6Attr): [number, number] | undefined =>
-    a === 'mag' || a === 'res' ? d.magicMax === null ? undefined : [p.magicRating(b), d.magicMax] : meta && [meta.ranges[a][0], attrMax(data, cr, b, a)!]
+  const range = (a: Sr6Attr) => attrRange(ctx, a)
   const karmaPrice = num(cr, 'karmaAttrPerRank')
   return (
     <div className="stack">
@@ -31,13 +31,13 @@ export function AttributesTab() {
         <tbody>{attrs.map(a => {
           const r = range(a), s = b.attributes[a], { natural, augmented } = d.attrs[a], top = r ? natural >= r[1] : false
           return <tr key={a}>
-            <td>{ATTR_NAMES[a]}</td>
+            <td><Sr6AttrRef attr={a}>{ATTR_NAMES[a]}</Sr6AttrRef></td>
             <td className="muted">{r ? `${r[0]}–${r[1]}` : '—'}</td>
             {POOLS.map(([k, l]) => <td key={k}><Stepper label={`${ATTR_NAMES[a]} ${l.toLowerCase()}`} value={s[k]} min={0} max={top ? s[k] : 99}
               onChange={to => act({ op: 'attribute', target: a, pool: k, delta: to - s[k] })} /></td>)}
             <td className="num">{natural}{top && <span className="muted"> max</span>}</td>
-            {/* (owner decision 2026-10-10: the switchable and conditional bonuses in brackets, each named on hover) */}
-            <td className="num" title={notesText(bracketNotes(b, data, a)) || undefined}>{augmented !== natural || d.on.attrs[a].augmented !== augmented ? br(augmented, d.on.attrs[a].augmented) : ''}</td>
+            {/* (owner decision 2026-10-10: the switchable and conditional bonuses in brackets, each named on the attribute's card) */}
+            <td className="num">{augmented !== natural || d.on.attrs[a].augmented !== augmented ? br(augmented, d.on.attrs[a].augmented) : ''}</td>
           </tr>
         })}</tbody>
       </table></div>

@@ -661,6 +661,15 @@ dialog.dupes .dupe-group label.check { margin: 0; color: var(--text); font-size:
 .has-formula { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
 label.book-pick { display: flex; align-items: center; gap: 0.5rem; max-width: 100%; }
 .browser { margin-bottom: 2.2rem; }
+/* Game data's folded sections (GameData.tsx: Sources, the Foundry export): the heading is the toggle */
+details.fold { margin-bottom: 1.2rem; border-bottom: 1px solid var(--rule); scroll-margin-top: 1rem; }
+details.fold > summary { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; cursor: pointer; list-style: none; padding-bottom: 0.4rem; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary h2 { margin: 0; }
+details.fold > summary h2::after { content: ' ▸'; color: var(--yellow); }
+details.fold[open] > summary h2::after { content: ' ▾'; }
+details.fold > summary:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+details.fold[open] { padding-bottom: 1rem; }
 .browse-body { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
 .kinds { display: flex; flex-direction: column; border-left: 1px solid var(--rule); }
 .kinds button { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; margin-left: -1px; padding: 0.42rem 0.7rem;

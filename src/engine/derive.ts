@@ -230,6 +230,16 @@ export function weaponDV(dv: string, str: number, plus = 0): string {
   return k ? `${Number(k[1]) + plus}${k[2]}` : dv
 }
 
+/** The amps giving Risk Reduction on `a`'s tests, one name per effect counted (an amp taking it twice is named twice):
+ *  the always-on ones (on: the switchable and conditional ones too, effects.ts counts), as derive counts rrAttr and the
+ *  attribute card lists them. */
+export const attrRRSources = (b: Build, a: AttrId, on = false): string[] =>
+  b.amps.flatMap(amp => amp.effects.filter(e => e.ref === 'rr-attr' && e.param === a && counts(e, on)).map(() => amp.name))
+/** The amps whose Risk Reduction on `a`'s tests counts only in the bracketed total, each with its note (what turns it on,
+ *  when it holds): the attribute card's bracketed lines. */
+export const attrRRBracket = (b: Build, a: AttrId): { name: string; how: string }[] =>
+  b.amps.flatMap(amp => amp.effects.filter(e => e.ref === 'rr-attr' && e.param === a && counts(e, true) && !counts(e)).map(e => ({ name: amp.name, how: effectHow(e) })))
+
 /** The runner's derived values without its switchable and conditional effects, and (`switched`) with them on. */
 export function derive(c: Catalog, ch: Character): Derived {
   const d = deriveAt(c, ch, false)

@@ -1,12 +1,11 @@
-// SR6 Game data (everyone): the catalog browser by book and kind (CatalogBrowser), the sources, the catalog edits (editors:
+// SR6 Game data (everyone), in the layout both games share (src/ui/GameData.tsx): the catalog browser by kind with the book
+// a filter (CatalogBrowser), the sources, the Foundry export, the catalog edits (editors:
 // each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on Table setup) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
 import { useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { NonCanon } from '../../ui/bits'
-import { CatalogBrowser } from '../../ui/CatalogBrowser'
-import { STATE_TEXT } from '../../ui/EditEntry'
-import { PageHeader } from '../../ui/nav'
+import { GameDataPage } from '../../ui/GameData'
 import { useRepo } from '../../ui/repo'
 import type { Sr6Data as Sr6DataView } from '../engine/data'
 import { catalogFind, entryKey, SR6_NS, sr6EntryXml } from '../engine/load'
@@ -53,57 +52,36 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
   const books = [...c.sources.values()].filter(s => perSource(s.id)).map(s => ({ id: s.id, name: s.compendium ? `${s.name} (House)` : s.name }))
 
   return (
-    <main className="lib">
-      <PageHeader title="Game data" />
-      {all.length === 0 && <p className="banner">No SR6 data yet. {isAdmin(me)
-        ? <>Upload the core rulebook on the <a href="#/sr6/books">Books page</a>.</> : 'The admin hasn’t imported the core rulebook yet.'}</p>}
-      <div role="status" aria-live="polite">{msg && <p className="banner">{msg}</p>}</div>
-      <CatalogBrowser kinds={kinds} books={books} tableClass="sr6-browse" />
-      <p className="muted">The Shadowrun 6 catalog, kept apart from Anarchy’s. Books add to it; descriptions are private, one file per source in
-        <code> custom/sr6/texts/</code>, never part of the app itself.</p>
-      <h2>Sources</h2>
-      <div className="scroll-x"><table className="data sr6-sources"><thead><tr><th>Source</th><th>Publisher</th><th>Status</th><th className="num">Entries</th>
-        <th>Descriptions</th><th>File</th><th>Checksum (SHA-256)</th></tr></thead>
-        <tbody>{[...c.sources.values()].map(s => (
-          <tr key={s.id}><td><b>{s.id}</b> {s.name}</td><td>{s.publisher}</td><td>{s.compendium ? `House · ${s.publisher}` : s.canon ? 'Canon' : <NonCanon />}</td>
-            <td className="num">{perSource(s.id)}</td>
-            <td>{s.compendium ? 'its own' : !s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/sr6/${s.texts}`) ? 'installed' : <span className="muted">not installed</span>}</td>
-            <td>{s.file}</td><td className="hash" title={s.sha256}>{s.sha256 && `${s.sha256.slice(0, 12)}…`}</td></tr>
-        ))}</tbody></table></div>
-      {canEdit(me) && <Sr6ExportBooksPanel c={c} data={data} />}
-
-      {editor && <>
-        <h2 style={{ marginTop: '1.5rem' }}>Your catalog edits</h2>
-        <p>Fix a book entry with its Edit button. Edits are kept apart from the imported book, so a re-import never touches them;
-          Restore book version drops one.</p>
-        <OverrideFiles reload={reload} g={{ dir: 'custom/sr6/edits/', api: 'sr6/edits', ns: SR6_NS, prefix: 'sr6', file: 'sr6-edits',
-          books: books.filter(b => !c.sources.get(b.id)?.compendium), tags: TAGS, descTag: () => 'text', strip: ['issue'],
-          current: (kind, id) => {
-            if (kind === 'samplefixes') { const f = c.sampleFixes?.get(id); return f && { xml: fixXml(f), edited: true, text: f.text } }
-            const e = c.entries[kind as Sr6Kind]?.get(id); return e && { xml: sr6EntryXml(e), edited: !!e.edited, text: e.text } } }} />
-        {edits.length === 0 ? <p className="muted">No edits yet.</p> : (
-          <div className="scroll-x"><table className="data sr6-edits"><thead><tr><th>Entry</th><th>Kind</th><th>Status</th><th /></tr></thead>
-            <tbody>{edits.map(e => {
-              const state = c.original.has(entryKey(e.kind, e.id)) ? 'changed' : 'orphan'
-              return <tr key={entryKey(e.kind, e.id)}><td><b>{entryLabel(e)}</b> <span className="src">{e.source} p.{e.page}</span></td><td>{SR6_KINDS[e.kind].label}</td>
-                <td className={state === 'orphan' ? 'warn' : undefined}>{STATE_TEXT[state]}</td><td className="num">{editButton(e)}</td></tr>
-            })}</tbody></table></div>
-        )}
+    <GameDataPage game="sr6" kinds={kinds} books={books}
+      banner={<>
+        {all.length === 0 && <p className="banner">No SR6 data yet. {isAdmin(me)
+          ? <>Upload the core rulebook on the <a href="#/sr6/books">Books page</a>.</> : 'The admin hasn’t imported the core rulebook yet.'}</p>}
+        <div role="status" aria-live="polite">{msg && <p className="banner">{msg}</p>}</div>
       </>}
-
+      sourcesIntro={<p className="muted">The Shadowrun 6 catalog, kept apart from Anarchy’s. Books add to it; descriptions are private, one file per source in
+        <code> custom/sr6/texts/</code>, never part of the app itself.</p>}
+      sources={[...c.sources.values()].map(s => ({ id: s.id, name: s.name, publisher: s.publisher, entries: perSource(s.id), file: s.file,
+        status: s.compendium ? `House · ${s.publisher}` : s.canon ? 'Canon' : <NonCanon />, sha256: s.sha256, hash: s.sha256 && `${s.sha256.slice(0, 12)}…`,
+        texts: s.compendium ? 'its own' : !s.texts ? <span className="muted">none</span> : c.files.some(f => f.file === `custom/sr6/${s.texts}`) ? 'installed' : <span className="muted">not installed</span> }))}
+      foundry={canEdit(me) && <Sr6ExportBooksPanel c={c} data={data} />}
+      edits={editor ? { rows: edits.map(e => ({ key: entryKey(e.kind, e.id), name: entryLabel(e), kind: SR6_KINDS[e.kind].label, action: editButton(e),
+        state: c.original.has(entryKey(e.kind, e.id)) ? 'changed' : 'orphan', source: <span className="src">{e.source} p.{e.page}</span> })),
+        intro: <>
+          <p>Fix a book entry with its Edit button. Edits are kept apart from the imported book, so a re-import never touches them;
+            Restore book version drops one.</p>
+          <OverrideFiles reload={reload} g={{ dir: 'custom/sr6/edits/', api: 'sr6/edits', ns: SR6_NS, prefix: 'sr6', file: 'sr6-edits',
+            books: books.filter(b => !c.sources.get(b.id)?.compendium), tags: TAGS, descTag: () => 'text', strip: ['issue'],
+            current: (kind, id) => {
+              if (kind === 'samplefixes') { const f = c.sampleFixes?.get(id); return f && { xml: fixXml(f), edited: true, text: f.text } }
+              const e = c.entries[kind as Sr6Kind]?.get(id); return e && { xml: sr6EntryXml(e), edited: !!e.edited, text: e.text } } }} />
+        </> } : undefined}
+      errors={c.errors}
+      docs={<>The file format and schemas are documented in <code>docs/sr6-data-format.md</code> and <code>data/sr6/schema/</code>.</>}>
       <h2 style={{ marginTop: '1.5rem' }}>Creation rules</h2>
       <p>The creation settings (starting karma, caps, prices…) are on the Table setup page:{' '}
         <a href="#/sr6/table">open the creation settings</a>. A campaign with its own shows them on its page.</p>
-
-      <h2 style={{ marginTop: '1.5rem' }}>Problems</h2>
-      {c.errors.length === 0 ? <p className="ok">Every file loaded cleanly.</p> : (
-        <div className="scroll-x"><table className="data"><thead><tr><th>File</th><th>Problem</th></tr></thead>
-          <tbody>{c.errors.map((e, i) => <tr key={i}><td>{e.file}</td><td className="err">{e.message}</td></tr>)}</tbody></table></div>
-      )}
-      <p className="muted" style={{ marginTop: '1rem' }}>The file format and schemas are documented in <code>docs/sr6-data-format.md</code> and <code>data/sr6/schema/</code>.</p>
-
       <Sr6EditEntry c={c} target={editing} onClose={() => setEditing(null)}
         onSaved={async text => { await reload(); setEditing(null); setMsg(text) }} />
-    </main>
+    </GameDataPage>
   )
 }
