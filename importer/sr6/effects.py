@@ -1216,8 +1216,10 @@ def apply(files, texts_xml, regrouped=""):
                     found.append((t, {**a, **({"when": w} if w else {})}, None))
             if kind in ITEM_KINDS and not any(t == "effect" for t, _, _ in found) and re.search(r"accessor", _unesc(attrs), re.I) \
                     and re.search(r"<formula\b[^>]*>[^<]*\bR\b", kids):
-                # (a rated add-on named for the stat it raises, a cyberlimb's `Armor`: its rating to that stat)
-                ts = targets(nm.casefold(), kind) or ([(ADDON_STATS[_key(nm)], None)] if _key(nm) in ADDON_STATS else [])
+                # (a rated add-on named for the attribute it raises, a cyberlimb's `Armor`, a booster's `Firewall`: its
+                # rating to it; not a derived value, whose name leaves score or dice open)
+                ts = [t for t in targets(nm.casefold(), kind) if t[0].startswith(("attr:", "matrix:"))] \
+                    or ([(ADDON_STATS[_key(nm)], None)] if _key(nm) in ADDON_STATS else [])
                 found += [_fx(t, "add", "R", spec=sp) for t, sp in ts[:1]]
             kept = _KEEP.findall(kids)
             kids = _DROP.sub("", kids)
