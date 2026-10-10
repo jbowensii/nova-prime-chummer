@@ -4,6 +4,7 @@ import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
 import { editHref, useEditor } from '../editor'
 import { NpcBlock } from '../NpcBlock'
+import { AnarchyRef, entryOfPath } from '../AnarchyRef'
 
 const tabFor = (path: string) => {
   const head = path.split('.')[0]
@@ -38,11 +39,12 @@ export function ReviewTab() {
       <div>
         {sorted.map((x, i) => {
           const o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
-          const tab = tabFor(x.path)
+          const tab = tabFor(x.path), at = entryOfPath(c, ch, x.path)  // (the entry it names, with its card)
           return (
             <div key={i} className={`viol${x.approved ? ' approved' : ''}`}>
               <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>{x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}</span>
-              <span className="msg">{x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
+              <span className="msg">{x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}
+                {at && <> <AnarchyRef kind={at.kind} id={at.id}><span className="muted small">{at.name}</span></AnarchyRef></>}</span>
               <span className="row">
                 {tab && !x.approved && <a className="btn small quiet" href={editHref(ch, tab)}>Fix</a>}
                 {gm && x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}

@@ -13,6 +13,7 @@ import { pickFlags } from '../../print/view'
 import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Bonuses, House } from '../Picker'
+import { cardOf, Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
 
 const article = (w: string) => (/^[aeiou]/i.test(w) ? 'An' : 'A')
@@ -41,7 +42,7 @@ export function MagicTab() {
           const e = data.entry(kind, x.id), power = kind === 'adeptpowers' ? data.powers[x.id] : undefined, name = e?.name ?? x.name ?? x.id
           const max = pickMaxLevel(data, kind, x.id)
           return <tr key={x.uid}>
-            <td><b>{name}</b>{!e && <span className="err"> (no longer in the catalog)</span>}
+            <td><Sr6Ref kind={kind} id={e?.id}><b>{name}</b></Sr6Ref>{!e && <span className="err"> (no longer in the catalog)</span>}
               {e && <span className="muted"> {[e.attrs.category, ...pickFlags(e), e.source && `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}</span>}
               <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={max !== null} /></div></td>
             <td>{max !== null && <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
@@ -84,7 +85,7 @@ export function MagicTab() {
           groups={[...new Set([...c.entries[adding].values()].map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}
           items={[...c.entries[adding].values()].sort((a, z) => a.name.localeCompare(z.name)).map(e => {
             const power = adding === 'adeptpowers' ? data.powers[e.id] : undefined
-            return { id: e.id, name: e.name, group: e.attrs.category, disabled: taken(adding, e.id),
+            return { id: e.id, name: e.name, group: e.attrs.category, disabled: taken(adding, e.id), ...cardOf(c, adding, e.id),
               meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`, ...pickFlags(e),
                 unfit(e) && `not for ${article(MAGIC_KIND_LABELS[b.magic]).toLowerCase()} ${MAGIC_KIND_LABELS[b.magic].toLowerCase()}`].filter(Boolean).join(', '),
               price: `${e.source} p.${e.page}`, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`, label: <House c={c} source={e.source} /> }

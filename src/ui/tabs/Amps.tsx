@@ -7,6 +7,7 @@ import { SourceLabel } from '../SourceLabel'
 import { IssueBadges } from '../Issues'
 import { EditButton } from '../EditEntry'
 import { useEditor } from '../editor'
+import { anarchyCard, AnarchyRef } from '../AnarchyRef'
 import { AmpBuilder } from './AmpBuilder'
 
 type Editing = { amp: AmpEntry; item?: ItemEntry; before?: AmpEntry }
@@ -75,7 +76,7 @@ export function AmpsTab() {
                 const tpl = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
                 return (
                   <tr key={a.uid}>
-                    <td><b>{a.name}</b> {tpl ? <SourceLabel c={c} source={tpl.source} page={tpl.page} id={tpl.id} /> : <SourceLabel builtByYou />}
+                    <td><AnarchyRef kind="amps" id={a.catalogId}><b>{a.name}</b></AnarchyRef> {tpl ? <SourceLabel c={c} source={tpl.source} page={tpl.page} id={tpl.id} /> : <SourceLabel builtByYou />}
                       {a.type === 'vehicle' && (() => { const s = vehicleStats(c, a); return s && <div style={{ fontSize: '0.88rem' }}>{s.count > 1 ? `${s.count}× ` : ''}{s.chassis}: Pilot {s.pilot}, Body {s.body}, Handling {s.handling}, Speed {s.speed}{s.flying ? ' (flying)' : ''}, Armor {s.armor}</div> })()}
                       <div className="muted" style={{ fontSize: '0.88rem' }}>{describe(a) || a.narrative || 'Narrative effect only'}</div>
                       {probs.map((p, i) => <div key={i} className={p.severity === 'error' ? 'err' : 'warn'} style={{ fontSize: '0.88rem' }}>{p.message}</div>)}
@@ -103,7 +104,7 @@ export function AmpsTab() {
           <Picker onPick={startFromCatalog} placeholder="Search the book’s amps"
             groups={[...types.map(t => t.name), 'Add-ons']}
             items={[...c.amps.values()].map(a => ({ // add-ons (mod) are applied in the Amp Builder; listed here to be edited
-              id: a.id, name: a.name, group: a.mod ? 'Add-ons' : c.ampTypes.get(a.type)?.name, disabled: a.mod,
+              id: a.id, name: a.name, group: a.mod ? 'Add-ons' : c.ampTypes.get(a.type)?.name, disabled: a.mod, ...anarchyCard(c, 'amps', a.id),
               meta: a.mod ? `Add-on for ${c.ampTypes.get(a.type)?.name ?? a.type} (apply it in the Amp Builder)` : c.ampTypes.get(a.type)?.name, label: <><SourceLabel c={c} source={a.source} page={a.page} id={a.id} /> <IssueBadges issues={a.issues} source={a.source} /></>, search: `${a.source} ${c.sources.get(a.source)?.name ?? ''} p.${a.page}`,
               price: `Rating ${a.printedRating ?? '?'}`, text: a.narrative, action: <EditButton kind="amps" id={a.id} name={a.name} />,
             }))} />

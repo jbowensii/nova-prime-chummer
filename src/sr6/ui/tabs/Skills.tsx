@@ -7,6 +7,7 @@ import { NameField } from '../../../ui/tabs/Skills'
 import { num } from '../../engine/creation'
 import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { Sr6Ref } from '../EntryRef'
 
 /** A text box with suggestions that commits on Enter or leaving it ('' clears). */
 export function Suggest({ value, label, options, onCommit }: { value: string; label: string; options: string[]; onCommit: (v: string | null) => void }) {
@@ -45,15 +46,16 @@ export function SkillsTab() {
             const s = b.skills.find(x => x.id === sk.id), rank = (s?.points ?? 0) + (s?.karma ?? 0)
             const pool = d.pools.find(x => x.skill === sk.id)
             return <tr key={sk.id}>
-              <td><b>{sk.name}</b></td>
+              <td><Sr6Ref kind="skills" id={sk.id}><b>{sk.name}</b></Sr6Ref></td>
               {(['points', 'karma'] as const).map(k => <td key={k}><Stepper label={`${sk.name} ${k}`} value={s?.[k] ?? 0} min={0} max={99}
                 onChange={to => act({ op: 'skill', target: sk.id, pool: k, delta: to - (s?.[k] ?? 0) })} /></td>)}
               <td className="num">{rank || ''}</td>
               <td className="num">{pool ? pool.dp : ''}{pool?.conditional?.map((x, i) => <div key={i} className="muted small">+{x.value} {x.from}: {x.when}</div>)}</td>
-              <td><Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
-                onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></td>
-              <td><Suggest label={`${sk.name} expertise`} value={s?.expertise ?? ''} options={sk.specs}
-                onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })} /></td>
+              {/* (a specialization's card: its skill's, with the specializations the book lists; the box's focus opens it) */}
+              <td><Sr6Ref kind="skills" id={sk.id} tabbable={false}><Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
+                onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></Sr6Ref></td>
+              <td><Sr6Ref kind="skills" id={sk.id} tabbable={false}><Suggest label={`${sk.name} expertise`} value={s?.expertise ?? ''} options={sk.specs}
+                onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })} /></Sr6Ref></td>
             </tr>
           })}
         </tbody>)}

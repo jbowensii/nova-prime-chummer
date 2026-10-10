@@ -772,3 +772,18 @@ table.contacts td.end { text-align: right; }
 .reimport-all { margin: 0 0 1rem; }
 .reimport-all p { margin: 0 0 0.3rem; }
 .reimport-all progress { width: 100%; max-width: 32rem; accent-color: var(--heading); }
+
+/* a catalog entry's card on hover, focus or tap (src/ui/EntryHover.tsx), both games */
+.entry-ref { position: relative; cursor: help; text-decoration: underline dotted; text-underline-offset: 2px; }
+.entry-ref:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.entry-pop { position: fixed; z-index: 1000; width: min(26rem, 90vw);
+  max-height: 22rem; overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--rule);
+  border-radius: var(--r-sm); box-shadow: 0 4px 16px rgb(0 0 0 / 0.25); padding: 0.6rem 0.75rem; text-align: left;
+  font-weight: normal; white-space: normal; cursor: auto; text-decoration: none; pointer-events: none; }
+.entry-pop.touch { pointer-events: auto; }
+.entry-card { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; line-height: 1.35; }
+.entry-card > span { display: block; }
+.entry-card-effects > span { display: block; }
+.entry-card-effects .applied { color: var(--ok); }
+.entry-card-effects .conditional, .entry-card-effects .low { color: var(--warn); }
+.entry-card-text .prose { font-family: var(--serif); font-size: 0.95rem; }

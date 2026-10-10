@@ -10,6 +10,7 @@ import { Stepper } from '../../../ui/bits'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { RunnerRules } from '../RunnerRules'
+import { Sr6Ref } from '../EntryRef'
 import type { Sr6Attr } from '../../model/character'
 
 const COLUMN_LABELS: Record<PriorityColumn, string> = { metatype: 'Metatype', attributes: 'Attributes', magic: 'Magic or Resonance', skills: 'Skills', resources: 'Resources' }
@@ -53,10 +54,10 @@ export function MethodTab() {
 
       <h3>Metatype</h3>
       <label>Metatype
-        <select aria-label="Metatype" value={b.metatype} onChange={e => update(d => setMetatype(d, e.target.value, data))}>
+        <Sr6Ref kind="metatypes" id={b.metatype || undefined} tabbable={false}><select aria-label="Metatype" value={b.metatype} onChange={e => update(d => setMetatype(d, e.target.value, data))}>
           <option value="">None yet</option>
           {metatypes.map(m => <option key={m.id} value={m.id}>{m.name}{m.adjustmentPoints ? ` (${m.adjustmentPoints} adjustment points)` : ''}</option>)}
-        </select></label>
+        </select></Sr6Ref></label>
       {letters && !b.priorities.metatype && <p className="muted">Give Metatype a letter to see which metatypes it allows.</p>}
 
       <h3>Magic or Resonance</h3>
@@ -114,7 +115,7 @@ function LifeModules() {
   return <section className="stack">
     <h3>Life modules</h3>
     <p className="muted">Every runner starts with the opening modules, then picks {count ?? '?'} adult ones.</p>
-    <ul>{opening.map(m => <li key={m.id}><b>{m.name}</b> <span className="muted">{grants(m)}</span></li>)}</ul>
+    <ul>{opening.map(m => <li key={m.id}><Sr6Ref kind="lifemodules" id={m.id}><b>{m.name}</b></Sr6Ref> <span className="muted">{grants(m)}</span></li>)}</ul>
     {bonus !== undefined && <div className="row">
       <label className="inline">Best attribute (+{bonus})
         <select aria-label="Best attribute" value={b.bestAttr ?? ''} onChange={e => act({ op: 'bestAttr', attr: (e.target.value || null) as Sr6Attr | null })}>
@@ -131,7 +132,7 @@ function LifeModules() {
     {b.lifepath.map((t, at) => {
       const m = data.lifemodules[t.id]
       return <div key={at} className="row">
-        <span><b>{m?.name ?? t.id}</b> <span className="muted">{m ? grants(m) : 'no longer in the catalog'}</span></span>
+        <span><Sr6Ref kind="lifemodules" id={m?.id}><b>{m?.name ?? t.id}</b></Sr6Ref> <span className="muted">{m ? grants(m) : 'no longer in the catalog'}</span></span>
         {m?.choices.map((c, i) => <label key={i} className="inline">Choice {i + 1} ({c.points})
           <select value={t.choices[i] ?? ''} onChange={e => act({ op: 'lifemodule', id: t.id, choice: i, pick: e.target.value, at })}>
             <option value="" disabled>Pick one</option>
@@ -143,7 +144,7 @@ function LifeModules() {
     {free.length > 0 && <div className="scroll-x"><table className="data">
       <thead><tr><th>Module</th><th>Gives</th><th /></tr></thead>
       {/* a module for another magic kind may still be taken: Review's lifepath.requires */}
-      <tbody>{free.map(m => <tr key={m.id}><td>{m.name}{!m.fits && <span className="err"> (for {m.requires} runners)</span>}</td><td className="muted">{grants(m)}{m.choices.length ? `, plus ${m.choices.length} choice` : ''}</td>
+      <tbody>{free.map(m => <tr key={m.id}><td><Sr6Ref kind="lifemodules" id={m.id}>{m.name}</Sr6Ref>{!m.fits && <span className="err"> (for {m.requires} runners)</span>}</td><td className="muted">{grants(m)}{m.choices.length ? `, plus ${m.choices.length} choice` : ''}</td>
         <td><button className="btn small" aria-label={`Add ${m.name}`} onClick={() => act({ op: 'lifemodule', id: m.id })}>{m.taken ? 'Add again' : 'Add'}</button></td></tr>)}</tbody>
     </table></div>}
   </section>

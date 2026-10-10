@@ -6,6 +6,7 @@ import { qualityCost, qualityKarma } from '../../engine/budgets'
 import { num } from '../../engine/creation'
 import { n, useSr6Editor } from '../editor'
 import { House } from '../Picker'
+import { cardOf, Sr6Ref } from '../EntryRef'
 
 export function QualitiesTab() {
   const { ch, c, data, cr, act } = useSr6Editor()
@@ -24,7 +25,7 @@ export function QualitiesTab() {
       <tbody>{rows.map(q => {
         const v = data.qualities[q.id]
         return <tr key={q.uid}>
-          <td><b>{v?.name ?? q.name ?? q.id}</b>{!v && <span className="err"> (no longer in the catalog)</span>}
+          <td><Sr6Ref kind="qualities" id={q.id}><b>{v?.name ?? q.name ?? q.id}</b></Sr6Ref>{!v && <span className="err"> (no longer in the catalog)</span>}
             {q.free && <> <span className="noncanon">Metatype trait</span></>}</td>
           <td>{v?.perLevel ? <Stepper label={`${v.name} level`} value={q.level} min={1} max={v.maxLevel} onChange={level => act({ op: 'quality', id: q.id, level })} /> : ''}</td>
           <td className="num">{q.free ? 'free' : v?.karma == null ? '?' : v.karmaMax != null
@@ -50,7 +51,7 @@ export function QualitiesTab() {
       <button className="btn" onClick={() => setPicking('negative')}>Add a negative quality…</button>
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive')).map(q => ({
-          id: q.id, name: q.name, disabled: b.qualities.some(x => x.id === q.id),
+          id: q.id, name: q.name, disabled: b.qualities.some(x => x.id === q.id), ...cardOf(c, 'qualities', q.id),
           meta: `${q.karma == null ? '?' : q.karma}${q.karmaMax != null ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
           price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(), label: <House c={c} source={data.entry('qualities', q.id)?.source ?? ''} />,
         }))} />

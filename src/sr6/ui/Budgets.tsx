@@ -9,6 +9,7 @@ import { MAGIC_KINDS } from '../engine/data'
 import type { Budget } from '../engine/budgets'
 import { MAGIC_KIND_LABELS, SR6_METHOD_LABELS } from '../model/character'
 import { n, sr6EditHref, useSr6Editor } from './editor'
+import { Sr6Ref } from './EntryRef'
 
 export function Budgets() {
   const { ch, data, cr, budgets: B, v, career } = useSr6Editor()
@@ -49,7 +50,8 @@ export function Budgets() {
         {shown.map(([k, label, x, unit]) => x!.breakdown?.length
           ? <details key={k} className="budget"><summary aria-label={`${label}: ${n(x!.left)}${unit ?? ''} left of ${n(x!.max)}${unit ?? ''}`}>{head(label, x!, unit)}</summary>
             <ul className="bud-lines">{x!.breakdown.map(l => <li key={l.key}><a className="line" href={sr6EditHref(ch.id, l.tab)}>
-              <span className="lbl">{l.label}</span><span className="lead" /><span className="amt num">{l.sign === 'gain' ? '+' : '−'}{n(l.amount)}{unit}</span></a></li>)}</ul>
+              {/* (a line naming an entry, the metatype's Karma: its card; the link's focus opens it) */}
+              <span className="lbl">{l.key === 'metatype' ? <Sr6Ref kind="metatypes" id={b.metatype} tabbable={false}>{l.label}</Sr6Ref> : l.label}</span><span className="lead" /><span className="amt num">{l.sign === 'gain' ? '+' : '−'}{n(l.amount)}{unit}</span></a></li>)}</ul>
           </details>
           : <div key={k} className="budget">{head(label, x!, unit)}</div>)}
         {b.method === 'lifepath' && <div className="budget"><span className={`line${modules !== undefined && b.lifepath.length > modules ? ' neg' : ''}`}>
