@@ -1,8 +1,45 @@
 # Release notes
 
-## Unreleased
+## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
-Import the books of both games again (Books → **Re-import all**) so every entry gets its effects.
+**Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers
+take from its text and tables, and the sample runners are read with them. **The Foundry modules have matching
+updates** (the Shadowrun 6 importer's effects v2 and the Anarchy module): install them with this release, so the
+effects, links and bracketed totals in the export reach Foundry.
+
+**Both games**
+- One rule for every effect (src/engine/effects.ts, owner decisions 2026-10-10): the total shown first holds the
+  always-on effects; switchable ones (wireless, activated, sustained) and conditional ones (in darkness, while in the
+  Matrix) count in brackets, `Con 6 (9)`, `RR 1 (2)`, as a book's stat block prints them; a low-confidence one is shown,
+  never counted; a spell's or complex form's effect on its target(s) never counts on the caster, and a sentence naming
+  neither is the caster's. Each bracketed, caster or target effect has a note naming its switch, condition or whom it
+  affects: on the attribute's card and a pool's hover, in Review's "What its effects do" and on the printed sheet.
+- Game data is one page layout for both games (src/ui/GameData.tsx). The catalog comes first: the kinds down the left with
+  their counts, the chosen kind's categories as chips across the top (Shadowrun 6: its category field, augmentations
+  by type then body area), its entries with their values, Description and Edit. The **Book** list, the search across
+  everything and **Needs attention** filter it. The sources and the Foundry export are folded under it until opened (the
+  Sources heading gives the number of books), so a long book list no longer pushes the rest down; then the catalog
+  edits, Problems and what each game adds (Anarchy: the loaded files; Shadowrun 6: where the creation rules are). Every
+  Shadowrun 6 feature stays: the Edit buttons and compendium links, the override files, issues, effects, search and
+  Needs attention.
+- Game data opens on each game's main kind, Amps in Anarchy and Qualities in Shadowrun 6 (the list keeps its order),
+  then on the kind last looked at, remembered per game in this browser. A private window or blocked storage just
+  opens on the main kind.
+- **Export book data for Foundry** has its icon in the header's right-hand group, beside the game switch, Settings
+  and the account. It unfolds the export and scrolls to it, and its address (`#/data/foundry`,
+  `#/sr6/data/foundry`) opens the page with it unfolded. Only for those who may export: the admin and editors (GMs in
+  Shadowrun 6).
+- An attribute shows its card on hover, focus (Tab) or tap, as an entry's card does: its natural and augmented
+  ratings, its maximum, what raises it, and the rule's source and page. Shadowrun 6 adds the attribute's description
+  (from the book's private texts) and lists each pick, line of gear or quality adding to it (the same lines its
+  augmented rating adds up), and Magic or Resonance lost to Essence. Anarchy has no augmented attributes, so the two
+  match, and its data has no attribute descriptions; its card lists the amps giving Risk Reduction on the attribute's
+  tests.
+- The career Ledger names entries with their cards too. Shadowrun 6: the entry picked to spend on, the price line
+  (the attribute, skill, quality, power, gear or lifestyle being bought) and each history line. Anarchy: each history
+  line's attribute, skill, specialization, amp or item. An SR6 NPC's Stat block names its catalog entry with its card.
+- The attribute card lists what the total counts, then the switchable and conditional bonuses (or Risk Reduction) in
+  brackets with their notes.
 
 **Shadowrun 6**
 - Effects for every entry: the importer now reads what each quality, adept power, piece of ware, gear, weapon,
@@ -103,35 +140,7 @@ Import the books of both games again (Books → **Re-import all**) so every entr
 - Book sample runners: Drakk's and Neon Ivy's drugs (Jazz, Kamikaze, Bliss…) are activated, so their Risk Reduction and
   initiative now print in brackets; every other number is unchanged. Each gains the effects its lines and racial quality
   state (Low-light or Thermographic vision, a decker's Advantage on Cybercombat, a drug's ignored wound modifiers and
-  forced Risk) and the RR its amps give on specializations it lacks, beside the skill.
-
-## Unreleased: Game data alike in both games, its Foundry export from the header, an attribute's card
-
-**Both games**
-- Game data is one page layout for both games (src/ui/GameData.tsx). The catalog comes first: the kinds down the left with
-  their counts, the chosen kind's categories as chips across the top (Shadowrun 6: its category field, augmentations
-  by type then body area), its entries with their values, Description and Edit. The **Book** list, the search across
-  everything and **Needs attention** filter it. The sources and the Foundry export are folded under it until opened (the
-  Sources heading gives the number of books), so a long book list no longer pushes the rest down; then the catalog
-  edits, Problems and what each game adds (Anarchy: the loaded files; Shadowrun 6: where the creation rules are). Every
-  Shadowrun 6 feature stays: the Edit buttons and compendium links, the override files, issues, effects, search and
-  Needs attention.
-- Game data opens on each game's main kind, Amps in Anarchy and Qualities in Shadowrun 6 (the list keeps its order),
-  then on the kind last looked at, remembered per game in this browser. A private window or blocked storage just
-  opens on the main kind.
-- **Export book data for Foundry** has its icon in the header's right-hand group, beside the game switch, Settings
-  and the account. It unfolds the export and scrolls to it, and its address (`#/data/foundry`,
-  `#/sr6/data/foundry`) opens the page with it unfolded. Only for those who may export: the admin and editors (GMs in
-  Shadowrun 6).
-- An attribute shows its card on hover, focus (Tab) or tap, as an entry's card does: its natural and augmented
-  ratings, its maximum, what raises it, and the rule's source and page. Shadowrun 6 adds the attribute's description
-  (from the book's private texts) and lists each pick, line of gear or quality adding to it (the same lines its
-  augmented rating adds up), and Magic or Resonance lost to Essence. Anarchy has no augmented attributes, so the two
-  match, and its data has no attribute descriptions; its card lists the amps giving Risk Reduction on the attribute's
-  tests.
-- The career Ledger names entries with their cards too. Shadowrun 6: the entry picked to spend on, the price line
-  (the attribute, skill, quality, power, gear or lifestyle being bought) and each history line. Anarchy: each history
-  line's attribute, skill, specialization, amp or item. An SR6 NPC's Stat block names its catalog entry with its card.
+  forced Risk) and the RR its amps give on specializations it lacks, in the skill's bracket.
 
 ## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 
