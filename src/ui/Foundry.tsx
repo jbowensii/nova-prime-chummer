@@ -99,8 +99,7 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
     } finally { setBusy(false) }
   }
   return (
-    <section aria-labelledby="ca2-foundry-books" className="stack">
-      <h2 id="ca2-foundry-books">Export book data for Foundry</h2>
+    <section aria-label="Export book data for Foundry" className="stack">{/* (its heading is the fold's, GameData.tsx) */}
       <p className="muted">For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2). The books go out as this app sees them, with your
         corrections, house rules and the table rules switched on.</p>
       <div className="row">

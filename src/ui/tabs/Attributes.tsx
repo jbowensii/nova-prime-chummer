@@ -2,6 +2,7 @@ import { attrCost, hasNoMetatype } from '../../engine'
 import { ATTRS } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
+import { AnarchyAttrRef } from '../AnarchyRef'
 
 export function AttributesTab() {
   const { c, ch, d, edit, career } = useEditor()
@@ -29,7 +30,7 @@ export function AttributesTab() {
             const v = b.attributes[a] ?? 0
             return (
               <tr key={a}>
-                <td>{c.attributes.get(a)?.name}</td>
+                <td><AnarchyAttrRef attr={a}>{c.attributes.get(a)?.name}</AnarchyAttrRef></td>
                 <td className="muted">{min}–{max}</td>
                 <td><Stepper label={c.attributes.get(a)?.name ?? a} value={v} min={min} max={max} onChange={to => change(a, to)} /></td>
                 <td className="num">{v < max ? fmt(attrCost(c.pricing, v, v + 1, max)) : <span className="muted">at max</span>}</td>

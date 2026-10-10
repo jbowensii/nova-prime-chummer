@@ -2,7 +2,8 @@
 // the lifestyle), with its card on hover, focus or tap (src/ui/EntryHover.tsx): the row Game data shows for it
 // (src/ui/tabs/Data.tsx browseKinds), made when shown.
 import type { ReactNode } from 'react'
-import type { Catalog, Character } from '../model/types'
+import { attrRRSources, currentBuild, hasNoMetatype } from '../engine'
+import type { AttrId, Catalog, Character } from '../model/types'
 import type { BrowseRow } from './CatalogBrowser'
 import { useEditor } from './editor'
 import { EntryHover } from './EntryHover'
@@ -45,4 +46,22 @@ export function entryOfPath(c: Catalog, ch: Character, path: string): { kind: An
 /** A picker item's card (src/ui/bits.tsx PickItem). */
 export function anarchyCard(c: Catalog, kind: AnarchyKind, id: string): { card?: () => BrowseRow; cardKind?: string } {
   return has(c, kind, id) ? { card: () => anarchyRow(c, kind, id)!, cardKind: LABEL[kind] } : {}
+}
+
+/** An attribute's card: its natural rating and the augmented one, the same (Anarchy augments no attribute: what amps give
+ *  is Risk Reduction on its tests), the metatype's maximum, the amps giving that RR (attrRRSources, as derive counts it)
+ *  and the rule's source and page. */
+export function anarchyAttrRow(c: Catalog, ch: Character, a: AttrId): BrowseRow {
+  const at = c.attributes.get(a), b = ch.finalizedAt ? currentBuild(ch) : ch.build
+  const max = (hasNoMetatype(ch) ? [1, 12] : c.metatypes.get(ch.identity.metatype)?.ranges[a] ?? [1, 6])[1]
+  const rr = attrRRSources(b, a)
+  return { key: a, name: at?.name ?? a, source: at?.source ?? '', page: at?.page ?? 0,
+    details: [`natural ${b.attributes[a] ?? 0}`, `augmented ${b.attributes[a] ?? 0}`, `max ${max}`, rr.length ? `RR ${rr.length}` : ''].filter(Boolean).join(' · '),
+    effects: rr.map(name => ({ text: `RR +1 on its tests from ${name}`, state: 'applied' as const })) }
+}
+
+/** `children` naming one of the runner's attributes, with its card on hover, focus or tap. */
+export function AnarchyAttrRef({ attr, children, tabbable }: { attr: AttrId; children: ReactNode; tabbable?: boolean }) {
+  const { c, ch } = useEditor()
+  return <EntryHover row={() => anarchyAttrRow(c, ch, attr)} kind="Attribute" tabbable={tabbable}>{children}</EntryHover>
 }

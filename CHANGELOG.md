@@ -1,5 +1,30 @@
 # Release notes
 
+## Unreleased: Game data alike in both games, its Foundry export from the header, an attribute's card
+
+**Both games**
+- Game data is one page layout for both games (src/ui/GameData.tsx). The catalog comes first: the kinds down the left with
+  their counts, the chosen kind's categories as chips across the top (Shadowrun 6: its category field, augmentations
+  by type then body area), its entries with their values, Description and Edit. The **Book** list, the search across
+  everything and **Needs attention** filter it. The sources and the Foundry export are folded under it until opened (the
+  Sources heading gives the number of books), so a long book list no longer pushes the rest down; then the catalog
+  edits, Problems and what each game adds (Anarchy: the loaded files; Shadowrun 6: where the creation rules are). Every
+  Shadowrun 6 feature stays: the Edit buttons and compendium links, the override files, issues, effects, search and
+  Needs attention.
+- **Export book data for Foundry** has its icon in the header's right-hand group, beside the game switch, Settings
+  and the account. It unfolds the export and scrolls to it, and its address (`#/data/foundry`,
+  `#/sr6/data/foundry`) opens the page with it unfolded. Only for those who may export: the admin and editors (GMs in
+  Shadowrun 6).
+- An attribute shows its card on hover, focus (Tab) or tap, as an entry's card does: its natural and augmented
+  ratings, its maximum, what raises it, and the rule's source and page. Shadowrun 6 adds the attribute's description
+  (from the book's private texts) and lists each pick, line of gear or quality adding to it (the same lines its
+  augmented rating adds up), and Magic or Resonance lost to Essence. Anarchy has no augmented attributes, so the two
+  match, and its data has no attribute descriptions; its card lists the amps giving Risk Reduction on the attribute's
+  tests.
+- The career Ledger names entries with their cards too. Shadowrun 6: the entry picked to spend on, the price line
+  (the attribute, skill, quality, power, gear or lifestyle being bought) and each history line. Anarchy: each history
+  line's attribute, skill, specialization, amp or item. An SR6 NPC's Stat block names its catalog entry with its card.
+
 ## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

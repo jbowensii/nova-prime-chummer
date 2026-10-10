@@ -104,8 +104,9 @@ own API key), and you review its entries before they’re added.
 - **Foundry VTT.** Runners and book data export as one JSON file for the Foundry importer module
   (sra2 system; install it in Foundry from [jbowensii/chummer-anarchy2-foundry](https://github.com/jbowensii/chummer-anarchy2-foundry) by its manifest URL, https://github.com/jbowensii/chummer-anarchy2-foundry/releases/latest/download/module.json).
   **Export for Foundry** in the runner editor, or **Export for Foundry…** on the runner list (tick runners, All/None,
-  or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors tick
-  books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
+  or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors open
+  **Export book data for Foundry** (folded under the catalog, or straight from its Foundry icon in the header beside the
+  game switch; its address is `#/data/foundry`), tick books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
   **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
   NPCs export the same way (**Export for Foundry…** on the NPCs page), each carrying its NPC block, and the books' NPCs ride along in the book data file.
   A compendium exports as its own compendium (**Export for Foundry** on the Compendiums page), with your descriptions; it needs importer module 0.6.0.
@@ -135,8 +136,12 @@ no book numbers.
   couldn’t pair or read is listed in the book’s import report, never guessed.
   Book errors stay as printed; fixes go through **Game data**, survive
   re-imports and can be undone. Later books come one per release.
-- **Game data** (everyone; changes: admin and GMs). Browse the catalog, edit an
-  entry and export book data for Foundry.
+- **Game data** (everyone; changes: admin and GMs). Browse the catalog the
+  same way as in Anarchy: the kinds down the left with their counts, the
+  chosen kind's categories as chips across the top, its entries with their
+  values, Description and Edit; the **Book** list filters it. Edit an entry and
+  export book data for Foundry (its Foundry icon in the header, beside the game
+  switch, opens it: `#/sr6/data/foundry`).
 - **Table setup** (`#/sr6/table`; players read only). The **Creation rules**: the
   numbers the rulebook prints only in its text (starting karma, caps, exchange
   rates, karma prices, point-buy prices, augmentation grades, the constants
@@ -187,8 +192,8 @@ no book numbers.
   **Export for Foundry** in an SR6 runner’s or NPC’s editor and on each row of
   NPCs & Critters, **Export for Foundry…** on the SR6 runner list and NPCs &
   Critters (tick runners or a campaign) download
-  `runners-YYYY-MM-DD.sr6foundry.json`; on SR6 **Game data** the admin and
-  GMs tick books and download `books-YYYY-MM-DD.sr6foundry.json` (descriptions
+  `runners-YYYY-MM-DD.sr6foundry.json`; on SR6 **Game data** (its Foundry icon in
+  the header) the admin and GMs tick books and download `books-YYYY-MM-DD.sr6foundry.json` (descriptions
   on by default: for your own Foundry only); an SR6 compendium’s page downloads
   `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json`. Each Foundry module refuses
   the other game’s file.
@@ -544,8 +549,13 @@ Unraid), listed in `custom/index.xml`:
 Descriptions (amp, spell and gear text, rules text) are private: the importer
 writes one file per source in `custom/texts/`, never in this repository.
 
-The app’s **Game data** page shows each source and whether it's canon, what
-loaded, and any errors.
+The app’s **Game data** page is the same in both games: the catalog by kind
+(the kinds down the left with their counts, the chosen kind's categories as
+chips across the top, its entries with their values, Description and Edit),
+with the **Book** list, a search across everything and **Needs attention** as
+filters. Under it, folded until opened, each source with whether it's canon
+and the Foundry export (also opened by its Foundry icon in the header, for the
+admin and editors); then the catalog edits, what loaded and any errors.
 
 ## Editing and adding catalog entries
 

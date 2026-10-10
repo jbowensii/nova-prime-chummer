@@ -2,7 +2,8 @@
 // see its price and the balances after, Record, confirm); a note; the history with running balances, where an entry that
 // may be voided has Void (a reason asked) and a voided one is struck through with its reason. Every price comes from the
 // creation settings (src/sr6/engine/career.ts); a refusal reads as a sentence. What the runner lacks a prerequisite for
-// is offered too, marked: recorded, Review flags it.
+// is offered too, marked: recorded, Review flags it. What a spend or a history line names (an attribute, a skill, the
+// entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
@@ -12,6 +13,7 @@ import { CORE_ATTRS, MAGIC_KIND_LABELS, PURCHASE_KINDS, sinName, type PickKind, 
 import type { Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, type PickedItem } from '../Picker'
+import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../engine/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
 
@@ -89,8 +91,9 @@ export function LedgerTab() {
   const adv = advance()
   const typed = op === 'contact' || op === 'other' ? typedAmounts : undefined
   const pv = adv && preview(adv, typed)
-  const priceLine = pv && pv.ok ? [pv.label, pv.karma ? signed(pv.karma, ' karma') : '', pv.nuyen ? signed(pv.nuyen, '¥') : '',
+  const priceRest = pv && pv.ok ? [pv.karma ? signed(pv.karma, ' karma') : '', pv.nuyen ? signed(pv.nuyen, '¥') : '',
     `after: ${n(bal.karma - pv.karma)} karma, ${n(bal.nuyen - pv.nuyen)}¥`].filter(Boolean).join(' · ') : ''
+  const priceLine = pv && pv.ok ? [pv.label, priceRest].filter(Boolean).join(' · ') : ''
   const spend = () => { if (adv && !record(adv, typed)) choose(op); setConfirm(false) }
 
   const recordEarnings = () => {
@@ -141,7 +144,7 @@ export function LedgerTab() {
         {op === 'technique' && <label>Style<select value={f.target} onChange={e => { set({ target: e.target.value }); setPicked(null) }}>
           <option value="">Pick one</option>{b.martialArts.map(m => <option key={m.uid} value={m.uid}>{styleName(data, m)}</option>)}</select></label>}
         {(op === 'quality' || op === 'pick' || op === 'purchase' || op === 'martialart' || (op === 'technique' && f.target)) && <div style={{ alignSelf: 'end' }}>
-          {picked && <span>{entryLabel(picked.e)}{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
+          {picked && <span><Sr6Ref kind={picked.e.kind} id={picked.e.id}>{entryLabel(picked.e)}</Sr6Ref>{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
           <button className="btn small" onClick={() => setPicking(true)}>{picked ? 'Change…' : 'Pick from the catalog…'}</button></div>}
         {op === 'buyoff' && <label>Quality<select value={f.target} onChange={e => set({ target: e.target.value })}>
           <option value="">Pick one</option>{b.qualities.filter(q => !q.free && data.qualities[q.id]?.positive === false)
@@ -196,7 +199,7 @@ export function LedgerTab() {
       </div>
       <div className="row">
         <p className={`sr6-preview${pv && !pv.ok ? ' err' : ''}`} role="status" aria-label="Price" style={{ flex: 1, margin: 0 }}>
-          {!pv ? <span className="muted">Pick what to buy.</span> : pv.ok ? priceLine : reasonText(pv.reason)}</p>
+          {!pv ? <span className="muted">Pick what to buy.</span> : pv.ok ? <>{pv.label ? <Sr6AdvanceRef advance={adv!}>{pv.label}</Sr6AdvanceRef> : null}{pv.label && priceRest ? ' · ' : ''}{priceRest}</> : reasonText(pv.reason)}</p>
         <button className="btn primary" disabled={!pv?.ok} onClick={() => setConfirm(true)}>Record</button>
       </div>
 
@@ -210,7 +213,7 @@ export function LedgerTab() {
         <tbody>{rows.map(({ e, karma, nuyen, voided, reason }) => (
           <tr key={e.id} className={voided ? 'voided' : undefined}>
             <td className="muted">{e.at.slice(0, 10)}</td>
-            <td>{ledgerLabel(e)}{voided && reason && <span className="muted why">Voided: {reason}</span>}</td>
+            <td>{e.type === 'advance' ? <Sr6AdvanceRef advance={e.advance}>{ledgerLabel(e)}</Sr6AdvanceRef> : ledgerLabel(e)}{voided && reason && <span className="muted why">Voided: {reason}</span>}</td>
             <td className="num">{amount(e, 'karma')}</td>
             <td className="num">{amount(e, 'nuyen', '¥')}</td>
             <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : n(karma)}</td>

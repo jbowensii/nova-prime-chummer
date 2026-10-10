@@ -145,6 +145,11 @@ export function weaponDV(dv: string, str: number, plus = 0): string {
   return k ? `${Number(k[1]) + plus}${k[2]}` : dv
 }
 
+/** The amps giving Risk Reduction on `a`'s tests, one name per effect taken (an amp taking it twice is named twice): what
+ *  derive counts as rrAttr and the attribute card lists. */
+export const attrRRSources = (b: Build, a: AttrId): string[] =>
+  b.amps.flatMap(amp => amp.effects.filter(e => e.ref === 'rr-attr' && e.param === a).map(() => amp.name))
+
 export function derive(c: Catalog, ch: Character): Derived {
   const b = ch.finalizedAt ? currentBuild(ch) : ch.build
   const meta = c.metatypes.get(ch.identity.metatype)
@@ -161,11 +166,10 @@ export function derive(c: Catalog, ch: Character): Derived {
   const armor = { none: worn(), main: worn(b.mainArmor), alt: worn(b.altArmor) }
 
   // Risk Reduction from amps
-  const rrAttr = Object.fromEntries(ATTRS.map(a => [a, 0])) as Record<AttrId, number>
+  const rrAttr = Object.fromEntries(ATTRS.map(a => [a, attrRRSources(b, a).length])) as Record<AttrId, number>
   const rrSkill = new Map<string, number>(), rrSpec = new Map<string, number>()
   for (const { e } of picks) {
     if (!e.param) continue
-    if (e.ref === 'rr-attr') rrAttr[e.param as AttrId] = (rrAttr[e.param as AttrId] ?? 0) + 1
     if (e.ref === 'rr-skill') rrSkill.set(e.param, (rrSkill.get(e.param) ?? 0) + 1)
     if (e.ref === 'rr-spec') rrSpec.set(e.param, (rrSpec.get(e.param) ?? 0) + 1)
   }

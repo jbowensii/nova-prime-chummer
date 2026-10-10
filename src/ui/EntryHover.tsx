@@ -20,7 +20,7 @@ export function EntryCard({ row, kind }: { row: BrowseRow; kind?: string }) {
   return (
     <span className="entry-card">{/* (spans only: it may sit inside a line's text) */}
       <span className="entry-card-head"><b>{row.name}</b>{kind && <span className="muted"> {kind}</span>}</span>
-      <span className="srcline"><span className="src">{row.source} p.{row.page}</span>{row.marks}<IssueBadges issues={row.issues} source={row.source} /></span>
+      <span className="srcline">{row.source && <span className="src">{row.source} p.{row.page}</span>}{row.marks}<IssueBadges issues={row.issues} source={row.source} /></span>
       {row.details && <span className="muted entry-card-values">{row.details}</span>}
       {!!row.effects?.length && <span className="entry-card-effects" role="list" aria-label="Effects">
         {row.effects.map((x, i) => <span role="listitem" key={i} className={x.state}>{x.text} <span className="muted">({STATE[x.state]})</span></span>)}</span>}
