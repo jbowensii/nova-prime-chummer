@@ -10,9 +10,10 @@ import { draftAgain, finalizeSr6 } from '../../engine/finalize'
 import { canFinalizeSr6 } from '../../engine/rules'
 import { sr6Tabs } from '../EditorView'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
+import { entryOfPath, Sr6Ref } from '../EntryRef'
 
 export function ReviewTab() {
-  const { ch, v, d, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
+  const { ch, c, v, d, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
   const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
@@ -46,9 +47,12 @@ export function ReviewTab() {
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>{sorted.map((x, i) => {
         const tab = tabOf(x.path), o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
+        // the entry the line names, with its card (to check the book's numbers against the problem)
+        const at = entryOfPath(ch, x.path), e = at && c.entries[at.kind]?.get(at.id)
         return <div key={i} className={`viol${x.approved ? ' approved' : ''}`}>
           <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>{x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}</span>
-          <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}</span>
+          <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}
+            {e && <> <Sr6Ref kind={at!.kind} id={e.id}><span className="muted small">{e.name}</span></Sr6Ref></>}</span>
           {!career && <span className="row">
             {gm && x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
             {gm && x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}

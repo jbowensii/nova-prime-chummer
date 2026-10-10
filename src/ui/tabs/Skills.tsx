@@ -4,6 +4,7 @@ import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
+import { AnarchyRef } from '../AnarchyRef'
 
 /** Lowering a skill below 4 turns its renamed free entry into a paid one: the question to ask first, or null when
  *  nothing gets paid (an entry still named after the skill just goes away with the slot). */
@@ -75,7 +76,7 @@ export function SkillsTab() {
             const free = sk.specs.filter(s => !e?.specs.includes(s.id))
             return [
               <tr key={sk.id}>
-                <td><b>{sk.name}</b>{sk.requires && <span className="muted"> ({sk.requires === 'awakened' ? 'Awakened' : 'cyberdeck'})</span>}</td>
+                <td><AnarchyRef kind="skills" id={sk.id}><b>{sk.name}</b></AnarchyRef>{sk.requires && <span className="muted"> ({sk.requires === 'awakened' ? 'Awakened' : 'cyberdeck'})</span>}</td>
                 <td><Stepper label={sk.name} value={r} min={0} max={8} onChange={to => setRating(sk.id, to)} /></td>
                 <td>{sk.attr.toUpperCase()}{sk.alt && <span className="muted">/{sk.alt.toUpperCase()}</span>}</td>
                 <td className="num">{base.map(p => p.dp).join(' / ')}</td>
@@ -92,7 +93,8 @@ export function SkillsTab() {
                         const custom = sp.startsWith('custom:')
                         return (
                           <span key={sp} className={`chip${custom ? ' custom' : ''}`}>
-                            {sk.specs.find(s => s.id === sp)?.name ?? sp.slice(7)} {pool && <span className="muted">{pool.dp}{pool.rr ? ` RR${pool.rr}` : ''}</span>}
+                            {/* (a specialization's card: its skill's, which lists the book's specializations) */}
+                            <AnarchyRef kind="skills" id={custom ? undefined : sk.id}>{sk.specs.find(s => s.id === sp)?.name ?? sp.slice(7)}</AnarchyRef> {pool && <span className="muted">{pool.dp}{pool.rr ? ` RR${pool.rr}` : ''}</span>}
                             <button aria-label={`Remove ${sp}`} onClick={() => removeSpec(sk.id, sp)}>×</button>
                           </span>
                         )

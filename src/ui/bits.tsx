@@ -1,6 +1,8 @@
 // Small shared UI pieces: money format, stepper, catalog picker, dialog, receipt line.
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Npc } from '../model/types'
+import type { BrowseRow } from './CatalogBrowser'
+import { EntryHover } from './EntryHover'
 
 export const fmt = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('en-US')}¥`
 export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
@@ -43,11 +45,14 @@ export const NpcChips = ({ npc }: { npc: Npc }) => <>
   <span className="noncanon npckind">{NPC_KINDS[npc.kind]}</span> <span className="noncanon npctier">{NPC_TIERS[npc.tier]}</span></>
 
 /** action: a control in the row (an Edit button) that doesn't pick it; disabled: listed (for its action) but not pickable */
-export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string; action?: ReactNode; disabled?: boolean }
+export interface PickItem { id: string; name: string; meta?: string; text?: string; price?: string; group?: string; label?: ReactNode; search?: string; action?: ReactNode; disabled?: boolean
+  /** its catalog entry's card (src/ui/EntryHover.tsx), shown on hover and while the item has focus */
+  card?: () => BrowseRow; cardKind?: string }
 
 export function Picker({ items, onPick, placeholder = 'Search', groups }: { items: PickItem[]; onPick: (id: string) => void; placeholder?: string; groups?: string[] }) {
   const [q, setQ] = useState('')
   const [group, setGroup] = useState('')
+  const [focused, setFocused] = useState('')
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
     return items.filter(i => (!group || i.group === group) &&
@@ -67,8 +72,10 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
       <ul>
         {shown.map(i => (
           <li key={i.id} tabIndex={i.disabled ? undefined : 0} className={i.disabled ? 'off' : undefined}
+            onFocus={() => setFocused(i.id)} onBlur={() => setFocused(f => (f === i.id ? '' : f))}
             onClick={() => !i.disabled && onPick(i.id)} onKeyDown={e => !i.disabled && e.key === 'Enter' && onPick(i.id)}>
-            <span><b>{i.name}</b> {i.meta && <span className="muted">{i.meta}</span>} {i.label}</span>
+            <span><EntryHover row={i.card} kind={i.cardKind} open={focused === i.id} tabbable={false}><b>{i.name}</b></EntryHover>
+              {' '}{i.meta && <span className="muted">{i.meta}</span>} {i.label}</span>
             <span className="num">{i.price}{i.action && <span onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}> {i.action}</span>}</span>
             {i.text && <span className="t">{i.text}</span>}
           </li>

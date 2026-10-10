@@ -7,6 +7,7 @@ import { fmt, Modal, Picker } from '../bits'
 import { SourceLabel } from '../SourceLabel'
 import { EditButton } from '../EditEntry'
 import { editHref, useEditor } from '../editor'
+import { anarchyCard, AnarchyRef } from '../AnarchyRef'
 import { NameField } from './Skills'
 
 // prices from the core data (pricing.xml)
@@ -101,7 +102,7 @@ export function GearTab() {
                     )
                     return (
                       <tr key={i.uid}>
-                        <td><b>{i.name}</b>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{' '}{src ? <SourceLabel c={c} source={src.source} page={src.page} id={src.id} /> : <SourceLabel builtByYou />}
+                        <td><AnarchyRef kind={i.kind} id={i.catalogId}><b>{i.name}</b></AnarchyRef>{cat && cat.name !== i.name && <span className="muted"> ({cat.name})</span>}{' '}{src ? <SourceLabel c={c} source={src.source} page={src.page} id={src.id} /> : <SourceLabel builtByYou />}
                           <div className="muted" style={{ fontSize: '0.88rem' }}>
                             {i.kind === 'armor' && (i.over ? `Armor +${i.armor ?? 0} over ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}` : `Armor ${i.armor ?? 0}`)}
                             {i.kind === 'weapon' && (() => { const w = d.weapons.find(x => x.uid === i.uid); return w && `DV ${w.dv} [${w.ranges}]${i.specialist ? ', specialist' : ''}${w.note ? `, ${w.note}` : ''}` })()}
@@ -144,7 +145,7 @@ export function GearTab() {
         {adding && <Picker onPick={pick}
           groups={[...new Set([...c.items.values()].filter(i => i.kind === adding).map(i => i.category ?? ''))].filter(Boolean)}
           items={[...c.items.values()].filter(i => i.kind === adding).map(i => ({
-            id: i.id, name: i.name, group: i.category, meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`].filter(Boolean).join(', '),
+            id: i.id, name: i.name, group: i.category, ...anarchyCard(c, i.kind, i.id), meta: [i.category, i.dv && `DV ${i.dv}`, i.armor && `Armor ${i.armor}`].filter(Boolean).join(', '),
             label: <><SourceLabel c={c} source={i.source} page={i.page} id={i.id} /> <IssueBadges issues={i.issues} source={i.source} /></>,
             search: `${i.source} ${c.sources.get(i.source)?.name ?? ''} p.${i.page}`,
             text: i.text, price: (() => {

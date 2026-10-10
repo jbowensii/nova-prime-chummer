@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased: how a stat block prints a bonus, Firing Squad's clothing as armor
+## 0.11.4 — 2026-10-10: stat blocks read as printed, implant grades on add-ons, an entry's card where it's named
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.
 
@@ -40,6 +40,17 @@ Import the SR6 books again (Books → **Re-import all**) so the sample runners a
   (CRB p. 66's list of what that Karma buys doesn't name them; Commlink6 has it as an option, off): a Review error past
   the free ones while it's off, for the priority and Sum-to-Ten methods. A runner can turn it on in its Creation rules;
   the book samples that need it get it as an assumed rule.
+**Both games**
+- Wherever the creation and editor screens name a catalog entry, hovering it, giving it focus (Tab) or tapping it shows
+  the entry's card, as Game data shows it: its values, formulas with their values, effects (Shadowrun 6: applied, or
+  shown only when switchable, conditional or read with low confidence), source and page, issues, an Edited or House
+  mark, and its description; Escape, a tap elsewhere or moving away closes it. Shadowrun 6: qualities, skills and their
+  specialization and expertise boxes, every purchase line and its accessories, spells, powers, complex forms and the
+  other picks, martial arts styles and techniques, contact archetypes, lifestyles, the metatype and life modules, the
+  Review lines that name an entry and the metatype's Karma line; every catalog picker's items. Anarchy: amps, items,
+  skills and specializations, the metatype, package guide and lifestyle, the Review lines that name an entry; the amp
+  and item pickers. Meant for checking a book's numbers where they're used.
+- Game data's rows list an SR6 entry's effects too.
 
 ## 0.11.3 — 2026-10-09: per-runner creation rules, optional rules the sample runners pointed to
 

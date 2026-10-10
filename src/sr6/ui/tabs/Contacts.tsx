@@ -9,6 +9,7 @@ import { num } from '../../engine/creation'
 import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
+import { Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
 
 export function ContactsTab() {
@@ -39,7 +40,8 @@ export function ContactsTab() {
           const who = `Contact ${i + 1}`
           return <tr key={x.uid}>
             <td data-label="Name"><NameField label={`${who} name`} value={x.name} onCommit={name => act({ op: 'contact', uid: x.uid, name })} /></td>
-            <td data-label="Archetype"><Suggest label={`${who} archetype`} value={x.archetype} options={archetypes} onCommit={v => act({ op: 'contact', uid: x.uid, archetype: v ?? '' })} /></td>
+            <td data-label="Archetype"><Sr6Ref kind="contacts" id={[...c.entries.contacts.values()].find(e => e.name === x.archetype)?.id} tabbable={false}>
+              <Suggest label={`${who} archetype`} value={x.archetype} options={archetypes} onCommit={v => act({ op: 'contact', uid: x.uid, archetype: v ?? '' })} /></Sr6Ref></td>
             {typed && <td data-label="Types"><div className="types">{[0, 1].map(i => <select key={i} aria-label={`${who} type ${i + 1}`} value={x.types?.[i] ?? ''}
               disabled={i === 1 && !x.types?.length} onChange={e => setType(x.uid, [x.types?.[0] ?? '', x.types?.[1] ?? ''], i, e.target.value)}>
               <option value="">{i ? 'No second type' : 'Any type'}</option>
@@ -100,10 +102,10 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
       <button className="btn small" aria-label={`Add licence to ${who}`} disabled={!name.trim()} onClick={add}>Add licence</button>
     </div>
     {(s.lifestyles ?? []).map((l, i) => <div key={l.uid} className="row">
-      <select aria-label={`${who} lifestyle ${i + 1}`} value={l.id} onChange={e => act({ op: 'lifestyle', sin: s.uid, uid: l.uid, id: e.target.value })}>
+      <Sr6Ref kind="lifestyles" id={l.id} tabbable={false}><select aria-label={`${who} lifestyle ${i + 1}`} value={l.id} onChange={e => act({ op: 'lifestyle', sin: s.uid, uid: l.uid, id: e.target.value })}>
         {lifestyles}
         {!data.entry('lifestyles', l.id) && <option value={l.id}>{l.id} (no longer in the catalog)</option>}
-      </select>
+      </select></Sr6Ref>
       <span className="row">Months <Stepper label={`${who} lifestyle ${i + 1} months`} value={l.months} min={1} max={999}
         onChange={months => act({ op: 'lifestyle', sin: s.uid, uid: l.uid, months })} /></span>
       <button className="btn small quiet" aria-label={`Remove ${who} lifestyle ${i + 1}`} onClick={() => act({ op: 'lifestyle', sin: s.uid, remove: l.uid })}>Remove</button>

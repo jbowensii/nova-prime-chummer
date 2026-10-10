@@ -1,4 +1,5 @@
 // The fixer's receipt: every nuyen spent, the balance, and the numbers you need at the table.
+import { AnarchyRef } from './AnarchyRef'
 import { useEffect, useRef, useState } from 'react'
 import { activeEvents, itemCost, packageGuide, sinceFinalize, voidedIds } from '../engine'
 import type { Character, Pricing } from '../model/types'
@@ -46,7 +47,7 @@ export function Receipt() {
       <div className="peek"><span>{career ? 'Balance' : over ? 'Over budget by' : 'Left to spend'}</span><span className={balance < 0 ? 'err' : ''}>{fmt(over ? -balance : balance)}</span></div>
       <div onClick={e => e.stopPropagation()}>
         <h2>{c.levels.get(ch.level)?.name ?? ch.level} build</h2>
-        <div className="sub">{pkg ? `${pkg.name} package guide` : 'Free allocation'}, budget {fmt(p.budget)}</div>
+        <div className="sub">{pkg ? <><AnarchyRef kind="packages" id={pkg.id}>{pkg.name}</AnarchyRef> package guide</> : 'Free allocation'}, budget {fmt(p.budget)}</div>
         {cats.map(([k, label]) => <Line key={k} label={label} amount={fmt(p[k])} guide={guide ? fmt(guide[k]) : undefined} over={!!guide && p[k] > guide[k]} />)}
         {d.knowledge.length > 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>
           Knowledge &amp; languages: {d.knowledge.filter(k => !k.paid).length} free, {d.knowledge.filter(k => k.paid).length} paid

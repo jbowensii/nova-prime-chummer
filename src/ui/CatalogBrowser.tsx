@@ -6,6 +6,7 @@
 // (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useState, type ReactNode } from 'react'
 import type { Issue } from '../engine/formula'
+import type { CardEffect } from './EntryHover'
 import { IssueBadges } from './Issues'
 import { Prose } from './Prose'
 
@@ -25,6 +26,8 @@ export interface BrowseRow {
   action?: ReactNode
   /** what needs attention: shown as badges, and Needs attention lists only these rows */
   issues?: Issue[]
+  /** what it does on a runner (SR6: its effects, applied or shown only) */
+  effects?: CardEffect[]
 }
 export interface BrowseKind { id: string; label: string; rows: BrowseRow[] }
 export interface Book { id: string; name: string }
@@ -53,6 +56,7 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
         <tbody>{shown.map(r => (
           <tr key={r.key}><td><b>{r.name}</b> <span className="srcline"><span className="src">{r.source} p.{r.page}</span>{r.marks}<IssueBadges issues={r.issues} source={r.source} /></span></td>
             <td><span className="muted">{r.details}</span>
+              {!!r.effects?.length && <div className="muted small">Effects: {r.effects.map(x => `${x.text}${x.state === 'applied' ? '' : ` (${x.state})`}`).join(' · ')}</div>}
               {r.text && <details className="desc"><summary>Description</summary><Prose text={r.text} /></details>}</td><td className="num">{r.action}</td></tr>
         ))}</tbody></table>
       {shown.length < rows.length && <p className="muted">Showing {shown.length} of {rows.length}. Search to narrow it, or{' '}
