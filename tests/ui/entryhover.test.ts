@@ -36,7 +36,7 @@ test('hover shows the card (values, effects with their state, source, descriptio
   expect(c.textContent).toContain('NB p.12')
   expect(c.textContent).toContain('cost 300 · avail 4')
   expect(c.textContent).toContain('+1 Agility (applied)')
-  expect(c.textContent).toContain('wireless: +2 Zapping dice (conditional: shown, not added)')
+  expect(c.textContent).toContain('wireless: +2 Zapping dice (switchable: in brackets)')
   expect(c.textContent).toContain('Made-up gloves that zap.')
   expect(ref.getAttribute('aria-describedby')).toBe(c.id)
   leave(ref)
@@ -76,10 +76,11 @@ test('forced open and not a tab stop (a picker item: its row has focus); no row:
   expect(bare.el.textContent).toBe('Zap Gloves')
 })
 
-test('an SR6 entry’s effects: applied, switchable (conditional), low confidence', () => {
+test('an SR6 entry’s effects: applied, switchable (conditional), on the target, low confidence', () => {
   const e = { parts: [
     { tag: 'effect', attrs: { target: 'attr:agi', op: 'add', value: '1' }, text: '' },
-    { tag: 'effect', attrs: { target: 'skill:close-combat', op: 'add', value: 'R', confidence: 'low', switch: 'wireless' }, text: '' },
+    { tag: 'effect', attrs: { target: 'skill:close-combat', op: 'add', value: 'R', switch: 'wireless' }, text: '' },
+    { tag: 'effect', attrs: { target: 'attr:rea', op: 'add', value: '1', switch: 'sustained', affects: 'target' }, text: '' },
     { tag: 'effect', attrs: { target: 'derived:defense', op: 'add', value: '2', confidence: 'low', switch: 'conditional' }, text: '' },
     { tag: 'effect', attrs: { target: 'skill:stealth', op: 'edge-cost', value: '-1' }, text: '' },
     { tag: 'spec', attrs: {}, text: 'Zapping' },
@@ -87,6 +88,7 @@ test('an SR6 entry’s effects: applied, switchable (conditional), low confidenc
   expect(effectsOf(e)).toEqual([
     { text: '+1 Agility', state: 'applied' },
     { text: 'wireless: +rating Close Combat dice', state: 'conditional' },
+    { text: 'on the target: sustained: +1 Reaction', state: 'target' },
     { text: '+2 Defense Rating', state: 'low' },
     { text: 'Edge boosts and actions cost 1 less on Stealth tests', state: 'applied' },
   ])

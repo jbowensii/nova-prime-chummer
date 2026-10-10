@@ -33,12 +33,15 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
  *  runner's */
-export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string; switch?: Bonus['switch'] }
+export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow'; value: number } | { target: 'skill'; id: string; name: string; value: number })
+  & { when?: string; switch?: Bonus['switch']; spec?: string; affects?: Bonus['affects'] }
 /** What the entry's printed text and tables say it does (the catalog's <effect>, importer/sr6/effects.py; the targets,
- *  operations and values docs/sr6-data-format.md "Effects" lists): low: read from a sentence that sets a condition (shown,
- *  never applied); switch: how it is turned on; when: the condition's words. A reader applies the `add` ones it has a
- *  field for (Eden: an Active Effect) and shows the rest. */
-export interface Sr6ExportEffect { target: string; op: string; value: string; low?: true; switch?: string; when?: string }
+ *  operations and values docs/sr6-data-format.md "Effects" lists): low: read with low confidence (shown, never applied);
+ *  switch: how it is turned on; when: the condition's words; spec: the specialization it is limited to; affects: a spell's
+ *  or complex form's, on its caster or its target(s) (never counted on the caster). A reader applies the always-on `add`
+ *  ones it has a field for (Eden: an Active Effect), the switchable ones as an effect the player turns on, and shows the
+ *  rest. */
+export interface Sr6ExportEffect { target: string; op: string; value: string; low?: true; switch?: string; when?: string; spec?: string; affects?: 'caster' | 'target' }
 /** Another entry this one grants (`grants`) or works as (`as`): the reader uses that entry's effects */
 export interface Sr6ExportLink { rel: 'grants' | 'as'; name: string; kind?: string; id?: string; level?: number; when?: string }
 /** A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold) */
@@ -62,7 +65,9 @@ export interface Sr6ExportRunner {
   metatype: { id: string; name: string }
   magic: { kind: MagicKind; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'; aspectedSkill?: string; initiation: number; submersion: number }
   portrait: string | null; token: string | null
-  attributes: Record<Sr6Attr, { natural: number; augmented: number }>; essence: number; edge: number
+  /** augmented: with the always-on effects; switched: with the switchable and conditional ones on too (the bracket, `5 (7)`),
+   *  only when it differs */
+  attributes: Record<Sr6Attr, { natural: number; augmented: number; switched?: number }>; essence: number; edge: number
   skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string }[]
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
@@ -78,7 +83,10 @@ export interface Sr6ExportRunner {
     lifestyles: Sr6ExportLifestyle[] }[]
   karma: number; nuyen: number
   /** for reading only: the module writes none of it (Eden derives its own) */
-  derived?: Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'socialRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
+  derived?: Sr6ExportDerived
+  /** the same values with the switchable and conditional effects on: the bracketed totals, `Con 6 (9)` (owner decision
+   *  2026-10-10) */
+  derivedOn?: Sr6ExportDerived
   background: string; notes: string
   ledger: { at: string; type: Sr6LedgerType; summary: string; karma: number; nuyen: number }[]
   npc?: Sr6ExportNpc
@@ -86,6 +94,7 @@ export interface Sr6ExportRunner {
    *  for one it turned off; assumed: a book sample's, from its numbers; lockedBy: a campaign GM's lock) */
   rules?: Sr6ExportRule[]
 }
+export type Sr6ExportDerived = Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'socialRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
 export interface Sr6ExportRule { key: string; value: string; from: 'campaign' | 'runner'; assumed?: true; lockedBy?: string }
 /** The rules a runner's export lists (Sr6ExportRunner.rules): every setting not the server's, and the runner's own offs. */
 export function exportRules(cr: CreationRules, ch: Pick<Sr6Character, 'rules'>): Sr6ExportRule[] {
@@ -153,7 +162,8 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
 function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests' | 'links'> {
   const effects = e.parts.filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && p.attrs.op)
     .map(p => ({ target: p.attrs.target, op: p.attrs.op, value: p.attrs.value, ...(p.attrs.confidence === 'low' ? { low: true as const } : {}),
-      ...(p.attrs.switch ? { switch: p.attrs.switch } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}) }))
+      ...(p.attrs.switch ? { switch: p.attrs.switch } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}), ...(p.attrs.spec ? { spec: p.attrs.spec } : {}),
+      ...(p.attrs.affects === 'caster' || p.attrs.affects === 'target' ? { affects: p.attrs.affects as 'caster' | 'target' } : {}) }))
   const links = e.parts.filter(p => p.tag === 'link' && p.attrs.name && (p.attrs.rel === 'grants' || p.attrs.rel === 'as'))
     .map(p => ({ rel: p.attrs.rel as Sr6ExportLink['rel'], name: p.attrs.name, ...(p.attrs.kind ? { kind: p.attrs.kind } : {}),
       ...(p.attrs.ref ? { id: p.attrs.ref } : {}), ...(Number(p.attrs.level) > 0 ? { level: Number(p.attrs.level) } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}) }))
@@ -181,6 +191,10 @@ function aliasesOf(c: Sr6Catalog, e: Sr6Entry): Pick<Sr6ExportItem, 'aliases'> {
   return old?.length ? { aliases: old.map(a => (a.kind === e.kind ? { id: a.id } : { id: a.id, kind: a.kind })) } : {}
 }
 
+const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived => defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors,
+  monitorBonus: d.monitorBonus, defenseRating: d.defenseRating, socialRating: d.socialRating, composure: d.composure, judgeIntentions: d.judgeIntentions,
+  memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools })
+
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return { ...effectsOf(e), ...aliasesOf(c, e), id: e.id, kind: e.kind, name: e.name, ...(entryLabel(e) !== e.name ? { label: entryLabel(e) } : {}), source: e.source, page: e.page, canon: c.sources.get(e.source)?.canon ?? false,
@@ -195,7 +209,8 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).map(b => {
     const value = b.value * (b.perRating ? rating : 1) * times
-    const when = { ...(b.when ? { when: b.when } : {}), ...(b.switch ? { switch: b.switch } : {}) }  // (when: some tests only, never in derived's pools)
+    // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
+    const when = { ...(b.when ? { when: b.when } : {}), ...(b.switch ? { switch: b.switch } : {}), ...(b.spec ? { spec: b.spec } : {}), ...(b.affects ? { affects: b.affects } : {}) }
     return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when } : { target: b.target, value, ...when }
   })
 
@@ -237,7 +252,8 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     metatype: { id: b.metatype, name: data.metatypes[b.metatype]?.name ?? '' },
     magic: defined({ kind: b.magic, tradition: b.tradition, drainAttr: b.drainAttr, aspectedSkill: b.aspectedSkill, initiation: b.initiation, submersion: b.submersion }),
     portrait: id.portrait ?? null, token: id.token ?? null,
-    attributes: d.attrs, essence: d.essence, edge: d.edge,
+    attributes: Object.fromEntries(Object.entries(d.attrs).map(([k, v]) => [k, d.on.attrs[k as Sr6Attr].augmented === v.augmented ? v
+      : { ...v, switched: d.on.attrs[k as Sr6Attr].augmented }])) as Sr6ExportRunner['attributes'], essence: d.essence, edge: d.edge,
     skills: b.skills.map(s => defined({ id: s.id, name: data.skills[s.id]?.name ?? s.id, attr: data.skills[s.id]?.attr ?? '', rank: skillRank(s),
       spec: s.spec, expertise: s.expertise })),
     knowledge: b.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native, rank: k.points + k.karma })),
@@ -267,8 +283,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     lifestyle: first ? (({ uid: _, ...l }) => l)(first) : null,
     sins,
     karma: money.karma, nuyen: money.nuyen,
-    ...(ch.npc ? {} : { derived: defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors, monitorBonus: d.monitorBonus, defenseRating: d.defenseRating, socialRating: d.socialRating,
-      composure: d.composure, judgeIntentions: d.judgeIntentions, memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools }) }),
+    ...(ch.npc ? {} : { derived: derivedOf(d), derivedOn: derivedOf(d.on) }),
     background: id.background ?? '', notes: id.notes ?? '',
     ledger: ch.ledger.filter(e => e.type !== 'void' && !voided.has(e.id)).map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e),
       karma: 'karma' in e ? e.karma : 0, nuyen: 'nuyen' in e ? e.nuyen : 0 })),

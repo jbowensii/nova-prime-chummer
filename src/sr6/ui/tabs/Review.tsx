@@ -11,6 +11,7 @@ import { canFinalizeSr6 } from '../../engine/rules'
 import { sr6Tabs } from '../EditorView'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
+import { attrShown, br } from '../../print/view'
 
 export function ReviewTab() {
   const { ch, c, v, d, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
@@ -38,7 +39,8 @@ export function ReviewTab() {
 
   const dl = (rows: [string, string | number | null | undefined][]) => <dl className="sr6-derived">
     {rows.filter(([, x]) => x !== undefined).map(([k, x]) => <div key={k}><dt>{k}</dt><dd>{x === null ? '—' : typeof x === 'number' ? n(x) : x}</dd></div>)}</dl>
-  const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
 
   return (
     <div className="stack">
@@ -65,10 +67,10 @@ export function ReviewTab() {
       <h2>Derived values</h2>
       {dl([...(['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'mag', 'res'] as const)
         .filter(a => (a !== 'mag' && a !== 'res') || d.attrs[a].natural > 0)
-        .map(a => [ATTR_NAMES[a], d.attrs[a].augmented !== d.attrs[a].natural ? `${d.attrs[a].natural} (${d.attrs[a].augmented})` : d.attrs[a].natural] as [string, string | number]),
-        ['Essence', d.essence], ['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)],
-        ['Physical monitor', d.monitors.physical], ['Stun monitor', d.monitors.stun], ['Overflow', d.monitors.overflow],
-        ['Defense Rating', d.defenseRating], ['Social Rating', d.socialRating], ['Unarmed Attack Rating', d.attackRatings.unarmed], ['Composure', d.composure],
+        .map(a => [ATTR_NAMES[a], attrShown(d, a)] as [string, string | number]),
+        ['Essence', d.essence], ['Initiative', init(d.initiative, d.on.initiative)], ['Astral initiative', init(d.astralInit, d.on.astralInit)],
+        ['Physical monitor', br(d.monitors.physical, d.on.monitors.physical)], ['Stun monitor', br(d.monitors.stun, d.on.monitors.stun)], ['Overflow', br(d.monitors.overflow, d.on.monitors.overflow)],
+        ['Defense Rating', br(d.defenseRating, d.on.defenseRating)], ['Social Rating', br(d.socialRating, d.on.socialRating)], ['Unarmed Attack Rating', br(d.attackRatings.unarmed, d.on.attackRatings.unarmed)], ['Composure', br(d.composure, d.on.composure)],
         ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
         ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`],
         // an item's own values from its accessories (a cyberlimb's Strength): the item's, not the runner's

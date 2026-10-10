@@ -1,7 +1,7 @@
 // A catalog entry's effects (the <effect> and <link> parts importer/sr6/effects.py reads from the book's text and tables;
 // docs/sr6-data-format.md "Effects") as the engine uses them: the bonuses it applies, the test types it shows on every
 // pool they cover, and the entries an entry grants or works as (owner decisions 2026-10-10).
-import { SR6_ATTRS, type Bonus, type Sr6Attr } from '../model/character'
+import { BONUS_SWITCHES, SR6_ATTRS, type Bonus, type Sr6Attr } from '../model/character'
 import type { Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
 import { normName, type Sr6Data } from './data'
 
@@ -53,25 +53,29 @@ export function linkedEntries(data: Sr6Data, e: Sr6Entry | undefined): { part: S
 
 /** An entry's effects as bonuses: an `add` effect on an attribute, a derived value the engine counts (Defense Rating,
  *  initiative dice, condition monitor boxes), a skill's pool, or a test type's skills' pools; with the effects of the
- *  entries it grants or works as. A low-confidence one (its sentence sets a condition) is shown, never applied (owner
- *  decision D3); one that holds on some tests only (`when`) is shown with the pool. */
+ *  entries it grants or works as. Each keeps how it is turned on, its condition, its specialization and whom it affects:
+ *  the always-on ones count in the total shown first, the switchable and conditional ones in the bracketed total (owner
+ *  decision 2026-10-10). A low-confidence one is shown, never applied (owner decision D3). */
 export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0): Bonus[] {
   const out: Bonus[] = []
   const skillId = (name: string) => Object.values(data.skills).find(v => normName(v.name) === name.replace(/-/g, ' '))?.id
   for (const x of e?.parts ?? []) {
-    const t = x.attrs.target ?? '', v = effectValue(x.attrs.value)
-    if (x.tag !== 'effect' || x.attrs.op !== 'add' || x.attrs.confidence === 'low' || !v) continue
-    const rate = v.perRating ? { perRating: true as const } : {}, when = x.attrs.when ? { when: x.attrs.when } : {}
-    if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value: v.value, ...rate })
+    const t = x.attrs.target ?? '', v = effectValue(x.attrs.value), a = x.attrs
+    if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v) continue
+    const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? a.switch as Bonus['switch'] : undefined
+    const state = { ...v.perRating ? { perRating: true as const } : {}, ...a.when ? { when: a.when } : {}, ...sw ? { switch: sw } : {},
+      ...a.affects === 'caster' || a.affects === 'target' ? { affects: a.affects as Bonus['affects'] } : {} }
+    if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value: v.value, ...state })
     else if (DERIVED_BONUS[t] && !(e?.kind === 'armor' && t === 'derived:defense'))  // (armor: its defense field, derive.ts)
-      out.push({ target: DERIVED_BONUS[t], value: v.value, ...rate })
+      out.push({ target: DERIVED_BONUS[t], value: v.value, ...state })
     else if (t.startsWith('skill:')) {
       const sk = skillId(t.slice(6))
-      if (sk) out.push({ target: 'skill', skill: sk, value: v.value, ...rate, ...when })
+      if (sk) out.push({ target: 'skill', skill: sk, value: v.value, ...state, ...a.spec ? { spec: a.spec } : {} })
     } else if (t.startsWith('test:'))
-      for (const sk of testSkills(data, t.slice(5))) out.push({ target: 'skill', skill: sk, value: v.value, ...rate, ...when })
+      for (const sk of testSkills(data, t.slice(5))) out.push({ target: 'skill', skill: sk, value: v.value, ...state })
   }
-  if (depth < 2) for (const l of linkedEntries(data, e)) out.push(...effectBonuses(data, l.entry, depth + 1))
+  // (a grant that holds only sometimes, `while in animal form`: its effects too)
+  if (depth < 2) for (const l of linkedEntries(data, e)) out.push(...effectBonuses(data, l.entry, depth + 1).map(b => (l.part.attrs.when ? { ...b, when: l.part.attrs.when } : b)))
   return out
 }
 
@@ -139,24 +143,27 @@ export function effectText(p: Sr6Part): string {
   const a = p.attrs
   if (p.tag === 'link') return `${a.rel === 'as' ? 'works as' : 'grants'} ${a.name}${a.level ? ` ${a.level}` : ''}${a.when ? ` (${a.when})` : ''}`
   const skill = (a.target ?? '').startsWith('skill:') && a.target !== 'skill:choice'
-  const t = a.target === 'test:other' && a.when ? `tests for ${a.when}` : `${targetText(a.target ?? '')}${skill ? (a.op === 'add' || a.op === 'set' ? ' dice' : ' tests') : ''}`
+  const t = a.target === 'test:other' && a.when ? `tests for ${a.when}` : `${targetText(a.target ?? '')}${a.spec ? ` (${a.spec})` : ''}${skill ? (a.op === 'add' || a.op === 'set' ? ' dice' : ' tests') : ''}`
   const v = a.value ?? ''
   const when = a.when && a.target !== 'test:other' ? ` (${a.when})` : ''
-  const how = a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''
+  const how = `${a.affects === 'target' ? 'on the target: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
   const text = a.op === 'set' ? `${t} ${valueText(v)}`
     : a.op === 'edge' ? `${signed(v)} Edge on ${t}`
       : a.op === 'edge-cost' ? `Edge boosts and actions cost ${valueText(v.replace(/^[-–−]/, ''))} ${/^[-–−]/.test(v) ? 'less' : 'more'} on ${t}`
         : a.op === 'edge-cost-set' ? `${t} costs ${v} Edge`
           : a.op === 'no-edge' ? `no Edge spent on ${t}` : a.op === 'no-edge-gain' ? `no Edge gained on ${t}`
             : a.op === 'wild-die' ? `a wild die on ${t}` : a.op === 'hits' ? `${signed(v)} hits on ${t}`
-              : `${signed(v)} ${t}`
+              : a.op === 'threshold' ? `threshold ${signed(v)} on ${t}`
+                : `${signed(v)} ${t}`
   return `${how}${text}${when}`
 }
 
-/** How an effect is used: applied (always on, read with confidence, an `add` the engine counts), conditional (switched
- *  on, or some tests only: shown with the pool), or low (shown, never applied). */
-export function effectState(p: Sr6Part): 'applied' | 'conditional' | 'low' {
-  if (p.tag === 'link') return 'applied'
-  if (p.attrs.confidence === 'low') return p.attrs.switch && p.attrs.switch !== 'conditional' ? 'conditional' : 'low'
-  return p.attrs.when ? 'conditional' : 'applied'
+/** How an effect is used: applied (always on, read with confidence: in the total shown first), conditional (switched
+ *  on, or some tests or a specialization only: in the bracketed total), target (a spell's on its target: never on the
+ *  caster), or low (shown, never applied). */
+export function effectState(p: Sr6Part): 'applied' | 'conditional' | 'target' | 'low' {
+  if (p.tag === 'link') return p.attrs.when ? 'conditional' : 'applied'
+  if (p.attrs.confidence === 'low') return 'low'
+  if (p.attrs.affects === 'target') return 'target'
+  return p.attrs.switch || p.attrs.when || p.attrs.spec ? 'conditional' : 'applied'
 }

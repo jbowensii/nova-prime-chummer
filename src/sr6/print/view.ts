@@ -22,6 +22,14 @@ export function pickFlags(e: Sr6Entry): string[] {
 }
 
 export const band = (v: number | null) => (v === null ? '—' : String(v))
+/** `6 (9)`: a derived value and, when the switchable and conditional effects change it, the bracketed total (derive.ts
+ *  on; owner decision 2026-10-10, as a book's stat block prints it). */
+export const br = <T extends string | number | null | undefined>(a: T, b?: T): T | string =>
+  a === null || a === undefined || b === undefined || b === null || String(a) === String(b) ? a : `${a} (${b})`
+/** A pool's bracketed counterpart (the same skill with the switchable effects on). */
+export const poolOn = (d: Sr6Derived, skill: string) => d.on.pools.find(x => x.skill === skill)
+/** An attribute as a book prints it: with its always-on effects, the switchable ones on in brackets (`5 (7)`). */
+export const attrShown = (d: Sr6Derived, a: keyof Sr6Derived['attrs']) => br(d.attrs[a].augmented, d.on.attrs[a].augmented)
 export const AR_BANDS = ['Close', 'Near', 'Medium', 'Far', 'Extreme']
 /** every catalog skill by name: the runner's pools, the rest at rank 0 (no pool where it can't be rolled untrained) */
 export const allSkills = (d: Sr6Derived, data: Sr6Data): (Omit<Sr6Pool, 'dp'> & { dp?: number })[] => [...d.pools,

@@ -8,6 +8,7 @@ import { num } from '../../engine/creation'
 import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Sr6Ref } from '../EntryRef'
+import { br, poolOn } from '../../print/view'
 
 /** A text box with suggestions that commits on Enter or leaving it ('' clears). */
 export function Suggest({ value, label, options, onCommit }: { value: string; label: string; options: string[]; onCommit: (v: string | null) => void }) {
@@ -50,7 +51,8 @@ export function SkillsTab() {
               {(['points', 'karma'] as const).map(k => <td key={k}><Stepper label={`${sk.name} ${k}`} value={s?.[k] ?? 0} min={0} max={99}
                 onChange={to => act({ op: 'skill', target: sk.id, pool: k, delta: to - (s?.[k] ?? 0) })} /></td>)}
               <td className="num">{rank || ''}</td>
-              <td className="num">{pool ? pool.dp : ''}{pool?.conditional?.map((x, i) => <div key={i} className="muted small">+{x.value} {x.from}: {x.when}</div>)}</td>
+              <td className="num" title={pool?.conditional?.map(x => `${x.value >= 0 ? '+' : ''}${x.value} ${x.from}${x.when ? `: ${x.when}` : ''}`).join('\n') || undefined}>
+                {pool ? br(pool.dp, poolOn(d, sk.id)?.dp) : ''}{pool?.specDp !== undefined && <div className="muted small">{pool.spec} {br(pool.specDp, poolOn(d, sk.id)?.specDp)}</div>}</td>
               {/* (a specialization's card: its skill's, with the specializations the book lists; the box's focus opens it) */}
               <td><Sr6Ref kind="skills" id={sk.id} tabbable={false}><Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
                 onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></Sr6Ref></td>

@@ -9,10 +9,12 @@ import type { BrowseRow } from './CatalogBrowser'
 import { IssueBadges } from './Issues'
 import { Prose } from './Prose'
 
-/** What an entry's effect does on the runner: applied (always on), conditional (switchable or on some tests only: shown,
- *  never added) or low (read with low confidence from its prose: shown, never applied). */
-export interface CardEffect { text: string; state: 'applied' | 'conditional' | 'low' }
-const STATE: Record<CardEffect['state'], string> = { applied: 'applied', conditional: 'conditional: shown, not added', low: 'low confidence: shown, not applied' }
+/** What an entry's effect does on the runner: applied (always on: in the total shown first), conditional (switchable or
+ *  on some tests only: in the bracketed total, `6 (9)`), target (a spell's on its target: never on the caster) or low
+ *  (read with low confidence from its prose: shown, never applied). */
+export interface CardEffect { text: string; state: 'applied' | 'conditional' | 'target' | 'low' }
+const STATE: Record<CardEffect['state'], string> = { applied: 'applied', conditional: 'switchable: in brackets',
+  target: 'affects target(s)', low: 'low confidence: shown, not applied' }
 
 /** The entry as Game data shows it: name, source and page, its marks (Edited, House…) and issues, its values, effects and
  *  description. */

@@ -21,7 +21,7 @@ import { BookSheet } from './BookSheet'
 import { NeonSheet } from './NeonSheet'
 import { HexSheet } from './HexSheet'
 import { DossierSheet } from './DossierSheet'
-import { band, pickFlags, PICKS, runnerView } from './view'
+import { attrShown, band, br, pickFlags, PICKS, poolOn, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
 
 const boxes = (k: number | null, cls = '') => k === null ? <span className="s-small">— (a setting isn’t set)</span>
@@ -32,8 +32,9 @@ export function Sr6Sheet() {
   const b = ch.build, art = useSheetArt(ch.id, 'sr6'), k = MAGIC_KINDS[b.magic], style = usePrintStyle()
   const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host, effectNotes } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) => x.accessories.length > 0 && <div className="s-small">with {x.accessories.map(nameOf).join(', ')}{host(x) && ` (${host(x)})`}</div>
-  const attr = (a: Sr6Attr) => { const v = d.attrs[a]; return <div key={a}><span>{ATTR_NAMES[a]}</span><b>{v.natural}</b>{v.augmented !== v.natural && <i> ({v.augmented})</i>}</div> }
-  const init = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const attr = (a: Sr6Attr) => <div key={a}><span>{ATTR_NAMES[a]}</span><b>{attrShown(d, a)}</b></div>
+  const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
+  const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
 
   return (
     <div className="sheet-wrap">
@@ -79,9 +80,9 @@ export function Sr6Sheet() {
             <table className="sr6-pools">
               <thead><tr><th>Skill</th><th>Rank</th><th>Att.</th><th>= Dice</th></tr></thead>
               <tbody>{d.pools.map(p => <tr key={p.skill} className={p.rank ? '' : 'untrained'}>
-                <td>{p.label}{p.spec && <div className="s-small">{p.spec}{p.specDp !== undefined && ` ${p.specDp}`}</div>}
-                  {p.expertise && <div className="s-small">{p.expertise} (expertise){p.expertiseDp !== undefined && ` ${p.expertiseDp}`}</div>}</td>
-                <td>{p.rank || '—'}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td></tr>)}</tbody>
+                <td>{p.label}{p.spec && <div className="s-small">{p.spec}{p.specDp !== undefined && ` ${br(p.specDp, poolOn(d, p.skill)?.specDp)}`}</div>}
+                  {p.expertise && <div className="s-small">{p.expertise} (expertise){p.expertiseDp !== undefined && ` ${br(p.expertiseDp, poolOn(d, p.skill)?.expertiseDp)}`}</div>}</td>
+                <td>{p.rank || '—'}</td><td>{p.attr.toUpperCase()}</td><td><b>{br(p.dp, poolOn(d, p.skill)?.dp)}</b></td></tr>)}</tbody>
             </table>
             <h2>Languages & knowledge</h2>
             <ul>{[...langs, ...know].map(x => <li key={x.uid}>{x.name}{x.native ? <span className="s-small"> (native)</span>
@@ -94,14 +95,14 @@ export function Sr6Sheet() {
           </section>
           <section>
             <h2>Condition monitors</h2>
-            <p className="s-small">Physical {d.monitors.physical ?? '—'}</p>{boxes(d.monitors.physical)}
-            <p className="s-small">Stun {d.monitors.stun ?? '—'}</p>{boxes(d.monitors.stun, 's')}
-            <p className="s-small">Overflow {d.monitors.overflow}</p>{boxes(d.monitors.overflow, 'i')}
+            <p className="s-small">Physical {br(d.monitors.physical, d.on.monitors.physical) ?? '—'}</p>{boxes(d.monitors.physical)}
+            <p className="s-small">Stun {br(d.monitors.stun, d.on.monitors.stun) ?? '—'}</p>{boxes(d.monitors.stun, 's')}
+            <p className="s-small">Overflow {br(d.monitors.overflow, d.on.monitors.overflow)}</p>{boxes(d.monitors.overflow, 'i')}
             <p className="s-small">Edge points {d.attrs.edg.augmented}</p>
             <div className="s-boxes sr6-edge" aria-hidden="true">{Array.from({ length: d.attrs.edg.augmented }, (_, i) => <span key={i} />)}</div>
             <table className="sr6-derived-t"><tbody>
-              {([['Initiative', init(d.initiative)], ['Astral initiative', init(d.astralInit)], ['Defense Rating', d.defenseRating], ['Social Rating', d.socialRating],
-                ['Composure', d.composure], ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry],
+              {([['Initiative', init(d.initiative, d.on.initiative)], ['Astral initiative', init(d.astralInit, d.on.astralInit)], ['Defense Rating', br(d.defenseRating, d.on.defenseRating)], ['Social Rating', br(d.socialRating, d.on.socialRating)],
+                ['Composure', br(d.composure, d.on.composure)], ['Judge Intentions', br(d.judgeIntentions, d.on.judgeIntentions)], ['Memory', br(d.memory, d.on.memory)], ['Lift/Carry', br(d.liftCarry, d.on.liftCarry)],
                 ['Drain', d.drain], ['Fading', d.fading]] as [string, string | number | undefined][])
                 .filter(([, v]) => v !== undefined).map(([l, v]) => <tr key={l}><td>{l}</td><td><b>{v}</b></td></tr>)}
             </tbody></table>

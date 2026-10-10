@@ -321,8 +321,28 @@
           "type": "number"
         },
         "when": {
-          "description": "Only on some tests (a voice modulator's sound-based Con tests, wireless): never in derived's pools.",
+          "description": "Only on some tests or situations (a voice modulator's sound-based Con tests): in derivedOn's totals, never derived's.",
           "type": "string"
+        },
+        "switch": {
+          "description": "How it is turned on; none: always on (in derived). A switchable one counts in derivedOn's totals, the bracket a book prints.",
+          "enum": [
+            "wireless",
+            "activated",
+            "sustained",
+            "conditional"
+          ]
+        },
+        "spec": {
+          "description": "Only on a specialization's tests: in that specialization's pool when the runner has it, else in derivedOn's.",
+          "type": "string"
+        },
+        "affects": {
+          "description": "A spell's or complex form's: on its caster (while sustained) or its target(s) (never counted on the caster).",
+          "enum": [
+            "caster",
+            "target"
+          ]
         }
       },
       "if": {
@@ -410,7 +430,7 @@
           "type": "string"
         },
         "effects": {
-          "description": "What the entry's printed text and tables say it does (the catalog's <effect>, docs/sr6-data-format.md Effects): target attr:<abbr>, attr-max:<abbr>, skill:<id>, test:<type>, derived:<name>, matrix:<name>, item:<field>, action:<name>, lifestyle:<name> or resource:<name>; op add, set, edge, edge-cost, edge-cost-set, no-edge, no-edge-gain, wild-die or hits; value as printed (a number, R or R*N per rating, item:ar five comma-separated bands); low: read from a sentence that sets a condition (shown, never applied); switch: how it is turned on; when: the condition's words.",
+          "description": "What the entry's printed text and tables say it does (the catalog's <effect>, docs/sr6-data-format.md Effects): target attr:<abbr>, attr-max:<abbr>, skill:<id>, test:<type>, derived:<name>, matrix:<name>, item:<field>, action:<name>, lifestyle:<name> or resource:<name>; op add, set, edge, edge-cost, edge-cost-set, no-edge, no-edge-gain, wild-die, hits or threshold; value as printed (a number, R or R*N per rating, item:ar five comma-separated bands); low: read with low confidence (shown, never applied); switch: how it is turned on (a switchable one counts in the bracketed total); when: the condition's words; spec: the specialization it is limited to; affects: a spell's or complex form's, on its caster or its target(s).",
           "type": "array",
           "items": {
             "type": "object",
@@ -434,7 +454,8 @@
                   "no-edge",
                   "no-edge-gain",
                   "wild-die",
-                  "hits"
+                  "hits",
+                  "threshold"
                 ]
               },
               "value": {
@@ -453,6 +474,15 @@
               },
               "when": {
                 "type": "string"
+              },
+              "spec": {
+                "type": "string"
+              },
+              "affects": {
+                "enum": [
+                  "caster",
+                  "target"
+                ]
               }
             }
           }
@@ -1058,6 +1088,10 @@
                 },
                 "augmented": {
                   "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
+                  "type": "number"
                 }
               }
             },
@@ -1072,6 +1106,10 @@
                   "type": "number"
                 },
                 "augmented": {
+                  "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
                   "type": "number"
                 }
               }
@@ -1088,6 +1126,10 @@
                 },
                 "augmented": {
                   "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
+                  "type": "number"
                 }
               }
             },
@@ -1102,6 +1144,10 @@
                   "type": "number"
                 },
                 "augmented": {
+                  "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
                   "type": "number"
                 }
               }
@@ -1118,6 +1164,10 @@
                 },
                 "augmented": {
                   "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
+                  "type": "number"
                 }
               }
             },
@@ -1132,6 +1182,10 @@
                   "type": "number"
                 },
                 "augmented": {
+                  "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
                   "type": "number"
                 }
               }
@@ -1148,6 +1202,10 @@
                 },
                 "augmented": {
                   "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
+                  "type": "number"
                 }
               }
             },
@@ -1162,6 +1220,10 @@
                   "type": "number"
                 },
                 "augmented": {
+                  "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
                   "type": "number"
                 }
               }
@@ -1178,6 +1240,10 @@
                 },
                 "augmented": {
                   "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
+                  "type": "number"
                 }
               }
             },
@@ -1193,6 +1259,10 @@
                 },
                 "augmented": {
                   "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
+                  "type": "number"
                 }
               }
             },
@@ -1207,6 +1277,10 @@
                   "type": "number"
                 },
                 "augmented": {
+                  "type": "number"
+                },
+                "switched": {
+                  "description": "With the switchable and conditional effects on (the bracket); only when it differs from augmented.",
                   "type": "number"
                 }
               }
@@ -1642,6 +1716,100 @@
               },
               "lockedBy": {
                 "type": "string"
+              }
+            }
+          }
+        },
+        "derivedOn": {
+          "description": "The same values with the switchable and conditional effects on: the bracketed totals a book's stat block prints, Con 6 (9). Left out for an NPC.",
+          "type": "object",
+          "required": [
+            "initiative",
+            "monitors",
+            "defenseRating",
+            "composure",
+            "judgeIntentions",
+            "memory",
+            "liftCarry",
+            "pools"
+          ],
+          "properties": {
+            "initiative": {
+              "$ref": "#/$defs/init"
+            },
+            "astralInit": {
+              "$ref": "#/$defs/init"
+            },
+            "monitors": {
+              "type": "object",
+              "required": [
+                "physical",
+                "stun",
+                "overflow"
+              ],
+              "properties": {
+                "physical": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stun": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "overflow": {
+                  "type": "number"
+                }
+              }
+            },
+            "defenseRating": {
+              "type": "number"
+            },
+            "socialRating": {
+              "description": "Charisma plus the worn armor's Social (Firing Squad p. 50). Absent in files written before it.",
+              "type": "number"
+            },
+            "composure": {
+              "type": "number"
+            },
+            "judgeIntentions": {
+              "type": "number"
+            },
+            "memory": {
+              "type": "number"
+            },
+            "liftCarry": {
+              "type": "number"
+            },
+            "drain": {
+              "type": "number"
+            },
+            "fading": {
+              "type": "number"
+            },
+            "pools": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/pool"
+              }
+            },
+            "monitorBonus": {
+              "description": "The boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes): what the module writes as Eden's physical.mod and stun.mod.",
+              "type": "object",
+              "required": [
+                "physical",
+                "stun"
+              ],
+              "properties": {
+                "physical": {
+                  "type": "number"
+                },
+                "stun": {
+                  "type": "number"
+                }
               }
             }
           }

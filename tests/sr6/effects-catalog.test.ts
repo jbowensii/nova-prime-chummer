@@ -98,3 +98,32 @@ test('the sheet lists what the numbers don’t hold: switched effects, rule kind
   b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
   expect(effectNotes(b, data).map(x => x.text)).toEqual(['+1 Edge on tests using Charisma', 'activated: +1 Agility', 'grants Stoneskin'])
 })
+
+test('switchable and conditional effects count in the bracketed total; a specialization’s in its pool; a spell’s on its target never', () => {
+  const { data, cr } = made({ data: d => {
+    give(d, 'crb.knack', fx('attr:bod', 'add', '1'), fx('attr:agi', 'add', '2', { switch: 'wireless' }), fx('test:attr-cha', 'add', '3', { when: 'haggling' }),
+      fx('skill:gab', 'add', '2', { spec: 'Haggling' }))
+    d.entry('spells', 'crb.glow-ward')!.parts.push(fx('attr:rea', 'add', '1', { switch: 'sustained', affects: 'caster' }),
+      fx('attr:str', 'add', '4', { switch: 'sustained', affects: 'target' }))
+  } })
+  const b = runner()
+  b.skills = [...b.skills.filter(s => s.id !== 'crb.gab'), { id: 'crb.gab', points: 2, karma: 0 }]
+  const base = deriveSr6(data, cr, { ...blankSr6(b.method, 't'), build: structuredClone(b) })
+  b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
+  b.picks.push({ uid: 'p', kind: 'spells', id: 'crb.glow-ward' })
+  const ch = { ...blankSr6(b.method, 't'), build: b }
+  const at = (d: { attrs: typeof base.attrs }, k: 'bod' | 'agi' | 'rea' | 'str') => d.attrs[k].augmented - base.attrs[k].augmented
+  let d = deriveSr6(data, cr, ch)
+  expect([at(d, 'bod'), at(d, 'agi'), at(d, 'rea'), at(d, 'str')]).toEqual([1, 0, 0, 0])
+  expect([at(d.on, 'bod'), at(d.on, 'agi'), at(d.on, 'rea'), at(d.on, 'str')]).toEqual([1, 2, 1, 0])  // (never the target's +4)
+  const gab = (x: { pools: typeof base.pools }) => x.pools.find(p => p.skill === 'crb.gab')!
+  const plain = gab(base).dp
+  expect(gab(d).dp).toBe(plain)
+  expect(gab(d.on).dp).toBe(plain + 3 + 2)  // (haggling, and the specialization the runner hasn't)
+  expect(conditionalBonuses(b, data, 'crb.gab').map(x => x.value).sort()).toEqual([2, 3])
+  b.skills = [...b.skills.filter(s => s.id !== 'crb.gab'), { id: 'crb.gab', points: 2, karma: 0, spec: 'haggling' }]
+  d = deriveSr6(data, cr, ch)
+  const specDice = Number(cr.get('specDice')?.value)
+  expect(gab(d).specDp).toBe(gab(d).dp + specDice + 2)
+  expect(gab(d.on).dp).toBe(gab(d).dp + 3)  // (its specialization's bonus is in the specialization's pool, not the skill's)
+})

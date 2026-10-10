@@ -422,10 +422,16 @@
     <xs:attribute name="skill" type="xs:string"/>
     <xs:attribute name="value" type="xs:integer" use="required"/>
     <xs:attribute name="perRating" type="xs:boolean"/>
-    <!-- only on some tests (a voice modulator's sound-based Con tests, wireless): shown with the pool, never added -->
+    <!-- only on some tests or situations (a voice modulator's sound-based Con tests): in the bracketed total -->
     <xs:attribute name="when" type="xs:string"/>
-    <!-- how it is turned on; none: always on (a stat block folds it into the printed number, a switchable one shows in
-         brackets) -->
+    <!-- only on a specialization's tests (Climbing): in that specialization's pool when the runner has it, else in the
+         skill's bracketed total -->
+    <xs:attribute name="spec" type="xs:string"/>
+    <!-- a spell's or complex form's: on its caster (while sustained) or its target(s) (never counted on the caster) -->
+    <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="caster"/><xs:enumeration value="target"/></xs:restriction></xs:simpleType></xs:attribute>
+    <!-- how it is turned on; none: always on, in the total shown first; a switchable one counts in the bracketed total,
+         `6 (9)`, as a book's stat block prints it (owner decision 2026-10-10) -->
     <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/>
       <xs:enumeration value="conditional"/></xs:restriction></xs:simpleType></xs:attribute>

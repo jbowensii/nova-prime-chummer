@@ -441,7 +441,8 @@ const RULES: Rule[] = [
 function printedHits(c: Ctx): Hit[] {
   const pr = c.ch.printed
   if (!pr) return []
-  const d = deriveSr6(c.data, c.cr, c.ch), hits: Hit[] = []
+  // (the book prints the always-on values first and the switchable ones on in brackets: the bracketed total's, derive.ts on)
+  const d = deriveSr6(c.data, c.cr, c.ch).on, hits: Hit[] = []
   // spaces aside, and `6(6)` (augmented as natural) read as `6`
   const same = (book: string, rules: string) => book.replace(/\s/g, '').replace(/^(\d+)\(\1\)/, '$1') === rules.replace(/\s/g, '')
   const say = (path: string, what: string, book: string | undefined, rules: string) => {

@@ -33,11 +33,16 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
  *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes or a skill's dice pool (skill: its catalog id). perRating: × the
  *  line's rating. */
 export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill'; skill?: string; value: number; perRating?: true
-  /** only on some tests (`sound-based Con tests, wireless`): shown with the pool, never added to it (owner rule D3) */
+  /** only on some tests or situations (`sound-based Con tests`): in the bracketed total (owner decision 2026-10-10) */
   when?: string
+  /** only on the tests of a specialization (`Climbing`): added to that specialization's pool when the runner has it, else
+   *  in the skill's bracketed total (owner decision 2026-10-10) */
+  spec?: string
+  /** a spell's or complex form's: on its caster (while sustained) or its target(s) (never counted on the caster) */
+  affects?: 'caster' | 'target'
   /** how it is turned on (none: always on, folded into a stat block's printed number): a wireless bonus, ware or a power
-   *  activated (released at will), a sustained one, or one holding on some tests only. A book prints a switchable bonus in
-   *  brackets, `4(5)` (owner, 2026-10-10). */
+   *  activated (released at will), a sustained one, or one holding on some tests only: counted in the bracketed total, as
+   *  a book prints a switchable bonus in brackets, `4(5)` (owner, 2026-10-10). */
   switch?: BonusSwitch }
 /** the switch both games' effects share (src/engine/effects.ts) */
 export type BonusSwitch = EffectSwitch
