@@ -194,6 +194,14 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
   `pilot`, `sensor`, `seats`, `size`); `action:<name>` an Edge action; `lifestyle:<name>` lifestyle points;
   `resource:<name>` a creation resource.
+- **Incompatibilities** (`<incompatible targets? names? family?/>`, `<compatible name switch="wireless"/>`; augmentations,
+  adept powers and qualities): what the text says the entry can't be combined with (CRB Hong Kong pp. 157, 286–293):
+  `targets` the attributes and initiative an augmentation raising them can't go with (`incompatible with augmentations
+  that affect Reaction or Initiative`: `attr:rea derived:initiative-dice`), `names` the entries it names (`including
+  wired reflexes`, `; `-separated, a name matching an entry whose name starts with its words), `family` the name only
+  one entry starting with may be installed (`you can only have one installed at a time`: `Bone Lacing`); `<compatible>`
+  a wireless bonus's exception (`compatible with a wireless wired reflexes system`). Review's `gear.incompatible` is an
+  error on each pair (a GM may approve it), `gear.incompatibleWireless` a note for a pair the wireless bonus allows.
 - **Operations** (the rule-changing effects are kinds of their own): `add`, `set` (an infected type's attribute
   maximum), `edge` (N bonus Edge on those tests), `edge-cost` (Edge boosts and actions cost N more, -N less),
   `edge-cost-set` (an Edge action's new cost), `no-edge` (no Edge may be spent), `no-edge-gain` (none gained),
@@ -773,6 +781,7 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Optional rules | `stackingAdvantage` | true/false | optional | The Sixth World Companion's Stacking Advantage (SWC p. 144, off): a lead of twice `arDrEdgeGap` gains 2 Edge, never more |
 | Optional rules | `strengthInCloseCombat` | true/false | optional | Rolling Strength instead of Agility in Close Combat (SWC p. 150, off): Close Combat's pool uses Strength, and Agility goes into the melee and unarmed Attack Ratings in Strength's place |
 | Optional rules | `highStrengthDamage` | true/false | optional | High Strength Adds to Damage (SWC p. 150, off): +1 to the unarmed and melee Damage Values from Strength `strengthDamageStep1` (7), +2 from `strengthDamageStep2` (10) |
+| Optional rules | `suprathyroidStacks` | true/false | optional | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
 | Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
 | Derived values | `charismaticDefenseQuality` | quality id | optional | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
 | Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath | the metatype's karma (one per catalog metatype) |

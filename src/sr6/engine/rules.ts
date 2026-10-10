@@ -9,7 +9,8 @@ import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, aptitudeSkills, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, metamagicFits, normName, picksFor, type Sr6Data } from './data'
+import type { Sr6Entry } from '../model/types'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
@@ -302,6 +303,10 @@ const RULES: Rule[] = [
     }
     return hits
   } },
+  // CRB Hong Kong pp. 157, 286–293 (and a supplement's quality text): two augmentations, powers or qualities the book
+  // says can't be combined; a wireless exception (wired reflexes and reaction enhancers) is a note
+  { code: 'gear.incompatible', severity: 'error', tab: 'augmentations', check: c => incompatible(c).filter(h => !h.wireless) },
+  { code: 'gear.incompatibleWireless', severity: 'warning', tab: 'augmentations', check: c => incompatible(c).filter(h => h.wireless) },
   { code: 'essence.positive', severity: 'error', tab: 'augmentations', setting: ['essence'], check: c =>
     (c.budgets.essence.left > 0 ? null : { message: `Essence must stay above 0 (it is ${c.budgets.essence.left}).` }) },
 
@@ -557,6 +562,48 @@ function printedHits(c: Ctx): Hit[] {
     const id = k.slice(6), e = c.data.entry('qualities', id), q = c.b.qualities.find(x => x.id === id)
     if (e) hits.push({ path: q ? `qualities.${q.uid}` : 'qualities', source: e.source, page: e.page,
       message: `The book prints ${v}; ${entryLabel(e)} has no levels (${e.source} p.${e.page}), so it’s taken once.` })
+  }
+  return hits
+}
+
+/** The runner's augmentations, adept powers and qualities that can't be combined (an entry's <incompatible> parts,
+ *  importer/sr6/effects.py incompatibilities): one that raises an attribute or initiative the other names
+ *  (`incompatible with augmentations that affect Reaction or Initiative`), one the other names (`including wired
+ *  reflexes`), two of a family only one of which may be installed (`Bone Lacing`). wireless: an exception the book
+ *  makes while wireless (<compatible switch="wireless">). The Sixth World Companion's Suprathyroid Bonuses Stack (p. 149,
+ *  suprathyroidStacks) exempts the suprathyroid gland from the attribute and initiative ones. */
+function incompatible(c: Ctx): (Hit & { wireless: boolean })[] {
+  type Line = { path: string; e: Sr6Entry; raises: Set<string> }
+  const lines: Line[] = []
+  const raises = (e: Sr6Entry) => new Set(e.parts.filter(p => p.tag === 'effect' && p.attrs.op === 'add' && !/^-/.test(p.attrs.value ?? ''))
+    .map(p => (p.attrs.target === 'derived:initiative' ? 'derived:initiative-dice' : p.attrs.target ?? '')))
+  const add = (path: string, e: Sr6Entry | undefined) => { if (e) lines.push({ path, e, raises: raises(e) }) }
+  for (const x of c.b.purchases) if (x.kind === 'augmentations') add(`augmentations.${x.uid}`, entryOf(x, c.data))
+  for (const x of c.b.picks) if (x.kind === 'adeptpowers') add(`magic.${x.uid}`, c.data.entry(x.kind, x.id))
+  for (const q of c.b.qualities) add(`qualities.${q.uid}`, c.data.entry('qualities', q.id))
+  const words = (s: string) => normName(s).split(/[^a-z0-9]+/).filter(Boolean).map(w => w.replace(/(?<=[a-z]{3})s$/, ''))
+  const names = (n: string, e: Sr6Entry) => { const a = words(n), b = words(e.name); return a.length > 0 && a.every((w, i) => b[i] === w) }
+  const gland = (e: Sr6Entry) => !!flag(c.cr, 'suprathyroidStacks') && normName(e.name) === 'suprathyroid gland'
+  /** why a can't go with b: a named it, its family, or b raises what a names */
+  const why = (a: Line, b: Line) => {
+    for (const p of a.e.parts) {
+      if (p.tag !== 'incompatible') continue
+      if (p.attrs.family && names(p.attrs.family, b.e)) return 'named'
+      if ((p.attrs.names ?? '').split(/;\s*/).some(n => n && names(n, b.e))) return 'named'
+      if (!gland(a.e) && !gland(b.e) && (p.attrs.targets ?? '').split(/\s+/).some(t => t && b.raises.has(t))) return 'raises'
+    }
+    return null
+  }
+  const wireless = (a: Line, b: Line) => [a, b].some((x, i) => x.e.parts.some(p => p.tag === 'compatible' && p.attrs.switch === 'wireless'
+    && names(p.attrs.name ?? '', (i ? a : b).e)))
+  const hits: (Hit & { wireless: boolean })[] = []
+  for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) {
+    const a = lines[i], b = lines[j], one = why(a, b) ? a : why(b, a) ? b : null
+    if (!one) continue
+    const w = wireless(a, b)
+    hits.push({ path: b.path, wireless: w, ...entryCite(one.e), message: w
+      ? `${entryLabel(a.e)} and ${entryLabel(b.e)}: compatible only while wireless (the wireless bonus).`
+      : `${entryLabel(a.e)} and ${entryLabel(b.e)} can’t be combined.` })
   }
   return hits
 }

@@ -129,6 +129,7 @@
   <setting key="stackingAdvantage" value="false" source="SWC" page="144"/>
   <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>
   <setting key="highStrengthDamage" value="false" source="SWC" page="150"/>
+  <setting key="suprathyroidStacks" value="false" source="SWC" page="149"/>
   <setting key="strengthDamageStep1" value="7" source="SWC" page="150"/>
   <setting key="strengthDamageStep2" value="10" source="SWC" page="150"/>
   <!-- Sum to ten (SWC) -->

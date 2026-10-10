@@ -22,6 +22,25 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(fx("Effect: -1 Reaction, +2 Logic", "gear"),  # a drug's effect line: while it acts
                          [("attr:rea", "add", "-1", "activated", None), ("attr:log", "add", "2", "activated", None)])
 
+    def test_what_an_entry_cant_be_combined_with(self):
+        inc = lambda text, name="Zap Lacing (Tin)": [(t, a) for t, a, _ in effects.incompatibilities(text, name)]
+        self.assertEqual(inc("Zap lacing comes in two types—you can only have one installed at a time. Zap lacing is incompatible "
+                             "with other augmentations that alter your bones (such as glow density augmentation)."),
+                         [("incompatible", {"family": "Zap Lacing"}), ("incompatible", {"names": "glow density augmentation"})])
+        self.assertEqual(inc("Zip enhancers are incompatible with all other enhancements to Reaction, including zap reflexes."),
+                         [("incompatible", {"targets": "attr:rea", "names": "zap reflexes"})])
+        self.assertEqual(inc("Zap reflexes are incompatible with augmentations that affect Reaction or Initiative."),
+                         [("incompatible", {"targets": "attr:rea derived:initiative-dice"})])
+        self.assertEqual(inc("It cannot be combined with other augmentations to the muscles, including glow augmentation or glow toner bioware."),
+                         [("incompatible", {"names": "glow augmentation; glow toner"})])
+        self.assertEqual(inc("This bioware is incompatible with augmentations that increase Strength, including the zap replacement cyberware."),
+                         [("incompatible", {"targets": "attr:str", "names": "zap replacement"})])
+        self.assertEqual(inc("Wireless bonus: Zip enhancers are compatible with a wireless zap reflexes system."),
+                         [("compatible", {"name": "zap reflexes", "switch": "wireless"})])
+        self.assertEqual(inc("Incompatible with Glow Eye."), [("incompatible", {"names": "Glow Eye"})])
+        self.assertEqual(inc("It is incompatible with anything else that provides an edge to the Athletics skill."), [])
+        self.assertEqual(inc("It is compatible with other zappers."), [])  # (only a wireless exception)
+
     def test_a_powers_two_prices(self):
         self.assertEqual(effects.split_cost("Combat skill: 0.75 PP per level; other skills 0.25 PP per level"),
                          {"cost": "0.25", "costCombat": "0.75"})

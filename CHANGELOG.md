@@ -30,6 +30,13 @@
   that skill's pool, and Review asks for a rank in the skill and a boosted skill at most 1.5 times the rank (rounded up)
   or +4. The importer reads the two prices (`cost`, `costCombat`). A pick now keeps a note (the runner file's `<pick
   note>`), and a power's or quality's `skill:choice` and `attr:choice` effects go on what its note names.
+- Ware that can't be combined (CRB Hong Kong pp. 157, 286–293): the importer reads each augmentation's, adept power's and
+  quality's "incompatible with", "cannot be combined with" and "only one installed at a time" into its entry, and Review
+  flags each pair the runner has (bone lacing with bone density or a second lacing; muscle replacement with muscle
+  augmentation or toner; reaction enhancers, wired reflexes, synaptic booster and Improved Reflexes with what raises
+  Reaction or Initiative; dermal plating with orthoskin; a supplement's quality pairs). Reaction enhancers with wired
+  reflexes is a note: the wireless bonus allows it. The Sixth World Companion's Suprathyroid Bonuses Stack (p. 149) is
+  a switch, off.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

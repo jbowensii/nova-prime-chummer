@@ -143,6 +143,7 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'stackingAdvantage', label: 'Stacking Advantage: a lead of twice the gap gains 2 Edge', type: 'bool', group: 'Optional rules', methods: [] },
   { key: 'strengthInCloseCombat', label: 'Close Combat rolls Strength; Agility goes into the melee Attack Ratings', type: 'bool', group: 'Optional rules', methods: [] },
   { key: 'highStrengthDamage', label: 'High Strength adds to melee and unarmed Damage Values', type: 'bool', group: 'Optional rules', methods: [] },
+  { key: 'suprathyroidStacks', label: 'Suprathyroid gland bonuses stack with other augmentations’', type: 'bool', group: 'Optional rules', methods: [] },
   ...n('Optional rules', [], [['strengthDamageStep1', 'High Strength: Strength for +1 Damage Value'], ['strengthDamageStep2', 'High Strength: Strength for +2 Damage Value']]),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
   { key: 'dermalDepositsQuality', label: 'Dermal Deposits quality: +1 Defense Rating (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
@@ -339,6 +340,7 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   { key: 'stackingAdvantage', about: 'Sixth World Companion p. 144, optional (off): 2 Edge for a lead of 8' },
   { key: 'strengthInCloseCombat', about: 'Sixth World Companion p. 150, optional (off)' },
   { key: 'highStrengthDamage', about: 'Sixth World Companion p. 150, optional (off)' },
+  { key: 'suprathyroidStacks', about: 'Suprathyroid Bonuses Stack: the gland ignores the other augmentations’ stacking limits, not the +4 (Sixth World Companion p. 149, optional, off)' },
   { key: 'strengthDamageStep1', about: 'High Strength: +1 at Strength 7 (Sixth World Companion p. 150)' },
   { key: 'strengthDamageStep2', about: 'High Strength: +2 at Strength 10 (Sixth World Companion p. 150)' },
 ]
