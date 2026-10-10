@@ -92,6 +92,8 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
+- `<skill specs>`: the specializations past the first, `; `-separated (Exotic Weapons, CRB Hong Kong p. 95; any skill with
+  the Sixth World Companion's Expanded Specializations, p. 153); each priced as a specialization.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
   and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic);
   `note`: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: `Firearms`), which its

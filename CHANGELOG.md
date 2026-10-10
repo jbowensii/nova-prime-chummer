@@ -37,6 +37,13 @@
   Reaction or Initiative; dermal plating with orthoskin; a supplement's quality pairs). Reaction enhancers with wired
   reflexes is a note: the wireless bonus allows it. The Sixth World Companion's Suprathyroid Bonuses Stack (p. 149) is
   a switch, off.
+- More of the core rulebook's checks (Commlink6 makes them too): one specialization a skill but Exotic Weapons, which
+  takes several (the Skills tab's further specializations), needs one to be used and takes no expertise (CRB Hong Kong
+  pp. 65, 95); Astral only for magicians and for adepts with Astral Perception (p. 93); one Native language, the others
+  to Expert at most (pp. 67, 99); the initiate and submersion grades never above Magic and Resonance (pp. 167, 195);
+  foci only for the Awakened, no more than Magic, none of Force above it, their Force together at most Magic × 5, and
+  each bonded for its Karma out of the customization Karma (pp. 154, 168).
+- The Sixth World Companion's Expanded Specializations and Unrestricted Skill Ranks (p. 153), switches, off.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

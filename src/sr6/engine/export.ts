@@ -68,7 +68,7 @@ export interface Sr6ExportRunner {
   /** augmented: with the always-on effects; switched: with the switchable and conditional ones on too (the bracket, `5 (7)`),
    *  only when it differs */
   attributes: Record<Sr6Attr, { natural: number; augmented: number; switched?: number }>; essence: number; edge: number
-  skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string }[]
+  skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string; specs?: string[] }[]
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
@@ -257,7 +257,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     attributes: Object.fromEntries(Object.entries(d.attrs).map(([k, v]) => [k, d.on.attrs[k as Sr6Attr].augmented === v.augmented ? v
       : { ...v, switched: d.on.attrs[k as Sr6Attr].augmented }])) as Sr6ExportRunner['attributes'], essence: d.essence, edge: d.edge,
     skills: b.skills.map(s => defined({ id: s.id, name: data.skills[s.id]?.name ?? s.id, attr: data.skills[s.id]?.attr ?? '', rank: skillRank(s),
-      spec: s.spec, expertise: s.expertise })),
+      spec: s.spec, expertise: s.expertise, specs: s.specs })),
     knowledge: b.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native, rank: k.points + k.karma })),
     qualities: b.qualities.map(q => {
       const e = data.entry('qualities', q.id)

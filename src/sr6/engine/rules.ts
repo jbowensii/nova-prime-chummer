@@ -7,7 +7,7 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, aptitudeSkills, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, aptitudeSkills, isFocus, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, normName, picksFor, type Sr6Data } from './data'
 import type { Sr6Entry } from '../model/types'
@@ -39,6 +39,7 @@ const over = (budget: { left: number }, what: string, unit = ''): Hit | null =>
   budget.left >= 0 ? null : { message: `${what} overspent by ${fmt(-budget.left)}${unit}.` }
 const entryCite = (e?: { source: string; page: number }) => (e ? { source: e.source, page: e.page } : {})
 const CRB = (page: number) => ({ source: 'CRB', page })
+const CRB_HK = (page: number) => ({ source: 'CRB-HK', page })
 const metaName = (c: Ctx) => c.data.metatypes[c.b.metatype]?.name ?? c.b.metatype
 /** every purchase and accessory, with the path of the line it sits on */
 function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string; host?: Sr6Purchase; own?: Sr6Purchase }> {
@@ -118,6 +119,32 @@ const RULES: Rule[] = [
       .map(s => ({ path: `skills.${s.id}`, message: `${name(s.id)} rank ${skillRank(s)} is above the cap of ${cap(s.id)}.` }))
     const above = c.b.skills.filter(s => skillRank(s) > capBase && !named?.includes(s.id))
     if (aptitude && anyOne && above.length > 1) hits.push({ message: `Only one skill may be above ${capBase}.` })
+    return hits
+  } },
+  // CRB Hong Kong p. 65: one specialization a skill, but Exotic Weapons (p. 95) or with the Sixth World Companion's
+  // Expanded Specializations (p. 153, expandedSpecializations)
+  { code: 'skill.oneSpec', severity: 'error', tab: 'skills', check: c => c.b.skills.filter(s => s.specs?.length && !manySpecs(c.data, c.cr, s.id))
+    .map(s => ({ path: `skills.${s.id}`, message: `${c.data.skills[s.id]?.name ?? s.id} has ${1 + s.specs!.length} specializations: one a skill.`, ...CRB(65) })) },
+  // CRB Hong Kong p. 95: Exotic Weapons needs a specialization to be used, and takes no expertise
+  { code: 'skill.exotic', severity: 'error', tab: 'skills', check: c => c.b.skills.flatMap(s => {
+    const v = c.data.skills[s.id]
+    if (!v || normName(v.name) !== 'exotic weapons') return []
+    return [...skillRank(s) > 0 && !s.spec && !s.specs?.length ? [{ path: `skills.${s.id}`, message: `${v.name} has ranks but no specialization: it is used only with the weapons it has one for.`, ...entryCite(c.data.entry('skills', s.id)) }] : [],
+      ...s.expertise ? [{ path: `skills.${s.id}`, message: `${v.name} takes no expertise.`, ...entryCite(c.data.entry('skills', s.id)) }] : []]
+  }) },
+  // CRB Hong Kong p. 93: Astral is for full and aspected magicians, and adepts and mystic adepts with Astral Perception
+  { code: 'skill.astral', severity: 'error', tab: 'skills', check: c => {
+    const s = c.b.skills.find(x => normName(c.data.skills[x.id]?.name ?? '') === 'astral' && skillRank(x) > 0), k = MAGIC_KINDS[c.b.magic]
+    if (!s || !k.powers || (k.spells && c.b.magic !== 'mystic-adept')) return null
+    const perception = c.b.picks.some(x => x.kind === 'adeptpowers' && normName(c.data.entry(x.kind, x.id)?.name ?? x.name ?? '') === 'astral perception')
+    return perception ? null : { path: `skills.${s.id}`, message: `An ${kindLabel(c.b)} uses Astral only with the Astral Perception power.`, ...entryCite(c.data.entry('skills', s.id)) }
+  } },
+  // CRB Hong Kong pp. 67, 99: one Native language; a language is advanced to Expert at most (languageMax)
+  { code: 'knowledge.languages', severity: 'error', tab: 'skills', check: c => {
+    const langs = c.b.knowledge.filter(k => k.kind === 'language'), most = num(c.cr, 'languageMax'), hits: Hit[] = []
+    if (langs.filter(k => k.native).length > 1) hits.push({ message: `${langs.filter(k => k.native).length} native languages: only one.`, ...CRB(67) })
+    if (most !== undefined) for (const k of langs) if (!k.native && k.points + k.karma > most)
+      hits.push({ path: `skills.${k.uid}`, message: `${k.name} at level ${k.points + k.karma}: a language goes to Expert (${most}) at most; Native comes only free at creation.`, ...cite(c.cr, 'languageMax') })
     return hits
   } },
   // CRB Hong Kong pp. 76–77: no ranks in the skill an Incompetent quality names; not for a Magic skill without Magic,
@@ -363,6 +390,28 @@ const RULES: Rule[] = [
     }
     return hits
   } },
+  // CRB Hong Kong p. 167: the initiate grade never above Magic; p. 195: the submersion grade never above Resonance
+  { code: 'magic.gradeCap', severity: 'error', tab: 'magic', check: c => {
+    const loss = c.budgets.essence.magicLoss, hits: Hit[] = []
+    const mag = Math.max(0, attrRating(c.b, 'mag', c.p) - (MAGIC_KINDS[c.b.magic].resonance ? 0 : loss)), res = Math.max(0, attrRating(c.b, 'res', c.p) - (MAGIC_KINDS[c.b.magic].resonance ? loss : 0))
+    if (c.b.initiation > mag) hits.push({ message: `Initiate grade ${c.b.initiation} is above Magic ${mag}.`, ...CRB_HK(167) })
+    if (c.b.submersion > res) hits.push({ message: `Submersion grade ${c.b.submersion} is above Resonance ${res}.`, ...CRB_HK(195) })
+    return hits
+  } },
+  // CRB Hong Kong p. 154: foci only for the Awakened; no more bonded than Magic, none of Force above Magic, their Force
+  // together at most Magic × fociForcePerMagic
+  { code: 'magic.foci', severity: 'error', tab: 'gear', check: c => {
+    const foci = c.b.purchases.filter(x => isFocus(entryOf(x, c.data)))
+    if (!foci.length) return null
+    const k = MAGIC_KINDS[c.b.magic], mag = Math.max(0, attrRating(c.b, 'mag', c.p) - c.budgets.essence.magicLoss), per = num(c.cr, 'fociForcePerMagic')
+    if (!k.spells && !k.powers) return { message: `${foci.length} ${foci.length === 1 ? 'focus' : 'foci'}: only the Awakened bond foci.`, ...CRB_HK(154) }
+    const force = (x: Sr6Purchase) => ratingOf(x, entryOf(x, c.data)), n = foci.reduce((t, x) => t + x.qty, 0), hits: Hit[] = []
+    if (n > mag) hits.push({ message: `${n} foci bonded: at most Magic, ${mag}.`, ...CRB_HK(154) })
+    for (const x of foci) if (force(x) > mag) hits.push({ path: `gear.${x.uid}`, message: `${nameOf(c, x)}: Force ${force(x)} is above Magic ${mag}.`, ...CRB_HK(154) })
+    const total = foci.reduce((t, x) => t + force(x) * x.qty, 0)
+    if (per !== undefined && total > mag * per) hits.push({ message: `The foci's Force adds up to ${total}: at most Magic × ${per}, ${mag * per}.`, ...cite(c.cr, 'fociForcePerMagic') })
+    return hits
+  } },
   { code: 'adept.ppCap', severity: 'error', tab: 'magic', check: c => {
     const cap = c.budgets.powerPoints.cap
     return !MAGIC_KINDS[c.b.magic].paysPowers || c.b.method === 'pointbuy' || c.b.powerPointsBought <= cap ? null
@@ -408,7 +457,7 @@ const RULES: Rule[] = [
     } },
   { code: 'pointbuy.oneSpecialization', severity: 'error', tab: 'skills', setting: c => (c.p.id === 'pointbuy' ? ['pointBuy.oneSpecialization'] : []),
     check: c => {
-      const count = c.b.skills.filter(s => s.spec).length
+      const count = c.b.skills.reduce((t, s) => t + (s.spec ? 1 : 0) + (s.specs?.length ?? 0), 0)
       return c.p.id !== 'pointbuy' || !flag(c.cr, 'pointBuy.oneSpecialization') || count <= 1 ? null
         : { message: `Only one specialization in point buy (${count} taken).` }
     } },

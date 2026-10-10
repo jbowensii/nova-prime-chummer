@@ -26,6 +26,8 @@ export interface Sr6Pool {
   specDp?: number; expertiseDp?: number
   /** the bonus dice left out: a skill's augmented increase stops at skillAugmentMax (CRB Hong Kong p. 39) */
   capped?: number
+  /** the further specializations' pools (Exotic Weapons, CRB Hong Kong p. 95; Expanded Specializations, SWC p. 153) */
+  more?: { spec: string; dp: number }[]
 }
 /** A matrix initiative: base + dice (the dice capped as the physical ones). */
 export interface Sr6Init { base: number; dice: number | null }
@@ -152,6 +154,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       return d === undefined ? undefined : rank + A(attr) + d + upTo(bonus + specBonus(b, data, s.id, name, on), capS)
     }
     if (s.spec && s.spec !== s.expertise) { pool.spec = s.spec; const d = withSpec('specDice', s.spec); if (d !== undefined) pool.specDp = d }
+    const more = (s.specs ?? []).flatMap(x => { const d = withSpec('specDice', x); return d === undefined ? [] : [{ spec: x, dp: d }] })
+    if (more.length) pool.more = more
     if (s.expertise) { pool.expertise = s.expertise; const d = withSpec('expertiseDice', s.expertise); if (d !== undefined) pool.expertiseDp = d }
     pools.push(pool)
   }
@@ -173,7 +177,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     if (skill) {
       out.skill = skill
       const pl = pools.find(q => q.skill === skill), cat = e?.attrs.category ?? ''
-      if (pl) out.pool = pl.spec && specFits(pl.spec, cat) && pl.specDp !== undefined ? pl.specDp : pl.expertise && specFits(pl.expertise, cat) && pl.expertiseDp !== undefined ? pl.expertiseDp : pl.dp
+      if (pl) out.pool = pl.expertise && specFits(pl.expertise, cat) && pl.expertiseDp !== undefined ? pl.expertiseDp
+        : pl.spec && specFits(pl.spec, cat) && pl.specDp !== undefined ? pl.specDp : pl.more?.find(m => specFits(m.spec, cat))?.dp ?? pl.dp
     }
     if (melee && highStrength) out.dvBonus = highStrength
     return out

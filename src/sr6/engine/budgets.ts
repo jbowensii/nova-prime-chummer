@@ -11,7 +11,7 @@ import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { own } from '../../engine/effects'
 import { fieldName } from '../../engine/formula'
-import { bookValue, dataFind, ratingRange } from './values'
+import { bookValue, dataFind, rated, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
 import { effectBonuses, maxEffects, sr6Counts as counts, TEST_TYPES } from './effects'
@@ -309,6 +309,10 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('skills', 'Skill ranks bought with karma', skills, 'skills')
   // (owner, 2026-10-09) CRB p. 66, step four: the customization karma buys advancement at p. 68's prices, an expertise too
   add('expertise', `${s(spend.expertise, 'expertise')} bought with karma`, spend.expertise * n0(cr, 'advance.expertise'), 'skills')
+  // CRB Hong Kong p. 154: a focus is used only once bonded, for the Karma the Magical Goods table gives (p. 168; its
+  // catalog `karma`, by Force: the line's rating), when fociBondKarma is on
+  if (flag(cr, 'fociBondKarma')) add('foci', 'Foci bonded', b.purchases.filter(x => isFocus(entryOf(x, data)))
+    .reduce((t, x) => t + (rated(entryOf(x, data)?.attrs.karma, ratingOf(x, entryOf(x, data))).n ?? 0) * x.qty, 0), 'gear')
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
@@ -422,10 +426,20 @@ export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number): { poin
   const expPoints = num(cr, 'skillPointsExpertise')
   for (const sk of b.skills) {
     if (sk.spec && !take(sk.points > 0, n0(cr, 'skillPointsSpec'))) karma++
+    // (a further specialization, Exotic Weapons' or with Expanded Specializations: priced as the first)
+    for (const _ of sk.specs ?? []) if (!take(sk.points > 0, n0(cr, 'skillPointsSpec'))) karma++
     if (sk.expertise && (expPoints === undefined || !take(sk.points > 0, expPoints))) expertise++
   }
   return { points, karma, expertise }
 }
+
+/** Whether a skill may have several specializations: Exotic Weapons (CRB Hong Kong p. 95), or any with the Sixth World
+ *  Companion's Expanded Specializations (p. 153, expandedSpecializations). */
+export const manySpecs = (data: Sr6Data, cr: CreationRules, skill: string) =>
+  !!flag(cr, 'expandedSpecializations') || normName(data.skills[skill]?.name ?? '') === 'exotic weapons'
+
+/** A focus (CRB Hong Kong pp. 154–155, 294: the catalog's Foci category). */
+export const isFocus = (e?: Sr6Entry) => !!e && /\bfoci\b/i.test(e.attrs.category ?? '')
 
 /** Every budget, as the editor's budget panel shows them. */
 export function allBudgets(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Sr6Budgets {

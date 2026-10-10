@@ -61,7 +61,9 @@ export interface Sr6Purchase {
   uid: string; kind: PurchaseKind; id?: string; name?: string; cost?: number; avail?: number; essence?: number; rating?: number
   qty: number; grade?: string; worn?: true; bonuses?: Bonus[]; note?: string; accessories: Sr6Purchase[]; snapshot?: Sr6Entry
 }
-export interface Sr6Skill { id: string; points: number; karma: number; spec?: string; expertise?: string }
+/** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
+ *  Expanded Specializations, p. 153) */
+export interface Sr6Skill { id: string; points: number; karma: number; spec?: string; expertise?: string; specs?: string[] }
 export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | 'language'; native?: true; points: number; karma: number }
 /** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes).
  *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */

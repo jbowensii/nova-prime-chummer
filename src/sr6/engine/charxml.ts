@@ -43,7 +43,7 @@ function buildXml(b: Sr6Build): string {
     ...CP_POOLS.map(pool => el('cp', { pool, points: b.cp[pool] })),
     ...b.lifepath.map(m => el('lifemodule', { id: m.id }, Object.entries(m.choices).map(([index, pick]) => el('choice', { index, pick })).join(''))),
     ...SR6_ATTRS.map(id => el('attribute', { id, ...b.attributes[id] })),
-    ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
+    ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise, specs: s.specs?.length ? s.specs.join('; ') : undefined })),
     ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.martialArts.map(martialXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
     ...b.sins.map(sinXml),
@@ -193,7 +193,8 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
     out.attributes[oneOf(e.getAttribute('id'), SR6_ATTRS, 'attribute')!] = { points: num(e, 'points', 0), adjust: num(e, 'adjust', 0), karma: num(e, 'karma', 0) }
   }, label, fix)
   out.skills = each(kids(b, 'skill'), e => def({ id: e.getAttribute('id') ?? '', points: num(e, 'points', 0), karma: num(e, 'karma', 0),
-    spec: str(e, 'spec'), expertise: str(e, 'expertise') }), label, fix)
+    spec: str(e, 'spec'), expertise: str(e, 'expertise'),
+    specs: str(e, 'specs')?.split(/;\s*/).map(x => x.trim()).filter(Boolean) }), label, fix)
   out.knowledge = each(kids(b, 'knowledge'), readKnowledge, label, fix)
   out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
   out.picks = each(kids(b, 'pick'), readPick, label, fix)

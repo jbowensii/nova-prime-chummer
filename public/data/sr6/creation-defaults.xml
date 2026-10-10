@@ -22,6 +22,9 @@
   <setting key="sensitiveSystemQuality" value="crb.sensitive-system" source="CRB-HK" page="78"/>
   <setting key="sensitiveSystemEssence" value="2" source="CRB-HK" page="78"/>
   <setting key="attributeMaxFloor" value="2" source="CRB-HK" page="76"/>
+  <setting key="languageMax" value="3" source="CRB-HK" page="99"/>
+  <setting key="fociForcePerMagic" value="5" source="CRB-HK" page="154"/>
+  <setting key="fociBondKarma" value="true" source="CRB-HK" page="154"/>
   <setting key="improvedAbilityPower" value="crb.improved-ability-skill" source="CRB-HK" page="157"/>
   <setting key="improvedAbilityFactor" value="1.5" source="CRB-HK" page="157"/>
   <setting key="manyTalentsQuality" value="swc.many-talents" source="SWC" page="134"/>
@@ -130,6 +133,8 @@
   <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>
   <setting key="highStrengthDamage" value="false" source="SWC" page="150"/>
   <setting key="suprathyroidStacks" value="false" source="SWC" page="149"/>
+  <setting key="expandedSpecializations" value="false" source="SWC" page="153"/>
+  <setting key="unrestrictedSkillRanks" value="false" source="SWC" page="153"/>
   <setting key="strengthDamageStep1" value="7" source="SWC" page="150"/>
   <setting key="strengthDamageStep2" value="10" source="SWC" page="150"/>
   <!-- Sum to ten (SWC) -->

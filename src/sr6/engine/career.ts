@@ -7,8 +7,8 @@
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
 import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { aptitudeSkills, attrMax, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
-import { num, type CreationRules } from './creation'
+import { aptitudeSkills, attrMax, manySpecs, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
+import { flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
@@ -44,7 +44,8 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     }
     case 'spec': case 'expertise': {
       const s = b.skills.find(x => x.id === a.target)
-      if (s) s[a.op] = a.name; else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
+      if (s && a.op === 'spec' && s.spec && s.spec !== a.name) s.specs = [...s.specs ?? [], a.name]
+      else if (s) s[a.op] = a.name; else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
       return
     }
     case 'knowledge': b.knowledge.push(structuredClone(a.line)); return
@@ -180,7 +181,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'skill': {
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
-      const cur = s ? skillRank(s) : 0, cap = num(cr, 'advance.skillMax')
+      // (the Sixth World Companion's Unrestricted Skill Ranks, p. 153: no cap after creation)
+      const cur = s ? skillRank(s) : 0, cap = flag(cr, 'unrestrictedSkillRanks') ? undefined : num(cr, 'advance.skillMax')
       // CRB Hong Kong p. 70: the aptitude quality lets the selected skill go as far above the cap as it does at creation
       // (10 instead of 9); one whose note names no skill, any one skill
       const up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0), named = aptitudeSkills(data, cr, b)
@@ -194,7 +196,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // skill.specUntrained, skill.expertiseSpec, skill.expertiseRank)
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
-      if (s?.[a.op]) no('already-known')
+      // (a further specialization: Exotic Weapons', CRB Hong Kong p. 95, or any with Expanded Specializations, SWC p. 153)
+      if (s?.[a.op] && !(a.op === 'spec' && manySpecs(data, cr, a.target))) no('already-known')
       if (!a.name.trim()) no('needs-name')
       return a.op === 'spec' ? { label: `${skillName(a.target)}: ${a.name}`, karma: need('karmaSpec') }
         : { label: `${skillName(a.target)} expertise: ${a.name}`, karma: need('advance.expertise') }

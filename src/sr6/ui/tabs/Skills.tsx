@@ -9,7 +9,7 @@ import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Sr6Ref } from '../EntryRef'
 import { br, poolOn } from '../../print/view'
-import { notesText } from '../../engine/budgets'
+import { manySpecs, notesText } from '../../engine/budgets'
 
 /** A text box with suggestions that commits on Enter or leaving it ('' clears). */
 export function Suggest({ value, label, options, onCommit }: { value: string; label: string; options: string[]; onCommit: (v: string | null) => void }) {
@@ -56,7 +56,11 @@ export function SkillsTab() {
                 {pool ? br(pool.dp, poolOn(d, sk.id)?.dp) : ''}{pool?.specDp !== undefined && <div className="muted small">{pool.spec} {br(pool.specDp, poolOn(d, sk.id)?.specDp)}</div>}</td>
               {/* (a specialization's card: its skill's, with the specializations the book lists; the box's focus opens it) */}
               <td><Sr6Ref kind="skills" id={sk.id} tabbable={false}><Suggest label={`${sk.name} specialization`} value={s?.spec ?? ''} options={sk.specs}
-                onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></Sr6Ref></td>
+                onCommit={v => act({ op: 'spec', target: sk.id, spec: v })} /></Sr6Ref>
+                {/* (Exotic Weapons, CRB Hong Kong p. 95, or any skill with Expanded Specializations, SWC p. 153: more, `; `-separated) */}
+                {(s?.specs?.length || (s?.spec && manySpecs(data, cr, sk.id))) && <div><Suggest label={`${sk.name} more specializations`} value={(s?.specs ?? []).join('; ')} options={[]}
+                  onCommit={v => act({ op: 'specs', target: sk.id, specs: (v ?? '').split(/;\s*/) })} />
+                  {pool?.more?.map(m => <div key={m.spec} className="muted small">{m.spec} {m.dp}</div>)}</div>}</td>
               <td><Sr6Ref kind="skills" id={sk.id} tabbable={false}><Suggest label={`${sk.name} expertise`} value={s?.expertise ?? ''} options={sk.specs}
                 onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })} /></Sr6Ref></td>
             </tr>

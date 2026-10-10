@@ -20,6 +20,8 @@ export type Op =
   | { op: 'skill'; target: string; pool: 'points' | 'karma'; delta: number }
   | { op: 'spec'; target: string; spec: string | null }
   | { op: 'expertise'; target: string; expertise: string | null }
+  /** a skill's specializations past the first (Exotic Weapons; Expanded Specializations) */
+  | { op: 'specs'; target: string; specs: string[] }
   /** add a quality, or set the level, karma or note (the attribute or skill it is for) of one taken (`uid`: that line;
    *  else the quality's line). A quality that names its choice (`Exceptional (Attribute)`) may be taken again, for
    *  another one. */
@@ -153,6 +155,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!s.points && !s.karma) b.skills = b.skills.filter(x => x !== s)
       return OK
     }
+    case 'specs': {
+      const v = [...new Set(op.specs.map(x => x.trim().slice(0, 80)).filter(Boolean))].slice(0, 20)
+      let s = b.skills.find(x => x.id === op.target)
+      if (!s) {
+        if (!data.skills[op.target]) return no('unknown-entry')
+        if (!v.length) return OK
+        b.skills.push(s = { id: op.target, points: 0, karma: 0 })
+      }
+      if (v.length) s.specs = v; else delete s.specs
+      if (!s.points && !s.karma && !s.spec && !s.expertise && !s.specs) b.skills = b.skills.filter(x => x !== s)
+      return OK
+    }
     case 'spec': case 'expertise': {
       // on a skill without a rank, or an expertise without a specialization: taken (Review's skill.specUntrained, skill.expertiseSpec)
       const v = op.op === 'spec' ? op.spec : op.expertise
@@ -164,7 +178,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       if (v) s[op.op] = v; else delete s[op.op]
       // a line left with no rank, specialization nor expertise goes
-      if (!s.points && !s.karma && !s.spec && !s.expertise) b.skills = b.skills.filter(x => x !== s)
+      if (!s.points && !s.karma && !s.spec && !s.expertise && !s.specs) b.skills = b.skills.filter(x => x !== s)
       return OK
     }
     case 'quality': {
