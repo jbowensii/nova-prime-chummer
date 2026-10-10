@@ -33,7 +33,10 @@ export function QualitiesTab() {
             aria-label={`${v?.name ?? q.id} note`} onBlur={e => { if (e.target.value.trim() !== (q.note ?? '')) act({ op: 'quality', id: q.id, uid: q.uid, note: e.target.value }) }} />
             {want && <div className={named ? 'muted small' : 'err small'}>{named ? `For ${named}` : `Name the ${want}`}</div>}</td>
           <td>{v?.perLevel ? <Stepper label={`${v.name} level`} value={q.level} min={1} max={v.maxLevel} onChange={level => act({ op: 'quality', id: q.id, uid: q.uid, level })} /> : ''}</td>
-          <td className="num">{q.free ? 'free' : v?.karma == null ? '?' : v.karmaMax != null
+          <td className="num">{q.free ? 'free' : v?.karma == null ? '?' : v.karmaSteps?.length
+            ? <select aria-label={`${v.name} karma`} value={qualityCost(q, v) / (v.perLevel ? q.level : 1)} onChange={e => act({ op: 'quality', id: q.id, uid: q.uid, karma: Number(e.target.value) })}>
+              {v.karmaSteps.map(k => <option key={k} value={Math.abs(k)}>{Math.abs(k)}</option>)}</select>
+            : v.karmaMax != null
             ? <Stepper label={`${v.name} karma`} value={qualityCost(q, v) / (v.perLevel ? q.level : 1)} min={Math.abs(v.karma)} max={Math.abs(v.karmaMax)} onChange={karma => act({ op: 'quality', id: q.id, uid: q.uid, karma })} />
             : `${positive ? '−' : '+'}${n(qualityCost(q, v))}`}</td>
           <td>{!q.free && <button className="btn small quiet" onClick={() => act({ op: 'quality', remove: q.uid })}>Remove</button>}</td>
@@ -57,7 +60,7 @@ export function QualitiesTab() {
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive')).map(q => ({
           id: q.id, name: q.name, disabled: !qualityChoice(q.name) && b.qualities.some(x => x.id === q.id), ...cardOf(c, 'qualities', q.id),
-          meta: `${q.karma == null ? '?' : q.karma}${q.karmaMax != null ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
+          meta: `${q.karma == null ? '?' : q.karmaSteps?.length ? q.karmaSteps.join(' or ') : q.karma}${q.karmaMax != null && !q.karmaSteps?.length ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
           price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(), label: <House c={c} source={data.entry('qualities', q.id)?.source ?? ''} />,
         }))} />
       </Modal>

@@ -241,7 +241,10 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules, host?: 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
  *  taken for (kept within the range; the lowest when it isn't set). */
 export function qualityCost(q: Sr6Quality, v: Sr6QualityView): number {
-  const lo = Math.abs(v.karma ?? 0), each = v.karmaMax != null && q.karma != null ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma)) : lo
+  // (a price line listing its prices, `7 or 12 Karma`: one of them, the highest at or below the karma it was taken for)
+  const steps = v.karmaSteps?.map(Math.abs).sort((a, b) => a - b)
+  const lo = Math.abs(v.karma ?? 0), each = steps?.length ? (q.karma == null ? steps[0] : [...steps].reverse().find(k => k <= q.karma!) ?? steps[0])
+    : v.karmaMax != null && q.karma != null ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma)) : lo
   return each * (v.perLevel ? q.level : 1)
 }
 

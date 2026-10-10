@@ -5,7 +5,7 @@
 // Magic or Resonance (p. 78). The qualities, skills and numbers here are made up.
 import { expect, test } from 'vitest'
 import { apply, type Op } from '../../src/sr6/engine/actions'
-import { attrMax, essenceBudget } from '../../src/sr6/engine/budgets'
+import { attrMax, essenceBudget, qualityCost } from '../../src/sr6/engine/budgets'
 import { preview } from '../../src/sr6/engine/career'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { validateSr6 } from '../../src/sr6/engine/rules'
@@ -93,6 +93,18 @@ test('Incompetent: no ranks in its skill; not for a Magic or Resonance skill the
   const caster = runner('full')
   take(caster, 'crb.clumsy-skill', 'Hexing')
   expect(codes(caster)).not.toContain('skill.incompetent')
+})
+
+test('a quality priced in listed steps (`7 or 12 Karma`) costs one of them, never one between', () => {
+  const s = setup(), ch = runner()
+  s.data.qualities['crb.knack'] = { ...s.data.qualities['crb.knack'], karma: 7, karmaMax: 12, karmaSteps: [7, 12] }
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.knack', level: 1 })
+  expect(qualityCost(ch.build.qualities[0], s.data.qualities['crb.knack'])).toBe(7)
+  expect(act(ch, s, { op: 'quality', id: 'crb.knack', uid: 'q1', karma: 9 })).toEqual({ ok: false, reason: 'karma-range' })
+  expect(act(ch, s, { op: 'quality', id: 'crb.knack', uid: 'q1', karma: 12 })).toEqual({ ok: true })
+  expect(qualityCost(ch.build.qualities[0], s.data.qualities['crb.knack'])).toBe(12)
+  ch.build.qualities[0].karma = 10  // (an older file's in-between value: the step below)
+  expect(qualityCost(ch.build.qualities[0], s.data.qualities['crb.knack'])).toBe(7)
 })
 
 test('Sensitive System: ware Essence times the factor (cyberware and bioware, not other kinds); an error with Magic', () => {

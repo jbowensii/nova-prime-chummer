@@ -60,7 +60,8 @@ export interface Sr6MetatypeView {
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
 /** granted: never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
 export interface Sr6QualityChoice { category: string; count: number; max: number | null }
-export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number
+/** karmaSteps: the prices it is bought at when its price line lists them (`7 or 12 Karma`), never one between */
+export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; karmaSteps?: number[]; perLevel: boolean; maxLevel: number; page: number
   category?: string; granted?: boolean; choices?: Sr6QualityChoice[]
   /** not one of the six qualities a runner may take at creation (its text says so) */
   uncounted?: boolean }
@@ -173,6 +174,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   // (a quality path's bare step shows with its path: `Gestalt: Step 2`)
   const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.attrs.group ? `${e.attrs.group}: ${e.name}` : e.name, positive: e.attrs.kind !== 'negative',
     karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page,
+    ...(e.attrs.karmaSteps ? { karmaSteps: e.attrs.karmaSteps.split(/\s+/).map(Number).filter(Number.isFinite) } : {}),
     ...(e.attrs.category ? { category: e.attrs.category } : {}), ...(e.attrs.granted === 'true' ? { granted: true } : {}),
     ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
     ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',

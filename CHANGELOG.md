@@ -44,6 +44,9 @@
   foci only for the Awakened, no more than Magic, none of Force above it, their Force together at most Magic × 5, and
   each bonded for its Karma out of the customization Karma (pp. 154, 168).
 - The Sixth World Companion's Expanded Specializations and Unrestricted Skill Ranks (p. 153), switches, off.
+- A quality whose price line lists its prices (Bilko Contacts' and Import/Export's `7 or 12`, `10 or 14 Karma`, Seattle
+  pp. 327–328; `3, 6 or 9 Karma`) is bought at one of them, chosen from a list, never a value between; a range (`2 to
+  20 Karma`) keeps its stepper. The importer writes the listed prices as `karmaSteps`.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

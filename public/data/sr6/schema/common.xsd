@@ -430,6 +430,8 @@
       <!-- karma: the lowest price printed, karmaMax: the highest when it prints a range or several (Phobia: by rarity) -->
       <xs:attribute name="karma" type="xs:integer"/>
       <xs:attribute name="karmaMax" type="xs:integer"/>
+      <!-- the prices it is bought at when its price line lists them (`7 or 12 Karma`: "7 12"), never a value between -->
+      <xs:attribute name="karmaSteps" type="xs:string"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
       <!-- the list it is printed in (`Returned Soldier power`); granted: never bought on its own, only granted (by a

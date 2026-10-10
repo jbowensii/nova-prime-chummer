@@ -201,7 +201,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (level !== 1 && !v.perLevel) return no('no-levels')
       if (level < 1) return no('below-one')
       if (level > v.maxLevel && v.perLevel) return no('max-level')
-      if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax))) return no('karma-range')
+      if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax)
+        || (v.karmaSteps?.length && !v.karmaSteps.map(Math.abs).includes(op.karma)))) return no('karma-range')
       if (taken && !again) { taken.level = level; if (op.karma !== undefined) taken.karma = op.karma }
       else b.qualities.push({ uid: newId(), id: op.id, level, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
       return OK
