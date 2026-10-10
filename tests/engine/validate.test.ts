@@ -35,6 +35,8 @@ test.each<[string, (ch: Character) => void]>([
   // a deck but no DNI (CRB p.212)
   ['skill.requiresDni', ch => { ch.build.skills = [{ id: 'cracking', rating: 1, specs: [] }]; ch.build.amps = [amp('d', 'cyberdeck', [])] }],
   // an RCC without VR access from cyberware (CRB p.62)
+  // spells aren't equipment (CRB p.178)
+  ['amp.spellItem', ch => { ch.build.items = [{ uid: 's', kind: 'spell', name: 'Zap' }]; ch.build.amps = [{ ...amp('e', 'equipment', []), linkedItem: 's' }] }],
   ['rig.requiresVr', ch => { ch.build.amps = [amp('r', 'cyberware', [{ ref: 'rcc', value: 2 }])] }],
   ['essence.dead', ch => { ch.build.amps = [1, 2, 3, 4, 5, 6].map(i => amp(`c${i}`, 'cyberware', [])) }],
   ['vehicle.armor', ch => { ch.build.amps = [amp('v', 'vehicle', [{ ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }, { ref: 'vehicle-armor' }], { vehicle: 'small-drone' })] }], // made-up body 2

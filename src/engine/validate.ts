@@ -111,6 +111,10 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     }
     if (a.type === 'equipment' && !(a.linkedItem && b.items.some(i => i.uid === a.linkedItem)))
       add('amp.noItem', 'error', path, `${a.name}: an Equipment amp needs its item bought first.`, 60)
+    // spells aren't equipment and can't be made Amps (p.178); complex forms follow the spell rules (CG p.9)
+    const linkedKind = a.type === 'equipment' ? b.items.find(i => i.uid === a.linkedItem)?.kind : undefined
+    if (linkedKind === 'spell' || linkedKind === 'complex-form')
+      add('amp.spellItem', 'error', path, `${a.name}: a ${linkedKind === 'spell' ? 'spell' : 'complex form'} isn’t equipment and can’t be made an Amp; a stronger one is a new ${linkedKind === 'spell' ? 'spell' : 'complex form'}.`, 178)
     if (a.type === 'adept' && !allRefs.has('awk-adept')) add('adept.requiresAwakened', 'error', path, `${a.name}: adept powers need the Awakened amp with the Adept option.`, 58)
     if (a.type === 'vehicle' && a.vehicle) {
       const body = (c.vehicles.get(a.vehicle) ?? a.chassis)?.body ?? 0
@@ -204,7 +208,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     const path = `items.${i.uid}`
     if (i.catalogId && !c.items.has(i.catalogId)) gone(path, i.name, i.snapshot) ?? add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && i.price < 0) add('item.negativePrice', 'error', path, `${i.name}: a price below 0 would pay the runner; it counts as 0.`, 83)
-    else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
+    else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 84)
     // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
     if (i.over && !/\bshield\b/i.test(i.name))
       add('armor.stack', 'warning', path, `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`, 148)
