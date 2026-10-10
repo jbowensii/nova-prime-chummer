@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import type { PurchaseKind } from '../../model/character'
 import { entryOf } from '../../engine/budgets'
+import { ratingEdge } from '../../engine/derive'
 import { useSr6Editor } from '../editor'
 import { ACCESSORY_KINDS, isAccessory, PurchaseSection, social } from '../Picker'
 
@@ -11,10 +12,22 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [['gear', 'Other gear'], ['electr
 const band = (v: number | null) => (v === null ? '—' : String(v))
 
 export function GearTab() {
-  const { ch, d, data, act } = useSr6Editor()
+  const { ch, d, data, cr, act } = useSr6Editor()
   const [custom, setCustom] = useState(false)
   const [name, setName] = useState(''), [kind, setKind] = useState<PurchaseKind>('gear'), [cost, setCost] = useState(''), [avail, setAvail] = useState('')
-  const ar = (uid: string) => { const w = d.attackRatings.weapons.find(x => x.uid === uid); return w && `AR ${w.bands.map(band).join('/')}` }
+  // the Attack Rating against a target's Defense Rating: who gains Edge at each range band (CRB Hong Kong p. 45)
+  const [dr, setDr] = useState('')
+  const target = dr.trim() === '' ? null : Number(dr)
+  const edgeAt = (bands: (number | null)[]) => {
+    if (target === null || !Number.isFinite(target)) return ''
+    const e = bands.map(v => ratingEdge(v, target, cr))
+    return e.every(x => x === null) ? '' : ` · Edge ${e.map(x => (x === null ? '—' : x > 0 ? `+${x}` : x < 0 ? `${x}` : '0')).join('/')}`
+  }
+  const ar = (uid: string) => {
+    const w = d.attackRatings.weapons.find(x => x.uid === uid)
+    return w && `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}`
+  }
+  const u = d.unarmedDamage
   const close = () => { setCustom(false); setName(''); setCost(''); setAvail('') }
   const add = () => { if (!act({ op: 'purchase', kind, custom: { name: name.trim(), cost: Number(cost) || 0, avail: Number(avail) || 0, essence: 0 } })) close() }
   return (
@@ -22,7 +35,9 @@ export function GearTab() {
       <div className="row"><h2 style={{ margin: 0 }}>Gear</h2><span className="spacer" />
         <button className="btn small quiet" onClick={() => setCustom(true)}>Custom item…</button></div>
       <PurchaseSection kind="weapons" title="Weapons" one="a weapon" detail={x => ar(x.uid)} accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
-        hint={`Unarmed: AR ${d.attackRatings.unarmed}.`} />
+        hint={`Unarmed: AR ${d.attackRatings.unarmed}${u ? `, DV ${u.dv}${u.physical ? 'P' : 'S'}` : ''}${edgeAt([d.attackRatings.unarmed])}.`} />
+      <label className="inline">Target’s Defense Rating <input type="number" min={0} value={dr} aria-label="Target’s Defense Rating"
+        onChange={e => setDr(e.target.value)} /> <span className="muted">shows who gains Edge at each range band: + you, − the target (CRB p. 45{cr.get('stackingAdvantage')?.value === true ? '; Stacking Advantage, SWC p. 144' : ''})</span></label>
       <PurchaseSection kind="armor" title="Armor" one="armor" bonuses detail={x => social(entryOf(x, data)?.attrs.social)}
         hint={`Defense Rating ${d.defenseRating} and Social Rating ${d.socialRating} with the armor worn.`} />
       <PurchaseSection kind="electronics" title="Electronics" one="electronics" bonuses />

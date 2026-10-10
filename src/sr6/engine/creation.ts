@@ -25,7 +25,7 @@ export interface CreationCatalog {
 }
 
 /** The groups, in the order the creation rules form shows them. */
-export const CREATION_GROUPS = ['General', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values']
+export const CREATION_GROUPS = ['General', 'Karma prices', 'Advancement', 'Nuyen', 'Sum to ten', 'Point buy', 'Karma build', 'Metatypes', 'Lifepath', 'Augmentation grades', 'Derived values', 'Optional rules']
 const GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 const AWAKENED = (Object.keys(MAGIC_KIND_LABELS) as MagicKind[]).filter(k => k !== 'mundane')
 
@@ -109,7 +109,21 @@ export const CREATION_KEYS: CreationKey[] = [
     ['monitorDivisor', 'Condition monitor: the attribute divided by (rounded up)'], ['initiativeDice', 'Initiative dice'],
     ['initiativeDiceMax', 'Most initiative dice (unset: no cap)'],
     ['astralInitiativeDice', 'Astral initiative dice'], ['specDice', 'Dice for a specialization'], ['expertiseDice', 'Dice for an expertise'],
-    ['untrainedPenalty', 'Dice off the attribute for an untrained skill']]),
+    ['untrainedPenalty', 'Dice off the attribute for an untrained skill'],
+    ['overflowPerBody', 'Damage Overflow boxes per point of Body'],
+    ['attributeAugmentMax', 'Most an attribute’s augmented value is above its natural one (unset: no cap)'],
+    ['skillAugmentMax', 'Most a skill’s dice pool is raised by bonuses (unset: no cap)'],
+    ['monitorMinimum', 'Fewest boxes a quality can lower a condition monitor to (unset: no floor)'],
+    ['matrixColdDice', 'VR initiative, cold sim: dice added to the usual ones'], ['matrixHotDice', 'VR initiative, hot sim: dice added to the usual ones'],
+    ['moveWalk', 'Metres for a Move'], ['moveSprint', 'Metres for a Sprint'], ['moveSprintPerHit', 'Sprint: metres more per hit'],
+    ['unarmedDV', 'Unarmed Damage Value (Stun)'],
+    ['arDrEdgeGap', 'Attack Rating against Defense Rating: the lead that gains a point of Edge']]),
+  { key: 'meleeArStrength', label: 'Strength adds to a melee weapon’s Attack Rating', type: 'bool', group: 'Derived values', methods: [] },
+  // the books' optional rules (each off unless the table turns it on; their pages in RUNNER_RULE_KEYS and the defaults)
+  { key: 'stackingAdvantage', label: 'Stacking Advantage: a lead of twice the gap gains 2 Edge', type: 'bool', group: 'Optional rules', methods: [] },
+  { key: 'strengthInCloseCombat', label: 'Close Combat rolls Strength; Agility goes into the melee Attack Ratings', type: 'bool', group: 'Optional rules', methods: [] },
+  { key: 'highStrengthDamage', label: 'High Strength adds to melee and unarmed Damage Values', type: 'bool', group: 'Optional rules', methods: [] },
+  ...n('Optional rules', [], [['strengthDamageStep1', 'High Strength: Strength for +1 Damage Value'], ['strengthDamageStep2', 'High Strength: Strength for +2 Damage Value']]),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
   { key: 'dermalDepositsQuality', label: 'Dermal Deposits quality: +1 Defense Rating (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
   { key: 'charismaticDefenseQuality', label: 'Charismatic Defense quality: Defense Rating from Charisma, not Body (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
@@ -254,6 +268,26 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   { key: 'maxNuyenLeft', about: 'CRB p. 68' },
   { key: 'skillPointsExpertise', about: 'An expertise with skill points instead of the customization Karma' },
   { key: 'qualityMaxCount', about: 'CRB p. 66' },
+  // the core rulebook's rules (CRB Hong Kong, the latest printing), each a number a table may change
+  { key: 'initiativeDiceMax', about: 'Never more than 5D6 Initiative Dice (CRB Hong Kong p. 39); off: no cap' },
+  { key: 'overflowPerBody', about: 'Dead at (Body × 2) boxes of Overflow (CRB Hong Kong p. 121)' },
+  { key: 'attributeAugmentMax', about: 'An adjusted attribute is never above its rank + 4 (CRB Hong Kong p. 37); off: no cap' },
+  { key: 'skillAugmentMax', about: 'A skill’s augmented increase is never above +4 (CRB Hong Kong p. 39); off: no cap' },
+  { key: 'monitorMinimum', about: 'Glass Jaw lowers the Stun monitor down to a minimum of 2 (CRB Hong Kong p. 76)' },
+  { key: 'matrixColdDice', about: 'VR cold sim: +1D6 on the usual 1D6 (CRB Hong Kong p. 179)' },
+  { key: 'matrixHotDice', about: 'VR hot sim: +2D6 on the usual 1D6 (CRB Hong Kong p. 179)' },
+  { key: 'moveWalk', about: 'A Move is 10 metres (CRB Hong Kong p. 42)' },
+  { key: 'moveSprint', about: 'A Sprint starts at 15 metres (CRB Hong Kong p. 44)' },
+  { key: 'moveSprintPerHit', about: 'A Sprint goes 1 metre further a hit (CRB Hong Kong p. 44)' },
+  { key: 'unarmedDV', about: 'Base unarmed damage is 2S (CRB Hong Kong p. 94)' },
+  { key: 'arDrEdgeGap', about: 'A lead of 4 or more gains a point of Edge (CRB Hong Kong p. 45)' },
+  { key: 'meleeArStrength', about: 'Characters add their Strength to a melee weapon’s Attack Rating (CRB Hong Kong p. 39)' },
+  // optional rules, off by default
+  { key: 'stackingAdvantage', about: 'Sixth World Companion p. 144, optional (off): 2 Edge for a lead of 8' },
+  { key: 'strengthInCloseCombat', about: 'Sixth World Companion p. 150, optional (off)' },
+  { key: 'highStrengthDamage', about: 'Sixth World Companion p. 150, optional (off)' },
+  { key: 'strengthDamageStep1', about: 'High Strength: +1 at Strength 7 (Sixth World Companion p. 150)' },
+  { key: 'strengthDamageStep2', about: 'High Strength: +2 at Strength 10 (Sixth World Companion p. 150)' },
 ]
 
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with

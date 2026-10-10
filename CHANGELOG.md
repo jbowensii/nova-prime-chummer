@@ -1,5 +1,23 @@
 # Release notes
 
+## Unreleased: the core rulebook's rules as Hong Kong prints them, the books' optional rules as switches
+
+**Shadowrun 6**
+- Derived values the core rulebook prints, each from a creation setting shipped at the Hong Kong City Edition's number
+  (Table setup → Creation rules, and a runner's Creation rules): Damage Overflow is Body × 2 (p. 121, `overflowPerBody`);
+  no more than 5 initiative dice (p. 39, `initiativeDiceMax` 5, shipped); an augmented attribute at most its natural
+  rating + 4 and a skill's bonus dice at most +4 (pp. 37, 39: what is left out is named on the attribute's card and in
+  Review); Glass Jaw leaves at least 2 Stun boxes (p. 76); Matrix initiative AR, VR cold sim (+1D6) and hot sim (+2D6)
+  from the best commlink's Data Processing or a technomancer's Logic (pp. 179, 189); movement 10 m, Sprint 15 m + 1 m a
+  hit (pp. 42, 44); unarmed damage 2S, Physical with Dermal Deposits or bone lacing and density (pp. 71, 94, 286, 291);
+  a spellcaster's Attack Rating, Magic + the tradition's attribute (p. 132); a melee weapon's Attack Rating with
+  Strength (p. 39; a whip's with Reaction, p. 250); each weapon's skill and dice pool on the Gear tab and the sheet.
+- The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
+- The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
+  unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.
+- Optional rules, off unless the table turns them on: the Sixth World Companion's Stacking Advantage (p. 144), Rolling
+  Strength instead of Agility in Close Combat and High Strength Adds to Damage (p. 150).
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers

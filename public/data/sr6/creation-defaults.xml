@@ -6,7 +6,7 @@
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
      as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, skillPointsExpertise
      (an expertise at creation is bought with the customization karma at advance.expertise: CRB p. 66, step four, at p. 68's
-     prices; owner, 2026-10-09), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
+     prices; owner, 2026-10-09), advance.powerPoint, advance.karmaToNuyenRate,
      advance.nuyenToKarmaRate, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
 <sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">
   <setting key="startingKarma" value="50" source="CRB" page="66"/>
@@ -89,6 +89,26 @@
   <setting key="specDice" value="2" source="CRB" page="92"/>
   <setting key="expertiseDice" value="3" source="CRB" page="92"/>
   <setting key="untrainedPenalty" value="1" source="CRB" page="93"/>
+  <!-- the core rulebook's rules as the latest printing (Hong Kong City Edition, CRB-HK) prints them -->
+  <setting key="initiativeDiceMax" value="5" source="CRB-HK" page="39"/>
+  <setting key="overflowPerBody" value="2" source="CRB-HK" page="121"/>
+  <setting key="attributeAugmentMax" value="4" source="CRB-HK" page="37"/>
+  <setting key="skillAugmentMax" value="4" source="CRB-HK" page="39"/>
+  <setting key="monitorMinimum" value="2" source="CRB-HK" page="76"/>
+  <setting key="matrixColdDice" value="1" source="CRB-HK" page="179"/>
+  <setting key="matrixHotDice" value="2" source="CRB-HK" page="179"/>
+  <setting key="moveWalk" value="10" source="CRB-HK" page="42"/>
+  <setting key="moveSprint" value="15" source="CRB-HK" page="44"/>
+  <setting key="moveSprintPerHit" value="1" source="CRB-HK" page="44"/>
+  <setting key="unarmedDV" value="2" source="CRB-HK" page="94"/>
+  <setting key="arDrEdgeGap" value="4" source="CRB-HK" page="45"/>
+  <setting key="meleeArStrength" value="true" source="CRB-HK" page="39"/>
+  <!-- optional rules (off: a table turns them on): the Sixth World Companion's Ways to Play -->
+  <setting key="stackingAdvantage" value="false" source="SWC" page="144"/>
+  <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>
+  <setting key="highStrengthDamage" value="false" source="SWC" page="150"/>
+  <setting key="strengthDamageStep1" value="7" source="SWC" page="150"/>
+  <setting key="strengthDamageStep2" value="10" source="SWC" page="150"/>
   <!-- Sum to ten (SWC) -->
   <setting key="sumToTenTarget" value="10" source="SWC" page="27"/>
   <setting key="letterValue:A" value="4" source="SWC" page="27"/>

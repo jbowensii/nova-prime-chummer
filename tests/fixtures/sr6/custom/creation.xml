@@ -118,4 +118,5 @@
   <setting key="specDice" value="4" source="CRB" page="78"/>
   <setting key="expertiseDice" value="5" source="CRB" page="78"/>
   <setting key="untrainedPenalty" value="2" source="CRB" page="78"/>
+  <setting key="overflowPerBody" value="1" source="CRB" page="66"/>
 </sr6:creation>

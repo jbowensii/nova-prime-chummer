@@ -186,7 +186,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   when the activity is one, else the activity's words in `when`; `derived:<name>` Defense Rating (`defense`, `defense-astral`, `social`),
   initiative (`initiative`, `initiative-dice`, `matrix-initiative`, `matrix-initiative-dice`), condition monitor boxes
   (`physical-monitor`, `stun-monitor`, `matrix-monitor`, `overflow`), `composure`, `judge-intentions`, `memory`, `lift`, `movement`,
-  `minor-actions`, `major-actions`, `hardened-armor`, `damage-reduction`, `power-points`; `matrix:<name>` a Matrix attribute
+  `minor-actions`, `major-actions`, `hardened-armor`, `damage-reduction`, `power-points`, the unarmed attack's `unarmed-ar`,
+  `unarmed-dv` (`add`, or `set` from a table's `3P`: the bone lacing table, CRB Hong Kong p. 286) and `unarmed-damage`
+  (`set` `P`: `unarmed combat damage becomes Physical`); `matrix:<name>` a Matrix attribute
   (`attack`, `sleaze`, `data-processing`, `firewall`, `choice`) or `matrix:overwatch`; `item:<field>` the item's own
   stat, or on an add-on (accessory, ammunition, vehicle mod) the stat of the item it fits (`ar`, a value a range band
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
@@ -609,8 +611,9 @@ aren't the server's in `rules`). A runner without its own choices has the table'
 **The standard settings ship with the app**: `public/data/sr6/creation-defaults.xml` holds the core rulebook's numbers
 (source `CRB`) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its
 printed page; numbers only, no book text. A new server can build runners with every method a book prints right away.
-Left unset, because no book prints them: `karmaToNuyenMax`, `skillPointsExpertise`,
-`initiativeDiceMax`, `advance.powerPoint`, `advance.karmaToNuyenRate`, `advance.nuyenToKarmaRate`, and the karma build
+The core rulebook's rules ship as the latest printing (the Hong Kong City Edition, source `CRB-HK`) prints them; the
+books' optional rules ship off (`false`, with their book and page), for a table to turn on. Left unset, because no book
+prints them: `karmaToNuyenMax`, `skillPointsExpertise`, `advance.powerPoint`, `advance.karmaToNuyenRate`, `advance.nuyenToKarmaRate`, and the karma build
 (`karmaBuild.*`, `magicKarma:*`: no SR6 book describes one, so Karma build can't be picked until the table enters its
 own). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes and to the Companion's karma for the 25
 metavariants and metasapients its import writes (`swc.<id>`); a metatype from another book needs its own.
@@ -741,11 +744,24 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | Derived values | `monitorBase` | number | optional | Condition monitor: boxes before the attribute |
 | Derived values | `monitorDivisor` | number | optional | Condition monitor: the attribute divided by (rounded up) |
 | Derived values | `initiativeDice` | number | optional | Initiative dice |
-| Derived values | `initiativeDiceMax` | number | optional | Most initiative dice, after bonuses, astral too (unset: no cap) |
+| Derived values | `initiativeDiceMax` | number | optional | Most initiative dice, after bonuses, astral and Matrix too (CRB Hong Kong p. 39: 5; unset: no cap) |
 | Derived values | `astralInitiativeDice` | number | optional | Astral initiative dice |
 | Derived values | `specDice` | number | optional | Dice for a specialization |
 | Derived values | `expertiseDice` | number | optional | Dice for an expertise |
 | Derived values | `untrainedPenalty` | number | optional | Dice off the attribute for an untrained skill |
+| Derived values | `overflowPerBody` | number | optional | Damage Overflow boxes per point of Body (CRB Hong Kong p. 121: dead at Body × 2; 2), plus what adds to them (Will to Live); unset: Body counts none |
+| Derived values | `attributeAugmentMax` | number | optional | Most an attribute's augmented value is above its natural one (CRB Hong Kong p. 37: 4); the always-on and the bracketed totals alike, a penalty never; the attribute card and Review say what was left out (unset: no cap) |
+| Derived values | `skillAugmentMax` | number | optional | Most a skill's dice pool is raised by bonuses, a specialization's bonus within it (CRB Hong Kong p. 39: 4; unset: no cap) |
+| Derived values | `monitorMinimum` | number | optional | Fewest boxes a condition monitor is lowered to (Glass Jaw, CRB Hong Kong p. 76: 2; unset: no floor) |
+| Derived values | `matrixColdDice`, `matrixHotDice` | number | optional | VR initiative dice on top of the usual `initiativeDice` (CRB Hong Kong p. 179: 1 cold sim, 2 hot sim, within the 5D6); with what adds Matrix initiative dice. Matrix initiative is shown when the runner has a commlink (its D/F array's Data Processing) or is a technomancer (Logic, p. 189); AR initiative is the physical one |
+| Derived values | `moveWalk`, `moveSprint`, `moveSprintPerHit` | number | optional | Metres for a Move (CRB Hong Kong p. 42: 10), a Sprint (p. 44: 15) and a Sprint's metres more a hit (1), plus what adds to movement |
+| Derived values | `unarmedDV` | number | optional | Unarmed Damage Value (CRB Hong Kong p. 94: 2S). Physical with the `dermalDepositsQuality` (p. 71) or an effect `derived:unarmed-damage` (bone lacing, bone density: pp. 286, 291); an effect `derived:unarmed-dv` `set` (the bone lacing table's `3P`) raises it to that value, `add` adds (unset: none shown) |
+| Derived values | `arDrEdgeGap` | number | optional | The lead of an Attack Rating over a Defense Rating, or the other way, that gains a point of Edge (CRB Hong Kong p. 45: 4): the Gear tab's target Defense Rating shows it at each range band |
+| Derived values | `meleeArStrength` | true/false | optional | Strength adds to a melee weapon's Attack Rating (CRB Hong Kong p. 39: true; a whip, whose AR note says so, Reaction: p. 250). A melee weapon: an Attack Rating at Close only, no modes or ammo |
+| Optional rules | `stackingAdvantage` | true/false | optional | The Sixth World Companion's Stacking Advantage (SWC p. 144, off): a lead of twice `arDrEdgeGap` gains 2 Edge, never more |
+| Optional rules | `strengthInCloseCombat` | true/false | optional | Rolling Strength instead of Agility in Close Combat (SWC p. 150, off): Close Combat's pool uses Strength, and Agility goes into the melee and unarmed Attack Ratings in Strength's place |
+| Optional rules | `highStrengthDamage` | true/false | optional | High Strength Adds to Damage (SWC p. 150, off): +1 to the unarmed and melee Damage Values from Strength `strengthDamageStep1` (7), +2 from `strengthDamageStep2` (10) |
+| Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
 | Derived values | `charismaticDefenseQuality` | quality id | optional | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
 | Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath | the metatype's karma (one per catalog metatype) |
 | Point buy | `pointBuy.startRating:<kind>` | number | point buy | starting Magic or Resonance per awakened or emerged kind |

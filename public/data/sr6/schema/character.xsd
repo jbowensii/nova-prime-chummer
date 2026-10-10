@@ -417,6 +417,7 @@
     <xs:attribute name="target" use="required">
       <xs:simpleType><xs:union memberTypes="c:Attr"><xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="initDice"/><xs:enumeration value="defense"/><xs:enumeration value="physical"/><xs:enumeration value="stun"/><xs:enumeration value="overflow"/><xs:enumeration value="skill"/>
+        <xs:enumeration value="unarmedAR"/><xs:enumeration value="unarmedDV"/><xs:enumeration value="movement"/><xs:enumeration value="matrixInitDice"/>
       </xs:restriction></xs:simpleType></xs:union></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="skill" type="xs:string"/>

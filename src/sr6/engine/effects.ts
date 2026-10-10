@@ -42,7 +42,8 @@ export function effectValue(v: string | undefined): { value: number; perRating?:
 
 const DERIVED_BONUS: Record<string, Bonus['target']> = {
   'derived:defense': 'defense', 'derived:initiative-dice': 'initDice', 'derived:physical-monitor': 'physical',
-  'derived:stun-monitor': 'stun', 'derived:overflow': 'overflow',
+  'derived:stun-monitor': 'stun', 'derived:overflow': 'overflow', 'derived:unarmed-ar': 'unarmedAR', 'derived:unarmed-dv': 'unarmedDV',
+  'derived:movement': 'movement', 'derived:matrix-initiative-dice': 'matrixInitDice',
 }
 
 /** The entries an entry grants or works as (its <link> parts): by id, else by the printed name in the kind it names
@@ -109,7 +110,8 @@ const DERIVED_WORDS: Record<string, string> = { defense: 'Defense Rating', 'defe
   initiative: 'Initiative', 'initiative-dice': 'Initiative Dice', 'matrix-initiative': 'Matrix Initiative', 'matrix-initiative-dice': 'Matrix Initiative Dice',
   'physical-monitor': 'Physical boxes', 'stun-monitor': 'Stun boxes', 'matrix-monitor': 'Matrix boxes', overflow: 'Damage Overflow boxes', composure: 'Composure',
   'judge-intentions': 'Judge Intentions', memory: 'Memory', lift: 'Lift/Carry', movement: 'movement', 'minor-actions': 'Minor Actions',
-  'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction' }
+  'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction',
+  'unarmed-ar': 'unarmed Attack Rating', 'unarmed-dv': 'unarmed Damage Value', 'unarmed-damage': 'unarmed damage' }
 const ITEM_WORDS: Record<string, string> = { ar: 'Attack Rating', dv: 'Damage Value', 'speed-interval': 'Speed Interval', 'top-speed': 'Top Speed' }
 const words = (s: string) => s.replace(/-/g, ' ')
 const title = (s: string) => words(s).replace(/(^| )\w/g, m => m.toUpperCase())

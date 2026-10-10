@@ -613,6 +613,10 @@ def _rules(s, kind, sw, when, edge_actions, label):
 
     for m in re.finditer(r"(?P<v>\d+|an?|one|two|three)\s+(?:additional |extra |bonus )?(?:damage )?overflow box", low):
         out.append(_fx("derived:overflow", "add", _val(m.group("v"), low), sw, when))
+    # unarmed damage made Physical (Dermal Deposits, bone lacing and bone density: CRB Hong Kong pp. 71, 286, 291)
+    if (m := re.search(r"\bunarmed (?:combat |melee )?(?:damage|attacks?)\b[^.;]{0,40}?\bphysical\b", low)) and not _negated(low, m.start()) \
+            and not re.search(r"\b(?:not|never|n't)\b", m.group(0)):
+        out.append(_fx("derived:unarmed-damage", "set", "P", sw, when))
     for m in re.finditer(r"(?:(?:ar|attack ratings?)[^.;]{0,40}?|^|: ?)(?P<l>(?:[+-]?\d+|-)(?:/(?:[+-]?\d+|-)){4})(?!\d)", low):
         vals = m.group("l").split("/")
         if any(v.startswith(("+", "-")) and v != "-" for v in vals):  # (a modifier per range band: `+2/–/–1/–2/–3`)
@@ -845,7 +849,7 @@ def links(text, kind=None):
 COLUMNS = {"bod": "bod", "agi": "agi", "rea": "rea", "str": "str", "wil": "wil", "log": "log", "int": "int", "cha": "cha",
            "edg": "edg", "mag": "mag", "res": "res"}
 STAT_COLUMNS = {"ar": "item:ar", "attack rating": "item:ar", "attack ratings": "item:ar", "dv": "item:dv",
-                "defense rating": "derived:defense", "defense": "derived:defense", "unarmed dv": "item:dv", "unarmed ar": "item:ar",
+                "defense rating": "derived:defense", "defense": "derived:defense", "unarmed dv": "derived:unarmed-dv", "unarmed ar": "derived:unarmed-ar",
                 "matrix init bonus": "derived:matrix-initiative", "init bonus": "derived:initiative",
                 "initiative bonus": "derived:initiative", "dr": "derived:defense", "defense rating bonus": "derived:defense"}
 
@@ -866,6 +870,14 @@ def table(header, row, kind):
     for c, v in cells.items():
         t = STAT_COLUMNS.get(c)
         v = _norm(v or "")
+        if c == "body" and "unarmed dv" in h and re.fullmatch(r"\+\d+", v):
+            # (a table of unarmed values, the bone lacing table, CRB Hong Kong p. 286: its BODY is extra Body when resisting
+            # physical damage, as its text says)
+            out.append(_fx("test:damage-resistance", "add", v.lstrip("+"), "conditional", "when resisting physical damage"))
+            continue
+        if t == "derived:unarmed-dv" and (dm := re.fullmatch(r"(\d+)\s*[PS]", v)):
+            out.append(_fx(t, "set", dm.group(1)))  # (`3P`: the unarmed Damage Value it gives, HK p. 286; `+1`: added)
+            continue
         if not t or not v or v in ("-", "—") or (kind == "armor" and t == "derived:defense"):
             continue  # (an armor's own Defense Rating is its defense field, not an effect)
         if t == "item:ar" and "/" in v and re.fullmatch(r"(?:[+-]\d+|0|-)(?:/(?:[+-]\d+|0|-)){4}", v):
@@ -1160,8 +1172,10 @@ def apply(files, texts_xml, regrouped=""):
                 if std:
                     found.append(("link", {"rel": "as", "kind": "weapons", "name": std.capitalize()}, None))
             tab = by_name.get(_key(nm), [])
-            if not tab and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
-                tab = [(h, r) for h, r in by_name.get(_key(pm.group(1)), [])]  # (`Cyberjack (Rating 1)`: the row `Rating 1`)
+            # (`Cyberjack (Rating 1)`: the row `Rating 1`; `Bone Lacing (Plastic)`, whose own row is its price's: the row
+            # `Plastic` of the Bone Lacing table)
+            if not any(table(h, r, kind) for h, r in tab) and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
+                tab = tab + [(h, r) for h, r in by_name.get(_key(pm.group(1)), [])]
             if kind == "ammotypes":  # (an ammo type's AR and DV: modifiers of the weapon it is loaded in)
                 at = dict(re.findall(r'(\w+)="([^"]*)"', attrs))
                 tab = tab or [(["AR", "DV"], [_unesc(at.get("ar", "")), _unesc(at.get("dv", ""))])]

@@ -26,6 +26,10 @@ async function shape(): Promise<CreationCatalog> {
 }
 const without = (key: string) => XML.replace(new RegExp(`\\s*<setting key="${key.replace(/[.]/g, '\\.')}"[^>]*/>`), '')
 
+/** the settings the fixture leaves unset (each test sets its own) */
+const UNSET = ['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 'contactPairPerCha', 'contactRatingMax',
+  'attributeAugmentMax', 'skillAugmentMax', 'monitorMinimum', 'matrixColdDice', 'matrixHotDice', 'moveWalk', 'moveSprint', 'moveSprintPerHit',
+  'unarmedDV', 'arDrEdgeGap', 'meleeArStrength', 'stackingAdvantage', 'strengthInCloseCombat', 'highStrengthDamage', 'strengthDamageStep1', 'strengthDamageStep2']
 test('the fixture sets every key (grades: standard and alpha only; no initiative dice cap), typed, with its source and page', async () => {
   const { rules, errors } = parseCreation(XML)
   expect(errors).toEqual([])
@@ -33,7 +37,7 @@ test('the fixture sets every key (grades: standard and alpha only; no initiative
   expect(keys).toContain('metatypeKarma:crb.stonefolk')
   expect(keys).toContain('magicKarma:mystic-adept')
   expect(keys).not.toContain('magicKarma:mundane')
-  for (const k of keys) expect(rules.has(k), k).toBe(!/^grade:(beta|delta|used):/.test(k) && !['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 'contactPairPerCha', 'contactRatingMax'].includes(k))
+  for (const k of keys) expect(rules.has(k), k).toBe(!/^grade:(beta|delta|used):/.test(k) && !UNSET.includes(k))
   expect(num(rules, 'startingKarma')).toBe(40)
   expect(num(rules, 'grade:alpha:essence')).toBe(0.7)
   expect(flag(rules, 'oneAttributeAtMax')).toBe(true)

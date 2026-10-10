@@ -103,7 +103,11 @@ export function Sr6Sheet() {
             <table className="sr6-derived-t"><tbody>
               {([['Initiative', init(d.initiative, d.on.initiative)], ['Astral initiative', init(d.astralInit, d.on.astralInit)], ['Defense Rating', br(d.defenseRating, d.on.defenseRating)], ['Social Rating', br(d.socialRating, d.on.socialRating)],
                 ['Composure', br(d.composure, d.on.composure)], ['Judge Intentions', br(d.judgeIntentions, d.on.judgeIntentions)], ['Memory', br(d.memory, d.on.memory)], ['Lift/Carry', br(d.liftCarry, d.on.liftCarry)],
-                ['Drain', d.drain], ['Fading', d.fading]] as [string, string | number | undefined][])
+                ['Drain', d.drain], ['Fading', d.fading], ['Spell Attack Rating', br(d.spellAttackRating, d.on.spellAttackRating)],
+                ['Matrix initiative (AR)', d.matrixInit && init(d.matrixInit.ar, d.on.matrixInit?.ar)],
+                ['Matrix initiative (VR cold)', d.matrixInit && init(d.matrixInit.cold, d.on.matrixInit?.cold)],
+                ['Matrix initiative (VR hot)', d.matrixInit && init(d.matrixInit.hot, d.on.matrixInit?.hot)],
+                ['Movement', d.movement ? `${d.movement.walk} m / Sprint ${d.movement.sprint} m +${d.movement.perHit} a hit` : undefined]] as [string, string | number | undefined][])
                 .filter(([, v]) => v !== undefined).map(([l, v]) => <tr key={l}><td>{l}</td><td><b>{v}</b></td></tr>)}
             </tbody></table>
             <h2>Karma & nuyen</h2>
@@ -114,12 +118,13 @@ export function Sr6Sheet() {
         <section>
           <h2>Weapons</h2>
           <table className="sr6-weapons">
-            <thead><tr><th>Weapon</th><th>DV</th><th>Attack Ratings</th></tr></thead>
+            <thead><tr><th>Weapon</th><th>DV</th><th>Attack Ratings</th><th>Dice pool</th></tr></thead>
             <tbody>
-              <tr><td>Unarmed</td><td /><td>{d.attackRatings.unarmed}</td></tr>
+              <tr><td>Unarmed</td><td>{d.unarmedDamage ? `${d.unarmedDamage.dv}${d.unarmedDamage.physical ? 'P' : 'S'}` : ''}</td><td>{d.attackRatings.unarmed}</td>
+                <td>{d.pools.find(p => p.label === 'Close Combat')?.dp ?? ''}</td></tr>
               {lines('weapons').map(x => { const w = d.attackRatings.weapons.find(a => a.uid === x.uid)
-                return <tr key={x.uid}><td><b>{nameOf(x)}</b>{acc(x)}</td><td>{entryOf(x, data)?.attrs.dv ?? ''}</td>
-                  <td>{w ? w.bands.map(band).join('/') : ''}</td></tr> })}
+                return <tr key={x.uid}><td><b>{nameOf(x)}</b>{acc(x)}</td><td>{entryOf(x, data)?.attrs.dv ?? ''}{w?.dvBonus ? ` (+${w.dvBonus})` : ''}</td>
+                  <td>{w ? w.bands.map(band).join('/') : ''}</td><td>{w?.pool ?? ''}</td></tr> })}
             </tbody>
           </table>
         </section>

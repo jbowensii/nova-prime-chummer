@@ -30,9 +30,10 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
 
 /** What a ware, power or item adds, entered by the player (or read from its catalog entry's effects, budgets.ts
  *  lineBonuses): an attribute, initiative dice, Defense Rating (dermal plating), Physical or Stun condition monitor boxes
- *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes or a skill's dice pool (skill: its catalog id). perRating: × the
- *  line's rating. */
-export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill'; skill?: string; value: number; perRating?: true
+ *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes, a skill's dice pool (skill: its catalog id), the unarmed Attack
+ *  Rating or Damage Value (bone lacing, CRB Hong Kong p. 286), movement metres or Matrix initiative dice (Hack & Slash's
+ *  Matrix initiative booster). perRating: × the line's rating. */
+export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill' | 'unarmedAR' | 'unarmedDV' | 'movement' | 'matrixInitDice'; skill?: string; value: number; perRating?: true
   /** only on some tests or situations (`sound-based Con tests`): in the bracketed total (owner decision 2026-10-10) */
   when?: string
   /** only on the tests of a specialization (`Climbing`): added to that specialization's pool when the runner has it, else
@@ -47,7 +48,7 @@ export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' |
 /** the switch both games' effects share (src/engine/effects.ts) */
 export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
-export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'stun', 'overflow', 'skill']
+export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'stun', 'overflow', 'skill', 'unarmedAR', 'unarmedDV', 'movement', 'matrixInitDice']
 
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']

@@ -22,6 +22,12 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(fx("Effect: -1 Reaction, +2 Logic", "gear"),  # a drug's effect line: while it acts
                          [("attr:rea", "add", "-1", "activated", None), ("attr:log", "add", "2", "activated", None)])
 
+    def test_unarmed_damage_made_physical(self):
+        for text in ("It changes your unarmed combat damage to Physical.", "Your unarmed combat damage becomes Physical.",
+                     "Your Unarmed Melee attacks inflict Physical damage."):
+            self.assertIn(("derived:unarmed-damage", "set", "P", None, None), fx(text), text)
+        self.assertEqual(fx("Your unarmed attacks do not inflict Physical damage."), [])
+
     def test_defense_monitors_actions(self):
         self.assertEqual(fx("It grants +3 Defense Rating."), [("derived:defense", "add", "3", None, None)])
         self.assertEqual(fx("You gain 1 level of natural Armor."), [("derived:defense", "add", "1", None, None)])
@@ -89,6 +95,14 @@ class TableTest(unittest.TestCase):
         self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.table(["JACK", "MATRIX INIT BONUS"], ["Rating 1", "+1"], "augmentations")],
                          [("derived:matrix-initiative", "1")])
         self.assertEqual(effects.table(["WEAPON", "DV", "AR"], ["Zapper", "3P", "9/7/—/—/—"], "weapons"), [])  # its own stats
+        # a table of unarmed values (a made-up lacing): its BODY is Body when resisting physical damage, its DV set or added
+        lacing = ["LACING", "BODY", "DEFENSE RATING", "UNARMED DV", "UNARMED AR"]
+        self.assertEqual([(a["target"], a["op"], a["value"], a.get("when")) for _, a, _ in effects.table(lacing, ["Tin", "+2", "+1", "5P", "+3"], "augmentations")],
+                         [("test:damage-resistance", "add", "2", "when resisting physical damage"), ("derived:defense", "add", "1", None),
+                          ("derived:unarmed-dv", "set", "5", None), ("derived:unarmed-ar", "add", "3", None)])
+        self.assertEqual([(a["target"], a["op"], a["value"]) for _, a, _ in effects.table(lacing, ["Tin", "+2", "+1", "+1", "+3"], "augmentations")][2],
+                         ("derived:unarmed-dv", "add", "1"))
+        self.assertEqual(effects.table(["DRONE", "BODY", "ARMOR"], ["Buzzer", "+2", "3"], "vehicles"), [])  # a vehicle's Body
 
 
 class ApplyTest(unittest.TestCase):
@@ -111,6 +125,14 @@ class ApplyTest(unittest.TestCase):
         self.assertIn("This boost provides a +1 increase to Reaction.", txt)
         self.assertIn('<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:dv" op="add" value="-1"/>', out["ammotypes.xml"])
         self.assertEqual(out["rules.xml"], files["rules.xml"])  # rules hold no effects
+
+    def test_a_variants_row_in_its_familys_table(self):
+        # `Glitter Lacing (Tin)`: its own row prices it; its effects are the row `Tin` of the family's table (invented)
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n  <augmentation id="gl-tin" source="X" page="3"><name>Glitter Lacing (Tin)</name></augmentation>\n</sr6:data>\n'}
+        regrouped = ('| BODYWARE | ESSENCE | COST |\n|---|---|---|\n| Glitter Lacing (Tin) | 0.5 | 100 |\n\n'
+                     '| LACING | BODY | DEFENSE RATING | UNARMED DV | UNARMED AR |\n|---|---|---|---|---|\n| Tin | +1 | +1 | 3P | +1 |\n')
+        out, _ = effects.apply(files, "", regrouped)
+        self.assertIn('<effect target="derived:defense" op="add" value="1"/><effect target="derived:unarmed-dv" op="set" value="3"/>', out["augmentations.xml"])
 
     def test_a_shared_description_is_split_by_name(self):
         t = ("Turbo engines go fast. Increase Acceleration by 3. Economy engines save money. Decrease Acceleration by 2.")
