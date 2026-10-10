@@ -90,6 +90,10 @@ class TableTest(unittest.TestCase):
         self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.table(["JACK", "MATRIX INIT BONUS"], ["Rating 1", "+1"], "augmentations")],
                          [("derived:matrix-initiative", "1")])
         self.assertEqual(effects.table(["WEAPON", "DV", "AR"], ["Zapper", "3P", "9/7/—/—/—"], "weapons"), [])  # its own stats
+        # (a later printing's renamed header: read by its words)
+        self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.table(["JACK", "VR MATRIX INIT DICE BONUS"], ["Rating 1", "+1"], "augmentations")],
+                         [("derived:matrix-initiative-dice", "1")])
+        self.assertEqual(effects.table(["JACK", "INIT NOTES"], ["Rating 1", "+1"], "augmentations"), [])
 
 
 class ApplyTest(unittest.TestCase):

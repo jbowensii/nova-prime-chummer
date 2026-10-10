@@ -864,6 +864,15 @@ STAT_COLUMNS = {"ar": "item:ar", "attack rating": "item:ar", "attack ratings": "
                 "initiative bonus": "derived:initiative", "dr": "derived:defense", "defense rating bonus": "derived:defense"}
 
 
+def _init_column(c):
+    """An initiative bonus column by its words, under any printing's header (`MATRIX INIT BONUS`, a later printing's
+    `VR MATRIX INIT DICE BONUS`): `derived:[matrix-]initiative[-dice]`; None for another column."""
+    w = c.split()
+    if "bonus" not in w or not any(x in ("init", "initiative") for x in w):
+        return None
+    return f"derived:{'matrix-' if 'matrix' in w else ''}initiative{'-dice' if 'dice' in w or 'die' in w else ''}"
+
+
 def table(header, row, kind):
     """Effects of one table row: an attribute table of six or more attribute columns printing an infected type's (a
     quality's) maxima (`set`); a column naming a target whose cell is signed (`+2`, `–1`: a modifier, an ammo type's AR
@@ -878,7 +887,7 @@ def table(header, row, kind):
                 out.append(_fx(f"attr-max:{COLUMNS[c]}", "set", v))
         return out
     for c, v in cells.items():
-        t = STAT_COLUMNS.get(c)
+        t = STAT_COLUMNS.get(c) or _init_column(c)
         v = _norm(v or "")
         if not t or not v or v in ("-", "—") or (kind == "armor" and t == "derived:defense"):
             continue  # (an armor's own Defense Rating is its defense field, not an effect)

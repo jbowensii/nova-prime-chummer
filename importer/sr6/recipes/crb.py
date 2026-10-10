@@ -1475,16 +1475,38 @@ def _skill_choices(defn):
     return kids
 
 
-def _band_tier(rows):
-    """`tier(R; 1-3: R*10; …)` from a RATING | COST band table's rows (`1–3`, `Rating x 10¥`), or None."""
-    parts = []
+# a rating-band price table's columns by what they print, under any of the book's headers (a later printing adds an
+# AVAILABILITY column to the core rulebook's Explosive Packages: `RATING | AVAILABILITY | COST`)
+_BAND_COLUMNS = {"RATING": "rating", "COST": "cost", "AVAILABILITY": "avail", "AVAIL": "avail", "AVAIL.": "avail"}
+
+
+def _band_tier(rows, header=("RATING", "COST")):
+    """A rating-band price table read by its columns (_BAND_COLUMNS; RATING and COST required, any other column not a
+    band table's): (`tier(R; 1-3: R*10; …)` of the cost, the availability's tier or None, lowest rating, highest rating,
+    the availability's legality letter when every band prints the same one); None when it isn't one. A row naming an
+    item instead of a band (`Detonator Cap`) is the item's, not a band."""
+    cols = {_BAND_COLUMNS.get(" ".join(h.split()).upper()): i for i, h in enumerate(header)}
+    if None in cols or not {"rating", "cost"} <= set(cols):
+        return None
+    cost, avail, legal = [], [], set()
     for r in rows:
-        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", r[0] or "")
-        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", r[1] or "", re.I) if len(r) > 1 else None
-        if not b or not c:
+        cell = lambda k: (r[cols[k]] or "") if k in cols and cols[k] < len(r) else ""  # noqa: E731
+        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", cell("rating"))
+        if not b:
+            continue
+        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", cell("cost"), re.I)
+        a = re.fullmatch(r"\s*(\d+)\s*(?:\(([LIF])\)|([LIF]))?\s*", cell("avail"))
+        if not c or "avail" in cols and not a:
             return None
-        parts.append((int(b.group(1)), int(b.group(2)), f"{b.group(1)}-{b.group(2)}: R*{c.group(1).replace(',', '')}"))
-    return (f"tier(R; {'; '.join(p for _, _, p in parts)})", parts[0][0], parts[-1][1]) if parts else None
+        band = f"{b.group(1)}-{b.group(2)}"
+        cost.append((int(b.group(1)), int(b.group(2)), f"{band}: R*{c.group(1).replace(',', '')}"))
+        if a:
+            avail.append(f"{band}: {a.group(1)}")
+            legal.add(a.group(2) or a.group(3) or "")
+    if not cost:
+        return None
+    return (f"tier(R; {'; '.join(p for _, _, p in cost)})", f"tier(R; {'; '.join(avail)})" if avail else None,
+            cost[0][0], cost[-1][1], legal.pop() if len(legal) == 1 else "")
 
 
 def stated_items(bs, cat, offset, core=False):
@@ -1562,9 +1584,9 @@ def stated_items(bs, cat, offset, core=False):
             band = next(((d, t) for d in sec
                          for h, rows in ([(list(d.stats[0]), [list(x.values()) for x in d.stats])] if d.stats else [])
                          + _tables(d.text)
-                         if [x.upper() for x in h] == ["RATING", "COST"] and (t := _band_tier(rows))), None)
+                         if (t := _band_tier(rows, h))), None)
             if band:
-                (tb, (tier, lo, hi)), noun = band, b.name.split()[-1]
+                (tb, (tier, avail, lo, hi, legal)), noun = band, b.name.split()[-1]
                 stem = noun.lower().rstrip("s")
                 for d in sec:
                     if d is tb or d.row is not None or d.stats or d.type != "item":
@@ -1575,10 +1597,12 @@ def stated_items(bs, cat, offset, core=False):
                         continue  # (a detonator cap is used with them, it is none of them)
                     name = d.name if stem in d.name.lower() else f"{d.name} {noun}"
                     dp = max(1, d.page - offset)
+                    priced = {"avail": f"By rating ({tb.name})" + (f"({legal})" if legal else "")} if avail else {}
                     add("weapons", name, dp, {"category": categories.singular(tb.name) or "Explosive", "rating": f"{lo}–{hi}",
-                                              "cost": f"By rating ({tb.name})"},
+                                              "cost": f"By rating ({tb.name})", **priced},
                         [("formula", {"field": "cost"}, tier),
-                         ("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")],
+                         *([("formula", {"field": "avail"}, avail)] if avail else
+                           [("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")])],
                         d.text, aliases=[d.name] if name != d.name else ())
         for m in _CHOOSE_SENSE.finditer(text):
             for s in _LIST_SPLIT.split(m.group(1)):
