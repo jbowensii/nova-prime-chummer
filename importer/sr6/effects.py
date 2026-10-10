@@ -94,6 +94,11 @@ ACTIVITIES = [
     (r"assens\w*|astral combat", "astral"),
 ]
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
+# the core rulebook's standard weapon add-ons: a maker's own version named after one (`Colt Agent Special proprietary
+# laser sight`) works as it (owner decision 2026-10-10: a link, so the standard item's effects follow)
+STANDARD_ADDONS = ("laser sight", "smartgun system", "imaging scope", "silencer", "suppressor", "gas vent", "shock pad",
+                   "personalized grip", "bipod", "tripod", "periscope", "airburst link", "flashlight")
+SOFT_TYPES = ("autosoft", "skillsoft", "activesoft")
 DERIVED = {"defense rating": "defense", "astral defense rating": "defense-astral", "social defense rating": "social",
            "social rating": "social", "composure": "composure", "judge intentions": "judge-intentions",
            "memory": "memory", "lift": "lift", "lift/carry": "lift", "power point": "power-points", "power points": "power-points"}
@@ -180,8 +185,8 @@ def targets(phrase, kind=None):
         if (t, when) not in out:
             out.append((t, when))
     for m in re.finditer(r"(?:tests?|any test|tests?) using (?:your |their )?(" + _ATTR_RX + r")\b|\b(" + _ATTR_RX +
-                         r")[- ](?:based|linked)\b", p):
-        add(f"test:attr-{ATTRIBUTES[m.group(1) or m.group(2)]}", m.start(), m.end())
+                         r")[- ](?:based|linked)\b|\b(?:tests?|skills?|skill tests?) (?:that are |which are )?(?:linked|tied) to (?:the |your )?(" + _ATTR_RX + r")\b", p):
+        add(f"test:attr-{ATTRIBUTES[m.group(1) or m.group(2) or m.group(3)]}", m.start(), m.end())
     for m in re.finditer(r"\b(maximum|max)\b", p):
         pass
     for m in re.finditer(r"\btests? (?:that|which) (?:involve|use|uses) ((?:(?:" + _ATTR_RX + r")(?:,? or |,? and |,\s*)?)+)", p):
@@ -300,6 +305,8 @@ def _sw(s, label=""):
             return k, None
     for m in _CONDITION.finditer(low):
         words = _cond_words(s, m.start()) or ""
+        if re.match(r"(?:when|if|once) (?:this|the) [a-z]+ is (?:taken|chosen|selected|purchased|bought)\b", words):
+            continue  # (`When this way is taken`: the entry itself)
         if m.group(0) in ("involving", "related to", "that use", "used") and                 (targets(low[max(0, m.start() - 8):m.start()] + words) or any(re.search(rf"\b(?:{rx})\b", words) for rx, _ in ACTIVITIES)):
             continue  # (`tests involving grappling`, `… one of the four physical attributes`: which tests, not a condition)
         return "conditional", words
@@ -350,7 +357,7 @@ def read(text, kind=None, name=None):
         low_formula = False
         if role and not sw:
             sw = "conditional"
-        if (per := re.search(r"\b(?:each|every|per) (?:whole )?point of (?:your |their |the )?(?:own )?(?!rating|force|level)([a-z][a-z ]{2,25}?)\b(?=\s|,|$)", s, re.I)):
+        if (per := re.search(r"\b(?:each|every|per) (?:whole |two |three )?points? of (?:your |their |the )?(?:own )?(?!rating|force|level)([a-z][a-z ]{2,25}?)\b(?=\s|,|$)", s, re.I)):
             sw, when = "conditional", f"per point of {per.group(1).lower()}"  # (`each point of your Essence loss`: a formula)
             low_formula = True
         if kind in ("spells", "rituals", "complexforms") and sw in (None, "activated"):
@@ -623,7 +630,7 @@ def _rules(s, kind, sw, when, edge_actions, label):
     for m in re.finditer(r"(?<![\w/])(?P<v>[+-]\s?\d+)(?:d6)?\s*(?:(?:bonus |extra |additional )?(?:dice pool|dice|die)\s*"
                          r"(?:bonus|modifier|penalty|modifiers)?|bonus|modifier|penalty|points?)?"
                          r"(?:\s+(?:per|for each) (?:level|rating)(?: point)?(?: of [a-z ]+?)?)?(?: and [^.;]{0,25}?)?\s+(?:to|on|for|when|against)\s+"
-                         r"(?:all |any |your |their |the |its |his |her |a |each )*(?P<t>[^.;]*)", low):
+                         r"(?:all |any |your |their |the |its |his |her |a |each )*(?P<t>(?:(?![+-]\s?\d)[^.;])*)", low):
         if re.match(r"\s?\d+\s?d6", low[m.start("v"):]):
             continue
         t = re.split(r"\b(?:up to|allowed|provided|as long as)\b|\s(?:and\s+)?[+-]\s?\d+\s+(?:to|on)\b", m.group("t"))[0]  # (`+1 to DV and +2 to AR`: each its own)
@@ -1110,6 +1117,9 @@ def apply(files, texts_xml, regrouped=""):
                     text = got[0][1]
             if (pm := re.match(r"(.+?) \(([^()]+)\)", nm)) and len(text) < 200:
                 base, var = _key(pm.group(1)), _key(pm.group(2))
+                if var not in runins:  # (a label of the variant's words less one: `Synaptic Acceleration`)
+                    vw = set(var.split())
+                    var = next((k for k in runins if len(k.split()) >= 2 and set(k.split()) <= vw and len(vw - set(k.split())) <= 1), var)
                 got = [p for b, p in runins.get(var, ()) if b and (b in base or base in b)] or \
                     ([p for _, p in runins[var]] if len(runins.get(var, ())) == 1 else [])
                 got = sorted(got, key=len, reverse=True)  # (the label's line and the text's paragraph: the fuller)
@@ -1138,6 +1148,16 @@ def apply(files, texts_xml, regrouped=""):
                     elif a.get("book"):
                         a["ref"] = f"{a['book'].lower()}.{sl}"
                     a.pop("book", None)
+            if kind == "programs" and (pm := re.search(r' type="([^"]*)"', _unesc(attrs))) and pm.group(1).casefold() in SOFT_TYPES:
+                sk = _key(re.sub(r"\s*\(.*$", "", nm))
+                if sk in SKILLS:  # (an autosoft named for a skill gives it at its rating, the section's general rule)
+                    spec = re.search(r"\(([^()]+)\)", nm)
+                    found.append(_fx(f"skill:{sk.replace(' ', '-')}", "set", "R", spec=spec.group(1) if spec else None))
+            if kind == "weapons" and not any(t in ("effect", "link") for t, _, _ in found):
+                k = _key(nm)
+                std = next((a for a in STANDARD_ADDONS if k.endswith(" " + a) or k.endswith(" " + a + "s")), None)
+                if std:
+                    found.append(("link", {"rel": "as", "kind": "weapons", "name": std.capitalize()}, None))
             tab = by_name.get(_key(nm), [])
             if not tab and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
                 tab = [(h, r) for h, r in by_name.get(_key(pm.group(1)), [])]  # (`Cyberjack (Rating 1)`: the row `Rating 1`)

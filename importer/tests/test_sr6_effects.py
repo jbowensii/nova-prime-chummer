@@ -187,6 +187,17 @@ class DecisionsTest(unittest.TestCase):
         self.assertIn('<name>Zaplink</name><effect target="matrix:firewall" op="add" value="R"/>', out["gear.xml"])
         self.assertIn('<name>Zap-by-wire system (Rating 2)</name><effect target="attr:rea" op="add" value="R"/>', out["gear.xml"])
 
+    def test_an_autosoft_named_for_a_skill_and_a_makers_standard_add_on(self):
+        files = {"programs.xml": '<sr6:data kind="programs">\n  <program id="p1" source="X" page="1" type="autosoft"><name>Close Combat</name></program>\n</sr6:data>\n',
+                 "weapons.xml": '<sr6:data kind="weapons">\n  <weapon id="w1" source="X" page="2"><name>Zapco proprietary laser sight</name></weapon>\n</sr6:data>\n'}
+        out, _ = effects.apply(files, "", "")
+        self.assertIn('<effect target="skill:close-combat" op="set" value="R"/>', out["programs.xml"])
+        self.assertIn('<link rel="as" kind="weapons" name="Laser sight"/>', out["weapons.xml"])
+
+    def test_tests_linked_to_an_attribute_and_two_bonuses_in_a_sentence(self):
+        self.assertEqual(fx("It grants a +1 dice pool modifier to skill tests that are linked to Reaction as well as a +1 dice pool modifier to all Defense tests."),
+                         [("test:attr-rea", "add", "1", None, None), ("test:defense", "add", "1", None, None)])
+
     def test_a_listed_labels_remainder_is_its_own(self):
         regrouped = ('<!-- section {"name": "Zaps"} -->\n**Alpha Zap:** First lines of alpha.\n**Beta Zap:** First lines of beta.\n\n'
                      'The rest of alpha: +1 Logic.\n• **Overdrive:** +1 more.\n**Beta Zap:** First lines of beta, again.\n<!-- end -->\n')
