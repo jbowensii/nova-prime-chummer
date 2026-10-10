@@ -20,15 +20,35 @@ Import the books of both games again (Books → **Re-import all**) so every entr
 - An entry that grants another ("both forms gain the Built Tough quality", "1 free level of Rapid Healing") or works as
   another ("the same result as a Personalized Grip") links to it, and the app uses that entry's effects, so a later
   correction follows (owner decision 2026-10-10).
-- Every effect says how it's turned on (always, wireless, activated, sustained, on some tests) and how sure the reading
-  is; a reading from a sentence that sets a condition is shown, never applied. A player's own bonuses still override.
+- Every effect says how it's turned on (always, wireless, activated, sustained, on some tests: the condition's words)
+  and how sure the reading is. A player's own bonuses still override.
+- Totals as the books print them (owner decision 2026-10-10): the number shown first holds the always-on effects, and
+  the switchable and conditional ones are added in brackets, `Con 6 (9)`, `Agility 5 (7)`, on every sheet, Review and
+  the Skills tab. Attributes now show that way too (with their always-on bonuses, the switchable ones in brackets).
+- A bonus limited to a specialization (`+2 dice on climbing tests`) is added to that specialization's pool when the
+  runner has it, else to the skill's bracketed total.
+- Tests the book names by activity are stored as that activity's skill (grappling: Close Combat; escaping bonds,
+  balance: Athletics; haggling: Influence …), from the core rulebook's skill descriptions, with the specialization when
+  the activity is one.
+- A spell's or complex form's effect says whom it affects: the caster (counted while sustained, in brackets) or its
+  target(s) (stored on the spell, never counted on the caster). A spell's bonus per net hit is shown, not applied.
+- A statement a section makes of all its items applies to each (`Each cyberlimb adds one box to the Physical Condition
+  Monitor`: arms, legs, skull and torso; partial limbs are excepted). A variant priced from its base item (Body Shop's
+  transgenics: `Transgenic gills`) works as that bioware and uses its effects.
+- More phrasings read: several attributes raised together, Edge costs (`the cost of Edge actions … are increased by
+  one`, `Edge Boosts cost 1 less in cybercombat`), bonus Edge added to a pool, an action named by the test it is (`Edit
+  File`), Power Points, an artificial skill at the hardwire's rating, `the Magic attribute at 3`, a threshold lowered
+  (`subtracts its rating from the threshold of Toxin Resistance tests`), dice equal to a quality's level, a reduction
+  by the item's rating. What others' tests against you do (`Hearing tests to listen for your passage`) is not the
+  entry's. A variant printed under a bold label (`Endosymbionts (Halcyon)`) reads only its own paragraph.
 - Vehicle design options keep their Design Point cost (`dp`, `2 x Armor Rating`) as a cost, for a designer later.
 - Descriptions the effects rely on: one cut at a page break with a table between its halves gets its rest back
   (Cyberjack Boosters, Light emitters); a mentor spirit's Advantages and Disadvantages stay with it; the Companion's
   metagenic qualities each have their own text instead of the whole list's; a variant row gets the paragraph the book
   prints for it under its parent (Genotype Enhancement (NeoElastian)).
-- The Foundry export carries every effect (with how it's turned on and its condition) and every link; the condition
-  monitors take Stun and Overflow bonuses.
+- The Foundry export carries every effect (with how it's turned on, its condition, its specialization and whom it
+  affects) and every link, and both totals: `derived` (always-on) and `derivedOn` (switchable ones on), an attribute's
+  `switched`; the condition monitors take Stun and Overflow bonuses.
 
 **Shadowrun Anarchy 2.0: machine-readable effects**
 - What a narrative effect does is now an effect of its own kind (CRB p.59), at rating 0 so every book rating stays as

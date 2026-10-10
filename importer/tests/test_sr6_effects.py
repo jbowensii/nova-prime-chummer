@@ -118,6 +118,68 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(effects._own_part(t, "Other", ["Turbo", "Economy Engines"]), t)
 
 
+class DecisionsTest(unittest.TestCase):
+    """The owner's decisions of 2026-10-10, second round: activities as skills, specializations, condition words,
+    whom a spell affects, section-wide statements, a variant's base item, a variant's own paragraph."""
+
+    def test_activities_specializations_and_conditions(self):
+        self.assertEqual(fx("You gain a bonus Edge on all tests involving grappling, escaping bonds, or juggling."),
+                         [("skill:close-combat", "edge", "1", "conditional", "grappling"), ("skill:athletics", "edge", "1", "conditional", "escaping bonds")])
+        r = effects.read("Gain +2 dice on all climbing tests.")[0][1]
+        self.assertEqual((r["target"], r.get("spec"), r.get("switch"), r.get("confidence")), ("skill:athletics", "Climbing", None, None))
+        r = effects.read("Gain +1 die on Zapping tests while in the Matrix.")
+        self.assertEqual(r, [])  # (no vocabulary target: nothing)
+        r = effects.read("Gain +1 Perception while in the Matrix.")[0][1]
+        self.assertEqual((r["switch"], r["when"], r.get("confidence")), ("conditional", "while in the matrix", None))
+        self.assertEqual(fx("They suffer a -2 dice pool penalty to all tests involving one of the four physical attributes."),
+                         [("test:physical", "add", "-2", None, None)])
+
+    def test_spells_affect_their_target_or_caster(self):
+        a = effects.read("The subject's Agility increases by 1 for each net hit.", "spells")[0][1]
+        self.assertEqual((a["target"], a["value"], a["switch"], a["affects"]), ("attr:agi", "hits", "sustained", "target"))
+        a = effects.read("You gain +2 Defense Rating.", "spells")[0][1]
+        self.assertEqual((a["affects"], a["switch"]), ("caster", "sustained"))
+
+    def test_new_phrasings(self):
+        self.assertEqual(sorted(fx("Strength and Agility are increased by 2.")), [("attr:agi", "add", "2", None, None), ("attr:str", "add", "2", None, None)])
+        self.assertEqual(fx("It subtracts its rating from the threshold of Toxin Resistance tests."),
+                         [("test:toxin-resistance", "threshold", "-R", None, None)])
+        self.assertEqual(fx("You gain a Power Point."), [("derived:power-points", "add", "1", None, None)])
+        self.assertEqual(fx("They receive the Magic attribute at 3."), [("attr:mag", "set", "3", None, None)])
+        self.assertEqual(fx("The rating of the artificial skill equals the zapware rating."), [("skill:choice", "set", "R", None, None)])
+        self.assertEqual(fx("Its claw gains +1 to its Damage Value and +2 to its Attack Rating.", "weapons"),
+                         [("item:dv", "add", "1", None, None), ("item:ar", "add", "2", None, None)])
+        self.assertEqual(fx("Reduce the Handling of the vehicle by the system's rating.", "gear"), [("item:handling", "add", "-R", None, None)])
+        self.assertEqual(fx("Hearing tests to listen for your passage cannot gain or spend Edge."), [])  # (others' tests)
+        self.assertEqual(fx("Edge Boosts cost 1 less in cybercombat.")[0][:3], ("skill:cracking", "edge-cost", "-1"))
+
+    def test_section_statements_base_items_and_variant_paragraphs(self):
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n'
+                 '  <augmentation id="zap-arm" source="X" page="1" type="cyberware"><name>Zap Arm</name></augmentation>\n'
+                 '  <augmentation id="zap-foot" source="X" page="1" type="cyberware"><name>Zap Foot</name></augmentation>\n'
+                 '  <augmentation id="gills" source="X" page="2" type="bioware"><name>Gills</name></augmentation>\n'
+                 '  <augmentation id="tg-gills" source="X" page="3" type="bioware" essence="fifty percent more Essence than the base item"><name>Transgenic gills</name></augmentation>\n'
+                 '  <augmentation id="glow-a" source="X" page="4" type="bioware"><name>Glowbugs (Amber)</name></augmentation>\n'
+                 '  <augmentation id="glow-b" source="X" page="4" type="bioware"><name>Glowbugs (Blue)</name></augmentation>\n</sr6:data>\n'}
+        texts = ('<sr6:data kind="texts">\n  <text of="augmentations" id="gills">You gain +1 Athletics.</text>\n'
+                 '  <text of="augmentations" id="zap-foot">This zap foot does not add a box to the Physical Condition Monitor.</text>\n'
+                 '  <text of="augmentations" id="glow-a">Glowbugs live in you.\n**Amber:** You gain +1 Charisma.\n**Blue:** You gain +1 Logic.</text>\n</sr6:data>\n')
+        regrouped = ('<!-- section {"name": "Zap Limbs", "section": "Zap Limbs"} -->\nEach zap limb adds one box to the character\'s Physical '
+                     'Condition Monitor.\n<!-- end -->\n<!-- item {"name": "Zap Arm", "section": "Zap Limbs"} -->\n<!-- end -->\n'
+                     '<!-- item {"name": "Zap Foot", "section": "Zap Limbs"} -->\n<!-- end -->\n')
+        out, _ = effects.apply(files, texts, regrouped)
+        x = out["augmentations.xml"]
+        self.assertIn('<name>Zap Arm</name><effect target="derived:physical-monitor" op="add" value="1"/>', x)
+        self.assertNotIn('<name>Zap Foot</name><effect', x)  # (its own text excepts it)
+        self.assertIn('<name>Transgenic gills</name><link rel="as" kind="augmentations" name="gills" ref="gills"/>', x)
+        self.assertIn('<name>Glowbugs (Amber)</name><effect target="attr:cha" op="add" value="1"/></augmentation>', x)
+
+    def test_a_listed_labels_remainder_is_its_own(self):
+        regrouped = ('<!-- section {"name": "Zaps"} -->\n**Alpha Zap:** First lines of alpha.\n**Beta Zap:** First lines of beta.\n\n'
+                     'The rest of alpha: +1 Logic.\n• **Overdrive:** +1 more.\n**Beta Zap:** First lines of beta, again.\n<!-- end -->\n')
+        alpha = max((p for _, p in effects._runins(regrouped)["alpha zap"]), key=len)
+        self.assertIn("The rest of alpha: +1 Logic. Overdrive: +1 more.", alpha)
+
 class RegroupTest(unittest.TestCase):
     def test_part_headings_and_page_break_continuations(self):
         md = """<!-- page 10 -->
