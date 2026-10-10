@@ -50,6 +50,10 @@
 - More of the Sixth World Companion's optional rules, switches, off: Alternate Mystic Adept (p. 148), Twenty Questions'
   3 Karma at creation (p. 25), and Working for the Man and for the People (p. 153: 2,000¥ a Karma each way after
   creation, now each with its switch and its rate shipped).
+- The shipped creation settings cite the core rulebook's latest printing, the Hong Kong City Edition (`CRB-HK`), every
+  value checked against it (the one-attribute-at-maximum and adjustment rules p. 63, the initiative's 1D6 p. 67); the
+  first printing's two readings ship off with Hong Kong's pages (`availabilityCapIllegalOnly`, `karmaSpellsAtCreation`:
+  p. 68's footnote), and each optional rule on a runner's Creation rules names its book and page.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

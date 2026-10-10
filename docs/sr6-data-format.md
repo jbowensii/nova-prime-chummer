@@ -617,7 +617,8 @@ value, shown as locked with who locked it, and Review notes a choice set aside. 
 aren't the server's in `rules`). A runner without its own choices has the table's, as before.
 
 **The standard settings ship with the app**: `public/data/sr6/creation-defaults.xml` holds the core rulebook's numbers
-(source `CRB`) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its
+as its latest printing prints them (source `CRB-HK`, the Hong Kong City Edition's pages; every value checked against
+it) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its
 printed page; numbers only, no book text. A new server can build runners with every method a book prints right away.
 The core rulebook's rules ship as the latest printing (the Hong Kong City Edition, source `CRB-HK`) prints them; the
 books' optional rules ship off (`false`, with their book and page), for a table to turn on. Left unset, because no book
@@ -673,7 +674,7 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `contactRatingMax` | number | optional | Highest contact rating (with `contactKarma`; unset: Charisma) |
 | General | `manyTalentsQuality` | quality id | optional | Many Talents: two attributes at their maximum (SWC p. 134) |
 | General | `manySkillsQuality` | quality id | optional | Many Skills: two skills at the highest rank (SWC p. 134) |
-| General | `availabilityCapIllegalOnly` | bool | optional | The Availability cap holds only illegal gear (CRB first printing, 2019, p. 66; the later printings cap every item, so it ships unset) |
+| General | `availabilityCapIllegalOnly` | bool | optional | The Availability cap holds only illegal gear (the 2019 printing's p. 66; the later printings cap every item, so it ships `false`, CRB Hong Kong p. 66) |
 | General | `exceptionalQuality` | quality id | optional | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB Hong Kong p. 71), once per attribute (Review's `quality.choiceTwice`). When the quality carries its own `attr-max:choice` effect, that effect is what counts (never twice) |
 | General | `incompetentQuality` | quality id | optional | Incompetent (Skill) (CRB Hong Kong pp. 76–77): no ranks in the skill its note names, not a Magic skill without Magic nor Tasking without Resonance (`skill.incompetent`), that skill once (`quality.choiceTwice`) |
 | General | `sensitiveSystemQuality` | quality id | optional | Sensitive System (CRB Hong Kong p. 78): an error with a Magic or Resonance rating (`quality.sensitiveSystem`); cyberware, bioware and nanoware Essence times `sensitiveSystemEssence` (2) |

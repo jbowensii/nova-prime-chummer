@@ -307,17 +307,17 @@ export interface RuleLock { key: string; by: string }
 /** The OPTIONAL rules a runner may choose for itself on its Creation method tab (owner, 2026-10-09, as Commlink6 does):
  *  each with the book option it stands for. Any other setting stays the table's. */
 export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
-  { key: 'startingKarma', about: 'Prime runner: 100 (CRB p. 64); street level spends less' },
+  { key: 'startingKarma', about: '50 customization Karma (CRB Hong Kong p. 66); a prime runner doubles it (Levels of play)' },
   { key: 'contactKarma', about: 'The Sixth World Companion’s expanded contacts (SWC p. 161): off turns them off' },
   { key: 'contactPairPerCha', about: 'Expanded contacts: a contact’s pair cap' },
   { key: 'contactRatingMax', about: 'Expanded contacts: the hard cap' },
-  { key: 'maxAvailability', about: 'Elite runners (SWC p. 15): off lifts the cap' },
-  { key: 'availabilityCapIllegalOnly', about: 'The core rulebook’s first printing (p. 66)' },
-  { key: 'karmaSpellsAtCreation', about: 'Not in CRB p. 66’s list of what the customization Karma buys (off)' },
+  { key: 'maxAvailability', about: 'No gear of Availability 7 or higher at creation (CRB Hong Kong p. 66); the elite level lifts it' },
+  { key: 'availabilityCapIllegalOnly', about: 'The 2019 printing’s reading (p. 66); Hong Kong caps every item (off)' },
+  { key: 'karmaSpellsAtCreation', about: 'Spells and complex forms can’t be bought during character generation (CRB Hong Kong p. 68’s footnote; the 2019 printing had none): off' },
   { key: 'maxKarmaLeft', about: 'The City Editions (CRB Hong Kong p. 66)' },
-  { key: 'maxNuyenLeft', about: 'CRB p. 68' },
-  { key: 'skillPointsExpertise', about: 'An expertise with skill points instead of the customization Karma' },
-  { key: 'qualityMaxCount', about: 'CRB p. 66' },
+  { key: 'maxNuyenLeft', about: 'No more than 5,000 nuyen left after creation (CRB Hong Kong p. 68)' },
+  { key: 'skillPointsExpertise', about: 'An expertise with skill points instead of the customization Karma (no book prints it: the owner’s option)' },
+  { key: 'qualityMaxCount', about: 'No more than six qualities at creation (CRB Hong Kong p. 66)' },
   // the core rulebook's quality rules (CRB Hong Kong)
   { key: 'incompetentQuality', about: 'No ranks in the selected skill, selected once (CRB Hong Kong pp. 76–77)' },
   { key: 'sensitiveSystemQuality', about: 'No Magic or Resonance; ware Essence doubled (CRB Hong Kong p. 78)' },
