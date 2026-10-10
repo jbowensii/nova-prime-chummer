@@ -1867,13 +1867,20 @@ def _core(ctx, own=None):
     found = (ctx or {}).get("custom_dir") and os.path.isdir(base)
     books = sorted(os.listdir(base), key=lambda b: (b != ID.lower(), b)) if found else []
     out = {}
-    for d in (os.path.join(base, b) for b in books if b != (own or "").lower() and os.path.isdir(os.path.join(base, b))):
+    for b in books:
+        d = os.path.join(base, b)
+        if b == (own or "").lower() or not os.path.isdir(d):
+            continue
+        # its entries' text (custom/sr6/texts/<book>.xml): what a host says it has (cybereyes' image link)
+        tf = os.path.join(os.path.dirname(base), "texts", f"{b}.xml")
+        texts = {(t.get("of"), t.get("id")): t.text or "" for t in ET.parse(tf).getroot()} if os.path.isfile(tf) else {}
         for f in sorted(os.listdir(d)):
             if f.endswith(".xml"):
                 root = ET.parse(os.path.join(d, f)).getroot()
                 out.setdefault(root.get("kind"), []).extend(
                     {"id": e.get("id"), "name": e.findtext("name") or "", "attrs": dict(e.attrib),
-                     "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")]} for e in root)
+                     "children": [(c.tag, dict(c.attrib), c.text) for c in e if c.tag not in ("name", "text")],
+                     "text": texts.get((root.get("kind"), e.get("id")), "")} for e in root)
     return out
 
 

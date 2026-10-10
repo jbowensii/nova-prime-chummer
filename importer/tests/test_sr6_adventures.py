@@ -68,7 +68,7 @@ class GrantedListsTest(unittest.TestCase):
         f = self.by["Iron Hide"]
         self.assertEqual((f.kind, f.attrs), ("qualities", {"kind": "positive", "karma": "0", "granted": "true",
                                                            "category": "Wandering Folk power"}))
-        self.assertIn(("effect", {"target": "derived:defense", "op": "add", "value": "2", "confidence": "low"}, None),
+        self.assertIn(("effect", {"target": "derived:defense", "op": "add", "value": "2", "confidence": "low", "switch": "activated"}, None),
                       f.children)
         self.assertIn(("test", {"skill": "skill:perception", "attr": "attr:int", "threshold": "2"}, None),
                       self.by["Sharp Eyes"].children)
@@ -107,6 +107,13 @@ class EffectsTest(unittest.TestCase):
         # a bonus Edge point on some tests is not the Edge attribute; raising the attribute is
         self.assertEqual(effects.read("You gain a +1 Edge bonus on all Quux tests."), [])
         self.assertEqual(effects.read("Increase your Edge by 1."), [("effect", {"target": "attr:edg", "op": "add", "value": "1"}, None)])
+        # how a conditional one is turned on: wireless, sustained, activated, else conditional; none on an always-on one
+        sw = lambda t: [a.get("switch") for _, a, _ in effects.read(t)]
+        self.assertEqual(sw("Wireless bonus: +1 to Quux and +1 to Agility."), ["wireless"])
+        self.assertEqual(sw("While sustained, +2 to Body."), ["sustained"])
+        self.assertEqual(sw("At will, +1 to Reaction."), ["activated"])
+        self.assertEqual(sw("If it rains, +1 to Body."), ["conditional"])
+        self.assertEqual(sw("You gain +1 to Strength."), [None])
 
 
 

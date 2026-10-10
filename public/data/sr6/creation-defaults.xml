@@ -34,6 +34,8 @@
   <setting key="maxAvailability" value="6" source="CRB" page="66"/>
   <!-- availabilityCapIllegalOnly is left unset: the first printing (2019) caps only illegal gear, the Seattle, Berlin and
        Hong Kong printings (2021-2025) every item; the latest printing wins -->
+  <!-- karmaSpellsAtCreation is left unset (off): CRB p. 66's list of what the customization Karma buys names no spells,
+       rituals or complex forms (Commlink6 has it as an option, off) -->
   <setting key="maxKarmaLeft" value="5" source="CRB" page="66"/>
   <setting key="maxNuyenLeft" value="5000" source="CRB" page="68"/>
   <setting key="freeSpellsPerMagic" value="2" source="CRB" page="65"/>

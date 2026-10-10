@@ -314,6 +314,11 @@
     <xs:attribute name="value" type="xs:string" use="required"/>
     <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
+    <!-- how it is turned on (none: always on): a wireless bonus, activated (at will, an action), sustained, or on some
+         tests only -->
+    <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/>
+      <xs:enumeration value="conditional"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <xs:complexType name="Test">
     <xs:attribute name="skill" type="xs:string" use="required"/>

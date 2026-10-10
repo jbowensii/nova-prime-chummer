@@ -33,7 +33,7 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
  *  runner's */
-export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string }
+export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical'; value: number } | { target: 'skill'; id: string; name: string; value: number }) & { when?: string; switch?: Bonus['switch'] }
 /** What the entry's printed text says it does (the catalog's <effect>, importer/sr6/effects.py): target `attr:<abbr>`,
  *  `skill:<id>`, `derived:<name>` or `item:<field>`; low: read from a sentence that sets a condition (shown, never applied) */
 export interface Sr6ExportEffect { target: string; op: 'add' | 'edge-cost'; value: string; low?: true }
@@ -187,7 +187,7 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).map(b => {
     const value = b.value * (b.perRating ? rating : 1) * times
-    const when = b.when ? { when: b.when } : {}  // (some tests only: never in derived's pools)
+    const when = { ...(b.when ? { when: b.when } : {}), ...(b.switch ? { switch: b.switch } : {}) }  // (when: some tests only, never in derived's pools)
     return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when } : { target: b.target, value, ...when }
   })
 

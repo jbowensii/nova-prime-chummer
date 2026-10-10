@@ -72,3 +72,11 @@ class FitTest(unittest.TestCase):
         got = fit.fit(n, ROWS, s10)
         self.assertEqual((got["method"], got["letters"]["attributes"], got["letters"]["skills"]), ("sumtoten", "A", "A"))
         self.assertEqual(fit.fit(need(skills=[(1, 0)]), ROWS, s10)["method"], "priority")  # one that fits stays priority
+
+    def test_spells_past_the_free_ones(self):
+        """Magic 2 (B) frees 2 spells: 3 printed leaves 1 past them, bought with karma (extraMagic: the importer then
+        assumes the optional rule, CRB p.66)."""
+        n = need(meta="Gnoll", magic="full", attrs={**{k: 1 for k in fit.CORE}, "mag": 2}, spells=3)
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "CABDE")}
+        self.assertEqual(fit.spend(n, rows, CS)[1]["extraMagic"], 1)
+        self.assertEqual(fit.spend({**n, "spells": 2}, rows, CS)[1]["extraMagic"], 0)

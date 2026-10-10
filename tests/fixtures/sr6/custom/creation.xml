@@ -111,6 +111,7 @@
   <setting key="manyTalentsQuality" value="crb.made-up-polymath" source="CRB" page="62"/>
   <setting key="manySkillsQuality" value="crb.made-up-dabbler" source="CRB" page="62"/>
   <setting key="availabilityCapIllegalOnly" value="false" source="CRB" page="63"/>
+  <setting key="karmaSpellsAtCreation" value="true" source="CRB" page="66"/>
   <setting key="initiativeDice" value="2" source="CRB" page="77"/>
   <setting key="astralInitiativeDice" value="3" source="CRB" page="77"/>
   <setting key="specDice" value="4" source="CRB" page="78"/>

@@ -46,6 +46,8 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'manySkillsQuality', label: 'Many Skills quality: two skills at the highest rank (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'availabilityCapIllegalOnly', label: 'The Availability cap holds only illegal gear (the core rulebook’s first printing)', type: 'bool', group: 'General', methods: [] },
   { key: 'oneSkillAtMax', label: 'Only one skill at the highest rank', type: 'bool', group: 'General', methods: [] },
+  // optional (CRB p. 66's list of what the customization Karma buys doesn't name them; Commlink6: an option, off)
+  { key: 'karmaSpellsAtCreation', label: 'Extra spells, rituals and complex forms bought with the customization Karma', type: 'bool', group: 'General', methods: [] },
   ...n('General', 'all', [['skillPointsSpec', 'Skill points for a specialization']]),
   // optional: unset, an expertise at creation is bought with the customization karma (advance.expertise)
   ...n('General', [], [['skillPointsExpertise', 'Skill points for an expertise (unset: bought with karma at the advancement price)']]),
@@ -244,6 +246,7 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   { key: 'contactRatingMax', about: 'Expanded contacts: the hard cap' },
   { key: 'maxAvailability', about: 'Elite runners (SWC p. 15): off lifts the cap' },
   { key: 'availabilityCapIllegalOnly', about: 'The core rulebook’s first printing (p. 66)' },
+  { key: 'karmaSpellsAtCreation', about: 'Not in CRB p. 66’s list of what the customization Karma buys (off)' },
   { key: 'maxKarmaLeft', about: 'The City Editions (CRB Hong Kong p. 66)' },
   { key: 'maxNuyenLeft', about: 'CRB p. 68' },
   { key: 'skillPointsExpertise', about: 'An expertise with skill points instead of the customization Karma' },

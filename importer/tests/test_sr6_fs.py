@@ -57,6 +57,18 @@ A made-up suit in layers.
 | Heavy | +6 | –4 | 10 | 6(L) | 9,000¥ |
 ### Card House
 The Card House sells the Jack of Dice and the Queen of Cups.
+### Zing Shield
+A made-up shield that zings, with a coach horn.
+##### Zing Shield
+| DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|
+| +2 | — | 2 | 3 | 3,000¥ |
+#### Rail Line
+The made-up Rail Line comes in Coach and Sleeper editions.
+| TYPE | DR | SOCIAL | CAPACITY | AVAIL | COST |
+|---|---|---|---|---|---|
+| Coach | +2 | –1 | 2 | 1 | 200¥ |
+| Sleeper | +2 | +2 | 2 | 2 | 500¥ |
 ## Accessories and Modifications
 ### Stacking
 Made-up stacking.
@@ -188,7 +200,12 @@ class FsRecipeTest(unittest.TestCase):
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("**Extras:** Pocket Patch", texts[("armor", "card-house-queen-of-cups")])
         self.assertNotIn("Jack of Dice", texts[("rules", "stacking")])
-        self.assertEqual(len(a), 7)  # the reprinted stats at the back are left out
+        # a box titled as its heading: one armor entry with the heading's text, no rule of its own; a TYPE table in an
+        # item's own text naming its rows (`comes in Coach and Sleeper`): its own variants, never an earlier section's
+        self.assertEqual((a["Zing Shield"]["defense"], a["Rail Line (Coach)"]["cost"], a["Rail Line (Sleeper)"]["social"]), ("+2", "200", "+2"))
+        self.assertIn("shield that zings", texts[("armor", "zing-shield")])
+        self.assertNotIn("Zing Shield", {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])})
+        self.assertEqual(len(a), 10)  # the reprinted stats at the back are left out
 
     def test_qualities_npcs_and_rules(self):
         q = entries(self.res, "qualities")

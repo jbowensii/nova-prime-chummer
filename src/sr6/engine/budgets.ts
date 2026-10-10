@@ -11,7 +11,7 @@ import { gradeFactor, type GradeFactor } from './grades'
 import { contactSpend, knowledgeSpend, pool, type Pool, type Provider } from './providers'
 import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, ratingRange } from './values'
-import { entryLabel } from './categories'
+import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
@@ -125,7 +125,7 @@ export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => 
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1
 
 /** A purchase line's cost (× qty, accessories added), Availability (its own; accessories are checked one by one) and
- *  Essence (× qty, accessories added), at its rating, quantity and grade: an entry's <formula> when it has one
+ *  Essence (× qty, accessories added but those taking the host's Capacity), at its rating, quantity and grade: an entry's <formula> when it has one
  *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
  *  work out counts 0 and makes ok false (unpriced: the cost is the one); notes: what a formula had to assume. */
 export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules, host?: { cost: number; avail: number; essence: number }): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
@@ -154,8 +154,10 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules, host?: 
   if (!perLine.has('essence')) essence *= x.qty
   const own = { cost, avail, essence }
   for (const a of x.accessories) {
-    const pa = priced(a, data, cr, own)
-    cost += pa.cost; essence += pa.essence; ok &&= pa.ok
+    const pa = priced(a, data, cr, own), ae = entryOf(a, data)
+    // one fitted into the host's Capacity (`[2]`) costs no Essence of its own: the book's samples print the host's alone
+    // (Smooth Operations p. 99's cybereyes 3 with five enhancements: Essence 4.54)
+    cost += pa.cost; essence += capacityUsed(ae, ratingOf(a, ae)) > 0 ? 0 : pa.essence; ok &&= pa.ok
   }
   return { cost, avail, essence: round2(essence), ok, unpriced, notes }
 }
@@ -183,6 +185,12 @@ export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { p
 /** The Magic or Resonance the runner's Essence spending takes off (1 per started point, CRB p. 38): the one figure the
  *  attributes, power points and free spells all lose (essenceBudget's magicLoss). */
 export const magicLoss = (b: Sr6Build, data: Sr6Data, cr: CreationRules) => essenceBudget(b, data, cr).magicLoss
+
+/** The spells and rituals, and the complex forms, past the free ones (freeSpellSlots): bought with Karma. */
+export function extraMagic(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): { spells: number; forms: number } {
+  const free = freeSpellSlots(b, data, cr, p), res = MAGIC_KINDS[b.magic].resonance
+  return { spells: Math.max(0, count(b, 'spells', 'rituals') - (res ? 0 : free)), forms: Math.max(0, count(b, 'complexforms') - (res ? free : 0)) }
+}
 
 /** Free spells and rituals (complex forms for a technomancer): the method's Magic or Resonance rating (not as adjusted,
  *  but less what Essence took: CRB Hong Kong p. 66) times the setting; a mystic adept first takes off the power points it
@@ -228,9 +236,9 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
-  const free = freeSpellSlots(b, data, cr, p), res = MAGIC_KINDS[b.magic].resonance
-  add('spells', 'Spells and rituals past the free ones', Math.max(0, count(b, 'spells', 'rituals') - (res ? 0 : free)) * n0(cr, 'karmaSpell'), 'magic')
-  add('complexForms', 'Complex forms past the free ones', Math.max(0, count(b, 'complexforms') - (res ? free : 0)) * n0(cr, 'karmaForm'), 'magic')
+  const extra = extraMagic(b, data, cr, p)
+  add('spells', 'Spells and rituals past the free ones', extra.spells * n0(cr, 'karmaSpell'), 'magic')
+  add('complexForms', 'Complex forms past the free ones', extra.forms * n0(cr, 'karmaForm'), 'magic')
   // R: initiation and submersion can be bought at creation, base + grade × per-grade for each grade
   const grades = (g: number) => { let t = 0; for (let i = 1; i <= g; i++) t += n0(cr, 'karmaInitiationBase') + i * n0(cr, 'karmaInitiationPerGrade'); return t }
   add('initiation', `Initiation grade ${b.initiation}`, grades(b.initiation), 'magic')

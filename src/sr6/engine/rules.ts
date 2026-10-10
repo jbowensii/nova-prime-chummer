@@ -7,7 +7,7 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, attrMax, attrRating, augmentedRating, entryOf, extraMagic, priced, PURCHASE_TAB, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, type Sr6Data } from './data'
 import { deriveSr6 } from './derive'
@@ -242,6 +242,14 @@ const RULES: Rule[] = [
     return c.b.picks.filter(x => !allowed[x.kind])
       .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.`, ...CRB(67) }))
   } },
+  // CRB p. 66: the customization Karma buys attributes, skills, qualities and nuyen; spells, rituals and complex forms
+  // past the free ones only with the optional rule (karmaSpellsAtCreation, off as Commlink6 has it). Lifepath, point
+  // buy and the Karma build buy them by their own rules (SWC pp. 30–32).
+  { code: 'magic.karmaAtCreation', severity: 'error', tab: 'magic', check: c => {
+    if (!usesLetters(c.p) || flag(c.cr, 'karmaSpellsAtCreation')) return null
+    const { spells, forms } = extraMagic(c.b, c.data, c.cr, c.p), n = spells + forms
+    return n ? { message: `${n} ${spells ? 'spell' : 'complex form'}${n === 1 ? '' : 's'} past the free ones: buying them with the customization Karma is an optional rule, off.`, ...CRB(66) } : null
+  } },
   // CRB p. 167: some metamagics are for adepts only (the catalog's user: an adept or mystic adept; a magician's, a
   // magician or mystic adept)
   { code: 'magic.metamagicUser', severity: 'error', tab: 'magic', check: c =>
@@ -428,18 +436,28 @@ function printedHits(c: Ctx): Hit[] {
       hits.push({ path, message: `${what}: the book prints ${book}; the rules give ${rules}.`, source: pr.source, page: pr.page })
   }
   const pair = (natural: number, augmented: number) => (augmented === natural ? `${natural}` : `${natural}(${augmented})`)
-  for (const k of SR6_ATTRS) say(`attributes.${k}`, A(k), pr.values[k], pair(d.attrs[k].natural, d.attrs[k].augmented))
+  // the number a book prints: the natural value with its always-on bonuses folded in (`natural:<attr>` below, owner
+  // 2026-10-10), the brackets the value with the switchable ones on
+  const folded = (k: Sr6Attr) => (pr.values[`natural:${k}`]?.split('|')[1] ?? '').split(' + ').reduce((t, x) => t + (Number(x.match(/(-?\d+)$/)?.[1]) || 0), 0)
+  const shown = (k: Sr6Attr) => d.attrs[k].natural + folded(k)
+  for (const k of SR6_ATTRS) say(`attributes.${k}`, A(k), pr.values[k], pair(shown(k), d.attrs[k].augmented))
   if (Number(pr.values.ess) !== d.essence) say('augmentations', 'Essence', pr.values.ess, String(d.essence))
   // (a book printing one initiative number, `11 + 1D6`, prints the augmented one)
-  const init = pr.values.init?.includes('(') ? pair(d.attrs.rea.natural + d.attrs.int.natural, d.initiative.base) : `${d.initiative.base}`
+  const init = pr.values.init?.includes('(') ? pair(shown('rea') + shown('int'), d.initiative.base) : `${d.initiative.base}`
   if (d.initiative.dice !== null) say('review', 'Initiative', pr.values.init, `${init} + ${d.initiative.dice}D6`)
   if (d.monitors.physical !== null && d.monitors.stun !== null) say('review', 'Condition monitors', pr.values.cm, `${d.monitors.physical}/${d.monitors.stun}`)
   say('gear', 'Defense Rating', pr.values.dr, String(d.defenseRating))
-  // a printed rank above the cap read as the natural rank plus a line's dice (owner, 2026-10-09: `Con 7` with a voice
-  // modulator 3 is Con 4), value `<printed>|<what adds, as printed>`: noted here
-  for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('rank:')) {
-    const id = k.slice(5), s = c.b.skills.find(x => x.id === id), name = c.data.skills[id]?.name ?? id, [rank, plus] = v.split('|')
-    if (s) hits.push({ path: `skills.${id}`, source: pr.source, page: pr.page, message: `The book prints ${name} ${rank}; read as ${name} ${skillRank(s)} + ${plus}.` })
+  // an always-on bonus folded into the printed number (owner, 2026-10-10: a switchable one is printed in brackets), value
+  // `<printed>|<what adds, as printed>`: the natural value is the printed less it, noted here
+  for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('natural:')) {
+    const key = k.slice(8), [printedAs, plus] = v.split('|')
+    if (key.startsWith('skill:')) {
+      const id = key.slice(6), s = c.b.skills.find(x => x.id === id), name = c.data.skills[id]?.name ?? id
+      if (s) hits.push({ path: `skills.${id}`, source: pr.source, page: pr.page, message: `The book prints ${name} ${printedAs}, an always-on bonus included: ${name} ${skillRank(s)} + ${plus}.` })
+    } else if ((SR6_ATTRS as string[]).includes(key)) {
+      const a = key as Sr6Attr
+      hits.push({ path: `attributes.${a}`, source: pr.source, page: pr.page, message: `The book prints ${a.toUpperCase()} ${printedAs}, an always-on bonus included: ${a.toUpperCase()} ${d.attrs[a].natural} + ${plus}.` })
+    }
   }
   // a level printed on a quality that has none (`Magic Resistance 2`): taken without it (owner, 2026-10-09), noted here
   for (const [k, v] of Object.entries(pr.values)) if (k.startsWith('level:')) {

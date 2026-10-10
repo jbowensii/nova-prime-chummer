@@ -147,6 +147,8 @@ def spend(need, rows, cs):
             else:
                 karma += n("karmaSpec")
     free = rating * n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic") if special else 0
+    # past the free ones: bought with the customization Karma (an optional rule at creation: karmaSpellsAtCreation)
+    extra = max(0, need["forms"] - free) + need["spells"] if special == "res" else max(0, need["spells"] - free) + need["forms"]
     if special == "res":
         karma += max(0, need["forms"] - free) * n("karmaForm") + need["spells"] * n("karmaSpell")
     else:
@@ -160,7 +162,7 @@ def spend(need, rows, cs):
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
     gap = abs(left - need["left"]) if need["left"] is not None else 0
     return (pp_over, over, gap), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
-                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left}
+                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "extraMagic": extra}
 
 
 def fit(need, priorities, cs):
