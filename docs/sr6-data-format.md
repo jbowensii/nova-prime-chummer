@@ -669,7 +669,8 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
 | General | `maxKarmaLeft` | number | optional | Most karma kept after creation (CRB Hong Kong p. 66: 5; unset: no limit, and Review gives no warning) |
-| General | `contactKarma` | number | optional | Karma per contact point past the points or past a contact's pair cap (the Sixth World Companion's expanded contacts, SWC p. 161, shipped on: owner, 2026-10-09; unset: off, each rating up to Charisma) |
+| General | `expandedContacts` | true/false | optional | The Sixth World Companion's Expanded Rules for Contacts at Character Creation (SWC p. 161), optional: off (each rating up to Charisma, no karma). The importer assumes it for a book sample whose printed contacts need it |
+| General | `contactKarma` | number | optional | With `expandedContacts`: karma per contact point past the points or past a contact's pair cap (SWC p. 161: 1) |
 | General | `contactPairPerCha` | number | optional | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
 | General | `contactRatingMax` | number | optional | Highest contact rating (with `contactKarma`; unset: Charisma) |
 | General | `manyTalentsQuality` | quality id | optional | Many Talents: two attributes at their maximum (SWC p. 134) |

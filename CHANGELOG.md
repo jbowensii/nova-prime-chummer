@@ -54,6 +54,9 @@
   value checked against it (the one-attribute-at-maximum and adjustment rules p. 63, the initiative's 1D6 p. 67); the
   first printing's two readings ship off with Hong Kong's pages (`availabilityCapIllegalOnly`, `karmaSpellsAtCreation`:
   p. 68's footnote), and each optional rule on a runner's Creation rules names its book and page.
+- **The Sixth World Companion's expanded contacts (p. 161) now ship off**, behind their own switch (`expandedContacts`):
+  off, contacts take Charisma × 6 points, each rating up to Charisma (CRB Hong Kong p. 67). A book sample whose printed
+  contacts need them gets the switch as an assumed rule when imported again.
 - The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
 - The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.

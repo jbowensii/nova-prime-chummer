@@ -33,8 +33,9 @@
   <setting key="magicMax" value="6" source="CRB-HK" page="167"/>
   <setting key="essence" value="6" source="CRB-HK" page="38"/>
   <setting key="contactPointsPerCha" value="6" source="CRB-HK" page="67"/>
-  <!-- the Sixth World Companion's expanded contact rules (SWC p. 161): karma for points past Charisma x 6 and past a
-       contact's connection + loyalty of 2 x Charisma, no rating above 8 -->
+  <!-- the Sixth World Companion's optional expanded contact rules (SWC p. 161), off: with expandedContacts on, karma for
+       points past Charisma x 6 and past a contact's connection + loyalty of 2 x Charisma, no rating above 8 -->
+  <setting key="expandedContacts" value="false" source="SWC" page="161"/>
   <setting key="contactKarma" value="1" source="SWC" page="161"/>
   <setting key="contactPairPerCha" value="2" source="SWC" page="161"/>
   <setting key="contactRatingMax" value="8" source="SWC" page="161"/>

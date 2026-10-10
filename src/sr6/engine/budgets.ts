@@ -402,13 +402,14 @@ export function powerCost(data: Sr6Data, x: Pick<Sr6Build['picks'][number], 'id'
   return ((combat && v?.costCombat != null ? v.costCombat : v?.cost) ?? 0) * (v?.perLevel ? x.level ?? 1 : 1)
 }
 
-/** Charisma × contactPointsPerCha points for connection and loyalty, each up to Charisma (CRB p. 67). With contactKarma
- *  set, the Sixth World Companion's expanded rules (SWC p. 162): karma buys points past the pool, and a contact's
- *  connection + loyalty past contactPairPerCha × Charisma, one karma a point each; no rating above contactRatingMax. */
+/** Charisma × contactPointsPerCha points for connection and loyalty, each up to Charisma (CRB Hong Kong p. 67). With
+ *  expandedContacts on, the Sixth World Companion's optional expanded rules (SWC p. 161): contactKarma karma buys each
+ *  point past the pool, and each past a contact's connection + loyalty of contactPairPerCha × Charisma; no rating above
+ *  contactRatingMax. */
 export function contactPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Sr6Budgets['contactPoints'] {
   if (p.contactPoints) return p.contactPoints(b)
   const cha = augmentedRating(b, data, 'cha', p), max = cha * n0(cr, 'contactPointsPerCha'), spend = contactSpend(b), price = num(cr, 'contactKarma')
-  if (price === undefined) return { ...pool(max, spend), ratingCap: cha }
+  if (price === undefined || !flag(cr, 'expandedContacts')) return { ...pool(max, spend), ratingCap: cha }
   const pair = num(cr, 'contactPairPerCha'), soft = pair === undefined ? Infinity : cha * pair, past = Math.max(0, spend - max)
   const pairs = b.contacts.reduce((t, c) => t + Math.max(0, c.connection + c.loyalty - soft), 0)
   return { ...pool(max, spend - past), ratingCap: num(cr, 'contactRatingMax') ?? cha, karma: (past + pairs) * price }

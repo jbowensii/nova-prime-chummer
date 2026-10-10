@@ -422,6 +422,7 @@ const RULES: Rule[] = [
       : { message: `${c.b.powerPointsBought} power points bought; the most is the Magic rating, ${cap}.` }
   } },
 
+  // (CRB Hong Kong p. 67: Charisma × 6 points; with the expanded contacts, karma buys the rest)
   { code: 'contact.budget', severity: 'error', tab: 'contacts',
     setting: c => [c.p.contactPoints ? 'lifepath.contactRatingCap' : 'contactPointsPerCha'],
     check: c => over(c.budgets.contactPoints, 'Contact points') },

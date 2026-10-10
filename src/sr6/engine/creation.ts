@@ -68,8 +68,9 @@ export const CREATION_KEYS: CreationKey[] = [
     ['freeSpellsPerMagic', 'Free spells per Magic'], ['freeFormsPerResonance', 'Free complex forms per Resonance']]),
   // optional (the core rulebook prints no number): unset, no limit
   ...n('General', [], [['maxKarmaLeft', 'Most karma kept after creation (unset: no limit)']]),
-  // optional, the Sixth World Companion's expanded contact rules (unset contactKarma: off, each rating up to Charisma)
-  ...n('General', [], [['contactKarma', 'Karma per contact point past the points or past a contact’s pair cap (unset: not offered)'],
+  // optional, the Sixth World Companion's expanded contact rules (SWC p. 161; off: each rating up to Charisma, no karma)
+  { key: 'expandedContacts', label: 'Expanded contacts: karma buys contact points past the pool and past a contact’s pair cap', type: 'bool', group: 'General', methods: [] },
+  ...n('General', [], [['contactKarma', 'Expanded contacts: karma per contact point past the points or past a contact’s pair cap'],
     ['contactPairPerCha', 'A contact’s connection + loyalty up to Charisma times'], ['contactRatingMax', 'Highest contact rating (unset: Charisma)']]),
   ...n('Karma prices', 'all', [['karmaAttrPerRank', 'Attribute: karma per rank, times the new rating'],
     ['karmaSkillPerRank', 'Skill: karma per rank, times the new rank'], ['karmaSpec', 'Specialization'],
@@ -308,9 +309,10 @@ export interface RuleLock { key: string; by: string }
  *  each with the book option it stands for. Any other setting stays the table's. */
 export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   { key: 'startingKarma', about: '50 customization Karma (CRB Hong Kong p. 66); a prime runner doubles it (Levels of play)' },
-  { key: 'contactKarma', about: 'The Sixth World Companion’s expanded contacts (SWC p. 161): off turns them off' },
-  { key: 'contactPairPerCha', about: 'Expanded contacts: a contact’s pair cap' },
-  { key: 'contactRatingMax', about: 'Expanded contacts: the hard cap' },
+  { key: 'expandedContacts', about: 'Expanded Rules for Contacts at Character Creation (Sixth World Companion p. 161, optional, off)' },
+  { key: 'contactKarma', about: 'Expanded contacts: 1 Karma a point (Sixth World Companion p. 161)' },
+  { key: 'contactPairPerCha', about: 'Expanded contacts: connection + loyalty up to 2 × Charisma (Sixth World Companion p. 161)' },
+  { key: 'contactRatingMax', about: 'Expanded contacts: no rating above 8 (Sixth World Companion p. 161)' },
   { key: 'maxAvailability', about: 'No gear of Availability 7 or higher at creation (CRB Hong Kong p. 66); the elite level lifts it' },
   { key: 'availabilityCapIllegalOnly', about: 'The 2019 printing’s reading (p. 66); Hong Kong caps every item (off)' },
   { key: 'karmaSpellsAtCreation', about: 'Spells and complex forms can’t be bought during character generation (CRB Hong Kong p. 68’s footnote; the 2019 printing had none): off' },

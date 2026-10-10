@@ -324,11 +324,13 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     if worn:  # the armor worn: the highest Defense Rating (the first of equals); the rest carried
         best = max(worn, key=lambda w: w[0])[1]
         lines = [re.sub(rf'^(<purchase uid="g{best}" [^>]*?qty="\d+"(?: grade="\w+")?)', r'\1 worn="true"', x) for x in lines]
+    pairs = []
     for c in split(labels.get("contacts", "")):
         m = re.fullmatch(r"(.*?)\s*\(?\s*C\s*(\d+)\s*/\s*L\s*(\d+)\s*\)?", c)
         if not m:
             miss("Contacts", c)
             continue
+        pairs.append((int(m.group(2)), int(m.group(3))))
         lines.append(f'<contact uid="c{next(uid)}" name={quoteattr(_s(m.group(1)))} archetype={quoteattr(_s(m.group(1)))} '
                      f'connection="{m.group(2)}" loyalty="{m.group(3)}"/>')
     if ls := labels.get("lifestyle"):
@@ -394,9 +396,10 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                 r["nuyen"] = num(ca["nuyen"])
     got = fit.fit(need, rows, cs) if meta and rows and cs else None
     # the options a book rule gives that the printed numbers need (owner, 2026-10-09), written as the runner's own rules,
-    # marked assumed (the book doesn't say): the prime runner's doubled customization Karma (CRB p.64) when no priority
-    # assignment holds the build within the standard Karma; the first printing's cap on illegal gear only (CRB p.66) when
-    # a legal item is past the Availability cap. Nothing a book rule doesn't explain.
+    # marked assumed (the book doesn't say): the prime runner's doubled customization Karma (CRB Hong Kong p.63) when no
+    # priority assignment holds the build within the standard Karma; the first printing's cap on illegal gear only (CRB
+    # p.66) when a legal item is past the Availability cap; the Sixth World Companion's expanded contacts (p.161) when the
+    # contacts take more than Charisma x 6 points or a rating above Charisma. Nothing a book rule doesn't explain.
     assumed = []
     if got and got.get("over", 0) > 0 and isinstance(cs.get("startingKarma"), float):
         prime = {**cs, "startingKarma": cs["startingKarma"] * 2}
@@ -406,6 +409,9 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
             assumed.append(("startingKarma", f"{prime['startingKarma']:g}", "CRB", 64))
     if legal_over:
         assumed.append(("availabilityCapIllegalOnly", "true", "CRB", 66))
+    cha, per = attrs.get("cha", 0), setting("contactPointsPerCha")
+    if pairs and cs.get("expandedContacts") != "true" and (sum(c + l for c, l in pairs) > cha * per or any(max(c, l) > cha for c, l in pairs)):
+        assumed.append(("expandedContacts", "true", "SWC", 161))
     # spells, rituals or complex forms past the free ones: bought with the customization Karma, which CRB p.66's list
     # doesn't name (an optional rule, off; Commlink6 has it as an option, off)
     if got and got.get("extraMagic") and got.get("method") in ("priority", "sumtoten") and cs.get("karmaSpellsAtCreation") != "true":
