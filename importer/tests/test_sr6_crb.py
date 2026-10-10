@@ -648,6 +648,14 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(archetypes._bonuses("Glow Gland", 2), "")
         self.assertEqual(archetypes._bonuses("Arm (obvious)", None), '<bonus target="physical" value="1"/>')  # a full limb's box
         self.assertEqual(archetypes._bonuses("Hand (obvious)", None), "")  # a partial one adds none
+        # a reflex recorder: +1 to the rating of the skill printed with it, one line per skill (made-up skills)
+        skill_of = {"zapping": "x.zapping", "lurking": "x.lurking"}.get
+        self.assertEqual(list(archetypes._per_skill(["reflex recorder (Zapping & Lurking)", "goggles (rating 2, w/ zoom)"],
+                                                    lambda n: skill_of(n.lower()))),
+                         ["reflex recorder (Zapping)", "reflex recorder (Lurking)", "goggles (rating 2, w/ zoom)"])
+        self.assertEqual(archetypes._bonuses("Reflex recorder (Skill)", None, lambda n: skill_of(n.lower()), chosen="Lurking"),
+                         '<bonus target="skill" skill="x.lurking" value="1"/>')
+        self.assertEqual(archetypes._bonuses("Reflex recorder (Skill)", None, lambda n: skill_of(n.lower())), "")  # none named
 
     def test_a_quality_outside_the_six(self):
         """A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text)."""

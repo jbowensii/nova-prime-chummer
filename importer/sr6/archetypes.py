@@ -260,7 +260,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     sins, worn, legal_over, dice = [], False, [], []  # dice: (skill id, dice, item) a line's bonus adds to a skill's tests
     skill_of = lambda n: (h := idx.find(["skills"], n)) and h[1]  # noqa: E731
     for label, kinds in PURCHASES.items():
-        for item in split(labels.get(label, "")):
+        for item in _per_skill(split(labels.get(label, "")), skill_of):
             if m := re.match(r"(?:(\d+)\s*x\s+)?fake\s+sin\b\s*(?:\((.*)\))?", item, re.I):
                 r = re.search(r"rating\s*(\d+)", m.group(2) or "", re.I)
                 lic = re.search(r"w/\s*(.*)", m.group(2) or "")
@@ -469,7 +469,7 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, dice=No
             legal_over.append(hit[2])
     return _closed(f'<purchase uid="g{n}" kind="{hit[0]}" id={quoteattr(hit[1])} name={quoteattr(hit[2])}{_a("rating", r)} '
                    f'qty="{qty}"{_a("grade", grade and grade.group(1).lower())}{_a("worn", wear and "true")}{_a("note", note)}',
-                   _bonuses(hit[2], r, skill_of, dice), "purchase"), worn or wear, cost
+                   _bonuses(hit[2], r, skill_of, dice, chosen=_chosen(rest)), "purchase"), worn or wear, cost
 
 
 # what a standard boost adds per rating or level (the engine counts only the bonuses a line carries, the catalog has none):
@@ -482,6 +482,9 @@ BOOSTS = {"improved reflexes": (("rea", 1), ("initDice", 1)), "wired reflexes": 
           "bone lacing aluminum": (("defense", 1),), "bone lacing titanium": (("defense", 2),),
           # CRB p. 288: each cyberlimb adds a Physical box; a partial one (forearm, hand, lower leg, foot) doesn't
           **{f"{part} {kind}": (("physical", 1),) for part in ("skull", "torso", "arm", "leg") for kind in ("obvious", "synthetic")},
+          # CRB p.293: a reflex recorder adds 1 to the rating of the (Physical) skill it is bought for (`skill:?`: the one
+          # printed with it); a stat block prints that as `Firearms 4(5)` (CRB p.87)
+          "reflex recorder skill": (("skill:?", 1),),
           # dice on some tests only (shown with the pool, never added): CRB p.286 a voice modulator's wireless bonus, its
           # rating on sound-based Con tests; p.287 tailored pheromones, their rating to Charisma on Con and Influence tests
           # while the target can smell them
@@ -490,16 +493,16 @@ BOOSTS = {"improved reflexes": (("rea", 1), ("initDice", 1)), "wired reflexes": 
                                   ("skill:influence", 1, "Influence tests within conversation range (Charisma + rating)"))}
 
 
-def _bonuses(name, rating, skill_of=None, dice=None):
+def _bonuses(name, rating, skill_of=None, dice=None, chosen=None):
     """The <bonus> lines of a catalog entry named `name` bought at `rating` (or level): per rating, or at the level its
     name ends with (`Wired Reflexes 2`); none for anything else. A skill's (`skill:con`) needs `skill_of` (a skill's name
     -> its id, None: left out); one that holds on some tests only carries `when`. `dice`: each skill bonus is added to it
-    as (skill id, dice, name)."""
+    as (skill id, dice, name); `skill:?` is the skill it was bought for, `chosen` (its printed `(Firearms)`)."""
     m = re.fullmatch(r"(.*?)(?:\s+(\d+))?", norm(name))
     out = []
     for t, v, *when in BOOSTS.get(m.group(1), ()):
         total = v * (rating or int(m.group(2) or 1))
-        skill = skill_of(t[6:]) if t.startswith("skill:") and skill_of else None
+        skill = skill_of(chosen if t == "skill:?" else t[6:]) if t.startswith("skill:") and skill_of and (chosen or t != "skill:?") else None
         if t.startswith("skill:") and not skill:
             continue
         if skill and dice is not None:
@@ -507,6 +510,23 @@ def _bonuses(name, rating, skill_of=None, dice=None):
         head = f'<bonus target="skill" skill={quoteattr(skill)}' if skill else f'<bonus target="{t}"'
         out.append(head + (f' value="{v}" perRating="true"' if rating else f' value="{total}"') + _a("when", when[0] if when else None) + "/>")
     return "".join(out)
+
+
+def _chosen(rest):
+    """The one thing printed in a line's parentheses (`reflex recorder (Firearms)`: Firearms), else None."""
+    m = re.fullmatch(r"[^()]*\(([^(),;]+)\)\s*", rest)
+    return m and m.group(1).strip()
+
+
+def _per_skill(items, skill_of):
+    """`reflex recorder (Close Combat & Firearms)`: one line per skill named (CRB p.293: one recorder per skill)."""
+    for item in items:
+        m = re.fullmatch(r"(.*?)\s*\(([^()]+)\)\s*", item)
+        parts = m and [x.strip() for x in re.split(r"\s*(?:&|,|\band\b)\s*", m.group(2)) if x.strip()]
+        if parts and len(parts) > 1 and all(skill_of(x) for x in parts):
+            yield from (f"{m.group(1)} ({x})" for x in parts)
+        else:
+            yield item
 
 
 def _closed(head, kids, tag):

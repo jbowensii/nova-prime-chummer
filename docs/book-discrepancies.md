@@ -73,8 +73,11 @@ compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the
 cap, an expertise without its rank, a seventh quality, a rating the item doesn't
 come in and the like show as on any runner. Nothing in the file corrects the
-book. Not modelled, so not compared: a skill raised by a ware (reflex
-recorder) and a cyberlimb's own attributes. The book prints no priorities:
+book. A reflex recorder adds 1 to the rating of the skill printed with it (CRB
+p. 293), one recorder per skill (`reflex recorder (Close Combat & Firearms)` is
+two); the books print that rating as `Firearms 4(5)` (CRB p. 87), so a rank
+printed without brackets is the natural one. Not compared: a cyberlimb's own
+attributes. The book prints no priorities:
 the importer picks the letters that overspend least for the printed build
 (Magic and Edge on adjustment points, what a pool can't hold bought with
 karma, a specialization the skill points left over can't cover bought with

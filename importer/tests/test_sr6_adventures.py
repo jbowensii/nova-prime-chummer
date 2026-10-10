@@ -104,6 +104,9 @@ class EffectsTest(unittest.TestCase):
         self.assertEqual(effects.read("Reduce the cost of Edge boosts by 1 on tests using Stealth."),
                          [("effect", {"target": "skill:stealth", "op": "edge-cost", "value": "-1"}, None)])
         self.assertEqual(effects.read("Their Glow is boosted by 2."), [])  # no vocabulary target: no effect
+        # a bonus Edge point on some tests is not the Edge attribute; raising the attribute is
+        self.assertEqual(effects.read("You gain a +1 Edge bonus on all Quux tests."), [])
+        self.assertEqual(effects.read("Increase your Edge by 1."), [("effect", {"target": "attr:edg", "op": "add", "value": "1"}, None)])
 
 
 

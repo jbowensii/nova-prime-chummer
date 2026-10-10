@@ -27,6 +27,9 @@ Import the SR6 books again (Books → **Re-import all**) so the sample runners a
 - The table may cap only illegal gear's Availability at creation, as the core rulebook's first printing does (p. 66);
   the later printings cap every item, so it ships off.
 - At most 5 Karma left after creation, as the City Editions print (Hong Kong p. 66): a warning above it.
+- A book sample's reflex recorder adds 1 to the skill printed with it (core rulebook p. 293); one printed for two skills
+  (`reflex recorder (Close Combat & Firearms)`) is one recorder per skill, each priced and with its Essence.
+- `+1 Edge on … tests` in an entry's text is a bonus Edge point on those tests, never the Edge attribute.
 
 ## 0.11.2 — 2026-10-09: the runner's effects everywhere, the sample runners' errors traced
 

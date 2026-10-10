@@ -63,6 +63,8 @@ def read(text):
                 a, b = m.groups()
                 n, words = (a, b) if a.isdigit() else (b, a)
                 t = _target(words)
+                if t == "attr:edg" and rx is not RULES[0][1]:
+                    continue  # `+1 Edge on … tests`: a bonus Edge point on those tests, not the Edge attribute
                 if t:
                     value = f"-{n}" if op == "edge-cost" else n
                     out.append(("effect", {"target": t, "op": op, "value": value,
