@@ -133,7 +133,8 @@ is built from this data; the format itself is ours and stays stable.
   non-canon content is allowed.
 - **`<optionalRule id="…" on="true|false"/>`** (after the `<override>`s, any number): the runner's own switch for a
   book's optional rule, by its rules id (the core rulebook's import seeds them into Table rules: `optional-vehicle-damage-for-all`,
-  CRB p.68; `optional-extended-social-tests`, p.139; …). It wins over the GM's Table setup unless the GM locked the rule
+  CRB p.68; `optional-extended-social-tests`, p.139; DHSA's `optional-lifestyle-amps`, p.16; …; scoped by the book's
+  source id as imported, `crb.optional-…`). It wins over the GM's Table setup unless the GM locked the rule
   there (`locked="true"` in `custom/table-rules.xml`); with none, or locked, the table's switch holds, off unless the GM
   switched it on. Set on the Review tab.
 - **`origin`** on a sample runner names the source it was built from

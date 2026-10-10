@@ -7,17 +7,24 @@ import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
 import type { TableFlags } from './validate'
 
-/** The core rulebook's optional rules the engine applies, by the id its import seeds them into Table rules with. */
+/** The books' optional rules the engine applies, by the unscoped id their import seeds them into Table rules with (the
+ *  imported entry's id is scoped by its source: "crb.optional-…"; optionOn matches either). */
 export const OPTIONAL_RULES = {
   /** CRB p.68: wound thresholds as vehicles have them (Body, 2×Body, 3×Body + Armor) for characters and Matrix devices */
   vehicleDamage: 'optional-vehicle-damage-for-all',
   /** CRB p.139: every character has a social condition monitor, thresholds from Willpower plus social armor */
   socialTests: 'optional-extended-social-tests',
+  /** DHSA p.16: a lifestyle is an Amp with a fixed cost; no per-run nuyen adjustment for it (Ledger tab) */
+  lifestyleAmps: 'optional-lifestyle-amps',
 } as const
+/** Whether a Table rules id names the rule `key`: the same id, or `key` scoped by a source ("crb." + key). */
+const isRule = (id: string, key: string) => id === key || id.endsWith(`.${key}`)
 /** Whether an optional rule is in play for this runner: its own switch unless the GM locked the rule, else the table's; off
  *  unless switched on. */
-export const optionOn = (id: string, ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'optional' | 'locked'>) =>
-  (table?.locked?.includes(id) ? undefined : ch.optionalRules?.[id]) ?? table?.optional?.includes(id) ?? false
+export const optionOn = (key: string, ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'optional' | 'locked'>) => {
+  const own = table?.locked?.some(id => isRule(id, key)) ? undefined : Object.entries(ch.optionalRules ?? {}).find(([id]) => isRule(id, key))?.[1]
+  return own ?? table?.optional?.some(id => isRule(id, key)) ?? false
+}
 
 export type Thresholds = [number, number, number]
 /** ammo: alternative DVs by ammunition, as the item's text or its amp's narrative lists them ("5 (gel)") */

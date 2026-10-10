@@ -706,6 +706,25 @@ def reconcile(fx, narrative, base, rating, negative_ok=False, ratings=None):
     return computed
 
 
+def alternative_rules(md):
+    """[(id, name, page, text)]: the book's alternative rules, the seeds of the app's Table rules (a GM switches them on; off by
+    default). One so far: the footnote under the LIFESTYLES table, lifestyle Amps in place of the core rulebook's lifestyle
+    rules, with the page it is printed on."""
+    out, page, lines = [], 0, md.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"<!-- page (\d+) -->", line)
+        if m:
+            page = int(m.group(1))
+        elif re.match(r"\*?\s*These Amps are an alternative to the core rulebook", line):
+            para = []
+            for l in lines[i:]:  # the paragraph runs to a blank line or the next table, heading or page
+                if not l.strip() or l.startswith(("|", "#", "<!--")):
+                    break
+                para.append(l.lstrip("* ").strip())
+            out.append(("optional-lifestyle-amps", "Lifestyle Amps in place of the core lifestyle rules", page, " ".join(para)))
+    return out
+
+
 def extract(md, ctx=None):
     rs = rows(md)
     for r in rs:  # DHSA v3.2 mixes '-' and '–' in headings; v3.4 uses '–'
@@ -928,6 +947,10 @@ def extract(md, ctx=None):
     skill_xml = [f'  <skill id="{sk}" attr="{skills[sk][1]}" source="{ID}" page="{p}"><name>{escape(skills[sk][0])}</name>{"".join(sp)}</skill>'
                  for sk, (p, sp) in added.items()]
     report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
+    rules = []
+    for oid, rname, rpage, rtext in alternative_rules(md):
+        rules.append(f'  <rule id="{oid}" sheet="optional" section="Optional rule" source="{ID}" page="{rpage}">'
+                     f'<title>{escape(rname)}</title><text>{private("rules", oid, rtext)}</text></rule>')
 
     def data(kind, comment, entries):
         return ('<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -940,6 +963,8 @@ def extract(md, ctx=None):
         "gear.xml": data("gear", "Plain equipment (not Amps), at the equipment price unless the GM says otherwise.", gear),
         "skills.xml": data("skills", "Specializations DHSA adds to the core skills.", skill_xml),
     }
+    if rules:
+        files["rules-optional.xml"] = data("rules", "The book's alternative rules (the app's Table rules); texts in custom/texts/dhsa.xml.", rules)
     if grades:  # grades of one amp type are alternatives: each excludes the others
         files["ampeffects.xml"] = data("ampeffects", "Implant grades DHSA adds to the core Amp effects.", [
             f'  <effect id="{g["id"]}" category="grade" rating="{g["rating"]}" types="{g["types"]}" max="1"'

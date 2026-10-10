@@ -1,15 +1,17 @@
 // Ledger (Anarchy career): record earnings and notes; the history with its running balance. What a line names (an
 // attribute, a skill or specialization, an amp, an item) shows its card on hover, focus or tap (AnarchyRef.tsx).
 import { Fragment, useState, type ReactNode } from 'react'
-import { changeText, ledgerRunning, makeEarn, makeNote, voidEvent } from '../../engine'
+import { changeText, ledgerRunning, makeEarn, makeNote, OPTIONAL_RULES, optionOn, voidEvent } from '../../engine'
 import type { AttrId, CareerEvent, Change } from '../../model/types'
 import { AnarchyAttrRef, AnarchyRef } from '../AnarchyRef'
 import { fmt } from '../bits'
 import { useEditor } from '../editor'
 
 export function LedgerTab() {
-  const { c, ch, balance, record, update } = useEditor()
-  const life = c.lifestyles.get(ch.identity.lifestyle ?? 'low')
+  const { c, ch, balance, record, update, table } = useEditor()
+  // lifestyle Amps in play (DHSA p.16, optional): the lifestyle is an Amp with a fixed cost, no per-run adjustment
+  const lifeAmps = optionOn(OPTIONAL_RULES.lifestyleAmps, ch, table)
+  const life = lifeAmps ? undefined : c.lifestyles.get(ch.identity.lifestyle ?? 'low')
   const [withLife, setWithLife] = useState(true)
   const today = new Date().toISOString().slice(0, 10)
   const [amount, setAmount] = useState('')
@@ -73,6 +75,7 @@ export function LedgerTab() {
         <label>Date<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
         <button className="btn primary" style={{ alignSelf: 'end' }} disabled={!(Number(amount) > 0)} onClick={earn}>Record earnings</button>
       </div>
+      {lifeAmps && <p className="muted small">Lifestyle Amps are in play (DHSA p.16): the lifestyle is an Amp with a fixed cost, so no per-run lifestyle adjustment.</p>}
       {life && life.perRun !== 0 && (
         <label className="row" style={{ display: 'flex' }}>
           <input type="checkbox" checked={withLife} onChange={e => setWithLife(e.target.checked)} />

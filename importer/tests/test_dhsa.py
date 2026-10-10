@@ -31,6 +31,12 @@ Note to keep in mind: an invented note.
 | C ONTACTS | T YPE | C OST | E FFECTS |
 |---|---|---|---|
 | **Contact*** | Amp 2 | 10 000¥ | Knows a person or two.<br>RR 1 Network (domain of choice**) |
+<!-- page 7 -->
+# EVERYDAY LIFE
+* These Amps are an alternative to the core rulebook's rules regarding lifestyles. Made-up: pay once,
+earn the same as everyone.
+
+Prose after the footnote.
 """
 
 
@@ -81,6 +87,14 @@ class ExtractTest(unittest.TestCase):
         texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("gets in the way", texts["odd-habit-quirk"])
 
+    def test_alternative_rule_seeds_the_table_rules(self):
+        rules = ET.fromstring(self.res.files["rules-optional.xml"])
+        self.assertEqual([(r.get("id"), r.get("sheet"), r.get("source"), r.get("page"), r.find("title").text, r.find("text").text) for r in rules],
+                         [("optional-lifestyle-amps", "optional", "DHSA", "7", "Lifestyle Amps in place of the core lifestyle rules", None)])
+        texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
+        self.assertEqual(texts["optional-lifestyle-amps"], "These Amps are an alternative to the core rulebook's rules regarding lifestyles. "
+                                                          "Made-up: pay once, earn the same as everyone.")
+
     def test_skills_overlay_adds_the_dhsa_specs_to_shipped_skills(self):
         skills = {s.get("id"): s for s in ET.fromstring(self.res.files["skills.xml"])}
         self.assertEqual(skills["influence"].find("name").text, "Influence")
@@ -100,6 +114,14 @@ KNOWN_EXTRA = {("gear.xml", "gear", "Mage License")}
 
 def entries(xml):
     return Counter((e.get("type") or e.get("kind"), e.find("name").text) for e in ET.fromstring(xml))
+
+
+@unittest.skipUnless(BOOK.exists(), "owner's converted DHSA book not present")
+class AlternativeRulesBookTest(unittest.TestCase):
+    def test_lifestyle_amps_found_on_its_page(self):
+        rules = dhsa.alternative_rules(BOOK.read_text(encoding="utf8"))
+        self.assertEqual([(r[0], r[2]) for r in rules], [("optional-lifestyle-amps", 16)])
+        self.assertGreater(len(rules[0][3]), 100)
 
 
 @unittest.skipUnless(LOCAL_CORE and BOOK.exists() and ORACLE.exists(), "owner's core copies, converted DHSA book and oracle not present")
