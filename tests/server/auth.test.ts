@@ -102,11 +102,11 @@ describe('with an admin, an editor and a player', () => {
 
   test('table rules: the GM writes them (checked, schema-valid, atomic); everyone signed in reads them', async () => {
     const put = (rules: unknown, cookie = jar.editor) => call(s.base, 'PUT', '/api/table-rules', { cookie, ...json({ rules }) })
-    for (const bad of [null, [{ id: 'Bad Id', on: true }], [{ id: 'a', on: true }, { id: 'a', on: false }], [{ id: 'a', on: 'yes' }],
+    for (const bad of [null, [{ id: 'Bad Id', on: true }], [{ id: 'a', on: true }, { id: 'a', on: false }], [{ id: 'a', on: 'yes' }], [{ id: 'a', on: true, locked: 'yes' }],
       [{ id: 'house-1', on: true, text: 'no name' }], [{ id: 'house-1', on: true, name: 'x'.repeat(121) }], Array.from({ length: 201 }, (_, i) => ({ id: `r${i}`, on: true }))])
       expect((await put(bad)).status, JSON.stringify(bad).slice(0, 60)).toBe(400)
     expect((await call(s.base, 'PUT', '/api/table-rules', { cookie: jar.editor, body: '{"rules":[]}' })).status).toBe(415)
-    const rules = [{ id: 'test.optional-made-up', on: true }, { id: 'house-3f2a', on: false, name: 'No <b>crits</b> & such', text: 'Made up.\nTwo lines.' }]
+    const rules = [{ id: 'test.optional-made-up', on: true, locked: true }, { id: 'house-3f2a', on: false, name: 'No <b>crits</b> & such', text: 'Made up.\nTwo lines.' }]
     expect((await put(rules)).status).toBe(204)
     expect((await put(rules, jar.player)).status).toBe(403)
     const file = join(s.dir, 'custom', 'table-rules.xml')
@@ -115,7 +115,9 @@ describe('with an admin, an editor and a player', () => {
     expect(r.errors).toEqual([])
     const read = await call(s.base, 'GET', '/custom/table-rules.xml', { cookie: jar.player })
     expect(read.status).toBe(200)
-    expect(await read.text()).toContain('<rule id="house-3f2a" on="false"><name>No &lt;b&gt;crits&lt;/b&gt; &amp; such</name><text>Made up.\nTwo lines.</text></rule>')
+    const text = await read.text()
+    expect(text).toContain('<rule id="test.optional-made-up" on="true" locked="true"></rule>')
+    expect(text).toContain('<rule id="house-3f2a" on="false"><name>No &lt;b&gt;crits&lt;/b&gt; &amp; such</name><text>Made up.\nTwo lines.</text></rule>')
     expect(readdirSync(join(s.dir, 'custom')).filter(f => f.endsWith('.tmp'))).toEqual([])
   })
 

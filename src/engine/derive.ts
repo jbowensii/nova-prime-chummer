@@ -14,9 +14,10 @@ export const OPTIONAL_RULES = {
   /** CRB p.139: every character has a social condition monitor, thresholds from Willpower plus social armor */
   socialTests: 'optional-extended-social-tests',
 } as const
-/** Whether an optional rule is in play for this runner: its own switch, else the table's; off unless switched on. */
-export const optionOn = (id: string, ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'optional'>) =>
-  ch.optionalRules?.[id] ?? table?.optional?.includes(id) ?? false
+/** Whether an optional rule is in play for this runner: its own switch unless the GM locked the rule, else the table's; off
+ *  unless switched on. */
+export const optionOn = (id: string, ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'optional' | 'locked'>) =>
+  (table?.locked?.includes(id) ? undefined : ch.optionalRules?.[id]) ?? table?.optional?.includes(id) ?? false
 
 export type Thresholds = [number, number, number]
 /** ammo: alternative DVs by ammunition, as the item's text or its amp's narrative lists them ("5 (gel)") */
@@ -254,14 +255,14 @@ export const attrRRBracket = (b: Build, a: AttrId): { name: string; how: string 
 
 /** The runner's derived values without its switchable and conditional effects, and (`switched`) with them on. `table`:
  *  the table's switches, for the optional rules in play (optionOn). */
-export function derive(c: Catalog, ch: Character, table?: Pick<TableFlags, 'optional'>): Derived {
+export function derive(c: Catalog, ch: Character, table?: Pick<TableFlags, 'optional' | 'locked'>): Derived {
   const d = deriveAt(c, ch, false, table)
   // (and a specialization's Risk Reduction the runner lacks the specialization for: in the skill's bracket)
   return effectSources(c, d.build, ch.identity.metatype).some(p => counts(p.e, true) && inBracket(p.e)) || d.pools.some(p => p.notes?.some(n => n.ref === 'rr-spec'))
     ? { ...d, switched: deriveAt(c, ch, true, table) } : d
 }
 
-function deriveAt(c: Catalog, ch: Character, on: boolean, table?: Pick<TableFlags, 'optional'>): Derived {
+function deriveAt(c: Catalog, ch: Character, on: boolean, table?: Pick<TableFlags, 'optional' | 'locked'>): Derived {
   const b = ch.finalizedAt ? currentBuild(ch) : ch.build
   const meta = c.metatypes.get(ch.identity.metatype)
   const attr = (a: AttrId) => b.attributes[a] ?? 0

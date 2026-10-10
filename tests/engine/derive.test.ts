@@ -133,4 +133,7 @@ test('optional rule (CRB p.68): vehicle-style thresholds for characters, from th
   expect(derive(cat, ch, { optional: [id] }).thresholds.mental).toEqual([2, 5, 8]) // Willpower isn't the book's Body
   expect(derive(cat, { ...ch, optionalRules: { [id]: false } }, { optional: [id] }).thresholds.physicalMain).toEqual([5, 8, 11])
   expect(derive(cat, { ...ch, optionalRules: { [id]: true } }).thresholds.physicalMain).toEqual([5, 7, 9])
+  // the GM locked the rule: the table's switch binds, the runner's own is ignored either way
+  expect(derive(cat, { ...ch, optionalRules: { [id]: false } }, { optional: [id], locked: [id] }).thresholds.physicalMain).toEqual([5, 7, 9])
+  expect(derive(cat, { ...ch, optionalRules: { [id]: true } }, { optional: [], locked: [id] }).thresholds.physicalMain).toEqual([5, 8, 11])
 })

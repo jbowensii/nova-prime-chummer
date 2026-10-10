@@ -209,3 +209,23 @@ test('a runner plays the table’s optional rules unless it sets its own (Review
   await pick.selectOption('off')
   await expect(state).toHaveText('not in play')
 })
+
+test('the GM locks a rule: every runner plays it as the table has it, its own switch disabled', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.getByRole('link', { name: 'Table setup' }).click()
+  const gm = page.getByRole('region', { name: 'Table rules' })
+  await gm.getByRole('checkbox', { name: 'Lock Long haggles' }).click()
+  await expect(gm.getByRole('checkbox', { name: 'Lock Long haggles' })).toBeChecked()
+  await expect(gm.getByRole('status')).toHaveText('Long haggles is locked: every runner plays it as set here.')
+})
+
+test('a locked rule plays as the table has it: the runner’s own switch is disabled', async ({ page }) => {
+  await signIn(page, 'pat') // Long haggles is on at the table and locked (the tests before)
+  await page.getByRole('button', { name: 'New runner' }).click()
+  await page.getByRole('button', { name: 'Create runner' }).click()
+  await page.getByRole('link', { name: 'Review' }).click()
+  const own = page.getByRole('region', { name: 'Optional rules' })
+  await expect(own.getByLabel('Long haggles for this runner')).toBeDisabled()
+  await expect(own.getByLabel('Long haggles for this runner')).toHaveValue('')
+  await expect(own.getByText(/^in play \(locked by the GM\)$/)).toBeVisible()
+})

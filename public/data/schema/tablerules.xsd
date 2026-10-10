@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- custom/table-rules.xml: the GM's table rules (Rules page), written by the server (server/books.mjs PUT /api/table-rules);
      anyone signed in reads it at /custom/table-rules.xml. A rule without <name> is a book's optional rule (a rules entry with
-     sheet="optional", by its scoped id); one with <name> is a house rule the GM wrote. on="true": in play at this table. -->
+     sheet="optional", by its scoped id); one with <name> is a house rule the GM wrote. on="true": in play at this table; locked="true": the GM's choice
+     binds every runner (no switch of its own). -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:ca2="urn:chummer-anarchy2:config:1"
            targetNamespace="urn:chummer-anarchy2:config:1"
@@ -19,6 +20,8 @@
               <xs:simpleType><xs:restriction base="xs:string"><xs:pattern value="[a-z0-9][a-z0-9.\-]{0,99}"/></xs:restriction></xs:simpleType>
             </xs:attribute>
             <xs:attribute name="on" type="xs:boolean" use="required"/>
+            <!-- the GM locked this book rule: a runner can't set its own switch (Review tab); absent: unlocked -->
+            <xs:attribute name="locked" type="xs:boolean"/>
           </xs:complexType>
         </xs:element>
       </xs:sequence>

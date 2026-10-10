@@ -20,14 +20,14 @@ function OptionalRules() {
   })
   return <section aria-labelledby="review-optional">
     <h3 id="review-optional">Optional rules</h3>
-    <p className="muted small">The books’ optional rules play as your GM set them on Table setup, unless this runner sets its own.</p>
+    <p className="muted small">The books’ optional rules play as your GM set them on Table setup, unless this runner sets its own; a rule the GM locked plays as the table has it.</p>
     <ul className="effects">{rules.map(r => {
-      const own = ch.optionalRules?.[r.id], tableOn = table?.optional?.includes(r.id) ?? false
+      const own = ch.optionalRules?.[r.id], tableOn = table?.optional?.includes(r.id) ?? false, locked = table?.locked?.includes(r.id) ?? false
       return <li key={r.id}><label>{r.title} <SourceLabel c={c} source={r.source} page={r.page} id={r.id} />{' '}
-        <select value={own === undefined ? '' : own ? 'on' : 'off'} disabled={ro} onChange={e => set(r.id, e.target.value)}
+        <select value={locked || own === undefined ? '' : own ? 'on' : 'off'} disabled={ro || locked} onChange={e => set(r.id, e.target.value)}
           aria-label={`${r.title} for this runner`}>
           <option value="">As the table: {tableOn ? 'on' : 'off'}</option><option value="on">On</option><option value="off">Off</option>
-        </select></label> <span className="muted">{optionOn(r.id, ch, table) ? 'in play' : 'not in play'}</span></li>
+        </select></label> <span className="muted">{optionOn(r.id, ch, table) ? 'in play' : 'not in play'}{locked && ' (locked by the GM)'}</span></li>
     })}</ul>
   </section>
 }

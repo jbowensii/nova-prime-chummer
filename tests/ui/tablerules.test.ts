@@ -20,8 +20,12 @@ test('strict still throws on a server error, a network failure and a wrong XML d
   reply('<other/>', 'text/xml')
   await expect(loadTableRules({ strict: true })).rejects.toThrow(/table rules document/)
 })
-test('the switches: the app’s own on unless off; the books’ optional rules switched on, not house rules', () => {
-  expect(tableFlags([])).toEqual({ nonCanon: true, realSin: true, optional: [] })
-  expect(tableFlags([{ id: 'ca2.real-sin', on: false }, { id: 'optional-a', on: true }, { id: 'optional-b', on: false },
-    { id: 'house', on: true, name: 'House', text: '' }])).toEqual({ nonCanon: true, realSin: false, optional: ['optional-a'] })
+test('the switches: the app’s own on unless off; the books’ optional rules switched on (and locked), not house rules', () => {
+  expect(tableFlags([])).toEqual({ nonCanon: true, realSin: true, optional: [], locked: [] })
+  expect(tableFlags([{ id: 'ca2.real-sin', on: false }, { id: 'optional-a', on: true }, { id: 'optional-b', on: false, locked: true },
+    { id: 'house', on: true, name: 'House', text: '' }])).toEqual({ nonCanon: true, realSin: false, optional: ['optional-a'], locked: ['optional-b'] })
+})
+test('a locked rule reads back locked', async () => {
+  reply('<ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><rule id="optional-a" on="true" locked="true"/><rule id="optional-b" on="false"/></ca2:tablerules>', 'text/xml')
+  expect(await loadTableRules()).toEqual([{ id: 'optional-a', on: true, locked: true }, { id: 'optional-b', on: false }])
 })

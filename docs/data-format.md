@@ -310,11 +310,13 @@ critters and devices p.68, planning pool or personal Edge p.80: names and pages 
 The optional rules a GM (admin or editor) plays with, switched on and off on the Table setup page (`#/table`), plus house rules the GM
 writes. Written by the server (`PUT /api/table-rules`, admin and editors; atomic), schema `tablerules.xsd`, namespace
 `urn:chummer-anarchy2:config:1`; every signed-in user reads it at `/custom/table-rules.xml`, and players see the rules
-switched on there, read only. It lives in `custom/`, so backups carry it.
+switched on there, read only. It lives in `custom/`, so backups carry it. A book's rule may carry `locked="true"`: the
+GM's switch then binds every runner (the Review tab's own switch for it is disabled); otherwise a runner may set its own
+(`<optionalRule>` in the character file).
 
 ```xml
 <ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
-  <rule id="crb.optional-extended-social-tests" on="true"/>          <!-- a book's optional rule, by its id -->
+  <rule id="crb.optional-extended-social-tests" on="true" locked="true"/>   <!-- a book's optional rule, by its id; locked: the GM's choice binds every runner -->
   <rule id="house-3f2a9c01b2d4" on="true"><name>…</name><text>…</text></rule>   <!-- a house rule -->
 </ca2:tablerules>
 ```

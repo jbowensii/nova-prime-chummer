@@ -47,7 +47,7 @@
 //   GET    /api/samples               anyone signed in: the example sets in custom/samples/<set>/ -> { sets: [{ id, name, canon,
 //                                     samples: [{ name, href }] }] } (href relative to /custom/). Read only: the admin manages
 //                                     the folder on disk; set.xml (sampleset.xsd) names a set and says whether it is canon
-//   PUT    /api/table-rules           admin and editors: { rules: [{ id, on, name?, text? }] } -> 204; replaces custom/table-rules.xml
+//   PUT    /api/table-rules           admin and editors: { rules: [{ id, on, locked?, name?, text? }] } -> 204; replaces custom/table-rules.xml
 //                                     (tablerules.xsd: a book's optional rule by its id, a house rule with its name and text);
 //                                     anyone signed in reads the file at /custom/table-rules.xml
 //   GET    /api/ask                   anyone signed in: -> { available, limit, used } (available: an AI provider is chosen, enabled
@@ -616,9 +616,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (!ENTRY_ID.test(id) || seen.has(id)) throw fail(400, 'each rule needs an id of its own')
       seen.add(id)
       if (typeof r.on !== 'boolean') throw fail(400, 'a rule is on (true) or off (false)')
+      if (r.locked !== undefined && typeof r.locked !== 'boolean') throw fail(400, 'a rule is locked (true) or not (false)')
       if (!name && text) throw fail(400, 'a house rule needs a name')
       if (name.length > 120 || text.length > 4000) throw fail(400, 'a house rule’s name is 120 characters at most, its description 4,000')
-      return `  <rule id="${id}" on="${r.on}">${name ? `<name>${esc(name)}</name><text>${esc(text)}</text>` : ''}</rule>\n`
+      return `  <rule id="${id}" on="${r.on}"${r.locked ? ' locked="true"' : ''}>${name ? `<name>${esc(name)}</name><text>${esc(text)}</text>` : ''}</rule>\n`
     })
     await serial('table', () => writeAtomic(join(customDir, 'table-rules.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n'
       + `<ca2:tablerules xmlns:ca2="${CONFIG_NS}" version="1">\n${rows.join('')}</ca2:tablerules>\n`))

@@ -11,8 +11,9 @@ import { issueNote, type Issue } from './formula'
 import { hasNoMetatype } from './npc'
 
 /** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
- *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn). */
-export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[] }
+ *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
+ *  every runner. */
+export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[]; locked?: string[] }
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []
