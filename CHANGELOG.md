@@ -11,6 +11,9 @@
   edits, Problems and what each game adds (Anarchy: the loaded files; Shadowrun 6: where the creation rules are). Every
   Shadowrun 6 feature stays: the Edit buttons and compendium links, the override files, issues, effects, search and
   Needs attention.
+- Game data opens on each game's main kind, Amps in Anarchy and Qualities in Shadowrun 6 (the list keeps its order),
+  then on the kind last looked at, remembered per game in this browser. A private window or blocked storage just
+  opens on the main kind.
 - **Export book data for Foundry** has its icon in the header's right-hand group, beside the game switch, Settings
   and the account. It unfolds the export and scrolls to it, and its address (`#/data/foundry`,
   `#/sr6/data/foundry`) opens the page with it unfolded. Only for those who may export: the admin and editors (GMs in

@@ -1,6 +1,7 @@
 // Game data's catalog browser (both games, 0.9.1): a Book dropdown (all books, or one imported source or compendium),
 // then the kinds with their counts (a list beside the entries; tabs across the top on a phone), the chosen kind's
-// sub-categories when it has more than one, and that kind's entries. A search box looks across every kind; its results
+// sub-categories when it has more than one, and that kind's entries. It opens on the kind last looked at in this browser,
+// else the game's main kind (startKind). A search box looks across every kind; its results
 // are grouped by kind. Needs attention shows only the entries with an issue (a value the book leaves out or the importer
 // couldn't read, src/engine/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
 // (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
@@ -65,14 +66,32 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
   )
 }
 
-export function CatalogBrowser({ kinds, books, tableClass }: { kinds: BrowseKind[]; books: Book[]; tableClass?: string }) {
+/** The kind the browser opens on: the one this browser last looked at (`remember`, its storage key), else `main`, else the
+ *  first with entries. Storage that's blocked or holds a kind that's gone falls back the same way. */
+export function startKind(kinds: BrowseKind[], main?: string, remember?: string): string | undefined {
+  let last: string | null = null
+  try { last = remember ? localStorage.getItem(remember) : null } catch { /* private mode, blocked: not remembered */ }
+  return [last, main].find(id => id && kinds.some(k => k.id === id)) ?? kinds.find(k => k.rows.length)?.id ?? kinds[0]?.id
+}
+
+export function CatalogBrowser({ kinds, books, tableClass, main, remember }: {
+  kinds: BrowseKind[]; books: Book[]; tableClass?: string
+  /** the kind it opens on when none is remembered (Game data: Amps, Qualities) */
+  main?: string
+  /** the browser storage key that remembers the last kind looked at (per game) */
+  remember?: string
+}) {
   const [book, setBook] = useState('')
   const [q, setQ] = useState('')
   const [attention, setAttention] = useState(false)
   const bookRows = kinds.map(k => ({ ...k, rows: book ? k.rows.filter(r => r.source === book) : k.rows }))
   const needing = bookRows.reduce((n, k) => n + k.rows.filter(r => r.issues?.length).length, 0)
   const inBook = attention ? bookRows.map(k => ({ ...k, rows: k.rows.filter(r => r.issues?.length) })) : bookRows
-  const [kindId, setKind] = useState(() => kinds.find(k => k.rows.length)?.id ?? kinds[0]?.id)
+  const [kindId, setKindState] = useState(() => startKind(kinds, main, remember))
+  const setKind = (id: string) => {
+    setKindState(id)
+    try { if (remember) localStorage.setItem(remember, id) } catch { /* not remembered */ }
+  }
   const [group, setGroup] = useState('')
   const t = q.trim().toLowerCase()
   const kind = inBook.find(k => k.id === kindId) ?? inBook[0]

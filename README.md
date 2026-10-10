@@ -553,7 +553,8 @@ The app’s **Game data** page is the same in both games: the catalog by kind
 (the kinds down the left with their counts, the chosen kind's categories as
 chips across the top, its entries with their values, Description and Edit),
 with the **Book** list, a search across everything and **Needs attention** as
-filters. Under it, folded until opened, each source with whether it's canon
+filters. It opens on Amps (Anarchy) or Qualities (Shadowrun 6), then on the
+kind you last looked at in that game, remembered by your browser. Under it, folded until opened, each source with whether it's canon
 and the Foundry export (also opened by its Foundry icon in the header, for the
 admin and editors); then the catalog edits, what loaded and any errors.
 

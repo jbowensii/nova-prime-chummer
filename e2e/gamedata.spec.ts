@@ -55,9 +55,9 @@ const categories = (page: Page) => page.getByRole('group', { name: 'Category' })
 const rows = (page: Page) => page.locator('table.browse tbody tr')
 const foundryLink = (page: Page) => page.locator('.menubar .tools').getByRole('link', { name: 'Export book data for Foundry' })
 
-for (const [game, path, kind, category, book] of [
-  ['Anarchy', '/#/data', 'Weapons', 'Handguns', 'Test Book Two'],
-  ['Shadowrun 6', '/#/sr6/data', 'Augmentations', 'Cyberware: eyeware', 'Shadowrun, Sixth World Core Rulebook'],
+for (const [game, path, kind, category, book, main, other, otherMain] of [
+  ['Anarchy', '/#/data', 'Weapons', 'Handguns', 'Test Book Two', 'Amps', '/#/sr6/data', 'Qualities'],
+  ['Shadowrun 6', '/#/sr6/data', 'Augmentations', 'Cyberware: eyeware', 'Shadowrun, Sixth World Core Rulebook', 'Qualities', '/#/data', 'Amps'],
 ] as const) {
   const slug = game === 'Anarchy' ? 'ca2' : 'sr6'
   test(`${game} Game data: the kinds with counts, categories across the top, the book a filter, the sources folded`, async ({ page }) => {
@@ -101,6 +101,21 @@ for (const [game, path, kind, category, book] of [
       await page.setViewportSize(DESK)
     }
     await theme(page, 'light')
+  })
+
+  test(`${game} Game data opens on its main kind (${main}), then on the kind last looked at, per game`, async ({ page }) => {
+    await signIn(page, path)
+    const pressed = kinds(page).locator('button[aria-pressed="true"]')
+    await expect(pressed).toHaveText(counted(main))
+    await kinds(page).getByRole('button', { name: counted(kind) }).click()
+    await page.reload()
+    await expect(pressed).toHaveText(counted(kind))
+    // the other game keeps its own
+    await page.goto(other)
+    await expect(pressed).toHaveText(counted(otherMain))
+    await page.goto(path)
+    await page.reload()
+    await expect(pressed).toHaveText(counted(kind))
   })
 
   test(`${game} Game data: the Foundry export's link in row 1 opens the export; a player has neither`, async ({ page, browser }) => {

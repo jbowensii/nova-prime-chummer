@@ -1,15 +1,16 @@
 // Game data's one layout for both games (src/ui/GameData.tsx): the kinds with their counts, the categories, the book as
 // a filter, the sources and the Foundry export folded, the export's link in row 1's right-hand group (only when the page
-// gives an export), Problems with a Line column only when a game reports lines. Made-up rows.
+// gives an export), Problems with a Line column only when a game reports lines; the kind it opens on (the last looked at,
+// per game, else the game's main kind). Made-up rows.
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, expect, test } from 'vitest'
-import { GameDataPage } from '../../src/ui/GameData'
-import type { BrowseKind } from '../../src/ui/CatalogBrowser'
+import { afterEach, expect, test, vi } from 'vitest'
+import { GameDataPage, KIND_KEY } from '../../src/ui/GameData'
+import { startKind, type BrowseKind } from '../../src/ui/CatalogBrowser'
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null
-afterEach(() => { act(() => root?.unmount()); root = null; document.body.innerHTML = ''; location.hash = '' })
+afterEach(() => { act(() => root?.unmount()); root = null; document.body.innerHTML = ''; location.hash = ''; localStorage.clear(); vi.restoreAllMocks() })
 
 const KINDS: BrowseKind[] = [
   { id: 'gear', label: 'Gear', rows: [{ key: 'a', name: 'Zap Gloves', source: 'NB', page: 1, group: 'tools' }, { key: 'b', name: 'Glow Stick', source: 'OB', page: 2, group: 'lights' }] },
@@ -73,4 +74,45 @@ test('Problems: the Line column only when a game reports lines', () => {
   act(() => root!.unmount()); root = null
   el = mount('ca2', { errors: [{ file: 'a.xml', line: 3, message: 'bad' }] })
   expect(q(el, 'table th').map(t => t.textContent)).toContain('Line')
+})
+
+const GAME: BrowseKind[] = [
+  { id: 'priorities', label: 'Priorities', rows: [{ key: 'p', name: 'Priority A', source: 'NB', page: 1 }] },
+  { id: 'qualities', label: 'Qualities', rows: [{ key: 'q', name: 'Lucky Streak', source: 'NB', page: 2 }] },
+  { id: 'amps', label: 'Amps', rows: [{ key: 'a', name: 'Keen Eye', source: 'NB', page: 3 }] },
+  { id: 'gear', label: 'Gear', rows: [] },
+]
+const pressed = (el: Element) => el.querySelector('[aria-label="Kind"] button[aria-pressed="true"]')?.textContent
+
+test('the kind it opens on: the one last looked at, else the main one, else the first with entries', () => {
+  expect(startKind(GAME, 'qualities', 'k')).toBe('qualities')
+  localStorage.setItem('k', 'gear')
+  expect(startKind(GAME, 'qualities', 'k')).toBe('gear')
+  localStorage.setItem('k', 'gone') // a kind no longer there
+  expect(startKind(GAME, 'qualities', 'k')).toBe('qualities')
+  expect(startKind(GAME, 'nope')).toBe('priorities')
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked') })
+  expect(startKind(GAME, 'amps', 'k')).toBe('amps')
+})
+
+test('Game data opens on the game’s main kind (Anarchy Amps, SR6 Qualities) and remembers the last kind, per game', () => {
+  let el = mount('sr6', { kinds: GAME })
+  expect(pressed(el)).toBe('Qualities 1')
+  act(() => (q(el, '[aria-label="Kind"] button').find(b => b.textContent === 'Priorities 1')!).click())
+  expect(localStorage.getItem(`${KIND_KEY}.sr6`)).toBe('priorities')
+  act(() => root!.unmount()); root = null
+  el = mount('ca2', { kinds: GAME })
+  expect(pressed(el)).toBe('Amps 1') // the other game's choice isn't this one's
+  act(() => root!.unmount()); root = null
+  el = mount('sr6', { kinds: GAME })
+  expect(pressed(el)).toBe('Priorities 1')
+})
+
+test('storage that throws: it still opens on the main kind and a pick still works', () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked') })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked') })
+  const el = mount('ca2', { kinds: GAME })
+  expect(pressed(el)).toBe('Amps 1')
+  act(() => (q(el, '[aria-label="Kind"] button').find(b => b.textContent === 'Qualities 1')!).click())
+  expect(pressed(el)).toBe('Qualities 1')
 })
