@@ -74,7 +74,7 @@ finalized runner (before that, what is left of the build budget).
 
 - `effects`: `[{ id, name, category, param?, value?, note?, line, applied, unpriced?, switch?, when?, confidence?, from?, affects? }]`, the picks as made.
   `value` is a number; `line` the effect as the sheet says it; `applied` false for one shown but not counted (low
-  confidence, or only `when`); `switch`, `when`, `confidence`, `from` as in the data files (data-format.md, How an effect
+  confidence); a switchable or `when` one counts in `switched`'s totals only; `switch`, `when`, `confidence`, `from` as in the data files (data-format.md, How an effect
   is turned on); `unpriced` an effect the printed rating doesn't pay for (it applies, at rating 0); `affects` a spell's or
   complex form's: `caster` or `target`. `rr` and `bonuses` count the applied ones as the amp gives them switched on: an
   amp whose effects are switchable says so with `switch`.

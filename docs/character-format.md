@@ -64,8 +64,8 @@ is built from this data; the format itself is ours and stays stable.
   notes it ("the book prints rating 9; the rules give 11"); the file keeps the book's number.
 - **`<effect>`** on an amp is a pick (an Amp effect, or a narrative effect kind at rating 0: data-format.md); on an item,
   the player's or GM's own effects, which replace the catalog item's. Either may say how it is turned on and whether it
-  counts: `switch`, `when`, `confidence="low"` (shown, not counted) and `from` (data-format.md, How an effect is turned
-  on). The Amp Builder and the Gear tab set them ("Counts").
+  counts: `switch` and `when` (counted in the bracketed total), `confidence="low"` (shown, not counted), `from` and
+  `affects` (data-format.md, How an effect is turned on). The Amp Builder and the Gear tab set them ("Counts").
 - **`<chassis>`** (a vehicle amp whose chassis is a GM compendium's): a copy of that `<vehicle>` (`vehicles.xsd`), so
   the vehicle keeps its stats when the compendium is unshared or deleted. A snapshot or chassis whose source the catalog
   no longer has (or a compendium's entry that is gone) stands in for it, and Review notes "its source … is no longer

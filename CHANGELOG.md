@@ -31,7 +31,14 @@ Import the books of both games again (Books → **Re-import all**) so every entr
   balance: Athletics; haggling: Influence …), from the core rulebook's skill descriptions, with the specialization when
   the activity is one.
 - A spell's or complex form's effect says whom it affects: the caster (counted while sustained, in brackets) or its
-  target(s) (stored on the spell, never counted on the caster). A spell's bonus per net hit is shown, not applied.
+  target(s) (stored on the spell, never counted on the caster); a sentence naming neither is the caster's, in both
+  games (owner decision 2026-10-10). A spell's bonus per net hit is shown, not applied.
+- Conditional effects ("while in the Matrix", "in darkness") count in the bracketed total like switchable ones, in both
+  games, and every bracketed, caster or target effect has a note naming its switch, condition or whom it affects: on
+  hover over an attribute or pool (Attributes and Skills tabs), in Review's new "What its effects do" list and under
+  the sheets' Effects or Notes.
+- An item whose description the book prints under a rule named for it (`Move-By-Wire (Rating 1-2)`, `Stealthlink
+  Upgrade`, `ProCams and SmartCams`) reads that text.
 - A statement a section makes of all its items applies to each (`Each cyberlimb adds one box to the Physical Condition
   Monitor`: arms, legs, skull and torso; partial limbs are excepted). A variant priced from its base item (Body Shop's
   transgenics: `Transgenic gills`) works as that bioware and uses its effects.
@@ -59,10 +66,11 @@ Import the books of both games again (Books → **Re-import all**) so every entr
   Every catalog has them (the Amp Builder offers them); a data file may define its own.
 - Every effect says how it is turned on (`switch`: wireless, activated, sustained, conditional; none: always on), when it
   holds (`when`), whether the importer is sure of it (`confidence="low"`) and the entry it is given by (`from`): the same
-  rule as Shadowrun 6 (one shared module). A low-confidence effect, or one that holds only `when`, is shown and not
-  counted. A switchable one (wireless, activated, sustained: a drug's dose, a sustained spell) counts only switched on: a
-  total is printed as the books print it, without it and in brackets with it, `RR 1 (2)`, on the sheets, the Skills tab,
-  the receipt and in the export (owner, 2026-10-10). A player's or GM's own effects override the book's: the Amp Builder
+  rule as Shadowrun 6 (one shared module). A low-confidence effect is shown and not counted. A switchable one
+  (wireless, activated, sustained: a drug's dose, a sustained spell) or one that holds only sometimes (`when`: in
+  darkness) counts only in the bracketed total: a total is printed as the books print it, without them and in brackets
+  with them, `RR 1 (2)`, on the sheets, the Skills tab, the receipt and in the export, each named in a note (the hover
+  on a pool's Risk Reduction, Review's What its effects do, the sheet) (owner, 2026-10-10). A player's or GM's own effects override the book's: the Amp Builder
   and the Gear tab have "How it is turned on" and "Counts" for each.
 - Items (spells, complex forms, plain gear) and metatypes (the racial quality) carry effects too: a drug's Disadvantage,
   a spell's Advantage or armor (by hits: shown), Low-light vision. A spell's or complex form's say whom each affects,

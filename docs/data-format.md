@@ -197,12 +197,15 @@ never its dice (CRB p.63: no circumstance changes the pool).
 
 Every `<effect>` (amps, items, metatypes, a runner's amps and items) may say how it is turned on and whether it counts
 (`src/engine/effects.ts`, shared with Shadowrun 6): `switch` (`wireless`, `activated`, `sustained`, `conditional`; absent:
-always on), `when` (it holds only then: shown, not counted), `confidence="low"` (read from a sentence the importer isn't
-sure of, a value that depends on hits: shown, not counted) and `from` (the catalog id of the entry it is given by: "like an
-elf", "acts the same way as a mana bolt"). A switchable one (wireless, activated, sustained) counts only switched on: a
-total is printed as the books print it, without it and in brackets with it, `RR 1 (2)` (owner, 2026-10-10).
-`affects` (`caster` or `target`) says whom a spell's or complex form's effect is on: the caster counts its own while
-sustained (in brackets), a target's stays on the spell. `unpriced="true"` marks an effect the book states but its
+always on), `when` (it holds only then: in darkness, while in the Matrix), `confidence="low"` (read from a sentence the
+importer isn't sure of, a value that depends on hits: shown, not counted) and `from` (the catalog id of the entry it is
+given by: "like an elf", "acts the same way as a mana bolt"). A switchable one (wireless, activated, sustained) and a
+conditional one (`when`) count only in the bracketed total: a total is printed as the books print it, without them and in
+brackets with them, `RR 1 (2)`, and each has a note naming its switch or condition on the hover card, in Review's "What
+its effects do" and on the printed sheet (owner, 2026-10-10, both games). `affects` (`caster` or `target`) says whom a
+spell's or complex form's effect is on, with the note `affects the caster` or `affects target(s)`: the caster counts its
+own while sustained (in brackets), a target's stays on the spell. A sentence that names neither is about the caster; one
+opening with a pronoun is about whom the one before was (owner, 2026-10-10). `unpriced="true"` marks an effect the book states but its
 printed rating doesn't pay for: it applies, at rating 0 (the import report lists each, `kind="effect-unpriced"`).
 
 A bonus limited to a specialization is added to that specialization's pool when the runner has it, else shown beside

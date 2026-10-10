@@ -210,9 +210,10 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   `Influence (Etiquette or Negotiation)`: either). It is added to that specialization's pool when the runner has it,
   else to the skill's bracketed total (owner decision 2026-10-10).
 - **Whom it affects** (`affects`, spells, rituals and complex forms): `target` when its sentence names the target,
-  subject, device, ally …, or names no one (a spell acts on its target); `caster` when it names only the caster (`you
-  gain`). A caster's effect counts on the caster while sustained (in brackets); a target's is stored on the spell and
-  never counted on the caster (owner decision 2026-10-10).
+  subject, device, ally … before the caster; else `caster` (it names the caster, `you gain`, or no one); a sentence
+  opening with a pronoun is about whom the one before was. A caster's effect counts on the caster while sustained (in
+  brackets); a target's is stored on the spell and never counted on the caster. Each gets the note `affects the caster`
+  or `affects target(s)` (owner decisions 2026-10-10, both games).
 
 What the rules read: lists (`+1 to your Agility, Body, Reaction, and Strength`), `increase X by N` / `X +N` / `+N
 to X` / `+N X` / `a +N bonus on X` / `X is increased by N` / `adds its rating to X` / `the X's rating is added to Y`
