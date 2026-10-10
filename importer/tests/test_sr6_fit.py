@@ -49,6 +49,15 @@ class FitTest(unittest.TestCase):
         self.assertIsNone(fit.spend({**n, "attrs": {**n["attrs"], "mag": 2}}, rows, CS))
         self.assertEqual(fit.spend({**n, "attrs": {**n["attrs"], "mag": 2}, "loss": 1}, rows, CS)[1]["attrs"]["mag"], [0, 0, 0])
 
+    def test_raised_maximums_of_the_same_value_split_the_same_way_every_run(self):
+        """Two raised attributes printed the same: the adjustment points go to the first in the attributes' order,
+        whatever order the set gives them in (it changes from run to run)."""
+        a = {**{k: 1 for k in fit.CORE}, "bod": 5, "str": 5}
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "CDABE")}
+        got = [fit.spend(need(meta="Gnoll", raised=r, attrs=a), rows, CS)[1]["attrs"] for r in (["str", "bod"], ["bod", "str"])]
+        self.assertEqual(got[0], got[1])
+        self.assertEqual((got[0]["bod"][1], got[0]["str"][1]), (3, 0))
+
     def test_past_the_pools_the_cheapest_ranks_are_karma(self):
         """2 attribute points for 4 ranks: the karma goes on the lowest ratings (CHA 2, then LOG 2), each rank its rating
         times the per-rank price; a skill past its points likewise; a specialization takes a skill point left over, else
