@@ -25,7 +25,8 @@ import re
 from xml.sax.saxutils import escape
 
 from importer.recipes import Result
-from importer.recipes.dhsa import slug
+from importer import NoCoreData
+from importer.recipes.dhsa import Mapper, fx_xml, item_effects, load_skills, slug
 
 ID, NAME, PUBLISHER, CANON = "CG", "Shadowrun Anarchy 2.0 Conversion Guide v1.1", "Catalyst Game Labs", True
 SHA256 = ("502259843b7a5645d684b8f8312db7b9baeac669c0bb5912e5debd44746b9876",)  # the owner's v1.1 PDF
@@ -183,6 +184,10 @@ def extract(md, ctx=None):
     price = complex_form_price(lines)
 
     items, texts, ids = [], [], set()
+    try:  # the core skills name the Tests a form's effects are on; none yet: custom ones
+        mapper = Mapper(load_skills()[1])
+    except NoCoreData:
+        mapper = Mapper({})
     for f in forms:
         base = "cf-" + slug(f["name"])
         fid, n = base, 2
@@ -192,7 +197,7 @@ def extract(md, ctx=None):
         category = "sustained" if f["type"] == "S" else "instant"
         text = f'{f["type"]}. {f["text"]}'.strip()
         items.append(f'  <item id="{fid}" kind="complex-form" category="{category}" source="{ID}" page="{f["page"]}">'
-                     f'<name>{escape(f["name"])}</name><text></text></item>')
+                     f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S"))}<text></text></item>')
         texts.append(f'  <text of="items" id="{fid}">{escape(text)}</text>')
 
     rule_entries, rule_ids = [], set()

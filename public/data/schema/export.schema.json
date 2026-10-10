@@ -164,6 +164,37 @@
         },
         "note": {
           "type": "string"
+        },
+        "applied": {
+          "type": "boolean",
+          "description": "false: shown, not counted (low confidence, or only `when`)"
+        },
+        "switch": {
+          "enum": [
+            "wireless",
+            "activated",
+            "sustained",
+            "conditional"
+          ],
+          "description": "how it is turned on; absent: always on"
+        },
+        "when": {
+          "type": "string",
+          "description": "only then (not counted)"
+        },
+        "confidence": {
+          "enum": [
+            "low"
+          ],
+          "description": "read from a sentence the importer is not sure of (not counted)"
+        },
+        "from": {
+          "type": "string",
+          "description": "the catalog id of the entry it is given by"
+        },
+        "line": {
+          "type": "string",
+          "description": "the effect as the sheet says it"
         }
       }
     },
@@ -271,6 +302,14 @@
         },
         "name": {
           "type": "string"
+        },
+        "switch": {
+          "enum": [
+            "wireless",
+            "activated",
+            "sustained"
+          ],
+          "description": "every counted effect turned on this way"
         }
       }
     },
@@ -788,6 +827,15 @@
               },
               "minItems": 3,
               "maxItems": 3
+            },
+            "social": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "description": "Willpower + social armor, only with social armor"
             }
           }
         },
@@ -860,6 +908,36 @@
               },
               "rr": {
                 "type": "number"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "ref",
+                    "text",
+                    "from"
+                  ],
+                  "properties": {
+                    "ref": {
+                      "enum": [
+                        "advantage",
+                        "edge-advantage",
+                        "disadvantage"
+                      ]
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "how": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "description": "Advantages and Disadvantages on this Test (never dice)"
               }
             }
           }
@@ -918,6 +996,51 @@
                 "high",
                 "extreme"
               ]
+            }
+          }
+        },
+        "effects": {
+          "type": "object",
+          "description": "what the runner effects do beyond the numbers",
+          "required": [
+            "sustain",
+            "extraSpirits",
+            "socialArmor",
+            "matrixArmor",
+            "forcedRisk",
+            "rcc",
+            "vcr"
+          ],
+          "properties": {
+            "sustain": {
+              "type": "object"
+            },
+            "extraSpirits": {
+              "type": "integer"
+            },
+            "socialArmor": {
+              "type": "integer"
+            },
+            "matrixArmor": {
+              "type": "integer"
+            },
+            "ignoreWounds": {
+              "type": "string"
+            },
+            "forcedRisk": {
+              "type": "boolean"
+            },
+            "vr": {
+              "enum": [
+                "cold",
+                "hot"
+              ]
+            },
+            "rcc": {
+              "type": "integer"
+            },
+            "vcr": {
+              "type": "boolean"
             }
           }
         }

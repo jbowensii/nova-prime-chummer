@@ -1,7 +1,8 @@
 // Derived values shown on the sheet (CRB p.52, 60, 61, 67-68, 77).
-import type { AmpEntry, AttrId, Build, Catalog, Character, KnowledgeEntry } from '../model/types'
+import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, KnowledgeEntry } from '../model/types'
 import { ATTRS } from '../model/types'
-import { ampEssence, FIREWALL_MAX } from './amps'
+import { ampEssence, FIREWALL_MAX, isRuleEffect, ruleText } from './amps'
+import { applies, effectHow, own } from './effects'
 import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
 
@@ -21,7 +22,37 @@ export function ammoDVs(text = ''): string[] {
 /** monitor: the vehicle's own wound boxes (its extra-box effects count here, not on the rigger, CRB p.62) */
 export interface VehicleStats { uid: string; name: string; chassis: string; pilot: number; body: number; handling: number;
   speed: number; flying: boolean; armor: number; count: number; mount: string; thresholds: Thresholds; monitor: { light: number; serious: number } }
-export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number }
+/** notes: the Advantages and Disadvantages the runner's effects give on this Test (CRB p.59, 65), each with where it comes
+ *  from and when it holds: shown with the pool, never dice (the book's pools never change, p.63) */
+export interface Pool { skill: string; spec?: string; label: string; rating: number; attr: AttrId; dp: number; rr: number; notes?: PoolNote[] }
+export interface PoolNote { ref: 'advantage' | 'edge-advantage' | 'disadvantage'; text: string; from: string; how?: string }
+/** One effect the runner has, from an amp, an item or the metatype's racial quality: `text` as the sheet says it, `how`
+ *  it is turned on and whether it counts (effects.ts effectHow), `applied` false for one shown but not counted. */
+export interface DerivedEffect { ref: string; text: string; from: string; fromId?: string; how: string; applied: boolean; rule: boolean
+  /** where it comes from: an amp's type, `item` or `metatype` */
+  type: string }
+/** A pool's Advantages and Disadvantages as the sheets mark them: `Adv`, `Adv (1 Edge)`, `Dis`, each with where it comes
+ *  from and when it holds. */
+export const poolMarks = (p: Pool) => (p.notes ?? []).map(n => ({
+  mark: n.ref === 'advantage' ? 'Adv' : n.ref === 'edge-advantage' ? 'Adv (1 Edge)' : 'Dis',
+  title: `${n.text}: ${n.from}${n.how ? ` (${n.how})` : ''}` }))
+/** What the runner's effects do beyond the numbers, one line each, for the sheets and Review: sustained spells and
+ *  complex forms, extra spirits, wound modifiers ignored, forced Risk, VR, rigging, and the effects of its items and
+ *  racial quality (its amps' own are listed with each amp). */
+export function effectLines(d: Derived): string[] {
+  const out: string[] = []
+  const spells = d.sustain.free > 1 || d.awakened.sorcery, forms = d.sustain.formsFree > 1 || d.emerged
+  if (spells) out.push(`Sustains ${d.sustain.free} spell${d.sustain.free > 1 ? 's' : ''} without a Disadvantage, ${d.sustain.max} at most`)
+  if (forms) out.push(`Sustains ${d.sustain.formsFree} complex form${d.sustain.formsFree > 1 ? 's' : ''} without a Disadvantage, ${d.sustain.formsMax} at most`)
+  if (d.extraSpirits) out.push(`${d.extraSpirits} more summoned spirit${d.extraSpirits > 1 ? 's' : ''}`)
+  if (d.ignoreWounds) out.push(d.ignoreWounds === 'all' ? 'Ignores wound modifiers' : `Ignores ${d.ignoreWounds} wound modifiers`)
+  if (d.forcedRisk) out.push('Must take a High or Extreme Risk')
+  if (d.vr) out.push(`${d.vr === 'hot' ? 'Hot' : 'Cold'}-sim VR`)
+  if (d.rcc) out.push(`Rigger command console: ${d.rcc} drone${d.rcc > 1 ? 's' : ''}`)
+  if (d.vcr) out.push('Vehicle control rig')
+  for (const e of d.effects) if (e.type === 'item' || e.type === 'metatype') out.push(`${e.text} (${e.from}${e.how ? `, ${e.how}` : ''})`)
+  return out
+}
 export interface Derived {
   build: Build
   edge: number
@@ -29,7 +60,9 @@ export interface Derived {
   essenceEffects: { magicHitsCancelled: number; healingHitsCancelled: number; socialDisadvantage: boolean; dead: boolean }
   monitor: { light: number; serious: number; incap: 1 }
   armor: { none: number; main: number; alt: number }
-  thresholds: { physicalNone: Thresholds; physicalMain: Thresholds; physicalAlt: Thresholds; mental: Thresholds; matrix?: Thresholds }
+  thresholds: { physicalNone: Thresholds; physicalMain: Thresholds; physicalAlt: Thresholds; mental: Thresholds; matrix?: Thresholds
+    /** against social damage (CRB p.139): Willpower plus social armor; only with social armor */
+    social?: Thresholds }
   /** armor against mental damage (spells, astral, biofeedback) */
   mentalProtection: number
   weapons: Weapon[]
@@ -45,6 +78,26 @@ export interface Derived {
   attack?: number
   /** the cyberdeck's own wound boxes (its extra-box effects count here, not on the runner, CRB p.62) */
   deckMonitor?: { light: number; serious: number }
+  /** every effect the runner has (effectSources): the narrative effect kinds and the effects shown but not counted are
+   *  listed on the sheet and in Review from here */
+  effects: DerivedEffect[]
+  /** spells (complex forms) sustained without a Disadvantage, and at most (CRB p.178: 1 and 2; each extra sustained
+   *  spell effect adds one to both) */
+  sustain: { free: number; max: number; formsFree: number; formsMax: number }
+  /** extra summoned spirits (compiled sprites) beyond the rules' (CRB p.62) */
+  extraSpirits: number
+  /** social armor (CRB p.157: added to the Willpower threshold against social damage) and Matrix armor (added to the
+   *  Matrix threshold) */
+  socialArmor: number
+  matrixArmor: number
+  /** wound modifiers the runner ignores ('all', or the wound level the effect names), from its always-on effects */
+  ignoreWounds?: string
+  /** must take a High or Extreme Risk on every action (a drug's, an unrestricted cyberarm's) */
+  forcedRisk: boolean
+  /** VR access (cold- or hot-sim), rigger command console drones, vehicle control rig (CRB p.62, 210, 231) */
+  vr?: 'cold' | 'hot'
+  rcc: number
+  vcr: boolean
 }
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
@@ -95,6 +148,23 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
 }
 
 const RR_CAP = 3 // max Risk Reduction on one Test (CRB p.61)
+/** An amp's effects that count (effects.ts applies): low-confidence and `when` ones are shown, never added. */
+export const onFx = (a: Pick<AmpEntry, 'effects'>) => a.effects.filter(applies)
+/** Where an effect comes from: an amp (its type), an item (`item`) or the metatype's racial quality (`metatype`). */
+export interface EffectSource { e: EffectPick; type: string; name: string; uid?: string; id?: string; amp?: AmpEntry }
+/** Every effect a runner has, counted or not: its amps' (as picked), its items' (the player's own, else the catalog
+ *  item's: effects.ts own; a spell's or complex form's only as the player enters them: the book's are what it does to
+ *  its subject or target when cast) and its metatype's. */
+export function effectSources(c: Catalog, b: Build, metatype?: string): EffectSource[] {
+  const meta = metatype ? c.metatypes.get(metatype) : undefined
+  return [
+    ...b.amps.flatMap(a => a.effects.map(e => ({ e, type: a.type, name: a.name, uid: a.uid, id: a.catalogId, amp: a }))),
+    ...b.items.flatMap(i => own(i.effects, i.kind === 'spell' || i.kind === 'complex-form' ? []
+      : (i.catalogId ? c.items.get(i.catalogId) : undefined)?.effects ?? i.snapshot?.effects)
+      .map(e => ({ e, type: 'item', name: i.name, uid: i.uid, id: i.catalogId }))),
+    ...(meta?.effects ?? []).map(e => ({ e, type: 'metatype', name: `${meta!.name} (${meta!.racialQuality || 'racial quality'})`, id: meta!.id })),
+  ]
+}
 /** Amps whose extra wound boxes belong to a device, not the character (CRB p.62). */
 export const DEVICE_TYPES = ['cyberdeck', 'vehicle']
 const boxes = (effects: { ref: string }[]) => ({ light: 2 + (effects.some(e => e.ref === 'wound-light') ? 1 : 0), serious: 1 + (effects.some(e => e.ref === 'wound-serious') ? 1 : 0) })
@@ -119,7 +189,7 @@ function wornChain(b: Build, uid?: string) {
 export function armorShares(c: Catalog, b: Build, uid?: string): number[] {
   const chain = new Set(wornChain(b, uid).map(i => i.uid))
   return shares(c, 'armor-plus', b.amps.map(a => a.type !== 'equipment' || (a.linkedItem && chain.has(a.linkedItem))
-    ? a.effects.filter(e => e.ref === 'armor-plus').length : 0))
+    ? onFx(a).filter(e => e.ref === 'armor-plus').length : 0))
 }
 
 /** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles the base Speed only (the chassis' flying
@@ -127,14 +197,14 @@ export function armorShares(c: Catalog, b: Build, uid?: string): number[] {
 export function vehicleStats(c: Catalog, a: AmpEntry): VehicleStats | undefined {
   const ch = a.vehicle ? c.vehicles.get(a.vehicle) ?? a.chassis : undefined
   if (!ch) return undefined
-  const n = (ref: string) => a.effects.filter(e => e.ref === ref).length
+  const n = (ref: string) => onFx(a).filter(e => e.ref === ref).length
   const flying = n('flying') > 0
   const fixed = n('fixed') > 0
   const speed = fixed ? 0 : (flying ? ch.flyingSpeed ?? Math.max(1, ch.speed * 2) : ch.speed) + n('speed-plus')
   const armor = ch.armor + n('vehicle-armor')
   return { uid: a.uid, name: a.name, chassis: ch.name, pilot: ch.pilot + n('pilot-plus'), body: ch.body, handling: ch.handling + n('handling-plus'),
     speed, flying, armor, count: 1 + n('extra-drone'), mount: ch.mount,
-    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor], monitor: boxes(a.effects) }
+    thresholds: [ch.body + armor, 2 * ch.body + armor, 3 * ch.body + armor], monitor: boxes(onFx(a)) }
 }
 
 /** "STR+1", "S+2", "STR", "5", "12 (anti-vehicle 16)" -> damage value with this Strength. */
@@ -149,18 +219,26 @@ export function derive(c: Catalog, ch: Character): Derived {
   const b = ch.finalizedAt ? currentBuild(ch) : ch.build
   const meta = c.metatypes.get(ch.identity.metatype)
   const attr = (a: AttrId) => b.attributes[a] ?? 0
-  const picks = b.amps.flatMap(a => a.effects.map(e => ({ amp: a, e })))
+  const sources = effectSources(c, b, ch.identity.metatype)
+  // the effects that count (effects.ts applies)
+  const picks = sources.filter(p => applies(p.e))
   const has = (ref: string) => picks.some(p => p.e.ref === ref)
+  const count = (ref: string) => picks.filter(p => p.e.ref === ref).length
+  const total = (ref: string) => picks.filter(p => p.e.ref === ref).reduce((t, p) => t + (p.e.value ?? 1), 0)
 
+  // Essence (CRB p.60); a quality may let the last point count double (one more implant) or spare magic the first point
+  // lost (DHSA p.5)
   const essence = 6 - b.amps.reduce((s, a) => s + ampEssence(c, a), 0)
+  const extraEssence = Math.min(1, count('essence-implant')), magicSpared = Math.min(1, count('essence-magic'))
 
   // Armor: an item's own rating plus the armor an add-on is worn over, and each amp's share of Armor +1 (armorShares)
   const worn = (uid?: string) => wornChain(b, uid).reduce((t, it) => t + (it.armor ?? 0), 0) + sum(armorShares(c, b, uid))
   // mental protection from Astral/Mystic Armor, biofeedback filters, code shells...: always on
-  const mentalProtection = picks.filter(p => p.e.ref === 'mental-armor').length
+  const mentalProtection = count('mental-armor')
   const armor = { none: worn(), main: worn(b.mainArmor), alt: worn(b.altArmor) }
+  const socialArmor = total('social-armor'), matrixArmor = total('matrix-armor')
 
-  // Risk Reduction from amps
+  // Risk Reduction from amps (and an item's or the racial quality's, should one give it)
   const rrAttr = Object.fromEntries(ATTRS.map(a => [a, 0])) as Record<AttrId, number>
   const rrSkill = new Map<string, number>(), rrSpec = new Map<string, number>()
   for (const { e } of picks) {
@@ -170,14 +248,23 @@ export function derive(c: Catalog, ch: Character): Derived {
     if (e.ref === 'rr-spec') rrSpec.set(e.param, (rrSpec.get(e.param) ?? 0) + 1)
   }
 
+  // Advantages and Disadvantages on Tests (CRB p.59, 65), counted or not: a Test names a skill, a spec, an attribute, or
+  // none (every Test)
+  // (one on every Test that holds only sometimes is listed with the effects, not on each pool)
+  const testFx = sources.filter(p => (p.e.ref === 'advantage' || p.e.ref === 'edge-advantage' || p.e.ref === 'disadvantage') && (p.e.param || !p.e.when))
   const pools: Pool[] = []
+  const pool = (x: Pool) => {
+    const notes = testFx.filter(p => !p.e.param || p.e.param === x.skill || p.e.param === x.spec || p.e.param === x.attr)
+      .map(p => ({ ref: p.e.ref as PoolNote['ref'], text: ruleText(c, p.e)!, from: p.name, ...effectHow(p.e) ? { how: effectHow(p.e) } : {} }))
+    pools.push(notes.length ? { ...x, notes } : x)
+  }
   for (const s of b.skills) {
     const sk = c.skills.get(s.id)
     if (!sk) continue
     const skRR = rrSkill.get(s.id) ?? 0
     if (s.rating > 0) {
       for (const a of [sk.attr, ...(sk.alt ? [sk.alt] : [])])
-        pools.push({ skill: s.id, label: sk.name, rating: s.rating, attr: a, dp: s.rating + attr(a), rr: Math.min(RR_CAP, skRR + rrAttr[a]) })
+        pool({ skill: s.id, label: sk.name, rating: s.rating, attr: a, dp: s.rating + attr(a), rr: Math.min(RR_CAP, skRR + rrAttr[a]) })
     }
     // Where every spec uses the skill's attribute and the skill has an alternative
     // (Conjuring: Logic for mages, Charisma for shamans), specs get a row for both.
@@ -187,7 +274,7 @@ export function derive(c: Catalog, ch: Character): Derived {
       const name = spec?.name ?? specId.replace(/^custom:/, '')
       const first = spec?.attr ?? sk.attr
       for (const a of [first, ...(specAlt && first === sk.attr ? [specAlt] : [])])
-        pools.push({ skill: s.id, spec: specId, label: `${sk.name} (${name})`, rating: s.rating, attr: a,
+        pool({ skill: s.id, spec: specId, label: `${sk.name} (${name})`, rating: s.rating, attr: a,
           dp: s.rating + 2 + attr(a), rr: Math.min(RR_CAP, skRR + (rrSpec.get(specId) ?? 0) + rrAttr[a]) })
     }
   }
@@ -195,53 +282,62 @@ export function derive(c: Catalog, ch: Character): Derived {
   // Initiative: best single source; enhancements from different sources don't stack.
   let initiative: Derived['initiative']
   for (const a of b.amps) {
-    const refs = a.effects.map(e => e.ref)
+    const fx = onFx(a), refs = fx.map(e => e.ref)
     const level = refs.includes('init-3') ? 3 : refs.includes('init-2') ? 2 : refs.includes('init-1') ? 1 : 0
     if (level && (!initiative || level > initiative.level))
-      initiative = { level, realm: a.effects.find(e => e.ref === 'init-realm')?.param, source: a.name }
+      initiative = { level, realm: fx.find(e => e.ref === 'init-realm')?.param, source: a.name }
   }
 
   const emerged = b.amps.some(a => a.type === 'emerged')
   const deck = b.amps.find(a => a.type === 'cyberdeck')
-  const firewall = emerged ? attr('wil') : deck ? Math.min(FIREWALL_MAX, 1 + deck.effects.filter(e => e.ref === 'firewall-plus').length) : undefined
-  const attack = emerged ? attr('cha') : deck ? deck.effects.filter(e => e.ref === 'attack-plus').length : undefined
+  const deckFx = deck ? onFx(deck) : []
+  const firewall = emerged ? attr('wil') : deck ? Math.min(FIREWALL_MAX, 1 + deckFx.filter(e => e.ref === 'firewall-plus').length) : undefined
+  const attack = emerged ? attr('cha') : deck ? deckFx.filter(e => e.ref === 'attack-plus').length : undefined
 
   // Weapons with damage worked out: unarmed is STR (CRB p.142) plus DV bonuses from implants and
   // adept powers; a weapon's own Equipment amp adds its DV bonuses, unless the book already printed
   // the final DV on the item (named book weapons).
-  const unarmedPlus = capped(c, 'dv-plus', picks.filter(p => p.e.ref === 'dv-plus' && p.amp.type !== 'equipment').length)
+  const unarmedPlus = capped(c, 'dv-plus', picks.filter(p => p.e.ref === 'dv-plus' && p.amp && p.type !== 'equipment').length)
   const weapons: Weapon[] = [{ uid: 'unarmed', name: 'Unarmed', dv: weaponDV('STR', attr('str'), unarmedPlus), ranges: 'OK/–/–/–' }]
   for (const it of b.items.filter(i => i.kind === 'weapon')) {
     const cat = (it.catalogId ? c.items.get(it.catalogId) : undefined) ?? it.snapshot
     const amp = b.amps.find(a => a.type === 'equipment' && a.linkedItem === it.uid)
-    const plus = it.dv ? 0 : capped(c, 'dv-plus', amp?.effects.filter(e => e.ref === 'dv-plus').length ?? 0)
-    const range = amp?.effects.find(e => e.ref === 'range-improve')?.param
+    const fx = amp ? onFx(amp) : []
+    const plus = it.dv ? 0 : capped(c, 'dv-plus', fx.filter(e => e.ref === 'dv-plus').length)
+    const range = fx.find(e => e.ref === 'range-improve')?.param
+    const minRisk = fx.find(e => e.ref === 'min-risk-dice')
+    const note = [range && `range improved: ${range}`, minRisk && ruleText(c, minRisk)].filter(Boolean).join('; ')
     weapons.push({ uid: it.uid, name: it.name, dv: weaponDV(it.dv ?? cat?.dv ?? '?', attr('str'), plus),
-      ranges: it.ranges ?? cat?.ranges ?? '', specialist: it.specialist, note: range ? `range improved: ${range}` : undefined })
+      ranges: it.ranges ?? cat?.ranges ?? '', specialist: it.specialist, note: note || undefined })
     const ammo = ammoDVs([cat?.text, amp?.narrative, it.note].filter(Boolean).join('\n'))
     if (ammo.length) weapons[weapons.length - 1].ammo = ammo
   }
   const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a)).filter((x): x is VehicleStats => !!x)
 
   const knowledge = knowledgeRows(c, b, ch.narrative.keywords)
+  // sustained spells (CRB p.178): 1 without a Disadvantage, 2 at most, each extra one adding to both; complex forms alike
+  const spells = count('sustain-spell'), forms = count('sustain-form')
+  const ignore = picks.filter(p => p.e.ref === 'ignore-wounds').map(p => p.e.param || 'all')
+  const vr = has('vr-hot') ? 'hot' as const : has('vr-cold') ? 'cold' as const : undefined
 
   return {
     build: b,
     edge: meta?.edge ?? 3,
     essence,
     essenceEffects: {
-      magicHitsCancelled: (essence <= 5 ? 1 : 0) + (essence <= 3 ? 1 : 0),
+      magicHitsCancelled: (essence <= 5 - magicSpared ? 1 : 0) + (essence <= 3 - magicSpared ? 1 : 0),
       healingHitsCancelled: (essence <= 4 ? 1 : 0) + (essence <= 2 ? 1 : 0),
       socialDisadvantage: essence <= 1,
-      dead: essence <= 0,
+      dead: essence <= -extraEssence,
     },
-    monitor: { ...boxes(picks.filter(p => !DEVICE_TYPES.includes(p.amp.type)).map(p => p.e)), incap: 1 },
-    deckMonitor: deck && boxes(deck.effects),
+    monitor: { ...boxes(picks.filter(p => !DEVICE_TYPES.includes(p.type)).map(p => p.e)), incap: 1 },
+    deckMonitor: deck && boxes(deckFx),
     armor,
     thresholds: {
       physicalNone: t3(attr('str') + armor.none), physicalMain: t3(attr('str') + armor.main),
       physicalAlt: t3(attr('str') + armor.alt), mental: t3(attr('wil') + mentalProtection),
-      matrix: firewall != null ? t3(firewall) : undefined,
+      matrix: firewall != null ? t3(firewall + matrixArmor) : undefined,
+      ...socialArmor ? { social: t3(attr('wil') + socialArmor) } : {},
     },
     pools,
     rrAttr,
@@ -255,5 +351,24 @@ export function derive(c: Catalog, ch: Character): Derived {
     weapons,
     vehicles,
     emerged,
+    // the narrative effect kinds, and every effect that is switchable, given by reference or not counted
+    effects: sources.filter(p => isRuleEffect(p.e.ref) || !applies(p.e) || p.e.switch || p.e.from).map(p => ({
+      ref: p.e.ref, text: ruleText(c, p.e) ?? effectName(c, p.e), from: p.name, ...p.e.from ? { fromId: p.e.from } : {},
+      how: effectHow(p.e), applied: applies(p.e), rule: isRuleEffect(p.e.ref), type: p.type })),
+    sustain: { free: 1 + spells, max: 2 + 2 * spells, formsFree: 1 + forms, formsMax: 2 + 2 * forms },
+    extraSpirits: count('summon-spirit'),
+    socialArmor,
+    matrixArmor,
+    ...ignore.length ? { ignoreWounds: ignore.includes('all') ? 'all' : ignore[0] } : {},
+    forcedRisk: has('forced-risk'),
+    ...vr ? { vr } : {},
+    rcc: total('rcc'),
+    vcr: has('vcr'),
   }
+}
+
+/** An effect as one line without its kind's own text: the Amp effect's name, and its param when it has one. */
+export const effectName = (c: Catalog, e: EffectPick) => {
+  const name = c.ampEffects.get(e.ref)?.name ?? e.ref
+  return e.param ? `${name}: ${e.param.replace(/^custom:/, '')}` : name
 }

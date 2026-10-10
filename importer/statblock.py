@@ -518,6 +518,9 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
         fx += _fx("extra-drone", n=amp["count"] - 1)
     if catalog:
         atype, fx, loose = _catalog_price(amp, rules, atype, fx, loose, first_quality)
+    # what its unread lines say it does: the narrative effect kinds (rating 0, importer/effects.py)
+    entry = "; ".join(lines)
+    fx += [f for ln in loose for f in mapper.rules(ln, entry) if atype != "awakened"]
     return atype, fx, loose, vehicle, amp_rating(rules, atype, fx, first_quality)
 
 
@@ -586,7 +589,8 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
             continue
         uid = f"amp-{len(amps) + 1}"
         amps.append({"uid": uid, "type": atype, "name": a["name"], "narrative": " ".join(loose),
-                     "effects": [{k: v for k, v in zip(("ref", "param", "value", "note"), f) if v not in (None, "")} for f in fx],
+                     "effects": [{**{k: v for k, v in zip(("ref", "param", "value", "note"), f) if v not in (None, "")}, **(f[4] if len(f) > 4 else {})}
+                                 for f in fx],
                      **({"vehicle": vehicle} if vehicle else {}), "_fx": fx, "_ess": a["ess"],
                      "snapshot": {"id": f"{sid}.{uid}", "type": atype, "name": a["name"], "printedRating": a["rating"],
                                   "vehicle": vehicle, "source": origin, "page": page}})
@@ -772,7 +776,7 @@ def character_xml(ch):
     an amp's snapshot is the printed amp: its type, name, printed rating, source and page
     (tests/engine/pregen-sample.test.ts holds both writers to the same file)."""
     b = ch["build"]
-    fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note")})
+    fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note", "switch", "when", "confidence", "from")})
     snap = lambda t: "<snapshot>" + _el("amp", {k: t.get(k) for k in ("id", "type", "printedRating", "vehicle", "source", "page")},
                                         _text("name", t["name"]) + "<narrative></narrative>") + "</snapshot>"
     amp = lambda a: _el("amp", {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},

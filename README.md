@@ -21,6 +21,11 @@ own API key), and you review its entries before they’re added.
   its rating, cost and Essence automatically. Imported books add their prebuilt
   amps and add-ons (ammo, accessories, vehicle and deck mods, implant grades).
   Two books defining the same amp are both kept and told apart.
+- **Effects that say what they do.** A narrative effect is machine-readable (an
+  Advantage on a Test, a Disadvantage, wound modifiers ignored, social armor…),
+  and every effect says how it's turned on (always, activated, sustained, only
+  sometimes) and whether it counts. Imported entries (amps, spells, gear, racial
+  qualities) carry them; the sheets mark a pool's Advantages and Disadvantages.
 - **Weapons, vehicles, mental armor.** Weapon damage is worked out from
   Strength and bonuses. Vehicles and drones show Pilot, Body, Handling, Speed,
   Armor and damage thresholds. Astral Armor, Mystic Armor and biofeedback

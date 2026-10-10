@@ -126,6 +126,16 @@
     <xs:attribute name="param" type="xs:string"/>
     <xs:attribute name="value" type="xs:integer"/>
     <xs:attribute name="note" type="xs:string"/>
+    <!-- how it is turned on (none: always on) and whether it counts: src/engine/effects.ts. when: only then (shown, not
+         counted); confidence low: shown, not counted; from: the catalog id of the entry it is given by -->
+    <xs:attribute name="switch">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/><xs:enumeration value="conditional"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="when" type="xs:string"/>
+    <xs:attribute name="confidence"><xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="low"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="from" type="xs:string"/>
   </xs:complexType>
 
   <xs:complexType name="Snapshot">
@@ -151,7 +161,11 @@
   </xs:complexType>
 
   <xs:complexType name="Item">
-    <xs:sequence><xs:element name="snapshot" type="c:Snapshot" minOccurs="0"/></xs:sequence>
+    <xs:sequence>
+      <!-- the player's or GM's own effects: they replace the catalog item's -->
+      <xs:element name="effect" type="c:Effect" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="snapshot" type="c:Snapshot" minOccurs="0"/>
+    </xs:sequence>
     <xs:attribute name="uid" type="xs:string" use="required"/>
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">

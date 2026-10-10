@@ -114,6 +114,8 @@ for (const { file, kind, doc } of docs) {
 }
 const specIds = new Set();
 for (const { kind, doc } of docs) if (kind === 'skills') for (const s of doc.querySelectorAll('spec')) specIds.add(s.getAttribute('id'));
+// the narrative effect kinds every catalog has (src/engine/amps.ts loadRuleEffects): an effect may name one
+for (const r of JSON.parse(readFileSync(new URL('../src/engine/rule-effects.json', import.meta.url), 'utf8'))) (ids.ampeffects ??= new Set()).add(r.id);
 const has = (kind, id) => ids[kind]?.has(id);
 const need = (file, ok, what) => { if (!ok) errors.push(`${file}: unresolved ${what}`); };
 
@@ -134,6 +136,8 @@ for (const { file, kind: fileKind, doc } of docs) {
       for (const t of (a('types') ?? '').split(/\s+/).filter(Boolean)) need(file, has('amptypes', t), `type "${t}" on ${id}`);
     }
     if (kind === 'packages') need(file, has('levels', a('level')), `level="${a('level')}" on ${id}`);
+    if (kind === 'gear' || kind === 'spells' || kind === 'complexforms' || kind === 'metatypes')
+      for (const e of el.querySelectorAll('effect')) need(file, has('ampeffects', e.getAttribute('ref')), `effect ref="${e.getAttribute('ref')}" on ${id}`);
     if (kind === 'amps') {
       need(file, has('amptypes', a('type')), `type="${a('type')}" on ${id}`);
       if (a('vehicle')) need(file, has('vehicles', a('vehicle')), `vehicle="${a('vehicle')}" on ${id}`);

@@ -11,6 +11,7 @@ import {
   parseDataFile, toAmp, toAmpEffect, toAmpType, toAttribute, toItem, toLevel, toLifestyle, toMetatype, toPackage, toPrices, toPricing, toRule, toSkill,
   toSource, toVehicle,
 } from './parse'
+import { loadRuleEffects } from './amps'
 import { compendiumSource, readCompendium } from './compendium'
 import { openIssues, type Formula, type Issue } from './formula'
 
@@ -156,6 +157,7 @@ export function buildCatalog(files: SourceFile[]): Catalog {
     c.errors.push({ file, message: `source "${source}" isn’t listed in any sources file; treated as not canon` })
   }
   if (!c.pricing) c.errors.push({ file: 'pricing.xml', message: 'no <pricing> entry; prices will be wrong' })
+  loadRuleEffects(c)
   return c
 }
 

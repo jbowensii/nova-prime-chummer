@@ -1,5 +1,5 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
-import { ampCtx, ampEssence, ampRating, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating, effectLines, poolMarks, ruleHelp } from '../engine'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'
@@ -48,12 +48,13 @@ export function Sheet() {
           <section>
             <h2>Skills</h2>
             <table>
-              <thead><tr><th>Skill</th><th>Rating</th><th>+Att.</th><th>= DP</th><th>RR</th></tr></thead>
+              <thead><tr><th>Skill</th><th>Rating</th><th>+Att.</th><th>= DP</th><th>RR</th><th className="s-small">Adv./Dis.</th></tr></thead>
               <tbody>
                 {d.pools.map((p, i) => (
                   <tr key={i} className={p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) ? 'spec' : ''}>
                     <td>{p.spec ? `(${p.label.replace(/^.*\(|\)$/g, '')} +2)` : i > 0 && d.pools[i - 1].skill === p.skill && !d.pools[i - 1].spec ? `(with ${p.attr.toUpperCase()})` : p.label}</td>
                     <td>{p.spec || (i > 0 && d.pools[i - 1].skill === p.skill) ? '' : p.rating}</td><td>{p.attr.toUpperCase()}</td><td><b>{p.dp}</b></td><td>{p.rr || ''}</td>
+                    <td className="s-small">{poolMarks(p).map((m, j) => <span key={j} title={m.title}>{j ? ', ' : ''}{m.mark}</span>)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -86,7 +87,8 @@ export function Sheet() {
                 {b.mainArmor && <tr><td>Main armor ({item(b.mainArmor)?.name} {d.armor.main})</td>{d.thresholds.physicalMain.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                 {b.altArmor && <tr><td>Alternate ({item(b.altArmor)?.name} {d.armor.alt})</td>{d.thresholds.physicalAlt.map((x, i) => <td key={i}>{x}</td>)}</tr>}
                 <tr><td>Mental{d.mentalProtection ? ` (armor ${d.mentalProtection})` : ''}</td>{d.thresholds.mental.map((x, i) => <td key={i}>{x}</td>)}</tr>
-                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}){d.deckMonitor && (d.deckMonitor.light > 2 || d.deckMonitor.serious > 1) && <span className="s-small"> deck boxes {d.deckMonitor.light} light, {d.deckMonitor.serious} serious</span>}</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                {d.thresholds.social && <tr><td>Social (armor {d.socialArmor})</td>{d.thresholds.social.map((x, i) => <td key={i}>{x}</td>)}</tr>}
+                {d.thresholds.matrix && <tr><td>{d.emerged ? 'Matrix & biofeedback' : 'Matrix'} (Firewall {d.firewall}{d.matrixArmor ? `, armor ${d.matrixArmor}` : ''}){d.deckMonitor && (d.deckMonitor.light > 2 || d.deckMonitor.serious > 1) && <span className="s-small"> deck boxes {d.deckMonitor.light} light, {d.deckMonitor.serious} serious</span>}</td>{d.thresholds.matrix.map((x, i) => <td key={i}>{x}</td>)}</tr>}
               </tbody>
             </table>
 
@@ -101,6 +103,7 @@ export function Sheet() {
             <p className="s-small">Cancelled hits on magic Tests: {d.essenceEffects.magicHitsCancelled}. On healing: {d.essenceEffects.healingHitsCancelled}.
               {d.essenceEffects.socialDisadvantage && ' Disadvantage on most social Tests.'}</p>
             {d.initiative && <p className="s-small">Initiative enhancement {d.initiative.level}{d.initiative.realm ? ` (${d.initiative.realm} only)` : ''}: {d.initiative.source}.</p>}
+            {effectLines(d).map((x, i) => <p key={i} className="s-small s-effect">{x}.</p>)}
           </section>
         </div>
         </div>

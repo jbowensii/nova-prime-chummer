@@ -1,7 +1,8 @@
 // A GM's compendium: one data-format file, <ca2:data kind="compendium">, holding <amp>, <item>, <vehicle> entries that
 // all cite the compendium's own source, plus NPCs as embedded <ca2:character> (docs/data-format.md "Compendiums",
 // public/data/schema/compendium.xsd). The loader adds its entries to the catalog like a house-rule overlay.
-import type { AmpTemplate, Catalog, Character, Compendium, Item, Rule, Source, VehicleBase } from '../model/types'
+import type { AmpTemplate, Catalog, Character, Compendium, EffectPick, Item, Rule, Source, VehicleBase } from '../model/types'
+import { effectStateAttrs } from './effects'
 import { characterToXml, xmlToCharacter } from './charxml'
 import { toAmp, toItem, toVehicle } from './parse'
 
@@ -16,6 +17,7 @@ const attrs = (o: Record<string, string | number | boolean | undefined>) =>
   Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
 
 export type EntryKind = 'amps' | 'items' | 'rules'
+const effectEl = (f: EffectPick) => `<effect${attrs({ ref: f.ref, param: f.param, value: f.value, note: f.note, ...effectStateAttrs(f) })}/>`
 /** One entry in the data format. Its text (amp narrative, item or rule text) is written only with `withText`: the
  *  edits layer sends descriptions apart, in <description>; a compendium keeps the GM's own text in the entry. */
 export function entryXml(kind: EntryKind, e: AmpTemplate | Item | Rule, withText = false): string {
@@ -23,13 +25,13 @@ export function entryXml(kind: EntryKind, e: AmpTemplate | Item | Rule, withText
   if (kind === 'amps') {
     const a = e as AmpTemplate
     return `<amp${attrs({ id: a.id, type: a.type, printedRating: a.printedRating, vehicle: a.vehicle, mod: a.mod, ...ref })}><name>${esc(a.name)}</name>` +
-      (a.item ? `<item${attrs({ ...a.item })}/>` : '') + a.effects.map(f => `<effect${attrs({ ref: f.ref, param: f.param, value: f.value, note: f.note })}/>`).join('') +
+      (a.item ? `<item${attrs({ ...a.item })}/>` : '') + a.effects.map(effectEl).join('') +
       `<narrative>${withText ? esc(a.narrative) : ''}</narrative></amp>`
   }
   if (kind === 'items') {
     const i = e as Item
     return `<item${attrs({ id: i.id, kind: i.kind, specialist: i.specialist, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, ...ref })}>` +
-      `<name>${esc(i.name)}</name><text>${withText ? esc(i.text) : ''}</text></item>`
+      `<name>${esc(i.name)}</name>${(i.effects ?? []).map(effectEl).join('')}<text>${withText ? esc(i.text) : ''}</text></item>`
   }
   const r = e as Rule
   return `<rule${attrs({ id: r.id, sheet: r.sheet, section: r.section, effects: r.effects.join(' '), ...ref })}><title>${esc(r.title)}</title><text>${withText ? esc(r.text) : ''}</text></rule>`

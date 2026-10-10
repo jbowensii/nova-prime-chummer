@@ -1,5 +1,6 @@
 // Shared vocabulary for engine and UI. Catalog types mirror the XML data kinds
 // (docs/data-format.md); Character types mirror the .ca2.json file.
+import type { EffectState } from '../engine/effects'
 import type { Formula, Issue } from '../engine/formula'
 
 export type AttrId = 'str' | 'agi' | 'wil' | 'log' | 'cha';
@@ -8,8 +9,9 @@ export interface Ref { id: string; source: string; page: number }
 
 export interface Level extends Ref { name: string; nuyen: number; attrAtMax: number;
   skillCap: number; rrAttr: number; rrSkill: number; rrSpec: number }
+/** effects: what the racial quality does (Low-light vision: no Disadvantage in the dark), read from it by the importer */
 export interface Metatype extends Ref { name: string; edge: number;
-  ranges: Record<AttrId, [number, number]>; racialQuality: string }
+  ranges: Record<AttrId, [number, number]>; racialQuality: string; effects?: EffectPick[] }
 export interface Attribute extends Ref { name: string; abbr: string }
 /** source/page: set when the spec comes from another book than its skill */
 export interface Spec { id: string; name: string; attr: AttrId; source?: string; page?: number }
@@ -21,7 +23,8 @@ export interface Pricing { attrPoint: number; attrLastPoint: number;
   weaponSpecialist: number; armorPoint: number; spell: number; complexForm: number; refundEffectRemoval: boolean }
 export interface AmpType extends Ref { name: string; base: number; baseAfterFirst?: number;
   essence: number; requires?: string }
-export type EffectParam = 'skill' | 'spec' | 'attribute' | 'realm' | 'text' | 'value';
+/** test: a skill, spec or attribute id, `custom:<what>`, or none (every Test) */
+export type EffectParam = 'skill' | 'spec' | 'attribute' | 'realm' | 'text' | 'value' | 'test';
 export interface AmpEffect extends Ref { name: string; category: string; rating: number;
   types: string[]; max?: number; requires?: string; excludes?: string;
   param?: EffectParam; gmApproval?: boolean;
@@ -44,6 +47,8 @@ export interface Package extends Ref { name: string; level: string; archetype: s
 export type ItemKind = 'gear' | 'weapon' | 'armor' | 'spell' | 'complex-form';
 export interface Item extends Ref { name: string; kind: ItemKind; specialist?: boolean;
   armor?: number; dv?: string; ranges?: string; category?: string; text: string; edited?: boolean
+  /** what it does, read from its text by the importer (a spell's Advantage, a drug's Disadvantage): engine/derive.ts */
+  effects?: EffectPick[]
   /** <formula> and <issue> children (src/engine/formula.ts); a cost formula prices the item (price.ts itemCost) */
   formulas?: Formula[]; issues?: Issue[] }
 export interface Lifestyle extends Ref { name: string; perRun: number; text: string }
@@ -73,7 +78,9 @@ export interface Catalog {
 }
 
 // ---- character ----
-export interface EffectPick { ref: string; param?: string; value?: number; note?: string }
+/** An effect: an Amp effect table id (rated), or one of the narrative effect kinds (RULE_EFFECTS, rating 0: what a
+ *  narrative effect does), with how it is turned on and whether it counts (src/engine/effects.ts). */
+export interface EffectPick extends EffectState { ref: string; param?: string; value?: number; note?: string }
 /** specs: spec ids ("stealth.physical-sneaking") or "custom:Name" */
 export interface SkillEntry { id: string; rating: number; specs: string[] }
 /** realSin: added by the Concept tab's "Has a real SIN" box (removed with it; free, like every SINner: house rule).
@@ -90,7 +97,9 @@ export type StartingGear = 'commlink' | 'fake-sin' | 'real-sin'
  *  pays for); worn, it counts on top of that item's. */
 export interface ItemEntry { uid: string; catalogId?: string; kind: ItemKind; name: string;
   specialist?: boolean; armor?: number; dv?: string; ranges?: string; price?: number; snapshot?: Item;
-  starting?: StartingGear; note?: string; over?: string }
+  starting?: StartingGear; note?: string; over?: string
+  /** the player's or GM's own effects: they replace the catalog item's (engine/effects.ts own) */
+  effects?: EffectPick[] }
 /** A knowledge skill or language. from: the free slot it fills ("skill:<id>" at rating 4+, "keyword:<the keyword>");
  *  none, or a skill slot whose skill is below 4, costs the pricing file's knowledge price.
  *  native: the runner's native language, free (one per runner).

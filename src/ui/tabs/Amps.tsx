@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ampCtx, ampEssence, ampFromTemplate, ampRating, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating, ruleText, vehicleStats } from '../../engine'
 import type { AmpEntry, ItemEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'
@@ -27,7 +27,8 @@ export function AmpsTab() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const describe = (a: AmpEntry) => [...a.effects.reduce((m, e) => m.set(JSON.stringify([e.ref, e.param, e.value]), [e, (m.get(JSON.stringify([e.ref, e.param, e.value]))?.[1] ?? 0) + 1]), new Map<string, [AmpEntry['effects'][number], number]>()).values()].map(([e, n]) => {
-    const def = c.ampEffects.get(e.ref)
+    const def = c.ampEffects.get(e.ref), line = ruleText(c, e)
+    if (line) return `${line}${n > 1 ? ` ×${n}` : ''}`
     const p = e.param ? c.skills.get(e.param)?.name ?? c.skills.get(e.param.split('.')[0])?.specs.find(s => s.id === e.param)?.name ?? c.attributes.get(e.param as never)?.name ?? e.param.replace(/^custom:/, '') : ''
     return `${def?.name.replace(/ for an? (specialization|Skill|Attribute)/, '') ?? e.ref}${p ? `: ${p}` : ''}${e.ref === 'negative' ? ` −${e.value ?? 1}` : ''}${n > 1 ? ` ×${n}` : ''}`
   }).join('; ')

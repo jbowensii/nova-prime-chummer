@@ -1,0 +1,20 @@
+[
+  {"id": "advantage", "name": "Advantage on a Test", "text": "Advantage on {p} Tests", "param": "test"},
+  {"id": "edge-advantage", "name": "Advantage for 1 Edge", "text": "Advantage on {p} Tests for 1 Edge", "param": "test"},
+  {"id": "disadvantage", "name": "Disadvantage on a Test", "text": "Disadvantage on {p} Tests", "param": "test"},
+  {"id": "no-disadvantage", "name": "Negates a Disadvantage", "text": "No Disadvantage: {p}", "param": "text"},
+  {"id": "edge-effect", "name": "Automatic effect for 1 Edge", "text": "For 1 Edge: {p}", "param": "text"},
+  {"id": "edge-gain", "name": "Gains 1 Edge", "text": "Gains 1 Edge: {p}", "param": "text"},
+  {"id": "allow-test", "name": "Allows a Test", "text": "Allows: {p}", "param": "text"},
+  {"id": "ignore-wounds", "name": "Ignores wound modifiers", "text": "Ignores {p} wound modifiers", "param": "text"},
+  {"id": "social-armor", "name": "Social armor", "text": "Social armor {v}", "param": "value"},
+  {"id": "matrix-armor", "name": "Matrix armor", "text": "Matrix armor +{v}", "param": "value"},
+  {"id": "min-risk-dice", "name": "Risk dice minimum on attack Tests", "text": "{v} risk dice minimum on attack Tests", "param": "value"},
+  {"id": "forced-risk", "name": "Must take a High or Extreme Risk", "text": "Must take a High or Extreme Risk"},
+  {"id": "sustain-form", "name": "Additional sustained complex form", "text": "Additional sustained complex form"},
+  {"id": "essence-implant", "name": "Last Essence point counts double", "text": "Last Essence point counts double (one more implant)"},
+  {"id": "essence-magic", "name": "Magic ignores 1 Essence point lost", "text": "Magic ignores 1 point of Essence loss"},
+  {"id": "inflict-disadvantage", "name": "Inflicts a Disadvantage", "text": "Inflicts a Disadvantage: {p}", "param": "text"},
+  {"id": "self-wound", "name": "Causes a wound", "text": "Causes a {p} wound", "param": "text"},
+  {"id": "immunity", "name": "Immunity", "text": "Immune to {p}", "param": "text"}
+]

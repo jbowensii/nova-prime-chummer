@@ -149,6 +149,13 @@ def attributes(pages):
                   for p, l in _lines(pages, 52, 52) if (m := re.match(r"([A-Z][a-z]+) \(([A-Z]{3})/[A-Z]\)", l))], "attributes")
 
 
+def racial_effects(quality):
+    """<effect>s of a Racial Quality (importer/effects.py): Low-light or Thermographic vision negate the dark's
+    Disadvantage (CRB p.59)."""
+    from importer.recipes.dhsa import Mapper, fx_xml
+    return fx_xml(Mapper({}).rules(quality))
+
+
 def metatypes(pages, attrs):
     """The attribute table, p.52 (ranges and Edge per metatype), and each metatype's Racial Quality, pp.50-51."""
     quality, heading = {}, None
@@ -554,7 +561,7 @@ def build(md):
     if "metatypes" in got:
         files["metatypes.xml"] = _file("metatypes", "Metatype attribute ranges and starting Edge, CRB p.52.", [
             f'  <metatype{_attrs({"id": m["id"], "edge": m["edge"], **_ref(m)})}>\n    <name>{escape(m["name"])}</name>'
-            f'<racialQuality>{escape(m["quality"])}</racialQuality>\n    '
+            f'<racialQuality>{escape(m["quality"])}</racialQuality>{racial_effects(m["quality"])}\n    '
             + "".join(f'<range{_attrs({"attr": a, "min": lo, "max": hi})}/>' for a, lo, hi in m["ranges"]) + "\n  </metatype>"
             for m in got["metatypes"]])
     if "skills" in got:

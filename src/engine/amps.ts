@@ -1,5 +1,42 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
-import type { AmpEffect, AmpEntry, AmpTemplate, Build, Catalog, EffectPick, ItemEntry } from '../model/types'
+import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, EffectParam, EffectPick, ItemEntry } from '../model/types'
+// the kinds' ids, names and lines; also read by tools/validate-data.mjs (a data file may use them)
+import RULES from './rule-effects.json'
+
+/** The narrative effects' kinds (CRB p.59, src/engine/rule-effects.json): what an amp's narrative effect, an item or a racial
+ *  quality does, machine-readable.
+ *  Rating 0: the book prices narrative effects with the amp's base rating and its "Additional narrative effect"s (which
+ *  stay), so a kind only says what one does; the loader adds them to every catalog's Amp effects (loadRuleEffects).
+ *  `text` reads `{p}` as the effect's param (a Test for the test kinds), `{v}` as its value. */
+export const RULE_EFFECTS: (Omit<AmpEffect, 'types' | 'source' | 'page'> & { text: string })[] =
+  (RULES as { id: string; name: string; text: string; param?: EffectParam }[]).map(e => ({ ...e, category: 'narrative', rating: 0 }))
+const RULE_TEXT = new Map(RULE_EFFECTS.map(e => [e.id, e.text]))
+export const isRuleEffect = (ref: string) => RULE_TEXT.has(ref)
+
+/** The narrative effect kinds as Amp effects every amp type may take (CRB p.59), added where the catalog has none of
+ *  that id. */
+export function loadRuleEffects(c: Catalog) {
+  const types = [...c.ampTypes.keys()]
+  for (const { text: _, ...e } of RULE_EFFECTS) if (!c.ampEffects.has(e.id)) c.ampEffects.set(e.id, { ...e, types, source: 'CRB', page: 59 })
+}
+
+/** A Test as the sheet names it: a skill, `Skill (spec)`, an attribute-based one, a custom one's own words, or all Tests. */
+export function testName(c: Catalog, param?: string): string {
+  if (!param) return 'all'
+  const sk = c.skills.get(param) ?? c.skills.get(param.split('.')[0])
+  const sp = sk?.specs.find(x => x.id === param)
+  if (sk) return sp ? `${sk.name} (${sp.name})` : sk.name
+  const at = c.attributes.get(param as AttrId)
+  return at ? `${at.name}-based` : param.replace(/^custom:/, '')
+}
+
+/** A narrative effect kind's line (`Advantage on Perception (physical) Tests`), else undefined. */
+export function ruleText(c: Catalog, e: EffectPick): string | undefined {
+  const t = RULE_TEXT.get(e.ref)
+  if (!t) return undefined
+  const p = c.ampEffects.get(e.ref)?.param === 'test' ? testName(c, e.param) : e.param ?? ''
+  return t.replace('{p}', p).replace('{v}', String(e.value ?? 1)).replace(/\s+:|:\s*$/g, '').replace(/\s+/g, ' ').trim()
+}
 
 /** negativeOk: the GM approved this amp's rating below 0 (validate.ts amp.negativeRating); otherwise it counts as 0 */
 export interface AmpCtx { isFirstQuality: boolean; negativeOk?: boolean }
