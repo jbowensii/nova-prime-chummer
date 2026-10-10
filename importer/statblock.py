@@ -728,7 +728,11 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
         (m for k in block["keywords"] for m in METATYPES if re.search(rf"\b{m}\b", k.lower())), "human")
     for a in amps:
         del a["_fx"], a["_ess"]
-    build = {"attributes": attrs, "skills": skills, "knowledge": block.get("knowledge", []), "amps": amps, "items": items}
+    # a printed knowledge skill fills a free slot: a Skill at 4+ is a knowledge skill too (CRB p.58), and the app keeps
+    # one free, renamable entry per such skill (a Keyword's entry keeps the Keyword's name); past them it is paid (p.83)
+    slots = [f"skill:{s['id']}" for s in skills if s["rating"] >= 4]
+    knowledge = [{"name": k, "from": slots[i] if i < len(slots) else None} for i, k in enumerate(block.get("knowledge", []))]
+    build = {"attributes": attrs, "skills": skills, "knowledge": knowledge, "amps": amps, "items": items}
     if worn:
         build["mainArmor"] = worn[0][0]["uid"]
     if len(worn) > 1:
@@ -792,7 +796,8 @@ def character_xml(ch):
             _el("build", {"mainArmor": b.get("mainArmor"), "altArmor": b.get("altArmor")},
                 _el("attributes", {a: b["attributes"][a] for a in ATTRS})
                 + "".join(_el("skill", {"id": s["id"], "rating": s["rating"]}, "".join(f"<spec>{_esc(x)}</spec>" for x in s["specs"])) for s in b["skills"])
-                + "".join(f"<knowledge>{_esc(k)}</knowledge>" for k in b["knowledge"])
+                + "".join(_el("knowledge", {"from": k.get("from")} if isinstance(k, dict) else {}, _esc(k["name"] if isinstance(k, dict) else k))
+                          for k in b["knowledge"])
                 + "".join(map(amp, b["amps"])) + "".join(map(item, b["items"]))),
             ""]  # no career, no overrides
     idn = ch["identity"]

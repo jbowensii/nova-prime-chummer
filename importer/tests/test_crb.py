@@ -261,7 +261,8 @@ class PregensTest(unittest.TestCase):
         root = self.xml["crb.test-rigger.xml"]
         self.assertEqual((root.get("id"), root.get("origin"), root.get("metatype")), ("crb.test-rigger", "CRB", "troll"))
         self.assertEqual(root.find("build/attributes").attrib, {"str": "3", "agi": "4", "wil": "2", "log": "3", "cha": "2"})
-        self.assertEqual([k.text for k in root.iter("knowledge")], ["Made-up lore", "Toy trains"])
+        # the first takes the free slot of the one skill at 4+ (Piloting 5, CRB p.58); the second is paid
+        self.assertEqual([(k.text, k.get("from")) for k in root.iter("knowledge")], [("Made-up lore", "skill:piloting"), ("Toy trains", None)])
         # a pair is two items; a weapon printed without a type is named by it; spells link to the book's catalog
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item") if i.get("kind") != "gear"], [
             ("armor", "Padded Coat", "armored-clothes-coat"), ("armor", "Clothes", "armored-clothes"),  # the made-up ratings 3 and 2
