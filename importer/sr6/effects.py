@@ -1080,6 +1080,11 @@ def apply(files, texts_xml, regrouped=""):
             if k not in got or typ == "bioware":  # (the bioware one when a name is ware of two types: `Fangs`)
                 got[k] = (m.group(1), typ)
     runins, added = _runins(regrouped), {}
+    # (a rule's text naming an entry: where the book's description of an item went when it was read as a rule,
+    # `Move-By-Wire (Rating 1-2)`, `Stealthlink Upgrade`, `ProCams and SmartCams`)
+    rule_texts = [(_key(n), texts.get(("rules", rid), "")) for rid, n in
+                  re.findall(r'<rule id="([^"]+)"[^>]*><name>(.*?)</name>', files.get("rules.xml") or "")]
+    rule_texts = [(k, t) for k, t in rule_texts if t]
     names = {f[:-4]: [_unesc(n) for n in re.findall(r"<name>(.*?)</name>", x or "")] for f, x in files.items()}
     out = {}
     for fname, xml in files.items():
@@ -1096,6 +1101,13 @@ def apply(files, texts_xml, regrouped=""):
             ind, tag, eid, attrs, name, kids = m.groups()
             text = texts.get((kind, eid), "")
             nm = _unesc(name)
+            if not text.strip() and kind != "rules":
+                base = _key(re.sub(r"\s*\(.*$", "", nm))
+                words = [w.rstrip("s") for w in base.split() if w not in ("system", "systems", "suite", "module", "unit", "kit", "external", "internal", "basic")]
+                got = sorted((len(k), t) for k, t in rule_texts if len(base) > 4 and words and
+                             all(any(x.rstrip("s") == w for x in k.split()) for w in words))
+                if got:
+                    text = got[0][1]
             if (pm := re.match(r"(.+?) \(([^()]+)\)", nm)) and len(text) < 200:
                 base, var = _key(pm.group(1)), _key(pm.group(2))
                 got = [p for b, p in runins.get(var, ()) if b and (b in base or base in b)] or \
@@ -1113,7 +1125,9 @@ def apply(files, texts_xml, regrouped=""):
             if re.search(r"\bthan the base item\b", _unesc(attrs)) and len(nm.split()) > 1:
                 # (`Transgenic gills`: priced from the base item, the bioware it is the equivalent of: its effects)
                 base = _key(nm.split(None, 1)[1])
-                hit = by_kind.get(kind, {}).get(base)
+                got = by_kind.get(kind, {})
+                hit = got.get(base) or got.get(base.rstrip("s")) or \
+                    next((v for k, v in sorted(got.items()) if k.startswith(base + " ") and v[1] == "bioware"), None)  # (`tails`: `Tail`; `chameleon skin`: its first variant)
                 if hit:
                     found.append(("link", {"rel": "as", "kind": kind, "name": nm.split(None, 1)[1], "ref": hit[0]}, None))
             for t, a, _ in found:  # a link's entry: this book's, or the book its citation names (`p. 70, SR6`)

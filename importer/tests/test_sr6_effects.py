@@ -176,6 +176,17 @@ class DecisionsTest(unittest.TestCase):
         self.assertIn('<name>Transgenic gills</name><link rel="as" kind="augmentations" name="gills" ref="gills"/>', x)
         self.assertIn('<name>Glowbugs (Amber)</name><effect target="attr:cha" op="add" value="1"/></augmentation>', x)
 
+    def test_an_item_described_under_a_rule_named_for_it(self):
+        files = {"gear.xml": '<sr6:data kind="gear">\n  <gear id="zaplink" source="X" page="1"><name>Zaplink</name></gear>\n'
+                             '  <gear id="tails" source="X" page="2"><name>Zap-by-wire system (Rating 2)</name></gear>\n</sr6:data>\n',
+                 "rules.xml": '<sr6:data kind="rules">\n  <rule id="r1" source="X" page="1"><name>Zaplink Upgrade</name></rule>\n'
+                              '  <rule id="r2" source="X" page="2"><name>Zap-By-Wire (Rating 1-2)</name></rule>\n</sr6:data>\n'}
+        texts = ('<sr6:data kind="texts">\n  <text of="rules" id="r1">The Firewall is increased by the rating.</text>\n'
+                 '  <text of="rules" id="r2">Each rating point adds +1 Reaction.</text>\n</sr6:data>\n')
+        out, _ = effects.apply(files, texts, "")
+        self.assertIn('<name>Zaplink</name><effect target="matrix:firewall" op="add" value="R"/>', out["gear.xml"])
+        self.assertIn('<name>Zap-by-wire system (Rating 2)</name><effect target="attr:rea" op="add" value="R"/>', out["gear.xml"])
+
     def test_a_listed_labels_remainder_is_its_own(self):
         regrouped = ('<!-- section {"name": "Zaps"} -->\n**Alpha Zap:** First lines of alpha.\n**Beta Zap:** First lines of beta.\n\n'
                      'The rest of alpha: +1 Logic.\n• **Overdrive:** +1 more.\n**Beta Zap:** First lines of beta, again.\n<!-- end -->\n')
