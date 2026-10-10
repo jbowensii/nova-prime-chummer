@@ -1,5 +1,16 @@
 # Release notes
 
+## Unreleased: optional rules the sample runners pointed to
+
+**Shadowrun 6**
+- Many Talents and Many Skills (Sixth World Companion p. 134): two attributes at their maximum, two skills at the
+  highest rank, for a runner with the quality.
+- A quality whose text says it isn't one of the six at creation (Lofwyr's Legions' Drake, Latent Drake) is read as
+  such and left out of the count.
+- The table may cap only illegal gear's Availability at creation, as the core rulebook's first printing does (p. 66);
+  the later printings cap every item, so it ships off.
+- At most 5 Karma left after creation, as the City Editions print (Hong Kong p. 66): a warning above it.
+
 ## 0.11.2 — 2026-10-09: the runner's effects everywhere, the sample runners' errors traced
 
 Import the SR6 books again (Books → **Re-import all**) so the sample runners are read with the new rules.

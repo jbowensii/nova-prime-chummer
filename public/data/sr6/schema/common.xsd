@@ -354,6 +354,9 @@
            quality's choice: Karma 0) -->
       <xs:attribute name="category" type="xs:string"/>
       <xs:attribute name="granted" type="sr6:True"/>
+      <!-- uncounted: not one of the six qualities a runner may take at creation (its text says so: Lofwyr's Legions' drake
+           qualities) -->
+      <xs:attribute name="uncounted" type="sr6:True"/>
       <!-- the quality path a bare step heading belongs to (`Step 2` under `Quality Path: Gestalt`): the app shows
            "Gestalt: Step 2" -->
       <xs:attribute name="group" type="xs:string"/>

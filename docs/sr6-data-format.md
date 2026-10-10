@@ -502,7 +502,7 @@ xmlns:sr6="urn:chummer-sr6:config:1" version="1">`, `creation.xsd`) holds them a
 **The standard settings ship with the app**: `public/data/sr6/creation-defaults.xml` holds the core rulebook's numbers
 (source `CRB`) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its
 printed page; numbers only, no book text. A new server can build runners with every method a book prints right away.
-Left unset, because no book prints them: `maxKarmaLeft`, `karmaToNuyenMax`, `skillPointsExpertise`,
+Left unset, because no book prints them: `karmaToNuyenMax`, `skillPointsExpertise`,
 `initiativeDiceMax`, `advance.powerPoint`, `advance.karmaToNuyenRate`, `advance.nuyenToKarmaRate`, and the karma build
 (`karmaBuild.*`, `magicKarma:*`: no SR6 book describes one, so Karma build can't be picked until the table enters its
 own). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes and to the Companion's karma for the 25
@@ -525,7 +525,8 @@ the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/
 Every key, in the order Table setup shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
 a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
-chosen while its Essence factor is unset). `maxKarmaLeft` and `karmaToNuyenMax` aren't printed in the core rulebook:
+chosen while its Essence factor is unset). `karmaToNuyenMax` isn't printed in the core rulebook (`maxKarmaLeft` is, from the
+City Editions on: 5, Hong Kong p. 66, shipped):
 unset, there is no limit (a table that uses one enters it from the book or house rule that gives it). A number may be a decimal; `true/false` is the word; a quality id names a catalog quality (`crb.<slug>`).
 
 | group | key | type | needed by | what it is |
@@ -548,10 +549,13 @@ unset, there is no limit (a table that uses one enters it from the book or house
 | General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
 | General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
-| General | `maxKarmaLeft` | number | optional | Most karma kept after creation (unset: no limit, and Review gives no warning) |
+| General | `maxKarmaLeft` | number | optional | Most karma kept after creation (CRB Hong Kong p. 66: 5; unset: no limit, and Review gives no warning) |
 | General | `contactKarma` | number | optional | Karma per contact point past the points or past a contact's pair cap (the Sixth World Companion's expanded contacts, SWC p. 161, shipped on: owner, 2026-10-09; unset: off, each rating up to Charisma) |
 | General | `contactPairPerCha` | number | optional | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
 | General | `contactRatingMax` | number | optional | Highest contact rating (with `contactKarma`; unset: Charisma) |
+| General | `manyTalentsQuality` | quality id | optional | Many Talents: two attributes at their maximum (SWC p. 134) |
+| General | `manySkillsQuality` | quality id | optional | Many Skills: two skills at the highest rank (SWC p. 134) |
+| General | `availabilityCapIllegalOnly` | bool | optional | The Availability cap holds only illegal gear (CRB first printing, 2019, p. 66; the later printings cap every item, so it ships unset) |
 | General | `exceptionalQuality` | quality id | optional | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB p. 71) |
 | Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
 | Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |

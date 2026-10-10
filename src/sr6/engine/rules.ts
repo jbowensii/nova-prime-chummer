@@ -47,6 +47,8 @@ function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string }> {
     for (const a of x.accessories) yield { x: a, path }
   }
 }
+/** 1 when the runner has the quality a setting names (Many Talents, Many Skills: Sixth World Companion p. 134), else 0. */
+const has = (c: Ctx, key: string) => { const id = str(c.cr, key); return id && c.b.qualities.some(q => q.id === id) ? 1 : 0 }
 const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => { const e = c.data.entry(x.kind, x.id); return e ? entryLabel(e) : x.name ?? x.id }
 
 const RULES: Rule[] = [
@@ -85,8 +87,9 @@ const RULES: Rule[] = [
   { code: 'attr.oneAtMax', severity: 'error', tab: 'attributes', setting: ['oneAttributeAtMax'], check: c => {
     const m = c.data.metatypes[c.b.metatype]
     if (!m || !flag(c.cr, 'oneAttributeAtMax')) return null
-    const at = CORE_ATTRS.filter(k => attrRating(c.b, k, c.p) >= attrMax(c.data, c.cr, c.b, k)!)
-    return at.length <= 1 ? null : { message: `Only one attribute may be at its maximum (${at.map(A).join(', ')} are).` }
+    const at = CORE_ATTRS.filter(k => attrRating(c.b, k, c.p) >= attrMax(c.data, c.cr, c.b, k)!), most = 1 + has(c, 'manyTalentsQuality')
+    return at.length <= most ? null : { message: most > 1 ? `Only ${most} attributes may be at their maximum (${at.map(A).join(', ')} are).`
+      : `Only one attribute may be at its maximum (${at.map(A).join(', ')} are).` }
   } },
   { code: 'attr.adjustTargets', severity: 'error', tab: 'attributes', setting: ['attributeBaseMax'], check: c => {
     // Edge, Magic and Resonance always take adjustment points; a core attribute only when the metatype raises its maximum
@@ -111,8 +114,8 @@ const RULES: Rule[] = [
     // CRB p. 65: only one skill at the highest rank (with the aptitude quality, that one may go one higher)
     const cap = num(c.cr, 'skillCap')
     if (!flag(c.cr, 'oneSkillAtMax') || cap === undefined) return null
-    const at = c.b.skills.filter(s => skillRank(s) >= cap).map(s => c.data.skills[s.id]?.name ?? s.id)
-    return at.length <= 1 ? null : { message: `Only one skill may be at the highest rank, ${cap} (${at.join(', ')} are).`, ...cite(c.cr, 'oneSkillAtMax') }
+    const at = c.b.skills.filter(s => skillRank(s) >= cap).map(s => c.data.skills[s.id]?.name ?? s.id), most = 1 + has(c, 'manySkillsQuality')
+    return at.length <= most ? null : { message: `Only ${most > 1 ? most : 'one'} skill${most > 1 ? 's' : ''} may be at the highest rank, ${cap} (${at.join(', ')} are).`, ...cite(c.cr, 'oneSkillAtMax') }
   } },
   // (owner, 2026-10-09) an expertise may be bought at creation with the customization karma (CRB p. 66, step four, at
   // p. 68's price: budgets.ts skillSpend): no blanket error; its prerequisites are the two below
@@ -147,7 +150,8 @@ const RULES: Rule[] = [
     return neg - pos <= cap ? null : { message: `Negative qualities give ${neg - pos} karma more than positive ones cost; the most is ${cap}.` }
   } },
   { code: 'quality.maxCount', severity: 'error', tab: 'qualities', setting: ['qualityMaxCount'], check: c => {
-    const count = c.b.qualities.filter(q => !q.free).length, cap = n0(c.cr, 'qualityMaxCount')
+    // (a quality whose text says it doesn't count toward the six: Lofwyr's Legions p. 16's drake qualities)
+    const count = c.b.qualities.filter(q => !q.free && !c.data.qualities[q.id]?.uncounted).length, cap = n0(c.cr, 'qualityMaxCount')
     return count <= cap ? null : { message: `${count} paid qualities; the most is ${cap}.` }
   } },
   { code: 'quality.level', severity: 'error', tab: 'qualities', check: c => c.b.qualities.flatMap(q => {
@@ -198,9 +202,11 @@ const RULES: Rule[] = [
   { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
   { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {
-    const cap = n0(c.cr, 'maxAvailability'), hits: Hit[] = []
+    // CRB first printing p. 66 (optional, availabilityCapIllegalOnly): the cap holds only illegal gear (Availability `(I)`)
+    const cap = n0(c.cr, 'maxAvailability'), hits: Hit[] = [], illegalOnly = flag(c.cr, 'availabilityCapIllegalOnly')
     for (const { x, path } of lines(c.b)) {
       const { avail } = priced({ ...x, accessories: [] }, c.data, c.cr)
+      if (illegalOnly && !/\(?\s*I\s*\)?\s*$/.test(entryOf(x, c.data)?.attrs.avail ?? '')) continue
       if (avail > cap) hits.push({ path, message: `${nameOf(c, x)}’s Availability ${avail} is above ${cap}.` })
     }
     return hits

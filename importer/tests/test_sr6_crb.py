@@ -647,6 +647,13 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(archetypes._bonuses("Arm (obvious)", None), '<bonus target="physical" value="1"/>')  # a full limb's box
         self.assertEqual(archetypes._bonuses("Hand (obvious)", None), "")  # a partial one adds none
 
+    def test_a_quality_outside_the_six(self):
+        """A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text)."""
+        from importer.sr6 import flags
+        self.assertEqual(flags.uncounted("Note: This quality does not count to- ward the six total qualities limitation."), {"uncounted": "true"})
+        self.assertEqual(flags.uncounted("This does not count toward your maximum of six qualities at creation."), {"uncounted": "true"})
+        self.assertEqual(flags.uncounted("The limit of six qualities at character creation still applies."), {})
+
     def test_sample_lookups_keep_the_printed_level_and_rating(self):
         """A level printed with a quality finds an entry that comes in levels (not a path step of the same name); a
         rating printed with an item never finds an entry named for another rating; a `+3` is the specialization made
