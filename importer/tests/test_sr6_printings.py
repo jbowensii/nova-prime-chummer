@@ -133,6 +133,26 @@ class PrintingsTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported", "crb-fz")))
         self.assertIn("crb.zap-gun", self.weapons())
 
+    def test_field_by_field_an_open_field_takes_the_newest_older_printing_valid_value_in_either_order(self):
+        # (made up: the new printing prints the Zapp Rifle's cost as no value, `12x`; the middle and old ones print it,
+        # and the old one another Zap Gun cost, which the new one's own valid value outranks)
+        mid_md = BOOK_MD.replace("| 12x |", "| 1,100¥ |")
+        old_md = BOOK_MD.replace("| 12x |", "| 1,200¥ |").replace("| 2 | 2 | 1,250¥ |", "| 2 | 2 | 999¥ |")
+        for order in (("new", "old", "mid"), ("old", "mid", "new"), ("mid", "new", "old")):
+            with self.subTest(order=order):
+                self.setUp()
+                ds = {"new": self.book("a-new", NEW), "mid": self.book("b-mid", MID, mid_md), "old": self.book("c-old", OLD, old_md)}
+                for k in order:
+                    run(ds[k], self.custom, convert_pdf=False)
+                w = {e.get("id"): e for e in ET.fromstring(self.weapons().encode("utf8"))}
+                rifle = w["crb.zapp-rifle"]
+                self.assertEqual(rifle.get("cost"), "1100")  # (the newest printing printing it: the middle one, not the old)
+                self.assertEqual((rifle.find("found").get("how"), rifle.find("found").get("field"), rifle.find("found").text),
+                                 ("printing", "cost", "Middle Printing"))
+                self.assertIsNone(rifle.find("issue"))
+                self.assertEqual(w["crb.zap-gun"].get("cost"), "1250")  # (its own valid value wins)
+                self.assertEqual(self.status(ds["new"]), ("done", ""))
+
     def test_the_same_printing_twice_stays_as_before(self):
         a, b = self.book("a", NEW), self.book("b", NEW)
         run(a, self.custom, convert_pdf=False)

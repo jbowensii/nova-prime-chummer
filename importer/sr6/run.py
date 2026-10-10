@@ -53,14 +53,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             return None
 
         xmlio.write_status(book_dir, "extracting")
-        if hasattr(recipe, "prepare_md"):  # a book's own page furniture the converter can't tell (a running head on top)
-            md = recipe.prepare_md(md)
-        text, report = regroup.regroup(md, recipe.ALIASES, name_headers=recipe.NAME_HEADERS,
-                                       end_page=getattr(recipe, "END_PAGE", None),
-                                       variants=getattr(recipe, "VARIANT_ROWS", False))
+        res, md, text, report = _read(recipe, md, custom_dir)
         xmlio.write_file(os.path.join(book_dir, "regrouped.md"), text)
-        res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
-        res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
         if hasattr(recipe, "extra"):  # the further sources the book holds (a City Edition's city chapter)
             res.extra = recipe.extra(md, meta["sha256"])
             for x in res.extra:
@@ -83,6 +77,9 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         prev = moved.previous(out_dir)  # the ids the last import wrote (read before anything replaces them)
         prev_extra = {x: moved.previous(os.path.join(custom_dir, "imported", x.lower()))
                       for x in (old.get("extra") or "").split()} if old is not None else {}
+        if older:  # field by field: a value this printing leaves out (or prints as no SR6 value) the next older one's
+            res.files, _ = older_printings(res.files, [(p[1], _catalog(recipe, d, custom_dir))
+                                                       for p, d, _ in sorted(older, key=lambda o: o[0], reverse=True)])
         if any(st == "done" for _, _, st in older):
             _drop(custom_dir, src)  # the older printing's catalog, texts and sample runners (this one's replace them)
         with sr6_root():
@@ -122,11 +119,90 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
         if not newer:
             xmlio.write_status(book_dir, "done")
+        elif _fills(out_dir, src, res.files):
+            # an older printing imported after the loaded one, printing what the loaded one leaves open: the loaded one
+            # again, so each field takes the newest printing's valid value whatever the import order
+            run(newer[1], custom_dir, convert_pdf=False)
+            return res
         _corpus(book_dir, custom_dir)
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
+
+
+def _read(recipe, md, custom_dir):
+    """A book's book.md as its recipe reads it: (Result with every entry's effects, the md its recipe prepared, the
+    regrouped text, regroup's report)."""
+    if hasattr(recipe, "prepare_md"):  # a book's own page furniture the converter can't tell (a running head on top)
+        md = recipe.prepare_md(md)
+    text, report = regroup.regroup(md, recipe.ALIASES, name_headers=recipe.NAME_HEADERS,
+                                   end_page=getattr(recipe, "END_PAGE", None),
+                                   variants=getattr(recipe, "VARIANT_ROWS", False))
+    res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
+    res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
+    return res, md, text, report
+
+
+def _catalog(recipe, book_dir, custom_dir):
+    """Another printing's catalog as an import of it reads it now (from its book.md): {file: xml}, ids unscoped; {}
+    when it has no book.md or fails to read."""
+    path = os.path.join(book_dir, "book.md")
+    try:
+        return _read(recipe, Path(path).read_text(encoding="utf8"), custom_dir)[0].files if os.path.exists(path) else {}
+    except Exception:  # noqa: BLE001 (an older printing that no longer reads gives nothing)
+        return {}
+
+
+FALLBACK = ("missing", "unreadable")  # (an issue's codes: no value printed, or one that is no SR6 value: vocab.py)
+
+
+def older_printings(files, olds, prefix=""):
+    """The owner's rule, field by field the latest printing wins: a field `files` leaves open (an issue FALLBACK) takes
+    the value of the newest of `olds` ([(printing label, {file: xml})], newest first, ids unscoped) that prints it valid
+    (a value with no issue of its own), with its formula, noted <found how="printing">that printing</found>. prefix: the
+    source scope of the ids in `files` (a catalog on disk). (files, the fields filled)."""
+    from lxml import etree
+
+    from importer.sr6.resolve import _add_kid, _kids
+    parse = lambda xml: etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))  # noqa: E731
+    index = {}
+    for label, of in olds:
+        for name, xml in of.items():
+            for el in parse(xml) if xml else ():
+                if isinstance(el.tag, str) and el.get("id"):
+                    index.setdefault((name, el.get("id")), []).append((label, el))
+    out, n = {}, 0
+    for name, xml in files.items():
+        root, changed = parse(xml), False
+        for el in root:
+            i = el.get("id") or "" if isinstance(el.tag, str) else ""
+            for iss in [x for x in _kids(el, "issue") if x.get("code") in FALLBACK]:
+                f = iss.get("field")
+                got = next(((label, o) for label, o in index.get((name, i[len(prefix):] if i.startswith(prefix) else i), ())
+                            if (o.get(f) or "").strip() not in ("", "—", "-")
+                            and not any(x.get("field") == f for x in _kids(o, "issue"))), None)
+                if not got:
+                    continue
+                label, o = got
+                el.set(f, o.get(f))
+                el.remove(iss)
+                for x in [x for x in _kids(el, "formula") if x.get("field") == f]:
+                    el.remove(x)
+                for x in [x for x in _kids(o, "formula") if x.get("field") == f]:
+                    _add_kid(el, "formula", dict(x.attrib), x.text)
+                _add_kid(el, "found", {"field": f, "how": "printing", "source": el.get("source"), "page": o.get("page")}, label)
+                changed, n = True, n + 1
+        out[name] = (xmlio.HEAD + etree.tostring(root, encoding="unicode").rstrip("\n") + "\n") if changed else xml
+    return out, n
+
+
+def _fills(out_dir, src, files):
+    """Whether this printing's catalog (`files`, ids unscoped) prints a valid value of a field the loaded printing's
+    catalog (out_dir, on disk) leaves open or took from a printing (which may be older than this one)."""
+    reopen = lambda x: re.sub(r'<found field="([^"]+)" how="printing"[^>]*>[^<]*</found>', r'<issue field="\1" code="missing"/>', x)  # noqa: E731
+    disk = {n: reopen(Path(out_dir, n).read_text(encoding="utf8")) for n in files if os.path.isfile(os.path.join(out_dir, n))}
+    return older_printings(disk, [("", files)], prefix=src.lower() + ".")[1] > 0
 
 
 def _corpus(book_dir, custom_dir):
